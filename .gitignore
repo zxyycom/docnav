@@ -1,0 +1,14 @@
+/target/
+/dist/
+/build/
+/.venv/
+/.uv-cache/
+/.ruff_cache/
+**/__pycache__/
+*.py[cod]
+*.pdb
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db
