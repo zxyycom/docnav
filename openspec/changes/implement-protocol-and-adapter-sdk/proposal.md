@@ -6,8 +6,8 @@
 
 ## What Changes
 
-- 新增 `docnav-protocol` 共享协议实现，覆盖请求/响应 envelope、operation/result 绑定、page、稳定错误、协议版本协商和 schema 校验入口。
-- 新增 `docnav-adapter-sdk` 基础能力，覆盖单请求 stdin/stdout invoke、manifest/probe/document operation 分发、stderr 诊断约束和退出码映射。
+- 新增 Rust `docnav-protocol` 共享协议实现，覆盖请求/响应 envelope、operation/result 绑定、page、稳定错误、协议版本协商和 schema 校验入口。
+- 新增 Rust `docnav-adapter-sdk` 基础能力，覆盖单请求 stdin/stdout invoke、manifest/probe/document operation 分发、stderr 诊断约束和退出码映射。
 - 将文档中的 protocol、manifest、probe 和 readable schema 纳入自动化验证流程。
 - 为后续 adapter 和 core CLI 提供可复用类型、校验函数和测试 fixture。
 - 非目标：本 change 不实现 Markdown 解析、不实现 `docnav` 核心路由、不实现 adapter 安装管理、不实现 MCP bridge。
@@ -24,5 +24,6 @@
 
 ## Impact
 
-- 影响共享库与协议校验面：`docnav-protocol`、`docnav-adapter-sdk`、schema/example 验证脚本和测试 fixture。
+- 影响共享库与协议校验面：Rust `docnav-protocol`、Rust `docnav-adapter-sdk`、schema/example 验证脚本和测试 fixture。
+- 明确实现栈边界：核心 CLI、adapter、protocol 和 adapter SDK 以 Rust 为主；JavaScript/Node.js 用于 MCP bridge 和 AJV 文档/schema 校验；Python 仅作为开发或 fixture 辅助工具。
 - 影响后续 change 的依赖顺序：Markdown adapter、核心 CLI、adapter 管理和 MCP bridge 都必须依赖本 change 产出的协议与 SDK 基础。

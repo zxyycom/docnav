@@ -54,6 +54,7 @@ MCP tool 定义见 [mcp-read-tool.json](json/mcp-read-tool.json)。
 - [error-format-unknown.json](json/error-format-unknown.json)
 - [error-format-ambiguous.json](json/error-format-ambiguous.json)
 - [error-protocol-incompatible.json](json/error-protocol-incompatible.json)
+- [error-invalid-request.json](json/error-invalid-request.json)
 
 `find` 与 `info` 能力示例：
 

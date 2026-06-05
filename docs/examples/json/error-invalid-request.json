@@ -1,0 +1,14 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "unknown",
+  "operation": null,
+  "ok": false,
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "请求不是有效的原始协议 JSON。",
+    "details": {
+      "field": "request",
+      "reason": "malformed_json"
+    }
+  }
+}

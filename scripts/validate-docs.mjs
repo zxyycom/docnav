@@ -55,6 +55,12 @@ function listExampleJson(pattern) {
     .sort();
 }
 
+function listSchemaJson() {
+  return walk(toAbs("docs/schemas"), (filePath) => filePath.endsWith(".schema.json"))
+    .map(toRel)
+    .sort();
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -90,6 +96,44 @@ function validateWithSchema(ajv, schemaRelPath, dataRelPaths) {
   console.log(`schema ok: ${schemaRelPath} (${dataRelPaths.length} file(s))`);
 }
 
+function validateStrictSchemaCompilation() {
+  const schemaRelPaths = listSchemaJson();
+  const expectedSchemas = [
+    "docs/schemas/protocol-request.schema.json",
+    "docs/schemas/protocol-response.schema.json",
+    "docs/schemas/manifest.schema.json",
+    "docs/schemas/probe-result.schema.json",
+    "docs/schemas/readable-outline.schema.json",
+    "docs/schemas/readable-read.schema.json",
+    "docs/schemas/readable-find.schema.json",
+    "docs/schemas/readable-info.schema.json",
+    "docs/schemas/readable-error.schema.json"
+  ];
+
+  for (const expected of expectedSchemas) {
+    assert(schemaRelPaths.includes(expected), `missing expected schema ${expected}`);
+  }
+
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  for (const schemaRelPath of schemaRelPaths) {
+    ajv.compile(readJson(schemaRelPath));
+  }
+  console.log(`schema strict compile ok: ${schemaRelPaths.length} schema file(s)`);
+}
+
+function validateProtocolResponseBindingSchema() {
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  const validate = ajv.compile(readJson("docs/schemas/protocol-response.schema.json"));
+  const mismatched = JSON.parse(JSON.stringify(readJson("docs/examples/json/protocol-read-response.json")));
+  mismatched.operation = "outline";
+
+  assert(
+    !validate(mismatched),
+    "protocol response schema must reject operation/result mismatches"
+  );
+  console.log("protocol response operation/result binding ok");
+}
+
 function validateJsonSyntax() {
   const jsonFiles = walk(toAbs("docs"), (filePath) => filePath.endsWith(".json"));
   for (const filePath of jsonFiles) {
@@ -99,6 +143,7 @@ function validateJsonSyntax() {
 }
 
 function validateSchemas() {
+  validateStrictSchemaCompilation();
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   const cases = [
     {
@@ -145,6 +190,7 @@ function validateSchemas() {
   for (const item of cases) {
     validateWithSchema(ajv, item.schema, item.data);
   }
+  validateProtocolResponseBindingSchema();
 }
 
 function validateMcpStructuredContent() {
@@ -192,6 +238,7 @@ function validateProtocolPair(operation) {
   );
   assert(response.operation === request.operation, `${operation} response operation must match request`);
   assert(response.ok === true, `${operation} protocol response must be successful`);
+  validateProtocolResultBinding(operation, response, `protocol-${operation}-response.json`);
 
   const requestedPage = request.arguments.page;
   const returnedPage = response.result.page;
@@ -203,6 +250,20 @@ function validateProtocolPair(operation) {
   }
 
   return { request, response };
+}
+
+function validateProtocolResultBinding(operation, response, label) {
+  const result = response.result;
+  assert(result && typeof result === "object", `${label} missing result object`);
+
+  const resultKindChecks = {
+    outline: () => Array.isArray(result.entries) && "page" in result && !("matches" in result),
+    read: () => "ref" in result && "content" in result && "content_type" in result && "cost" in result,
+    find: () => Array.isArray(result.matches) && "page" in result && !("entries" in result),
+    info: () => "display" in result && Array.isArray(result.capabilities) && !("page" in result)
+  };
+
+  assert(resultKindChecks[operation]?.(), `${label} result does not match ${operation}`);
 }
 
 function validateExampleBudget(operation, request, result) {
@@ -273,6 +334,11 @@ function validateErrorDetails() {
   for (const errorRelPath of errorFiles) {
     const response = readJson(errorRelPath);
     assert(response.ok === false, `${errorRelPath} must be an error response`);
+    assert(!("result" in response), `${errorRelPath} error response must not include result`);
+    assert(
+      response.operation === null || ["outline", "read", "find", "info"].includes(response.operation),
+      `${errorRelPath} error operation must be known operation or null`
+    );
     const details = response.error.details;
     const requiredDetails = requiredDetailsByCode[response.error.code];
     assert(requiredDetails, `${errorRelPath} uses unknown error code ${response.error.code}`);
