@@ -6,6 +6,7 @@ mod constants;
 mod context;
 mod envelope;
 mod error;
+mod generated;
 mod integer;
 mod manifest;
 mod operation;

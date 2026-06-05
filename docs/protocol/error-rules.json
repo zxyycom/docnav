@@ -1,0 +1,70 @@
+{
+  "version": "0.1",
+  "errors": [
+    {
+      "code": "INVALID_REQUEST",
+      "rust_variant": "InvalidRequest",
+      "required_details": ["field", "reason"]
+    },
+    {
+      "code": "PROTOCOL_INCOMPATIBLE",
+      "rust_variant": "ProtocolIncompatible",
+      "required_details": ["requested", "supported_min", "supported_max"]
+    },
+    {
+      "code": "DOCUMENT_NOT_FOUND",
+      "rust_variant": "DocumentNotFound",
+      "required_details": ["path"]
+    },
+    {
+      "code": "DOCUMENT_PATH_INVALID",
+      "rust_variant": "DocumentPathInvalid",
+      "required_details": ["path", "reason"]
+    },
+    {
+      "code": "DOCUMENT_ENCODING_UNSUPPORTED",
+      "rust_variant": "DocumentEncodingUnsupported",
+      "required_details": ["path", "encoding"]
+    },
+    {
+      "code": "FORMAT_UNKNOWN",
+      "rust_variant": "FormatUnknown",
+      "required_details": ["path", "reason", "candidates"]
+    },
+    {
+      "code": "FORMAT_AMBIGUOUS",
+      "rust_variant": "FormatAmbiguous",
+      "required_details": ["path", "candidates"]
+    },
+    {
+      "code": "CAPABILITY_UNSUPPORTED",
+      "rust_variant": "CapabilityUnsupported",
+      "required_details": ["capability", "adapter_id"]
+    },
+    {
+      "code": "REF_NOT_FOUND",
+      "rust_variant": "RefNotFound",
+      "required_details": ["ref"]
+    },
+    {
+      "code": "REF_AMBIGUOUS",
+      "rust_variant": "RefAmbiguous",
+      "required_details": ["ref", "candidate_count"]
+    },
+    {
+      "code": "ADAPTER_UNAVAILABLE",
+      "rust_variant": "AdapterUnavailable",
+      "required_details": ["adapter_id", "reason"]
+    },
+    {
+      "code": "ADAPTER_INVOKE_FAILED",
+      "rust_variant": "AdapterInvokeFailed",
+      "required_details": ["adapter_id", "reason"]
+    },
+    {
+      "code": "INTERNAL_ERROR",
+      "rust_variant": "InternalError",
+      "required_details": ["error_id"]
+    }
+  ]
+}

@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::fmt;
 
 use crate::constants::{error_detail_fields as details_fields, stable_error_messages};
+use crate::generated::error_rules;
 use crate::{ErrorDetails, Operation};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -219,31 +220,7 @@ pub enum StableErrorCode {
 
 impl StableErrorCode {
     pub const fn required_details(self) -> &'static [&'static str] {
-        match self {
-            Self::InvalidRequest => &[details_fields::FIELD, details_fields::REASON],
-            Self::ProtocolIncompatible => &[
-                details_fields::REQUESTED,
-                details_fields::SUPPORTED_MIN,
-                details_fields::SUPPORTED_MAX,
-            ],
-            Self::DocumentNotFound => &[details_fields::PATH],
-            Self::DocumentPathInvalid => &[details_fields::PATH, details_fields::REASON],
-            Self::DocumentEncodingUnsupported => &[details_fields::PATH, details_fields::ENCODING],
-            Self::FormatUnknown => &[
-                details_fields::PATH,
-                details_fields::REASON,
-                details_fields::CANDIDATES,
-            ],
-            Self::FormatAmbiguous => &[details_fields::PATH, details_fields::CANDIDATES],
-            Self::CapabilityUnsupported => {
-                &[details_fields::CAPABILITY, details_fields::ADAPTER_ID]
-            }
-            Self::RefNotFound => &[details_fields::REF],
-            Self::RefAmbiguous => &[details_fields::REF, details_fields::CANDIDATE_COUNT],
-            Self::AdapterUnavailable => &[details_fields::ADAPTER_ID, details_fields::REASON],
-            Self::AdapterInvokeFailed => &[details_fields::ADAPTER_ID, details_fields::REASON],
-            Self::InternalError => &[details_fields::ERROR_ID],
-        }
+        error_rules::required_details(self)
     }
 }
 

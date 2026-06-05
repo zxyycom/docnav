@@ -5,8 +5,10 @@
   "type": "module",
   "packageManager": "pnpm@11.1.3",
   "scripts": {
-    "validate": "pnpm run validate:docs && pnpm run validate:openspec && pnpm run validate:diff",
+    "generate:error-rules": "node scripts/generate-error-rules.mjs",
+    "validate": "pnpm run validate:generated && pnpm run validate:docs && pnpm run validate:openspec && pnpm run validate:diff",
     "validate:docs": "node scripts/validate-docs.mjs",
+    "validate:generated": "node scripts/generate-error-rules.mjs --check",
     "validate:json": "node scripts/validate-docs.mjs json",
     "validate:schema": "node scripts/validate-docs.mjs schema",
     "validate:mcp": "node scripts/validate-docs.mjs mcp",

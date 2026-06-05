@@ -21,9 +21,9 @@
 | [readable-info.schema.json](readable-info.schema.json) | CLI readable JSON、MCP info structuredContent |
 | [readable-error.schema.json](readable-error.schema.json) | CLI/MCP 精简错误 |
 
-原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例、MCP tool 声明和实现自测，不表示 readable 输出是长期机器解析协议。
+原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例、MCP tool 声明和实现自测，不表示 readable 输出是长期机器解析协议。
 
-`scripts/validate-docs.mjs semantics` 对文档示例执行补充语义校验：协议 request/response 的 `protocol_version`、`request_id` 和 `operation` 必须配对；非 null page 必须是请求 page 加 1；示例阅读负载必须符合 `limit_chars`；protocol result、readable JSON 和 MCP structuredContent 必须保持同一业务语义；错误示例必须包含协议表声明的稳定 details 字段；Markdown manifest 示例必须声明 `outline`、`read`、`find` 和 `info` 全部能力。
+`scripts/validate-docs.mjs semantics` 对文档示例执行补充语义校验：协议 request/response 的 `protocol_version`、`request_id` 和 `operation` 必须配对；非 null page 必须是请求 page 加 1；示例阅读负载必须符合 `limit_chars`；protocol result、readable JSON 和 MCP structuredContent 必须保持同一业务语义；错误示例必须包含协议表声明的 required details 字段；Markdown manifest 示例必须声明 `outline`、`read`、`find` 和 `info` 全部能力。
 
 文件系统边界、ref 唯一性、真实分页一致性和配置优先级仍需后续实现级业务测试。
 

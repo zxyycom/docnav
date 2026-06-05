@@ -110,22 +110,8 @@ export const MCP_STRUCTURED_CONTENT_FORBIDDEN_FIELDS = [
   FIELDS.ok
 ];
 
-// 稳定错误 details 要求来自 docs/protocol.md，脚本只做一致性校验。
-export const REQUIRED_ERROR_DETAILS_BY_CODE = {
-  INVALID_REQUEST: ["field", "reason"],
-  PROTOCOL_INCOMPATIBLE: ["requested", "supported_min", "supported_max"],
-  DOCUMENT_NOT_FOUND: ["path"],
-  DOCUMENT_PATH_INVALID: ["path", "reason"],
-  DOCUMENT_ENCODING_UNSUPPORTED: ["path", "encoding"],
-  FORMAT_UNKNOWN: ["path", "reason", "candidates"],
-  FORMAT_AMBIGUOUS: ["path", "candidates"],
-  CAPABILITY_UNSUPPORTED: ["capability", "adapter_id"],
-  REF_NOT_FOUND: ["ref"],
-  REF_AMBIGUOUS: ["ref", "candidate_count"],
-  ADAPTER_UNAVAILABLE: ["adapter_id", "reason"],
-  ADAPTER_INVOKE_FAILED: ["adapter_id", "reason"],
-  INTERNAL_ERROR: ["error_id"]
-};
+// 稳定错误语义由 docs/protocol.md 拥有；这里复用 error-rules.json 生成的 required details 常量。
+export { REQUIRED_ERROR_DETAILS_BY_CODE } from "./generated/error-rules.mjs";
 
 // Markdown manifest 示例的语义期望，来源是 v0 首期 adapter 契约。
 export const MARKDOWN_MANIFEST_EXPECTED = {
