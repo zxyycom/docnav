@@ -64,12 +64,16 @@ Markdown v0 manifest 推荐参数：
     "limit_chars": 6000
   },
   "find": {
-    "limit_chars": 6000
+    "limit_chars": 6000,
+    "options": {
+      "max_heading_level": 3
+    }
   }
 }
 ```
 
 适配器直接 CLI 使用相同数值作为内置默认值，允许其项目级和用户级配置覆盖。
+Markdown find 使用 `max_heading_level` 对应的 outline entries 选择 match ref 归属；当没有任何 outline entry 时使用全文 ref。
 
 ## Probe
 
