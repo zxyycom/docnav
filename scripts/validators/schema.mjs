@@ -9,7 +9,14 @@ import {
   toAbs,
   walk
 } from "./fs-utils.mjs";
-import { EXAMPLES, FIELDS, FILE_SYSTEM, OPERATION_NAMES, SCHEMAS } from "./config.mjs";
+import {
+  EXAMPLES,
+  FIELDS,
+  FILE_SYSTEM,
+  OPERATION_NAMES,
+  REQUIRED_ERROR_DETAILS_BY_CODE,
+  SCHEMAS
+} from "./config.mjs";
 
 export function formatAjvErrors(validate) {
   return (validate.errors ?? [])
@@ -64,6 +71,47 @@ function validateProtocolResponseBindingSchema() {
     "protocol response schema must reject operation/result mismatches"
   );
   console.log("protocol response operation/result binding ok");
+}
+
+function validateProtocolResponseErrorDetailsSchema() {
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  const validate = ajv.compile(readJson(SCHEMAS.protocolResponse));
+
+  for (const [code, requiredDetails] of Object.entries(REQUIRED_ERROR_DETAILS_BY_CODE)) {
+    const validResponse = protocolErrorResponse(
+      code,
+      Object.fromEntries(requiredDetails.map((field) => [field, "test"]))
+    );
+    assert(
+      validate(validResponse),
+      `protocol response schema must accept ${code} with required details: ${formatAjvErrors(validate)}`
+    );
+
+    const missingFirstRequiredDetail = protocolErrorResponse(
+      code,
+      Object.fromEntries(requiredDetails.slice(1).map((field) => [field, "test"]))
+    );
+    assert(
+      !validate(missingFirstRequiredDetail),
+      `protocol response schema must reject ${code} without error.details.${requiredDetails[0]}`
+    );
+  }
+
+  console.log("protocol response error details requirements ok");
+}
+
+function protocolErrorResponse(code, details) {
+  return {
+    protocol_version: "0.1",
+    request_id: "req-error-details",
+    operation: null,
+    ok: false,
+    error: {
+      code,
+      message: "test error",
+      details
+    }
+  };
 }
 
 export function validateJsonSyntax() {
@@ -125,4 +173,5 @@ export function validateSchemas() {
     validateWithSchema(ajv, item.schema, item.data);
   }
   validateProtocolResponseBindingSchema();
+  validateProtocolResponseErrorDetailsSchema();
 }

@@ -1,7 +1,6 @@
 use docnav_protocol::{
     FindArguments, FindResult, InfoArguments, InfoResult, Manifest, Operation, OutlineArguments,
-    OutlineResult, ProbeResult, ProtocolRange, ReadArguments, ReadResult, RequestEnvelope,
-    StableError,
+    OutlineResult, ProbeResult, ReadArguments, ReadResult, RequestEnvelope, StableError,
 };
 
 use crate::AdapterError;
@@ -10,10 +9,6 @@ pub type AdapterResult<T> = Result<T, AdapterError>;
 
 pub trait Adapter {
     fn adapter_id(&self) -> &str;
-
-    fn protocol_range(&self) -> ProtocolRange {
-        ProtocolRange::v0_1()
-    }
 
     fn manifest(&self) -> Manifest;
 

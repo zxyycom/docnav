@@ -2,9 +2,9 @@ use super::*;
 use docnav_protocol::{
     try_positive, AdapterIdentity, Entry, FormatDescriptor, InfoArguments, InfoResult, Manifest,
     Operation, OutlineArguments, OutlineResult, PagedOperation, ProbeReason, ProbeReasonCode,
-    ProbeResult, ProtocolRange, ProtocolResponse, ReadArguments, ReadResult, RecommendedParameters,
-    RequestEnvelope, StableError, StableErrorCode, PROBE_VERSION, PROTOCOL_VERSION,
-    UNKNOWN_REQUEST_ID,
+    ProbeResult, ProtocolRange, ProtocolResponse, ProtocolVersion, ReadArguments, ReadResult,
+    RecommendedParameters, RequestEnvelope, StableError, StableErrorCode, PROBE_VERSION,
+    PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 use std::collections::BTreeMap;
 
@@ -122,6 +122,26 @@ impl Adapter for InvalidManifestAdapter {
     fn manifest(&self) -> Manifest {
         let mut manifest = StubAdapter.manifest();
         manifest.adapter.id.clear();
+        manifest
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        StubAdapter.probe(path)
+    }
+}
+
+struct ManifestProtocolRangeAdapter;
+
+impl Adapter for ManifestProtocolRangeAdapter {
+    fn adapter_id(&self) -> &str {
+        "manifest-range"
+    }
+
+    fn manifest(&self) -> Manifest {
+        let mut manifest = StubAdapter.manifest();
+        manifest.protocol =
+            ProtocolRange::new(ProtocolVersion::new(0, 0), ProtocolVersion::new(0, 1))
+                .expect("test protocol range");
         manifest
     }
 
@@ -269,6 +289,39 @@ fn unsupported_protocol_is_protocol_incompatible_before_schema_const() {
             assert_eq!(response.error.code, StableErrorCode::ProtocolIncompatible);
             assert_eq!(response.operation, Some(Operation::Outline));
             assert_eq!(response.request_id, "req-1");
+        }
+        ProtocolResponse::Success(_) => panic!("expected failure response"),
+    }
+}
+
+#[test]
+fn invoke_uses_manifest_protocol_range_for_request_version_check() {
+    let input = br#"{
+          "protocol_version": "1.0",
+          "request_id": "req-1",
+          "operation": "outline",
+          "document": { "path": "sample.stub" },
+          "arguments": { "limit_chars": 80, "page": 1 }
+        }"#;
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let exit = invoke_once(
+        &ManifestProtocolRangeAdapter,
+        &input[..],
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, AdapterExitCode::ProtocolError.code());
+    assert!(stderr.is_empty());
+    let response: ProtocolResponse =
+        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
+    match response {
+        ProtocolResponse::Failure(response) => {
+            assert_eq!(response.error.code, StableErrorCode::ProtocolIncompatible);
+            assert_eq!(response.error.details["supported_min"], "0.0");
+            assert_eq!(response.error.details["supported_max"], "0.1");
         }
         ProtocolResponse::Success(_) => panic!("expected failure response"),
     }

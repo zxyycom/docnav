@@ -311,7 +311,345 @@
               }
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "INVALID_REQUEST"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "field",
+                      "reason"
+                    ],
+                    "properties": {
+                      "field": {},
+                      "reason": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "PROTOCOL_INCOMPATIBLE"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "requested",
+                      "supported_min",
+                      "supported_max"
+                    ],
+                    "properties": {
+                      "requested": {},
+                      "supported_min": {},
+                      "supported_max": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "DOCUMENT_NOT_FOUND"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "path"
+                    ],
+                    "properties": {
+                      "path": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "DOCUMENT_PATH_INVALID"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "path",
+                      "reason"
+                    ],
+                    "properties": {
+                      "path": {},
+                      "reason": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "DOCUMENT_ENCODING_UNSUPPORTED"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "path",
+                      "encoding"
+                    ],
+                    "properties": {
+                      "path": {},
+                      "encoding": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "FORMAT_UNKNOWN"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "path",
+                      "reason",
+                      "candidates"
+                    ],
+                    "properties": {
+                      "path": {},
+                      "reason": {},
+                      "candidates": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "FORMAT_AMBIGUOUS"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "path",
+                      "candidates"
+                    ],
+                    "properties": {
+                      "path": {},
+                      "candidates": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "CAPABILITY_UNSUPPORTED"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "capability",
+                      "adapter_id"
+                    ],
+                    "properties": {
+                      "capability": {},
+                      "adapter_id": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "REF_NOT_FOUND"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "ref"
+                    ],
+                    "properties": {
+                      "ref": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "REF_AMBIGUOUS"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "ref",
+                      "candidate_count"
+                    ],
+                    "properties": {
+                      "ref": {},
+                      "candidate_count": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "ADAPTER_UNAVAILABLE"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "adapter_id",
+                      "reason"
+                    ],
+                    "properties": {
+                      "adapter_id": {},
+                      "reason": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "ADAPTER_INVOKE_FAILED"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "adapter_id",
+                      "reason"
+                    ],
+                    "properties": {
+                      "adapter_id": {},
+                      "reason": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "INTERNAL_ERROR"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "error_id"
+                    ],
+                    "properties": {
+                      "error_id": {}
+                    }
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "additionalProperties": false

@@ -17,7 +17,7 @@ where
     W: Write,
     E: Write,
 {
-    let supported = adapter.protocol_range();
+    let supported = adapter.manifest().protocol;
     let mut input = String::new();
     if let Err(error) = stdin.read_to_string(&mut input) {
         let response = ProtocolResponse::Failure(FailureResponse::unparsed(
