@@ -1,0 +1,10 @@
+{
+  "code": "REF_NOT_FOUND",
+  "error": "ref 未定位到文档区域。",
+  "details": {
+    "ref": "L999:Missing"
+  },
+  "guidance": [
+    "重新调用 document_outline 获取有效 ref。"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "L7:Guide > Install > Windows | Run setup.exe.\npage: null"
+      }
+    ],
+    "structuredContent": {
+      "matches": [
+        {
+          "ref": "L7:Guide > Install > Windows",
+          "display": "Run setup.exe."
+        }
+      ],
+      "page": null
+    },
+    "isError": false
+  }
+}

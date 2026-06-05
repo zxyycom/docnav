@@ -1,0 +1,15 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-outline-001",
+  "operation": "outline",
+  "document": {
+    "path": "docs/examples/markdown/nested-duplicate.md"
+  },
+  "arguments": {
+    "page": 1,
+    "limit_chars": 80,
+    "options": {
+      "max_heading_level": 3
+    }
+  }
+}

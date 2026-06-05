@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/readable-error.schema.json",
+  "type": "object",
+  "required": [
+    "code",
+    "error",
+    "guidance"
+  ],
+  "properties": {
+    "code": {
+      "enum": [
+        "INVALID_REQUEST",
+        "PROTOCOL_INCOMPATIBLE",
+        "DOCUMENT_NOT_FOUND",
+        "DOCUMENT_PATH_INVALID",
+        "DOCUMENT_ENCODING_UNSUPPORTED",
+        "FORMAT_UNKNOWN",
+        "FORMAT_AMBIGUOUS",
+        "CAPABILITY_UNSUPPORTED",
+        "REF_NOT_FOUND",
+        "REF_AMBIGUOUS",
+        "ADAPTER_UNAVAILABLE",
+        "ADAPTER_INVOKE_FAILED",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "error": {
+      "type": "string",
+      "minLength": 1
+    },
+    "details": {
+      "type": "object"
+    },
+    "guidance": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

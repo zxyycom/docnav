@@ -2,7 +2,7 @@ schema: spec-driven
 
 context: |
   Docnav is a Rust project for navigating large structured documents through
-  outline -> selector -> read.
+  outline -> ref -> read.
   It uses a stdio MCP gateway and independently installable format adapters.
   Shared protocol schemas must remain stable and format-specific parsing must
   remain inside the corresponding adapter.

@@ -1,0 +1,22 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Markdown | UTF-8 | 188 B\ncapabilities: outline, read, find, info"
+      }
+    ],
+    "structuredContent": {
+      "display": "Markdown | UTF-8 | 188 B",
+      "capabilities": [
+        "outline",
+        "read",
+        "find",
+        "info"
+      ]
+    },
+    "isError": false
+  }
+}

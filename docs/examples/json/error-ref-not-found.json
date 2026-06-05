@@ -1,0 +1,16 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-read-not-found",
+  "operation": "read",
+  "ok": false,
+  "error": {
+    "code": "REF_NOT_FOUND",
+    "message": "ref 未定位到文档区域。",
+    "details": {
+      "ref": "L999:Missing"
+    },
+    "guidance": [
+      "重新调用 outline 获取有效 ref。"
+    ]
+  }
+}

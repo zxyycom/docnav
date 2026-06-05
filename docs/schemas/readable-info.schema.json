@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/readable-info.schema.json",
+  "type": "object",
+  "required": [
+    "display",
+    "capabilities"
+  ],
+  "properties": {
+    "display": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "outline",
+          "read",
+          "find",
+          "info"
+        ]
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

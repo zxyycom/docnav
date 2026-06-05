@@ -1,0 +1,49 @@
+{
+  "name": "document_info",
+  "description": "返回文档格式和适配器能力摘要。",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "path"
+    ],
+    "properties": {
+      "path": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string",
+        "minLength": 1
+      },
+      "options": {
+        "type": "object"
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": [
+      "display",
+      "capabilities"
+    ],
+    "properties": {
+      "display": {
+        "type": "string",
+        "minLength": 1
+      },
+      "capabilities": {
+        "type": "array",
+        "items": {
+          "enum": [
+            "outline",
+            "read",
+            "find",
+            "info"
+          ]
+        },
+        "uniqueItems": true
+      }
+    },
+    "additionalProperties": false
+  }
+}

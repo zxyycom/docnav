@@ -1,0 +1,74 @@
+{
+  "name": "document_find",
+  "description": "在文档中查找有限匹配结果。",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "path",
+      "query"
+    ],
+    "properties": {
+      "path": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string",
+        "minLength": 1
+      },
+      "query": {
+        "type": "string",
+        "minLength": 1
+      },
+      "limit_chars": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "page": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "options": {
+        "type": "object"
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": [
+      "matches",
+      "page"
+    ],
+    "properties": {
+      "matches": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "ref",
+            "display"
+          ],
+          "properties": {
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "display": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "page": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      }
+    },
+    "additionalProperties": false
+  }
+}

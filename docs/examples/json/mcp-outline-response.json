@@ -1,0 +1,26 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "L1:Guide | 9 lines | 0.1 KB\nL4:Guide > Install | 6 lines | 0.1 KB\npage: 2"
+      }
+    ],
+    "structuredContent": {
+      "entries": [
+        {
+          "ref": "L1:Guide",
+          "display": "9 lines | 0.1 KB"
+        },
+        {
+          "ref": "L4:Guide > Install",
+          "display": "6 lines | 0.1 KB"
+        }
+      ],
+      "page": 2
+    },
+    "isError": false
+  }
+}

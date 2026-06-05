@@ -1,0 +1,20 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "## Install\nPrimary installation instructions.\n\ncontent_type: text/markdown\ncost: 43 of 122 chars\npage: 2"
+      }
+    ],
+    "structuredContent": {
+      "ref": "L4:Guide > Install",
+      "content": "## Install\nPrimary installation instructions.\n",
+      "content_type": "text/markdown",
+      "cost": "43 of 122 chars",
+      "page": 2
+    },
+    "isError": false
+  }
+}

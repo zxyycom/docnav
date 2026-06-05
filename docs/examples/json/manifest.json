@@ -1,0 +1,44 @@
+{
+  "manifest_version": "0.1",
+  "adapter": {
+    "id": "docnav-markdown",
+    "name": "Docnav Markdown Adapter",
+    "version": "0.1.0"
+  },
+  "protocol": {
+    "min": "0.1",
+    "max": "0.1"
+  },
+  "formats": [
+    {
+      "id": "markdown",
+      "extensions": [
+        ".md",
+        ".markdown"
+      ],
+      "content_types": [
+        "text/markdown"
+      ]
+    }
+  ],
+  "capabilities": [
+    "outline",
+    "read",
+    "find",
+    "info"
+  ],
+  "recommended_parameters": {
+    "outline": {
+      "limit_chars": 6000,
+      "options": {
+        "max_heading_level": 3
+      }
+    },
+    "read": {
+      "limit_chars": 6000
+    },
+    "find": {
+      "limit_chars": 6000
+    }
+  }
+}

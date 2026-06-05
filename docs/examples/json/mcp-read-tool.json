@@ -1,0 +1,68 @@
+{
+  "name": "document_read",
+  "description": "使用 ref 读取有限文档内容。",
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "path",
+      "ref"
+    ],
+    "properties": {
+      "path": {
+        "type": "string"
+      },
+      "format": {
+        "type": "string",
+        "minLength": 1
+      },
+      "ref": {
+        "type": "string",
+        "minLength": 1
+      },
+      "page": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "limit_chars": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": [
+      "ref",
+      "content",
+      "content_type",
+      "cost",
+      "page"
+    ],
+    "properties": {
+      "ref": {
+        "type": "string",
+        "minLength": 1
+      },
+      "content": {
+        "type": "string"
+      },
+      "content_type": {
+        "type": "string",
+        "minLength": 1
+      },
+      "cost": {
+        "type": "string",
+        "minLength": 1
+      },
+      "page": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      }
+    },
+    "additionalProperties": false
+  }
+}

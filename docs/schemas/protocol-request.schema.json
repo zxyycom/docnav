@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/protocol-request.schema.json",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/outline"
+    },
+    {
+      "$ref": "#/$defs/read"
+    },
+    {
+      "$ref": "#/$defs/find"
+    },
+    {
+      "$ref": "#/$defs/info"
+    }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "required": [
+        "protocol_version",
+        "request_id",
+        "operation",
+        "document",
+        "arguments"
+      ],
+      "properties": {
+        "protocol_version": {
+          "const": "0.1"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "enum": [
+            "outline",
+            "read",
+            "find",
+            "info"
+          ]
+        },
+        "document": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "arguments": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "commonOptional": {
+      "options": {
+        "type": "object"
+      }
+    },
+    "outline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "outline"
+            },
+            "arguments": {
+              "type": "object",
+              "required": [
+                "limit_chars",
+                "page"
+              ],
+              "properties": {
+                "limit_chars": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "options": {
+                  "$ref": "#/$defs/commonOptional/options"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "read": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "read"
+            },
+            "arguments": {
+              "type": "object",
+              "required": [
+                "ref",
+                "limit_chars",
+                "page"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "limit_chars": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "options": {
+                  "$ref": "#/$defs/commonOptional/options"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "find": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "find"
+            },
+            "arguments": {
+              "type": "object",
+              "required": [
+                "query",
+                "limit_chars",
+                "page"
+              ],
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "limit_chars": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "options": {
+                  "$ref": "#/$defs/commonOptional/options"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "info": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "info"
+            },
+            "arguments": {
+              "type": "object",
+              "properties": {
+                "options": {
+                  "$ref": "#/$defs/commonOptional/options"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}

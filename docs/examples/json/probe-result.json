@@ -1,0 +1,18 @@
+{
+  "probe_version": "0.1",
+  "adapter_id": "docnav-markdown",
+  "path": "docs/examples/markdown/nested-duplicate.md",
+  "supported": true,
+  "format": "markdown",
+  "confidence": 1.0,
+  "reasons": [
+    {
+      "code": "EXTENSION_MATCH",
+      "detail": "文件扩展名为 .md。"
+    },
+    {
+      "code": "CONTENT_MATCH",
+      "detail": "内容包含可解析的 Markdown heading。"
+    }
+  ]
+}

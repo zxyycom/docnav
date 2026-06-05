@@ -1,0 +1,320 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/protocol-response.schema.json",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/outlineSuccess"
+    },
+    {
+      "$ref": "#/$defs/readSuccess"
+    },
+    {
+      "$ref": "#/$defs/findSuccess"
+    },
+    {
+      "$ref": "#/$defs/infoSuccess"
+    },
+    {
+      "$ref": "#/$defs/failure"
+    }
+  ],
+  "$defs": {
+    "operation": {
+      "enum": [
+        "outline",
+        "read",
+        "find",
+        "info"
+      ]
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "ref",
+        "display"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "display": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "page": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "outlineResult": {
+      "type": "object",
+      "required": [
+        "entries",
+        "page"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entry"
+          }
+        },
+        "page": {
+          "$ref": "#/$defs/page"
+        }
+      },
+      "additionalProperties": false
+    },
+    "readResult": {
+      "type": "object",
+      "required": [
+        "ref",
+        "content",
+        "content_type",
+        "cost",
+        "page"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cost": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "$ref": "#/$defs/page"
+        }
+      },
+      "additionalProperties": false
+    },
+    "findResult": {
+      "type": "object",
+      "required": [
+        "matches",
+        "page"
+      ],
+      "properties": {
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entry"
+          }
+        },
+        "page": {
+          "$ref": "#/$defs/page"
+        }
+      },
+      "additionalProperties": false
+    },
+    "infoResult": {
+      "type": "object",
+      "required": [
+        "display",
+        "capabilities"
+      ],
+      "properties": {
+        "display": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operation"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "baseSuccess": {
+      "type": "object",
+      "required": [
+        "protocol_version",
+        "request_id",
+        "operation",
+        "ok",
+        "result"
+      ],
+      "properties": {
+        "protocol_version": {
+          "const": "0.1"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "$ref": "#/$defs/operation"
+        },
+        "ok": {
+          "const": true
+        },
+        "result": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "outlineSuccess": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseSuccess"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "outline"
+            },
+            "result": {
+              "$ref": "#/$defs/outlineResult"
+            }
+          }
+        }
+      ]
+    },
+    "readSuccess": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseSuccess"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "read"
+            },
+            "result": {
+              "$ref": "#/$defs/readResult"
+            }
+          }
+        }
+      ]
+    },
+    "findSuccess": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseSuccess"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "find"
+            },
+            "result": {
+              "$ref": "#/$defs/findResult"
+            }
+          }
+        }
+      ]
+    },
+    "infoSuccess": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseSuccess"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "info"
+            },
+            "result": {
+              "$ref": "#/$defs/infoResult"
+            }
+          }
+        }
+      ]
+    },
+    "failure": {
+      "type": "object",
+      "required": [
+        "protocol_version",
+        "request_id",
+        "operation",
+        "ok",
+        "error"
+      ],
+      "properties": {
+        "protocol_version": {
+          "const": "0.1"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/operation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "type": "object",
+          "required": [
+            "code",
+            "message",
+            "details"
+          ],
+          "properties": {
+            "code": {
+              "enum": [
+                "INVALID_REQUEST",
+                "PROTOCOL_INCOMPATIBLE",
+                "DOCUMENT_NOT_FOUND",
+                "DOCUMENT_PATH_INVALID",
+                "DOCUMENT_ENCODING_UNSUPPORTED",
+                "FORMAT_UNKNOWN",
+                "FORMAT_AMBIGUOUS",
+                "CAPABILITY_UNSUPPORTED",
+                "REF_NOT_FOUND",
+                "REF_AMBIGUOUS",
+                "ADAPTER_UNAVAILABLE",
+                "ADAPTER_INVOKE_FAILED",
+                "INTERNAL_ERROR"
+              ]
+            },
+            "message": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "guidance": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

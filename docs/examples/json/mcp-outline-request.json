@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "document_outline",
+    "arguments": {
+      "path": "docs/examples/markdown/nested-duplicate.md",
+      "page": 1,
+      "limit_chars": 80,
+      "options": {
+        "max_heading_level": 3
+      }
+    }
+  }
+}

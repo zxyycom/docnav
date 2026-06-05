@@ -1,6 +1,8 @@
 /target/
 /dist/
 /build/
+/node_modules/
+/.pnpm-store/
 /.venv/
 /.uv-cache/
 /.ruff_cache/

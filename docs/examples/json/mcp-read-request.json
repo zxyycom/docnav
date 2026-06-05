@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "document_read",
+    "arguments": {
+      "path": "docs/examples/markdown/nested-duplicate.md",
+      "ref": "L4:Guide > Install",
+      "page": 1,
+      "limit_chars": 64
+    }
+  }
+}

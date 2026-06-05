@@ -1,0 +1,13 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-read-001",
+  "operation": "read",
+  "document": {
+    "path": "docs/examples/markdown/nested-duplicate.md"
+  },
+  "arguments": {
+    "ref": "L4:Guide > Install",
+    "page": 1,
+    "limit_chars": 64
+  }
+}

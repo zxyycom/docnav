@@ -1,28 +1,33 @@
 ## Why
 
-Docnav 当前只有项目目标和架构原则，尚缺少足以指导独立实现的 v0 契约文档。先定义产品流程、协议边界和 Markdown 行为基线，可以在编写 Rust 代码前消除网关、适配器和调用方之间的关键歧义。
+Docnav 需要在实现前明确 CLI-first 架构、稳定原始协议和高信息密度阅读输出的边界。`docnav` 核心 CLI 统一承担识别、路由、管理、配置和项目初始化；MCP、skill、AGENTS.md / system prompt 作为接入方式共享该契约。
 
 ## What Changes
 
-- 定义 Docnav v0 的规范文档集合，覆盖产品目标、架构、共享协议、selector、适配器契约、CLI 和测试策略。
-- 为 `outline -> selector -> read` 提供贯穿 MCP、适配器 `invoke` 和 Markdown 文档的完整机器可读示例。
-- 将 `D:\project\skills\MarkdownNavigator` 中已验证的 Markdown 导航行为整理为参考基线，并明确哪些行为需要在 Docnav 中重新设计。
-- 定义文档一致性、示例可校验性和后续实现可验收性的要求。
-- 本变更不创建 Rust workspace，不实现 `docnav-mcp`、共享 library 或任何格式适配器，也不定义适配器安装与更新实现细节。
+- 定义“原始协议保证系统稳定；阅读输出保证信息密度”的架构原则。
+- 明确 `docnav` 是 core CLI router/manager，负责 adapter 选择、默认参数解析、输出模式和错误映射。
+- 明确 `docnav-mcp` 是 Node.js / JavaScript MCP bridge，负责 MCP stdio、tool 到核心 `docnav` CLI 的映射、TextContent 和 structuredContent。
+- 使用扁平 outline 和可读 ref。
+- 将原始协议响应定义为带 operation 的自描述 envelope。
+- 定义有限且具体的默认参数，以及统一的 page 分页状态。
+- 为原始协议和 readable/MCP 输出提供独立 schema 与示例。
+- 拆分每个可执行 CLI 的配置所有权。
+- 将 `docnav adapter install/update/remove/list` 定义为正式 adapter 管理能力，首期支持 GitHub 链接和本地可执行文件来源，并要求本地 exe hash 校验。
+- 明确 adapter 选择顺序为显式格式校验、扩展名匹配校验、全量 probe。
+- 在 read 的 readable/MCP 输出中保留 `content_type`。
+- 明确 Markdown v0 首期实现 `outline`、`read`、`find` 和 `info` 全部能力；`outline -> ref -> read` 是首要纵向阅读链路。
+- 收窄 README 为角色化阅读入口，明确主规范 owner、校验材料和 OpenSpec 历史边界。
+- 本变更不创建实现代码。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `v0-contract-documentation`: 定义 Docnav v0 必须提供的规范文档、跨文档一致性规则和端到端示例要求。
-- `markdown-reference-baseline`: 定义从 MarkdownNavigator 提取并记录的 Markdown 导航行为、边界案例及迁移决策。
-
-### Modified Capabilities
-
-无。
+- `v0-contract-documentation`
+- `markdown-reference-baseline`
 
 ## Impact
 
-- 新增项目级 `README.md` 和 `docs/` 下的 v0 规范文档。
-- 新增 OpenSpec requirements，作为后续 `docnav-protocol`、`docnav-adapter-sdk`、`docnav-markdown` 和 `docnav-mcp` 实现变更的输入。
-- 不影响任何现有可执行制品、API 或依赖；当前仓库尚无实现代码。
+- 新增项目级规范文档、schema 和测试向量。
+- 为后续 `docnav`、正式 adapter 管理、`docnav-protocol`、`docnav-adapter-sdk`、`docnav-markdown` 和 `docnav-mcp` 实现变更提供输入。
+- JSON、YAML、TOML 和 INI adapter 作为后续格式能力另行提出变更。

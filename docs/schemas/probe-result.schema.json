@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/probe-result.schema.json",
+  "type": "object",
+  "required": [
+    "probe_version",
+    "adapter_id",
+    "path",
+    "supported",
+    "format",
+    "confidence",
+    "reasons"
+  ],
+  "properties": {
+    "probe_version": {
+      "const": "0.1"
+    },
+    "adapter_id": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "supported": {
+      "type": "boolean"
+    },
+    "format": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "detail"
+        ],
+        "properties": {
+          "code": {
+            "enum": [
+              "EXTENSION_MATCH",
+              "CONTENT_MATCH",
+              "CONTENT_CONFLICT",
+              "READ_ERROR"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,27 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-outline-format",
+  "operation": "outline",
+  "ok": false,
+  "error": {
+    "code": "FORMAT_UNKNOWN",
+    "message": "无法识别文档格式。",
+    "details": {
+      "path": "docs/unknown.data",
+      "reason": "NO_SUPPORTED_CANDIDATE",
+      "candidates": [
+        {
+          "adapter_id": "docnav-markdown",
+          "supported": false,
+          "confidence": 0.0,
+          "reason_codes": [
+            "CONTENT_CONFLICT"
+          ]
+        }
+      ]
+    },
+    "guidance": [
+      "在 docnav 配置中明确选择适配器。"
+    ]
+  }
+}
