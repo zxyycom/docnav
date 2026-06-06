@@ -82,6 +82,13 @@ fn direct_cli_supports_text_readable_json_and_protocol_json() {
     assert_eq!(protocol_json["operation"], "read");
     assert_eq!(protocol_json["ok"], true);
     assert_eq!(protocol_json["result"]["content_type"], "text/markdown");
+
+    let read_text = run(&["read", &path, "--ref", &ref_id, "--output", "text"]);
+    assert!(read_text.status.success());
+    assert!(read_text.stderr.is_empty());
+    let read_text_stdout = String::from_utf8(read_text.stdout).expect("read text stdout");
+    assert!(read_text_stdout.contains(&format!("ref: {ref_id}")));
+    assert!(read_text_stdout.contains("content_type: text/markdown"));
 }
 
 #[test]

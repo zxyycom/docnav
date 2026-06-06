@@ -287,6 +287,9 @@ fn write_text_result<W: Write, E: Write>(
             writeln!(stdout, "page: {}", page_label(result.page))
         }
         OperationResult::Read(result) => {
+            if writeln!(stdout, "ref: {}", result.ref_id).is_err() {
+                return docnav_adapter_sdk::AdapterExitCode::IoError.code();
+            }
             if write!(stdout, "{}", result.content).is_err() {
                 return docnav_adapter_sdk::AdapterExitCode::IoError.code();
             }

@@ -36,6 +36,22 @@ const checks = [
     ]
   },
   {
+    label: "docnav-markdown CLI smoke",
+    command: "pnpm",
+    args: ["run", "smoke:docnav-markdown"],
+    ignoreOutput: [
+      /^> docnav-contract-docs@.* smoke:docnav-markdown .*$/,
+      /^> node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\.mjs$/,
+      /^\$ node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\.mjs$/,
+      /^\s*Finished `.*` profile .*$/,
+      /^Docnav Markdown CLI Smoke$/,
+      /^Status: passed$/,
+      /^Commands: \d+$/,
+      /^Log:$/,
+      /^\s+- \.log\/docnav-markdown-cli-smoke\/latest\.log$/
+    ]
+  },
+  {
     label: "cargo clippy",
     command: "cargo",
     args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],

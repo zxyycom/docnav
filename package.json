@@ -6,6 +6,7 @@
   "packageManager": "pnpm@11.1.3",
   "scripts": {
     "generate:error-rules": "node scripts/generate-error-rules.mjs",
+    "smoke:docnav-markdown": "node scripts/with-cargo-bin.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts/docnav-markdown-cli-smoke.mjs",
     "verify:docnav-workspace": "node scripts/verify-docnav-workspace.mjs",
     "validate": "pnpm run validate:generated && pnpm run validate:docs && pnpm run validate:openspec && pnpm run validate:diff",
     "validate:docs": "node scripts/validate-docs.mjs",
