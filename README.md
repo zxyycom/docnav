@@ -25,6 +25,16 @@ outline -> ref -> read
 
 OpenSpec 是变更设计、验收和审计历史，不作为日常实现的主入口。日常开发优先从 README、架构和对应任务主规范进入。
 
+## 常用验证入口
+
+交付前的综合验证优先运行：
+
+```bash
+pnpm run verify:docnav-workspace
+```
+
+该命令汇总常用门禁；详细规则和局部验证取舍见 [测试策略](docs/testing.md)。
+
 ## 文档分层
 
 | 类型 | 文档 | 用途 |

@@ -36,6 +36,7 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 - 大文件、长输出和目录列表先做摘要或筛选，再读取具体片段。
 - 文档读取按 README 角色路径进入；不要因为存在 OpenSpec、schema、examples 就默认全部读取。
 - CLI 命令优先选择只读、可复现、范围明确的命令；验证命令按改动范围选择，避免无关全量操作。
+- 跨 Rust、文档、OpenSpec、schema、示例或输出层边界的交付，最终优先运行 `pnpm run verify:docnav-workspace`；局部验证可先运行范围更小的命令。
 - 新增或运行脚本依赖时，Node.js / JavaScript 使用 `pnpm`，Python 使用 `uv`；不默认使用全局 `npm` 或 `pip` 安装。
 - 涉及协议、schema、示例、CLI、adapter 或 MCP 映射时，同步更新对应主规范和验证材料。
 - 修改后运行与范围匹配的格式化、静态检查、schema、单元或集成验证；无法运行时在最终说明中写明。

@@ -19,6 +19,20 @@
 - Python 使用 `uv`，例如文档 fixture 生成、批量 JSON 检查或辅助审计脚本。
 - 不要求依赖预先全局安装；脚本应通过项目命令或临时工具执行保持可复现。
 
+## 统一验证入口
+
+常规交付前使用 Docnav workspace 综合验证入口：
+
+```bash
+pnpm run verify:docnav-workspace
+```
+
+该入口一次性覆盖常用门禁类型：Rust 格式化、生成物一致性、文档/schema/示例校验、Rust 静态检查、workspace 测试、OpenSpec 严格校验和 diff 空白检查。具体子命令和输出忽略规则由 `scripts/verify-docnav-workspace.mjs` 的 `checks` 配置维护，避免在文档中复制可执行命令清单。
+
+终端默认透出各子命令输出，保留命令自身报告的状态信息；脚本只过滤已配置的无行动价值输出，例如 Git 的 CRLF 换行提示。输出忽略规则必须按子命令配置，避免全局吞掉真实失败或状态信息。某个检查失败时，脚本记录该检查并继续运行后续检查；全部检查结束后统一汇总失败项、每个失败命令的完整未过滤输出、通过项和日志提示。
+
+局部改动仍可先运行范围更小的命令；但最终交付跨 Rust、文档、OpenSpec、schema、示例或输出层边界时，应运行 `pnpm run verify:docnav-workspace`。若需要完整命令输出，按终端提示查看，或手动重跑对应子命令。
+
 ## 必须验证的架构边界
 
 - invoke protocol envelope 不出现在 MCP structuredContent 或 readable JSON。
