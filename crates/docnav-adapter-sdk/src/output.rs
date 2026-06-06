@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde_json::Value;
 use std::io::Write;
 
-use crate::adapter::AdapterBoundaryError;
+use crate::boundary::AdapterBoundaryError;
 use crate::constants::{diagnostics, json_labels};
 use crate::AdapterExitCode;
 

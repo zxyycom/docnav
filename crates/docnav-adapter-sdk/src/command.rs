@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::adapter::{validated_manifest, validated_probe};
+use crate::boundary::{validated_manifest, validated_probe};
 use crate::output::{write_adapter_boundary_error, write_manifest_json, write_probe_json};
 use crate::{invoke_once, Adapter};
 

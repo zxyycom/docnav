@@ -6,7 +6,7 @@ use docnav_protocol::{
 use serde_json::Value;
 use std::io::{Read, Write};
 
-use crate::adapter::validated_manifest;
+use crate::boundary::validated_manifest;
 use crate::constants::{diagnostics, fields};
 use crate::output::{emit_diagnostic, write_adapter_boundary_error, write_protocol_response};
 use crate::{Adapter, AdapterExitCode, AdapterResult};

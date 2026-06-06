@@ -1,7 +1,7 @@
 use docnav_protocol::{positive_result, Operation, Options, PositiveInteger};
 use serde_json::Value;
 
-use crate::direct_output::DirectOutputMode;
+use super::output::DirectOutputMode;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NativeOptionValueSpec {

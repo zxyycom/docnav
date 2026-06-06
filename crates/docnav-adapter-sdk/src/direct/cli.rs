@@ -5,12 +5,10 @@ use docnav_protocol::{
     ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
 };
 
-use crate::direct_args::{
+use super::args::{
     parse_operation_options, parse_probe, parse_protocol_only_output, NativeOptionSpec,
 };
-use crate::direct_output::{
-    handler_error, write_operation_output, DirectOutputMode, DirectTextFormatter,
-};
+use super::output::{handler_error, write_operation_output, DirectOutputMode, DirectTextFormatter};
 use crate::{emit_diagnostic, execute_operation, invoke_once, run_command, Adapter, SdkCommand};
 
 pub struct DirectCliConfig<'a, T> {
@@ -146,7 +144,7 @@ where
 
 fn operation_request(
     operation: Operation,
-    options: crate::direct_args::DirectOperationOptions,
+    options: super::DirectOperationOptions,
     request_id: &str,
 ) -> Result<RequestEnvelope, String> {
     let path = options.path.clone();
