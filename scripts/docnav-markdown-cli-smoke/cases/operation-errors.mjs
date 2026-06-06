@@ -16,6 +16,8 @@ import { validateSchema } from "../schemas.mjs";
 
 export function testReadableOperationErrors() {
   const normal = fixture("normal.md");
+  const missingRef = "L99:Missing";
+  const legacyOrdinalRef = legacyBracketedOrdinalRef();
   const cases = [
     {
       name: "missing file readable-json",
@@ -24,10 +26,18 @@ export function testReadableOperationErrors() {
       detailKey: "path"
     },
     {
-      name: "invalid ref readable-json",
-      args: ["read", normal, "--ref", "L99:Missing [docnav:1]", "--output", "readable-json"],
+      name: "missing ref readable-json",
+      args: ["read", normal, "--ref", missingRef, "--output", "readable-json"],
       code: "REF_NOT_FOUND",
-      detailKey: "ref"
+      detailKey: "ref",
+      detailValue: missingRef
+    },
+    {
+      name: "legacy ordinal ref readable-json",
+      args: ["read", normal, "--ref", legacyOrdinalRef, "--output", "readable-json"],
+      code: "REF_NOT_FOUND",
+      detailKey: "ref",
+      detailValue: legacyOrdinalRef
     },
     {
       name: "non UTF-8 readable-json",
@@ -46,19 +56,33 @@ export function testReadableOperationErrors() {
     expectNoProtocolEnvelope(record, json);
     expect(record, json.code === item.code, `${item.name} returns ${item.code}`);
     expect(record, Object.hasOwn(json.details, item.detailKey), `${item.name} includes details.${item.detailKey}`);
+    if (Object.hasOwn(item, "detailValue")) {
+      expect(record, json.details[item.detailKey] === item.detailValue, `${item.name} preserves details.${item.detailKey}`);
+    }
     expect(record, Array.isArray(json.guidance), `${item.name} includes guidance array`);
   }
 }
 
 export function testProtocolOperationErrors() {
   const normal = fixture("normal.md");
+  const missingRef = "L99:Missing";
+  const legacyOrdinalRef = legacyBracketedOrdinalRef();
   const cases = [
     {
-      name: "invalid ref protocol-json",
-      args: ["read", normal, "--ref", "L99:Missing [docnav:1]", "--output", "protocol-json"],
+      name: "missing ref protocol-json",
+      args: ["read", normal, "--ref", missingRef, "--output", "protocol-json"],
       operation: "read",
       code: "REF_NOT_FOUND",
-      detailKey: "ref"
+      detailKey: "ref",
+      detailValue: missingRef
+    },
+    {
+      name: "legacy ordinal ref protocol-json",
+      args: ["read", normal, "--ref", legacyOrdinalRef, "--output", "protocol-json"],
+      operation: "read",
+      code: "REF_NOT_FOUND",
+      detailKey: "ref",
+      detailValue: legacyOrdinalRef
     },
     {
       name: "non UTF-8 protocol-json",
@@ -77,6 +101,16 @@ export function testProtocolOperationErrors() {
     validateSchema(record, "protocolResponse", json);
     expectProtocolFailure(record, json, item.operation, item.code);
     expect(record, Object.hasOwn(json.error.details, item.detailKey), `${item.name} includes error.details.${item.detailKey}`);
+    if (Object.hasOwn(item, "detailValue")) {
+      expect(
+        record,
+        json.error.details[item.detailKey] === item.detailValue,
+        `${item.name} preserves error.details.${item.detailKey}`
+      );
+    }
   }
 }
 
+function legacyBracketedOrdinalRef() {
+  return ["L1:Guide ", "[", "doc", "nav:", "1", "]"].join("");
+}

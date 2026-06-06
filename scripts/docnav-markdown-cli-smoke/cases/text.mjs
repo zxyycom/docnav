@@ -38,7 +38,7 @@ export function testTextOutputs() {
       name: "find normal text",
       args: ["find", normal, "--query", "target", "--output", "text"],
       checks: [
-        (record) => expectStdoutIncludes(record, "[docnav:"),
+        (record) => expect(record, /^L\d+(?:#\d+)?:/m.test(record.stdout), "find text includes canonical ref"),
         (record) => expectStdoutIncludes(record, "target text"),
         (record) => expectStdoutIncludes(record, "target result"),
         (record) =>

@@ -31,10 +31,10 @@ function testDuplicateHeadings() {
   const json = parseJson(record);
   validateSchema(record, "readableOutline", json);
   const refs = json.entries.map((entry) => entry.ref);
-  expectIncludes(record, refs, "L1:Repeat [docnav:1]", "duplicate top heading first ref exists");
-  expectIncludes(record, refs, "L9:Repeat [docnav:2]", "duplicate top heading second ref exists");
-  expectIncludes(record, refs, "L5:Repeat > Child [docnav:1]", "duplicate child first ref exists");
-  expectIncludes(record, refs, "L13:Repeat > Child [docnav:2]", "duplicate child second ref exists");
+  expectIncludes(record, refs, "L1:Repeat", "duplicate top heading first ref exists");
+  expectIncludes(record, refs, "L9#2:Repeat", "duplicate top heading second ref exists");
+  expectIncludes(record, refs, "L5:Repeat > Child", "duplicate child first ref exists");
+  expectIncludes(record, refs, "L13#2:Repeat > Child", "duplicate child second ref exists");
   expect(record, new Set(refs).size === refs.length, "duplicate heading refs are unique");
 }
 
@@ -281,7 +281,7 @@ function testBomAndCrlf() {
   expectStderrEmpty(bom);
   const bomOutline = parseJson(bom);
   validateSchema(bom, "readableOutline", bomOutline);
-  expect(bom, bomOutline.entries[0].ref === "L1:Bom Heading [docnav:1]", "BOM fixture heading ref starts at line 1");
+  expect(bom, bomOutline.entries[0].ref === "L1:Bom Heading", "BOM fixture heading ref starts at line 1");
 
   const bomRead = runCli("read UTF-8 BOM readable-json", [
     "read",
@@ -307,7 +307,7 @@ function testBomAndCrlf() {
   expectStderrEmpty(crlf);
   const crlfOutline = parseJson(crlf);
   validateSchema(crlf, "readableOutline", crlfOutline);
-  expect(crlf, crlfOutline.entries[0].ref === "L1:Crlf Heading [docnav:1]", "CRLF fixture heading ref starts at line 1");
+  expect(crlf, crlfOutline.entries[0].ref === "L1:Crlf Heading", "CRLF fixture heading ref starts at line 1");
 
   const crlfRead = runCli("read CRLF readable-json", [
     "read",

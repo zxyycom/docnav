@@ -6,8 +6,8 @@ use docnav_adapter_sdk::{invoke_once, Adapter, AdapterExitCode};
 use docnav_markdown::MarkdownAdapter;
 use docnav_protocol::{
     positive_result, Document, FindArguments, InfoArguments, Operation, OperationArguments,
-    OutlineArguments, ProtocolResponse, ReadArguments, RequestEnvelope, StableErrorCode,
-    PROTOCOL_VERSION,
+    OutlineArguments, ProtocolResponse, ReadArguments, RequestEnvelope, StableError,
+    StableErrorCode, PROTOCOL_VERSION,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -123,8 +123,11 @@ fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
         .expect("outline result");
 
     assert_eq!(result.entries.len(), 2);
-    assert!(result.entries[0].ref_id.starts_with("L1:Guide"));
-    assert!(result.entries[1].ref_id.starts_with("L8:Guide > Install"));
+    assert_eq!(result.entries[0].ref_id, "L1:Guide");
+    assert_eq!(result.entries[1].ref_id, "L8:Guide > Install");
+    for entry in &result.entries {
+        assert_canonical_ref(&entry.ref_id);
+    }
     assert!(!result
         .entries
         .iter()
@@ -189,31 +192,59 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
         .map(|entry| entry.ref_id.clone())
         .collect();
 
-    assert_eq!(refs, vec!["L2:A > B [docnav:1]", "L5:A > B [docnav:2]"]);
-    let first = read_ref(&path, &refs[0]);
-    let second = read_ref(&path, &refs[1]);
+    let all_refs: Vec<String> = outline
+        .entries
+        .iter()
+        .map(|entry| entry.ref_id.clone())
+        .collect();
+    assert_eq!(all_refs, vec!["L1:A", "L2:A > B", "L4#2:A", "L5#2:A > B"]);
+    assert_eq!(refs, vec!["L2:A > B", "L5#2:A > B"]);
+    for ref_id in &all_refs {
+        assert_canonical_ref(ref_id);
+    }
+
+    let first = read_ref(&path, "L2:A > B");
+    let second = read_ref(&path, "L5#2:A > B");
+    let explicit_first = read_ref(&path, "L2#1:A > B");
     assert!(first.content.contains("first"));
+    assert!(!first.content.contains("second"));
     assert!(second.content.contains("second"));
+    assert!(!second.content.contains("first"));
+    assert!(explicit_first.content.contains("first"));
+    assert!(!explicit_first.content.contains("second"));
 }
 
 #[test]
 fn read_reports_ref_not_found_for_missing_and_unsupported_refs() {
     let path = write_doc("refs.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
 
-    let missing = read_ref_error(&path, "L99:A > B [docnav:1]");
-    assert_eq!(missing, StableErrorCode::RefNotFound);
+    let missing_ref = "L99:Missing";
+    let missing = read_ref_error(&path, missing_ref);
+    assert_ref_not_found(&missing, missing_ref);
 
-    let unsupported_path_ref = read_ref_error(&path, "P:A > B");
-    assert_eq!(unsupported_path_ref, StableErrorCode::RefNotFound);
+    let unsupported_ref = "P:A > B";
+    let unsupported_path_ref = read_ref_error(&path, unsupported_ref);
+    assert_ref_not_found(&unsupported_path_ref, unsupported_ref);
 
-    let loose_heading_ref = read_ref_error(&path, "L2:A > B");
-    assert_eq!(loose_heading_ref, StableErrorCode::RefNotFound);
+    let invalid_ordinal_ref = "L2#0:A > B";
+    let invalid_ordinal = read_ref_error(&path, invalid_ordinal_ref);
+    assert_ref_not_found(&invalid_ordinal, invalid_ordinal_ref);
+}
+
+#[test]
+fn read_rejects_legacy_bracketed_ordinal_suffix() {
+    let path = write_doc("legacy-ref.md", "# A\n## B\nfirst\n");
+    let legacy_ref = legacy_ordinal_ref("L2:A > B", 1);
+
+    let error = read_ref_error(&path, &legacy_ref);
+
+    assert_ref_not_found(&error, &legacy_ref);
 }
 
 #[test]
 fn read_paginates_unicode_without_splitting_characters() {
     let path = write_doc("unicode.md", "# A\n界界界abc\n");
-    let ref_id = "L1:A [docnav:1]";
+    let ref_id = "L1:A";
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
         limit_chars: positive(5),
@@ -229,6 +260,7 @@ fn read_paginates_unicode_without_splitting_characters() {
     let first = MarkdownAdapter
         .read(&request, &arguments)
         .expect("first page");
+    assert_eq!(first.ref_id, ref_id);
     assert_eq!(first.content, "# A\n界");
     assert_eq!(first.page, Some(positive(2)));
 
@@ -389,7 +421,7 @@ fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {
         .expect("read ref")
 }
 
-fn read_ref_error(path: &Path, ref_id: &str) -> StableErrorCode {
+fn read_ref_error(path: &Path, ref_id: &str) -> StableError {
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
         limit_chars: positive(6000),
@@ -404,6 +436,27 @@ fn read_ref_error(path: &Path, ref_id: &str) -> StableErrorCode {
     MarkdownAdapter
         .read(&request, &arguments)
         .expect_err("read ref error")
-        .error()
-        .code
+        .into_error()
+}
+
+fn assert_ref_not_found(error: &StableError, ref_id: &str) {
+    assert_eq!(error.code, StableErrorCode::RefNotFound);
+    assert_eq!(
+        error.details.get("ref").and_then(serde_json::Value::as_str),
+        Some(ref_id)
+    );
+}
+
+fn assert_canonical_ref(ref_id: &str) {
+    assert!(!ref_id.contains("#1"));
+    assert!(!ref_id.contains(&legacy_ordinal_prefix()));
+}
+
+fn legacy_ordinal_ref(prefix: &str, ordinal: u32) -> String {
+    let ordinal = ordinal.to_string();
+    [prefix, " [", "docnav", ":", ordinal.as_str(), "]"].concat()
+}
+
+fn legacy_ordinal_prefix() -> String {
+    ["[", "docnav", ":"].concat()
 }

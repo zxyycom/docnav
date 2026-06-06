@@ -187,10 +187,14 @@ pub fn max_heading_level_from_options(
 }
 
 pub fn heading_ref(heading: &Heading) -> String {
-    format!(
-        "L{}:{} [docnav:{}]",
-        heading.line, heading.path, heading.path_occurrence
-    )
+    if heading.path_occurrence == 1 {
+        format!("L{}:{}", heading.line, heading.path)
+    } else {
+        format!(
+            "L{}#{}:{}",
+            heading.line, heading.path_occurrence, heading.path
+        )
+    }
 }
 
 pub fn cost_for(content: &str) -> String {
@@ -461,10 +465,12 @@ enum ParsedRef {
 impl ParsedRef {
     fn parse(ref_id: &str) -> Option<Self> {
         let rest = ref_id.strip_prefix('L')?;
-        let (line, rest) = rest.split_once(':')?;
+        let (prefix, path) = rest.split_once(':')?;
+        let (line, occurrence) = match prefix.split_once('#') {
+            Some((line, occurrence)) => (line, occurrence.parse::<usize>().ok()?),
+            None => (prefix, 1),
+        };
         let line = line.parse::<usize>().ok()?;
-        let (path, suffix) = rest.rsplit_once(" [docnav:")?;
-        let occurrence = suffix.strip_suffix(']')?.parse::<usize>().ok()?;
 
         if line == 0 || path.is_empty() || occurrence == 0 {
             return None;
@@ -521,9 +527,100 @@ mod tests {
             .map(|entry| entry.ref_id.as_str())
             .collect();
 
+        assert_eq!(duplicate_refs, vec!["L2:A > B", "L4#2:A > B"]);
+    }
+
+    #[test]
+    fn heading_refs_omit_default_occurrence() {
+        let document = MarkdownDocument::parse("# Guide\n\n## Install\n".to_owned());
+        let entries = document.outline_entries(3);
+        let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
+
+        assert_eq!(refs, vec!["L1:Guide", "L3:Guide > Install"]);
+    }
+
+    #[test]
+    fn explicit_default_occurrence_resolves_first_heading() {
+        let document = MarkdownDocument::parse("# Guide\nOne\n# Guide\nTwo\n".to_owned());
+
+        let resolved = document.resolve_ref("L1#1:Guide").unwrap();
+
+        assert_eq!(resolved, ResolvedRef::Heading(&document.headings()[0]));
+    }
+
+    #[test]
+    fn canonical_duplicate_occurrence_resolves_matching_heading() {
+        let document = MarkdownDocument::parse("# Repeat\nOne\n# Repeat\nTwo\n".to_owned());
+
+        let resolved = document.resolve_ref("L3#2:Repeat").unwrap();
+
+        assert_eq!(resolved, ResolvedRef::Heading(&document.headings()[1]));
+    }
+
+    #[test]
+    fn old_bracketed_occurrence_suffix_is_path_text_not_metadata() {
+        let document = MarkdownDocument::parse("# Guide\nBody\n".to_owned());
+        let suffix = [" [", "docnav", ":", "1", "]"].concat();
+        let old_ref = format!("L1:Guide{suffix}");
+
         assert_eq!(
-            duplicate_refs,
-            vec!["L2:A > B [docnav:1]", "L4:A > B [docnav:2]"]
+            ParsedRef::parse(&old_ref),
+            Some(ParsedRef::Heading {
+                line: 1,
+                path: format!("Guide{suffix}"),
+                occurrence: 1,
+            })
+        );
+        assert!(document.resolve_ref(&old_ref).is_err());
+    }
+
+    #[test]
+    fn heading_path_may_end_with_legacy_marker_like_text() {
+        let suffix = [" [", "docnav", ":", "1", "]"].concat();
+        let title = format!("Guide{suffix}");
+        let document = MarkdownDocument::parse(format!("# {title}\nBody\n"));
+        let entries = document.outline_entries(3);
+
+        assert_eq!(entries[0].ref_id, format!("L1:{title}"));
+        assert_eq!(
+            document.resolve_ref(&entries[0].ref_id).unwrap(),
+            ResolvedRef::Heading(&document.headings()[0])
+        );
+    }
+
+    #[test]
+    fn parsed_ref_accepts_extra_colons_in_path() {
+        assert_eq!(
+            ParsedRef::parse("L7#2:Guide: Install"),
+            Some(ParsedRef::Heading {
+                line: 7,
+                path: "Guide: Install".to_owned(),
+                occurrence: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn parsed_ref_rejects_invalid_line_ordinal_and_path() {
+        for ref_id in [
+            "L0:Guide",
+            "Lx:Guide",
+            "L1#:Guide",
+            "L1#0:Guide",
+            "L1#x:Guide",
+            "L1:",
+        ] {
+            assert_eq!(ParsedRef::parse(ref_id), None, "{ref_id}");
+        }
+    }
+
+    #[test]
+    fn doc_full_still_resolves_to_full_document() {
+        let document = MarkdownDocument::parse("# Guide\nBody\n".to_owned());
+
+        assert_eq!(
+            document.resolve_ref(FULL_DOCUMENT_REF).unwrap(),
+            ResolvedRef::FullDocument
         );
     }
 

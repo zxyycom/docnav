@@ -63,24 +63,35 @@ fn direct_cli_supports_text_readable_json_and_protocol_json() {
     let text = run(&["outline", &path, "--output", "text"]);
     assert!(text.status.success());
     let text_stdout = String::from_utf8(text.stdout).expect("text stdout");
-    assert!(text_stdout.contains("L1:Guide [docnav:1]"));
+    assert!(text_stdout.contains("L1:Guide | H1"));
+    assert!(!text_stdout.contains("#1"));
+    assert_no_legacy_ordinal_suffix(&text_stdout);
     assert!(text_stdout.contains("page: null"));
 
     let readable = run(&["outline", &path, "--output", "readable-json"]);
     assert!(readable.status.success());
+    let readable_stdout = std::str::from_utf8(&readable.stdout).expect("readable stdout");
+    assert_no_legacy_ordinal_suffix(readable_stdout);
     let readable_json: Value = serde_json::from_slice(&readable.stdout).expect("readable JSON");
     let ref_id = readable_json["entries"][0]["ref"]
         .as_str()
         .expect("outline ref")
         .to_owned();
+    assert_eq!(ref_id, "L1:Guide");
     assert!(readable_json["page"].is_null());
 
     let protocol = run(&["read", &path, "--ref", &ref_id, "--output", "protocol-json"]);
     assert!(protocol.status.success());
     assert!(protocol.stderr.is_empty());
+    let protocol_stdout = std::str::from_utf8(&protocol.stdout).expect("protocol stdout");
+    assert_no_legacy_ordinal_suffix(protocol_stdout);
     let protocol_json: Value = serde_json::from_slice(&protocol.stdout).expect("protocol JSON");
     assert_eq!(protocol_json["operation"], "read");
     assert_eq!(protocol_json["ok"], true);
+    assert_eq!(
+        protocol_json["result"]["ref"].as_str(),
+        Some(ref_id.as_str())
+    );
     assert_eq!(protocol_json["result"]["content_type"], "text/markdown");
 
     let read_text = run(&["read", &path, "--ref", &ref_id, "--output", "text"]);
@@ -89,30 +100,61 @@ fn direct_cli_supports_text_readable_json_and_protocol_json() {
     let read_text_stdout = String::from_utf8(read_text.stdout).expect("read text stdout");
     assert!(read_text_stdout.contains(&format!("ref: {ref_id}")));
     assert!(read_text_stdout.contains("content_type: text/markdown"));
+    assert_no_legacy_ordinal_suffix(&read_text_stdout);
 }
 
 #[test]
 fn readable_json_error_keeps_code_details_and_omits_protocol_envelope() {
     let path = write_doc("missing-ref.md", "# Guide\nBody\n");
     let path = path_arg(&path);
+    let missing_ref = "L99:Missing";
 
     let output = run(&[
         "read",
         &path,
         "--ref",
-        "L99:Missing [docnav:1]",
+        missing_ref,
         "--output",
         "readable-json",
     ]);
 
     assert!(!output.status.success());
     assert!(output.stderr.is_empty());
+    let stdout = std::str::from_utf8(&output.stdout).expect("readable error stdout");
+    assert_no_legacy_ordinal_suffix(stdout);
     let error_json: Value = serde_json::from_slice(&output.stdout).expect("readable error JSON");
     assert_eq!(error_json["code"], "REF_NOT_FOUND");
-    assert_eq!(error_json["details"]["ref"], "L99:Missing [docnav:1]");
+    assert_eq!(error_json["details"]["ref"], missing_ref);
     assert!(error_json["guidance"].as_array().is_some());
     assert!(error_json["protocol_version"].is_null());
     assert!(error_json["ok"].is_null());
+}
+
+#[test]
+fn protocol_json_error_keeps_stable_ref_details() {
+    let path = write_doc("missing-ref-protocol.md", "# Guide\nBody\n");
+    let path = path_arg(&path);
+    let missing_ref = "L99:Missing";
+
+    let output = run(&[
+        "read",
+        &path,
+        "--ref",
+        missing_ref,
+        "--output",
+        "protocol-json",
+    ]);
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+    let stdout = std::str::from_utf8(&output.stdout).expect("protocol error stdout");
+    assert_no_legacy_ordinal_suffix(stdout);
+    let error_json: Value = serde_json::from_slice(&output.stdout).expect("protocol error JSON");
+    assert_eq!(error_json["operation"], "read");
+    assert_eq!(error_json["ok"], false);
+    assert_eq!(error_json["error"]["code"], "REF_NOT_FOUND");
+    assert_eq!(error_json["error"]["details"]["ref"], missing_ref);
+    assert!(error_json["result"].is_null());
 }
 
 #[test]
@@ -127,4 +169,13 @@ fn text_error_writes_readable_error_to_stdout() {
     let stdout = String::from_utf8(output.stdout).expect("text error stdout");
     assert!(stdout.contains("error: REF_NOT_FOUND"));
     assert!(stdout.contains("details: ref=P:Guide"));
+    assert_no_legacy_ordinal_suffix(&stdout);
+}
+
+fn assert_no_legacy_ordinal_suffix(value: &str) {
+    assert!(!value.contains(&legacy_ordinal_prefix()));
+}
+
+fn legacy_ordinal_prefix() -> String {
+    ["[", "docnav", ":"].concat()
 }
