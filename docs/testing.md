@@ -105,7 +105,7 @@ request/response fixture 或集成测试必须验证请求 operation 与响应 o
 
 ## 一致性审计
 
-- [README](../README.md) 只作为入口导航、范围说明和术语索引，不重复定义细则。
+- [文档导航](navigation.md) 只作为入口导航、文档分层、规则 owner 和术语索引，不重复定义细则。
 - [架构](architecture.md) 独占职责、配置域和双层原则。
 - [原始协议](protocol.md) 独占 invoke envelope、紧凑结果、错误和 page。
 - [Ref](refs.md) 独占 ref 语义。
@@ -113,35 +113,3 @@ request/response fixture 或集成测试必须验证请求 operation 与响应 o
 - [Schema](schemas/README.md) 分别校验 protocol 和 readable 输出，不定义新的业务语义。
 - [示例](examples/README.md) 只验证端到端链路和输出映射，不成为新的规范来源。
 - OpenSpec change 只作为变更依据、验收和审计历史，不作为日常实现主入口。
-
-## 实施就绪
-
-另一个实现者只依据 v0 文档，应能：
-
-- 实现 `docnav` 核心 CLI 的识别、路由、配置、项目初始化和正式 adapter 管理职责。
-- 实现带 operation 的紧凑原始协议，并让 `docnav` 与 MCP bridge 的阅读输出不包含 protocol envelope。
-- 在 readable read 和 MCP read structuredContent 中保留 `content_type`。
-- 实现 Markdown `outline`、`read`、`find` 和 `info` 全部能力，其中 `outline -> ref -> read` 是首要纵向链路，outline 扁平、ref 可读且 read 唯一定位。
-- 实现字符预算默认值和 page。
-- 为直接 CLI、adapter invoke 和 MCP bridge 分别实现高信息密度输出。
-- 验证各 CLI 配置域互不干扰。
-
-## 审计记录
-
-2026-06-05 审计：
-
-| 审计项 | 结果 |
-| --- | --- |
-| OpenSpec | `openspec validate --all --strict` 通过 |
-| Schema | Draft 2020-12 schema 通过 AJV strict 编译；readable schema 只约束阅读输出形状 |
-| 示例校验 | protocol、readable、manifest 和 probe 示例分别通过对应 schema |
-| 示例语义 | protocol request/response 配对、page、limit_chars、protocol-to-readable 映射和错误 details 形状通过脚本校验 |
-| JSON 语法 | `docs/` 下 JSON 文件全部可解析 |
-| 分层映射 | MCP 保留业务语义，但不包含 protocol envelope 或完整 JSON TextContent |
-| 扁平 outline | 示例只使用 ref/display entries 和 page |
-| Markdown 能力范围 | manifest、示例和测试矩阵覆盖 `outline`、`read`、`find` 和 `info` 全部能力 |
-| 有限默认与 page | 6000 字符预算、H1-H3 展示默认值、显式 invoke 参数和分页状态已验证 |
-| Adapter 管理范围 | 主规范限定首期 GitHub 链接和本地 exe 来源，并要求本地 exe SHA-256 hash 校验 |
-| MCP 调用边界 | `docnav-mcp` 直接调用核心 `docnav` CLI，adapter 路由只由 `docnav` 执行 |
-| MarkdownNavigator | 参考黑盒场景记录完成 |
-| 文档质量 | 项目内链接、`git diff --check` 和尾随空白检查通过 |

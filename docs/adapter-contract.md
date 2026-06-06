@@ -73,7 +73,7 @@ Markdown v0 manifest 推荐参数：
 ```
 
 适配器直接 CLI 使用相同数值作为内置默认值，允许其项目级和用户级配置覆盖。
-Markdown find 使用 `max_heading_level` 对应的 outline entries 选择 match ref 归属；当没有任何 outline entry 时使用全文 ref。
+Markdown find 返回的 match ref 必须与当前导航粒度一致，并可被 read 原样消费；没有局部导航区域时，可以返回 adapter 定义的全文 ref。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度，具体归属策略由 Markdown adapter 自有契约定义。
 
 ## Probe
 

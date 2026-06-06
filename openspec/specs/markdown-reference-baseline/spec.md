@@ -1,14 +1,14 @@
 # markdown-reference-baseline Specification
 
 ## Purpose
-TBD - created by archiving change define-docnav-v0-docs. Update Purpose after archive.
+定义 MarkdownNavigator 作为 Markdown 行为参考基线的来源、复验方法、迁移决策和边界案例要求。
 ## Requirements
-### Requirement: 记录 MarkdownNavigator 来源和验证状态
-Markdown 参考文档 MUST 记录参考项目路径、提交、命令入口和黑盒验证结果，并明确其不是 Docnav 兼容目标。
+### Requirement: 记录 MarkdownNavigator 来源和复验方法
+Markdown 参考文档 MUST 记录参考项目路径、提交、命令入口和可复验行为边界，并明确其不是 Docnav 兼容目标。
 
-#### Scenario: 审计参考来源
-- **WHEN** 审计者查看 Markdown 行为来源
-- **THEN** 文档能够定位参考仓库、提交和验证结果
+#### Scenario: 复验参考来源
+- **WHEN** 实现者查看 Markdown 行为来源
+- **THEN** 文档能够定位参考仓库、提交和复验方法
 
 ### Requirement: 记录 Markdown 行为迁移决策
 Markdown 参考文档 MUST 为 heading、章节范围、frontmatter、代码围栏、重复项、编码、默认限制和 page 标注迁移决策。
@@ -48,9 +48,8 @@ Markdown read 内置默认 MUST 为每页最多 6000 字符，并 MUST 返回下
 - **THEN** outline 为每项生成不同 ref
 
 ### Requirement: 复用 Markdown 边界案例
-后续 Markdown 测试 MUST 覆盖无 heading、仅深层 heading、无效 heading、frontmatter、代码围栏、重复标题、重复路径、深层章节和非 UTF-8。
+Markdown 适配器测试 MUST 覆盖无 heading、仅深层 heading、无效 heading、frontmatter、代码围栏、重复标题、重复路径、深层章节和非 UTF-8。
 
 #### Scenario: 规划适配器测试
-- **WHEN** 后续变更创建 Markdown 测试计划
+- **WHEN** 实现者制定或更新 Markdown 测试计划
 - **THEN** 测试计划包含全部参考边界案例
-

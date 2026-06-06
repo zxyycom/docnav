@@ -155,9 +155,9 @@ Markdown adapter 测试 MUST 覆盖无 heading、仅深层 heading、无效 head
 ### Requirement: Markdown CLI smoke 必须输出可审计日志
 `docnav-markdown` black-box CLI smoke runner MUST write an audit log for every executed command. The log MUST include the command line, working directory, stdin summary or fixture reference, exit code, stdout, stderr, and assertion summary. The runner MUST write a stable latest log and a timestamped log under `.log/docnav-markdown-cli-smoke/`.
 
-#### Scenario: 每条命令都有审计记录
+#### Scenario: 每条命令都有日志记录
 - **WHEN** Node.js runner 执行任意正向或负向 CLI case
-- **THEN** 审计日志记录该 case 的名称、命令行、cwd、exit code、stdout、stderr 和断言结果
+- **THEN** 日志记录该 case 的名称、命令行、cwd、exit code、stdout、stderr 和断言结果
 - **THEN** 若命令使用 stdin，日志记录 stdin 的测试输入摘要或 fixture 引用
 
 #### Scenario: 测试结束输出日志路径
@@ -229,4 +229,3 @@ Markdown adapter 测试 MUST 覆盖无 heading、仅深层 heading、无效 head
 - **WHEN** 调用方把使用旧方括号 ordinal 后缀的 heading ref 传给 read
 - **THEN** read 返回现有稳定 ref 错误
 - **THEN** read MUST NOT 把该旧 ref 解析到 Markdown section
-

@@ -23,39 +23,10 @@ read 不得使用最近位置、首个匹配或其他启发式方法静默消歧
 
 ## 格式定位所有权
 
-Markdown、JSON 和其它格式的定位语法均由对应 adapter 拥有。这些语法不属于共享协议；共享协议、`docnav` 和接入层只传递字符串。
+Markdown、JSON 和其它格式的定位语法均由对应 adapter 拥有。具体 ref 语法属于 adapter 私有实现或 adapter 自有兼容契约，不属于共享协议、`docnav` CLI 或 MCP 公共格式。
 
-### Markdown heading ref
+共享协议、`docnav` 和接入层不得解析、拼接、规范化或从 display 推断 ref，只能把 adapter 返回的 ref 原样传递给 read。
 
-Markdown heading ref 的 canonical 格式为：
+适配器生成的 ref 在当前文档中必须非空、唯一并可直接用于 read。adapter 可以为没有局部导航区域的文档定义全文 ref；该 ref 的具体拼写属于对应 adapter。
 
-```text
-L{line}:{path}
-L{line}#{ordinal}:{path}
-```
-
-- `line` 是 heading 在 Markdown 源文档中的 1-based 行号。
-- `path` 是 heading breadcrumb，不是文件路径。嵌套 heading 使用 ` > ` 连接，例如 `Guide > Install`。
-- `ordinal` 是相同完整 heading breadcrumb 的 occurrence 序号，只在重复 path 的第 2 次及以后出现在 canonical 输出中。
-- 首个 occurrence 的 canonical 输出省略默认序号 `#1`。
-- Markdown 解析器接受显式 `#1` 输入，例如 `L1#1:Guide`，但生成器仍输出 `L1:Guide`。
-
-无重复 heading path 示例：
-
-```text
-L1:Guide
-L5:Guide > Install
-```
-
-重复完整 heading path 示例：
-
-```text
-L1:Repeat
-L9#2:Repeat
-L5:Repeat > Child
-L13#2:Repeat > Child
-```
-
-`doc:full` 是 Markdown 全文 fallback ref，用于读取整篇文档。它不属于 heading ref 格式，也不带行号、breadcrumb 或 occurrence ordinal。
-
-适配器生成的 ref 在当前文档中必须唯一并可直接用于 read。文档变化后，调用方应重新 outline 或 find；读取失败时 adapter 返回 `REF_NOT_FOUND` 或 `REF_AMBIGUOUS`。
+文档变化后，调用方应重新 outline 或 find；读取失败时 adapter 返回 `REF_NOT_FOUND` 或 `REF_AMBIGUOUS`。

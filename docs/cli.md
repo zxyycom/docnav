@@ -62,7 +62,7 @@ docnav version
 
 ```text
 docnav outline docs/guide.md --output protocol-json
-docnav read docs/guide.md --ref "L4:Guide > Install" --output protocol-json
+docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
 adapter invoke
 adapter outline docs/guide.md --output protocol-json
 ```
@@ -75,7 +75,7 @@ adapter outline docs/guide.md --output protocol-json
 
 用途：人类和 AI 直接阅读。只包含有意义的 ref、display、内容、内容类型、成本、page 状态和必要错误建议。
 
-Markdown outline 示例：
+Markdown adapter outline 文本示例；其中 ref 由 Markdown adapter 生成，核心 CLI 只原样传递：
 
 ```text
 L1:Guide                     | 9 lines | 0.1 KB

@@ -53,7 +53,7 @@ protocol response schema 和共享校验 MUST 使用响应 `operation` 绑定成
 - **THEN** 输出不包含 invoke request/response envelope
 
 ### Requirement: 自动化验证必须覆盖 schema 与示例
-本 change MUST 提供自动化验证，覆盖 protocol request/response、manifest、probe 和 readable schema 的 strict 编译，以及关键示例 fixture 的解析和语义校验。
+Docnav 协议与 adapter SDK 实现 MUST 提供自动化验证，覆盖 protocol request/response、manifest、probe 和 readable schema 的 strict 编译，以及关键示例 fixture 的解析和语义校验。
 
 #### Scenario: 校验协议响应 fixture
 - **WHEN** 验证脚本读取 protocol response 示例

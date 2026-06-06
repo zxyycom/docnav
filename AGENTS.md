@@ -2,7 +2,7 @@
 
 ## 用途
 
-本文件只约束 agent 在本仓库中的工作方式，不作为 Docnav 完整规范副本。产品、协议、CLI、adapter、schema 和测试细节从 `README.md` 的“如何阅读这些文档”进入，并按角色读取对应主规范。
+本文件只约束 agent 在本仓库中的工作方式，不作为 Docnav 完整规范副本。产品、协议、CLI、adapter、schema 和测试细节从 `docs/navigation.md` 的“如何阅读这些文档”进入，并按角色读取对应主规范。
 
 ## 项目快照
 
@@ -16,7 +16,7 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 
 ## 文档读取规则
 
-- 读取项目文档时，先从 `README.md` 的“如何阅读这些文档”进入，只读取当前任务角色匹配的主规范。
+- 读取项目文档时，先从 `docs/navigation.md` 的“如何阅读这些文档”进入，只读取当前任务角色匹配的主规范。
 - `openspec/changes/` 只在处理 OpenSpec change、审计历史、验收或用户明确要求时读取；涉及 OpenSpec 时先运行 `openspec list --json`。
 - `docs/schemas/` 和 `docs/examples/` 是校验材料，只在验证字段、示例、schema 或测试时读取。
 - 已读取过的内容不要重复展开；后续使用局部搜索和 diff 跟踪变化。
@@ -34,7 +34,7 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 - 优先使用 CodeGraph 理解结构；索引缺失或不够时使用 `rg` / `rg --files` 补充。
 - 搜索按任务过滤路径、扩展名和关键词，并排除 `.git`、`target`、`node_modules`、`.venv`、`dist`、`build` 和缓存目录；避免无过滤遍历整个仓库。
 - 大文件、长输出和目录列表先做摘要或筛选，再读取具体片段。
-- 文档读取按 README 角色路径进入；不要因为存在 OpenSpec、schema、examples 就默认全部读取。
+- 文档读取按 `docs/navigation.md` 角色路径进入；不要因为存在 OpenSpec、schema、examples 就默认全部读取。
 - CLI 命令优先选择只读、可复现、范围明确的命令；验证命令按改动范围选择，避免无关全量操作。
 - 跨 Rust、文档、OpenSpec、schema、示例或输出层边界的交付，最终优先运行 `pnpm run verify:docnav-workspace`；局部验证可先运行范围更小的命令。
 - 新增或运行脚本依赖时，Node.js / JavaScript 使用 `pnpm`，Python 使用 `uv`；不默认使用全局 `npm` 或 `pip` 安装。
