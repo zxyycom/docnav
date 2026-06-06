@@ -7,10 +7,10 @@
 `docnav` 提供所有接入方式共享的核心能力入口：
 
 ```text
-docnav outline <path> [--format <format-id|content-type>] [--page 1] [--limit-chars 6000] [--output text|readable-json|protocol-json]
-docnav read <path> --ref <ref> [--format <format-id|content-type>] [--page 1] [--limit-chars 6000] [--output text|readable-json|protocol-json]
-docnav find <path> --query <text> [--format <format-id|content-type>] [--page 1] [--limit-chars 6000] [--output text|readable-json|protocol-json]
-docnav info <path> [--format <format-id|content-type>] [--output text|readable-json|protocol-json]
+docnav outline <path> [--adapter <adapter-id>] [--page 1] [--limit-chars 6000] [--output text|readable-json|protocol-json]
+docnav read <path> --ref <ref> [--adapter <adapter-id>] [--page 1] [--limit-chars 6000] [--output text|readable-json|protocol-json]
+docnav find <path> --query <text> [--adapter <adapter-id>] [--page 1] [--limit-chars 6000] [--output text|readable-json|protocol-json]
+docnav info <path> [--adapter <adapter-id>] [--output text|readable-json|protocol-json]
 docnav init
 docnav doctor
 docnav config get|set|unset|list
@@ -24,8 +24,8 @@ docnav version
 `docnav` 在启动 adapter `invoke` 前完成：
 
 1. 项目根解析。
-2. path 规范化和项目边界检查。
-3. 格式识别和 adapter 选择：显式格式校验失败后再尝试扩展名匹配，仍失败时逐个 probe 已安装 adapter。
+2. path 规范化和可访问性检查。
+3. adapter 选择：`--adapter` 或 core 简易推断确定一个预选 adapter；预选 probe 失败后逐个 probe 已注册 adapter，并返回第一个成功项。
 4. 显式参数、项目配置、用户配置、内置默认值和 manifest 推荐参数合并。
 5. page 与 limit_chars 显式化。
 6. 输出模式和错误映射选择。
@@ -91,7 +91,7 @@ page: 2
 
 阅读输出 schema 按 operation 独立定义，见 [schemas](schemas/README.md)。
 
-readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `--format <format-id|content-type>` 或 MCP `format` 参数，`docnav` 先按该格式提示尝试解析和校验；失败后再进入扩展名匹配和全量 probe。
+readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `--adapter <adapter-id>` 或 MCP adapter 参数，`docnav` 先校验该 adapter；失败后再进入 registry 遍历。
 
 阅读错误保留 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。需要机器可靠错误契约时使用完整协议输出。
 
@@ -140,7 +140,7 @@ MCP tools：
 - `document_find`
 - `document_info`
 
-`docnav-mcp` 将 MCP 参数直接映射为核心 `docnav` CLI 调用，将 `docnav` readable 结果转换为 MCP TextContent 和 structuredContent。MCP tools 可传入可选 `format` 字符串，映射到 `docnav --format <format-id|content-type>`。它不解析文档内容，不执行格式识别，不管理 adapter，不初始化项目，也不拥有核心配置；adapter 路由和下级适配层调用只由 `docnav` 完成。
+`docnav-mcp` 将 MCP 参数直接映射为核心 `docnav` CLI 调用，将 `docnav` readable 结果转换为 MCP TextContent 和 structuredContent。MCP tools 可传入可选 `adapter` 字符串，映射到 `docnav --adapter <adapter-id>`。它不解析文档内容，不执行格式识别，不管理 adapter，不初始化项目，也不拥有核心配置；adapter 路由和下级适配层调用只由 `docnav` 完成。
 
 MCP 输出属于阅读输出层：
 
@@ -172,6 +172,7 @@ page: 2
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断写 stderr。
 - 未知参数、缺失值和多余参数必须失败。
+- `config get` 的 key 不存在时必须返回 `INVALID_REQUEST`。
 - 成功退出 `0`；输入错误 `2`；文档/ref/格式错误 `3`；协议或 adapter 进程错误 `4`；内部错误 `1`。
 
 ## Page 分页

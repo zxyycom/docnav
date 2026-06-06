@@ -44,7 +44,7 @@ Docnav 分为两个语义层：
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list/install/update/remove`。
 - 正式执行 adapter 安装、更新、移除和列表管理；首期安装来源为 GitHub 链接和本地可执行文件，安装或更新时必须读取 manifest、校验协议兼容性、记录可执行入口，并对本地可执行文件执行 hash 校验。
 - 管理 `.docnav/` 项目配置和用户级 `docnav` 配置。
-- 根据 path、项目配置、manifest、扩展名和 probe 识别文档格式。
+- 根据 path、项目配置、manifest、`--adapter`、core 简易推断和 probe 选择 adapter。
 - 自动选择并调用对应 adapter。
 - 在启动 `invoke` 前解析显式参数、项目配置、用户配置、内置默认值和 manifest 推荐参数。
 - 统一处理 page、limit_chars、输出模式和错误映射。
@@ -136,13 +136,14 @@ AI Client
 
 ## Adapter 选择
 
-`docnav` 对所有文档操作使用分阶段校验选择 adapter：
+`docnav` 对所有文档操作先确定一个预选 adapter id，再用统一遍历函数兜底：
 
-1. 显式格式提示：先读取命令参数、MCP 参数或 `docnav` 配置中的显式格式，例如 `--format markdown` 或 `--format text/markdown`。`docnav` 根据 manifest 的 `formats[].id` 或 `formats[].content_types[]` 找到候选 adapter，并先按该格式执行 probe/校验。成功则选中；失败时保留失败证据并进入下一阶段。
-2. 扩展名匹配：若显式格式未成功，`docnav` 根据规范化 `document.path` 的扩展名匹配 manifest `formats[].extensions[]`，再对候选 adapter 执行 probe/校验。成功则选中；失败时继续下一阶段。
-3. 全量 probe：若扩展名阶段仍未成功，`docnav` 按确定性 adapter 顺序逐个执行 probe，直到某个 adapter 校验成功并被选中，或所有 adapter 均失败。
+1. 若调用方传入 `--adapter <adapter-id>`，该 id 是预选 adapter。
+2. 若调用方未传入 `--adapter`，`docnav` 使用 core 简易规则推断一个预选 adapter id，例如根据 path 扩展名匹配已注册 adapter 的 manifest；无法推断时预选为空。
+3. 若预选 adapter 存在，`docnav` 先解析该 adapter 并执行 probe 校验。probe 成功则选中，失败时保留失败证据。
+4. 若预选 adapter 缺失、无法解析或 probe 失败，`docnav` 调用 registry 遍历函数。该函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项，返回第一个 probe 成功的 adapter。
 
-所有阶段都以 adapter 校验结果为准，不能只凭格式提示或扩展名静默选中。全部阶段失败时返回 `FORMAT_UNKNOWN` 和候选证据；同一阶段出现多个等价成功且没有显式优先级时返回 `FORMAT_AMBIGUOUS`。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
+所有选择都以 adapter probe 结果为准，不能只凭 `--adapter` 或扩展名静默选中。全部候选失败时返回 `FORMAT_UNKNOWN` 和候选证据。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
 
 ## 项目根与路径
 
@@ -152,7 +153,7 @@ AI Client
 2. 从启动 cwd 向上查找最近的 `.docnav/`。
 3. 未找到时使用启动 cwd。
 
-adapter 子进程 cwd 必须设置为项目根。`document.path` 必须是使用 `/` 的规范项目相对路径；路径解析结果必须位于项目根内。
+adapter 子进程 cwd 必须设置为项目根；没有可发现项目根时使用启动 cwd。`docnav` 接受项目根内外的可访问文件路径。相对 path 基于启动 cwd 解析；`document.path` 必须使用 `/`，项目根内路径可以传项目相对路径，项目根外路径传规范化绝对路径。路径不存在、不可读或无法规范化时返回文档路径错误，不能启动 adapter。
 
 ## 进程边界
 

@@ -11,7 +11,7 @@
       "path": {
         "type": "string"
       },
-      "format": {
+      "adapter": {
         "type": "string",
         "minLength": 1
       },

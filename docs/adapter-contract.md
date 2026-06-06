@@ -78,7 +78,7 @@ Markdown find 返回的 match ref 必须与当前导航粒度一致，并可被 
 
 ## Probe
 
-probe 只识别格式，不执行导航。机器结果包含：
+probe 只识别格式，不执行导航。probe 输入只包含 path；`docnav` 在调用 probe 前解析 `--adapter` 或 core 推断得到的预选 adapter，但 adapter 选择提示不会作为 probe 参数传入。机器结果包含：
 
 ```text
 probe_version
@@ -90,7 +90,7 @@ confidence
 reasons[]
 ```
 
-每次判断至少包含一个 reason。调用方提供显式格式或 content type 时，adapter 应先按该提示校验；不支持或内容不匹配时返回 `supported: false` 并给出 reason。格式歧义时 `docnav` 返回所有候选及判断依据。
+每次判断至少包含一个 reason。不支持或内容不匹配时返回 `supported: false` 并给出 reason。`docnav` 必须以 probe 结果为准，不能只凭 adapter id、扩展名或 manifest 静默选中。
 
 ## Invoke
 

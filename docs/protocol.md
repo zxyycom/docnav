@@ -44,7 +44,7 @@ v0 operation 参数：
 - read 按字符预算切分 content，不能切断 Unicode 字符；若当前位置后仍有内容，返回下一页 page。
 - `options` 是调用方从显式参数、配置和 manifest 推荐值解析出的格式原生参数对象；`docnav` 和接入层原样传递其内容。
 - 继续读取时，调用方保持 path、ref、query、limit_chars 和 options 不变，只使用响应返回的 page。
-- page 是调用位置，不是配置默认参数；CLI 或 MCP 省略 page 时必须显式转换为 `page: 1` 后再启动 invoke。
+- page 是调用位置，不是配置默认参数；`docnav` CLI、adapter 直接 CLI 或 MCP 省略 page 时，必须在进入 invoke 前显式转换为 `page: 1`。
 
 ## 响应 Envelope
 
