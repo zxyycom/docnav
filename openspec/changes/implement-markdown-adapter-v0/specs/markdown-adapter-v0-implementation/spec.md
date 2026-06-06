@@ -9,7 +9,7 @@
 - **THEN** capabilities 包含 `outline`、`read`、`find` 和 `info`
 
 ### Requirement: probe 必须只识别 Markdown 格式
-`docnav-markdown probe` MUST 只执行格式识别并返回支持度、格式 id、content type 和判断证据，MUST NOT 执行 outline/read/find 导航。
+`docnav-markdown probe` MUST 只执行格式识别并返回支持度、格式 id 和判断证据，MUST NOT 执行 outline/read/find 导航；content type MUST 由 manifest 声明。
 
 #### Scenario: probe Markdown 文件
 - **WHEN** 调用方对 Markdown 文档执行 probe
