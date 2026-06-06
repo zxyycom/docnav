@@ -1,10 +1,10 @@
 use super::*;
 use docnav_protocol::{
-    try_positive, AdapterIdentity, Entry, FormatDescriptor, InfoArguments, InfoResult, Manifest,
-    Operation, OutlineArguments, OutlineResult, PagedOperation, ProbeReason, ProbeReasonCode,
-    ProbeResult, ProtocolRange, ProtocolResponse, ProtocolVersion, ReadArguments, ReadResult,
-    RecommendedParameters, RequestEnvelope, StableError, StableErrorCode, PROBE_VERSION,
-    PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
+    try_positive, AdapterIdentity, Document, Entry, FormatDescriptor, InfoArguments, InfoResult,
+    Manifest, Operation, OperationArguments, OperationResult, OutlineArguments, OutlineResult,
+    PagedOperation, ProbeReason, ProbeReasonCode, ProbeResult, ProtocolRange, ProtocolResponse,
+    ProtocolVersion, ReadArguments, ReadResult, RecommendedParameters, RequestEnvelope,
+    StableError, StableErrorCode, PROBE_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 use std::collections::BTreeMap;
 
@@ -23,6 +23,62 @@ fn internal_error_maps_to_internal_exit_code() {
         AdapterError::new(StableError::internal_error("test")).exit_code(),
         AdapterExitCode::InternalError
     );
+}
+
+#[test]
+fn stable_error_codes_map_to_adapter_exit_codes() {
+    let cases = [
+        (
+            StableErrorCode::InvalidRequest,
+            AdapterExitCode::ProtocolError,
+        ),
+        (
+            StableErrorCode::ProtocolIncompatible,
+            AdapterExitCode::ProtocolError,
+        ),
+        (
+            StableErrorCode::DocumentNotFound,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            StableErrorCode::DocumentPathInvalid,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            StableErrorCode::DocumentEncodingUnsupported,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            StableErrorCode::FormatUnknown,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            StableErrorCode::FormatAmbiguous,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            StableErrorCode::CapabilityUnsupported,
+            AdapterExitCode::ProtocolError,
+        ),
+        (StableErrorCode::RefNotFound, AdapterExitCode::HandlerError),
+        (StableErrorCode::RefAmbiguous, AdapterExitCode::HandlerError),
+        (
+            StableErrorCode::AdapterUnavailable,
+            AdapterExitCode::IoError,
+        ),
+        (
+            StableErrorCode::AdapterInvokeFailed,
+            AdapterExitCode::IoError,
+        ),
+        (
+            StableErrorCode::InternalError,
+            AdapterExitCode::InternalError,
+        ),
+    ];
+
+    for (code, expected) in cases {
+        assert_eq!(exit_code_for_error(code), expected, "{code:?}");
+    }
 }
 
 #[test]
@@ -130,11 +186,47 @@ impl Adapter for InvalidManifestAdapter {
     }
 }
 
+struct ManifestAdapterIdDriftAdapter;
+
+impl Adapter for ManifestAdapterIdDriftAdapter {
+    fn adapter_id(&self) -> &str {
+        "stub"
+    }
+
+    fn manifest(&self) -> Manifest {
+        let mut manifest = StubAdapter.manifest();
+        manifest.adapter.id = "drift".to_owned();
+        manifest
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        StubAdapter.probe(path)
+    }
+}
+
+struct ManifestSemanticErrorAdapter;
+
+impl Adapter for ManifestSemanticErrorAdapter {
+    fn adapter_id(&self) -> &str {
+        "stub"
+    }
+
+    fn manifest(&self) -> Manifest {
+        let mut manifest = StubAdapter.manifest();
+        manifest.capabilities = vec![Operation::Info];
+        manifest
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        StubAdapter.probe(path)
+    }
+}
+
 struct ManifestProtocolRangeAdapter;
 
 impl Adapter for ManifestProtocolRangeAdapter {
     fn adapter_id(&self) -> &str {
-        "manifest-range"
+        "stub"
     }
 
     fn manifest(&self) -> Manifest {
@@ -154,7 +246,7 @@ struct EmptyReasonsProbeAdapter;
 
 impl Adapter for EmptyReasonsProbeAdapter {
     fn adapter_id(&self) -> &str {
-        "bad-probe"
+        "stub"
     }
 
     fn manifest(&self) -> Manifest {
@@ -172,7 +264,7 @@ struct BadConfidenceProbeAdapter;
 
 impl Adapter for BadConfidenceProbeAdapter {
     fn adapter_id(&self) -> &str {
-        "bad-probe"
+        "stub"
     }
 
     fn manifest(&self) -> Manifest {
@@ -186,11 +278,29 @@ impl Adapter for BadConfidenceProbeAdapter {
     }
 }
 
+struct ProbeAdapterIdDriftAdapter;
+
+impl Adapter for ProbeAdapterIdDriftAdapter {
+    fn adapter_id(&self) -> &str {
+        "stub"
+    }
+
+    fn manifest(&self) -> Manifest {
+        StubAdapter.manifest()
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        let mut probe = StubAdapter.probe(path);
+        probe.adapter_id = "drift".to_owned();
+        probe
+    }
+}
+
 struct MissingDetailsErrorAdapter;
 
 impl Adapter for MissingDetailsErrorAdapter {
     fn adapter_id(&self) -> &str {
-        "missing-details"
+        "stub"
     }
 
     fn manifest(&self) -> Manifest {
@@ -212,6 +322,59 @@ impl Adapter for MissingDetailsErrorAdapter {
             BTreeMap::new(),
         )))
     }
+}
+
+#[test]
+fn execute_operation_dispatches_typed_request() {
+    let request = RequestEnvelope {
+        protocol_version: PROTOCOL_VERSION.to_owned(),
+        request_id: "req-1".to_owned(),
+        operation: Operation::Outline,
+        document: Document {
+            path: "sample.stub".to_owned(),
+        },
+        arguments: OperationArguments::Outline(OutlineArguments {
+            limit_chars: positive(80),
+            page: positive(1),
+            options: None,
+        }),
+    };
+
+    let result = execute_operation(&StubAdapter, &request).expect("execute outline");
+
+    match result {
+        OperationResult::Outline(result) => {
+            assert_eq!(result.entries[0].ref_id, "L1:Stub");
+            assert_eq!(result.page, None);
+        }
+        other => panic!("expected outline result, got {other:?}"),
+    }
+}
+
+#[test]
+fn execute_operation_rejects_mismatched_operation_arguments() {
+    let request = RequestEnvelope {
+        protocol_version: PROTOCOL_VERSION.to_owned(),
+        request_id: "req-1".to_owned(),
+        operation: Operation::Read,
+        document: Document {
+            path: "sample.stub".to_owned(),
+        },
+        arguments: OperationArguments::Outline(OutlineArguments {
+            limit_chars: positive(80),
+            page: positive(1),
+            options: None,
+        }),
+    };
+
+    let error = execute_operation(&StubAdapter, &request).expect_err("mismatch fails");
+
+    assert_eq!(error.error().code, StableErrorCode::InvalidRequest);
+    assert_eq!(error.error().details["field"], "arguments");
+    assert_eq!(
+        error.error().details["reason"],
+        "arguments do not match operation read"
+    );
 }
 
 #[test]
@@ -328,6 +491,32 @@ fn invoke_uses_manifest_protocol_range_for_request_version_check() {
 }
 
 #[test]
+fn invoke_rejects_invalid_manifest_without_protocol_envelope() {
+    let input = br#"{
+          "protocol_version": "0.1",
+          "request_id": "req-1",
+          "operation": "outline",
+          "document": { "path": "sample.stub" },
+          "arguments": { "limit_chars": 80, "page": 1 }
+        }"#;
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let exit = invoke_once(
+        &ManifestSemanticErrorAdapter,
+        &input[..],
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, AdapterExitCode::ProtocolError.code());
+    assert!(stdout.is_empty());
+    let stderr = String::from_utf8(stderr).expect("stderr is UTF-8");
+    assert!(stderr.contains("manifest semantic validation failed"));
+    assert!(stderr.contains("recommended_parameters.outline"));
+}
+
+#[test]
 fn request_schema_rejections_are_structured_invalid_request_failures() {
     let input = br#"{
           "protocol_version": "0.1",
@@ -408,6 +597,27 @@ fn invalid_manifest_is_not_written_to_stdout() {
 }
 
 #[test]
+fn manifest_adapter_id_drift_is_not_written_to_stdout() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let exit = run_command(
+        &ManifestAdapterIdDriftAdapter,
+        SdkCommand::Manifest,
+        std::io::empty(),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, AdapterExitCode::ProtocolError.code());
+    assert!(stdout.is_empty());
+    let stderr = String::from_utf8(stderr).expect("stderr is UTF-8");
+    assert!(stderr.contains("manifest adapter id mismatch"));
+    assert!(stderr.contains("\"stub\""));
+    assert!(stderr.contains("\"drift\""));
+}
+
+#[test]
 fn invalid_probe_is_not_written_to_stdout() {
     fn assert_invalid_probe_not_written(adapter: &impl Adapter) {
         let mut stdout = Vec::new();
@@ -430,6 +640,30 @@ fn invalid_probe_is_not_written_to_stdout() {
 
     assert_invalid_probe_not_written(&EmptyReasonsProbeAdapter);
     assert_invalid_probe_not_written(&BadConfidenceProbeAdapter);
+}
+
+#[test]
+fn probe_adapter_id_drift_is_not_written_to_stdout() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let exit = run_command(
+        &ProbeAdapterIdDriftAdapter,
+        SdkCommand::Probe {
+            path: "sample.stub".to_owned(),
+        },
+        std::io::empty(),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, AdapterExitCode::ProtocolError.code());
+    assert!(stdout.is_empty());
+    let stderr = String::from_utf8(stderr).expect("stderr is UTF-8");
+    assert!(stderr.contains("probe result adapter id mismatch"));
+    assert!(stderr.contains("probe.adapter_id"));
+    assert!(stderr.contains("\"stub\""));
+    assert!(stderr.contains("\"drift\""));
 }
 
 #[test]

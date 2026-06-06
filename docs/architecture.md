@@ -80,9 +80,9 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 ### 共享库
 
 - `docnav-protocol`：只定义原始 invoke 协议、page、错误和版本。
-- `docnav-adapter-sdk`：提供 invoke I/O、协议校验、命令分发和通用进程行为。
+- `docnav-adapter-sdk`：提供 invoke I/O、协议校验、adapter 直接 CLI 的通用参数解析、命令分发、输出分流、稳定错误映射和通用进程行为。
 
-共享库只承载协议和进程共性，不定义格式展示字段或跨格式 outline 模型。
+共享库只承载协议和进程共性，不定义格式展示字段、格式原生 options 语义、ref 策略或跨格式 outline 模型。
 
 ## 调用链
 

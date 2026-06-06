@@ -2,12 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { FILE_SYSTEM } from "./config.mjs";
-import { root, toRel, walk } from "./fs-utils.mjs";
+import { toAbs, toRel, walk } from "./fs-utils.mjs";
 
 export function validateMarkdownLinks() {
-  const markdownFiles = walk(root, (filePath) =>
-    filePath.endsWith(FILE_SYSTEM.markdownExtension)
-  );
+  const markdownFiles = markdownFilesForLinkValidation();
   const missing = [];
   const linkPattern = /\[[^\]]+\]\(([^)]+)\)/g;
 
@@ -40,4 +38,30 @@ export function validateMarkdownLinks() {
   }
 
   console.log(`markdown links ok: ${markdownFiles.length} file(s)`);
+}
+
+function markdownFilesForLinkValidation() {
+  const markdownFiles = [];
+  for (const relPath of FILE_SYSTEM.markdownLinkRoots) {
+    const absPath = toAbs(relPath);
+    if (!fs.existsSync(absPath)) {
+      throw new Error(`markdown link validation root is missing: ${relPath}`);
+    }
+
+    const stat = fs.statSync(absPath);
+    if (stat.isDirectory()) {
+      markdownFiles.push(
+        ...walk(absPath, (filePath) => filePath.endsWith(FILE_SYSTEM.markdownExtension))
+      );
+      continue;
+    }
+
+    if (absPath.endsWith(FILE_SYSTEM.markdownExtension)) {
+      markdownFiles.push(absPath);
+    }
+  }
+
+  return [...new Set(markdownFiles)].sort((left, right) =>
+    toRel(left).localeCompare(toRel(right))
+  );
 }

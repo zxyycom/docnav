@@ -46,7 +46,7 @@ pub(crate) mod schema_names {
     pub const PROTOCOL_RESPONSE: &str = "protocol-response.schema.json";
 }
 
-// 稳定错误 message 属于机器协议的一部分，集中定义便于审计文案变化。
+// 稳定错误 message 的默认文案集中在这里；调用方只解析 code 和 details。
 pub(crate) mod stable_error_messages {
     pub const ADAPTER_INVOKE_FAILED: &str = "Adapter invoke failed.";
     pub const ADAPTER_UNAVAILABLE: &str = "Adapter is unavailable.";

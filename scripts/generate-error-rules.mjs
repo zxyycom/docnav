@@ -3,7 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const checkOnly = process.argv.includes("--check");
 
 const paths = {
   source: "docs/protocol/error-rules.json",
@@ -22,7 +21,28 @@ function toAbs(relPath) {
 }
 
 function readJson(relPath) {
-  return JSON.parse(fs.readFileSync(toAbs(relPath), "utf8"));
+  const source = fs.readFileSync(toAbs(relPath), "utf8");
+  try {
+    return JSON.parse(source);
+  } catch (error) {
+    throw new Error(`${relPath} JSON parse failed: ${error.message}`);
+  }
+}
+
+function parseArgs(args) {
+  const options = {
+    checkOnly: false
+  };
+
+  for (const arg of args) {
+    if (arg === "--check" && !options.checkOnly) {
+      options.checkOnly = true;
+      continue;
+    }
+    throw new Error(`unknown argument: ${arg}`);
+  }
+
+  return options;
 }
 
 function validateRules(rules) {
@@ -134,14 +154,14 @@ function generateProtocolResponseSchema(rules) {
   return `${JSON.stringify(schema, null, 2)}\n`;
 }
 
-function writeOrCheck(relPath, content) {
+function writeOrCheck(relPath, content, options) {
   const absPath = toAbs(relPath);
   const current = fs.existsSync(absPath) ? fs.readFileSync(absPath, "utf8") : null;
   if (current === content) {
     return;
   }
 
-  if (checkOnly) {
+  if (options.checkOnly) {
     throw new Error(`${relPath} is out of date; run pnpm run generate:error-rules`);
   }
 
@@ -155,16 +175,26 @@ function assert(condition, message) {
   }
 }
 
-const rules = readJson(paths.source);
-validateRules(rules);
+function main(args) {
+  const options = parseArgs(args);
+  const rules = readJson(paths.source);
+  validateRules(rules);
 
-writeOrCheck(paths.rustMod, generateRustMod());
-writeOrCheck(paths.rustRules, generateRustRules(rules));
-writeOrCheck(paths.jsRules, generateJsRules(rules));
-writeOrCheck(paths.protocolResponseSchema, generateProtocolResponseSchema(rules));
+  writeOrCheck(paths.rustMod, generateRustMod(), options);
+  writeOrCheck(paths.rustRules, generateRustRules(rules), options);
+  writeOrCheck(paths.jsRules, generateJsRules(rules), options);
+  writeOrCheck(paths.protocolResponseSchema, generateProtocolResponseSchema(rules), options);
 
-console.log(
-  checkOnly
-    ? "generated error rules ok"
-    : `generated error rules from ${paths.source}`
-);
+  console.log(
+    options.checkOnly
+      ? "generated error rules ok"
+      : `generated error rules from ${paths.source}`
+  );
+}
+
+try {
+  main(process.argv.slice(2));
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
+}

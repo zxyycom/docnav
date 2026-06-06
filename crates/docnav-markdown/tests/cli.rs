@@ -1,6 +1,7 @@
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::Value;
@@ -26,6 +27,23 @@ fn bin() -> &'static str {
 
 fn run(args: &[&str]) -> Output {
     Command::new(bin()).args(args).output().expect("run CLI")
+}
+
+fn run_with_stdin(args: &[&str], stdin: &str) -> Output {
+    let mut child = Command::new(bin())
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn CLI");
+    child
+        .stdin
+        .as_mut()
+        .expect("stdin pipe")
+        .write_all(stdin.as_bytes())
+        .expect("write stdin");
+    child.wait_with_output().expect("run CLI")
 }
 
 fn path_arg(path: &Path) -> String {
@@ -104,6 +122,52 @@ fn direct_cli_supports_text_readable_json_and_protocol_json() {
 }
 
 #[test]
+fn direct_cli_and_invoke_share_find_execution_result() {
+    let path = write_doc(
+        "shared-find.md",
+        "# Top\nintro\n\n#### Hidden\ntarget\n\n# Next\ntarget\n",
+    );
+    let path = path_arg(&path);
+
+    let direct = run(&[
+        "find",
+        &path,
+        "--query",
+        "target",
+        "--max-heading-level",
+        "3",
+        "--limit-chars",
+        "6000",
+        "--output",
+        "readable-json",
+    ]);
+    assert!(direct.status.success());
+    assert!(direct.stderr.is_empty());
+    let direct_json: Value = serde_json::from_slice(&direct.stdout).expect("direct JSON");
+
+    let request = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "shared-find",
+        "operation": "find",
+        "document": { "path": path },
+        "arguments": {
+            "query": "target",
+            "limit_chars": 6000,
+            "page": 1,
+            "options": { "max_heading_level": 3 }
+        }
+    });
+    let protocol = run_with_stdin(&["invoke"], &request.to_string());
+    assert!(protocol.status.success());
+    assert!(protocol.stderr.is_empty());
+    let protocol_json: Value = serde_json::from_slice(&protocol.stdout).expect("protocol JSON");
+
+    assert_eq!(protocol_json["operation"], "find");
+    assert_eq!(protocol_json["ok"], true);
+    assert_eq!(direct_json, protocol_json["result"]);
+}
+
+#[test]
 fn readable_json_error_keeps_code_details_and_omits_protocol_envelope() {
     let path = write_doc("missing-ref.md", "# Guide\nBody\n");
     let path = path_arg(&path);
@@ -170,6 +234,31 @@ fn text_error_writes_readable_error_to_stdout() {
     assert!(stdout.contains("error: REF_NOT_FOUND"));
     assert!(stdout.contains("details: ref=P:Guide"));
     assert_no_legacy_ordinal_suffix(&stdout);
+}
+
+#[test]
+fn operation_missing_path_before_flag_reports_input_error() {
+    let cases = vec![
+        (
+            vec!["outline", "--output", "text"],
+            "outline requires <path>",
+        ),
+        (vec!["read", "--ref", "L1:Guide"], "read requires <path>"),
+        (vec!["find", "--query", "target"], "find requires <path>"),
+        (vec!["info", "--output", "text"], "info requires <path>"),
+    ];
+
+    for (args, message) in cases {
+        let output = run(&args);
+
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+        assert!(
+            stderr.contains(message),
+            "stderr {stderr:?} should include {message:?}"
+        );
+    }
 }
 
 fn assert_no_legacy_ordinal_suffix(value: &str) {

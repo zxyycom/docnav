@@ -121,7 +121,7 @@ for (const check of checks) {
       check,
       exitCode,
       error: result.error,
-      outputLines: visibleLines
+      outputLines: lines(combined)
     });
     continue;
   }
@@ -227,7 +227,7 @@ function printFailureSummary(passedChecks, failedChecks) {
       console.error(`    ${failure.error.message}`);
     }
     if (failure.outputLines.length === 0) {
-      console.error("    no command output after configured filters");
+      console.error("    no command output");
       continue;
     }
     for (const line of failure.outputLines) {

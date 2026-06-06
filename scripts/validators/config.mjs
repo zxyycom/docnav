@@ -14,6 +14,7 @@ export const FILE_SYSTEM = {
   examplesJsonDir: "docs/examples/json",
   schemasDir: "docs/schemas",
   ignoredDirs: [".git", ".codegraph", "node_modules", "target", ".venv", "dist", "build"],
+  markdownLinkRoots: ["README.md", "docs"],
   jsonExtension: ".json",
   markdownExtension: ".md",
   schemaExtension: ".schema.json"

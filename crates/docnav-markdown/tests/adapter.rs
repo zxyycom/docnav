@@ -5,12 +5,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use docnav_adapter_sdk::{invoke_once, Adapter, AdapterExitCode};
 use docnav_markdown::MarkdownAdapter;
 use docnav_protocol::{
-    positive_result, Document, FindArguments, InfoArguments, Operation, OperationArguments,
-    OutlineArguments, ProtocolResponse, ReadArguments, RequestEnvelope, StableError,
-    StableErrorCode, PROTOCOL_VERSION,
+    positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
+    OperationArguments, Options, OutlineArguments, OutlineResult, PagedOperation, ProtocolResponse,
+    ReadArguments, RequestEnvelope, StableError, StableErrorCode, PROTOCOL_VERSION,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
 
 fn positive(value: u32) -> docnav_protocol::PositiveInteger {
     positive_result(value).expect("positive test integer")
@@ -57,15 +58,62 @@ fn outline_args(limit_chars: u32, page: u32, max_heading_level: Option<u8>) -> O
     OutlineArguments {
         limit_chars: positive(limit_chars),
         page: positive(page),
-        options: max_heading_level.map(|level| {
-            let mut options = docnav_protocol::Options::new();
-            options.insert(
-                "max_heading_level".to_owned(),
-                serde_json::Value::from(level),
-            );
-            options
-        }),
+        options: max_heading_level.map(max_heading_level_options),
     }
+}
+
+fn find_args(
+    query: &str,
+    limit_chars: u32,
+    page: u32,
+    max_heading_level: Option<u8>,
+) -> FindArguments {
+    FindArguments {
+        query: query.to_owned(),
+        limit_chars: positive(limit_chars),
+        page: positive(page),
+        options: max_heading_level.map(max_heading_level_options),
+    }
+}
+
+fn max_heading_level_options(level: u8) -> Options {
+    let mut options = Options::new();
+    options.insert(
+        MAX_HEADING_LEVEL_OPTION.to_owned(),
+        serde_json::Value::from(level),
+    );
+    options
+}
+
+fn recommended_options(operation: PagedOperation) -> Options {
+    MarkdownAdapter
+        .manifest()
+        .recommended_parameters
+        .get(&operation)
+        .and_then(|parameters| parameters.options.clone())
+        .expect("recommended operation options")
+}
+
+fn outline_result(path: &Path, arguments: &OutlineArguments) -> OutlineResult {
+    let request = make_request(
+        path,
+        Operation::Outline,
+        OperationArguments::Outline(arguments.clone()),
+    );
+    MarkdownAdapter
+        .outline(&request, arguments)
+        .expect("outline result")
+}
+
+fn find_result(path: &Path, arguments: &FindArguments) -> FindResult {
+    let request = make_request(
+        path,
+        Operation::Find,
+        OperationArguments::Find(arguments.clone()),
+    );
+    MarkdownAdapter
+        .find(&request, arguments)
+        .expect("find result")
 }
 
 #[test]
@@ -280,58 +328,158 @@ fn read_paginates_unicode_without_splitting_characters() {
 }
 
 #[test]
-fn find_uses_nearest_visible_outline_ref_and_full_fallback() {
-    let path = write_doc("find.md", "# First\nalpha\n\n# Second\ntarget\n");
-    let arguments = FindArguments {
-        query: "target".to_owned(),
-        limit_chars: positive(6000),
-        page: positive(1),
-        options: None,
-    };
-    let request = make_request(
-        &path,
-        Operation::Find,
-        OperationArguments::Find(arguments.clone()),
+fn find_ref_targets_current_visible_region_and_read_contains_match() {
+    let path = write_doc(
+        "find-current-region.md",
+        "# Current\nintro\n\n#### Hidden\ntarget\n\n# Next\nother\n",
     );
-    let result = MarkdownAdapter.find(&request, &arguments).expect("find");
+    let arguments = find_args("target", 6000, 1, Some(3));
+
+    let result = find_result(&path, &arguments);
 
     assert_eq!(result.matches.len(), 1);
-    assert!(result.matches[0].ref_id.starts_with("L4:Second"));
+    assert_eq!(result.matches[0].ref_id, "L1:Current");
     assert!(result.matches[0].display.contains("target"));
 
-    let fallback_path = write_doc("fallback-find.md", "#### Deep\ntarget\n");
-    let fallback_request = make_request(
-        &fallback_path,
-        Operation::Find,
-        OperationArguments::Find(arguments.clone()),
-    );
-    let fallback = MarkdownAdapter
-        .find(&fallback_request, &arguments)
-        .expect("fallback find");
-    assert_eq!(fallback.matches[0].ref_id, "doc:full");
+    let read = read_ref(&path, &result.matches[0].ref_id);
+    assert!(read.content.contains("target"));
+    assert!(!read.content.contains("# Next"));
 }
 
 #[test]
-fn find_paginates_matches() {
-    let path = write_doc("find-pages.md", "# A\ntarget 1\ntarget 2\ntarget 3\n");
-    let arguments = FindArguments {
-        query: "target".to_owned(),
-        limit_chars: positive(24),
-        page: positive(1),
-        options: None,
+fn find_match_before_first_visible_heading_falls_back_to_full_document() {
+    let path = write_doc("find-before-heading.md", "target before\n\n# Later\nbody\n");
+    let arguments = find_args("target before", 6000, 1, Some(3));
+
+    let result = find_result(&path, &arguments);
+
+    assert_eq!(result.matches.len(), 1);
+    assert_eq!(result.matches[0].ref_id, "doc:full");
+
+    let read = read_ref(&path, &result.matches[0].ref_id);
+    assert!(read.content.contains("target before"));
+}
+
+#[test]
+fn find_falls_back_to_full_document_when_no_heading_is_visible() {
+    let path = write_doc("fallback-find.md", "#### Deep\ntarget\n");
+    let arguments = find_args("target", 6000, 1, Some(3));
+
+    let result = find_result(&path, &arguments);
+
+    assert_eq!(result.matches.len(), 1);
+    assert_eq!(result.matches[0].ref_id, "doc:full");
+}
+
+#[test]
+fn outline_paginates_with_response_page_until_end_and_past_end() {
+    let path = write_doc("outline-pages.md", "# A\none\n# B\ntwo\n# C\nthree\n");
+    let first_arguments = outline_args(8, 1, Some(3));
+
+    let first = outline_result(&path, &first_arguments);
+    assert_eq!(entry_refs(&first.entries), vec!["L1:A"]);
+    let second_page = first.page.expect("second page");
+
+    let second_arguments = OutlineArguments {
+        page: second_page,
+        ..first_arguments.clone()
     };
-    let request = make_request(
-        &path,
-        Operation::Find,
-        OperationArguments::Find(arguments.clone()),
+    let second = outline_result(&path, &second_arguments);
+    assert_eq!(entry_refs(&second.entries), vec!["L3:B"]);
+    let third_page = second.page.expect("third page");
+
+    let third_arguments = OutlineArguments {
+        page: third_page,
+        ..first_arguments.clone()
+    };
+    let third = outline_result(&path, &third_arguments);
+    assert_eq!(entry_refs(&third.entries), vec!["L5:C"]);
+    assert_eq!(third.page, None);
+
+    let past_end_arguments = OutlineArguments {
+        page: positive(4),
+        ..first_arguments
+    };
+    let past_end = outline_result(&path, &past_end_arguments);
+    assert!(past_end.entries.is_empty());
+    assert_eq!(past_end.page, None);
+}
+
+#[test]
+fn find_paginates_with_response_page_until_end_and_past_end() {
+    let path = write_doc(
+        "find-pages.md",
+        "# A\ntarget 1\n# B\ntarget 2\n# C\ntarget 3\n",
+    );
+    let first_arguments = find_args("target", 10, 1, Some(3));
+
+    let first = find_result(&path, &first_arguments);
+    assert_eq!(entry_refs(&first.matches), vec!["L1:A"]);
+    let second_page = first.page.expect("second page");
+
+    let second_arguments = FindArguments {
+        page: second_page,
+        ..first_arguments.clone()
+    };
+    let second = find_result(&path, &second_arguments);
+    assert_eq!(entry_refs(&second.matches), vec!["L3:B"]);
+    let third_page = second.page.expect("third page");
+
+    let third_arguments = FindArguments {
+        page: third_page,
+        ..first_arguments.clone()
+    };
+    let third = find_result(&path, &third_arguments);
+    assert_eq!(entry_refs(&third.matches), vec!["L5:C"]);
+    assert_eq!(third.page, None);
+
+    let past_end_arguments = FindArguments {
+        page: positive(4),
+        ..first_arguments
+    };
+    let past_end = find_result(&path, &past_end_arguments);
+    assert!(past_end.matches.is_empty());
+    assert_eq!(past_end.page, None);
+}
+
+#[test]
+fn manifest_recommended_options_shape_outline_and_find_granularity() {
+    let path = write_doc("recommended-options.md", "# Top\n\n#### Deep\nneedle\n");
+    let recommended_outline = OutlineArguments {
+        limit_chars: positive(6000),
+        page: positive(1),
+        options: Some(recommended_options(PagedOperation::Outline)),
+    };
+    let expanded_outline = OutlineArguments {
+        options: Some(max_heading_level_options(4)),
+        ..recommended_outline.clone()
+    };
+
+    let recommended = outline_result(&path, &recommended_outline);
+    assert_eq!(entry_refs(&recommended.entries), vec!["L1:Top"]);
+
+    let expanded = outline_result(&path, &expanded_outline);
+    assert_eq!(
+        entry_refs(&expanded.entries),
+        vec!["L1:Top", "L3:Top > Deep"]
     );
 
-    let first = MarkdownAdapter
-        .find(&request, &arguments)
-        .expect("find page");
+    let recommended_find = FindArguments {
+        query: "needle".to_owned(),
+        limit_chars: positive(6000),
+        page: positive(1),
+        options: Some(recommended_options(PagedOperation::Find)),
+    };
+    let expanded_find = FindArguments {
+        options: Some(max_heading_level_options(4)),
+        ..recommended_find.clone()
+    };
 
-    assert_eq!(first.matches.len(), 1);
-    assert_eq!(first.page, Some(positive(2)));
+    let recommended_matches = find_result(&path, &recommended_find);
+    assert_eq!(entry_refs(&recommended_matches.matches), vec!["L1:Top"]);
+
+    let expanded_matches = find_result(&path, &expanded_find);
+    assert_eq!(entry_refs(&expanded_matches.matches), vec!["L3:Top > Deep"]);
 }
 
 #[test]
@@ -402,6 +550,10 @@ fn invoke_writes_protocol_envelope() {
         }
         ProtocolResponse::Failure(_) => panic!("expected success"),
     }
+}
+
+fn entry_refs(entries: &[docnav_protocol::Entry]) -> Vec<&str> {
+    entries.iter().map(|entry| entry.ref_id.as_str()).collect()
 }
 
 fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {

@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde_json::Value;
 use std::io::Write;
 
+use crate::adapter::AdapterBoundaryError;
 use crate::constants::{diagnostics, json_labels};
 use crate::AdapterExitCode;
 
@@ -156,4 +157,12 @@ where
 
 pub fn emit_diagnostic<W: Write>(stderr: &mut W, message: &str) -> std::io::Result<()> {
     writeln!(stderr, "{message}")
+}
+
+pub(crate) fn write_adapter_boundary_error<E: Write>(
+    error: &AdapterBoundaryError,
+    stderr: &mut E,
+) -> i32 {
+    let _ = emit_diagnostic(stderr, &format!("{}: {error}", error.diagnostic()));
+    AdapterExitCode::ProtocolError.code()
 }

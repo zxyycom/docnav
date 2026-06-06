@@ -55,7 +55,11 @@ const invalidValuesByType = Object.freeze({
 
 const commandSpecs = Object.freeze({
   outline: Object.freeze({
-    path: Object.freeze({ required: true, missingStderr: "outline requires <path>" }),
+    path: Object.freeze({
+      required: true,
+      missingStderr: "outline requires <path>",
+      missingBeforeFlagArgs: Object.freeze(["--output", "text"])
+    }),
     requiredFlags: Object.freeze([]),
     allowedFlags: Object.freeze({
       "--page": Object.freeze({ type: "positiveInt", sample: "1", coverMissingValue: true, coverInvalidValues: true }),
@@ -77,7 +81,11 @@ const commandSpecs = Object.freeze({
     ])
   }),
   read: Object.freeze({
-    path: Object.freeze({ required: true, missingStderr: "read requires <path>" }),
+    path: Object.freeze({
+      required: true,
+      missingStderr: "read requires <path>",
+      missingBeforeFlagArgs: Object.freeze(["--ref", "$ref"])
+    }),
     requiredFlags: Object.freeze([
       Object.freeze({ flag: "--ref", missingStderr: "read requires --ref <ref>" })
     ]),
@@ -96,7 +104,11 @@ const commandSpecs = Object.freeze({
     ])
   }),
   find: Object.freeze({
-    path: Object.freeze({ required: true, missingStderr: "find requires <path>" }),
+    path: Object.freeze({
+      required: true,
+      missingStderr: "find requires <path>",
+      missingBeforeFlagArgs: Object.freeze(["--query", "target"])
+    }),
     requiredFlags: Object.freeze([
       Object.freeze({ flag: "--query", missingStderr: "find requires --query <text>" })
     ]),
@@ -116,7 +128,11 @@ const commandSpecs = Object.freeze({
     ])
   }),
   info: Object.freeze({
-    path: Object.freeze({ required: true, missingStderr: "info requires <path>" }),
+    path: Object.freeze({
+      required: true,
+      missingStderr: "info requires <path>",
+      missingBeforeFlagArgs: Object.freeze(["--output", "text"])
+    }),
     requiredFlags: Object.freeze([]),
     allowedFlags: Object.freeze({
       "--output": Object.freeze({ type: "output", sample: "readable-json" })
@@ -144,7 +160,11 @@ const commandSpecs = Object.freeze({
     ])
   }),
   probe: Object.freeze({
-    path: Object.freeze({ required: true, missingStderr: "probe requires <path>" }),
+    path: Object.freeze({
+      required: true,
+      missingStderr: "probe requires <path>",
+      missingBeforeFlagArgs: Object.freeze(["--output", "protocol-json"])
+    }),
     requiredFlags: Object.freeze([]),
     allowedFlags: Object.freeze({
       "--output": Object.freeze({ type: "protocolOutput", sample: "protocol-json" })
@@ -195,6 +215,13 @@ export function generateCliArgumentFailureCases(normal, ref) {
         args: [command],
         stderr: spec.path.missingStderr
       });
+      if (spec.path.missingBeforeFlagArgs) {
+        cases.push({
+          name: `${command} missing path before flag`,
+          args: [command, ...resolveCliArgs(spec.path.missingBeforeFlagArgs, context)],
+          stderr: spec.path.missingStderr
+        });
+      }
     }
 
     for (const requiredFlag of spec.requiredFlags) {
@@ -268,6 +295,10 @@ function cliSampleValue(flagSpec, context) {
     return context.ref;
   }
   return flagSpec.sample;
+}
+
+function resolveCliArgs(args, context) {
+  return args.map((arg) => (arg === "$ref" ? context.ref : arg));
 }
 
 function cliInvalidValueCaseName(command, flag, invalid) {

@@ -6,8 +6,9 @@ use docnav_protocol::{
 use serde_json::Value;
 use std::io::{Read, Write};
 
+use crate::adapter::validated_manifest;
 use crate::constants::{diagnostics, fields};
-use crate::output::{emit_diagnostic, write_protocol_response};
+use crate::output::{emit_diagnostic, write_adapter_boundary_error, write_protocol_response};
 use crate::{Adapter, AdapterExitCode, AdapterResult};
 
 pub fn invoke_once<A, R, W, E>(adapter: &A, mut stdin: R, mut stdout: W, mut stderr: E) -> i32
@@ -17,7 +18,11 @@ where
     W: Write,
     E: Write,
 {
-    let supported = adapter.manifest().protocol;
+    let manifest = match validated_manifest(adapter) {
+        Ok(manifest) => manifest,
+        Err(error) => return write_adapter_boundary_error(&error, &mut stderr),
+    };
+    let supported = manifest.protocol;
     let mut input = String::new();
     if let Err(error) = stdin.read_to_string(&mut input) {
         let response = ProtocolResponse::Failure(FailureResponse::unparsed(
@@ -135,7 +140,7 @@ where
         );
     }
 
-    match dispatch_operation(adapter, &request) {
+    match execute_operation(adapter, &request) {
         Ok(result) => {
             let response = ProtocolResponse::success(
                 request.protocol_version.clone(),
@@ -157,7 +162,7 @@ where
     }
 }
 
-fn dispatch_operation<A: Adapter>(
+pub fn execute_operation<A: Adapter>(
     adapter: &A,
     request: &RequestEnvelope,
 ) -> AdapterResult<OperationResult> {

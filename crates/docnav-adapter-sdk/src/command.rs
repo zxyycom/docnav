@@ -1,6 +1,7 @@
 use std::io::{Read, Write};
 
-use crate::output::{write_manifest_json, write_probe_json};
+use crate::adapter::{validated_manifest, validated_probe};
+use crate::output::{write_adapter_boundary_error, write_manifest_json, write_probe_json};
 use crate::{invoke_once, Adapter};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -15,7 +16,7 @@ pub fn run_command<A, R, W, E>(
     command: SdkCommand,
     stdin: R,
     stdout: W,
-    stderr: E,
+    mut stderr: E,
 ) -> i32
 where
     A: Adapter,
@@ -24,8 +25,20 @@ where
     E: Write,
 {
     match command {
-        SdkCommand::Manifest => write_manifest_json(adapter.manifest(), stdout, stderr),
-        SdkCommand::Probe { path } => write_probe_json(adapter.probe(&path), stdout, stderr),
+        SdkCommand::Manifest => match validated_manifest(adapter) {
+            Ok(manifest) => write_manifest_json(manifest, stdout, stderr),
+            Err(error) => write_adapter_boundary_error(&error, &mut stderr),
+        },
+        SdkCommand::Probe { path } => {
+            let manifest = match validated_manifest(adapter) {
+                Ok(manifest) => manifest,
+                Err(error) => return write_adapter_boundary_error(&error, &mut stderr),
+            };
+            match validated_probe(adapter, &manifest, &path) {
+                Ok(probe) => write_probe_json(probe, stdout, stderr),
+                Err(error) => write_adapter_boundary_error(&error, &mut stderr),
+            }
+        }
         SdkCommand::Invoke => invoke_once(adapter, stdin, stdout, stderr),
     }
 }

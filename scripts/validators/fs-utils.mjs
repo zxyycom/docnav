@@ -35,7 +35,12 @@ export function walk(dir, predicate = () => true) {
 }
 
 export function readJson(relPath) {
-  return JSON.parse(fs.readFileSync(toAbs(relPath), "utf8"));
+  const source = fs.readFileSync(toAbs(relPath), "utf8");
+  try {
+    return JSON.parse(source);
+  } catch (error) {
+    throw new Error(`${relPath} JSON parse failed: ${error.message}`);
+  }
 }
 
 export function listExampleJson(pattern) {

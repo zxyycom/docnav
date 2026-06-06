@@ -21,6 +21,8 @@ pub const FORMAT_ID_MARKDOWN: &str = "markdown";
 pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
 pub const DEFAULT_LIMIT_CHARS: u32 = 6000;
 pub const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
+// Markdown adapter 原生 option key，来自 adapter 契约；接入层只原样传递。
+pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MarkdownAdapter;
@@ -196,36 +198,10 @@ impl Adapter for MarkdownAdapter {
     }
 }
 
-pub fn direct_outline_arguments(
-    limit_chars: docnav_protocol::PositiveInteger,
-    page: docnav_protocol::PositiveInteger,
-    max_heading_level: u8,
-) -> OutlineArguments {
-    OutlineArguments {
-        limit_chars,
-        page,
-        options: Some(max_heading_options(max_heading_level)),
-    }
-}
-
-pub fn direct_find_arguments(
-    query: String,
-    limit_chars: docnav_protocol::PositiveInteger,
-    page: docnav_protocol::PositiveInteger,
-    max_heading_level: u8,
-) -> FindArguments {
-    FindArguments {
-        query,
-        limit_chars,
-        page,
-        options: Some(max_heading_options(max_heading_level)),
-    }
-}
-
 fn max_heading_options(max_heading_level: u8) -> Options {
     let mut options = Options::new();
     options.insert(
-        "max_heading_level".to_owned(),
+        MAX_HEADING_LEVEL_OPTION.to_owned(),
         Value::from(max_heading_level),
     );
     options

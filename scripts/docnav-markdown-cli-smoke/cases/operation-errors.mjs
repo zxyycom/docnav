@@ -16,14 +16,16 @@ import { validateSchema } from "../schemas.mjs";
 
 export function testReadableOperationErrors() {
   const normal = fixture("normal.md");
+  const missingPath = path.join(fixturesDir, "missing.md");
   const missingRef = "L99:Missing";
   const legacyOrdinalRef = legacyBracketedOrdinalRef();
   const cases = [
     {
       name: "missing file readable-json",
-      args: ["outline", path.join(fixturesDir, "missing.md"), "--output", "readable-json"],
+      args: ["outline", missingPath, "--output", "readable-json"],
       code: "DOCUMENT_NOT_FOUND",
-      detailKey: "path"
+      detailKey: "path",
+      detailValue: missingPath
     },
     {
       name: "missing ref readable-json",
@@ -65,9 +67,18 @@ export function testReadableOperationErrors() {
 
 export function testProtocolOperationErrors() {
   const normal = fixture("normal.md");
+  const missingPath = path.join(fixturesDir, "missing.md");
   const missingRef = "L99:Missing";
   const legacyOrdinalRef = legacyBracketedOrdinalRef();
   const cases = [
+    {
+      name: "missing file protocol-json",
+      args: ["outline", missingPath, "--output", "protocol-json"],
+      operation: "outline",
+      code: "DOCUMENT_NOT_FOUND",
+      detailKey: "path",
+      detailValue: missingPath
+    },
     {
       name: "missing ref protocol-json",
       args: ["read", normal, "--ref", missingRef, "--output", "protocol-json"],

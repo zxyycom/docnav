@@ -1,5 +1,4 @@
 import Ajv2020 from "ajv/dist/2020.js";
-import fs from "node:fs";
 
 import {
   assert,
@@ -7,6 +6,7 @@ import {
   listSchemaJson,
   readJson,
   toAbs,
+  toRel,
   walk
 } from "./fs-utils.mjs";
 import {
@@ -119,7 +119,7 @@ export function validateJsonSyntax() {
     filePath.endsWith(FILE_SYSTEM.jsonExtension)
   );
   for (const filePath of jsonFiles) {
-    JSON.parse(fs.readFileSync(filePath, "utf8"));
+    readJson(toRel(filePath));
   }
   console.log(`json syntax ok: ${jsonFiles.length} file(s)`);
 }

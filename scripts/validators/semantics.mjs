@@ -95,11 +95,24 @@ function validateExampleBudget(operation, request, result) {
 
   const records =
     operation === OPERATION_NAMES.outline ? result[FIELDS.entries] : result[FIELDS.matches];
-  const totalChars = records.reduce(
-    (sum, record) => sum + charLength(record[FIELDS.ref]) + charLength(record[FIELDS.display]),
-    0
+  const recordSizes = records.map((record) => ({
+    ref: charLength(record[FIELDS.ref]),
+    display: charLength(record[FIELDS.display])
+  }));
+  const totalChars = recordSizes.reduce((sum, record) => sum + record.ref + record.display, 0);
+  if (totalChars <= limit) {
+    return;
+  }
+
+  const oversizedRefRecords = recordSizes.filter((record) => record.ref > limit);
+  assert(
+    records.length === 1 && oversizedRefRecords.length === 1,
+    `${operation} ref + display exceeds limit_chars in example without single oversized ref exception`
   );
-  assert(totalChars <= limit, `${operation} ref + display exceeds limit_chars in example`);
+  assert(
+    recordSizes[0].display > 0 && recordSizes[0].display <= limit,
+    `${operation} oversized ref example display must be readable and fit limit_chars`
+  );
 }
 
 function validateProtocolReadableMappings() {
