@@ -6,12 +6,14 @@ use docnav_protocol::{
 };
 
 use super::args::{
-    parse_operation_options, parse_probe, parse_protocol_only_options, NativeOptionSpec,
+    parse_operation_options, parse_probe, parse_protocol_only_options, DirectOperationOptions,
 };
+use super::native_options::NativeOptionSpec;
 use super::output::{
     append_cli_warnings_to_stderr, handler_error, write_operation_output, DirectOutputMode,
     DirectTextFormatter,
 };
+use super::warnings::DirectCliWarning;
 use crate::{emit_diagnostic, execute_operation, invoke_once, run_command, Adapter, SdkCommand};
 
 pub struct DirectCliConfig<'a, T> {
@@ -155,7 +157,7 @@ where
 
 fn operation_request(
     operation: Operation,
-    options: super::DirectOperationOptions,
+    options: DirectOperationOptions,
     request_id: &str,
 ) -> Result<RequestEnvelope, String> {
     let path = options.path.clone();
@@ -206,7 +208,7 @@ fn run_operation_request<A, T, W, E>(
     request: &RequestEnvelope,
     output: DirectOutputMode,
     text_formatter: &T,
-    warnings: &[super::args::DirectCliWarning],
+    warnings: &[DirectCliWarning],
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32

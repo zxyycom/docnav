@@ -10,65 +10,14 @@
     "entries": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "ref",
-          "display"
-        ],
-        "properties": {
-          "ref": {
-            "type": "string",
-            "minLength": 1
-          },
-          "display": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "additionalProperties": false
+        "$ref": "readable-common.schema.json#/$defs/entry"
       }
     },
     "page": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "minimum": 1
+      "$ref": "readable-common.schema.json#/$defs/page"
     },
     "warnings": {
-      "$ref": "#/$defs/warnings"
-    }
-  },
-  "$defs": {
-    "warnings": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "ignored_tokens",
-          "kind",
-          "reason"
-        ],
-        "properties": {
-          "ignored_tokens": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1
-          },
-          "kind": {
-            "type": "string",
-            "minLength": 1
-          },
-          "reason": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "additionalProperties": false
-      }
+      "$ref": "readable-common.schema.json#/$defs/warnings"
     }
   },
   "additionalProperties": false

@@ -1,5 +1,3 @@
-import Ajv2020 from "ajv/dist/2020.js";
-
 import {
   assert,
   listExampleJson,
@@ -17,15 +15,20 @@ import {
   REQUIRED_ERROR_DETAILS_BY_CODE,
   SCHEMAS
 } from "./config.mjs";
+import {
+  compileRegisteredSchema,
+  createSchemaAjv,
+  formatAjvErrors
+} from "./schema-registry.mjs";
 
-export function formatAjvErrors(validate) {
-  return (validate.errors ?? [])
-    .map((error) => `${error.instancePath || "/"} ${error.message}`)
-    .join("; ");
-}
+export {
+  compileRegisteredSchema,
+  createSchemaAjv,
+  formatAjvErrors
+} from "./schema-registry.mjs";
 
 function validateWithSchema(ajv, schemaRelPath, dataRelPaths) {
-  const validate = ajv.compile(readJson(schemaRelPath));
+  const validate = compileRegisteredSchema(ajv, schemaRelPath);
   for (const dataRelPath of dataRelPaths) {
     const data = readJson(dataRelPath);
     if (!validate(data)) {
@@ -37,32 +40,22 @@ function validateWithSchema(ajv, schemaRelPath, dataRelPaths) {
 
 function validateStrictSchemaCompilation() {
   const schemaRelPaths = listSchemaJson();
-  const expectedSchemas = [
-    SCHEMAS.protocolRequest,
-    SCHEMAS.protocolResponse,
-    SCHEMAS.manifest,
-    SCHEMAS.probeResult,
-    SCHEMAS.readableOutline,
-    SCHEMAS.readableRead,
-    SCHEMAS.readableFind,
-    SCHEMAS.readableInfo,
-    SCHEMAS.readableError
-  ];
+  const expectedSchemas = Object.values(SCHEMAS);
 
   for (const expected of expectedSchemas) {
     assert(schemaRelPaths.includes(expected), `missing expected schema ${expected}`);
   }
 
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  const ajv = createSchemaAjv();
   for (const schemaRelPath of schemaRelPaths) {
-    ajv.compile(readJson(schemaRelPath));
+    compileRegisteredSchema(ajv, schemaRelPath);
   }
   console.log(`schema strict compile ok: ${schemaRelPaths.length} schema file(s)`);
 }
 
 function validateProtocolResponseBindingSchema() {
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
-  const validate = ajv.compile(readJson(SCHEMAS.protocolResponse));
+  const ajv = createSchemaAjv();
+  const validate = compileRegisteredSchema(ajv, SCHEMAS.protocolResponse);
   const mismatched = JSON.parse(JSON.stringify(readJson(EXAMPLES.protocolReadResponse)));
   mismatched[FIELDS.operation] = OPERATION_NAMES.outline;
 
@@ -74,8 +67,8 @@ function validateProtocolResponseBindingSchema() {
 }
 
 function validateProtocolResponseErrorDetailsSchema() {
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
-  const validate = ajv.compile(readJson(SCHEMAS.protocolResponse));
+  const ajv = createSchemaAjv();
+  const validate = compileRegisteredSchema(ajv, SCHEMAS.protocolResponse);
 
   for (const [code, requiredDetails] of Object.entries(REQUIRED_ERROR_DETAILS_BY_CODE)) {
     const validResponse = protocolErrorResponse(
@@ -126,7 +119,7 @@ export function validateJsonSyntax() {
 
 export function validateSchemas() {
   validateStrictSchemaCompilation();
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  const ajv = createSchemaAjv();
   const cases = [
     {
       schema: SCHEMAS.protocolRequest,

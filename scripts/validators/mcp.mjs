@@ -1,5 +1,3 @@
-import Ajv2020 from "ajv/dist/2020.js";
-
 import { assert, readJson } from "./fs-utils.mjs";
 import {
   FIELDS,
@@ -7,10 +5,10 @@ import {
   MCP_STRUCTURED_CONTENT_FORBIDDEN_FIELDS,
   READABLE_SCHEMA_BY_OPERATION
 } from "./config.mjs";
-import { formatAjvErrors } from "./schema.mjs";
+import { compileRegisteredSchema, createSchemaAjv, formatAjvErrors } from "./schema-registry.mjs";
 
 export function validateMcpStructuredContent() {
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  const ajv = createSchemaAjv();
   const cases = Object.entries(READABLE_SCHEMA_BY_OPERATION).map(([operation, schema]) => [
     MCP_EXAMPLE_FILE.response(operation),
     schema
@@ -25,7 +23,7 @@ export function validateMcpStructuredContent() {
       assert(!(field in structuredContent), `${responseRelPath} leaks ${field} in structuredContent`);
     }
 
-    const validate = ajv.compile(readJson(schemaRelPath));
+    const validate = compileRegisteredSchema(ajv, schemaRelPath);
     if (!validate(structuredContent)) {
       throw new Error(`${responseRelPath} structuredContent failed ${schemaRelPath}: ${formatAjvErrors(validate)}`);
     }

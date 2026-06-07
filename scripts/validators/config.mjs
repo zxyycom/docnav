@@ -30,6 +30,7 @@ export const SCHEMAS = {
   readableFind: "docs/schemas/readable-find.schema.json",
   readableInfo: "docs/schemas/readable-info.schema.json",
   readableOutline: "docs/schemas/readable-outline.schema.json",
+  readableCommon: "docs/schemas/readable-common.schema.json",
   readableRead: "docs/schemas/readable-read.schema.json"
 };
 

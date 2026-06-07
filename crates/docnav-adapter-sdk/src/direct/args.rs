@@ -1,112 +1,52 @@
 use docnav_protocol::{positive_result, Operation, Options, PositiveInteger};
-use serde::Serialize;
 use serde_json::Value;
 
+use super::native_options::{NativeOptionDefault, NativeOptionSpec};
 use super::output::DirectOutputMode;
+use super::warnings::DirectCliWarning;
 
 // 直接 CLI flag 来自 CLI/adapter-contract 主规范；只在 SDK direct CLI 边界解析使用。
 mod flags {
-    pub const LIMIT_CHARS: &str = "--limit-chars";
-    pub const OUTPUT: &str = "--output";
-    pub const PAGE: &str = "--page";
-    pub const QUERY: &str = "--query";
-    pub const REF: &str = "--ref";
+    pub(super) const LIMIT_CHARS: &str = "--limit-chars";
+    pub(super) const OUTPUT: &str = "--output";
+    pub(super) const PAGE: &str = "--page";
+    pub(super) const QUERY: &str = "--query";
+    pub(super) const REF: &str = "--ref";
 }
 
 // 直接 CLI 输出模式字符串来自 CLI 主规范；protocol 层不复用这些阅读输出标签。
 mod output_values {
-    pub const PROTOCOL_JSON: &str = "protocol-json";
-    pub const READABLE_JSON: &str = "readable-json";
-    pub const TEXT: &str = "text";
+    pub(super) const PROTOCOL_JSON: &str = "protocol-json";
+    pub(super) const READABLE_JSON: &str = "readable-json";
+    pub(super) const TEXT: &str = "text";
 }
 
 // 这些命令标签只用于直接 CLI warning reason，不参与 protocol operation 枚举。
 mod command_labels {
-    pub const MANIFEST: &str = "manifest";
-    pub const PROBE: &str = "probe";
-}
-
-// Warning kind 是 readable/MCP warning schema 的稳定取值。
-mod warning_kinds {
-    pub const EXTRA_POSITIONAL: &str = "extra_positional";
-    pub const UNKNOWN_FLAG: &str = "unknown_flag";
-    pub const UNUSED_OPERATION_FLAG: &str = "unused_operation_flag";
-}
-
-// Warning reason 是用户可见诊断文本，集中后避免 parser/output 测试漂移。
-mod warning_reasons {
-    pub const EXTRA_POSITIONAL_IGNORED: &str = "extra positional argument ignored";
-    pub const UNKNOWN_FLAG_IGNORED: &str = "unknown CLI flag ignored";
-
-    pub fn unused_operation_flag(command: &str) -> String {
-        format!("flag is not used by {command} command")
-    }
+    pub(super) const MANIFEST: &str = "manifest";
+    pub(super) const PROBE: &str = "probe";
 }
 
 // 输入错误文案属于直接 CLI 边界诊断，不进入 protocol schema。
 mod input_errors {
-    pub const PROTOCOL_OUTPUT_ONLY: &str =
+    pub(super) const PROTOCOL_OUTPUT_ONLY: &str =
         "only --output protocol-json is supported for this command";
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NativeOptionValueSpec {
-    IntegerRange { min: u64, max: u64 },
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NativeOptionDefault {
-    Integer(u64),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct NativeOptionSpec {
-    pub flag: &'static str,
-    pub option_key: &'static str,
-    pub operations: &'static [Operation],
-    pub value: NativeOptionValueSpec,
-    pub default: Option<NativeOptionDefault>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub(crate) struct DirectCliWarning {
-    pub ignored_tokens: Vec<String>,
-    pub kind: DirectCliWarningKind,
-    pub reason: String,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum DirectCliWarningKind {
-    UnknownFlag,
-    ExtraPositional,
-    UnusedOperationFlag,
-}
-
-impl DirectCliWarningKind {
-    pub(crate) const fn as_str(self) -> &'static str {
-        match self {
-            Self::UnknownFlag => warning_kinds::UNKNOWN_FLAG,
-            Self::ExtraPositional => warning_kinds::EXTRA_POSITIONAL,
-            Self::UnusedOperationFlag => warning_kinds::UNUSED_OPERATION_FLAG,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
-pub(crate) struct DirectOperationOptions {
-    pub path: String,
-    pub page: PositiveInteger,
-    pub limit_chars: PositiveInteger,
-    pub output: DirectOutputMode,
-    pub ref_id: Option<String>,
-    pub query: Option<String>,
-    pub warnings: Vec<DirectCliWarning>,
+pub(super) struct DirectOperationOptions {
+    pub(super) path: String,
+    pub(super) page: PositiveInteger,
+    pub(super) limit_chars: PositiveInteger,
+    pub(super) output: DirectOutputMode,
+    pub(super) ref_id: Option<String>,
+    pub(super) query: Option<String>,
+    pub(super) warnings: Vec<DirectCliWarning>,
     native_options: Options,
 }
 
 impl DirectOperationOptions {
-    pub(crate) fn protocol_options(&self) -> Option<Options> {
+    pub(super) fn protocol_options(&self) -> Option<Options> {
         if self.native_options.is_empty() {
             None
         } else {
@@ -115,12 +55,12 @@ impl DirectOperationOptions {
     }
 }
 
-pub(crate) struct DirectProbeOptions {
-    pub path: String,
-    pub warnings: Vec<DirectCliWarning>,
+pub(super) struct DirectProbeOptions {
+    pub(super) path: String,
+    pub(super) warnings: Vec<DirectCliWarning>,
 }
 
-pub(crate) fn parse_protocol_only_options(
+pub(super) fn parse_protocol_only_options(
     args: &[String],
     native_options: &[NativeOptionSpec],
 ) -> Result<Vec<DirectCliWarning>, String> {
@@ -151,7 +91,7 @@ pub(crate) fn parse_protocol_only_options(
     Ok(warnings)
 }
 
-pub(crate) fn parse_probe(
+pub(super) fn parse_probe(
     args: &[String],
     native_options: &[NativeOptionSpec],
 ) -> Result<DirectProbeOptions, String> {
@@ -189,7 +129,7 @@ pub(crate) fn parse_probe(
     Ok(DirectProbeOptions { path, warnings })
 }
 
-pub(crate) fn parse_operation_options(
+pub(super) fn parse_operation_options(
     operation: Operation,
     args: &[String],
     default_limit_chars: u32,
@@ -243,26 +183,6 @@ pub(crate) fn parse_operation_options(
         warnings,
         native_options: options.native_options,
     })
-}
-
-impl NativeOptionSpec {
-    fn supports(&self, operation: Operation) -> bool {
-        self.operations.contains(&operation)
-    }
-
-    fn parse_value(&self, value: &str) -> Result<Value, String> {
-        match self.value {
-            NativeOptionValueSpec::IntegerRange { min, max } => {
-                let parsed = value
-                    .parse::<u64>()
-                    .map_err(|_| integer_range_error(self.flag, min, max))?;
-                if parsed < min || parsed > max {
-                    return Err(integer_range_error(self.flag, min, max));
-                }
-                Ok(Value::from(parsed))
-            }
-        }
-    }
 }
 
 struct DirectOperationOptionAccumulator {
@@ -382,28 +302,16 @@ fn parse_positive(value: &str, flag: &str) -> Result<PositiveInteger, String> {
     positive_result(raw).map_err(|_| format!("{flag} must be a positive integer"))
 }
 
-fn integer_range_error(flag: &str, min: u64, max: u64) -> String {
-    format!("{flag} must be an integer from {min} to {max}")
-}
-
 fn is_flag(value: &str) -> bool {
     value.starts_with("--")
 }
 
 fn push_unknown_warning(warnings: &mut Vec<DirectCliWarning>, token: &str) {
-    warnings.push(DirectCliWarning {
-        ignored_tokens: vec![token.to_owned()],
-        kind: DirectCliWarningKind::UnknownFlag,
-        reason: warning_reasons::UNKNOWN_FLAG_IGNORED.to_owned(),
-    });
+    warnings.push(DirectCliWarning::unknown_flag(token));
 }
 
 fn push_extra_positional_warning(warnings: &mut Vec<DirectCliWarning>, token: &str) {
-    warnings.push(DirectCliWarning {
-        ignored_tokens: vec![token.to_owned()],
-        kind: DirectCliWarningKind::ExtraPositional,
-        reason: warning_reasons::EXTRA_POSITIONAL_IGNORED.to_owned(),
-    });
+    warnings.push(DirectCliWarning::extra_positional(token));
 }
 
 fn push_unused_warning(
@@ -412,19 +320,17 @@ fn push_unused_warning(
     value: Option<&String>,
     command: &str,
 ) {
-    let mut ignored_tokens = vec![flag.to_owned()];
-    if let Some(value) = value {
-        ignored_tokens.push(value.clone());
-    }
-    warnings.push(DirectCliWarning {
-        ignored_tokens,
-        kind: DirectCliWarningKind::UnusedOperationFlag,
-        reason: warning_reasons::unused_operation_flag(command),
-    });
+    warnings.push(DirectCliWarning::unused_operation_flag(
+        flag,
+        value.map(String::as_str),
+        command,
+    ));
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::warnings::DirectCliWarningKind;
+    use super::super::NativeOptionValueSpec;
     use super::*;
 
     const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
@@ -449,11 +355,7 @@ mod tests {
         assert_eq!(options.path, "doc.md");
         assert_eq!(
             options.warnings,
-            vec![DirectCliWarning {
-                ignored_tokens: vec!["--future".to_owned()],
-                kind: DirectCliWarningKind::UnknownFlag,
-                reason: warning_reasons::UNKNOWN_FLAG_IGNORED.to_owned(),
-            }]
+            vec![DirectCliWarning::unknown_flag("--future")]
         );
     }
 

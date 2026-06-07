@@ -20,10 +20,15 @@
 | [readable-find.schema.json](readable-find.schema.json) | CLI readable JSON、MCP find structuredContent |
 | [readable-info.schema.json](readable-info.schema.json) | CLI readable JSON、MCP info structuredContent |
 | [readable-error.schema.json](readable-error.schema.json) | CLI/MCP 精简错误 |
+| [readable-common.schema.json](readable-common.schema.json) | readable/MCP schema 共享 `$defs` |
 
 原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例、MCP tool 声明和实现自测，不表示 readable 输出是长期机器解析协议。
 
 operation readable schema 和 MCP structuredContent outputSchema 可包含顶层 `warnings` 数组，用于承载直接 CLI argv 兼容性 warning。protocol response、manifest 和 probe schema 不包含 CLI warning 字段；这些机器输出存在 CLI warning 时由 stderr 承载。
+
+`readable-common.schema.json` 提供 readable/MCP 复用的 `capability`、`entry`、`page`、`warning` 和 `warnings` 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义；发布 MCP tool `outputSchema` 时仍必须内联或随工具声明打包，不能要求 client 远程解析 schema URL。
+
+本仓库的 docs validator 和 Markdown smoke 会先预加载 `docs/schemas/` 下的 schema，再按 `$id` 编译入口 schema；新增跨文件 `$ref` 时，应保持同目录相对引用，并为被引用 schema 设置稳定 `$id`。
 
 `scripts/validate-docs.mjs semantics` 对文档示例执行补充语义校验：协议 request/response 的 `protocol_version`、`request_id` 和 `operation` 必须配对；非 null page 必须是请求 page 加 1；示例阅读负载必须符合 `limit_chars`；protocol result、readable JSON 和 MCP structuredContent 必须保持同一业务语义；错误示例必须包含协议表声明的 required details 字段；Markdown manifest 示例必须声明 `outline`、`read`、`find` 和 `info` 全部能力。
 

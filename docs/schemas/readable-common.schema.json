@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/readable-common.schema.json",
+  "$defs": {
+    "capability": {
+      "enum": [
+        "outline",
+        "read",
+        "find",
+        "info"
+      ]
+    },
+    "entry": {
+      "type": "object",
+      "required": [
+        "ref",
+        "display"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "display": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "page": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "warning": {
+      "type": "object",
+      "required": [
+        "ignored_tokens",
+        "kind",
+        "reason"
+      ],
+      "properties": {
+        "ignored_tokens": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/warning"
+      }
+    }
+  }
+}

@@ -6,14 +6,14 @@ use serde::Serialize;
 use crate::constants::diagnostics;
 use crate::{emit_diagnostic, AdapterError, AdapterExitCode};
 
-use super::args::DirectCliWarning;
+use super::warnings::DirectCliWarning;
 
 // Warning 文本字段名来自 readable warning schema；仅用于 text/stderr 诊断展示。
 mod warning_text {
-    pub const FIELD_IGNORED_TOKENS: &str = "ignored_tokens";
-    pub const FIELD_KIND: &str = "kind";
-    pub const FIELD_REASON: &str = "reason";
-    pub const PREFIX: &str = "warning";
+    pub(super) const FIELD_IGNORED_TOKENS: &str = "ignored_tokens";
+    pub(super) const FIELD_KIND: &str = "kind";
+    pub(super) const FIELD_REASON: &str = "reason";
+    pub(super) const PREFIX: &str = "warning";
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,7 +31,7 @@ pub trait DirectTextFormatter {
     ) -> io::Result<()>;
 }
 
-pub(crate) fn write_operation_output<T, W, E>(
+pub(super) fn write_operation_output<T, W, E>(
     result: OperationResult,
     output: DirectOutputMode,
     text_formatter: &T,
@@ -53,7 +53,7 @@ where
     }
 }
 
-pub(crate) fn handler_error<W: Write, E: Write>(
+pub(super) fn handler_error<W: Write, E: Write>(
     error: AdapterError,
     output: DirectOutputMode,
     warnings: &[DirectCliWarning],
@@ -200,7 +200,7 @@ fn write_text_error<W: Write, E: Write>(
     }
 }
 
-pub(crate) fn append_cli_warnings_to_stderr<W: Write>(
+pub(super) fn append_cli_warnings_to_stderr<W: Write>(
     exit_code: i32,
     warnings: &[DirectCliWarning],
     stderr: &mut W,

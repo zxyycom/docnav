@@ -3,16 +3,7 @@
   "$id": "https://docnav.dev/schemas/v0.1/protocol-response.schema.json",
   "oneOf": [
     {
-      "$ref": "#/$defs/outlineSuccess"
-    },
-    {
-      "$ref": "#/$defs/readSuccess"
-    },
-    {
-      "$ref": "#/$defs/findSuccess"
-    },
-    {
-      "$ref": "#/$defs/infoSuccess"
+      "$ref": "#/$defs/success"
     },
     {
       "$ref": "#/$defs/failure"
@@ -171,75 +162,58 @@
       },
       "additionalProperties": false
     },
-    "outlineSuccess": {
+    "success": {
       "allOf": [
         {
           "$ref": "#/$defs/baseSuccess"
         },
         {
-          "type": "object",
-          "properties": {
-            "operation": {
-              "const": "outline"
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "const": "outline"
+                },
+                "result": {
+                  "$ref": "#/$defs/outlineResult"
+                }
+              }
             },
-            "result": {
-              "$ref": "#/$defs/outlineResult"
-            }
-          }
-        }
-      ]
-    },
-    "readSuccess": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/baseSuccess"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "operation": {
-              "const": "read"
+            {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "const": "read"
+                },
+                "result": {
+                  "$ref": "#/$defs/readResult"
+                }
+              }
             },
-            "result": {
-              "$ref": "#/$defs/readResult"
-            }
-          }
-        }
-      ]
-    },
-    "findSuccess": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/baseSuccess"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "operation": {
-              "const": "find"
+            {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "const": "find"
+                },
+                "result": {
+                  "$ref": "#/$defs/findResult"
+                }
+              }
             },
-            "result": {
-              "$ref": "#/$defs/findResult"
+            {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "const": "info"
+                },
+                "result": {
+                  "$ref": "#/$defs/infoResult"
+                }
+              }
             }
-          }
-        }
-      ]
-    },
-    "infoSuccess": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/baseSuccess"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "operation": {
-              "const": "info"
-            },
-            "result": {
-              "$ref": "#/$defs/infoResult"
-            }
-          }
+          ]
         }
       ]
     },
@@ -557,15 +531,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "adapter_id",
-                      "reason"
-                    ],
-                    "properties": {
-                      "adapter_id": {},
-                      "reason": {}
-                    }
+                    "$ref": "#/$defs/generatedProtocolErrorDetailsAdapterIdReason"
                   }
                 }
               }
@@ -583,15 +549,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "adapter_id",
-                      "reason"
-                    ],
-                    "properties": {
-                      "adapter_id": {},
-                      "reason": {}
-                    }
+                    "$ref": "#/$defs/generatedProtocolErrorDetailsAdapterIdReason"
                   }
                 }
               }
@@ -624,6 +582,17 @@
         }
       },
       "additionalProperties": false
+    },
+    "generatedProtocolErrorDetailsAdapterIdReason": {
+      "type": "object",
+      "required": [
+        "adapter_id",
+        "reason"
+      ],
+      "properties": {
+        "adapter_id": {},
+        "reason": {}
+      }
     }
   }
 }
