@@ -24,7 +24,7 @@
 
 原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例、MCP tool 声明和实现自测，不表示 readable 输出是长期机器解析协议。
 
-operation readable schema 和 MCP structuredContent outputSchema 可包含顶层 `warnings` 数组，用于承载直接 CLI argv 兼容性 warning。protocol response、manifest 和 probe schema 不包含 CLI warning 字段；这些机器输出存在 CLI warning 时由 stderr 承载。
+operation readable schema 和 MCP structuredContent outputSchema 包含可省略的顶层 `warnings` 数组，用于承载直接 CLI argv 兼容性 warning；有 warning 的 payload 必须填充该字段。protocol response、manifest 和 probe schema 不包含 CLI warning 字段；这些机器输出存在 CLI warning 时由 stderr 承载。
 
 `readable-common.schema.json` 提供 readable/MCP 复用的 `capability`、`entry`、`page`、`warning` 和 `warnings` 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义；发布 MCP tool `outputSchema` 时仍必须内联或随工具声明打包，不能要求 client 远程解析 schema URL。
 

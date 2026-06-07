@@ -12,8 +12,8 @@
 - 让 `docnav-adapter-sdk` 提供共享解析能力，adapter 直接 CLI 通过 SDK 复用规则。
 - 让 warning 可审计：每条 warning 明确 `ignored_tokens`、`kind` 和 `reason`。
 - 让 token 归属可预测：未知 flag 不吞后续 token，已知有值 flag 固定消费紧跟 token。
-- 让输出层边界可验证：阅读层可以承载 structured warnings，协议形 stdout 继续通过原 schema。
-- 保留稳定失败：已知必需参数缺失、已知 flag 缺少值或值非法仍失败。
+- 让输出层边界可验证：存在 warning 时阅读层承载 structured warnings，协议形 stdout 继续通过原 schema。
+- 保留稳定失败：已知必需参数缺失、当前 operation 实际使用的已知 flag 缺少值或值非法仍失败。
 
 **Non-Goals:**
 
@@ -39,11 +39,11 @@
    - 对需要值的已知 flag，下一个 token 就是值，即使它以 `--` 开头。
    - 只有没有下一个 token 时，才判定为该已知 flag 缺少值并返回 `INVALID_REQUEST` / 输入错误。
    - 对无值 flag，后续 token 继续按普通参数处理。
-   - 对当前 operation 不使用的已知有值 flag，SDK 按该 flag 的形状消费紧跟 value token，并在 warning 的 `ignored_tokens` 中同时记录 flag token 和被消费的 value token。
+   - 对当前 operation 不使用的已知有值 flag，SDK 按该 flag 的形状消费紧跟 value token，并在 warning 的 `ignored_tokens` 中同时记录 flag token 和被消费的 value token，不校验该 value 的业务合法性。
 
 4. warning 按输出模式承载。
    - text 输出在正常结果后拼接 warning 文本；warning 文本打印被忽略 token 和 reason。
-   - readable-json 和 MCP 等阅读层 structured payload 增加顶层 `warnings` 数组字段。
+   - 存在 warning 时，readable-json 和 MCP 等阅读层 structured payload 增加顶层 `warnings` 数组字段。
    - protocol-json、manifest 和 probe 属于协议或专属机器 schema 输出，stdout 不增加 `warnings` 字段；存在 CLI warning 时必须写入 stderr，stdout 仍只包含一个可通过对应 schema 的 JSON 值。
 
 5. invoke 入口保持严格。

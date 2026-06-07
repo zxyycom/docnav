@@ -37,8 +37,8 @@ pnpm run verify:docnav-workspace
 
 - invoke protocol envelope 不出现在 MCP structuredContent 或 readable JSON。
 - MCP 和 CLI 阅读输出不复制完整原始协议 JSON。
-- 直接 CLI 兼容性 warning 只适用于 argv：未知 flag、多余 positional 和当前 operation 不使用的已知 flag 必须包含 `ignored_tokens`、`kind` 和 `reason`；adapter `invoke` stdin JSON 仍严格按 protocol schema 失败。
-- text/readable-json/MCP 阅读层可承载 warning；`protocol-json`、manifest 和 probe stdout 不增加 `warnings` 字段，CLI warning 写 stderr。
+- 直接 CLI 兼容参数规则以 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 为 owner；测试只验证核心分支、warning 字段完整性和 `invoke` strict 分界。
+- 输出层测试覆盖 warning 承载边界：阅读层承载 warning，协议形 stdout 不扩展 schema。
 - protocol 响应 envelope 包含 operation；成功响应的 operation 与 result 类型必须由 schema 绑定。
 - outline readable 结果只包含 entries 与 page；每条 entry 包含 ref 和 display。
 - find readable 结果只包含 matches 与 page；每条 match 包含 ref 和 display。
@@ -74,11 +74,11 @@ pnpm run verify:docnav-workspace
 | 入口 | 最低要求 |
 | --- | --- |
 | `adapter invoke` | 完整 protocol envelope、显式参数、stdout 单响应 |
-| `docnav --output protocol-json` | 与 invoke 使用相同原始协议 schema；CLI warning 只进 stderr |
+| `docnav --output protocol-json` | 与 invoke 使用相同原始协议 schema；warning 行为按 CLI owner 规则验收 |
 | `docnav` 默认输出 | 紧凑可读、包含 page 状态、不含 envelope；成功 warning 追加到阅读文本后 |
-| `docnav --output readable-json` | 通过 operation readable schema、不含 envelope，仍属于阅读输出；成功 warning 可作为顶层 `warnings` |
+| `docnav --output readable-json` | 通过 operation readable schema、不含 envelope；warning 行为按 CLI owner 规则验收 |
 | MCP TextContent | 精简阅读文本和 page 状态 |
-| MCP structuredContent | 通过 operation readable schema、不含 envelope，用于工具展示和客户端消费，不替代完整协议接口；可包含顶层 `warnings` |
+| MCP structuredContent | 通过 operation readable schema、不含 envelope，用于工具展示和客户端消费；warning 行为按 CLI owner 规则验收 |
 
 request/response fixture 或集成测试必须验证请求 operation 与响应 operation 一致；无法解析 operation 的失败响应使用 `operation: null`。
 

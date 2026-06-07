@@ -20,9 +20,9 @@ probe
 文档操作的直接 CLI 支持默认文本、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
 适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、`<path>`、`--page`、`--limit-chars`、`--ref`、`--query`、`--output` 解析、protocol request 构造、输出分流和稳定错误映射。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和文本展示。
 
-适配器直接 CLI argv 必须复用 Docnav 兼容参数规则：未知 flag、多余 positional 和当前 operation 不使用的已知 flag 生成 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法仍失败。warning item 必须包含原始 `ignored_tokens`、`kind` 和 `reason`。未知 flag 不消费后续 token，`--unknown=value` 作为一个 token 忽略，`--unknown value` 中的 `value` 继续按普通 token 处理。需要值的已知 flag 消费紧跟 token，即使该 token 以 `--` 开头。
+适配器直接 CLI argv 必须复用 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
 
-warning 的承载由输出层决定：text 在正常阅读文本后拼接 warning；`readable-json` 可增加顶层 `warnings` 数组；文档操作 `protocol-json`、`manifest` 和 `probe` stdout 不增加 `warnings` 字段，CLI warning 写 stderr。
+`manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在 CLI warning 时按直接 CLI 规则写 stderr。
 
 ## 适配器职责
 

@@ -244,8 +244,20 @@ export function testCliArgumentCompatibilityWarnings() {
   expectStderrEmpty(readable);
   const readableJson = parseJson(readable);
   validateSchema(readable, "readableOutline", readableJson);
-  expectStructuredWarning(readable, readableJson.warnings?.[0], ["--future"], "unknown_flag");
-  expectStructuredWarning(readable, readableJson.warnings?.[1], ["extra"], "extra_positional");
+  expectStructuredWarning(
+    readable,
+    readableJson.warnings?.[0],
+    ["--future"],
+    "unknown_flag",
+    "unknown CLI flag ignored"
+  );
+  expectStructuredWarning(
+    readable,
+    readableJson.warnings?.[1],
+    ["extra"],
+    "extra_positional",
+    "extra positional argument ignored"
+  );
 
   const unused = runCli("read unused known flag readable-json warning", [
     "read",
@@ -261,7 +273,13 @@ export function testCliArgumentCompatibilityWarnings() {
   expectStderrEmpty(unused);
   const unusedJson = parseJson(unused);
   validateSchema(unused, "readableRead", unusedJson);
-  expectStructuredWarning(unused, unusedJson.warnings?.[0], ["--max-heading-level", "3"], "unused_operation_flag");
+  expectStructuredWarning(
+    unused,
+    unusedJson.warnings?.[0],
+    ["--max-heading-level", "3"],
+    "unused_operation_flag",
+    "flag is not used by read command"
+  );
 
   const protocol = runCli("outline unknown flag protocol-json stderr warning", [
     "outline",
@@ -438,7 +456,7 @@ function expectStderrWarning(record, ignoredTokens, kind, reason) {
   expectStderrIncludes(record, `reason=${reason}`);
 }
 
-function expectStructuredWarning(record, warning, ignoredTokens, kind) {
+function expectStructuredWarning(record, warning, ignoredTokens, kind, reason) {
   expect(record, Boolean(warning), `structured warning exists for ${kind}`);
   expect(
     record,
@@ -446,7 +464,7 @@ function expectStructuredWarning(record, warning, ignoredTokens, kind) {
     `${kind} ignored_tokens match`
   );
   expect(record, warning.kind === kind, `${kind} warning kind matches`);
-  expect(record, typeof warning.reason === "string" && warning.reason.length > 0, `${kind} warning has reason`);
+  expect(record, warning.reason === reason, `${kind} warning reason matches`);
 }
 
 function expectNoWarningsField(record, value, label) {

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: SDK 直接 CLI 必须兼容 CLI 扩展参数
-`docnav-adapter-sdk` MUST 为 adapter 直接 CLI 提供兼容性参数解析：未知 flag、多余 positional 和当前 operation 不使用的已知 flag MUST 生成列明具体被忽略 argv token、kind 和 reason 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法时 MUST 返回输入错误。Warnings MUST NOT 扩展 adapter `invoke`、CLI `protocol-json`、manifest 或 probe 的 stdout schema。
+`docnav-adapter-sdk` MUST 为 adapter 直接 CLI 提供兼容性参数解析：未知 flag、多余 positional 和当前 operation 不使用的已知 flag MUST 生成列明具体被忽略 argv token、kind 和 reason 的 warning 后忽略；已知必需参数缺失、当前 operation 实际使用的已知 flag 缺少值或值非法时 MUST 返回输入错误。Warnings MUST NOT 扩展 adapter `invoke`、CLI `protocol-json`、manifest 或 probe 的 stdout schema。
 
 #### Scenario: 未知 flag 被 warning 后忽略
 - **WHEN** adapter 直接 CLI 执行文档操作并收到未知 flag
@@ -48,6 +48,7 @@
 - **WHEN** adapter 直接 CLI 收到当前 operation 不使用但需要值的已知 flag
 - **THEN** SDK 按该 flag 的形状消费紧跟的 value token
 - **THEN** SDK 生成 `kind` 为 unused operation flag 且 `ignored_tokens` 同时包含 flag token 和 value token 的 warning
+- **THEN** SDK 不校验该 value 在当前 operation 中不会生效的业务合法性
 
 #### Scenario: invoke stdin 仍严格校验
 - **WHEN** adapter `invoke` 从 stdin 收到包含未知字段或参数类型错误的 JSON request

@@ -95,7 +95,7 @@ page: 2
 
 阅读输出 schema 按 operation 独立定义，见 [schemas](schemas/README.md)。
 
-成功结果存在直接 CLI 兼容性 warning 时，`readable-json` 可在顶层增加 `warnings` 数组。每个 warning item 必须包含 `ignored_tokens`、`kind` 和 `reason`。
+成功结果存在直接 CLI 兼容性 warning 时，`readable-json` 必须在顶层输出 `warnings` 数组；没有 warning 时省略该字段。每个 warning item 必须包含 `ignored_tokens`、`kind` 和 `reason`。
 
 readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `--adapter <adapter-id>` 或 MCP adapter 参数，`docnav` 先校验该 adapter；失败后再进入 registry 遍历。
 
@@ -135,7 +135,9 @@ Markdown 内置默认值：
 
 这些值可由 `docnav-markdown` 自身配置域覆盖。CLI 在执行业务逻辑前解析最终参数；分页操作省略 page 时固定读取第一页，并输出下一页 page 或 null。adapter 文档操作的 `protocol-json` 使用原始协议 envelope；`manifest` 和 `probe` 使用各自专属 schema。
 
-所有 Docnav 直接 CLI argv 使用同一兼容规则：未知 flag、多余 positional、当前 operation 不使用的已知 flag 写 warning 后忽略；warning 必须列出原始 `ignored_tokens`、`kind` 和 `reason`。`--unknown=value` 作为一个未知 flag token 忽略；`--unknown value` 只忽略 `--unknown`，`value` 继续按普通 token 处理。需要值的已知 flag 固定消费紧跟的下一个 token，即使该 token 以 `--` 开头；只有缺少下一个 token 时才失败。已知必需参数缺失、已知 flag 缺少值或值非法必须失败。
+### 直接 CLI 兼容参数规则
+
+所有 Docnav 直接 CLI argv 使用同一兼容规则：未知 flag、多余 positional、当前 operation 不使用的已知 flag 写 warning 后忽略；warning 必须列出原始 `ignored_tokens`、`kind` 和 `reason`。`--unknown=value` 作为一个未知 flag token 忽略；`--unknown value` 只忽略 `--unknown`，`value` 继续按普通 token 处理。需要值的已知 flag 固定消费紧跟的下一个 token，即使该 token 以 `--` 开头；只有缺少下一个 token 时才失败。当前 operation 不使用的已知有值 flag 只按 flag 形状消费紧跟 token 并写 warning，不校验该 value 的业务合法性。已知必需参数缺失、当前 operation 实际使用的已知 flag 缺少值或值非法必须失败。
 
 兼容规则只适用于直接 CLI argv，不适用于 adapter `invoke` stdin JSON。`invoke` 请求仍按 protocol request schema 严格校验，未知字段或参数类型错误不得被兼容忽略。
 
@@ -155,7 +157,7 @@ MCP tools：
 MCP 输出属于阅读输出层：
 
 - TextContent 是简洁、可直接阅读的结果，并保留 page 状态。
-- structuredContent 使用 operation 对应的精简 readable schema，服务工具声明和客户端展示，不替代完整协议接口；存在兼容性 warning 时可包含顶层 `warnings` 数组。
+- structuredContent 使用 operation 对应的精简 readable schema，服务工具声明和客户端展示，不替代完整协议接口；存在兼容性 warning 时必须包含顶层 `warnings` 数组。
 - structuredContent 不包含完整 invoke envelope。
 - TextContent 不复制完整 protocol JSON。
 - page 状态使用紧凑文本表达，例如：
@@ -181,8 +183,7 @@ page: 2
 - 默认阅读文本和 readable JSON 写 stdout。
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断写 stderr。
-- 未知 flag、多余 positional 和当前 operation 不使用的已知 flag 生成包含 `ignored_tokens`、`kind` 和 `reason` 的 warning 后忽略；text/readable-json/MCP 阅读层可承载 warning，protocol-json/manifest/probe stdout 不增加 `warnings` 字段，CLI warning 写 stderr。
-- 已知必需参数缺失、已知 flag 缺少值或值非法必须失败。
+- 直接 CLI argv 的兼容和 warning 归属见 [直接 CLI 兼容参数规则](#直接-cli-兼容参数规则)；通道承载必须与该规则一致。
 - `config get` 的 key 不存在时必须返回 `INVALID_REQUEST`。
 - 成功退出 `0`；输入错误 `2`；文档/ref/格式错误 `3`；协议或 adapter 进程错误 `4`；内部错误 `1`。
 

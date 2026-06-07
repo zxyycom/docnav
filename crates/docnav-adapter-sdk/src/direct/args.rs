@@ -360,6 +360,22 @@ mod tests {
     }
 
     #[test]
+    fn unknown_flag_with_equals_is_one_ignored_token() {
+        let options = parse_operation_options(
+            Operation::Outline,
+            &args(&["--future=value", "doc.md"]),
+            6000,
+            &[],
+        )
+        .expect("parse options");
+
+        assert_eq!(options.path, "doc.md");
+        assert_eq!(options.warnings.len(), 1);
+        assert_eq!(options.warnings[0].ignored_tokens, ["--future=value"]);
+        assert_eq!(options.warnings[0].kind, DirectCliWarningKind::UnknownFlag);
+    }
+
+    #[test]
     fn unknown_flag_does_not_consume_following_known_flag() {
         let options = parse_operation_options(
             Operation::Outline,
@@ -405,6 +421,28 @@ mod tests {
         assert_eq!(
             options.warnings[0].ignored_tokens,
             ["--max-heading-level", "3"]
+        );
+        assert_eq!(
+            options.warnings[0].kind,
+            DirectCliWarningKind::UnusedOperationFlag
+        );
+    }
+
+    #[test]
+    fn unused_known_value_flag_consumes_value_that_looks_like_flag() {
+        let options = parse_operation_options(
+            Operation::Read,
+            &args(&["doc.md", "--ref", "L1:Guide", "--query", "--future-value"]),
+            6000,
+            &[],
+        )
+        .expect("parse options");
+
+        assert_eq!(options.ref_id.as_deref(), Some("L1:Guide"));
+        assert_eq!(options.warnings.len(), 1);
+        assert_eq!(
+            options.warnings[0].ignored_tokens,
+            ["--query", "--future-value"]
         );
         assert_eq!(
             options.warnings[0].kind,
