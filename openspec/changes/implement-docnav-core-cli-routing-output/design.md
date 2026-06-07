@@ -38,7 +38,7 @@
    - `docnav` 只处理 core 通用参数：path、ref、query、page、limit_chars、output 和 adapter。
    - adapter 专属 CLI flag 和格式 options 由对应 adapter 或后续格式能力定义；core CLI 在本 change 中不读取 manifest 默认参数，也不合成格式 options。
    - 未知参数和多余参数按兼容性输入处理：生成列明具体 token 的 warning 后忽略。
-   - warning 按输出模式承载：text 输出在正常结果后拼接 warning；JSON 输出增加 `warnings` 数组；CLI stderr 可同步写同一 warning。
+   - warning 按输出模式承载：text 输出在正常结果后拼接 warning；readable-json 输出增加 `warnings` 数组；protocol-json stdout 保持 schema-valid protocol envelope，CLI warning 只写 stderr。
    - 已知 flag 需要值时，紧跟该 flag 的下一个 token 就是值，即使它以 `--` 开头；只有不存在下一个 token 时才返回缺值 `INVALID_REQUEST`。
    - 已知必需参数缺失、已知 flag 缺少值或值非法时返回 `INVALID_REQUEST`。
 
@@ -100,7 +100,7 @@
    - `protocol-json` 输出完整原始协议 envelope。
    - core 在启动 invoke 前产生的错误也按当前 operation 输出 protocol failure envelope；无法确定 operation 时使用 `operation: null`。
    - text/readable-json 输出阅读层结果，不包含 envelope。
-   - 非致命 warning 必须进入所选输出模式：text 在正常阅读文本后拼接 warning，readable-json/protocol-json 输出增加 `warnings` 数组。
+   - 非致命 warning 必须进入所选输出模式：text 在正常阅读文本后拼接 warning，readable-json 输出增加 `warnings` 数组；protocol-json stdout 不增加 `warnings` 字段，warning 写入 stderr。
    - read 的 readable 输出保留 `content_type`。
 
 9. 错误映射保持 code 稳定、展示可配置。
@@ -112,7 +112,7 @@
 ## Risks / Trade-offs
 
 - [adapter 选择流程较复杂] → 用测试覆盖 `--adapter` 预选、配置预选、core 推断预选、有效 probe 不支持后继续遍历、契约校验失败直接返回和全失败。
-- [显式 adapter 解析失败或有效 probe 不支持后继续遍历可能让用户误解] → 对该候选生成包含 adapter id、阶段和原因的 warning，并按 text/JSON 输出模式承载。
+- [显式 adapter 解析失败或有效 probe 不支持后继续遍历可能让用户误解] → 对该候选生成包含 adapter id、阶段和原因的 warning，并按 text/readable-json/protocol-json 输出模式边界承载。
 - [临时 registry 可能和正式 registry 漂移] → 将读取逻辑封装为可替换接口，临时文件不保存正式管理才拥有的 version/source/fingerprint。
 - [阅读输出与 protocol 输出漂移] → 对同一 fixture 同时验证 protocol-json 和 readable-json 业务语义一致。
 - [配置影响稳定字段] → 本 change 的配置只允许影响预选 adapter、limit_chars 和 output；page 固定由 CLI 默认值解析，错误 code 和当前契约字段类型保持不变。

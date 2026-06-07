@@ -53,7 +53,7 @@
 - [ ] 3.4 实现默认 text 和 readable-json 输出。
   验收：输出阅读层结果，不包含 protocol envelope；readable-json read 保留 `content_type`。
 - [ ] 3.5 实现 warning 承载。
-  验收：text 在正常阅读文本后拼接 warning；readable-json 和 protocol-json 输出包含 `warnings` 数组；warning 不改变可成功执行命令的退出码。
+  验收：text 在正常阅读文本后拼接 warning；readable-json 输出包含 `warnings` 数组；protocol-json stdout 保持 schema-valid envelope 且 warning 写入 stderr；warning 不改变可成功执行命令的退出码。
 - [ ] 3.6 实现错误 code、details、guidance 和退出码映射。
   验收：输入错误、文档/ref/格式错误、protocol/adapter 进程错误和内部错误映射到稳定 code 与主规范退出码。
 - [ ] 3.7 实现选中 adapter invoke 校验失败路径。

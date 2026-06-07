@@ -21,7 +21,7 @@ Markdown adapter 完成后，核心 CLI 需要把用户可执行的 `docnav outl
   5. 任一候选的 manifest/probe 输出不符合当前 schema 或语义校验时直接返回 adapter/protocol 错误；选中 adapter 的 invoke 输出不符合当前 schema 或语义校验时也直接失败。
 - 本 change 不做协议版本协商或兼容迁移，只接受当前 schema 和当前语义契约。
 - 调用选中 adapter 的 `invoke`，校验 protocol 响应，并映射为默认阅读文本、readable-json 或 protocol-json。
-- warning 按输出模式承载：text 输出在正常阅读文本后拼接 warning，readable-json 和 protocol-json 输出增加 `warnings` 数组。
+- warning 按输出模式承载：text 输出在正常阅读文本后拼接 warning，readable-json 输出增加 `warnings` 数组；protocol-json stdout 保持 schema-valid protocol envelope，CLI warning 只写 stderr。
 - `--output protocol-json` 对 core 自身产生的错误也输出 protocol failure envelope；阅读输出保留精简错误语义。
 - 保留 adapter 返回的 ref、display、content、content_type、cost 和 page 业务字段。
 - 本 change 只使用可替换的简化 adapter 记录读取接口，不实现正式 adapter 安装/更新/移除、黑白名单、Markdown parser 或 MCP bridge。

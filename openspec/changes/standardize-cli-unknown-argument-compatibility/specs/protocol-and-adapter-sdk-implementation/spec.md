@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: SDK 直接 CLI 必须兼容 CLI 扩展参数
-`docnav-adapter-sdk` MUST 为 adapter 直接 CLI 提供兼容性参数解析：未知 flag、多余 positional 和当前 operation 不使用的已知 flag MUST 生成列明具体被忽略 argv token、kind 和 reason 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法时 MUST 返回输入错误。
+`docnav-adapter-sdk` MUST 为 adapter 直接 CLI 提供兼容性参数解析：未知 flag、多余 positional 和当前 operation 不使用的已知 flag MUST 生成列明具体被忽略 argv token、kind 和 reason 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法时 MUST 返回输入错误。Warnings MUST NOT 扩展 adapter `invoke`、CLI `protocol-json`、manifest 或 probe 的 stdout schema。
 
 #### Scenario: 未知 flag 被 warning 后忽略
 - **WHEN** adapter 直接 CLI 执行文档操作并收到未知 flag
@@ -25,12 +25,18 @@
 - **THEN** SDK 生成 `kind` 为 extra positional 且 `ignored_tokens` 包含该 positional 原始 token 的 warning
 - **THEN** SDK 忽略该 positional
 
-#### Scenario: warning 按输出模式承载
+#### Scenario: warning 按阅读输出模式承载
 - **WHEN** 命令以 text 输出模式成功并存在 warning
 - **THEN** stdout 在正常阅读文本后拼接包含 ignored token 和 reason 的 warning 文本
-- **WHEN** 命令以 JSON 或其它 structured 输出模式成功并存在 warning
+- **WHEN** 命令以 readable-json 或其它阅读层 structured 输出模式成功并存在 warning
 - **THEN** stdout payload 包含顶层 `warnings` 数组
 - **THEN** stdout 仍是该输出模式下的合法 payload
+
+#### Scenario: protocol-shaped stdout 不承载 CLI warning
+- **WHEN** adapter 直接 CLI 以 protocol-json、manifest 或 probe 输出模式成功并存在 CLI warning
+- **THEN** stdout 不包含 `warnings` 字段
+- **THEN** stdout 仍通过该输出模式对应的 schema
+- **THEN** stderr 包含该 warning 的 ignored token、kind 和 reason
 
 #### Scenario: 已知 flag 的值紧跟解析
 - **WHEN** adapter 直接 CLI 收到需要值的已知 flag

@@ -4,8 +4,9 @@
 - [ ] 1.2 实现未知 flag、多余 positional 和当前 operation 不使用的已知 flag 的 warning 后忽略行为；warning item 必须包含 `ignored_tokens`、`kind` 和 `reason`。
 - [ ] 1.3 实现未知 flag 不吞后续 token：`--unknown=value` 作为一个 token 忽略；`--unknown value` 中的 `value` 继续按普通 token 处理，可填充 positional 槽位或作为多余 positional 单独 warning。
 - [ ] 1.4 实现已知有值 flag 的紧跟 token 取值规则：下一个 token 即为值，即使以 `--` 开头；只有无下一个 token 时返回缺值错误。
-- [ ] 1.5 实现 warning 输出承载：text 在正常结果后拼接 warning，JSON 和其它 structured 输出增加顶层 `warnings` 数组，CLI stderr 可同步写同一 warning。
-- [ ] 1.6 保持 adapter `invoke` stdin JSON 严格 schema 校验，不复用直接 CLI 的兼容忽略规则。
+- [ ] 1.5 实现 warning 输出承载：text 在正常结果后拼接 warning，readable-json 和 MCP 等阅读层 structured 输出增加顶层 `warnings` 数组。
+- [ ] 1.6 确保 protocol-json、manifest 和 probe stdout 不增加 `warnings` 字段；存在 CLI warning 时必须写入 stderr，stdout 仍通过对应 schema。
+- [ ] 1.7 保持 adapter `invoke` stdin JSON 严格 schema 校验，不复用直接 CLI 的兼容忽略规则。
 
 ## 2. Markdown Adapter 接入
 
@@ -17,13 +18,15 @@
 
 ## 3. 文档同步
 
-- [ ] 3.1 同步 `docs/cli.md`、`docs/adapter-contract.md` 和 `docs/testing.md`，明确兼容策略适用于所有直接 CLI 参数，不适用于 invoke stdin JSON，并定义 text/JSON warning 承载。
+- [ ] 3.1 同步 `docs/cli.md`、`docs/adapter-contract.md` 和 `docs/testing.md`，明确兼容策略适用于所有直接 CLI 参数，不适用于 invoke stdin JSON，并定义 text/readable-json/protocol-json warning 承载边界。
 - [ ] 3.2 更新 `docs/references/markdown-navigator.md` 中关于未知参数旧行为的说明，避免继续声明 adapter CLI 必须失败。
-- [ ] 3.3 确认当前 core CLI change 中的兼容参数规则与 SDK 规则一致。
+- [ ] 3.3 更新 readable JSON schema、MCP output schema 和相关示例，使阅读层 structured 输出允许 `warnings`；不得向 protocol response、manifest 或 probe schema 增加 CLI warning 字段。
+- [ ] 3.4 修正当前 core CLI change 中的兼容参数规则，使其与本 change 的 SDK 规则和 protocol-json warning 边界一致。
 
 ## 4. 验证
 
-- [ ] 4.1 运行 Markdown CLI smoke，验证 warning 按输出模式承载、warning 说明具体忽略 token 和原因、成功路径退出码不变、负向输入仍按规则失败。
+- [ ] 4.1 运行 Markdown CLI smoke，验证 warning 按输出模式承载、warning 说明具体忽略 token 和原因、protocol-json/manifest/probe stdout 仍通过 schema、成功路径退出码不变、负向输入仍按规则失败。
 - [ ] 4.2 运行 Rust SDK 和 Markdown adapter 相关测试，覆盖直接 CLI 参数解析和 invoke 严格校验。
-- [ ] 4.3 运行 `openspec validate standardize-cli-unknown-argument-compatibility --strict`。
-- [ ] 4.4 若本 change 与 core CLI change 同时交付，最终运行 `pnpm run verify:docnav-workspace`。
+- [ ] 4.3 运行 schema 和示例校验，确认 readable 层允许 warnings 且 protocol/manifest/probe 层不接受 CLI warning 字段。
+- [ ] 4.4 运行 `openspec validate standardize-cli-unknown-argument-compatibility --strict`。
+- [ ] 4.5 若本 change 与 core CLI change 同时交付，最终运行 `pnpm run verify:docnav-workspace`。

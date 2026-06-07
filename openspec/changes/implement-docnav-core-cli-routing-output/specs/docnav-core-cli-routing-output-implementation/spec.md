@@ -22,14 +22,21 @@
 - **THEN** invoke 请求不包含 page 或 limit_chars
 
 ### Requirement: 核心 CLI 必须兼容未知和多余参数
-`docnav` MUST 对未知参数和多余参数采用兼容性处理：生成列明具体 token 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法时 MUST 返回 `INVALID_REQUEST`。
+`docnav` MUST 对未知参数和多余参数采用兼容性处理：生成列明具体 token 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法时 MUST 返回 `INVALID_REQUEST`。未知 flag MUST NOT 吞掉后续 token；若后续 token 没有参数槽位接收，则作为多余参数单独 warning。
 
-#### Scenario: 忽略未知参数
+#### Scenario: 忽略未知 flag 和多余参数
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --future-flag value`
-- **THEN** `docnav` 忽略未知参数
-- **THEN** warning 包含具体被忽略 token
+- **THEN** `docnav` 忽略未知 flag token
+- **THEN** `value` 继续按普通 token 处理，并因 outline 已有 path 而作为多余参数 warning
+- **THEN** warning 包含具体被忽略 token、kind 和 reason
 - **THEN** text 输出在正常结果后拼接 warning
-- **THEN** JSON 输出包含 `warnings` 数组
+- **THEN** readable-json 输出包含 `warnings` 数组
+
+#### Scenario: protocol-json warning 不扩展 envelope
+- **WHEN** 调用方执行带有未知参数但其它参数有效的 protocol-json 命令
+- **THEN** stdout 包含通过 protocol response schema 的完整 protocol envelope
+- **THEN** stdout 不包含 `warnings` 字段
+- **THEN** stderr 包含 warning 的 token、kind 和 reason
 
 #### Scenario: 已知 flag 缺少值
 - **WHEN** 调用方执行 `docnav read docs/guide.md --ref`
@@ -182,7 +189,7 @@
 - **THEN** `docnav` 不继续尝试其它 adapter
 
 ### Requirement: 输出模式必须按协议层和阅读层分离
-`docnav --output protocol-json` MUST 输出完整原始协议 envelope。默认 text 和 readable-json MUST 输出阅读层结果；readable-json MUST 只包含 operation readable 字段以及可选 `warnings`。
+`docnav --output protocol-json` MUST 输出完整原始协议 envelope，并 MUST NOT 为 CLI warning 扩展 envelope 字段。默认 text 和 readable-json MUST 输出阅读层结果；readable-json MUST 只包含 operation readable 字段以及可选 `warnings`。
 
 #### Scenario: readable-json outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --output readable-json`
@@ -201,7 +208,8 @@
 #### Scenario: protocol-json warning
 - **WHEN** 调用方执行带有未知参数但其它参数有效的 protocol-json 命令
 - **THEN** 输出包含完整 protocol response envelope
-- **THEN** 输出包含 `warnings` 数组
+- **THEN** 输出不包含 `warnings` 数组
+- **THEN** stderr 包含 warning 诊断
 
 #### Scenario: protocol-json core 错误
 - **WHEN** 调用方执行 `docnav read missing.md --ref <ref> --output protocol-json`

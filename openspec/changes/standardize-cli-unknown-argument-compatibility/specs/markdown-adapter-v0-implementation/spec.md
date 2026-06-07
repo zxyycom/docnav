@@ -15,7 +15,8 @@
 - **THEN** 若其它参数有效，进程成功退出
 - **THEN** stdout 包含所选输出模式的正常结果
 - **THEN** text 输出在正常结果后拼接 warning 文本
-- **THEN** JSON 输出包含 `warnings` 数组
+- **THEN** readable-json 输出包含 `warnings` 数组
+- **THEN** protocol-json、manifest 和 probe stdout 不包含 `warnings` 字段，warning 写入 stderr
 
 #### Scenario: unknown flag 的后续普通 token 有明确归属
 - **WHEN** CLI 矩阵执行 `docnav-markdown outline <path> --future extra`
@@ -27,7 +28,8 @@
 - **WHEN** CLI 矩阵执行 `docnav-markdown outline <path> --future --output protocol-json`
 - **THEN** `--future` 被 warning 后忽略
 - **THEN** `--output protocol-json` 仍生效
-- **THEN** stdout 是包含 `warnings` 数组的 protocol JSON
+- **THEN** stdout 是通过 protocol response schema 的 protocol JSON 且不包含 `warnings`
+- **THEN** stderr 包含 `--future` warning
 
 #### Scenario: 已知 flag 的值紧跟解析
 - **WHEN** 负向矩阵执行 `docnav-markdown read <path> --ref --future-value`
