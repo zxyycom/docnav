@@ -284,7 +284,6 @@
             "code": {
               "enum": [
                 "INVALID_REQUEST",
-                "PROTOCOL_INCOMPATIBLE",
                 "DOCUMENT_NOT_FOUND",
                 "DOCUMENT_PATH_INVALID",
                 "DOCUMENT_ENCODING_UNSUPPORTED",
@@ -334,34 +333,6 @@
                     "properties": {
                       "field": {},
                       "reason": {}
-                    }
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "type": "object",
-                "properties": {
-                  "code": {
-                    "const": "PROTOCOL_INCOMPATIBLE"
-                  }
-                }
-              },
-              "then": {
-                "type": "object",
-                "properties": {
-                  "details": {
-                    "type": "object",
-                    "required": [
-                      "requested",
-                      "supported_min",
-                      "supported_max"
-                    ],
-                    "properties": {
-                      "requested": {},
-                      "supported_min": {},
-                      "supported_max": {}
                     }
                   }
                 }

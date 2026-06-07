@@ -25,9 +25,6 @@ pub(crate) mod error_detail_fields {
     pub const PATH: &str = "path";
     pub const REASON: &str = "reason";
     pub const REF: &str = "ref";
-    pub const REQUESTED: &str = "requested";
-    pub const SUPPORTED_MAX: &str = "supported_max";
-    pub const SUPPORTED_MIN: &str = "supported_min";
 }
 
 // operation 的 wire 字符串，集中后避免 Display、FromStr 和脚本示例漂移。
@@ -58,7 +55,6 @@ pub(crate) mod stable_error_messages {
     pub const DOCUMENT_PATH_INVALID: &str = "Document path is invalid.";
     pub const INTERNAL_ERROR: &str = "Internal error.";
     pub const INVALID_PROTOCOL_REQUEST: &str = "Invalid protocol request.";
-    pub const PROTOCOL_INCOMPATIBLE: &str = "Protocol versions are incompatible.";
     pub const REF_AMBIGUOUS: &str = "Ref is ambiguous.";
     pub const REF_NOT_FOUND: &str = "Ref was not found.";
 }

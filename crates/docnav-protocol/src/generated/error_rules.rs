@@ -6,7 +6,6 @@ use crate::StableErrorCode;
 pub(crate) const fn required_details(code: StableErrorCode) -> &'static [&'static str] {
     match code {
         StableErrorCode::InvalidRequest => &["field", "reason"],
-        StableErrorCode::ProtocolIncompatible => &["requested", "supported_min", "supported_max"],
         StableErrorCode::DocumentNotFound => &["path"],
         StableErrorCode::DocumentPathInvalid => &["path", "reason"],
         StableErrorCode::DocumentEncodingUnsupported => &["path", "encoding"],

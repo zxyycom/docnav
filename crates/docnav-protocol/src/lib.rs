@@ -25,9 +25,7 @@ pub use envelope::{
 };
 pub use error::{MissingErrorDetail, StableError, StableErrorCode};
 pub use integer::{positive_result, try_positive, PositiveIntegerError};
-pub use manifest::{
-    AdapterIdentity, FormatDescriptor, Manifest, ManifestValidationError, RecommendedParameters,
-};
+pub use manifest::{AdapterIdentity, FormatDescriptor, Manifest, ManifestValidationError};
 pub use operation::{Operation, OperationParseError, PagedOperation};
 pub use probe::{ProbeReason, ProbeReasonCode, ProbeResult, ProbeValidationError};
 pub use result::{Entry, FindResult, InfoResult, OperationResult, OutlineResult, ReadResult};
@@ -35,10 +33,7 @@ pub use schema::{
     validate_manifest_value, validate_probe_result_value, validate_protocol_request_value,
     validate_protocol_response_value, SchemaValidationError,
 };
-pub use version::{
-    ensure_supported_protocol, select_highest_compatible, ProtocolRange, ProtocolRangeError,
-    ProtocolVersion, VersionParseError,
-};
+pub use version::{ProtocolVersion, VersionParseError};
 
 #[cfg(test)]
 mod tests;

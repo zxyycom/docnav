@@ -20,9 +20,9 @@ impl AdapterExitCode {
 
 pub fn exit_code_for_error(code: StableErrorCode) -> AdapterExitCode {
     match code {
-        StableErrorCode::InvalidRequest
-        | StableErrorCode::ProtocolIncompatible
-        | StableErrorCode::CapabilityUnsupported => AdapterExitCode::ProtocolError,
+        StableErrorCode::InvalidRequest | StableErrorCode::CapabilityUnsupported => {
+            AdapterExitCode::ProtocolError
+        }
         StableErrorCode::InternalError => AdapterExitCode::InternalError,
         StableErrorCode::AdapterUnavailable | StableErrorCode::AdapterInvokeFailed => {
             AdapterExitCode::IoError

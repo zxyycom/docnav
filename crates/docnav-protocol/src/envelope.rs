@@ -3,8 +3,8 @@ use std::fmt;
 
 use crate::constants::fields;
 use crate::{
-    MissingErrorDetail, Operation, OperationResult, Options, PositiveInteger, ProtocolRange,
-    StableError, UNKNOWN_REQUEST_ID,
+    MissingErrorDetail, Operation, OperationResult, Options, PositiveInteger, StableError,
+    PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -205,8 +205,8 @@ impl FailureResponse {
         }
     }
 
-    pub fn unparsed(error: StableError, supported: &ProtocolRange) -> Self {
-        Self::new(supported.max.to_string(), UNKNOWN_REQUEST_ID, None, error)
+    pub fn unparsed(error: StableError) -> Self {
+        Self::new(PROTOCOL_VERSION, UNKNOWN_REQUEST_ID, None, error)
     }
 
     pub fn validate(&self) -> Result<(), ProtocolValidationError> {

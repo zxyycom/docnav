@@ -16,6 +16,8 @@ fn manifest_and_probe_are_not_wrapped_in_invoke_envelope() {
         serde_json::from_slice(&manifest_stdout).expect("manifest JSON");
     assert!(manifest.get("manifest_version").is_some());
     assert!(manifest.get("protocol_version").is_none());
+    assert!(manifest.get("protocol").is_none());
+    assert!(manifest.get("recommended_parameters").is_none());
     assert!(manifest.get("ok").is_none());
 
     let mut probe_stdout = Vec::new();

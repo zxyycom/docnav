@@ -95,15 +95,20 @@ export function testManifestProbe() {
   for (const capability of ["outline", "read", "find", "info"]) {
     expectIncludes(manifest, manifestJson.capabilities, capability, `manifest includes ${capability}`);
   }
-  expect(
+  expect(manifest, manifestJson.formats[0].id === "markdown", "manifest declares markdown format");
+  expectIncludes(manifest, manifestJson.formats[0].extensions, ".md", "manifest declares .md extension");
+  expectIncludes(manifest, manifestJson.formats[0].extensions, ".markdown", "manifest declares .markdown extension");
+  expectIncludes(
     manifest,
-    manifestJson.recommended_parameters.outline.limit_chars === 6000,
-    "manifest recommends outline limit_chars"
+    manifestJson.formats[0].content_types,
+    "text/markdown",
+    "manifest declares markdown content type"
   );
+  expect(manifest, !Object.hasOwn(manifestJson, "protocol"), "manifest omits protocol range");
   expect(
     manifest,
-    manifestJson.recommended_parameters.outline.options.max_heading_level === 3,
-    "manifest recommends max_heading_level"
+    !Object.hasOwn(manifestJson, "recommended_parameters"),
+    "manifest omits recommended parameters"
   );
   expect(manifest, !Object.hasOwn(manifestJson, "entries"), "manifest has no navigation payload");
   expect(manifest, !Object.hasOwn(manifestJson, "result"), "manifest is not a response envelope");

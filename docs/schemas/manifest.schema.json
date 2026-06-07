@@ -5,10 +5,8 @@
   "required": [
     "manifest_version",
     "adapter",
-    "protocol",
     "formats",
-    "capabilities",
-    "recommended_parameters"
+    "capabilities"
   ],
   "properties": {
     "manifest_version": {
@@ -33,24 +31,6 @@
         "version": {
           "type": "string",
           "minLength": 1
-        }
-      },
-      "additionalProperties": false
-    },
-    "protocol": {
-      "type": "object",
-      "required": [
-        "min",
-        "max"
-      ],
-      "properties": {
-        "min": {
-          "type": "string",
-          "pattern": "^[0-9]+\\.[0-9]+$"
-        },
-        "max": {
-          "type": "string",
-          "pattern": "^[0-9]+\\.[0-9]+$"
         }
       },
       "additionalProperties": false
@@ -102,39 +82,6 @@
         ]
       },
       "uniqueItems": true
-    },
-    "recommended_parameters": {
-      "type": "object",
-      "properties": {
-        "outline": {
-          "$ref": "#/$defs/pagedOperationParameters"
-        },
-        "read": {
-          "$ref": "#/$defs/pagedOperationParameters"
-        },
-        "find": {
-          "$ref": "#/$defs/pagedOperationParameters"
-        }
-      },
-      "additionalProperties": false
-    }
-  },
-  "$defs": {
-    "pagedOperationParameters": {
-      "type": "object",
-      "required": [
-        "limit_chars"
-      ],
-      "properties": {
-        "limit_chars": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "options": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
     }
   },
   "additionalProperties": false

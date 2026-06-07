@@ -58,6 +58,21 @@ fn manifest_and_probe_emit_protocol_json_schemas() {
     let manifest_json: Value = serde_json::from_slice(&manifest.stdout).expect("manifest JSON");
     assert_eq!(manifest_json["adapter"]["id"], "docnav-markdown");
     assert!(manifest_json["protocol_version"].is_null());
+    assert!(manifest_json["protocol"].is_null());
+    assert!(manifest_json["recommended_parameters"].is_null());
+    assert_eq!(manifest_json["formats"][0]["id"], "markdown");
+    assert!(manifest_json["formats"][0]["extensions"]
+        .as_array()
+        .unwrap()
+        .contains(&Value::from(".md")));
+    assert!(manifest_json["formats"][0]["extensions"]
+        .as_array()
+        .unwrap()
+        .contains(&Value::from(".markdown")));
+    assert!(manifest_json["formats"][0]["content_types"]
+        .as_array()
+        .unwrap()
+        .contains(&Value::from("text/markdown")));
     assert!(manifest_json["capabilities"]
         .as_array()
         .unwrap()

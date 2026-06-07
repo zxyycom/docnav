@@ -46,7 +46,7 @@ Docnav 分为两个语义层：
 - 管理 `.docnav/` 项目配置和用户级 `docnav` 配置。
 - 根据 path、项目配置、manifest、`--adapter`、core 简易推断和 probe 选择 adapter。
 - 自动选择并调用对应 adapter。
-- 在启动 `invoke` 前解析显式参数、项目配置、用户配置、内置默认值和 manifest 推荐参数。
+- 在启动 `invoke` 前解析显式参数、项目配置、用户配置和 core 内置默认值。
 - 统一处理 page、limit_chars、输出模式和错误映射。
 - 校验 adapter protocol 结果，并转换为默认阅读文本、结构化阅读输出或完整 protocol 输出。
 
@@ -73,7 +73,7 @@ Docnav 分为两个语义层：
 - 生成扁平 outline、ref、语义结果和下一页 page。
 - 解析 ref 的格式定位部分并唯一读取。
 - 定义 adapter 直接 CLI 的阅读文本和 readable JSON。
-- 在 manifest 中声明格式原生推荐参数，使 `docnav` 能在 invoke 前显式化最终参数。
+- 在 manifest 中声明 adapter 身份、支持格式、扩展名、content type 和 capabilities。
 
 adapter 只处理本格式请求，不承担跨格式路由、项目初始化、全局配置管理或接入层适配。
 
@@ -130,7 +130,7 @@ AI Client
 > 内置默认值
 ```
 
-配置只在所属 CLI 域内生效。调用方在启动 `invoke` 前必须完成默认参数解析，并在请求中显式传入最终有限参数。格式 adapter 通过 manifest 声明格式原生推荐参数；`docnav` 可以选择并原样传入 adapter。
+配置只在所属 CLI 域内生效。调用方在启动 `invoke` 前必须完成默认参数解析，并在请求中显式传入最终有限参数。格式原生 options 只由 adapter 直接 CLI 或调用方显式参数提供；`docnav` 不从 manifest、配置或隐式默认值合成格式专属 options。
 
 每个 CLI 可以通过自身配置域调整输出文本模板、guidance、usage 和错误建议。配置只能影响阅读文本和提示文案，稳定协议字段、readable JSON 字段、MCP structuredContent 字段和错误 code 保持不变。
 

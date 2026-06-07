@@ -6,8 +6,8 @@ use docnav_adapter_sdk::{invoke_once, Adapter, AdapterExitCode};
 use docnav_markdown::MarkdownAdapter;
 use docnav_protocol::{
     positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
-    OperationArguments, Options, OutlineArguments, OutlineResult, PagedOperation, ProtocolResponse,
-    ReadArguments, RequestEnvelope, StableError, StableErrorCode, PROTOCOL_VERSION,
+    OperationArguments, Options, OutlineArguments, OutlineResult, ProtocolResponse, ReadArguments,
+    RequestEnvelope, StableError, StableErrorCode, PROTOCOL_VERSION,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -85,15 +85,6 @@ fn max_heading_level_options(level: u8) -> Options {
     options
 }
 
-fn recommended_options(operation: PagedOperation) -> Options {
-    MarkdownAdapter
-        .manifest()
-        .recommended_parameters
-        .get(&operation)
-        .and_then(|parameters| parameters.options.clone())
-        .expect("recommended operation options")
-}
-
 fn outline_result(path: &Path, arguments: &OutlineArguments) -> OutlineResult {
     let request = make_request(
         path,
@@ -123,6 +114,10 @@ fn manifest_declares_markdown_v0_capabilities() {
     manifest.validate_semantics().expect("manifest semantics");
     assert_eq!(manifest.adapter.id, "docnav-markdown");
     assert_eq!(manifest.formats[0].id, "markdown");
+    assert!(manifest.formats[0].extensions.contains(&".md".to_owned()));
+    assert!(manifest.formats[0]
+        .extensions
+        .contains(&".markdown".to_owned()));
     assert!(manifest.formats[0]
         .content_types
         .contains(&"text/markdown".to_owned()));
@@ -135,6 +130,10 @@ fn manifest_declares_markdown_v0_capabilities() {
             Operation::Info
         ]
     );
+
+    let value = serde_json::to_value(&manifest).expect("manifest JSON");
+    assert!(value.get("protocol").is_none());
+    assert!(value.get("recommended_parameters").is_none());
 }
 
 #[test]
@@ -443,20 +442,20 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
 }
 
 #[test]
-fn manifest_recommended_options_shape_outline_and_find_granularity() {
-    let path = write_doc("recommended-options.md", "# Top\n\n#### Deep\nneedle\n");
-    let recommended_outline = OutlineArguments {
+fn adapter_owned_options_shape_outline_and_find_granularity() {
+    let path = write_doc("adapter-owned-options.md", "# Top\n\n#### Deep\nneedle\n");
+    let default_outline = OutlineArguments {
         limit_chars: positive(6000),
         page: positive(1),
-        options: Some(recommended_options(PagedOperation::Outline)),
+        options: None,
     };
     let expanded_outline = OutlineArguments {
         options: Some(max_heading_level_options(4)),
-        ..recommended_outline.clone()
+        ..default_outline.clone()
     };
 
-    let recommended = outline_result(&path, &recommended_outline);
-    assert_eq!(entry_refs(&recommended.entries), vec!["L1:Top"]);
+    let default = outline_result(&path, &default_outline);
+    assert_eq!(entry_refs(&default.entries), vec!["L1:Top"]);
 
     let expanded = outline_result(&path, &expanded_outline);
     assert_eq!(
@@ -464,19 +463,19 @@ fn manifest_recommended_options_shape_outline_and_find_granularity() {
         vec!["L1:Top", "L3:Top > Deep"]
     );
 
-    let recommended_find = FindArguments {
+    let default_find = FindArguments {
         query: "needle".to_owned(),
         limit_chars: positive(6000),
         page: positive(1),
-        options: Some(recommended_options(PagedOperation::Find)),
+        options: None,
     };
     let expanded_find = FindArguments {
         options: Some(max_heading_level_options(4)),
-        ..recommended_find.clone()
+        ..default_find.clone()
     };
 
-    let recommended_matches = find_result(&path, &recommended_find);
-    assert_eq!(entry_refs(&recommended_matches.matches), vec!["L1:Top"]);
+    let default_matches = find_result(&path, &default_find);
+    assert_eq!(entry_refs(&default_matches.matches), vec!["L1:Top"]);
 
     let expanded_matches = find_result(&path, &expanded_find);
     assert_eq!(entry_refs(&expanded_matches.matches), vec!["L3:Top > Deep"]);

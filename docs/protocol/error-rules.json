@@ -7,11 +7,6 @@
       "required_details": ["field", "reason"]
     },
     {
-      "code": "PROTOCOL_INCOMPATIBLE",
-      "rust_variant": "ProtocolIncompatible",
-      "required_details": ["requested", "supported_min", "supported_max"]
-    },
-    {
       "code": "DOCUMENT_NOT_FOUND",
       "rust_variant": "DocumentNotFound",
       "required_details": ["path"]

@@ -1,13 +1,10 @@
-use std::collections::BTreeMap;
-
 use docnav_adapter_sdk::{Adapter, AdapterResult};
 use docnav_protocol::{
-    try_positive, AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoArguments,
-    InfoResult, Manifest, Operation, Options, OutlineArguments, OutlineResult, PagedOperation,
-    ProbeReason, ProbeReasonCode, ProbeResult, ProtocolRange, ReadArguments, ReadResult,
-    RecommendedParameters, RequestEnvelope, StableError, MANIFEST_VERSION, PROBE_VERSION,
+    AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoArguments, InfoResult,
+    Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode,
+    ProbeResult, ReadArguments, ReadResult, RequestEnvelope, StableError, MANIFEST_VERSION,
+    PROBE_VERSION,
 };
-use serde_json::Value;
 
 use crate::markdown::{
     cost_for, is_markdown_extension, is_utf8_markdown_candidate, max_heading_level_from_options,
@@ -33,29 +30,6 @@ impl Adapter for MarkdownAdapter {
     }
 
     fn manifest(&self) -> Manifest {
-        let mut recommended_parameters = BTreeMap::new();
-        recommended_parameters.insert(
-            PagedOperation::Outline,
-            RecommendedParameters {
-                limit_chars: positive(DEFAULT_LIMIT_CHARS),
-                options: Some(max_heading_options(DEFAULT_MAX_HEADING_LEVEL)),
-            },
-        );
-        recommended_parameters.insert(
-            PagedOperation::Read,
-            RecommendedParameters {
-                limit_chars: positive(DEFAULT_LIMIT_CHARS),
-                options: None,
-            },
-        );
-        recommended_parameters.insert(
-            PagedOperation::Find,
-            RecommendedParameters {
-                limit_chars: positive(DEFAULT_LIMIT_CHARS),
-                options: Some(max_heading_options(DEFAULT_MAX_HEADING_LEVEL)),
-            },
-        );
-
         Manifest {
             manifest_version: MANIFEST_VERSION.to_owned(),
             adapter: AdapterIdentity {
@@ -63,7 +37,6 @@ impl Adapter for MarkdownAdapter {
                 name: ADAPTER_NAME.to_owned(),
                 version: env!("CARGO_PKG_VERSION").to_owned(),
             },
-            protocol: ProtocolRange::v0_1(),
             formats: vec![FormatDescriptor {
                 id: FORMAT_ID_MARKDOWN.to_owned(),
                 extensions: vec![".md".to_owned(), ".markdown".to_owned()],
@@ -75,7 +48,6 @@ impl Adapter for MarkdownAdapter {
                 Operation::Find,
                 Operation::Info,
             ],
-            recommended_parameters,
         }
     }
 
@@ -196,19 +168,6 @@ impl Adapter for MarkdownAdapter {
             ],
         })
     }
-}
-
-fn max_heading_options(max_heading_level: u8) -> Options {
-    let mut options = Options::new();
-    options.insert(
-        MAX_HEADING_LEVEL_OPTION.to_owned(),
-        Value::from(max_heading_level),
-    );
-    options
-}
-
-fn positive(value: u32) -> docnav_protocol::PositiveInteger {
-    try_positive(value).expect("static positive integer")
 }
 
 fn probe(

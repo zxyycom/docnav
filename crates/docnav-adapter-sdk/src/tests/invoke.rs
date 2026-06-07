@@ -1,7 +1,4 @@
-use super::common::{
-    ManifestProtocolRangeAdapter, ManifestSemanticErrorAdapter, MissingDetailsErrorAdapter,
-    StubAdapter,
-};
+use super::common::{ManifestShapeErrorAdapter, MissingDetailsErrorAdapter, StubAdapter};
 use crate::{invoke_once, AdapterExitCode};
 use docnav_protocol::{
     Operation, ProtocolResponse, StableErrorCode, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
@@ -60,7 +57,7 @@ fn invalid_request_outputs_structured_failure_on_stdout() {
 }
 
 #[test]
-fn unsupported_protocol_is_protocol_incompatible_before_schema_const() {
+fn unsupported_protocol_version_is_invalid_request_schema_failure() {
     let input = br#"{
           "protocol_version": "1.0",
           "request_id": "req-1",
@@ -74,12 +71,13 @@ fn unsupported_protocol_is_protocol_incompatible_before_schema_const() {
     let exit = invoke_once(&StubAdapter, &input[..], &mut stdout, &mut stderr);
 
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
-    assert!(stderr.is_empty());
+    assert!(!stderr.is_empty());
     let response: ProtocolResponse =
         serde_json::from_slice(&stdout).expect("stdout is one JSON response");
     match response {
         ProtocolResponse::Failure(response) => {
-            assert_eq!(response.error.code, StableErrorCode::ProtocolIncompatible);
+            assert_eq!(response.protocol_version, PROTOCOL_VERSION);
+            assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
             assert_eq!(response.operation, Some(Operation::Outline));
             assert_eq!(response.request_id, "req-1");
         }
@@ -88,9 +86,8 @@ fn unsupported_protocol_is_protocol_incompatible_before_schema_const() {
 }
 
 #[test]
-fn invoke_uses_manifest_protocol_range_for_request_version_check() {
+fn request_schema_failure_without_version_uses_current_protocol_version() {
     let input = br#"{
-          "protocol_version": "1.0",
           "request_id": "req-1",
           "operation": "outline",
           "document": { "path": "sample.stub" },
@@ -99,29 +96,25 @@ fn invoke_uses_manifest_protocol_range_for_request_version_check() {
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
 
-    let exit = invoke_once(
-        &ManifestProtocolRangeAdapter,
-        &input[..],
-        &mut stdout,
-        &mut stderr,
-    );
+    let exit = invoke_once(&StubAdapter, &input[..], &mut stdout, &mut stderr);
 
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
-    assert!(stderr.is_empty());
+    assert!(!stderr.is_empty());
     let response: ProtocolResponse =
         serde_json::from_slice(&stdout).expect("stdout is one JSON response");
     match response {
         ProtocolResponse::Failure(response) => {
-            assert_eq!(response.error.code, StableErrorCode::ProtocolIncompatible);
-            assert_eq!(response.error.details["supported_min"], "0.0");
-            assert_eq!(response.error.details["supported_max"], "0.1");
+            assert_eq!(response.protocol_version, PROTOCOL_VERSION);
+            assert_eq!(response.operation, Some(Operation::Outline));
+            assert_eq!(response.request_id, "req-1");
+            assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
         }
         ProtocolResponse::Success(_) => panic!("expected failure response"),
     }
 }
 
 #[test]
-fn invoke_rejects_invalid_manifest_without_protocol_envelope() {
+fn invoke_rejects_invalid_manifest_shape_without_protocol_envelope() {
     let input = br#"{
           "protocol_version": "0.1",
           "request_id": "req-1",
@@ -133,7 +126,7 @@ fn invoke_rejects_invalid_manifest_without_protocol_envelope() {
     let mut stderr = Vec::new();
 
     let exit = invoke_once(
-        &ManifestSemanticErrorAdapter,
+        &ManifestShapeErrorAdapter,
         &input[..],
         &mut stdout,
         &mut stderr,
@@ -142,8 +135,7 @@ fn invoke_rejects_invalid_manifest_without_protocol_envelope() {
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
     assert!(stdout.is_empty());
     let stderr = String::from_utf8(stderr).expect("stderr is UTF-8");
-    assert!(stderr.contains("manifest semantic validation failed"));
-    assert!(stderr.contains("recommended_parameters.outline"));
+    assert!(stderr.contains("manifest schema validation failed"));
 }
 
 #[test]

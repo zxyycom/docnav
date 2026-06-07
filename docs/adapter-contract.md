@@ -1,6 +1,6 @@
 # 适配器契约
 
-本文是格式适配器命令、默认值声明、invoke、manifest 和 probe 的主规范。
+本文是格式适配器命令、默认值所有权、invoke、manifest 和 probe 的主规范。
 
 ## 命令
 
@@ -40,40 +40,15 @@ manifest_version
 adapter.id
 adapter.name
 adapter.version
-protocol.min
-protocol.max
 formats[].id
 formats[].extensions[]
 formats[].content_types[]
 capabilities[]
-recommended_parameters
 ```
 
-`recommended_parameters` 由适配器拥有，用于让 `docnav` 在 invoke 前显式化格式原生参数。`docnav` 可以选择并原样传入。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
+manifest 只声明 adapter 身份、支持格式、扩展名、content type 和 capabilities，不声明协议范围或格式默认参数。旧字段 `protocol.min`、`protocol.max` 和 `recommended_parameters` 必须被当前 manifest schema 拒绝。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
 
-Markdown v0 manifest 推荐参数：
-
-```json
-{
-  "outline": {
-    "limit_chars": 6000,
-    "options": {
-      "max_heading_level": 3
-    }
-  },
-  "read": {
-    "limit_chars": 6000
-  },
-  "find": {
-    "limit_chars": 6000,
-    "options": {
-      "max_heading_level": 3
-    }
-  }
-}
-```
-
-适配器直接 CLI 使用相同数值作为内置默认值，允许其项目级和用户级配置覆盖。
+Markdown adapter 直接 CLI 使用 `limit_chars: 6000` 和 `max_heading_level: 3` 作为内置默认值，允许其项目级和用户级配置覆盖。
 Markdown find 返回的 match ref 必须与当前导航粒度一致，并可被 read 原样消费；没有局部导航区域时，可以返回 adapter 定义的全文 ref。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度，具体归属策略由 Markdown adapter 自有契约定义。
 
 ## Probe
@@ -108,9 +83,10 @@ reasons[]
 ## 默认值所有权
 
 - 适配器直接 CLI 默认值属于适配器配置域。
-- manifest 推荐参数属于适配器声明，但不是 invoke 的隐式默认值。
-- `docnav` 按自身配置域决定核心参数；未配置时可采用 manifest 推荐参数并显式传入。
+- manifest 只声明 adapter 能力，不提供默认参数。
+- `docnav` 按自身配置域决定 path、ref、query、page、limit_chars、output 和 adapter 等 core 通用参数。
 - 格式原生 `options` 对 `docnav` 和接入层保持 opaque。
+- adapter 直接 CLI 可以由 adapter 自有 flag 或配置生成 `arguments.options`，并在进入 invoke 前显式写入请求。
 - page 不属于配置默认值；入口省略 page 时固定从 `1` 开始。
 
 ## 协议字段对齐

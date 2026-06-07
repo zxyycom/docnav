@@ -1,9 +1,8 @@
 use crate::{Adapter, AdapterError, AdapterResult};
 use docnav_protocol::{
     try_positive, AdapterIdentity, Entry, FormatDescriptor, InfoArguments, InfoResult, Manifest,
-    Operation, OutlineArguments, OutlineResult, PagedOperation, ProbeReason, ProbeReasonCode,
-    ProbeResult, ProtocolRange, ProtocolVersion, ReadArguments, ReadResult, RecommendedParameters,
-    RequestEnvelope, StableError, StableErrorCode, PROBE_VERSION,
+    Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode, ProbeResult,
+    ReadArguments, ReadResult, RequestEnvelope, StableError, StableErrorCode, PROBE_VERSION,
 };
 use std::collections::BTreeMap;
 
@@ -19,15 +18,6 @@ impl Adapter for StubAdapter {
     }
 
     fn manifest(&self) -> Manifest {
-        let mut recommended_parameters = BTreeMap::new();
-        recommended_parameters.insert(
-            PagedOperation::Outline,
-            RecommendedParameters {
-                limit_chars: positive(80),
-                options: None,
-            },
-        );
-
         Manifest {
             manifest_version: docnav_protocol::MANIFEST_VERSION.to_owned(),
             adapter: AdapterIdentity {
@@ -35,14 +25,12 @@ impl Adapter for StubAdapter {
                 name: "Stub Adapter".to_owned(),
                 version: "0.1.0".to_owned(),
             },
-            protocol: ProtocolRange::v0_1(),
             formats: vec![FormatDescriptor {
                 id: "stub".to_owned(),
                 extensions: vec![".stub".to_owned()],
                 content_types: vec!["text/stub".to_owned()],
             }],
             capabilities: vec![Operation::Outline, Operation::Info],
-            recommended_parameters,
         }
     }
 
@@ -123,36 +111,16 @@ impl Adapter for ManifestAdapterIdDriftAdapter {
     }
 }
 
-pub(super) struct ManifestSemanticErrorAdapter;
+pub(super) struct ManifestShapeErrorAdapter;
 
-impl Adapter for ManifestSemanticErrorAdapter {
+impl Adapter for ManifestShapeErrorAdapter {
     fn adapter_id(&self) -> &str {
         "stub"
     }
 
     fn manifest(&self) -> Manifest {
         let mut manifest = StubAdapter.manifest();
-        manifest.capabilities = vec![Operation::Info];
-        manifest
-    }
-
-    fn probe(&self, path: &str) -> ProbeResult {
-        StubAdapter.probe(path)
-    }
-}
-
-pub(super) struct ManifestProtocolRangeAdapter;
-
-impl Adapter for ManifestProtocolRangeAdapter {
-    fn adapter_id(&self) -> &str {
-        "stub"
-    }
-
-    fn manifest(&self) -> Manifest {
-        let mut manifest = StubAdapter.manifest();
-        manifest.protocol =
-            ProtocolRange::new(ProtocolVersion::new(0, 0), ProtocolVersion::new(0, 1))
-                .expect("test protocol range");
+        manifest.formats[0].extensions.clear();
         manifest
     }
 

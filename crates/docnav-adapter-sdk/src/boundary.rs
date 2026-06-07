@@ -1,4 +1,4 @@
-use docnav_protocol::{Manifest, ProbeResult};
+use docnav_protocol::{validate_manifest_value, Manifest, ProbeResult};
 use std::fmt;
 
 use crate::adapter::Adapter;
@@ -6,6 +6,7 @@ use crate::constants::diagnostics;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum AdapterBoundaryError {
+    ManifestSchema(String),
     ManifestSemantic(String),
     ManifestAdapterIdMismatch {
         adapter_id: String,
@@ -23,6 +24,7 @@ impl AdapterBoundaryError {
     pub(crate) const fn diagnostic(&self) -> &'static str {
         match self {
             Self::ManifestSemantic(_) => diagnostics::MANIFEST_SEMANTIC_VALIDATION_FAILED,
+            Self::ManifestSchema(_) => diagnostics::MANIFEST_SCHEMA_VALIDATION_FAILED,
             Self::ManifestAdapterIdMismatch { .. } => diagnostics::MANIFEST_ADAPTER_ID_MISMATCH,
             Self::ProbeSemantic(_) => diagnostics::PROBE_RESULT_SEMANTIC_VALIDATION_FAILED,
             Self::ProbeAdapterIdMismatch { .. } => diagnostics::PROBE_RESULT_ADAPTER_ID_MISMATCH,
@@ -33,7 +35,7 @@ impl AdapterBoundaryError {
 impl fmt::Display for AdapterBoundaryError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ManifestSemantic(error) | Self::ProbeSemantic(error) => {
+            Self::ManifestSchema(error) | Self::ManifestSemantic(error) | Self::ProbeSemantic(error) => {
                 formatter.write_str(error)
             }
             Self::ManifestAdapterIdMismatch {
@@ -59,6 +61,10 @@ pub(crate) fn validated_manifest<A: Adapter + ?Sized>(
     adapter: &A,
 ) -> Result<Manifest, AdapterBoundaryError> {
     let manifest = adapter.manifest();
+    let manifest_value = serde_json::to_value(&manifest)
+        .map_err(|error| AdapterBoundaryError::ManifestSchema(error.to_string()))?;
+    validate_manifest_value(&manifest_value)
+        .map_err(|error| AdapterBoundaryError::ManifestSchema(error.to_string()))?;
     manifest
         .validate_semantics()
         .map_err(|error| AdapterBoundaryError::ManifestSemantic(error.to_string()))?;

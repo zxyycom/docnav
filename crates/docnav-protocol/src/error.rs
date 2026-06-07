@@ -42,22 +42,6 @@ impl StableError {
         )
     }
 
-    pub fn protocol_incompatible(
-        requested: impl Into<String>,
-        supported_min: impl Into<String>,
-        supported_max: impl Into<String>,
-    ) -> Self {
-        Self::new(
-            StableErrorCode::ProtocolIncompatible,
-            stable_error_messages::PROTOCOL_INCOMPATIBLE,
-            details([
-                (details_fields::REQUESTED, requested.into()),
-                (details_fields::SUPPORTED_MIN, supported_min.into()),
-                (details_fields::SUPPORTED_MAX, supported_max.into()),
-            ]),
-        )
-    }
-
     pub fn document_not_found(path: impl Into<String>) -> Self {
         Self::new(
             StableErrorCode::DocumentNotFound,
@@ -204,7 +188,6 @@ fn details(fields: impl IntoIterator<Item = (&'static str, String)>) -> ErrorDet
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum StableErrorCode {
     InvalidRequest,
-    ProtocolIncompatible,
     DocumentNotFound,
     DocumentPathInvalid,
     DocumentEncodingUnsupported,

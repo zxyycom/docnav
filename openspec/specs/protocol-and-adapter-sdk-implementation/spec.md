@@ -16,18 +16,6 @@
 - **THEN** 该信息只能存在于 adapter 生成的 `ref` 或 `display`
 - **THEN** `docnav-protocol` 不新增 Markdown 专属 result 字段
 
-### Requirement: 协议版本兼容必须按闭区间判断
-协议兼容判断 MUST 使用 `docnav` 支持范围与 adapter manifest 协议范围的闭区间交集，并 MUST 在无交集时产生 `PROTOCOL_INCOMPATIBLE`。
-
-#### Scenario: 选择最高兼容版本
-- **WHEN** `docnav` 支持 `0.1` 到 `0.2` 且 adapter 支持 `0.1` 到 `0.1`
-- **THEN** 兼容版本为 `0.1`
-
-#### Scenario: 无协议交集
-- **WHEN** `docnav` 与 adapter 的协议范围没有交集
-- **THEN** 协议层返回 `PROTOCOL_INCOMPATIBLE`
-- **THEN** 错误 details 包含参与判断的版本范围
-
 ### Requirement: operation 必须绑定成功 result 类型
 protocol response schema 和共享校验 MUST 使用响应 `operation` 绑定成功 result 类型，且成功响应 operation MUST 与请求 operation 一致。
 
@@ -59,3 +47,55 @@ Docnav 协议与 adapter SDK 实现 MUST 提供自动化验证，覆盖 protocol
 - **WHEN** 验证脚本读取 protocol response 示例
 - **THEN** 示例通过 protocol response schema
 - **THEN** 响应 operation 与 result 类型匹配
+
+### Requirement: 协议边界必须按当前契约硬校验
+Docnav 协议与 adapter SDK MUST 使用当前 protocol、manifest 和 probe schema 以及语义校验判断输出是否符合当前契约。`protocol_version`、`manifest_version` 和 `probe_version` MUST 保留为固定 schema 识别字段，但 MUST NOT 参与 adapter 路由、安装、更新或 invoke 的版本区间协商。
+
+#### Scenario: 当前契约校验通过
+- **WHEN** adapter manifest、probe 和 invoke 响应符合当前 schema
+- **AND** 必需字段、字段类型、operation/result shape 和语义校验全部通过
+- **THEN** 协议层认为该 adapter 输出符合当前契约
+
+#### Scenario: 当前契约校验失败
+- **WHEN** adapter 输出缺少当前 schema 必需字段或字段类型不符
+- **THEN** 校验失败原因包含字段或 schema 路径信息
+- **THEN** 当前阶段失败
+- **THEN** 未选中的 adapter 记录为候选失败证据，已选中的 adapter 返回稳定 adapter/protocol 错误
+
+#### Scenario: 请求版本字段不匹配当前 schema
+- **WHEN** invoke 请求中的 `protocol_version` 不是当前 schema 固定值
+- **THEN** request schema 校验失败
+- **THEN** SDK 返回 `INVALID_REQUEST`
+- **THEN** SDK 不返回 `PROTOCOL_INCOMPATIBLE`
+
+#### Scenario: 无法解析请求时使用当前协议识别字段
+- **WHEN** SDK 无法解析 invoke stdin 为有效请求 envelope
+- **THEN** failure response 的 `protocol_version` 使用当前 `PROTOCOL_VERSION` 常量
+- **THEN** failure response 的 `request_id` 使用未知请求 id 占位
+- **THEN** failure response 的 `operation` 为 `null`
+
+### Requirement: Manifest 必须只承载 adapter 能力声明
+Adapter manifest MUST restrict its field ownership to adapter identity, supported formats, extensions, content types, and capabilities. Manifest schema MUST reject protocol range fields and `recommended_parameters`.
+
+#### Scenario: 读取 manifest
+- **WHEN** adapter 输出 manifest
+- **THEN** manifest 字段集合只表达 adapter 身份、支持格式、扩展名、content type 和 capabilities
+- **THEN** 格式专属默认值不通过 manifest 传给 `docnav`
+
+#### Scenario: Manifest 包含旧字段
+- **WHEN** adapter manifest 包含 `protocol.min`、`protocol.max` 或 `recommended_parameters`
+- **THEN** manifest schema 校验失败
+- **THEN** adapter 在当前阶段不可用
+
+### Requirement: Invoke options 必须保留为 adapter 拥有的显式参数
+Protocol request argument types MUST keep optional `options` as an opaque adapter-owned object. `docnav-protocol` and `docnav-adapter-sdk` MUST NOT derive `options` from manifest `recommended_parameters`.
+
+#### Scenario: Adapter 直接 CLI 生成 options
+- **WHEN** adapter 直接 CLI 根据 adapter 自有 flag 生成 `arguments.options`
+- **THEN** invoke 请求 schema 接受该 `options` 对象
+- **THEN** SDK 将该 `options` 对象原样传给 adapter operation handler
+
+#### Scenario: Manifest 不提供 options 来源
+- **WHEN** adapter manifest 通过当前 schema 校验
+- **THEN** manifest 不包含 `recommended_parameters`
+- **THEN** SDK 不从 manifest 合成 `arguments.options`

@@ -88,14 +88,14 @@ request/response fixture 或集成测试必须验证请求 operation 与响应 o
 | `read` | path/ref 原样输入、有限内容、content_type 和 page | 显式 ref/page/limit_chars、唯一定位、ref 错误 | 调用 `docnav` 并返回精简内容、content_type 和 page |
 | `find` | query、有限匹配和 page | 显式 query/page/limit_chars、ref/display matches | 调用 `docnav` 并返回精简匹配和 page |
 | `info` | 格式原生可读摘要 | 紧凑 display/capabilities | 调用 `docnav` 并返回精简摘要 |
-| `manifest` | 发现 adapter 身份、格式 id、扩展名、content type、推荐参数和当前协议字段 shape | 不通过 invoke | 不拥有该能力 |
+| `manifest` | 发现 adapter 身份、格式 id、扩展名、content type、capabilities 和当前 manifest 字段 shape | 不通过 invoke | 不拥有该能力 |
 | `probe` | 获取格式支持度和候选判断依据 | 不通过 invoke | 不拥有该能力 |
 | `adapter install/update/remove/list` | 正式安装、更新、移除和列出 adapter；支持 GitHub 链接和本地可执行文件；校验 manifest、当前协议字段 shape 和本地 exe hash | 不通过 invoke | 不拥有该能力 |
 
 ## 端到端验收
 
 1. `docnav outline` 根据 `--adapter` 或 core 简易推断确定预选 adapter，预选失败后遍历 registry 选择第一个 probe 成功的 adapter。
-2. `docnav` 将最终 page、limit_chars 和 options 写入显式 invoke 请求。
+2. `docnav` 将最终 page、limit_chars 和调用方显式 options 写入 invoke 请求，且不从 manifest 生成格式专属 options。
 3. adapter 返回带 operation 的 protocol envelope、扁平 entries 和 page。
 4. `docnav` 保留 operation 与 entries，并映射为默认文本、`readable-json` 或 `protocol-json`。
 5. 从 outline 取得 ref 并原样调用 `docnav read`。

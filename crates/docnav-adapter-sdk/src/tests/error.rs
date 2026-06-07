@@ -22,10 +22,6 @@ fn stable_error_codes_map_to_adapter_exit_codes() {
             AdapterExitCode::ProtocolError,
         ),
         (
-            StableErrorCode::ProtocolIncompatible,
-            AdapterExitCode::ProtocolError,
-        ),
-        (
             StableErrorCode::DocumentNotFound,
             AdapterExitCode::HandlerError,
         ),

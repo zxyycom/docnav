@@ -26,7 +26,7 @@ docnav version
 1. 项目根解析。
 2. path 规范化和可访问性检查。
 3. adapter 选择：`--adapter` 或 core 简易推断确定一个预选 adapter；预选 probe 失败后逐个 probe 已注册 adapter，并返回第一个成功项。
-4. 显式参数、项目配置、用户配置、内置默认值和 manifest 推荐参数合并。
+4. 显式参数、项目配置、用户配置和 core 内置默认值合并。
 5. page 与 limit_chars 显式化。
 6. 输出模式和错误映射选择。
 
@@ -54,7 +54,7 @@ docnav version
 
 配置可以控制行为参数、默认阅读文本模板、page 标签、成本说明、guidance、usage、错误建议和 MCP TextContent 包装文本。配置不得改变 protocol-json 字段；readable-json 和 MCP structuredContent 的字段形状用于阅读输出和工具声明校验，不作为完整机器协议。
 
-`docnav config set` 和 `unset` 默认写项目配置；传入 `--user` 时写用户配置。`config list` 不带 path 时列出 core 配置域的当前生效值；`config list --path <path> [--operation outline|read|find|info]` 解析文档上下文，展示该 path 触发的 adapter、manifest 推荐参数来源和最终默认参数。
+`docnav config set` 和 `unset` 默认写项目配置；传入 `--user` 时写用户配置。`config list` 不带 path 时列出 core 配置域的当前生效值；`config list --path <path> [--operation outline|read|find|info]` 解析文档上下文，展示该 path 触发的 adapter、core 参数来源和最终默认参数。
 
 ## 输出模式
 
@@ -106,7 +106,7 @@ readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `-
 - GitHub 链接：`https://github.com/...` 形式的 adapter 发布链接。`docnav` 必须解析为可执行 adapter 制品，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，并记录来源 URL、解析后的制品信息、manifest 快照和可执行入口。
 - 本地可执行文件：指向 adapter exe 的本地路径。`docnav` 必须解析为项目外部或项目内部的绝对可执行路径，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，计算并记录可执行文件 SHA-256 hash。后续运行、`list` 健康状态检查和 `update` 必须重新计算 hash；hash 不一致时不得静默继续使用旧安装记录。
 
-- `list` 输出已安装 adapter、manifest 身份、支持格式、协议范围、安装来源和可用状态。
+- `list` 输出已安装 adapter、manifest 身份、支持格式、安装来源和可用状态。
 - `install <source>` 校验失败不得注册；本地可执行文件缺失、不可执行或 hash 无法计算时必须失败。
 - `update [adapter-id]` 使用已记录来源获取或重新验证候选制品。GitHub 来源重新解析并获取新制品；本地可执行文件来源重新读取同一路径，重新计算 hash，并在 manifest schema 和协议字段 shape 校验通过后更新记录。校验失败时保留旧记录并返回结构化错误。
 - `remove <adapter-id>` 注销 adapter 并清理 `docnav` 管理的安装记录；仍被项目配置显式引用时必须失败或给出明确 guidance。

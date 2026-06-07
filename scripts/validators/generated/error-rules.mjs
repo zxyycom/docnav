@@ -3,7 +3,6 @@
 
 export const REQUIRED_ERROR_DETAILS_BY_CODE = Object.freeze({
   INVALID_REQUEST: Object.freeze(["field", "reason"]),
-  PROTOCOL_INCOMPATIBLE: Object.freeze(["requested", "supported_min", "supported_max"]),
   DOCUMENT_NOT_FOUND: Object.freeze(["path"]),
   DOCUMENT_PATH_INVALID: Object.freeze(["path", "reason"]),
   DOCUMENT_ENCODING_UNSUPPORTED: Object.freeze(["path", "encoding"]),

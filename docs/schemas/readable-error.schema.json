@@ -11,7 +11,6 @@
     "code": {
       "enum": [
         "INVALID_REQUEST",
-        "PROTOCOL_INCOMPATIBLE",
         "DOCUMENT_NOT_FOUND",
         "DOCUMENT_PATH_INVALID",
         "DOCUMENT_ENCODING_UNSUPPORTED",
