@@ -6,9 +6,12 @@ use docnav_protocol::{
 };
 
 use super::args::{
-    parse_operation_options, parse_probe, parse_protocol_only_output, NativeOptionSpec,
+    parse_operation_options, parse_probe, parse_protocol_only_options, NativeOptionSpec,
 };
-use super::output::{handler_error, write_operation_output, DirectOutputMode, DirectTextFormatter};
+use super::output::{
+    append_cli_warnings_to_stderr, handler_error, write_operation_output, DirectOutputMode,
+    DirectTextFormatter,
+};
 use crate::{emit_diagnostic, execute_operation, invoke_once, run_command, Adapter, SdkCommand};
 
 pub struct DirectCliConfig<'a, T> {
@@ -41,24 +44,30 @@ where
     };
 
     match command {
-        "manifest" => match parse_protocol_only_output(&args[1..]) {
-            Ok(()) => run_command(
-                adapter,
-                SdkCommand::Manifest,
-                std::io::empty(),
-                stdout,
-                stderr,
-            ),
+        "manifest" => match parse_protocol_only_options(&args[1..], config.native_options) {
+            Ok(warnings) => {
+                let exit_code = run_command(
+                    adapter,
+                    SdkCommand::Manifest,
+                    std::io::empty(),
+                    &mut stdout,
+                    &mut stderr,
+                );
+                append_cli_warnings_to_stderr(exit_code, &warnings, &mut stderr)
+            }
             Err(message) => input_error(&mut stderr, &message),
         },
-        "probe" => match parse_probe(&args[1..]) {
-            Ok(path) => run_command(
-                adapter,
-                SdkCommand::Probe { path },
-                std::io::empty(),
-                stdout,
-                stderr,
-            ),
+        "probe" => match parse_probe(&args[1..], config.native_options) {
+            Ok(options) => {
+                let exit_code = run_command(
+                    adapter,
+                    SdkCommand::Probe { path: options.path },
+                    std::io::empty(),
+                    &mut stdout,
+                    &mut stderr,
+                );
+                append_cli_warnings_to_stderr(exit_code, &options.warnings, &mut stderr)
+            }
             Err(message) => input_error(&mut stderr, &message),
         },
         "invoke" => {
@@ -117,7 +126,7 @@ where
     E: Write,
     T: DirectTextFormatter,
 {
-    let options = match parse_operation_options(
+    let mut options = match parse_operation_options(
         operation,
         args,
         config.default_limit_chars,
@@ -127,6 +136,7 @@ where
         Err(message) => return input_error(stderr, &message),
     };
     let output = options.output;
+    let warnings = std::mem::take(&mut options.warnings);
     let request = match operation_request(operation, options, config.request_id) {
         Ok(request) => request,
         Err(message) => return input_error(stderr, &message),
@@ -137,6 +147,7 @@ where
         &request,
         output,
         &config.text_formatter,
+        &warnings,
         stdout,
         stderr,
     )
@@ -195,6 +206,7 @@ fn run_operation_request<A, T, W, E>(
     request: &RequestEnvelope,
     output: DirectOutputMode,
     text_formatter: &T,
+    warnings: &[super::args::DirectCliWarning],
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32
@@ -205,12 +217,15 @@ where
     E: Write,
 {
     if output == DirectOutputMode::ProtocolJson {
-        return invoke_request(adapter, request, stdout, stderr);
+        let exit_code = invoke_request(adapter, request, stdout, stderr);
+        return append_cli_warnings_to_stderr(exit_code, warnings, stderr);
     }
 
     match execute_operation(adapter, request) {
-        Ok(result) => write_operation_output(result, output, text_formatter, stdout, stderr),
-        Err(error) => handler_error(error, output, stdout, stderr),
+        Ok(result) => {
+            write_operation_output(result, output, text_formatter, warnings, stdout, stderr)
+        }
+        Err(error) => handler_error(error, output, warnings, stdout, stderr),
     }
 }
 

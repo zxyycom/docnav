@@ -11,7 +11,7 @@ import { testReadableFindInfo, testReadableOutlineRead } from "./cases/readable.
 import { testTextOutputs } from "./cases/text.mjs";
 import { testManifestProbe, testProtocolOutputs, testValidInvoke } from "./cases/protocol.mjs";
 import { testFixtureCorpus } from "./cases/corpus.mjs";
-import { testCliArgumentFailures } from "./cases/cli-args.mjs";
+import { testCliArgumentCompatibilityWarnings, testCliArgumentFailures } from "./cases/cli-args.mjs";
 import { testProtocolOperationErrors, testReadableOperationErrors } from "./cases/operation-errors.mjs";
 import { testInvokeFailures } from "./cases/invoke-errors.mjs";
 
@@ -32,6 +32,7 @@ try {
   runTest("valid invoke stdin request", testValidInvoke);
   runTest("Markdown fixture corpus behavior", testFixtureCorpus);
   runTest("CLI argument validation matrix", testCliArgumentFailures);
+  runTest("CLI argument compatibility warning matrix", testCliArgumentCompatibilityWarnings);
   runTest("readable operation error matrix", testReadableOperationErrors);
   runTest("protocol-json operation error matrix", testProtocolOperationErrors);
   runTest("invoke malformed/schema error matrix", testInvokeFailures);

@@ -2,10 +2,17 @@ import { exitCodes } from "../config.mjs";
 import { fixture, getNormalRef } from "../fixtures.mjs";
 import { runCli } from "../runner.mjs";
 import {
+  expect,
   expectExit,
+  expectNoJsonPayloadInStderr,
+  expectProtocolSuccess,
+  expectStderrEmpty,
   expectStderrIncludes,
-  expectStdoutEmpty
+  expectStdoutEmpty,
+  expectStdoutIncludes,
+  parseJson
 } from "../assertions.mjs";
+import { validateSchema } from "../schemas.mjs";
 
 const invalidValuesByType = Object.freeze({
   positiveInt: Object.freeze([
@@ -71,12 +78,14 @@ const commandSpecs = Object.freeze({
       Object.freeze({
         name: "outline unsupported flag --unknown",
         appendArgs: Object.freeze(["--unknown", "value"]),
-        stderr: "unknown or unsupported flag --unknown"
+        stderr: "unknown or unsupported flag --unknown",
+        compatibilityWarning: true
       }),
       Object.freeze({
         name: "outline extra positional unexpected",
         appendArgs: Object.freeze(["unexpected", "value"]),
-        stderr: "unknown or unsupported flag unexpected"
+        stderr: "unknown or unsupported flag unexpected",
+        compatibilityWarning: true
       })
     ])
   }),
@@ -99,7 +108,8 @@ const commandSpecs = Object.freeze({
       Object.freeze({
         name: "read unsupported operation flag --max-heading-level",
         appendArgs: Object.freeze(["--max-heading-level", "3"]),
-        stderr: "unknown or unsupported flag --max-heading-level"
+        stderr: "unknown or unsupported flag --max-heading-level",
+        compatibilityWarning: true
       })
     ])
   }),
@@ -123,7 +133,8 @@ const commandSpecs = Object.freeze({
       Object.freeze({
         name: "find unsupported operation flag --ref",
         appendArgs: Object.freeze(["--ref", "x"]),
-        stderr: "unknown or unsupported flag --ref"
+        stderr: "unknown or unsupported flag --ref",
+        compatibilityWarning: true
       })
     ])
   }),
@@ -141,7 +152,8 @@ const commandSpecs = Object.freeze({
       Object.freeze({
         name: "info unsupported operation flag --page",
         appendArgs: Object.freeze(["--page", "1"]),
-        stderr: "unknown or unsupported flag --page"
+        stderr: "unknown or unsupported flag --page",
+        compatibilityWarning: true
       })
     ])
   }),
@@ -204,6 +216,109 @@ export function testCliArgumentFailures() {
   }
 }
 
+export function testCliArgumentCompatibilityWarnings() {
+  const normal = fixture("normal.md");
+  const ref = getNormalRef();
+
+  const text = runCli("outline unknown equals flag text warning", [
+    "outline",
+    normal,
+    "--unknown=value",
+    "--output",
+    "text"
+  ]);
+  expectExit(text, exitCodes.success);
+  expectStderrEmpty(text);
+  expectStdoutIncludes(text, "page:");
+  expectStdoutWarning(text, ["--unknown=value"], "unknown_flag", "unknown CLI flag ignored");
+
+  const readable = runCli("outline unknown and extra readable-json warnings", [
+    "outline",
+    normal,
+    "--future",
+    "extra",
+    "--output",
+    "readable-json"
+  ]);
+  expectExit(readable, exitCodes.success);
+  expectStderrEmpty(readable);
+  const readableJson = parseJson(readable);
+  validateSchema(readable, "readableOutline", readableJson);
+  expectStructuredWarning(readable, readableJson.warnings?.[0], ["--future"], "unknown_flag");
+  expectStructuredWarning(readable, readableJson.warnings?.[1], ["extra"], "extra_positional");
+
+  const unused = runCli("read unused known flag readable-json warning", [
+    "read",
+    normal,
+    "--ref",
+    ref,
+    "--max-heading-level",
+    "3",
+    "--output",
+    "readable-json"
+  ]);
+  expectExit(unused, exitCodes.success);
+  expectStderrEmpty(unused);
+  const unusedJson = parseJson(unused);
+  validateSchema(unused, "readableRead", unusedJson);
+  expectStructuredWarning(unused, unusedJson.warnings?.[0], ["--max-heading-level", "3"], "unused_operation_flag");
+
+  const protocol = runCli("outline unknown flag protocol-json stderr warning", [
+    "outline",
+    normal,
+    "--future",
+    "--output",
+    "protocol-json"
+  ]);
+  expectExit(protocol, exitCodes.success);
+  expectStderrWarning(protocol, ["--future"], "unknown_flag", "unknown CLI flag ignored");
+  expectNoJsonPayloadInStderr(protocol);
+  const protocolJson = parseJson(protocol);
+  validateSchema(protocol, "protocolResponse", protocolJson);
+  expectProtocolSuccess(protocol, protocolJson, "outline");
+  expectNoWarningsField(protocol, protocolJson, "protocol-json stdout");
+
+  const manifest = runCli("manifest unknown flag stderr warning", [
+    "manifest",
+    "--future",
+    "--output",
+    "protocol-json"
+  ]);
+  expectExit(manifest, exitCodes.success);
+  expectStderrWarning(manifest, ["--future"], "unknown_flag", "unknown CLI flag ignored");
+  expectNoJsonPayloadInStderr(manifest);
+  const manifestJson = parseJson(manifest);
+  validateSchema(manifest, "manifest", manifestJson);
+  expectNoWarningsField(manifest, manifestJson, "manifest stdout");
+
+  const probe = runCli("probe unknown flag stderr warning", [
+    "probe",
+    normal,
+    "--future",
+    "--output",
+    "protocol-json"
+  ]);
+  expectExit(probe, exitCodes.success);
+  expectStderrWarning(probe, ["--future"], "unknown_flag", "unknown CLI flag ignored");
+  expectNoJsonPayloadInStderr(probe);
+  const probeJson = parseJson(probe);
+  validateSchema(probe, "probe", probeJson);
+  expectNoWarningsField(probe, probeJson, "probe stdout");
+
+  const refLikeFlag = runCli("read ref value looks like flag", [
+    "read",
+    normal,
+    "--ref",
+    "--future-value",
+    "--output",
+    "text"
+  ]);
+  expectExit(refLikeFlag, exitCodes.documentRefFormat);
+  expectStderrEmpty(refLikeFlag);
+  expectStdoutIncludes(refLikeFlag, "REF_NOT_FOUND");
+  expectStdoutIncludes(refLikeFlag, "ref=--future-value");
+}
+
 export function generateCliArgumentFailureCases(normal, ref) {
   const context = { normal, ref };
   const cases = [];
@@ -254,6 +369,9 @@ export function generateCliArgumentFailureCases(normal, ref) {
     }
 
     for (const scenario of spec.unsupportedFlagScenarios) {
+      if (scenario.compatibilityWarning) {
+        continue;
+      }
       cases.push({
         name: scenario.name,
         args: cliScenarioArgs(command, spec, scenario, context),
@@ -306,4 +424,31 @@ function cliInvalidValueCaseName(command, flag, invalid) {
     return `${command} empty ${flag}`;
   }
   return `${command} invalid ${flag} ${invalid.label}`;
+}
+
+function expectStdoutWarning(record, ignoredTokens, kind, reason) {
+  expectStdoutIncludes(record, `ignored_tokens=${JSON.stringify(ignoredTokens)}`);
+  expectStdoutIncludes(record, `kind=${kind}`);
+  expectStdoutIncludes(record, `reason=${reason}`);
+}
+
+function expectStderrWarning(record, ignoredTokens, kind, reason) {
+  expectStderrIncludes(record, `ignored_tokens=${JSON.stringify(ignoredTokens)}`);
+  expectStderrIncludes(record, `kind=${kind}`);
+  expectStderrIncludes(record, `reason=${reason}`);
+}
+
+function expectStructuredWarning(record, warning, ignoredTokens, kind) {
+  expect(record, Boolean(warning), `structured warning exists for ${kind}`);
+  expect(
+    record,
+    JSON.stringify(warning.ignored_tokens) === JSON.stringify(ignoredTokens),
+    `${kind} ignored_tokens match`
+  );
+  expect(record, warning.kind === kind, `${kind} warning kind matches`);
+  expect(record, typeof warning.reason === "string" && warning.reason.length > 0, `${kind} warning has reason`);
+}
+
+function expectNoWarningsField(record, value, label) {
+  expect(record, !Object.hasOwn(value, "warnings"), `${label} omits warnings`);
 }

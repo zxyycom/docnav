@@ -37,6 +37,41 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "warnings": {
+      "$ref": "#/$defs/warnings"
+    }
+  },
+  "$defs": {
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ignored_tokens",
+          "kind",
+          "reason"
+        ],
+        "properties": {
+          "ignored_tokens": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false

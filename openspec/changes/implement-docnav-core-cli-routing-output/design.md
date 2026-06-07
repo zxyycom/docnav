@@ -37,9 +37,10 @@
    - limit_chars 从显式参数、项目配置、用户配置和内置默认值解析为有限正整数。
    - `docnav` 只处理 core 通用参数：path、ref、query、page、limit_chars、output 和 adapter。
    - adapter 专属 CLI flag 和格式 options 由对应 adapter 或后续格式能力定义；core CLI 在本 change 中不读取 manifest 默认参数，也不合成格式 options。
-   - 未知参数和多余参数按兼容性输入处理：生成列明具体 token 的 warning 后忽略。
-   - warning 按输出模式承载：text 输出在正常结果后拼接 warning；readable-json 输出增加 `warnings` 数组；protocol-json stdout 保持 schema-valid protocol envelope，CLI warning 只写 stderr。
-   - 已知 flag 需要值时，紧跟该 flag 的下一个 token 就是值，即使它以 `--` 开头；只有不存在下一个 token 时才返回缺值 `INVALID_REQUEST`。
+   - 未知 flag、多余 positional 和当前 operation 不使用的已知 flag 按兼容性输入处理：生成列明原始 `ignored_tokens`、kind 和 reason 的 warning 后忽略。
+   - 未知 flag 不吞后续 token：`--unknown=value` 作为一个 token 忽略；`--unknown value` 中的 `value` 继续按普通 token 处理。
+   - 已知有值 flag 固定消费紧跟 token，即使该 token 以 `--` 开头；只有没有下一个 token 时才返回缺值错误。当前 operation 不使用的已知有值 flag 也按其形状消费紧跟 value，并把 flag token 与 value token 一起记录到 warning。
+   - warning 按输出模式承载：text 输出在正常结果后拼接 warning；readable-json 输出增加 `warnings` 数组；protocol-json stdout 保持 schema-valid protocol envelope 且不增加 `warnings` 字段，CLI warning 只写 stderr。
    - 已知必需参数缺失、已知 flag 缺少值或值非法时返回 `INVALID_REQUEST`。
 
 3. core 配置先实现 MVP，避免提前固化完整配置系统。
@@ -117,7 +118,7 @@
 - [阅读输出与 protocol 输出漂移] → 对同一 fixture 同时验证 protocol-json 和 readable-json 业务语义一致。
 - [配置影响稳定字段] → 本 change 的配置只允许影响预选 adapter、limit_chars 和 output；page 固定由 CLI 默认值解析，错误 code 和当前契约字段类型保持不变。
 - [项目外 path 与项目配置并存] → 测试项目根内相对 path、项目根外绝对 path 和从不同 cwd 启动的相对 path。
-- [兼容性参数处理隐藏调用错误] → 对每个忽略的未知或多余参数生成包含 token 的 warning，并测试 warning 不改变成功退出码。
+- [兼容性参数处理隐藏调用错误] → 对每个忽略的未知 flag、多余 positional 或当前 operation 不使用的已知 flag 生成包含 ignored token、kind 和 reason 的 warning，并测试 warning 不改变成功退出码。
 
 ## Migration Plan
 

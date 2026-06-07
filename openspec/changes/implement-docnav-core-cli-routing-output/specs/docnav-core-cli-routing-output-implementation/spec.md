@@ -21,16 +21,21 @@
 - **THEN** `docnav` 启动选中 adapter 的 invoke
 - **THEN** invoke 请求不包含 page 或 limit_chars
 
-### Requirement: 核心 CLI 必须兼容未知和多余参数
-`docnav` MUST 对未知参数和多余参数采用兼容性处理：生成列明具体 token 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法时 MUST 返回 `INVALID_REQUEST`。未知 flag MUST NOT 吞掉后续 token；若后续 token 没有参数槽位接收，则作为多余参数单独 warning。
+### Requirement: 核心 CLI 必须兼容未知、多余和未使用参数
+`docnav` MUST 对未知 flag、多余 positional 和当前 operation 不使用的已知 flag 采用兼容性处理：生成列明原始 `ignored_tokens`、`kind` 和 `reason` 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法时 MUST 返回 `INVALID_REQUEST`。未知 flag MUST NOT 吞掉后续 token；若后续 token 没有参数槽位接收，则作为多余 positional 单独 warning。需要值的已知 flag MUST 消费紧跟的下一个 token，即使该 token 以 `--` 开头；当前 operation 不使用的已知有值 flag MUST 消费紧跟 value token，并将 flag token 和 value token 一起记录到 warning。
 
 #### Scenario: 忽略未知 flag 和多余参数
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --future-flag value`
 - **THEN** `docnav` 忽略未知 flag token
 - **THEN** `value` 继续按普通 token 处理，并因 outline 已有 path 而作为多余参数 warning
-- **THEN** warning 包含具体被忽略 token、kind 和 reason
+- **THEN** warning 包含 `ignored_tokens`、`kind` 和 `reason`
 - **THEN** text 输出在正常结果后拼接 warning
 - **THEN** readable-json 输出包含 `warnings` 数组
+
+#### Scenario: 未使用已知 flag 被 warning 后忽略
+- **WHEN** 调用方对当前 operation 传入该 operation 不使用的已知有值 flag
+- **THEN** `docnav` 按该 flag 的形状消费紧跟 value token
+- **THEN** warning 的 `ignored_tokens` 同时包含 flag token 和 value token
 
 #### Scenario: protocol-json warning 不扩展 envelope
 - **WHEN** 调用方执行带有未知参数但其它参数有效的 protocol-json 命令

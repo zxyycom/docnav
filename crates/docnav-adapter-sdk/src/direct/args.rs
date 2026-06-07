@@ -1,7 +1,53 @@
 use docnav_protocol::{positive_result, Operation, Options, PositiveInteger};
+use serde::Serialize;
 use serde_json::Value;
 
 use super::output::DirectOutputMode;
+
+// 直接 CLI flag 来自 CLI/adapter-contract 主规范；只在 SDK direct CLI 边界解析使用。
+mod flags {
+    pub const LIMIT_CHARS: &str = "--limit-chars";
+    pub const OUTPUT: &str = "--output";
+    pub const PAGE: &str = "--page";
+    pub const QUERY: &str = "--query";
+    pub const REF: &str = "--ref";
+}
+
+// 直接 CLI 输出模式字符串来自 CLI 主规范；protocol 层不复用这些阅读输出标签。
+mod output_values {
+    pub const PROTOCOL_JSON: &str = "protocol-json";
+    pub const READABLE_JSON: &str = "readable-json";
+    pub const TEXT: &str = "text";
+}
+
+// 这些命令标签只用于直接 CLI warning reason，不参与 protocol operation 枚举。
+mod command_labels {
+    pub const MANIFEST: &str = "manifest";
+    pub const PROBE: &str = "probe";
+}
+
+// Warning kind 是 readable/MCP warning schema 的稳定取值。
+mod warning_kinds {
+    pub const EXTRA_POSITIONAL: &str = "extra_positional";
+    pub const UNKNOWN_FLAG: &str = "unknown_flag";
+    pub const UNUSED_OPERATION_FLAG: &str = "unused_operation_flag";
+}
+
+// Warning reason 是用户可见诊断文本，集中后避免 parser/output 测试漂移。
+mod warning_reasons {
+    pub const EXTRA_POSITIONAL_IGNORED: &str = "extra positional argument ignored";
+    pub const UNKNOWN_FLAG_IGNORED: &str = "unknown CLI flag ignored";
+
+    pub fn unused_operation_flag(command: &str) -> String {
+        format!("flag is not used by {command} command")
+    }
+}
+
+// 输入错误文案属于直接 CLI 边界诊断，不进入 protocol schema。
+mod input_errors {
+    pub const PROTOCOL_OUTPUT_ONLY: &str =
+        "only --output protocol-json is supported for this command";
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NativeOptionValueSpec {
@@ -22,6 +68,31 @@ pub struct NativeOptionSpec {
     pub default: Option<NativeOptionDefault>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub(crate) struct DirectCliWarning {
+    pub ignored_tokens: Vec<String>,
+    pub kind: DirectCliWarningKind,
+    pub reason: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum DirectCliWarningKind {
+    UnknownFlag,
+    ExtraPositional,
+    UnusedOperationFlag,
+}
+
+impl DirectCliWarningKind {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::UnknownFlag => warning_kinds::UNKNOWN_FLAG,
+            Self::ExtraPositional => warning_kinds::EXTRA_POSITIONAL,
+            Self::UnusedOperationFlag => warning_kinds::UNUSED_OPERATION_FLAG,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct DirectOperationOptions {
     pub path: String,
@@ -30,6 +101,7 @@ pub(crate) struct DirectOperationOptions {
     pub output: DirectOutputMode,
     pub ref_id: Option<String>,
     pub query: Option<String>,
+    pub warnings: Vec<DirectCliWarning>,
     native_options: Options,
 }
 
@@ -43,25 +115,78 @@ impl DirectOperationOptions {
     }
 }
 
-pub(crate) fn parse_protocol_only_output(args: &[String]) -> Result<(), String> {
-    if args.is_empty() {
-        return Ok(());
-    }
-    if args.len() == 2 && args[0] == "--output" && args[1] == "protocol-json" {
-        return Ok(());
-    }
-    Err("only --output protocol-json is supported for this command".to_owned())
+pub(crate) struct DirectProbeOptions {
+    pub path: String,
+    pub warnings: Vec<DirectCliWarning>,
 }
 
-pub(crate) fn parse_probe(args: &[String]) -> Result<String, String> {
-    let Some(path) = args.first() else {
+pub(crate) fn parse_protocol_only_options(
+    args: &[String],
+    native_options: &[NativeOptionSpec],
+) -> Result<Vec<DirectCliWarning>, String> {
+    let mut warnings = Vec::new();
+    let mut index = 0;
+    while index < args.len() {
+        let token = &args[index];
+        if let Some(flag) = known_value_flag(token, native_options) {
+            let value = args
+                .get(index + 1)
+                .ok_or_else(|| format!("{token} requires a value"))?;
+            match flag {
+                KnownValueFlag::Output => parse_protocol_output(value)?,
+                _ => {
+                    push_unused_warning(&mut warnings, token, Some(value), command_labels::MANIFEST)
+                }
+            }
+            index += 2;
+        } else if is_flag(token) {
+            push_unknown_warning(&mut warnings, token);
+            index += 1;
+        } else {
+            push_extra_positional_warning(&mut warnings, token);
+            index += 1;
+        }
+    }
+
+    Ok(warnings)
+}
+
+pub(crate) fn parse_probe(
+    args: &[String],
+    native_options: &[NativeOptionSpec],
+) -> Result<DirectProbeOptions, String> {
+    let mut path = None;
+    let mut warnings = Vec::new();
+    let mut index = 0;
+    while index < args.len() {
+        let token = &args[index];
+        if let Some(flag) = known_value_flag(token, native_options) {
+            let value = args
+                .get(index + 1)
+                .ok_or_else(|| format!("{token} requires a value"))?;
+            match flag {
+                KnownValueFlag::Output => parse_protocol_output(value)?,
+                _ => push_unused_warning(&mut warnings, token, Some(value), command_labels::PROBE),
+            }
+            index += 2;
+        } else if is_flag(token) {
+            push_unknown_warning(&mut warnings, token);
+            index += 1;
+        } else {
+            if path.is_none() {
+                path = Some(token.clone());
+            } else {
+                push_extra_positional_warning(&mut warnings, token);
+            }
+            index += 1;
+        }
+    }
+
+    let Some(path) = path else {
         return Err("probe requires <path>".to_owned());
     };
-    if is_flag(path) {
-        return Err("probe requires <path>".to_owned());
-    }
-    parse_protocol_only_output(&args[1..])?;
-    Ok(path.clone())
+
+    Ok(DirectProbeOptions { path, warnings })
 }
 
 pub(crate) fn parse_operation_options(
@@ -70,15 +195,7 @@ pub(crate) fn parse_operation_options(
     default_limit_chars: u32,
     native_options: &[NativeOptionSpec],
 ) -> Result<DirectOperationOptions, String> {
-    let Some(path) = args.first() else {
-        return Err(format!("{operation} requires <path>"));
-    };
-    if is_flag(path) {
-        return Err(format!("{operation} requires <path>"));
-    }
-
-    let mut options = DirectOperationOptions {
-        path: path.clone(),
+    let mut options = DirectOperationOptionAccumulator {
         page: positive_result(1).expect("static positive integer"),
         limit_chars: positive_result(default_limit_chars).expect("static positive integer"),
         output: DirectOutputMode::Text,
@@ -87,50 +204,45 @@ pub(crate) fn parse_operation_options(
         native_options: default_native_options(operation, native_options),
     };
 
-    let mut index = 1;
+    let mut path = None;
+    let mut warnings = Vec::new();
+    let mut index = 0;
     while index < args.len() {
-        let flag = args[index].as_str();
-        let value = args
-            .get(index + 1)
-            .ok_or_else(|| format!("{flag} requires a value"))?;
-        match flag {
-            "--page" if operation != Operation::Info => {
-                options.page = parse_positive(value, "--page")?;
+        let token = &args[index];
+        if let Some(flag) = known_value_flag(token, native_options) {
+            let value = args
+                .get(index + 1)
+                .ok_or_else(|| format!("{token} requires a value"))?;
+            if !apply_operation_flag(operation, flag, value, &mut options)? {
+                push_unused_warning(&mut warnings, token, Some(value), operation.as_str());
             }
-            "--limit-chars" if operation != Operation::Info => {
-                options.limit_chars = parse_positive(value, "--limit-chars")?;
+            index += 2;
+        } else if is_flag(token) {
+            push_unknown_warning(&mut warnings, token);
+            index += 1;
+        } else {
+            if path.is_none() {
+                path = Some(token.clone());
+            } else {
+                push_extra_positional_warning(&mut warnings, token);
             }
-            "--ref" if operation == Operation::Read => {
-                if value.is_empty() {
-                    return Err("--ref must not be empty".to_owned());
-                }
-                options.ref_id = Some(value.clone());
-            }
-            "--query" if operation == Operation::Find => {
-                if value.is_empty() {
-                    return Err("--query must not be empty".to_owned());
-                }
-                options.query = Some(value.clone());
-            }
-            "--output" => {
-                options.output = parse_output(value)?;
-            }
-            _ => {
-                let Some(spec) = native_options
-                    .iter()
-                    .find(|spec| spec.flag == flag && spec.supports(operation))
-                else {
-                    return Err(format!("unknown or unsupported flag {flag}"));
-                };
-                options
-                    .native_options
-                    .insert(spec.option_key.to_owned(), spec.parse_value(value)?);
-            }
+            index += 1;
         }
-        index += 2;
     }
 
-    Ok(options)
+    let Some(path) = path else {
+        return Err(format!("{operation} requires <path>"));
+    };
+    Ok(DirectOperationOptions {
+        path,
+        page: options.page,
+        limit_chars: options.limit_chars,
+        output: options.output,
+        ref_id: options.ref_id,
+        query: options.query,
+        warnings,
+        native_options: options.native_options,
+    })
 }
 
 impl NativeOptionSpec {
@@ -153,6 +265,85 @@ impl NativeOptionSpec {
     }
 }
 
+struct DirectOperationOptionAccumulator {
+    page: PositiveInteger,
+    limit_chars: PositiveInteger,
+    output: DirectOutputMode,
+    ref_id: Option<String>,
+    query: Option<String>,
+    native_options: Options,
+}
+
+#[derive(Clone, Copy)]
+enum KnownValueFlag<'a> {
+    Page,
+    LimitChars,
+    Ref,
+    Query,
+    Output,
+    Native(&'a NativeOptionSpec),
+}
+
+fn known_value_flag<'a>(
+    token: &str,
+    native_options: &'a [NativeOptionSpec],
+) -> Option<KnownValueFlag<'a>> {
+    match token {
+        flags::PAGE => Some(KnownValueFlag::Page),
+        flags::LIMIT_CHARS => Some(KnownValueFlag::LimitChars),
+        flags::REF => Some(KnownValueFlag::Ref),
+        flags::QUERY => Some(KnownValueFlag::Query),
+        flags::OUTPUT => Some(KnownValueFlag::Output),
+        _ => native_options
+            .iter()
+            .find(|spec| spec.flag == token)
+            .map(KnownValueFlag::Native),
+    }
+}
+
+fn apply_operation_flag(
+    operation: Operation,
+    flag: KnownValueFlag<'_>,
+    value: &str,
+    options: &mut DirectOperationOptionAccumulator,
+) -> Result<bool, String> {
+    match flag {
+        KnownValueFlag::Page if operation != Operation::Info => {
+            options.page = parse_positive(value, flags::PAGE)?;
+            Ok(true)
+        }
+        KnownValueFlag::LimitChars if operation != Operation::Info => {
+            options.limit_chars = parse_positive(value, flags::LIMIT_CHARS)?;
+            Ok(true)
+        }
+        KnownValueFlag::Ref if operation == Operation::Read => {
+            if value.is_empty() {
+                return Err(format!("{} must not be empty", flags::REF));
+            }
+            options.ref_id = Some(value.to_owned());
+            Ok(true)
+        }
+        KnownValueFlag::Query if operation == Operation::Find => {
+            if value.is_empty() {
+                return Err(format!("{} must not be empty", flags::QUERY));
+            }
+            options.query = Some(value.to_owned());
+            Ok(true)
+        }
+        KnownValueFlag::Output => {
+            options.output = parse_output(value)?;
+            Ok(true)
+        }
+        KnownValueFlag::Native(spec) if spec.supports(operation) => {
+            options
+                .native_options
+                .insert(spec.option_key.to_owned(), spec.parse_value(value)?);
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
 fn default_native_options(operation: Operation, specs: &[NativeOptionSpec]) -> Options {
     let mut options = Options::new();
     for spec in specs.iter().filter(|spec| spec.supports(operation)) {
@@ -167,12 +358,20 @@ fn default_native_options(operation: Operation, specs: &[NativeOptionSpec]) -> O
     options
 }
 
+fn parse_protocol_output(value: &str) -> Result<(), String> {
+    if parse_output(value)? == DirectOutputMode::ProtocolJson {
+        Ok(())
+    } else {
+        Err(input_errors::PROTOCOL_OUTPUT_ONLY.to_owned())
+    }
+}
+
 fn parse_output(value: &str) -> Result<DirectOutputMode, String> {
     match value {
-        "text" => Ok(DirectOutputMode::Text),
-        "readable-json" => Ok(DirectOutputMode::ReadableJson),
-        "protocol-json" => Ok(DirectOutputMode::ProtocolJson),
-        _ => Err(format!("invalid --output {value:?}")),
+        output_values::TEXT => Ok(DirectOutputMode::Text),
+        output_values::READABLE_JSON => Ok(DirectOutputMode::ReadableJson),
+        output_values::PROTOCOL_JSON => Ok(DirectOutputMode::ProtocolJson),
+        _ => Err(format!("invalid {} {value:?}", flags::OUTPUT)),
     }
 }
 
@@ -189,4 +388,171 @@ fn integer_range_error(flag: &str, min: u64, max: u64) -> String {
 
 fn is_flag(value: &str) -> bool {
     value.starts_with("--")
+}
+
+fn push_unknown_warning(warnings: &mut Vec<DirectCliWarning>, token: &str) {
+    warnings.push(DirectCliWarning {
+        ignored_tokens: vec![token.to_owned()],
+        kind: DirectCliWarningKind::UnknownFlag,
+        reason: warning_reasons::UNKNOWN_FLAG_IGNORED.to_owned(),
+    });
+}
+
+fn push_extra_positional_warning(warnings: &mut Vec<DirectCliWarning>, token: &str) {
+    warnings.push(DirectCliWarning {
+        ignored_tokens: vec![token.to_owned()],
+        kind: DirectCliWarningKind::ExtraPositional,
+        reason: warning_reasons::EXTRA_POSITIONAL_IGNORED.to_owned(),
+    });
+}
+
+fn push_unused_warning(
+    warnings: &mut Vec<DirectCliWarning>,
+    flag: &str,
+    value: Option<&String>,
+    command: &str,
+) {
+    let mut ignored_tokens = vec![flag.to_owned()];
+    if let Some(value) = value {
+        ignored_tokens.push(value.clone());
+    }
+    warnings.push(DirectCliWarning {
+        ignored_tokens,
+        kind: DirectCliWarningKind::UnusedOperationFlag,
+        reason: warning_reasons::unused_operation_flag(command),
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
+    const MAX_HEADING_LEVEL: NativeOptionSpec = NativeOptionSpec {
+        flag: "--max-heading-level",
+        option_key: "max_heading_level",
+        operations: MAX_HEADING_LEVEL_OPERATIONS,
+        value: NativeOptionValueSpec::IntegerRange { min: 1, max: 6 },
+        default: Some(NativeOptionDefault::Integer(3)),
+    };
+
+    #[test]
+    fn unknown_flag_does_not_consume_following_positional() {
+        let options = parse_operation_options(
+            Operation::Outline,
+            &args(&["--future", "doc.md"]),
+            6000,
+            &[],
+        )
+        .expect("parse options");
+
+        assert_eq!(options.path, "doc.md");
+        assert_eq!(
+            options.warnings,
+            vec![DirectCliWarning {
+                ignored_tokens: vec!["--future".to_owned()],
+                kind: DirectCliWarningKind::UnknownFlag,
+                reason: warning_reasons::UNKNOWN_FLAG_IGNORED.to_owned(),
+            }]
+        );
+    }
+
+    #[test]
+    fn unknown_flag_does_not_consume_following_known_flag() {
+        let options = parse_operation_options(
+            Operation::Outline,
+            &args(&["doc.md", "--future", "--output", "protocol-json"]),
+            6000,
+            &[],
+        )
+        .expect("parse options");
+
+        assert_eq!(options.output, DirectOutputMode::ProtocolJson);
+        assert_eq!(options.warnings.len(), 1);
+        assert_eq!(options.warnings[0].ignored_tokens, ["--future"]);
+        assert_eq!(options.warnings[0].kind, DirectCliWarningKind::UnknownFlag);
+    }
+
+    #[test]
+    fn extra_positional_warns_after_path_slot_is_filled() {
+        let options =
+            parse_operation_options(Operation::Outline, &args(&["doc.md", "extra"]), 6000, &[])
+                .expect("parse options");
+
+        assert_eq!(options.path, "doc.md");
+        assert_eq!(options.warnings.len(), 1);
+        assert_eq!(options.warnings[0].ignored_tokens, ["extra"]);
+        assert_eq!(
+            options.warnings[0].kind,
+            DirectCliWarningKind::ExtraPositional
+        );
+    }
+
+    #[test]
+    fn unused_known_value_flag_consumes_value_and_warns() {
+        let options = parse_operation_options(
+            Operation::Read,
+            &args(&["doc.md", "--ref", "L1:Guide", "--max-heading-level", "3"]),
+            6000,
+            &[MAX_HEADING_LEVEL],
+        )
+        .expect("parse options");
+
+        assert_eq!(options.ref_id.as_deref(), Some("L1:Guide"));
+        assert_eq!(options.warnings.len(), 1);
+        assert_eq!(
+            options.warnings[0].ignored_tokens,
+            ["--max-heading-level", "3"]
+        );
+        assert_eq!(
+            options.warnings[0].kind,
+            DirectCliWarningKind::UnusedOperationFlag
+        );
+    }
+
+    #[test]
+    fn known_value_flag_accepts_token_that_looks_like_flag() {
+        let options = parse_operation_options(
+            Operation::Read,
+            &args(&["doc.md", "--ref", "--future-value"]),
+            6000,
+            &[],
+        )
+        .expect("parse options");
+
+        assert_eq!(options.ref_id.as_deref(), Some("--future-value"));
+        assert!(options.warnings.is_empty());
+    }
+
+    #[test]
+    fn protocol_only_commands_warn_but_keep_protocol_output() {
+        let warnings = parse_protocol_only_options(
+            &args(&["--future", "extra", "--output", "protocol-json"]),
+            &[],
+        )
+        .expect("parse protocol-only options");
+
+        assert_eq!(warnings.len(), 2);
+        assert_eq!(warnings[0].ignored_tokens, ["--future"]);
+        assert_eq!(warnings[0].kind, DirectCliWarningKind::UnknownFlag);
+        assert_eq!(warnings[1].ignored_tokens, ["extra"]);
+        assert_eq!(warnings[1].kind, DirectCliWarningKind::ExtraPositional);
+    }
+
+    #[test]
+    fn probe_path_can_follow_unknown_flag() {
+        let parsed = parse_probe(
+            &args(&["--future", "doc.md", "--output", "protocol-json"]),
+            &[],
+        )
+        .expect("parse probe options");
+
+        assert_eq!(parsed.path, "doc.md");
+        assert_eq!(parsed.warnings.len(), 1);
+        assert_eq!(parsed.warnings[0].ignored_tokens, ["--future"]);
+    }
+
+    fn args(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| value.to_string()).collect()
+    }
 }

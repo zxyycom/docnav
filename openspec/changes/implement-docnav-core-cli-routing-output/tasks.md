@@ -15,7 +15,7 @@
 - [ ] 1.3 实现 core 通用参数解析：path、ref、query、page、limit_chars、output 和 adapter。
   验收：page 省略时解析为 `1`，limit_chars 为有限正整数，已知 flag 的下一个 token 固定作为值。
 - [ ] 1.4 实现兼容性参数处理。
-  验收：未知参数和多余参数生成包含具体 token 的 warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法返回 `INVALID_REQUEST`。
+  验收：未知 flag、多余 positional 和当前 operation 不使用的已知 flag 生成包含 `ignored_tokens`、kind 和 reason 的 warning 后忽略；未知 flag 不吞后续 token；已知有值 flag 消费紧跟 token；已知必需参数缺失、已知 flag 缺少值或值非法返回 `INVALID_REQUEST`。
 - [ ] 1.5 实现项目配置、用户配置和内置默认值读取，支持 `defaults.adapter`、`defaults.limit_chars` 和 `defaults.output`。
   验收：显式参数优先于项目配置，项目配置优先于用户配置，用户配置优先于内置默认值；`defaults.adapter` 只在未传 `--adapter` 时参与预选。
 - [ ] 1.6 实现 `config get|set|unset|list` 的 MVP 行为。
@@ -53,7 +53,7 @@
 - [ ] 3.4 实现默认 text 和 readable-json 输出。
   验收：输出阅读层结果，不包含 protocol envelope；readable-json read 保留 `content_type`。
 - [ ] 3.5 实现 warning 承载。
-  验收：text 在正常阅读文本后拼接 warning；readable-json 输出包含 `warnings` 数组；protocol-json stdout 保持 schema-valid envelope 且 warning 写入 stderr；warning 不改变可成功执行命令的退出码。
+  验收：text 在正常阅读文本后拼接 warning；readable-json 输出包含 `warnings` 数组；protocol-json stdout 保持 schema-valid envelope 且不增加 `warnings` 字段，warning 写入 stderr；warning 不改变可成功执行命令的退出码。
 - [ ] 3.6 实现错误 code、details、guidance 和退出码映射。
   验收：输入错误、文档/ref/格式错误、protocol/adapter 进程错误和内部错误映射到稳定 code 与主规范退出码。
 - [ ] 3.7 实现选中 adapter invoke 校验失败路径。

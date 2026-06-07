@@ -6,7 +6,7 @@
 
 - invoke 返回包含 operation 的完整 protocol envelope。
 - `docnav` 是识别格式、选择 adapter 和映射输出的核心 CLI。
-- MCP structuredContent 返回精简 readable 结果，不包含 envelope。
+- MCP structuredContent 返回精简 readable 结果，不包含 envelope；直接 CLI 兼容性 warning 可作为顶层 `warnings` 出现在 readable/MCP 阅读层。
 - MCP TextContent 是适配器语义结果的紧凑阅读表达，不复制完整 JSON。
 - outline 是扁平 entries。
 - find 是扁平 matches。
@@ -24,7 +24,7 @@
 
 invoke 请求显式传入 `page: 1`、`limit_chars: 80` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
-MCP tool 的 `outputSchema` 内联 readable schema，见 [mcp-outline-tool.json](json/mcp-outline-tool.json)。
+MCP tool 的 `outputSchema` 内联 readable schema，见 [mcp-outline-tool.json](json/mcp-outline-tool.json)，并允许顶层 `warnings`。
 
 ## Ref 与 Read
 

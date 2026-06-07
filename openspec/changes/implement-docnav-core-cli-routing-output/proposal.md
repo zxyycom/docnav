@@ -10,7 +10,7 @@ Markdown adapter 完成后，核心 CLI 需要把用户可执行的 `docnav outl
 
 - 实现文档操作命令：`docnav outline/read/find/info`。
 - 实现基础管理命令：`docnav init/doctor/version/config get|set|unset|list`。
-- 实现兼容性参数处理：未知参数和多余参数不阻断执行，生成列明具体 token 的 warning 后忽略；已知必需参数缺失或已知 flag 值非法仍返回稳定错误。
+- 实现兼容性参数处理：未知 flag、多余 positional 和当前 operation 不使用的已知 flag 不阻断执行，生成列明具体 ignored token、kind 和 reason 的 warning 后忽略；未知 flag 不吞后续 token；已知有值 flag 固定消费紧跟 token；已知必需参数缺失、已知 flag 缺少值或值非法仍返回稳定错误。
 - 实现项目根发现、任意可访问文件 path 规范化和最终 core 通用参数解析。
 - `docnav` 只处理 path、ref、query、page、limit_chars、output 和 adapter；page 省略时写入 `1`，limit_chars 解析为有限正整数，manifest 不提供默认参数，core 不合成格式 options。
 - 实现 adapter 选择流程：
@@ -21,7 +21,7 @@ Markdown adapter 完成后，核心 CLI 需要把用户可执行的 `docnav outl
   5. 任一候选的 manifest/probe 输出不符合当前 schema 或语义校验时直接返回 adapter/protocol 错误；选中 adapter 的 invoke 输出不符合当前 schema 或语义校验时也直接失败。
 - 本 change 不做协议版本协商或兼容迁移，只接受当前 schema 和当前语义契约。
 - 调用选中 adapter 的 `invoke`，校验 protocol 响应，并映射为默认阅读文本、readable-json 或 protocol-json。
-- warning 按输出模式承载：text 输出在正常阅读文本后拼接 warning，readable-json 输出增加 `warnings` 数组；protocol-json stdout 保持 schema-valid protocol envelope，CLI warning 只写 stderr。
+- warning 按输出模式承载：text 输出在正常阅读文本后拼接 warning，readable-json 输出增加 `warnings` 数组；protocol-json stdout 保持 schema-valid protocol envelope 且不增加 `warnings` 字段，CLI warning 只写 stderr。
 - `--output protocol-json` 对 core 自身产生的错误也输出 protocol failure envelope；阅读输出保留精简错误语义。
 - 保留 adapter 返回的 ref、display、content、content_type、cost 和 page 业务字段。
 - 本 change 只使用可替换的简化 adapter 记录读取接口，不实现正式 adapter 安装/更新/移除、黑白名单、Markdown parser 或 MCP bridge。
