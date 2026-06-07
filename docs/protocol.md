@@ -2,9 +2,9 @@
 
 本文是 adapter invoke 原始协议的主规范。该协议服务于 `docnav`、脚本、调试和兼容性校验，是 Docnav v0 的机器稳定接口层；它不是 CLI 或 MCP 的阅读输出 schema。
 
-## 版本与生命周期
+## 协议字段与生命周期
 
-v0 协议版本为 `0.1`。manifest 的 `protocol.min` 和 `protocol.max` 是闭区间；major/minor 按无符号整数比较。`docnav` 选择自身范围与 adapter 范围交集中的最高兼容版本；没有交集时返回 `PROTOCOL_INCOMPATIBLE`。正常响应版本和 operation 必须与请求一致；无法解析请求或请求版本不受支持时，错误响应使用 adapter 支持的最高版本，并在 details 中保留请求版本或解析原因。
+v0 协议字段当前按 `0.1` schema 校验。`protocol_version` 是 envelope 的稳定识别字段，不参与 adapter 路由阶段的版本协商；`docnav` 通过当前 schema、必需字段、字段类型、operation/result 绑定和语义校验判断 adapter 输出是否可用。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及当前 schema 对齐；无法解析请求或请求字段不对齐时，错误响应在可解析范围内保留请求 operation，否则使用 `operation: null`。
 
 `invoke`：
 

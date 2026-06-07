@@ -2,33 +2,62 @@
 
 ## 0. 审计门禁
 
-- [ ] 0.1 用户审计确认：用户已审计本 change 的 proposal、design、spec 和 tasks，并明确允许开始实现；未完成本项前，1.x 及后续任务全部处于阻塞状态。
+- [ ] 0.1 用户审计确认：用户已审计本 change 的 proposal、design、spec 和 tasks，并明确允许开始实现。
+
+执行说明：0.1 完成前只进行审阅和文案修正；0.1 完成后按 1.x-4.x 执行实现与验证。
 
 ## 1. MCP 包与 Tool 声明
 
-- [ ] 1.1 （阻塞：等待 0.1 用户审计确认）建立 `docnav-mcp` Node.js/JavaScript 包和可安装 bin。
-- [ ] 1.2 （阻塞：等待 0.1 用户审计确认）实现 stdio MCP transport 启动入口。
-- [ ] 1.3 （阻塞：等待 0.1 用户审计确认）声明 `document_outline`、`document_read`、`document_find` 和 `document_info`。
-- [ ] 1.4 （阻塞：等待 0.1 用户审计确认）内联或随包打包每个 tool 的 readable outputSchema。
+- [ ] 1.1 建立 `docnav-mcp` Node.js/JavaScript 包和可安装 bin。
+  验收：包可通过 workspace 脚本构建，bin 名称为 `docnav-mcp`。
+- [ ] 1.2 实现 stdio MCP transport 启动入口。
+  验收：MCP Client 启动 `docnav-mcp` 后可读取 tool 列表。
+- [ ] 1.3 声明 `document_outline`、`document_read`、`document_find` 和 `document_info`。
+  验收：四个 tool 的输入参数覆盖 path、ref、query、page、limit_chars 和可选 adapter 中各 operation 需要的字段。
+- [ ] 1.4 内联或随包打包每个 tool 的 readable outputSchema。
+  验收：tool 声明在离线环境中包含对应 outputSchema，不依赖远程 schema URL。
 
 ## 2. CLI 映射
 
-- [ ] 2.1 （阻塞：等待 0.1 用户审计确认）将 `document_outline` 参数映射到 `docnav outline`。
-- [ ] 2.2 （阻塞：等待 0.1 用户审计确认）将 `document_read` 参数映射到 `docnav read`，ref 原样传递。
-- [ ] 2.3 （阻塞：等待 0.1 用户审计确认）将 `document_find` 参数映射到 `docnav find`。
-- [ ] 2.4 （阻塞：等待 0.1 用户审计确认）将 `document_info` 参数映射到 `docnav info`。
-- [ ] 2.5 （阻塞：等待 0.1 用户审计确认）将 MCP `format` 原样映射为 `docnav --format`。
+- [ ] 2.1 将 `document_outline` 映射到核心 `docnav outline`。
+  验收：path、page、limit_chars 和 adapter 按 CLI 参数传递。
+- [ ] 2.2 将 `document_read` 映射到核心 `docnav read`。
+  验收：path、ref、page、limit_chars 和 adapter 按 CLI 参数传递，ref 原样传递。
+- [ ] 2.3 将 `document_find` 映射到核心 `docnav find`。
+  验收：path、query、page、limit_chars 和 adapter 按 CLI 参数传递。
+- [ ] 2.4 将 `document_info` 映射到核心 `docnav info`。
+  验收：path 和 adapter 按 CLI 参数传递，page/limit_chars 不写入 info 调用。
+- [ ] 2.5 固定所有 document tool 的输出模式。
+  验收：每次调用核心 CLI 都传入 `--output readable-json`，structuredContent 从 stdout readable JSON 解析得到。
+- [ ] 2.6 保持 MCP adapter 参数为透传参数。
+  验收：MCP 可选 `adapter` 原样映射为 `docnav --adapter <adapter-id>`；adapter id 解释、格式识别和候选继续遍历由核心 CLI 完成。
 
 ## 3. MCP 输出
 
-- [ ] 3.1 （阻塞：等待 0.1 用户审计确认）将 `docnav` readable 结果转换为 MCP TextContent。
-- [ ] 3.2 （阻塞：等待 0.1 用户审计确认）将 `docnav` readable 结果转换为 structuredContent，并通过 readable schema 校验。
-- [ ] 3.3 （阻塞：等待 0.1 用户审计确认）确保 structuredContent 不包含 protocol envelope 字段。
-- [ ] 3.4 （阻塞：等待 0.1 用户审计确认）实现 readable 错误到 MCP 错误输出的映射，保留必要 code/details。
+- [ ] 3.1 将 `docnav` readable JSON 成功结果转换为 MCP structuredContent。
+  验收：structuredContent 通过对应 readable outputSchema 校验，并保留 operation readable 字段。
+- [ ] 3.2 将 `docnav` readable JSON 成功结果渲染为 MCP TextContent。
+  验收：TextContent 包含精简阅读文本，不依赖解析默认人类文本输出。
+- [ ] 3.3 保持 structuredContent 的阅读层边界。
+  验收：structuredContent 不包含 `protocol_version`、`request_id`、`operation` 或 `ok`；read structuredContent 保留 `content_type`。
+- [ ] 3.4 实现 warning 映射。
+  验收：当 readable JSON 包含 `warnings` 时，structuredContent 保留 `warnings` 字段，TextContent 在正常阅读文本后追加 warning 文本。
+- [ ] 3.5 处理成功退出的 stderr 诊断。
+  验收：`docnav` 子进程退出码为 0 时，stderr 非空不升级为 MCP 错误；成功/失败判定以退出码和 stdout readable JSON payload 为准。
+- [ ] 3.6 实现 readable 错误到 MCP 错误输出的映射。
+  验收：MCP TextContent 和 structuredContent 保留必要 code/details，不暴露完整 protocol envelope。
 
 ## 4. 验证与审计
 
-- [ ] 4.1 （阻塞：等待 0.1 用户审计确认）覆盖四个 MCP tools 的参数映射测试。
-- [ ] 4.2 （阻塞：等待 0.1 用户审计确认）覆盖 TextContent、structuredContent 和 outputSchema 测试。
-- [ ] 4.3 （阻塞：等待 0.1 用户审计确认）端到端验证 MCP 调用经由核心 `docnav` CLI，而不是直接调用 adapter。
-- [ ] 4.4 （阻塞：等待 0.1 用户审计确认）用局部 diff 确认只修改 MCP bridge 和相关测试范围。
+- [ ] 4.1 覆盖四个 MCP tools 的参数映射测试。
+  验收：测试断言生成的 `docnav` argv 包含 operation 参数和 `--output readable-json`。
+- [ ] 4.2 覆盖 structuredContent、TextContent 和 outputSchema 测试。
+  验收：每个 operation 的 structuredContent 可按 readable schema 校验，TextContent 渲染不改变 structuredContent shape。
+- [ ] 4.3 覆盖 warning 输出测试。
+  验收：覆盖 adapter 继续遍历或未知参数导致的 warnings，断言 TextContent 追加 warning 且 structuredContent 保留 `warnings`。
+- [ ] 4.4 覆盖 stderr 成功诊断测试。
+  验收：核心 CLI 成功退出且 stderr 非空时，MCP bridge 返回成功结果。
+- [ ] 4.5 端到端验证 MCP 调用经由核心 `docnav` CLI。
+  验收：测试确认 bridge 不直接调用 adapter，业务语义与 CLI readable-json 输出一致。
+- [ ] 4.6 完成局部审计。
+  验收：用局部 diff 确认实现只修改 MCP bridge、相关测试和必要 workspace 包装入口。

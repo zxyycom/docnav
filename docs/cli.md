@@ -13,7 +13,7 @@ docnav find <path> --query <text> [--adapter <adapter-id>] [--page 1] [--limit-c
 docnav info <path> [--adapter <adapter-id>] [--output text|readable-json|protocol-json]
 docnav init
 docnav doctor
-docnav config get|set|unset|list
+docnav config get|set|unset|list [--user] [--path <path>] [--operation outline|read|find|info]
 docnav adapter list
 docnav adapter install <source>
 docnav adapter update [adapter-id]
@@ -54,6 +54,8 @@ docnav version
 
 配置可以控制行为参数、默认阅读文本模板、page 标签、成本说明、guidance、usage、错误建议和 MCP TextContent 包装文本。配置不得改变 protocol-json 字段；readable-json 和 MCP structuredContent 的字段形状用于阅读输出和工具声明校验，不作为完整机器协议。
 
+`docnav config set` 和 `unset` 默认写项目配置；传入 `--user` 时写用户配置。`config list` 不带 path 时列出 core 配置域的当前生效值；`config list --path <path> [--operation outline|read|find|info]` 解析文档上下文，展示该 path 触发的 adapter、manifest 推荐参数来源和最终默认参数。
+
 ## 输出模式
 
 ### `protocol-json`
@@ -69,7 +71,7 @@ adapter outline docs/guide.md --output protocol-json
 
 文档操作输出完整原始协议 envelope。`manifest` 和 `probe` 输出其专属协议 schema。
 
-`docnav --output protocol-json` 由核心 CLI 生成非空 request id，选择兼容协议版本，解析最终有限参数，再调用 adapter `invoke`。
+`docnav --output protocol-json` 由核心 CLI 生成非空 request id，按当前协议 schema 和字段 shape 解析最终有限参数，再调用 adapter `invoke`。
 
 ### 默认阅读文本
 
@@ -101,12 +103,12 @@ readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `-
 
 首期 `install <source>` 只支持两类来源：
 
-- GitHub 链接：`https://github.com/...` 形式的 adapter 发布链接。`docnav` 必须解析为可执行 adapter 制品，执行 `manifest`，校验 manifest schema 和协议兼容性，并记录来源 URL、解析后的制品信息、manifest 快照和可执行入口。
-- 本地可执行文件：指向 adapter exe 的本地路径。`docnav` 必须解析为项目外部或项目内部的绝对可执行路径，执行 `manifest`，校验 manifest schema 和协议兼容性，计算并记录可执行文件 SHA-256 hash。后续运行、`list` 健康状态检查和 `update` 必须重新计算 hash；hash 不一致时不得静默继续使用旧安装记录。
+- GitHub 链接：`https://github.com/...` 形式的 adapter 发布链接。`docnav` 必须解析为可执行 adapter 制品，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，并记录来源 URL、解析后的制品信息、manifest 快照和可执行入口。
+- 本地可执行文件：指向 adapter exe 的本地路径。`docnav` 必须解析为项目外部或项目内部的绝对可执行路径，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，计算并记录可执行文件 SHA-256 hash。后续运行、`list` 健康状态检查和 `update` 必须重新计算 hash；hash 不一致时不得静默继续使用旧安装记录。
 
 - `list` 输出已安装 adapter、manifest 身份、支持格式、协议范围、安装来源和可用状态。
 - `install <source>` 校验失败不得注册；本地可执行文件缺失、不可执行或 hash 无法计算时必须失败。
-- `update [adapter-id]` 使用已记录来源获取或重新验证候选版本。GitHub 来源重新解析并获取新制品；本地可执行文件来源重新读取同一路径，重新计算 hash，并在 manifest 和协议兼容性校验通过后更新记录。校验失败时保留旧版本并返回结构化错误。
+- `update [adapter-id]` 使用已记录来源获取或重新验证候选制品。GitHub 来源重新解析并获取新制品；本地可执行文件来源重新读取同一路径，重新计算 hash，并在 manifest schema 和协议字段 shape 校验通过后更新记录。校验失败时保留旧记录并返回结构化错误。
 - `remove <adapter-id>` 注销 adapter 并清理 `docnav` 管理的安装记录；仍被项目配置显式引用时必须失败或给出明确 guidance。
 
 ## Adapter 直接 CLI
@@ -171,7 +173,7 @@ page: 2
 - 默认阅读文本和 readable JSON 写 stdout。
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断写 stderr。
-- 未知参数、缺失值和多余参数必须失败。
+- 未知参数和多余参数写 stderr warning 后忽略；已知必需参数缺失、已知 flag 缺少值或值非法必须失败。
 - `config get` 的 key 不存在时必须返回 `INVALID_REQUEST`。
 - 成功退出 `0`；输入错误 `2`；文档/ref/格式错误 `3`；协议或 adapter 进程错误 `4`；内部错误 `1`。
 

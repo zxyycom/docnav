@@ -42,8 +42,9 @@ pnpm run verify:docnav-workspace
 - find readable 结果只包含 matches 与 page；每条 match 包含 ref 和 display。
 - read readable 结果保留 ref、content、content_type、cost 和 page。
 - `docnav` 根据 path 选择 adapter，并原样传递 ref。
-- `docnav` 的 adapter 选择顺序为确定一个预选 adapter、校验预选 adapter、预选失败后按 registry 顺序 probe 并返回第一个成功项。
-- `docnav adapter install/update/remove/list` 是正式管理流程，安装或更新必须校验 manifest schema 和协议兼容性。
+- `docnav` 的 adapter 选择顺序为确定一个预选 adapter、校验预选 adapter、预选失败后按 registry 顺序 probe 并返回第一个成功项；配置预选优先于 core 推断。
+- `docnav` 的候选失败证据必须包含 adapter_id、stage、code、reason 和 details，并覆盖字段不对齐、probe 不支持和进程失败。
+- `docnav adapter install/update/remove/list` 是正式管理流程，安装或更新必须校验 manifest schema 和当前协议字段 shape。
 - `docnav adapter install` 首期只接受 GitHub 链接和本地可执行文件；本地可执行文件安装、运行前健康检查和更新必须验证 SHA-256 hash。
 - `docnav` 保留 adapter 生成的 ref、display、内容、content_type、成本和 page。
 - 每个 CLI 只读取自身配置域。
@@ -87,9 +88,9 @@ request/response fixture 或集成测试必须验证请求 operation 与响应 o
 | `read` | path/ref 原样输入、有限内容、content_type 和 page | 显式 ref/page/limit_chars、唯一定位、ref 错误 | 调用 `docnav` 并返回精简内容、content_type 和 page |
 | `find` | query、有限匹配和 page | 显式 query/page/limit_chars、ref/display matches | 调用 `docnav` 并返回精简匹配和 page |
 | `info` | 格式原生可读摘要 | 紧凑 display/capabilities | 调用 `docnav` 并返回精简摘要 |
-| `manifest` | 发现 adapter 身份、格式 id、扩展名、content type、推荐参数和协议范围 | 不通过 invoke | 不拥有该能力 |
+| `manifest` | 发现 adapter 身份、格式 id、扩展名、content type、推荐参数和当前协议字段 shape | 不通过 invoke | 不拥有该能力 |
 | `probe` | 获取格式支持度和候选判断依据 | 不通过 invoke | 不拥有该能力 |
-| `adapter install/update/remove/list` | 正式安装、更新、移除和列出 adapter；支持 GitHub 链接和本地可执行文件；校验 manifest、协议兼容性和本地 exe hash | 不通过 invoke | 不拥有该能力 |
+| `adapter install/update/remove/list` | 正式安装、更新、移除和列出 adapter；支持 GitHub 链接和本地可执行文件；校验 manifest、当前协议字段 shape 和本地 exe hash | 不通过 invoke | 不拥有该能力 |
 
 ## 端到端验收
 

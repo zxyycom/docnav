@@ -42,7 +42,7 @@ Docnav 分为两个语义层：
 负责：
 
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list/install/update/remove`。
-- 正式执行 adapter 安装、更新、移除和列表管理；首期安装来源为 GitHub 链接和本地可执行文件，安装或更新时必须读取 manifest、校验协议兼容性、记录可执行入口，并对本地可执行文件执行 hash 校验。
+- 正式执行 adapter 安装、更新、移除和列表管理；首期安装来源为 GitHub 链接和本地可执行文件，安装或更新时必须读取 manifest、校验 manifest schema 和当前协议字段 shape、记录可执行入口，并对本地可执行文件执行 hash 校验。
 - 管理 `.docnav/` 项目配置和用户级 `docnav` 配置。
 - 根据 path、项目配置、manifest、`--adapter`、core 简易推断和 probe 选择 adapter。
 - 自动选择并调用对应 adapter。
@@ -79,7 +79,7 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 
 ### 共享库
 
-- `docnav-protocol`：只定义原始 invoke 协议、page、错误和版本。
+- `docnav-protocol`：只定义原始 invoke 协议、page、错误和稳定字段。
 - `docnav-adapter-sdk`：提供 invoke I/O、协议校验、adapter 直接 CLI 的通用参数解析、命令分发、输出分流、稳定错误映射和通用进程行为。
 
 共享库只承载协议和进程共性，不定义格式展示字段、格式原生 options 语义、ref 策略或跨格式 outline 模型。
@@ -139,9 +139,10 @@ AI Client
 `docnav` 对所有文档操作先确定一个预选 adapter id，再用统一遍历函数兜底：
 
 1. 若调用方传入 `--adapter <adapter-id>`，该 id 是预选 adapter。
-2. 若调用方未传入 `--adapter`，`docnav` 使用 core 简易规则推断一个预选 adapter id，例如根据 path 扩展名匹配已注册 adapter 的 manifest；无法推断时预选为空。
-3. 若预选 adapter 存在，`docnav` 先解析该 adapter 并执行 probe 校验。probe 成功则选中，失败时保留失败证据。
-4. 若预选 adapter 缺失、无法解析或 probe 失败，`docnav` 调用 registry 遍历函数。该函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项，返回第一个 probe 成功的 adapter。
+2. 若调用方未传入 `--adapter`，项目配置 `defaults.adapter` 优先于用户配置 `defaults.adapter` 作为预选 adapter。
+3. 若调用方和配置都未指定 adapter，`docnav` 使用 core 简易规则推断一个预选 adapter id，例如根据 path 扩展名匹配已注册 adapter 的 manifest；无法推断时预选为空。
+4. 若预选 adapter 存在，`docnav` 先解析该 adapter，校验 manifest schema、当前协议字段 shape 并执行 probe 校验。probe 成功则选中，失败时保留失败证据。
+5. 若预选 adapter 缺失、无法解析、字段不对齐或 probe 失败，`docnav` 调用 registry 遍历函数。该函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项，返回第一个 probe 成功的 adapter。
 
 所有选择都以 adapter probe 结果为准，不能只凭 `--adapter` 或扩展名静默选中。全部候选失败时返回 `FORMAT_UNKNOWN` 和候选证据。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
 

@@ -98,7 +98,7 @@ reasons[]
 
 适配器必须：
 
-- 校验原始协议版本和请求 schema。
+- 校验 `protocol_version` 字段和当前请求 schema。
 - 只处理一个请求。
 - stdout 只返回原始协议 envelope。
 - 为分页操作返回下一页页码，结束时返回 null。
@@ -113,9 +113,9 @@ reasons[]
 - 格式原生 `options` 对 `docnav` 和接入层保持 opaque。
 - page 不属于配置默认值；入口省略 page 时固定从 `1` 开始。
 
-## 协议兼容
+## 协议字段对齐
 
-manifest 的协议范围是闭区间。`docnav` 与适配器没有版本交集时返回 `PROTOCOL_INCOMPATIBLE`。
+`docnav` 不在 adapter 选择阶段做协议版本协商。候选适配器的 manifest、probe 和 invoke 响应必须通过当前 schema、必需字段、字段类型、operation/result shape 和语义校验；字段缺失、字段类型不符或 shape 不对齐时记录候选失败证据，并继续 adapter 选择流程；没有候选可用时由 `docnav` 按 adapter 选择失败返回稳定错误。
 
 正式 schema：
 
