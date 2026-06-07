@@ -47,7 +47,7 @@
 - [ ] 3.1 启动 adapter manifest、probe 和 invoke 子进程。
   验收：adapter 子进程 cwd 设置为项目根；没有项目根时使用启动 cwd。
 - [ ] 3.2 构造 invoke 请求。
-  验收：请求显式写入最终 page、limit_chars、ref、query 等 core 通用参数；core 不从 manifest 读取 recommended parameters，不合成格式 options。
+  验收：请求显式写入最终 page、limit_chars、ref、query 等 core 通用参数；core 不从 manifest 读取默认参数，不合成格式 options。
 - [ ] 3.3 实现 protocol-json 输出。
   验收：成功和 core 自身错误都输出完整 protocol envelope；core 错误无法确定 operation 时使用 `operation: null`。
 - [ ] 3.4 实现默认 text 和 readable-json 输出。

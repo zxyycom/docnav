@@ -36,7 +36,7 @@
    - adapter 直接 CLI 也必须支持省略 page，并在自身入口解析为同一初始页；core CLI 的默认值解析不替代 adapter 直接 CLI 的参数解析。
    - limit_chars 从显式参数、项目配置、用户配置和内置默认值解析为有限正整数。
    - `docnav` 只处理 core 通用参数：path、ref、query、page、limit_chars、output 和 adapter。
-   - adapter 专属 CLI flag 和格式 options 由对应 adapter 或后续格式能力定义；core CLI 在本 change 中不读取 manifest 推荐参数，也不合成格式 options。
+   - adapter 专属 CLI flag 和格式 options 由对应 adapter 或后续格式能力定义；core CLI 在本 change 中不读取 manifest 默认参数，也不合成格式 options。
    - 未知参数和多余参数按兼容性输入处理：生成列明具体 token 的 warning 后忽略。
    - warning 按输出模式承载：text 输出在正常结果后拼接 warning；JSON 输出增加 `warnings` 数组；CLI stderr 可同步写同一 warning。
    - 已知 flag 需要值时，紧跟该 flag 的下一个 token 就是值，即使它以 `--` 开头；只有不存在下一个 token 时才返回缺值 `INVALID_REQUEST`。

@@ -7,6 +7,7 @@
 - **WHEN** 调用方执行 `docnav outline docs/guide.md`
 - **THEN** `docnav` 根据 path、配置、manifest、扩展名和 probe 选择 adapter
 - **THEN** `docnav` 将 page 和 limit_chars 等 core 通用参数写入显式 invoke 请求
+- **THEN** `docnav` 不从 manifest、配置或隐式默认值生成格式专属 `options`
 - **THEN** adapter 生成的 ref 和 display 被保留到阅读输出
 
 #### Scenario: 正式安装 adapter

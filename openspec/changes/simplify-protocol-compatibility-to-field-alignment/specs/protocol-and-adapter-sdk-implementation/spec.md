@@ -14,6 +14,18 @@ Docnav 协议与 adapter SDK MUST 使用当前 protocol、manifest 和 probe sch
 - **THEN** 当前阶段失败
 - **THEN** 未选中的 adapter 记录为候选失败证据，已选中的 adapter 返回稳定 adapter/protocol 错误
 
+#### Scenario: 请求版本字段不匹配当前 schema
+- **WHEN** invoke 请求中的 `protocol_version` 不是当前 schema 固定值
+- **THEN** request schema 校验失败
+- **THEN** SDK 返回 `INVALID_REQUEST`
+- **THEN** SDK 不返回 `PROTOCOL_INCOMPATIBLE`
+
+#### Scenario: 无法解析请求时使用当前协议识别字段
+- **WHEN** SDK 无法解析 invoke stdin 为有效请求 envelope
+- **THEN** failure response 的 `protocol_version` 使用当前 `PROTOCOL_VERSION` 常量
+- **THEN** failure response 的 `request_id` 使用未知请求 id 占位
+- **THEN** failure response 的 `operation` 为 `null`
+
 ### Requirement: Manifest 必须只承载 adapter 能力声明
 Adapter manifest MUST restrict its field ownership to adapter identity, supported formats, extensions, content types, and capabilities. Manifest schema MUST reject protocol range fields and `recommended_parameters`.
 
@@ -26,6 +38,19 @@ Adapter manifest MUST restrict its field ownership to adapter identity, supporte
 - **WHEN** adapter manifest 包含 `protocol.min`、`protocol.max` 或 `recommended_parameters`
 - **THEN** manifest schema 校验失败
 - **THEN** adapter 在当前阶段不可用
+
+### Requirement: Invoke options 必须保留为 adapter 拥有的显式参数
+Protocol request argument types MUST keep optional `options` as an opaque adapter-owned object. `docnav-protocol` and `docnav-adapter-sdk` MUST NOT derive `options` from manifest `recommended_parameters`.
+
+#### Scenario: Adapter 直接 CLI 生成 options
+- **WHEN** adapter 直接 CLI 根据 adapter 自有 flag 生成 `arguments.options`
+- **THEN** invoke 请求 schema 接受该 `options` 对象
+- **THEN** SDK 将该 `options` 对象原样传给 adapter operation handler
+
+#### Scenario: Manifest 不提供 options 来源
+- **WHEN** adapter manifest 通过当前 schema 校验
+- **THEN** manifest 不包含 `recommended_parameters`
+- **THEN** SDK 不从 manifest 合成 `arguments.options`
 
 ## REMOVED Requirements
 

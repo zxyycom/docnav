@@ -165,16 +165,16 @@
 - **THEN** 不启动该 adapter
 
 ### Requirement: invoke 请求必须包含最终显式参数
-`docnav` MUST 在启动 adapter invoke 前解析配置和默认值，并 MUST 将最终 page、limit_chars、ref 和 query 等 core 通用参数显式写入 invoke 请求。Invoke 请求中的 options MUST 只来自 core 已知通用参数；adapter manifest 不作为格式 options 或 recommended parameters 的来源。
+`docnav` MUST 在启动 adapter invoke 前解析配置和默认值，并 MUST 将最终 page、limit_chars、ref 和 query 等 core 通用参数显式写入 invoke 请求。Core `docnav` MUST NOT synthesize format-specific `options`; adapter manifest MUST NOT be an options or default-parameter source.
 
 #### Scenario: 省略 page
 - **WHEN** 调用方省略 page
 - **THEN** `docnav` 传给 invoke 的 page 为 `1`
 
-#### Scenario: 不从 manifest 写入格式 options
-- **WHEN** 选中 adapter manifest 不声明推荐参数
+#### Scenario: 不写入格式 options
+- **WHEN** 选中 adapter manifest 通过当前 schema 校验
 - **THEN** `docnav` 仍能解析 core 默认参数
-- **THEN** invoke 请求不包含由 manifest 推荐参数合成的格式 options
+- **THEN** invoke 请求不包含由 manifest、配置或隐式默认值合成的格式 options
 
 #### Scenario: invoke 当前契约不一致
 - **WHEN** 选中 adapter 的 invoke 输出字段缺失、类型不符、operation/result shape 不匹配或语义校验失败

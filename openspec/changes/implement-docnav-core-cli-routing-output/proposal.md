@@ -12,7 +12,7 @@ Markdown adapter 完成后，核心 CLI 需要把用户可执行的 `docnav outl
 - 实现基础管理命令：`docnav init/doctor/version/config get|set|unset|list`。
 - 实现兼容性参数处理：未知参数和多余参数不阻断执行，生成列明具体 token 的 warning 后忽略；已知必需参数缺失或已知 flag 值非法仍返回稳定错误。
 - 实现项目根发现、任意可访问文件 path 规范化和最终 core 通用参数解析。
-- `docnav` 只处理 path、ref、query、page、limit_chars、output 和 adapter；page 省略时写入 `1`，limit_chars 解析为有限正整数，manifest 不提供 recommended parameters，core 不合成格式 options。
+- `docnav` 只处理 path、ref、query、page、limit_chars、output 和 adapter；page 省略时写入 `1`，limit_chars 解析为有限正整数，manifest 不提供默认参数，core 不合成格式 options。
 - 实现 adapter 选择流程：
   1. 调用方传入 `--adapter <adapter-id>` 时，该 id 是预选 adapter。
   2. 未传 `--adapter` 时，项目/用户配置的 `defaults.adapter` 先参与预选；配置缺失时，core 基于候选 manifest 的 `formats[].extensions[]` 等轻量信息推断一个预选 adapter；无法推断时预选为空。
