@@ -2,7 +2,7 @@
 
 ## 0. 审计门禁
 
-- [ ] 0.1 用户审计确认：用户已审计本 change 的 proposal、design、spec 和 tasks，并明确允许开始实现。
+- [x] 0.1 用户审计确认：用户已审计本 change 的 proposal、design、spec 和 tasks，并明确允许开始实现。
 
 执行说明：0.1 完成前只进行审阅和文案修正；0.1 完成后按 1.x-4.x 执行实现与验证。
 
@@ -36,7 +36,7 @@
 - [ ] 2.4 实现 adapter 预选。
   验收：`--adapter` 优先，其次项目/用户 `defaults.adapter`，最后基于候选 manifest `formats[].extensions[]` 等轻量信息推断；无法推断时预选为空。
 - [ ] 2.5 实现 manifest/probe 当前契约校验。
-  验收：manifest/probe 输出符合当前 schema 和语义时才继续；有效 `supported: false` 记录 `PROBE_UNSUPPORTED` 证据并继续遍历；schema 或语义校验失败直接返回 adapter/protocol 错误。
+  验收：manifest/probe 输出符合当前 schema 和语义时才可选中；有效 `supported: false` 记录 `PROBE_UNSUPPORTED` 证据并继续遍历；预选 adapter 的 schema 或语义校验失败记录候选证据并继续 registry 遍历；registry 遍历候选的 schema 或语义校验失败直接返回 adapter/protocol 错误。
 - [ ] 2.6 实现统一 registry 遍历函数。
   验收：函数接收已尝试 adapter id 集合，跳过已尝试项，返回第一个 probe 成功的 adapter；所有候选失败时返回 `FORMAT_UNKNOWN`。
 - [ ] 2.7 实现候选证据输出。
@@ -68,7 +68,7 @@
 - [ ] 4.3 覆盖文档操作输出矩阵。
   验收：outline/read/find/info 的 text、readable-json 和 protocol-json 均被验证，protocol-json 与 readable-json 业务语义一致但包装不同。
 - [ ] 4.4 覆盖 adapter 选择矩阵。
-  验收：覆盖 `--adapter` 预选、配置预选、core 推断预选、有效 probe 不支持后继续遍历、候选证据、契约校验失败直接返回和全失败。
+  验收：覆盖 `--adapter` 预选、配置预选、core 推断预选、有效 probe 不支持后继续遍历、预选契约不一致后继续遍历、候选证据、registry 遍历契约校验失败直接返回和全失败。
 - [ ] 4.5 覆盖配置、管理命令和兼容性参数处理。
   验收：覆盖项目配置、`--user` 用户配置、`config list`、`config list --path`、`init`、`version`、`doctor`、未知参数 warning 和多余参数 warning。
 - [ ] 4.6 覆盖 registry 与契约校验失败场景。

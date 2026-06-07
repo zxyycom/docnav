@@ -27,7 +27,7 @@
 - **THEN** 脚本不直接引用 `target/debug` 或 `target/release` 下的二进制作为被验收对象
 
 ### Requirement: 开发期 smoke 与发布包验证必须职责分离
-允许保留直接运行 Cargo 输出二进制的开发期 smoke，但该入口 MUST 通过名称、脚本文案或 `package.json` 命令明确标识为开发期验证。workspace 或发布包验收入口 MUST 使用统一打包目录中的产物。
+允许保留直接运行 Cargo 输出二进制的开发期 smoke，但该入口 MUST 通过名称、脚本文案或 `package.json` 命令明确标识为开发期验证。发布包验收入口 MUST 使用统一打包目录中的产物；workspace verify MAY 包含开发期 smoke，只要该 smoke 不被标记或用作发布包验收。
 
 #### Scenario: 保留开发期 smoke
 - **WHEN** 仓库保留直接运行 `target/` 二进制的 smoke 脚本

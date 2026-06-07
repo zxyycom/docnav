@@ -142,13 +142,13 @@
 - **THEN** `docnav` 使用候选 manifest 的格式信息推断一个预选 adapter id
 - **THEN** `docnav` 先校验该预选 adapter
 
-#### Scenario: manifest 当前契约不一致
-- **WHEN** 候选 adapter manifest 缺少 `docnav` 当前 CLI 选择 adapter 所需字段
-- **THEN** `docnav` 返回 adapter/protocol 错误
-- **THEN** `docnav` 不继续尝试其它候选 adapter
+#### Scenario: 预选 adapter manifest 当前契约不一致后继续
+- **WHEN** 预选 adapter manifest 缺少 `docnav` 当前 CLI 选择 adapter 所需字段
+- **THEN** `docnav` 保留候选证据
+- **THEN** `docnav` 继续 registry 遍历
 
-#### Scenario: probe 当前契约不一致
-- **WHEN** 候选 adapter probe 输出字段缺失、类型不符或语义校验失败
+#### Scenario: registry 遍历候选 probe 当前契约不一致
+- **WHEN** registry 遍历中的候选 adapter probe 输出字段缺失、类型不符或语义校验失败
 - **THEN** `docnav` 返回 adapter/protocol 错误
 - **THEN** `docnav` 不继续尝试其它候选 adapter
 

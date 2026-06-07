@@ -18,7 +18,7 @@ Markdown adapter 完成后，核心 CLI 需要把用户可执行的 `docnav outl
   2. 未传 `--adapter` 时，项目/用户配置的 `defaults.adapter` 先参与预选；配置缺失时，core 基于候选 manifest 的 `formats[].extensions[]` 等轻量信息推断一个预选 adapter；无法推断时预选为空。
   3. 对预选 adapter 执行解析、manifest 当前 schema/语义校验和 probe；probe 成功即选中。
   4. 预选缺失、adapter 记录解析失败或 probe 返回有效 `supported: false` 时，将该候选记为失败证据，并按 registry 顺序继续遍历候选，返回第一个 probe 成功的 adapter。
-  5. 任一候选的 manifest/probe 输出不符合当前 schema 或语义校验时直接返回 adapter/protocol 错误；选中 adapter 的 invoke 输出不符合当前 schema 或语义校验时也直接失败。
+  5. 预选 adapter 的 manifest/probe 输出不符合当前 schema 或语义校验时，先记录失败证据并进入 registry 遍历；registry 遍历中的候选出现当前契约不一致时直接返回 adapter/protocol 错误；选中 adapter 的 invoke 输出不符合当前 schema 或语义校验时也直接失败。
 - 本 change 不做协议版本协商或兼容迁移，只接受当前 schema 和当前语义契约。
 - 调用选中 adapter 的 `invoke`，校验 protocol 响应，并映射为默认阅读文本、readable-json 或 protocol-json。
 - warning 按输出模式承载：text 输出在正常阅读文本后拼接 warning，readable-json 输出增加 `warnings` 数组；protocol-json stdout 保持 schema-valid protocol envelope 且不增加 `warnings` 字段，CLI warning 只写 stderr。

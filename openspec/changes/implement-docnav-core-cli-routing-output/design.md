@@ -77,13 +77,13 @@
      - probe 成功即选中该 adapter。
      - 若预选 adapter 的 registry 记录解析失败，记录候选证据；显式 `--adapter` 场景同时生成 warning，然后继续 registry 遍历。
      - 若 probe 返回符合当前 schema/语义的 `supported: false`，记录 `PROBE_UNSUPPORTED` 候选证据；显式 `--adapter` 场景同时生成 warning，然后继续 registry 遍历。
-     - 若 manifest/probe 输出不符合当前 schema 或语义校验，`docnav` 直接返回 adapter/protocol 错误，不继续遍历。
-   - 第三步：预选缺失、registry 记录解析失败或有效 probe 不支持时，调用 registry 遍历函数。
+     - 若预选 adapter 的 manifest/probe 输出不符合当前 schema 或语义校验，记录候选证据；显式 `--adapter` 场景同时生成 warning，然后继续 registry 遍历。
+   - 第三步：预选缺失、registry 记录解析失败、预选契约不一致或有效 probe 不支持时，调用 registry 遍历函数。
      - 遍历函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项。
      - 遍历函数对每个候选执行 registry 记录解析、manifest schema 校验、当前契约语义校验和 probe。
      - 遍历函数遇到有效 `supported: false` 时记录候选证据并继续；遇到第一个 probe 成功的 adapter 时立即返回，不检测多个成功候选。
    - 本 change 不做协议版本协商；`docnav` 只接受当前 schema 和语义契约。
-   - manifest/probe 输出字段缺失、字段类型不符、schema 或 semantic validation 失败表示 adapter 当前契约不一致，直接返回 adapter/protocol 错误，不继续尝试其它 adapter。
+   - registry 遍历中的 manifest/probe 输出字段缺失、字段类型不符、schema 或 semantic validation 失败表示 adapter 当前契约不一致，直接返回 adapter/protocol 错误，不继续尝试其它 adapter。
    - invoke 输出字段缺失、字段类型不符、operation/result shape 不匹配或 schema/semantic validation 失败表示选中 adapter 调用失败，直接返回 adapter/protocol 错误。
    - 所有候选均失败时返回 `FORMAT_UNKNOWN` 和候选证据；本 change 不实现 `FORMAT_AMBIGUOUS` 检测。
    - 候选证据使用稳定 JSON 数组，每项形状为 `{ "adapter_id": string, "stage": "resolve"|"probe", "code": string, "reason": string, "details": object }`。`code` 至少覆盖 `ADAPTER_NOT_FOUND` 和 `PROBE_UNSUPPORTED`。
@@ -112,7 +112,7 @@
 
 ## Risks / Trade-offs
 
-- [adapter 选择流程较复杂] → 用测试覆盖 `--adapter` 预选、配置预选、core 推断预选、有效 probe 不支持后继续遍历、契约校验失败直接返回和全失败。
+- [adapter 选择流程较复杂] → 用测试覆盖 `--adapter` 预选、配置预选、core 推断预选、预选契约不一致后继续遍历、有效 probe 不支持后继续遍历、registry 遍历契约校验失败直接返回和全失败。
 - [显式 adapter 解析失败或有效 probe 不支持后继续遍历可能让用户误解] → 对该候选生成包含 adapter id、阶段和原因的 warning，并按 text/readable-json/protocol-json 输出模式边界承载。
 - [临时 registry 可能和正式 registry 漂移] → 将读取逻辑封装为可替换接口，临时文件不保存正式管理才拥有的 version/source/fingerprint。
 - [阅读输出与 protocol 输出漂移] → 对同一 fixture 同时验证 protocol-json 和 readable-json 业务语义一致。

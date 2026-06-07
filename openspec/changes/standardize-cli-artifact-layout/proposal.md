@@ -25,7 +25,7 @@
 ## Impact
 
 - 影响构建和打包脚本，例如后续新增的 `scripts/package-docnav.*` 或同类入口。
-- 影响测试和验证脚本，尤其是当前直接引用 Cargo `target/` 输出的 smoke 或 workspace verify 入口。
+- 影响测试和验证脚本，尤其是发布包验收脚本；workspace verify 可以保留明确标识的开发期 smoke。
 - 影响 `package.json` 中与打包、smoke、verify 相关的脚本命令。
 - 影响发布审计材料：打包产物目录、manifest、checksum 和验证日志。
 - 不影响原始协议、阅读输出 schema、Markdown adapter 解析逻辑或 MCP tool 输出映射。

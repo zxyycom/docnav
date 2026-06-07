@@ -47,7 +47,7 @@ pnpm run verify:docnav-workspace
 - `docnav` 的 adapter 选择顺序为确定一个预选 adapter、校验预选 adapter、预选失败后按 registry 顺序 probe 并返回第一个成功项；配置预选优先于 core 推断。
 - `docnav` 的候选失败证据必须包含 adapter_id、stage、code、reason 和 details，并覆盖字段不对齐、probe 不支持和进程失败。
 - `docnav adapter install/update/remove/list` 是正式管理流程，安装或更新必须校验 manifest schema 和当前协议字段 shape。
-- `docnav adapter install` 首期只接受 GitHub 链接和本地可执行文件；本地可执行文件安装、运行前健康检查和更新必须验证 SHA-256 hash。
+- `docnav adapter install` 首期只接受内置 adapter 下载简写和本地可执行文件；本地可执行文件安装、更新和显式健康检查必须验证 SHA-256 fingerprint，普通文档操作不重新计算 fingerprint。
 - `docnav` 保留 adapter 生成的 ref、display、内容、content_type、成本和 page。
 - 每个 CLI 只读取自身配置域。
 - 配置优先级固定且最终 invoke 参数显式完整。
@@ -92,7 +92,7 @@ request/response fixture 或集成测试必须验证请求 operation 与响应 o
 | `info` | 格式原生可读摘要 | 紧凑 display/capabilities | 调用 `docnav` 并返回精简摘要 |
 | `manifest` | 发现 adapter 身份、格式 id、扩展名、content type、capabilities 和当前 manifest 字段 shape | 不通过 invoke | 不拥有该能力 |
 | `probe` | 获取格式支持度和候选判断依据 | 不通过 invoke | 不拥有该能力 |
-| `adapter install/update/remove/list` | 正式安装、更新、移除和列出 adapter；支持 GitHub 链接和本地可执行文件；校验 manifest、当前协议字段 shape 和本地 exe hash | 不通过 invoke | 不拥有该能力 |
+| `adapter install/update/remove/list` | 正式安装、更新、移除和列出 adapter；支持内置 adapter 下载简写和本地可执行文件；校验 manifest、当前协议字段 shape 和本地 exe fingerprint | 不通过 invoke | 不拥有该能力 |
 
 ## 端到端验收
 

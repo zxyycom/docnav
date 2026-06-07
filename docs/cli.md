@@ -107,12 +107,12 @@ readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `-
 
 首期 `install <source>` 只支持两类来源：
 
-- GitHub 链接：`https://github.com/...` 形式的 adapter 发布链接。`docnav` 必须解析为可执行 adapter 制品，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，并记录来源 URL、解析后的制品信息、manifest 快照和可执行入口。
-- 本地可执行文件：指向 adapter exe 的本地路径。`docnav` 必须解析为项目外部或项目内部的绝对可执行路径，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，计算并记录可执行文件 SHA-256 hash。后续运行、`list` 健康状态检查和 `update` 必须重新计算 hash；hash 不一致时不得静默继续使用旧安装记录。
+- 内置 adapter 下载简写：例如 `markdown`。`docnav` 必须解析为可执行 adapter 制品，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，并记录 source key、解析后的制品信息、manifest 快照和可执行入口。
+- 本地可执行文件：指向 adapter exe 的本地路径。`docnav` 必须解析为项目外部或项目内部的绝对可执行路径，执行 `manifest`，校验 manifest schema、必需字段和当前协议字段 shape，计算并记录可执行文件 SHA-256 fingerprint。普通文档操作不为 fingerprint 校验读取整个 adapter 可执行文件；install、update 和显式健康检查必须重新计算 fingerprint，fingerprint 不一致时不得静默继续使用旧安装记录。
 
 - `list` 输出已安装 adapter、manifest 身份、支持格式、安装来源和可用状态。
-- `install <source>` 校验失败不得注册；本地可执行文件缺失、不可执行或 hash 无法计算时必须失败。
-- `update [adapter-id]` 使用已记录来源获取或重新验证候选制品。GitHub 来源重新解析并获取新制品；本地可执行文件来源重新读取同一路径，重新计算 hash，并在 manifest schema 和协议字段 shape 校验通过后更新记录。校验失败时保留旧记录并返回结构化错误。
+- `install <source>` 校验失败不得注册；本地可执行文件缺失、不可执行或 fingerprint 无法计算时必须失败。
+- `update [adapter-id]` 使用已记录来源获取或重新验证候选制品。内置下载来源重新走内置映射；本地可执行文件来源重新读取同一路径，重新计算 fingerprint，并在 manifest schema 和协议字段 shape 校验通过后更新记录。校验失败时保留旧记录并返回结构化错误。
 - `remove <adapter-id>` 注销 adapter 并清理 `docnav` 管理的安装记录；仍被项目配置显式引用时必须失败或给出明确 guidance。
 
 ## Adapter 直接 CLI

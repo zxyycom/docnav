@@ -42,7 +42,7 @@ Docnav 分为两个语义层：
 负责：
 
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list/install/update/remove`。
-- 正式执行 adapter 安装、更新、移除和列表管理；首期安装来源为 GitHub 链接和本地可执行文件，安装或更新时必须读取 manifest、校验 manifest schema 和当前协议字段 shape、记录可执行入口，并对本地可执行文件执行 hash 校验。
+- 正式执行 adapter 安装、更新、移除和列表管理；首期安装来源为内置 adapter 下载简写和本地可执行文件，安装或更新时必须读取 manifest、校验 manifest schema 和当前协议字段 shape、记录可执行入口，并对本地可执行文件执行 fingerprint 校验。
 - 管理 `.docnav/` 项目配置和用户级 `docnav` 配置。
 - 根据 path、项目配置、manifest、`--adapter`、core 简易推断和 probe 选择 adapter。
 - 自动选择并调用对应 adapter。
