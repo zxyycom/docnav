@@ -35,6 +35,7 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 - 搜索按任务过滤路径、扩展名和关键词，并排除 `.git`、`target`、`node_modules`、`.venv`、`dist`、`build` 和缓存目录；避免无过滤遍历整个仓库。
 - 大文件、长输出和目录列表先做摘要或筛选，再读取具体片段。
 - 文档读取按 `docs/navigation.md` 角色路径进入；不要因为存在 OpenSpec、schema、examples 就默认全部读取。
+- 涉及实现代码、重构、测试脚本、验证脚本或跨模块修改时，除对应主规范外，必须先读取 `docs/CODING_STYLE.md`；交付前按其中“变更前后自检”检查本次改动。
 - CLI 命令优先选择只读、可复现、范围明确的命令；验证命令按改动范围选择，避免无关全量操作。
 - 跨 Rust、文档、OpenSpec、schema、示例或输出层边界的交付，最终优先运行 `pnpm run verify:docnav-workspace`；局部验证可先运行范围更小的命令。
 - 新增或运行脚本依赖时，Node.js / JavaScript 使用 `pnpm`，Python 使用 `uv`；不默认使用全局 `npm` 或 `pip` 安装。
