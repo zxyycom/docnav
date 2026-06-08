@@ -45,6 +45,7 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 
 ## CodeGraph MCP 使用规则
 
-- 结构性问题先使用 `codegraph_context`。
-- 查找符号使用 `codegraph_search`，查看单个符号使用 `codegraph_node`，调用链使用 `codegraph_trace`。
-- CodeGraph 返回源码可视为已读；索引陈旧或缺失时再用本地搜索。
+- 默认使用精确 CodeGraph 工具理解结构：先用 `codegraph_search` 定位符号或文件，再用 `codegraph_node` 查看签名、位置和调用 trail。
+- 调用链优先使用 `codegraph_callers`、`codegraph_callees` 和 `codegraph_impact`；需要跨符号路径且当前工具列表暴露 `codegraph_trace` 时，才使用 `codegraph_trace`。
+- 需要源码时，先用 `codegraph_node` 且优先 `includeCode=false` 确认目标；确认后再用 `includeCode=true`，并用 `file` 或 `line` 消除同名歧义。
+- CodeGraph 返回源码可视为已读；索引陈旧、工具未暴露或结果不够精确时，再用有路径过滤的 `rg` / `rg --files` 补充。
