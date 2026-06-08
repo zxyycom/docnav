@@ -147,10 +147,11 @@
 - **THEN** `docnav` 保留候选证据
 - **THEN** `docnav` 继续 registry 遍历
 
-#### Scenario: registry 遍历候选 probe 当前契约不一致
-- **WHEN** registry 遍历中的候选 adapter probe 输出字段缺失、类型不符或语义校验失败
-- **THEN** `docnav` 返回 adapter/protocol 错误
-- **THEN** `docnav` 不继续尝试其它候选 adapter
+#### Scenario: registry 遍历候选当前契约不一致后继续
+- **WHEN** registry 遍历中的候选 adapter manifest 或 probe 输出字段缺失、类型不符或语义校验失败
+- **THEN** `docnav` 保留候选证据
+- **THEN** `docnav` 继续 registry 遍历
+- **THEN** 若后续候选成功，输出层按模式呈现前序候选 warning
 
 #### Scenario: 所有阶段失败
 - **WHEN** 没有 adapter 能校验目标文档
