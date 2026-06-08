@@ -11,9 +11,11 @@ metadata:
 
 # OpenSpec Propose
 
+核心：新增 change 只在 `openspec/changes/<name>/` 内生成中文、未审核的临时 artifacts，用一句话锚定目标，并以阻塞级审计任务作为实现前置门禁。
+
 ## 目标
 
-根据用户给出的 change name 或需求描述，创建一个新的 OpenSpec change，并生成进入实现阶段所需的 artifacts。完成后，该 change 应满足 `openspec status --change "<name>" --json` 中 `applyRequires` 指向的 artifacts 全部为 `done`。
+根据用户给出的 change name 或需求描述，创建一个新的 OpenSpec change，并生成进入实现阶段所需的 artifacts。完成后，该 change 应满足 `openspec status --change "<name>" --json` 中 `applyRequires` 指向的 artifacts 全部为 `done`；但在阻塞级审计任务完成前，该 change 只达到 artifact 准备状态，不可进入实现执行。
 
 ## 输入
 
@@ -69,6 +71,7 @@ metadata:
    - 如果没有可用的一句话描述，可以省略 `--description`，但应优先传入用户目标摘要。
    - 预期生成 `openspec/changes/<name>/` 和 `.openspec.yaml`。
    - 创建后确认 change 目录存在。
+   - 创建阶段只写入当前 change 目录；除用户明确要求外，不修改现有 specs、docs、schemas、examples 或其它 change。
 
 3. 读取 artifact 状态
    - 运行：
@@ -100,6 +103,8 @@ metadata:
    - 依赖 artifact 正文优先通过 instructions 返回的 `dependencies` 和 `outputPath` 定位；CLI 未提供正文时再读取对应文件。
    - 涉及已有主 spec 或 change delta 时，使用 CLI 使用策略中的 `openspec show` 命令获取结构化内容。
    - artifact 内容应服务于用户需求和 change 目标，避免把平台说明、内部流程、上下文块或规则块写成正文。
+   - 生成 tasks artifact 时，必须在实现任务前加入阻塞级审计任务，写清“审计未完成前不得执行任何实现任务”。
+   - 阻塞级审计任务必须检查：proposal、design、tasks 是否围绕开头核心句；当前 change 是否只包含未审核临时 artifacts；是否没有修改或影响现有其它文档。
    - 如果某个 artifact 的关键决策无法从用户需求、依赖 artifact 或 instructions 中确定，直接向用户提一个具体问题；得到答案后继续生成。
 
 5. 每个 artifact 写完后验证
@@ -137,6 +142,10 @@ metadata:
 5. 内容应具体到可执行和可验收：proposal 写清 what 与 why，design 写清关键方案和取舍，tasks 写成可逐项完成的实现步骤。
 6. 对不影响范围、协议、架构边界或验收标准的细节，选择与项目现有规范一致的默认；对会改变这些边界的缺口，先问用户。
 7. 需要读取现有 specs 时，优先使用 CLI 使用策略中的主 spec 命令；CLI 输出不足时再读取 `openspec/specs/<spec>/spec.md`。
+8. 除用户明确要求其它语言外，artifact 正文使用中文。
+9. 每个 artifact 文件正文开头必须写一句核心句，说明本 change 的目标和当前文档性质，防止后续内容偏离范围。
+10. 每个 artifact 必须标注：当前 change 只在 `openspec/changes/<name>/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+11. tasks artifact 必须把阻塞级审计任务放在所有实现任务之前；后续实现任务必须以该审计完成为前置条件。
 
 ## 完成标准
 
@@ -148,7 +157,8 @@ metadata:
 4. 每个已生成 artifact 的文件路径来自对应 instructions 的 `outputPath`，并已验证存在。
 5. artifact 正文没有复制 `context`、`rules` 或内部流程说明。
 6. `openspec validate "<name>" --type change --json --strict --no-interactive` 通过；无法运行时说明失败原因和影响。
-7. 最终回复包含 change 名称、change 路径、已创建 artifacts、最终状态和下一步实现入口。
+7. tasks artifact 包含阻塞级审计任务，并明确审计未完成前不可执行实现任务。
+8. 最终回复包含 change 名称、change 路径、已创建 artifacts、最终状态、审计门禁状态和下一步入口。
 
 ## 最终回复格式
 
@@ -157,4 +167,5 @@ metadata:
 1. Change：`<name>`，位置 `openspec/changes/<name>/`。
 2. Artifacts：列出创建或更新的 artifact 文件及作用。
 3. 状态：说明是否已满足 apply-ready；如未满足，列出阻塞原因和需要用户补充的问题。
-4. 下一步：提示用户可以进入实现流程，或直接要求继续实现 tasks。
+4. 审计门禁：说明阻塞级审计任务是否已完成；未完成时明确不能进入实现执行。
+5. 下一步：审计未完成时提示先完成审计；审计完成后再提示可以进入实现流程，或直接要求继续实现 tasks。
