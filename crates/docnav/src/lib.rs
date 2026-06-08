@@ -43,13 +43,15 @@ where
     E: Write,
     T: DocnavRuntime,
 {
+    let args: Vec<String> = args.into_iter().map(Into::into).collect();
+    let output_context = cli::output_context(&args);
     let parsed = match cli::parse(args) {
         Ok(parsed) => parsed,
         Err(error) => {
             return output::write_error(
                 &error,
-                OutputMode::Text,
-                None,
+                output_context.output_mode,
+                output_context.operation,
                 &[],
                 &mut stdout,
                 &mut stderr,

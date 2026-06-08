@@ -25,7 +25,10 @@ pub struct AdapterSelection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdapterSelectionWarning {
     pub adapter_id: String,
+    pub stage: CandidateStage,
+    pub code: String,
     pub reason: String,
+    pub preselected: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -49,6 +52,11 @@ enum CandidateResult {
     Continue(CandidateEvidence),
 }
 
+struct ExtensionInference {
+    adapter_id: Option<String>,
+    evidence: Vec<CandidateEvidence>,
+}
+
 #[derive(Clone, Debug)]
 struct SelectedCandidate {
     record: AdapterRecord,
@@ -70,7 +78,17 @@ pub fn select_adapter(
 
     let preselected = match preselected_adapter_id {
         Some(adapter_id) => Some(adapter_id.to_owned()),
-        None => infer_adapter_by_extension(project, registry, document, operation),
+        None => {
+            let inference = infer_adapter_by_extension(project, registry, document, operation);
+            for candidate in inference.evidence {
+                attempted.insert(candidate.adapter_id.clone());
+                warnings.push(AdapterSelectionWarning::candidate_failure(
+                    &candidate, false,
+                ));
+                evidence.push(candidate);
+            }
+            inference.adapter_id
+        }
     };
 
     if let Some(adapter_id) = preselected {
@@ -87,12 +105,10 @@ pub fn select_adapter(
                 });
             }
             CandidateResult::Continue(candidate) => {
-                if preselected_source == "explicit" {
-                    warnings.push(AdapterSelectionWarning::candidate_failure(
-                        &adapter_id,
-                        &candidate.reason,
-                    ));
-                }
+                warnings.push(AdapterSelectionWarning::candidate_failure(
+                    &candidate,
+                    preselected_source == "explicit",
+                ));
                 evidence.push(candidate);
             }
         }
@@ -113,7 +129,12 @@ pub fn select_adapter(
                     warnings,
                 });
             }
-            CandidateResult::Continue(candidate) => evidence.push(candidate),
+            CandidateResult::Continue(candidate) => {
+                warnings.push(AdapterSelectionWarning::candidate_failure(
+                    &candidate, false,
+                ));
+                evidence.push(candidate);
+            }
         }
     }
 
@@ -130,29 +151,68 @@ fn infer_adapter_by_extension(
     registry: &AdapterRegistry,
     document: &NormalizedDocumentPath,
     operation: Operation,
-) -> Option<String> {
+) -> ExtensionInference {
     let extension = document_extension(&document.adapter_path);
-    let extension = extension?;
+    let Some(extension) = extension else {
+        return ExtensionInference {
+            adapter_id: None,
+            evidence: Vec::new(),
+        };
+    };
+    let mut evidence = Vec::new();
 
     for record in &registry.adapters {
-        let Some(manifest) = manifest_for_extension_inference(project, record) else {
-            continue;
+        let manifest = match run_manifest(&project.project_root, record) {
+            Ok(output) => match manifest_from_output(&record.id, output) {
+                Ok(manifest) => manifest,
+                Err(reason) => {
+                    evidence.push(CandidateEvidence::resolve(
+                        &record.id,
+                        "MANIFEST_INVALID",
+                        reason,
+                        json!({}),
+                    ));
+                    continue;
+                }
+            },
+            Err(error) => {
+                evidence.push(CandidateEvidence::resolve(
+                    &record.id,
+                    "ADAPTER_UNAVAILABLE",
+                    error.reason.clone(),
+                    process_error_details(&error),
+                ));
+                continue;
+            }
         };
-        if !manifest.capabilities.contains(&operation) {
-            continue;
-        }
         let matches_extension = manifest.formats.iter().any(|format| {
             format
                 .extensions
                 .iter()
                 .any(|candidate| candidate.eq_ignore_ascii_case(&extension))
         });
-        if matches_extension {
-            return Some(record.id.clone());
+        if !matches_extension {
+            continue;
         }
+        if let Err(reason) = ensure_capability(&manifest, operation) {
+            evidence.push(CandidateEvidence::resolve(
+                &record.id,
+                "CAPABILITY_UNSUPPORTED",
+                reason,
+                json!({ "capability": operation, "adapter_id": record.id }),
+            ));
+            continue;
+        }
+        return ExtensionInference {
+            adapter_id: Some(record.id.clone()),
+            evidence,
+        };
     }
 
-    None
+    ExtensionInference {
+        adapter_id: None,
+        evidence,
+    }
 }
 
 fn evaluate_preselected(
@@ -258,15 +318,6 @@ fn evaluate_candidate(
     }))
 }
 
-fn manifest_for_extension_inference(
-    project: &ProjectContext,
-    record: &AdapterRecord,
-) -> Option<Manifest> {
-    run_manifest(&project.project_root, record)
-        .ok()
-        .and_then(|output| manifest_from_output(&record.id, output).ok())
-}
-
 fn document_extension(path: &str) -> Option<String> {
     let basename = path.rsplit('/').next().unwrap_or(path);
     let dot = basename.rfind('.')?;
@@ -299,10 +350,22 @@ impl CandidateEvidence {
 }
 
 impl AdapterSelectionWarning {
-    fn candidate_failure(adapter_id: &str, reason: &str) -> Self {
+    fn candidate_failure(candidate: &CandidateEvidence, preselected: bool) -> Self {
         Self {
-            adapter_id: adapter_id.to_owned(),
-            reason: reason.to_owned(),
+            adapter_id: candidate.adapter_id.clone(),
+            stage: candidate.stage,
+            code: candidate.code.clone(),
+            reason: candidate.reason.clone(),
+            preselected,
+        }
+    }
+}
+
+impl CandidateStage {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Resolve => "resolve",
+            Self::Probe => "probe",
         }
     }
 }

@@ -195,7 +195,15 @@ fn adapter_source(
 fn cli_warnings(warnings: Vec<AdapterSelectionWarning>) -> Vec<CliWarning> {
     warnings
         .into_iter()
-        .map(|warning| CliWarning::adapter_candidate_failure(&warning.adapter_id, &warning.reason))
+        .map(|warning| {
+            CliWarning::adapter_candidate_failure(
+                &warning.adapter_id,
+                warning.stage.as_str(),
+                &warning.code,
+                &warning.reason,
+                warning.preselected,
+            )
+        })
         .collect()
 }
 

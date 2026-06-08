@@ -144,6 +144,18 @@ export function expectCandidateEvidence(record, candidate, expected) {
   }
 }
 
+export function expectCandidateWarning(record, warning, expected) {
+  expect(record, Boolean(warning), `candidate warning exists for ${expected.adapter_id}`);
+  for (const key of ["ignored_tokens", "kind", "reason", "adapter_id", "stage", "code"]) {
+    expect(record, Object.hasOwn(warning, key), `candidate warning has ${key}`);
+  }
+  expect(record, warning.kind === "adapter_candidate_failure", "candidate warning kind matches");
+  expect(record, Array.isArray(warning.ignored_tokens), "candidate warning ignored_tokens is an array");
+  for (const [key, value] of Object.entries(expected)) {
+    expect(record, warning[key] === value, `candidate warning ${key} is ${value}`);
+  }
+}
+
 export function expectNoJsonPayloadInStderr(record) {
   const jsonLine = record.stderr
     .split(/\r?\n/)
@@ -193,4 +205,3 @@ function findProtocolEnvelopeKeys(value, path = "$") {
   }
   return found;
 }
-

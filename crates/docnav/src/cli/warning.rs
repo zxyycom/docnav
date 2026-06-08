@@ -7,6 +7,12 @@ pub struct CliWarning {
     pub ignored_tokens: Vec<String>,
     pub kind: CliWarningKind,
     pub reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub adapter_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stage: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
 }
 
 impl CliWarning {
@@ -15,6 +21,9 @@ impl CliWarning {
             ignored_tokens: vec![token.to_owned()],
             kind: CliWarningKind::UnknownFlag,
             reason: "unknown CLI flag ignored".to_owned(),
+            adapter_id: None,
+            stage: None,
+            code: None,
         }
     }
 
@@ -23,6 +32,9 @@ impl CliWarning {
             ignored_tokens: vec![token.to_owned()],
             kind: CliWarningKind::ExtraPositional,
             reason: "extra positional argument ignored".to_owned(),
+            adapter_id: None,
+            stage: None,
+            code: None,
         }
     }
 
@@ -35,14 +47,36 @@ impl CliWarning {
             ignored_tokens,
             kind: CliWarningKind::UnusedOperationFlag,
             reason: format!("flag is not used by {command} command"),
+            adapter_id: None,
+            stage: None,
+            code: None,
         }
     }
 
-    pub fn adapter_candidate_failure(adapter_id: &str, reason: &str) -> Self {
+    pub fn adapter_candidate_failure(
+        adapter_id: &str,
+        stage: &str,
+        code: &str,
+        reason: &str,
+        preselected: bool,
+    ) -> Self {
+        let ignored_tokens = if preselected {
+            vec![flags::ADAPTER.to_owned(), adapter_id.to_owned()]
+        } else {
+            Vec::new()
+        };
+        let reason = if preselected {
+            format!("preselected adapter was not used: {reason}")
+        } else {
+            format!("adapter candidate was not used: {reason}")
+        };
         Self {
-            ignored_tokens: vec![flags::ADAPTER.to_owned(), adapter_id.to_owned()],
+            ignored_tokens,
             kind: CliWarningKind::AdapterCandidateFailure,
-            reason: format!("preselected adapter was not used: {reason}"),
+            reason,
+            adapter_id: Some(adapter_id.to_owned()),
+            stage: Some(stage.to_owned()),
+            code: Some(code.to_owned()),
         }
     }
 }

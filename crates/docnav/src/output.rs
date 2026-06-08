@@ -289,13 +289,23 @@ fn write_cli_warnings<W: Write>(warnings: &[CliWarning], writer: &mut W) -> io::
     for warning in warnings {
         let ignored_tokens =
             serde_json::to_string(&warning.ignored_tokens).map_err(io::Error::other)?;
-        writeln!(
+        write!(
             writer,
             "warning: ignored_tokens={}, kind={}, reason={}",
             ignored_tokens,
             warning.kind.as_str(),
             warning.reason
         )?;
+        if let Some(adapter_id) = &warning.adapter_id {
+            write!(writer, ", adapter_id={adapter_id}")?;
+        }
+        if let Some(stage) = &warning.stage {
+            write!(writer, ", stage={stage}")?;
+        }
+        if let Some(code) = &warning.code {
+            write!(writer, ", code={code}")?;
+        }
+        writeln!(writer)?;
     }
     Ok(())
 }

@@ -83,8 +83,7 @@
               "items": {
                 "type": "string",
                 "minLength": 1
-              },
-              "minItems": 1
+              }
             },
             "kind": {
               "type": "string",
@@ -93,8 +92,59 @@
             "reason": {
               "type": "string",
               "minLength": 1
+            },
+            "adapter_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "stage": {
+              "enum": [
+                "resolve",
+                "probe"
+              ]
+            },
+            "code": {
+              "type": "string",
+              "minLength": 1
             }
           },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "adapter_candidate_failure"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "adapter_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "stage": {
+                    "enum": [
+                      "resolve",
+                      "probe"
+                    ]
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "adapter_id",
+                  "stage",
+                  "code"
+                ]
+              }
+            }
+          ],
           "additionalProperties": false
         }
       }

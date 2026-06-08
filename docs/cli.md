@@ -1,6 +1,6 @@
 # CLI 与 MCP 输出
 
-本文是 `docnav` 命令、配置域、输出模式和 MCP 阅读输出映射的主规范。普通 CLI 和 MCP 输出以可读性为主；需要机器稳定解析、兼容校验或自动化断言时，使用 `adapter invoke` 或 `docnav --output protocol-json` 这类完整协议接口。
+本文是 `docnav` 命令、配置域、输出模式和 MCP 阅读输出映射的主规范。普通 CLI 和 MCP 输出以可读性为主；需要机器稳定解析、兼容校验或自动化断言时，使用 `adapter invoke` 或 `docnav --output protocol-json` 这类完整协议接口。所有 JSON 输出都必须保持 documented shape 和明确通道归属；`protocol-json` 是完整机器协议，`readable-json` 是结构化阅读输出。
 
 ## `docnav` 核心 CLI
 
@@ -58,6 +58,12 @@ docnav version
 
 ## 输出模式
 
+`--output` 只选择输出层的序列化、错误包装和通道承载方式，不改变 `docnav` 的 adapter 选择、配置合并、参数显式化、probe、invoke 或业务结果判断。实现应先产出统一 outcome，再按输出模式渲染为文本、readable JSON、MCP structuredContent 或 protocol envelope。
+
+机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；错误发生在 CLI 参数解析、adapter 选择、adapter invoke 或输出转换阶段时，只要输出模式可以从 argv 或请求中确定，也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
+
+统一执行管线按 [架构](architecture.md#adapter-选择) 累积可恢复候选失败；本文件只定义这些候选证据在各输出模式中如何承载为 warning。
+
 ### `protocol-json`
 
 用途：完整接口、脚本、调试和兼容性校验；不以可读性为目标。正常阅读不使用该模式。
@@ -73,7 +79,7 @@ adapter outline docs/guide.md --output protocol-json
 
 `docnav --output protocol-json` 由核心 CLI 生成非空 request id，按当前协议 schema 和字段 shape 解析最终有限参数，再调用 adapter `invoke`。
 
-`protocol-json` stdout 不承载直接 CLI 兼容性 warning。若直接 CLI argv 中存在被兼容忽略的 token，warning 写入 stderr，stdout 仍只输出一个符合 protocol response schema 的 JSON envelope。
+`protocol-json` stdout 不承载直接 CLI 兼容性 warning 或 adapter 选择候选 warning。若直接 CLI argv 中存在被兼容忽略的 token，或 adapter 选择过程中跳过了不可用、契约不匹配、probe 不支持的候选，warning 写入 stderr，stdout 仍只输出一个符合 protocol response schema 的 JSON envelope。若参数解析失败但 argv 已能确定 `--output protocol-json`，stdout 仍输出 protocol failure envelope，而不是退回文本错误。
 
 ### 默认阅读文本
 
@@ -91,13 +97,15 @@ page: 2
 
 用途：需要结构化阅读结果但不需要协议 envelope 的 AI 和人类辅助流程。输出不包含 `protocol_version`、`request_id`、`operation`、`ok` 或原始进程错误字段。
 
-`readable-json` 仍属于阅读输出层；字段形状用于文档示例、MCP tool 声明和实现自测，不是脚本长期依赖的机器兼容接口。脚本若需要稳定解析，应使用 `protocol-json` 或 `adapter invoke`。
+`readable-json` 仍属于阅读输出层中的结构化机器友好形态。它必须保持 documented shape，便于 AI、工具和轻量自动化解析阅读结果；但它不包含完整协议 envelope，也不替代 `protocol-json` 或 `adapter invoke` 的完整机器兼容接口。脚本若需要跨版本稳定错误 envelope、request id 或协议兼容校验，应使用 `protocol-json` 或 `adapter invoke`。
 
 阅读输出 schema 按 operation 独立定义，见 [schemas](schemas/README.md)。
 
 成功结果存在直接 CLI 兼容性 warning 时，`readable-json` 必须在顶层输出 `warnings` 数组；没有 warning 时省略该字段。每个 warning item 必须包含 `ignored_tokens`、`kind` 和 `reason`。
 
-readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `--adapter <adapter-id>` 或 MCP adapter 参数，`docnav` 先校验该 adapter；失败后再进入 registry 遍历。
+成功结果存在 adapter 选择候选 warning 时，`readable-json` 同样必须在顶层 `warnings` 数组中保留，warning 至少能表达 adapter id、选择阶段和失败原因。没有 warning 时省略该字段。
+
+readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `--adapter <adapter-id>` 或 MCP adapter 参数，`docnav` 先校验该 adapter；失败后再进入 registry 遍历。预选 adapter 失败不直接中断阅读链路，而是作为候选 warning 保留。
 
 阅读错误保留 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。需要机器可靠错误契约时使用完整协议输出。
 
@@ -183,6 +191,7 @@ page: 2
 - 默认阅读文本和 readable JSON 写 stdout。
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断写 stderr。
+- adapter 选择候选 warning 在默认阅读文本、`readable-json` 和 MCP 中跟随最终阅读结果输出；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
 - 直接 CLI argv 的兼容和 warning 归属见 [直接 CLI 兼容参数规则](#直接-cli-兼容参数规则)；通道承载必须与该规则一致。
 - `config get` 的 key 不存在时必须返回 `INVALID_REQUEST`。
 - 成功退出 `0`；输入错误 `2`；文档/ref/格式错误 `3`；协议或 adapter 进程错误 `4`；内部错误 `1`。

@@ -26,6 +26,12 @@ Docnav 分为两个语义层：
 两层复用相同业务语义，例如 ref、display、内容、成本和 page，但使用不同的传输包装和展示形态。
 普通 CLI 和 MCP 输出优先服务阅读体验；需要机器稳定解析、兼容校验或自动化断言时，调用完整协议接口。
 
+`docnav` 对文档操作使用单一执行管线：参数归一化、adapter 选择、配置解析、probe、invoke 和结果判断不按输出模式分叉。管线产出业务结果、稳定错误和候选证据；输出层负责按模式序列化、包装并写入 stdout/stderr。
+
+选择机器可读入口表示调用方优先需要稳定、可预测、便于解析的输出；选择阅读入口表示调用方优先需要完成一次可继续的阅读链路。具体 stdout/stderr 通道、JSON shape 和错误包装由 [CLI 与 MCP 输出](cli.md) 与 [原始协议](protocol.md) 定义。
+
+统一执行管线中的可恢复候选失败不应立即中断整个链路；`docnav` 应跳过失败候选、继续寻找可用 adapter，并把中间失败按顺序保留为候选证据，交由输出层呈现。兜底不能静默吞错；所有被跳过的失败都必须保留 adapter id、阶段和原因。
+
 ## 接入层
 
 1. 直接 CLI：人类、脚本和自动化直接调用 `docnav outline/read/find/info`。
@@ -144,7 +150,9 @@ AI Client
 4. 若预选 adapter 存在，`docnav` 先解析该 adapter，校验 manifest schema、当前协议字段 shape 并执行 probe 校验。probe 成功则选中，失败时保留失败证据。
 5. 若预选 adapter 缺失、无法解析、字段不对齐或 probe 失败，`docnav` 调用 registry 遍历函数。该函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项，返回第一个 probe 成功的 adapter。
 
-所有选择都以 adapter probe 结果为准，不能只凭 `--adapter` 或扩展名静默选中。全部候选失败时返回 `FORMAT_UNKNOWN` 和候选证据。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
+所有选择都以 adapter probe 结果为准，不能只凭 `--adapter` 或扩展名静默选中。候选 adapter 的 manifest 或 probe 契约失败属于可恢复的选择失败：`docnav` 记录候选失败证据并继续遍历，不因单个候选字段缺失、类型不符、schema 不匹配、语义校验失败或进程不可用而直接停止选择流程。`supported: false` 也是普通候选失败证据。
+
+若后续候选成功，选择结果必须携带前面累积的候选证据，输出层按 [CLI 与 MCP 输出](cli.md) 的规则呈现为 warning。全部候选失败时返回 `FORMAT_UNKNOWN` 和候选证据。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
 
 ## 项目根与路径
 

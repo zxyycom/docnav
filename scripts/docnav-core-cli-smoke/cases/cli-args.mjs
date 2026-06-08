@@ -2,10 +2,15 @@ import { createProject } from "../fixtures.mjs";
 import { runCli } from "../runner.mjs";
 import {
   expectExit,
+  expectNoJsonPayloadInStderr,
+  expectNoProtocolEnvelope,
+  expectProtocolFailure,
   expectStderrEmpty,
-  expectStdoutIncludes
+  expectStdoutIncludes,
+  parseJson
 } from "../assertions.mjs";
 import { exitCodes } from "../config.mjs";
+import { validateSchema } from "../schemas.mjs";
 
 export function testCliArgumentFailures() {
   const project = createProject("cli-argument-failures");
@@ -79,4 +84,42 @@ export function testCliArgumentFailures() {
     expectStdoutIncludes(record, "error: INVALID_REQUEST");
     expectStdoutIncludes(record, testCase.message);
   }
+
+  testJsonParseFailureOutput(project);
+}
+
+function testJsonParseFailureOutput(project) {
+  const missingRef = runCli("read missing ref protocol-json parse failure", [
+    "read",
+    project.normalRelPath,
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(missingRef, exitCodes.input);
+  expectNoJsonPayloadInStderr(missingRef);
+  const missingRefJson = parseJson(missingRef);
+  validateSchema(missingRef, "protocolResponse", missingRefJson);
+  expectProtocolFailure(missingRef, missingRefJson, "read", "INVALID_REQUEST");
+
+  const unknownCommand = runCli("unknown command protocol-json parse failure", [
+    "unknown",
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(unknownCommand, exitCodes.input);
+  expectNoJsonPayloadInStderr(unknownCommand);
+  const unknownCommandJson = parseJson(unknownCommand);
+  validateSchema(unknownCommand, "protocolResponse", unknownCommandJson);
+  expectProtocolFailure(unknownCommand, unknownCommandJson, null, "INVALID_REQUEST");
+
+  const missingPath = runCli("outline missing path readable-json parse failure", [
+    "outline",
+    "--output",
+    "readable-json"
+  ], { project });
+  expectExit(missingPath, exitCodes.input);
+  expectStderrEmpty(missingPath);
+  const missingPathJson = parseJson(missingPath);
+  validateSchema(missingPath, "readableError", missingPathJson);
+  expectNoProtocolEnvelope(missingPath, missingPathJson);
 }

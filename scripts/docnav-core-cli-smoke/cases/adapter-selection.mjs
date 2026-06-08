@@ -10,10 +10,13 @@ import { runCli } from "../runner.mjs";
 import {
   expect,
   expectCandidateEvidence,
+  expectCandidateWarning,
   expectExit,
   expectNoJsonPayloadInStderr,
   expectNoProtocolEnvelope,
   expectProtocolFailure,
+  expectProtocolSuccess,
+  expectStderrIncludes,
   expectStderrEmpty,
   expectStructuredWarning,
   parseJson
@@ -30,6 +33,7 @@ export function testAdapterSelectionMatrix() {
   testPreselectedContractMismatchContinues();
   testCandidateEvidenceOnAllFailure();
   testRegistryTraversalContractFailureContinues();
+  testProtocolJsonCandidateWarningUsesStderr();
 }
 
 function testExplicitAdapterPreselection() {
@@ -113,6 +117,11 @@ function testExtensionInferenceContractFailureContinues() {
   expect(record, json.entries[0].display.includes(selected.id), "adapter after invalid inferred candidate is selected");
   expect(record, readAdapterCalls(invalid).some((call) => call.command === "manifest"), "invalid inferred adapter manifest was called");
   expect(record, readAdapterCalls(selected).some((call) => call.command === "invoke"), "fallback inferred adapter invoke was called");
+  expectCandidateWarning(record, json.warnings?.[0], {
+    adapter_id: invalid.id,
+    stage: "resolve",
+    code: "MANIFEST_INVALID"
+  });
 }
 
 function testSupportedFalseContinues() {
@@ -140,6 +149,11 @@ function testSupportedFalseContinues() {
     "unsupported adapter invoke was not called"
   );
   expect(record, readAdapterCalls(selected).some((call) => call.command === "invoke"), "fallback adapter invoke was called");
+  expectCandidateWarning(record, json.warnings?.[0], {
+    adapter_id: unsupported.id,
+    stage: "probe",
+    code: "PROBE_UNSUPPORTED"
+  });
 }
 
 function testPreselectedContractMismatchContinues() {
@@ -166,6 +180,16 @@ function testPreselectedContractMismatchContinues() {
     json.warnings?.[0]?.reason
   );
   expect(record, json.warnings[0].reason.includes("preselected adapter was not used"), "warning explains preselected failure");
+  expectCandidateWarning(record, json.warnings?.[0], {
+    adapter_id: invalid.id,
+    stage: "resolve",
+    code: "MANIFEST_INVALID"
+  });
+  expect(
+    record,
+    JSON.stringify(json.warnings[0].ignored_tokens) === JSON.stringify(["--adapter", invalid.id]),
+    "explicit candidate warning keeps ignored adapter token"
+  );
 }
 
 function testCandidateEvidenceOnAllFailure() {
@@ -210,6 +234,35 @@ function testRegistryTraversalContractFailureContinues() {
   expect(record, json.entries[0].display.includes(selected.id), "adapter after probe contract failure is selected");
   expect(record, readAdapterCalls(invalid).some((call) => call.command === "probe"), "invalid adapter probe was called");
   expect(record, readAdapterCalls(selected).some((call) => call.command === "invoke"), "registry traversal continued after contract failure");
+  expectCandidateWarning(record, json.warnings?.[0], {
+    adapter_id: invalid.id,
+    stage: "probe",
+    code: "PROBE_INVALID"
+  });
+}
+
+function testProtocolJsonCandidateWarningUsesStderr() {
+  const project = createProject("selection-protocol-warning-stderr");
+  const invalid = createFakeAdapter(project, { id: "fake-invalid-protocol-warning", mode: "manifest-invalid" });
+  const selected = createFakeAdapter(project, { id: "fake-after-protocol-warning" });
+  writeRegistry(project, [invalid, selected]);
+
+  const record = runCli("protocol-json candidate warning stays on stderr", [
+    "outline",
+    project.normalRelPath,
+    "--adapter",
+    invalid.id,
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrIncludes(record, "kind=adapter_candidate_failure");
+  expectStderrIncludes(record, `adapter_id=${invalid.id}`);
+  expectStderrIncludes(record, "stage=resolve");
+  expectStderrIncludes(record, "code=MANIFEST_INVALID");
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  expectProtocolSuccess(record, json, "outline");
 }
 
 function expectReadableOutline(record) {

@@ -97,7 +97,9 @@ reasons[]
 
 ## 协议字段对齐
 
-`docnav` 不在 adapter 选择阶段做协议版本协商。候选适配器的 manifest、probe 和 invoke 响应必须通过当前 schema、必需字段、字段类型、operation/result shape 和语义校验；字段缺失、字段类型不符或 shape 不对齐时记录候选失败证据，并继续 adapter 选择流程；没有候选可用时由 `docnav` 按 adapter 选择失败返回稳定错误。
+`docnav` 不在 adapter 选择阶段做协议版本协商。候选适配器的 manifest 和 probe 输出必须通过当前 schema、必需字段、字段类型和语义校验；字段缺失、字段类型不符、shape 不对齐、语义校验失败、进程不可用或 `supported: false` 时，`docnav` 必须能形成包含 adapter id、阶段和原因的候选失败证据。候选遍历策略由 [架构](architecture.md#adapter-选择) 定义；选择成功或全部候选失败后的输出映射由 `docnav` 输出层负责。
+
+选定 adapter 后的 `invoke` 响应不再属于候选选择阶段。`invoke` 响应必须通过当前 protocol response schema、必需字段、字段类型、operation/result shape 和语义校验；校验失败时返回 adapter/protocol 稳定错误，不能把已经选定 adapter 的 invoke 失败当作普通候选失败继续静默切换。
 
 正式 schema：
 
