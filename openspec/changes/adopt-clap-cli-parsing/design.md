@@ -1,84 +1,115 @@
-**一句话核心：本设计说明如何用 `clap` 替代手写 Rust CLI argv parser，并将直接 CLI 容错收敛为 AI 友好的宽松解析边界。当前 change 只在 `openspec/changes/adopt-clap-cli-parsing/` 下形成未审核临时文档，不影响现有其它文档或主规范。**
+**核心决策：** Rust CLI argv 结构由 `clap` 承载，传输层解析成功后的文档操作请求进入 canonical document operation input。CLI argv 只对当前 operation 不使用的额外输入保持宽松。Adapter `invoke` JSON 在归一前保持严格。阅读层 warning 使用稳定 envelope 和固定 family marker。
 
-## Context
+## 背景
 
-Docnav 是 CLI-first 的文档导航系统，核心读取链路是 `outline -> ref -> read`。Rust CLI 入口既服务人类，也服务 AI agent；本项目的主要开发维护由 AI 执行，人类主要审核方向和关键取舍。
+Docnav 有多个入口会表达同一组文档操作：
 
-当前 adapter 直接 CLI 在 SDK 中手写解析 argv，并长期约束 unknown flag、extra positional、unused operation flag 的 ignored token、kind、reason 和消费规则。该规则对兼容性很精细，但对不熟 Rust 的审核者和 AI 维护者成本偏高，也让未来核心 `docnav` CLI、adapter 直接 CLI 和管理命令难以统一成清晰声明式结构。
+- 核心 `docnav` CLI 负责路由、配置、adapter 选择和输出映射。
+- Adapter direct CLI 暴露 adapter 操作，并映射格式原生参数。
+- Adapter `invoke` 从 stdin 接收 JSON，并输出 protocol-shaped payload。
+- `docnav-mcp` 把 MCP tool call 映射到核心 `docnav` CLI。
 
-`clap` 是 Rust CLI 生态中热度最高、资料最多、声明能力最完整的参数解析库。它可以通过 derive 或 builder 描述子命令、参数、默认值、枚举值、help 和类型解析，并提供 `ignore_errors(true)` 等宽松解析能力。
+当前 Rust CLI parser 是手写 token loop。它们同时处理 argv 解析、宽松兼容、warning 构造和 request 构造。这会让 parser 变更风险偏高，也让测试依赖 exact ignored-token 分组等实现细节。
 
-## Goals / Non-Goals
+`clap` 可以稳定声明命令、option、默认值、枚举和 help。Docnav 仍需要自有的宽松 argv 行为，因为 `clap` 默认解析比“AI 友好成功路径”更严格。
 
-**Goals:**
+## 目标
 
-- 使用 `clap` 作为 Rust CLI 参数解析的首选基础，降低 AI 生成、审阅和维护 CLI 入口的复杂度。
-- 将 CLI 参数定义集中到结构体、枚举或清晰的 builder 代码中，减少手写 token loop。
-- 支持 AI 友好容错：未知或无关 argv 不应在其它必需参数正确时阻断成功执行。
-- 保持真正必要的错误边界：必需参数缺失、已知使用参数非法、业务错误和协议错误仍明确失败。
-- 保持 process boundary 清晰：CLI argv 容错不进入 adapter `invoke` JSON，protocol schema 和 readable schema 不因解析库变化而改变。
-- 让 CLI `--help` 成为 AI 调用纠错和人类审核的稳定入口。
+- 使用 `clap` 作为核心 `docnav` CLI、adapter direct CLI 和后续 Rust CLI 入口的首选 argv 解析基础。
+- 将固定命令、子命令、共享 flag、默认值、枚举和 help 文本迁移到声明式 CLI 结构。
+- 将成功解析的 core document CLI argv、adapter direct document CLI argv 和 adapter `invoke` JSON 映射为 canonical document operation input。
+- 文档操作共享语义归一、默认值处理、native option 映射、warning metadata 收集、request 构造和 operation 执行。
+- 当前 operation 的必需语义和实际使用参数有效时，CLI argv 中的未知 flag、多余 positional 和未使用参数不阻断成功。
+- 保留严格失败：malformed JSON、schema/type/field 错误、缺少必需文档语义、实际使用参数值非法、文档/ref/格式错误和 adapter/protocol 错误。
+- 统一 readable warning envelope：稳定 `kind`、非空 `reason`、`ignored_tokens: string[]` 和可选 family-specific 字段。
+- 固定当前 warning family marker：`cli_argv_ignored` 和 `adapter_candidate_failure`。
+- 保持 adapter `invoke` 在进入 canonical document operation input 前严格。
+- 为 core CLI 和 adapter direct CLI 提供可审计 help。
 
-**Non-Goals:**
+## 非目标
 
-- 不改变 `outline -> ref -> read` 业务语义。
-- 不改变 adapter 生成和解析 ref 的所有权。
-- 不改变 protocol envelope、manifest、probe 或 readable JSON schema。
-- 不把 Markdown 或其它格式解析逻辑移入核心 `docnav`。
-- 不要求继续保留旧 direct CLI warning 的精确 ignored token 分组、kind 枚举和消费顺序。
+- 不改变 `outline -> ref -> read` 行为。
+- 不改变 adapter 生成和解析 ref 的 ownership。
+- 不给 protocol response、manifest 或 probe schema 增加 CLI warning 字段。
+- 不改变 readable operation 字段集合；只收紧 warning item envelope 约束。
+- 不把格式解析移入核心 `docnav`。
+- 不让 adapter `invoke` request 或 MCP tool arguments 像 argv 一样宽松。
+- 不让 `docnav-mcp` 拥有 adapter SDK 解析、adapter `invoke`、格式解析或 Rust argv 解析。
+- 不把 CLI warning 的 exact token 分组、`reason` 文案或 token 消费顺序作为稳定契约。
 
-## Decisions
+## 决策
 
-1. **采用 `clap` 作为 Rust CLI 首选解析库。**
+1. **`clap` 承载 argv 结构，Docnav 承载兼容语义。**
 
-   - 决策：核心 `docnav` CLI、adapter 直接 CLI 和未来 Rust CLI 扩展优先使用 `clap`。
-   - 理由：`clap` 的声明式结构、自动 help、子命令、类型解析、默认值和资料规模更适合 AI 主维护、人类方向审核的协作模型。
-   - 替代方案：继续手写 parser 可保持最大控制力，但会扩大 Rust 细节审核成本；`lexopt` 更适合精确自定义 token 语义，但仍要求维护者读手写 match；`argh` 更轻，但复杂子命令、容错和生态资料不如 `clap`。
+   固定命令、子命令、已知 option、默认值、枚举和 help 使用 `clap` 或 `clap` builder API 声明。未知和无关 argv 可通过 builder 配置、trailing capture、预处理或后处理收集。
 
-2. **直接 CLI 容错目标从精确兼容改为成功优先。**
+   这样可以降低 parser 审计成本，同时保留 Docnav 的 AI 友好成功路径。继续手写 parser 会保留旧细节但延续高维护成本；完全依赖 `clap` 默认严格行为会拒绝包含无害额外输入的有效调用。
 
-   - 决策：unknown flag、多余 positional 和无关参数可以生成 warning 或诊断，但不再要求稳定的 ignored token shape；只要 path/ref/query 等必需语义足够执行，CLI 应继续执行。
-   - 理由：用户明确将核心目标定义为“忽略未知错误，在其它参数正确时尽量一次成功，减少 AI 读取次数”。精确 warning 契约不是核心产品价值。
-   - 替代方案：保留旧 warning schema 能提供强兼容自动化，但实现和审计成本高，并且会限制 `clap` 的自然用法。
+2. **传输解析和文档操作语义分层。**
 
-3. **协议层继续严格，容错只作用于 CLI argv。**
+   Core CLI argv、adapter direct CLI argv 和 adapter `invoke` JSON 先按各自传输规则解析。传输成功后，文档操作进入 canonical document operation input，并共享语义归一、校验、warning metadata 和 operation handler。
 
-   - 决策：adapter `invoke` stdin JSON 继续按 protocol schema 严格校验，未知字段、缺字段和类型错误不得因 `clap` 迁移而宽松通过。
-   - 理由：CLI 阅读层服务 AI 和人类调用，protocol 层服务机器稳定接口；两层边界是 Docnav 的核心架构约束。
-   - 替代方案：让 invoke 也容错会降低自动化校验和跨进程契约稳定性，不采用。
+   `docnav-mcp` 不进入这个 Rust/SDK 输入模型。它只把 MCP tool arguments 映射为核心 `docnav` CLI 调用，并验证 MCP 输出包装。
 
-4. **优先使用 derive；动态 adapter native options 使用 builder 或受控桥接。**
+3. **所有 Rust CLI argv 入口继承同一模型。**
 
-   - 决策：固定命令和固定参数使用 `#[derive(Parser, Subcommand, Args)]`；adapter native options 这类由 adapter 声明的扩展参数可以使用 `clap::Command` builder 或先解析已知共享参数后在受控结构中处理。
-   - 理由：derive 最易读；builder 能处理运行时扩展参数。两者都比散落的手写 token loop 更容易审计。
-   - 替代方案：完全 derive 会让动态 native options 不自然；完全 builder 会降低字段级可读性。
+   本 change 只有在核心 `docnav`、`docnav-markdown`、adapter SDK direct CLI 和后续 Rust CLI 文档规则都使用同一解析模型后才算闭环。后续 Rust 文档操作 CLI 必须进入 canonical document operation input。管理命令、help、manifest 和 probe 可以是类型化命令，但不进入文档 operation 管道。
 
-5. **warning 输出从稳定 schema 退化为阅读层辅助信息。**
+4. **Warning 稳定性以 envelope 为主。**
 
-   - 决策：text/readable 输出可继续包含 warning，但测试只断言“存在用户可理解诊断且命令成功”，不再断言 precise `ignored_tokens`、`kind`、`reason`。
-   - 理由：保留提示价值，同时释放 parser 实现空间。
-   - 替代方案：删除 warning 会让用户难以发现被忽略输入；保留旧 shape 会阻碍迁移。
+   每个 readable `warnings[]` item 包含：
 
-## Risks / Trade-offs
+   - `kind`：稳定 warning family marker。
+   - `reason`：非空人类可读诊断。
+   - `ignored_tokens`：字符串数组；非 argv warning 使用 `[]`。
+   - 可选 family-specific 字段。
 
-- **Risk: `clap` 默认严格解析导致未知参数仍阻断成功路径。** → Mitigation: 在设计和测试中明确宽松解析策略，使用 `ignore_errors(true)`、外部参数捕获或预处理，只把必需语义缺失作为阻断条件。
-- **Risk: 旧 smoke 测试大量断言 warning token shape，迁移后测试失败。** → Mitigation: 先修改 spec 和测试目标，再实现 parser 迁移；测试改为验证成功路径、help 可用和必要错误边界。
-- **Risk: derive 与动态 native options 混用后结构分散。** → Mitigation: 固定共享参数和子命令用 derive；动态 options 单独放在 adapter-owned bridge 中，并提供集中测试。
-- **Risk: 容错过宽导致拼错已知参数被静默忽略。** → Mitigation: 对常见拼写错误和无关输入输出 warning；对已知使用参数的非法值继续失败；help 中暴露正确参数名。
-- **Risk: 新依赖增加编译时间和依赖面。** → Mitigation: 只启用所需 feature，避免额外 completion/color/wrap 功能，除非后续明确需要。
+   当前稳定 family 是 `cli_argv_ignored` 和 `adapter_candidate_failure`。`adapter_candidate_failure` 保留 `adapter_id`、`stage`、`code` 等字段。CLI argv warning 可以改变 exact token 分组、`reason` 文案和消费顺序，不破坏稳定契约。
 
-## Migration Plan
+5. **实际使用参数严格，未使用 CLI 输入宽松。**
 
-1. 更新 OpenSpec 和主文档，先确立 `clap` 首选路径和宽松 CLI 解析目标。
-2. 引入 `clap` 依赖，优先在 adapter direct CLI 或核心 CLI 中形成最小可运行解析结构。
-3. 将现有手写解析测试改写为目标行为测试：必需参数正确时 unknown argv 不阻断，必需参数缺失和已知非法值仍失败。
-4. 迁移 `docnav-markdown` 直接 CLI 参数入口，保留现有 operation request 构造和输出分流。
-5. 更新 smoke runner 的 argument matrix，减少对 warning token shape 的断言。
-6. 运行局部 Rust 测试、Markdown CLI smoke 和 workspace 验证。
-7. 若迁移引入阻塞，可回滚到旧 parser，但保留新 spec 中的宽松目标，后续再用 builder 或预处理方式实现。
+   当前 operation 使用的已知参数缺值、类型非法、范围非法或枚举非法时必须失败。CLI argv 中的未知输入或当前 operation 不使用的参数，只要必需语义有效，就不阻断成功；它们最多形成 readable warning 或 stderr 诊断。
 
-## Open Questions
+6. **严格 protocol 传输不等于第二套业务管道。**
 
-- 是否保留 readable-json 顶层 `warnings` 字段作为非稳定阅读层字段，还是只保留 text/stderr warning？
-- adapter native options 的最终形态是全部纳入 `clap::Command` builder，还是先解析共享参数再交给 adapter-owned option parser？
-- 核心 `docnav` CLI 与 adapter 直接 CLI 是否共用同一套 `clap` 参数结构，还是只共享行为测试和输出契约？
+   Malformed JSON、未知字段、缺失字段和类型错误在 adapter `invoke` 传输层失败，不进入 canonical document operation input。Schema-valid invoke request 必须使用与 direct CLI 相同的语义归一和 operation handler 路径。
+
+7. **Protocol-shaped stdout 不承载 CLI warning。**
+
+   `protocol-json`、manifest、probe 和 adapter `invoke` stdout 只输出对应 schema payload。CLI warning 进入 stderr，或进入 text、readable-json、MCP structuredContent 等阅读层输出。
+
+8. **Help 是验收面。**
+
+   `docnav --help`、core 子命令 help、`docnav-markdown --help` 和 adapter 子命令 help 应列出命令、关键参数、默认值或可选值。Help 命令不读取文档、不选择 adapter、不运行 adapter invoke，也不执行导航操作。
+
+## 风险与取舍
+
+- `clap` 默认可能拒绝 unknown argv。缓解：明确选择 builder 设置、外部参数捕获、预处理或后处理，并测试 unknown 位于 path 前后和 `--output` 前的场景。
+- Invoke strict 边界可能被误解为独立业务路径。缓解：文档和测试说明 strict 只发生在传输校验阶段，有效 request 仍共享 canonical document operation input。
+- MCP ownership 可能在实现中被写宽。缓解：`docnav-mcp` 测试只关注 MCP-to-core-CLI 映射和 TextContent/structuredContent 包装。
+- Warning family 细节可能与稳定 envelope 混淆。缓解：schema 和测试要求 `kind`、`reason`、`ignored_tokens` 与 family-specific 字段，但不要求 CLI token 分组或文案。
+- 宽松 argv 可能掩盖实际使用参数错误。缓解：当前 operation 使用的 `path`、`ref`、`query`、`page`、`limit_chars`、`output` 和 native options 保持严格。
+- 动态 adapter native options 可能不适合 derive。缓解：固定共享参数用 derive 或 builder，native options 通过集中 bridge 进入 protocol `arguments.options`。
+- `clap` 增加依赖和编译面。缓解：使用 workspace dependency，只启用必要 features。
+
+## 迁移计划
+
+1. 更新 OpenSpec deltas 和主文档，确立 `clap`、canonical document operation input、宽松 argv、strict invoke、stable warning envelope、MCP ownership 和 help 验收。
+2. 添加最小 `clap` workspace dependency/features。
+3. 定义或收敛 canonical document operation input，覆盖 operation、path/ref/query/page/limit_chars/output、adapter/native options、来源通道和 warning metadata。
+4. 保持 config、adapter 管理、manifest、probe 和 help 在文档 operation input 之外。
+5. 将核心 `docnav` CLI 迁移为类型化 `clap` 命令，并把 document operations 映射到共享 semantic request 路径。
+6. 将 adapter SDK direct CLI 迁移为类型化 `clap` 命令，并让有效 direct CLI 与有效 invoke request 共享语义归一。
+7. 更新 `docnav-markdown` native option 映射，使其进入 canonical document operation input 和 protocol `arguments.options`。
+8. 更新 Rust 测试、CLI smoke、Markdown matrix、schema 验证和 workspace 验证。
+
+## 已收敛问题
+
+- 已支持 readable warning 的输出模式继续保留顶层 `warnings` 数组。
+- 每个 warning item 使用稳定 envelope：`kind`、`reason`、`ignored_tokens` 和可选 family-specific 字段。
+- 当前稳定 warning family marker 是 `cli_argv_ignored` 和 `adapter_candidate_failure`。
+- CLI argv warning token 分组、`reason` 文案和 token 消费顺序是实现细节。
+- 核心 `docnav`、adapter direct CLI 和后续 Rust CLI argv 入口都在范围内。
+- Adapter `invoke` 在进入 canonical document operation input 前拒绝 malformed JSON、未知字段、缺失字段和类型错误。
+- 有效 invoke request、有效 direct CLI 文档操作和有效 core CLI 文档操作共享语义归一和 operation handling。
+- `docnav-mcp` 只作为到核心 `docnav` CLI 的 MCP bridge 和 MCP 输出包装层。

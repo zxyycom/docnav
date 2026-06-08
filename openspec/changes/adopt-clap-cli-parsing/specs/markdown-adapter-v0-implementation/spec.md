@@ -1,13 +1,20 @@
-**一句话核心：本 delta 将 `docnav-markdown` 的 CLI 验证目标从精确 warning token 兼容改为 `clap` help 可用、宽松 argv 成功路径和必要失败边界。当前 change 只在 `openspec/changes/adopt-clap-cli-parsing/` 下形成未审核临时文档，不影响现有其它文档或主规范。**
+范围说明：本 delta 更新 Markdown adapter 黑盒 CLI 覆盖，重点是 `clap` 解析、宽松 argv 成功路径、实际使用参数严格失败、help 输出、direct/invoke 共享语义和稳定 readable warning envelope。
 
 ## MODIFIED Requirements
 
 ### Requirement: Markdown adapter 必须有完整黑盒 CLI smoke 测试
-`docnav-markdown` MUST 提供由 Node.js 执行的黑盒 CLI smoke 测试。测试 MUST 启动构建后的 adapter binary，而不是直接调用 adapter 内部 API。测试 fixture MUST 作为项目文件固定放在指定测试目录中，MUST NOT 在测试运行时临时生成核心案例文件。smoke corpus MUST 覆盖 normal Markdown、重复 heading、frontmatter、代码围栏伪 heading、深层 heading、无 heading、Unicode 内容、大分页内容、非 UTF-8 输入、UTF-8 BOM、CRLF 行尾、`.MD` 扩展名和 `.markdown` 扩展名。smoke 测试 MUST 覆盖 `outline -> ref -> read`、`find`、`info`、`probe`、`manifest`、有效 `invoke`、CLI help 和宽松 argv 成功路径，并 MUST 覆盖 `text`、`readable-json`、`protocol-json` 输出。
+`docnav-markdown` MUST 提供由 Node.js 执行的黑盒 CLI smoke 测试。测试必须启动构建后的 adapter binary，不得直接调用 adapter 内部 API。核心 fixtures 必须是提交到项目中的固定文件，不得在测试运行时临时生成。
+
+Smoke suite 必须覆盖：
+
+- Fixture corpus：normal Markdown、重复 heading、frontmatter、代码围栏伪 heading、深层 heading、无 heading、Unicode 内容、大分页内容、非 UTF-8 输入、UTF-8 BOM、CRLF 行尾、`.MD` 和 `.markdown`。
+- Operations 和入口：`outline -> ref -> read`、`find`、`info`、`probe`、`manifest`、有效 `invoke`、CLI help、direct CLI/invoke 共享语义归一和宽松 argv 成功路径。
+- 输出模式：`text`、`readable-json` 和 `protocol-json`。
+- Warning 行为：readable warning 使用稳定 envelope；CLI argv warning 使用 `kind: "cli_argv_ignored"`；测试不断言 exact ignored-token 分组、`reason` 文案或 token 消费顺序。
 
 #### Scenario: Node.js runner 使用构建产物
 - **WHEN** smoke 测试运行
-- **THEN** 测试先使用已构建的 `docnav-markdown` binary 路径启动真实进程
+- **THEN** 测试使用已构建的 `docnav-markdown` binary 路径启动真实进程
 - **THEN** Node.js runner 负责传入命令参数、stdin、工作目录和环境
 - **THEN** 测试不通过 Rust adapter 内部 API 完成黑盒断言
 
@@ -36,14 +43,19 @@
 
 #### Scenario: CLI help 可用于纠错
 - **WHEN** smoke 测试执行 `docnav-markdown --help`
-- **THEN** stdout 或 stderr 包含可用命令、关键参数和输出模式信息
+- **OR** 执行 `docnav-markdown outline --help`
+- **THEN** stdout 或 stderr 包含可用命令、关键参数、默认值或输出模式信息
 - **THEN** 该命令不执行文档导航业务
 
 #### Scenario: 宽松 argv 成功路径被覆盖
 - **WHEN** smoke 测试执行 `docnav-markdown outline <path> --unknown extra --output readable-json`
+- **OR** 执行 `docnav-markdown outline --unknown <path> --output readable-json`
+- **OR** 执行 `docnav-markdown outline <path> --unknown --output protocol-json`
 - **AND** `<path>` 指向有效 Markdown fixture
-- **THEN** 命令成功返回 outline readable JSON
-- **THEN** 输出可以包含 warning 或诊断，但测试不要求稳定 ignored token shape
+- **THEN** 命令成功返回所选输出模式的正常结果
+- **THEN** 输出可以包含 warning 或诊断
+- **THEN** CLI argv warning 使用 `kind: "cli_argv_ignored"`
+- **THEN** 测试不要求 exact ignored-token 分组、`reason` 文案或 token 消费顺序
 
 #### Scenario: fixture corpus 覆盖 Markdown 边界
 - **WHEN** smoke corpus 被执行
@@ -62,6 +74,7 @@
 - **THEN** find 返回带 ref 和 page 状态的 matches
 - **THEN** info 返回 Markdown 摘要和 capabilities
 - **THEN** 有效 invoke 请求从 stdin 输入后在 stdout 返回成功 protocol envelope
+- **THEN** direct CLI 与等价有效 invoke 请求经过共享语义归一或等价 request 构造后执行同一 operation 处理
 
 #### Scenario: JSON 输出通过 schema 或等价结构校验
 - **WHEN** smoke suite 检查 `readable-json` 和 `protocol-json` 输出
@@ -76,20 +89,38 @@
 - **THEN** 返回空结果和 `page: null`，且不作为错误
 
 ### Requirement: Markdown adapter 必须有负向 CLI 矩阵测试
-`docnav-markdown` MUST 提供由 Node.js runner 执行的黑盒 CLI 矩阵测试，覆盖非法命令行输入、宽松 argv 输入和非法 invoke 输入。矩阵 MUST 覆盖缺 path、缺 `--ref`、缺 `--query`、unknown flag、多余 positional、当前 operation 不使用的参数、`page` 或 `limit_chars` 为 0、`page` 或 `limit_chars` 非数字、`max_heading_level` 越界、missing file、invalid ref、non-UTF-8 document、malformed invoke JSON。每个用例 MUST 按所属输出层断言 stdout、stderr 和 process exit code。
+`docnav-markdown` MUST 提供由 Node.js 执行的黑盒 CLI 矩阵测试，覆盖非法命令行输入、宽松 argv 输入和非法 invoke 输入。每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
+
+矩阵必须覆盖：
+
+- 必需语义：缺 path、缺 `--ref`、缺 `--query`。
+- 宽松 argv：unknown flag、多余 positional、当前 operation 不使用的参数。
+- 实际使用参数失败：`page` 或 `limit_chars` 为 0、`page` 或 `limit_chars` 非数字、`output` 非法、`max_heading_level` 越界。
+- 业务和输入错误：missing file、invalid ref、non-UTF-8 document。
+- Invoke 传输错误：malformed invoke JSON、缺少必需字段或参数类型错误等 schema-valid JSON shape 错误。
+- Warning 断言：稳定 warning envelope 和输出通道边界；不断言 exact ignored-token 分组、`reason` 文案或 token 消费顺序。
 
 #### Scenario: 参数校验失败保持 CLI 诊断
-- **WHEN** 负向矩阵执行缺 path、缺 `--ref`、缺 `--query`、非法 page、非法 limit 或非法 max heading level
+- **WHEN** 负向矩阵执行缺 path、缺 `--ref`、缺 `--query`、非法 page、非法 limit、非法 output 或非法 max heading level
 - **THEN** 进程非零退出
-- **THEN** stderr 包含简洁诊断
-- **THEN** stdout 不包含 protocol payload 或 readable result payload
+- **THEN** stderr 或所选错误输出包含简洁诊断
+- **THEN** stdout 不包含成功的 protocol payload 或 readable result payload
 
 #### Scenario: unknown argv 不阻断成功路径
 - **WHEN** CLI 矩阵执行 unknown flag、多余 positional 或当前 operation 不使用的参数
 - **AND** 当前 operation 的必需语义参数仍可被解析
 - **THEN** 进程成功退出
 - **THEN** stdout 包含所选输出模式的正常结果
-- **THEN** warning 或诊断可以存在，但测试不要求具体 `ignored_tokens`、kind、reason 或 token 消费顺序
+- **THEN** warning 或诊断可以存在
+- **THEN** CLI argv warning 使用 `kind: "cli_argv_ignored"`
+- **THEN** 测试不要求 exact ignored-token 分组、`reason` 文案或 token 消费顺序
+
+#### Scenario: readable-json warning envelope 保留
+- **WHEN** CLI 矩阵以 `--output readable-json` 执行宽松 argv 成功路径
+- **AND** 输出包含 `warnings`
+- **THEN** 每个 warning item 包含稳定 `kind`、非空 `reason`、`ignored_tokens` 数组和可选 family-specific 字段
+- **THEN** CLI argv warning 使用 `kind: "cli_argv_ignored"`
+- **THEN** stdout 通过对应 readable schema
 
 #### Scenario: protocol-shaped stdout 不承载 warning
 - **WHEN** CLI 矩阵以 `protocol-json`、manifest 或 probe 输出模式执行宽松 argv 成功路径
@@ -97,9 +128,10 @@
 - **THEN** stdout 不因为 CLI warning 增加 `warnings` 字段
 - **THEN** warning 或诊断只允许出现在 stderr 或非 schema stdout 之外的通道
 
-#### Scenario: 已知使用参数仍严格校验
+#### Scenario: 当前 operation 使用的已知参数仍严格校验
 - **WHEN** 负向矩阵执行 `docnav-markdown outline <path> --page 0`
 - **OR** 执行 `docnav-markdown outline <path> --limit-chars nope`
+- **OR** 执行 `docnav-markdown outline <path> --output nope`
 - **OR** 执行 `docnav-markdown outline <path> --max-heading-level 9`
 - **THEN** 进程非零退出
 - **THEN** 诊断指出对应已知参数非法
