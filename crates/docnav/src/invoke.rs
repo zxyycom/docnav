@@ -2,15 +2,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use docnav_protocol::{
     validate_protocol_request_value, Document, FindArguments, InfoArguments, Operation,
-    OperationArguments, OperationResult, OutlineArguments, ProtocolResponse, ReadArguments,
-    RequestEnvelope, StableError, PROTOCOL_VERSION,
+    OperationArguments, OutlineArguments, ProtocolResponse, ReadArguments, RequestEnvelope,
+    StableError, PROTOCOL_VERSION,
 };
-use serde_json::{json, Value};
 
-use crate::cli::OutputMode;
 use crate::contract::{adapter_invoke_failed, protocol_response_from_output};
-use crate::error::exit_code_for_error;
-use crate::output::CommandOutcome;
 use crate::process::run_invoke;
 use crate::project::NormalizedDocumentPath;
 use crate::registry::AdapterRecord;
@@ -56,39 +52,6 @@ fn validate_protocol_request(request: &RequestEnvelope) -> Result<(), StableErro
     })?;
     request.operation_arguments()?;
     Ok(())
-}
-
-pub fn outcome_for_response(response: ProtocolResponse, output: OutputMode) -> CommandOutcome {
-    match response {
-        ProtocolResponse::Success(success) => match output {
-            OutputMode::ProtocolJson => {
-                CommandOutcome::protocol_json(serde_json::to_value(success).unwrap_or(Value::Null))
-            }
-            OutputMode::ReadableJson => CommandOutcome::json(readable_result(&success.result)),
-            OutputMode::Text => CommandOutcome::text(text_result(&success.result)),
-        },
-        ProtocolResponse::Failure(failure) => {
-            let exit_code = exit_code_for_error(failure.error.code);
-            match output {
-                OutputMode::ProtocolJson => CommandOutcome::protocol_json_with_exit(
-                    serde_json::to_value(failure).unwrap_or(Value::Null),
-                    exit_code,
-                ),
-                OutputMode::ReadableJson => CommandOutcome::json_with_exit(
-                    json!({
-                        "code": failure.error.code,
-                        "error": failure.error.message,
-                        "details": failure.error.details,
-                        "guidance": failure.error.guidance.unwrap_or_default(),
-                    }),
-                    exit_code,
-                ),
-                OutputMode::Text => {
-                    CommandOutcome::text_with_exit(text_error(&failure.error), exit_code)
-                }
-            }
-        }
-    }
 }
 
 fn protocol_request(
@@ -143,88 +106,6 @@ fn protocol_request(
         },
         arguments,
     })
-}
-
-fn readable_result(result: &OperationResult) -> Value {
-    serde_json::to_value(result).unwrap_or(Value::Null)
-}
-
-fn text_result(result: &OperationResult) -> String {
-    match result {
-        OperationResult::Outline(result) => {
-            let mut lines = result
-                .entries
-                .iter()
-                .map(|entry| format!("{} | {}", entry.ref_id, entry.display))
-                .collect::<Vec<_>>();
-            lines.push(format!("page: {}", page_label(result.page)));
-            lines.join("\n")
-        }
-        OperationResult::Read(result) => {
-            let mut text = format!("ref: {}\n{}", result.ref_id, result.content);
-            if !text.ends_with('\n') {
-                text.push('\n');
-            }
-            text.push_str(&format!(
-                "content_type: {}\ncost: {}\npage: {}",
-                result.content_type,
-                result.cost,
-                page_label(result.page)
-            ));
-            text
-        }
-        OperationResult::Find(result) => {
-            let mut lines = result
-                .matches
-                .iter()
-                .map(|entry| format!("{} | {}", entry.ref_id, entry.display))
-                .collect::<Vec<_>>();
-            lines.push(format!("page: {}", page_label(result.page)));
-            lines.join("\n")
-        }
-        OperationResult::Info(result) => format!(
-            "{}\ncapabilities: {}",
-            result.display,
-            result
-                .capabilities
-                .iter()
-                .map(Operation::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-    }
-}
-
-fn text_error(error: &StableError) -> String {
-    let mut lines = vec![
-        format!("error: {}", error_code_label(error.code)),
-        format!("message: {}", error.message),
-    ];
-    if !error.details.is_empty() {
-        lines.push(format!(
-            "details: {}",
-            serde_json::to_string(&error.details)
-                .unwrap_or_else(|_| "<unserializable details>".to_owned())
-        ));
-    }
-    if let Some(guidance) = &error.guidance {
-        for item in guidance {
-            lines.push(format!("guidance: {item}"));
-        }
-    }
-    lines.join("\n")
-}
-
-fn error_code_label(code: docnav_protocol::StableErrorCode) -> String {
-    serde_json::to_value(code)
-        .ok()
-        .and_then(|value| value.as_str().map(str::to_owned))
-        .unwrap_or_else(|| format!("{code:?}"))
-}
-
-fn page_label(page: Option<docnav_protocol::PositiveInteger>) -> String {
-    page.map(|page| page.get().to_string())
-        .unwrap_or_else(|| "null".to_owned())
 }
 
 fn request_id() -> String {

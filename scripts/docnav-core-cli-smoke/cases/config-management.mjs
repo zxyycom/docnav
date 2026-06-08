@@ -21,7 +21,7 @@ import {
 import { validateSchema } from "../schemas.mjs";
 import { exitCodes } from "../config.mjs";
 
-export function testConfigManagementAndCompatibility() {
+export function testConfigContextAndCompatibility() {
   testProjectAndUserConfig();
   testConfigListPath();
   testInitVersionDoctor();
@@ -180,4 +180,3 @@ function testCompatibilityWarnings() {
 function valueFor(configListJson, key) {
   return configListJson.values.find((item) => item.key === key);
 }
-

@@ -30,6 +30,10 @@ switch (options.command) {
 }
 
 function manifest() {
+  if (options.mode === "manifest-exit") {
+    console.error(`${options.id} manifest failed intentionally`);
+    process.exit(7);
+  }
   if (options.mode === "manifest-invalid") {
     return {
       manifest_version: "0.1",
@@ -57,6 +61,10 @@ function manifest() {
 }
 
 function probe(documentPath) {
+  if (options.mode === "probe-exit") {
+    console.error(`${options.id} probe failed intentionally`);
+    process.exit(8);
+  }
   if (options.mode === "probe-invalid") {
     return {
       probe_version: "0.1",
@@ -85,6 +93,10 @@ function probe(documentPath) {
 }
 
 function handleInvoke(value) {
+  if (options.mode === "invoke-exit") {
+    console.error(`${options.id} invoke failed intentionally`);
+    process.exit(9);
+  }
   if (options.mode === "invoke-invalid-json") {
     process.stdout.write("{ invalid json");
     return;
@@ -233,4 +245,3 @@ function parseOptions(args) {
   }
   return parsed;
 }
-

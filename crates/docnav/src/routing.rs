@@ -4,11 +4,9 @@ use docnav_protocol::{Manifest, Operation, ProbeResult, StableError};
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::cli::CliWarning;
 use crate::context::ProjectContext;
 use crate::contract::{
-    adapter_unavailable, adapter_unavailable_from_process, ensure_capability, manifest_from_output,
-    probe_from_output, process_error_details,
+    ensure_capability, manifest_from_output, probe_from_output, process_error_details,
 };
 use crate::error::AppResult;
 use crate::process::{run_manifest, run_probe};
@@ -21,7 +19,13 @@ pub struct AdapterSelection {
     pub manifest: Manifest,
     pub probe: ProbeResult,
     pub evidence: Vec<CandidateEvidence>,
-    pub warnings: Vec<CliWarning>,
+    pub warnings: Vec<AdapterSelectionWarning>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdapterSelectionWarning {
+    pub adapter_id: String,
+    pub reason: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -66,13 +70,13 @@ pub fn select_adapter(
 
     let preselected = match preselected_adapter_id {
         Some(adapter_id) => Some(adapter_id.to_owned()),
-        None => infer_adapter_by_extension(project, registry, document, operation)?,
+        None => infer_adapter_by_extension(project, registry, document, operation),
     };
 
     if let Some(adapter_id) = preselected {
         attempted.insert(adapter_id.clone());
         match evaluate_preselected(project, registry, &adapter_id, document, operation) {
-            Ok(CandidateResult::Selected(selected)) => {
+            CandidateResult::Selected(selected) => {
                 let selected = *selected;
                 return Ok(AdapterSelection {
                     record: selected.record,
@@ -82,24 +86,9 @@ pub fn select_adapter(
                     warnings,
                 });
             }
-            Ok(CandidateResult::Continue(candidate)) => {
+            CandidateResult::Continue(candidate) => {
                 if preselected_source == "explicit" {
-                    warnings.push(CliWarning::adapter_candidate_failure(
-                        &adapter_id,
-                        &candidate.reason,
-                    ));
-                }
-                evidence.push(candidate);
-            }
-            Err(error) => {
-                let candidate = CandidateEvidence::resolve(
-                    &adapter_id,
-                    "ADAPTER_UNAVAILABLE",
-                    error.error().message.clone(),
-                    json!({ "error": error.error() }),
-                );
-                if preselected_source == "explicit" {
-                    warnings.push(CliWarning::adapter_candidate_failure(
+                    warnings.push(AdapterSelectionWarning::candidate_failure(
                         &adapter_id,
                         &candidate.reason,
                     ));
@@ -113,7 +102,7 @@ pub fn select_adapter(
         if attempted.contains(&record.id) {
             continue;
         }
-        match evaluate_registry_candidate(project, record, document, operation)? {
+        match evaluate_registry_candidate(project, record, document, operation) {
             CandidateResult::Selected(selected) => {
                 let selected = *selected;
                 return Ok(AdapterSelection {
@@ -141,14 +130,14 @@ fn infer_adapter_by_extension(
     registry: &AdapterRegistry,
     document: &NormalizedDocumentPath,
     operation: Operation,
-) -> AppResult<Option<String>> {
+) -> Option<String> {
     let extension = document_extension(&document.adapter_path);
-    let Some(extension) = extension else {
-        return Ok(None);
-    };
+    let extension = extension?;
 
     for record in &registry.adapters {
-        let manifest = strict_manifest(project, record)?;
+        let Some(manifest) = manifest_for_extension_inference(project, record) else {
+            continue;
+        };
         if !manifest.capabilities.contains(&operation) {
             continue;
         }
@@ -159,11 +148,11 @@ fn infer_adapter_by_extension(
                 .any(|candidate| candidate.eq_ignore_ascii_case(&extension))
         });
         if matches_extension {
-            return Ok(Some(record.id.clone()));
+            return Some(record.id.clone());
         }
     }
 
-    Ok(None)
+    None
 }
 
 fn evaluate_preselected(
@@ -172,17 +161,17 @@ fn evaluate_preselected(
     adapter_id: &str,
     document: &NormalizedDocumentPath,
     operation: Operation,
-) -> AppResult<CandidateResult> {
+) -> CandidateResult {
     let Some(record) = registry.find(adapter_id) else {
-        return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+        return CandidateResult::Continue(CandidateEvidence::resolve(
             adapter_id,
             "ADAPTER_NOT_FOUND",
             "adapter id is not present in the temporary registry",
             json!({}),
-        )));
+        ));
     };
 
-    evaluate_candidate(project, record, document, operation, false)
+    evaluate_candidate(project, record, document, operation)
 }
 
 fn evaluate_registry_candidate(
@@ -190,8 +179,8 @@ fn evaluate_registry_candidate(
     record: &AdapterRecord,
     document: &NormalizedDocumentPath,
     operation: Operation,
-) -> AppResult<CandidateResult> {
-    evaluate_candidate(project, record, document, operation, true)
+) -> CandidateResult {
+    evaluate_candidate(project, record, document, operation)
 }
 
 fn evaluate_candidate(
@@ -199,94 +188,83 @@ fn evaluate_candidate(
     record: &AdapterRecord,
     document: &NormalizedDocumentPath,
     operation: Operation,
-    strict_contract: bool,
-) -> AppResult<CandidateResult> {
+) -> CandidateResult {
     let manifest = match run_manifest(&project.project_root, record) {
         Ok(output) => match manifest_from_output(&record.id, output) {
             Ok(manifest) => manifest,
-            Err(reason) if strict_contract => {
-                return Err(adapter_unavailable(&record.id, reason).into());
-            }
             Err(reason) => {
-                return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+                return CandidateResult::Continue(CandidateEvidence::resolve(
                     &record.id,
                     "MANIFEST_INVALID",
                     reason,
                     json!({}),
-                )));
+                ));
             }
         },
-        Err(error) if strict_contract => {
-            return Err(adapter_unavailable_from_process(&record.id, error).into());
-        }
         Err(error) => {
-            return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+            return CandidateResult::Continue(CandidateEvidence::resolve(
                 &record.id,
                 "ADAPTER_UNAVAILABLE",
                 error.reason.clone(),
                 process_error_details(&error),
-            )));
+            ));
         }
     };
 
     if let Err(reason) = ensure_capability(&manifest, operation) {
-        return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+        return CandidateResult::Continue(CandidateEvidence::resolve(
             &record.id,
             "CAPABILITY_UNSUPPORTED",
             reason,
             json!({ "capability": operation, "adapter_id": record.id }),
-        )));
+        ));
     }
 
     let probe = match run_probe(&project.project_root, record, &document.adapter_path) {
         Ok(output) => match probe_from_output(&record.id, &document.adapter_path, output) {
             Ok(probe) => probe,
-            Err(reason) if strict_contract => {
-                return Err(adapter_unavailable(&record.id, reason).into());
-            }
             Err(reason) => {
-                return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+                return CandidateResult::Continue(CandidateEvidence::probe(
                     &record.id,
                     "PROBE_INVALID",
                     reason,
                     json!({}),
-                )));
+                ));
             }
         },
-        Err(error) if strict_contract => {
-            return Err(adapter_unavailable_from_process(&record.id, error).into());
-        }
         Err(error) => {
-            return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+            return CandidateResult::Continue(CandidateEvidence::probe(
                 &record.id,
                 "ADAPTER_UNAVAILABLE",
                 error.reason.clone(),
                 process_error_details(&error),
-            )));
+            ));
         }
     };
 
     if !probe.supported {
-        return Ok(CandidateResult::Continue(CandidateEvidence::probe(
+        return CandidateResult::Continue(CandidateEvidence::probe(
             &record.id,
             "PROBE_UNSUPPORTED",
             "adapter probe returned supported=false",
             json!({ "probe": probe }),
-        )));
+        ));
     }
 
-    Ok(CandidateResult::Selected(Box::new(SelectedCandidate {
+    CandidateResult::Selected(Box::new(SelectedCandidate {
         record: record.clone(),
         manifest,
         probe,
-    })))
+    }))
 }
 
-fn strict_manifest(project: &ProjectContext, record: &AdapterRecord) -> AppResult<Manifest> {
-    let output = run_manifest(&project.project_root, record)
-        .map_err(|error| adapter_unavailable_from_process(&record.id, error))?;
-    manifest_from_output(&record.id, output)
-        .map_err(|reason| adapter_unavailable(&record.id, reason).into())
+fn manifest_for_extension_inference(
+    project: &ProjectContext,
+    record: &AdapterRecord,
+) -> Option<Manifest> {
+    run_manifest(&project.project_root, record)
+        .ok()
+        .and_then(|output| manifest_from_output(&record.id, output).ok())
 }
 
 fn document_extension(path: &str) -> Option<String> {
@@ -316,6 +294,15 @@ impl CandidateEvidence {
             code: code.to_owned(),
             reason: reason.into(),
             details,
+        }
+    }
+}
+
+impl AdapterSelectionWarning {
+    fn candidate_failure(adapter_id: &str, reason: &str) -> Self {
+        Self {
+            adapter_id: adapter_id.to_owned(),
+            reason: reason.to_owned(),
         }
     }
 }

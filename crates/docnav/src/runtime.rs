@@ -2,15 +2,15 @@ use docnav_protocol::{Operation, PositiveInteger};
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::cli::{DocumentCommand, OutputMode};
+use crate::cli::{CliWarning, DocumentCommand, OutputMode};
 use crate::config::{self, ConfigContext, ResolvedValue};
 use crate::context::ProjectContext;
 use crate::error::AppResult;
-use crate::invoke::{invoke_adapter, outcome_for_response};
-use crate::output::CommandOutcome;
+use crate::invoke::invoke_adapter;
+use crate::output::{outcome_for_response, CommandOutcome};
 use crate::project::normalize_document_path;
 use crate::registry::AdapterRegistry;
-use crate::routing::select_adapter;
+use crate::routing::{select_adapter, AdapterSelectionWarning};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DocumentRequest {
@@ -90,7 +90,8 @@ impl DocnavRuntime for AdapterRuntime {
             &selection.evidence,
             &invoke.request,
         );
-        Ok(outcome_for_response(invoke.response, request.output).with_warnings(selection.warnings))
+        Ok(outcome_for_response(invoke.response, request.output)
+            .with_warnings(cli_warnings(selection.warnings)))
     }
 
     fn describe_document_context(
@@ -189,6 +190,13 @@ fn adapter_source(
     } else {
         "registry".to_owned()
     }
+}
+
+fn cli_warnings(warnings: Vec<AdapterSelectionWarning>) -> Vec<CliWarning> {
+    warnings
+        .into_iter()
+        .map(|warning| CliWarning::adapter_candidate_failure(&warning.adapter_id, &warning.reason))
+        .collect()
 }
 
 fn resolve_document_defaults(

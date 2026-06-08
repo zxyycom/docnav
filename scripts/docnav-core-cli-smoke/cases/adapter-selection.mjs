@@ -25,10 +25,11 @@ export function testAdapterSelectionMatrix() {
   testExplicitAdapterPreselection();
   testConfigAdapterPreselection();
   testExtensionInferencePreselection();
+  testExtensionInferenceContractFailureContinues();
   testSupportedFalseContinues();
   testPreselectedContractMismatchContinues();
   testCandidateEvidenceOnAllFailure();
-  testRegistryTraversalContractFailureStops();
+  testRegistryTraversalContractFailureContinues();
 }
 
 function testExplicitAdapterPreselection() {
@@ -89,6 +90,29 @@ function testExtensionInferencePreselection() {
   ], { project });
   const json = expectReadableOutline(record);
   expect(record, json.entries[0].display.includes(fake.id), "extension-inferred adapter output is selected");
+}
+
+function testExtensionInferenceContractFailureContinues() {
+  const project = createProject("selection-extension-invalid-continues");
+  const docPath = writeDocument(project, "docs/inferred.core");
+  const invalid = createFakeAdapter(project, {
+    id: "fake-invalid-extension",
+    mode: "manifest-invalid",
+    extensions: [".core"]
+  });
+  const selected = createFakeAdapter(project, { id: "fake-inferred-after-invalid", extensions: [".core"] });
+  writeRegistry(project, [invalid, selected]);
+
+  const record = runCli("extension inference skips invalid manifest and continues", [
+    "outline",
+    docPath,
+    "--output",
+    "readable-json"
+  ], { project });
+  const json = expectReadableOutline(record);
+  expect(record, json.entries[0].display.includes(selected.id), "adapter after invalid inferred candidate is selected");
+  expect(record, readAdapterCalls(invalid).some((call) => call.command === "manifest"), "invalid inferred adapter manifest was called");
+  expect(record, readAdapterCalls(selected).some((call) => call.command === "invoke"), "fallback inferred adapter invoke was called");
 }
 
 function testSupportedFalseContinues() {
@@ -169,24 +193,23 @@ function testCandidateEvidenceOnAllFailure() {
   });
 }
 
-function testRegistryTraversalContractFailureStops() {
-  const project = createProject("selection-registry-contract-failure");
+function testRegistryTraversalContractFailureContinues() {
+  const project = createProject("selection-registry-contract-continues");
   const docPath = writeDocument(project, "docs/noextension");
   const invalid = createFakeAdapter(project, { id: "fake-invalid-probe", mode: "probe-invalid" });
-  const selected = createFakeAdapter(project, { id: "fake-should-not-run" });
+  const selected = createFakeAdapter(project, { id: "fake-after-invalid-probe" });
   writeRegistry(project, [invalid, selected]);
 
-  const record = runCli("registry traversal probe contract failure stops", [
+  const record = runCli("registry traversal probe contract failure continues", [
     "outline",
     docPath,
     "--output",
-    "protocol-json"
+    "readable-json"
   ], { project });
-  expectExit(record, exitCodes.protocolOrAdapterProcess);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "ADAPTER_UNAVAILABLE");
-  expect(record, readAdapterCalls(selected).length === 0, "registry traversal did not continue after contract failure");
+  const json = expectReadableOutline(record);
+  expect(record, json.entries[0].display.includes(selected.id), "adapter after probe contract failure is selected");
+  expect(record, readAdapterCalls(invalid).some((call) => call.command === "probe"), "invalid adapter probe was called");
+  expect(record, readAdapterCalls(selected).some((call) => call.command === "invoke"), "registry traversal continued after contract failure");
 }
 
 function expectReadableOutline(record) {
@@ -198,4 +221,3 @@ function expectReadableOutline(record) {
   expect(record, Array.isArray(json.entries) && json.entries.length > 0, "outline returns entries");
   return json;
 }
-

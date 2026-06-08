@@ -170,28 +170,6 @@ pub fn protocol_response_from_output(
     Ok(response)
 }
 
-pub fn adapter_unavailable(adapter_id: &str, reason: impl Into<String>) -> StableError {
-    StableError::adapter_unavailable(adapter_id, reason)
-}
-
-pub fn adapter_unavailable_from_process(
-    adapter_id: &str,
-    error: AdapterProcessError,
-) -> StableError {
-    let mut stable = StableError::adapter_unavailable(adapter_id, error.reason);
-    if let Some(exit_code) = error.exit_code {
-        stable
-            .details
-            .insert("exit_code".to_owned(), Value::from(exit_code));
-    }
-    if !error.stderr.trim().is_empty() {
-        stable
-            .details
-            .insert("stderr".to_owned(), Value::from(error.stderr));
-    }
-    stable
-}
-
 pub fn adapter_invoke_failed(
     adapter_id: &str,
     reason: impl Into<String>,

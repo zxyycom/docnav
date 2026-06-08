@@ -10,7 +10,8 @@ import { printFailureSummary, printSuccessSummary, writeAuditLogs } from "./audi
 import { testRealMarkdownOutlineRefRead } from "./cases/real-markdown.mjs";
 import { testDocumentOutputMatrix } from "./cases/outputs.mjs";
 import { testAdapterSelectionMatrix } from "./cases/adapter-selection.mjs";
-import { testConfigManagementAndCompatibility } from "./cases/config-management.mjs";
+import { testCliArgumentFailures } from "./cases/cli-args.mjs";
+import { testConfigContextAndCompatibility } from "./cases/config-management.mjs";
 import { testRegistryAndContractFailures } from "./cases/failures.mjs";
 
 let suiteFailure = null;
@@ -27,11 +28,21 @@ try {
   );
   fs.mkdirSync(tempRoot, { recursive: true });
 
-  runTest("real docnav + real docnav-markdown outline -> ref -> read", testRealMarkdownOutlineRefRead);
-  runTest("document operation output matrix", testDocumentOutputMatrix);
-  runTest("adapter selection matrix", testAdapterSelectionMatrix);
-  runTest("config, management, and compatibility warnings", testConfigManagementAndCompatibility);
-  runTest("registry and adapter contract failure matrix", testRegistryAndContractFailures);
+  const tests = [
+    ["real docnav + real docnav-markdown outline -> ref -> read", testRealMarkdownOutlineRefRead],
+    ["document operation output matrix", testDocumentOutputMatrix],
+    ["adapter selection matrix", testAdapterSelectionMatrix],
+    ["CLI argument failure matrix", testCliArgumentFailures],
+    ["config context and compatibility warnings", testConfigContextAndCompatibility],
+    ["registry and adapter contract failure matrix", testRegistryAndContractFailures]
+  ];
+  for (const [label, testFn] of tests) {
+    try {
+      runTest(label, testFn);
+    } catch (error) {
+      suiteFailure ??= error;
+    }
+  }
 } catch (error) {
   suiteFailure = error;
 } finally {
@@ -43,5 +54,5 @@ if (suiteFailure) {
   process.exit(1);
 }
 
+fs.rmSync(tempRoot, { recursive: true, force: true });
 printSuccessSummary();
-

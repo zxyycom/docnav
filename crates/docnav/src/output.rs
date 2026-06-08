@@ -2,13 +2,13 @@ use std::io::{self, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use docnav_protocol::{
-    Operation, ProtocolResponse, StableError, StableErrorCode, PROTOCOL_VERSION,
+    Operation, OperationResult, ProtocolResponse, StableError, StableErrorCode, PROTOCOL_VERSION,
 };
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
 use crate::cli::{CliWarning, OutputMode};
-use crate::error::{AppError, DocnavExitCode};
+use crate::error::{exit_code_for_error, AppError, DocnavExitCode};
 
 pub struct CommandOutcome {
     output: CommandOutput,
@@ -77,6 +77,33 @@ impl CommandOutcome {
     }
 }
 
+pub fn outcome_for_response(response: ProtocolResponse, output: OutputMode) -> CommandOutcome {
+    match response {
+        ProtocolResponse::Success(success) => match output {
+            OutputMode::ProtocolJson => {
+                CommandOutcome::protocol_json(serde_json::to_value(success).unwrap_or(Value::Null))
+            }
+            OutputMode::ReadableJson => CommandOutcome::json(readable_result(&success.result)),
+            OutputMode::Text => CommandOutcome::text(text_result(&success.result)),
+        },
+        ProtocolResponse::Failure(failure) => {
+            let exit_code = exit_code_for_error(failure.error.code);
+            match output {
+                OutputMode::ProtocolJson => CommandOutcome::protocol_json_with_exit(
+                    serde_json::to_value(failure).unwrap_or(Value::Null),
+                    exit_code,
+                ),
+                OutputMode::ReadableJson => {
+                    CommandOutcome::json_with_exit(stable_error_readable(&failure.error), exit_code)
+                }
+                OutputMode::Text => {
+                    CommandOutcome::text_with_exit(stable_error_text(&failure.error), exit_code)
+                }
+            }
+        }
+    }
+}
+
 pub fn write_outcome<W: Write, E: Write>(
     outcome: CommandOutcome,
     warnings: &[CliWarning],
@@ -138,16 +165,7 @@ fn write_text_error<W: Write>(
     warnings: &[CliWarning],
     stdout: &mut W,
 ) -> io::Result<()> {
-    writeln!(stdout, "error: {}", error_code_label(error.code))?;
-    writeln!(stdout, "message: {}", error.message)?;
-    if !error.details.is_empty() {
-        writeln!(stdout, "details: {}", details_label(&error.details))?;
-    }
-    if let Some(guidance) = &error.guidance {
-        for item in guidance {
-            writeln!(stdout, "guidance: {item}")?;
-        }
-    }
+    writeln!(stdout, "{}", stable_error_text(error))?;
     write_cli_warnings(warnings, stdout)
 }
 
@@ -156,14 +174,87 @@ fn write_readable_error<W: Write>(
     warnings: &[CliWarning],
     stdout: &mut W,
 ) -> io::Result<()> {
-    let mut value = json!({
+    let value = add_warnings(stable_error_readable(error), warnings);
+    write_json(value, stdout)
+}
+
+fn readable_result(result: &OperationResult) -> Value {
+    serde_json::to_value(result).unwrap_or(Value::Null)
+}
+
+fn text_result(result: &OperationResult) -> String {
+    match result {
+        OperationResult::Outline(result) => {
+            let mut lines = result
+                .entries
+                .iter()
+                .map(|entry| format!("{} | {}", entry.ref_id, entry.display))
+                .collect::<Vec<_>>();
+            lines.push(format!("page: {}", page_label(result.page)));
+            lines.join("\n")
+        }
+        OperationResult::Read(result) => {
+            let mut text = format!("ref: {}\n{}", result.ref_id, result.content);
+            if !text.ends_with('\n') {
+                text.push('\n');
+            }
+            text.push_str(&format!(
+                "content_type: {}\ncost: {}\npage: {}",
+                result.content_type,
+                result.cost,
+                page_label(result.page)
+            ));
+            text
+        }
+        OperationResult::Find(result) => {
+            let mut lines = result
+                .matches
+                .iter()
+                .map(|entry| format!("{} | {}", entry.ref_id, entry.display))
+                .collect::<Vec<_>>();
+            lines.push(format!("page: {}", page_label(result.page)));
+            lines.join("\n")
+        }
+        OperationResult::Info(result) => format!(
+            "{}\ncapabilities: {}",
+            result.display,
+            result
+                .capabilities
+                .iter()
+                .map(Operation::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    }
+}
+
+fn stable_error_readable(error: &StableError) -> Value {
+    json!({
         "code": error.code,
         "error": error.message,
         "details": error.details,
         "guidance": error.guidance.clone().unwrap_or_default(),
-    });
-    value = add_warnings(value, warnings);
-    write_json(value, stdout)
+    })
+}
+
+fn stable_error_text(error: &StableError) -> String {
+    let mut lines = vec![
+        format!("error: {}", error_code_label(error.code)),
+        format!("message: {}", error.message),
+    ];
+    if !error.details.is_empty() {
+        lines.push(format!(
+            "details: {}",
+            serde_json::to_string(&error.details)
+                .unwrap_or_else(|_| "<unserializable details>".to_owned())
+        ));
+    }
+    if let Some(guidance) = &error.guidance {
+        for item in guidance {
+            lines.push(format!("guidance: {item}"));
+        }
+    }
+    lines.join("\n")
 }
 
 fn add_warnings(mut value: Value, warnings: &[CliWarning]) -> Value {
@@ -216,8 +307,9 @@ fn error_code_label(code: StableErrorCode) -> String {
         .unwrap_or_else(|| format!("{code:?}"))
 }
 
-fn details_label<T: Serialize>(details: &T) -> String {
-    serde_json::to_string(details).unwrap_or_else(|_| "<unserializable details>".to_owned())
+fn page_label(page: Option<docnav_protocol::PositiveInteger>) -> String {
+    page.map(|page| page.get().to_string())
+        .unwrap_or_else(|| "null".to_owned())
 }
 
 fn write_io_error<E: Write>(error: io::Error, stderr: &mut E) -> i32 {

@@ -1,15 +1,15 @@
-pub mod cli;
-pub mod config;
-pub mod context;
-pub mod contract;
-pub mod error;
-pub mod invoke;
-pub mod output;
-pub mod process;
-pub mod project;
-pub mod registry;
-pub mod routing;
-pub mod runtime;
+mod cli;
+mod config;
+mod context;
+mod contract;
+mod error;
+mod invoke;
+mod output;
+mod process;
+mod project;
+mod registry;
+mod routing;
+mod runtime;
 
 use std::io::{Read, Write};
 
@@ -28,7 +28,7 @@ where
     run_with_runtime(args, stdin, stdout, stderr, &AdapterRuntime)
 }
 
-pub fn run_with_runtime<I, S, R, W, E, T>(
+fn run_with_runtime<I, S, R, W, E, T>(
     args: I,
     _stdin: R,
     mut stdout: W,
