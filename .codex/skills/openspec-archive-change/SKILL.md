@@ -28,12 +28,13 @@ metadata:
 
 1. 必跑命令：
    - `openspec status --change "<name>" --json`：读取 schema 和 artifact 状态。
-   - `openspec archive "<name>"`：执行实际归档。
+   - `openspec archive "<name>" --yes`：执行实际归档并跳过 CLI 确认提示；`--yes` 不跳过 spec 更新或验证。
 2. 条件命令：
    - `openspec instructions apply --change "<name>" --json`：需要检查任务完成度时运行。
    - `openspec show "<name>" --type change --json --no-interactive`：需要评估 delta spec 同步状态时运行。
    - `openspec show "<spec>" --type spec --json --no-interactive`：需要对照主 spec 当前内容时运行。
 3. 归档参数：
+   - `--yes`：默认必须追加，避免确认提示卡住非交互执行。
    - `--skip-specs`：仅在用户明确跳过 spec 更新时追加。
    - `--no-validate`：仅在用户明确跳过验证并接受风险时追加。
 4. 兜底读取：
@@ -51,9 +52,9 @@ metadata:
    - 有 delta 时展示 capability、operation 和 requirement 摘要。
    - 需要对照主 spec 时运行 `openspec show "<spec>" --type spec --json --no-interactive`。
 6. 选择归档命令：
-   - 默认：`openspec archive "<name>"`
-   - 用户明确跳过 spec 更新：`openspec archive "<name>" --skip-specs`
-   - 用户明确跳过验证并接受风险：`openspec archive "<name>" --no-validate`
+   - 默认：`openspec archive "<name>" --yes`
+   - 用户明确跳过 spec 更新：`openspec archive "<name>" --skip-specs --yes`
+   - 用户明确跳过验证并接受风险：`openspec archive "<name>" --no-validate --yes`
 7. 执行归档命令。CLI 报告目标冲突、验证失败或其它错误时停止，并给出下一步选项。
 
 ## 边界
