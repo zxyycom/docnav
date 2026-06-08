@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "crates/docnav",
   "crates/docnav-adapter-sdk",
   "crates/docnav-markdown",
   "crates/docnav-protocol"

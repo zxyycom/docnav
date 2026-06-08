@@ -1,0 +1,201 @@
+import {
+  createFakeAdapter,
+  createProject,
+  readAdapterCalls,
+  writeDocument,
+  writeProjectConfig,
+  writeRegistry
+} from "../fixtures.mjs";
+import { runCli } from "../runner.mjs";
+import {
+  expect,
+  expectCandidateEvidence,
+  expectExit,
+  expectNoJsonPayloadInStderr,
+  expectNoProtocolEnvelope,
+  expectProtocolFailure,
+  expectStderrEmpty,
+  expectStructuredWarning,
+  parseJson
+} from "../assertions.mjs";
+import { validateSchema } from "../schemas.mjs";
+import { exitCodes } from "../config.mjs";
+
+export function testAdapterSelectionMatrix() {
+  testExplicitAdapterPreselection();
+  testConfigAdapterPreselection();
+  testExtensionInferencePreselection();
+  testSupportedFalseContinues();
+  testPreselectedContractMismatchContinues();
+  testCandidateEvidenceOnAllFailure();
+  testRegistryTraversalContractFailureStops();
+}
+
+function testExplicitAdapterPreselection() {
+  const project = createProject("selection-explicit");
+  const fake = createFakeAdapter(project, { id: "fake-explicit" });
+  writeRegistry(project, [fake]);
+
+  const record = runCli("explicit --adapter preselects fake adapter", [
+    "outline",
+    project.normalRelPath,
+    "--adapter",
+    fake.id,
+    "--output",
+    "readable-json"
+  ], { project });
+  const json = expectReadableOutline(record);
+  expect(record, json.entries[0].display.includes(fake.id), "explicit adapter output is selected");
+  const calls = readAdapterCalls(fake);
+  expect(record, calls.some((call) => call.command === "manifest"), "explicit adapter manifest was called");
+  expect(record, calls.some((call) => call.command === "probe"), "explicit adapter probe was called");
+  expect(record, calls.some((call) => call.command === "invoke"), "explicit adapter invoke was called");
+}
+
+function testConfigAdapterPreselection() {
+  const project = createProject("selection-config");
+  const fake = createFakeAdapter(project, { id: "fake-config" });
+  writeProjectConfig(project, {
+    defaults: {
+      adapter: fake.id,
+      limit_chars: 222,
+      output: "readable-json"
+    }
+  });
+  writeRegistry(project, [fake]);
+
+  const record = runCli("defaults.adapter preselects fake adapter", [
+    "outline",
+    project.normalRelPath
+  ], { project });
+  const json = expectReadableOutline(record);
+  expect(record, json.entries[0].display.includes(fake.id), "config adapter output is selected");
+  const invoke = readAdapterCalls(fake).find((call) => call.command === "invoke");
+  expect(record, invoke?.stdin?.arguments?.limit_chars === 222, "project defaults.limit_chars reaches invoke request");
+  expect(record, invoke?.stdin?.arguments?.page === 1, "omitted page reaches invoke request as 1");
+}
+
+function testExtensionInferencePreselection() {
+  const project = createProject("selection-extension");
+  const docPath = writeDocument(project, "docs/inferred.core");
+  const fake = createFakeAdapter(project, { id: "fake-inferred", extensions: [".core"] });
+  writeRegistry(project, [fake]);
+
+  const record = runCli("extension inference preselects fake adapter", [
+    "outline",
+    docPath,
+    "--output",
+    "readable-json"
+  ], { project });
+  const json = expectReadableOutline(record);
+  expect(record, json.entries[0].display.includes(fake.id), "extension-inferred adapter output is selected");
+}
+
+function testSupportedFalseContinues() {
+  const project = createProject("selection-unsupported-continues");
+  const unsupported = createFakeAdapter(project, { id: "fake-unsupported", mode: "probe-unsupported" });
+  const selected = createFakeAdapter(project, { id: "fake-selected" });
+  writeRegistry(project, [unsupported, selected]);
+
+  const record = runCli("supported false candidate continues to next adapter", [
+    "outline",
+    project.normalRelPath,
+    "--output",
+    "readable-json"
+  ], { project });
+  const json = expectReadableOutline(record);
+  expect(record, json.entries[0].display.includes(selected.id), "adapter after unsupported probe is selected");
+  expect(
+    record,
+    readAdapterCalls(unsupported).some((call) => call.command === "probe"),
+    "unsupported adapter probe was called"
+  );
+  expect(
+    record,
+    !readAdapterCalls(unsupported).some((call) => call.command === "invoke"),
+    "unsupported adapter invoke was not called"
+  );
+  expect(record, readAdapterCalls(selected).some((call) => call.command === "invoke"), "fallback adapter invoke was called");
+}
+
+function testPreselectedContractMismatchContinues() {
+  const project = createProject("selection-preselected-invalid-continues");
+  const invalid = createFakeAdapter(project, { id: "fake-invalid-manifest", mode: "manifest-invalid" });
+  const selected = createFakeAdapter(project, { id: "fake-after-invalid" });
+  writeRegistry(project, [invalid, selected]);
+
+  const record = runCli("invalid explicit adapter continues with warning", [
+    "outline",
+    project.normalRelPath,
+    "--adapter",
+    invalid.id,
+    "--output",
+    "readable-json"
+  ], { project });
+  const json = expectReadableOutline(record);
+  expect(record, json.entries[0].display.includes(selected.id), "adapter after invalid preselection is selected");
+  expectStructuredWarning(
+    record,
+    json.warnings?.[0],
+    ["--adapter", invalid.id],
+    "adapter_candidate_failure",
+    json.warnings?.[0]?.reason
+  );
+  expect(record, json.warnings[0].reason.includes("preselected adapter was not used"), "warning explains preselected failure");
+}
+
+function testCandidateEvidenceOnAllFailure() {
+  const project = createProject("selection-all-failed");
+  const unsupported = createFakeAdapter(project, { id: "fake-unsupported-only", mode: "probe-unsupported" });
+  writeRegistry(project, [unsupported]);
+
+  const record = runCli("format unknown includes candidate evidence", [
+    "outline",
+    project.normalRelPath,
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(record, exitCodes.documentRefFormat);
+  expectNoJsonPayloadInStderr(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
+  const candidates = json.error.details.candidates;
+  expect(record, Array.isArray(candidates), "FORMAT_UNKNOWN candidates is an array");
+  expectCandidateEvidence(record, candidates[0], {
+    adapter_id: unsupported.id,
+    stage: "probe",
+    code: "PROBE_UNSUPPORTED"
+  });
+}
+
+function testRegistryTraversalContractFailureStops() {
+  const project = createProject("selection-registry-contract-failure");
+  const docPath = writeDocument(project, "docs/noextension");
+  const invalid = createFakeAdapter(project, { id: "fake-invalid-probe", mode: "probe-invalid" });
+  const selected = createFakeAdapter(project, { id: "fake-should-not-run" });
+  writeRegistry(project, [invalid, selected]);
+
+  const record = runCli("registry traversal probe contract failure stops", [
+    "outline",
+    docPath,
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(record, exitCodes.protocolOrAdapterProcess);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  expectProtocolFailure(record, json, "outline", "ADAPTER_UNAVAILABLE");
+  expect(record, readAdapterCalls(selected).length === 0, "registry traversal did not continue after contract failure");
+}
+
+function expectReadableOutline(record) {
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const json = parseJson(record);
+  validateSchema(record, "readableOutline", json);
+  expectNoProtocolEnvelope(record, json);
+  expect(record, Array.isArray(json.entries) && json.entries.length > 0, "outline returns entries");
+  return json;
+}
+

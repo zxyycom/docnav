@@ -1,0 +1,14 @@
+[package]
+name = "docnav"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "docnav"
+path = "src/main.rs"
+
+[dependencies]
+docnav-protocol.workspace = true
+serde.workspace = true
+serde_json.workspace = true

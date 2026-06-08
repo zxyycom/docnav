@@ -52,6 +52,22 @@ const checks = [
     ]
   },
   {
+    label: "docnav core CLI smoke",
+    command: "pnpm",
+    args: ["run", "smoke:docnav-core"],
+    ignoreOutput: [
+      /^> docnav-contract-docs@.* smoke:docnav-core .*$/,
+      /^> node scripts\/with-cargo-bin\.mjs --package docnav --bin docnav --env DOCNAV_BIN -- node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\.mjs$/,
+      /^\$ node scripts\/with-cargo-bin\.mjs --package docnav --bin docnav --env DOCNAV_BIN -- node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\.mjs$/,
+      /^\s*Finished `.*` profile .*$/,
+      /^Docnav Core CLI Smoke$/,
+      /^Status: passed$/,
+      /^Commands: \d+$/,
+      /^Log:$/,
+      /^\s+- \.log\/docnav-core-cli-smoke\/latest\.log$/
+    ]
+  },
+  {
     label: "cargo clippy",
     command: "cargo",
     args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],

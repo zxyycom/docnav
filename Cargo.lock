@@ -100,6 +100,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "docnav"
+version = "0.1.0"
+dependencies = [
+ "docnav-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "docnav-adapter-sdk"
 version = "0.1.0"
 dependencies = [

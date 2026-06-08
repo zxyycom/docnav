@@ -1,0 +1,94 @@
+pub mod cli;
+pub mod config;
+pub mod context;
+pub mod contract;
+pub mod error;
+pub mod invoke;
+pub mod output;
+pub mod process;
+pub mod project;
+pub mod registry;
+pub mod routing;
+pub mod runtime;
+
+use std::io::{Read, Write};
+
+use cli::{CliCommand, OutputMode};
+use error::AppResult;
+use runtime::{AdapterRuntime, DocnavRuntime};
+
+pub fn run<I, S, R, W, E>(args: I, stdin: R, stdout: W, stderr: E) -> i32
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+    R: Read,
+    W: Write,
+    E: Write,
+{
+    run_with_runtime(args, stdin, stdout, stderr, &AdapterRuntime)
+}
+
+pub fn run_with_runtime<I, S, R, W, E, T>(
+    args: I,
+    _stdin: R,
+    mut stdout: W,
+    mut stderr: E,
+    runtime: &T,
+) -> i32
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+    R: Read,
+    W: Write,
+    E: Write,
+    T: DocnavRuntime,
+{
+    let parsed = match cli::parse(args) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            return output::write_error(
+                &error,
+                OutputMode::Text,
+                None,
+                &[],
+                &mut stdout,
+                &mut stderr,
+            )
+        }
+    };
+
+    let cli::ParsedCli { command, warnings } = parsed;
+    let output_mode = command.output_mode().unwrap_or(OutputMode::Text);
+    let operation = command.operation();
+    match execute(command, runtime) {
+        Ok(outcome) => output::write_outcome(outcome, &warnings, &mut stdout, &mut stderr),
+        Err(error) => output::write_error(
+            &error,
+            output_mode,
+            operation,
+            &warnings,
+            &mut stdout,
+            &mut stderr,
+        ),
+    }
+}
+
+fn execute<T: DocnavRuntime>(
+    command: CliCommand,
+    runtime: &T,
+) -> AppResult<output::CommandOutcome> {
+    match command {
+        CliCommand::Document(command) => {
+            let context = config::load_context()?;
+            let request = runtime::DocumentRequest::from_command(command, &context)?;
+            runtime.execute_document(request)
+        }
+        CliCommand::Config(command) => config::execute(command, runtime),
+        CliCommand::Init => config::init_project(),
+        CliCommand::Doctor => config::doctor(),
+        CliCommand::Version => Ok(output::CommandOutcome::text(format!(
+            "docnav {}",
+            env!("CARGO_PKG_VERSION")
+        ))),
+    }
+}

@@ -1,0 +1,321 @@
+use std::collections::HashSet;
+
+use docnav_protocol::{Manifest, Operation, ProbeResult, StableError};
+use serde::Serialize;
+use serde_json::{json, Value};
+
+use crate::cli::CliWarning;
+use crate::context::ProjectContext;
+use crate::contract::{
+    adapter_unavailable, adapter_unavailable_from_process, ensure_capability, manifest_from_output,
+    probe_from_output, process_error_details,
+};
+use crate::error::AppResult;
+use crate::process::{run_manifest, run_probe};
+use crate::project::NormalizedDocumentPath;
+use crate::registry::{AdapterRecord, AdapterRegistry};
+
+#[derive(Clone, Debug)]
+pub struct AdapterSelection {
+    pub record: AdapterRecord,
+    pub manifest: Manifest,
+    pub probe: ProbeResult,
+    pub evidence: Vec<CandidateEvidence>,
+    pub warnings: Vec<CliWarning>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct CandidateEvidence {
+    pub adapter_id: String,
+    pub stage: CandidateStage,
+    pub code: String,
+    pub reason: String,
+    pub details: Value,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CandidateStage {
+    Resolve,
+    Probe,
+}
+
+enum CandidateResult {
+    Selected(Box<SelectedCandidate>),
+    Continue(CandidateEvidence),
+}
+
+#[derive(Clone, Debug)]
+struct SelectedCandidate {
+    record: AdapterRecord,
+    manifest: Manifest,
+    probe: ProbeResult,
+}
+
+pub fn select_adapter(
+    project: &ProjectContext,
+    registry: &AdapterRegistry,
+    document: &NormalizedDocumentPath,
+    operation: Operation,
+    preselected_adapter_id: Option<&str>,
+    preselected_source: &str,
+) -> AppResult<AdapterSelection> {
+    let mut evidence = Vec::new();
+    let mut warnings = Vec::new();
+    let mut attempted = HashSet::new();
+
+    let preselected = match preselected_adapter_id {
+        Some(adapter_id) => Some(adapter_id.to_owned()),
+        None => infer_adapter_by_extension(project, registry, document, operation)?,
+    };
+
+    if let Some(adapter_id) = preselected {
+        attempted.insert(adapter_id.clone());
+        match evaluate_preselected(project, registry, &adapter_id, document, operation) {
+            Ok(CandidateResult::Selected(selected)) => {
+                let selected = *selected;
+                return Ok(AdapterSelection {
+                    record: selected.record,
+                    manifest: selected.manifest,
+                    probe: selected.probe,
+                    evidence,
+                    warnings,
+                });
+            }
+            Ok(CandidateResult::Continue(candidate)) => {
+                if preselected_source == "explicit" {
+                    warnings.push(CliWarning::adapter_candidate_failure(
+                        &adapter_id,
+                        &candidate.reason,
+                    ));
+                }
+                evidence.push(candidate);
+            }
+            Err(error) => {
+                let candidate = CandidateEvidence::resolve(
+                    &adapter_id,
+                    "ADAPTER_UNAVAILABLE",
+                    error.error().message.clone(),
+                    json!({ "error": error.error() }),
+                );
+                if preselected_source == "explicit" {
+                    warnings.push(CliWarning::adapter_candidate_failure(
+                        &adapter_id,
+                        &candidate.reason,
+                    ));
+                }
+                evidence.push(candidate);
+            }
+        }
+    }
+
+    for record in &registry.adapters {
+        if attempted.contains(&record.id) {
+            continue;
+        }
+        match evaluate_registry_candidate(project, record, document, operation)? {
+            CandidateResult::Selected(selected) => {
+                let selected = *selected;
+                return Ok(AdapterSelection {
+                    record: selected.record,
+                    manifest: selected.manifest,
+                    probe: selected.probe,
+                    evidence,
+                    warnings,
+                });
+            }
+            CandidateResult::Continue(candidate) => evidence.push(candidate),
+        }
+    }
+
+    Err(StableError::format_unknown(
+        document.adapter_path.clone(),
+        "no registered adapter supports the document and operation",
+        serde_json::to_value(&evidence).unwrap_or_else(|_| Value::Array(Vec::new())),
+    )
+    .into())
+}
+
+fn infer_adapter_by_extension(
+    project: &ProjectContext,
+    registry: &AdapterRegistry,
+    document: &NormalizedDocumentPath,
+    operation: Operation,
+) -> AppResult<Option<String>> {
+    let extension = document_extension(&document.adapter_path);
+    let Some(extension) = extension else {
+        return Ok(None);
+    };
+
+    for record in &registry.adapters {
+        let manifest = strict_manifest(project, record)?;
+        if !manifest.capabilities.contains(&operation) {
+            continue;
+        }
+        let matches_extension = manifest.formats.iter().any(|format| {
+            format
+                .extensions
+                .iter()
+                .any(|candidate| candidate.eq_ignore_ascii_case(&extension))
+        });
+        if matches_extension {
+            return Ok(Some(record.id.clone()));
+        }
+    }
+
+    Ok(None)
+}
+
+fn evaluate_preselected(
+    project: &ProjectContext,
+    registry: &AdapterRegistry,
+    adapter_id: &str,
+    document: &NormalizedDocumentPath,
+    operation: Operation,
+) -> AppResult<CandidateResult> {
+    let Some(record) = registry.find(adapter_id) else {
+        return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+            adapter_id,
+            "ADAPTER_NOT_FOUND",
+            "adapter id is not present in the temporary registry",
+            json!({}),
+        )));
+    };
+
+    evaluate_candidate(project, record, document, operation, false)
+}
+
+fn evaluate_registry_candidate(
+    project: &ProjectContext,
+    record: &AdapterRecord,
+    document: &NormalizedDocumentPath,
+    operation: Operation,
+) -> AppResult<CandidateResult> {
+    evaluate_candidate(project, record, document, operation, true)
+}
+
+fn evaluate_candidate(
+    project: &ProjectContext,
+    record: &AdapterRecord,
+    document: &NormalizedDocumentPath,
+    operation: Operation,
+    strict_contract: bool,
+) -> AppResult<CandidateResult> {
+    let manifest = match run_manifest(&project.project_root, record) {
+        Ok(output) => match manifest_from_output(&record.id, output) {
+            Ok(manifest) => manifest,
+            Err(reason) if strict_contract => {
+                return Err(adapter_unavailable(&record.id, reason).into());
+            }
+            Err(reason) => {
+                return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+                    &record.id,
+                    "MANIFEST_INVALID",
+                    reason,
+                    json!({}),
+                )));
+            }
+        },
+        Err(error) if strict_contract => {
+            return Err(adapter_unavailable_from_process(&record.id, error).into());
+        }
+        Err(error) => {
+            return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+                &record.id,
+                "ADAPTER_UNAVAILABLE",
+                error.reason.clone(),
+                process_error_details(&error),
+            )));
+        }
+    };
+
+    if let Err(reason) = ensure_capability(&manifest, operation) {
+        return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+            &record.id,
+            "CAPABILITY_UNSUPPORTED",
+            reason,
+            json!({ "capability": operation, "adapter_id": record.id }),
+        )));
+    }
+
+    let probe = match run_probe(&project.project_root, record, &document.adapter_path) {
+        Ok(output) => match probe_from_output(&record.id, &document.adapter_path, output) {
+            Ok(probe) => probe,
+            Err(reason) if strict_contract => {
+                return Err(adapter_unavailable(&record.id, reason).into());
+            }
+            Err(reason) => {
+                return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+                    &record.id,
+                    "PROBE_INVALID",
+                    reason,
+                    json!({}),
+                )));
+            }
+        },
+        Err(error) if strict_contract => {
+            return Err(adapter_unavailable_from_process(&record.id, error).into());
+        }
+        Err(error) => {
+            return Ok(CandidateResult::Continue(CandidateEvidence::resolve(
+                &record.id,
+                "ADAPTER_UNAVAILABLE",
+                error.reason.clone(),
+                process_error_details(&error),
+            )));
+        }
+    };
+
+    if !probe.supported {
+        return Ok(CandidateResult::Continue(CandidateEvidence::probe(
+            &record.id,
+            "PROBE_UNSUPPORTED",
+            "adapter probe returned supported=false",
+            json!({ "probe": probe }),
+        )));
+    }
+
+    Ok(CandidateResult::Selected(Box::new(SelectedCandidate {
+        record: record.clone(),
+        manifest,
+        probe,
+    })))
+}
+
+fn strict_manifest(project: &ProjectContext, record: &AdapterRecord) -> AppResult<Manifest> {
+    let output = run_manifest(&project.project_root, record)
+        .map_err(|error| adapter_unavailable_from_process(&record.id, error))?;
+    manifest_from_output(&record.id, output)
+        .map_err(|reason| adapter_unavailable(&record.id, reason).into())
+}
+
+fn document_extension(path: &str) -> Option<String> {
+    let basename = path.rsplit('/').next().unwrap_or(path);
+    let dot = basename.rfind('.')?;
+    if dot == 0 {
+        return None;
+    }
+    Some(basename[dot..].to_owned())
+}
+
+impl CandidateEvidence {
+    fn resolve(adapter_id: &str, code: &str, reason: impl Into<String>, details: Value) -> Self {
+        Self {
+            adapter_id: adapter_id.to_owned(),
+            stage: CandidateStage::Resolve,
+            code: code.to_owned(),
+            reason: reason.into(),
+            details,
+        }
+    }
+
+    fn probe(adapter_id: &str, code: &str, reason: impl Into<String>, details: Value) -> Self {
+        Self {
+            adapter_id: adapter_id.to_owned(),
+            stage: CandidateStage::Probe,
+            code: code.to_owned(),
+            reason: reason.into(),
+            details,
+        }
+    }
+}
