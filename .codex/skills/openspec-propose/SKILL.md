@@ -1,6 +1,6 @@
 ---
 name: openspec-propose
-description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
+description: 为新的 OpenSpec change 生成可进入实现阶段的 proposal、design、tasks 等 artifacts。用于用户给出 change name 或需求描述，并希望一次性完成提案材料。
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:
@@ -9,102 +9,152 @@ metadata:
   generatedBy: "1.3.1"
 ---
 
-Propose a new change - create the change and generate all artifacts in one step.
+# OpenSpec Propose
 
-I'll create a change with artifacts:
-- proposal.md (what & why)
-- design.md (how)
-- tasks.md (implementation steps)
+## 目标
 
-When ready to implement, run /opsx:apply
+根据用户给出的 change name 或需求描述，创建一个新的 OpenSpec change，并生成进入实现阶段所需的 artifacts。完成后，该 change 应满足 `openspec status --change "<name>" --json` 中 `applyRequires` 指向的 artifacts 全部为 `done`。
 
----
+## 输入
 
-**Input**: The user's request should include a change name (kebab-case) OR a description of what they want to build.
+用户可以提供以下任一形式：
 
-**Steps**
+1. 明确的 kebab-case change name，例如 `add-user-auth`。
+2. 自然语言需求描述，例如“给文档导航增加 Markdown 章节搜索”。
 
-1. **If no clear input provided, ask what they want to build**
+当用户只提供需求描述时，从描述中派生简短、稳定、语义明确的 kebab-case 名称。名称应使用英文小写、数字和连字符，并表达 change 的核心行为。
 
-   Use the **AskUserQuestion tool** (open-ended, no preset options) to ask:
-   > "What change do you want to work on? Describe what you want to build or fix."
+当需求目标、范围或名称无法可靠判断时，直接向用户提问，要求补充“要构建或修复什么”。在理解目标前先暂停，不创建 change。
 
-   From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
+## CLI 使用策略
 
-   **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
+这些命令按创建进度选择，不是每次全量执行：
 
-2. **Create the change directory**
-   ```bash
-   openspec new change "<name>"
-   ```
-   This creates a scaffolded change at `openspec/changes/<name>/` with `.openspec.yaml`.
+1. 必跑命令：
+   - `openspec new change "<name>" --description "<one-line goal>" --schema "<schema>"`：创建 change。使用默认 schema 时可以省略 `--schema`。
+   - `openspec status --change "<name>" --json`：读取 `applyRequires`、artifact 状态和依赖。
+   - `openspec instructions <artifact-id> --change "<name>" --json`：为当前可生成 artifact 获取 `template`、`instruction`、`outputPath`、`dependencies`、`context` 和 `rules`。
+   - `openspec validate "<name>" --type change --json --strict --no-interactive`：artifact 生成完成后验证 change。
+2. 条件命令：
+   - `openspec schemas --json`：需要确认可用 schema，或用户指定 schema 时运行。
+   - `openspec templates --schema "<schema>" --json`：需要查看模板来源或排查 artifact 结构时运行。
+   - `openspec show "<spec>" --type spec --json --no-interactive`：需要读取已有主 spec 时运行。
+   - `openspec show "<change>" --type change --json --no-interactive`：需要读取已有 change delta 时运行。
+3. 兜底读取：
+   - CLI 不可用、命令失败或输出不足时，再读取目标文件原文。
+   - 需要参考改写前行为时，只读同目录 `reference-original.md`。
 
-3. **Get the artifact build order**
-   ```bash
-   openspec status --change "<name>" --json
-   ```
-   Parse the JSON to get:
-   - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
-   - `artifacts`: list of all artifacts with their status and dependencies
+## 工作流程
 
-4. **Create artifacts in sequence until apply-ready**
+1. 确定 change 名称、schema 和目标
+   - 从用户输入识别现成的 kebab-case 名称，或从需求描述派生名称。
+   - 将用户需求压缩成一句目标说明，作为后续 artifact 写作的主线。
+   - 如果同名 change 已存在，先确认用户要继续该 change，还是改用新名称；得到选择后再继续。
+   - 需要确认可用 workflow schema 时，运行：
 
-   Use the **TodoWrite tool** to track progress through the artifacts.
+     ```text
+     openspec schemas --json
+     ```
 
-   Loop through artifacts in dependency order (artifacts with no pending dependencies first):
+   - 用户未指定 schema 时，使用项目默认 schema；需要查看模板来源时运行 `openspec templates --schema "<schema>" --json`。
 
-   a. **For each artifact that is `ready` (dependencies satisfied)**:
-      - Get instructions:
-        ```bash
-        openspec instructions <artifact-id> --change "<name>" --json
-        ```
-      - The instructions JSON includes:
-        - `context`: Project background (constraints for you - do NOT include in output)
-        - `rules`: Artifact-specific rules (constraints for you - do NOT include in output)
-        - `template`: The structure to use for your output file
-        - `instruction`: Schema-specific guidance for this artifact type
-        - `outputPath`: Where to write the artifact
-        - `dependencies`: Completed artifacts to read for context
-      - Read any completed dependency files for context
-      - Create the artifact file using `template` as the structure
-      - Apply `context` and `rules` as constraints - but do NOT copy them into the file
-      - Show brief progress: "Created <artifact-id>"
+2. 创建 change
+   - 运行：
 
-   b. **Continue until all `applyRequires` artifacts are complete**
-      - After creating each artifact, re-run `openspec status --change "<name>" --json`
-      - Check if every artifact ID in `applyRequires` has `status: "done"` in the artifacts array
-      - Stop when all `applyRequires` artifacts are done
+     ```text
+     openspec new change "<name>" --description "<one-line goal>" --schema "<schema>"
+     ```
 
-   c. **If an artifact requires user input** (unclear context):
-      - Use **AskUserQuestion tool** to clarify
-      - Then continue with creation
+   - 如果使用默认 schema 且 CLI 或项目约定不要求显式传入，可以省略 `--schema "<schema>"`。
+   - 如果没有可用的一句话描述，可以省略 `--description`，但应优先传入用户目标摘要。
+   - 预期生成 `openspec/changes/<name>/` 和 `.openspec.yaml`。
+   - 创建后确认 change 目录存在。
 
-5. **Show final status**
-   ```bash
-   openspec status --change "<name>"
-   ```
+3. 读取 artifact 状态
+   - 运行：
 
-**Output**
+     ```text
+     openspec status --change "<name>" --json
+     ```
 
-After completing all artifacts, summarize:
-- Change name and location
-- List of artifacts created with brief descriptions
-- What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/opsx:apply` or ask me to implement to start working on the tasks."
+   - 从 JSON 中读取：
+     - `applyRequires`：实现前必须完成的 artifact ID。
+     - `artifacts`：每个 artifact 的状态、依赖和可写条件。
+   - 记录 artifact 进度，按依赖关系选择当前可生成的 artifact。
 
-**Artifact Creation Guidelines**
+4. 生成 apply-ready artifacts
+   - 持续处理 artifact，直到 `applyRequires` 中所有 artifact 的状态都是 `done`。
+   - 每次只处理状态允许生成、依赖已经满足的 artifact。
+   - 对每个 artifact 运行：
 
-- Follow the `instruction` field from `openspec instructions` for each artifact type
-- The schema defines what each artifact should contain - follow it
-- Read dependency artifacts for context before creating new ones
-- Use `template` as the structure for your output file - fill in its sections
-- **IMPORTANT**: `context` and `rules` are constraints for YOU, not content for the file
-  - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
-  - These guide what you write, but should never appear in the output
+     ```text
+     openspec instructions <artifact-id> --change "<name>" --json
+     ```
 
-**Guardrails**
-- Create ALL artifacts needed for implementation (as defined by schema's `apply.requires`)
-- Always read dependency artifacts before creating a new one
-- If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
-- If a change with that name already exists, ask if user wants to continue it or create a new one
-- Verify each artifact file exists after writing before proceeding to next
+   - 按 instructions JSON 执行：
+     - `template`：输出文件结构。
+     - `instruction`：artifact 写作要求。
+     - `outputPath`：写入位置。
+     - `dependencies`：写作前读取的已完成 artifact。
+     - `context` 和 `rules`：约束和判断依据。
+   - 依赖 artifact 正文优先通过 instructions 返回的 `dependencies` 和 `outputPath` 定位；CLI 未提供正文时再读取对应文件。
+   - 涉及已有主 spec 或 change delta 时，使用 CLI 使用策略中的 `openspec show` 命令获取结构化内容。
+   - artifact 内容应服务于用户需求和 change 目标，避免把平台说明、内部流程、上下文块或规则块写成正文。
+   - 如果某个 artifact 的关键决策无法从用户需求、依赖 artifact 或 instructions 中确定，直接向用户提一个具体问题；得到答案后继续生成。
+
+5. 每个 artifact 写完后验证
+   - 确认 `outputPath` 对应文件存在。
+   - 重新运行：
+
+     ```text
+     openspec status --change "<name>" --json
+     ```
+
+   - 检查刚写入 artifact 的状态是否更新，并据此选择下一个可生成 artifact。
+   - 若状态没有按预期变化，读取 instructions 和已写文件，修正缺失内容后再次检查。
+
+6. 输出最终状态
+   - 运行：
+
+     ```text
+     openspec status --change "<name>"
+     ```
+
+   - 然后运行：
+
+     ```text
+     openspec validate "<name>" --type change --json --strict --no-interactive
+     ```
+
+   - 汇报 change 是否已经达到可进入实现的状态。
+
+## Artifact 写作要求
+
+1. 严格使用 `template` 给出的结构，填充真实内容，不保留空模板说明。
+2. 遵循 `instruction` 中的 schema 和写作规则。
+3. 写作前读取已完成依赖 artifact，保持 proposal、design、tasks 等文件之间目标一致。
+4. `context`、`rules`、`project_context` 等内容只用于约束判断，不作为 artifact 的段落、引用块或清单输出。
+5. 内容应具体到可执行和可验收：proposal 写清 what 与 why，design 写清关键方案和取舍，tasks 写成可逐项完成的实现步骤。
+6. 对不影响范围、协议、架构边界或验收标准的细节，选择与项目现有规范一致的默认；对会改变这些边界的缺口，先问用户。
+7. 需要读取现有 specs 时，优先使用 CLI 使用策略中的主 spec 命令；CLI 输出不足时再读取 `openspec/specs/<spec>/spec.md`。
+
+## 完成标准
+
+满足以下条件时才算完成：
+
+1. change 目录存在，并包含 `.openspec.yaml`。
+2. `openspec status --change "<name>" --json` 可读取。
+3. `applyRequires` 中列出的每个 artifact 都已写入文件，且状态为 `done`。
+4. 每个已生成 artifact 的文件路径来自对应 instructions 的 `outputPath`，并已验证存在。
+5. artifact 正文没有复制 `context`、`rules` 或内部流程说明。
+6. `openspec validate "<name>" --type change --json --strict --no-interactive` 通过；无法运行时说明失败原因和影响。
+7. 最终回复包含 change 名称、change 路径、已创建 artifacts、最终状态和下一步实现入口。
+
+## 最终回复格式
+
+完成后简要说明：
+
+1. Change：`<name>`，位置 `openspec/changes/<name>/`。
+2. Artifacts：列出创建或更新的 artifact 文件及作用。
+3. 状态：说明是否已满足 apply-ready；如未满足，列出阻塞原因和需要用户补充的问题。
+4. 下一步：提示用户可以进入实现流程，或直接要求继续实现 tasks。

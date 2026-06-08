@@ -1,6 +1,6 @@
 ---
 name: openspec-archive-change
-description: Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.
+description: 归档已完成的 OpenSpec change。用于用户要求在实现、验收或同步评估完成后 finalize、archive 或归档某个 change。
 license: MIT
 compatibility: Requires openspec CLI.
 metadata:
@@ -9,106 +9,70 @@ metadata:
   generatedBy: "1.3.1"
 ---
 
-Archive a completed change in the experimental workflow.
+# OpenSpec Change 归档
 
-**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+## 目标
 
-**Steps**
+使用 OpenSpec CLI 归档一个 active change，并在归档前确认 artifact、task、delta spec 和验证状态。归档后输出可审计摘要。
 
-1. **If no change name provided, prompt for selection**
+## Change 选择
 
-   Run `openspec list --json` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+1. 使用用户明确给出的 change 名称。
+2. 用户未给名称时，从当前对话或最近处理的 change 推断目标。
+3. 当多个候选都合理或上下文不足时，先向用户确认。
+4. 已归档 change 只作为历史参考，不进入本流程。
 
-   Show only active changes (not already archived).
-   Include the schema used for each change if available.
+## CLI 使用策略
 
-   **IMPORTANT**: Do NOT guess or auto-select a change. Always let the user choose.
+这些命令按归档检查需要选择，不是清单式全量执行：
 
-2. **Check artifact completion status**
+1. 必跑命令：
+   - `openspec status --change "<name>" --json`：读取 schema 和 artifact 状态。
+   - `openspec archive "<name>"`：执行实际归档。
+2. 条件命令：
+   - `openspec instructions apply --change "<name>" --json`：需要检查任务完成度时运行。
+   - `openspec show "<name>" --type change --json --no-interactive`：需要评估 delta spec 同步状态时运行。
+   - `openspec show "<spec>" --type spec --json --no-interactive`：需要对照主 spec 当前内容时运行。
+3. 归档参数：
+   - `--skip-specs`：仅在用户明确跳过 spec 更新时追加。
+   - `--no-validate`：仅在用户明确跳过验证并接受风险时追加。
+4. 兜底读取：
+   - OpenSpec CLI 负责归档移动和 spec 更新；常规流程中不手动创建 archive 目录或移动 change 目录。
+   - CLI 不可用或失败时，读取 `reference-original.md` 和目标 change 文件，报告失败命令、错误摘要和用户可确认的兜底方案。
 
-   Run `openspec status --change "<name>" --json` to check artifact completion.
+## 流程
 
-   Parse the JSON to understand:
-   - `schemaName`: The workflow being used
-   - `artifacts`: List of artifacts with their status (`done` or other)
+1. 确认目标 change，并在目标不唯一时向用户确认。
+2. 运行 `openspec status --change "<name>" --json`，读取 `schemaName` 和 artifact 状态。
+3. 运行 `openspec instructions apply --change "<name>" --json`，用 `progress` 和 `tasks` 判断任务完成状态；命令未返回任务信息时再读取 tasks 文件。
+4. 对未完成 artifact 或 task，列出风险并取得用户明确确认后继续。
+5. 运行 `openspec show "<name>" --type change --json --no-interactive`：
+   - 无 delta 时记录 `No delta specs`。
+   - 有 delta 时展示 capability、operation 和 requirement 摘要。
+   - 需要对照主 spec 时运行 `openspec show "<spec>" --type spec --json --no-interactive`。
+6. 选择归档命令：
+   - 默认：`openspec archive "<name>"`
+   - 用户明确跳过 spec 更新：`openspec archive "<name>" --skip-specs`
+   - 用户明确跳过验证并接受风险：`openspec archive "<name>" --no-validate`
+7. 执行归档命令。CLI 报告目标冲突、验证失败或其它错误时停止，并给出下一步选项。
 
-   **If any artifacts are not `done`:**
-   - Display warning listing incomplete artifacts
-   - Use **AskUserQuestion tool** to confirm user wants to proceed
-   - Proceed if user confirms
+## 边界
 
-3. **Check task completion status**
+1. 归档会改变 active change 状态；执行前完成状态检查、风险说明和必要确认。
+2. Artifact 或 task 未完成时，用户确认是继续归档的前置条件。
+3. `--skip-specs` 和 `--no-validate` 只在用户明确选择对应取舍时使用。
+4. CLI 失败时不模拟目录移动，先报告失败并等待用户选择兜底方案。
 
-   Read the tasks file (typically `tasks.md`) to check for incomplete tasks.
+## 输出
 
-   Count tasks marked with `- [ ]` (incomplete) vs `- [x]` (complete).
+归档完成后输出：
 
-   **If incomplete tasks found:**
-   - Display warning showing count of incomplete tasks
-   - Use **AskUserQuestion tool** to confirm user wants to proceed
-   - Proceed if user confirms
-
-   **If no tasks file exists:** Proceed without task-related warning.
-
-4. **Assess delta spec sync state**
-
-   Check for delta specs at `openspec/changes/<name>/specs/`. If none exist, proceed without sync prompt.
-
-   **If delta specs exist:**
-   - Compare each delta spec with its corresponding main spec at `openspec/specs/<capability>/spec.md`
-   - Determine what changes would be applied (adds, modifications, removals, renames)
-   - Show a combined summary before prompting
-
-   **Prompt options:**
-   - If changes needed: "Sync now (recommended)", "Archive without syncing"
-   - If already synced: "Archive now", "Sync anyway", "Cancel"
-
-   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke openspec-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
-
-5. **Perform the archive**
-
-   Create the archive directory if it doesn't exist:
-   ```bash
-   mkdir -p openspec/changes/archive
-   ```
-
-   Generate target name using current date: `YYYY-MM-DD-<change-name>`
-
-   **Check if target already exists:**
-   - If yes: Fail with error, suggest renaming existing archive or using different date
-   - If no: Move the change directory to archive
-
-   ```bash
-   mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
-   ```
-
-6. **Display summary**
-
-   Show archive completion summary including:
-   - Change name
-   - Schema that was used
-   - Archive location
-   - Whether specs were synced (if applicable)
-   - Note about any warnings (incomplete artifacts/tasks)
-
-**Output On Success**
-
+```text
+Change: <change-name>
+Schema: <schema-name>
+Archived to: <path from CLI>
+Specs: <synced | no delta specs | skipped | warning>
+Artifacts: <complete | incomplete confirmed>
+Tasks: <complete | incomplete confirmed | no tasks>
+Warnings: <none | summary>
 ```
-## Archive Complete
-
-**Change:** <change-name>
-**Schema:** <schema-name>
-**Archived to:** openspec/changes/archive/YYYY-MM-DD-<name>/
-**Specs:** ✓ Synced to main specs (or "No delta specs" or "Sync skipped")
-
-All artifacts complete. All tasks complete.
-```
-
-**Guardrails**
-- Always prompt for change selection if not provided
-- Use artifact graph (openspec status --json) for completion checking
-- Don't block archive on warnings - just inform and confirm
-- Preserve .openspec.yaml when moving to archive (it moves with the directory)
-- Show clear summary of what happened
-- If sync is requested, use openspec-sync-specs approach (agent-driven)
-- If delta specs exist, always run the sync assessment and show the combined summary before prompting
