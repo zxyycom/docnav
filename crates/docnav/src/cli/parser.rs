@@ -3,12 +3,61 @@ mod config_command;
 mod document;
 mod nullary;
 
+use clap::builder::NonEmptyStringValueParser;
 use clap::{Arg, ArgAction, Command};
 use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
 
 use super::types::{CliCommand, ParsedCli};
+
+pub(super) mod command_names {
+    pub(super) const CONFIG: &str = "config";
+    pub(super) const CONFIG_GET: &str = "get";
+    pub(super) const CONFIG_LIST: &str = "list";
+    pub(super) const CONFIG_SET: &str = "set";
+    pub(super) const CONFIG_UNSET: &str = "unset";
+    pub(super) const DOCTOR: &str = "doctor";
+    pub(super) const FIND: &str = "find";
+    pub(super) const INFO: &str = "info";
+    pub(super) const INIT: &str = "init";
+    pub(super) const OUTLINE: &str = "outline";
+    pub(super) const READ: &str = "read";
+    pub(super) const VERSION: &str = "version";
+}
+
+pub(super) mod arg_ids {
+    pub(super) const ADAPTER: &str = "adapter";
+    pub(super) const KEY: &str = "key";
+    pub(super) const LIMIT_CHARS: &str = "limit_chars";
+    pub(super) const OPERATION: &str = "operation";
+    pub(super) const OUTPUT: &str = "output";
+    pub(super) const PAGE: &str = "page";
+    pub(super) const PATH: &str = "path";
+    pub(super) const QUERY: &str = "query";
+    pub(super) const REF: &str = "ref";
+    pub(super) const USER: &str = "user";
+    pub(super) const VALUE: &str = "value";
+}
+
+mod defaults {
+    pub(super) const LIMIT_CHARS: &str = "6000";
+    pub(super) const OUTPUT: &str = super::output_values::TEXT;
+    pub(super) const PAGE: &str = "1";
+}
+
+pub(super) mod output_values {
+    pub(super) const PROTOCOL_JSON: &str = "protocol-json";
+    pub(super) const READABLE_JSON: &str = "readable-json";
+    pub(super) const TEXT: &str = "text";
+}
+
+pub(super) mod operation_values {
+    pub(super) const FIND: &str = "find";
+    pub(super) const INFO: &str = "info";
+    pub(super) const OUTLINE: &str = "outline";
+    pub(super) const READ: &str = "read";
+}
 
 pub fn parse<I, S>(args: I) -> AppResult<ParsedCli>
 where
@@ -35,14 +84,20 @@ where
     }
 
     match command.as_str() {
-        "outline" => document::parse_document_command(Operation::Outline, rest),
-        "read" => document::parse_document_command(Operation::Read, rest),
-        "find" => document::parse_document_command(Operation::Find, rest),
-        "info" => document::parse_document_command(Operation::Info, rest),
-        "config" => config_command::parse_config_command(rest),
-        "init" => nullary::parse_nullary_command(CliCommand::Init, "init", rest),
-        "doctor" => nullary::parse_nullary_command(CliCommand::Doctor, "doctor", rest),
-        "version" => nullary::parse_nullary_command(CliCommand::Version, "version", rest),
+        command_names::OUTLINE => document::parse_document_command(Operation::Outline, rest),
+        command_names::READ => document::parse_document_command(Operation::Read, rest),
+        command_names::FIND => document::parse_document_command(Operation::Find, rest),
+        command_names::INFO => document::parse_document_command(Operation::Info, rest),
+        command_names::CONFIG => config_command::parse_config_command(rest),
+        command_names::INIT => {
+            nullary::parse_nullary_command(CliCommand::Init, command_names::INIT, rest)
+        }
+        command_names::DOCTOR => {
+            nullary::parse_nullary_command(CliCommand::Doctor, command_names::DOCTOR, rest)
+        }
+        command_names::VERSION => {
+            nullary::parse_nullary_command(CliCommand::Version, command_names::VERSION, rest)
+        }
         _ => unreachable!("known root commands are handled above"),
     }
 }
@@ -61,7 +116,7 @@ fn help_text(args: &[String]) -> Option<String> {
     let Some(command) = root.find_subcommand_mut(first) else {
         return Some(root.render_long_help().to_string());
     };
-    if first == "config" {
+    if first == command_names::CONFIG {
         if let Some(second) = args.get(1).map(String::as_str) {
             if second != "--help" && second != "-h" {
                 if let Some(subcommand) = command.find_subcommand_mut(second) {
@@ -81,21 +136,41 @@ fn cli_command() -> Command {
     Command::new("docnav")
         .about("Structured document navigation CLI")
         .disable_help_subcommand(true)
-        .subcommand(paged_document_command(
-            "outline",
-            "Return compact document outline entries",
-        ))
-        .subcommand(
-            paged_document_command("read", "Read a document region by adapter ref").arg(ref_arg()),
-        )
-        .subcommand(
-            paged_document_command("find", "Find matching document regions").arg(query_arg()),
-        )
-        .subcommand(document_command("info", "Return adapter document summary"))
+        .subcommand(document_clap_command(Operation::Outline))
+        .subcommand(document_clap_command(Operation::Read))
+        .subcommand(document_clap_command(Operation::Find))
+        .subcommand(document_clap_command(Operation::Info))
         .subcommand(config_command())
-        .subcommand(Command::new("init").about("Initialize .docnav project configuration"))
-        .subcommand(Command::new("doctor").about("Check Docnav project and adapter health"))
-        .subcommand(Command::new("version").about("Print docnav version"))
+        .subcommand(nullary_clap_command(
+            command_names::INIT,
+            "Initialize .docnav project configuration",
+        ))
+        .subcommand(nullary_clap_command(
+            command_names::DOCTOR,
+            "Check Docnav project and adapter health",
+        ))
+        .subcommand(nullary_clap_command(
+            command_names::VERSION,
+            "Print docnav version",
+        ))
+}
+
+pub(super) fn document_clap_command(operation: Operation) -> Command {
+    match operation {
+        Operation::Outline => paged_document_command(
+            command_names::OUTLINE,
+            "Return compact document outline entries",
+        ),
+        Operation::Read => {
+            paged_document_command(command_names::READ, "Read a document region by adapter ref")
+                .arg(ref_arg())
+        }
+        Operation::Find => {
+            paged_document_command(command_names::FIND, "Find matching document regions")
+                .arg(query_arg())
+        }
+        Operation::Info => document_command(command_names::INFO, "Return adapter document summary"),
+    }
 }
 
 fn document_command(name: &'static str, about: &'static str) -> Command {
@@ -113,74 +188,110 @@ fn paged_document_command(name: &'static str, about: &'static str) -> Command {
 }
 
 fn config_command() -> Command {
-    Command::new("config")
+    Command::new(command_names::CONFIG)
         .about("Read and write docnav configuration")
-        .subcommand(
-            Command::new("get")
-                .about("Read an effective configuration key")
-                .arg(key_arg())
-                .arg(user_arg()),
-        )
-        .subcommand(
-            Command::new("set")
-                .about("Set a project or user configuration key")
-                .arg(key_arg())
-                .arg(Arg::new("value").value_name("value"))
-                .arg(user_arg()),
-        )
-        .subcommand(
-            Command::new("unset")
-                .about("Remove a project or user configuration key")
-                .arg(key_arg())
-                .arg(user_arg()),
-        )
-        .subcommand(
-            Command::new("list")
-                .about("List effective configuration")
-                .arg(user_arg())
-                .arg(value_arg("path", "path", "path"))
-                .arg(value_arg(
-                    "operation",
-                    "operation",
-                    "outline|read|find|info",
-                )),
-        )
+        .subcommand(config_get_command())
+        .subcommand(config_set_command())
+        .subcommand(config_unset_command())
+        .subcommand(config_list_command())
+}
+
+pub(super) fn config_get_command() -> Command {
+    Command::new(command_names::CONFIG_GET)
+        .about("Read an effective configuration key")
+        .arg(key_arg())
+        .arg(user_arg())
+}
+
+pub(super) fn config_set_command() -> Command {
+    Command::new(command_names::CONFIG_SET)
+        .about("Set a project or user configuration key")
+        .arg(key_arg())
+        .arg(positional_value_arg(arg_ids::VALUE, "value"))
+        .arg(user_arg())
+}
+
+pub(super) fn config_unset_command() -> Command {
+    Command::new(command_names::CONFIG_UNSET)
+        .about("Remove a project or user configuration key")
+        .arg(key_arg())
+        .arg(user_arg())
+}
+
+pub(super) fn config_list_command() -> Command {
+    Command::new(command_names::CONFIG_LIST)
+        .about("List effective configuration")
+        .arg(user_arg())
+        .arg(value_arg(arg_ids::PATH, "path", "path"))
+        .arg(operation_arg())
+}
+
+pub(super) fn nullary_clap_command(name: &'static str, about: &'static str) -> Command {
+    Command::new(name).about(about)
 }
 
 fn path_arg() -> Arg {
-    Arg::new("path").value_name("path")
+    Arg::new(arg_ids::PATH)
+        .value_name("path")
+        .required(true)
+        .value_parser(NonEmptyStringValueParser::new())
 }
 
 fn key_arg() -> Arg {
-    Arg::new("key").value_name("key")
+    positional_value_arg(arg_ids::KEY, "key")
 }
 
 fn adapter_arg() -> Arg {
-    value_arg("adapter", "adapter", "adapter-id")
+    value_arg(arg_ids::ADAPTER, "adapter", "adapter-id")
 }
 
 fn page_arg() -> Arg {
-    value_arg("page", "page", "positive integer")
+    value_arg(arg_ids::PAGE, "page", "positive integer")
+        .default_value(defaults::PAGE)
+        .value_parser(clap::value_parser!(u32))
 }
 
 fn limit_chars_arg() -> Arg {
-    value_arg("limit_chars", "limit-chars", "positive integer")
+    value_arg(arg_ids::LIMIT_CHARS, "limit-chars", "positive integer")
+        .default_value(defaults::LIMIT_CHARS)
+        .value_parser(clap::value_parser!(u32))
 }
 
 fn output_arg() -> Arg {
-    value_arg("output", "output", "text|readable-json|protocol-json")
+    value_arg(
+        arg_ids::OUTPUT,
+        "output",
+        "text|readable-json|protocol-json",
+    )
+    .default_value(defaults::OUTPUT)
+    .value_parser([
+        output_values::TEXT,
+        output_values::READABLE_JSON,
+        output_values::PROTOCOL_JSON,
+    ])
 }
 
 fn query_arg() -> Arg {
-    value_arg("query", "query", "text")
+    value_arg(arg_ids::QUERY, "query", "text").required(true)
 }
 
 fn ref_arg() -> Arg {
-    value_arg("ref", "ref", "ref")
+    value_arg(arg_ids::REF, "ref", "ref").required(true)
+}
+
+fn operation_arg() -> Arg {
+    value_arg(arg_ids::OPERATION, "operation", "outline|read|find|info").value_parser([
+        operation_values::OUTLINE,
+        operation_values::READ,
+        operation_values::FIND,
+        operation_values::INFO,
+    ])
 }
 
 fn user_arg() -> Arg {
-    Arg::new("user").long("user").action(ArgAction::SetTrue)
+    Arg::new(arg_ids::USER)
+        .long("user")
+        .action(ArgAction::SetTrue)
 }
 
 fn value_arg(id: &'static str, long: &'static str, value_name: &'static str) -> Arg {
@@ -189,6 +300,14 @@ fn value_arg(id: &'static str, long: &'static str, value_name: &'static str) -> 
         .value_name(value_name)
         .num_args(1)
         .allow_hyphen_values(true)
+        .value_parser(NonEmptyStringValueParser::new())
+}
+
+fn positional_value_arg(id: &'static str, value_name: &'static str) -> Arg {
+    Arg::new(id)
+        .value_name(value_name)
+        .required(true)
+        .value_parser(NonEmptyStringValueParser::new())
 }
 
 #[cfg(test)]
