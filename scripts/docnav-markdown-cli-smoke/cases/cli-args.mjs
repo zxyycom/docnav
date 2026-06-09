@@ -220,6 +220,18 @@ export function testCliArgumentCompatibilityWarnings() {
   const normal = fixture("normal.md");
   const ref = getNormalRef();
 
+  const rootHelp = runCli("docnav-markdown root help", ["--help"]);
+  expectExit(rootHelp, exitCodes.success);
+  expectStderrEmpty(rootHelp);
+  expectStdoutIncludes(rootHelp, "Usage:");
+  expectStdoutIncludes(rootHelp, "outline");
+
+  const outlineHelp = runCli("docnav-markdown outline help", ["outline", "--help"]);
+  expectExit(outlineHelp, exitCodes.success);
+  expectStderrEmpty(outlineHelp);
+  expectStdoutIncludes(outlineHelp, "--max-heading-level");
+  expectStdoutIncludes(outlineHelp, "--output");
+
   const text = runCli("outline unknown equals flag text warning", [
     "outline",
     normal,
@@ -230,7 +242,25 @@ export function testCliArgumentCompatibilityWarnings() {
   expectExit(text, exitCodes.success);
   expectStderrEmpty(text);
   expectStdoutIncludes(text, "page:");
-  expectStdoutWarning(text, ["--unknown=value"], "unknown_flag", "unknown CLI flag ignored");
+  expectStdoutWarning(text, ["--unknown=value"]);
+
+  const unknownBeforePath = runCli("outline unknown before path readable-json warning", [
+    "outline",
+    "--future",
+    normal,
+    "--output",
+    "readable-json"
+  ]);
+  expectExit(unknownBeforePath, exitCodes.success);
+  expectStderrEmpty(unknownBeforePath);
+  const unknownBeforePathJson = parseJson(unknownBeforePath);
+  validateSchema(unknownBeforePath, "readableOutline", unknownBeforePathJson);
+  expectStructuredWarning(
+    unknownBeforePath,
+    unknownBeforePathJson.warnings?.[0],
+    ["--future"],
+    "unknown flag"
+  );
 
   const readable = runCli("outline unknown and extra readable-json warnings", [
     "outline",
@@ -248,15 +278,13 @@ export function testCliArgumentCompatibilityWarnings() {
     readable,
     readableJson.warnings?.[0],
     ["--future"],
-    "unknown_flag",
-    "unknown CLI flag ignored"
+    "unknown flag"
   );
   expectStructuredWarning(
     readable,
     readableJson.warnings?.[1],
     ["extra"],
-    "extra_positional",
-    "extra positional argument ignored"
+    "extra positional"
   );
 
   const unused = runCli("read unused known flag readable-json warning", [
@@ -277,8 +305,26 @@ export function testCliArgumentCompatibilityWarnings() {
     unused,
     unusedJson.warnings?.[0],
     ["--max-heading-level", "3"],
-    "unused_operation_flag",
-    "flag is not used by read command"
+    "unused native flag"
+  );
+
+  const unusedInvalid = runCli("info unused invalid limit readable-json warning", [
+    "info",
+    normal,
+    "--limit-chars",
+    "nope",
+    "--output",
+    "readable-json"
+  ]);
+  expectExit(unusedInvalid, exitCodes.success);
+  expectStderrEmpty(unusedInvalid);
+  const unusedInvalidJson = parseJson(unusedInvalid);
+  validateSchema(unusedInvalid, "readableInfo", unusedInvalidJson);
+  expectStructuredWarning(
+    unusedInvalid,
+    unusedInvalidJson.warnings?.[0],
+    ["--limit-chars", "nope"],
+    "unused known invalid flag"
   );
 
   const protocol = runCli("outline unknown flag protocol-json stderr warning", [
@@ -289,7 +335,7 @@ export function testCliArgumentCompatibilityWarnings() {
     "protocol-json"
   ]);
   expectExit(protocol, exitCodes.success);
-  expectStderrWarning(protocol, ["--future"], "unknown_flag", "unknown CLI flag ignored");
+  expectStderrWarning(protocol, ["--future"]);
   expectNoJsonPayloadInStderr(protocol);
   const protocolJson = parseJson(protocol);
   validateSchema(protocol, "protocolResponse", protocolJson);
@@ -303,7 +349,7 @@ export function testCliArgumentCompatibilityWarnings() {
     "protocol-json"
   ]);
   expectExit(manifest, exitCodes.success);
-  expectStderrWarning(manifest, ["--future"], "unknown_flag", "unknown CLI flag ignored");
+  expectStderrWarning(manifest, ["--future"]);
   expectNoJsonPayloadInStderr(manifest);
   const manifestJson = parseJson(manifest);
   validateSchema(manifest, "manifest", manifestJson);
@@ -317,7 +363,7 @@ export function testCliArgumentCompatibilityWarnings() {
     "protocol-json"
   ]);
   expectExit(probe, exitCodes.success);
-  expectStderrWarning(probe, ["--future"], "unknown_flag", "unknown CLI flag ignored");
+  expectStderrWarning(probe, ["--future"]);
   expectNoJsonPayloadInStderr(probe);
   const probeJson = parseJson(probe);
   validateSchema(probe, "probe", probeJson);
@@ -444,27 +490,33 @@ function cliInvalidValueCaseName(command, flag, invalid) {
   return `${command} invalid ${flag} ${invalid.label}`;
 }
 
-function expectStdoutWarning(record, ignoredTokens, kind, reason) {
-  expectStdoutIncludes(record, `ignored_tokens=${JSON.stringify(ignoredTokens)}`);
-  expectStdoutIncludes(record, `kind=${kind}`);
-  expectStdoutIncludes(record, `reason=${reason}`);
+function expectStdoutWarning(record, expectedTokens) {
+  expectStdoutIncludes(record, "id=cli_argv_ignored");
+  expectStdoutIncludes(record, "effect=operation_continued");
+  expectStdoutIncludes(record, "details=");
+  for (const token of expectedTokens) {
+    expectStdoutIncludes(record, JSON.stringify(token));
+  }
 }
 
-function expectStderrWarning(record, ignoredTokens, kind, reason) {
-  expectStderrIncludes(record, `ignored_tokens=${JSON.stringify(ignoredTokens)}`);
-  expectStderrIncludes(record, `kind=${kind}`);
-  expectStderrIncludes(record, `reason=${reason}`);
+function expectStderrWarning(record, expectedTokens) {
+  expectStderrIncludes(record, "id=cli_argv_ignored");
+  expectStderrIncludes(record, "effect=operation_continued");
+  expectStderrIncludes(record, "details=");
+  for (const token of expectedTokens) {
+    expectStderrIncludes(record, JSON.stringify(token));
+  }
 }
 
-function expectStructuredWarning(record, warning, ignoredTokens, kind, reason) {
-  expect(record, Boolean(warning), `structured warning exists for ${kind}`);
-  expect(
-    record,
-    JSON.stringify(warning.ignored_tokens) === JSON.stringify(ignoredTokens),
-    `${kind} ignored_tokens match`
-  );
-  expect(record, warning.kind === kind, `${kind} warning kind matches`);
-  expect(record, warning.reason === reason, `${kind} warning reason matches`);
+function expectStructuredWarning(record, warning, expectedTokens, label = "CLI argv") {
+  expect(record, Boolean(warning), `structured warning exists for ${label}`);
+  expect(record, warning.id === "cli_argv_ignored", "CLI argv warning id matches");
+  expect(record, warning.effect === "operation_continued", "CLI argv warning effect matches");
+  expect(record, typeof warning.reason === "string" && warning.reason.length > 0, "CLI argv warning reason is nonempty");
+  expect(record, Array.isArray(warning.details?.tokens), "CLI argv warning details.tokens is an array");
+  for (const token of expectedTokens) {
+    expect(record, warning.details.tokens.includes(token), `CLI argv warning mentions ${token}`);
+  }
 }
 
 function expectNoWarningsField(record, value, label) {

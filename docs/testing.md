@@ -37,7 +37,9 @@ pnpm run verify:docnav-workspace
 
 - invoke protocol envelope 不出现在 MCP structuredContent 或 readable JSON。
 - MCP 和 CLI 阅读输出不复制完整原始协议 JSON。
-- 直接 CLI 兼容参数规则以 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 为 owner；测试只验证核心分支、warning 字段完整性和 `invoke` strict 分界。
+- 直接 CLI 兼容参数规则以 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 为 owner；测试验证成功路径、必要失败、operation-first 参数校验、help 可用、warning envelope 完整性和 `invoke` strict 分界。
+- CLI argv warning 测试只要求稳定 `id: "cli_argv_ignored"`、非空 `reason`、稳定 `effect` 和 `details.tokens` 等 family-specific 字段，不断言 exact token 分组、`reason` 文案或 token 消费顺序。
+- adapter candidate warning 测试只要求 `id: "adapter_candidate_failure"`、`effect: "candidate_skipped"`、非空 `reason`，以及 `details.adapter_id`、`details.stage`、`details.code` 和可选 `details.preselected`。
 - 输出层测试覆盖 warning 承载边界：阅读层承载 warning，协议形 stdout 不扩展 schema。
 - protocol 响应 envelope 包含 operation；成功响应的 operation 与 result 类型必须由 schema 绑定。
 - outline readable 结果只包含 entries 与 page；每条 entry 包含 ref 和 display。
@@ -81,6 +83,18 @@ pnpm run verify:docnav-workspace
 | MCP structuredContent | 通过 operation readable schema、不含 envelope，用于工具展示和客户端消费；warning 行为按 CLI owner 规则验收 |
 
 request/response fixture 或集成测试必须验证请求 operation 与响应 operation 一致；无法解析 operation 的失败响应使用 `operation: null`。
+
+## 命令族验收矩阵
+
+| 命令族 | 最低测试覆盖 | 本 change 验收 |
+| --- | --- | --- |
+| Core document operations：`docnav outline/read/find/info` | `clap`/builder help；成功 readable/protocol 输出；unknown、extra、unused known 和 unused known 非法值成功；当前 operation 使用参数非法失败；protocol-json warning 仅 stderr | 是 |
+| Core non-document commands：`config/init/doctor/version` | 类型化命令成功和关键失败；`config get/set/unset/list` 代表性 stdout/stderr；`init` 幂等；`doctor` exit code；`version` 输出；不进入 adapter routing 或文档 invoke | 代表性验收 |
+| Core adapter management：`docnav adapter list/install/update/remove` | 由 `implement-docnav-adapter-management` change 验收；本矩阵只审计 owner 和非验收状态 | 否 |
+| Adapter direct document operations：`docnav-markdown outline/read/find/info` | root/subcommand help；direct CLI 成功；unknown before/after path、extra positional、unused known/native 和 unused known 非法值成功；实际使用参数非法失败；readable warning envelope；protocol-json warning 仅 stderr | 是 |
+| Adapter direct machine commands：`manifest/probe/invoke` | manifest/probe schema stdout；manifest/probe warning 仅 stderr；valid invoke protocol envelope；malformed/unknown field/type error invoke 返回 structured protocol failure | 是 |
+| Help commands | root help 和子命令 help 暴露命令、关键参数、默认值或可选值；不读取文档、不选择 adapter、不启动 invoke | 是 |
+| MCP bridge | tool call 映射为核心 `docnav` CLI；TextContent/structuredContent 不含 protocol envelope；structuredContent warning 通过 readable schema | ownership 和 schema 验收 |
 
 ## 每个 Capability 的最低要求
 

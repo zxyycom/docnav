@@ -1,12 +1,5 @@
 use serde::Serialize;
 
-// Warning kind 是 readable/MCP warning schema 的稳定取值。
-mod warning_kinds {
-    pub(super) const EXTRA_POSITIONAL: &str = "extra_positional";
-    pub(super) const UNKNOWN_FLAG: &str = "unknown_flag";
-    pub(super) const UNUSED_OPERATION_FLAG: &str = "unused_operation_flag";
-}
-
 // Warning reason 是用户可见诊断文本，集中后避免 parser/output 测试漂移。
 mod warning_reasons {
     pub(super) const EXTRA_POSITIONAL_IGNORED: &str = "extra positional argument ignored";
@@ -19,57 +12,76 @@ mod warning_reasons {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub(super) struct DirectCliWarning {
-    pub(super) ignored_tokens: Vec<String>,
-    pub(super) kind: DirectCliWarningKind,
+    pub(super) id: DirectCliWarningId,
     pub(super) reason: String,
+    pub(super) effect: DirectCliWarningEffect,
+    pub(super) details: DirectCliWarningDetails,
 }
 
 impl DirectCliWarning {
     pub(super) fn unknown_flag(token: &str) -> Self {
-        Self {
-            ignored_tokens: vec![token.to_owned()],
-            kind: DirectCliWarningKind::UnknownFlag,
-            reason: warning_reasons::UNKNOWN_FLAG_IGNORED.to_owned(),
-        }
+        Self::cli_argv_ignored(
+            vec![token.to_owned()],
+            warning_reasons::UNKNOWN_FLAG_IGNORED,
+        )
     }
 
     pub(super) fn extra_positional(token: &str) -> Self {
-        Self {
-            ignored_tokens: vec![token.to_owned()],
-            kind: DirectCliWarningKind::ExtraPositional,
-            reason: warning_reasons::EXTRA_POSITIONAL_IGNORED.to_owned(),
-        }
+        Self::cli_argv_ignored(
+            vec![token.to_owned()],
+            warning_reasons::EXTRA_POSITIONAL_IGNORED,
+        )
     }
 
     pub(super) fn unused_operation_flag(flag: &str, value: Option<&str>, command: &str) -> Self {
-        let mut ignored_tokens = vec![flag.to_owned()];
+        let mut tokens = vec![flag.to_owned()];
         if let Some(value) = value {
-            ignored_tokens.push(value.to_owned());
+            tokens.push(value.to_owned());
         }
+        Self::cli_argv_ignored(tokens, warning_reasons::unused_operation_flag(command))
+    }
+
+    fn cli_argv_ignored(tokens: Vec<String>, reason: impl Into<String>) -> Self {
         Self {
-            ignored_tokens,
-            kind: DirectCliWarningKind::UnusedOperationFlag,
-            reason: warning_reasons::unused_operation_flag(command),
+            id: DirectCliWarningId::CliArgvIgnored,
+            reason: reason.into(),
+            effect: DirectCliWarningEffect::OperationContinued,
+            details: DirectCliWarningDetails { tokens },
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(super) enum DirectCliWarningKind {
-    UnknownFlag,
-    ExtraPositional,
-    UnusedOperationFlag,
+pub(super) enum DirectCliWarningId {
+    CliArgvIgnored,
 }
 
-impl DirectCliWarningKind {
+impl DirectCliWarningId {
     pub(super) const fn as_str(self) -> &'static str {
         match self {
-            Self::UnknownFlag => warning_kinds::UNKNOWN_FLAG,
-            Self::ExtraPositional => warning_kinds::EXTRA_POSITIONAL,
-            Self::UnusedOperationFlag => warning_kinds::UNUSED_OPERATION_FLAG,
+            Self::CliArgvIgnored => "cli_argv_ignored",
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum DirectCliWarningEffect {
+    OperationContinued,
+}
+
+impl DirectCliWarningEffect {
+    pub(super) const fn as_str(self) -> &'static str {
+        match self {
+            Self::OperationContinued => "operation_continued",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub(super) struct DirectCliWarningDetails {
+    pub(super) tokens: Vec<String>,
 }
 
 #[cfg(test)]
@@ -77,15 +89,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn warning_kind_strings_match_serialized_names() {
-        assert_eq!(DirectCliWarningKind::UnknownFlag.as_str(), "unknown_flag");
+    fn warning_id_strings_match_serialized_names() {
         assert_eq!(
-            DirectCliWarningKind::ExtraPositional.as_str(),
-            "extra_positional"
-        );
-        assert_eq!(
-            DirectCliWarningKind::UnusedOperationFlag.as_str(),
-            "unused_operation_flag"
+            DirectCliWarningId::CliArgvIgnored.as_str(),
+            "cli_argv_ignored"
         );
     }
 
@@ -94,9 +101,12 @@ mod tests {
         assert_eq!(
             DirectCliWarning::unknown_flag("--future"),
             DirectCliWarning {
-                ignored_tokens: vec!["--future".to_owned()],
-                kind: DirectCliWarningKind::UnknownFlag,
+                id: DirectCliWarningId::CliArgvIgnored,
                 reason: "unknown CLI flag ignored".to_owned(),
+                effect: DirectCliWarningEffect::OperationContinued,
+                details: DirectCliWarningDetails {
+                    tokens: vec!["--future".to_owned()],
+                },
             }
         );
         assert_eq!(
@@ -106,9 +116,12 @@ mod tests {
         assert_eq!(
             DirectCliWarning::unused_operation_flag("--max-heading-level", Some("3"), "read"),
             DirectCliWarning {
-                ignored_tokens: vec!["--max-heading-level".to_owned(), "3".to_owned()],
-                kind: DirectCliWarningKind::UnusedOperationFlag,
+                id: DirectCliWarningId::CliArgvIgnored,
                 reason: "flag is not used by read command".to_owned(),
+                effect: DirectCliWarningEffect::OperationContinued,
+                details: DirectCliWarningDetails {
+                    tokens: vec!["--max-heading-level".to_owned(), "3".to_owned()],
+                },
             }
         );
     }

@@ -16,13 +16,13 @@ manifest
 probe
 ```
 
-普通 CLI、readable JSON 和 invoke 复用业务逻辑，但不复用输出包装或展示形态。默认文本和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
+普通 CLI、readable JSON 和 schema-valid `invoke` request 在传输层解析成功后进入 canonical document operation input 或等价 semantic request，并复用业务逻辑；它们不复用输出包装或展示形态。默认文本和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
 文档操作的直接 CLI 支持默认文本、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
-适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、`<path>`、`--page`、`--limit-chars`、`--ref`、`--query`、`--output` 解析、protocol request 构造、输出分流和稳定错误映射。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和文本展示。
+适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、`<path>`、`--page`、`--limit-chars`、`--ref`、`--query`、`--output` 解析、protocol request 构造、输出分流和稳定错误映射。SDK 直接 CLI 使用 `clap` 或 `clap` builder API 承载命令、固定参数、默认值、枚举和 help；SDK 在确定 operation 后只校验当前 operation 实际使用的参数。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和文本展示。
 
 适配器直接 CLI argv 必须复用 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
 
-`manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在 CLI warning 时按直接 CLI 规则写 stderr。
+`manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在 CLI warning 时按直接 CLI 规则写 stderr。`--help` 和子命令 help 只输出可纠错参数说明，不执行文档导航业务。
 
 ## 适配器职责
 
@@ -75,7 +75,7 @@ reasons[]
 
 `invoke` 不读取适配器直接 CLI 配置，也不选择隐式默认参数。请求必须已包含调用方最终解析的有限参数。
 
-直接 CLI 兼容参数规则不适用于 `invoke` stdin JSON。`invoke` 必须按 protocol request schema 严格校验请求，未知字段、缺少必需字段或参数类型错误不得被 warning 后忽略。
+直接 CLI 兼容参数规则不适用于 `invoke` stdin JSON。`invoke` 必须在进入 canonical document operation input 或等价 semantic request 前按 protocol request schema 严格校验请求；malformed JSON、未知字段、缺少必需字段或参数类型错误不得被 warning 后忽略。schema-valid `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
 
 适配器必须：
 

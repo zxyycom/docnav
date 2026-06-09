@@ -18,7 +18,6 @@ import {
   expectProtocolSuccess,
   expectStderrIncludes,
   expectStderrEmpty,
-  expectStructuredWarning,
   parseJson
 } from "../assertions.mjs";
 import { validateSchema } from "../schemas.mjs";
@@ -172,24 +171,13 @@ function testPreselectedContractMismatchContinues() {
   ], { project });
   const json = expectReadableOutline(record);
   expect(record, json.entries[0].display.includes(selected.id), "adapter after invalid preselection is selected");
-  expectStructuredWarning(
-    record,
-    json.warnings?.[0],
-    ["--adapter", invalid.id],
-    "adapter_candidate_failure",
-    json.warnings?.[0]?.reason
-  );
   expect(record, json.warnings[0].reason.includes("preselected adapter was not used"), "warning explains preselected failure");
   expectCandidateWarning(record, json.warnings?.[0], {
     adapter_id: invalid.id,
     stage: "resolve",
-    code: "MANIFEST_INVALID"
+    code: "MANIFEST_INVALID",
+    preselected: true
   });
-  expect(
-    record,
-    JSON.stringify(json.warnings[0].ignored_tokens) === JSON.stringify(["--adapter", invalid.id]),
-    "explicit candidate warning keeps ignored adapter token"
-  );
 }
 
 function testCandidateEvidenceOnAllFailure() {
@@ -256,10 +244,11 @@ function testProtocolJsonCandidateWarningUsesStderr() {
     "protocol-json"
   ], { project });
   expectExit(record, 0);
-  expectStderrIncludes(record, "kind=adapter_candidate_failure");
-  expectStderrIncludes(record, `adapter_id=${invalid.id}`);
-  expectStderrIncludes(record, "stage=resolve");
-  expectStderrIncludes(record, "code=MANIFEST_INVALID");
+  expectStderrIncludes(record, "id=adapter_candidate_failure");
+  expectStderrIncludes(record, "effect=candidate_skipped");
+  expectStderrIncludes(record, `"adapter_id":"${invalid.id}"`);
+  expectStderrIncludes(record, "\"stage\":\"resolve\"");
+  expectStderrIncludes(record, "\"code\":\"MANIFEST_INVALID\"");
   const json = parseJson(record);
   validateSchema(record, "protocolResponse", json);
   expectProtocolSuccess(record, json, "outline");

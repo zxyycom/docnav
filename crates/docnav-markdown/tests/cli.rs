@@ -137,6 +137,25 @@ fn direct_cli_supports_text_readable_json_and_protocol_json() {
 }
 
 #[test]
+fn direct_cli_help_does_not_execute_navigation() {
+    let root = run(&["--help"]);
+    assert!(root.status.success());
+    assert!(root.stderr.is_empty());
+    let root_stdout = String::from_utf8(root.stdout).expect("root help stdout");
+    assert!(root_stdout.contains("Usage:"));
+    assert!(root_stdout.contains("docnav-markdown"));
+    assert!(root_stdout.contains("outline"));
+
+    let outline = run(&["outline", "--help"]);
+    assert!(outline.status.success());
+    assert!(outline.stderr.is_empty());
+    let outline_stdout = String::from_utf8(outline.stdout).expect("outline help stdout");
+    assert!(outline_stdout.contains("--max-heading-level"));
+    assert!(outline_stdout.contains("--output"));
+    assert!(!outline_stdout.contains("page:"));
+}
+
+#[test]
 fn direct_cli_and_invoke_share_find_execution_result() {
     let path = write_doc(
         "shared-find.md",

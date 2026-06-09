@@ -49,20 +49,21 @@ pub enum CliCommand {
     Init,
     Doctor,
     Version,
+    Help(String),
 }
 
 impl CliCommand {
     pub const fn operation(&self) -> Option<Operation> {
         match self {
             Self::Document(command) => Some(command.operation),
-            Self::Config(_) | Self::Init | Self::Doctor | Self::Version => None,
+            Self::Config(_) | Self::Init | Self::Doctor | Self::Version | Self::Help(_) => None,
         }
     }
 
     pub const fn output_mode(&self) -> Option<OutputMode> {
         match self {
             Self::Document(command) => command.output,
-            Self::Config(_) | Self::Init | Self::Doctor | Self::Version => None,
+            Self::Config(_) | Self::Init | Self::Doctor | Self::Version | Self::Help(_) => None,
         }
     }
 }

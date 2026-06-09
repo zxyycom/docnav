@@ -92,5 +92,6 @@ fn execute<T: DocnavRuntime>(
             "docnav {}",
             env!("CARGO_PKG_VERSION")
         ))),
+        CliCommand::Help(text) => Ok(output::CommandOutcome::text(text)),
     }
 }

@@ -9,6 +9,7 @@ name = "docnav"
 path = "src/main.rs"
 
 [dependencies]
+clap.workspace = true
 docnav-protocol.workspace = true
 serde.workspace = true
 serde_json.workspace = true

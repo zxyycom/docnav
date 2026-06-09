@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
 
+use clap::{Arg, Command};
 use docnav_protocol::{
     Document, FindArguments, InfoArguments, Operation, OperationArguments, OutlineArguments,
     ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
@@ -17,6 +18,7 @@ use super::warnings::DirectCliWarning;
 use crate::{emit_diagnostic, execute_operation, invoke_once, run_command, Adapter, SdkCommand};
 
 pub struct DirectCliConfig<'a, T> {
+    pub program_name: &'static str,
     pub usage: &'a str,
     pub request_id: &'a str,
     pub default_limit_chars: u32,
@@ -41,9 +43,16 @@ where
     T: DirectTextFormatter,
 {
     let args: Vec<String> = args.into_iter().collect();
+    if let Some(help) = help_text(&args, config.program_name, config.native_options) {
+        return write_help(&help, &mut stdout, &mut stderr);
+    }
+
     let Some(command) = args.first().map(String::as_str) else {
         return usage(&mut stderr, config.usage);
     };
+    if !is_known_command(command, config.program_name, config.native_options) {
+        return usage(&mut stderr, config.usage);
+    }
 
     match command {
         "manifest" => match parse_protocol_only_options(&args[1..], config.native_options) {
@@ -110,8 +119,169 @@ where
             &mut stdout,
             &mut stderr,
         ),
-        _ => usage(&mut stderr, config.usage),
+        _ => unreachable!("known direct CLI commands are handled above"),
     }
+}
+
+fn help_text(
+    args: &[String],
+    program_name: &'static str,
+    native_options: &[NativeOptionSpec],
+) -> Option<String> {
+    if !args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        return None;
+    }
+    let mut root = direct_cli_command(program_name, native_options);
+    let Some(first) = args.first().map(String::as_str) else {
+        return Some(root.render_long_help().to_string());
+    };
+    if first == "--help" || first == "-h" {
+        return Some(root.render_long_help().to_string());
+    }
+    root.find_subcommand_mut(first)
+        .map(|command| command.render_long_help().to_string())
+        .or_else(|| Some(root.render_long_help().to_string()))
+}
+
+fn is_known_command(
+    command: &str,
+    program_name: &'static str,
+    native_options: &[NativeOptionSpec],
+) -> bool {
+    direct_cli_command(program_name, native_options)
+        .find_subcommand(command)
+        .is_some()
+}
+
+fn direct_cli_command(program_name: &'static str, native_options: &[NativeOptionSpec]) -> Command {
+    Command::new(program_name)
+        .about("Docnav adapter direct CLI")
+        .disable_help_subcommand(true)
+        .subcommand(
+            Command::new("manifest")
+                .about("Emit adapter manifest")
+                .arg(output_arg("protocol-json")),
+        )
+        .subcommand(
+            Command::new("probe")
+                .about("Probe document format support")
+                .arg(path_arg())
+                .arg(output_arg("protocol-json")),
+        )
+        .subcommand(Command::new("invoke").about("Read one protocol request from stdin"))
+        .subcommand(operation_command(
+            Operation::Outline,
+            "outline",
+            "Return compact document outline entries",
+            native_options,
+        ))
+        .subcommand(operation_command(
+            Operation::Read,
+            "read",
+            "Read a document region by adapter ref",
+            native_options,
+        ))
+        .subcommand(operation_command(
+            Operation::Find,
+            "find",
+            "Find matching document regions",
+            native_options,
+        ))
+        .subcommand(operation_command(
+            Operation::Info,
+            "info",
+            "Return adapter document summary",
+            native_options,
+        ))
+}
+
+fn operation_command(
+    operation: Operation,
+    name: &'static str,
+    about: &'static str,
+    native_options: &[NativeOptionSpec],
+) -> Command {
+    let mut command = Command::new(name)
+        .about(about)
+        .arg(path_arg())
+        .arg(output_arg("text|readable-json|protocol-json"));
+
+    if operation != Operation::Info {
+        command = command.arg(page_arg()).arg(limit_chars_arg());
+    }
+    if operation == Operation::Read {
+        command = command.arg(ref_arg());
+    }
+    if operation == Operation::Find {
+        command = command.arg(query_arg());
+    }
+    for spec in native_options
+        .iter()
+        .filter(|spec| spec.supports(operation))
+    {
+        command = command.arg(
+            Arg::new(spec.option_key)
+                .long(strip_long_prefix(spec.flag))
+                .value_name(native_value_name(spec))
+                .num_args(1)
+                .allow_hyphen_values(true),
+        );
+    }
+    command
+}
+
+fn path_arg() -> Arg {
+    Arg::new("path").value_name("path")
+}
+
+fn page_arg() -> Arg {
+    Arg::new("page")
+        .long("page")
+        .value_name("positive integer")
+        .num_args(1)
+        .allow_hyphen_values(true)
+}
+
+fn limit_chars_arg() -> Arg {
+    Arg::new("limit_chars")
+        .long("limit-chars")
+        .value_name("positive integer")
+        .num_args(1)
+        .allow_hyphen_values(true)
+}
+
+fn output_arg(value_name: &'static str) -> Arg {
+    Arg::new("output")
+        .long("output")
+        .value_name(value_name)
+        .num_args(1)
+        .allow_hyphen_values(true)
+}
+
+fn ref_arg() -> Arg {
+    Arg::new("ref")
+        .long("ref")
+        .value_name("ref")
+        .num_args(1)
+        .allow_hyphen_values(true)
+}
+
+fn query_arg() -> Arg {
+    Arg::new("query")
+        .long("query")
+        .value_name("text")
+        .num_args(1)
+        .allow_hyphen_values(true)
+}
+
+fn native_value_name(spec: &NativeOptionSpec) -> &'static str {
+    match spec.value {
+        super::native_options::NativeOptionValueSpec::IntegerRange { .. } => "integer",
+    }
+}
+
+fn strip_long_prefix(flag: &'static str) -> &'static str {
+    flag.strip_prefix("--").unwrap_or(flag)
 }
 
 fn run_operation<A, W, E, T>(
@@ -254,6 +424,16 @@ where
 
 fn usage<E: Write>(stderr: &mut E, message: &str) -> i32 {
     input_error(stderr, message)
+}
+
+fn write_help<W: Write, E: Write>(help: &str, stdout: &mut W, stderr: &mut E) -> i32 {
+    match writeln!(stdout, "{help}") {
+        Ok(()) => crate::AdapterExitCode::Success.code(),
+        Err(error) => {
+            let _ = emit_diagnostic(stderr, &format!("failed to write help output: {error}"));
+            crate::AdapterExitCode::IoError.code()
+        }
+    }
 }
 
 fn input_error<E: Write>(stderr: &mut E, message: &str) -> i32 {

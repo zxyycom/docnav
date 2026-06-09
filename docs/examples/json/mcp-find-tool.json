@@ -73,75 +73,118 @@
         "items": {
           "type": "object",
           "required": [
-            "ignored_tokens",
-            "kind",
-            "reason"
+            "id",
+            "reason",
+            "effect",
+            "details"
           ],
           "properties": {
-            "ignored_tokens": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "kind": {
-              "type": "string",
-              "minLength": 1
+            "id": {
+              "enum": [
+                "cli_argv_ignored",
+                "adapter_candidate_failure"
+              ]
             },
             "reason": {
               "type": "string",
               "minLength": 1
             },
-            "adapter_id": {
-              "type": "string",
-              "minLength": 1
-            },
-            "stage": {
+            "effect": {
               "enum": [
-                "resolve",
-                "probe"
+                "operation_continued",
+                "candidate_skipped",
+                "diagnostic_only"
               ]
             },
-            "code": {
-              "type": "string",
-              "minLength": 1
+            "details": {
+              "type": "object"
             }
           },
           "allOf": [
             {
               "if": {
                 "properties": {
-                  "kind": {
-                    "const": "adapter_candidate_failure"
+                  "id": {
+                    "const": "cli_argv_ignored"
                   }
                 },
                 "required": [
-                  "kind"
+                  "id"
                 ]
               },
               "then": {
                 "properties": {
-                  "adapter_id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "stage": {
+                  "effect": {
                     "enum": [
-                      "resolve",
-                      "probe"
+                      "operation_continued",
+                      "diagnostic_only"
                     ]
                   },
-                  "code": {
-                    "type": "string",
-                    "minLength": 1
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "tokens"
+                    ],
+                    "properties": {
+                      "tokens": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "id": {
+                    "const": "adapter_candidate_failure"
                   }
                 },
                 "required": [
-                  "adapter_id",
-                  "stage",
-                  "code"
+                  "id"
                 ]
+              },
+              "then": {
+                "properties": {
+                  "effect": {
+                    "const": "candidate_skipped"
+                  },
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "adapter_id",
+                      "stage",
+                      "code"
+                    ],
+                    "properties": {
+                      "adapter_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "stage": {
+                        "enum": [
+                          "resolve",
+                          "probe"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "preselected": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
               }
             }
           ],

@@ -329,7 +329,7 @@ fn push_unused_warning(
 
 #[cfg(test)]
 mod tests {
-    use super::super::warnings::DirectCliWarningKind;
+    use super::super::warnings::{DirectCliWarningEffect, DirectCliWarningId};
     use super::super::NativeOptionValueSpec;
     use super::*;
 
@@ -371,8 +371,12 @@ mod tests {
 
         assert_eq!(options.path, "doc.md");
         assert_eq!(options.warnings.len(), 1);
-        assert_eq!(options.warnings[0].ignored_tokens, ["--future=value"]);
-        assert_eq!(options.warnings[0].kind, DirectCliWarningKind::UnknownFlag);
+        assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
+        assert_eq!(
+            options.warnings[0].effect,
+            DirectCliWarningEffect::OperationContinued
+        );
+        assert_eq!(options.warnings[0].details.tokens, ["--future=value"]);
     }
 
     #[test]
@@ -387,8 +391,8 @@ mod tests {
 
         assert_eq!(options.output, DirectOutputMode::ProtocolJson);
         assert_eq!(options.warnings.len(), 1);
-        assert_eq!(options.warnings[0].ignored_tokens, ["--future"]);
-        assert_eq!(options.warnings[0].kind, DirectCliWarningKind::UnknownFlag);
+        assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
+        assert_eq!(options.warnings[0].details.tokens, ["--future"]);
     }
 
     #[test]
@@ -399,18 +403,15 @@ mod tests {
 
         assert_eq!(options.path, "doc.md");
         assert_eq!(options.warnings.len(), 1);
-        assert_eq!(options.warnings[0].ignored_tokens, ["extra"]);
-        assert_eq!(
-            options.warnings[0].kind,
-            DirectCliWarningKind::ExtraPositional
-        );
+        assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
+        assert_eq!(options.warnings[0].details.tokens, ["extra"]);
     }
 
     #[test]
     fn unused_known_value_flag_consumes_value_and_warns() {
         let options = parse_operation_options(
             Operation::Read,
-            &args(&["doc.md", "--ref", "L1:Guide", "--max-heading-level", "3"]),
+            &args(&["doc.md", "--ref", "L1:Guide", "--max-heading-level", "nope"]),
             6000,
             &[MAX_HEADING_LEVEL],
         )
@@ -419,13 +420,30 @@ mod tests {
         assert_eq!(options.ref_id.as_deref(), Some("L1:Guide"));
         assert_eq!(options.warnings.len(), 1);
         assert_eq!(
-            options.warnings[0].ignored_tokens,
-            ["--max-heading-level", "3"]
+            options.warnings[0].details.tokens,
+            ["--max-heading-level", "nope"]
         );
+        assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
+    }
+
+    #[test]
+    fn unused_core_value_flag_with_invalid_value_does_not_fail_info() {
+        let options = parse_operation_options(
+            Operation::Info,
+            &args(&["doc.md", "--limit-chars", "nope"]),
+            6000,
+            &[],
+        )
+        .expect("parse options");
+
+        assert_eq!(options.path, "doc.md");
+        assert_eq!(options.limit_chars.get(), 6000);
+        assert_eq!(options.warnings.len(), 1);
         assert_eq!(
-            options.warnings[0].kind,
-            DirectCliWarningKind::UnusedOperationFlag
+            options.warnings[0].details.tokens,
+            ["--limit-chars", "nope"]
         );
+        assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
     }
 
     #[test]
@@ -441,13 +459,10 @@ mod tests {
         assert_eq!(options.ref_id.as_deref(), Some("L1:Guide"));
         assert_eq!(options.warnings.len(), 1);
         assert_eq!(
-            options.warnings[0].ignored_tokens,
+            options.warnings[0].details.tokens,
             ["--query", "--future-value"]
         );
-        assert_eq!(
-            options.warnings[0].kind,
-            DirectCliWarningKind::UnusedOperationFlag
-        );
+        assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
     }
 
     #[test]
@@ -473,10 +488,10 @@ mod tests {
         .expect("parse protocol-only options");
 
         assert_eq!(warnings.len(), 2);
-        assert_eq!(warnings[0].ignored_tokens, ["--future"]);
-        assert_eq!(warnings[0].kind, DirectCliWarningKind::UnknownFlag);
-        assert_eq!(warnings[1].ignored_tokens, ["extra"]);
-        assert_eq!(warnings[1].kind, DirectCliWarningKind::ExtraPositional);
+        assert_eq!(warnings[0].id, DirectCliWarningId::CliArgvIgnored);
+        assert_eq!(warnings[0].details.tokens, ["--future"]);
+        assert_eq!(warnings[1].id, DirectCliWarningId::CliArgvIgnored);
+        assert_eq!(warnings[1].details.tokens, ["extra"]);
     }
 
     #[test]
@@ -489,7 +504,7 @@ mod tests {
 
         assert_eq!(parsed.path, "doc.md");
         assert_eq!(parsed.warnings.len(), 1);
-        assert_eq!(parsed.warnings[0].ignored_tokens, ["--future"]);
+        assert_eq!(parsed.warnings[0].details.tokens, ["--future"]);
     }
 
     fn args(values: &[&str]) -> Vec<String> {

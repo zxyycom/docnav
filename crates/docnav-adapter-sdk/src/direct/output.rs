@@ -10,8 +10,9 @@ use super::warnings::DirectCliWarning;
 
 // Warning 文本字段名来自 readable warning schema；仅用于 text/stderr 诊断展示。
 mod warning_text {
-    pub(super) const FIELD_IGNORED_TOKENS: &str = "ignored_tokens";
-    pub(super) const FIELD_KIND: &str = "kind";
+    pub(super) const FIELD_DETAILS: &str = "details";
+    pub(super) const FIELD_EFFECT: &str = "effect";
+    pub(super) const FIELD_ID: &str = "id";
     pub(super) const FIELD_REASON: &str = "reason";
     pub(super) const PREFIX: &str = "warning";
 }
@@ -219,18 +220,19 @@ pub(super) fn append_cli_warnings_to_stderr<W: Write>(
 
 fn write_cli_warnings<W: Write>(warnings: &[DirectCliWarning], writer: &mut W) -> io::Result<()> {
     for warning in warnings {
-        let ignored_tokens =
-            serde_json::to_string(&warning.ignored_tokens).map_err(io::Error::other)?;
+        let details = serde_json::to_string(&warning.details).map_err(io::Error::other)?;
         writeln!(
             writer,
-            "{}: {}={}, {}={}, {}={}",
+            "{}: {}={}, {}={}, {}={}, {}={}",
             warning_text::PREFIX,
-            warning_text::FIELD_IGNORED_TOKENS,
-            ignored_tokens,
-            warning_text::FIELD_KIND,
-            warning.kind.as_str(),
+            warning_text::FIELD_ID,
+            warning.id.as_str(),
+            warning_text::FIELD_EFFECT,
+            warning.effect.as_str(),
             warning_text::FIELD_REASON,
-            warning.reason
+            warning.reason.replace(['\r', '\n'], " "),
+            warning_text::FIELD_DETAILS,
+            details
         )?;
     }
     Ok(())

@@ -38,6 +38,7 @@ where
         stdout,
         stderr,
         DirectCliConfig {
+            program_name: "docnav-markdown",
             usage: USAGE,
             request_id: REQUEST_ID,
             default_limit_chars: DEFAULT_LIMIT_CHARS,

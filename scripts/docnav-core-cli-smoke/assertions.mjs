@@ -66,21 +66,24 @@ export function expectNoWarningsField(record, value, label) {
   expect(record, !Object.hasOwn(value, "warnings"), `${label} omits warnings`);
 }
 
-export function expectStructuredWarning(record, warning, ignoredTokens, kind, reason) {
-  expect(record, Boolean(warning), `structured warning exists for ${kind}`);
-  expect(
-    record,
-    JSON.stringify(warning.ignored_tokens) === JSON.stringify(ignoredTokens),
-    `${kind} ignored_tokens match`
-  );
-  expect(record, warning.kind === kind, `${kind} warning kind matches`);
-  expect(record, warning.reason === reason, `${kind} warning reason matches`);
+export function expectStructuredWarning(record, warning, expectedTokens, label = "CLI argv") {
+  expect(record, Boolean(warning), `structured warning exists for ${label}`);
+  expect(record, warning.id === "cli_argv_ignored", "CLI argv warning id matches");
+  expect(record, warning.effect === "operation_continued", "CLI argv warning effect matches");
+  expect(record, typeof warning.reason === "string" && warning.reason.length > 0, "CLI argv warning reason is nonempty");
+  expect(record, Array.isArray(warning.details?.tokens), "CLI argv warning details.tokens is an array");
+  for (const token of expectedTokens) {
+    expect(record, warning.details.tokens.includes(token), `CLI argv warning mentions ${token}`);
+  }
 }
 
-export function expectStderrWarning(record, ignoredTokens, kind, reason) {
-  expectStderrIncludes(record, `ignored_tokens=${JSON.stringify(ignoredTokens)}`);
-  expectStderrIncludes(record, `kind=${kind}`);
-  expectStderrIncludes(record, `reason=${reason}`);
+export function expectStderrWarning(record, expectedTokens) {
+  expectStderrIncludes(record, "id=cli_argv_ignored");
+  expectStderrIncludes(record, "effect=operation_continued");
+  expectStderrIncludes(record, "details=");
+  for (const token of expectedTokens) {
+    expectStderrIncludes(record, JSON.stringify(token));
+  }
 }
 
 export function expectOutlineResultsEquivalent(record, actual, expected, summary) {
@@ -146,13 +149,14 @@ export function expectCandidateEvidence(record, candidate, expected) {
 
 export function expectCandidateWarning(record, warning, expected) {
   expect(record, Boolean(warning), `candidate warning exists for ${expected.adapter_id}`);
-  for (const key of ["ignored_tokens", "kind", "reason", "adapter_id", "stage", "code"]) {
+  for (const key of ["id", "reason", "effect", "details"]) {
     expect(record, Object.hasOwn(warning, key), `candidate warning has ${key}`);
   }
-  expect(record, warning.kind === "adapter_candidate_failure", "candidate warning kind matches");
-  expect(record, Array.isArray(warning.ignored_tokens), "candidate warning ignored_tokens is an array");
+  expect(record, warning.id === "adapter_candidate_failure", "candidate warning id matches");
+  expect(record, warning.effect === "candidate_skipped", "candidate warning effect matches");
+  expect(record, typeof warning.reason === "string" && warning.reason.length > 0, "candidate warning reason is nonempty");
   for (const [key, value] of Object.entries(expected)) {
-    expect(record, warning[key] === value, `candidate warning ${key} is ${value}`);
+    expect(record, warning.details?.[key] === value, `candidate warning details.${key} is ${value}`);
   }
 }
 
