@@ -10,7 +10,7 @@ Smoke suite 必须覆盖：
 - Fixture corpus：normal Markdown、重复 heading、frontmatter、代码围栏伪 heading、深层 heading、无 heading、Unicode 内容、大分页内容、非 UTF-8 输入、UTF-8 BOM、CRLF 行尾、`.MD` 和 `.markdown`。
 - Operations 和入口：`outline -> ref -> read`、`find`、`info`、`probe`、`manifest`、有效 `invoke`、CLI help、direct CLI/invoke 共享语义归一和宽松 argv 成功路径。
 - 输出模式：`text`、`readable-json` 和 `protocol-json`。
-- Warning 行为：readable warning 使用稳定 envelope；CLI argv warning 使用 `kind: "cli_argv_ignored"`；测试不断言 exact ignored-token 分组、`reason` 文案或 token 消费顺序。
+- Warning 行为：readable warning 使用稳定 envelope；CLI argv warning 使用 `id: "cli_argv_ignored"`；测试不断言 exact token 分组、`reason` 文案或 token 消费顺序。
 
 #### Scenario: Node.js runner 使用构建产物
 - **WHEN** smoke 测试运行
@@ -53,9 +53,9 @@ Smoke suite 必须覆盖：
 - **OR** 执行 `docnav-markdown outline <path> --unknown --output protocol-json`
 - **AND** `<path>` 指向有效 Markdown fixture
 - **THEN** 命令成功返回所选输出模式的正常结果
-- **THEN** 输出可以包含 warning 或诊断
-- **THEN** CLI argv warning 使用 `kind: "cli_argv_ignored"`
-- **THEN** 测试不要求 exact ignored-token 分组、`reason` 文案或 token 消费顺序
+- **THEN** 输出包含 warning 或诊断
+- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
+- **THEN** 测试不要求 exact token 分组、`reason` 文案或 token 消费顺序
 
 #### Scenario: fixture corpus 覆盖 Markdown 边界
 - **WHEN** smoke corpus 被执行
@@ -94,11 +94,11 @@ Smoke suite 必须覆盖：
 矩阵必须覆盖：
 
 - 必需语义：缺 path、缺 `--ref`、缺 `--query`。
-- 宽松 argv：unknown flag、多余 positional、当前 operation 不使用的参数。
+- 宽松 argv：unknown flag、多余 positional、当前 operation 不使用的参数，包括值非法但未被当前 operation 使用的 known 参数。
 - 实际使用参数失败：`page` 或 `limit_chars` 为 0、`page` 或 `limit_chars` 非数字、`output` 非法、`max_heading_level` 越界。
 - 业务和输入错误：missing file、invalid ref、non-UTF-8 document。
 - Invoke 传输错误：malformed invoke JSON、缺少必需字段或参数类型错误等 schema-valid JSON shape 错误。
-- Warning 断言：稳定 warning envelope 和输出通道边界；不断言 exact ignored-token 分组、`reason` 文案或 token 消费顺序。
+- Warning 断言：稳定 warning envelope 和输出通道边界；不断言 exact token 分组、`reason` 文案或 token 消费顺序。
 
 #### Scenario: 参数校验失败保持 CLI 诊断
 - **WHEN** 负向矩阵执行缺 path、缺 `--ref`、缺 `--query`、非法 page、非法 limit、非法 output 或非法 max heading level
@@ -108,18 +108,19 @@ Smoke suite 必须覆盖：
 
 #### Scenario: unknown argv 不阻断成功路径
 - **WHEN** CLI 矩阵执行 unknown flag、多余 positional 或当前 operation 不使用的参数
+- **OR** 执行当前 operation 不使用、且值无法通过其它 operation 类型或范围校验的 known 参数
 - **AND** 当前 operation 的必需语义参数仍可被解析
 - **THEN** 进程成功退出
 - **THEN** stdout 包含所选输出模式的正常结果
-- **THEN** warning 或诊断可以存在
-- **THEN** CLI argv warning 使用 `kind: "cli_argv_ignored"`
-- **THEN** 测试不要求 exact ignored-token 分组、`reason` 文案或 token 消费顺序
+- **THEN** warning 或诊断必须存在
+- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
+- **THEN** 测试不要求 exact token 分组、`reason` 文案或 token 消费顺序
 
 #### Scenario: readable-json warning envelope 保留
 - **WHEN** CLI 矩阵以 `--output readable-json` 执行宽松 argv 成功路径
-- **AND** 输出包含 `warnings`
-- **THEN** 每个 warning item 包含稳定 `kind`、非空 `reason`、`ignored_tokens` 数组和可选 family-specific 字段
-- **THEN** CLI argv warning 使用 `kind: "cli_argv_ignored"`
+- **THEN** stdout 包含顶层 `warnings` 数组
+- **THEN** 每个 warning item 包含稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象
+- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
 - **THEN** stdout 通过对应 readable schema
 
 #### Scenario: protocol-shaped stdout 不承载 warning
