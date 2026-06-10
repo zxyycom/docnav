@@ -33,6 +33,7 @@ metadata:
 这些命令按创建进度选择，不是每次全量执行：
 
 1. 必跑命令：
+   - `openspec list --json`：先读取当前 active changes，避免重复创建或忽略正在进行的 change。
    - `openspec new change "<name>" --description "<one-line goal>" --schema "<schema>"`：创建 change。使用默认 schema 时可以省略 `--schema`。
    - `openspec status --change "<name>" --json`：读取 `applyRequires`、artifact 状态和依赖。
    - `openspec instructions <artifact-id> --change "<name>" --json`：为当前可生成 artifact 获取 `template`、`instruction`、`outputPath`、`dependencies`、`context` 和 `rules`。
@@ -49,6 +50,13 @@ metadata:
 ## 工作流程
 
 1. 确定 change 名称、schema 和目标
+   - 先运行：
+
+     ```text
+     openspec list --json
+     ```
+
+   - 用 active change 列表检查名称冲突和相关在途工作。
    - 从用户输入识别现成的 kebab-case 名称，或从需求描述派生名称。
    - 将用户需求压缩成一句目标说明，作为后续 artifact 写作的主线。
    - 如果同名 change 已存在，先确认用户要继续该 change，还是改用新名称；得到选择后再继续。

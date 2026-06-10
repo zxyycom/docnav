@@ -23,7 +23,7 @@ Stop and report if:
 - <conditions that require a new slice or user decision>
 ```
 
-把 "done" 定义成可验证结果，例如 "adapter `outline --output protocol-json` includes the expected ref"。
+把 "done" 定义成可验证结果，例如 "machine-readable output includes the expected identifier"。
 
 ## Handoff Fields
 
@@ -31,8 +31,8 @@ Stop and report if:
 
 - **Goal**：当前 slice 的唯一结果。
 - **Changed files**：实际编辑文件。
-- **Evidence**：通过的 tests、CLI replay、schema checks 或 screenshots。
-- **Contracts touched**：protocol、schema、raw/readable output、adapter contract、MCP mapping。
+- **Evidence**：通过的 tests、CLI/API replay、schema checks 或 screenshots。
+- **Contracts touched**：machine/readable output、schema、CLI/API surface、subprocess/bridge mapping。
 - **Known limits**：本 slice 有意没覆盖的路径。
 - **Next slice**：最小后续动作。
 

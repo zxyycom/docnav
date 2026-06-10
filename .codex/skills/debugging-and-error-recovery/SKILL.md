@@ -1,6 +1,6 @@
 ---
 name: debugging-and-error-recovery
-description: "用系统化 root-cause debugging 处理 Docnav 和通用失败。用于 tests fail、builds break、behavior changes，或 adapter probe/invoke、Markdown outline/ref/read、schema/output-mode、MCP stdio JSON、Windows path、generated fixture、workspace verification issues 需要 disciplined triage 时。"
+description: "用系统化 root-cause debugging 处理失败。用于 tests fail、builds break、behavior changes、CLI/API regressions、schema/output-mode mismatches、bridge/stdio JSON、path handling、generated fixture 或 workspace verification issues。"
 ---
 
 # 调试与错误恢复
@@ -11,7 +11,7 @@ description: "用系统化 root-cause debugging 处理 Docnav 和通用失败。
 
 默认只读本文件。按问题类型加载一层 reference：
 
-1. 需要 Docnav focused commands、adapter replay、failure map 或验证矩阵时，读 [docnav-debug-playbook.md](references/docnav-debug-playbook.md)。
+1. 只有失败明确落在本仓库专项 contract、CLI/subprocess/bridge、schema/output 或 workspace verification 时，读 [docnav-debug-playbook.md](references/docnav-debug-playbook.md)。
 2. 需要按症状定位边界、设计 regression guard 或识别 red flags 时，读 [triage-cues.md](references/triage-cues.md)。
 
 ## Stop The Line
@@ -41,23 +41,21 @@ description: "用系统化 root-cause debugging 处理 Docnav 和通用失败。
 
 先把失败归属到一个边界：
 
-- **Core CLI `docnav`**：argument parsing、config、adapter discovery、process spawning、routing、default limits、output/error mapping。
-- **Adapter direct CLI `docnav-markdown.exe`**：`info`、`outline`、`read`、`find`、native args、output modes、adapter SDK wrapper。
-- **Adapter protocol**：manifest、`probe`、stdin `invoke`、request envelope、operation dispatch、warnings、structured errors。
-- **Markdown parsing/slicing**：ATX/Setext headings、code fences、escaped markers、blank lines、line ranges、section boundaries。
-- **Ref/read**：adapter-generated refs、ref parsing、selected region、child-section inclusion、body boundaries。
-- **Pagination**：`--page`、`--limit-chars`、continuation metadata、truncation、repeated content、multibyte boundaries。
-- **Protocol/schema/examples**：raw field names、versions、warnings、errors、generated fixtures、schema validation。
-- **CLI output modes**：human `text` formatting vs `readable-json` and `protocol-json` contract data。
-- **MCP bridge**：stdio framing、JSON serialization、tool arg/result mapping、child process errors。
-- **Windows paths**：drive letters、backslashes、spaces、quotes、cwd-relative paths、absolute normalization。
+- **Parser/domain logic**：input decoding、syntax edge cases、selection/slicing、matching, ordering and boundary conditions。
+- **CLI/API surface**：argument parsing、config/defaults、routing、process spawning、output/error mapping。
+- **Subprocess/bridge layer**：stdio framing、JSON serialization、tool arg/result mapping、child process errors。
+- **Identifier/read path**：generated identifiers、lookup/parsing、selected region、body boundaries。
+- **Pagination/limits**：page/limit arguments、continuation metadata、truncation、repeated content、multibyte boundaries。
+- **Schema/examples/generated fixtures**：field names、versions、warnings、errors、schema validation and generated material。
+- **Output modes**：human text formatting vs readable JSON vs machine JSON contract data。
+- **Platform paths**：drive letters、backslashes、spaces、quotes、cwd-relative paths、absolute normalization。
 
 ## Debugging Flow
 
 1. **Reproduce**：找到仍会失败的最小命令或 test，保留触发失败的关键属性。
-2. **Localize**：比较相邻层，例如 direct adapter vs core CLI、core CLI vs MCP、`text` vs JSON modes。
-3. **Isolate input**：缩小 Markdown、ref、page、limit、stdin JSON、path form 或 fixture，直到 bug 边界清楚。
-4. **Fix root cause**：在拥有缺陷的层修复；MCP 只映射 `docnav`，adapter 生成和解析自己的 refs，formatting 不掩盖 parser/slicer 缺陷。
+2. **Localize**：比较相邻层，例如 direct implementation vs CLI/API wrapper、core vs bridge、`text` vs JSON modes。
+3. **Isolate input**：缩小 source input、identifier、page、limit、stdin JSON、path form 或 fixture，直到 bug 边界清楚。
+4. **Fix root cause**：在拥有缺陷的层修复；bridge 只映射 owning implementation，formatting 不掩盖 parser/domain 缺陷。
 5. **Add guard**：guard 在修复前应失败，修复后应通过。
 6. **Verify regression**：运行原始复现、最窄 automated check，以及受影响 output modes。
 
@@ -65,29 +63,20 @@ description: "用系统化 root-cause debugging 处理 Docnav 和通用失败。
 
 选择离 bug 最近的 guard：
 
-- Parser/slicing bug：最小 Markdown document 的 unit/integration test。
+- Parser/slicing bug：最小 source document 的 unit/integration test。
 - CLI bug：精确 operation、arguments 和 output mode 的 CLI integration test。
-- Adapter `invoke` bug：保存并重放 stdin JSON envelope。
+- Subprocess/bridge bug：保存并重放 stdin JSON envelope 或 tool args/result。
 - Schema/fixture bug：schema validation 或 generator check 证明 source of truth。
-- MCP bug：tool mapping test 或 smoke scenario 对比 CLI 行为。
-- Windows path bug：保留原始 path form 和 shell quoting。
+- Bridge bug：tool mapping test 或 smoke scenario 对比 owning CLI/API 行为。
+- Platform path bug：保留原始 path form 和 shell quoting。
 
 更新 expectations 前，先证明 implementation、generator、schema contract 和 source document 已对齐。
 
 ## Verification
 
-按 touched boundary 运行：
+按 touched boundary 运行最小相关验证。只有当失败跨越公开契约、输出层、schema/example、bridge/subprocess 或 workspace gate 时，才扩大到仓库约定的 smoke/workspace verification。
 
-```bash
-cargo test -p docnav-markdown --test adapter -- exact_case_name
-cargo test -p docnav-markdown --test cli -- exact_case_name
-cargo test -p docnav -- exact_case_name
-pnpm run smoke:docnav-markdown
-pnpm run smoke:docnav-core
-pnpm run verify:docnav-workspace
-```
-
-Markdown navigation 回归要重放原始 `outline -> ref -> read` path，并按风险检查 `text`、`readable-json`、`protocol-json`。跨 Rust crates、CLI behavior、adapter contracts、schemas、examples、generated fixtures、docs、MCP mapping 或 smoke coverage 时，优先运行 `pnpm run verify:docnav-workspace`。
+对 navigation、selection 或 identifier 回归，要重放原始 user-visible path，并按风险检查 text、readable JSON 和 machine JSON。跨语言/runtime、CLI/API behavior、contract、schemas、examples、generated fixtures、docs、bridge mapping 或 smoke coverage 时，优先运行仓库约定的 workspace verification。
 
 ## 完成标准
 
@@ -95,4 +84,4 @@ Markdown navigation 回归要重放原始 `outline -> ref -> read` path，并按
 - 修复位置与 owning boundary 一致。
 - Regression guard 已添加或明确说明不可行原因。
 - 原始失败命令或 workflow 已通过。
-- 受影响 output modes、schema、generated fixtures、MCP contracts 或 workspace checks 已按范围验证。
+- 受影响 output modes、schema、generated fixtures、bridge contracts 或 workspace checks 已按范围验证。

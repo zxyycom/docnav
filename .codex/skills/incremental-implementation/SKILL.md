@@ -11,7 +11,7 @@ description: "以小步增量交付变更；适用于 multi-file change、vertic
 
 默认只读本文件。按任务需要加载一层 reference：
 
-1. 需要 slicing examples、feature flag、rollback 或 Docnav vertical slice 示例时，读 [slicing-patterns.md](references/slicing-patterns.md)。
+1. 需要 slicing examples、feature flag、rollback 或项目 vertical slice 示例时，读 [slicing-patterns.md](references/slicing-patterns.md)。
 2. 需要写 agent handoff、多人协作边界、red flags 或 scope note 时，读 [agent-collaboration.md](references/agent-collaboration.md)。
 
 ## 最小流程
@@ -28,7 +28,7 @@ description: "以小步增量交付变更；适用于 multi-file change、vertic
 每个 slice 开始前确认：
 
 - 目标能用一句话描述，并且只包含一个逻辑变化。
-- 结果可通过 test、CLI output、adapter response、MCP tool result 或 UI 行为观察。
+- 结果可通过 test、CLI/API output、tool result 或 UI 行为观察。
 - 未完成功能有 feature flag、safe default、compat path 或 additive rollout。
 - rollback 路径清楚：最好能独立 revert，或有 migration rollback / compatibility guard。
 - 相关验证命令明确，且成本与风险匹配。
@@ -47,43 +47,27 @@ description: "以小步增量交付变更；适用于 multi-file change、vertic
 - **Owned files**：本 slice 会编辑的文件或目录。
 - **Read-only context**：只读取以理解行为的文件。
 - **Out of scope**：观察到但本轮不处理的改进点。
-- **Shared contracts**：protocol、schema、CLI output、adapter contract、MCP mapping 等需要同步验证的边界。
+- **Shared contracts**：machine/readable output、schema/example、CLI/API surface、subprocess/bridge mapping 等需要同步验证的边界。
 
 当遇到不相关问题时，把它放入最终总结或 handoff note。只有它阻塞当前 slice 时，才把它升级为新的 slice。
 
-## Docnav 定制切片
+## 项目定制切片
 
-Docnav 变更优先按拥有边界切片：
+只有当本 slice 触碰项目公开契约或跨层行为时，才按拥有边界切片；普通文档、注释、局部 helper 或样式内聚改动不需要进入这些细节。
 
-- **Markdown adapter**：先证明 `info`、`outline`、`read`、`find` 或 `invoke` 的单个 behavior。
-- **Core CLI**：聚焦 format detection、adapter routing、default limits、output/error mapping。
-- **Protocol/schema/examples**：先改 canonical contract，再同步 fixture、example 和 validation。
-- **MCP bridge**：只映射到 `docnav` 行为，验证 stdio/JSON tool args 与 result wrapping。
-- **Windows path**：保留 drive letter、backslash、spaces、quotes 和 cwd-relative form 作为测试输入。
+- **Parser/domain layer**：先证明单个 observable behavior。
+- **CLI/API layer**：聚焦 routing、defaults、output/error mapping 和 user-visible behavior。
+- **Contract/schema/examples**：先改 owning contract，再同步 fixture、example 和 validation。
+- **Bridge/subprocess layer**：只映射 owning implementation，验证 stdio/JSON tool args 与 result wrapping。
+- **Platform path layer**：保留 drive letter、backslash、spaces、quotes 和 cwd-relative form 作为测试输入。
 
-跨 Rust、Node、schema、docs 或 generated fixtures 时，把每个边界做成独立 slice，并在集成 slice 里跑 workspace verification。
+跨语言/runtime、schema、docs 或 generated fixtures 时，把每个边界做成独立 slice，并在集成 slice 里跑仓库约定的 workspace verification。
 
 ## Verification
 
-按 touched boundary 选择最窄验证：
+按 touched boundary 选择最窄验证。普通局部 slice 用相关 unit/integration test；触碰 CLI/API、schema/example、bridge/subprocess、generated fixture 或跨层 contract 时，再扩展到 smoke 或 workspace verification。
 
-```bash
-cargo test -p docnav-markdown --test adapter -- exact_case_name
-cargo test -p docnav-markdown --test cli -- exact_case_name
-cargo test -p docnav -- exact_case_name
-pnpm run smoke:docnav-markdown
-pnpm run smoke:docnav-core
-pnpm run verify:docnav-workspace
-```
-
-Markdown navigation 行为要手动 replay 关键 path：
-
-```bash
-target/debug/docnav-markdown.exe outline path/to/file.md --output protocol-json
-target/debug/docnav-markdown.exe read path/to/file.md --ref "L1:Heading" --output protocol-json
-```
-
-涉及 raw/readable output 时，分别检查 `text`、`readable-json` 和 `protocol-json`；涉及 adapter `invoke` 时，保存并重放 stdin JSON envelope。
+Navigation 或 selection 行为要手动 replay 关键 user-visible path。涉及 machine/readable output 时，分别检查 text、readable JSON 和 machine JSON；涉及 stdin/tool envelope 时，保存并重放最小 JSON。
 
 ## 完成输出
 

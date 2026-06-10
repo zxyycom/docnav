@@ -27,7 +27,7 @@
 
 实现中检查：
 
-1. 使用项目已有 helper、adapter 和 style。
+1. 使用项目已有 helper、abstraction 和 style。
 2. 把 source-driven pattern 映射到本仓库边界，不复制 unrelated example architecture。
 3. 不因 docs 示例简化而省略项目需要的 error handling、typing 或 tests。
 4. 对无法直接验证的 glue code 标记假设并用测试覆盖。
@@ -52,4 +52,4 @@
 2. 所有关键 pattern 都能追溯到 official source。
 3. 代码、测试和文档没有引用互相冲突的版本假设。
 4. 用户能区分 verified、project-convention 和 unverified 部分。
-5. 若任务涉及 Docnav contract，已按 `docs/navigation.md` 读取并同步对应主规范、schema、examples 或 tests。
+5. 若任务涉及项目 contract，已按项目规则读取对应主规范，并同步必要的 schema、examples、fixtures 或 tests 作为验证材料。

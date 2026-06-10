@@ -34,15 +34,15 @@ description: 简化代码以提升 clarity/readability。Use when refactoring co
 
 详细原则见 [simplification-principles.md](references/simplification-principles.md)。
 
-## Docnav 约束
+## 项目边界
 
-在本仓库简化代码时，额外保持这些边界：
+在本仓库简化代码时，先按任务范围判断是否触碰公开契约或跨层边界。普通局部清理只需要遵循相邻代码和已有测试；只有触碰这些边界时，才读取对应主规范和 `docs/CODING_STYLE.md`：
 
-- 保持 CLI-first 导航契约：`outline -> ref -> read`。
-- `ref` 由 adapter 生成和解析，core、MCP 和其他接入层只原样传递。
-- raw protocol output 与 readable output 分层清晰，不为了复用而混合传输包装。
-- 修改 Rust、Node、MCP、CLI、schema、adapter 或输出模式前，先确认对应主规范和 `docs/CODING_STYLE.md`。
-- 跨 adapter 边界、协议 shape、`ref` 或 output mode 的“简化”默认高风险，必须有测试证明行为未变。
+- public CLI/API、machine/readable output、schema/example、subprocess/bridge boundary、routing、ref/identifier、pagination/continuation 或 error mapping。
+- 稳定字段、稳定错误、用户可见命令、跨 crate/package contract 或生成材料。
+- 任何“简化”会改变 owner boundary、transport wrapper、validation shape 或 compatibility promise 的位置。
+
+触碰上述边界时，把简化当作高风险 refactor：先确认 owning spec，再用测试或等价验证证明行为未变。
 
 ## 工作流
 
@@ -80,4 +80,4 @@ description: 简化代码以提升 clarity/readability。Use when refactoring co
 - formatter / linter 通过。
 - diff 只包含目标范围。
 - 错误处理、边界条件、副作用顺序未被削弱。
-- 对 Docnav 改动，按范围运行相关 CLI、adapter、schema、MCP 或 workspace 验证；跨层改动优先 `pnpm run verify:docnav-workspace`。
+- 触碰公开契约、输出层、schema/example、subprocess/bridge 或跨层边界时，按仓库规则运行对应验证；普通局部清理用最小相关测试即可。

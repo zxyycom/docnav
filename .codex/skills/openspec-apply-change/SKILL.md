@@ -27,6 +27,7 @@ metadata:
 这些命令按场景选择，不是每次全量执行：
 
 1. 必跑命令：
+   - `openspec list --json`：先读取 active changes，确认目标 change 存在并辅助处理未命名请求。
    - `openspec status --change "<name>" --json`：确认 schema、artifact 状态和完成度。
    - `openspec instructions apply --change "<name>" --json`：获取 `state`、`progress`、`tasks`、`contextFiles` 和本轮实施指令。
 2. 条件命令：
@@ -39,25 +40,26 @@ metadata:
 
 ## 流程
 
-1. 运行 `openspec status --change "<name>" --json`，确认 `schemaName`、artifact 状态和当前完成度。
-2. 运行 `openspec instructions apply --change "<name>" --json`，以其中的 `state`、`progress`、`tasks`、`contextFiles` 和 `instruction` 作为本轮实施入口。
-3. 按状态处理：
+1. 运行 `openspec list --json`，确认 active changes 并锁定目标 change。
+2. 运行 `openspec status --change "<name>" --json`，确认 `schemaName`、artifact 状态和当前完成度。
+3. 运行 `openspec instructions apply --change "<name>" --json`，以其中的 `state`、`progress`、`tasks`、`contextFiles` 和 `instruction` 作为本轮实施入口。
+4. 按状态处理：
    - `blocked`：说明缺失 artifact 或阻塞原因，并建议先补齐 change 材料。
    - `all_done`：说明任务已完成，并提示可进入归档。
    - 其他可执行状态：继续处理未完成任务。
-4. 运行 `openspec show "<name>" --type change --json --no-interactive`，用结构化 delta 理解 capability、operation 和 requirement 变化；只需要 delta 时加 `--deltas-only`。
-5. 对 CLI 未覆盖的 proposal、design、tasks 原文细节，按 `contextFiles` 精确读取对应文件。
-6. 逐项实施未完成任务：
+5. 运行 `openspec show "<name>" --type change --json --no-interactive`，用结构化 delta 理解 capability、operation 和 requirement 变化；只需要 delta 时加 `--deltas-only`。
+6. 对 CLI 未覆盖的 proposal、design、tasks 原文细节，按 `contextFiles` 精确读取对应文件。
+7. 逐项实施未完成任务：
    - 说明当前任务。
    - 做与任务直接相关的最小必要改动。
    - 完成后立刻在 tasks 文件中把对应 checkbox 标为完成。
    - 长任务分段推进时持续报告当前任务编号和进度。
-7. 运行与改动范围匹配的验证：
+8. 运行与改动范围匹配的验证：
    - OpenSpec change 自身先运行 change 验证。
    - 涉及主 specs 时运行 specs 验证。
    - 涉及代码时运行相应格式化、静态检查、单元或集成测试。
    - 跨协议、schema、示例、CLI、adapter 或 MCP 输出时优先运行仓库约定的 Docnav 工作区验证。
-8. 收尾时输出 change、schema、完成任务、总进度、验证结果、剩余项和阻塞点。
+9. 收尾时输出 change、schema、完成任务、总进度、验证结果、剩余项和阻塞点。
 
 ## 边界
 

@@ -25,7 +25,7 @@
 3. import 排序、模块系统、函数声明风格、命名约定。
 4. 错误处理、日志、类型标注深度和测试风格。
 
-破坏一致性的“简化”只是 churn。Docnav 中还要特别保护 CLI-first 分层、adapter-owned `ref`、raw/readable 输出边界，以及 Rust 和 JavaScript 既有模式。
+破坏一致性的“简化”只是 churn。项目中还要特别保护公开契约、owner boundary、输出分层、稳定 identifier，以及相邻语言和模块的既有模式。
 
 ## 清晰优先于聪明
 
