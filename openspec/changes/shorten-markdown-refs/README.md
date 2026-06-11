@@ -1,3 +1,3 @@
 # shorten-markdown-refs
 
-将 Markdown adapter 的 canonical ref 完全迁移为短标识，不保留旧长 ref 的读取兼容。
+将 Markdown heading ref 改为不包含标题内容的数字定位格式，并把 Markdown 私有导航行为集中到独立 adapter 文档。共享层继续将 ref 作为 opaque string 原样传递。

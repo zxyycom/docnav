@@ -1,34 +1,42 @@
-本 tasks 仅为 `shorten-markdown-refs` change 的未审核临时文档，核心目标是把 Markdown adapter 的 heading ref 完全迁移为短标识，并用阻塞级审计防止范围漂移。
+本任务清单在 change 审核通过后执行。
 
-本 change 只在 `openspec/changes/shorten-markdown-refs/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+## 1. 契约确认
 
-## 1. 阻塞级审计门禁
+- [ ] 1.1 确认 Markdown heading ref 为 `H:L{line}:H{level}:I{index}`，其中 `L`、第二个 `H` 和 `I` 分别标识 line、heading level 和全文 index；三个数字均使用不带前导零的十进制正整数。
+- [ ] 1.2 确认 `index` 基于全文有效 headings，并在可见性过滤前分配。
+- [ ] 1.3 确认 `doc:full` 仅由 Markdown adapter 定义，用于整篇文档读取。
+- [ ] 1.4 确认共享 ref 契约只包含 adapter 所有权和不透明值原样传递。
 
-- [ ] 1.1 阻塞级审计：在执行任何实现任务前，审计 proposal、design、tasks 和 delta spec 是否都围绕“Markdown adapter ref 完全迁移为短标识”这一核心句，没有引入 `--like`、fuzzy resolve、legacy alias 或 core/MCP 侧 ref 解析。
-- [ ] 1.2 阻塞级审计：确认当前 change 只包含 `openspec/changes/shorten-markdown-refs/` 下的未审核临时 artifacts，没有修改或影响现有主规范、docs、schema、examples、代码或其它 change；审计未完成前不得执行 2.x 及后续任何实现任务。
+## 2. Markdown 实现
 
-## 2. Markdown ref 生成与解析
+- [ ] 2.1 生成 `H:L{line}:H{level}:I{index}` heading ref。
+- [ ] 2.2 在 Markdown `read` 中解析 canonical 标记格式，并精确匹配 line、level 和 index；无匹配返回 `REF_NOT_FOUND`。
+- [ ] 2.3 让 outline 和 find 复用同一 heading ref 生成逻辑。
+- [ ] 2.4 保留 `doc:full` 的生成和读取行为。
+- [ ] 2.5 仅生成和接受新 heading ref；旧 `L{line}:{path}`、`L{line}#{ordinal}:{path}` 和显式 `L{line}#1:{path}` 返回稳定 ref 错误。
 
-- [ ] 2.1 实现 Markdown heading canonical ref 生成格式 `H{line}:{token}`，其中 token 由 canonical heading breadcrumb 和 occurrence ordinal 派生，并在当前文档内冲突时扩展到唯一。
-- [ ] 2.2 将全文 fallback ref 完全迁移为 `D`，并移除 `doc:full` 的生成和解析。
-- [ ] 2.3 更新 Markdown read 解析逻辑，只接受 `H{line}:{token}` 和 `D`，并对旧 `L{line}:{path}`、`L{line}#{ordinal}:{path}`、`L{line}#1:{path}` 和 `doc:full` 返回稳定 ref 错误。
-- [ ] 2.4 确认 `outline` 和 `find` 统一使用新短 ref，且 `find` 返回的 match ref 可被 `read` 原样消费。
+## 3. 文档与契约材料
 
-## 3. Contract Materials
-
-- [ ] 3.1 更新 `docs/refs.md`、`docs/cli.md`、`docs/protocol.md` 或 `docs/adapter-contract.md` 中涉及 Markdown 示例或 ref 迁移边界的内容，保持 core/MCP 仍只原样传递 ref。
-- [ ] 3.2 更新 docs schema/example/golden output 中所有旧 Markdown heading ref 和旧全文 ref 示例，明确该 change 是 breaking migration。
-- [ ] 3.3 全仓搜索旧 ref 示例模式，确认 `L{line}:{path}`、`L{line}#{ordinal}:{path}`、显式 `#1` 旧 ref 和 `doc:full` 不再作为有效 Markdown ref 出现在验收材料中。
+- [ ] 3.1 新增 `docs/adapters/markdown.md`，记录 Markdown 的 outline、read、find、ref、整篇文档读取行为、保证范围和验证入口。
+- [ ] 3.2 更新 `docs/navigation.md`，将 Markdown adapter 实现与审计任务指向该专页。
+- [ ] 3.3 将 `docs/refs.md` 收敛为共享所有权和传递边界，并链接到 adapter 专页。
+- [ ] 3.4 同步更新架构、adapter contract、测试策略、编码规范和 README 中的全局 ref 表述。
+- [ ] 3.5 更新 Markdown spec、示例、fixture 和 golden output；保留 Markdown 私有 `doc:full`。
+- [ ] 3.6 全仓检查旧 heading ref，仅在迁移说明和负向测试中保留旧格式。
+- [ ] 3.7 确认 protocol/readable schema 继续将 ref 校验为非空字符串，不加入 Markdown 私有字段。
 
 ## 4. Tests
 
-- [ ] 4.1 更新 Markdown adapter 单元测试，覆盖短 heading ref、重复 heading 唯一 token、全文 `D`、旧 heading ref 拒绝和旧全文 ref 拒绝。
-- [ ] 4.2 更新 Markdown CLI smoke 测试和 fixture/golden output，覆盖 `outline -> ref -> read`、`find -> ref -> read` 和无 heading fallback `D`。
-- [ ] 4.3 更新负向 CLI 矩阵，断言旧 `L...` heading ref、显式旧 `#1` ref 和 `doc:full` 返回稳定 ref 错误。
+- [ ] 4.1 覆盖 `L`、`H`、`I` 字段标识、canonical 数字表示和字段不匹配时的 `REF_NOT_FOUND`。
+- [ ] 4.2 覆盖不同 `max_heading_level` 下同一 heading 的 ref 一致性。
+- [ ] 4.3 覆盖重复 heading，并验证同一次解析结果中的 ref 唯一性。
+- [ ] 4.4 覆盖极长、深层和 Unicode heading，验证 ref 不包含标题、breadcrumb 或摘要。
+- [ ] 4.5 覆盖 `outline -> ref -> read`、`find -> ref -> read` 和 `doc:full -> read`。
+- [ ] 4.6 覆盖旧 heading ref 和非法数字格式的稳定错误。
 
 ## 5. Verification
 
-- [ ] 5.1 运行 Markdown adapter 相关 Rust 测试和 CLI smoke，确认短 ref 行为通过。
-- [ ] 5.2 运行 docs/schema/example 相关验证，确认旧 ref 示例没有残留导致校验失败。
-- [ ] 5.3 运行 `pnpm run verify:docnav-workspace`，并在无法运行时记录原因、失败范围和后续补救。
-- [ ] 5.4 用局部 diff 审查确认实现只覆盖本 change 目标范围，未引入 `--like` 或 legacy compatibility。
+- [ ] 5.1 运行 Markdown adapter Rust 测试和 CLI smoke。
+- [ ] 5.2 运行 docs、schema 和 example 验证。
+- [ ] 5.3 运行 `pnpm run verify:docnav-workspace`。
+- [ ] 5.4 检查局部 diff，确认改动限于 Markdown 私有行为和必要的共享文档收敛。

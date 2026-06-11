@@ -1,77 +1,92 @@
-本 design 仅为 `shorten-markdown-refs` change 的未审核临时文档，核心目标是定义 Markdown adapter 短 ref 的 breaking migration 方案。
-
-本 change 只在 `openspec/changes/shorten-markdown-refs/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 design 记录当前候选方案，仍需审核后才能进入实现。
 
 ## Context
 
-Docnav 的共享协议、`docnav` core 和 MCP 都把 ref 作为 opaque string 原样传递；Markdown ref 的生成、解析和兼容性由 `docnav-markdown` adapter 拥有。
-当前 Markdown heading ref 使用 `L{line}:{path}` / `L{line}#{ordinal}:{path}`，把完整 heading breadcrumb 放入命令行，导致深层文档或长标题场景中的 `--ref` 过长。
+ref 由格式 adapter 生成和消费；共享协议、`docnav` core 和 MCP 只负责原样传递。
 
-本 change 是 breaking migration：实现后调用方必须重新执行 `outline` 或 `find` 获取新 ref，旧长 ref 不再被 `read` 接受。
+当前 Markdown heading ref 使用 `L{line}:{path}` 或 `L{line}#{ordinal}:{path}`。完整标题路径（breadcrumb）使 ref 长度受标题文本控制。为 heading 内容生成摘要会额外引入算法、编码、规范化和碰撞语义，但不能提供绝对的内容身份保证。
+
+本方案改用 Markdown parser 已有的结构位置，不承担文档版本或内容身份校验。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 将 Markdown heading canonical ref 改为短、ASCII、命令行友好的 adapter 自有格式。
-- 保持同一文档内 heading ref 非空、唯一，并可被 `read` 原样消费。
-- 让 `outline`、`find` 和 `read` 使用同一套短 ref 生成与解析规则。
-- 更新相关文档、schema 示例、fixture、golden output 和测试，明确这是 breaking migration。
+- heading ref 不包含标题、breadcrumb 或其摘要。
+- 同一次解析结果中的 heading ref 非空、唯一，并可由 `read` 消费。
+- outline 和 find 对同一 heading 生成相同 ref。
+- Markdown 私有导航行为由独立 adapter 文档拥有。
 
 **Non-Goals:**
 
-- 不为旧 `L{line}:{path}` / `L{line}#{ordinal}:{path}` heading ref 提供读取兼容。
-- 不保留旧 `doc:full` 全文 fallback ref。
-- 不新增 `--like`、fuzzy resolve、自动 fallback 或 core/MCP 侧 ref 解析。
-- 不改变 protocol result 字段 shape、错误 code、分页模型或 adapter routing。
+- 文档版本、mtime、内容 hash 和过期 ref 检测。
+- 保持 heading ref 跨文档修改或 parser 版本稳定。
+- 在 core 或 MCP 中解析、转换或兼容 Markdown ref。
 
 ## Decisions
 
-1. Markdown heading ref 使用 `H{line}:{token}`。
+### 1. Heading ref 使用 `H:L{line}:H{level}:I{index}`
 
-   `H` 表示 Markdown heading ref，`line` 是 1-based heading 起始行号，`token` 是由 canonical heading breadcrumb 和 occurrence ordinal 派生的短 token。该格式比旧格式短，并且仍保留行号作为人类可读定位提示和解析校验输入。
+- 首个 `H`：标识 heading ref 类型。
+- `L{line}`：heading 的 1-based 起始行号。
+- `H{level}`：Markdown heading level，范围为 `1` 到 `6`。
+- `I{index}`：heading 在全文有效 headings 中的 1-based 顺序号。
 
-   Alternatives considered:
-   - 纯 ordinal，例如 `H3`：最短，但文档插入 heading 后更容易误读到错误区域。
-   - 纯 hash，例如 `H:9q4f2k`：短，但失去行号提示，不利于文本输出审计。
-   - 保留旧格式并新增 alias：非 breaking，但不能解决旧长 ref 继续传播的问题。
+三个数字字段均使用不带前导零的十进制表示。canonical 格式等价于正则 `^H:L([1-9][0-9]*):H([1-6]):I([1-9][0-9]*)$`。`index` 在 `max_heading_level` 等可见性过滤前确定，因此 outline 和 find 不会因过滤参数不同而重新编号同一 heading。
 
-2. `token` 由 adapter 在当前文档内生成并唯一化。
+字段标识使每个数字的含义可直接识别。ref 长度仅随行号和 heading 数量的位数增长，不随标题长度、breadcrumb 深度或字符集增长。
 
-   初始 token 使用稳定摘要的短前缀，摘要输入包含 canonical heading breadcrumb 和 occurrence ordinal；如果当前文档内发生 token 冲突，adapter 必须扩展 token 长度直到唯一。实现不得使用时间戳、随机数、文件系统绝对路径或其它不稳定输入。
+未采用的方案：
 
-   Alternatives considered:
-   - 固定长度 hash：实现简单，但理论碰撞时无法满足唯一性契约。
-   - 暴露完整 digest：唯一性强，但会重新拉长 ref。
+- 内容摘要：增加实现和契约复杂度，但不能消除碰撞或文档变化问题。
+- 纯 index：更短，但缺少用于人工审计的行号和 heading level。
+- line + level：字段较少，但缺少明确的全文顺序标识。
 
-3. `read` 只接受新短格式。
+### 2. Read 精确匹配三个字段
 
-   Markdown `read` 必须解析 `H{line}:{token}` 并匹配唯一 heading；无匹配返回 `REF_NOT_FOUND`，多匹配返回 `REF_AMBIGUOUS`。旧 `L...` heading ref 和旧全文 `doc:full` 必须返回稳定 ref 错误，不做兼容解析。
+`read` 只接受 canonical 标记格式，并在当前解析结果中匹配 line、level 和 index 全部相同的 heading。没有匹配项时返回 `REF_NOT_FOUND`。
 
-   Alternatives considered:
-   - 接受旧格式作为 legacy alias：迁移平滑，但与本 change 的完全迁移目标冲突。
-   - 在 core 中转换旧 ref：违反 ref opaque 边界。
+该过程只使用结构位置，不比较 heading title 或 section 内容。ref 的有效上下文是当前文档内容；文档变化后，由调用方重新执行 `outline` 或 `find` 获取新 ref。
 
-4. 全文 fallback ref 改为 `D`。
+### 3. `doc:full` 属于 Markdown adapter
 
-   当当前 outline 参数下没有 heading entry 时，Markdown adapter 生成单条全文 entry，ref 为 `D`。`D` 由 Markdown adapter 拥有和解析，表示读取整篇 Markdown 文档。
+当 outline 参数下没有可见 heading 时，Markdown adapter 返回单条 `doc:full` entry。`read` 使用该 ref 返回整篇 Markdown 文档。
 
-   Alternatives considered:
-   - 保留 `doc:full`：兼容但不是完全迁移。
-   - 使用 `H0:...`：会混淆 heading ref 和全文 ref。
+`doc:full` 只由 Markdown adapter 的规范和文档定义。共享 ref 契约不建立对应的通用 ref 类型。
+
+### 4. 旧 heading ref 直接迁移
+
+新版本只生成和接受 `H:L{line}:H{level}:I{index}` heading ref。持有旧 heading ref 的调用方通过重新执行 `outline` 或 `find` 完成迁移。
+
+core 和 MCP 不参与格式转换，继续原样传递 ref。
+
+### 5. Markdown 行为使用独立主文档
+
+新增 `docs/adapters/markdown.md`，作为当前 Markdown adapter 行为的长期主文档，覆盖：
+
+- heading 识别、outline 可见性和 section 范围；
+- heading ref 的生成和读取；
+- `doc:full` 的生成条件和读取行为；
+- find match 的 ref 归属；
+- ref 的保证范围和调用方责任；
+- Markdown 默认值和验证入口。
+
+`docs/refs.md` 只保留共享边界并链接到 adapter 专页。`docs/references/markdown-navigator.md` 只记录外部来源和迁移依据，不拥有现行行为规则。
 
 ## Risks / Trade-offs
 
-- [Risk] 已复制的旧 ref 会失效。→ Mitigation：proposal、spec、tasks 和 release note 明确 breaking migration；测试断言旧 ref 返回稳定 ref 错误。
-- [Risk] token 过短时存在碰撞。→ Mitigation：生成阶段检查当前文档内唯一性，冲突时扩展 token 长度。
-- [Risk] 文档变更后短 ref 仍可能失效。→ Mitigation：保持既有规则，文档变化后调用方重新执行 `outline` 或 `find`。
-- [Risk] 示例和 golden output 分散，容易遗漏旧 ref。→ Mitigation：tasks 增加阻塞级审计和全仓旧 ref 搜索更新任务。
+- 旧 Markdown heading ref 在迁移后失效。调用方需要重新执行 `outline` 或 `find`。
+- 文档或 parser 结果变化可能使数字 ref 失效或指向新的结构位置。该行为不属于 Markdown adapter 的稳定性保证。
+- 不同 adapter 可以定义不同的 ref 行为。每个已实现 adapter 通过自己的文档说明具体契约。
+- ref 示例分散在文档和测试材料中。实施时通过全仓搜索和 workspace 验证同步更新。
 
 ## Migration Plan
 
-1. 先完成阻塞级审计，确认 proposal、design、tasks 和 delta spec 都围绕短 ref breaking migration，且 change 目录外没有被本提案阶段修改。
-2. 更新 Markdown ref 生成和解析实现，使 `outline`、`find`、`read` 统一使用 `H{line}:{token}` 和 `D`。
-3. 更新 Markdown adapter 单元测试、CLI smoke、负向矩阵、fixture/golden output、文档和示例。
-4. 运行局部验证，再按范围运行 `pnpm run verify:docnav-workspace`。
+1. 确认本 change 的 ref 格式、Markdown 主文档和共享边界。
+2. 更新 Markdown heading ref 的生成、解析和 find 归属。
+3. 新增 `docs/adapters/markdown.md`，并从共享文档和参考文档迁移现行 Markdown 行为。
+4. 更新规范、示例、fixture、golden output 和测试。
+5. 放宽主规范中的全局 ref 保证，保留 core/MCP 将 ref 作为不透明值原样传递的边界。
+6. 运行局部验证和 `pnpm run verify:docnav-workspace`。
 
-Rollback strategy：该 change 是 breaking migration；如果实现后需要回退，应整体回退本 change 的实现和验证材料，而不是在同一实现中恢复 legacy alias。
+回退时整体恢复旧 Markdown heading ref 的实现和验收材料，不在 core 或 MCP 中增加格式兼容逻辑。
