@@ -7,7 +7,7 @@ import { smokeState } from "./state.mjs";
 export function writeAuditLogs() {
   fs.mkdirSync(logDir, { recursive: true });
   const content = [
-    "docnav core CLI smoke audit",
+    "docnav core development smoke audit",
     `started: ${smokeState.startedAt.toISOString()}`,
     `completed: ${new Date().toISOString()}`,
     `cwd: ${root}`,
@@ -59,7 +59,7 @@ export function formatAssertions(assertions) {
 
 export function printSuccessSummary() {
   console.log("");
-  console.log("Docnav Core CLI Smoke");
+  console.log("Docnav Core Development Smoke");
   console.log("Status: passed");
   console.log(`Commands: ${smokeState.commandRecords.length}`);
   console.log("");
@@ -70,7 +70,7 @@ export function printSuccessSummary() {
 
 export function printFailureSummary(error) {
   console.error("");
-  console.error("Docnav Core CLI Smoke");
+  console.error("Docnav Core Development Smoke");
   console.error("Status: failed");
   console.error(`Failure: ${error.message}`);
   console.error("");
@@ -89,4 +89,3 @@ function quoteArg(value) {
 function relativeLogPath(logPath) {
   return path.relative(root, logPath).replaceAll(path.sep, "/");
 }
-

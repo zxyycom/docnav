@@ -27,10 +27,10 @@ v0 首期聚焦 Markdown 纵向链路：
 pnpm install
 ```
 
-运行 Markdown adapter smoke：
+运行 Markdown adapter development smoke：
 
 ```bash
-pnpm run smoke:docnav-markdown
+pnpm run smoke:docnav-markdown:dev
 ```
 
 本地最小用法：
@@ -41,6 +41,8 @@ cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-s
 ```
 
 需要稳定机器协议时使用 `--output protocol-json` 或 adapter `invoke`。
+
+发布制品生成、验证和 smoke 见 [测试策略](docs/testing.md)。
 
 ## 验证
 

@@ -36,15 +36,15 @@ const checks = [
     ]
   },
   {
-    label: "docnav-markdown CLI smoke",
+    label: "docnav-markdown development smoke",
     command: "pnpm",
-    args: ["run", "smoke:docnav-markdown"],
+    args: ["run", "smoke:docnav-markdown:dev"],
     ignoreOutput: [
-      /^> docnav-contract-docs@.* smoke:docnav-markdown .*$/,
+      /^> docnav-contract-docs@.* smoke:docnav-markdown:dev .*$/,
       /^> node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\.mjs$/,
       /^\$ node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\.mjs$/,
       /^\s*Finished `.*` profile .*$/,
-      /^Docnav Markdown CLI Smoke$/,
+      /^Docnav Markdown Development Smoke$/,
       /^Status: passed$/,
       /^Commands: \d+$/,
       /^Log:$/,
@@ -52,15 +52,15 @@ const checks = [
     ]
   },
   {
-    label: "docnav core CLI smoke",
+    label: "docnav core development smoke",
     command: "pnpm",
-    args: ["run", "smoke:docnav-core"],
+    args: ["run", "smoke:docnav-core:dev"],
     ignoreOutput: [
-      /^> docnav-contract-docs@.* smoke:docnav-core .*$/,
+      /^> docnav-contract-docs@.* smoke:docnav-core:dev .*$/,
       /^> node scripts\/with-cargo-bin\.mjs --package docnav --bin docnav --env DOCNAV_BIN -- node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\.mjs$/,
       /^\$ node scripts\/with-cargo-bin\.mjs --package docnav --bin docnav --env DOCNAV_BIN -- node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\.mjs$/,
       /^\s*Finished `.*` profile .*$/,
-      /^Docnav Core CLI Smoke$/,
+      /^Docnav Core Development Smoke$/,
       /^Status: passed$/,
       /^Commands: \d+$/,
       /^Log:$/,
