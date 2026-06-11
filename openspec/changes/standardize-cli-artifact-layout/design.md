@@ -1,68 +1,100 @@
-**一句话核心：打包脚本是发布产物的唯一写入者，发布验证脚本是统一打包目录的消费者。**
+**一句话核心：仓库脚本生成并验证未压缩的核心 CLI 与适配器文件，CI/CD 是正式发布制品的唯一生成和保存边界。**
 
 ## Context
 
-Docnav 当前已有 Cargo workspace 和若干验证脚本，但还没有独立的 CLI 发布产物目录契约。现有 smoke 入口可以直接指向 Cargo `target/` 下的调试二进制，这适合开发期快速验证，但不适合承担发布包验收职责。
+Docnav 当前已有 Cargo workspace、`docnav` 核心 CLI、`docnav-markdown` 适配器，以及若干直接使用 Cargo 构建结果的 smoke 脚本，但尚未定义独立的发布制品契约。开发期 smoke 适合快速验证源码构建结果，不承担正式制品验收职责。
 
-这个 change 引入的是构建/发布层规则，不改变 `docnav` 文档操作命令的 stdout 输出模式，也不改变 adapter invoke 协议。它的核心目标是让人和脚本都能通过一个稳定路径找到“某版本、某平台”的最终打包结果。
+本 change 引入构建与发布层规则，不改变文档操作命令、adapter invoke 协议或 MCP 映射。人和自动化可以通过稳定路径直接检查指定版本与 target 的核心 CLI 和适配器文件，并追溯生成这些文件的 Git commit 与 CI 运行。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 建立统一发布产物根目录和层级：产品名、版本号、平台 target、最终打包目录。
-- 让最终 archive、manifest 和 checksum 在目录末端集中出现，方便直接查找和审计。
-- 让发布验证脚本从该目录读取打包产物，避免继续从 Cargo `target/`、临时目录或历史路径推断发布包。
-- 保留开发期快速 smoke 的空间，但必须和发布包验证入口命名、职责分离。
+- 建立包含产品名、版本号、Rust target 和最终 `package/` 目录的统一制品层级。
+- 直接保存核心 CLI 和当前发布适配器，不生成仓库自有归档包。
+- 使用 Cargo release profile 构建发布组件，避免开发期 debug build 被当作发布制品。
+- 为每个可执行文件记录组件角色、路径、大小和 SHA-256，并生成独立的校验和文件。
+- 将 package `manifest.json` 明确作为 release artifact manifest，和 adapter manifest 契约分离。
+- 让本地与 CI/CD 使用同一套仓库脚本，避免制品生成逻辑漂移。
+- 由 CI/CD 生成、验证和保存正式制品；本地结果仅用于复现和预验收，不进入 Git。
+- 将发布制品 smoke 与直接运行 Cargo 构建结果的开发期 smoke 明确分离。
 
 **Non-Goals:**
 
+- `artifacts/` 下的生成内容不提交到仓库。
+- 本 change 不发布 npm 包、容器镜像或 GitHub Release，也不定义长期的发布晋级策略。
 - 不改变 `docnav --output`、adapter 直接 CLI 输出或 MCP 输出映射。
-- 不定义 JSON、YAML、TOML、INI 等后续 adapter 的解析或导航能力。
-- 不实现正式 adapter 管理命令的安装、更新、移除算法。
-- 不要求所有 Rust 单元测试都通过发布 archive 运行；本 change 约束的是打包和发布验证脚本。
+- 不实现 adapter 安装、更新、移除或用户级托管制品存储。
+- 不要求 Rust 单元测试从发布制品目录运行。
 
 ## Decisions
 
-1. 发布产物根目录使用 `artifacts/docnav/`。
-   - 原因：`artifacts` 表达“可审计产物集合”，比 `target/` 更适合人类查找，也避免和 Cargo 输出目录混淆。
-   - 备选：`dist/` 更短，但容易只表达前端或 npm 发布语境；本仓库同时包含 Rust CLI、adapter 和 MCP，`artifacts` 更中性。
+1. 制品根目录使用 `artifacts/docnav/`。
+   - 固定层级为 `artifacts/docnav/v<version>/<target>/package/`。
+   - `<version>` 来自 Cargo workspace package version，目录名带 `v` 前缀。
+   - `<target>` 使用 Rust target triple。
+   - `artifacts/` 是生成目录，必须由 `.gitignore` 排除。
 
-2. 目录层级固定为 `artifacts/docnav/v<version>/<target>/package/`。
-   - `v<version>` 来自 Cargo workspace 版本，例如 `v0.1.0`。
-   - `<target>` 使用 Rust target triple，例如 `x86_64-pc-windows-msvc`。
-   - `package/` 是最终 archive、manifest 和 checksum 的唯一落点。
-   - 这样目录从“产品 -> 版本 -> 平台 -> 打包结果”逐层收敛，平台信息之后才出现最终打包结果。
+2. `package/` 直接保存未压缩文件。
+   - 首期目录直接包含平台对应的 `docnav[.exe]` 和 `docnav-markdown[.exe]`。
+   - 同目录包含 `manifest.json` 和 `SHA256SUMS.txt`。
+   - 制品生成脚本使用 Cargo release profile 构建发布组件；显式 `--target <triple>` 必须传给 Cargo 构建和制品目录。
+   - 仓库脚本不生成 `.zip`、`.tar.gz` 或其它归档包。
+   - GitHub Actions 等 CI artifact 服务可以使用自身的传输格式；Docnav 验收的对象始终是上传前和下载后具有相同文件集合的 `package/` 目录。
 
-3. 打包脚本负责生成 manifest 和 checksum。
-   - manifest 至少记录产物名、版本、target、archive 文件名、包含的二进制、构建时间、git commit 和 SHA-256。
-   - checksum 使用稳定文件名，例如 `SHA256SUMS.txt`，用于人工和脚本校验。
+3. 发布组件集合必须显式维护。
+   - 首期核心组件是 `docnav`，适配器组件是 `docnav-markdown`。
+   - 制品生成脚本只构建和复制显式声明的发布组件，不把 workspace 中的所有可执行目标自动视为发布内容。
+   - 新增发布适配器时，同步更新发布组件集合、制品清单断言和发布制品 smoke。
 
-4. 发布验证脚本必须消费统一打包目录。
-   - 如果脚本验证“发布包可用”，它必须从 `artifacts/docnav/v<version>/<target>/package/manifest.json` 定位 archive，并在临时目录解包后运行。
-   - 不允许发布验证脚本继续硬编码 `target/debug`、`target/release`、`.log` 或其它非 package 路径来寻找被验收的 CLI。
-   - 开发期直接跑 Cargo 输出的 smoke 可以保留，但入口名称和文案必须明确是 dev smoke，不能作为发布包验收。
+4. 制品清单与校验和支持逐文件审计。
+   - 该 `manifest.json` 的契约名称是 release artifact manifest；它不同于 adapter manifest，不能复用或混淆 `docs/schemas/manifest.schema.json` 的 adapter manifest 语义。
+   - `manifest.json` 记录 `schema_version: 1`、`product: "docnav"`、`version`、`target`、`generated_at`、`git_commit`、`source_dirty`、`producer` 和 `files`。
+   - `producer.kind` 取 `local` 或 `github-actions`。CI 生成时同时记录 workflow、run id 和 run attempt；本地生成时这些 CI 字段为 `null`。
+   - `files` 中每项记录相对 `package/` 的 `path`、`component`、`size_bytes` 和小写十六进制 `sha256`。
+   - `component` 只取 `core` 或 `adapter`；`docnav-markdown` 条目使用 `component: "adapter"` 和 `adapter_id: "docnav-markdown"`，core 条目不带 `adapter_id`。
+   - `SHA256SUMS.txt` 至少覆盖所有可执行文件和 `manifest.json`。
+   - 制品清单中每个可执行文件的 hash 与 `SHA256SUMS.txt` 保持一致。
+   - 校验和条目按相对路径升序写成 `<lowercase-sha256>  <relative-path>`；`SHA256SUMS.txt` 不包含自身，避免自引用。
 
-5. 协议契约不受影响。
-   - 打包目录只管理文件系统产物；invoke 请求、protocol-json envelope、readable-json 字段和 MCP structuredContent 都不变化。
-   - `docnav-mcp` 仍保持格式无关，只依赖可调用的 `docnav` CLI，不直接理解该目录结构。
+5. 仓库脚本与 CI/CD 职责分离。
+   - 仓库提交制品生成脚本、验证脚本、`package.json` 命令和工作流定义。
+   - 本地可以运行同一套脚本生成 `artifacts/`，用于复现目录、制品清单、校验和和 smoke；这些结果属于本地预验收制品。
+   - 正式制品由 CI/CD 工作流在干净 checkout 中调用同一制品生成脚本创建，通过制品 smoke 后按 target 上传保存。
+   - 正式制品验证必须确认 `source_dirty: false` 且 `producer.kind: "github-actions"`；本地预验收允许 `producer.kind: "local"`。
+   - `source_dirty` 通过 Git 状态计算：修改、暂存或未被 ignore 的未跟踪文件会使其为 `true`；`target/`、`node_modules/`、`artifacts/`、`.log/` 等被 ignore 的生成物不得单独导致 dirty。
+   - 初始工作流支持手动触发，首期矩阵固定为 `x86_64-unknown-linux-gnu`/`ubuntu-latest` 和 `x86_64-pc-windows-msvc`/`windows-latest`。
+   - 工作流在匹配 target 的原生 runner 上构建并执行制品 smoke；只有可在当前 runner 上运行并通过验证的文件才视为已验收制品。
+   - version tag 触发和发布晋级策略由后续 change 定义。
+
+6. 发布制品验证直接消费原文件。
+   - 验证脚本从统一的 `package/manifest.json` 读取组件列表和相对路径。
+   - 验证脚本先校验文件集合、大小和校验和，再直接运行 `package/` 中的 `docnav` 与 `docnav-markdown`。
+   - 验收对象只能来自 `package/`；验证脚本不以 Cargo `target/` 下的可执行文件替代制品，也不执行归档包解压。
+   - 可以保留直接运行 Cargo 构建结果的 smoke，但入口名称和文案必须明确标识为开发期 smoke。
+
+7. 协议契约不受影响。
+   - 制品目录只管理文件系统结果；protocol-json envelope、readable-json、adapter invoke 和 MCP structuredContent 均不变化。
+   - `docnav-mcp` 不理解该目录结构；它仍只依赖可调用的 `docnav` CLI。
 
 ## Risks / Trade-offs
 
-- [目录层级过早固化] → 先只约束 `docnav` CLI 发布包；adapter 和 MCP 可以后续用相同模式扩展，不在本 change 内强制。
-- [测试脚本职责混淆] → 将发布包验证和开发期 smoke 分成不同脚本入口，并在任务中要求更新 `package.json` 命名。
-- [交叉编译环境不完整] → 验证脚本至少支持 host target；其它 target 可以由 CI 或本地显式传入 `--target` 后执行。
-- [archive 内部路径和外部目录漂移] → manifest 同时记录外部 archive 名和内部二进制路径，测试脚本只信任 manifest。
+- [CI artifact 服务使用平台自有传输格式] -> 验收上传前和下载后的逻辑文件集合，不将传输容器视为 Docnav 制品格式。
+- [核心 CLI 与适配器集合发生漂移] -> 显式维护发布组件集合，并由制品清单和 smoke 同时断言 `docnav` 与 `docnav-markdown`。
+- [本地与 CI 结果发生漂移] -> CI 只调用仓库内同一套制品生成与验证脚本，不在工作流中复制实现逻辑。
+- [本地结果被误认为正式制品] -> 制品清单记录生成来源和源码工作树状态；正式工作流只上传由 CI 基于干净源码生成的结果。
+- [生成物被误提交] -> 根级忽略 `artifacts/`，并验证其中的生成物未被 Git 跟踪。
+- [逐文件分发缺少单文件下载体验] -> 本 change 优先保证可审计性和直接运行；如需发布归档包，由后续 change 单独定义。
 
 ## Migration Plan
 
-1. 新增打包脚本，先支持当前 host target。
-2. 更新发布验证脚本，从统一 package 目录读取 manifest 和 archive。
-3. 调整 `package.json`，区分开发期 smoke、打包、发布包验证和 workspace verify。
-4. 保留旧 smoke 行为作为开发辅助入口，或重命名为明确的 dev-only 入口。
-5. 通过局部验证确认打包产物、manifest、checksum 和发布包验证链路一致。
+1. 更新 change artifacts，明确未压缩制品和首期发布组件集合。
+2. 新增未压缩制品生成脚本，以及制品清单和校验和生成逻辑。
+3. 新增发布制品验证脚本，直接使用 `package/` 中的核心 CLI 与适配器文件。
+4. 重命名或调整现有 smoke，使 Cargo 构建结果仅用于开发期 smoke。
+5. 更新 `.gitignore`、`package.json`、测试策略和 CI/CD workflow。
+6. 在本地验证脚本的可复现性，再由 CI/CD 生成并保存正式制品。
 
 ## Open Questions
 
-- 首期发布包是否只包含 `docnav`，还是同时包含首批 adapter 二进制，需要在实现时结合核心 CLI crate 落地状态确认。
-- Windows 首期 archive 使用 `.zip`，Unix 使用 `.tar.gz` 是否足够；如需统一格式，可在实现前补充决策。
+无。首期发布组件集合固定为 `docnav` 与 `docnav-markdown`；发布晋级策略和更多平台矩阵由后续 change 单独定义。
