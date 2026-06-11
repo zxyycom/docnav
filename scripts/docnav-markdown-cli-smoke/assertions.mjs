@@ -24,6 +24,39 @@ export function expectStderrIncludes(record, text) {
   expect(record, record.stderr.includes(text), `stderr includes ${JSON.stringify(text)}`);
 }
 
+export function expectStdoutWarning(record, expectedTokens) {
+  expectStdoutIncludes(record, "id=cli_argv_ignored");
+  expectStdoutIncludes(record, "effect=operation_continued");
+  expectStdoutIncludes(record, "details=");
+  for (const token of expectedTokens) {
+    expectStdoutIncludes(record, JSON.stringify(token));
+  }
+}
+
+export function expectStderrWarning(record, expectedTokens) {
+  expectStderrIncludes(record, "id=cli_argv_ignored");
+  expectStderrIncludes(record, "effect=operation_continued");
+  expectStderrIncludes(record, "details=");
+  for (const token of expectedTokens) {
+    expectStderrIncludes(record, JSON.stringify(token));
+  }
+}
+
+export function expectStructuredWarning(record, warning, expectedTokens, label = "CLI argv") {
+  expect(record, Boolean(warning), `structured warning exists for ${label}`);
+  expect(record, warning.id === "cli_argv_ignored", "CLI argv warning id matches");
+  expect(record, warning.effect === "operation_continued", "CLI argv warning effect matches");
+  expect(record, typeof warning.reason === "string" && warning.reason.length > 0, "CLI argv warning reason is nonempty");
+  expect(record, Array.isArray(warning.details?.tokens), "CLI argv warning details.tokens is an array");
+  for (const token of expectedTokens) {
+    expect(record, warning.details.tokens.includes(token), `CLI argv warning mentions ${token}`);
+  }
+}
+
+export function expectNoWarningsField(record, value, label) {
+  expect(record, !Object.hasOwn(value, "warnings"), `${label} omits warnings`);
+}
+
 export function expectNoJsonPayloadInStderr(record) {
   const jsonLine = record.stderr
     .split(/\r?\n/)

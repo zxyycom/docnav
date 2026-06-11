@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { findCargoExecutable } from "./cargo.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const options = parseArgs(process.argv.slice(2));
@@ -108,34 +110,6 @@ function buildCargoBin(packageName, binName) {
   if (!executable) {
     console.error(`cargo build did not report a ${binName} executable`);
     process.exit(1);
-  }
-
-  return executable;
-}
-
-function findCargoExecutable(output, binName) {
-  let executable = null;
-
-  for (const line of output.split(/\r?\n/)) {
-    if (line.trim().length === 0) {
-      continue;
-    }
-
-    let message;
-    try {
-      message = JSON.parse(line);
-    } catch {
-      continue;
-    }
-
-    if (
-      message.reason === "compiler-artifact" &&
-      message.executable &&
-      message.target?.name === binName &&
-      message.target?.kind?.includes("bin")
-    ) {
-      executable = message.executable;
-    }
   }
 
   return executable;

@@ -5,7 +5,7 @@ import {
   writeProjectConfig,
   writeRegistry
 } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli, validateSchema } from "../harness.mjs";
 import {
   expect,
   expectExit,
@@ -18,7 +18,6 @@ import {
   expectStructuredWarning,
   parseJson
 } from "../assertions.mjs";
-import { validateSchema } from "../schemas.mjs";
 import { exitCodes } from "../config.mjs";
 
 export function testConfigContextAndCompatibility() {

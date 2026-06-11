@@ -1,6 +1,6 @@
 import { exitCodes } from "../config.mjs";
 import { fixture } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli, validateSchema } from "../harness.mjs";
 import {
   expectExit,
   expectNoJsonPayloadInStderr,
@@ -8,7 +8,6 @@ import {
   expectStderrIncludes,
   parseJson
 } from "../assertions.mjs";
-import { validateSchema } from "../schemas.mjs";
 
 export function testInvokeFailures() {
   const normal = fixture("normal.md");
@@ -83,4 +82,3 @@ export function testInvokeFailures() {
   validateSchema(unknownOperationRecord, "protocolResponse", unknownOperationJson);
   expectProtocolFailure(unknownOperationRecord, unknownOperationJson, null, "INVALID_REQUEST");
 }
-

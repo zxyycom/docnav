@@ -2,8 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { exitCodes, fixturesDir } from "./config.mjs";
-import { smokeState } from "./state.mjs";
-import { runCli } from "./runner.mjs";
+import { runCli, smokeState, validateSchema } from "./harness.mjs";
 import {
   assertSetup,
   expectExit,
@@ -14,7 +13,6 @@ import {
   expectStderrEmpty,
   parseJson
 } from "./assertions.mjs";
-import { validateSchema } from "./schemas.mjs";
 
 export function fixture(name) {
   const filePath = path.join(fixturesDir, name);
@@ -129,4 +127,3 @@ export function getNormalProtocolReadResult() {
   smokeState.normalProtocolReadResult = json.result;
   return smokeState.normalProtocolReadResult;
 }
-

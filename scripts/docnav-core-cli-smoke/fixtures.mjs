@@ -4,6 +4,13 @@ import path from "node:path";
 import { root, tempRoot } from "./config.mjs";
 
 let projectCounter = 0;
+const normalDocumentFixture = path.join(
+  root,
+  "scripts",
+  "docnav-core-cli-smoke",
+  "fixtures",
+  "normal.md"
+);
 
 export function createProject(name, options = {}) {
   const projectRoot = path.join(tempRoot, `${String(projectCounter++).padStart(2, "0")}-${slug(name)}`);
@@ -24,7 +31,7 @@ export function createProject(name, options = {}) {
   }
 
   if (options.normalDocument !== false) {
-    writeText(path.join(docsDir, "normal.md"), normalMarkdown());
+    copyFile(normalDocumentFixture, path.join(docsDir, "normal.md"));
   }
 
   const project = {
@@ -61,10 +68,9 @@ export function writeDamagedRegistry(project) {
   writeText(path.join(project.docnavDir, "adapters.json"), "{ invalid json");
 }
 
-export function writeDocument(project, relativePath, content = normalMarkdown()) {
+export function copyNormalDocument(project, relativePath) {
   const filePath = path.join(project.root, relativePath);
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  writeText(filePath, content);
+  copyFile(normalDocumentFixture, filePath);
   return relativePath.replaceAll(path.sep, "/");
 }
 
@@ -172,6 +178,11 @@ function writeText(filePath, content) {
   fs.writeFileSync(filePath, content, "utf8");
 }
 
+function copyFile(sourcePath, destinationPath) {
+  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+  fs.copyFileSync(sourcePath, destinationPath);
+}
+
 function wrapperPath(project, id) {
   const extension = process.platform === "win32" ? ".cmd" : "";
   return path.join(project.binDir, `${slug(id)}${extension}`);
@@ -191,23 +202,6 @@ function isolatedEnv(projectRoot, userConfigDir) {
   };
 }
 
-function normalMarkdown() {
-  return [
-    "# Guide",
-    "",
-    "Intro target text for the core CLI smoke.",
-    "",
-    "## Install",
-    "",
-    "Install target result for find coverage.",
-    "",
-    "## Usage",
-    "",
-    "Use outline, keep the ref, then read the section.",
-    ""
-  ].join("\n");
-}
-
 function slug(value) {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
 }
@@ -219,4 +213,3 @@ function cmdQuote(value) {
 function shQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
-

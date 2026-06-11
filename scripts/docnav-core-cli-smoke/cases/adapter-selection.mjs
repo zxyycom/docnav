@@ -2,11 +2,11 @@ import {
   createFakeAdapter,
   createProject,
   readAdapterCalls,
-  writeDocument,
+  copyNormalDocument,
   writeProjectConfig,
   writeRegistry
 } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli, validateSchema } from "../harness.mjs";
 import {
   expect,
   expectCandidateEvidence,
@@ -20,7 +20,6 @@ import {
   expectStderrEmpty,
   parseJson
 } from "../assertions.mjs";
-import { validateSchema } from "../schemas.mjs";
 import { exitCodes } from "../config.mjs";
 
 export function testAdapterSelectionMatrix() {
@@ -81,7 +80,7 @@ function testConfigAdapterPreselection() {
 
 function testExtensionInferencePreselection() {
   const project = createProject("selection-extension");
-  const docPath = writeDocument(project, "docs/inferred.core");
+  const docPath = copyNormalDocument(project, "docs/inferred.core");
   const fake = createFakeAdapter(project, { id: "fake-inferred", extensions: [".core"] });
   writeRegistry(project, [fake]);
 
@@ -97,7 +96,7 @@ function testExtensionInferencePreselection() {
 
 function testExtensionInferenceContractFailureContinues() {
   const project = createProject("selection-extension-invalid-continues");
-  const docPath = writeDocument(project, "docs/inferred.core");
+  const docPath = copyNormalDocument(project, "docs/inferred.core");
   const invalid = createFakeAdapter(project, {
     id: "fake-invalid-extension",
     mode: "manifest-invalid",
@@ -207,7 +206,7 @@ function testCandidateEvidenceOnAllFailure() {
 
 function testRegistryTraversalContractFailureContinues() {
   const project = createProject("selection-registry-contract-continues");
-  const docPath = writeDocument(project, "docs/noextension");
+  const docPath = copyNormalDocument(project, "docs/noextension");
   const invalid = createFakeAdapter(project, { id: "fake-invalid-probe", mode: "probe-invalid" });
   const selected = createFakeAdapter(project, { id: "fake-after-invalid-probe" });
   writeRegistry(project, [invalid, selected]);

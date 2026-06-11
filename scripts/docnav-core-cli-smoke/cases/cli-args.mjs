@@ -1,5 +1,5 @@
 import { createProject } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli, validateSchema } from "../harness.mjs";
 import {
   expectExit,
   expectNoJsonPayloadInStderr,
@@ -10,7 +10,6 @@ import {
   parseJson
 } from "../assertions.mjs";
 import { exitCodes } from "../config.mjs";
-import { validateSchema } from "../schemas.mjs";
 
 export function testCliArgumentFailures() {
   const project = createProject("cli-argument-failures");

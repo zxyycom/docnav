@@ -1,11 +1,15 @@
 import fs from "node:fs";
 
 import { tempRoot } from "./config.mjs";
-import { smokeState } from "./state.mjs";
 import { assertSetup } from "./assertions.mjs";
-import { compileSchemas } from "./schemas.mjs";
-import { runTest } from "./runner.mjs";
-import { printFailureSummary, printSuccessSummary, writeAuditLogs } from "./audit-log.mjs";
+import {
+  compileSchemas,
+  printFailureSummary,
+  printSuccessSummary,
+  runTest,
+  smokeState,
+  writeAuditLogs
+} from "./harness.mjs";
 
 import { testRealMarkdownOutlineRefRead } from "./cases/real-markdown.mjs";
 import { testDocumentOutputMatrix } from "./cases/outputs.mjs";

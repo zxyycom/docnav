@@ -6,7 +6,7 @@ import {
   getNormalRef,
   setNormalProtocolReadResult
 } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli, validateSchema } from "../harness.mjs";
 import {
   expect,
   expectExit,
@@ -18,7 +18,6 @@ import {
   expectStderrEmpty,
   parseJson
 } from "../assertions.mjs";
-import { validateSchema } from "../schemas.mjs";
 
 export function testProtocolOutputs() {
   const normal = fixture("normal.md");

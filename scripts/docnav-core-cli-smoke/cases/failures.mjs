@@ -2,10 +2,10 @@ import {
   createFakeAdapter,
   createProject,
   writeDamagedRegistry,
-  writeDocument,
+  copyNormalDocument,
   writeRegistry
 } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli, validateSchema } from "../harness.mjs";
 import {
   expect,
   expectCandidateEvidence,
@@ -13,7 +13,6 @@ import {
   expectProtocolFailure,
   parseJson
 } from "../assertions.mjs";
-import { validateSchema } from "../schemas.mjs";
 import { exitCodes } from "../config.mjs";
 
 export function testRegistryAndContractFailures() {
@@ -104,7 +103,7 @@ function testDuplicateAdapterId() {
 
 function testManifestContractFailure() {
   const project = createProject("failure-manifest-contract");
-  const docPath = writeDocument(project, "docs/noextension");
+  const docPath = copyNormalDocument(project, "docs/noextension");
   const invalid = createFakeAdapter(project, { id: "fake-invalid-manifest", mode: "manifest-invalid" });
   writeRegistry(project, [invalid]);
 
@@ -127,7 +126,7 @@ function testManifestContractFailure() {
 
 function testProbeContractFailure() {
   const project = createProject("failure-probe-contract");
-  const docPath = writeDocument(project, "docs/noextension");
+  const docPath = copyNormalDocument(project, "docs/noextension");
   const invalid = createFakeAdapter(project, { id: "fake-invalid-probe", mode: "probe-invalid" });
   writeRegistry(project, [invalid]);
 
@@ -150,7 +149,7 @@ function testProbeContractFailure() {
 
 function testManifestProcessFailure() {
   const project = createProject("failure-manifest-process");
-  const docPath = writeDocument(project, "docs/noextension");
+  const docPath = copyNormalDocument(project, "docs/noextension");
   const failed = createFakeAdapter(project, { id: "fake-manifest-exit", mode: "manifest-exit" });
   writeRegistry(project, [failed]);
 
@@ -176,7 +175,7 @@ function testManifestProcessFailure() {
 
 function testProbeProcessFailure() {
   const project = createProject("failure-probe-process");
-  const docPath = writeDocument(project, "docs/noextension");
+  const docPath = copyNormalDocument(project, "docs/noextension");
   const failed = createFakeAdapter(project, { id: "fake-probe-exit", mode: "probe-exit" });
   writeRegistry(project, [failed]);
 

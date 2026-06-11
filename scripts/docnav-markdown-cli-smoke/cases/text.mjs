@@ -1,5 +1,5 @@
 import { fixture, getNormalRef } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli } from "../harness.mjs";
 import {
   expect,
   expectExit,

@@ -1,5 +1,5 @@
 import { createProject, createRealMarkdownAdapter, writeRegistry } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli } from "../harness.mjs";
 import {
   expect,
   expectExit,
@@ -7,7 +7,7 @@ import {
   expectStderrEmpty,
   parseJson
 } from "../assertions.mjs";
-import { validateSchema } from "../schemas.mjs";
+import { validateSchema } from "../harness.mjs";
 
 export function testRealMarkdownOutlineRefRead() {
   const project = createProject("real-markdown-outline-read");
@@ -47,4 +47,3 @@ export function testRealMarkdownOutlineRefRead() {
   expect(read, readJson.content.includes("target text"), "read content includes fixture body");
   expect(read, readJson.content_type === "text/markdown", "read preserves content_type");
 }
-

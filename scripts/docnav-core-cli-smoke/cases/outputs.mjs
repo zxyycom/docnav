@@ -1,5 +1,5 @@
 import { createProject, createRealMarkdownAdapter, writeRegistry } from "../fixtures.mjs";
-import { runCli } from "../runner.mjs";
+import { runCli, validateSchema } from "../harness.mjs";
 import {
   expect,
   expectExit,
@@ -14,7 +14,6 @@ import {
   looksLikeJson,
   parseJson
 } from "../assertions.mjs";
-import { validateSchema } from "../schemas.mjs";
 
 export function testDocumentOutputMatrix() {
   const project = createProject("output-matrix");
@@ -157,4 +156,3 @@ function runReadable(project, name, args, schemaName) {
   expectNoProtocolEnvelope(record, json);
   return { record, json };
 }
-

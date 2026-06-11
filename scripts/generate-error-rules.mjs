@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+import { assert, readJson, toAbs } from "./validators/fs-utils.mjs";
 
 const paths = {
   source: "docs/protocol/error-rules.json",
@@ -21,19 +20,6 @@ const generatedErrorDetailsDefPrefixes = [
   generatedErrorDetailsDefPrefix,
   "generatedErrorDetails"
 ];
-
-function toAbs(relPath) {
-  return path.join(root, relPath);
-}
-
-function readJson(relPath) {
-  const source = fs.readFileSync(toAbs(relPath), "utf8");
-  try {
-    return JSON.parse(source);
-  } catch (error) {
-    throw new Error(`${relPath} JSON parse failed: ${error.message}`);
-  }
-}
 
 function parseArgs(args) {
   const options = {
@@ -230,12 +216,6 @@ function writeOrCheck(relPath, content, options) {
 
   fs.mkdirSync(path.dirname(absPath), { recursive: true });
   fs.writeFileSync(absPath, content, "utf8");
-}
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
 }
 
 function main(args) {
