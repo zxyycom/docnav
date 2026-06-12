@@ -20,7 +20,7 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 - `openspec/changes/` 只在处理 OpenSpec change、审计历史、验收或用户明确要求时读取；涉及 OpenSpec 时先运行 `openspec list --json`。
 - `docs/schemas/` 和 `docs/examples/` 是校验材料，只在验证字段、示例、schema 或测试时读取。
 - 后续交互引用已读内容时只提炼关键结论和文件位置，不展开原文；跟踪变化用局部搜索和 diff。
-- 探索项目内 `.md` 文档结构时，优先使用 `docnav-markdown outline <path>` 获取大纲和 ref，再用 `docnav-markdown read <ref>` 按区域精准读取；`docnav-markdown` 不可用时回退到常规文件读取方式。
+- 探索项目内 `.md` 文档时，先运行 `pnpm --silent dnm outline <path> --output readable-json`，从 `entries[].ref` 取得 ref；再将 ref 原样传给 `pnpm --silent dnm read <path> --ref "<ref>" --output text`。仓库命令不可运行时，回退到常规文件读取。
 
 ## 架构边界摘要
 

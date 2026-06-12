@@ -36,6 +36,20 @@ const checks = [
     ]
   },
   {
+    label: "release package script tests",
+    command: "pnpm",
+    args: ["run", "test:release-package-scripts"],
+    ignoreOutput: [
+      /^> docnav-contract-docs@.* test:release-package-scripts .*$/,
+      /^> node --test scripts\/release-package\/args\.test\.mjs$/,
+      /^TAP version \d+$/,
+      /^# Subtest:/,
+      /^ok \d+ -/,
+      /^1\.\.\d+$/,
+      /^# (tests|suites|pass|fail|cancelled|skipped|todo|duration_ms) /
+    ]
+  },
+  {
     label: "docnav-markdown development smoke",
     command: "pnpm",
     args: ["run", "smoke:docnav-markdown:dev"],

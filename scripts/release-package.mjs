@@ -10,6 +10,7 @@ export {
   parseManifestArgs,
   parseOptionalTarget,
 } from "./release-package/args.mjs";
+export { resolvePackageManifestPath } from "./release-package/selection.mjs";
 export {
   buildReleaseBinary,
   getGitCommit,

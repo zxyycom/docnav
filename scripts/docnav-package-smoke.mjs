@@ -3,13 +3,15 @@ import path from "node:path";
 import {
   expectedBinaryName,
   parseManifestArgs,
+  resolvePackageManifestPath,
   root,
   runNodeScript,
   validateReleasePackage,
 } from "./release-package.mjs";
 
-const { manifestPath, expectProducerKind, expectSourceDirty } =
-  parseManifestArgs(process.argv.slice(2));
+const selection = parseManifestArgs(process.argv.slice(2));
+const manifestPath = resolvePackageManifestPath(selection);
+const { expectProducerKind, expectSourceDirty } = selection;
 const { manifest, packageDir } = validateReleasePackage(manifestPath, {
   expectProducerKind,
   expectSourceDirty,

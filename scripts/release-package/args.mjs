@@ -4,14 +4,7 @@ export function parseOptionalTarget(args) {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--target") {
-      target = requireOptionValue(args, index, arg);
-      if (
-        target.includes("/") ||
-        target.includes("\\") ||
-        target.includes("..")
-      ) {
-        throw new Error("--target must be a Rust target triple, not a path");
-      }
+      target = parseTarget(requireOptionValue(args, index, arg));
       index += 1;
       continue;
     }
@@ -27,6 +20,7 @@ export function parseOptionalTarget(args) {
 export function parseManifestArgs(args) {
   const parsed = {
     manifestPath: null,
+    target: null,
     expectProducerKind: null,
     expectSourceDirty: null,
   };
@@ -42,6 +36,9 @@ export function parseManifestArgs(args) {
       case "--manifest":
         parsed.manifestPath = value;
         break;
+      case "--target":
+        parsed.target = parseTarget(value);
+        break;
       case "--expect-producer-kind":
         parsed.expectProducerKind = value;
         break;
@@ -54,8 +51,8 @@ export function parseManifestArgs(args) {
     index += 1;
   }
 
-  if (!parsed.manifestPath) {
-    throw new Error("--manifest is required");
+  if (parsed.manifestPath && parsed.target) {
+    throw new Error("--manifest and --target cannot be used together");
   }
   if (
     parsed.expectProducerKind !== null &&
@@ -66,6 +63,13 @@ export function parseManifestArgs(args) {
   }
 
   return parsed;
+}
+
+function parseTarget(value) {
+  if (value.includes("/") || value.includes("\\") || value.includes("..")) {
+    throw new Error("--target must be a Rust target triple, not a path");
+  }
+  return value;
 }
 
 function requireOptionValue(args, index, option) {

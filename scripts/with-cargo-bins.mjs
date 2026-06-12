@@ -7,7 +7,7 @@ import { findCargoExecutable } from "./cargo.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const options = parseArgs(process.argv.slice(2));
-const executables = buildCargoBins(options.binaries);
+const executables = buildCargoBins(options.binaries, options.quiet);
 const env = { ...process.env };
 for (const binary of options.binaries) {
   env[binary.envName] = executables.get(binary.binName);
@@ -40,8 +40,15 @@ function parseArgs(args) {
   }
 
   const binaries = [];
-  for (let index = 0; index < optionArgs.length; index += 4) {
+  let quiet = false;
+  for (let index = 0; index < optionArgs.length;) {
     const flag = optionArgs[index];
+    if (flag === "--quiet") {
+      quiet = true;
+      index += 1;
+      continue;
+    }
+
     const packageName = optionArgs[index + 1];
     const binName = optionArgs[index + 2];
     const envName = optionArgs[index + 3];
@@ -55,6 +62,7 @@ function parseArgs(args) {
       usage(`${envName} must be a valid environment variable name`);
     }
     binaries.push({ packageName, binName, envName });
+    index += 4;
   }
 
   if (binaries.length === 0) {
@@ -67,10 +75,10 @@ function parseArgs(args) {
     usage("environment variable names must be unique");
   }
 
-  return { binaries, command };
+  return { binaries, command, quiet };
 }
 
-function buildCargoBins(binaries) {
+function buildCargoBins(binaries, quiet) {
   const packages = [...new Set(binaries.map((binary) => binary.packageName))];
   const cargoArgs = [
     "build",
@@ -93,7 +101,7 @@ function buildCargoBins(binaries) {
     process.exit(result.status ?? 1);
   }
 
-  if (result.stderr) {
+  if (result.stderr && !quiet) {
     process.stderr.write(result.stderr);
   }
 
@@ -121,7 +129,7 @@ function writeOutput(result) {
 function usage(message) {
   console.error(message);
   console.error(
-    "usage: node scripts/with-cargo-bins.mjs --bin <cargo-package> <bin-name> <ENV_NAME> [--bin ...] -- <command> [args...]"
+    "usage: node scripts/with-cargo-bins.mjs [--quiet] --bin <cargo-package> <bin-name> <ENV_NAME> [--bin ...] -- <command> [args...]"
   );
   process.exit(2);
 }

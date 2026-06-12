@@ -73,6 +73,16 @@ pnpm run verify:docnav-workspace
 
 该入口一次性覆盖常用门禁类型：Rust 格式化、生成物一致性、文档/schema/示例校验、Rust 静态检查、workspace 测试、OpenSpec 严格校验和 diff 空白检查。具体子命令和输出忽略规则由 `scripts/verify-docnav-workspace.mjs` 的 `checks` 配置维护，避免在文档中复制可执行命令清单。
 
+开发期快捷入口：
+
+| 命令 | 用途 |
+| --- | --- |
+| `pnpm run verify:docnav` | 开发期短别名，等价于 `verify:docnav-workspace` |
+| `pnpm run smoke:docnav` | 对当前开发构建运行 core 和 Markdown CLI smoke |
+| `pnpm run cli:dev -- <args>` | 构建并运行当前开发版 `docnav` |
+| `pnpm run cli:dev -- docnav-markdown <args>` | 构建并运行当前开发版 Markdown adapter |
+| `pnpm --silent dnm <args>` | 运行当前开发版 Markdown adapter，只保留命令结果和失败诊断 |
+
 终端默认透出各子命令输出，保留命令自身报告的状态信息；脚本只过滤已配置的无行动价值输出，例如 Git 的 CRLF 换行提示。输出忽略规则必须按子命令配置，避免全局吞掉真实失败或状态信息。某个检查失败时，脚本记录该检查并继续运行后续检查；全部检查结束后统一汇总失败项、每个失败命令的完整未过滤输出、通过项和日志提示。
 
 局部改动仍可先运行范围更小的命令；但最终交付跨 Rust、文档、OpenSpec、schema、示例或输出层边界时，应运行 `pnpm run verify:docnav-workspace`。若需要完整命令输出，按终端提示查看，或手动重跑对应子命令。
@@ -87,11 +97,17 @@ pnpm run verify:docnav-workspace
 
 ```bash
 pnpm run package:docnav
-pnpm run verify:docnav-package -- --manifest <.../package/manifest.json>
-pnpm run smoke:docnav-package -- --manifest <.../package/manifest.json>
+pnpm run verify:docnav:release
+pnpm run smoke:docnav:release
 ```
 
-开发期 smoke 仍然保留在 `smoke:docnav-markdown:dev` 和 `smoke:docnav-core:dev`；`verify:docnav-workspace` 只负责开发期 smoke 与仓库级门禁，不把本地生成结果当正式制品。
+带 `:release` 的命令显式进入发布包测试，并自动定位当前 workspace 版本与 host target
+对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用
+`--manifest <path>` 验证显式 package。`pnpm run info:docnav-package` 可打印自动定位结果。
+
+`package:docnav` 在生成结束时校验文件集合、manifest、大小和校验和，但不运行 CLI smoke。
+`smoke:docnav:release` 直接测试 package 中的可执行文件；正式 CI 在 verify 和 smoke
+通过后上传制品。
 
 CI/CD 正式制品流程必须在干净 checkout 上生成并保存 package 目录，验证时必须看到 `source_dirty: false` 和 `producer.kind: "github-actions"`，然后按 `version` 与 `target` 上传对应的 `package/` 文件集合。
 
