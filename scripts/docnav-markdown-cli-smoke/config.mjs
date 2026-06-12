@@ -31,5 +31,3 @@ export const exitCodes = Object.freeze({
 
 export const expectedNormalFindMatchCount = 2;
 export const expectedNormalFindDisplayKeywords = Object.freeze(["target"]);
-
-export const envelopeKeys = ["protocol_version", "request_id", "operation", "ok"];

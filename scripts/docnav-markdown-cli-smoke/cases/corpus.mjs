@@ -3,102 +3,14 @@ import { runCli, validateSchema } from "../harness.mjs";
 import {
   expect,
   expectExit,
-  expectIncludes,
   expectStderrEmpty,
   parseJson
 } from "../assertions.mjs";
 
-export function testFixtureCorpus() {
-  testDuplicateHeadings();
-  testFrontmatter();
-  testCodeFence();
-  testDeepAndNoHeadingFallbacks();
+export function testProcessBoundaryCorpus() {
   testUnicodePaging();
   testLargePagination();
   testBomAndCrlf();
-}
-
-function testDuplicateHeadings() {
-  const record = runCli("outline duplicate headings readable-json", [
-    "outline",
-    fixture("duplicate-headings.md"),
-    "--output",
-    "readable-json"
-  ]);
-  expectExit(record, 0);
-  expectStderrEmpty(record);
-  const json = parseJson(record);
-  validateSchema(record, "readableOutline", json);
-  const refs = json.entries.map((entry) => entry.ref);
-  expectIncludes(record, refs, "L1:Repeat", "duplicate top heading first ref exists");
-  expectIncludes(record, refs, "L9#2:Repeat", "duplicate top heading second ref exists");
-  expectIncludes(record, refs, "L5:Repeat > Child", "duplicate child first ref exists");
-  expectIncludes(record, refs, "L13#2:Repeat > Child", "duplicate child second ref exists");
-  expect(record, new Set(refs).size === refs.length, "duplicate heading refs are unique");
-}
-
-function testFrontmatter() {
-  const record = runCli("outline frontmatter readable-json", [
-    "outline",
-    fixture("frontmatter.md"),
-    "--output",
-    "readable-json"
-  ]);
-  expectExit(record, 0);
-  expectStderrEmpty(record);
-  const json = parseJson(record);
-  validateSchema(record, "readableOutline", json);
-  const refs = json.entries.map((entry) => entry.ref).join("\n");
-  expect(record, refs.includes("Real Title"), "frontmatter fixture exposes real heading");
-  expect(record, !refs.includes("Metadata Heading"), "frontmatter metadata heading is ignored");
-}
-
-function testCodeFence() {
-  const record = runCli("outline code fence readable-json", [
-    "outline",
-    fixture("code-fence.md"),
-    "--output",
-    "readable-json"
-  ]);
-  expectExit(record, 0);
-  expectStderrEmpty(record);
-  const json = parseJson(record);
-  validateSchema(record, "readableOutline", json);
-  const refs = json.entries.map((entry) => entry.ref).join("\n");
-  expect(record, refs.includes("Real Code Guide"), "code fence fixture exposes real heading");
-  expect(record, refs.includes("Actual Child"), "code fence fixture exposes child heading");
-  expect(record, !refs.includes("Not An Outline Heading"), "code fence pseudo heading is ignored");
-}
-
-function testDeepAndNoHeadingFallbacks() {
-  for (const name of ["deep-headings.md", "no-headings.md"]) {
-    const outline = runCli(`outline ${name} fallback readable-json`, [
-      "outline",
-      fixture(name),
-      "--output",
-      "readable-json"
-    ]);
-    expectExit(outline, 0);
-    expectStderrEmpty(outline);
-    const outlineJson = parseJson(outline);
-    validateSchema(outline, "readableOutline", outlineJson);
-    expect(outline, outlineJson.entries.length === 1, `${name} has one fallback entry`);
-    expect(outline, outlineJson.entries[0].ref === "doc:full", `${name} falls back to full document ref`);
-
-    const read = runCli(`read ${name} fallback readable-json`, [
-      "read",
-      fixture(name),
-      "--ref",
-      "doc:full",
-      "--output",
-      "readable-json"
-    ]);
-    expectExit(read, 0);
-    expectStderrEmpty(read);
-    const readJson = parseJson(read);
-    validateSchema(read, "readableRead", readJson);
-    expect(read, readJson.content.length > 0, `${name} fallback ref reads content`);
-  }
 }
 
 function testUnicodePaging() {

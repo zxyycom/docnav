@@ -26,6 +26,3 @@ export const exitCodes = Object.freeze({
   documentRefFormat: 3,
   protocolOrAdapterProcess: 4
 });
-
-export const envelopeKeys = ["protocol_version", "request_id", "operation", "ok"];
-

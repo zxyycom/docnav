@@ -7,8 +7,8 @@
   "scripts": {
     "generate:error-rules": "node scripts/generate-error-rules.mjs",
     "package:docnav": "node scripts/package-docnav.mjs",
-    "smoke:docnav-core:dev": "node scripts/with-cargo-bin.mjs --package docnav --bin docnav --env DOCNAV_BIN -- node scripts/with-cargo-bin.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts/docnav-core-cli-smoke.mjs",
-    "smoke:docnav-markdown:dev": "node scripts/with-cargo-bin.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts/docnav-markdown-cli-smoke.mjs",
+    "smoke:docnav-core:dev": "node scripts/with-cargo-bins.mjs --bin docnav docnav DOCNAV_BIN --bin docnav-markdown docnav-markdown DOCNAV_MARKDOWN_BIN -- node scripts/docnav-core-cli-smoke/index.mjs",
+    "smoke:docnav-markdown:dev": "node scripts/with-cargo-bins.mjs --bin docnav-markdown docnav-markdown DOCNAV_MARKDOWN_BIN -- node scripts/docnav-markdown-cli-smoke/index.mjs",
     "smoke:docnav-core": "pnpm run smoke:docnav-core:dev",
     "smoke:docnav-markdown": "pnpm run smoke:docnav-markdown:dev",
     "verify:docnav-package": "node scripts/verify-docnav-package.mjs",

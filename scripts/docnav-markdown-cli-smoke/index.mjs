@@ -11,10 +11,9 @@ import {
   writeAuditLogs
 } from "./harness.mjs";
 
-import { testReadableFindInfo, testReadableOutlineRead } from "./cases/readable.mjs";
-import { testTextOutputs } from "./cases/text.mjs";
-import { testManifestProbe, testProtocolOutputs, testValidInvoke } from "./cases/protocol.mjs";
-import { testFixtureCorpus } from "./cases/corpus.mjs";
+import { testDocumentOutputMatrix } from "./cases/outputs.mjs";
+import { testManifestProbe, testValidInvoke } from "./cases/machine-commands.mjs";
+import { testProcessBoundaryCorpus } from "./cases/corpus.mjs";
 import { testCliArgumentCompatibilityWarnings, testCliArgumentFailures } from "./cases/cli-args.mjs";
 import { testProtocolOperationErrors, testReadableOperationErrors } from "./cases/operation-errors.mjs";
 import { testInvokeFailures } from "./cases/invoke-errors.mjs";
@@ -28,13 +27,10 @@ try {
   assertSetup(fs.existsSync(smokeState.binaryPath), `docnav-markdown binary not found: ${smokeState.binaryPath}`);
   assertSetup(fs.existsSync(fixturesDir), `fixture directory not found: ${fixturesDir}`);
 
-  runTest("readable outline -> ref -> readable read", testReadableOutlineRead);
-  runTest("readable-json output for find/info", testReadableFindInfo);
-  runTest("text output for outline/read/find/info", testTextOutputs);
-  runTest("protocol-json output for outline/read/find/info", testProtocolOutputs);
+  runTest("document operation output matrix", testDocumentOutputMatrix);
   runTest("manifest/probe protocol-json schemas", testManifestProbe);
   runTest("valid invoke stdin request", testValidInvoke);
-  runTest("Markdown fixture corpus behavior", testFixtureCorpus);
+  runTest("Markdown process boundary corpus", testProcessBoundaryCorpus);
   runTest("CLI argument validation matrix", testCliArgumentFailures);
   runTest("CLI argument compatibility warning matrix", testCliArgumentCompatibilityWarnings);
   runTest("readable operation error matrix", testReadableOperationErrors);

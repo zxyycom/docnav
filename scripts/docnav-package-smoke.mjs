@@ -35,13 +35,15 @@ try {
   console.log("");
 
   runNodeScript(
-    path.join(root, "scripts", "docnav-markdown-cli-smoke.mjs"),
+    path.join(root, "scripts", "docnav-markdown-cli-smoke", "index.mjs"),
     [],
     { env },
   );
-  runNodeScript(path.join(root, "scripts", "docnav-core-cli-smoke.mjs"), [], {
-    env,
-  });
+  runNodeScript(
+    path.join(root, "scripts", "docnav-core-cli-smoke", "index.mjs"),
+    [],
+    { env },
+  );
 
   console.log("");
   console.log("Docnav Release Package Smoke");

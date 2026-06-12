@@ -1,4 +1,5 @@
 import { argValue, createSmokeHarness, createSmokeState, resolveBinaryPath } from "../smoke-harness.mjs";
+import { createCliSmokeCases } from "../cli-smoke/cases.mjs";
 import { expect } from "./assertions.mjs";
 import { logDir, logPaths, root, schemaPaths, tempRoot } from "./config.mjs";
 
@@ -40,4 +41,9 @@ export const {
     ...(options.env ?? {})
   }),
   safeArgPattern: /^[A-Za-z0-9_./:=@+\-\\]+$/
+});
+
+export const { runProtocolResponseCase, runSuccessfulJsonCase } = createCliSmokeCases({
+  runCli,
+  validateSchema
 });

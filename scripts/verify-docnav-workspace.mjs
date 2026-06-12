@@ -41,8 +41,8 @@ const checks = [
     args: ["run", "smoke:docnav-markdown:dev"],
     ignoreOutput: [
       /^> docnav-contract-docs@.* smoke:docnav-markdown:dev .*$/,
-      /^> node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\.mjs$/,
-      /^\$ node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\.mjs$/,
+      /^> node scripts\/with-cargo-bins\.mjs --bin docnav-markdown docnav-markdown DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\/index\.mjs$/,
+      /^\$ node scripts\/with-cargo-bins\.mjs --bin docnav-markdown docnav-markdown DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-markdown-cli-smoke\/index\.mjs$/,
       /^\s*Finished `.*` profile .*$/,
       /^Docnav Markdown Development Smoke$/,
       /^Status: passed$/,
@@ -57,8 +57,8 @@ const checks = [
     args: ["run", "smoke:docnav-core:dev"],
     ignoreOutput: [
       /^> docnav-contract-docs@.* smoke:docnav-core:dev .*$/,
-      /^> node scripts\/with-cargo-bin\.mjs --package docnav --bin docnav --env DOCNAV_BIN -- node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\.mjs$/,
-      /^\$ node scripts\/with-cargo-bin\.mjs --package docnav --bin docnav --env DOCNAV_BIN -- node scripts\/with-cargo-bin\.mjs --package docnav-markdown --bin docnav-markdown --env DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\.mjs$/,
+      /^> node scripts\/with-cargo-bins\.mjs --bin docnav docnav DOCNAV_BIN --bin docnav-markdown docnav-markdown DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\/index\.mjs$/,
+      /^\$ node scripts\/with-cargo-bins\.mjs --bin docnav docnav DOCNAV_BIN --bin docnav-markdown docnav-markdown DOCNAV_MARKDOWN_BIN -- node scripts\/docnav-core-cli-smoke\/index\.mjs$/,
       /^\s*Finished `.*` profile .*$/,
       /^Docnav Core Development Smoke$/,
       /^Status: passed$/,
