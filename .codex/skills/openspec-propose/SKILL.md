@@ -34,6 +34,7 @@ metadata:
 
 1. 必跑命令：
    - `openspec list --json`：先读取当前 active changes，避免重复创建或忽略正在进行的 change。
+   - `openspec list --specs --json`：写 proposal 的 Capabilities 前读取现有主 spec id，避免把 change 名称误当成 capability。
    - `openspec new change "<name>" --description "<one-line goal>" --schema "<schema>"`：创建 change。使用默认 schema 时可以省略 `--schema`。
    - `openspec status --change "<name>" --json`：读取 `applyRequires`、artifact 状态和依赖。
    - `openspec instructions <artifact-id> --change "<name>" --json`：为当前可生成 artifact 获取 `template`、`instruction`、`outputPath`、`dependencies`、`context` 和 `rules`。
@@ -47,6 +48,37 @@ metadata:
    - CLI 不可用、命令失败或输出不足时，再读取目标文件原文。
    - 需要参考改写前行为时，只读同目录 `reference-original.md`。
 
+## Capability ID 命名规则
+
+OpenSpec change name 和 capability ID 是不同概念：
+
+1. Change name 表达本次要完成的变化，可以是动词短语，例如 `implement-docnav-mcp-bridge`。
+2. Capability ID 表达长期主 spec 所有权，必须是稳定名词短语，例如 `mcp-bridge`。
+3. Delta spec 的目录名就是归档目标：`openspec/changes/<change>/specs/<capability>/spec.md` 会合并到 `openspec/specs/<capability>/spec.md`。
+
+写 proposal 的 Capabilities 前必须选择 capability ID：
+
+1. 运行 `openspec list --specs --json`，读取现有 capability ID。
+2. 如果需求改变已有能力的 requirement，使用现有 capability ID，不能创建同义新 ID。
+3. 如果需求确实引入新的长期能力，创建新的 capability ID。
+4. 如果一个 change 同时改变多个长期能力，列出多个 capability；不要为整个 change 创建一个总括 capability。
+5. 如果无法判断应该复用哪个 capability，先向用户问一个具体问题，不继续生成 specs。
+
+新 capability ID 必须满足：
+
+1. 使用 kebab-case，小写英文、数字和连字符。
+2. 使用名词或名词短语，表达长期能力或稳定责任边界。
+3. 优先按产品/接口/制品所有权命名，例如 `core-cli`、`adapter-routing`、`readable-output`、`mcp-bridge`、`adapter-management`、`markdown-navigation`。
+4. 不默认复用 change name。
+5. 不包含 `implement`、`implementation`、`change`、`task`、日期或一次性迁移阶段。
+6. 不用 `v0`、`v1` 等版本阶段表达长期能力；版本范围写入 requirement、design 或 tasks。
+
+示例：
+
+1. `implement-docnav-mcp-bridge` -> capability `mcp-bridge`。
+2. `implement-docnav-adapter-management` -> capability `adapter-management`。
+3. `replace-text-with-readable-view` -> capability `readable-output`，并按影响面修改 `core-cli`、`adapter-sdk` 或 `mcp-bridge`。
+
 ## 工作流程
 
 1. 确定 change 名称、schema 和目标
@@ -59,6 +91,7 @@ metadata:
    - 用 active change 列表检查名称冲突和相关在途工作。
    - 从用户输入识别现成的 kebab-case 名称，或从需求描述派生名称。
    - 将用户需求压缩成一句目标说明，作为后续 artifact 写作的主线。
+   - 运行 `openspec list --specs --json`，记录现有 capability ID，并按“Capability ID 命名规则”初步判断本 change 应修改或新增哪些 capability。
    - 如果同名 change 已存在，先确认用户要继续该 change，还是改用新名称；得到选择后再继续。
    - 需要确认可用 workflow schema 时，运行：
 
@@ -108,11 +141,12 @@ metadata:
      - `outputPath`：写入位置。
      - `dependencies`：写作前读取的已完成 artifact。
      - `context` 和 `rules`：约束和判断依据。
+   - 在 proposal 和 specs artifact 中应用“Capability ID 命名规则”；delta spec 目录必须与 proposal 中的 capability ID 完全一致。
    - 依赖 artifact 正文优先通过 instructions 返回的 `dependencies` 和 `outputPath` 定位；CLI 未提供正文时再读取对应文件。
    - 涉及已有主 spec 或 change delta 时，使用 CLI 使用策略中的 `openspec show` 命令获取结构化内容。
    - artifact 内容应服务于用户需求和 change 目标，避免把平台说明、内部流程、上下文块或规则块写成正文。
    - 生成 tasks artifact 时，必须在实现任务前加入阻塞级审计任务，写清“审计未完成前不得执行任何实现任务”。
-   - 阻塞级审计任务必须检查：proposal、design、tasks 是否围绕开头核心句；当前 change 是否只包含未审核临时 artifacts；是否没有修改或影响现有其它文档。
+   - 阻塞级审计任务必须检查：proposal、design、specs 和 tasks 是否围绕开头核心句；capability ID 是否符合命名规则；当前 change 是否只包含未审核临时 artifacts；是否没有修改或影响现有其它文档。
    - 如果某个 artifact 的关键决策无法从用户需求、依赖 artifact 或 instructions 中确定，直接向用户提一个具体问题；得到答案后继续生成。
 
 5. 每个 artifact 写完后验证
@@ -166,7 +200,8 @@ metadata:
 5. artifact 正文没有复制 `context`、`rules` 或内部流程说明。
 6. `openspec validate "<name>" --type change --json --strict --no-interactive` 通过；无法运行时说明失败原因和影响。
 7. tasks artifact 包含阻塞级审计任务，并明确审计未完成前不可执行实现任务。
-8. 最终回复包含 change 名称、change 路径、已创建 artifacts、最终状态、审计门禁状态和下一步入口。
+8. proposal Capabilities 和 specs 目录使用的 capability ID 符合命名规则，且已有能力修改使用现有主 spec ID。
+9. 最终回复包含 change 名称、change 路径、已创建 artifacts、最终状态、审计门禁状态和下一步入口。
 
 ## 最终回复格式
 
