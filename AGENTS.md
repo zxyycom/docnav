@@ -19,7 +19,8 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 - 读取项目文档时，先从 `docs/navigation.md` 的“如何阅读这些文档”进入，只读取当前任务角色匹配的主规范。
 - `openspec/changes/` 只在处理 OpenSpec change、审计历史、验收或用户明确要求时读取；涉及 OpenSpec 时先运行 `openspec list --json`。
 - `docs/schemas/` 和 `docs/examples/` 是校验材料，只在验证字段、示例、schema 或测试时读取。
-- 已读取过的内容不要重复展开；后续使用局部搜索和 diff 跟踪变化。
+- 后续交互引用已读内容时只提炼关键结论和文件位置，不展开原文；跟踪变化用局部搜索和 diff。
+- 探索项目内 `.md` 文档结构时，优先使用 `docnav-markdown outline <path>` 获取大纲和 ref，再用 `docnav-markdown read <ref>` 按区域精准读取；`docnav-markdown` 不可用时回退到常规文件读取方式。
 
 ## 架构边界摘要
 
@@ -32,6 +33,7 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 ## 工作规则
 
 - 优先使用 CodeGraph 理解结构；索引缺失或不够时使用 `rg` / `rg --files` 补充。
+- 执行本地命令获取文本输出时，优先用 `rtk` 包装以减少 token 消耗，常用：`rtk ls`、`rtk find`、`rtk grep`、`rtk git`、`rtk cargo`、`rtk pnpm`、`rtk read`、`rtk diff`、`rtk err`。需要完整原始输出、精确行号或多行上下文时回退到对应原生命令。
 - 搜索按任务过滤路径、扩展名和关键词，并排除 `.git`、`target`、`node_modules`、`.venv`、`dist`、`build` 和缓存目录；避免无过滤遍历整个仓库。
 - 大文件、长输出和目录列表先做摘要或筛选，再读取具体片段。
 - 文档读取按 `docs/navigation.md` 角色路径进入；不要因为存在 OpenSpec、schema、examples 就默认全部读取。
