@@ -27,7 +27,7 @@ const claudeExecutable = requireEnvironment(
 );
 const claudeVersion = requireEnvironment("CLAUDE_APPROVAL_CLAUDE_VERSION");
 const permissionMode =
-  process.env.CLAUDE_APPROVAL_PERMISSION_MODE || "acceptEdits";
+  process.env.CLAUDE_APPROVAL_PERMISSION_MODE || "auto";
 
 const files = sessionPaths(sessionDirectory);
 const abortController = new AbortController();

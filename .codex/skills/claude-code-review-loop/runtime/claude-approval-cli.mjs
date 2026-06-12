@@ -110,7 +110,7 @@ function parseUpdatedInput(value) {
 
 function printHelp() {
   process.stdout.write(`Usage:
-  node claude-approval-cli.mjs start --working-directory <path> (--prompt <text> | --prompt-file <path>) [--permission-mode acceptEdits|default|plan] [--claude-executable <path>] [--json]
+  node claude-approval-cli.mjs start --working-directory <path> (--prompt <text> | --prompt-file <path>) [--permission-mode auto|acceptEdits|default|plan] [--claude-executable <path>] [--json]
   node claude-approval-cli.mjs status [--session-directory <path>] [--wait-seconds 0..300] [--json]
   node claude-approval-cli.mjs approve [--session-directory <path>] --request-id <uuid> [--reason <text>] [--updated-input-json <json>] [--json]
   node claude-approval-cli.mjs deny [--session-directory <path>] --request-id <uuid> [--reason <text>] [--message <text>] [--json]

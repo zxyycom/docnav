@@ -17,7 +17,7 @@ import {
 
 const runtimeDirectory = path.dirname(fileURLToPath(import.meta.url));
 const bridgePath = path.join(runtimeDirectory, "claude-approval-bridge.mjs");
-const permissionModes = new Set(["acceptEdits", "default", "plan"]);
+const permissionModes = new Set(["acceptEdits", "default", "plan", "auto"]);
 const execFileAsync = promisify(execFile);
 
 async function pathExists(filePath) {
@@ -210,7 +210,7 @@ export async function startSession({
   workingDirectory,
   prompt,
   promptFile,
-  permissionMode = "acceptEdits",
+  permissionMode = "auto",
   claudeExecutable,
 }) {
   const resolvedWorkingDirectory = await realpath(workingDirectory);
@@ -220,7 +220,7 @@ export async function startSession({
   const claudeVersion = await readClaudeVersion(resolvedClaudeExecutable);
   if (!permissionModes.has(permissionMode)) {
     throw new Error(
-      "--permission-mode must be one of: acceptEdits, default, plan.",
+      "--permission-mode must be one of: auto, acceptEdits, default, plan.",
     );
   }
 
