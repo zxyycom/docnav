@@ -39,5 +39,5 @@
 - 受影响 public surface：document operation `--output` 枚举、默认输出、`defaults.output` 配置、help、stdout readable contract 和错误/warning 展示。
 - 受影响验证材料：`docs/cli.md`、`docs/architecture.md`、`docs/adapter-contract.md`、`docs/protocol.md`、`docs/testing.md`、`docs/CODING_STYLE.md`、README、readable view golden fixtures、CLI smoke 和 Rust output tests。
 - `readable-json`、`protocol-json`、adapter `invoke` envelope、readable JSON schema、ref、pagination、adapter routing 语义、help/version 的纯文本输出语义不变。
-- `add-fast-outline` 必须使用 readable-view 替代其中的默认文本约定；`implement-docnav-mcp-bridge` 必须在其自身 change 中消费本 change 提供的 renderer config/conformance vectors，并删除独立 text formatter 语义。
+- `explore-operation-composition` 只记录未来 operation composition 方向，不定稿具体默认文本；后续 implementation change 必须使用 readable-view 替代旧文本约定。`implement-docnav-mcp-bridge` 必须在其自身 change 中消费本 change 提供的 renderer config/conformance vectors，并删除独立 text formatter 语义。
 - 非目标：不引入 YAML/Hjson/TOML 作为新机器协议，不允许调用方动态选择 block 字段，不把 readable-view 提升为长期机器兼容接口，不在本 change 内实现 MCP JavaScript bridge renderer。

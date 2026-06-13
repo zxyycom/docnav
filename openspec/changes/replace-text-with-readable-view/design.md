@@ -192,7 +192,7 @@ docnav config unset --user defaults.output
 - [renderer config 与 readable shape 漂移] -> block pointer 缺失或非字符串直接失败；schema/golden/renderer 测试在同一 change 更新，确保外置字段仍能还原到 readable payload 字段。
 - [legacy text 配置锁死 config 命令] -> `config set/unset` 使用 migration-safe raw target loader 修复目标配置，同时普通 document execution 严格拒绝 legacy text。
 - [删除 text 破坏已有脚本和配置] -> 这是显式 breaking change；help、错误和迁移文档只指向 `readable-view`、`readable-json` 或 `protocol-json`，不提供静默兼容。
-- [active change 继续写入旧文本约定] -> 实现前同步 `add-fast-outline` 和 `implement-docnav-mcp-bridge` 的未完成 artifact 或实现任务。
+- [active change 继续写入旧文本约定] -> 实现前同步 `explore-operation-composition` 和 `implement-docnav-mcp-bridge` 的未完成 artifact 或实现任务；探索 change 不定稿具体文本输出，后续实现 change 必须接入 readable-view。
 
 ## Migration Plan
 

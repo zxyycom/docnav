@@ -4,7 +4,7 @@
 
 - [ ] 0.1 用户审计确认：用户已审计本次 proposal、design、specs 和 tasks，并明确允许开始实现；未完成本项前，1.x 及后续任务全部处于阻塞状态。
 - [ ] 0.2 审计 proposal、design、specs 和 tasks 是否都围绕“readable-view 替代 document text 输出模式”这一核心句，确认当前 change 只包含 `openspec/changes/replace-text-with-readable-view/` 下的未审核临时 artifacts，且创建阶段没有修改现有主规范、代码、schema、examples 或其它 change。
-- [ ] 0.3 审计 `add-fast-outline` 和 `implement-docnav-mcp-bridge` 的当前状态与输出假设，记录需要同步的默认文本、TextContent 和 readable-view integration 项；实现不得让在途 change 重新引入 document text 模式或独立 text formatter。
+- [ ] 0.3 审计 `explore-operation-composition` 和 `implement-docnav-mcp-bridge` 的当前状态与输出假设，记录需要同步的默认文本、TextContent 和 readable-view integration 项；实现不得让在途 change 重新引入 document text 模式或独立 text formatter。
 - [ ] 0.4 在开始实现 MCP 相关代码前，同步 `implement-docnav-mcp-bridge` 的 artifacts，使其依赖本 change 提供的 readable-view contract、renderer config 和 conformance vectors；当前 change 不实现 JavaScript MCP renderer。
 
 ## 1. 共享 readable-view 基础
@@ -43,7 +43,7 @@
 
 - [ ] 4.1 同步 `implement-docnav-mcp-bridge` 的 proposal、design、spec 和 tasks：保留 TextContent transport 类型，删除“精简文本 formatter”语义，改为依赖本 change 的 readable-view contract、renderer config 和 conformance vectors。
 - [ ] 4.2 在当前 change 中发布 MCP 可消费的 renderer config/conformance vector 说明；JavaScript renderer、TextContent 输出和 bridge wiring 任务保留在 `implement-docnav-mcp-bridge` change。
-- [ ] 4.3 同步 `add-fast-outline` 的 proposal、design、spec 和 tasks：默认输出使用 readable-view，read mode 的 content pointer 由最终 typed readable shape 的 renderer config 声明，outline mode 使用空或对应显式 config。
+- [ ] 4.3 同步 `explore-operation-composition` 的 proposal、design、spec 和 tasks：该探索 change 不定稿具体 readable-view shape；后续 implementation change 必须按最终 typed readable shape 声明 content pointer 和 renderer config。
 - [ ] 4.4 检查其它 active change，确保未完成 artifacts 不再把 document operation `text` 作为支持模式或实现任务。
 
 ## 5. 文档、配置和验证材料
