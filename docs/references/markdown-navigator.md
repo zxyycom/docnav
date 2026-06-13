@@ -8,7 +8,7 @@ MarkdownNavigator 只用于记录外部来源和迁移决策，不是现行 Mark
 
 | 项目 | 值 |
 | --- | --- |
-| 仓库路径 | `D:\project\skills\MarkdownNavigator` |
+| 参考仓库 | 外部 MarkdownNavigator 仓库（本地 clone 路径不记录） |
 | 参考提交 | `714605078b0158975dbd16b8c739ad3b41098978` |
 | 参考版本 | `markdown-navigator 0.1.0` |
 | parser | `pulldown-cmark 0.13.4` |

@@ -70,8 +70,8 @@ description: "中文优先的 Docnav findings-first code review 指南，用于 
 
 ```text
 Skill-only 或 Markdown review changes:
-  D:\project\ai\docnav\target\debug\docnav-markdown.exe info <changed-md>
-  D:\project\ai\docnav\target\debug\docnav-markdown.exe outline <changed-md>
+  target/debug/docnav-markdown.exe info <changed-md>
+  target/debug/docnav-markdown.exe outline <changed-md>
 
 Markdown adapter 或 direct CLI changes:
   pnpm run smoke:docnav-markdown

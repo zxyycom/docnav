@@ -55,8 +55,8 @@
 
 ```text
 Markdown skill/reference edits:
-  D:\project\ai\docnav\target\debug\docnav-markdown.exe info <changed-md>
-  D:\project\ai\docnav\target\debug\docnav-markdown.exe outline <changed-md>
+  target/debug/docnav-markdown.exe info <changed-md>
+  target/debug/docnav-markdown.exe outline <changed-md>
 
 Markdown adapter behavior:
   pnpm run smoke:docnav-markdown

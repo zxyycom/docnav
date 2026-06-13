@@ -86,8 +86,8 @@ description: "设计或审查 Docnav public contract：raw protocol 字段、rea
 
 选择能证明 changed contract 的最小 command set；当变更跨 surface 时，再运行更宽的验证。
 
-- Skill markdown shape：`D:\project\ai\docnav\target\debug\docnav-markdown.exe info .codex\skills\api-and-interface-design\SKILL.md --output text`
-- Skill markdown outline：`D:\project\ai\docnav\target\debug\docnav-markdown.exe outline .codex\skills\api-and-interface-design\SKILL.md --output text`
+- Skill markdown shape：`target/debug/docnav-markdown.exe info .codex\skills\api-and-interface-design\SKILL.md --output text`
+- Skill markdown outline：`target/debug/docnav-markdown.exe outline .codex\skills\api-and-interface-design\SKILL.md --output text`
 - Schema 或 example 变更：运行变更 artifact 附近记录的 validation command。
 - CLI、adapter、MCP、schema 或 example boundary 变更：交付前优先运行 `pnpm run verify:docnav-workspace`。
 - Local diff check：确认只改了预期拥有的文件。

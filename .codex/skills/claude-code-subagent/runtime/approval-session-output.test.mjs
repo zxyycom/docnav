@@ -57,13 +57,13 @@ test("keeps non-Bash approval inputs exact", () => {
       {
         requestId: "request-id",
         toolName: "Read",
-        input: { file_path: "D:\\project\\file.txt" },
+        input: { file_path: "fixtures\\file.txt" },
       },
     ],
   });
 
   assert.match(output, /^input:$/mu);
-  assert.match(output, /"file_path": "D:\\\\project\\\\file.txt"/u);
+  assert.match(output, /"file_path": "fixtures\\\\file.txt"/u);
 });
 
 test("formats final results and decisions", () => {
