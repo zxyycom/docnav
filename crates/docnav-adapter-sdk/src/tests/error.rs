@@ -47,6 +47,7 @@ fn stable_error_codes_map_to_adapter_exit_codes() {
         ),
         (StableErrorCode::RefNotFound, AdapterExitCode::HandlerError),
         (StableErrorCode::RefAmbiguous, AdapterExitCode::HandlerError),
+        (StableErrorCode::RefInvalid, AdapterExitCode::HandlerError),
         (
             StableErrorCode::AdapterUnavailable,
             AdapterExitCode::IoError,

@@ -134,6 +134,17 @@ impl StableError {
         )
     }
 
+    pub fn ref_invalid(ref_id: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::new(
+            StableErrorCode::RefInvalid,
+            stable_error_messages::REF_INVALID,
+            details([
+                (details_fields::REF, ref_id.into()),
+                (details_fields::REASON, reason.into()),
+            ]),
+        )
+    }
+
     pub fn adapter_unavailable(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::new(
             StableErrorCode::AdapterUnavailable,
@@ -196,6 +207,7 @@ pub enum StableErrorCode {
     CapabilityUnsupported,
     RefNotFound,
     RefAmbiguous,
+    RefInvalid,
     AdapterUnavailable,
     AdapterInvokeFailed,
     InternalError,

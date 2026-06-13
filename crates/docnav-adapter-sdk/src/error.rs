@@ -33,7 +33,8 @@ pub fn exit_code_for_error(code: StableErrorCode) -> AdapterExitCode {
         | StableErrorCode::FormatUnknown
         | StableErrorCode::FormatAmbiguous
         | StableErrorCode::RefNotFound
-        | StableErrorCode::RefAmbiguous => AdapterExitCode::HandlerError,
+        | StableErrorCode::RefAmbiguous
+        | StableErrorCode::RefInvalid => AdapterExitCode::HandlerError,
     }
 }
 

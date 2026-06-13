@@ -77,7 +77,7 @@ Docnav 分为两个语义层：
 - 使用成熟 parser 识别和解析对应格式。
 - 定义格式原生导航参数和内置默认值。
 - 生成扁平 outline、ref、语义结果和下一页 page。
-- 解析 ref 的格式定位部分并唯一读取。
+- 按自身契约解析 ref 并读取。
 - 定义 adapter 直接 CLI 的阅读文本和 readable JSON。
 - 在 manifest 中声明 adapter 身份、支持格式、扩展名、content type 和 capabilities。
 

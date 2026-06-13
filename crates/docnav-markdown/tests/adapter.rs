@@ -170,8 +170,12 @@ fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
         .expect("outline result");
 
     assert_eq!(result.entries.len(), 2);
-    assert_eq!(result.entries[0].ref_id, "L1:Guide");
-    assert_eq!(result.entries[1].ref_id, "L8:Guide > Install");
+    // Guide: line 1, level 1, index 1
+    // Install: line 8, level 2, index 2 (Fake 不在 outline 中但 index 在过滤前分配)
+    // Fake 在代码围栏内被忽略，不算有效 heading。所以只有 Guide(index=1) 和 Install(index=2)
+    // Hidden 是 H4，max_heading_level=3 时不显示
+    assert_eq!(result.entries[0].ref_id, "H:L1:H1:I1");
+    assert_eq!(result.entries[1].ref_id, "H:L8:H2:I2");
     for entry in &result.entries {
         assert_canonical_ref(&entry.ref_id);
     }
@@ -232,66 +236,82 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
     let outline = MarkdownAdapter
         .outline(&request, &arguments)
         .expect("outline result");
-    let refs: Vec<String> = outline
-        .entries
-        .iter()
-        .filter(|entry| entry.ref_id.contains("A > B"))
-        .map(|entry| entry.ref_id.clone())
-        .collect();
 
     let all_refs: Vec<String> = outline
         .entries
         .iter()
         .map(|entry| entry.ref_id.clone())
         .collect();
-    assert_eq!(all_refs, vec!["L1:A", "L2:A > B", "L4#2:A", "L5#2:A > B"]);
-    assert_eq!(refs, vec!["L2:A > B", "L5#2:A > B"]);
+    // # A (line 1, H1, index 1)
+    // ## B (line 2, H2, index 2)
+    // # A (line 4, H1, index 3)
+    // ## B (line 5, H2, index 4)
+    assert_eq!(
+        all_refs,
+        vec!["H:L1:H1:I1", "H:L2:H2:I2", "H:L4:H1:I3", "H:L5:H2:I4",]
+    );
     for ref_id in &all_refs {
         assert_canonical_ref(ref_id);
     }
 
-    let first = read_ref(&path, "L2:A > B");
-    let second = read_ref(&path, "L5#2:A > B");
-    let explicit_first = read_ref(&path, "L2#1:A > B");
+    // 读取第一个 B section（包含 "first"）
+    let first = read_ref(&path, "H:L2:H2:I2");
     assert!(first.content.contains("first"));
     assert!(!first.content.contains("second"));
+
+    // 读取第二个 B section（包含 "second"）
+    let second = read_ref(&path, "H:L5:H2:I4");
     assert!(second.content.contains("second"));
     assert!(!second.content.contains("first"));
-    assert!(explicit_first.content.contains("first"));
-    assert!(!explicit_first.content.contains("second"));
+
+    // 读取第一个 A section
+    let first_a = read_ref(&path, "H:L1:H1:I1");
+    assert!(first_a.content.contains("first"));
+    assert!(!first_a.content.contains("second"));
 }
 
 #[test]
-fn read_reports_ref_not_found_for_missing_and_unsupported_refs() {
+fn read_reports_ref_invalid_for_old_format_and_non_canonical_refs() {
     let path = write_doc("refs.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
 
-    let missing_ref = "L99:Missing";
-    let missing = read_ref_error(&path, missing_ref);
-    assert_ref_not_found(&missing, missing_ref);
+    // 旧格式 → REF_INVALID
+    let old_refs = ["L99:Missing", "L1:A", "L2#2:A > B", "L1#1:A"];
+    for ref_id in &old_refs {
+        let error = read_ref_error(&path, ref_id);
+        assert_ref_invalid(&error, ref_id);
+    }
 
-    let unsupported_ref = "P:A > B";
-    let unsupported_path_ref = read_ref_error(&path, unsupported_ref);
-    assert_ref_not_found(&unsupported_path_ref, unsupported_ref);
-
-    let invalid_ordinal_ref = "L2#0:A > B";
-    let invalid_ordinal = read_ref_error(&path, invalid_ordinal_ref);
-    assert_ref_not_found(&invalid_ordinal, invalid_ordinal_ref);
+    // 非法字段 → REF_INVALID
+    let invalid_refs = ["P:A > B", "H:L01:H1:I1", "H:L1:H0:I1", "not-a-ref", ""];
+    for ref_id in &invalid_refs {
+        if ref_id.is_empty() {
+            // 空字符串可能触发共享层校验（非空字符串要求）
+            continue;
+        }
+        let error = read_ref_error(&path, ref_id);
+        assert_ref_invalid(&error, ref_id);
+    }
 }
 
 #[test]
-fn read_rejects_legacy_bracketed_ordinal_suffix() {
-    let path = write_doc("legacy-ref.md", "# A\n## B\nfirst\n");
-    let legacy_ref = legacy_ordinal_ref("L2:A > B", 1);
+fn read_reports_ref_not_found_for_canonical_no_match() {
+    let path = write_doc("nofound.md", "# Guide\nBody\n");
 
-    let error = read_ref_error(&path, &legacy_ref);
+    // Canonical grammar 但无匹配 → REF_NOT_FOUND
+    let error = read_ref_error(&path, "H:L99:H1:I1");
+    assert_ref_not_found(&error, "H:L99:H1:I1");
 
-    assert_ref_not_found(&error, &legacy_ref);
+    let error = read_ref_error(&path, "H:L1:H2:I1");
+    assert_ref_not_found(&error, "H:L1:H2:I1");
+
+    let error = read_ref_error(&path, "H:L1:H1:I99");
+    assert_ref_not_found(&error, "H:L1:H1:I99");
 }
 
 #[test]
 fn read_paginates_unicode_without_splitting_characters() {
     let path = write_doc("unicode.md", "# A\n界界界abc\n");
-    let ref_id = "L1:A";
+    let ref_id = "H:L1:H1:I1";
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
         limit_chars: positive(5),
@@ -337,7 +357,10 @@ fn find_ref_targets_current_visible_region_and_read_contains_match() {
     let result = find_result(&path, &arguments);
 
     assert_eq!(result.matches.len(), 1);
-    assert_eq!(result.matches[0].ref_id, "L1:Current");
+    // target 在 H4 "Hidden" 下，但 Hidden 不 visible (max=3)，
+    // 最近 visible heading 是 "Current" (line 1, H1, index 1)
+    assert_eq!(result.matches[0].ref_id, "H:L1:H1:I1");
+    assert_canonical_ref(&result.matches[0].ref_id);
     assert!(result.matches[0].display.contains("target"));
 
     let read = read_ref(&path, &result.matches[0].ref_id);
@@ -373,10 +396,10 @@ fn find_falls_back_to_full_document_when_no_heading_is_visible() {
 #[test]
 fn outline_paginates_with_response_page_until_end_and_past_end() {
     let path = write_doc("outline-pages.md", "# A\none\n# B\ntwo\n# C\nthree\n");
-    let first_arguments = outline_args(8, 1, Some(3));
+    let first_arguments = outline_args(10, 1, Some(3));
 
     let first = outline_result(&path, &first_arguments);
-    assert_eq!(entry_refs(&first.entries), vec!["L1:A"]);
+    assert_eq!(entry_refs(&first.entries), vec!["H:L1:H1:I1"]);
     let second_page = first.page.expect("second page");
 
     let second_arguments = OutlineArguments {
@@ -384,7 +407,7 @@ fn outline_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let second = outline_result(&path, &second_arguments);
-    assert_eq!(entry_refs(&second.entries), vec!["L3:B"]);
+    assert_eq!(entry_refs(&second.entries), vec!["H:L3:H1:I2"]);
     let third_page = second.page.expect("third page");
 
     let third_arguments = OutlineArguments {
@@ -392,7 +415,7 @@ fn outline_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let third = outline_result(&path, &third_arguments);
-    assert_eq!(entry_refs(&third.entries), vec!["L5:C"]);
+    assert_eq!(entry_refs(&third.entries), vec!["H:L5:H1:I3"]);
     assert_eq!(third.page, None);
 
     let past_end_arguments = OutlineArguments {
@@ -413,7 +436,7 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
     let first_arguments = find_args("target", 10, 1, Some(3));
 
     let first = find_result(&path, &first_arguments);
-    assert_eq!(entry_refs(&first.matches), vec!["L1:A"]);
+    assert_eq!(entry_refs(&first.matches), vec!["H:L1:H1:I1"]);
     let second_page = first.page.expect("second page");
 
     let second_arguments = FindArguments {
@@ -421,7 +444,7 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let second = find_result(&path, &second_arguments);
-    assert_eq!(entry_refs(&second.matches), vec!["L3:B"]);
+    assert_eq!(entry_refs(&second.matches), vec!["H:L3:H1:I2"]);
     let third_page = second.page.expect("third page");
 
     let third_arguments = FindArguments {
@@ -429,7 +452,7 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let third = find_result(&path, &third_arguments);
-    assert_eq!(entry_refs(&third.matches), vec!["L5:C"]);
+    assert_eq!(entry_refs(&third.matches), vec!["H:L5:H1:I3"]);
     assert_eq!(third.page, None);
 
     let past_end_arguments = FindArguments {
@@ -455,12 +478,12 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
     };
 
     let default = outline_result(&path, &default_outline);
-    assert_eq!(entry_refs(&default.entries), vec!["L1:Top"]);
+    assert_eq!(entry_refs(&default.entries), vec!["H:L1:H1:I1"]);
 
     let expanded = outline_result(&path, &expanded_outline);
     assert_eq!(
         entry_refs(&expanded.entries),
-        vec!["L1:Top", "L3:Top > Deep"]
+        vec!["H:L1:H1:I1", "H:L3:H4:I2"]
     );
 
     let default_find = FindArguments {
@@ -475,10 +498,10 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
     };
 
     let default_matches = find_result(&path, &default_find);
-    assert_eq!(entry_refs(&default_matches.matches), vec!["L1:Top"]);
+    assert_eq!(entry_refs(&default_matches.matches), vec!["H:L1:H1:I1"]);
 
     let expanded_matches = find_result(&path, &expanded_find);
-    assert_eq!(entry_refs(&expanded_matches.matches), vec!["L3:Top > Deep"]);
+    assert_eq!(entry_refs(&expanded_matches.matches), vec!["H:L3:H4:I2"]);
 }
 
 #[test]
@@ -551,6 +574,54 @@ fn invoke_writes_protocol_envelope() {
     }
 }
 
+#[test]
+fn outline_display_includes_heading_title() {
+    let path = write_doc("display.md", "# Installation Guide\n\n## Setup\nBody\n");
+    let arguments = outline_args(6000, 1, None);
+    let result = outline_result(&path, &arguments);
+
+    assert_eq!(result.entries.len(), 2);
+    // display 包含 heading title
+    assert!(result.entries[0].display.contains("Installation Guide"));
+    assert!(result.entries[1].display.contains("Setup"));
+    // ref 不包含 title
+    assert!(!result.entries[0].ref_id.contains("Installation"));
+}
+
+#[test]
+fn find_display_contains_match_snippet() {
+    let path = write_doc(
+        "find-display.md",
+        "# Top\nfind this needle here\n## Other\nmore text\n",
+    );
+    let arguments = find_args("needle", 6000, 1, Some(3));
+    let result = find_result(&path, &arguments);
+
+    assert_eq!(result.matches.len(), 1);
+    // find display 保留匹配片段
+    assert!(result.matches[0].display.contains("needle"));
+    // ref 不受 display 内容影响
+    assert_canonical_ref(&result.matches[0].ref_id);
+}
+
+#[test]
+fn structure_snapshot_old_ref_may_fail_after_document_change() {
+    let path1 = write_doc("snap1.md", "# A\nBody\n## B\nMore\n");
+    let arguments = outline_args(6000, 1, Some(3));
+    let outline1 = outline_result(&path1, &arguments);
+    let ref_a = &outline1.entries[0].ref_id;
+
+    // 原文档中可以正常读取
+    let read1 = read_ref(&path1, ref_a);
+    assert!(read1.content.contains("# A"));
+
+    // 文档变化后重新解析，使用旧 ref
+    let path2 = write_doc("snap2.md", "No headings\nJust text\n");
+    let error = read_ref_error(&path2, ref_a);
+    // 结构坐标变化后旧 ref 返回 REF_NOT_FOUND（而非 REF_INVALID）
+    assert_ref_not_found(&error, ref_a);
+}
+
 fn entry_refs(entries: &[docnav_protocol::Entry]) -> Vec<&str> {
     entries.iter().map(|entry| entry.ref_id.as_str()).collect()
 }
@@ -569,7 +640,7 @@ fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {
     );
     MarkdownAdapter
         .read(&request, &arguments)
-        .expect("read ref")
+        .unwrap_or_else(|_| panic!("read ref: {ref_id}"))
 }
 
 fn read_ref_error(path: &Path, ref_id: &str) -> StableError {
@@ -586,28 +657,63 @@ fn read_ref_error(path: &Path, ref_id: &str) -> StableError {
     );
     MarkdownAdapter
         .read(&request, &arguments)
-        .expect_err("read ref error")
+        .unwrap_err()
         .into_error()
 }
 
 fn assert_ref_not_found(error: &StableError, ref_id: &str) {
-    assert_eq!(error.code, StableErrorCode::RefNotFound);
+    assert_eq!(
+        error.code,
+        StableErrorCode::RefNotFound,
+        "expected REF_NOT_FOUND for {ref_id}, got {:?}",
+        error.code
+    );
     assert_eq!(
         error.details.get("ref").and_then(serde_json::Value::as_str),
         Some(ref_id)
     );
 }
 
+fn assert_ref_invalid(error: &StableError, ref_id: &str) {
+    assert_eq!(
+        error.code,
+        StableErrorCode::RefInvalid,
+        "expected REF_INVALID for {ref_id}, got {:?}",
+        error.code
+    );
+    assert_eq!(
+        error.details.get("ref").and_then(serde_json::Value::as_str),
+        Some(ref_id)
+    );
+    // reason 必须非空
+    let reason = error
+        .details
+        .get("reason")
+        .and_then(serde_json::Value::as_str)
+        .expect("reason field");
+    assert!(!reason.is_empty(), "reason must not be empty for {ref_id}");
+}
+
 fn assert_canonical_ref(ref_id: &str) {
-    assert!(!ref_id.contains("#1"));
-    assert!(!ref_id.contains(&legacy_ordinal_prefix()));
-}
-
-fn legacy_ordinal_ref(prefix: &str, ordinal: u32) -> String {
-    let ordinal = ordinal.to_string();
-    [prefix, " [", "docnav", ":", ordinal.as_str(), "]"].concat()
-}
-
-fn legacy_ordinal_prefix() -> String {
-    ["[", "docnav", ":"].concat()
+    // canonical ref 必须以 H:L 开头，包含 :H 和 :I
+    assert!(
+        ref_id.starts_with("H:L"),
+        "ref must start with H:L: {:?}",
+        ref_id
+    );
+    assert!(ref_id.contains(":H"), "ref must contain :H: {:?}", ref_id);
+    assert!(ref_id.contains(":I"), "ref must contain :I: {:?}", ref_id);
+    // 不包含旧格式的 # 或 path 文本
+    assert!(
+        !ref_id.contains('#'),
+        "ref must not contain #: {:?}",
+        ref_id
+    );
+    // 不包含前导零模式（H:L0, :H0, :I0）
+    let after_hl = ref_id.strip_prefix("H:L").unwrap();
+    assert!(
+        !after_hl.starts_with('0'),
+        "ref must not have leading zero in line: {:?}",
+        ref_id
+    );
 }

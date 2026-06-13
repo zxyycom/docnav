@@ -1,8 +1,9 @@
 {
-  "code": "REF_NOT_FOUND",
-  "error": "ref 未定位到文档区域。",
+  "code": "REF_INVALID",
+  "error": "ref 不符合当前 adapter 的 ref 格式要求。",
   "details": {
-    "ref": "L999:Missing"
+    "ref": "bad:ref",
+    "reason": "unrecognized ref grammar"
   },
   "guidance": [
     "重新调用 document_outline 获取有效 ref。"

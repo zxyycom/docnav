@@ -6,8 +6,8 @@
   "result": {
     "matches": [
       {
-        "ref": "L7:Guide > Install > Windows",
-        "display": "Run setup.exe."
+        "ref": "H:L7:H3:I3",
+        "display": "L7: ### Windows"
       }
     ],
     "page": null

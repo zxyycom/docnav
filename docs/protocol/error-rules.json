@@ -47,6 +47,11 @@
       "required_details": ["ref", "candidate_count"]
     },
     {
+      "code": "REF_INVALID",
+      "rust_variant": "RefInvalid",
+      "required_details": ["ref", "reason"]
+    },
+    {
       "code": "ADAPTER_UNAVAILABLE",
       "rust_variant": "AdapterUnavailable",
       "required_details": ["adapter_id", "reason"]

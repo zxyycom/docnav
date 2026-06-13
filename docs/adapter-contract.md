@@ -30,7 +30,7 @@ probe
 - 生成扁平 outline 和可读 ref。
 - 定义格式原生导航参数、直接 CLI 默认值与展示文本。
 - 返回有限结果和下一页 page。
-- 解析 ref 的格式定位部分并唯一读取。
+- 按自身契约解析 ref 并读取，将非法 ref、无匹配 ref 等失败映射为稳定错误。
 - 在 invoke 中返回紧凑原始协议结果。
 
 adapter 直接提供本格式的 ref、display、内容、成本和 page，供 `docnav` 原样映射到阅读输出。
@@ -53,7 +53,7 @@ capabilities[]
 manifest 只声明 adapter 身份、支持格式、扩展名、content type 和 capabilities，不声明协议范围或格式默认参数。旧字段 `protocol.min`、`protocol.max` 和 `recommended_parameters` 必须被当前 manifest schema 拒绝。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
 
 Markdown adapter 直接 CLI 使用 `limit_chars: 6000` 和 `max_heading_level: 3` 作为内置默认值，允许其项目级和用户级配置覆盖。
-Markdown find 返回的 match ref 必须与当前导航粒度一致，并可被 read 原样消费；没有局部导航区域时，可以返回 adapter 定义的全文 ref。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度，具体归属策略由 Markdown adapter 自有契约定义。
+Markdown find 返回的 match ref 可按共享调用流程原样传给 read；没有局部导航区域时，可以返回 adapter 定义的全文 ref。find 的 ref 归属策略和 read 对该 ref 的接受与解释行为，由 [Markdown Adapter](adapters/markdown.md) 定义。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度。
 
 ## Probe
 

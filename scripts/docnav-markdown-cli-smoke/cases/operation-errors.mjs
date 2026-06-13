@@ -16,8 +16,9 @@ import {
 export function testReadableOperationErrors() {
   const normal = fixture("normal.md");
   const missingPath = path.join(fixturesDir, "missing.md");
-  const missingRef = "L99:Missing";
+  const invalidRef = "L99:Missing";
   const legacyOrdinalRef = legacyBracketedOrdinalRef();
+  const canonicalNotFoundRef = "H:L99:H1:I1";
   const cases = [
     {
       name: "missing file readable-json",
@@ -27,18 +28,25 @@ export function testReadableOperationErrors() {
       detailValue: missingPath
     },
     {
-      name: "missing ref readable-json",
-      args: ["read", normal, "--ref", missingRef, "--output", "readable-json"],
-      code: "REF_NOT_FOUND",
+      name: "invalid ref readable-json (old format)",
+      args: ["read", normal, "--ref", invalidRef, "--output", "readable-json"],
+      code: "REF_INVALID",
       detailKey: "ref",
-      detailValue: missingRef
+      detailValue: invalidRef
     },
     {
-      name: "legacy ordinal ref readable-json",
+      name: "legacy ordinal ref readable-json (REF_INVALID)",
       args: ["read", normal, "--ref", legacyOrdinalRef, "--output", "readable-json"],
-      code: "REF_NOT_FOUND",
+      code: "REF_INVALID",
       detailKey: "ref",
       detailValue: legacyOrdinalRef
+    },
+    {
+      name: "canonical ref not found readable-json",
+      args: ["read", normal, "--ref", canonicalNotFoundRef, "--output", "readable-json"],
+      code: "REF_NOT_FOUND",
+      detailKey: "ref",
+      detailValue: canonicalNotFoundRef
     },
     {
       name: "non UTF-8 readable-json",
@@ -67,8 +75,9 @@ export function testReadableOperationErrors() {
 export function testProtocolOperationErrors() {
   const normal = fixture("normal.md");
   const missingPath = path.join(fixturesDir, "missing.md");
-  const missingRef = "L99:Missing";
+  const invalidRef = "L99:Missing";
   const legacyOrdinalRef = legacyBracketedOrdinalRef();
+  const canonicalNotFoundRef = "H:L99:H1:I1";
   const cases = [
     {
       name: "missing file protocol-json",
@@ -79,20 +88,28 @@ export function testProtocolOperationErrors() {
       detailValue: missingPath
     },
     {
-      name: "missing ref protocol-json",
-      args: ["read", normal, "--ref", missingRef, "--output", "protocol-json"],
+      name: "invalid ref protocol-json (old format)",
+      args: ["read", normal, "--ref", invalidRef, "--output", "protocol-json"],
       operation: "read",
-      code: "REF_NOT_FOUND",
+      code: "REF_INVALID",
       detailKey: "ref",
-      detailValue: missingRef
+      detailValue: invalidRef
     },
     {
-      name: "legacy ordinal ref protocol-json",
+      name: "legacy ordinal ref protocol-json (REF_INVALID)",
       args: ["read", normal, "--ref", legacyOrdinalRef, "--output", "protocol-json"],
+      operation: "read",
+      code: "REF_INVALID",
+      detailKey: "ref",
+      detailValue: legacyOrdinalRef
+    },
+    {
+      name: "canonical ref not found protocol-json",
+      args: ["read", normal, "--ref", canonicalNotFoundRef, "--output", "protocol-json"],
       operation: "read",
       code: "REF_NOT_FOUND",
       detailKey: "ref",
-      detailValue: legacyOrdinalRef
+      detailValue: canonicalNotFoundRef
     },
     {
       name: "non UTF-8 protocol-json",

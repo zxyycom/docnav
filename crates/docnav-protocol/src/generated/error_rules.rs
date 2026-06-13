@@ -14,6 +14,7 @@ pub(crate) const fn required_details(code: StableErrorCode) -> &'static [&'stati
         StableErrorCode::CapabilityUnsupported => &["capability", "adapter_id"],
         StableErrorCode::RefNotFound => &["ref"],
         StableErrorCode::RefAmbiguous => &["ref", "candidate_count"],
+        StableErrorCode::RefInvalid => &["ref", "reason"],
         StableErrorCode::AdapterUnavailable => &["adapter_id", "reason"],
         StableErrorCode::AdapterInvokeFailed => &["adapter_id", "reason"],
         StableErrorCode::InternalError => &["error_id"],

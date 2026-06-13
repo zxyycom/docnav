@@ -192,7 +192,7 @@ function testBomAndCrlf() {
   expectStderrEmpty(bom);
   const bomOutline = parseJson(bom);
   validateSchema(bom, "readableOutline", bomOutline);
-  expect(bom, bomOutline.entries[0].ref === "L1:Bom Heading", "BOM fixture heading ref starts at line 1");
+  expect(bom, bomOutline.entries[0].ref === "H:L1:H1:I1", "BOM fixture heading ref is canonical");
 
   const bomRead = runCli("read UTF-8 BOM readable-json", [
     "read",
@@ -218,7 +218,7 @@ function testBomAndCrlf() {
   expectStderrEmpty(crlf);
   const crlfOutline = parseJson(crlf);
   validateSchema(crlf, "readableOutline", crlfOutline);
-  expect(crlf, crlfOutline.entries[0].ref === "L1:Crlf Heading", "CRLF fixture heading ref starts at line 1");
+  expect(crlf, crlfOutline.entries[0].ref === "H:L1:H1:I1", "CRLF fixture heading ref is canonical");
 
   const crlfRead = runCli("read CRLF readable-json", [
     "read",

@@ -79,14 +79,14 @@
 
 ## 5. Ref 与分页保持格式所有权
 
-ref 是 adapter 生成和解析的格式内定位值。共享协议、`docnav`、MCP 和其它接入层只保留和传递 ref，不解释 ref 内部结构。
+ref 是 adapter 生成和解释的非空 opaque string。共享协议、`docnav`、MCP 和其它接入层只校验 ref 是非空字符串、原样传递且不解析 ref 内部结构。ref 的 grammar、定位语义、唯一性、稳定性和错误分类由 adapter 专属契约定义。
 
 分页使用有限结果和可继续位置表达，不通过无限输出、隐式截断或隐藏状态完成。
 
 验收标准：
 
 1. `outline -> ref -> read` 链路中，ref 可以原样从 outline 进入 read。
-2. ref 无匹配、多匹配和文档变化后的失败由 adapter 转换为稳定错误。
+2. ref 非法 grammar、无匹配等失败由 adapter 按其专属契约转换为稳定错误。
 3. page 和 limit 的处理可以通过输出字段和测试观察，不依赖调用方猜测内部状态。
 
 ---

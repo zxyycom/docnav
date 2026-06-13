@@ -266,6 +266,7 @@
                 "CAPABILITY_UNSUPPORTED",
                 "REF_NOT_FOUND",
                 "REF_AMBIGUOUS",
+                "REF_INVALID",
                 "ADAPTER_UNAVAILABLE",
                 "ADAPTER_INVOKE_FAILED",
                 "INTERNAL_ERROR"
@@ -513,6 +514,32 @@
                     "properties": {
                       "ref": {},
                       "candidate_count": {}
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "REF_INVALID"
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "details": {
+                    "type": "object",
+                    "required": [
+                      "ref",
+                      "reason"
+                    ],
+                    "properties": {
+                      "ref": {},
+                      "reason": {}
                     }
                   }
                 }

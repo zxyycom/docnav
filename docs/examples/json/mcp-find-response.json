@@ -5,14 +5,14 @@
     "content": [
       {
         "type": "text",
-        "text": "L7:Guide > Install > Windows | Run setup.exe.\npage: null"
+        "text": "H:L7:H3:I3 | L7: ### Windows\npage: null"
       }
     ],
     "structuredContent": {
       "matches": [
         {
-          "ref": "L7:Guide > Install > Windows",
-          "display": "Run setup.exe."
+          "ref": "H:L7:H3:I3",
+          "display": "L7: ### Windows"
         }
       ],
       "page": null

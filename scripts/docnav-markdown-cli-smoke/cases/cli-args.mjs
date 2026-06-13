@@ -247,6 +247,6 @@ export function testCliArgumentCompatibilityWarnings() {
   ]);
   expectExit(refLikeFlag, exitCodes.documentRefFormat);
   expectStderrEmpty(refLikeFlag);
-  expectStdoutIncludes(refLikeFlag, "REF_NOT_FOUND");
+  expectStdoutIncludes(refLikeFlag, "REF_INVALID");
   expectStdoutIncludes(refLikeFlag, "ref=--future-value");
 }

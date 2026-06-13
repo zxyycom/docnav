@@ -5,14 +5,14 @@
     "content": [
       {
         "type": "text",
-        "text": "## Install\nPrimary installation instructions.\n\ncontent_type: text/markdown\ncost: 43 of 122 chars\npage: 2"
+        "text": "ref: H:L4:H2:I2\n## Install\nPrimary installation instructions.\n\n### Windows\nRun s\ncontent_type: text/markdown\ncost: 7 lines | 0.1 KB\npage: 2"
       }
     ],
     "structuredContent": {
-      "ref": "L4:Guide > Install",
-      "content": "## Install\nPrimary installation instructions.\n",
+      "ref": "H:L4:H2:I2",
+      "content": "## Install\nPrimary installation instructions.\n\n### Windows\nRun s",
       "content_type": "text/markdown",
-      "cost": "43 of 122 chars",
+      "cost": "7 lines | 0.1 KB",
       "page": 2
     },
     "isError": false

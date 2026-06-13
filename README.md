@@ -37,7 +37,7 @@ pnpm run smoke:docnav-markdown:dev
 
 ```bash
 cargo run -p docnav-markdown -- outline crates/docnav-markdown/tests/fixtures/cli-smoke/normal.md --output text
-cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-smoke/normal.md --ref "L1:Guide" --output text
+cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-smoke/normal.md --ref "H:L1:H1:I1" --output text
 ```
 
 需要稳定机器协议时使用 `--output protocol-json` 或 adapter `invoke`。
@@ -71,5 +71,5 @@ pnpm run verify:docnav-workspace
 - [CLI 与 MCP 输出](docs/cli.md)：命令、输出模式和 MCP 映射。
 - [原始协议](docs/protocol.md)：invoke envelope、operation、page 和稳定错误。
 - [适配器契约](docs/adapter-contract.md)：adapter 命令、manifest、probe 和 invoke 行为。
-- [Ref](docs/refs.md)：ref 的生成、定位、唯一性和传递规则。
+- [Ref](docs/refs.md)：ref 的共享调用流程、非空 opaque string 和 adapter 所有权。
 - [测试策略](docs/testing.md)：自动化测试层级、验收矩阵和一致性审计。

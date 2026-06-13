@@ -98,7 +98,7 @@ export function testDocumentOutputMatrix() {
       schema: "readableFind",
       readableCheck: (record, json) => expectNormalFindResult(record, json, "readable find"),
       textChecks: [
-        (record) => expect(record, /^L\d+(?:#\d+)?:/m.test(record.stdout), "find text includes canonical ref"),
+        (record) => expect(record, /^H:L\d+:H[1-6]:I\d+/m.test(record.stdout), "find text includes canonical ref"),
         (record) => expectStdoutIncludes(record, "target text"),
         (record) => expectStdoutIncludes(record, "target result"),
         (record) =>

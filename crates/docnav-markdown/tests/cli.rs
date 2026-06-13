@@ -97,16 +97,16 @@ fn direct_cli_and_invoke_share_find_execution_result() {
 }
 
 #[test]
-fn readable_json_error_keeps_code_details_and_omits_protocol_envelope() {
-    let path = write_doc("missing-ref.md", "# Guide\nBody\n");
+fn readable_json_error_returns_ref_invalid_for_non_canonical_refs() {
+    let path = write_doc("invalid-ref-read.md", "# Guide\nBody\n");
     let path = path_arg(&path);
-    let missing_ref = "L99:Missing";
+    let invalid_ref = "L99:Missing";
 
     let output = run(&[
         "read",
         &path,
         "--ref",
-        missing_ref,
+        invalid_ref,
         "--output",
         "readable-json",
     ]);
@@ -116,24 +116,52 @@ fn readable_json_error_keeps_code_details_and_omits_protocol_envelope() {
     let stdout = std::str::from_utf8(&output.stdout).expect("readable error stdout");
     assert_no_legacy_ordinal_suffix(stdout);
     let error_json: Value = serde_json::from_slice(&output.stdout).expect("readable error JSON");
-    assert_eq!(error_json["code"], "REF_NOT_FOUND");
-    assert_eq!(error_json["details"]["ref"], missing_ref);
+    // 旧格式 → REF_INVALID (不是 REF_NOT_FOUND)
+    assert_eq!(error_json["code"], "REF_INVALID");
+    assert_eq!(error_json["details"]["ref"], invalid_ref);
+    assert!(error_json["details"]["reason"]
+        .as_str()
+        .is_some_and(|r| !r.is_empty()));
     assert!(error_json["guidance"].as_array().is_some());
     assert!(error_json["protocol_version"].is_null());
     assert!(error_json["ok"].is_null());
 }
 
 #[test]
-fn protocol_json_error_keeps_stable_ref_details() {
-    let path = write_doc("missing-ref-protocol.md", "# Guide\nBody\n");
+fn readable_json_error_returns_ref_not_found_for_canonical_no_match() {
+    let path = write_doc("canonical-no-match.md", "# Guide\nBody\n");
     let path = path_arg(&path);
-    let missing_ref = "L99:Missing";
+    let canonical_ref = "H:L99:H1:I1";
 
     let output = run(&[
         "read",
         &path,
         "--ref",
-        missing_ref,
+        canonical_ref,
+        "--output",
+        "readable-json",
+    ]);
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+    let error_json: Value = serde_json::from_slice(&output.stdout).expect("readable error JSON");
+    // canonical grammar 但无匹配 → REF_NOT_FOUND
+    assert_eq!(error_json["code"], "REF_NOT_FOUND");
+    assert_eq!(error_json["details"]["ref"], canonical_ref);
+    assert!(error_json["guidance"].as_array().is_some());
+}
+
+#[test]
+fn protocol_json_error_returns_ref_invalid_for_non_canonical_refs() {
+    let path = write_doc("missing-ref-protocol.md", "# Guide\nBody\n");
+    let path = path_arg(&path);
+    let invalid_ref = "L99:Missing";
+
+    let output = run(&[
+        "read",
+        &path,
+        "--ref",
+        invalid_ref,
         "--output",
         "protocol-json",
     ]);
@@ -145,13 +173,17 @@ fn protocol_json_error_keeps_stable_ref_details() {
     let error_json: Value = serde_json::from_slice(&output.stdout).expect("protocol error JSON");
     assert_eq!(error_json["operation"], "read");
     assert_eq!(error_json["ok"], false);
-    assert_eq!(error_json["error"]["code"], "REF_NOT_FOUND");
-    assert_eq!(error_json["error"]["details"]["ref"], missing_ref);
+    // 旧格式 → REF_INVALID
+    assert_eq!(error_json["error"]["code"], "REF_INVALID");
+    assert_eq!(error_json["error"]["details"]["ref"], invalid_ref);
+    assert!(error_json["error"]["details"]["reason"]
+        .as_str()
+        .is_some_and(|r| !r.is_empty()));
     assert!(error_json["result"].is_null());
 }
 
 #[test]
-fn text_error_writes_readable_error_to_stdout() {
+fn text_error_returns_ref_invalid_for_non_canonical_ref() {
     let path = write_doc("missing-ref-text.md", "# Guide\nBody\n");
     let path = path_arg(&path);
 
@@ -160,8 +192,9 @@ fn text_error_writes_readable_error_to_stdout() {
     assert!(!output.status.success());
     assert!(output.stderr.is_empty());
     let stdout = String::from_utf8(output.stdout).expect("text error stdout");
-    assert!(stdout.contains("error: REF_NOT_FOUND"));
-    assert!(stdout.contains("details: ref=P:Guide"));
+    assert!(stdout.contains("error: REF_INVALID"));
+    assert!(stdout.contains("ref=P:Guide"));
+    assert!(stdout.contains("reason"));
     assert_no_legacy_ordinal_suffix(&stdout);
 }
 

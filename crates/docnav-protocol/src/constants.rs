@@ -56,5 +56,6 @@ pub(crate) mod stable_error_messages {
     pub const INTERNAL_ERROR: &str = "Internal error.";
     pub const INVALID_PROTOCOL_REQUEST: &str = "Invalid protocol request.";
     pub const REF_AMBIGUOUS: &str = "Ref is ambiguous.";
+    pub const REF_INVALID: &str = "Ref grammar is invalid.";
     pub const REF_NOT_FOUND: &str = "Ref was not found.";
 }

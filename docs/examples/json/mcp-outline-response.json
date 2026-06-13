@@ -5,18 +5,18 @@
     "content": [
       {
         "type": "text",
-        "text": "L1:Guide | 9 lines | 0.1 KB\nL4:Guide > Install | 6 lines | 0.1 KB\npage: 2"
+        "text": "H:L1:H1:I1 | H1 Guide | 10 lines | 0.1 KB\nH:L4:H2:I2 | H2 Install | 7 lines | 0.1 KB\npage: 2"
       }
     ],
     "structuredContent": {
       "entries": [
         {
-          "ref": "L1:Guide",
-          "display": "9 lines | 0.1 KB"
+          "ref": "H:L1:H1:I1",
+          "display": "H1 Guide | 10 lines | 0.1 KB"
         },
         {
-          "ref": "L4:Guide > Install",
-          "display": "6 lines | 0.1 KB"
+          "ref": "H:L4:H2:I2",
+          "display": "H2 Install | 7 lines | 0.1 KB"
         }
       ],
       "page": 2

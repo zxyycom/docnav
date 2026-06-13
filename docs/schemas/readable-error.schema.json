@@ -19,6 +19,7 @@
         "CAPABILITY_UNSUPPORTED",
         "REF_NOT_FOUND",
         "REF_AMBIGUOUS",
+        "REF_INVALID",
         "ADAPTER_UNAVAILABLE",
         "ADAPTER_INVOKE_FAILED",
         "INTERNAL_ERROR"

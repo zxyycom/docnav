@@ -31,7 +31,7 @@ MCP tool 的 `outputSchema` 内联 readable schema，见 [mcp-outline-tool.json]
 outline 返回：
 
 ```text
-L4:Guide > Install
+H:L4:H2:I2
 ```
 
 该 ref 在 [protocol-read-request.json](json/protocol-read-request.json) 和 [mcp-read-request.json](json/mcp-read-request.json) 中原样复用。
@@ -51,6 +51,7 @@ MCP tool 定义见 [mcp-read-tool.json](json/mcp-read-tool.json)。
 - [manifest.json](json/manifest.json)
 - [probe-result.json](json/probe-result.json)
 - [error-ref-ambiguous.json](json/error-ref-ambiguous.json)
+- [error-ref-invalid.json](json/error-ref-invalid.json)
 - [error-format-unknown.json](json/error-format-unknown.json)
 - [error-format-ambiguous.json](json/error-format-ambiguous.json)
 - [error-invalid-request.json](json/error-invalid-request.json)

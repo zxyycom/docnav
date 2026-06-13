@@ -11,7 +11,7 @@ import {
   writeAuditLogs
 } from "./harness.mjs";
 
-import { testRealMarkdownOutlineRefRead } from "./cases/real-markdown.mjs";
+import { testRealMarkdownFindRefRead, testRealMarkdownOutlineRefRead, testRealMarkdownRefInvalid, testRealMarkdownRefNotFound } from "./cases/real-markdown.mjs";
 import { testDocumentOutputMatrix } from "./cases/outputs.mjs";
 import { testAdapterSelectionMatrix } from "./cases/adapter-selection.mjs";
 import { testCliArgumentFailures } from "./cases/cli-args.mjs";
@@ -34,6 +34,9 @@ try {
 
   const tests = [
     ["real docnav + real docnav-markdown outline -> ref -> read", testRealMarkdownOutlineRefRead],
+    ["real docnav + real docnav-markdown find -> ref -> read", testRealMarkdownFindRefRead],
+    ["real docnav + real docnav-markdown REF_INVALID mapping", testRealMarkdownRefInvalid],
+    ["real docnav + real docnav-markdown REF_NOT_FOUND mapping", testRealMarkdownRefNotFound],
     ["document operation output matrix", testDocumentOutputMatrix],
     ["adapter selection matrix", testAdapterSelectionMatrix],
     ["CLI argument failure matrix", testCliArgumentFailures],

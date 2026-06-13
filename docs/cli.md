@@ -92,8 +92,8 @@ adapter outline docs/guide.md --output protocol-json
 Markdown adapter outline 文本示例；其中 ref 由 Markdown adapter 生成，核心 CLI 只原样传递：
 
 ```text
-L1:Guide                     | 9 lines | 0.1 KB
-L4:Guide > Install           | 6 lines | 0.1 KB
+H:L1:H1:I1   Guide                     | 9 lines | 0.1 KB
+H:L4:H2:I2   Guide > Install           | 6 lines | 0.1 KB
 page: 2
 ```
 

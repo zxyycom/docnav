@@ -67,6 +67,7 @@ pub fn exit_code_for_error(code: StableErrorCode) -> DocnavExitCode {
         | StableErrorCode::FormatUnknown
         | StableErrorCode::FormatAmbiguous
         | StableErrorCode::RefNotFound
-        | StableErrorCode::RefAmbiguous => DocnavExitCode::DocumentError,
+        | StableErrorCode::RefAmbiguous
+        | StableErrorCode::RefInvalid => DocnavExitCode::DocumentError,
     }
 }

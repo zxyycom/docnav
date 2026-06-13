@@ -115,25 +115,27 @@ impl MarkdownDocument {
             .collect()
     }
 
+    /// 按 Markdown adapter 私有契约解析并匹配 ref。
+    ///
+    /// - `doc:full` → `FullDocument`
+    /// - canonical heading ref 无匹配 → `REF_NOT_FOUND`
+    /// - 其它非空输入 → `REF_INVALID`
     pub fn resolve_ref(&self, ref_id: &str) -> AdapterResult<ResolvedRef<'_>> {
         if ref_id == FULL_DOCUMENT_REF {
             return Ok(ResolvedRef::FullDocument);
         }
 
         let Some(parsed) = ParsedRef::parse(ref_id) else {
-            return Err(StableError::ref_not_found(ref_id).into());
+            return Err(StableError::ref_invalid(
+                ref_id,
+                "not a valid Markdown heading ref; expected H:L{line}:H{level}:I{index} or doc:full",
+            )
+            .into());
         };
 
-        let candidates: Vec<&Heading> = self
-            .headings
-            .iter()
-            .filter(|heading| parsed.matches(heading))
-            .collect();
-
-        match candidates.as_slice() {
-            [] => Err(StableError::ref_not_found(ref_id).into()),
-            [heading] => Ok(ResolvedRef::Heading(heading)),
-            many => Err(StableError::ref_ambiguous(ref_id, many.len() as u32).into()),
+        match self.headings.iter().find(|h| parsed.matches(h)) {
+            Some(heading) => Ok(ResolvedRef::Heading(heading)),
+            None => Err(StableError::ref_not_found(ref_id).into()),
         }
     }
 
@@ -161,10 +163,13 @@ pub fn is_utf8_markdown_candidate(path: &str) -> Result<bool, std::io::Error> {
     Ok(std::str::from_utf8(bytes).is_ok())
 }
 
+/// Outline display 承载 heading title，并保留 level 和 section cost 摘要。
+/// display 不包含 ref；完整 ref 由独立字段承载。
 fn heading_display(document: &MarkdownDocument, heading: &Heading) -> String {
     format!(
-        "H{} | {}",
+        "H{} {} | {}",
         heading.level,
+        heading.title,
         cost_for(document.section_content(heading))
     )
 }

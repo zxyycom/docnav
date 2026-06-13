@@ -11,6 +11,7 @@ export const REQUIRED_ERROR_DETAILS_BY_CODE = Object.freeze({
   CAPABILITY_UNSUPPORTED: Object.freeze(["capability", "adapter_id"]),
   REF_NOT_FOUND: Object.freeze(["ref"]),
   REF_AMBIGUOUS: Object.freeze(["ref", "candidate_count"]),
+  REF_INVALID: Object.freeze(["ref", "reason"]),
   ADAPTER_UNAVAILABLE: Object.freeze(["adapter_id", "reason"]),
   ADAPTER_INVOKE_FAILED: Object.freeze(["adapter_id", "reason"]),
   INTERNAL_ERROR: Object.freeze(["error_id"])

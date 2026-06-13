@@ -12,7 +12,7 @@ pub use text::cost_for;
 
 #[cfg(test)]
 mod tests {
-    use super::refs::{ParsedRef, FULL_DOCUMENT_REF};
+    use super::refs::FULL_DOCUMENT_REF;
     use super::*;
 
     #[test]
@@ -30,101 +30,211 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_full_paths_receive_unique_refs() {
-        let document = MarkdownDocument::parse("# A\n## B\n# A\n## B\n".to_owned());
-
-        let entries = document.outline_entries(3);
-        let duplicate_refs: Vec<&str> = entries
-            .iter()
-            .filter(|entry| entry.ref_id.contains("A > B"))
-            .map(|entry| entry.ref_id.as_str())
-            .collect();
-
-        assert_eq!(duplicate_refs, vec!["L2:A > B", "L4#2:A > B"]);
-    }
-
-    #[test]
-    fn heading_refs_omit_default_occurrence() {
+    fn outline_generates_canonical_heading_refs() {
         let document = MarkdownDocument::parse("# Guide\n\n## Install\n".to_owned());
         let entries = document.outline_entries(3);
         let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
 
-        assert_eq!(refs, vec!["L1:Guide", "L3:Guide > Install"]);
+        // index 1: Guide (line 1, level 1)
+        // index 2: Install (line 3, level 2)
+        assert_eq!(refs, vec!["H:L1:H1:I1", "H:L3:H2:I2"]);
     }
 
     #[test]
-    fn explicit_default_occurrence_resolves_first_heading() {
-        let document = MarkdownDocument::parse("# Guide\nOne\n# Guide\nTwo\n".to_owned());
+    fn duplicate_headings_receive_unique_canonical_refs() {
+        let document = MarkdownDocument::parse("# A\n## B\n# A\n## B\n".to_owned());
 
-        let resolved = document.resolve_ref("L1#1:Guide").unwrap();
+        let entries = document.outline_entries(3);
+        let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
 
+        // All four headings have different (line, index)
+        assert_eq!(
+            refs,
+            vec!["H:L1:H1:I1", "H:L2:H2:I2", "H:L3:H1:I3", "H:L4:H2:I4",]
+        );
+    }
+
+    #[test]
+    fn outline_ref_is_independent_of_path_and_title() {
+        let document = MarkdownDocument::parse("# Same\n## Same\n# Same\n".to_owned());
+        let entries = document.outline_entries(3);
+        let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
+
+        // 尽管 title 和 path 可能重复，ref 只由结构坐标决定
+        assert_eq!(refs, vec!["H:L1:H1:I1", "H:L2:H2:I2", "H:L3:H1:I3"]);
+    }
+
+    #[test]
+    fn outline_refs_consistent_under_different_max_heading_level() {
+        let document =
+            MarkdownDocument::parse("# Top\n\n## A\n\n### Deep\n\n#### Hidden\n".to_owned());
+
+        let entries_h2 = document.outline_entries(2);
+        let entries_h3 = document.outline_entries(3);
+        let entries_h4 = document.outline_entries(4);
+
+        // index 分配在过滤前，所以同一 heading 无论是否可见 ref 相同
+        let top_ref = "H:L1:H1:I1";
+        assert_eq!(entries_h2[0].ref_id, top_ref);
+        assert_eq!(entries_h3[0].ref_id, top_ref);
+        assert_eq!(entries_h4[0].ref_id, top_ref);
+
+        let a_ref = "H:L3:H2:I2";
+        // H2 可见，H3 可见，H4 可见时 A 都在
+        assert_eq!(entries_h2[1].ref_id, a_ref);
+        assert_eq!(entries_h3[1].ref_id, a_ref);
+        assert_eq!(entries_h4[1].ref_id, a_ref);
+
+        let deep_ref = "H:L5:H3:I3";
+        // H3 只在 level >= 3 时可见
+        assert!(!entries_h2.iter().any(|e| e.ref_id == deep_ref));
+        assert_eq!(entries_h3[2].ref_id, deep_ref);
+        assert_eq!(entries_h4[2].ref_id, deep_ref);
+
+        let hidden_ref = "H:L7:H4:I4";
+        // H4 只在 level >= 4 时可见
+        assert_eq!(entries_h4[3].ref_id, hidden_ref);
+        assert!(!entries_h3.iter().any(|e| e.ref_id == hidden_ref));
+    }
+
+    #[test]
+    fn outline_display_includes_title_and_cost() {
+        let document = MarkdownDocument::parse("# Guide\nContent here\n".to_owned());
+        let entries = document.outline_entries(3);
+
+        assert!(entries[0].display.contains("Guide"));
+        assert!(entries[0].display.contains("H1"));
+        // 仍包含 cost 信息
+        assert!(entries[0].display.contains("line") || entries[0].display.contains("KB"));
+    }
+
+    #[test]
+    fn outline_display_handles_whitespace_only_title() {
+        let document = MarkdownDocument::parse("# \nContent\n".to_owned());
+        let entries = document.outline_entries(3);
+
+        // 仅空白标题经 compact_text 归一化为 "."，仍包含 H1 和 cost
+        assert!(entries[0].display.contains("H1"));
+        assert!(entries[0].display.contains("."));
+        // ref 仍为 canonical 格式，不包含标题文本
+        assert_eq!(entries[0].ref_id, "H:L1:H1:I1");
+    }
+
+    #[test]
+    fn read_canonical_ref_resolves_matching_heading() {
+        let document = MarkdownDocument::parse("# Guide\nIntro\n## Install\nBody\n".to_owned());
+
+        // Guide: index=1, line=1, level=1
+        let resolved = document.resolve_ref("H:L1:H1:I1").unwrap();
         assert_eq!(resolved, ResolvedRef::Heading(&document.headings()[0]));
-    }
 
-    #[test]
-    fn canonical_duplicate_occurrence_resolves_matching_heading() {
-        let document = MarkdownDocument::parse("# Repeat\nOne\n# Repeat\nTwo\n".to_owned());
-
-        let resolved = document.resolve_ref("L3#2:Repeat").unwrap();
-
+        // Install: index=2, line=3, level=2
+        let resolved = document.resolve_ref("H:L3:H2:I2").unwrap();
         assert_eq!(resolved, ResolvedRef::Heading(&document.headings()[1]));
     }
 
     #[test]
-    fn old_bracketed_occurrence_suffix_is_path_text_not_metadata() {
+    fn read_canonical_ref_returns_ref_not_found_for_no_match() {
         let document = MarkdownDocument::parse("# Guide\nBody\n".to_owned());
-        let suffix = [" [", "docnav", ":", "1", "]"].concat();
-        let old_ref = format!("L1:Guide{suffix}");
 
+        // Canonical grammar but wrong line
+        let error = document
+            .resolve_ref("H:L99:H1:I1")
+            .expect_err("no such heading");
         assert_eq!(
-            ParsedRef::parse(&old_ref),
-            Some(ParsedRef::Heading {
-                line: 1,
-                path: format!("Guide{suffix}"),
-                occurrence: 1,
-            })
+            error.error().code,
+            docnav_protocol::StableErrorCode::RefNotFound
         );
-        assert!(document.resolve_ref(&old_ref).is_err());
-    }
 
-    #[test]
-    fn heading_path_may_end_with_legacy_marker_like_text() {
-        let suffix = [" [", "docnav", ":", "1", "]"].concat();
-        let title = format!("Guide{suffix}");
-        let document = MarkdownDocument::parse(format!("# {title}\nBody\n"));
-        let entries = document.outline_entries(3);
-
-        assert_eq!(entries[0].ref_id, format!("L1:{title}"));
+        // Canonical grammar but wrong level
+        let error = document.resolve_ref("H:L1:H2:I1").expect_err("wrong level");
         assert_eq!(
-            document.resolve_ref(&entries[0].ref_id).unwrap(),
-            ResolvedRef::Heading(&document.headings()[0])
+            error.error().code,
+            docnav_protocol::StableErrorCode::RefNotFound
         );
-    }
 
-    #[test]
-    fn parsed_ref_accepts_extra_colons_in_path() {
+        // Canonical grammar but wrong index
+        let error = document
+            .resolve_ref("H:L1:H1:I99")
+            .expect_err("wrong index");
         assert_eq!(
-            ParsedRef::parse("L7#2:Guide: Install"),
-            Some(ParsedRef::Heading {
-                line: 7,
-                path: "Guide: Install".to_owned(),
-                occurrence: 2,
-            })
+            error.error().code,
+            docnav_protocol::StableErrorCode::RefNotFound
         );
     }
 
     #[test]
-    fn parsed_ref_rejects_invalid_line_ordinal_and_path() {
+    fn read_returns_ref_invalid_for_non_canonical_input() {
+        let document = MarkdownDocument::parse("# Guide\nBody\n".to_owned());
+
         for ref_id in [
-            "L0:Guide",
-            "Lx:Guide",
-            "L1#:Guide",
-            "L1#0:Guide",
-            "L1#x:Guide",
-            "L1:",
+            // 旧格式
+            "L1:Guide",
+            "L3#2:Repeat",
+            "L1#1:Guide",
+            // 字段缺失/错误
+            "H:L1:H2",
+            "H:L1",
+            "X:L1:H1:I1",
+            // 前导零
+            "H:L01:H1:I1",
+            "H:L1:H02:I1",
+            "H:L1:H2:I01",
+            // 非法 level
+            "H:L1:H0:I1",
+            "H:L1:H7:I1",
+            // 非法 line/index
+            "H:L0:H1:I1",
+            "H:L1:H1:I0",
+            // 随机字符串
+            "not-a-ref",
         ] {
-            assert_eq!(ParsedRef::parse(ref_id), None, "{ref_id}");
+            let error = document
+                .resolve_ref(ref_id)
+                .expect_err(&format!("should be REF_INVALID: {ref_id}"));
+            assert_eq!(
+                error.error().code,
+                docnav_protocol::StableErrorCode::RefInvalid,
+                "{ref_id}"
+            );
+            // details 包含 ref
+            assert_eq!(
+                error.error().details.get("ref").and_then(|v| v.as_str()),
+                Some(ref_id),
+                "{ref_id}"
+            );
+            // details 包含非空 reason
+            let reason = error
+                .error()
+                .details
+                .get("reason")
+                .and_then(|v| v.as_str())
+                .expect("reason field");
+            assert!(!reason.is_empty(), "{ref_id}");
         }
+    }
+
+    #[test]
+    fn read_ref_not_found_vs_ref_invalid_boundary() {
+        let document = MarkdownDocument::parse("# A\nBody\n".to_owned());
+
+        // 合法 canonical ref，但 heading 不存在 → REF_NOT_FOUND
+        let error = document.resolve_ref("H:L5:H2:I3").expect_err("not found");
+        assert_eq!(
+            error.error().code,
+            docnav_protocol::StableErrorCode::RefNotFound
+        );
+
+        // 旧格式 ref → REF_INVALID（即使文档中存在该 heading）
+        let error = document.resolve_ref("L1:A").expect_err("old format");
+        assert_eq!(
+            error.error().code,
+            docnav_protocol::StableErrorCode::RefInvalid
+        );
+        assert_eq!(
+            error.error().details.get("ref").and_then(|v| v.as_str()),
+            Some("L1:A")
+        );
     }
 
     #[test]
@@ -164,5 +274,87 @@ mod tests {
 
         assert_eq!(document.headings().len(), 1);
         assert_eq!(document.headings()[0].title, "Real");
+    }
+
+    #[test]
+    fn ref_does_not_contain_title_or_breadcrumb() {
+        let document = MarkdownDocument::parse("# Long Title Here\nBody\n".to_owned());
+        let entries = document.outline_entries(3);
+
+        assert_eq!(entries[0].ref_id, "H:L1:H1:I1");
+        assert!(!entries[0].ref_id.contains("Long"));
+        assert!(!entries[0].ref_id.contains("Title"));
+    }
+
+    #[test]
+    fn outline_to_read_roundtrip_with_canonical_ref() {
+        let document =
+            MarkdownDocument::parse("# Top\nintro\n## Sub\ndetail\n### Deep\nmore\n".to_owned());
+
+        // outline → ref → read roundtrip
+        let entries = document.outline_entries(3);
+        for entry in &entries {
+            if entry.ref_id == FULL_DOCUMENT_REF {
+                continue;
+            }
+            let resolved = document.resolve_ref(&entry.ref_id);
+            assert!(
+                resolved.is_ok(),
+                "outline ref {} should resolve: {:?}",
+                entry.ref_id,
+                resolved.err()
+            );
+        }
+    }
+
+    #[test]
+    fn find_to_read_roundtrip_with_canonical_ref() {
+        let document =
+            MarkdownDocument::parse("# Top\nintro target here\n## Sub\ndetail\n".to_owned());
+
+        let entries = document.find_entries("target", 3);
+        for entry in &entries {
+            if entry.ref_id == FULL_DOCUMENT_REF {
+                continue;
+            }
+            let resolved = document.resolve_ref(&entry.ref_id);
+            assert!(
+                resolved.is_ok(),
+                "find ref {} should resolve: {:?}",
+                entry.ref_id,
+                resolved.err()
+            );
+        }
+    }
+
+    #[test]
+    fn find_display_contains_match_snippet() {
+        let document =
+            MarkdownDocument::parse("# Top\nfind target here\n## Sub\nother\n".to_owned());
+
+        let entries = document.find_entries("target", 3);
+        assert_eq!(entries.len(), 1);
+        // find display 保留匹配位置附近的非空文本片段
+        assert!(entries[0].display.contains("target"));
+    }
+
+    #[test]
+    fn structure_snapshot_line_change_returns_ref_not_found() {
+        // 修改文档后重新解析，旧 ref 可能失效
+        let modified = MarkdownDocument::parse("# A\nExtra line\nBody\n".to_owned());
+
+        // 原文档中 heading 在 line 1，修改后仍在 line 1，所以 H:L1:H1:I1 仍匹配
+        let ok = modified.resolve_ref("H:L1:H1:I1");
+        assert!(ok.is_ok());
+
+        // 但如果文档完全变化，旧 ref 可能不再匹配
+        let different = MarkdownDocument::parse("No heading here\nJust text\n".to_owned());
+        let error = different
+            .resolve_ref("H:L1:H1:I1")
+            .expect_err("no headings");
+        assert_eq!(
+            error.error().code,
+            docnav_protocol::StableErrorCode::RefNotFound
+        );
     }
 }
