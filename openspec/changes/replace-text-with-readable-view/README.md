@@ -1,3 +1,3 @@
 # replace-text-with-readable-view
 
-以仓库内版本化 renderer config 驱动的 readable-view 替代 document operation 的 text 输出模式，并在交付时删除 document text 契约与实现
+以仓库内 renderer config 驱动 readable-view，统一承载 document operation 的默认阅读输出，并将 document output surface 收敛到 readable-view、readable-json 和 protocol-json
