@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use super::document::Heading;
@@ -76,36 +74,13 @@ fn materialize_headings(
     line_starts: &[usize],
     source_len: usize,
 ) -> Vec<Heading> {
-    let mut stack: Vec<Option<String>> = vec![None; 6];
-    let mut path_counts: HashMap<String, usize> = HashMap::new();
     let mut headings = Vec::with_capacity(raw_headings.len());
 
     for (index, raw) in raw_headings.into_iter().enumerate() {
-        let level_index = raw.level.saturating_sub(1) as usize;
-        stack.truncate(level_index);
-        stack.resize(level_index + 1, None);
-        stack[level_index] = Some(raw.title.clone());
-
-        let path = stack
-            .iter()
-            .filter_map(|part| part.as_deref())
-            .filter(|part| !part.is_empty())
-            .collect::<Vec<_>>()
-            .join(" > ");
-        let path = if path.is_empty() {
-            "(untitled)".to_owned()
-        } else {
-            path
-        };
-        let path_occurrence = path_counts.entry(path.clone()).or_insert(0);
-        *path_occurrence += 1;
-
         headings.push(Heading {
             index: index + 1,
             level: raw.level,
             title: raw.title,
-            path,
-            path_occurrence: *path_occurrence,
             start: raw.start.min(source_len),
             end: source_len,
             line: line_for_byte(line_starts, raw.start),

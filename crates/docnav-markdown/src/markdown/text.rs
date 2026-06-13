@@ -67,10 +67,15 @@ fn line_count(content: &str) -> usize {
 fn compact_text(text: &str) -> String {
     let collapsed = text.split_whitespace().collect::<Vec<_>>().join(" ");
     if collapsed.is_empty() {
-        ".".to_owned()
-    } else if collapsed.chars().count() > 96 {
-        let mut value: String = collapsed.chars().take(93).collect();
-        value.push_str("...");
+        return ".".to_owned();
+    }
+
+    let max_chars = 96;
+    let ellipsis = "...";
+    if collapsed.chars().count() > max_chars {
+        let content_budget = max_chars - ellipsis.chars().count();
+        let mut value: String = collapsed.chars().take(content_budget).collect();
+        value.push_str(ellipsis);
         value
     } else {
         collapsed

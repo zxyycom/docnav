@@ -1,12 +1,12 @@
 mod document;
+mod format;
 mod options;
 mod parse;
 mod refs;
 mod text;
 
-pub use document::{
-    is_markdown_extension, is_utf8_markdown_candidate, MarkdownDocument, ResolvedRef,
-};
+pub use document::{MarkdownDocument, ResolvedRef};
+pub use format::{is_markdown_extension, is_utf8_markdown_candidate};
 pub use options::max_heading_level_from_options;
 pub use text::cost_for;
 

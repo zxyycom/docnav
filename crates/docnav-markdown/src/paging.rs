@@ -91,9 +91,11 @@ fn fit_entry(entry: &Entry, limit: usize) -> Entry {
         return entry.clone();
     }
 
+    let ref_id = entry.ref_id.clone();
+
     if ref_len >= limit {
         return Entry {
-            ref_id: entry.ref_id.clone(),
+            ref_id,
             display: ".".to_owned(),
         };
     }
@@ -109,12 +111,12 @@ fn fit_entry(entry: &Entry, limit: usize) -> Entry {
         let content_budget = display_budget - marker_len;
         let clipped = take_chars(&entry.display, content_budget);
         Entry {
-            ref_id: entry.ref_id.clone(),
+            ref_id,
             display: format!("{clipped}{marker}"),
         }
     } else {
         Entry {
-            ref_id: entry.ref_id.clone(),
+            ref_id,
             display: take_chars(&entry.display, display_budget.max(1)),
         }
     }
