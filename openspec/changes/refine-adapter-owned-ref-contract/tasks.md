@@ -13,32 +13,6 @@
 - [x] 2.4 保持串行门禁：契约确认完成后再改主文档；主文档完成并自检后再合并代码行为；所有 lane 完成后再运行 workspace 级验证。
 - [x] 2.5 每个 slice 完成时记录 changed files、evidence、contracts touched、known limits 和 next slice，方便并行 worker handoff。
 
-### 2.5 文档先行 slice 完成手记
-
-**Changed files:**
-- `docs/adapters/markdown.md`（新增）：Markdown adapter 长期主文档，覆盖 outline/read/find/ref grammar/结构快照语义/doc:full/错误分类/display 职责/默认值/保证范围/验证入口/旧格式记录。
-- `docs/navigation.md`：角色表、文档分层、规则所有权和术语全部更新，Markdown adapter 实现者指向新专页。
-- `docs/refs.md`（重写）：收敛为共享最小契约，明确非空 opaque string 载体、调用流程、adapter 所有权、正确性责任分层、共享错误通道和 "可作为 read 字段传输" 不等于 adapter 接受/成功读取。
-- `docs/architecture.md`：移除 `唯一读取` 表述。
-- `docs/adapter-contract.md`：移除 `唯一定位/唯一读取` 表述，find match ref 描述改为指向 Markdown Adapter 专页。
-- `docs/testing.md`：移除 ref 唯一性测试要求，capability 矩阵移除 `唯一定位`，一致性审计更新。
-- `docs/CODING_STYLE.md`：Section 5 重写为 adapter-owned ref 表述，验收标准更新。
-- `README.md`：Quick Start 示例 ref 改为 `H:L1:H1:I1`，ref 描述更新。
-- `docs/cli.md`：outline 文本示例改用新 ref 格式 `H:L1:H1:I1`。
-- `docs/references/markdown-navigator.md`：增加现行规范指向说明，旧 ref 格式明确标记为历史/迁移材料，outline 示例改用新格式。
-
-**Evidence:** 全仓 grep 确认 docs 中不再存在旧 heading ref 格式作为当前行为描述（仅 references/markdown-navigator.md 中以 "历史格式" 明确标记）；refs.md 否定式列举澄清共享层不保证唯一定位/读取成功。
-
-**Contracts touched:** 共享 ref 契约（refs.md）完全重写；Markdown adapter 私有契约（adapters/markdown.md）新增；导航入口（navigation.md）更新所有权归属。
-
-**Known limits:**
-- 未修改 Rust/JS 实现代码、schemas、examples JSON、fixtures、lockfiles 或 OpenSpec spec delta 文件。
-- protocol.md 的稳定错误表尚未添加 `REF_INVALID`（属于 task 5.1+）。
-- `REF_INVALID` 的 schema/error-rules/example 生成尚未执行（属于 tasks 5.x-7.x）。
-- 文档中的新 ref 格式示例尚未有对应的实现代码生成（属于 tasks 6.x）。
-
-**Next slice:** 稳定错误与共享协议（tasks 5.1-5.4）——增加 REF_INVALID 到稳定错误定义、更新 protocol/readable schema 和错误规则、新增示例。可与 Markdown 实现 lane（tasks 6.x）并行推进。
-
 ## 3. 契约确认
 
 - [x] 3.1 确认共享 ref 契约强制 `outline/find -> ref -> read` 调用流程，并要求 adapter 所有的非空 opaque string、共享字段 shape 校验和 core/MCP 原样传递；流程保证不扩展为唯一性、稳定性、消歧、完整消费或读取成功保证。
