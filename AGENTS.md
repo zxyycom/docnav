@@ -33,7 +33,6 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 ## 工作规则
 
 - 优先使用 CodeGraph 理解结构；索引缺失或不够时使用 `rg` / `rg --files` 补充。
-- 执行本地命令获取文本输出时，优先用 `rtk` 包装以减少 token 消耗，常用：`rtk ls`、`rtk find`、`rtk grep`、`rtk git`、`rtk cargo`、`rtk pnpm`、`rtk read`、`rtk diff`、`rtk err`。需要完整原始输出、精确行号或多行上下文时回退到对应原生命令。
 - 搜索按任务过滤路径、扩展名和关键词，并排除 `.git`、`target`、`node_modules`、`.venv`、`dist`、`build` 和缓存目录；避免无过滤遍历整个仓库。
 - 大文件、长输出和目录列表先做摘要或筛选，再读取具体片段。
 - 文档读取按 `docs/navigation.md` 角色路径进入；不要因为存在 OpenSpec、schema、examples 就默认全部读取。
