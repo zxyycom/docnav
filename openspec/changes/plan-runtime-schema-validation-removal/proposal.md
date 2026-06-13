@@ -20,7 +20,7 @@
 
 ### Modified Capabilities
 
-- `protocol-and-adapter-sdk-implementation`: 未来可能调整协议与 adapter SDK 的运行时校验实现策略，但当前 change 仍为未审核计划，不改变现行 requirement。
+- `adapter-protocol`: 未来可能调整协议与 adapter SDK 的运行时校验实现策略，但当前 change 仍为未审核计划，不改变现行 requirement。
 
 ## Impact
 

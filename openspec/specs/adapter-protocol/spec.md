@@ -1,4 +1,4 @@
-# protocol-and-adapter-sdk-implementation Specification
+# adapter-protocol Specification
 
 ## Purpose
 定义 Docnav v0 原始协议共享类型、协议兼容判断、adapter SDK invoke 生命周期，以及 schema 和示例验证的实现要求。
@@ -192,4 +192,3 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** SDK 返回结构化 protocol failure
 - **THEN** 该请求不进入 canonical document operation input 或等价 semantic request
 - **THEN** SDK 不按 direct CLI argv 容错策略忽略该字段
-

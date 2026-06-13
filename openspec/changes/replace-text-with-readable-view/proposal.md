@@ -29,9 +29,9 @@
 
 ### Modified Capabilities
 
-- `docnav-core-cli-routing-output-implementation`: 将核心 CLI document 默认输出和 warning/error 阅读映射切换为 readable-view，移除 document text 模式、默认值和静默兼容，并保留非文档 `PlainText` 通道。
-- `protocol-and-adapter-sdk-implementation`: 让 adapter direct CLI 复用通用 readable-view renderer，移除 SDK document text output mode、text formatter 和 text warning 拼接路径。
-- `markdown-adapter-v0-implementation`: 将 Markdown direct CLI 与黑盒 smoke 的 text 验收替换为 readable-view 验收，并删除 Markdown 私有文本 formatter。
+- `core-cli`: 将核心 CLI document 默认输出和 warning/error 阅读映射切换为 readable-view，移除 document text 模式、默认值和静默兼容，并保留非文档 `PlainText` 通道。
+- `adapter-protocol`: 让 adapter direct CLI 复用通用 readable-view renderer，移除 SDK document text output mode、text formatter 和 text warning 拼接路径。
+- `markdown-navigation`: 将 Markdown direct CLI 与黑盒 smoke 的 text 验收替换为 readable-view 验收，并删除 Markdown 私有文本 formatter。
 
 ## Impact
 

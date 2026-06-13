@@ -1,4 +1,4 @@
-# v0-contract-documentation Specification
+# docnav-contracts Specification
 
 ## Purpose
 定义 Docnav v0 长期文档契约，约束原始协议、阅读输出、职责边界、阅读路径、示例材料和自动化验证映射。
@@ -301,4 +301,3 @@ Rust CLI 参数解析文档 MUST 将 `clap` 定义为本 change 覆盖的核心 
 - **THEN** `docs/testing.md` 描述命令族矩阵、成功路径、必要失败、help 可用、共享语义归一、stable warning envelope 和 schema 边界验证
 - **THEN** `docs/schemas/readable-common.schema.json`、MCP outputSchema 示例和 `docs/examples/json/mcp-*-tool.json` 描述 stable warning envelope、当前 warning family marker、稳定 effect 和 family-specific details
 - **THEN** `docs/protocol.md` 如涉及 warning 或 protocol-shaped stdout 边界，只说明 protocol response、manifest 和 probe 不承载 CLI warning fields
-

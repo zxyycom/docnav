@@ -3,7 +3,7 @@
 ## 1. 阻塞级审计
 
 - [ ] 1.1 审计 proposal、design、specs 和 tasks 是否都围绕“未来评估从 release runtime 移除通用 JSON Schema validator，但保留协议契约校验”这一核心目标。
-- [ ] 1.2 审计 capability ID 是否正确复用 `protocol-and-adapter-sdk-implementation`，且没有创建一次性或同义 capability。
+- [ ] 1.2 审计 capability ID 是否正确复用 `adapter-protocol`，且没有创建一次性或同义 capability。
 - [ ] 1.3 审计当前 change 是否只包含 `openspec/changes/plan-runtime-schema-validation-removal/` 下的未审核临时 artifacts，且没有修改现有 specs、docs、schemas、examples 或实现代码。
 - [ ] 1.4 审计是否已明确“本 change 当前仅为计划，不影响现行规范、运行时行为或 release 流程”。
 - [ ] 1.5 在 1.1-1.4 全部完成前，不得执行任何实现任务、依赖迁移任务或主规范归档任务。

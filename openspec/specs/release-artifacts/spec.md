@@ -1,4 +1,4 @@
-# cli-artifact-layout Specification
+# release-artifacts Specification
 
 ## Purpose
 定义 Docnav 发布制品的统一目录、文件集合、清单与校验规则，以及本地预验收和 CI/CD 正式生成之间的职责边界，确保核心 CLI 与发布适配器可逐文件校验并直接运行。

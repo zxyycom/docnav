@@ -52,8 +52,8 @@
 
 ### Modified Capabilities
 
-- `markdown-adapter-v0-implementation`：修改 Markdown heading ref 的格式、生成、读取、保证范围和错误分类。
-- `v0-contract-documentation`：将共享 ref 契约收敛为非空 opaque string 与原样传递，并增加 `REF_INVALID` 稳定错误边界和 adapter 专属文档所有权。
+- `markdown-navigation`：修改 Markdown heading ref 的格式、生成、读取、保证范围和错误分类。
+- `docnav-contracts`：将共享 ref 契约收敛为非空 opaque string 与原样传递，并增加 `REF_INVALID` 稳定错误边界和 adapter 专属文档所有权。
 
 ## Impact
 

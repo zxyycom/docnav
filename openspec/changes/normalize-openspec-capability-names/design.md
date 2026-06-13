@@ -14,7 +14,7 @@ OpenSpec 归档时按 delta spec 目录名写入 `openspec/specs/<capability>/sp
 - 给出现有主 specs 和 active changes 的迁移映射候选。
 - 要求审计通过后才能执行主 specs 迁移。
 - 要求迁移前同步 active changes，避免归档时重新生成旧 capability ID。
-- 增加验证门禁，防止旧命名回流。
+- 将命名规则沉淀为 OpenSpec 治理和 skill/人工审计判断，不新增长期自动化阻断。
 
 **Non-Goals:**
 
@@ -31,48 +31,60 @@ Capability ID 表示主 spec 的长期所有权；change name 表示一次性变
 
 备选方案是保留现有 `*-implementation` 命名，只通过文档解释含义。该方案成本低，但不能阻止归档继续固化旧语义。
 
-### Decision 2: Use a reviewed mapping before touching main specs
+### Decision 2: Use the audited mapping before touching specs
 
-本 change 先记录候选映射，审计后再执行。下表是审计输入，不是已批准的最终迁移结果：
+本 change 已将候选映射收敛为首轮执行映射。首轮迁移只规范 capability ID 所有权命名，不做 requirement 语义拆分；需要拆分时必须由后续 change 重新提出。
 
-| 当前 ID | 待审计目标 ID | 待审计处理 |
+| 当前 ID | 目标 ID | 迁移处理 |
 | --- | --- | --- |
-| `cli-artifact-layout` | `release-artifacts` | rename |
-| `docnav-core-cli-routing-output-implementation` | `core-cli` | rename，确认 readable 输出是否保留在同一 capability |
-| `markdown-adapter-v0-implementation` | `markdown-navigation` | merge |
-| `markdown-reference-baseline` | `markdown-navigation` | merge 为参考来源和边界要求 |
-| `protocol-and-adapter-sdk-implementation` | `adapter-protocol` | rename，确认协议与 SDK 是否需要拆分 |
-| `v0-contract-documentation` | `docnav-contracts` | rename，确认文档治理是否需要拆分 |
+| `cli-artifact-layout` | `release-artifacts` | main spec rename |
+| `docnav-core-cli-routing-output-implementation` | `core-cli` | main spec + active delta rename；既有 core CLI、routing、config、output mapping requirement 先保留在同一 capability |
+| `markdown-adapter-v0-implementation` | `markdown-navigation` | main spec + active delta merge |
+| `markdown-reference-baseline` | `markdown-navigation` | main spec merge 为参考来源、行为基线和边界 requirement |
+| `protocol-and-adapter-sdk-implementation` | `adapter-protocol` | main spec + active delta rename；协议类型、adapter SDK invoke 生命周期、schema/example validation 首轮保持同一 capability |
+| `v0-contract-documentation` | `docnav-contracts` | main spec + active delta rename；v0 文档契约、阅读路径和跨层责任边界首轮保持同一 capability |
+| `docnav-adapter-management-implementation` | `adapter-management` | active delta only rename |
+| `docnav-mcp-bridge-implementation` | `mcp-bridge` | active delta only rename |
 
-审计必须确认每个 requirement 的最终归属、是否需要拆分，以及 active changes 是否同步到同一目标 ID。最终映射必须回写到本 design 后才能执行主 specs 迁移。
+已符合命名规则的 active capability ID 保持不变：`fast-outline`、`readable-view-output`、`openspec-governance`。
 
 ### Decision 3: Active changes must be aligned before archive
 
-当前 active changes 中仍可能有旧 capability ID，例如 `docnav-mcp-bridge-implementation`、`docnav-adapter-management-implementation` 或 `protocol-and-adapter-sdk-implementation`。迁移任务必须从 `openspec list --json` 和 change delta 中动态发现受影响 change，并在它们归档前同步 proposal Capabilities 和 delta spec 目录。
+迁移任务必须同步所有 active changes 的 proposal Capabilities 和 delta spec 目录，避免后续归档重新创建旧 ID。审计时确认的 active change 对齐目标如下：
 
-### Decision 4: Validation is the durable guardrail
+- `implement-docnav-adapter-management`: `docnav-adapter-management-implementation` -> `adapter-management`
+- `implement-docnav-mcp-bridge`: `docnav-mcp-bridge-implementation` -> `mcp-bridge`
+- `plan-runtime-schema-validation-removal`: `protocol-and-adapter-sdk-implementation` -> `adapter-protocol`
+- `refine-adapter-owned-ref-contract`: `markdown-adapter-v0-implementation` -> `markdown-navigation`；`v0-contract-documentation` -> `docnav-contracts`
+- `replace-text-with-readable-view`: `docnav-core-cli-routing-output-implementation` -> `core-cli`；`protocol-and-adapter-sdk-implementation` -> `adapter-protocol`；`markdown-adapter-v0-implementation` -> `markdown-navigation`；`readable-view-output` 保持不变
+- `add-fast-outline`: `fast-outline` 保持不变
+- `normalize-openspec-capability-names`: `openspec-governance` 保持不变
 
-Skill 和 `openspec/config.yaml` 只能影响 agent 行为或 OpenSpec instructions 输入，不能阻止绕过流程的文件改动。迁移完成后需要增加仓库验证，扫描主 specs、active delta specs 和 proposal Capabilities，防止旧 ID 或不一致目录进入仓库。
+### Decision 4: Naming guidance is not a validation gate
+
+本次问题来自历史 skill 没有区分 change name 与 capability ID，而不是 runtime、schema 或 CI 缺口。命名规则应沉淀为 OpenSpec 治理和 skill/人工审计判断；本 change 不新增 capability 命名脚本、CI gate、package script 或 workspace 验证入口。
 
 ## Risks / Trade-offs
 
 - [映射过早固化] → 在 tasks 中设置阻塞级审计，审计前不得迁移主 specs。
-- [active changes 继续归档旧 ID] → 迁移前先列出并同步所有 active changes，归档前增加检查。
+- [active changes 立即归档旧 ID] → 本轮迁移先列出并同步当前 active changes，避免迁移过程中把旧 ID 写回主 specs。
 - [合并 Markdown specs 丢失 requirement] → 合并时逐条复制 requirement，并用 OpenSpec validate 和 diff 复核。
-- [验证脚本误报 archive 历史] → 校验范围只覆盖 `openspec/specs/` 和 `openspec/changes/<active>/specs/`，不扫描 `openspec/changes/archive/`。
+- [过度治理命名坏例] → 不把历史坏命名沉淀为脚本或 CI gate；后续命名问题通过 skill/人工审计修正。
 - [与产品规范混淆] → 本 change 只治理 OpenSpec artifacts 命名，不改变 Docnav runtime 或 public contract。
 
 ## Migration Plan
 
 1. 审计 proposal、design、specs 和 tasks 是否只描述 OpenSpec capability 命名迁移，并确认创建阶段未修改主 specs 或主规范。
-2. 审计候选映射，确认每个现有主 spec 的目标 ID、合并方式和是否需要拆分。
-3. 同步 active changes 的 proposal Capabilities 和 delta spec 目录，防止后续归档写入旧 ID。
+2. 使用已审计映射，确认每个现有主 spec 和 active-only delta capability 的目标 ID、合并方式和首轮不拆分边界。
+3. 同步 active changes 的 proposal Capabilities 和 delta spec 目录，避免本轮迁移期间归档写入旧 ID。
 4. 按审计后的映射迁移 `openspec/specs/`，保留 requirement 内容并更新 spec title/overview。
-5. 增加验证脚本和 workspace 验证入口，检查 capability ID 命名和 proposal/specs 一致性。
-6. 运行 OpenSpec 严格验证和仓库验证，确认迁移只影响 OpenSpec artifacts 和相关验证。
+5. 不新增 capability 命名脚本、CI gate 或 workspace 验证入口；迁移正确性通过 OpenSpec 严格验证和局部 diff 复核。
+6. 确认迁移只影响 OpenSpec artifacts，不改变 Docnav runtime、public contract 或既有验证入口。
 
-## Open Questions
+## Deferred Splits
 
-- `v0-contract-documentation` 是否先整体迁移为 `docnav-contracts`，还是直接拆分为多个 capability。
-- `protocol-and-adapter-sdk-implementation` 是否保留协议和 SDK 在同一 capability，还是拆成 `adapter-protocol` 与 `adapter-sdk`。
-- `docnav-core-cli-routing-output-implementation` 是否在本次迁移中拆出 `readable-output`，还是先整体迁移后由后续 change 拆分。
+首轮迁移没有阻塞性开放问题。以下拆分不在本 change 中执行，只有出现独立需求或归档冲突时才由后续 change 处理：
+
+- `docnav-contracts` 可在后续拆分为更细的文档治理或契约 capability。
+- `adapter-protocol` 可在后续拆分出 `adapter-sdk`。
+- `core-cli` 可在后续把 readable output 的通用契约迁移到独立 capability；当前 `readable-view-output` 作为 active new capability 保持不变。

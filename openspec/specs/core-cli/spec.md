@@ -1,4 +1,4 @@
-# docnav-core-cli-routing-output-implementation Specification
+# core-cli Specification
 
 ## Purpose
 定义 `docnav` 核心 CLI 的命令解析、adapter 选择、invoke 调用、输出分层、配置和稳定错误映射行为。
@@ -282,4 +282,3 @@ Core CLI 容错规则如下：
 - **WHEN** 选中 adapter 的 invoke stdout 不是单一 protocol JSON 响应
 - **THEN** `docnav` 返回协议或 adapter 进程错误
 - **THEN** CLI 退出码为协议或 adapter 进程错误对应值
-
