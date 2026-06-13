@@ -1,31 +1,29 @@
 # Docnav Debug Playbook
 
-本引用用于需要 focused commands、adapter replay、failure map 或验证矩阵时。
+本引用用于 Docnav 仓库内需要 focused commands、adapter replay、failure map 或验证矩阵时。命令块展示 command shape；实际可执行命令应来自当前仓库脚本、AGENTS 规则、构建产物或相邻测试，不把 build output path 写成通用规则。
 
 ## Focused Commands
 
 优先选择最窄命令：
 
 ```bash
-cargo test -p docnav-markdown --test adapter -- exact_case_name
-cargo test -p docnav-markdown --test cli -- exact_case_name
-cargo test -p docnav -- exact_case_name
-pnpm run smoke:docnav-markdown
-pnpm run smoke:docnav-core
+<rust-test-command> -- exact_case_name
+<adapter-smoke-script>
+<core-smoke-script>
 ```
 
 Markdown adapter 行为直接重放 operation：
 
 ```bash
-target/debug/docnav-markdown.exe info path/to/file.md --output readable-json
-target/debug/docnav-markdown.exe outline path/to/file.md --output protocol-json --limit-chars 1000
-target/debug/docnav-markdown.exe read path/to/file.md --ref "L1:Heading" --page 1 --limit-chars 1000 --output protocol-json
-target/debug/docnav-markdown.exe find path/to/file.md --query "needle" --output protocol-json
-target/debug/docnav-markdown.exe probe path/to/file.md
-Get-Content request.json | target/debug/docnav-markdown.exe invoke
+<adapter-cli> info path/to/file.md --output readable-json
+<adapter-cli> outline path/to/file.md --output protocol-json --limit-chars 1000
+<adapter-cli> read path/to/file.md --ref "<ref-from-outline>" --page 1 --limit-chars 1000 --output protocol-json
+<adapter-cli> find path/to/file.md --query "needle" --output protocol-json
+<adapter-cli> probe path/to/file.md
+<stdin-json> | <adapter-cli> invoke
 ```
 
-MCP 失败时保存 tool args，把 MCP result 与等价 `docnav` 或 `docnav-markdown.exe` 命令对比，再改 bridge code。
+MCP 失败时保存 tool args，把 MCP result 与等价 `docnav` 或 adapter CLI replay 对比，再改 bridge code。
 
 ## Adjacent-Layer Comparisons
 
@@ -54,17 +52,17 @@ MCP 失败时保存 tool args，把 MCP result 与等价 `docnav` 或 `docnav-ma
 对 navigation 行为至少检查关键 modes：
 
 ```bash
-target/debug/docnav-markdown.exe outline path/to/file.md --output text
-target/debug/docnav-markdown.exe outline path/to/file.md --output readable-json
-target/debug/docnav-markdown.exe outline path/to/file.md --output protocol-json
-target/debug/docnav-markdown.exe read path/to/file.md --ref "L1:Heading" --output protocol-json
+<adapter-or-core-cli> outline path/to/file.md --output text
+<adapter-or-core-cli> outline path/to/file.md --output readable-json
+<adapter-or-core-cli> outline path/to/file.md --output protocol-json
+<adapter-or-core-cli> read path/to/file.md --ref "<ref-from-outline>" --output protocol-json
 ```
 
 当 raw protocol 字段变化时，把 schema、examples、generated fixtures 和 MCP mapping 纳入同一验证计划。
 
 ## Workspace Verification Triggers
 
-触碰这些边界后运行 `pnpm run verify:docnav-workspace`，或记录跳过原因：
+触碰这些边界后运行 repository workspace verifier，或记录跳过原因：
 
 - Rust crates 跨 `docnav` 与 adapter。
 - CLI behavior 或 adapter contract。

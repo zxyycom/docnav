@@ -11,7 +11,7 @@ Run a drift recovery pass when one of these signals appears:
 - A claim conflicts with file paths, refs, CodeGraph results, command output, or tests.
 - The agent is about to edit outside the stated ownership scope.
 - MCP bridge work starts duplicating adapter parsing, routing, or ref logic.
-- Markdown was read without `docnav-markdown.exe` when the adapter is available.
+- Markdown or large docs were read without the repository-declared bounded navigation path when one is available.
 
 ## Evidence Gate
 
@@ -19,7 +19,7 @@ Treat each important assumption as valid only when it has one of these sources:
 
 - A relevant `AGENTS.md` or local rules file.
 - A section read through `docs/navigation.md` role routing.
-- A `docnav-markdown.exe` ref, page, or bounded read.
+- A bounded doc read through the repository-declared Markdown/navigation command.
 - CodeGraph search/node/callers/callees/impact output.
 - A filtered `rg` / `rg --files` fallback with path constraints.
 - A schema/example only when the task is validating fields, output shape, or tests.
@@ -42,7 +42,7 @@ When creating or reviewing `AGENTS.md`, project skills, or other rules files, ch
 - Clear scope, ownership, and parallel worker safety.
 - `docs/navigation.md` as the document entry point.
 - CodeGraph first for code structure, with filtered search as fallback.
-- Markdown read path through `target/debug/docnav-markdown.exe`.
+- Markdown read path through the repository-declared navigation command; avoid hardcoding build output paths.
 - OpenSpec reads gated by OpenSpec work, audit, validation, or explicit user request.
 - Schema/example reads gated by contract validation or tests.
 - Docnav architecture boundaries: core, MCP bridge, adapters, shared protocol, adapter-owned refs.

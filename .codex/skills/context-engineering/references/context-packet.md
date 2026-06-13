@@ -21,7 +21,7 @@ Rules:
 
 Role and spec:
 - Role selected from docs/navigation.md.
-- Main spec refs read through docnav-markdown.exe.
+- Main spec refs or bounded sections read through the repository-declared navigation command.
 
 Relevant files:
 - File path: why it matters.

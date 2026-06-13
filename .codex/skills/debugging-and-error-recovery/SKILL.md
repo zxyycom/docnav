@@ -1,6 +1,9 @@
 ---
 name: debugging-and-error-recovery
-description: "用系统化 root-cause debugging 处理失败。用于 tests fail、builds break、behavior changes、CLI/API regressions、schema/output-mode mismatches、bridge/stdio JSON、path handling、generated fixture 或 workspace verification issues。"
+description: >-
+  用系统化 root-cause debugging 处理失败。用于 tests fail、builds break、behavior regressions、
+  CLI/API issues、schema/output-mode mismatches、bridge/stdio JSON failures、path handling bugs、
+  generated fixture drift 或 workspace verification failures。
 ---
 
 # 调试与错误恢复
@@ -19,7 +22,7 @@ description: "用系统化 root-cause debugging 处理失败。用于 tests fail
 失败出现后按顺序执行：
 
 1. 暂停无关编辑和新功能开发。
-2. 记录失败现场：命令、stderr/stdout、cwd、binary path、输入文件、ref、page、limit、output mode、stdin JSON、fixture 状态和环境。
+2. 记录失败现场：命令、stderr/stdout、cwd、executable/script、输入文件、identifier/ref、page、limit、output mode、request payload、fixture 状态和环境。
 3. 用最窄命令或测试复现。
 4. 定位 owning boundary。
 5. 在该边界修 root cause。
@@ -32,7 +35,7 @@ description: "用系统化 root-cause debugging 处理失败。用于 tests fail
 
 - **Observed**：实际失败、退出码、关键输出和触发条件。
 - **Expected**：来自 spec、schema、fixture、test name 或用户目标的期望。
-- **Reproduce**：最小命令、cwd、env、输入、ref、page、limit、output mode。
+- **Reproduce**：最小命令、cwd、env、输入、identifier/ref、page、limit、output mode。
 - **Boundary**：当前怀疑层和排除过的相邻层。
 - **Fix**：修复位置和原因。
 - **Guard**：新增或更新的 test、fixture、schema check、smoke 或 manual replay。
@@ -54,7 +57,7 @@ description: "用系统化 root-cause debugging 处理失败。用于 tests fail
 
 1. **Reproduce**：找到仍会失败的最小命令或 test，保留触发失败的关键属性。
 2. **Localize**：比较相邻层，例如 direct implementation vs CLI/API wrapper、core vs bridge、`text` vs JSON modes。
-3. **Isolate input**：缩小 source input、identifier、page、limit、stdin JSON、path form 或 fixture，直到 bug 边界清楚。
+3. **Isolate input**：缩小 source input、identifier/ref、page、limit、request JSON、path form 或 fixture，直到 bug 边界清楚。
 4. **Fix root cause**：在拥有缺陷的层修复；bridge 只映射 owning implementation，formatting 不掩盖 parser/domain 缺陷。
 5. **Add guard**：guard 在修复前应失败，修复后应通过。
 6. **Verify regression**：运行原始复现、最窄 automated check，以及受影响 output modes。

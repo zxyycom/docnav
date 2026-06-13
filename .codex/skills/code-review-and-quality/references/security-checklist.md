@@ -52,4 +52,4 @@
 
 - [ ] 如果 finding 可能导致 arbitrary file read/write、command execution、secret leakage、protocol confusion 或 workspace escape，至少标为 High；可被触发且影响核心 contract 时标为 Critical。
 - [ ] 如果缺少能证明 abuse case 被阻断的 negative test/fixture/schema check，把 verification gap 作为 finding 或 residual risk。
-- [ ] 对跨 Rust、adapter、schema、examples、docs 或 MCP 的 security-sensitive change，feasible 时要求 `pnpm run verify:docnav-workspace`。
+- [ ] 对跨 Rust、adapter、schema、examples、docs 或 MCP 的 security-sensitive change，feasible 时要求 repository workspace verifier，并记录无法运行时的原因。

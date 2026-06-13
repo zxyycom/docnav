@@ -91,4 +91,4 @@ OpenSpec-only 常见组合：`openspec-explore` -> `openspec-propose` -> `opensp
 2. 主文件保留触发条件、最小流程、必要路由和验证边界；长表、生命周期、示例、全局规则放入一层 reference。
 3. Reference 必须从 `SKILL.md` 直接链接；避免 reference 再要求深层跳转。
 4. 已安装和未安装 skill 分开写；不要把 unavailable recommendation 写成可调用 route。
-5. 修改后对改过的 Markdown 运行 `docnav-markdown.exe info`，并检查本 skill 目录内相对链接可解析。
+5. 修改后对改过的 Markdown 运行仓库声明的 Markdown shape/link check；没有专用检查时至少运行 `git diff --check -- .codex/skills`，并检查本 skill 目录内相对链接可解析。

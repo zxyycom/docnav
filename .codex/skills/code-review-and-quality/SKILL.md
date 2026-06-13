@@ -1,39 +1,38 @@
 ---
 name: code-review-and-quality
-description: "中文优先的 Docnav findings-first code review 指南，用于 PR/local diff/agent handoff 审查，覆盖 CLI、adapter、ref、pagination、raw/readable output、schema、MCP、OpenSpec、tests、security/performance。"
+description: >-
+  Findings-first code review and quality gate for PRs、local diffs、agent handoffs
+  and approval reviews. Use to find correctness bugs、behavior regressions、missing tests、
+  security/performance risks、maintainability problems, and Docnav contract issues
+  involving CLI、adapter、ref、pagination、raw/readable output、schema、MCP 或 OpenSpec artifacts.
 ---
 
 # 代码审查与质量（Code Review and Quality）
 
-## 用途
+## 目标
 
-使用本 skill 审查已经完成的 diff，适用于 merge、handoff 或 approval 前的最后质量关。输出必须 findings-first，按 severity 排序，并把每个需要行动的问题绑定到具体 file/line。
+审查已经完成的 diff，适用于 merge、handoff 或 approval 前的最后质量关。输出必须 findings-first，按 severity 排序，并把每个需要行动的问题绑定到具体 file/line。
 
-只有在改动保持 Docnav contract、包含合适的测试或验证，并且没有未解决的 blocking issue 时才 approve。不要因为个人风格阻塞改动；如果代码符合项目惯例且风险可接受，把风格意见降级为非阻塞说明。
+只有在改动符合意图、包含合适测试或验证，并且没有未解决 blocking issue 时才 approve。风格意见只有在影响 correctness、maintainability 或项目约定时才升级；纯偏好保持非阻塞。
 
-## 何时使用
+## 读取策略
 
-- 审查 PR、local diff 或 agent 生成的改动。
-- 检查 Docnav CLI 行为、adapter、adapter-owned refs、pagination/continuation、raw/readable output、schema、examples、MCP bridge mapping、docs、OpenSpec artifacts 或 tests 的改动。
-- 在 implementation、debugging、security hardening 或 performance tuning 后做最终质量审查。
+默认只读本文件。按风险加载一层 reference：
 
-## 先使用其他 skill 的情况
-
-- 设计行为、写 regression coverage 或修改逻辑时，先用 `test-driven-development`；完成 diff 后再回到这里 review。
-- 行为失败且 root cause 未知时，先用 `debugging-and-error-recovery`；定位并修复后再回到这里。
-- 主要工作是 threat modeling、secrets、untrusted input、sandboxing、adapter process、external command 或 trust boundary hardening 时，先用 `security-and-hardening`；本 review 中碰到这些面也要升级检查。
-- 主要工作是性能调优或度量时，先走 performance-oriented workflow；本 review 中只有在 hot path、unbounded work 或 regression 风险真实存在时才加载 `references/performance-checklist.md`。
+1. 需要正式 worksheet、second-pass prompt 或可复用审查清单：读 [review-checklist.md](references/review-checklist.md)。
+2. Docnav contract、CLI/adapter/ref/pagination/raw-readable/schema/MCP/OpenSpec 相关 diff：读 [docnav-review-cues.md](references/docnav-review-cues.md)。
+3. Security-sensitive changes：读 [security-checklist.md](references/security-checklist.md)。
+4. Hot path、large input、unbounded work 或 performance regression risk：读 [performance-checklist.md](references/performance-checklist.md)。
 
 ## 工作流
 
-1. 先确认 intent、changed surfaces、预期行为和 governing spec。需要 Docnav 规范上下文时，从 `docs/navigation.md` 进入，只读当前任务相关主规范。
-2. 先看 tests。若回归合理可能发生或代价较高，缺失或薄弱 coverage 就是 finding。
-3. 沿改动跨过的 ownership boundary 追踪实现：CLI、adapter、protocol、schema/example、MCP bridge、docs 或 OpenSpec。
-4. 在纠结 style 前先检查下面的 Docnav cues。
-5. 检查 verification。优先要求能证明 touched surface 的最小命令；跨边界行为需要更宽的验证。
-6. 交付 findings-first verdict。如果 diff 过宽导致无法可靠 review，要求拆分。
-
-只有在需要正式 worksheet 或 independent second pass 时，才加载 `references/review-checklist.md`。
+1. 确认 intent、changed surfaces、预期行为、governing spec 或 user request。
+2. 先看 tests 和验证。若合理 regression 可能发生或代价较高，缺失或薄弱 coverage 就是 finding。
+3. 沿 ownership boundary 追踪实现：core、adapter/service、bridge/tool、schema/example、docs、tests 或 generated artifacts。
+4. 优先检查 correctness、user-visible behavior、data loss/security、compatibility 和 missing tests，再处理 maintainability/style。
+5. 检查 verification。优先要求能证明 touched surface 的最小命令；跨边界行为需要更宽验证。
+6. 如果 diff 过宽导致无法可靠 review，要求拆分或提供 focused context。
+7. 交付 findings-first verdict。
 
 ## 严重级别（Severity）
 
@@ -49,39 +48,11 @@ description: "中文优先的 Docnav findings-first code review 指南，用于 
 
 不要把 blocking bug 软化成 suggestion。也不要把 optional preference 写得像 mandatory request。
 
-## Docnav 审查线索（Cues）
-
-- 保持 CLI-first navigation flow：`outline -> ref -> read`。
-- 把 ref 视为 adapter-generated 和 adapter-owned。核心 `docnav`、MCP 与其他入口只原样传递 ref，不解析、不重写、不发明 ref。
-- 分清 raw protocol output 与 readable output。它们可以复用业务语义，但不能复用 transport wrapper、schema、pagination envelope 或 stability promise。
-- 检查 pagination 与 continuation：有限读取、稳定 page metadata、强制 limits，且没有意外 full-document load。
-- adapter 职责留在 adapter 内：format detection、parsing、navigation strategy、ref generation/parsing，以及 adapter direct CLI behavior。
-- MCP bridge 必须保持 thin。它只把 MCP tool call 映射到 `docnav` 行为，不复制 adapter parsing、routing 或 protocol logic。
-- 检查 Windows path 下的 CLI 行为：drive letters、backslashes、spaces、quoting、stdin/stdout/stderr 与 readable error output。
-- protocol、schema、examples、CLI output、adapter behavior 或 MCP mapping 改动时，确认对应主规范、`docs/schemas/` 与 `docs/examples/` 同步。
-- 若本 work item 已有相关 OpenSpec artifacts，则 review artifacts、implementation、tests 与 verification 的一致性。
-- 在正确层级检查 tests：adapter unit/smoke tests、core CLI tests、MCP mapping tests、schema/example validation，以及 bug fix 的 regression tests。
-
-只有在 security-sensitive changes 中使用 `references/security-checklist.md`。只有 performance risk 真实存在时使用 `references/performance-checklist.md`。
-
 ## 验证（Verification）
 
 记录 review 了什么、运行了什么、没有运行什么。缺失必要 verification 时，把它作为 finding 或 residual risk。
 
-```text
-Skill-only 或 Markdown review changes:
-  target/debug/docnav-markdown.exe info <changed-md>
-  target/debug/docnav-markdown.exe outline <changed-md>
-
-Markdown adapter 或 direct CLI changes:
-  pnpm run smoke:docnav-markdown
-
-Core docnav CLI、routing、config 或 adapter registry changes:
-  pnpm run smoke:docnav-core
-
-Protocol、schema、examples、docs、MCP mapping 或跨边界 changes:
-  pnpm run verify:docnav-workspace
-```
+Verification commands must come from the current repository scripts, nearby tests, governing docs, or the user's provided commands. Do not require hardcoded build artifact paths as reusable review rules.
 
 ## 输出形状
 
@@ -109,5 +80,6 @@ Request changes / Approve / No findings.
 ## 参考资料（See Also）
 
 - [Review checklist](references/review-checklist.md)：可选 worksheet 与 independent-review prompt。
+- [Docnav review cues](references/docnav-review-cues.md)：Docnav contract scope 的审查线索与验证范围。
 - [Security checklist](references/security-checklist.md)：更深入的 Docnav security checks。
 - [Performance checklist](references/performance-checklist.md)：更深入的 Docnav performance checks。

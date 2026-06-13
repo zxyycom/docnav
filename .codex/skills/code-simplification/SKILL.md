@@ -36,7 +36,7 @@ description: 简化代码以提升 clarity/readability。Use when refactoring co
 
 ## 项目边界
 
-在本仓库简化代码时，先按任务范围判断是否触碰公开契约或跨层边界。普通局部清理只需要遵循相邻代码和已有测试；只有触碰这些边界时，才读取对应主规范和 `docs/CODING_STYLE.md`：
+在项目内简化代码时，先按任务范围判断是否触碰公开契约或跨层边界。普通局部清理只需要遵循相邻代码和已有测试；只有触碰这些边界时，才读取仓库规则、对应 owner docs 或主规范：
 
 - public CLI/API、machine/readable output、schema/example、subprocess/bridge boundary、routing、ref/identifier、pagination/continuation 或 error mapping。
 - 稳定字段、稳定错误、用户可见命令、跨 crate/package contract 或生成材料。

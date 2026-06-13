@@ -1,6 +1,6 @@
 # Docnav Performance Checklist
 
-此 reference 保存 Docnav 性能工作的细节。先用 `SKILL.md` 确认触发和流程，再按本文件执行测量、triage、修复和验证。
+此 reference 保存 Docnav 或类似文档导航 CLI/local-tool 性能工作的细节。先用 `SKILL.md` 确认触发和流程，再按本文件执行测量、triage、修复和验证。命令模板展示 workload shape；实际命令应来自当前仓库脚本、构建产物、AGENTS 规则或相邻测试。
 
 ## 目录
 
@@ -39,8 +39,8 @@
 先比较 direct adapter CLI 和 core CLI：
 
 ```powershell
-Measure-Command { .\target\release\docnav-markdown.exe outline .\fixtures\large.md | Out-Null }
-Measure-Command { .\target\release\docnav.exe outline .\fixtures\large.md | Out-Null }
+Measure-Command { <adapter-cli> outline <large-fixture.md> | Out-Null }
+Measure-Command { <core-cli> outline <large-fixture.md> | Out-Null }
 ```
 
 | 分类 | 信号 | 优先检查 |
@@ -59,44 +59,44 @@ Measure-Command { .\target\release\docnav.exe outline .\fixtures\large.md | Out-
 
 ## Command Templates
 
-先构建 release binary：
+先按仓库规则生成可比较的 optimized/release build：
 
 ```powershell
-cargo build --release -p docnav -p docnav-markdown
+<repository-release-build-command>
 ```
 
 有 `hyperfine` 时优先多轮测量：
 
 ```powershell
-hyperfine --warmup 3 '.\target\release\docnav.exe outline .\fixtures\large.md --output protocol-json --limit-chars 8000'
-hyperfine --warmup 3 '.\target\release\docnav-markdown.exe find .\fixtures\large.md --query "navigation" --output readable-json'
+hyperfine --warmup 3 '<core-cli> outline <large-fixture.md> --output protocol-json --limit-chars 8000'
+hyperfine --warmup 3 '<adapter-cli> find <large-fixture.md> --query "navigation" --output readable-json'
 ```
 
 没有 `hyperfine` 时使用 PowerShell：
 
 ```powershell
 Measure-Command {
-  .\target\release\docnav.exe outline .\fixtures\large.md --output protocol-json --limit-chars 8000 > $null
+  <core-cli> outline <large-fixture.md> --output protocol-json --limit-chars 8000 > $null
 }
 
 Measure-Command {
-  .\target\release\docnav.exe find .\fixtures\large.md --query "navigation" --output protocol-json > $null
+  <core-cli> find <large-fixture.md> --query "navigation" --output protocol-json > $null
 }
 
 Measure-Command {
-  .\target\release\docnav.exe read .\fixtures\large.md --ref "L120:Guide > Adapter" --output protocol-json > $null
+  <core-cli> read <large-fixture.md> --ref "<ref-from-outline>" --output protocol-json > $null
 }
 
 Measure-Command {
-  .\target\release\docnav.exe outline .\fixtures\large.md --page 3 --limit-chars 4000 > $null
+  <core-cli> outline <large-fixture.md> --page 3 --limit-chars 4000 > $null
 }
 ```
 
 Windows memory sampling：
 
 ```powershell
-$p = Start-Process .\target\release\docnav.exe -ArgumentList @(
-  "outline", ".\fixtures\large.md", "--output", "protocol-json"
+$p = Start-Process <core-cli> -ArgumentList @(
+  "outline", "<large-fixture.md>", "--output", "protocol-json"
 ) -PassThru -NoNewWindow
 while (-not $p.HasExited) {
   Get-Process -Id $p.Id | Select-Object Id,CPU,WorkingSet64,PeakWorkingSet64
@@ -154,16 +154,16 @@ Budget 必须写明 command、fixture、output mode、page/limit、build profile
 按改动范围选择最窄验证：
 
 ```powershell
-cargo test -p docnav-markdown
-cargo test -p docnav
-pnpm run smoke:docnav-markdown
-pnpm run smoke:docnav-core
+<adapter-test-command>
+<core-test-command>
+<adapter-smoke-script>
+<core-smoke-script>
 ```
 
-跨 Rust crates、schema/examples、adapter output、CLI behavior、MCP mapping 或 docs 边界时，优先运行：
+跨 Rust crates、schema/examples、adapter output、CLI behavior、MCP mapping 或 docs 边界时，优先运行 repository workspace verifier：
 
 ```powershell
-pnpm run verify:docnav-workspace
+<repository-workspace-verifier>
 ```
 
 交付前：

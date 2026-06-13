@@ -1,13 +1,15 @@
 ---
 name: using-agent-skills
-description: 在 Docnav 中选择和维护已安装的 project skills；仅用于 skill routing 含糊、维护 skill route/metadata/reference，或用户询问 installed skill 适用性时使用，不作为每次任务的默认入口。
+description: >-
+  选择和维护已安装的 project skills。用于 skill routing 含糊、维护 skill route/metadata/reference、
+  优化 project skills、检查 progressive disclosure，或用户询问 installed skill 适用性；不作为每次任务的默认入口。
 ---
 
 # Using Agent Skills
 
 ## 定位
 
-这是 Docnav project skills 的 routing navigator。只有在以下情况触发：
+这是 project skills 的 routing navigator。只有在以下情况触发：
 
 1. 用户询问“该用哪个 skill”、installed skills、skill routing 或 skill 维护。
 2. 任务明显需要 skill，但多个 installed skills 都可能适用，优先级不清。

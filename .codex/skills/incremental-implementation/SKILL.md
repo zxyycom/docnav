@@ -51,9 +51,9 @@ description: "以小步增量交付变更；适用于 multi-file change、vertic
 
 当遇到不相关问题时，把它放入最终总结或 handoff note。只有它阻塞当前 slice 时，才把它升级为新的 slice。
 
-## 项目定制切片
+## 本地工具 / Docnav Scope Examples
 
-只有当本 slice 触碰项目公开契约或跨层行为时，才按拥有边界切片；普通文档、注释、局部 helper 或样式内聚改动不需要进入这些细节。
+只有当本 slice 触碰项目公开契约或跨层行为时，才按拥有边界切片；普通文档、注释、局部 helper 或样式内聚改动不需要进入这些细节。这些 examples 适用于 Docnav 和类似 CLI/local-tool repositories，不是所有项目的默认分层。
 
 - **Parser/domain layer**：先证明单个 observable behavior。
 - **CLI/API layer**：聚焦 routing、defaults、output/error mapping 和 user-visible behavior。

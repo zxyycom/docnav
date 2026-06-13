@@ -55,17 +55,17 @@
 
 ```text
 Markdown skill/reference edits:
-  target/debug/docnav-markdown.exe info <changed-md>
-  target/debug/docnav-markdown.exe outline <changed-md>
+  <repository-markdown-shape-check> <changed-md>
+  <repository-markdown-outline-check> <changed-md>
 
 Markdown adapter behavior:
-  pnpm run smoke:docnav-markdown
+  <adapter-smoke-script>
 
 Core CLI / adapter routing:
-  pnpm run smoke:docnav-core
+  <core-smoke-script>
 
 Cross-boundary protocol/schema/MCP behavior:
-  pnpm run verify:docnav-workspace
+  <repository-workspace-verifier>
 ```
 
 ## 常见反模式（Anti-Patterns）

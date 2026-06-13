@@ -36,7 +36,7 @@ description: "用于 performance optimization：当 measured budget、regression
 
 ## 参考加载
 
-- 只有性能问题明确落在本仓库专项文档导航、CLI/subprocess/bridge 或 workspace verification 时，读取 `references/performance-checklist.md`。其中包含项目专项 baseline 清单、fixture 形状、triage 表、命令模板、budget 模板、常见误判、red flags 和验证命令。
+- 只有性能问题明确落在 Docnav 或类似文档导航、CLI/subprocess/bridge、large-document workload 或 workspace verification 时，读取 [performance-checklist.md](references/performance-checklist.md)。其中包含 scoped baseline 清单、fixture 形状、triage 表、命令模板、budget 模板、常见误判、red flags 和验证范围。
 - `references/original-skill.md` 是迁移前来源记录；保持不变。只有在审计旧版通用 performance 内容时才读取。
 - 不要继续追逐深层 reference；本 skill 的直接 reference 应足够完成项目专项性能工作。
 

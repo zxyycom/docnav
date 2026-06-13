@@ -1,6 +1,9 @@
 ---
 name: documentation-and-adrs
-description: "记录决策与文档上下文。用于 architectural decisions、public API 变更、功能交付、ADR、README、CHANGELOG、OpenSpec、Docnav docs sync，以及为未来工程师和 agent 记录上下文。"
+description: >-
+  记录 durable decisions 和可维护文档上下文。用于 architectural decisions、public API/contract
+  变更、功能交付文档、ADR、README、CHANGELOG、OpenSpec/change docs、Docnav docs sync，
+  以及为未来工程师和 agent 留下可验证上下文。
 ---
 
 # 文档与 ADR
@@ -19,9 +22,9 @@ description: "记录决策与文档上下文。用于 architectural decisions、
    - 只解释局部非显而易见约束：写 inline documentation。
 
 2. 读取项目上下文：
-   - 在 Docnav 仓库内，先从 `docs/navigation.md` 的“如何阅读这些文档”进入，再按角色读取对应主规范。
-   - `openspec/changes/` 只在处理 OpenSpec change、验收、历史审计或用户明确要求时读取；涉及 OpenSpec 时先运行 `openspec list --json`。
-   - `docs/schemas/` 和 `docs/examples/` 是验证材料，只在字段、示例、schema、protocol output 或测试相关时读取。
+   - 先读取 repository rules、navigation docs 或 owner docs；只读取当前文档任务需要的 authoritative source。
+   - Change-management artifacts 只在处理 change、验收、历史审计或用户明确要求时读取。
+   - Schemas、examples 和 generated fixtures 是验证材料，只在字段、示例、schema、machine output 或测试相关时读取。
 
 3. 选择 reference：
    - ADR 触发、轻量模板或历史链接：读 [adr-guide.md](references/adr-guide.md)。
@@ -51,10 +54,7 @@ description: "记录决策与文档上下文。用于 architectural decisions、
 
 ## Docnav 定制边界
 
-- `docnav`、`docnav-mcp` 和格式 adapter 共享同一 contract，但文档所有权不同；不要把 MCP bridge 写成解析或路由规范来源。
-- ref 由 adapter 生成和解析；文档要避免暗示 core CLI 或 MCP 能解释 ref 结构。
-- protocol/schema/examples/CLI/adapter/MCP 任一边界变化，都要同步对应主规范和验证材料。
-- Markdown v0 是首期纵向链路；JSON、YAML、TOML 和 INI 是后续 adapter 能力，不要在 v0 文档里写成已交付。
+Docnav 仓库内的文档入口、同步矩阵、OpenSpec 使用边界、schema/examples 验收标准见 [docnav-docs-sync.md](references/docnav-docs-sync.md)。只有当前文档任务触及 Docnav contract surface 时读取该 reference。
 
 ## 验收
 
