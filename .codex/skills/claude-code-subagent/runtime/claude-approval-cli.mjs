@@ -27,6 +27,8 @@ function fail(message) {
   throw new Error(message);
 }
 
+const MAX_WAIT_SECONDS = 1800;
+
 function parseArguments(argv) {
   const options = {};
   const positionals = [];
@@ -71,23 +73,41 @@ function parseWaitSeconds(value) {
   if (
     !Number.isInteger(waitSeconds) ||
     waitSeconds < 0 ||
-    waitSeconds > 300
+    waitSeconds > MAX_WAIT_SECONDS
   ) {
-    fail("--wait-seconds must be an integer from 0 through 300.");
+    fail(`--wait-seconds must be an integer from 0 through ${MAX_WAIT_SECONDS}.`);
   }
   return waitSeconds;
 }
 
-function requireUuid(options) {
-  const requestId = requireString(options, "request-id");
+function parseUuid(value, name) {
+  if (typeof value !== "string" || value.length === 0) {
+    fail(`Provide --${name}.`);
+  }
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-      requestId,
+      value,
     )
   ) {
-    fail("--request-id must be a UUID.");
+    fail(`--${name} must be a UUID.`);
   }
-  return requestId;
+  return value;
+}
+
+function optionalUuid(options, name) {
+  const value = options[name];
+  if (value === undefined) return undefined;
+  return parseUuid(value, name);
+}
+
+function requireUuid(options, name) {
+  return parseUuid(options[name], name);
+}
+
+function rejectSessionDirectory(options) {
+  if (options["session-directory"] !== undefined) {
+    fail("Use --session-id instead of --session-directory.");
+  }
 }
 
 function parseUpdatedInput(value) {
@@ -111,10 +131,10 @@ function parseUpdatedInput(value) {
 function printHelp() {
   process.stdout.write(`Usage:
   node claude-approval-cli.mjs start --working-directory <path> (--prompt <text> | --prompt-file <path>) [--permission-mode auto|acceptEdits|default|plan] [--claude-executable <path>] [--json]
-  node claude-approval-cli.mjs status [--session-directory <path>] [--wait-seconds 0..300] [--json]
-  node claude-approval-cli.mjs approve [--session-directory <path>] --request-id <uuid> [--reason <text>] [--updated-input-json <json>] [--json]
-  node claude-approval-cli.mjs deny [--session-directory <path>] --request-id <uuid> [--reason <text>] [--message <text>] [--json]
-  node claude-approval-cli.mjs stop [--session-directory <path>] [--reason <text>] [--json]
+  node claude-approval-cli.mjs status [--session-id <uuid>] [--wait-seconds 0..${MAX_WAIT_SECONDS}] [--json]
+  node claude-approval-cli.mjs approve --request-id <uuid> [--reason <text>] [--updated-input-json <json>] [--json]
+  node claude-approval-cli.mjs deny --request-id <uuid> [--reason <text>] [--message <text>] [--json]
+  node claude-approval-cli.mjs stop [--session-id <uuid>] [--reason <text>] [--json]
 `);
 }
 
@@ -129,29 +149,31 @@ async function runCommand(command, options) {
         claudeExecutable: options["claude-executable"],
       });
     case "status":
+      rejectSessionDirectory(options);
       return getStatus({
-        sessionDirectory: options["session-directory"],
+        sessionId: optionalUuid(options, "session-id"),
         waitSeconds: parseWaitSeconds(options["wait-seconds"]),
       });
     case "approve":
+      rejectSessionDirectory(options);
       return decideRequest({
-        sessionDirectory: options["session-directory"],
-        requestId: requireUuid(options),
+        requestId: requireUuid(options, "request-id"),
         behavior: "allow",
         reason: options.reason,
         updatedInput: parseUpdatedInput(options["updated-input-json"]),
       });
     case "deny":
+      rejectSessionDirectory(options);
       return decideRequest({
-        sessionDirectory: options["session-directory"],
-        requestId: requireUuid(options),
+        requestId: requireUuid(options, "request-id"),
         behavior: "deny",
         reason: options.reason,
         message: options.message,
       });
     case "stop":
+      rejectSessionDirectory(options);
       return stopSession({
-        sessionDirectory: options["session-directory"],
+        sessionId: optionalUuid(options, "session-id"),
         reason: options.reason,
       });
     default:

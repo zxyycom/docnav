@@ -4,7 +4,7 @@ import { formatCommandOutput, formatError } from "./approval-session-output.mjs"
 
 test("formats a running session without internal process details", () => {
   const output = formatCommandOutput("start", {
-    sessionDirectory: "C:\\Temp\\session-id",
+    sessionId: "00000000-0000-4000-8000-000000000001",
     processId: 42,
     processRunning: true,
     state: {
@@ -20,15 +20,16 @@ test("formats a running session without internal process details", () => {
     output,
     [
       "status: running",
+      "session: 00000000-0000-4000-8000-000000000001",
       "",
     ].join("\n"),
   );
-  assert.doesNotMatch(output, /processId|processRunning|stderrTail/u);
+  assert.doesNotMatch(output, /sessionDirectory|processId|processRunning|stderrTail/u);
 });
 
 test("formats pending approval details", () => {
   const output = formatCommandOutput("status", {
-    sessionDirectory: "C:\\Temp\\session-id",
+    sessionId: "00000000-0000-4000-8000-000000000001",
     state: { status: "awaiting_approval" },
     pendingRequests: [
       {
@@ -41,6 +42,7 @@ test("formats pending approval details", () => {
   });
 
   assert.match(output, /^status: awaiting_approval$/mu);
+  assert.match(output, /^session: 00000000-0000-4000-8000-000000000001$/mu);
   assert.match(output, /^request: request-id$/mu);
   assert.match(output, /^tool: Bash$/mu);
   assert.match(output, /^command:$/mu);
@@ -67,12 +69,12 @@ test("keeps non-Bash approval inputs exact", () => {
 test("formats final results and decisions", () => {
   assert.equal(
     formatCommandOutput("status", {
-      sessionDirectory: "C:\\Temp\\session-id",
+      sessionId: "00000000-0000-4000-8000-000000000001",
       state: { status: "completed" },
       pendingRequests: [],
       result: { text: "rtk 0.42.3" },
     }),
-    "status: completed\nresult:\n  rtk 0.42.3\n",
+    "status: completed\nsession: 00000000-0000-4000-8000-000000000001\nresult:\n  rtk 0.42.3\n",
   );
   assert.equal(
     formatCommandOutput("approve", {

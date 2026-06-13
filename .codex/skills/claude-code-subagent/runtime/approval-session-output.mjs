@@ -27,6 +27,9 @@ function appendToolInput(lines, request) {
 function formatSnapshot(snapshot) {
   const status = snapshot.state?.status || "unknown";
   const lines = [`status: ${status}`];
+  if (snapshot.sessionId) {
+    lines.push(`session: ${snapshot.sessionId}`);
+  }
 
   for (const request of snapshot.pendingRequests || []) {
     lines.push("");

@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -19,6 +19,8 @@ const runtimeDirectory = path.dirname(fileURLToPath(import.meta.url));
 const bridgePath = path.join(runtimeDirectory, "claude-approval-bridge.mjs");
 const permissionModes = new Set(["acceptEdits", "default", "plan", "auto"]);
 const execFileAsync = promisify(execFile);
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 async function pathExists(filePath) {
   try {
@@ -76,27 +78,37 @@ async function readClaudeVersion(claudeExecutable) {
   return stdout.trim();
 }
 
-async function resolveSessionDirectory(explicitDirectory) {
-  let sessionDirectory = explicitDirectory;
-  if (!sessionDirectory) {
-    try {
-      sessionDirectory = (await readFile(
-        path.join(SESSION_ROOT, "latest.txt"),
-        "utf8",
-      )).trim();
-    } catch (error) {
-      if (error?.code === "ENOENT") {
-        throw new Error("No Claude approval session has been started.");
-      }
-      throw error;
-    }
+function requireSessionId(value) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("Provide --session-id.");
   }
+  if (!UUID_PATTERN.test(value)) {
+    throw new Error("--session-id must be a UUID.");
+  }
+  return value;
+}
 
+async function readLatestSessionId() {
+  let latest;
+  try {
+    latest = (await readFile(path.join(SESSION_ROOT, "latest.txt"), "utf8")).trim();
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      throw new Error("No Claude approval session has been started.");
+    }
+    throw error;
+  }
+  return requireSessionId(path.basename(latest));
+}
+
+async function resolveSessionDirectory(sessionId) {
+  const resolvedSessionId = sessionId
+    ? requireSessionId(sessionId)
+    : await readLatestSessionId();
+  const sessionDirectory = path.join(SESSION_ROOT, resolvedSessionId);
   const resolvedRoot = path.resolve(SESSION_ROOT);
   if (!(await pathExists(sessionDirectory))) {
-    throw new Error(
-      `Session directory does not exist: ${path.resolve(sessionDirectory)}`,
-    );
+    throw new Error(`Session does not exist: ${resolvedSessionId}`);
   }
   const resolvedDirectory = await realpath(sessionDirectory);
   const relative = path.relative(resolvedRoot, resolvedDirectory);
@@ -108,6 +120,46 @@ async function resolveSessionDirectory(explicitDirectory) {
     throw new Error(`Session directory must be a child of: ${resolvedRoot}`);
   }
   return resolvedDirectory;
+}
+
+async function listSessionDirectories() {
+  let entries;
+  try {
+    entries = await readdir(SESSION_ROOT, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+  return entries
+    .filter((entry) => entry.isDirectory() && UUID_PATTERN.test(entry.name))
+    .map((entry) => path.join(SESSION_ROOT, entry.name));
+}
+
+async function resolveRequestSessionDirectory(requestId) {
+  if (typeof requestId !== "string" || !UUID_PATTERN.test(requestId)) {
+    throw new Error("--request-id must be a UUID.");
+  }
+  const matches = [];
+  await Promise.all(
+    (await listSessionDirectories()).map(async (sessionDirectory) => {
+      const files = sessionPaths(sessionDirectory);
+      const requestFile = path.join(files.requests, `${requestId}.json`);
+      const decisionFile = path.join(files.decisions, `${requestId}.json`);
+      if (
+        (await pathExists(requestFile)) &&
+        !(await pathExists(decisionFile))
+      ) {
+        matches.push(sessionDirectory);
+      }
+    }),
+  );
+  if (matches.length === 0) {
+    throw new Error(`Pending request does not exist: ${requestId}`);
+  }
+  if (matches.length > 1) {
+    throw new Error(`Pending request is ambiguous: ${requestId}`);
+  }
+  return matches[0];
 }
 
 function isProcessRunning(processId) {
@@ -178,7 +230,7 @@ async function getSessionSnapshot(sessionDirectory) {
 
   const processId = processIdText === null ? null : Number(processIdText.trim());
   return {
-    sessionDirectory,
+    sessionId: path.basename(sessionDirectory),
     processId,
     processRunning: FINAL_STATUSES.has(state?.status)
       ? false
@@ -275,27 +327,26 @@ export async function startSession({
 
   await writeFile(files.pid, String(child.pid), "utf8");
   await mkdir(SESSION_ROOT, { recursive: true });
-  await writeFile(path.join(SESSION_ROOT, "latest.txt"), sessionDirectory, "utf8");
+  await writeFile(path.join(SESSION_ROOT, "latest.txt"), sessionId, "utf8");
   return waitForSnapshot(sessionDirectory, 2, statusReady);
 }
 
-export async function getStatus({ sessionDirectory, waitSeconds = 0 }) {
+export async function getStatus({ sessionId, waitSeconds = 0 }) {
   return waitForSnapshot(
-    await resolveSessionDirectory(sessionDirectory),
+    await resolveSessionDirectory(sessionId),
     waitSeconds,
     statusReady,
   );
 }
 
 export async function decideRequest({
-  sessionDirectory,
   requestId,
   behavior,
   reason,
   message,
   updatedInput,
 }) {
-  const resolvedDirectory = await resolveSessionDirectory(sessionDirectory);
+  const resolvedDirectory = await resolveRequestSessionDirectory(requestId);
   const files = sessionPaths(resolvedDirectory);
   const requestFile = path.join(files.requests, `${requestId}.json`);
   if (!(await pathExists(requestFile))) {
@@ -317,11 +368,11 @@ export async function decideRequest({
     path.join(files.decisions, `${requestId}.json`),
     decision,
   );
-  return decision;
+  return { ...decision, sessionId: path.basename(resolvedDirectory) };
 }
 
-export async function stopSession({ sessionDirectory, reason }) {
-  const resolvedDirectory = await resolveSessionDirectory(sessionDirectory);
+export async function stopSession({ sessionId, reason }) {
+  const resolvedDirectory = await resolveSessionDirectory(sessionId);
   const initialSnapshot = await getSessionSnapshot(resolvedDirectory);
   if (
     !initialSnapshot.processRunning ||

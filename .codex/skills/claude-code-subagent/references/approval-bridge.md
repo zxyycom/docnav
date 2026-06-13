@@ -28,12 +28,12 @@ node "<skill_dir>\runtime\claude-approval-cli.mjs" start `
   --permission-mode auto
 ```
 
-prompt 含 shell-sensitive 字符时，改用 `--prompt-file "<path>"`。需要完整 snapshot 或 session directory 时，加 `--json`。
+prompt 含 shell-sensitive 字符时，改用 `--prompt-file "<path>"`。默认输出包含 `session: <session-id>`；需要完整 snapshot、stderr 或进程细节时，加 `--json`。
 
 轮询：
 
 ```powershell
-node "<skill_dir>\runtime\claude-approval-cli.mjs" status --wait-seconds 30
+node "<skill_dir>\runtime\claude-approval-cli.mjs" status --session-id "<session-id>" --wait-seconds 1800
 ```
 
 审批或拒绝当前请求：
@@ -49,19 +49,23 @@ node "<skill_dir>\runtime\claude-approval-cli.mjs" deny `
   --message "<guidance Claude should follow instead>"
 ```
 
+需要用户决策时，不要先 deny；保持请求 pending，问用户，拿到决定后再运行 approve 或 deny。
+
 停止：
 
 ```powershell
-node "<skill_dir>\runtime\claude-approval-cli.mjs" stop --reason "<reason>"
+node "<skill_dir>\runtime\claude-approval-cli.mjs" stop --session-id "<session-id>" --reason "<reason>"
 ```
 
-CLI 默认输出是精简文本。`--json` 用于调试、并发 session、完整路径、stderr、进程细节或机器处理。
+CLI 默认输出是精简文本。`--json` 用于调试、并发 session 诊断、stderr、进程细节或机器处理。
 
 ## 等待策略
 
-- approval session 在后台运行；用有界 `status --wait-seconds` 轮询。
-- CLI 记住最新 session；非并发场景可省略 `--session-directory`。
-- Claude Code 可能很慢。重试后仍超时，就拆小任务。
+- approval session 在后台运行；用有界 `status --wait-seconds` 轮询，最大 1800 秒。
+- CLI 记住最新 session；只有单 session 场景可省略 `--session-id`。
+- 并行 session 时，记录每个 `start` 或 `status` 输出里的 `session`；`status` 和 `stop` 必须显式传 `--session-id`。
+- `approve` 和 `deny` 不接收 session 路径，只用 `--request-id` 自动定位 pending request 所属 session。
+- Claude Code 可能很慢。等待 30 分钟后仍超时，就拆小任务。
 
 ## 维护检查
 

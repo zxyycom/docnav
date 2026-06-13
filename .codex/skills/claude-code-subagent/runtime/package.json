@@ -1,5 +1,5 @@
 {
-  "name": "claude-code-review-loop-runtime",
+  "name": "claude-code-subagent-runtime",
   "private": true,
   "type": "module",
   "engines": {
