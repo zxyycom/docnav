@@ -51,6 +51,67 @@ fn path_arg(path: &Path) -> String {
 }
 
 #[test]
+fn direct_cli_and_invoke_share_outline_execution_result() {
+    let path = write_doc("shared-outline.md", "# Top\nintro\n\n## Section\ntext\n");
+    let path = path_arg(&path);
+
+    let direct = run(&["outline", &path, "--output", "readable-json"]);
+    assert!(direct.status.success());
+    assert!(direct.stderr.is_empty());
+    let direct_json: Value = serde_json::from_slice(&direct.stdout).expect("direct JSON");
+
+    let request = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "shared-outline",
+        "operation": "outline",
+        "document": { "path": path },
+        "arguments": {
+            "limit_chars": 6000,
+            "page": 1
+        }
+    });
+    let protocol = run_with_stdin(&["invoke"], &request.to_string());
+    assert!(protocol.status.success());
+    assert!(protocol.stderr.is_empty());
+    let protocol_json: Value = serde_json::from_slice(&protocol.stdout).expect("protocol JSON");
+
+    assert_eq!(protocol_json["operation"], "outline");
+    assert_eq!(protocol_json["ok"], true);
+    assert_eq!(direct_json, protocol_json["result"]);
+}
+
+#[test]
+fn direct_cli_and_invoke_share_info_execution_result() {
+    let path = write_doc("shared-info.md", "# Top\nintro\n");
+    let path = path_arg(&path);
+
+    let direct = run(&["info", &path, "--output", "readable-json"]);
+    assert!(direct.status.success());
+    assert!(direct.stderr.is_empty());
+    let direct_json: Value = serde_json::from_slice(&direct.stdout).expect("direct JSON");
+
+    let request = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "shared-info",
+        "operation": "info",
+        "document": { "path": path },
+        "arguments": {}
+    });
+    let protocol = run_with_stdin(&["invoke"], &request.to_string());
+    assert!(
+        protocol.status.success(),
+        "invoke info failed: {}",
+        String::from_utf8_lossy(&protocol.stderr)
+    );
+    assert!(protocol.stderr.is_empty());
+    let protocol_json: Value = serde_json::from_slice(&protocol.stdout).expect("protocol JSON");
+
+    assert_eq!(protocol_json["operation"], "info");
+    assert_eq!(protocol_json["ok"], true);
+    assert_eq!(direct_json, protocol_json["result"]);
+}
+
+#[test]
 fn direct_cli_and_invoke_share_find_execution_result() {
     let path = write_doc(
         "shared-find.md",
@@ -183,18 +244,27 @@ fn protocol_json_error_returns_ref_invalid_for_non_canonical_refs() {
 }
 
 #[test]
-fn text_error_returns_ref_invalid_for_non_canonical_ref() {
-    let path = write_doc("missing-ref-text.md", "# Guide\nBody\n");
+fn readable_view_error_returns_ref_invalid_for_non_canonical_ref() {
+    let path = write_doc("missing-ref-readable-view.md", "# Guide\nBody\n");
     let path = path_arg(&path);
 
-    let output = run(&["read", &path, "--ref", "P:Guide", "--output", "text"]);
+    let output = run(&[
+        "read",
+        &path,
+        "--ref",
+        "P:Guide",
+        "--output",
+        "readable-view",
+    ]);
 
     assert!(!output.status.success());
     assert!(output.stderr.is_empty());
-    let stdout = String::from_utf8(output.stdout).expect("text error stdout");
-    assert!(stdout.contains("error: REF_INVALID"));
-    assert!(stdout.contains("ref=P:Guide"));
-    assert!(stdout.contains("reason"));
+    let stdout = String::from_utf8(output.stdout).expect("readable-view error stdout");
+    // readable-view error: JSON header contains code and details.
+    assert!(stdout.contains("\"code\": \"REF_INVALID\""));
+    assert!(stdout.contains("\"ref\": \"P:Guide\""));
+    assert!(stdout.contains("[block /error bytes="));
+    assert!(stdout.contains("[endblock /error]"));
     assert_no_legacy_ordinal_suffix(&stdout);
 }
 

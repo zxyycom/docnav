@@ -6,12 +6,13 @@
 
 - invoke 返回包含 operation 的完整 protocol envelope。
 - `docnav` 是识别格式、选择 adapter 和映射输出的核心 CLI。
-- MCP structuredContent 返回精简 readable 结果，不包含 envelope；直接 CLI warning 行为遵循 [CLI 与 MCP 输出](../cli.md#直接-cli-兼容参数规则)，warning item 使用 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。
-- MCP TextContent 是适配器语义结果的紧凑阅读表达，不复制完整 JSON。
+- MCP bridge 目标 structuredContent 返回精简 readable 结果，不包含 envelope；直接 CLI warning 行为遵循 [CLI 与 MCP 输出](../cli.md#直接-cli-兼容参数规则)，warning item 使用 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。
+- MCP bridge 目标 TextContent 是适配器语义结果的紧凑阅读表达，不复制完整 JSON。
+- CLI 默认阅读命令使用 `readable-view`；需要结构化消费或示例 JSON 校验时显式使用 `--output readable-json`；需要完整协议 envelope 时使用 `--output protocol-json` 或 adapter `invoke`。
 - outline 是扁平 entries。
 - find 是扁平 matches。
 - ref 从 outline 原样交给 read。
-- read 的 readable JSON 和 MCP structuredContent 保留 `content_type`。
+- read 的 readable JSON 和 MCP bridge 目标 structuredContent 保留 `content_type`。
 - 分页结果返回下一页 page；null 表示没有更多信息。
 
 ## Outline
@@ -22,9 +23,11 @@
 | MCP | [mcp-outline-request.json](json/mcp-outline-request.json) | [mcp-outline-response.json](json/mcp-outline-response.json) |
 | readable JSON | 不适用 | [readable-outline.json](json/readable-outline.json) |
 
+默认 CLI `readable-view` 输出由 pretty JSON header 承载相同 readable 字段；无 block 的 outline 不产生 block section。readable-view renderer 的格式验收材料见 `crates/docnav-readable/tests/fixtures/conformance/`。
+
 invoke 请求显式传入 `page: 1`、`limit_chars: 80` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
-MCP tool 的 `outputSchema` 内联 readable schema，见 [mcp-outline-tool.json](json/mcp-outline-tool.json)，并允许顶层 `warnings`。
+MCP bridge 目标 tool 的 `outputSchema` 内联 readable schema，见 [mcp-outline-tool.json](json/mcp-outline-tool.json)，并允许顶层 `warnings`。
 
 ## Ref 与 Read
 
@@ -42,9 +45,11 @@ H:L4:H2:I2
 | MCP | [mcp-read-request.json](json/mcp-read-request.json) | [mcp-read-response.json](json/mcp-read-response.json) |
 | readable JSON | 不适用 | [readable-read.json](json/readable-read.json) |
 
+默认 CLI `readable-view` read 输出将 `/content` 外置为 block，header 中保留 `ref`、`content_type`、`cost` 和 `page`。需要直接解析 `content` 字符串的示例和工具应使用 `--output readable-json`。
+
 read 使用 `page: 1` 和 `limit_chars: 64`，因此结果返回 `page: 2`；结果保留 `content_type: text/markdown`。保持 path、ref 和 limit_chars 不变并请求第二页即可继续读取。
 
-MCP tool 定义见 [mcp-read-tool.json](json/mcp-read-tool.json)。
+MCP bridge 目标 tool 定义见 [mcp-read-tool.json](json/mcp-read-tool.json)。
 
 ## 发现与错误
 

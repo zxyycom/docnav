@@ -30,7 +30,7 @@ MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。Adapter 
 - **THEN** adapter 选择由 `docnav` 完成
 
 ### Requirement: structuredContent 必须使用 readable schema
-MCP structuredContent MUST 使用对应 operation 的 readable schema，并 MUST 从 `docnav --output readable-json` 的 stdout JSON 派生。structuredContent MUST 只包含 operation readable 字段、readable 错误字段和可选 `warnings`；read structuredContent MUST 保留 `content_type`。
+MCP structuredContent MUST 使用对应 operation 的 readable schema，并 MUST 从 `docnav --output readable-json` 的 stdout JSON 派生。structuredContent MUST 只包含 operation readable 字段、readable 错误字段和可选 `warnings`；read structuredContent MUST 保留 `content_type`。MCP TextContent 渲染 SHOULD 消费 `replace-text-with-readable-view` 的 readable-view contract 和仓库 renderer config；block pointer、byte length 和 block payload 语义 SHOULD 与 Rust renderer 一致。
 
 #### Scenario: document_outline structuredContent
 - **WHEN** `document_outline` 返回结果

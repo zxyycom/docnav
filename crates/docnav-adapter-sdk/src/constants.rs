@@ -20,8 +20,7 @@ pub(crate) mod diagnostics {
     pub const FAILED_TO_WRITE_CLI_WARNING: &str = "failed to write CLI warning";
     pub const FAILED_TO_WRITE_JSON: &str = "failed to write JSON";
     pub const FAILED_TO_WRITE_PROTOCOL_RESPONSE: &str = "failed to write protocol response";
-    pub const FAILED_TO_WRITE_TEXT_ERROR: &str = "failed to write text error";
-    pub const FAILED_TO_WRITE_TEXT_OUTPUT: &str = "failed to write text output";
+    pub const FAILED_TO_WRITE_READABLE_VIEW: &str = "failed to write readable-view output";
     pub const INVALID_REQUEST_JSON: &str = "invalid request JSON";
     pub const MANIFEST_ADAPTER_ID_MISMATCH: &str = "manifest adapter id mismatch";
     pub const MANIFEST_SCHEMA_VALIDATION_FAILED: &str = "manifest schema validation failed";

@@ -1,0 +1,23 @@
+{
+  "description": "Block marker text in body: when the payload content contains text that looks like same-pointer block markers (e.g., '[block /content bytes=1]' or '[endblock /content]'), the renderer must not be confused. Because blocks use byte-length delimited framing (not marker-based parsing), the marker-looking text inside the payload is harmless and transmitted verbatim.",
+  "view_kind": "read",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "ref": "marker-body",
+    "content": "Some code:\n[block /content bytes=1]\nreal data\n[endblock /content]\ndone.\n",
+    "content_type": "text/plain",
+    "cost": "",
+    "page": null
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/content", "byte_length": 72, "payload": "Some code:\n[block /content bytes=1]\nreal data\n[endblock /content]\ndone.\n"},
+    {"type": "block", "pointer": "/content", "payload_contains": "[block /content bytes=1]"},
+    {"type": "block", "pointer": "/content", "payload_contains": "[endblock /content]"},
+    {"type": "block", "pointer": "/content", "payload_contains": "real data"},
+    {"type": "header_contains", "text": "\"$block\": \"/content\""},
+    {"type": "header_contains", "text": "\"bytes\": 72"},
+    {"type": "output_contains", "text": "[endblock /content]"},
+    {"type": "no_cr_in_framing"}
+  ]
+}

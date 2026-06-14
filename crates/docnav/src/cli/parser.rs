@@ -42,14 +42,14 @@ pub(super) mod arg_ids {
 
 mod defaults {
     pub(super) const LIMIT_CHARS: &str = "6000";
-    pub(super) const OUTPUT: &str = super::output_values::TEXT;
+    pub(super) const OUTPUT: &str = super::output_values::READABLE_VIEW;
     pub(super) const PAGE: &str = "1";
 }
 
 pub(super) mod output_values {
     pub(super) const PROTOCOL_JSON: &str = "protocol-json";
     pub(super) const READABLE_JSON: &str = "readable-json";
-    pub(super) const TEXT: &str = "text";
+    pub(super) const READABLE_VIEW: &str = "readable-view";
 }
 
 pub(super) mod operation_values {
@@ -261,11 +261,11 @@ fn output_arg() -> Arg {
     value_arg(
         arg_ids::OUTPUT,
         "output",
-        "text|readable-json|protocol-json",
+        "readable-view|readable-json|protocol-json",
     )
     .default_value(defaults::OUTPUT)
     .value_parser([
-        output_values::TEXT,
+        output_values::READABLE_VIEW,
         output_values::READABLE_JSON,
         output_values::PROTOCOL_JSON,
     ])
@@ -315,6 +315,7 @@ mod tests {
     use super::super::warning::{CliWarningDetails, CliWarningEffect, CliWarningId};
     use super::*;
     use crate::cli::{CliCommand, OutputMode};
+    use crate::error::exit_code_for_error;
 
     #[test]
     fn help_returns_typed_help_command() {
@@ -330,6 +331,171 @@ mod tests {
             command => panic!("expected help command, got {command:?}"),
         }
     }
+
+    // ── 2.8: Output mode help text shows only three accepted values ────────
+
+    #[test]
+    fn help_text_shows_three_output_modes() {
+        let parsed = parse(["outline", "--help"]).expect("parse help");
+
+        match parsed.command {
+            CliCommand::Help(text) => {
+                // Help must show only the three accepted document output modes.
+                assert!(
+                    text.contains("readable-view"),
+                    "help should list readable-view; got:\n{text}"
+                );
+                assert!(
+                    text.contains("readable-json"),
+                    "help should list readable-json; got:\n{text}"
+                );
+                assert!(
+                    text.contains("protocol-json"),
+                    "help should list protocol-json; got:\n{text}"
+                );
+                // Legacy text output mode must not appear.
+                assert!(
+                    !text.contains("text|readable-json|protocol-json"),
+                    "help should not show legacy 'text' output value"
+                );
+            }
+            command => panic!("expected help command, got {command:?}"),
+        }
+    }
+
+    // ── 2.8: Default output mode is readable-view ─────────────────────────
+
+    #[test]
+    fn default_arg_output_is_readable_view() {
+        // clap default_value for --output should be "readable-view".
+        assert_eq!(defaults::OUTPUT, "readable-view");
+    }
+
+    #[test]
+    fn parse_without_output_has_none() {
+        // When no --output is given, the parsed command has output=None.
+        // The default (ReadableView) is resolved later by DocumentRequest::from_command
+        // via the config chain (CLI > project config > user config > built-in).
+        let parsed = parse(["outline", "doc.md"]).expect("parse with default output");
+
+        match parsed.command {
+            CliCommand::Document(command) => {
+                assert_eq!(command.output, None);
+            }
+            command => panic!("expected document command, got {command:?}"),
+        }
+    }
+
+    // ── 2.8: Explicit output mode parsing ──────────────────────────────────
+
+    #[test]
+    fn parse_explicit_readable_view() {
+        let parsed =
+            parse(["outline", "doc.md", "--output", "readable-view"]).expect("parse readable-view");
+
+        match parsed.command {
+            CliCommand::Document(command) => {
+                assert_eq!(command.output, Some(OutputMode::ReadableView));
+            }
+            command => panic!("expected document command, got {command:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_explicit_readable_json() {
+        let parsed =
+            parse(["outline", "doc.md", "--output", "readable-json"]).expect("parse readable-json");
+
+        match parsed.command {
+            CliCommand::Document(command) => {
+                assert_eq!(command.output, Some(OutputMode::ReadableJson));
+            }
+            command => panic!("expected document command, got {command:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_explicit_protocol_json() {
+        let parsed =
+            parse(["outline", "doc.md", "--output", "protocol-json"]).expect("parse protocol-json");
+
+        match parsed.command {
+            CliCommand::Document(command) => {
+                assert_eq!(command.output, Some(OutputMode::ProtocolJson));
+            }
+            command => panic!("expected document command, got {command:?}"),
+        }
+    }
+
+    // ── 2.8: Invalid output value ──────────────────────────────────────────
+
+    #[test]
+    fn invalid_output_value_returns_error() {
+        let error =
+            parse(["outline", "doc.md", "--output", "text"]).expect_err("text should be rejected");
+
+        assert_eq!(
+            error.exit_code().code(),
+            exit_code_for_error(docnav_protocol::StableErrorCode::InvalidRequest).code()
+        );
+        let reason = error
+            .error()
+            .details
+            .get("reason")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        // Error message in document.rs: "invalid --output: <FromStr error>"
+        // FromStr error: "invalid output value \"text\", accepted values: ..."
+        assert!(
+            reason.contains("invalid --output"),
+            "error should mention --output, got: {reason}"
+        );
+        assert!(
+            reason.contains("readable-view"),
+            "error should list accepted values, got: {reason}"
+        );
+        assert!(
+            reason.contains("protocol-json"),
+            "error should list protocol-json, got: {reason}"
+        );
+    }
+
+    #[test]
+    fn bogus_output_value_returns_error() {
+        let error = parse(["outline", "doc.md", "--output", "bogus"])
+            .expect_err("bogus output should be rejected");
+
+        let reason = error
+            .error()
+            .details
+            .get("reason")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        assert!(reason.contains("invalid --output"));
+        assert!(reason.contains("bogus"));
+    }
+
+    // ── 2.8: Help/version are separate from document output mode ────────────
+
+    #[test]
+    fn help_command_has_no_output_mode() {
+        let parsed = parse(["--help"]).expect("parse --help");
+        match parsed.command {
+            CliCommand::Help(_) => {} // Help is not a document command
+            command => panic!("expected help command, got {command:?}"),
+        }
+    }
+
+    #[test]
+    fn version_command_has_no_output_mode() {
+        let parsed = parse(["version"]).expect("parse version");
+        match parsed.command {
+            CliCommand::Version => {} // Version is not a document command
+            command => panic!("expected version command, got {command:?}"),
+        }
+    }
+
+    // ── existing tests ─────────────────────────────────────────────────────
 
     #[test]
     fn used_known_argument_stays_strict() {

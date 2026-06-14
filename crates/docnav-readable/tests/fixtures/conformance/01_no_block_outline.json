@@ -1,0 +1,21 @@
+{
+  "description": "Outline operation produces no blocks — all fields stay in the header JSON. Verifies that a view kind with empty blocks config emits only the pretty-printed header without any [block]/[endblock] sections.",
+  "view_kind": "outline",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "entries": [
+      {"ref": "L5", "display": "Install"},
+      {"ref": "L9", "display": "Usage"}
+    ],
+    "page": null
+  },
+  "assertions": [
+    {"type": "no_blocks"},
+    {"type": "header_field", "pointer": "/entries/0/ref", "value": "L5"},
+    {"type": "header_field", "pointer": "/entries/0/display", "value": "Install"},
+    {"type": "header_field", "pointer": "/entries/1/ref", "value": "L9"},
+    {"type": "output_not_contains", "text": "[block"},
+    {"type": "output_not_contains", "text": "[endblock"}
+  ]
+}

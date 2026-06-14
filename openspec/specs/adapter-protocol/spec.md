@@ -173,8 +173,8 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** help 不执行文档导航业务
 
 #### Scenario: warning 按阅读输出模式承载
-- **WHEN** adapter direct CLI 以 text 输出模式成功并存在 warning
-- **THEN** stdout 在正常阅读文本后拼接用户可理解 warning 文本
+- **WHEN** adapter direct CLI 以 `readable-view` 输出模式成功并存在 warning
+- **THEN** stdout readable-view 的 header/payload 必须包含顶层 `warnings` 数组
 - **WHEN** adapter direct CLI 以 readable-json 输出模式成功并存在 warning
 - **THEN** stdout payload 必须包含顶层 `warnings` 数组
 - **THEN** warning item 包含稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象

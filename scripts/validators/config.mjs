@@ -54,11 +54,70 @@ export const OPERATION_NAMES = {
 
 export const OPERATIONS = Object.values(OPERATION_NAMES);
 
+export const DOCUMENT_OUTPUT_MODES = [
+  "readable-view",
+  "readable-json",
+  "protocol-json"
+];
+
 export const READABLE_SCHEMA_BY_OPERATION = {
   [OPERATION_NAMES.outline]: SCHEMAS.readableOutline,
   [OPERATION_NAMES.read]: SCHEMAS.readableRead,
   [OPERATION_NAMES.find]: SCHEMAS.readableFind,
   [OPERATION_NAMES.info]: SCHEMAS.readableInfo
+};
+
+export const OUTPUT_MODE_CONSISTENCY = {
+  coreOutputModeRust: "crates/docnav/src/cli/types.rs",
+  coreOutputHelpRust: "crates/docnav/src/cli/parser.rs",
+  adapterOutputModeRust: "crates/docnav-adapter-sdk/src/direct/output.rs",
+  adapterOutputHelpRust: "crates/docnav-adapter-sdk/src/direct/args.rs",
+  conformanceDir: "crates/docnav-readable/tests/fixtures/conformance",
+  conformanceReadme: "crates/docnav-readable/tests/fixtures/conformance/README.md",
+  currentDocs: [
+    "README.md",
+    "docs/navigation.md",
+    "docs/architecture.md",
+    "docs/cli.md",
+    "docs/adapter-contract.md",
+    "docs/adapters/markdown.md",
+    "docs/protocol.md",
+    "docs/testing.md",
+    "docs/schemas/README.md",
+    "docs/examples/README.md",
+    "docs/CODING_STYLE.md",
+    "openspec/specs/adapter-protocol/spec.md"
+  ],
+  projectSkillDocs: [
+    ".codex/skills/api-and-interface-design/SKILL.md",
+    ".codex/skills/api-and-interface-design/references/docnav-contract-scope.md",
+    ".codex/skills/debugging-and-error-recovery/SKILL.md",
+    ".codex/skills/incremental-implementation/SKILL.md",
+    ".codex/skills/security-and-hardening/SKILL.md",
+    ".codex/skills/security-and-hardening/references/security-checklist.md",
+    ".codex/skills/code-review-and-quality/references/security-checklist.md"
+  ],
+  smokeMatrices: [
+    "scripts/docnav-core-cli-smoke/cases/outputs.mjs",
+    "scripts/docnav-core-cli-smoke/cases/config-management.mjs",
+    "scripts/docnav-markdown-cli-smoke/cases/outputs.mjs",
+    "scripts/docnav-markdown-cli-smoke/cases/cli-args.mjs"
+  ],
+  conformanceFixtures: [
+    "01_no_block_outline.json",
+    "04_single_block.json",
+    "07_chinese.json",
+    "10_crlf_payload.json",
+    "11_no_trailing_newline.json",
+    "12_block_marker_in_body.json",
+    "13_warning.json",
+    "14_readable_error.json",
+    "15_error_guidance_array.json",
+    "16_undeclared_extension_fields.json",
+    "17_order_independent_assertions.json",
+    "18_renderer_failure_missing_pointer.json",
+    "19_renderer_failure_non_string.json"
+  ]
 };
 
 export const PROTOCOL_EXAMPLE_FILE = {

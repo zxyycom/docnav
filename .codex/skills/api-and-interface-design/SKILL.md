@@ -11,9 +11,11 @@ description: >-
 
 ## 目标
 
-把接口设计写成稳定、可验证、可兼容演进的 public contract。除非某项行为明确标记为 private，否则把可观察字段、文本输出、identifier、错误、分页、schema/example、flag、adapter/service 行为和 tool mapping 都当作 contract。
+把接口设计写成稳定、可验证、可兼容演进的 public contract。除非某项行为明确标记为 private，否则把可观察字段、readable output 文案、identifier、错误、分页、schema/example、flag、adapter/service 行为和 tool mapping 都当作 contract。
 
 本 skill 不替代具体产品规范。项目专属 ownership、文档入口和验证材料只在对应 scope 内读取。
+
+Docnav document output mode 当前只包含 `readable-view`、`readable-json` 和 `protocol-json`；非文档 help/version 纯文本通道使用 PlainText 或等价明确名称，不并入 document output mode。
 
 ## 读取策略
 
@@ -26,7 +28,7 @@ description: >-
 
 1. 识别 surface。
    - 判断变更影响 machine output、readable output、CLI/API surface、adapter/service contract、identifier/ref、pagination、schema/example、error mapping 还是 bridge/tool mapping。
-   - 明确字段、flag、identifier、page metadata、error、text label、example 和 validation artifact 中哪些会成为可观察行为。
+   - 明确字段、flag、identifier、page metadata、error、readable label、example 和 validation artifact 中哪些会成为可观察行为。
 
 2. 识别 owner。
    - 命名拥有该行为的层：core、adapter/service、bridge/tool、schema/example、docs 或 consumer-facing wrapper。
@@ -63,7 +65,7 @@ description: >-
 批准 interface code 或 contract artifact 前确认：
 
 - 已命名 affected surface 和 owning layer。
-- 除非变更有意 breaking，现有 consumer 仍能使用当前字段、identifier/ref、flag、default、error 和 output text。
+- 除非变更有意 breaking，现有 consumer 仍能使用当前字段、identifier/ref、flag、default、error 和 readable output 文案。
 - Machine/readable/tool outputs 保留各自 wrapper，同时保持业务语义一致。
 - Identifier/ref 在 owning layer 外仍是 opaque pass-through value。
 - 当 observable behavior 变化时，schema、example、fixture、docs 和 tests 已同步更新。

@@ -197,13 +197,13 @@ fn first_invalid_used_flag(operation: Operation, args: &[String]) -> Option<AppE
                         format!("{} must be a positive integer", flags::LIMIT_CHARS),
                     ));
                 }
-                (ValueFlag::Output, Some(value))
-                    if value.parse::<super::super::types::OutputMode>().is_err() =>
-                {
-                    return Some(AppError::invalid_request(
-                        flags::OUTPUT,
-                        format!("invalid {} {value:?}", flags::OUTPUT),
-                    ));
+                (ValueFlag::Output, Some(value)) => {
+                    if let Err(reason) = value.parse::<super::super::types::OutputMode>() {
+                        return Some(AppError::invalid_request(
+                            flags::OUTPUT,
+                            format!("invalid {}: {reason}", flags::OUTPUT),
+                        ));
+                    }
                 }
                 (ValueFlag::Ref, Some("")) => {
                     return Some(AppError::invalid_request(

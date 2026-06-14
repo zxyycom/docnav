@@ -6,13 +6,14 @@ import {
   expectFindResultsEquivalent,
   expectIncludes,
   expectInfoResultsEquivalent,
+  expectNoReadableViewBlocks,
   expectNoProtocolEnvelope,
   expectNormalFindResult,
   expectOutlineResultsEquivalent,
+  expectReadableViewBlockRestoresField,
   expectReadResultsEquivalent,
   expectStderrEmpty,
-  expectStdoutIncludes,
-  looksLikeJson
+  parseReadableViewHeader,
 } from "../assertions.mjs";
 
 export function testDocumentOutputMatrix() {
@@ -47,11 +48,14 @@ export function testDocumentOutputMatrix() {
       operation: "outline",
       args: ["outline", normal],
       schema: "readableOutline",
-      textChecks: [
-        (record) => expectStdoutIncludes(record, ref),
-        (record) => expectStdoutIncludes(record, "Guide"),
-        (record) => expectStdoutIncludes(record, "H1"),
-        (record) => expectStdoutIncludes(record, "page:")
+      readableViewChecks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectOutlineResultsEquivalent(record, header, readable.outline, "outline readable-view header matches readable-json");
+          expect(record, record.stdout.trimStart().startsWith("{"), "outline readable-view stdout starts with JSON header");
+          expect(record, !record.stdout.includes("\"protocol_version\""), "outline readable-view omits protocol envelope");
+          expectNoReadableViewBlocks(record, record.stdout, "outline readable-view");
+        }
       ],
       protocolCheck: (record, json) => {
         expectOutlineResultsEquivalent(
@@ -73,13 +77,30 @@ export function testDocumentOutputMatrix() {
         expect(record, json.content_type === "text/markdown", "read content_type is text/markdown");
         expect(record, json.page === null, "read page is null for normal fixture");
       },
-      textChecks: [
-        (record) => expectStdoutIncludes(record, `ref: ${ref}`),
-        (record) => expectStdoutIncludes(record, "# Guide"),
-        (record) => expectStdoutIncludes(record, "target text"),
-        (record) => expectStdoutIncludes(record, "content_type: text/markdown"),
-        (record) => expectStdoutIncludes(record, "cost: "),
-        (record) => expectStdoutIncludes(record, "page:")
+      readableViewChecks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expect(record, record.stdout.trimStart().startsWith("{"), "read readable-view stdout starts with JSON header");
+          expect(record, !record.stdout.includes("\"protocol_version\""), "read readable-view omits protocol envelope");
+          // Header contains block reference, not raw content.
+          expect(record, header.content?.$block === "/content", "read header has $block reference");
+          expect(
+            record,
+            header.content?.bytes === Buffer.byteLength(readable.read.content, "utf8"),
+            "read header has matching bytes field"
+          );
+          expect(record, header.content_type === readable.read.content_type, "read header has content_type");
+          expect(record, header.ref === readable.read.ref, "read header has ref");
+          expect(record, header.cost === readable.read.cost, "read header has cost");
+          expect(record, header.page === readable.read.page, "read header has page");
+          // Block section present with markers.
+          expect(record, record.stdout.includes("[block /content bytes="), "read has [block /content] marker");
+          expect(record, record.stdout.includes("[endblock /content]"), "read has [endblock /content] marker");
+          // Block payload contains the original content.
+          expect(record, record.stdout.includes("# Guide"), "read block content includes heading");
+          expect(record, record.stdout.includes("target text"), "read block content includes target text");
+          expectReadableViewBlockRestoresField(record, record.stdout, "/content", readable.read.content);
+        }
       ],
       protocolCheck: (record, json) => {
         expect(record, json.result.ref === ref, "read protocol result preserves ref");
@@ -97,13 +118,14 @@ export function testDocumentOutputMatrix() {
       args: ["find", normal, "--query", "target"],
       schema: "readableFind",
       readableCheck: (record, json) => expectNormalFindResult(record, json, "readable find"),
-      textChecks: [
-        (record) => expect(record, /^H:L\d+:H[1-6]:I\d+/m.test(record.stdout), "find text includes canonical ref"),
-        (record) => expectStdoutIncludes(record, "target text"),
-        (record) => expectStdoutIncludes(record, "target result"),
-        (record) =>
-          expect(record, (record.stdout.match(/target/g) ?? []).length >= 2, "find text includes both target matches"),
-        (record) => expectStdoutIncludes(record, "page:")
+      readableViewChecks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectFindResultsEquivalent(record, header, readable.find, "find readable-view header matches readable-json");
+          expect(record, record.stdout.trimStart().startsWith("{"), "find readable-view stdout starts with JSON header");
+          expect(record, !record.stdout.includes("\"protocol_version\""), "find readable-view omits protocol envelope");
+          expectNoReadableViewBlocks(record, record.stdout, "find readable-view");
+        }
       ],
       protocolCheck: (record, json) => {
         expectNormalFindResult(record, json.result, "protocol find");
@@ -125,14 +147,14 @@ export function testDocumentOutputMatrix() {
           expectIncludes(record, json.capabilities, capability, `info readable includes ${capability} capability`);
         }
       },
-      textChecks: [
-        (record) => expectStdoutIncludes(record, "Markdown"),
-        (record) => expectStdoutIncludes(record, "text/markdown"),
-        (record) => expectStdoutIncludes(record, "capabilities:"),
-        (record) => expectStdoutIncludes(record, "outline"),
-        (record) => expectStdoutIncludes(record, "read"),
-        (record) => expectStdoutIncludes(record, "find"),
-        (record) => expectStdoutIncludes(record, "info")
+      readableViewChecks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectInfoResultsEquivalent(record, header, readable.info, "info readable-view header matches readable-json");
+          expect(record, record.stdout.trimStart().startsWith("{"), "info readable-view stdout starts with JSON header");
+          expect(record, !record.stdout.includes("\"protocol_version\""), "info readable-view omits protocol envelope");
+          expectNoReadableViewBlocks(record, record.stdout, "info readable-view");
+        }
       ],
       protocolCheck: (record, json) => {
         expect(record, json.result.display.includes("Markdown | text/markdown"), "info protocol result has display");
@@ -147,6 +169,7 @@ export function testDocumentOutputMatrix() {
     }
   ];
 
+  // Collect readable-json results for protocol-json comparison.
   for (const item of operations.slice(1)) {
     const { json } = runSuccessfulJsonCase(
       `${item.operation} normal readable-json`,
@@ -162,17 +185,34 @@ export function testDocumentOutputMatrix() {
     readable[item.operation] = json;
   }
 
+  // 3.5: readable-view output tests — replacing the old "text" output mode.
   for (const item of operations) {
-    const record = runCli(`${item.operation} normal text`, [...item.args, "--output", "text"]);
+    const record = runCli(
+      `${item.operation} normal readable-view`,
+      [...item.args, "--output", "readable-view"]
+    );
     expectExit(record, 0);
     expectStderrEmpty(record);
-    expect(record, !looksLikeJson(record.stdout), "text stdout is not JSON");
-    expect(record, !record.stdout.includes("\"protocol_version\""), "text stdout omits protocol envelope");
-    for (const check of item.textChecks) {
+    expect(record, record.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
+    expect(record, !record.stdout.includes("\"protocol_version\""), "readable-view stdout omits protocol envelope");
+    for (const check of item.readableViewChecks) {
       check(record);
     }
   }
 
+  // 3.5: default output mode (no --output flag) is also readable-view.
+  for (const item of operations) {
+    const record = runCli(`${item.operation} normal default output`, item.args);
+    expectExit(record, 0);
+    expectStderrEmpty(record);
+    expect(record, record.stdout.trimStart().startsWith("{"), "default output starts with JSON header (readable-view)");
+    expect(record, !record.stdout.includes("\"protocol_version\""), "default output omits protocol envelope");
+    for (const check of item.readableViewChecks) {
+      check(record);
+    }
+  }
+
+  // 3.5: protocol-json output tests (unchanged boundary).
   for (const item of operations) {
     runProtocolResponseCase(
       `${item.operation} normal protocol-json`,

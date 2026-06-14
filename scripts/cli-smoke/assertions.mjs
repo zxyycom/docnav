@@ -52,6 +52,22 @@ export function parseJson(record) {
   }
 }
 
+export function parseReadableViewHeader(record, output = record.stdout) {
+  const headerBoundary = output.indexOf("\n\n[block ");
+  const headerText = output.slice(0, headerBoundary >= 0 ? headerBoundary : output.length);
+  try {
+    const value = JSON.parse(headerText);
+    record.assertions.push({ ok: true, summary: "readable-view header parses as JSON" });
+    return value;
+  } catch (error) {
+    record.assertions.push({
+      ok: false,
+      summary: `readable-view header parses as JSON: ${error.message}`
+    });
+    throw error;
+  }
+}
+
 export function expectNoProtocolEnvelope(record, value) {
   const found = findProtocolEnvelopeKeys(value);
   for (const key of protocolEnvelopeKeys) {
@@ -117,6 +133,50 @@ export function expectReadResultsEquivalent(record, actual, expected, summary) {
   for (const field of ["ref", "content", "content_type", "cost", "page"]) {
     expect(record, actual?.[field] === expected?.[field], `${summary}: ${field} matches`);
   }
+}
+
+export function expectReadableViewBlockRestoresField(record, output, pointer, expectedPayload) {
+  const headerBoundary = output.indexOf("\n\n[block ");
+  expect(record, headerBoundary >= 0, `readable-view has block section for ${pointer}`);
+  const header = parseReadableViewHeader(record, output);
+  const blockRef = jsonPointer(header, pointer);
+  expect(record, blockRef?.$block === pointer, `readable-view header has ${pointer} block reference`);
+  const expectedBytes = Buffer.byteLength(expectedPayload, "utf8");
+  expect(record, blockRef?.bytes === expectedBytes, `readable-view header ${pointer} bytes matches payload`);
+
+  const startMarker = `[block ${pointer} bytes=${expectedBytes}]\n`;
+  const outputBytes = Buffer.from(output, "utf8");
+  const startMarkerBytes = Buffer.from(startMarker, "utf8");
+  const headerBoundaryBytes = Buffer.byteLength(output.slice(0, headerBoundary), "utf8");
+  const start = outputBytes.indexOf(startMarkerBytes, headerBoundaryBytes);
+  expect(record, start >= 0, `readable-view block start marker matches ${pointer} bytes`);
+  const payloadStart = start + startMarkerBytes.length;
+  const payloadEnd = payloadStart + expectedBytes;
+  const payload = outputBytes.subarray(payloadStart, payloadEnd).toString("utf8");
+  expect(record, payload === expectedPayload, `readable-view block ${pointer} restores readable-json payload`);
+
+  let markerStart = payloadEnd;
+  if (!expectedPayload.endsWith("\n")) {
+    expect(record, outputBytes[markerStart] === 0x0a, `readable-view block ${pointer} has framing LF before end marker`);
+    markerStart += 1;
+  }
+  const endMarkerBytes = Buffer.from(`[endblock ${pointer}]\n`, "utf8");
+  expect(
+    record,
+    outputBytes.subarray(markerStart, markerStart + endMarkerBytes.length).equals(endMarkerBytes),
+    `readable-view block ${pointer} end marker follows declared payload bytes`
+  );
+}
+
+export function expectReadableViewFieldValue(record, output, pointer, expectedValue) {
+  const header = parseReadableViewHeader(record, output);
+  const actual = jsonPointer(header, pointer);
+  expect(record, deepEqual(actual, expectedValue), `readable-view header field ${pointer} matches expected value`);
+}
+
+export function expectNoReadableViewBlocks(record, output = record.stdout, label = "readable-view") {
+  expect(record, !output.includes("\n\n[block "), `${label} has no block sections`);
+  expect(record, !output.includes("\n[endblock "), `${label} has no end markers`);
 }
 
 export function expectFindResultsEquivalent(record, actual, expected, summary) {
@@ -202,4 +262,45 @@ function findProtocolEnvelopeKeys(value, path = "$") {
     found.push(...findProtocolEnvelopeKeys(child, childPath));
   }
   return found;
+}
+
+function jsonPointer(value, pointer) {
+  if (pointer === "") {
+    return value;
+  }
+  return pointer
+    .split("/")
+    .slice(1)
+    .reduce((current, segment) => {
+      if (current === undefined || current === null) {
+        return undefined;
+      }
+      const key = segment.replaceAll("~1", "/").replaceAll("~0", "~");
+      return current[key];
+    }, value);
+}
+
+function deepEqual(actual, expected) {
+  if (Object.is(actual, expected)) {
+    return true;
+  }
+  if (Array.isArray(actual) && Array.isArray(expected)) {
+    return actual.length === expected.length && actual.every((item, index) => deepEqual(item, expected[index]));
+  }
+  if (
+    actual &&
+    expected &&
+    typeof actual === "object" &&
+    typeof expected === "object" &&
+    !Array.isArray(actual) &&
+    !Array.isArray(expected)
+  ) {
+    const actualKeys = Object.keys(actual);
+    const expectedKeys = Object.keys(expected);
+    return (
+      actualKeys.length === expectedKeys.length &&
+      expectedKeys.every((key) => Object.hasOwn(actual, key) && deepEqual(actual[key], expected[key]))
+    );
+  }
+  return false;
 }

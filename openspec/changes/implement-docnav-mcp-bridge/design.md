@@ -34,7 +34,8 @@
    - 若 `docnav` readable JSON 包含 `warnings`，structuredContent 保留 `warnings` 字段。
 
 3. TextContent 承载精简阅读文本和非致命 warning。
-   - 文本模板可由 MCP 配置域影响。
+   - TextContent 文本渲染消费 `replace-text-with-readable-view` 的 readable-view contract、仓库 renderer config 和 conformance vectors。
+   - Bridge 从核心 CLI readable output 获得结构化结果；Markdown parsing 和 block 字段选择继续由 owning layer 负责。
    - 若 `docnav` readable JSON 包含 `warnings`，TextContent 在正常阅读文本后追加 warning 文本。
    - 机器稳定解析仍必须使用 `docnav --output protocol-json` 或 adapter invoke。
 

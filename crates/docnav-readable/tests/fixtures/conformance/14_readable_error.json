@@ -1,0 +1,21 @@
+{
+  "description": "Readable error: the error view kind declares /error as its block field. The error message string is extracted into a block section, while code, details, and guidance stay in the header JSON.",
+  "view_kind": "error",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "code": "REF_NOT_FOUND",
+    "error": "No content found for ref `L99` in document `guide.md`.",
+    "details": {"ref": "L99", "document": "guide.md"},
+    "guidance": ["Check available entries via `docnav outline`.", "Verify the ref identifier is correct."]
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/error", "payload_contains": "No content found for ref `L99`"},
+    {"type": "header_field", "pointer": "/code", "value": "REF_NOT_FOUND"},
+    {"type": "header_contains", "text": "\"$block\": \"/error\""},
+    {"type": "header_contains", "text": "\"bytes\":"},
+    {"type": "output_contains", "text": "[block /error"},
+    {"type": "output_contains", "text": "[endblock /error]"},
+    {"type": "no_cr_in_framing"}
+  ]
+}

@@ -38,7 +38,7 @@ pub(super) mod command_names {
 mod defaults {
     pub(super) const LIMIT_CHARS: &str = "6000";
     pub(super) const LIMIT_CHARS_VALUE: u32 = 6000;
-    pub(super) const OUTPUT: &str = super::output_values::TEXT;
+    pub(super) const OUTPUT: &str = super::output_values::READABLE_VIEW;
     pub(super) const PAGE: &str = "1";
     pub(super) const PROTOCOL_OUTPUT: &str = super::output_values::PROTOCOL_JSON;
 }
@@ -47,7 +47,7 @@ mod defaults {
 mod output_values {
     pub(super) const PROTOCOL_JSON: &str = "protocol-json";
     pub(super) const READABLE_JSON: &str = "readable-json";
-    pub(super) const TEXT: &str = "text";
+    pub(super) const READABLE_VIEW: &str = "readable-view";
 }
 
 // 这些命令标签只用于直接 CLI warning reason，不参与 protocol operation 枚举。
@@ -304,7 +304,7 @@ fn parse_protocol_output(value: &str) -> Result<(), String> {
 
 fn parse_output(value: &str) -> Result<DirectOutputMode, String> {
     match value {
-        output_values::TEXT => Ok(DirectOutputMode::Text),
+        output_values::READABLE_VIEW => Ok(DirectOutputMode::ReadableView),
         output_values::READABLE_JSON => Ok(DirectOutputMode::ReadableJson),
         output_values::PROTOCOL_JSON => Ok(DirectOutputMode::ProtocolJson),
         _ => Err(format!("invalid {} {value:?}", flags::OUTPUT)),
@@ -583,12 +583,12 @@ fn limit_chars_arg(default_limit_chars: u32) -> Arg {
 fn output_arg() -> Arg {
     Arg::new(arg_ids::OUTPUT)
         .long("output")
-        .value_name("text|readable-json|protocol-json")
+        .value_name("readable-view|readable-json|protocol-json")
         .num_args(1)
         .allow_hyphen_values(true)
         .default_value(defaults::OUTPUT)
         .value_parser([
-            output_values::TEXT,
+            output_values::READABLE_VIEW,
             output_values::READABLE_JSON,
             output_values::PROTOCOL_JSON,
         ])

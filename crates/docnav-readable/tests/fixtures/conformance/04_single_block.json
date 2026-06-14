@@ -1,0 +1,24 @@
+{
+  "description": "Single block: the read view kind declares /content as its sole block field. The header JSON contains a {\"$block\": \"/content\", \"bytes\": N} reference object instead of the raw string, and a single [block /content bytes=N]...[endblock /content] section follows the header.",
+  "view_kind": "read",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "ref": "single-block",
+    "content": "## Section\n\nBody text here.\n",
+    "content_type": "text/markdown",
+    "cost": "3 lines | 0.1 KB",
+    "page": 1
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/content", "byte_length": 28, "payload_contains": "## Section"},
+    {"type": "header_field", "pointer": "/ref", "value": "single-block"},
+    {"type": "header_field", "pointer": "/content_type", "value": "text/markdown"},
+    {"type": "header_field", "pointer": "/cost", "value": "3 lines | 0.1 KB"},
+    {"type": "header_contains", "text": "\"$block\": \"/content\""},
+    {"type": "header_contains", "text": "\"bytes\": 28"},
+    {"type": "output_contains", "text": "[block /content bytes=28]"},
+    {"type": "output_contains", "text": "[endblock /content]"},
+    {"type": "no_cr_in_framing"}
+  ]
+}

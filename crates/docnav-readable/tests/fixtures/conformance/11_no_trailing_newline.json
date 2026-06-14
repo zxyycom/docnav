@@ -1,0 +1,19 @@
+{
+  "description": "No trailing newline: when a block payload does NOT end with LF (\\n), the renderer inserts a framing LF before the [endblock ...] marker so the end marker always starts on its own line. The payload content itself is preserved without modification.",
+  "view_kind": "read",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "ref": "notrail-test",
+    "content": "no trailing newline here",
+    "content_type": "text/plain",
+    "cost": "",
+    "page": null
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/content", "byte_length": 24, "payload_contains": "no trailing newline here"},
+    {"type": "header_contains", "text": "\"bytes\": 24"},
+    {"type": "output_contains", "text": "no trailing newline here\n[endblock /content]"},
+    {"type": "no_cr_in_framing"}
+  ]
+}

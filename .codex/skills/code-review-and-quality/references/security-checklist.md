@@ -30,7 +30,7 @@
 ## Protocol、Schema 与输出（Output）
 
 - [ ] Stdio JSON 只解析一次，并拒绝 malformed envelope、partial data、wrong content type 与 trailing data。
-- [ ] Raw protocol JSON、readable JSON 与 text output 没有混用 schema、wrapper、pagination envelope 或稳定性承诺。
+- [ ] Raw `protocol-json`、readable-json、readable-view 与非文档 PlainText 没有混用 schema、wrapper、pagination envelope 或稳定性承诺。
 - [ ] CLI input、adapter output、MCP tool arguments/results、examples、fixtures 与 generated protocol material 都按对应 schema 或 contract 验证。
 - [ ] Hostile source text 在进入 Markdown、terminal output、JSON fields、paths、commands、HTML 或 browser-rendered content 前已 escape 或结构化。
 - [ ] Error message/log 可诊断，但不泄露 secret、credential、sensitive absolute path、stack trace 或大段 raw document body。

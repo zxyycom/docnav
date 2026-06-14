@@ -61,7 +61,7 @@ Docnav 发布制品 MUST 写入统一目录结构 `artifacts/docnav/v<version>/<
 - **THEN** Git 不跟踪本地或 CI 生成的 `artifacts/` 内容
 
 ### Requirement: 统一制品目录不得改变运行时输出协议
-发布制品目录结构 MUST NOT 改变 `docnav --output protocol-json`、默认 text 输出、`readable-json`、adapter invoke 协议或 MCP structuredContent 的字段语义。
+发布制品目录结构 MUST NOT 改变 `docnav --output protocol-json`、默认 readable-view 输出、`readable-json`、adapter invoke 协议或 MCP structuredContent 的字段语义。
 
 #### Scenario: 从 package 执行 protocol-json
 - **WHEN** 调用方运行 package 中的 `docnav --output protocol-json`

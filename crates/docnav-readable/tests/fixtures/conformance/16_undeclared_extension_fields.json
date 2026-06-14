@@ -1,0 +1,26 @@
+{
+  "description": "Undeclared extension fields preserved in header: any JSON fields not listed in the view's block config remain in the header JSON unchanged. Only fields whose JSON Pointers are declared in the blocks list are extracted. This allows forward-compatible extension fields.",
+  "view_kind": "read",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "ref": "extra-test",
+    "content": "main content here",
+    "content_type": "text/markdown",
+    "cost": "1 line",
+    "page": null,
+    "custom_field": "custom value",
+    "nested": {"inner": 42, "flag": true},
+    "future_extension": ["item1", "item2"]
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/content", "byte_length": 17, "payload_contains": "main content here"},
+    {"type": "header_field", "pointer": "/custom_field", "value": "custom value"},
+    {"type": "header_field", "pointer": "/nested/inner", "value": 42},
+    {"type": "header_field", "pointer": "/nested/flag", "value": true},
+    {"type": "header_field", "pointer": "/future_extension/0", "value": "item1"},
+    {"type": "header_field", "pointer": "/future_extension/1", "value": "item2"},
+    {"type": "header_contains", "text": "\"$block\": \"/content\""},
+    {"type": "no_cr_in_framing"}
+  ]
+}

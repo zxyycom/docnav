@@ -27,9 +27,9 @@
 
 ## 4. 后续决策问题
 
-- [ ] 4.1 定义后续 implementation change 必须回答的问题：public surface、protocol-json 边界、readable output、continuation、partial success、MCP 映射和验证材料。
+- [ ] 4.1 定义后续 implementation change 必须回答的问题：public surface、protocol-json 边界、按 `replace-text-with-readable-view` 最终 typed readable shape 声明 content pointer 和 renderer config、continuation、partial success、MCP 映射和验证材料。
 - [ ] 4.2 判断哪些问题必须在实现前定稿，哪些可以通过 spike 或小范围实验确认。
-- [ ] 4.3 明确后续实现不得直接复用本 change 的探索文本作为最终 contract。
+- [ ] 4.3 明确后续实现不得直接复用本 change 的探索文本作为最终 contract；后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 和 renderer config 定稿 public contract。
 
 ## 5. 验证
 

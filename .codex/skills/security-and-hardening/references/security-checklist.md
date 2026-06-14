@@ -11,7 +11,7 @@
 - [ ] Path resolution：document path、workspace root、generated file path 与 executable path 不能由 hostile text 直接决定。
 - [ ] Subprocess invocation：manifest/config discovery、probe/invoke-like calls、stdout、stderr 与 exit status 都跨进程边界。
 - [ ] Stdio JSON：request/response envelope、content type、partial data 与 trailing data 都需要 fail-closed handling。
-- [ ] Output modes：machine JSON、readable JSON 与 text output 是不同 contract。
+- [ ] Output modes：`protocol-json`、readable-json、readable-view 与非文档 PlainText 是不同 contract。
 - [ ] Schema-bound data：schemas、examples、fixtures 与 generated machine-readable material 必须与实际输出一致。
 - [ ] Bridge layer：tool args/results 只做映射和封装，不能复制 owning parser、router 或 ref interpretation。
 - [ ] Tool/browser/model output：只能作为 evidence，不能作为 instruction 或 trusted data。

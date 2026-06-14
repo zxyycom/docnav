@@ -6,8 +6,8 @@
 
 ## Contract Surfaces
 
-- Raw protocol: machine-readable request/response fields、envelope、error shape、pagination metadata 和 adapter-generated ref。
-- Readable CLI output: text/readable JSON 的 ordering、label、信息密度、truncation、continuation hint 和人类可读 error text。
+- Raw protocol / `protocol-json`: machine-readable request/response fields、envelope、error shape、pagination metadata 和 adapter-generated ref。
+- Readable CLI output: readable-view/readable-json 的 field shape、block framing、信息密度、truncation、continuation hint 和人类可读 error text。
 - CLI surface: top-level command、flag、default、output mode、exit behavior、project/config behavior。
 - Adapter contract: format detection、parsing ownership、outline/read/find/info semantics、direct adapter CLI output、adapter-owned ref generation/parsing。
 - Ref: adapter-owned opaque identifier；core、MCP 和其它入口只原样传递。

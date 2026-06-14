@@ -30,12 +30,13 @@ Operation composition exploration SHALL use core CLI or reusable SDK helpers as 
 
 ### Requirement: public contract 延后定稿
 
-The exploration SHALL defer command names, flags, MCP tools, readable JSON shape, protocol-json behavior and continuation details to a later implementation change.
+The exploration SHALL defer command names, flags, MCP tools, readable JSON shape, protocol-json behavior and continuation details to a later implementation change. The follow-up implementation change MUST adopt `replace-text-with-readable-view`'s final typed readable shape and renderer config when declaring content pointer and document output mode.
 
 #### Scenario: 进入实现前
 
 - **WHEN** a candidate composition is selected for implementation
 - **THEN** a follow-up implementation change SHALL define the concrete public contract, validation materials and tests
+- **AND** SHALL declare content pointer and renderer config per the typed readable shape finalized by `replace-text-with-readable-view`
 - **AND** SHALL re-check whether the behavior belongs in existing operations, SDK helpers, MCP mapping or a new command
 
 ### Requirement: 候选池与临时筛选标准

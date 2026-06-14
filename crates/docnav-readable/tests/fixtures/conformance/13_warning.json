@@ -1,0 +1,22 @@
+{
+  "description": "Warning payload: the warning view kind has no block fields — all warning data stays in the header JSON. This verifies that non-error, non-content payloads are rendered cleanly as header-only output.",
+  "view_kind": "warning",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "code": "DEPRECATED_OPTION",
+    "warning": "The option '--legacy-view' is ignored; use '--output readable-view' for the default readable format.",
+    "details": {"option": "--legacy-view", "replacement": "--output readable-view"},
+    "guidance": ["Run with --help to see current options."]
+  },
+  "assertions": [
+    {"type": "no_blocks"},
+    {"type": "header_field", "pointer": "/code", "value": "DEPRECATED_OPTION"},
+    {"type": "header_field", "pointer": "/warning", "value": "The option '--legacy-view' is ignored; use '--output readable-view' for the default readable format."},
+    {"type": "header_contains", "text": "\"guidance\":"},
+    {"type": "header_contains", "text": "Run with --help"},
+    {"type": "output_not_contains", "text": "[block"},
+    {"type": "output_not_contains", "text": "[endblock"},
+    {"type": "no_cr_in_framing"}
+  ]
+}

@@ -12,6 +12,7 @@ import {
   expectNoJsonPayloadInStderr,
   expectNoProtocolEnvelope,
   expectProtocolSuccess,
+  expectReadableViewFieldValue,
   expectStderrEmpty,
   expectStderrWarning,
   expectStdoutIncludes,
@@ -42,6 +43,25 @@ function testProjectAndUserConfig() {
   const setProjectJson = parseJson(setProject);
   expect(setProject, setProjectJson.scope === "project", "project config set writes project scope");
   expect(setProject, setProjectJson.value === "readable-json", "project config set stores output");
+
+  const setRemovedOutput = runCli("config set project defaults.output text fails", [
+    "config",
+    "set",
+    "defaults.output",
+    "text"
+  ], { project });
+  expectExit(setRemovedOutput, exitCodes.input);
+  expectStderrEmpty(setRemovedOutput);
+  expectStdoutIncludes(setRemovedOutput, "\"$block\": \"/error\"");
+  expectStdoutIncludes(setRemovedOutput, "\"code\": \"INVALID_REQUEST\"");
+  expectReadableViewFieldValue(setRemovedOutput, setRemovedOutput.stdout, "/details/field", "defaults.output");
+  expectReadableViewFieldValue(setRemovedOutput, setRemovedOutput.stdout, "/details/received", "text");
+  expectReadableViewFieldValue(setRemovedOutput, setRemovedOutput.stdout, "/details/accepted", [
+    "readable-view",
+    "readable-json",
+    "protocol-json"
+  ]);
+  expectStdoutIncludes(setRemovedOutput, "accepted values: readable-view, readable-json, protocol-json");
 
   const setUser = runCli("config set user defaults.limit_chars", [
     "config",
@@ -75,7 +95,8 @@ function testProjectAndUserConfig() {
   ], { project });
   expectExit(getUnsupported, exitCodes.input);
   expectStderrEmpty(getUnsupported);
-  expectStdoutIncludes(getUnsupported, "error: INVALID_REQUEST");
+  expectStdoutIncludes(getUnsupported, "\"$block\": \"/error\"");
+  expectStdoutIncludes(getUnsupported, "\"code\": \"INVALID_REQUEST\"");
   expectStdoutIncludes(getUnsupported, "unsupported docnav config key");
 
   const list = runCli("config list effective values", ["config", "list"], { project });
@@ -170,6 +191,10 @@ function testHelpCommands() {
   expectStderrEmpty(outline);
   expectStdoutIncludes(outline, "--output");
   expectStdoutIncludes(outline, "--limit-chars");
+  expectStdoutIncludes(outline, "readable-view");
+  expectStdoutIncludes(outline, "readable-json");
+  expectStdoutIncludes(outline, "protocol-json");
+  expect(outline, !outline.stdout.includes("text"), "outline help does not mention text output mode");
 
   const config = runCli("docnav config help", ["config", "--help"], { project });
   expectExit(config, 0);

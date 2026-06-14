@@ -16,9 +16,9 @@ manifest
 probe
 ```
 
-普通 CLI、readable JSON 和 schema-valid `invoke` request 在传输层解析成功后进入 canonical document operation input 或等价 semantic request，并复用业务逻辑；它们不复用输出包装或展示形态。默认文本和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
-文档操作的直接 CLI 支持默认文本、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
-适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、`<path>`、`--page`、`--limit-chars`、`--ref`、`--query`、`--output` 解析、protocol request 构造、输出分流和稳定错误映射。SDK 直接 CLI 使用 `clap` 或 `clap` builder API 承载命令、固定参数、默认值、枚举和 help；SDK 在确定 operation 后只校验当前 operation 实际使用的参数。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和文本展示。
+普通 CLI、readable JSON 和 schema-valid `invoke` request 在传输层解析成功后进入 canonical document operation input 或等价 semantic request，并复用业务逻辑；它们不复用输出包装或展示形态。`readable-view`（默认）和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
+文档操作的直接 CLI 支持 `readable-view`（默认）、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
+适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、`<path>`、`--page`、`--limit-chars`、`--ref`、`--query`、`--output` 解析、protocol request 构造、输出分流和稳定错误映射。SDK 直接 CLI 使用 `clap` 或 `clap` builder API 承载命令、固定参数、默认值、枚举和 help；SDK 在确定 operation 后只校验当前 operation 实际使用的参数。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和 readable payload 字段语义。
 
 适配器直接 CLI argv 必须复用 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
 
@@ -28,7 +28,7 @@ probe
 
 - 使用成熟 parser 解析格式。
 - 生成扁平 outline 和可读 ref。
-- 定义格式原生导航参数、直接 CLI 默认值与展示文本。
+- 定义格式原生导航参数和直接 CLI 默认值。
 - 返回有限结果和下一页 page。
 - 按自身契约解析 ref 并读取，将非法 ref、无匹配 ref 等失败映射为稳定错误。
 - 在 invoke 中返回紧凑原始协议结果。

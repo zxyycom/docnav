@@ -1,0 +1,14 @@
+{
+  "description": "Renderer failure — non-string target: when a block pointer resolves to a non-string value (e.g., a number), the renderer returns a RenderError with stable id 'readable_view_render_failed' and a message indicating the type mismatch.",
+  "view_kind": "read",
+  "config_override": null,
+  "expected_failure": {
+    "error_id": "readable_view_render_failed",
+    "message_contains": "not resolve to a string"
+  },
+  "input": {
+    "content": 42,
+    "content_type": "text/plain"
+  },
+  "assertions": []
+}

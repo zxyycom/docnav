@@ -238,7 +238,7 @@ Core CLI 容错规则如下：
 - **THEN** `docnav` 不继续尝试其它 adapter
 
 ### Requirement: 输出模式必须按协议层和阅读层分离
-`docnav --output protocol-json` MUST 输出原始 protocol response envelope，且不得增加 CLI warning 字段。默认 text 和 readable-json 输出必须保持为阅读层结果。readable-json 在存在 ignored argv 或 adapter candidate warning 时必须包含顶层 `warnings`。每个 warning item 必须使用稳定 warning envelope，包含 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 必须使用 `id: "cli_argv_ignored"`，相关 argv token 只能作为 `details.tokens` 等 family-specific detail 表达。CLI argv exact token 分组、`reason` 文案和消费顺序不稳定。
+`docnav --output protocol-json` MUST 输出原始 protocol response envelope，且不得增加 CLI warning 字段。默认 readable-view 和 readable-json 输出必须保持为阅读层结果。readable-json 在存在 ignored argv 或 adapter candidate warning 时必须包含顶层 `warnings`。每个 warning item 必须使用稳定 warning envelope，包含 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 必须使用 `id: "cli_argv_ignored"`，相关 argv token 只能作为 `details.tokens` 等 family-specific detail 表达。CLI argv exact token 分组、`reason` 文案和消费顺序不稳定。
 
 #### Scenario: readable-json outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --output readable-json`

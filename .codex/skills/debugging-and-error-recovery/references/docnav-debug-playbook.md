@@ -52,10 +52,10 @@ MCP 失败时保存 tool args，把 MCP result 与等价 `docnav` 或 adapter CL
 对 navigation 行为至少检查关键 modes：
 
 ```bash
-<adapter-or-core-cli> outline path/to/file.md --output text
+<adapter-or-core-cli> outline path/to/file.md --output readable-view
 <adapter-or-core-cli> outline path/to/file.md --output readable-json
 <adapter-or-core-cli> outline path/to/file.md --output protocol-json
-<adapter-or-core-cli> read path/to/file.md --ref "<ref-from-outline>" --output protocol-json
+<adapter-or-core-cli> read path/to/file.md --ref "<ref-from-outline>" --output readable-view
 ```
 
 当 raw protocol 字段变化时，把 schema、examples、generated fixtures 和 MCP mapping 纳入同一验证计划。

@@ -5,14 +5,17 @@ import {
   expectExit,
   expectFindResultsEquivalent,
   expectInfoResultsEquivalent,
+  expectNoReadableViewBlocks,
   expectNoProtocolEnvelope,
   expectOutlineResultsEquivalent,
   expectProtocolSuccess,
+  expectReadableViewBlockRestoresField,
   expectReadResultsEquivalent,
   expectStderrEmpty,
   expectStdoutIncludes,
-  looksLikeJson,
-  parseJson
+  expectStructuredWarning,
+  parseJson,
+  parseReadableViewHeader
 } from "../assertions.mjs";
 
 export function testDocumentOutputMatrix() {
@@ -23,39 +26,141 @@ export function testDocumentOutputMatrix() {
   const readable = readReadableResults(project);
   const ref = readable.outline.entries[0].ref;
 
-  const textCases = [
+  // ── readable-view (default) output checks ────────────────────────────
+
+  const readableViewChecks = [
     {
-      name: "outline text output",
-      args: ["outline", project.normalRelPath, "--output", "text"],
-      checks: [(record) => expectStdoutIncludes(record, ref), (record) => expectStdoutIncludes(record, "page:")]
-    },
-    {
-      name: "read text output",
-      args: ["read", project.normalRelPath, "--ref", ref, "--output", "text"],
+      name: "outline readable-view output",
+      args: ["outline", project.normalRelPath, "--output", "readable-view"],
       checks: [
-        (record) => expectStdoutIncludes(record, `ref: ${ref}`),
-        (record) => expectStdoutIncludes(record, "content_type: text/markdown"),
-        (record) => expectStdoutIncludes(record, "page:")
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectOutlineResultsEquivalent(record, header, readable.outline, "outline readable-view header matches readable-json");
+          expectNoReadableViewBlocks(record, record.stdout, "outline readable-view");
+        },
+        (record) => expectStdoutIncludes(record, ref),
+        (record) => expectStdoutIncludes(record, "display")
       ]
     },
     {
-      name: "find text output",
-      args: ["find", project.normalRelPath, "--query", "target", "--output", "text"],
-      checks: [(record) => expectStdoutIncludes(record, "target"), (record) => expectStdoutIncludes(record, "page:")]
+      name: "read readable-view output",
+      args: ["read", project.normalRelPath, "--ref", ref, "--output", "readable-view"],
+      checks: [
+        (record) => expectStdoutIncludes(record, "\"$block\": \"/content\""),
+        (record) => expectStdoutIncludes(record, "[block /content bytes="),
+        (record) => expectStdoutIncludes(record, "[endblock /content]"),
+        (record) => expectStdoutIncludes(record, "content_type"),
+        (record) => expectStdoutIncludes(record, ref),
+        (record) => expectReadableViewBlockRestoresField(record, record.stdout, "/content", readable.read.content)
+      ]
     },
     {
-      name: "info text output",
-      args: ["info", project.normalRelPath, "--output", "text"],
-      checks: [(record) => expectStdoutIncludes(record, "Markdown"), (record) => expectStdoutIncludes(record, "capabilities:")]
+      name: "find readable-view output",
+      args: ["find", project.normalRelPath, "--query", "target", "--output", "readable-view"],
+      checks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectFindResultsEquivalent(record, header, readable.find, "find readable-view header matches readable-json");
+          expectNoReadableViewBlocks(record, record.stdout, "find readable-view");
+        }
+      ]
+    },
+    {
+      name: "info readable-view output",
+      args: ["info", project.normalRelPath, "--output", "readable-view"],
+      checks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectInfoResultsEquivalent(record, header, readable.info, "info readable-view header matches readable-json");
+          expectNoReadableViewBlocks(record, record.stdout, "info readable-view");
+        }
+      ]
     }
   ];
 
-  for (const item of textCases) {
+  for (const item of readableViewChecks) {
     const record = runCli(item.name, item.args, { project });
     expectExit(record, 0);
     expectStderrEmpty(record);
-    expect(record, !looksLikeJson(record.stdout), "text stdout is not JSON");
-    expect(record, !record.stdout.includes("\"protocol_version\""), "text stdout omits protocol envelope");
+    // readable-view starts with JSON header.
+    expect(record, record.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
+    expect(record, !record.stdout.includes("\"protocol_version\""), "readable-view omits protocol envelope");
+    for (const check of item.checks) {
+      check(record);
+    }
+  }
+
+  const warningRecord = runCli("outline readable-view warning stays on stdout", [
+    "outline",
+    project.normalRelPath,
+    "--future",
+    "--output",
+    "readable-view"
+  ], { project });
+  expectExit(warningRecord, 0);
+  expectStderrEmpty(warningRecord);
+  const warningHeader = parseReadableViewHeader(warningRecord);
+  expectOutlineResultsEquivalent(
+    warningRecord,
+    warningHeader,
+    readable.outline,
+    "warning readable-view outline fields match readable-json"
+  );
+  expectStructuredWarning(warningRecord, warningHeader.warnings?.[0], ["--future"], "unknown flag");
+
+  // ── default output (readable-view) without explicit --output ────────
+
+  const defaultCases = [
+    {
+      name: "outline default output (readable-view)",
+      args: ["outline", project.normalRelPath],
+      checks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectOutlineResultsEquivalent(record, header, readable.outline, "default outline readable-view matches readable-json");
+          expectNoReadableViewBlocks(record, record.stdout, "default outline readable-view");
+        },
+        (record) => expectStdoutIncludes(record, ref)
+      ]
+    },
+    {
+      name: "read default output (readable-view)",
+      args: ["read", project.normalRelPath, "--ref", ref],
+      checks: [
+        (record) => expectStdoutIncludes(record, "\"$block\": \"/content\""),
+        (record) => expectStdoutIncludes(record, "[block /content bytes="),
+        (record) => expectReadableViewBlockRestoresField(record, record.stdout, "/content", readable.read.content)
+      ]
+    },
+    {
+      name: "find default output (readable-view)",
+      args: ["find", project.normalRelPath, "--query", "target"],
+      checks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectFindResultsEquivalent(record, header, readable.find, "default find readable-view matches readable-json");
+          expectNoReadableViewBlocks(record, record.stdout, "default find readable-view");
+        }
+      ]
+    },
+    {
+      name: "info default output (readable-view)",
+      args: ["info", project.normalRelPath],
+      checks: [
+        (record) => {
+          const header = parseReadableViewHeader(record);
+          expectInfoResultsEquivalent(record, header, readable.info, "default info readable-view matches readable-json");
+          expectNoReadableViewBlocks(record, record.stdout, "default info readable-view");
+        }
+      ]
+    }
+  ];
+
+  for (const item of defaultCases) {
+    const record = runCli(item.name, item.args, { project });
+    expectExit(record, 0);
+    expectStderrEmpty(record);
+    expect(record, record.stdout.trimStart().startsWith("{"), "default output is readable-view JSON header");
     for (const check of item.checks) {
       check(record);
     }

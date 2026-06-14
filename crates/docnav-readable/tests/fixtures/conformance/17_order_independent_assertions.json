@@ -1,0 +1,26 @@
+{
+  "description": "Order-independent assertions: this vector uses a multi-block config with fields whose JSON key order is deliberately varied. Assertions check each block independently by pointer (never by position), and header field checks use JSON Pointer lookups rather than string-position or key-order assumptions. This demonstrates that conformance tests do NOT depend on: header key order, multi-block output order, or byte-for-byte consistency.",
+  "view_kind": "read",
+  "config_override": {
+    "blocks": ["/content", "/extra/a", "/extra/b"]
+  },
+  "expected_failure": null,
+  "input": {
+    "extra": {"b": "beta value", "a": "alpha value"},
+    "ref": "order-indep",
+    "content": "content goes first in JSON but we do not assert block order",
+    "content_type": "text/plain",
+    "cost": "",
+    "page": null
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/content", "payload_contains": "content goes first"},
+    {"type": "block", "pointer": "/extra/a", "byte_length": 11, "payload_contains": "alpha value"},
+    {"type": "block", "pointer": "/extra/b", "byte_length": 10, "payload_contains": "beta value"},
+    {"type": "header_field", "pointer": "/ref", "value": "order-indep"},
+    {"type": "header_contains", "text": "\"$block\": \"/content\""},
+    {"type": "header_contains", "text": "\"$block\": \"/extra/a\""},
+    {"type": "header_contains", "text": "\"$block\": \"/extra/b\""},
+    {"type": "no_cr_in_framing"}
+  ]
+}

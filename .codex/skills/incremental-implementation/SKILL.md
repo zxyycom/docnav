@@ -67,7 +67,7 @@ description: "以小步增量交付变更；适用于 multi-file change、vertic
 
 按 touched boundary 选择最窄验证。普通局部 slice 用相关 unit/integration test；触碰 CLI/API、schema/example、bridge/subprocess、generated fixture 或跨层 contract 时，再扩展到 smoke 或 workspace verification。
 
-Navigation 或 selection 行为要手动 replay 关键 user-visible path。涉及 machine/readable output 时，分别检查 text、readable JSON 和 machine JSON；涉及 stdin/tool envelope 时，保存并重放最小 JSON。
+Navigation 或 selection 行为要手动 replay 关键 user-visible path。涉及 machine/readable output 时，分别检查 readable-view、readable-json 和 protocol-json；涉及 stdin/tool envelope 时，保存并重放最小 JSON。
 
 ## 完成输出
 

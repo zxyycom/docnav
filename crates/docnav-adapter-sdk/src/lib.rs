@@ -10,8 +10,8 @@ mod output;
 pub use adapter::{Adapter, AdapterResult};
 pub use command::{run_command, SdkCommand};
 pub use direct::{
-    run_direct_cli, DirectCliConfig, DirectOutputMode, DirectTextFormatter, NativeOptionDefault,
-    NativeOptionSpec, NativeOptionValueSpec,
+    run_direct_cli, DirectCliConfig, DirectOutputMode, NativeOptionDefault, NativeOptionSpec,
+    NativeOptionValueSpec,
 };
 pub use error::{exit_code_for_error, AdapterError, AdapterExitCode, AdapterExitCodeError};
 pub use invoke::{execute_operation, invoke_once};

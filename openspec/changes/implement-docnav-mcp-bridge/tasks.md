@@ -37,7 +37,7 @@
 - [ ] 3.1 将 `docnav` readable JSON 成功结果转换为 MCP structuredContent。
   验收：structuredContent 通过对应 readable outputSchema 校验，并保留 operation readable 字段。
 - [ ] 3.2 将 `docnav` readable JSON 成功结果渲染为 MCP TextContent。
-  验收：TextContent 包含精简阅读文本，不依赖解析默认人类文本输出。
+  验收：TextContent 包含精简阅读文本，不依赖解析默认人类文本输出。TextContent 渲染消费 `replace-text-with-readable-view` 的 readable-view contract 和仓库 renderer config；block pointer、byte length 和 block payload 语义与 Rust renderer 一致。
 - [ ] 3.3 保持 structuredContent 的阅读层边界。
   验收：structuredContent 不包含 `protocol_version`、`request_id`、`operation` 或 `ok`；read structuredContent 保留 `content_type`。
 - [ ] 3.4 实现 warning 映射。

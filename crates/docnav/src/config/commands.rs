@@ -65,7 +65,12 @@ fn config_set(command: ConfigSet) -> AppResult<CommandOutcome> {
     let context = load_context()?;
     let target_path = target_config_path(&context, command.user);
     let mut target_config = read_config(&target_path)?;
-    set_key(&mut target_config, &command.key, &command.value)?;
+    set_key(
+        &mut target_config,
+        &command.key,
+        &command.value,
+        Some(&target_path),
+    )?;
     write_config(&target_path, &target_config)?;
     Ok(CommandOutcome::json(json!({
         "ok": true,

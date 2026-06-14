@@ -1,7 +1,11 @@
+use std::path::Path;
+
+use docnav_protocol::{StableError, StableErrorCode};
 use serde_json::{json, Value};
 
 use crate::cli::OutputMode;
 use crate::error::{AppError, AppResult};
+use crate::project::path_to_slash;
 
 use super::model::{
     ConfigContext, ConfigSource, CoreConfig, ResolvedValue, DEFAULT_LIMIT_CHARS, DEFAULT_OUTPUT,
@@ -46,13 +50,19 @@ pub fn resolve_output(
     if let Some(output) = explicit {
         return Ok(ResolvedValue::explicit(json!(output.as_str())));
     }
-    if let Some(output) = context.project_config.defaults.output {
+    if let Some(output) = &context.project_config.defaults.output {
+        let output = parse_output(
+            "defaults.output",
+            output,
+            &context.project.project_config_path,
+        )?;
         return Ok(ResolvedValue::project(json!(output.as_str())));
     }
-    if let Some(output) = context.user_config.defaults.output {
+    if let Some(output) = &context.user_config.defaults.output {
+        let output = parse_output("defaults.output", output, &context.project.user_config_path)?;
         return Ok(ResolvedValue::user(json!(output.as_str())));
     }
-    Ok(ResolvedValue::built_in(json!(DEFAULT_OUTPUT.as_str())))
+    Ok(ResolvedValue::built_in(json!(DEFAULT_OUTPUT)))
 }
 
 pub(super) fn supported_values_for_scope(
@@ -117,13 +127,19 @@ pub(super) fn scoped_key_value(
         "defaults.output" => Ok(config
             .defaults
             .output
+            .as_ref()
             .map(|value| ResolvedValue::new(json!(value.as_str()), source))
             .unwrap_or_else(ResolvedValue::unset)),
         _ => Err(unknown_key(key)),
     }
 }
 
-pub(super) fn set_key(config: &mut CoreConfig, key: &str, value: &str) -> AppResult<()> {
+pub(super) fn set_key(
+    config: &mut CoreConfig,
+    key: &str,
+    value: &str,
+    config_path: Option<&Path>,
+) -> AppResult<()> {
     match key {
         "defaults.adapter" => {
             if value.is_empty() {
@@ -142,11 +158,13 @@ pub(super) fn set_key(config: &mut CoreConfig, key: &str, value: &str) -> AppRes
             config.defaults.limit_chars = Some(limit_chars);
         }
         "defaults.output" => {
-            config.defaults.output = Some(
-                value
-                    .parse()
+            let output = match config_path {
+                Some(path) => parse_output(key, value, path)?,
+                None => value
+                    .parse::<OutputMode>()
                     .map_err(|reason: String| AppError::invalid_request(key, reason))?,
-            );
+            };
+            config.defaults.output = Some(output.as_str().to_owned());
         }
         _ => return Err(unknown_key(key)),
     }
@@ -179,9 +197,44 @@ pub(super) fn config_value_to_json(key: &str, config: &CoreConfig) -> AppResult<
         "defaults.output" => config
             .defaults
             .output
+            .as_ref()
             .map(|value| json!(value.as_str()))
             .unwrap_or(Value::Null),
         _ => return Err(unknown_key(key)),
+    })
+}
+
+pub(super) fn validate_output_key(
+    field: &str,
+    value: &Option<String>,
+    path: &Path,
+) -> AppResult<()> {
+    if let Some(value) = value {
+        parse_output(field, value, path)?;
+    }
+    Ok(())
+}
+
+fn parse_output(field: &str, value: &str, path: &Path) -> AppResult<OutputMode> {
+    value.parse::<OutputMode>().map_err(|reason: String| {
+        let path = path_to_slash(path);
+        let accepted = OutputMode::ACCEPTED_VALUES.join(", ");
+        let mut details = docnav_protocol::ErrorDetails::new();
+        details.insert("field".to_owned(), json!(field));
+        details.insert(
+            "reason".to_owned(),
+            json!(format!(
+                "{path} contains invalid {field}: received {value:?}; accepted values: {accepted}; {reason}"
+            )),
+        );
+        details.insert("path".to_owned(), json!(path));
+        details.insert("received".to_owned(), json!(value));
+        details.insert("accepted".to_owned(), json!(OutputMode::ACCEPTED_VALUES));
+        AppError::new(StableError::new(
+            StableErrorCode::InvalidRequest,
+            "Invalid protocol request.",
+            details,
+        ))
     })
 }
 

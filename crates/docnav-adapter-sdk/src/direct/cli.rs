@@ -12,27 +12,25 @@ use super::args::{
 use super::native_options::NativeOptionSpec;
 use super::output::{
     append_cli_warnings_to_stderr, handler_error, write_operation_output, DirectOutputMode,
-    DirectTextFormatter,
 };
 use super::warnings::DirectCliWarning;
 use crate::{emit_diagnostic, execute_operation, invoke_once, run_command, Adapter, SdkCommand};
 
-pub struct DirectCliConfig<'a, T> {
+pub struct DirectCliConfig<'a> {
     pub program_name: &'static str,
     pub usage: &'a str,
     pub request_id: &'a str,
     pub default_limit_chars: u32,
     pub native_options: &'a [NativeOptionSpec],
-    pub text_formatter: T,
 }
 
-pub fn run_direct_cli<A, I, R, W, E, T>(
+pub fn run_direct_cli<A, I, R, W, E>(
     adapter: &A,
     args: I,
     stdin: R,
     mut stdout: W,
     mut stderr: E,
-    config: DirectCliConfig<'_, T>,
+    config: DirectCliConfig<'_>,
 ) -> i32
 where
     A: Adapter,
@@ -40,7 +38,6 @@ where
     R: Read,
     W: Write,
     E: Write,
-    T: DirectTextFormatter,
 {
     let args: Vec<String> = args.into_iter().collect();
     if let Some(help) = help_text(
@@ -167,11 +164,11 @@ fn is_known_command(
         .is_some()
 }
 
-fn run_operation<A, W, E, T>(
+fn run_operation<A, W, E>(
     adapter: &A,
     operation: Operation,
     args: &[String],
-    config: &DirectCliConfig<'_, T>,
+    config: &DirectCliConfig<'_>,
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32
@@ -179,7 +176,6 @@ where
     A: Adapter,
     W: Write,
     E: Write,
-    T: DirectTextFormatter,
 {
     let mut options = match parse_operation_options(
         operation,
@@ -197,15 +193,7 @@ where
         Err(message) => return input_error(stderr, &message),
     };
 
-    run_operation_request(
-        adapter,
-        &request,
-        output,
-        &config.text_formatter,
-        &warnings,
-        stdout,
-        stderr,
-    )
+    run_operation_request(adapter, &request, output, &warnings, stdout, stderr)
 }
 
 fn operation_request(
@@ -256,18 +244,16 @@ fn operation_request(
     })
 }
 
-fn run_operation_request<A, T, W, E>(
+fn run_operation_request<A, W, E>(
     adapter: &A,
     request: &RequestEnvelope,
     output: DirectOutputMode,
-    text_formatter: &T,
     warnings: &[DirectCliWarning],
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32
 where
     A: Adapter,
-    T: DirectTextFormatter,
     W: Write,
     E: Write,
 {
@@ -277,9 +263,7 @@ where
     }
 
     match execute_operation(adapter, request) {
-        Ok(result) => {
-            write_operation_output(result, output, text_formatter, warnings, stdout, stderr)
-        }
+        Ok(result) => write_operation_output(result, output, warnings, stdout, stderr),
         Err(error) => handler_error(error, output, warnings, stdout, stderr),
     }
 }

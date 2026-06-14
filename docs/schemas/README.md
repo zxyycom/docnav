@@ -15,12 +15,14 @@
 
 | Schema | 用途 |
 | --- | --- |
-| [readable-outline.schema.json](readable-outline.schema.json) | CLI readable JSON、MCP outline structuredContent |
-| [readable-read.schema.json](readable-read.schema.json) | CLI readable JSON、MCP read structuredContent |
-| [readable-find.schema.json](readable-find.schema.json) | CLI readable JSON、MCP find structuredContent |
-| [readable-info.schema.json](readable-info.schema.json) | CLI readable JSON、MCP info structuredContent |
+| [readable-outline.schema.json](readable-outline.schema.json) | CLI `readable-json`、MCP outline structuredContent |
+| [readable-read.schema.json](readable-read.schema.json) | CLI `readable-json`、MCP read structuredContent |
+| [readable-find.schema.json](readable-find.schema.json) | CLI `readable-json`、MCP find structuredContent |
+| [readable-info.schema.json](readable-info.schema.json) | CLI `readable-json`、MCP info structuredContent |
 | [readable-error.schema.json](readable-error.schema.json) | CLI/MCP 精简错误 |
 | [readable-common.schema.json](readable-common.schema.json) | readable/MCP schema 共享 `$defs` |
+
+`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 校验 unchanged typed readable payload，即 CLI `readable-json` 和 MCP structuredContent。`readable-view` 的 block 替换只应用于 renderer config 声明的字符串字段；header 中被替换字段为 `{"$block": "<pointer>", "bytes": <n>}` 引用，实际字符串值写入对应 block section。readable-view header block refs、framing 和 payload 还原由 committed conformance vectors 验收，不使用 unchanged readable JSON schema 校验；protocol schema 同样保持独立。
 
 原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例、MCP tool 声明和实现自测，不表示 readable 输出是长期机器解析协议。
 

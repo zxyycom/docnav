@@ -80,7 +80,8 @@ export function testCliArgumentFailures() {
     const record = runCli(testCase.name, testCase.args, { project });
     expectExit(record, exitCodes.input);
     expectStderrEmpty(record);
-    expectStdoutIncludes(record, "error: INVALID_REQUEST");
+    expectStdoutIncludes(record, "\"$block\": \"/error\"");
+    expectStdoutIncludes(record, "\"code\": \"INVALID_REQUEST\"");
     expectStdoutIncludes(record, testCase.message);
   }
 

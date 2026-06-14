@@ -136,6 +136,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "docnav-protocol",
+ "docnav-readable",
  "serde",
  "serde_json",
 ]
@@ -146,6 +147,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "docnav-protocol",
+ "docnav-readable",
  "serde",
  "serde_json",
 ]
@@ -166,6 +168,14 @@ name = "docnav-protocol"
 version = "0.1.0"
 dependencies = [
  "jsonschema",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "docnav-readable"
+version = "0.1.0"
+dependencies = [
  "serde",
  "serde_json",
 ]

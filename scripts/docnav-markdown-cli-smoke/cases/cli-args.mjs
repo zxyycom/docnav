@@ -2,6 +2,7 @@ import { exitCodes } from "../config.mjs";
 import { fixture, getNormalRef } from "../fixtures.mjs";
 import { runCli, validateSchema } from "../harness.mjs";
 import {
+  expect,
   expectExit,
   expectNoJsonPayloadInStderr,
   expectNoWarningsField,
@@ -12,7 +13,6 @@ import {
   expectStructuredWarning,
   expectStdoutEmpty,
   expectStdoutIncludes,
-  expectStdoutWarning,
   parseJson
 } from "../assertions.mjs";
 
@@ -21,7 +21,7 @@ export function testCliArgumentFailures() {
   const cases = [
     {
       name: "outline missing path before flag",
-      args: ["outline", "--output", "text"],
+      args: ["outline", "--output", "readable-view"],
       stderr: "outline requires <path>"
     },
     {
@@ -83,6 +83,11 @@ export function testCliArgumentFailures() {
       name: "invoke positional unexpected",
       args: ["invoke", "unexpected"],
       stderr: "invoke does not accept positional arguments"
+    },
+    {
+      name: "outline invalid --output text (removed mode)",
+      args: ["outline", normal, "--output", "text"],
+      stderr: 'invalid --output "text"'
     }
   ];
 
@@ -109,18 +114,26 @@ export function testCliArgumentCompatibilityWarnings() {
   expectStderrEmpty(outlineHelp);
   expectStdoutIncludes(outlineHelp, "--max-heading-level");
   expectStdoutIncludes(outlineHelp, "--output");
+  // 3.5: help only lists three final output modes for document operations.
+  expectStdoutIncludes(outlineHelp, "readable-view");
+  expectStdoutIncludes(outlineHelp, "readable-json");
+  expectStdoutIncludes(outlineHelp, "protocol-json");
+  expect(outlineHelp, !outlineHelp.stdout.includes("text"), "outline help does not mention text output mode");
 
-  const text = runCli("outline unknown equals flag text warning", [
+  const readableView = runCli("outline unknown equals flag readable-view warning", [
     "outline",
     normal,
     "--unknown=value",
     "--output",
-    "text"
+    "readable-view"
   ]);
-  expectExit(text, exitCodes.success);
-  expectStderrEmpty(text);
-  expectStdoutIncludes(text, "page:");
-  expectStdoutWarning(text, ["--unknown=value"]);
+  expectExit(readableView, exitCodes.success);
+  expectStderrEmpty(readableView);
+  // readable-view: JSON header starts with `{` and contains entries.
+  expect(readableView, readableView.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
+  expect(readableView, readableView.stdout.includes("\"entries\""), "readable-view header contains entries");
+  expect(readableView, readableView.stdout.includes("cli_argv_ignored"), "readable-view header contains cli_argv_ignored warning");
+  expect(readableView, readableView.stdout.includes("--unknown=value"), "readable-view warning mentions unknown token");
 
   const unknownBeforePath = runCli("outline unknown before path readable-json warning", [
     "outline",
@@ -243,10 +256,12 @@ export function testCliArgumentCompatibilityWarnings() {
     "--ref",
     "--future-value",
     "--output",
-    "text"
+    "readable-view"
   ]);
   expectExit(refLikeFlag, exitCodes.documentRefFormat);
   expectStderrEmpty(refLikeFlag);
-  expectStdoutIncludes(refLikeFlag, "REF_INVALID");
-  expectStdoutIncludes(refLikeFlag, "ref=--future-value");
+  // readable-view error: JSON header contains code and details.
+  expect(refLikeFlag, refLikeFlag.stdout.includes("\"code\": \"REF_INVALID\""), "readable-view error has REF_INVALID");
+  expect(refLikeFlag, refLikeFlag.stdout.includes("\"ref\": \"--future-value\""), "readable-view error details has ref");
+  expect(refLikeFlag, refLikeFlag.stdout.includes("[block /error"), "readable-view error has /error block");
 }

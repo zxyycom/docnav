@@ -5,22 +5,34 @@ use serde::{Deserialize, Serialize};
 
 use crate::cli::CliWarning;
 
+/// Document output mode.
+///
+/// Only valid for document operations (outline, read, find, info).
+/// Non-document commands (help, version, config, init, doctor) use a
+/// separate `PlainText` channel that is NOT an `OutputMode` variant.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum OutputMode {
-    Text,
+    /// Human/AI-readable view with JSON header and block-framed content.
+    ReadableView,
+    /// Structured JSON output without protocol envelope (documented shape).
     ReadableJson,
+    /// Full protocol response envelope (stable machine format).
     ProtocolJson,
 }
 
 impl OutputMode {
     pub const fn as_str(self) -> &'static str {
         match self {
-            Self::Text => "text",
+            Self::ReadableView => "readable-view",
             Self::ReadableJson => "readable-json",
             Self::ProtocolJson => "protocol-json",
         }
     }
+
+    /// Currently accepted output values for document --output.
+    pub const ACCEPTED_VALUES: &'static [&'static str] =
+        &["readable-view", "readable-json", "protocol-json"];
 }
 
 impl FromStr for OutputMode {
@@ -28,10 +40,13 @@ impl FromStr for OutputMode {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "text" => Ok(Self::Text),
+            "readable-view" => Ok(Self::ReadableView),
             "readable-json" => Ok(Self::ReadableJson),
             "protocol-json" => Ok(Self::ProtocolJson),
-            _ => Err(format!("invalid --output {value:?}")),
+            _ => Err(format!(
+                "invalid output value {value:?}, accepted values: {}",
+                Self::ACCEPTED_VALUES.join(", ")
+            )),
         }
     }
 }

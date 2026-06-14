@@ -1,0 +1,18 @@
+{
+  "description": "CRLF payload preservation: when a block payload contains CRLF (\\r\\n) line endings, they are preserved verbatim in the block section. The byte_length counts each CR and LF as separate bytes. 'line1\\r\\nline2\\r\\n' = 5+2+5+2 = 14 bytes.",
+  "view_kind": "read",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "ref": "crlf-test",
+    "content": "line1\r\nline2\r\n",
+    "content_type": "text/plain",
+    "cost": "",
+    "page": null
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/content", "byte_length": 14, "payload_contains": "line1\r\nline2"},
+    {"type": "header_contains", "text": "\"bytes\": 14"},
+    {"type": "output_contains", "text": "[block /content bytes=14]"}
+  ]
+}

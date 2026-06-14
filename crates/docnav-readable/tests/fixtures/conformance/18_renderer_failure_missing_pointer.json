@@ -1,0 +1,14 @@
+{
+  "description": "Renderer failure — missing block pointer: when the input value does not contain a field at a declared block pointer, the renderer returns a RenderError with stable id 'readable_view_render_failed' and a message indicating the missing pointer.",
+  "view_kind": "read",
+  "config_override": null,
+  "expected_failure": {
+    "error_id": "readable_view_render_failed",
+    "message_contains": "/content"
+  },
+  "input": {
+    "ref": "missing-block",
+    "not_content": "this field is not /content"
+  },
+  "assertions": []
+}

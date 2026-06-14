@@ -1,58 +1,45 @@
 use std::io::{self, Write};
 
-use docnav_protocol::{ErrorDetails, OperationResult, StableError, StableErrorCode};
-use serde::Serialize;
+use docnav_protocol::{OperationResult, StableError};
+use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind, RendererConfig};
+use serde_json::{json, Map, Value};
 
 use crate::constants::diagnostics;
 use crate::{emit_diagnostic, AdapterError, AdapterExitCode};
 
 use super::warnings::DirectCliWarning;
 
-// Warning 文本字段名来自 readable warning schema；仅用于 text/stderr 诊断展示。
-mod warning_text {
-    pub(super) const FIELD_DETAILS: &str = "details";
-    pub(super) const FIELD_EFFECT: &str = "effect";
-    pub(super) const FIELD_ID: &str = "id";
-    pub(super) const FIELD_REASON: &str = "reason";
-    pub(super) const PREFIX: &str = "warning";
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DirectOutputMode {
-    Text,
+    /// 默认文档输出：readable-view（pretty JSON header + block sections）。
+    ReadableView,
     ReadableJson,
     ProtocolJson,
 }
 
-pub trait DirectTextFormatter {
-    fn write_text_result<W: Write>(
-        &self,
-        result: &OperationResult,
-        stdout: &mut W,
-    ) -> io::Result<()>;
-}
+// ── operation output dispatch ──────────────────────────────────────────────
 
-pub(super) fn write_operation_output<T, W, E>(
+pub(super) fn write_operation_output<W, E>(
     result: OperationResult,
     output: DirectOutputMode,
-    text_formatter: &T,
     warnings: &[DirectCliWarning],
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32
 where
-    T: DirectTextFormatter,
     W: Write,
     E: Write,
 {
     match output {
-        DirectOutputMode::Text => {
-            write_text_result(&result, text_formatter, warnings, stdout, stderr)
+        DirectOutputMode::ReadableView => {
+            write_readable_view_result(&result, warnings, stdout, stderr)
         }
         DirectOutputMode::ReadableJson => write_readable_result(&result, warnings, stdout, stderr),
         DirectOutputMode::ProtocolJson => unreachable!("protocol-json is handled before dispatch"),
     }
 }
+
+// ── error handler dispatch ─────────────────────────────────────────────────
 
 pub(super) fn handler_error<W: Write, E: Write>(
     error: AdapterError,
@@ -64,7 +51,9 @@ pub(super) fn handler_error<W: Write, E: Write>(
     let exit_code = error.exit_code();
     let stable = error.error();
     let write_exit = match output {
-        DirectOutputMode::Text => write_text_error(stable, warnings, stdout, stderr),
+        DirectOutputMode::ReadableView => {
+            write_readable_view_error(stable, warnings, stdout, stderr)
+        }
         DirectOutputMode::ReadableJson => write_readable_error(stable, warnings, stdout, stderr),
         DirectOutputMode::ProtocolJson => unreachable!("protocol-json is handled before dispatch"),
     };
@@ -75,32 +64,71 @@ pub(super) fn handler_error<W: Write, E: Write>(
     }
 }
 
-fn write_text_result<T, W, E>(
+// ── readable-view result / error ───────────────────────────────────────────
+
+fn write_readable_view_result<W: Write, E: Write>(
     result: &OperationResult,
-    text_formatter: &T,
     warnings: &[DirectCliWarning],
     stdout: &mut W,
     stderr: &mut E,
-) -> i32
-where
-    T: DirectTextFormatter,
-    W: Write,
-    E: Write,
-{
-    match text_formatter
-        .write_text_result(result, stdout)
-        .and_then(|_| write_cli_warnings(warnings, stdout))
-    {
-        Ok(()) => AdapterExitCode::Success.code(),
-        Err(error) => {
+) -> i32 {
+    let value = match to_readable_value(result) {
+        Ok(value) => value,
+        Err(_) => {
             let _ = emit_diagnostic(
                 stderr,
-                &format!("{}: {error}", diagnostics::FAILED_TO_WRITE_TEXT_OUTPUT),
+                &format!(
+                    "{}: serialization failed",
+                    diagnostics::FAILED_TO_WRITE_JSON
+                ),
             );
-            AdapterExitCode::IoError.code()
+            return AdapterExitCode::IoError.code();
+        }
+    };
+    let kind = view_kind_for_result(result);
+    write_readable_view_value(value, kind, warnings, stdout, stderr)
+}
+
+fn write_readable_view_error<W: Write, E: Write>(
+    error: &StableError,
+    warnings: &[DirectCliWarning],
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32 {
+    let value = stable_error_readable(error);
+    write_readable_view_value(value, ReadableViewKind::Error, warnings, stdout, stderr)
+}
+
+fn write_readable_view_value<W: Write, E: Write>(
+    value: Value,
+    kind: ReadableViewKind,
+    warnings: &[DirectCliWarning],
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32 {
+    let value = add_warnings(value, warnings);
+    match render_readable_view(&value, kind, &readable_view_config()) {
+        Ok(rendered) => match write!(stdout, "{rendered}") {
+            Ok(()) => AdapterExitCode::Success.code(),
+            Err(error) => {
+                let _ = emit_diagnostic(
+                    stderr,
+                    &format!("{}: {error}", diagnostics::FAILED_TO_WRITE_READABLE_VIEW),
+                );
+                AdapterExitCode::IoError.code()
+            }
+        },
+        Err(render_error) => {
+            let _ = emit_diagnostic(
+                stderr,
+                &format!("readable_view_render_failed: {render_error}"),
+            );
+            AdapterExitCode::InternalError.code()
         }
     }
 }
+
+// ── readable-json result / error ───────────────────────────────────────────
 
 fn write_readable_result<W: Write, E: Write>(
     result: &OperationResult,
@@ -108,16 +136,35 @@ fn write_readable_result<W: Write, E: Write>(
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32 {
-    let readable = ReadableWithWarnings { result, warnings };
-    write_json_result(&readable, stdout, stderr)
+    let value = match to_readable_value(result) {
+        Ok(value) => value,
+        Err(_) => {
+            let _ = emit_diagnostic(
+                stderr,
+                &format!(
+                    "{}: serialization failed",
+                    diagnostics::FAILED_TO_WRITE_JSON
+                ),
+            );
+            return AdapterExitCode::IoError.code();
+        }
+    };
+    let value = add_warnings(value, warnings);
+    write_json_value(&value, stdout, stderr)
 }
 
-fn write_json_result<W: Write, E: Write, T: Serialize>(
-    result: &T,
+fn write_readable_error<W: Write, E: Write>(
+    error: &StableError,
+    warnings: &[DirectCliWarning],
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32 {
-    match serde_json::to_writer(stdout, result) {
+    let value = add_warnings(stable_error_readable(error), warnings);
+    write_json_value(&value, stdout, stderr)
+}
+
+fn write_json_value<W: Write, E: Write>(value: &Value, stdout: &mut W, stderr: &mut E) -> i32 {
+    match serde_json::to_writer(stdout, value) {
         Ok(()) => AdapterExitCode::Success.code(),
         Err(error) => {
             let _ = emit_diagnostic(
@@ -129,78 +176,59 @@ fn write_json_result<W: Write, E: Write, T: Serialize>(
     }
 }
 
-#[derive(Serialize)]
-struct ReadableWithWarnings<'a> {
-    #[serde(flatten)]
-    result: &'a OperationResult,
-    #[serde(skip_serializing_if = "warnings_is_empty")]
-    warnings: &'a [DirectCliWarning],
+// ── readable payload construction ──────────────────────────────────────────
+
+/// Map an `OperationResult` variant to the corresponding `ReadableViewKind`.
+fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
+    match result {
+        OperationResult::Outline(_) => ReadableViewKind::Outline,
+        OperationResult::Read(_) => ReadableViewKind::Read,
+        OperationResult::Find(_) => ReadableViewKind::Find,
+        OperationResult::Info(_) => ReadableViewKind::Info,
+    }
 }
 
-#[derive(Clone, Debug, Serialize)]
-struct ReadableError<'a> {
-    code: StableErrorCode,
-    error: String,
-    details: ErrorDetails,
-    guidance: Vec<String>,
-    #[serde(skip_serializing_if = "warnings_is_empty")]
-    warnings: &'a [DirectCliWarning],
+/// Return the committed repo-internal readable-view renderer config.
+fn readable_view_config() -> RendererConfig {
+    RendererConfig::default_config()
 }
 
-fn write_readable_error<W: Write, E: Write>(
-    error: &StableError,
-    warnings: &[DirectCliWarning],
-    stdout: &mut W,
-    stderr: &mut E,
-) -> i32 {
-    let readable = ReadableError {
-        code: error.code,
-        error: error.message.clone(),
-        details: error.details.clone(),
-        guidance: error.guidance.clone().unwrap_or_default(),
-        warnings,
-    };
-    write_json_result(&readable, stdout, stderr)
+// ── stable error → readable JSON ───────────────────────────────────────────
+
+fn stable_error_readable(error: &StableError) -> Value {
+    json!({
+        "code": error.code,
+        "error": error.message,
+        "details": error.details,
+        "guidance": error.guidance.clone().unwrap_or_default(),
+    })
 }
 
-fn write_text_error<W: Write, E: Write>(
-    error: &StableError,
-    warnings: &[DirectCliWarning],
-    stdout: &mut W,
-    stderr: &mut E,
-) -> i32 {
-    let write_result = writeln!(stdout, "error: {}", error_code_label(error.code))
-        .and_then(|_| writeln!(stdout, "message: {}", error.message))
-        .and_then(|_| {
-            if error.details.is_empty() {
-                Ok(())
-            } else {
-                writeln!(stdout, "details: {}", details_label(&error.details))
-            }
-        })
-        .and_then(|_| {
-            let Some(guidance) = &error.guidance else {
-                return Ok(());
-            };
-            for item in guidance {
-                writeln!(stdout, "guidance: {item}")?;
-            }
-            Ok(())
-        })
-        .and_then(|_| write_cli_warnings(warnings, stdout));
+// ── warning injection ──────────────────────────────────────────────────────
 
-    match write_result {
-        Ok(()) => AdapterExitCode::Success.code(),
-        Err(error) => {
-            let _ = emit_diagnostic(
-                stderr,
-                &format!("{}: {error}", diagnostics::FAILED_TO_WRITE_TEXT_ERROR),
-            );
-            AdapterExitCode::IoError.code()
+/// Inject `warnings` into a JSON payload value.
+fn add_warnings(mut value: Value, warnings: &[DirectCliWarning]) -> Value {
+    if warnings.is_empty() {
+        return value;
+    }
+    let warnings = serde_json::to_value(warnings).unwrap_or_else(|_| Value::Array(Vec::new()));
+    match &mut value {
+        Value::Object(object) => {
+            object.insert("warnings".to_owned(), warnings);
+            value
+        }
+        _ => {
+            let mut object = Map::new();
+            object.insert("value".to_owned(), value);
+            object.insert("warnings".to_owned(), warnings);
+            Value::Object(object)
         }
     }
 }
 
+// ── diagnostic helpers (stderr) ────────────────────────────────────────────
+
+/// Append CLI warnings to stderr for protocol-json / manifest / probe commands.
 pub(super) fn append_cli_warnings_to_stderr<W: Write>(
     exit_code: i32,
     warnings: &[DirectCliWarning],
@@ -218,46 +246,92 @@ pub(super) fn append_cli_warnings_to_stderr<W: Write>(
     }
 }
 
+/// Write CLI warnings as stderr diagnostic text lines.
+///
+/// Used for protocol-json, manifest, and probe stderr diagnostics.
+/// Not used for document output modes (readable-view / readable-json)
+/// where warnings are embedded in the JSON payload.
 fn write_cli_warnings<W: Write>(warnings: &[DirectCliWarning], writer: &mut W) -> io::Result<()> {
     for warning in warnings {
         let details = serde_json::to_string(&warning.details).map_err(io::Error::other)?;
         writeln!(
             writer,
-            "{}: {}={}, {}={}, {}={}, {}={}",
-            warning_text::PREFIX,
-            warning_text::FIELD_ID,
+            "warning: id={}, effect={}, reason={}, details={}",
             warning.id.as_str(),
-            warning_text::FIELD_EFFECT,
             warning.effect.as_str(),
-            warning_text::FIELD_REASON,
             warning.reason.replace(['\r', '\n'], " "),
-            warning_text::FIELD_DETAILS,
             details
         )?;
     }
     Ok(())
 }
 
-fn warnings_is_empty(warnings: &&[DirectCliWarning]) -> bool {
-    warnings.is_empty()
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-fn error_code_label(code: StableErrorCode) -> String {
-    serde_json::to_value(code)
-        .ok()
-        .and_then(|value| value.as_str().map(str::to_owned))
-        .unwrap_or_else(|| format!("{code:?}"))
-}
+    struct FailingStdout {
+        attempted: bool,
+    }
 
-fn details_label(details: &ErrorDetails) -> String {
-    details
-        .iter()
-        .map(|(key, value)| {
-            value
-                .as_str()
-                .map(|value| format!("{key}={value}"))
-                .unwrap_or_else(|| format!("{key}={value}"))
-        })
-        .collect::<Vec<_>>()
-        .join(", ")
+    impl Write for FailingStdout {
+        fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+            self.attempted = true;
+            assert!(
+                !buffer.is_empty(),
+                "stdout write should carry rendered output"
+            );
+            Err(io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn readable_view_renderer_failure_is_internal_error_without_stdout() {
+        let value = json!({
+            "ref": "missing-content",
+            "content_type": "text/plain",
+            "cost": "0 lines | 0 bytes",
+            "page": null,
+        });
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit =
+            write_readable_view_value(value, ReadableViewKind::Read, &[], &mut stdout, &mut stderr);
+
+        assert_eq!(exit, AdapterExitCode::InternalError.code());
+        assert!(stdout.is_empty(), "renderer failures must not write stdout");
+        let stderr = String::from_utf8(stderr).expect("stderr utf8");
+        assert!(stderr.contains("readable_view_render_failed"));
+        assert!(stderr.contains("/content"));
+    }
+
+    #[test]
+    fn readable_view_stdout_write_failure_is_io_error_with_diagnostic() {
+        let value = json!({
+            "ref": "ok",
+            "content": "body",
+            "content_type": "text/plain",
+            "cost": "1 lines | 4 bytes",
+            "page": null,
+        });
+        let mut stdout = FailingStdout { attempted: false };
+        let mut stderr = Vec::new();
+
+        let exit =
+            write_readable_view_value(value, ReadableViewKind::Read, &[], &mut stdout, &mut stderr);
+
+        assert_eq!(exit, AdapterExitCode::IoError.code());
+        assert!(
+            stdout.attempted,
+            "rendered readable-view should be written to stdout"
+        );
+        let stderr = String::from_utf8(stderr).expect("stderr utf8");
+        assert!(stderr.contains("failed to write readable-view output"));
+        assert!(stderr.contains("stdout closed"));
+    }
 }

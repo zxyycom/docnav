@@ -14,7 +14,7 @@ outline -> ref -> read
 
 v0 首期聚焦 Markdown 纵向链路：
 
-- 核心入口设计为 `docnav` CLI，负责格式识别、adapter 路由、配置、项目初始化、输出模式和错误映射。
+- 核心入口设计为 `docnav` CLI，负责格式识别、adapter 路由、配置、项目初始化、输出模式和错误映射。文档操作默认使用 `readable-view` 输出（pretty JSON header + block section）。
 - 当前仓库落地 `docnav-markdown` adapter、共享协议 crate、schema、示例和验证脚本。
 - Markdown adapter 支持 `outline`、`read`、`find`、`info`、`manifest`、`probe` 和 `invoke`。
 - JSON、YAML、TOML 和 INI 是后续 adapter 能力，不属于首期落地范围。
@@ -36,11 +36,11 @@ pnpm run smoke:docnav-markdown:dev
 本地最小用法：
 
 ```bash
-cargo run -p docnav-markdown -- outline crates/docnav-markdown/tests/fixtures/cli-smoke/normal.md --output text
-cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-smoke/normal.md --ref "H:L1:H1:I1" --output text
+cargo run -p docnav-markdown -- outline crates/docnav-markdown/tests/fixtures/cli-smoke/normal.md
+cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-smoke/normal.md --ref "H:L1:H1:I1"
 ```
 
-需要稳定机器协议时使用 `--output protocol-json` 或 adapter `invoke`。
+默认输出是 `readable-view`，适合直接阅读。需要结构化阅读结果时显式使用 `--output readable-json`；需要稳定机器协议时使用 `--output protocol-json` 或 adapter `invoke`。
 
 发布制品生成、验证和 smoke 见 [测试策略](docs/testing.md)。
 

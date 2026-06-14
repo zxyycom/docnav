@@ -169,6 +169,51 @@ protocol-json
 
 这样让当前 change 只交付可执行的 Rust 契约和 conformance 材料，MCP change 再按同一契约实现 JavaScript renderer 和 TextContent wiring。
 
+#### MCP-consumable contract
+
+以下是 `implement-docnav-mcp-bridge` 必须消费的 contract artifact，由本 change 在 `docnav-readable` crate 中提供：
+
+**A. Renderer config schema**
+
+```json
+{
+  "views": {
+    "<view-kind>": {
+      "blocks": ["<json-pointer>", ...]
+    }
+  }
+}
+```
+
+- `views` 按 typed readable result kind 索引（`outline`、`read`、`find`、`info`、`error`）。
+- 每个 view 的 `blocks` 声明需要外置为 block section 的 JSON Pointer；pointer 必须指向字符串字段。
+- 未声明字段保持 header JSON 值（包括多行字符串）。
+- renderer config 是仓库内文件，由 Rust 代码加载；JavaScript renderer 消费等价的 config 结构，不要求读取同一文件格式。
+
+**B. Conformance vectors**
+
+跨语言 renderer conformance 必须验证以下语义字段，不要求 header key 顺序、block section 输出顺序或逐字节一致：
+
+| 向量 | 说明 | 断言方式 |
+|------|------|----------|
+| header 是合法 pretty JSON | JSON.parse 成功，顶层为 object | 解析后按字段名取值 |
+| block pointer 存在且正确 | header 中被声明字段的值为 `{"$block": "<pointer>", "bytes": <n>}` | 按字段名取 `$block` 和 `bytes` |
+| byte length 精确 | `bytes` 等于该字段字符串的 UTF-8 字节数 | 用 `TextEncoder` 或等价方式计算 |
+| block payload 可还原 | `[block <pointer> bytes=<n>]` 起始行后的恰好 `<n>` bytes 等于原字段字符串 | 截取 payload 后与 readable-json 对应字段比对 |
+| 多个 block 独立可定位 | 每个 block 的 pointer 和 byte length 与 header 对应 `$block` 引用一致 | 按 pointer 匹配，不依赖输出顺序 |
+| 未声明字段保留 | 非 block 字段的值与 readable-json 同名字段一致 | 逐字段比对（除被外置字段外） |
+| warning 数组一致 | `warnings` 数组元素和顺序与 readable-json 一致 | 数组深度比对 |
+| 空 block 合法 | 零长度字符串输出 `bytes=0` 的 block section | payload 为空，boundary marker 正确 |
+| framing LF 一致 | separator 和 marker 行使用 LF byte `0x0A` | 验证 framing bytes，不检查 payload 内部换行 |
+
+**C. 不在本 change 中的内容**
+
+以下保留在 `implement-docnav-mcp-bridge`：
+- JavaScript/Node.js renderer 实现。
+- MCP TextContent 的 bridge wiring（子进程调用、stdout 读取、TextContent 构造）。
+- MCP tool outputSchema 声明。
+- MCP error mapping 和 stderr 诊断处理。
+
 ### 9. Document output surface 采用同一变更内原子收敛
 
 可以在开发提交中先引入 renderer，再切换调用方；change 验收时满足：

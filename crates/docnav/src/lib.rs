@@ -60,7 +60,7 @@ where
     };
 
     let cli::ParsedCli { command, warnings } = parsed;
-    let output_mode = command.output_mode().unwrap_or(OutputMode::Text);
+    let output_mode = command.output_mode().unwrap_or(OutputMode::ReadableView);
     let operation = command.operation();
     match execute(command, runtime) {
         Ok(outcome) => output::write_outcome(outcome, &warnings, &mut stdout, &mut stderr),
@@ -88,10 +88,10 @@ fn execute<T: DocnavRuntime>(
         CliCommand::Config(command) => config::execute(command, runtime),
         CliCommand::Init => config::init_project(),
         CliCommand::Doctor => config::doctor(),
-        CliCommand::Version => Ok(output::CommandOutcome::text(format!(
+        CliCommand::Version => Ok(output::CommandOutcome::plain_text(format!(
             "docnav {}",
             env!("CARGO_PKG_VERSION")
         ))),
-        CliCommand::Help(text) => Ok(output::CommandOutcome::text(text)),
+        CliCommand::Help(text) => Ok(output::CommandOutcome::plain_text(text)),
     }
 }

@@ -20,12 +20,12 @@ v0 首期聚焦 Markdown 纵向链路。JSON、YAML、TOML 和 INI 作为后续 
 - `openspec/changes/` 只在处理 OpenSpec change、审计历史、验收或用户明确要求时读取；涉及 OpenSpec 时先运行 `openspec list --json`。
 - `docs/schemas/` 和 `docs/examples/` 是校验材料，只在验证字段、示例、schema 或测试时读取。
 - 后续交互引用已读内容时只提炼关键结论和文件位置，不展开原文；跟踪变化用局部搜索和 diff。
-- 探索任意 `.md` 文档时，强制先运行 `pnpm --silent dnm outline <path> --output readable-json`，从 `entries[].ref` 取得 ref；再将 ref 原样传给 `pnpm --silent dnm read <path> --ref "<ref>" --output text`。仓库命令不可运行时，回退到常规文件读取。
+- 探索任意 `.md` 文档时，强制先运行 `pnpm --silent dnm outline <path> --output readable-json`，从 `entries[].ref` 取得 ref；再将 ref 原样传给 `pnpm --silent dnm read <path> --ref "<ref>" --output readable-view`。仓库命令不可运行时，回退到常规文件读取。
 
 ## 架构边界摘要
 
 - `docnav`：核心 CLI，负责格式识别、adapter 路由和管理、配置、项目初始化、默认参数解析、输出模式和错误映射。
-- `docnav-mcp`：Node.js / JavaScript MCP bridge，通过 stdio 暴露 tools，只把 MCP tool call 映射到 `docnav`，不复制解析或路由逻辑。
+- `docnav-mcp`：Node.js / JavaScript MCP bridge 目标制品，当前由 `implement-docnav-mcp-bridge` change 承接实现；职责是只把 MCP tool call 映射到 `docnav`，不复制解析或路由逻辑。
 - 格式 adapter：负责本格式识别、解析、导航策略、ref、分页结果和 adapter 直接 CLI 输出。
 - 共享协议：原始协议保证稳定校验；阅读输出保证信息密度。两层复用业务语义，但不复用传输包装。
 - ref 由 adapter 生成和解析；`docnav`、MCP 和其它接入层只原样传递。

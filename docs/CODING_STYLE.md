@@ -12,7 +12,7 @@
 
 1. `docnav` 负责格式识别、adapter 路由、配置、项目初始化、adapter 管理、输出模式和错误映射。
 2. 格式 adapter 负责本格式的识别、解析、导航策略、ref、分页结果和 adapter 直接输出。
-3. `docnav-mcp` 负责 MCP 接入和 tool 映射，不拥有文档解析、adapter 路由或 adapter 管理职责。
+3. `docnav-mcp` 的目标职责是 MCP 接入和 tool 映射，由 `implement-docnav-mcp-bridge` change 交付；不拥有文档解析、adapter 路由或 adapter 管理职责。
 4. 原始协议层服务稳定校验、脚本和调试；阅读输出层服务人类和 AI 阅读。两层可以共享业务语义，但不能共享传输包装。
 
 验收标准：新增代码可以明确指出它属于哪个制品、哪个语义层、哪个主规范所有权；不能说明所有权的代码，应先澄清边界再实现。
@@ -62,18 +62,21 @@
 
 ## 4. 输出分层
 
-输出代码必须保持 protocol、readable 和 MCP 的兼容目标不同。
+输出代码必须保持 protocol、readable-view、readable-json 和 MCP 的兼容目标不同。
 
 1. protocol 输出保持完整 envelope、稳定字段、稳定错误 code 和必需 details。
-2. readable JSON 保持 documented shape，用于阅读和工具展示，不作为完整机器协议。
-3. MCP structuredContent 使用 readable shape；TextContent 使用精简阅读文本。
-4. 用户可配置文案只能影响阅读文本、guidance、usage 和包装文案，不能改变稳定机器字段。
+2. `readable-view` 和 `readable-json` 必须从同一个完整的 typed readable payload 派生：`readable-json` 直接序列化该 payload；`readable-view` 在同一 JSON value 上应用仓库内 renderer config 指定的 block 替换和 framing。两种输出保持相同业务字段和值。
+3. renderer config 只声明 block 字段（JSON Pointer 列表），不定义展示模板、排序或样式。稳定语义通过字段名和值、block pointer 和 UTF-8 byte length 表达；header JSON object key 顺序和多个 block section 的输出顺序不作为稳定契约。
+4. 每个 operation 或 adapter 的 document output 通过共享 readable payload 进入 renderer path。renderer 按 config 声明的 JSON Pointer 只把字符串字段外置为 block；未声明字段保持 header JSON 值。
+5. document output mode 只包含 `readable-view`、`readable-json` 和 `protocol-json`；help、version、config 等非文档纯文本通道使用 `PlainText` 或等价明确名称，并与 document output mode 类型分离。
+6. MCP structuredContent 使用 readable shape；TextContent 使用精简阅读文本，其渲染任务消费本仓库的 readable-view contract、renderer config 和 conformance vectors。
+7. 用户可配置文案只能影响阅读文本、guidance、usage 和包装文案，不能改变稳定机器字段。renderer config（block 字段声明和 framing 规则）是仓库内代码契约，不受用户配置、项目配置、环境变量或 CLI flag 控制。
 
-边界：protocol envelope 不进入 readable JSON、MCP structuredContent 或 TextContent。
+边界：protocol envelope 不进入 readable-view header、readable JSON、MCP structuredContent 或 TextContent。
 
-做法：在入口转换层显式完成 protocol result 到 readable result 的映射，并用 schema 或测试验证字段集合。
+做法：在入口转换层显式完成 protocol result 到 typed readable payload 的映射；readable-view 和 readable-json 在同一个 payload JSON value 上分流。用 schema、conformance vectors 或测试验证字段集合一致和 block payload 还原。
 
-验收标准：同一业务结果在不同输出层语义一致，但包装字段、稳定性承诺和消费对象清晰不同。
+验收标准：同一业务结果在 readable-view 和 readable-json 中语义一致（除 block 表示形式外）；不同输出层包装字段、稳定性承诺和消费对象清晰不同。
 
 ---
 
@@ -145,7 +148,7 @@ ref 是 adapter 生成和解释的非空 opaque string。共享协议、`docnav`
 1. 职责边界是否仍符合文档导航指向的主规范。
 2. 边界失败是否显式反馈，没有静默兜底。
 3. 公开 API 是否通过类型或返回值表达不变量和失败。
-4. protocol、readable 和 MCP 输出是否保持分层。
+4. protocol、readable-view、readable-json 和 MCP 输出是否保持分层；readable-view 和 readable-json 是否从同一 typed payload 派生。
 5. ref 是否仍由 adapter 拥有，接入层只原样传递。
 6. 稳定规则是否只有一个来源，并同步到 schema、示例、代码和验证。
 7. 用户可见文案是否与稳定机器字段分离。

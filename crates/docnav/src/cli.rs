@@ -2,7 +2,7 @@ mod flags;
 mod parser;
 mod preflight;
 mod types;
-mod warning;
+pub mod warning;
 
 pub use parser::parse;
 pub use preflight::output_context;

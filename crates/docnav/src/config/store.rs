@@ -5,7 +5,7 @@ use crate::context::ProjectContext;
 use crate::error::{AppError, AppResult};
 use crate::project::path_to_slash;
 
-use super::keys::validate_positive_key;
+use super::keys::{validate_output_key, validate_positive_key};
 use super::model::{ConfigContext, CoreConfig};
 
 pub fn load_context() -> AppResult<ConfigContext> {
@@ -70,6 +70,7 @@ fn validate_config(config: &CoreConfig, path: &Path) -> AppResult<()> {
     if let Some(limit_chars) = config.defaults.limit_chars {
         validate_positive_key("defaults.limit_chars", limit_chars)?;
     }
+    validate_output_key("defaults.output", &config.defaults.output, path)?;
     Ok(())
 }
 

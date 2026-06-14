@@ -99,7 +99,7 @@ Smoke suite 必须覆盖：
 
 - Fixture corpus：normal Markdown、重复 heading、frontmatter、代码围栏伪 heading、深层 heading、无 heading、Unicode 内容、大分页内容、非 UTF-8 输入、UTF-8 BOM、CRLF 行尾、`.MD` 和 `.markdown`。
 - Operations 和入口：`outline -> ref -> read`、`find`、`info`、`probe`、`manifest`、有效 `invoke`、CLI help、direct CLI/invoke 共享语义归一和宽松 argv 成功路径。
-- 输出模式：`text`、`readable-json` 和 `protocol-json`。
+- 输出模式：`readable-view`、`readable-json` 和 `protocol-json`。
 - Warning 行为：readable warning 使用稳定 envelope；CLI argv warning 使用 `id: "cli_argv_ignored"`；测试不断言 exact token 分组、`reason` 文案或 token 消费顺序。
 
 #### Scenario: Node.js runner 使用构建产物
@@ -125,9 +125,9 @@ Smoke suite 必须覆盖：
 - **THEN** envelope 的 `operation` 为 `read`
 - **THEN** stderr 不包含用户可读结果或重复 JSON payload
 
-#### Scenario: text 输出 smoke 保留关键可读信息
-- **WHEN** smoke 测试执行 `outline`、`read`、`find` 和 `info` 的 `text` 输出
-- **THEN** stdout 包含对应 operation 的关键可读信息，例如 ref、content、content_type、cost、capabilities 或 page 状态
+#### Scenario: readable-view 输出 smoke 保留关键可读信息
+- **WHEN** smoke 测试执行 `outline`、`read`、`find` 和 `info` 的 `readable-view` 输出
+- **THEN** stdout 包含 pretty JSON header 和对应 operation 的关键可读信息，例如 ref、content block、content_type、cost、capabilities 或 page 状态
 - **THEN** stdout 不包含完整 protocol envelope JSON
 - **THEN** 成功路径 stderr 为空或只包含非阻断诊断
 

@@ -90,7 +90,7 @@ impl DocnavRuntime for AdapterRuntime {
             &selection.evidence,
             &invoke.request,
         );
-        Ok(outcome_for_response(invoke.response, request.output)
+        Ok(outcome_for_response(invoke.response, request.output)?
             .with_warnings(cli_warnings(selection.warnings)))
     }
 
@@ -135,7 +135,7 @@ impl DocumentRequest {
             .value
             .as_str()
             .and_then(|value| value.parse::<OutputMode>().ok())
-            .unwrap_or(OutputMode::Text);
+            .unwrap_or(OutputMode::ReadableView);
         let adapter = defaults.adapter.value.as_str().map(str::to_owned);
 
         Ok(Self {

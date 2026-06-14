@@ -1,10 +1,9 @@
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 
 use docnav_adapter_sdk::{
-    run_direct_cli, DirectCliConfig, DirectTextFormatter, NativeOptionDefault, NativeOptionSpec,
-    NativeOptionValueSpec,
+    run_direct_cli, DirectCliConfig, NativeOptionDefault, NativeOptionSpec, NativeOptionValueSpec,
 };
-use docnav_protocol::{Operation, OperationResult};
+use docnav_protocol::Operation;
 
 use crate::adapter::{
     MarkdownAdapter, DEFAULT_LIMIT_CHARS, DEFAULT_MAX_HEADING_LEVEL, MAX_HEADING_LEVEL_OPTION,
@@ -43,69 +42,15 @@ where
             request_id: REQUEST_ID,
             default_limit_chars: DEFAULT_LIMIT_CHARS,
             native_options: NATIVE_OPTIONS,
-            text_formatter: MarkdownTextOutput,
         },
     )
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-struct MarkdownTextOutput;
-
-impl DirectTextFormatter for MarkdownTextOutput {
-    fn write_text_result<W: Write>(
-        &self,
-        result: &OperationResult,
-        stdout: &mut W,
-    ) -> io::Result<()> {
-        match result {
-            OperationResult::Outline(result) => {
-                for entry in &result.entries {
-                    writeln!(stdout, "{} | {}", entry.ref_id, entry.display)?;
-                }
-                writeln!(stdout, "page: {}", page_label(result.page))
-            }
-            OperationResult::Read(result) => {
-                writeln!(stdout, "ref: {}", result.ref_id)?;
-                write!(stdout, "{}", result.content)?;
-                if !result.content.ends_with('\n') {
-                    writeln!(stdout)?;
-                }
-                writeln!(stdout, "content_type: {}", result.content_type)?;
-                writeln!(stdout, "cost: {}", result.cost)?;
-                writeln!(stdout, "page: {}", page_label(result.page))
-            }
-            OperationResult::Find(result) => {
-                for entry in &result.matches {
-                    writeln!(stdout, "{} | {}", entry.ref_id, entry.display)?;
-                }
-                writeln!(stdout, "page: {}", page_label(result.page))
-            }
-            OperationResult::Info(result) => {
-                writeln!(stdout, "{}", result.display)?;
-                writeln!(
-                    stdout,
-                    "capabilities: {}",
-                    result
-                        .capabilities
-                        .iter()
-                        .map(Operation::to_string)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            }
-        }
-    }
-}
-
-fn page_label(page: Option<docnav_protocol::PositiveInteger>) -> String {
-    page.map(|page| page.get().to_string())
-        .unwrap_or_else(|| "null".to_owned())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+    use std::io;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -124,14 +69,9 @@ mod tests {
     }
 
     #[test]
-    fn text_output_write_failure_reports_diagnostic() {
+    fn readable_view_output_write_failure_reports_diagnostic() {
         let path = write_doc("stdout-failure.md", "# Guide\n");
-        let args = vec![
-            "outline".to_owned(),
-            path.to_string_lossy().into_owned(),
-            "--output".to_owned(),
-            "text".to_owned(),
-        ];
+        let args = vec!["outline".to_owned(), path.to_string_lossy().into_owned()];
         let mut stdout = FailingWriter;
         let mut stderr = Vec::new();
 
@@ -139,7 +79,7 @@ mod tests {
 
         assert_eq!(exit, docnav_adapter_sdk::AdapterExitCode::IoError.code());
         let stderr = String::from_utf8(stderr).expect("stderr utf8");
-        assert!(stderr.contains("failed to write text output"));
+        assert!(stderr.contains("failed to write readable-view output"));
         assert!(stderr.contains("stdout closed"));
     }
 

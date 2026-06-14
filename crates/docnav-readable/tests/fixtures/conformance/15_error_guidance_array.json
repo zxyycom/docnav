@@ -1,0 +1,27 @@
+{
+  "description": "Error guidance array preserved in header JSON: the guidance field is a JSON array of strings. Since it is not declared as a block field (only /error is), the entire guidance array stays in the header JSON as a regular JSON value — it is NOT extracted into a block section.",
+  "view_kind": "error",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "code": "PARSE_ERROR",
+    "error": "Failed to parse Markdown: unexpected token at line 42.",
+    "details": {"line": 42, "token": "```"},
+    "guidance": [
+      "Verify the document is valid Markdown.",
+      "Check for unclosed fenced code blocks.",
+      "Try `docnav outline --output readable-json` to inspect document structure."
+    ]
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/error", "payload_contains": "Failed to parse Markdown"},
+    {"type": "header_field", "pointer": "/code", "value": "PARSE_ERROR"},
+    {"type": "header_contains", "text": "\"guidance\": ["},
+    {"type": "header_contains", "text": "Verify the document is valid Markdown"},
+    {"type": "header_contains", "text": "Check for unclosed fenced code blocks"},
+    {"type": "header_contains", "text": "Try `docnav outline --output readable-json`"},
+    {"type": "header_contains", "text": "\"$block\": \"/error\""},
+    {"type": "output_not_contains", "text": "[block /guidance"},
+    {"type": "no_cr_in_framing"}
+  ]
+}

@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::cli::OutputMode;
 use crate::context::ProjectContext;
 
 pub(super) const DEFAULT_LIMIT_CHARS: u32 = 6000;
-pub(super) const DEFAULT_OUTPUT: OutputMode = OutputMode::Text;
+pub(super) const DEFAULT_OUTPUT: &str = "readable-view";
 pub(super) const SUPPORTED_KEYS: [&str; 3] = [
     "defaults.adapter",
     "defaults.limit_chars",
@@ -32,7 +31,7 @@ pub struct DefaultsConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit_chars: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output: Option<OutputMode>,
+    pub output: Option<String>,
 }
 
 impl DefaultsConfig {
