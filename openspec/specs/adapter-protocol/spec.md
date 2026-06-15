@@ -109,13 +109,15 @@ Adapter SDK 入口必须保持以下分层：
 - Adapter `invoke` 通过严格 protocol/schema 校验解析 stdin JSON。
 - 传输层解析成功后，direct CLI 文档操作和有效 invoke request 必须映射到 canonical document operation input 或等价 semantic request。
 - 共享语义归一和统一 operation handler 必须负责默认值、native options、必需参数校验和 request 构造。
-- 宽松 argv 收集层只生成 warning metadata，不复制业务参数解释、默认值归一或 request 构造逻辑。
-- 当前 operation 的必需语义存在且实际使用参数有效时，未知 flag、多余 positional 和当前 operation 不使用的参数不得阻断 direct CLI 成功。
+- 宽松 argv 收集层只生成 warning metadata；业务参数解释、默认值归一和 request 构造逻辑由共享语义归一与 operation handler 承担。
+- 当前 operation 的必需语义存在且实际使用参数有效时，未知 flag、多余 positional 和当前 operation 不使用的参数进入 warning metadata，direct CLI 继续成功路径。
 - 当前 operation 实际使用的参数必须保持严格。
 - Malformed invoke JSON、未知字段、缺失字段或类型错误必须在进入 canonical document operation input 或等价 semantic request 前失败。
 - 每个被忽略的 argv family 必须形成阅读层 warning 或 stderr 诊断；输出通道按当前输出模式决定。
 - Readable warning item 必须使用稳定 warning envelope：稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 必须使用 `id: "cli_argv_ignored"`，并可在 `details.tokens` 中列出相关 argv token。
-- CLI warning 不得给 adapter `invoke`、CLI `protocol-json`、manifest 或 probe stdout schema 增加字段。
+- Adapter `invoke`、CLI `protocol-json`、manifest 和 probe stdout 保持各自 schema；CLI warning 在这些通道中通过 stderr 或诊断表达。
+- Direct CLI document operation 的阅读输出必须通过共享 readable payload 和 readable-view renderer 生成；SDK document output surface 只暴露 readable-view、readable-json 和 protocol-json。
+- Manifest、probe、help 和其它非 document operation 通道保持各自既有结构化或纯文本边界。
 
 #### Scenario: 未知 argv 不阻断有效操作
 - **WHEN** adapter direct CLI 执行文档操作并收到未知 flag 或多余 positional
@@ -124,7 +126,7 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** 命令结果由业务处理和输出模式决定
 - **THEN** SDK 输出阅读层 warning 或 stderr 诊断
 - **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** 测试不要求 exact token 分组、`reason` 文案或 token 消费顺序
+- **THEN** 测试断言 stable warning envelope、`cli_argv_ignored` id 和诊断存在性
 
 #### Scenario: direct CLI 和 invoke 共享文档操作语义归一
 - **WHEN** adapter direct CLI input 与 adapter `invoke` schema-valid JSON 表达同一个 outline/read/find/info 操作
@@ -151,7 +153,7 @@ Adapter SDK 入口必须保持以下分层：
 - **AND** 当前 operation 的必需语义参数仍可被解析
 - **THEN** SDK 不因该参数单独失败
 - **THEN** SDK 将该参数记录为阅读层 warning 或 stderr 诊断
-- **THEN** SDK 以原始 token 保留该参数，不要求该参数值通过当前 operation 不会使用的业务校验
+- **THEN** SDK 以原始 token 保留该参数，并只校验当前 operation 实际使用的业务参数
 
 #### Scenario: 当前 operation 使用的已知参数仍严格
 - **WHEN** adapter direct CLI 收到当前 operation 实际使用的已知参数
@@ -173,8 +175,9 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** help 不执行文档导航业务
 
 #### Scenario: warning 按阅读输出模式承载
-- **WHEN** adapter direct CLI 以 `readable-view` 输出模式成功并存在 warning
-- **THEN** stdout readable-view 的 header/payload 必须包含顶层 `warnings` 数组
+- **WHEN** adapter direct CLI 以 readable-view 输出模式成功并存在 warning
+- **THEN** stdout JSON header 包含正常 readable 字段和顶层 `warnings`
+- **THEN** stdout 的 warning 只由 JSON header 的 `warnings` 数组承载
 - **WHEN** adapter direct CLI 以 readable-json 输出模式成功并存在 warning
 - **THEN** stdout payload 必须包含顶层 `warnings` 数组
 - **THEN** warning item 包含稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象
@@ -186,6 +189,18 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** stdout 不包含 `warnings` 字段
 - **THEN** stdout 仍通过该输出模式对应的 schema
 - **THEN** stderr 包含 warning 或诊断
+
+#### Scenario: document direct output 值按三种模式校验
+- **WHEN** 调用方对 adapter document operation 传入无效 `--output` 值
+- **THEN** SDK 返回输入错误
+- **THEN** help 只列出 readable-view、readable-json 和 protocol-json
+- **THEN** adapter 在 document operation handler 执行前返回
+
+#### Scenario: 非文档 direct CLI 通道不受 document output mode 约束
+- **WHEN** 调用方执行 adapter direct CLI 的 manifest、probe 或 help
+- **THEN** SDK 按对应通道既有 schema 或纯文本 help 输出
+- **THEN** 该输出不需要使用 readable-view
+- **THEN** document operation help 仍只列出 readable-view、readable-json 和 protocol-json
 
 #### Scenario: invoke stdin 仍严格校验
 - **WHEN** adapter `invoke` 从 stdin 收到包含未知字段或参数类型错误的 JSON request
