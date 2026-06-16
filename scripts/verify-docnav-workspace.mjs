@@ -50,6 +50,23 @@ const checks = [
     ]
   },
   {
+    label: "quality observability tests",
+    command: "pnpm",
+    args: ["run", "quality:test"],
+    ignoreOutput: [
+      /^> docnav-contract-docs@.* quality:test .*$/,
+      /^> node --test test\/quality\/\*\.test\.mjs$/,
+      /^\$ node --test test\/quality\/\*\.test\.mjs$/,
+      /^\s*▶ /,
+      /^\s*✔ /,
+      /^\s*ℹ /,
+      /^# Subtest:/,
+      /^ok \d+ -/,
+      /^1\.\.\d+$/,
+      /^# (tests|suites|pass|fail|cancelled|skipped|todo|duration_ms) /
+    ]
+  },
+  {
     label: "docnav-markdown development smoke",
     command: "pnpm",
     args: ["run", "smoke:docnav-markdown:dev"],

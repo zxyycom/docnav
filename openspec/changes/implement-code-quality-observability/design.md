@@ -67,7 +67,7 @@ Docnav 是 Rust workspace，同时包含 Node.js 脚本、OpenSpec 文档、sche
 
 6. 质量观测产物默认写入临时目录，CI 正常产出报告。
 
-   理由：本地运行时维护者应能在临时目录查看完整中间过程、第三方原始输出和最终报告；CI 运行时应上传 artifact、写入 step summary，并按 warning records 发出非阻断 annotation。临时目录默认使用 `target/docnav-quality/`，后续可以通过配置或环境变量覆盖。
+   理由：本地运行时维护者应能在临时目录查看完整中间过程、第三方原始输出和最终报告；CI 运行时应上传 artifact、写入 step summary，并按 warning records 发出非阻断 annotation。临时目录默认使用 `artifacts/docnav-quality/`，避免与 Cargo 编译产物所在的 `target/` 混在一起；后续可以通过配置或环境变量覆盖。
 
 7. Dynamic warning 和 CPD minimum tokens 只针对有行动价值的变化发出。
 
@@ -77,7 +77,7 @@ Docnav 是 Rust workspace，同时包含 Node.js 脚本、OpenSpec 文档、sche
 
    规则：`previous-code baseline` 是当前 revision 之前最近一个影响扫描输入的代码提交。若 current revision 修改了扫描输入，baseline 是它之前的最近代码提交；若 current revision 只修改文档或其它非扫描输入，baseline 是最近一次代码提交，current 与 baseline 的扫描输入指纹相同。
 
-   执行方式：脚本先用当前 checkout 生成 current snapshot，再根据当前配置解析 scan inputs，通过 git history 定位 baseline commit，在临时 worktree、archive copy 或等价隔离目录中用当前配置、当前 wrapper 和当前工具版本生成 baseline snapshot，最后比较 current 与 baseline。输出使用两个独立状态：`baseline.status` 表示基线快照是否生成；`comparison.status` 表示 delta 是否可用，或是否为 `input-unchanged`。
+   执行方式：脚本先用当前 checkout 生成 current snapshot，再根据当前配置解析 scan inputs，通过 git history 定位 baseline commit，在临时 worktree、archive copy 或等价隔离目录中用当前配置、当前 wrapper 和当前工具版本生成 baseline snapshot，最后比较 current 与 baseline。输出使用两个独立状态：`baseline.status` 表示基线快照是否生成、是否被显式跳过或失败；`comparison.status` 表示 delta 是否可用，或是否为 `input-unchanged`。
 
 ## Risks / Trade-offs
 
@@ -95,7 +95,7 @@ Docnav 是 Rust workspace，同时包含 Node.js 脚本、OpenSpec 文档、sche
 2. 新增质量观测配置文件，定义扫描范围、排除规则、generated files、默认 6 类 code areas、tool options、按 code area 拆分的 CPD `minimum tokens` 和 warning policy。
 3. 封装仓库脚本采集 Clippy gate 状态、Lizard 函数级指标、scc 仓库/文件级指标和 PMD CPD 重复代码指标。
 4. 为每个 code area 计算扫描输入指纹，定位 previous-code baseline commit，并用当前配置和工具在隔离目录中生成 baseline snapshot。
-5. 将中间过程和最终产物写入临时 artifact 目录，例如 `target/docnav-quality/metrics.json`、`target/docnav-quality/report.md`、`target/docnav-quality/warnings.ndjson` 和 `target/docnav-quality/raw/`。
+5. 将中间过程和最终产物写入临时 artifact 目录，例如 `artifacts/docnav-quality/metrics.json`、`artifacts/docnav-quality/report.md`、`artifacts/docnav-quality/warnings.ndjson` 和 `artifacts/docnav-quality/raw/`。
 6. 新增本地脚本入口，例如 `pnpm quality:scan`，并确保 Lizard、scc 和 PMD CPD 指标值不导致命令失败。
 7. 在 CI 中正常产出 artifact、step summary 和非阻断 warning annotation。
 8. 为配置解析、路径过滤、分区、baseline commit 定位、baseline materialization、baseline scan、报告生成、warning 规则、`baseline.status`、`comparison.status` 和工具输出 normalization 添加测试或 fixture 验证。

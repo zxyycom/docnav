@@ -43,3 +43,98 @@ jobs:
 
       - name: Verify workspace
         run: pnpm run verify:docnav-workspace
+
+  quality:
+    name: Code quality observability (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    env:
+      CARGO_TERM_COLOR: always
+      PMD_VERSION: 7.25.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install quality tools
+        run: |
+          uv venv "$RUNNER_TEMP/docnav-quality-venv"
+          uv pip install --python "$RUNNER_TEMP/docnav-quality-venv/bin/python" lizard
+          "$RUNNER_TEMP/docnav-quality-venv/bin/python" -m lizard --version
+          echo "DOCNAV_LIZARD_CMD=$RUNNER_TEMP/docnav-quality-venv/bin/python" >> "$GITHUB_ENV"
+          # Keep this pinned to the CSV contract asserted by scripts/quality/tools/scc.mjs.
+          go install github.com/boyter/scc/v3@v3.7.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          scc --version
+          curl -fsSL -o "$RUNNER_TEMP/pmd.zip" "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-dist-${PMD_VERSION}-bin.zip"
+          unzip -q "$RUNNER_TEMP/pmd.zip" -d "$RUNNER_TEMP/pmd"
+          echo "$RUNNER_TEMP/pmd/pmd-bin-${PMD_VERSION}/bin" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP/pmd/pmd-bin-${PMD_VERSION}/bin:$PATH"
+          pmd --version
+          pmd cpd --help >/dev/null
+
+      - name: Run code quality scan
+        run: pnpm run quality:scan
+
+      - name: Render quality warning annotations
+        if: always()
+        run: pnpm run quality:annotate
+
+      - name: Upload quality artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-report
+          path: artifacts/docnav-quality/
+
+      - name: Write step summary
+        if: always()
+        run: |
+          if [ -f artifacts/docnav-quality/report.md ]; then
+            echo "# Code Quality Observability" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**⚠️ Non-blocking — metric values do not cause CI failure. Clippy remains the Rust blocking lint gate.**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            tail -n +2 artifacts/docnav-quality/report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "# Code Quality Observability" >> $GITHUB_STEP_SUMMARY
+            echo "No report generated." >> $GITHUB_STEP_SUMMARY
+          fi
