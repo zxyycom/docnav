@@ -9,6 +9,7 @@ import {
   formatCompletionLine,
   formatDurationMs,
   parseArgs,
+  reportCountForChecks,
   visibleOutputLines
 } from "./verify-docnav-workspace.mjs";
 
@@ -44,6 +45,7 @@ describe("workspace verifier configuration", () => {
 
     assert.ok(requiredLabels.includes("cargo fmt"));
     assert.ok(requiredLabels.includes("docs schema validator"));
+    assert.ok(requiredLabels.includes("smoke harness tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
     assert.ok(!requiredLabels.includes("cargo test"));
     assert.ok(!requiredLabels.includes("quality report tests"));
@@ -106,6 +108,14 @@ describe("workspace verifier configuration", () => {
       }),
       "  failed: cargo test (1m 05s)"
     );
+  });
+
+  it("counts top-level report groups separately from executable leaf checks", () => {
+    const requiredChecks = checksForProfile(PROFILE_REQUIRED);
+
+    assert.ok(requiredChecks.some((check) => check.label === "docs schema validator"));
+    assert.ok(!requiredChecks.some((check) => check.label === "docs validators"));
+    assert.equal(reportCountForChecks(requiredChecks), 6);
   });
 
 });

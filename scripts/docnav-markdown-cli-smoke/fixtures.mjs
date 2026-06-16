@@ -20,12 +20,20 @@ export function setNormalRef(ref) {
   smokeState.normalRef = ref;
 }
 
-export function getNormalRef() {
+export async function getNormalRef() {
   if (smokeState.normalRef) {
     return smokeState.normalRef;
   }
+  if (smokeState.normalRefPromise) {
+    return smokeState.normalRefPromise;
+  }
+  smokeState.normalRefPromise = loadNormalRef();
+  return smokeState.normalRefPromise;
+}
+
+async function loadNormalRef() {
   const normal = fixture("normal.md");
-  const record = runCli("outline normal readable-json for ref", [
+  const record = await runCli("outline normal readable-json for ref", [
     "outline",
     normal,
     "--output",

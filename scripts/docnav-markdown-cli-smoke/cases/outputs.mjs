@@ -16,11 +16,15 @@ import {
   parseReadableViewHeader,
 } from "../assertions.mjs";
 
-export function testDocumentOutputMatrix() {
+export function createDocumentOutputMatrixTasks() {
+  return [{ id: "markdown-output-matrix", run: testDocumentOutputMatrix }];
+}
+
+async function testDocumentOutputMatrix() {
   const normal = fixture("normal.md");
   const readable = {};
 
-  const { record: outlineRecord, json: outline } = runSuccessfulJsonCase(
+  const { record: outlineRecord, json: outline } = await runSuccessfulJsonCase(
     "outline normal readable-json",
     ["outline", normal, "--output", "readable-json"],
     {
@@ -169,9 +173,8 @@ export function testDocumentOutputMatrix() {
     }
   ];
 
-  // Collect readable-json results for protocol-json comparison.
   for (const item of operations.slice(1)) {
-    const { json } = runSuccessfulJsonCase(
+    const { json } = await runSuccessfulJsonCase(
       `${item.operation} normal readable-json`,
       [...item.args, "--output", "readable-json"],
       {
@@ -187,7 +190,7 @@ export function testDocumentOutputMatrix() {
 
   // 3.5: readable-view output tests — replacing the old "text" output mode.
   for (const item of operations) {
-    const record = runCli(
+    const record = await runCli(
       `${item.operation} normal readable-view`,
       [...item.args, "--output", "readable-view"]
     );
@@ -202,7 +205,7 @@ export function testDocumentOutputMatrix() {
 
   // 3.5: default output mode (no --output flag) is also readable-view.
   for (const item of operations) {
-    const record = runCli(`${item.operation} normal default output`, item.args);
+    const record = await runCli(`${item.operation} normal default output`, item.args);
     expectExit(record, 0);
     expectStderrEmpty(record);
     expect(record, record.stdout.trimStart().startsWith("{"), "default output starts with JSON header (readable-view)");
@@ -214,7 +217,7 @@ export function testDocumentOutputMatrix() {
 
   // 3.5: protocol-json output tests (unchanged boundary).
   for (const item of operations) {
-    runProtocolResponseCase(
+    await runProtocolResponseCase(
       `${item.operation} normal protocol-json`,
       [...item.args, "--output", "protocol-json"],
       {

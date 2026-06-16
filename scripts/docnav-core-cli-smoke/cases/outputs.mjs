@@ -18,12 +18,16 @@ import {
   parseReadableViewHeader
 } from "../assertions.mjs";
 
-export function testDocumentOutputMatrix() {
+export function createDocumentOutputMatrixTasks() {
+  return [{ id: "core-output-matrix", run: testDocumentOutputMatrix }];
+}
+
+async function testDocumentOutputMatrix() {
   const project = createProject("output-matrix");
   const markdown = createRealMarkdownAdapter(project);
   writeRegistry(project, [markdown]);
 
-  const readable = readReadableResults(project);
+  const readable = await readReadableResults(project);
   const ref = readable.outline.entries[0].ref;
 
   // ── readable-view (default) output checks ────────────────────────────
@@ -78,36 +82,6 @@ export function testDocumentOutputMatrix() {
     }
   ];
 
-  for (const item of readableViewChecks) {
-    const record = runCli(item.name, item.args, { project });
-    expectExit(record, 0);
-    expectStderrEmpty(record);
-    // readable-view starts with JSON header.
-    expect(record, record.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
-    expect(record, !record.stdout.includes("\"protocol_version\""), "readable-view omits protocol envelope");
-    for (const check of item.checks) {
-      check(record);
-    }
-  }
-
-  const warningRecord = runCli("outline readable-view warning stays on stdout", [
-    "outline",
-    project.normalRelPath,
-    "--future",
-    "--output",
-    "readable-view"
-  ], { project });
-  expectExit(warningRecord, 0);
-  expectStderrEmpty(warningRecord);
-  const warningHeader = parseReadableViewHeader(warningRecord);
-  expectOutlineResultsEquivalent(
-    warningRecord,
-    warningHeader,
-    readable.outline,
-    "warning readable-view outline fields match readable-json"
-  );
-  expectStructuredWarning(warningRecord, warningHeader.warnings?.[0], ["--future"], "unknown flag");
-
   // ── default output (readable-view) without explicit --output ────────
 
   const defaultCases = [
@@ -156,16 +130,6 @@ export function testDocumentOutputMatrix() {
     }
   ];
 
-  for (const item of defaultCases) {
-    const record = runCli(item.name, item.args, { project });
-    expectExit(record, 0);
-    expectStderrEmpty(record);
-    expect(record, record.stdout.trimStart().startsWith("{"), "default output is readable-view JSON header");
-    for (const check of item.checks) {
-      check(record);
-    }
-  }
-
   const protocolCases = [
     {
       name: "outline protocol-json output",
@@ -197,8 +161,48 @@ export function testDocumentOutputMatrix() {
     }
   ];
 
+  for (const item of readableViewChecks) {
+    const record = await runCli(item.name, item.args, { project });
+    expectExit(record, 0);
+    expectStderrEmpty(record);
+    // readable-view starts with JSON header.
+    expect(record, record.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
+    expect(record, !record.stdout.includes("\"protocol_version\""), "readable-view omits protocol envelope");
+    for (const check of item.checks) {
+      check(record);
+    }
+  }
+
+  const warningRecord = await runCli("outline readable-view warning stays on stdout", [
+    "outline",
+    project.normalRelPath,
+    "--future",
+    "--output",
+    "readable-view"
+  ], { project });
+  expectExit(warningRecord, 0);
+  expectStderrEmpty(warningRecord);
+  const warningHeader = parseReadableViewHeader(warningRecord);
+  expectOutlineResultsEquivalent(
+    warningRecord,
+    warningHeader,
+    readable.outline,
+    "warning readable-view outline fields match readable-json"
+  );
+  expectStructuredWarning(warningRecord, warningHeader.warnings?.[0], ["--future"], "unknown flag");
+
+  for (const item of defaultCases) {
+    const record = await runCli(item.name, item.args, { project });
+    expectExit(record, 0);
+    expectStderrEmpty(record);
+    expect(record, record.stdout.trimStart().startsWith("{"), "default output is readable-view JSON header");
+    for (const check of item.checks) {
+      check(record);
+    }
+  }
+
   for (const item of protocolCases) {
-    const record = runCli(item.name, item.args, { project });
+    const record = await runCli(item.name, item.args, { project });
     expectExit(record, 0);
     expectStderrEmpty(record);
     const json = parseJson(record);
@@ -208,8 +212,8 @@ export function testDocumentOutputMatrix() {
   }
 }
 
-function readReadableResults(project) {
-  const outline = runReadable(project, "outline readable-json output", [
+async function readReadableResults(project) {
+  const outline = await runReadable(project, "outline readable-json output", [
     "outline",
     project.normalRelPath,
     "--output",
@@ -218,7 +222,7 @@ function readReadableResults(project) {
   expect(outline.record, Array.isArray(outline.json.entries) && outline.json.entries.length > 0, "outline has entries");
   const ref = outline.json.entries[0].ref;
 
-  const read = runReadable(project, "read readable-json output", [
+  const read = await runReadable(project, "read readable-json output", [
     "read",
     project.normalRelPath,
     "--ref",
@@ -228,7 +232,7 @@ function readReadableResults(project) {
   ], "readableRead");
   expect(read.record, read.json.content_type === "text/markdown", "read readable-json preserves content_type");
 
-  const find = runReadable(project, "find readable-json output", [
+  const find = await runReadable(project, "find readable-json output", [
     "find",
     project.normalRelPath,
     "--query",
@@ -237,7 +241,7 @@ function readReadableResults(project) {
     "readable-json"
   ], "readableFind");
 
-  const info = runReadable(project, "info readable-json output", [
+  const info = await runReadable(project, "info readable-json output", [
     "info",
     project.normalRelPath,
     "--output",
@@ -252,8 +256,8 @@ function readReadableResults(project) {
   };
 }
 
-function runReadable(project, name, args, schemaName) {
-  const record = runCli(name, args, { project });
+async function runReadable(project, name, args, schemaName) {
+  const record = await runCli(name, args, { project });
   expectExit(record, 0);
   expectStderrEmpty(record);
   const json = parseJson(record);

@@ -18,7 +18,7 @@
     "smoke:docnav-markdown": "pnpm run smoke:docnav-markdown:dev",
     "verify:docnav-package": "node scripts/verify-docnav-package.mjs",
     "smoke:docnav-package": "node scripts/docnav-package-smoke.mjs",
-    "test:workspace-verifier": "node --test scripts/verify-docnav-workspace.test.mjs scripts/lib/parallel-task-runner.test.mjs",
+    "test:workspace-verifier": "node --test scripts/verify-docnav-workspace.test.mjs scripts/smoke-harness.test.mjs scripts/lib/parallel-task-runner.test.mjs",
     "test:release-package-scripts": "node --test scripts/release-package/args.test.mjs",
     "verify:docnav": "node scripts/verify-docnav-workspace.mjs",
     "verify:docnav:required": "node scripts/verify-docnav-workspace.mjs --profile required",

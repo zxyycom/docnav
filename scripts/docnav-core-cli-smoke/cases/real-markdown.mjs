@@ -11,12 +11,38 @@ import {
 } from "../assertions.mjs";
 import { validateSchema } from "../harness.mjs";
 
-export function testRealMarkdownOutlineRefRead() {
+export function createRealMarkdownOutlineRefReadTasks() {
+  return [{ id: "core-real-markdown-outline-ref-read", run: testRealMarkdownOutlineRefRead }];
+}
+
+export function createRealMarkdownFindRefReadTasks() {
+  return [{ id: "core-real-markdown-find-ref-read", run: testRealMarkdownFindRefRead }];
+}
+
+export function createRealMarkdownRefInvalidTasks() {
+  return [
+    {
+      id: "core-real-markdown-ref-invalid-old-heading-readable",
+      run: () => testRealMarkdownRefInvalidReadable("old heading format", "L4:Guide > Install")
+    },
+    {
+      id: "core-real-markdown-ref-invalid-unrecognized-readable",
+      run: () => testRealMarkdownRefInvalidReadable("unrecognized grammar", "bad:ref")
+    },
+    { id: "core-real-markdown-ref-invalid-protocol", run: testRealMarkdownRefInvalidProtocol }
+  ];
+}
+
+export function createRealMarkdownRefNotFoundTasks() {
+  return [{ id: "core-real-markdown-ref-not-found", run: testRealMarkdownRefNotFound }];
+}
+
+async function testRealMarkdownOutlineRefRead() {
   const project = createProject("real-markdown-outline-read");
   const markdown = createRealMarkdownAdapter(project);
   writeRegistry(project, [markdown]);
 
-  const outline = runCli("core outline real markdown readable-json", [
+  const outline = await runCli("core outline real markdown readable-json", [
     "outline",
     project.normalRelPath,
     "--output",
@@ -31,7 +57,7 @@ export function testRealMarkdownOutlineRefRead() {
   const ref = outlineJson.entries[0].ref;
   expect(outline, typeof ref === "string" && ref.length > 0, "outline exposes a nonempty ref");
 
-  const read = runCli("core read real markdown readable-json", [
+  const read = await runCli("core read real markdown readable-json", [
     "read",
     project.normalRelPath,
     "--ref",
@@ -50,7 +76,7 @@ export function testRealMarkdownOutlineRefRead() {
   expect(read, readJson.content_type === "text/markdown", "read preserves content_type");
 }
 
-export function testRealMarkdownFindRefRead() {
+async function testRealMarkdownFindRefRead() {
   // 7.11: find → ref → read shared call chain.
   // Core obtains a find match ref, submits it unchanged to read, and the
   // adapter returns content. This proves find refs are usable in read
@@ -59,7 +85,7 @@ export function testRealMarkdownFindRefRead() {
   const markdown = createRealMarkdownAdapter(project);
   writeRegistry(project, [markdown]);
 
-  const find = runCli("core find real markdown readable-json", [
+  const find = await runCli("core find real markdown readable-json", [
     "find",
     project.normalRelPath,
     "--query",
@@ -76,7 +102,7 @@ export function testRealMarkdownFindRefRead() {
   const matchRef = findJson.matches[0].ref;
   expect(find, typeof matchRef === "string" && matchRef.length > 0, "find match exposes a nonempty ref");
 
-  const read = runCli("core read from find ref readable-json", [
+  const read = await runCli("core read from find ref readable-json", [
     "read",
     project.normalRelPath,
     "--ref",
@@ -94,39 +120,38 @@ export function testRealMarkdownFindRefRead() {
   expect(read, readJson.content_type === "text/markdown", "read preserves content_type");
 }
 
-export function testRealMarkdownRefInvalid() {
+async function testRealMarkdownRefInvalidReadable(label, ref) {
   // 7.9: core CLI passes an invalid ref unchanged to the adapter and maps
   // REF_INVALID. The core layer does not interpret the ref grammar; the
   // adapter owns ref interpretation and error classification.
-  const project = createProject("real-markdown-ref-invalid");
+  const project = createProject(`real-markdown-ref-invalid-${label}`);
   const markdown = createRealMarkdownAdapter(project);
   writeRegistry(project, [markdown]);
 
-  const nonCanonicalRefs = [
-    { label: "old heading format", ref: "L4:Guide > Install" },
-    { label: "unrecognized grammar", ref: "bad:ref" }
-  ];
+  const readableRecord = await runCli(`core ref_invalid readable-json (${label})`, [
+    "read",
+    project.normalRelPath,
+    "--ref",
+    ref,
+    "--output",
+    "readable-json"
+  ], { project });
+  expectExit(readableRecord, 3);
+  const readableJson = parseJson(readableRecord);
+  validateSchema(readableRecord, "readableError", readableJson);
+  expectNoProtocolEnvelope(readableRecord, readableJson);
+  expect(readableRecord, readableJson.code === "REF_INVALID", `core readable REF_INVALID for ${label}`);
+  expect(readableRecord, Object.hasOwn(readableJson.details, "ref"), `core readable includes details.ref for ${label}`);
+  expect(readableRecord, Object.hasOwn(readableJson.details, "reason"), `core readable includes details.reason for ${label}`);
+}
 
-  for (const item of nonCanonicalRefs) {
-    const readableRecord = runCli(`core ref_invalid readable-json (${item.label})`, [
-      "read",
-      project.normalRelPath,
-      "--ref",
-      item.ref,
-      "--output",
-      "readable-json"
-    ], { project });
-    expectExit(readableRecord, 3);
-    const readableJson = parseJson(readableRecord);
-    validateSchema(readableRecord, "readableError", readableJson);
-    expectNoProtocolEnvelope(readableRecord, readableJson);
-    expect(readableRecord, readableJson.code === "REF_INVALID", `core readable REF_INVALID for ${item.label}`);
-    expect(readableRecord, Object.hasOwn(readableJson.details, "ref"), `core readable includes details.ref for ${item.label}`);
-    expect(readableRecord, Object.hasOwn(readableJson.details, "reason"), `core readable includes details.reason for ${item.label}`);
-  }
-
+async function testRealMarkdownRefInvalidProtocol() {
   // Protocol-json path: verify envelope maps REF_INVALID.
-  const protoRecord = runCli("core ref_invalid protocol-json", [
+  const project = createProject("real-markdown-ref-invalid-protocol");
+  const markdown = createRealMarkdownAdapter(project);
+  writeRegistry(project, [markdown]);
+
+  const protoRecord = await runCli("core ref_invalid protocol-json", [
     "read",
     project.normalRelPath,
     "--ref",
@@ -144,14 +169,14 @@ export function testRealMarkdownRefInvalid() {
   expect(protoRecord, protoJson.error.details.ref === "bad:ref", "core protocol preserves ref in error details");
 }
 
-export function testRealMarkdownRefNotFound() {
+async function testRealMarkdownRefNotFound() {
   // 7.11: canonical grammar but no match returns REF_NOT_FOUND via core.
   // The core just passes the ref; the adapter performs the actual lookup.
   const project = createProject("real-markdown-ref-not-found");
   const markdown = createRealMarkdownAdapter(project);
   writeRegistry(project, [markdown]);
 
-  const record = runCli("core ref_not_found readable-json", [
+  const record = await runCli("core ref_not_found readable-json", [
     "read",
     project.normalRelPath,
     "--ref",

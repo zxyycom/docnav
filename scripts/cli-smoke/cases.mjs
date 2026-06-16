@@ -6,14 +6,14 @@ import {
 } from "./assertions.mjs";
 
 export function createCliSmokeCases({ runCli, validateSchema }) {
-  function runSuccessfulJsonCase(name, args, options) {
+  async function runSuccessfulJsonCase(name, args, options) {
     const {
       schema,
       commandOptions,
       check = () => {},
       checkStderr = expectStderrEmpty
     } = options;
-    const record = runCli(name, args, commandOptions);
+    const record = await runCli(name, args, commandOptions);
     expectExit(record, 0);
     checkStderr(record);
     const json = parseJson(record);
@@ -22,7 +22,7 @@ export function createCliSmokeCases({ runCli, validateSchema }) {
     return { record, json };
   }
 
-  function runProtocolResponseCase(name, args, options) {
+  async function runProtocolResponseCase(name, args, options) {
     const {
       operation,
       schema = "protocolResponse",

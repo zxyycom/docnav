@@ -111,6 +111,20 @@ describe("parallel task runner", () => {
     assert.deepEqual(taskById(tasks, "summary").dependsOn, ["markdown-smoke", "core-smoke"]);
   });
 
+  it("accepts a task preparation strategy before graph validation and scheduling", async () => {
+    const seen = [];
+
+    await runParallelTasks([{ id: "group", tasks: [{ id: "leaf", run: () => "done" }] }], {
+      prepareTasks: expandTasks,
+      execute: (task) => {
+        seen.push(task.id);
+        return task.run(task);
+      }
+    });
+
+    assert.deepEqual(seen, ["leaf"]);
+  });
+
   it("rejects duplicate ids and unknown dependencies", async () => {
     assert.throws(
       () => validateTaskGraph([

@@ -6,17 +6,22 @@ import {
   compileSchemas,
   printFailureSummary,
   printSuccessSummary,
-  runTest,
+  runSmokeTasks,
   smokeState,
   writeAuditLogs
 } from "./harness.mjs";
 
-import { testRealMarkdownFindRefRead, testRealMarkdownOutlineRefRead, testRealMarkdownRefInvalid, testRealMarkdownRefNotFound } from "./cases/real-markdown.mjs";
-import { testDocumentOutputMatrix } from "./cases/outputs.mjs";
-import { testAdapterSelectionMatrix } from "./cases/adapter-selection.mjs";
-import { testCliArgumentFailures } from "./cases/cli-args.mjs";
-import { testConfigContextAndCompatibility } from "./cases/config-management.mjs";
-import { testRegistryAndContractFailures } from "./cases/failures.mjs";
+import {
+  createRealMarkdownFindRefReadTasks,
+  createRealMarkdownOutlineRefReadTasks,
+  createRealMarkdownRefInvalidTasks,
+  createRealMarkdownRefNotFoundTasks
+} from "./cases/real-markdown.mjs";
+import { createDocumentOutputMatrixTasks } from "./cases/outputs.mjs";
+import { createAdapterSelectionTasks } from "./cases/adapter-selection.mjs";
+import { createCliArgumentFailureTasks } from "./cases/cli-args.mjs";
+import { createConfigContextAndCompatibilityTasks } from "./cases/config-management.mjs";
+import { createRegistryAndContractFailureTasks } from "./cases/failures.mjs";
 
 let suiteFailure = null;
 
@@ -32,24 +37,42 @@ try {
   );
   fs.mkdirSync(tempRoot, { recursive: true });
 
-  const tests = [
-    ["real docnav + real docnav-markdown outline -> ref -> read", testRealMarkdownOutlineRefRead],
-    ["real docnav + real docnav-markdown find -> ref -> read", testRealMarkdownFindRefRead],
-    ["real docnav + real docnav-markdown REF_INVALID mapping", testRealMarkdownRefInvalid],
-    ["real docnav + real docnav-markdown REF_NOT_FOUND mapping", testRealMarkdownRefNotFound],
-    ["document operation output matrix", testDocumentOutputMatrix],
-    ["adapter selection matrix", testAdapterSelectionMatrix],
-    ["CLI argument failure matrix", testCliArgumentFailures],
-    ["config context and compatibility warnings", testConfigContextAndCompatibility],
-    ["registry and adapter contract failure matrix", testRegistryAndContractFailures]
-  ];
-  for (const [label, testFn] of tests) {
-    try {
-      runTest(label, testFn);
-    } catch (error) {
-      suiteFailure ??= error;
+  const results = await runSmokeTasks([
+    {
+      id: "real-markdown-outline-read",
+      label: "real docnav + real docnav-markdown outline -> ref -> read",
+      tasks: createRealMarkdownOutlineRefReadTasks()
+    },
+    {
+      id: "real-markdown-find-read",
+      label: "real docnav + real docnav-markdown find -> ref -> read",
+      tasks: createRealMarkdownFindRefReadTasks()
+    },
+    {
+      id: "real-markdown-ref-invalid",
+      label: "real docnav + real docnav-markdown REF_INVALID mapping",
+      tasks: createRealMarkdownRefInvalidTasks()
+    },
+    {
+      id: "real-markdown-ref-not-found",
+      label: "real docnav + real docnav-markdown REF_NOT_FOUND mapping",
+      tasks: createRealMarkdownRefNotFoundTasks()
+    },
+    { id: "document-output-matrix", label: "document operation output matrix", tasks: createDocumentOutputMatrixTasks() },
+    { id: "adapter-selection", label: "adapter selection matrix", tasks: createAdapterSelectionTasks() },
+    { id: "cli-argument-failures", label: "CLI argument failure matrix", tasks: createCliArgumentFailureTasks() },
+    {
+      id: "config-context-compatibility",
+      label: "config context and compatibility warnings",
+      tasks: createConfigContextAndCompatibilityTasks()
+    },
+    {
+      id: "registry-contract-failures",
+      label: "registry and adapter contract failure matrix",
+      tasks: createRegistryAndContractFailureTasks()
     }
-  }
+  ]);
+  suiteFailure = results.find((result) => !result.ok)?.error ?? null;
 } catch (error) {
   suiteFailure = error;
 } finally {

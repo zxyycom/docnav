@@ -1,11 +1,15 @@
 import { Buffer } from "node:buffer";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
 
+import { expandTasks, runParallelTasks } from "./lib/parallel-task-runner.mjs";
 import { compileRegisteredSchema, createSchemaAjv, formatAjvErrors } from "./validators/schema-registry.mjs";
 
 const MAX_COMMAND_OUTPUT = 1024 * 1024 * 64;
+const DEFAULT_SMOKE_CONCURRENCY = 4;
+const commandContext = new AsyncLocalStorage();
 
 export function createSmokeState(values = {}) {
   return {
@@ -55,56 +59,72 @@ export function createSmokeHarness(options) {
     binaryFallback,
     resolveCwd = () => root,
     resolveEnv = () => undefined,
+    runProcess = spawnCommand,
     safeArgPattern = /^[A-Za-z0-9_./:=@+\-]+$/
   } = options;
 
-  function runTest(label, fn) {
-    const startedCommands = state.commandRecords.length;
+  async function runTest(label, fn, options = {}) {
+    const context = { commandRecords: [] };
+    const startedAtMs = Date.now();
+    const result = {
+      id: options.id ?? label,
+      label,
+      ok: true,
+      commandCount: 0,
+      durationMs: 0,
+      startedAtMs,
+      endedAtMs: startedAtMs
+    };
     try {
-      fn();
-      state.testResults.push({
-        label,
-        ok: true,
-        commandCount: state.commandRecords.length - startedCommands
-      });
+      await commandContext.run(context, () => fn());
     } catch (error) {
-      state.testResults.push({
-        label,
-        ok: false,
-        commandCount: state.commandRecords.length - startedCommands,
-        error
-      });
-      throw error;
+      result.ok = false;
+      result.error = error;
     }
+    result.commandCount = context.commandRecords.length;
+    result.endedAtMs = Date.now();
+    result.durationMs = result.endedAtMs - startedAtMs;
+    return result;
   }
 
-  function runCli(name, args, commandOptions = {}) {
+  async function runCli(name, args, commandOptions = {}) {
     const cwd = resolveCwd(commandOptions);
-    const result = spawnSync(binaryPath(), args, {
+    const executable = binaryPath();
+    const result = await runProcess(executable, args, {
       cwd,
       env: resolveEnv(commandOptions),
-      input: commandOptions.stdin,
-      encoding: "utf8",
-      windowsHide: true,
+      stdin: commandOptions.stdin,
       maxBuffer: MAX_COMMAND_OUTPUT
     });
+
     const record = {
       name,
       args,
       cwd,
       stdinSummary: commandOptions.stdinSummary ?? summarizeStdin(commandOptions.stdin),
-      exitCode: result.status ?? 1,
-      signal: result.signal,
-      error: result.error?.message ?? null,
+      exitCode: result.exitCode ?? 1,
+      signal: result.signal ?? null,
+      error: result.error ?? null,
       stdout: result.stdout ?? "",
       stderr: result.stderr ?? "",
       assertions: []
     };
-    state.commandRecords.push(record);
+    recordCommand(state, record);
     if (record.error) {
       expect(record, false, `process spawned successfully: ${record.error}`);
     }
     return record;
+  }
+
+  async function runSmokeTasks(tasks, taskOptions = {}) {
+    const results = await runParallelTasks(tasks, {
+      concurrency: resolveSmokeConcurrency(taskOptions.concurrency),
+      prepareTasks: prepareSmokeTasks,
+      execute: async (task) => withSmokeTaskMetadata(await runTest(task.label, () => task.run(task), { id: task.id }), task)
+    });
+    const reports = aggregateSmokeReports(results);
+    state.testResults.push(...reports);
+    return reports;
   }
 
   function compileSchemas() {
@@ -196,16 +216,172 @@ export function createSmokeHarness(options) {
     printFailureSummary,
     printSuccessSummary,
     runCli,
+    runSmokeTasks,
     runTest,
     validateSchema,
     writeAuditLogs
   };
 }
 
+export function prepareSmokeTasks(tasks) {
+  return withSmokeReportMetadata(tasks);
+}
+
+export function resolveSmokeConcurrency(value = process.env.DOCNAV_SMOKE_CONCURRENCY) {
+  if (value === undefined || value === null || value === "") {
+    return DEFAULT_SMOKE_CONCURRENCY;
+  }
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    throw new Error(`DOCNAV_SMOKE_CONCURRENCY must be a positive integer: ${value}`);
+  }
+  return parsed;
+}
+
+function withSmokeReportMetadata(tasks) {
+  let reportOrder = 0;
+  return expandTasks(tasks.map((task) => annotateSmokeReport(task, null, () => reportOrder++)));
+}
+
+function annotateSmokeReport(task, inheritedReport, nextReportOrder) {
+  const report = inheritedReport ?? createSmokeReport(task, nextReportOrder);
+  if (Array.isArray(task.tasks)) {
+    return {
+      ...task,
+      tasks: task.tasks.map((child) => annotateSmokeReport(child, report, nextReportOrder))
+    };
+  }
+  return {
+    ...task,
+    reportId: report.id,
+    reportLabel: report.label,
+    reportOrder: report.order
+  };
+}
+
+function createSmokeReport(task, nextReportOrder) {
+  return {
+    id: task.id,
+    label: task.label ?? task.id,
+    order: nextReportOrder()
+  };
+}
+
+function withSmokeTaskMetadata(result, task) {
+  return {
+    ...result,
+    reportId: task.reportId,
+    reportLabel: task.reportLabel,
+    reportOrder: task.reportOrder
+  };
+}
+
+function recordCommand(state, record) {
+  state.commandRecords.push(record);
+  const context = commandContext.getStore();
+  context?.commandRecords.push(record);
+}
+
+function spawnCommand(executable, args, options) {
+  return new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+    let childError = null;
+    let settled = false;
+
+    const child = spawn(executable, args, {
+      cwd: options.cwd,
+      env: options.env,
+      windowsHide: true,
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+
+    const appendOutput = (chunk, streamName) => {
+      const text = chunk.toString("utf8");
+      const bytes = Buffer.byteLength(text, "utf8");
+      if (streamName === "stdout") {
+        stdout += text;
+        stdoutBytes += bytes;
+      } else {
+        stderr += text;
+        stderrBytes += bytes;
+      }
+      if (stdoutBytes + stderrBytes > options.maxBuffer && !child.killed) {
+        childError = new Error(`command output exceeded ${options.maxBuffer} bytes`);
+        child.kill();
+      }
+    };
+
+    child.stdout.on("data", (chunk) => appendOutput(chunk, "stdout"));
+    child.stderr.on("data", (chunk) => appendOutput(chunk, "stderr"));
+    child.on("error", (error) => {
+      childError = error;
+      finish(1, null);
+    });
+    child.on("close", (exitCode, signal) => finish(exitCode, signal));
+    child.stdin.on("error", () => {});
+
+    if (options.stdin !== undefined && options.stdin !== null) {
+      child.stdin.end(options.stdin);
+    } else {
+      child.stdin.end();
+    }
+
+    function finish(exitCode, signal) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolve({
+        exitCode: exitCode ?? 1,
+        signal,
+        error: childError?.message ?? null,
+        stdout,
+        stderr
+      });
+    }
+  });
+}
+
 function formatTestResult(result) {
   const status = result.ok ? "PASS" : "FAIL";
   const error = result.error ? `: ${result.error.message}` : "";
-  return `${status} ${result.label} (${result.commandCount} command(s))${error}`;
+  const duration = Number.isFinite(result.durationMs) ? `, ${result.durationMs}ms` : "";
+  return `${status} ${result.label} (${result.commandCount} command(s)${duration})${error}`;
+}
+
+function aggregateSmokeReports(results) {
+  const reports = new Map();
+
+  for (const result of results) {
+    const reportId = result.reportId ?? result.id ?? result.label;
+    const report = reports.get(reportId) ?? {
+      id: reportId,
+      label: result.reportLabel ?? result.label,
+      reportId,
+      reportLabel: result.reportLabel ?? result.label,
+      reportOrder: result.reportOrder ?? reports.size,
+      ok: true,
+      commandCount: 0,
+      durationMs: 0,
+      startedAtMs: result.startedAtMs,
+      endedAtMs: result.endedAtMs
+    };
+
+    report.ok &&= result.ok;
+    report.commandCount += result.commandCount;
+    report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
+    report.endedAtMs = Math.max(report.endedAtMs, result.endedAtMs);
+    report.durationMs = report.endedAtMs - report.startedAtMs;
+    if (!result.ok && !report.error) {
+      report.error = result.error;
+    }
+    reports.set(reportId, report);
+  }
+
+  return [...reports.values()].sort((left, right) => left.reportOrder - right.reportOrder);
 }
 
 function formatAssertions(assertions) {

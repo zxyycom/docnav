@@ -64,12 +64,15 @@ export const checks = defineChecks([
       },
       {
         id: "docs-validators",
+        label: "docs validators",
         tasks: docsValidatorChecks()
       },
       {
         id: "workspace-verifier-script-tests",
+        label: "workspace verifier script tests",
         tasks: nodeTestFileChecks([
           ["workspace-verifier-tests", "workspace verifier tests", "scripts/verify-docnav-workspace.test.mjs"],
+          ["smoke-harness-tests", "smoke harness tests", "scripts/smoke-harness.test.mjs"],
           ["parallel-task-runner-tests", "parallel task runner tests", "scripts/lib/parallel-task-runner.test.mjs"]
         ])
       },
@@ -99,6 +102,7 @@ export const checks = defineChecks([
     tasks: [
       {
         id: "quality-observability-tests",
+        label: "quality observability tests",
         tasks: nodeTestFileChecks([
           ["quality-annotations-tests", "quality annotations tests", "test/quality/annotations.test.mjs"],
           ["quality-baseline-tests", "quality baseline tests", "test/quality/baseline.test.mjs"],
@@ -115,6 +119,7 @@ export const checks = defineChecks([
       },
       {
         id: "docnav-development-smoke",
+        label: "docnav development smoke",
         tasks: [
           {
             id: "docnav-development-binaries",
@@ -250,6 +255,10 @@ export function formatCompletionLine(result) {
   return `  ${result.ok ? "passed" : "failed"}: ${result.check.label} (${formatDurationMs(result.durationMs)})`;
 }
 
+export function reportCountForChecks(checkList) {
+  return new Set(checkList.map(reportIdForCheck)).size;
+}
+
 export function formatDurationMs(durationMs) {
   if (!Number.isFinite(durationMs)) {
     return "unknown";
@@ -284,31 +293,38 @@ async function main() {
 
 async function runVerification({ profile }) {
   const selectedChecks = checksForProfile(profile);
+  const totalReports = reportCountForChecks(selectedChecks);
+  const completeReport = createReportCompletionTracker(selectedChecks);
   const logPaths = createLogPaths();
-  initializeLogs(logPaths, profile, selectedChecks.length);
+  initializeLogs(logPaths, profile, totalReports, selectedChecks.length);
 
   const startedAtMs = Date.now();
   const completedResults = [];
+  const completedReports = [];
 
-  printHeader(profile, selectedChecks.length);
+  printHeader(profile, totalReports);
   await runParallelTasks(selectedChecks, {
     concurrency: DEFAULT_CONCURRENCY,
     execute: executeCheck,
     onComplete: (result) => {
       completedResults.push(result);
-      console.log(formatCompletionLine(result));
       appendLog(logPaths, result);
+      const report = completeReport(result);
+      if (report) {
+        completedReports.push(report);
+        console.log(formatCompletionLine(report));
+      }
     }
   });
 
-  const failures = completedResults.filter((result) => !result.ok);
+  const failures = completedReports.filter((result) => !result.ok);
   const totalDurationMs = Date.now() - startedAtMs;
   finalizeLogs(logPaths, totalDurationMs);
 
   printSummary({
     profile,
-    totalChecks: selectedChecks.length,
-    completedResults,
+    totalChecks: totalReports,
+    completedResults: completedReports,
     totalDurationMs,
     logPaths
   });
@@ -332,7 +348,8 @@ async function executeCheck(check) {
       exitCode: 0,
       stdout: stdout ?? "",
       stderr: stderr ?? "",
-      durationMs: Date.now() - startedAtMs
+      startedAtMs,
+      endedAtMs: Date.now()
     });
   } catch (error) {
     return buildCheckResult(check, {
@@ -341,7 +358,8 @@ async function executeCheck(check) {
       stdout: typeof error.stdout === "string" ? error.stdout : "",
       stderr: typeof error.stderr === "string" ? error.stderr : "",
       error,
-      durationMs: Date.now() - startedAtMs
+      startedAtMs,
+      endedAtMs: Date.now()
     });
   }
 }
@@ -356,7 +374,9 @@ function buildCheckResult(check, data) {
     stdout: data.stdout,
     stderr: data.stderr,
     combinedOutput,
-    durationMs: data.durationMs
+    durationMs: data.endedAtMs - data.startedAtMs,
+    startedAtMs: data.startedAtMs,
+    endedAtMs: data.endedAtMs
   };
 }
 
@@ -444,7 +464,7 @@ function createLogPaths() {
   ];
 }
 
-function initializeLogs(logPaths, profile, totalChecks) {
+function initializeLogs(logPaths, profile, totalChecks, leafChecks) {
   fs.mkdirSync(logDir, { recursive: true });
   for (const logPath of logPaths) {
     fs.writeFileSync(
@@ -455,6 +475,7 @@ function initializeLogs(logPaths, profile, totalChecks) {
         `cwd: ${root}`,
         `profile: ${profile}`,
         `checks: ${totalChecks}`,
+        `leaf checks: ${leafChecks}`,
         ""
       ].join("\n"),
       "utf8"
@@ -470,11 +491,95 @@ function finalizeLogs(logPaths, totalDurationMs) {
 }
 
 function defineChecks(checkList) {
-  return expandTasks(checkList).map((check) => ({
+  return withCheckReportMetadata(checkList).map((check) => ({
     args: [],
     ignoreOutput: [],
     ...check
   }));
+}
+
+function withCheckReportMetadata(checkList) {
+  return expandTasks(checkList.map((check) => annotateCheckReport(check, null)));
+}
+
+function annotateCheckReport(check, inheritedReport) {
+  const report = inheritedReport ?? (typeof check.label === "string" ? createCheckReport(check) : null);
+  if (Array.isArray(check.tasks)) {
+    return {
+      ...check,
+      tasks: check.tasks.map((child) => annotateCheckReport(child, report))
+    };
+  }
+  const leafReport = report ?? createCheckReport(check);
+  return {
+    ...check,
+    reportId: leafReport.id,
+    reportLabel: leafReport.label
+  };
+}
+
+function createCheckReport(check) {
+  return {
+    id: check.id,
+    label: check.label ?? check.id
+  };
+}
+
+function createReportCompletionTracker(checkList) {
+  const reports = new Map();
+  for (const check of checkList) {
+    const reportId = reportIdForCheck(check);
+    const report = reports.get(reportId) ?? {
+      check: {
+        id: reportId,
+        label: reportLabelForCheck(check)
+      },
+      expected: 0,
+      completed: 0,
+      ok: true,
+      exitCode: 0,
+      error: null,
+      startedAtMs: Number.POSITIVE_INFINITY,
+      endedAtMs: 0
+    };
+    report.expected += 1;
+    reports.set(reportId, report);
+  }
+
+  return (result) => {
+    const report = reports.get(reportIdForCheck(result.check));
+    report.completed += 1;
+    report.ok &&= result.ok;
+    report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
+    report.endedAtMs = Math.max(report.endedAtMs, result.endedAtMs);
+    if (!result.ok && !report.error) {
+      report.error = result.error;
+      report.exitCode = result.exitCode;
+    }
+    if (report.completed !== report.expected) {
+      return null;
+    }
+    return {
+      check: report.check,
+      ok: report.ok,
+      exitCode: report.exitCode,
+      error: report.error,
+      stdout: "",
+      stderr: "",
+      combinedOutput: "",
+      durationMs: report.endedAtMs - report.startedAtMs,
+      startedAtMs: report.startedAtMs,
+      endedAtMs: report.endedAtMs
+    };
+  };
+}
+
+function reportIdForCheck(check) {
+  return check.reportId ?? check.id;
+}
+
+function reportLabelForCheck(check) {
+  return check.reportLabel ?? check.label;
 }
 
 function docsValidatorChecks() {

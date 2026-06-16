@@ -21,18 +21,20 @@ import {
 } from "../assertions.mjs";
 import { exitCodes } from "../config.mjs";
 
-export function testConfigContextAndCompatibility() {
-  testProjectAndUserConfig();
-  testConfigListPath();
-  testInitVersionDoctor();
-  testHelpCommands();
-  testCompatibilityWarnings();
+export function createConfigContextAndCompatibilityTasks() {
+  return [
+    { id: "core-config-project-user", run: testProjectAndUserConfig },
+    { id: "core-config-list-path", run: testConfigListPath },
+    { id: "core-config-init-version-doctor", run: testInitVersionDoctor },
+    { id: "core-config-help-commands", run: testHelpCommands },
+    { id: "core-config-compatibility-warnings", run: testCompatibilityWarnings }
+  ];
 }
 
-function testProjectAndUserConfig() {
+async function testProjectAndUserConfig() {
   const project = createProject("config-project-user");
 
-  const setProject = runCli("config set project defaults.output", [
+  const setProject = await runCli("config set project defaults.output", [
     "config",
     "set",
     "defaults.output",
@@ -44,7 +46,7 @@ function testProjectAndUserConfig() {
   expect(setProject, setProjectJson.scope === "project", "project config set writes project scope");
   expect(setProject, setProjectJson.value === "readable-json", "project config set stores output");
 
-  const setRemovedOutput = runCli("config set project defaults.output text fails", [
+  const setRemovedOutput = await runCli("config set project defaults.output text fails", [
     "config",
     "set",
     "defaults.output",
@@ -63,7 +65,7 @@ function testProjectAndUserConfig() {
   ]);
   expectStdoutIncludes(setRemovedOutput, "accepted values: readable-view, readable-json, protocol-json");
 
-  const setUser = runCli("config set user defaults.limit_chars", [
+  const setUser = await runCli("config set user defaults.limit_chars", [
     "config",
     "set",
     "defaults.limit_chars",
@@ -76,7 +78,7 @@ function testProjectAndUserConfig() {
   expect(setUser, setUserJson.scope === "user", "user config set writes user scope");
   expect(setUser, setUserJson.value === 321, "user config set stores limit chars");
 
-  const getUser = runCli("config get user defaults.limit_chars", [
+  const getUser = await runCli("config get user defaults.limit_chars", [
     "config",
     "get",
     "defaults.limit_chars",
@@ -88,7 +90,7 @@ function testProjectAndUserConfig() {
   expect(getUser, getUserJson.value === 321, "config get reads user limit value");
   expect(getUser, getUserJson.source === "user", "config get reports user scope");
 
-  const getUnsupported = runCli("config get unsupported key fails", [
+  const getUnsupported = await runCli("config get unsupported key fails", [
     "config",
     "get",
     "defaults.unknown"
@@ -99,7 +101,7 @@ function testProjectAndUserConfig() {
   expectStdoutIncludes(getUnsupported, "\"code\": \"INVALID_REQUEST\"");
   expectStdoutIncludes(getUnsupported, "unsupported docnav config key");
 
-  const list = runCli("config list effective values", ["config", "list"], { project });
+  const list = await runCli("config list effective values", ["config", "list"], { project });
   expectExit(list, 0);
   expectStderrEmpty(list);
   const listJson = parseJson(list);
@@ -110,7 +112,7 @@ function testProjectAndUserConfig() {
   expect(list, limitChars.value === 321, "config list shows user limit value");
   expect(list, limitChars.source === "user", "config list shows user limit source");
 
-  const unsetProject = runCli("config unset project defaults.output", [
+  const unsetProject = await runCli("config unset project defaults.output", [
     "config",
     "unset",
     "defaults.output"
@@ -121,7 +123,7 @@ function testProjectAndUserConfig() {
   expect(unsetProject, unsetProjectJson.scope === "project", "config unset writes project scope");
 }
 
-function testConfigListPath() {
+async function testConfigListPath() {
   const project = createProject("config-list-path");
   const fake = createFakeAdapter(project, { id: "fake-config-context" });
   writeProjectConfig(project, {
@@ -132,7 +134,7 @@ function testConfigListPath() {
   });
   writeRegistry(project, [fake]);
 
-  const record = runCli("config list --path selects adapter", [
+  const record = await runCli("config list --path selects adapter", [
     "config",
     "list",
     "--path",
@@ -148,21 +150,21 @@ function testConfigListPath() {
   expect(record, json.path_context?.defaults?.limit_chars?.source === "project", "config list --path reports limit source");
 }
 
-function testInitVersionDoctor() {
+async function testInitVersionDoctor() {
   const initProject = createProject("init-command", { docnavDir: false, normalDocument: false });
-  const init = runCli("init creates project config", ["init"], { project: initProject });
+  const init = await runCli("init creates project config", ["init"], { project: initProject });
   expectExit(init, 0);
   expectStderrEmpty(init);
   const initJson = parseJson(init);
   expect(init, initJson.created === true, "init creates config on first run");
 
-  const initAgain = runCli("init is idempotent", ["init"], { project: initProject });
+  const initAgain = await runCli("init is idempotent", ["init"], { project: initProject });
   expectExit(initAgain, 0);
   expectStderrEmpty(initAgain);
   const initAgainJson = parseJson(initAgain);
   expect(initAgain, initAgainJson.created === false, "init does not overwrite existing config");
 
-  const version = runCli("version prints crate version", ["version"], { project: initProject });
+  const version = await runCli("version prints crate version", ["version"], { project: initProject });
   expectExit(version, 0);
   expectStderrEmpty(version);
   expectStdoutIncludes(version, "docnav ");
@@ -170,23 +172,23 @@ function testInitVersionDoctor() {
   const doctorProject = createProject("doctor-failing-check");
   const bad = createFakeAdapter(doctorProject, { id: "fake-doctor-invalid", mode: "manifest-invalid" });
   writeRegistry(doctorProject, [bad]);
-  const doctor = runCli("doctor reports checks and fails on bad manifest", ["doctor"], { project: doctorProject });
+  const doctor = await runCli("doctor reports checks and fails on bad manifest", ["doctor"], { project: doctorProject });
   expectExit(doctor, exitCodes.protocolOrAdapterProcess);
   const doctorJson = parseJson(doctor);
   expect(doctor, Array.isArray(doctorJson.checks), "doctor output contains checks array");
   expect(doctor, doctorJson.checks.some((check) => check.status === "fail"), "doctor reports failing check");
 }
 
-function testHelpCommands() {
+async function testHelpCommands() {
   const project = createProject("help-commands", { normalDocument: false });
-  const root = runCli("docnav root help", ["--help"], { project });
+  const root = await runCli("docnav root help", ["--help"], { project });
   expectExit(root, 0);
   expectStderrEmpty(root);
   expectStdoutIncludes(root, "Usage:");
   expectStdoutIncludes(root, "outline");
   expectStdoutIncludes(root, "config");
 
-  const outline = runCli("docnav outline help", ["outline", "--help"], { project });
+  const outline = await runCli("docnav outline help", ["outline", "--help"], { project });
   expectExit(outline, 0);
   expectStderrEmpty(outline);
   expectStdoutIncludes(outline, "--output");
@@ -196,25 +198,25 @@ function testHelpCommands() {
   expectStdoutIncludes(outline, "protocol-json");
   expect(outline, !outline.stdout.includes("text"), "outline help does not mention text output mode");
 
-  const config = runCli("docnav config help", ["config", "--help"], { project });
+  const config = await runCli("docnav config help", ["config", "--help"], { project });
   expectExit(config, 0);
   expectStderrEmpty(config);
   expectStdoutIncludes(config, "get");
   expectStdoutIncludes(config, "set");
 
-  const configGet = runCli("docnav config get help", ["config", "get", "--help"], { project });
+  const configGet = await runCli("docnav config get help", ["config", "get", "--help"], { project });
   expectExit(configGet, 0);
   expectStderrEmpty(configGet);
   expectStdoutIncludes(configGet, "--user");
   expectStdoutIncludes(configGet, "key");
 }
 
-function testCompatibilityWarnings() {
+async function testCompatibilityWarnings() {
   const project = createProject("compatibility-warnings");
   const fake = createFakeAdapter(project, { id: "fake-compat" });
   writeRegistry(project, [fake]);
 
-  const unknownBeforePath = runCli("unknown flag before path still succeeds", [
+  const unknownBeforePath = await runCli("unknown flag before path still succeeds", [
     "outline",
     "--future",
     project.normalRelPath,
@@ -227,7 +229,7 @@ function testCompatibilityWarnings() {
   validateSchema(unknownBeforePath, "readableOutline", unknownBeforePathJson);
   expectStructuredWarning(unknownBeforePath, unknownBeforePathJson.warnings?.[0], ["--future"], "unknown flag");
 
-  const readable = runCli("readable-json unknown flag and extra positional warnings", [
+  const readable = await runCli("readable-json unknown flag and extra positional warnings", [
     "outline",
     project.normalRelPath,
     "--future",
@@ -243,7 +245,7 @@ function testCompatibilityWarnings() {
   expectStructuredWarning(readable, readableJson.warnings?.[0], ["--future"], "unknown flag");
   expectStructuredWarning(readable, readableJson.warnings?.[1], ["extra"], "extra positional");
 
-  const unused = runCli("unused known value flag warning", [
+  const unused = await runCli("unused known value flag warning", [
     "info",
     project.normalRelPath,
     "--page",
@@ -260,7 +262,7 @@ function testCompatibilityWarnings() {
   expect(unused, infoInvoke && !Object.hasOwn(infoInvoke.stdin.arguments, "page"), "info invoke request omits page");
   expect(unused, infoInvoke && !Object.hasOwn(infoInvoke.stdin.arguments, "limit_chars"), "info invoke request omits limit_chars");
 
-  const unusedInvalid = runCli("unused known invalid value warning", [
+  const unusedInvalid = await runCli("unused known invalid value warning", [
     "info",
     project.normalRelPath,
     "--limit-chars",
@@ -274,7 +276,7 @@ function testCompatibilityWarnings() {
   validateSchema(unusedInvalid, "readableInfo", unusedInvalidJson);
   expectStructuredWarning(unusedInvalid, unusedInvalidJson.warnings?.[0], ["--limit-chars", "nope"], "unused known invalid flag");
 
-  const protocol = runCli("protocol-json warning goes to stderr", [
+  const protocol = await runCli("protocol-json warning goes to stderr", [
     "outline",
     project.normalRelPath,
     "--future",

@@ -22,24 +22,26 @@ import {
 } from "../assertions.mjs";
 import { exitCodes } from "../config.mjs";
 
-export function testAdapterSelectionMatrix() {
-  testExplicitAdapterPreselection();
-  testConfigAdapterPreselection();
-  testExtensionInferencePreselection();
-  testExtensionInferenceContractFailureContinues();
-  testSupportedFalseContinues();
-  testPreselectedContractMismatchContinues();
-  testCandidateEvidenceOnAllFailure();
-  testRegistryTraversalContractFailureContinues();
-  testProtocolJsonCandidateWarningUsesStderr();
+export function createAdapterSelectionTasks() {
+  return [
+    { id: "core-adapter-selection-explicit", run: testExplicitAdapterPreselection },
+    { id: "core-adapter-selection-config", run: testConfigAdapterPreselection },
+    { id: "core-adapter-selection-extension", run: testExtensionInferencePreselection },
+    { id: "core-adapter-selection-extension-invalid-continues", run: testExtensionInferenceContractFailureContinues },
+    { id: "core-adapter-selection-supported-false-continues", run: testSupportedFalseContinues },
+    { id: "core-adapter-selection-preselected-contract-mismatch", run: testPreselectedContractMismatchContinues },
+    { id: "core-adapter-selection-candidate-evidence-all-failure", run: testCandidateEvidenceOnAllFailure },
+    { id: "core-adapter-selection-registry-contract-failure", run: testRegistryTraversalContractFailureContinues },
+    { id: "core-adapter-selection-protocol-warning-stderr", run: testProtocolJsonCandidateWarningUsesStderr }
+  ];
 }
 
-function testExplicitAdapterPreselection() {
+async function testExplicitAdapterPreselection() {
   const project = createProject("selection-explicit");
   const fake = createFakeAdapter(project, { id: "fake-explicit" });
   writeRegistry(project, [fake]);
 
-  const record = runCli("explicit --adapter preselects fake adapter", [
+  const record = await runCli("explicit --adapter preselects fake adapter", [
     "outline",
     project.normalRelPath,
     "--adapter",
@@ -55,7 +57,7 @@ function testExplicitAdapterPreselection() {
   expect(record, calls.some((call) => call.command === "invoke"), "explicit adapter invoke was called");
 }
 
-function testConfigAdapterPreselection() {
+async function testConfigAdapterPreselection() {
   const project = createProject("selection-config");
   const fake = createFakeAdapter(project, { id: "fake-config" });
   writeProjectConfig(project, {
@@ -67,7 +69,7 @@ function testConfigAdapterPreselection() {
   });
   writeRegistry(project, [fake]);
 
-  const record = runCli("defaults.adapter preselects fake adapter", [
+  const record = await runCli("defaults.adapter preselects fake adapter", [
     "outline",
     project.normalRelPath
   ], { project });
@@ -78,13 +80,13 @@ function testConfigAdapterPreselection() {
   expect(record, invoke?.stdin?.arguments?.page === 1, "omitted page reaches invoke request as 1");
 }
 
-function testExtensionInferencePreselection() {
+async function testExtensionInferencePreselection() {
   const project = createProject("selection-extension");
   const docPath = copyNormalDocument(project, "docs/inferred.core");
   const fake = createFakeAdapter(project, { id: "fake-inferred", extensions: [".core"] });
   writeRegistry(project, [fake]);
 
-  const record = runCli("extension inference preselects fake adapter", [
+  const record = await runCli("extension inference preselects fake adapter", [
     "outline",
     docPath,
     "--output",
@@ -94,7 +96,7 @@ function testExtensionInferencePreselection() {
   expect(record, json.entries[0].display.includes(fake.id), "extension-inferred adapter output is selected");
 }
 
-function testExtensionInferenceContractFailureContinues() {
+async function testExtensionInferenceContractFailureContinues() {
   const project = createProject("selection-extension-invalid-continues");
   const docPath = copyNormalDocument(project, "docs/inferred.core");
   const invalid = createFakeAdapter(project, {
@@ -105,7 +107,7 @@ function testExtensionInferenceContractFailureContinues() {
   const selected = createFakeAdapter(project, { id: "fake-inferred-after-invalid", extensions: [".core"] });
   writeRegistry(project, [invalid, selected]);
 
-  const record = runCli("extension inference skips invalid manifest and continues", [
+  const record = await runCli("extension inference skips invalid manifest and continues", [
     "outline",
     docPath,
     "--output",
@@ -122,13 +124,13 @@ function testExtensionInferenceContractFailureContinues() {
   });
 }
 
-function testSupportedFalseContinues() {
+async function testSupportedFalseContinues() {
   const project = createProject("selection-unsupported-continues");
   const unsupported = createFakeAdapter(project, { id: "fake-unsupported", mode: "probe-unsupported" });
   const selected = createFakeAdapter(project, { id: "fake-selected" });
   writeRegistry(project, [unsupported, selected]);
 
-  const record = runCli("supported false candidate continues to next adapter", [
+  const record = await runCli("supported false candidate continues to next adapter", [
     "outline",
     project.normalRelPath,
     "--output",
@@ -154,13 +156,13 @@ function testSupportedFalseContinues() {
   });
 }
 
-function testPreselectedContractMismatchContinues() {
+async function testPreselectedContractMismatchContinues() {
   const project = createProject("selection-preselected-invalid-continues");
   const invalid = createFakeAdapter(project, { id: "fake-invalid-manifest", mode: "manifest-invalid" });
   const selected = createFakeAdapter(project, { id: "fake-after-invalid" });
   writeRegistry(project, [invalid, selected]);
 
-  const record = runCli("invalid explicit adapter continues with warning", [
+  const record = await runCli("invalid explicit adapter continues with warning", [
     "outline",
     project.normalRelPath,
     "--adapter",
@@ -179,12 +181,12 @@ function testPreselectedContractMismatchContinues() {
   });
 }
 
-function testCandidateEvidenceOnAllFailure() {
+async function testCandidateEvidenceOnAllFailure() {
   const project = createProject("selection-all-failed");
   const unsupported = createFakeAdapter(project, { id: "fake-unsupported-only", mode: "probe-unsupported" });
   writeRegistry(project, [unsupported]);
 
-  const record = runCli("format unknown includes candidate evidence", [
+  const record = await runCli("format unknown includes candidate evidence", [
     "outline",
     project.normalRelPath,
     "--output",
@@ -204,14 +206,14 @@ function testCandidateEvidenceOnAllFailure() {
   });
 }
 
-function testRegistryTraversalContractFailureContinues() {
+async function testRegistryTraversalContractFailureContinues() {
   const project = createProject("selection-registry-contract-continues");
   const docPath = copyNormalDocument(project, "docs/noextension");
   const invalid = createFakeAdapter(project, { id: "fake-invalid-probe", mode: "probe-invalid" });
   const selected = createFakeAdapter(project, { id: "fake-after-invalid-probe" });
   writeRegistry(project, [invalid, selected]);
 
-  const record = runCli("registry traversal probe contract failure continues", [
+  const record = await runCli("registry traversal probe contract failure continues", [
     "outline",
     docPath,
     "--output",
@@ -228,13 +230,13 @@ function testRegistryTraversalContractFailureContinues() {
   });
 }
 
-function testProtocolJsonCandidateWarningUsesStderr() {
+async function testProtocolJsonCandidateWarningUsesStderr() {
   const project = createProject("selection-protocol-warning-stderr");
   const invalid = createFakeAdapter(project, { id: "fake-invalid-protocol-warning", mode: "manifest-invalid" });
   const selected = createFakeAdapter(project, { id: "fake-after-protocol-warning" });
   writeRegistry(project, [invalid, selected]);
 
-  const record = runCli("protocol-json candidate warning stays on stderr", [
+  const record = await runCli("protocol-json candidate warning stays on stderr", [
     "outline",
     project.normalRelPath,
     "--adapter",

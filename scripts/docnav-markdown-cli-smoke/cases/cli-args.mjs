@@ -16,7 +16,7 @@ import {
   parseJson
 } from "../assertions.mjs";
 
-export function testCliArgumentFailures() {
+export function createCliArgumentFailureTasks() {
   const normal = fixture("normal.md");
   const cases = [
     {
@@ -76,25 +76,32 @@ export function testCliArgumentFailures() {
     }
   ];
 
-  for (const item of cases) {
-    const record = runCli(item.name, item.args);
-    expectExit(record, exitCodes.input);
-    expectStdoutEmpty(record);
-    expectStderrIncludes(record, item.stderr);
-  }
+  return cases.map((item) => ({
+    id: `markdown-cli-arg-failure-${slug(item.name)}`,
+    run: async () => {
+      const record = await runCli(item.name, item.args);
+      expectExit(record, exitCodes.input);
+      expectStdoutEmpty(record);
+      expectStderrIncludes(record, item.stderr);
+    }
+  }));
 }
 
-export function testCliArgumentCompatibilityWarnings() {
-  const normal = fixture("normal.md");
-  const ref = getNormalRef();
+export function createCliArgumentCompatibilityWarningTasks() {
+  return [{ id: "markdown-cli-arg-compat", run: testCliArgumentCompatibilityWarnings }];
+}
 
-  const rootHelp = runCli("docnav-markdown root help", ["--help"]);
+async function testCliArgumentCompatibilityWarnings() {
+  const normal = fixture("normal.md");
+  const ref = await getNormalRef();
+
+  const rootHelp = await runCli("docnav-markdown root help", ["--help"]);
   expectExit(rootHelp, exitCodes.success);
   expectStderrEmpty(rootHelp);
   expectStdoutIncludes(rootHelp, "Usage:");
   expectStdoutIncludes(rootHelp, "outline");
 
-  const outlineHelp = runCli("docnav-markdown outline help", ["outline", "--help"]);
+  const outlineHelp = await runCli("docnav-markdown outline help", ["outline", "--help"]);
   expectExit(outlineHelp, exitCodes.success);
   expectStderrEmpty(outlineHelp);
   expectStdoutIncludes(outlineHelp, "--max-heading-level");
@@ -105,7 +112,7 @@ export function testCliArgumentCompatibilityWarnings() {
   expectStdoutIncludes(outlineHelp, "protocol-json");
   expect(outlineHelp, !outlineHelp.stdout.includes("text"), "outline help does not mention text output mode");
 
-  const readableView = runCli("outline unknown equals flag readable-view warning", [
+  const readableView = await runCli("outline unknown equals flag readable-view warning", [
     "outline",
     normal,
     "--unknown=value",
@@ -120,7 +127,7 @@ export function testCliArgumentCompatibilityWarnings() {
   expect(readableView, readableView.stdout.includes("cli_argv_ignored"), "readable-view header contains cli_argv_ignored warning");
   expect(readableView, readableView.stdout.includes("--unknown=value"), "readable-view warning mentions unknown token");
 
-  const unknownBeforePath = runCli("outline unknown before path readable-json warning", [
+  const unknownBeforePath = await runCli("outline unknown before path readable-json warning", [
     "outline",
     "--future",
     normal,
@@ -138,7 +145,7 @@ export function testCliArgumentCompatibilityWarnings() {
     "unknown flag"
   );
 
-  const readable = runCli("outline unknown and extra readable-json warnings", [
+  const readable = await runCli("outline unknown and extra readable-json warnings", [
     "outline",
     normal,
     "--future",
@@ -153,7 +160,7 @@ export function testCliArgumentCompatibilityWarnings() {
   expectStructuredWarning(readable, readableJson.warnings?.[0], ["--future"], "unknown flag");
   expectStructuredWarning(readable, readableJson.warnings?.[1], ["extra"], "extra positional");
 
-  const unused = runCli("read unused known flag readable-json warning", [
+  const unused = await runCli("read unused known flag readable-json warning", [
     "read",
     normal,
     "--ref",
@@ -174,7 +181,7 @@ export function testCliArgumentCompatibilityWarnings() {
     "unused native flag"
   );
 
-  const unusedInvalid = runCli("info unused invalid limit readable-json warning", [
+  const unusedInvalid = await runCli("info unused invalid limit readable-json warning", [
     "info",
     normal,
     "--limit-chars",
@@ -193,7 +200,7 @@ export function testCliArgumentCompatibilityWarnings() {
     "unused known invalid flag"
   );
 
-  const protocol = runCli("outline unknown flag protocol-json stderr warning", [
+  const protocol = await runCli("outline unknown flag protocol-json stderr warning", [
     "outline",
     normal,
     "--future",
@@ -208,7 +215,7 @@ export function testCliArgumentCompatibilityWarnings() {
   expectProtocolSuccess(protocol, protocolJson, "outline");
   expectNoWarningsField(protocol, protocolJson, "protocol-json stdout");
 
-  const manifest = runCli("manifest unknown flag stderr warning", [
+  const manifest = await runCli("manifest unknown flag stderr warning", [
     "manifest",
     "--future",
     "--output",
@@ -221,7 +228,7 @@ export function testCliArgumentCompatibilityWarnings() {
   validateSchema(manifest, "manifest", manifestJson);
   expectNoWarningsField(manifest, manifestJson, "manifest stdout");
 
-  const refLikeFlag = runCli("read ref value looks like flag", [
+  const refLikeFlag = await runCli("read ref value looks like flag", [
     "read",
     normal,
     "--ref",
@@ -235,4 +242,8 @@ export function testCliArgumentCompatibilityWarnings() {
   expect(refLikeFlag, refLikeFlag.stdout.includes("\"code\": \"REF_INVALID\""), "readable-view error has REF_INVALID");
   expect(refLikeFlag, refLikeFlag.stdout.includes("\"ref\": \"--future-value\""), "readable-view error details has ref");
   expect(refLikeFlag, refLikeFlag.stdout.includes("[block /error"), "readable-view error has /error block");
+}
+
+function slug(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

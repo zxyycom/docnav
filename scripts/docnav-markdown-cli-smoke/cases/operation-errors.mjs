@@ -13,7 +13,7 @@ import {
   parseJson
 } from "../assertions.mjs";
 
-export function testReadableOperationErrors() {
+export function createReadableOperationErrorTasks() {
   const normal = fixture("normal.md");
   const missingPath = path.join(fixturesDir, "missing.md");
   const invalidRef = "L99:Missing";
@@ -56,23 +56,26 @@ export function testReadableOperationErrors() {
     }
   ];
 
-  for (const item of cases) {
-    const record = runCli(item.name, item.args);
-    expectExit(record, exitCodes.documentRefFormat);
-    expectStderrEmpty(record);
-    const json = parseJson(record);
-    validateSchema(record, "readableError", json);
-    expectNoProtocolEnvelope(record, json);
-    expect(record, json.code === item.code, `${item.name} returns ${item.code}`);
-    expect(record, Object.hasOwn(json.details, item.detailKey), `${item.name} includes details.${item.detailKey}`);
-    if (Object.hasOwn(item, "detailValue")) {
-      expect(record, json.details[item.detailKey] === item.detailValue, `${item.name} preserves details.${item.detailKey}`);
+  return cases.map((item) => ({
+    id: `markdown-readable-operation-error-${slug(item.name)}`,
+    run: async () => {
+      const record = await runCli(item.name, item.args);
+      expectExit(record, exitCodes.documentRefFormat);
+      expectStderrEmpty(record);
+      const json = parseJson(record);
+      validateSchema(record, "readableError", json);
+      expectNoProtocolEnvelope(record, json);
+      expect(record, json.code === item.code, `${item.name} returns ${item.code}`);
+      expect(record, Object.hasOwn(json.details, item.detailKey), `${item.name} includes details.${item.detailKey}`);
+      if (Object.hasOwn(item, "detailValue")) {
+        expect(record, json.details[item.detailKey] === item.detailValue, `${item.name} preserves details.${item.detailKey}`);
+      }
+      expect(record, Array.isArray(json.guidance), `${item.name} includes guidance array`);
     }
-    expect(record, Array.isArray(json.guidance), `${item.name} includes guidance array`);
-  }
+  }));
 }
 
-export function testProtocolOperationErrors() {
+export function createProtocolOperationErrorTasks() {
   const normal = fixture("normal.md");
   const missingPath = path.join(fixturesDir, "missing.md");
   const invalidRef = "L99:Missing";
@@ -120,24 +123,31 @@ export function testProtocolOperationErrors() {
     }
   ];
 
-  for (const item of cases) {
-    const record = runCli(item.name, item.args);
-    expectExit(record, exitCodes.documentRefFormat);
-    expectNoJsonPayloadInStderr(record);
-    const json = parseJson(record);
-    validateSchema(record, "protocolResponse", json);
-    expectProtocolFailure(record, json, item.operation, item.code);
-    expect(record, Object.hasOwn(json.error.details, item.detailKey), `${item.name} includes error.details.${item.detailKey}`);
-    if (Object.hasOwn(item, "detailValue")) {
-      expect(
-        record,
-        json.error.details[item.detailKey] === item.detailValue,
-        `${item.name} preserves error.details.${item.detailKey}`
-      );
+  return cases.map((item) => ({
+    id: `markdown-protocol-operation-error-${slug(item.name)}`,
+    run: async () => {
+      const record = await runCli(item.name, item.args);
+      expectExit(record, exitCodes.documentRefFormat);
+      expectNoJsonPayloadInStderr(record);
+      const json = parseJson(record);
+      validateSchema(record, "protocolResponse", json);
+      expectProtocolFailure(record, json, item.operation, item.code);
+      expect(record, Object.hasOwn(json.error.details, item.detailKey), `${item.name} includes error.details.${item.detailKey}`);
+      if (Object.hasOwn(item, "detailValue")) {
+        expect(
+          record,
+          json.error.details[item.detailKey] === item.detailValue,
+          `${item.name} preserves error.details.${item.detailKey}`
+        );
+      }
     }
-  }
+  }));
 }
 
 function legacyBracketedOrdinalRef() {
   return ["L1:Guide ", "[", "doc", "nav:", "1", "]"].join("");
+}
+
+function slug(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

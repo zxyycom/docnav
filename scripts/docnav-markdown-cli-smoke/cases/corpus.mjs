@@ -7,15 +7,17 @@ import {
   parseJson
 } from "../assertions.mjs";
 
-export function testProcessBoundaryCorpus() {
-  testUnicodePaging();
-  testLargePagination();
-  testBomAndCrlf();
+export function createProcessBoundaryCorpusTasks() {
+  return [
+    { id: "markdown-corpus-unicode-paging", run: testUnicodePaging },
+    { id: "markdown-corpus-large-pagination", run: testLargePagination },
+    { id: "markdown-corpus-bom-crlf", run: testBomAndCrlf }
+  ];
 }
 
-function testUnicodePaging() {
+async function testUnicodePaging() {
   const unicode = fixture("unicode.md");
-  const outline = runCli("outline unicode readable-json", [
+  const outline = await runCli("outline unicode readable-json", [
     "outline",
     unicode,
     "--output",
@@ -27,7 +29,7 @@ function testUnicodePaging() {
   validateSchema(outline, "readableOutline", outlineJson);
   const ref = outlineJson.entries[0].ref;
 
-  const full = runCli("read unicode full readable-json", [
+  const full = await runCli("read unicode full readable-json", [
     "read",
     unicode,
     "--ref",
@@ -43,7 +45,7 @@ function testUnicodePaging() {
   expect(full, fullJson.content.includes("🙂"), "unicode full read includes emoji");
   expect(full, !fullJson.content.includes("\uFFFD"), "unicode full read has no replacement characters");
 
-  const paged = readAllPages(unicode, ref, 12, "unicode");
+  const paged = await readAllPages(unicode, ref, 12, "unicode");
   expect(
     paged.lastRecord,
     paged.content === fullJson.content,
@@ -51,9 +53,9 @@ function testUnicodePaging() {
   );
 }
 
-function testLargePagination() {
+async function testLargePagination() {
   const large = fixture("large-pagination.md");
-  const first = runCli("read large page 1 readable-json", [
+  const first = await runCli("read large page 1 readable-json", [
     "read",
     large,
     "--ref",
@@ -71,7 +73,7 @@ function testLargePagination() {
   validateSchema(first, "readableRead", firstJson);
   expect(first, firstJson.page === 2, "large read page 1 returns continuation page 2");
 
-  const second = runCli("read large continuation readable-json", [
+  const second = await runCli("read large continuation readable-json", [
     "read",
     large,
     "--ref",
@@ -95,7 +97,7 @@ function testLargePagination() {
     "large continuation page is next page or null"
   );
 
-  const beyond = runCli("read large beyond end readable-json", [
+  const beyond = await runCli("read large beyond end readable-json", [
     "read",
     large,
     "--ref",
@@ -114,7 +116,7 @@ function testLargePagination() {
   expect(beyond, beyondJson.content === "", "large beyond-end read returns empty content");
   expect(beyond, beyondJson.page === null, "large beyond-end read returns page null");
 
-  const firstFind = runCli("find large page 1 readable-json", [
+  const firstFind = await runCli("find large page 1 readable-json", [
     "find",
     large,
     "--query",
@@ -133,7 +135,7 @@ function testLargePagination() {
   expect(firstFind, firstFindJson.matches.length > 0, "large find page 1 returns matches");
   expect(firstFind, firstFindJson.page === 2, "large find page 1 returns continuation page 2");
 
-  const secondFind = runCli("find large continuation readable-json", [
+  const secondFind = await runCli("find large continuation readable-json", [
     "find",
     large,
     "--query",
@@ -161,7 +163,7 @@ function testLargePagination() {
     "large find continuation page is next page or null"
   );
 
-  const findBeyond = runCli("find large beyond end readable-json", [
+  const findBeyond = await runCli("find large beyond end readable-json", [
     "find",
     large,
     "--query",
@@ -181,8 +183,8 @@ function testLargePagination() {
   expect(findBeyond, findBeyondJson.page === null, "large beyond-end find returns page null");
 }
 
-function testBomAndCrlf() {
-  const bom = runCli("outline UTF-8 BOM readable-json", [
+async function testBomAndCrlf() {
+  const bom = await runCli("outline UTF-8 BOM readable-json", [
     "outline",
     fixture("utf8-bom.md"),
     "--output",
@@ -194,7 +196,7 @@ function testBomAndCrlf() {
   validateSchema(bom, "readableOutline", bomOutline);
   expect(bom, bomOutline.entries[0].ref === "H:L1:H1:I1", "BOM fixture heading ref is canonical");
 
-  const bomRead = runCli("read UTF-8 BOM readable-json", [
+  const bomRead = await runCli("read UTF-8 BOM readable-json", [
     "read",
     fixture("utf8-bom.md"),
     "--ref",
@@ -208,7 +210,7 @@ function testBomAndCrlf() {
   validateSchema(bomRead, "readableRead", bomReadJson);
   expect(bomRead, bomReadJson.content.startsWith("# Bom Heading"), "BOM is stripped before read content");
 
-  const crlf = runCli("outline CRLF readable-json", [
+  const crlf = await runCli("outline CRLF readable-json", [
     "outline",
     fixture("crlf.md"),
     "--output",
@@ -220,7 +222,7 @@ function testBomAndCrlf() {
   validateSchema(crlf, "readableOutline", crlfOutline);
   expect(crlf, crlfOutline.entries[0].ref === "H:L1:H1:I1", "CRLF fixture heading ref is canonical");
 
-  const crlfRead = runCli("read CRLF readable-json", [
+  const crlfRead = await runCli("read CRLF readable-json", [
     "read",
     fixture("crlf.md"),
     "--ref",
@@ -235,12 +237,12 @@ function testBomAndCrlf() {
   expect(crlfRead, crlfReadJson.content.includes("\r\n"), "CRLF read preserves CRLF content");
 }
 
-function readAllPages(documentPath, ref, limitChars, label) {
+async function readAllPages(documentPath, ref, limitChars, label) {
   let page = 1;
   let content = "";
   let lastRecord = null;
   for (let count = 0; count < 20; count += 1) {
-    const record = runCli(`read ${label} page ${page} readable-json`, [
+    const record = await runCli(`read ${label} page ${page} readable-json`, [
       "read",
       documentPath,
       "--ref",

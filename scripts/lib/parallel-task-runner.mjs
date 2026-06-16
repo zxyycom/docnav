@@ -2,10 +2,11 @@ const DEFAULT_CONCURRENCY = 4;
 
 export async function runParallelTasks(taskList, options = {}) {
   const concurrency = Math.max(1, options.concurrency ?? DEFAULT_CONCURRENCY);
+  const prepareTasks = options.prepareTasks ?? normalizeTaskList;
   const execute = options.execute ?? executeTask;
   const onStart = options.onStart ?? noop;
   const onComplete = options.onComplete ?? noop;
-  const pending = expandTasks(taskList);
+  const pending = prepareTasks(taskList).map(normalizeTask);
   validateTaskGraph(pending);
 
   const completedIds = new Set();
@@ -295,6 +296,13 @@ function normalizeStringList(value, fieldName) {
     throw new Error(`task.${fieldName} must be a string or string array`);
   }
   return [...value];
+}
+
+function normalizeTaskList(taskList) {
+  if (!Array.isArray(taskList)) {
+    throw new Error("task list must be an array");
+  }
+  return taskList.map(normalizeTask);
 }
 
 function executeTask(task) {

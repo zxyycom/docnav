@@ -6,17 +6,17 @@ import {
   compileSchemas,
   printFailureSummary,
   printSuccessSummary,
-  runTest,
+  runSmokeTasks,
   smokeState,
   writeAuditLogs
 } from "./harness.mjs";
 
-import { testDocumentOutputMatrix } from "./cases/outputs.mjs";
-import { testManifestProbe, testValidInvoke } from "./cases/machine-commands.mjs";
-import { testProcessBoundaryCorpus } from "./cases/corpus.mjs";
-import { testCliArgumentCompatibilityWarnings, testCliArgumentFailures } from "./cases/cli-args.mjs";
-import { testProtocolOperationErrors, testReadableOperationErrors } from "./cases/operation-errors.mjs";
-import { testInvokeFailures } from "./cases/invoke-errors.mjs";
+import { createDocumentOutputMatrixTasks } from "./cases/outputs.mjs";
+import { createManifestProbeTasks, createValidInvokeTasks } from "./cases/machine-commands.mjs";
+import { createProcessBoundaryCorpusTasks } from "./cases/corpus.mjs";
+import { createCliArgumentCompatibilityWarningTasks, createCliArgumentFailureTasks } from "./cases/cli-args.mjs";
+import { createProtocolOperationErrorTasks, createReadableOperationErrorTasks } from "./cases/operation-errors.mjs";
+import { createInvokeFailureTasks } from "./cases/invoke-errors.mjs";
 
 let suiteFailure = null;
 
@@ -27,15 +27,22 @@ try {
   assertSetup(fs.existsSync(smokeState.binaryPath), `docnav-markdown binary not found: ${smokeState.binaryPath}`);
   assertSetup(fs.existsSync(fixturesDir), `fixture directory not found: ${fixturesDir}`);
 
-  runTest("document operation output matrix", testDocumentOutputMatrix);
-  runTest("manifest/probe protocol-json schemas", testManifestProbe);
-  runTest("valid invoke stdin request", testValidInvoke);
-  runTest("Markdown process boundary corpus", testProcessBoundaryCorpus);
-  runTest("CLI argument validation matrix", testCliArgumentFailures);
-  runTest("CLI argument compatibility warning matrix", testCliArgumentCompatibilityWarnings);
-  runTest("readable operation error matrix", testReadableOperationErrors);
-  runTest("protocol-json operation error matrix", testProtocolOperationErrors);
-  runTest("invoke malformed/schema error matrix", testInvokeFailures);
+  const results = await runSmokeTasks([
+    { id: "document-output-matrix", label: "document operation output matrix", tasks: createDocumentOutputMatrixTasks() },
+    { id: "manifest-probe", label: "manifest/probe protocol-json schemas", tasks: createManifestProbeTasks() },
+    { id: "valid-invoke", label: "valid invoke stdin request", tasks: createValidInvokeTasks() },
+    { id: "process-boundary-corpus", label: "Markdown process boundary corpus", tasks: createProcessBoundaryCorpusTasks() },
+    { id: "cli-argument-failures", label: "CLI argument validation matrix", tasks: createCliArgumentFailureTasks() },
+    {
+      id: "cli-argument-compatibility",
+      label: "CLI argument compatibility warning matrix",
+      tasks: createCliArgumentCompatibilityWarningTasks()
+    },
+    { id: "readable-operation-errors", label: "readable operation error matrix", tasks: createReadableOperationErrorTasks() },
+    { id: "protocol-operation-errors", label: "protocol-json operation error matrix", tasks: createProtocolOperationErrorTasks() },
+    { id: "invoke-failures", label: "invoke malformed/schema error matrix", tasks: createInvokeFailureTasks() }
+  ]);
+  suiteFailure = results.find((result) => !result.ok)?.error ?? null;
 } catch (error) {
   suiteFailure = error;
 } finally {
