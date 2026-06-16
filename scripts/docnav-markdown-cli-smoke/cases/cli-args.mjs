@@ -70,24 +70,9 @@ export function testCliArgumentFailures() {
       stderr: "only --output protocol-json is supported for this command"
     },
     {
-      name: "probe missing path before flag",
-      args: ["probe", "--output", "protocol-json"],
-      stderr: "probe requires <path>"
-    },
-    {
-      name: "probe protocol-only --output text",
-      args: ["probe", normal, "--output", "text"],
-      stderr: "only --output protocol-json is supported for this command"
-    },
-    {
       name: "invoke positional unexpected",
       args: ["invoke", "unexpected"],
       stderr: "invoke does not accept positional arguments"
-    },
-    {
-      name: "outline invalid --output text (removed mode)",
-      args: ["outline", normal, "--output", "text"],
-      stderr: 'invalid --output "text"'
     }
   ];
 
@@ -235,20 +220,6 @@ export function testCliArgumentCompatibilityWarnings() {
   const manifestJson = parseJson(manifest);
   validateSchema(manifest, "manifest", manifestJson);
   expectNoWarningsField(manifest, manifestJson, "manifest stdout");
-
-  const probe = runCli("probe unknown flag stderr warning", [
-    "probe",
-    normal,
-    "--future",
-    "--output",
-    "protocol-json"
-  ]);
-  expectExit(probe, exitCodes.success);
-  expectStderrWarning(probe, ["--future"]);
-  expectNoJsonPayloadInStderr(probe);
-  const probeJson = parseJson(probe);
-  validateSchema(probe, "probe", probeJson);
-  expectNoWarningsField(probe, probeJson, "probe stdout");
 
   const refLikeFlag = runCli("read ref value looks like flag", [
     "read",

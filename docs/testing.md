@@ -72,21 +72,31 @@ Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明
 pnpm run verify:docnav-workspace
 ```
 
-该入口一次性覆盖常用门禁类型：Rust 格式化、生成物一致性、文档/schema/示例校验、Rust 静态检查、workspace 测试、OpenSpec 严格校验和 diff 空白检查。具体子命令和输出忽略规则由 `scripts/verify-docnav-workspace.mjs` 的 `checks` 配置维护，避免在文档中复制可执行命令清单。
+该入口默认运行 full profile，一次性覆盖常用门禁类型：Rust 格式化、生成物一致性、文档/schema/示例校验、workspace 测试、Rust 静态检查、OpenSpec 严格校验和 diff 空白检查。具体子命令和输出忽略规则由 `scripts/verify-docnav-workspace.mjs` 的 `checks` 配置维护，避免在文档中复制可执行命令清单。
+
+日常开发可先跑 required profile：
+
+```bash
+pnpm run verify:docnav-workspace:required
+```
+
+required profile 只保留快速、确定性的门禁，适合改文档、修脚本、调验证逻辑时先跑；full profile 追加质量观测测试、smoke、cargo test、cargo clippy 和 OpenSpec。
 
 开发期快捷入口：
 
 | 命令 | 用途 |
 | --- | --- |
 | `pnpm run verify:docnav` | 开发期短别名，等价于 `verify:docnav-workspace` |
+| `pnpm run verify:docnav-workspace:required` | 快速门禁，只跑必需检查 |
+| `pnpm run verify:docnav-workspace:full` | 完整门禁，包含 smoke、Rust 全量和 OpenSpec |
 | `pnpm run smoke:docnav` | 对当前开发构建运行 core 和 Markdown CLI smoke |
 | `pnpm run cli:dev -- <args>` | 构建并运行当前开发版 `docnav` |
 | `pnpm run cli:dev -- docnav-markdown <args>` | 构建并运行当前开发版 Markdown adapter |
 | `pnpm --silent dnm <args>` | 运行当前开发版 Markdown adapter，只保留命令结果和失败诊断 |
 
-终端默认透出各子命令输出，保留命令自身报告的状态信息；脚本只过滤已配置的无行动价值输出，例如 Git 的 CRLF 换行提示。输出忽略规则必须按子命令配置，避免全局吞掉真实失败或状态信息。某个检查失败时，脚本记录该检查并继续运行后续检查；全部检查结束后统一汇总失败项、每个失败命令的完整未过滤输出、通过项和日志提示。
+终端先输出 profile、检查总数和 `Checks:` 标题；每个检查完成后立即输出 `passed` / `failed`、命令标签和耗时。脚本通过 `scripts/lib/parallel-task-runner.mjs` 调度任务，check 对象使用 `type` 标记 required 或 full，使用 `dependsOn` 描述拓扑依赖，使用 `mutex` 描述不能同时运行的资源。check 可嵌套成 group，用于批量继承 `type`、`dependsOn`、`mutex`、`envFile` 等元数据；实际执行、计数和输出只针对 leaf check。没有未完成依赖且没有互斥资源占用的检查可以并发执行，完成顺序不承诺稳定。workspace verifier 中的文档 validator、Node test file、开发二进制编译和 CLI smoke 执行保持拆分：开发二进制编译只产出环境文件，core/Markdown smoke 只依赖该环境文件运行。脚本只过滤已配置的无行动价值输出，例如 Git 的 CRLF 换行提示。输出忽略规则必须按子命令配置，避免全局吞掉真实失败或状态信息。某个检查失败时，脚本记录该检查并继续运行后续检查；全部检查结束后只输出状态、profile、检查数量、通过/失败数量、真实墙钟耗时和日志路径。
 
-局部改动仍可先运行范围更小的命令；但最终交付跨 Rust、文档、OpenSpec、schema、示例或输出层边界时，应运行 `pnpm run verify:docnav-workspace`。若需要完整命令输出，按终端提示查看，或手动重跑对应子命令。
+局部改动仍可先运行范围更小的命令；但最终交付跨 Rust、文档、OpenSpec、schema、示例或输出层边界时，应运行 `pnpm run verify:docnav-workspace`。若需要先缩短反馈周期，先跑 `pnpm run verify:docnav-workspace:required`，再在需要时补跑 full profile。若需要完整命令输出，按终端提示查看，或手动重跑对应子命令。
 
 ## 发布制品与预验收
 

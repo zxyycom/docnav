@@ -58,6 +58,12 @@ pnpm run validate:links
 pnpm run validate:docs
 ```
 
+日常快速验证入口：
+
+```bash
+pnpm run verify:docnav-workspace:required
+```
+
 交付前综合验证入口：
 
 ```bash
