@@ -100,7 +100,6 @@ Markdown adapter 在 `read` 中按以下边界映射 ref 错误：
 输入 ref 是非空字符串，但不符合 Markdown adapter 当前 ref grammar（既不是 canonical heading ref，也不是 `doc:full` 或其它 Markdown 合法 ref）时，返回 `REF_INVALID`。
 
 - 稳定 details 包含原始 `ref` 和非空 `reason`。
-- 旧 heading ref 格式（`L{line}:{path}`、`L{line}#{ordinal}:{path}` 等）只作为非法 grammar 的输入示例，不构成独立 ref 类型、兼容分支或专属错误语义。
 
 ### `REF_NOT_FOUND`
 
@@ -110,7 +109,7 @@ Markdown adapter 在 `read` 中按以下边界映射 ref 错误：
 
 | 输入 | 条件 | 错误 |
 | --- | --- | --- |
-| 旧格式、非法字段、未知 ref 类型、前导零 | 不符合 Markdown 任何合法 ref | `REF_INVALID` |
+| 非法字段、未知 ref 类型、前导零 | 不符合 Markdown 任何合法 ref | `REF_INVALID` |
 | 合法 canonical heading ref | 当前解析结果无完全匹配项 | `REF_NOT_FOUND` |
 | `doc:full` | 始终合法 | 进入全文读取路径 |
 
@@ -166,8 +165,18 @@ Markdown adapter 保证：
 Markdown adapter **不**保证：
 
 - ref 跨文档修改或 parser 版本变化后继续指向同一 heading。
-- 旧 ref 在文档变化后一定失败。
-- ref 长度在每个具体 heading 上都短于旧格式。
+
+## 测试边界
+
+Markdown adapter 测试必须覆盖本页拥有的行为语义：
+
+- heading 识别、section 范围、frontmatter 和代码围栏排除。
+- outline/find/read 的 ref 生成、原样读取、display 职责和截断边界。
+- 默认 `limit_chars`、`max_heading_level` 和 page 从 `1` 开始的分页规则。
+- Unicode 字符预算、超长 display 截断、ref 完整保留和分页前进。
+- 重复 heading、重复路径、`doc:full`、`REF_INVALID` 和 `REF_NOT_FOUND` 边界。
+
+测试层级、smoke case 组织和跨入口覆盖目标见 [测试策略](../testing.md) 与 [覆盖矩阵](../testing/coverage.md)。
 
 ## 验证入口
 
@@ -184,15 +193,3 @@ pnpm --silent dnm outline <path> --output readable-json
 省略 `--output` 时使用 `readable-view`；需要结构化阅读结果时显式使用 `readable-json`，需要完整协议 envelope 时使用 `protocol-json`。
 
 交付前综合验证入口见 [测试策略](../testing.md)。
-
-## 旧格式记录
-
-以下格式是 v0 早期使用的 Markdown heading ref 语法，已在新 grammar 下不可用：
-
-- `L{line}:{path}`，例如 `L1:Guide`
-- `L{line}#{ordinal}:{path}`，例如 `L9#2:Repeat`
-- `L{line}#1:{path}`，例如 `L1#1:Guide`
-
-这些格式只作为非法 grammar 的测试输入保留。不符合当前 canonical grammar 的旧 ref 统一返回 `REF_INVALID`，不提供兼容读取或双 grammar 迁移。
-
-迁移决策背景和外部参考基线见 [MarkdownNavigator 参考](../references/markdown-navigator.md)。

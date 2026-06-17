@@ -1,15 +1,21 @@
 # 测试策略
 
-本文将“原始协议保证机器接口稳定；阅读输出保证信息密度和可读性”映射到自动化验证。
+本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。具体 smoke case 清单、覆盖矩阵和发布包预验收分别由子文档维护：
+
+- [Smoke Case 清单](testing/smoke-cases.md)：JavaScript smoke 的 case inventory 和新增用例规则。
+- [覆盖矩阵](testing/coverage.md)：跨入口、命令族和 capability 的最低覆盖目标。
+- [发布包验证](testing/release.md)：release package 的本地预验收和 CI/CD 验证边界。
+
+稳定字段、错误码、命令语义、adapter 行为和 schema shape 以 [文档导航](navigation.md#规则所有权) 指向的 owner 文档为准；测试文档只记录覆盖目标和验收边界。
 
 ## 测试层级
 
-| 层级   | 核心目标                                                                                                                              |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 层级 | 核心目标 |
+| --- | --- |
 | schema | 原始协议、manifest、probe 和各 operation readable 输出分别通过独立 schema；readable schema 用于示例和工具输出校验，不作为完整机器协议 |
-| 单元   | parser、扁平 outline、ref、有限默认值、page                                                                                           |
-| 集成   | `docnav` 配置优先级、adapter 选择、adapter 管理、invoke 单请求、三种输出模式、进程通道                                                |
-| 端到端 | 直接 CLI、MCP bridge、紧凑协议映射、精简输出和分页                                                                                    |
+| 单元 | parser、ref、默认值、分页、错误映射和其它自定义逻辑不变量 |
+| 集成 | `docnav` 配置优先级、adapter 选择、adapter 管理、invoke 单请求、输出模式和进程通道 |
+| 端到端 | 真实 CLI、MCP bridge、release package、协议映射、精简输出和 continuation 链路 |
 
 ## 测试所有权
 
@@ -25,20 +31,18 @@ JavaScript smoke 从发布给用户的可执行入口验证外部契约。覆盖
 - warning 的承载位置和 schema 校验。
 - `invoke` 的 stdin 请求链路。
 - 分页、continuation 和终止行为。
-- core、adapter 和 package 的跨进程链路。
+- core、adapter、MCP bridge 和 release package 的跨进程链路。
 
 每个契约维度至少保留一个代表性用例。同一校验规则下的多个同类非法值视为一个等价类，只选择能证明外部行为的用例。覆盖完整性由契约维度判断，不以代码覆盖率或参数组合数量衡量。
 
 ### Rust tests
 
-Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明确证明一个分支、状态转换、算法边界或数据不变量：
+Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明确证明一个分支、状态转换、算法边界或数据不变量，例如：
 
-- unknown、extra 和 unused 参数的兼容规则。
-- 参数 token 消费边界。
-- operation 只校验自身使用参数。
-- Markdown 解析语义。
-- ref 生成和定位。
-- Unicode 分页及终止规则。
+- 参数 token 消费边界和兼容规则。
+- operation 参数所有权。
+- Markdown 解析、ref 生成和定位。
+- Unicode 字符预算、分页和终止规则。
 - 协议错误映射和关键边界。
 
 以下行为由 JavaScript smoke 验证外部契约，无需在 Rust 中建立重复矩阵：
@@ -53,7 +57,7 @@ Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明
 - Rust 白盒测试放在对应 `tests.rs` 子模块，主实现文件只声明测试模块。
 - 测试通过模块可见性访问私有实现，生产 API 的可见性保持不变。
 - 单个测试只证明一个自定义不变量。
-- 参数解析测试保持约 5～8 个高价值用例；新增用例必须覆盖新的兼容规则、token 消费边界或 operation 参数所有权不变量。
+- 参数解析测试保持少量高价值用例；新增用例必须覆盖新的兼容规则、token 消费边界或 operation 参数所有权不变量。
 - 跨层测试必须分别断言内部不变量和外部进程契约，不重复相同的参数组合矩阵。
 
 ## 脚本与工具依赖
@@ -72,7 +76,7 @@ Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明
 pnpm run verify:docnav-workspace
 ```
 
-该入口默认运行 full profile，一次性覆盖常用门禁类型：Rust 格式化、生成物一致性、文档/schema/示例校验、workspace 测试、Rust 静态检查、OpenSpec 严格校验和 diff 空白检查。具体子命令和输出忽略规则由 `scripts/verify-docnav-workspace.mjs` 的 `checks` 配置维护，避免在文档中复制可执行命令清单。
+该入口默认运行 full profile，是常规交付前的完整验证入口。
 
 日常开发可先跑 required profile：
 
@@ -80,7 +84,7 @@ pnpm run verify:docnav-workspace
 pnpm run verify:docnav-workspace:required
 ```
 
-required profile 只保留快速、确定性的门禁，适合改文档、修脚本、调验证逻辑时先跑；full profile 追加质量观测测试、smoke、cargo test、cargo clippy 和 OpenSpec。
+required profile 只保留快速、确定性的必需门禁，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。full profile 在 required profile 的基础上追加质量观测测试、CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。
 
 开发期快捷入口：
 
@@ -88,135 +92,20 @@ required profile 只保留快速、确定性的门禁，适合改文档、修脚
 | --- | --- |
 | `pnpm run verify:docnav` | 开发期短别名，等价于 `verify:docnav-workspace` |
 | `pnpm run verify:docnav-workspace:required` | 快速门禁，只跑必需检查 |
-| `pnpm run verify:docnav-workspace:full` | 完整门禁，包含 smoke、Rust 全量和 OpenSpec |
+| `pnpm run verify:docnav-workspace:full` | 完整门禁，显式运行 full profile |
 | `pnpm run smoke:docnav` | 对当前开发构建运行 core 和 Markdown CLI smoke |
 | `pnpm run cli:dev -- <args>` | 构建并运行当前开发版 `docnav` |
 | `pnpm run cli:dev -- docnav-markdown <args>` | 构建并运行当前开发版 Markdown adapter |
 | `pnpm --silent dnm <args>` | 运行当前开发版 Markdown adapter，只保留命令结果和失败诊断 |
 
-终端先输出 profile、检查总数和 `Checks:` 标题；每个顶层报告项完成后输出一次 `passed` / `failed`、标签和耗时。脚本通过 `scripts/lib/parallel-task-runner.mjs` 调度任务；runner 只负责 `dependsOn` 拓扑和 `mutex` 资源互斥，任务展开、报告分组、命令记录和审计写入由调用方策略处理。check 对象使用 `type` 标记 required 或 full，使用 `dependsOn` 描述拓扑依赖，使用 `mutex` 描述不能同时运行的资源。check 可嵌套成 group，用于批量继承 `type`、`dependsOn`、`mutex`、`envFile` 等元数据；实际执行仍针对 leaf check，控制台计数和输出按 report group 聚合。没有未完成依赖且没有互斥资源占用的 leaf check 可以并发执行，完成顺序不承诺稳定。workspace verifier 中的文档 validator、Node test file、开发二进制编译和 CLI smoke 执行保持拆分：开发二进制编译只产出环境文件，core/Markdown smoke 只依赖该环境文件运行。CLI smoke 内部把独立 case 拆成 leaf task 交给同一个并行调度器；需要共享 ref、pagination、配置写入、readable-json 基线或 adapter 调用日志的固定流程保留为单个串行 task。quality 观测测试只保留工具可用性和工具输出解析的轻量校验；工具校验失败只跳过该工具的后续调用，不阻断其它质量工具或整体扫描。smoke audit 的 `## Tests` 只汇报顶层 case group，详细命令保留在 `## Commands`；默认不限制可运行 leaf task 的并发，资源互斥仍由 `mutex` 控制；需要限制时，workspace verifier 可用 `--concurrency <n>` 或 `DOCNAV_VERIFY_CONCURRENCY`，CLI smoke 可用 `DOCNAV_SMOKE_CONCURRENCY` 设置正整数上限。脚本只过滤已配置的无行动价值输出，例如 Git 的 CRLF 换行提示。输出忽略规则必须按子命令配置，避免全局吞掉真实失败或状态信息。某个检查失败时，脚本记录该检查并继续运行后续检查；全部检查结束后只输出状态、profile、检查数量、通过/失败数量、真实墙钟耗时和日志路径。
-
-局部改动仍可先运行范围更小的命令；但最终交付跨 Rust、文档、OpenSpec、schema、示例或输出层边界时，应运行 `pnpm run verify:docnav-workspace`。若需要先缩短反馈周期，先跑 `pnpm run verify:docnav-workspace:required`，再在需要时补跑 full profile。若需要完整命令输出，按终端提示查看，或手动重跑对应子命令。
-
-## 发布制品与预验收
-
-正式发布制品由 `pnpm run package:docnav -- --target <triple>` 生成，落在 `artifacts/docnav/v<version>/<target>/package/`。这个目录只包含 `docnav`、`docnav-markdown`、`manifest.json` 和 `SHA256SUMS.txt`；仓库脚本不生成 `.zip`、`.tar.gz` 或其它归档包。
-
-`manifest.json` 是 release artifact manifest，不复用 adapter manifest schema。发布制品验证先从该清单定位文件集合，再检查大小和校验和，最后直接运行 `package/` 中的二进制，而不是回退到 `target/`、日志、临时目录或解压产物。
-
-本地预验收通常按下面顺序跑：
-
-```bash
-pnpm run package:docnav
-pnpm run verify:docnav:release
-pnpm run smoke:docnav:release
-```
-
-带 `:release` 的命令显式进入发布包测试，并自动定位当前 workspace 版本与 host target
-对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用
-`--manifest <path>` 验证显式 package。`pnpm run info:docnav-package` 可打印自动定位结果。
-
-`package:docnav` 在生成结束时校验文件集合、manifest、大小和校验和，但不运行 CLI smoke。
-`smoke:docnav:release` 直接测试 package 中的可执行文件；正式 CI 在 verify 和 smoke
-通过后上传制品。
-
-CI/CD 正式制品流程必须在干净 checkout 上生成并保存 package 目录，验证时必须看到 `source_dirty: false` 和 `producer.kind: "github-actions"`，然后按 `version` 与 `target` 上传对应的 `package/` 文件集合。
-
-## 必须验证的架构边界
-
-- invoke protocol envelope 不出现在 MCP structuredContent 或 readable JSON。
-- MCP 和 CLI 阅读输出不复制完整原始协议 JSON。
-- 直接 CLI 兼容参数规则以 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 为 owner；测试验证成功路径、必要失败、operation-first 参数校验、help 可用、warning envelope 完整性和 `invoke` strict 分界。
-- CLI argv warning 测试只要求稳定 `id: "cli_argv_ignored"`、非空 `reason`、稳定 `effect` 和 `details.tokens` 等 family-specific 字段，不断言 exact token 分组、`reason` 文案或 token 消费顺序。
-- adapter candidate warning 测试只要求 `id: "adapter_candidate_failure"`、`effect: "candidate_skipped"`、非空 `reason`，以及 `details.adapter_id`、`details.stage`、`details.code` 和可选 `details.preselected`。
-- 输出层测试覆盖 warning 承载边界：阅读层承载 warning，协议形 stdout 不扩展 schema。
-- protocol 响应 envelope 包含 operation；成功响应的 operation 与 result 类型必须由 schema 绑定。
-- outline readable 结果只包含 entries 与 page；每条 entry 包含 ref 和 display。
-- find readable 结果只包含 matches 与 page；每条 match 包含 ref 和 display。
-- read readable 结果保留 ref、content、content_type、cost 和 page。
-- `docnav` 根据 path 选择 adapter，并原样传递 ref。
-- `docnav` 的 adapter 选择顺序为确定一个预选 adapter、校验预选 adapter、预选失败后按 registry 顺序 probe 并返回第一个成功项；配置预选优先于 core 推断。
-- `docnav` 的候选失败证据必须包含 adapter_id、stage、code、reason 和 details，并覆盖字段不对齐、probe 不支持和进程失败。
-- `docnav adapter install/update/remove/list` 是正式管理流程，安装或更新必须校验 manifest schema 和当前协议字段 shape。
-- `docnav adapter install` 首期只接受内置 adapter 下载简写和本地可执行文件；本地可执行文件安装、更新和显式健康检查必须验证 SHA-256 fingerprint，普通文档操作不重新计算 fingerprint。
-- `docnav` 保留 adapter 生成的 ref、display、内容、content_type、成本和 page。
-- 每个 CLI 只读取自身配置域。
-- 配置优先级固定且最终 invoke 参数显式完整。
-- 当前已实现 core 配置只控制 `defaults.adapter`、`defaults.limit_chars` 和 `defaults.output` 行为默认值，不改变阅读输出文案或 guidance。完整协议字段和错误 code 保持稳定，readable 输出保持 documented shape 以服务阅读展示和工具声明。`readable-view` renderer config（block 字段声明和 framing 规则）由仓库内代码契约控制，不受用户配置域控制。
-- `docnav-mcp` 是 Node.js / JavaScript MCP bridge 的目标制品；当前测试策略只记录 ownership 和 handoff，其实现由 `implement-docnav-mcp-bridge` change 承接，不拥有文档解析、adapter 管理、项目初始化、核心配置或 adapter 路由职责。
-
-## Markdown 最低测试
-
-- outline 是扁平条目，ref 和 display 可直接阅读。
-- 默认 outline 每页最多 6000 字符，且 Markdown 默认只展示 H1-H3。
-- 默认 read 每页最多 6000 字符。
-- 默认 find 每页最多 6000 字符。
-- page 从 1 开始；有更多信息时返回请求 page 加 1，否则返回 null。
-- 使用相同语义参数和响应中的 page 可继续读取。
-- 请求超过末尾时返回空结果和 null。
-- 配置不能改变初始 page；入口省略 page 时 invoke 请求显式使用 `1`。
-- 分页按 Unicode 字符预算验证，不按行数验证；outline/find 的超长 display 必须压缩到预算内，ref 保持完整。若完整 ref 本身超过预算，单条记录可超出预算但必须消耗该记录并让分页前进。
-- 代码围栏伪 heading 和 frontmatter 不进入 outline。
-- 重复 heading 和重复路径仍生成唯一 ref。
-- ref 错误（非法 grammar、无匹配等）返回对应稳定错误。
-
-## 输出测试
-
-| 入口                            | 最低要求                                                                                                   |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `adapter invoke`                | 完整 protocol envelope、显式参数、stdout 单响应                                                            |
-| `docnav --output protocol-json` | 与 invoke 使用相同原始协议 schema；warning 行为按 CLI owner 规则验收                                       |
-| `docnav` 默认输出               | `readable-view` format：pretty JSON header + block section；包含 page 状态、不含 envelope；成功 warning 在 header `warnings` 数组中                                     |
-| `docnav --output readable-view` | 与默认输出相同格式，block field 由仓库内 renderer config 声明                                                                                                              |
-| `docnav --output readable-json` | 通过 operation readable schema、不含 envelope；warning 行为按 CLI owner 规则验收                           |
-| MCP TextContent                 | 精简阅读文本和 page 状态                                                                                   |
-| MCP structuredContent           | 通过 operation readable schema、不含 envelope，用于工具展示和客户端消费；warning 行为按 CLI owner 规则验收 |
-
-request/response fixture 或集成测试必须验证请求 operation 与响应 operation 一致；无法解析 operation 的失败响应使用 `operation: null`。
-
-## 命令族验收矩阵
-
-| 命令族                                                                       | 最低测试覆盖                                                                                                                                                                                                         | 本 change 验收           |
-| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| Core document operations：`docnav outline/read/find/info`                    | `clap`/builder help；成功 readable/protocol 输出；unknown、extra、unused known 和 unused known 非法值成功；当前 operation 使用参数非法失败；protocol-json warning 仅 stderr                                          | 是                       |
-| Core non-document commands：`config/init/doctor/version`                     | 类型化命令成功和关键失败；`config get/set/unset/list` 代表性 stdout/stderr；`init` 幂等；`doctor` exit code；`version` 输出；不进入 adapter routing 或文档 invoke                                                    | 代表性验收               |
-| Core adapter management：`docnav adapter list/install/update/remove`         | 由 `implement-docnav-adapter-management` change 验收；本矩阵只审计 owner 和非验收状态                                                                                                                                | 否                       |
-| Adapter direct document operations：`docnav-markdown outline/read/find/info` | root/subcommand help；direct CLI 成功；unknown before/after path、extra positional、unused known/native 和 unused known 非法值成功；实际使用参数非法失败；readable warning envelope；protocol-json warning 仅 stderr | 是                       |
-| Adapter direct machine commands：`manifest/probe/invoke`                     | manifest/probe schema stdout；manifest/probe warning 仅 stderr；valid invoke protocol envelope；malformed/unknown field/type error invoke 返回 structured protocol failure                                           | 是                       |
-| Help commands                                                                | root help 和子命令 help 暴露命令、关键参数、默认值或可选值；不读取文档、不选择 adapter、不启动 invoke                                                                                                                | 是                       |
-| MCP bridge                                                                   | tool call 映射为核心 `docnav` CLI；TextContent/structuredContent 不含 protocol envelope；structuredContent warning 通过 readable schema                                                                              | ownership 和 schema 验收 |
-
-## 每个 Capability 的最低要求
-
-| capability                           | `docnav` CLI                                                                                                                            | adapter invoke                                   | MCP bridge                                         |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------- |
-| `outline`                            | 默认/`readable-json` 扁平可读；`protocol-json` envelope；字符预算和 page                                                                | 显式 page/limit_chars/options、扁平 entries      | 调用 `docnav` 并返回精简 entries 和 page           |
-| `read`                               | path/ref 原样输入、有限内容、content_type 和 page                                                                                       | 显式 ref/page/limit_chars、ref 错误             | 调用 `docnav` 并返回精简内容、content_type 和 page |
-| `find`                               | query、有限匹配和 page                                                                                                                  | 显式 query/page/limit_chars、ref/display matches | 调用 `docnav` 并返回精简匹配和 page                |
-| `info`                               | 格式原生可读摘要                                                                                                                        | 紧凑 display/capabilities                        | 调用 `docnav` 并返回精简摘要                       |
-| `manifest`                           | 发现 adapter 身份、格式 id、扩展名、content type、capabilities 和当前 manifest 字段 shape                                               | 不通过 invoke                                    | 不拥有该能力                                       |
-| `probe`                              | 获取格式支持度和候选判断依据                                                                                                            | 不通过 invoke                                    | 不拥有该能力                                       |
-| `adapter install/update/remove/list` | 正式安装、更新、移除和列出 adapter；支持内置 adapter 下载简写和本地可执行文件；校验 manifest、当前协议字段 shape 和本地 exe fingerprint | 不通过 invoke                                    | 不拥有该能力                                       |
-
-## 端到端验收
-
-1. `docnav outline` 根据 `--adapter` 或 core 简易推断确定预选 adapter，预选失败后遍历 registry 选择第一个 probe 成功的 adapter。
-2. `docnav` 将最终 page、limit_chars 和调用方显式 options 写入 invoke 请求，且不从 manifest 生成格式专属 options。
-3. adapter 返回带 operation 的 protocol envelope、扁平 entries 和 page。
-4. `docnav` 保留 operation 与 entries，并映射为默认 `readable-view`、`readable-json` 或 `protocol-json`。
-5. 从 outline 取得 ref 并原样调用 `docnav read`。
-6. read 继续按 path 选择 adapter，并由 adapter 解析 ref。
-7. page 非 null 时，使用该 page 继续读取。
-8. `docnav-mcp` 的 tool call 映射、TextContent 和 structuredContent 包装属于 `implement-docnav-mcp-bridge` 的目标验收；当前端到端验收只把 MCP bridge 作为 handoff，不表示已交付 bridge E2E。
-9. 同一业务结果在 protocol 与 readable 层语义一致，但包装、字段集合和兼容目标不同；只有 protocol 层作为机器稳定接口。
+局部改动仍可先运行范围更小的命令或 required profile；跨 Rust、文档、OpenSpec、schema、示例或输出层边界的交付，最终应运行 `pnpm run verify:docnav-workspace` 或 `pnpm run verify:docnav-workspace:full`。具体检查项和输出过滤规则由验证脚本维护，本节只定义 profile 用途和交付要求。
 
 ## 一致性审计
 
-- [文档导航](navigation.md) 只作为入口导航、文档分层、规则 owner 和术语索引，不重复定义细则。
-- [架构](architecture.md) 独占职责、配置域和双层原则。
-- [原始协议](protocol.md) 独占 invoke envelope、紧凑结果、错误和 page。
-- [Ref](refs.md) 独占共享 ref 调用流程、非空 opaque string、原样传递和 adapter 所有权。
-- [CLI](cli.md) 独占 `docnav` 命令、输出模式与入口转换。
-- [Schema](schemas/README.md) 分别校验 protocol 和 readable 输出，不定义新的业务语义。
-- [示例](examples/README.md) 只验证端到端链路和输出映射，不成为新的规范来源。
-- OpenSpec change 只作为变更依据、验收和审计历史，不作为日常实现主入口。
+交付前检查：
+
+1. 新增或修改测试能追溯到 [文档导航](navigation.md#规则所有权) 指向的 owner 文档。
+2. 测试文档只记录覆盖目标和验收边界，不重新定义稳定字段、错误码或命令语义。
+3. schema 和示例只校验 protocol/readable 输出映射，不成为新的业务语义来源。
+4. OpenSpec change 只作为变更依据、验收和审计历史，不作为日常实现主入口。
+5. 当测试暴露规范缺口时，先更新 owner 文档，再同步 schema、示例、实现和验证脚本。

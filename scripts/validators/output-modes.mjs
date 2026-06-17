@@ -188,8 +188,8 @@ function validateConfigTemplateDocs() {
   }
 }
 
-function validateSchemaReadmeReadableViewBoundary() {
-  const readme = readText("docs/schemas/README.md");
+function validateSchemaIndexReadableViewBoundary() {
+  const readme = readText("docs/schemas/json-schema.md");
   const schemaRows = readme
     .split(/\r?\n/u)
     .filter((line) => /\[readable-[^\]]+\.schema\.json\]/u.test(line));
@@ -197,19 +197,19 @@ function validateSchemaReadmeReadableViewBoundary() {
   for (const line of schemaRows) {
     assert(
       !/readable-view|header/u.test(line),
-      "readable schema README rows must not bind readable-view headers to readable JSON schemas",
+      "readable schema index rows must not bind readable-view headers to readable JSON schemas",
     );
   }
 
   assert(
     /CLI `readable-json` 和 MCP structuredContent/u.test(readme),
-    "schema README must state readable schemas validate readable-json and MCP structuredContent",
+    "schema index must state readable schemas validate readable-json and MCP structuredContent",
   );
   assert(
     /readable-view header block refs、framing 和 payload 还原由 committed conformance vectors 验收/u.test(
       readme,
     ),
-    "schema README must assign readable-view framing/header block refs to conformance vectors",
+    "schema index must assign readable-view framing/header block refs to conformance vectors",
   );
 }
 
@@ -336,7 +336,7 @@ export function validateOutputModeConsistency() {
   validateRustOutputModeEnums();
   validateDocumentOutputModeDocs();
   validateConfigTemplateDocs();
-  validateSchemaReadmeReadableViewBoundary();
+  validateSchemaIndexReadableViewBoundary();
   validateOutputModeSmokeMatrices();
   validateConformanceFixtures();
   console.log(

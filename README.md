@@ -42,7 +42,7 @@ cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-s
 
 默认输出是 `readable-view`，适合直接阅读。需要结构化阅读结果时显式使用 `--output readable-json`；需要稳定机器协议时使用 `--output protocol-json` 或 adapter `invoke`。
 
-发布制品生成、验证和 smoke 见 [测试策略](docs/testing.md)。
+发布制品生成、验证和 smoke 见 [发布包验证](docs/testing/release.md)。
 
 ## 验证
 
@@ -74,8 +74,10 @@ pnpm run verify:docnav-workspace
 
 - [文档导航](docs/navigation.md)：角色化阅读路径、文档分层、规则 owner 和术语。
 - [架构](docs/architecture.md)：制品职责、接入方式、语义层、配置所有权和进程边界。
-- [CLI 与 MCP 输出](docs/cli.md)：命令、输出模式和 MCP 映射。
+- [CLI](docs/cli.md)：命令、配置、adapter 管理、直接 CLI 和 argv 兼容规则。
+- [输出模式](docs/output.md)：`readable-view`、`readable-json`、`protocol-json`、warning 和通道承载。
+- [MCP Handoff](docs/mcp.md)：`docnav-mcp` 目标职责、tool 映射和 structuredContent 交接边界。
 - [原始协议](docs/protocol.md)：invoke envelope、operation、page 和稳定错误。
 - [适配器契约](docs/adapter-contract.md)：adapter 命令、manifest、probe 和 invoke 行为。
 - [Ref](docs/refs.md)：ref 的共享调用流程、非空 opaque string 和 adapter 所有权。
-- [测试策略](docs/testing.md)：自动化测试层级、验收矩阵和一致性审计。
+- [测试策略](docs/testing.md)：自动化测试层级、验证入口和一致性审计。

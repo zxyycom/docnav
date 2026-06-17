@@ -79,11 +79,12 @@ export const OUTPUT_MODE_CONSISTENCY = {
     "docs/navigation.md",
     "docs/architecture.md",
     "docs/cli.md",
+    "docs/output.md",
     "docs/adapter-contract.md",
     "docs/adapters/markdown.md",
     "docs/protocol.md",
     "docs/testing.md",
-    "docs/schemas/README.md",
+    "docs/schemas/json-schema.md",
     "docs/examples/README.md",
     "docs/CODING_STYLE.md",
     "openspec/specs/adapter-protocol/spec.md"

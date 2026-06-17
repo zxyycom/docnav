@@ -20,7 +20,7 @@ probe
 文档操作的直接 CLI 支持 `readable-view`（默认）、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
 适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、`<path>`、`--page`、`--limit-chars`、`--ref`、`--query`、`--output` 解析、protocol request 构造、输出分流和稳定错误映射。SDK 直接 CLI 使用 `clap` 或 `clap` builder API 承载命令、固定参数、默认值、枚举和 help；SDK 在确定 operation 后只校验当前 operation 实际使用的参数。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和 readable payload 字段语义。
 
-适配器直接 CLI argv 必须复用 [CLI 与 MCP 输出](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
+适配器直接 CLI argv 必须复用 [CLI](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
 
 `manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在 CLI warning 时按直接 CLI 规则写 stderr。`--help` 和子命令 help 只输出可纠错参数说明，不执行文档导航业务。
 

@@ -29,7 +29,7 @@ Document operation 当前只声明 `readable-view`、`readable-json` 和 `protoc
 
 `docnav` 对文档操作使用单一执行管线：参数归一化、adapter 选择、配置解析、probe、invoke 和结果判断不按输出模式分叉。管线产出业务结果、稳定错误和候选证据；输出层负责按模式序列化、包装并写入 stdout/stderr。
 
-选择机器可读入口表示调用方优先需要稳定、可预测、便于解析的输出；选择阅读入口表示调用方优先需要完成一次可继续的阅读链路。具体 stdout/stderr 通道、JSON shape 和错误包装由 [CLI 与 MCP 输出](cli.md) 与 [原始协议](protocol.md) 定义。
+选择机器可读入口表示调用方优先需要稳定、可预测、便于解析的输出；选择阅读入口表示调用方优先需要完成一次可继续的阅读链路。具体 stdout/stderr 通道、JSON shape 和错误包装由 [输出模式](output.md) 与 [原始协议](protocol.md) 定义。
 
 统一执行管线中的可恢复候选失败不应立即中断整个链路；`docnav` 应跳过失败候选、继续寻找可用 adapter，并把中间失败按顺序保留为候选证据，交由输出层呈现。兜底不能静默吞错；所有被跳过的失败都必须保留 adapter id、阶段和原因。
 
@@ -61,7 +61,7 @@ Document operation 当前只声明 `readable-view`、`readable-json` 和 `protoc
 
 目标职责：
 
-- 由 in-progress 的 `implement-docnav-mcp-bridge` change 使用 Node.js / JavaScript 实现，并定义 npm bin、tool 声明和 bridge wiring。
+- 由 `implement-docnav-mcp-bridge` change 使用 Node.js / JavaScript 实现，并定义 npm bin、tool 声明和 bridge wiring。
 - 目标通过 stdio 提供 MCP transport。
 - 目标暴露 `document_outline`、`document_read`、`document_find`、`document_info`。
 - 目标将 MCP tool call 映射为核心 `docnav` CLI 调用。
@@ -70,7 +70,7 @@ Document operation 当前只声明 `readable-view`、`readable-json` 和 `protoc
 - 目标依赖系统中可调用的 `docnav` 核心 CLI。
 - 不直接调用 adapter，不绕过 `docnav` 的格式识别、配置解析、adapter 选择和错误映射。
 
-当前架构文档只定义 MCP ownership 和 handoff。JavaScript renderer、TextContent bridge wiring、tool declaration packaging、MCP error mapping 和 MCP 接入层配置键由 `implement-docnav-mcp-bridge` 的 OpenSpec artifacts 定义和验收。
+当前架构文档只定义 MCP ownership 摘要；完整 handoff 边界见 [MCP Handoff](mcp.md)。JavaScript renderer、TextContent bridge wiring、tool declaration packaging、MCP error mapping 和 MCP 接入层配置键由 `implement-docnav-mcp-bridge` 的 OpenSpec artifacts 定义和验收。
 
 ### 格式 Adapter
 
@@ -155,7 +155,7 @@ AI Client
 
 所有选择都以 adapter probe 结果为准，不能只凭 `--adapter` 或扩展名静默选中。候选 adapter 的 manifest 或 probe 契约失败属于可恢复的选择失败：`docnav` 记录候选失败证据并继续遍历，不因单个候选字段缺失、类型不符、schema 不匹配、语义校验失败或进程不可用而直接停止选择流程。`supported: false` 也是普通候选失败证据。
 
-若后续候选成功，选择结果必须携带前面累积的候选证据，输出层按 [CLI 与 MCP 输出](cli.md) 的规则呈现为 warning。全部候选失败时返回 `FORMAT_UNKNOWN` 和候选证据。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
+若后续候选成功，选择结果必须携带前面累积的候选证据，输出层按 [输出模式](output.md) 的规则呈现为 warning。全部候选失败时返回 `FORMAT_UNKNOWN` 和候选证据。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
 
 ## 项目根与路径
 
