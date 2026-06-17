@@ -1,9 +1,9 @@
-import { assert } from "./validators/fs-utils.mjs";
-import { TASK_NAMES } from "./validators/config.mjs";
-import { validateMarkdownLinks } from "./validators/links.mjs";
-import { validateMcpStructuredContent } from "./validators/mcp.mjs";
-import { validateJsonSyntax, validateSchemas } from "./validators/schema.mjs";
-import { validateExampleSemantics } from "./validators/semantics.mjs";
+import { assert } from "./tools/validators/fs-utils.mjs";
+import { TASK_NAMES } from "./tools/validators/config.mjs";
+import { validateMarkdownLinks } from "./tools/validators/links.mjs";
+import { validateMcpStructuredContent } from "./tools/validators/mcp.mjs";
+import { validateJsonSyntax, validateSchemas } from "./tools/validators/schema.mjs";
+import { validateExampleSemantics } from "./tools/validators/semantics.mjs";
 
 const requested = new Set(process.argv.slice(2));
 const runAll = requested.size === 0;

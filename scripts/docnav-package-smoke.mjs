@@ -7,7 +7,7 @@ import {
   root,
   runNodeScript,
   validateReleasePackage,
-} from "./release-package.mjs";
+} from "./tools/release-package/index.mjs";
 
 const selection = parseManifestArgs(process.argv.slice(2));
 const manifestPath = resolvePackageManifestPath(selection);
@@ -37,12 +37,12 @@ try {
   console.log("");
 
   runNodeScript(
-    path.join(root, "scripts", "docnav-markdown-cli-smoke", "index.mjs"),
+    path.join(root, "test", "docnav-markdown-smoke.mjs"),
     [],
     { env },
   );
   runNodeScript(
-    path.join(root, "scripts", "docnav-core-cli-smoke", "index.mjs"),
+    path.join(root, "test", "docnav-core-smoke.mjs"),
     [],
     { env },
   );

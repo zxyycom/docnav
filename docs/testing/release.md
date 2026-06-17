@@ -23,13 +23,13 @@
 
 ```bash
 pnpm run package:docnav
-pnpm run verify:docnav:release
-pnpm run smoke:docnav:release
+pnpm run verify:docnav-package
+pnpm run smoke:docnav-package
 ```
 
-带 `:release` 的命令显式进入发布包测试，并自动定位当前 workspace 版本与 host target 对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用 `--manifest <path>` 验证显式 package。`pnpm run info:docnav-package` 可打印自动定位结果。
+发布包验证和 smoke 命令会自动定位当前 workspace 版本与 host target 对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用 `--manifest <path>` 验证显式 package。`pnpm run info:docnav-package` 可打印自动定位结果。
 
-`package:docnav` 在生成结束时校验文件集合、manifest、大小和校验和，但不运行 CLI smoke。`smoke:docnav:release` 直接测试 package 中的可执行文件。
+`package:docnav` 在生成结束时校验文件集合、manifest、大小和校验和，但不运行 CLI smoke。`smoke:docnav-package` 直接测试 package 中的可执行文件。
 
 ## CI/CD 边界
 

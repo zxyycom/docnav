@@ -1,13 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { assert, readJson, toAbs } from "./validators/fs-utils.mjs";
+import { assert, readJson, toAbs } from "./tools/validators/fs-utils.mjs";
 
 const paths = {
   source: "docs/protocol/error-rules.json",
   rustMod: "crates/docnav-protocol/src/generated/mod.rs",
   rustRules: "crates/docnav-protocol/src/generated/error_rules.rs",
-  jsRules: "scripts/validators/generated/error-rules.mjs",
+  jsRules: "scripts/tools/validators/generated/error-rules.mjs",
   protocolResponseSchema: "docs/schemas/protocol-response.schema.json"
 };
 

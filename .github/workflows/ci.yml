@@ -99,7 +99,7 @@ jobs:
           uv pip install --python "$RUNNER_TEMP/docnav-quality-venv/bin/python" lizard
           "$RUNNER_TEMP/docnav-quality-venv/bin/python" -m lizard --version
           echo "DOCNAV_LIZARD_CMD=$RUNNER_TEMP/docnav-quality-venv/bin/python" >> "$GITHUB_ENV"
-          # Keep this pinned to the CSV contract asserted by scripts/quality/tools/scc.mjs.
+          # Keep this pinned to the CSV contract asserted by scripts/tools/quality/tools/scc.mjs.
           go install github.com/boyter/scc/v3@v3.7.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           export PATH="$(go env GOPATH)/bin:$PATH"

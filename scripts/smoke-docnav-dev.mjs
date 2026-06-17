@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { root, runNodeScript } from "./release-package.mjs";
+import { root, runNodeScript } from "./tools/release-package/index.mjs";
 
 const withCargoBins = path.join(root, "scripts", "with-cargo-bins.mjs");
 
@@ -12,7 +12,7 @@ try {
     "DOCNAV_MARKDOWN_BIN",
     "--",
     "node",
-    "scripts/docnav-markdown-cli-smoke/index.mjs",
+    "test/docnav-markdown-smoke.mjs",
   ]);
   runNodeScript(withCargoBins, [
     "--bin",
@@ -25,7 +25,7 @@ try {
     "DOCNAV_MARKDOWN_BIN",
     "--",
     "node",
-    "scripts/docnav-core-cli-smoke/index.mjs",
+    "test/docnav-core-smoke.mjs",
   ]);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

@@ -2,7 +2,7 @@ import {
   parseManifestArgs,
   resolvePackageManifestPath,
   validateReleasePackage,
-} from "./release-package.mjs";
+} from "./tools/release-package/index.mjs";
 
 const selection = parseManifestArgs(process.argv.slice(2));
 const manifestPath = resolvePackageManifestPath(selection);

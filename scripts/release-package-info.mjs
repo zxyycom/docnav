@@ -5,7 +5,7 @@ import {
   resolveHostTarget,
   resolvePackageLayout,
   resolveWorkspaceVersion
-} from "./release-package.mjs";
+} from "./tools/release-package/index.mjs";
 
 const target = parseOptionalTarget(process.argv.slice(2)) ?? resolveHostTarget();
 const version = resolveWorkspaceVersion();

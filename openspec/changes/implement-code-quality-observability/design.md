@@ -60,8 +60,8 @@ Docnav 是 Rust workspace，同时包含 Node.js 脚本、OpenSpec 文档、sche
 
    - `rust-production`: `crates/*/src/**` 中非 tests、fixtures、generated 的 Rust production code，使用最严格 warning 策略。
    - `rust-tests`: `crates/*/tests/**`、`crates/*/src/tests/**` 和 `tests.rs`，阈值比 production 放宽。
-   - `node-production-scripts`: `scripts/*.mjs` 和非 smoke、fixture、generated 的脚本模块，使用中等严格策略。
-   - `node-validation-smoke`: `scripts/validators/**`、`scripts/*smoke*/**`、`scripts/cli-smoke/**` 和类似 validation/smoke case modules，阈值比 production scripts 放宽。
+   - `node-production-scripts`: `scripts/*.mjs` 和 `scripts/tools/**` 下非测试、fixture、generated 的脚本模块，使用中等严格策略。
+   - `node-validation-smoke`: `scripts/tools/validators/**`、脚本单测、`test/smoke/**`、`test/tools/**` 和类似 validation/smoke case modules，阈值比 production scripts 放宽。
    - `fixtures-examples`: fixtures、cases、测试数据和示例输入输出，默认进入 summary/watchlist，不默认发 PR annotation。
    - `generated`: generated files 和配置显式标记的生成物，默认排除 warning，只保留体量统计或完全排除。
 

@@ -12,34 +12,34 @@
 
 ## Core CLI
 
-Core CLI smoke 位于 `scripts/docnav-core-cli-smoke/cases/`，只覆盖核心 `docnav` 真实进程入口和跨 adapter 链路。
+Core CLI smoke 位于 `test/smoke/core/cases/`，只覆盖核心 `docnav` 真实进程入口和跨 adapter 链路。
 
 | Case ID | 文件 | 覆盖目标 |
 | --- | --- | --- |
-| `CORE-LINK-001` | [real-markdown.mjs](../../scripts/docnav-core-cli-smoke/cases/real-markdown.mjs) | 真实 `docnav` + `docnav-markdown` 的 `outline -> ref -> read`、`find -> ref -> read` 与 `info` 串行链路；证明 core 原样传递 adapter ref，并保持 readable-json 输出分层。 |
-| `CORE-REF-001` | [real-markdown.mjs](../../scripts/docnav-core-cli-smoke/cases/real-markdown.mjs) | 真实 Markdown adapter 返回的 ref 错误映射为 `protocol-json` failure；证明 adapter-owned ref 错误能穿过 core。 |
-| `CORE-OUTPUT-001` | [outputs.mjs](../../scripts/docnav-core-cli-smoke/cases/outputs.mjs) | `readable-json`、显式/默认 `readable-view`、`protocol-json` 和 warning 承载边界；不枚举所有 operation。 |
-| `CORE-ARGS-001` | [cli-args.mjs](../../scripts/docnav-core-cli-smoke/cases/cli-args.mjs) | 当前 operation 实际使用参数缺失时返回 protocol failure；其它同类非法值属于 parser/config 单测。 |
-| `CORE-CONFIG-001` | [config-management.mjs](../../scripts/docnav-core-cli-smoke/cases/config-management.mjs) | project/user config 优先级、非法 output 值、`config list --path` 的 adapter/path context；不枚举全部 config get/set/unset 组合。 |
-| `CORE-SELECT-001` | [adapter-selection.mjs](../../scripts/docnav-core-cli-smoke/cases/adapter-selection.mjs) | 显式预选 adapter manifest 失败后继续 registry fallback，并在 readable-json 中输出 candidate warning。 |
-| `CORE-FAIL-001` | [failures.mjs](../../scripts/docnav-core-cli-smoke/cases/failures.mjs) | candidate 阶段 adapter 进程失败被记录为 `FORMAT_UNKNOWN` candidate evidence；不逐项枚举 manifest/probe/contract/process 组合。 |
-| `CORE-INVOKE-001` | [failures.mjs](../../scripts/docnav-core-cli-smoke/cases/failures.mjs) | invoke 阶段 adapter 进程失败映射为 `ADAPTER_INVOKE_FAILED`；证明 selected adapter invoke failure 与 candidate failure 属于不同错误阶段。 |
-| `CORE-TOOLS-001` | [config-management.mjs](../../scripts/docnav-core-cli-smoke/cases/config-management.mjs) | `init`、`version`、`doctor` 和 document help 的可用性；保留非 document operation 的主要入口 smoke。 |
+| `CORE-LINK-001` | [real-markdown.mjs](../../test/smoke/core/cases/real-markdown.mjs) | 真实 `docnav` + `docnav-markdown` 的 `outline -> ref -> read`、`find -> ref -> read` 与 `info` 串行链路；证明 core 原样传递 adapter ref，并保持 readable-json 输出分层。 |
+| `CORE-REF-001` | [real-markdown.mjs](../../test/smoke/core/cases/real-markdown.mjs) | 真实 Markdown adapter 返回的 ref 错误映射为 `protocol-json` failure；证明 adapter-owned ref 错误能穿过 core。 |
+| `CORE-OUTPUT-001` | [outputs.mjs](../../test/smoke/core/cases/outputs.mjs) | `readable-json`、显式/默认 `readable-view`、`protocol-json` 和 warning 承载边界；不枚举所有 operation。 |
+| `CORE-ARGS-001` | [cli-args.mjs](../../test/smoke/core/cases/cli-args.mjs) | 当前 operation 实际使用参数缺失时返回 protocol failure；其它同类非法值属于 parser/config 单测。 |
+| `CORE-CONFIG-001` | [config-management.mjs](../../test/smoke/core/cases/config-management.mjs) | project/user config 优先级、非法 output 值、`config list --path` 的 adapter/path context；不枚举全部 config get/set/unset 组合。 |
+| `CORE-SELECT-001` | [adapter-selection.mjs](../../test/smoke/core/cases/adapter-selection.mjs) | 显式预选 adapter manifest 失败后继续 registry fallback，并在 readable-json 中输出 candidate warning。 |
+| `CORE-FAIL-001` | [failures.mjs](../../test/smoke/core/cases/failures.mjs) | candidate 阶段 adapter 进程失败被记录为 `FORMAT_UNKNOWN` candidate evidence；不逐项枚举 manifest/probe/contract/process 组合。 |
+| `CORE-INVOKE-001` | [failures.mjs](../../test/smoke/core/cases/failures.mjs) | invoke 阶段 adapter 进程失败映射为 `ADAPTER_INVOKE_FAILED`；证明 selected adapter invoke failure 与 candidate failure 属于不同错误阶段。 |
+| `CORE-TOOLS-001` | [config-management.mjs](../../test/smoke/core/cases/config-management.mjs) | `init`、`version`、`doctor` 和 document help 的可用性；保留非 document operation 的主要入口 smoke。 |
 
 ## Markdown CLI
 
-Markdown CLI smoke 位于 `scripts/docnav-markdown-cli-smoke/cases/`，只覆盖 `docnav-markdown` 直接 CLI 的真实进程边界。
+Markdown CLI smoke 位于 `test/smoke/markdown/cases/`，只覆盖 `docnav-markdown` 直接 CLI 的真实进程边界。
 
 | Case ID | 文件 | 覆盖目标 |
 | --- | --- | --- |
-| `MD-LINK-001` | [outputs.mjs](../../scripts/docnav-markdown-cli-smoke/cases/outputs.mjs) | `outline -> ref -> read`、`find -> ref -> read` 和 `info` 的 readable-json 串行链路；证明直接 CLI 主链路和 ref 生成/读取。 |
-| `MD-OUTPUT-001` | [outputs.mjs](../../scripts/docnav-markdown-cli-smoke/cases/outputs.mjs) | `readable-json`、显式/默认 `readable-view` 和 `protocol-json` 的 read 输出边界；不枚举所有 operation。 |
-| `MD-MACHINE-001` | [machine-commands.mjs](../../scripts/docnav-markdown-cli-smoke/cases/machine-commands.mjs) | `manifest`、`probe` 和 valid `invoke` 的机器协议链路；证明 metadata、format support 和 stdin protocol request 可通过 schema。 |
-| `MD-CORPUS-001` | [corpus.mjs](../../scripts/docnav-markdown-cli-smoke/cases/corpus.mjs) | Unicode 文档的 outline/read 和分页重组；其它编码/换行 fixture 属于较低层测试。 |
-| `MD-ARGS-001` | [cli-args.mjs](../../scripts/docnav-markdown-cli-smoke/cases/cli-args.mjs) | 当前 operation 实际使用参数缺失时返回输入错误；其它同类非法值属于 parser 单测。 |
-| `MD-WARN-001` | [cli-args.mjs](../../scripts/docnav-markdown-cli-smoke/cases/cli-args.mjs) | document help、readable-json warning、unused native flag warning、protocol-json stderr warning；不枚举 token 组合。 |
-| `MD-ERROR-001` | [operation-errors.mjs](../../scripts/docnav-markdown-cli-smoke/cases/operation-errors.mjs) | 同一 invalid ref 错误在 readable-json 与 protocol-json 中的映射；其它错误码由 lower-level tests 覆盖。 |
-| `MD-INVOKE-001` | [invoke-errors.mjs](../../scripts/docnav-markdown-cli-smoke/cases/invoke-errors.mjs) | malformed `invoke` stdin 返回 protocol failure；证明 stdin request 解析失败时仍返回稳定 protocol error envelope。 |
+| `MD-LINK-001` | [outputs.mjs](../../test/smoke/markdown/cases/outputs.mjs) | `outline -> ref -> read`、`find -> ref -> read` 和 `info` 的 readable-json 串行链路；证明直接 CLI 主链路和 ref 生成/读取。 |
+| `MD-OUTPUT-001` | [outputs.mjs](../../test/smoke/markdown/cases/outputs.mjs) | `readable-json`、显式/默认 `readable-view` 和 `protocol-json` 的 read 输出边界；不枚举所有 operation。 |
+| `MD-MACHINE-001` | [machine-commands.mjs](../../test/smoke/markdown/cases/machine-commands.mjs) | `manifest`、`probe` 和 valid `invoke` 的机器协议链路；证明 metadata、format support 和 stdin protocol request 可通过 schema。 |
+| `MD-CORPUS-001` | [corpus.mjs](../../test/smoke/markdown/cases/corpus.mjs) | Unicode 文档的 outline/read 和分页重组；其它编码/换行 fixture 属于较低层测试。 |
+| `MD-ARGS-001` | [cli-args.mjs](../../test/smoke/markdown/cases/cli-args.mjs) | 当前 operation 实际使用参数缺失时返回输入错误；其它同类非法值属于 parser 单测。 |
+| `MD-WARN-001` | [cli-args.mjs](../../test/smoke/markdown/cases/cli-args.mjs) | document help、readable-json warning、unused native flag warning、protocol-json stderr warning；不枚举 token 组合。 |
+| `MD-ERROR-001` | [operation-errors.mjs](../../test/smoke/markdown/cases/operation-errors.mjs) | 同一 invalid ref 错误在 readable-json 与 protocol-json 中的映射；其它错误码由 lower-level tests 覆盖。 |
+| `MD-INVOKE-001` | [invoke-errors.mjs](../../test/smoke/markdown/cases/invoke-errors.mjs) | malformed `invoke` stdin 返回 protocol failure；证明 stdin request 解析失败时仍返回稳定 protocol error envelope。 |
 
 ## 新增或修改用例
 

@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { expandTasks, runParallelTasks } from "./lib/parallel-task-runner.mjs";
+import { expandTasks, runParallelTasks } from "./tools/parallel-task-runner.mjs";
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -70,16 +70,16 @@ export const checks = defineChecks([
         id: "workspace-verifier-script-tests",
         label: "workspace verifier script tests",
         tasks: nodeTestFileChecks([
-          ["workspace-verifier-tests", "workspace verifier tests", "scripts/verify-docnav-workspace.test.mjs"],
-          ["smoke-harness-tests", "smoke harness tests", "scripts/smoke-harness.test.mjs"],
-          ["parallel-task-runner-tests", "parallel task runner tests", "scripts/lib/parallel-task-runner.test.mjs"]
+          ["workspace-verifier-tests", "workspace verifier tests", "scripts/tools/verify-docnav-workspace.test.mjs"],
+          ["smoke-harness-tests", "smoke harness tests", "test/tools/smoke-harness.test.mjs"],
+          ["parallel-task-runner-tests", "parallel task runner tests", "scripts/tools/parallel-task-runner.test.mjs"]
         ])
       },
       {
         id: "release-package-script-tests",
         label: "release package script tests",
         command: "node",
-        args: ["--test", "scripts/release-package/args.test.mjs"],
+        args: ["--test", "scripts/tools/release-package/args.test.mjs"],
         ignoreOutput: [
           ...nodeTestSuccessOutput
         ]
@@ -103,7 +103,7 @@ export const checks = defineChecks([
         id: "quality-tool-tests",
         label: "quality tool tests",
         tasks: nodeTestFileChecks([
-          ["quality-tools-tests", "quality tools tests", "test/quality/tools.test.mjs"]
+          ["quality-tools-tests", "quality tools tests", "scripts/tools/quality/tools.test.mjs"]
         ])
       },
       {
@@ -129,7 +129,7 @@ export const checks = defineChecks([
                 id: "docnav-markdown-development-smoke",
                 label: "docnav-markdown development smoke",
                 command: "node",
-                args: ["scripts/docnav-markdown-cli-smoke/index.mjs"],
+                args: ["test/docnav-markdown-smoke.mjs"],
                 ignoreOutput: [
                   ...smokeSuccessOutput("Docnav Markdown Development Smoke", ".log/docnav-markdown-cli-smoke/latest.log")
                 ]
@@ -138,7 +138,7 @@ export const checks = defineChecks([
                 id: "docnav-core-development-smoke",
                 label: "docnav core development smoke",
                 command: "node",
-                args: ["scripts/docnav-core-cli-smoke/index.mjs"],
+                args: ["test/docnav-core-smoke.mjs"],
                 ignoreOutput: [
                   ...smokeSuccessOutput("Docnav Core Development Smoke", ".log/docnav-core-cli-smoke/latest.log")
                 ]

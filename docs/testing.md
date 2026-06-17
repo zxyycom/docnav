@@ -90,7 +90,6 @@ required profile 只保留快速、确定性的必需门禁，用于日常开发
 
 | 命令 | 用途 |
 | --- | --- |
-| `pnpm run verify:docnav` | 开发期短别名，等价于 `verify:docnav-workspace` |
 | `pnpm run verify:docnav-workspace:required` | 快速门禁，只跑必需检查 |
 | `pnpm run verify:docnav-workspace:full` | 完整门禁，显式运行 full profile |
 | `pnpm run smoke:docnav` | 对当前开发构建运行 core 和 Markdown CLI smoke |

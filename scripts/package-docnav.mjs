@@ -1,4 +1,4 @@
-import { buildReleasePackage, parseOptionalTarget, resolveHostTarget } from "./release-package.mjs";
+import { buildReleasePackage, parseOptionalTarget, resolveHostTarget } from "./tools/release-package/index.mjs";
 
 const target = parseOptionalTarget(process.argv.slice(2)) ?? resolveHostTarget();
 
