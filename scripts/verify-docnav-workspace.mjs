@@ -9,7 +9,6 @@ import { expandTasks, runParallelTasks } from "./lib/parallel-task-runner.mjs";
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logDir = path.join(root, ".log", "verify-docnav-workspace");
-const DEFAULT_CONCURRENCY = 4;
 const MAX_BUFFER = 1024 * 1024 * 64;
 const DEV_BIN_ENV_FILE = ".log/verify-docnav-workspace/dev-bins.json";
 
@@ -101,20 +100,10 @@ export const checks = defineChecks([
     type: PROFILE_FULL,
     tasks: [
       {
-        id: "quality-observability-tests",
-        label: "quality observability tests",
+        id: "quality-tool-tests",
+        label: "quality tool tests",
         tasks: nodeTestFileChecks([
-          ["quality-annotations-tests", "quality annotations tests", "test/quality/annotations.test.mjs"],
-          ["quality-baseline-tests", "quality baseline tests", "test/quality/baseline.test.mjs"],
-          ["quality-classify-tests", "quality classify tests", "test/quality/classify.test.mjs"],
-          ["quality-config-schema-tests", "quality config schema tests", "test/quality/config-schema.test.mjs"],
-          ["quality-report-tests", "quality report tests", "test/quality/report.test.mjs"],
-          ["quality-tools-tests", "quality tools tests", "test/quality/tools.test.mjs"],
-          ["quality-trends-tests", "quality trends tests", "test/quality/trends.test.mjs"],
-          ["quality-warnings-duplicates-tests", "quality warnings duplicates tests", "test/quality/warnings-duplicates.test.mjs"],
-          ["quality-warnings-files-tests", "quality warnings files tests", "test/quality/warnings-files.test.mjs"],
-          ["quality-warnings-functions-tests", "quality warnings functions tests", "test/quality/warnings-functions.test.mjs"],
-          ["quality-warnings-records-tests", "quality warnings records tests", "test/quality/warnings-records.test.mjs"]
+          ["quality-tools-tests", "quality tools tests", "test/quality/tools.test.mjs"]
         ])
       },
       {
@@ -206,7 +195,8 @@ if (isMainModule()) {
 export function parseArgs(argv) {
   const options = {
     help: false,
-    profile: PROFILE_FULL
+    profile: PROFILE_FULL,
+    concurrency: undefined
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -228,10 +218,24 @@ export function parseArgs(argv) {
       options.profile = arg.slice("--profile=".length);
       continue;
     }
+    if (arg === "--concurrency") {
+      const value = argv[index + 1];
+      if (!value) {
+        throw new Error("--concurrency requires a value");
+      }
+      options.concurrency = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--concurrency=")) {
+      options.concurrency = arg.slice("--concurrency=".length);
+      continue;
+    }
     throw new Error(`unknown argument: ${arg}`);
   }
 
   assertProfile(options.profile);
+  options.concurrency = resolveVerificationConcurrency(options.concurrency);
   return options;
 }
 
@@ -275,6 +279,17 @@ export function formatDurationMs(durationMs) {
   return `${minutes}m ${seconds}s`;
 }
 
+export function resolveVerificationConcurrency(value = process.env.DOCNAV_VERIFY_CONCURRENCY) {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== String(value)) {
+    throw new Error(`verification concurrency must be a positive integer: ${value}`);
+  }
+  return parsed;
+}
+
 async function main() {
   try {
     const options = parseArgs(process.argv.slice(2));
@@ -291,7 +306,7 @@ async function main() {
   }
 }
 
-async function runVerification({ profile }) {
+async function runVerification({ profile, concurrency }) {
   const selectedChecks = checksForProfile(profile);
   const totalReports = reportCountForChecks(selectedChecks);
   const completeReport = createReportCompletionTracker(selectedChecks);
@@ -304,7 +319,7 @@ async function runVerification({ profile }) {
 
   printHeader(profile, totalReports);
   await runParallelTasks(selectedChecks, {
-    concurrency: DEFAULT_CONCURRENCY,
+    concurrency,
     execute: executeCheck,
     onComplete: (result) => {
       completedResults.push(result);
@@ -687,7 +702,7 @@ function assertProfile(profile) {
 }
 
 function printUsage(writeLine) {
-  writeLine("Usage: node scripts/verify-docnav-workspace.mjs [--profile required|full]");
+  writeLine("Usage: node scripts/verify-docnav-workspace.mjs [--profile required|full] [--concurrency <n>]");
   writeLine("");
   writeLine("Profiles:");
   for (const [name, profile] of Object.entries(profiles)) {

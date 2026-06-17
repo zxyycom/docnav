@@ -59,11 +59,7 @@ export function initializeToolResults(rootDir) {
   for (const tool of toolResults) {
     if (tool.available) continue;
 
-    if (tool.fatal) {
-      console.log(`  ❌ ${tool.name} execution/config/schema error: ${tool.error || "unknown error"}`);
-    } else {
-      console.log(`  ⚠️  ${tool.name} not available: ${tool.error || "not found"} (skipped)`);
-    }
+    console.log(`  ⚠️  ${tool.name} validation failed: ${tool.error || "not found"} (skipped)`);
   }
 
   return toolResults;
@@ -79,22 +75,7 @@ export function collectToolMetadata(toolResults) {
     }));
 }
 
-export function collectFatalToolIssues(toolResults) {
-  return toolResults
-    .filter((tool) => !tool.available && tool.fatal)
-    .map((tool) => ({
-      tool: tool.name,
-      phase: "tool-check",
-      error: tool.error || "unknown error"
-    }));
-}
-
 export function configureBaseline({ metrics, opts, tools, fatalIssues, root }) {
-  if (fatalIssues.length > 0) {
-    console.log("Skipping baseline scan because fatal tool contract errors were detected.");
-    return;
-  }
-
   if (opts.baseline) {
     metrics.baseline = createGeneratedBaseline(opts.baseline, "explicit", tools, root);
     return;

@@ -11,11 +11,11 @@ import {
   writeAuditLogs
 } from "./harness.mjs";
 
-import { createDocumentOutputMatrixTasks } from "./cases/outputs.mjs";
-import { createManifestProbeTasks, createValidInvokeTasks } from "./cases/machine-commands.mjs";
+import { createDocumentLinkTasks, createDocumentOutputBoundaryTasks } from "./cases/outputs.mjs";
+import { createMachineProtocolTasks } from "./cases/machine-commands.mjs";
 import { createProcessBoundaryCorpusTasks } from "./cases/corpus.mjs";
 import { createCliArgumentCompatibilityWarningTasks, createCliArgumentFailureTasks } from "./cases/cli-args.mjs";
-import { createProtocolOperationErrorTasks, createReadableOperationErrorTasks } from "./cases/operation-errors.mjs";
+import { createOperationErrorTasks } from "./cases/operation-errors.mjs";
 import { createInvokeFailureTasks } from "./cases/invoke-errors.mjs";
 
 let suiteFailure = null;
@@ -28,19 +28,18 @@ try {
   assertSetup(fs.existsSync(fixturesDir), `fixture directory not found: ${fixturesDir}`);
 
   const results = await runSmokeTasks([
-    { id: "document-output-matrix", label: "document operation output matrix", tasks: createDocumentOutputMatrixTasks() },
-    { id: "manifest-probe", label: "manifest/probe protocol-json schemas", tasks: createManifestProbeTasks() },
-    { id: "valid-invoke", label: "valid invoke stdin request", tasks: createValidInvokeTasks() },
-    { id: "process-boundary-corpus", label: "Markdown process boundary corpus", tasks: createProcessBoundaryCorpusTasks() },
-    { id: "cli-argument-failures", label: "CLI argument validation matrix", tasks: createCliArgumentFailureTasks() },
+    { id: "document-link-chain", label: "Markdown document operation link chain", tasks: createDocumentLinkTasks() },
+    { id: "document-output-boundary", label: "Markdown document output boundary", tasks: createDocumentOutputBoundaryTasks() },
+    { id: "machine-protocol", label: "manifest probe and invoke protocol", tasks: createMachineProtocolTasks() },
+    { id: "process-boundary-corpus", label: "Markdown process boundary corpus representative", tasks: createProcessBoundaryCorpusTasks() },
+    { id: "cli-argument-failure", label: "CLI argument validation representative", tasks: createCliArgumentFailureTasks() },
     {
       id: "cli-argument-compatibility",
-      label: "CLI argument compatibility warning matrix",
+      label: "CLI argument compatibility warning representative",
       tasks: createCliArgumentCompatibilityWarningTasks()
     },
-    { id: "readable-operation-errors", label: "readable operation error matrix", tasks: createReadableOperationErrorTasks() },
-    { id: "protocol-operation-errors", label: "protocol-json operation error matrix", tasks: createProtocolOperationErrorTasks() },
-    { id: "invoke-failures", label: "invoke malformed/schema error matrix", tasks: createInvokeFailureTasks() }
+    { id: "operation-errors", label: "operation error mapping representative", tasks: createOperationErrorTasks() },
+    { id: "invoke-failure", label: "invoke invalid request representative", tasks: createInvokeFailureTasks() }
   ]);
   suiteFailure = results.find((result) => !result.ok)?.error ?? null;
 } catch (error) {

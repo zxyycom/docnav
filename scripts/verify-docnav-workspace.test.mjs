@@ -10,6 +10,7 @@ import {
   formatDurationMs,
   parseArgs,
   reportCountForChecks,
+  resolveVerificationConcurrency,
   visibleOutputLines
 } from "./verify-docnav-workspace.mjs";
 
@@ -48,11 +49,12 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("smoke harness tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
     assert.ok(!requiredLabels.includes("cargo test"));
-    assert.ok(!requiredLabels.includes("quality report tests"));
+    assert.ok(!requiredLabels.includes("quality tools tests"));
     assert.ok(!requiredLabels.includes("docnav core development smoke"));
 
     assert.ok(fullLabels.includes("cargo fmt"));
-    assert.ok(fullLabels.includes("quality report tests"));
+    assert.ok(fullLabels.includes("quality tools tests"));
+    assert.ok(!fullLabels.includes("quality report tests"));
     assert.ok(fullLabels.includes("cargo test"));
     assert.ok(fullLabels.includes("docnav development binaries"));
     assert.ok(fullLabels.includes("docnav core development smoke"));
@@ -81,11 +83,29 @@ describe("workspace verifier configuration", () => {
   });
 
   it("parses verification profile arguments", () => {
-    assert.deepEqual(parseArgs([]), { help: false, profile: PROFILE_FULL });
-    assert.deepEqual(parseArgs(["--profile", PROFILE_REQUIRED]), { help: false, profile: PROFILE_REQUIRED });
-    assert.deepEqual(parseArgs([`--profile=${PROFILE_REQUIRED}`]), { help: false, profile: PROFILE_REQUIRED });
-    assert.deepEqual(parseArgs(["--help"]), { help: true, profile: PROFILE_FULL });
+    assert.deepEqual(parseArgs([]), { help: false, profile: PROFILE_FULL, concurrency: undefined });
+    assert.deepEqual(parseArgs(["--profile", PROFILE_REQUIRED]), {
+      help: false,
+      profile: PROFILE_REQUIRED,
+      concurrency: undefined
+    });
+    assert.deepEqual(parseArgs([`--profile=${PROFILE_REQUIRED}`]), {
+      help: false,
+      profile: PROFILE_REQUIRED,
+      concurrency: undefined
+    });
+    assert.deepEqual(parseArgs(["--concurrency", "2"]), { help: false, profile: PROFILE_FULL, concurrency: 2 });
+    assert.deepEqual(parseArgs(["--concurrency=3"]), { help: false, profile: PROFILE_FULL, concurrency: 3 });
+    assert.deepEqual(parseArgs(["--help"]), { help: true, profile: PROFILE_FULL, concurrency: undefined });
     assert.throws(() => parseArgs(["--profile", "fast"]), /unknown verification profile: fast/);
+    assert.throws(() => parseArgs(["--concurrency", "0"]), /positive integer/);
+  });
+
+  it("resolves verifier concurrency only when a limit is configured", () => {
+    assert.equal(resolveVerificationConcurrency(undefined), undefined);
+    assert.equal(resolveVerificationConcurrency(""), undefined);
+    assert.equal(resolveVerificationConcurrency("8"), 8);
+    assert.throws(() => resolveVerificationConcurrency("abc"), /positive integer/);
   });
 
   it("formats completion lines and durations for streaming output", () => {

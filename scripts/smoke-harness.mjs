@@ -8,7 +8,6 @@ import { expandTasks, runParallelTasks } from "./lib/parallel-task-runner.mjs";
 import { compileRegisteredSchema, createSchemaAjv, formatAjvErrors } from "./validators/schema-registry.mjs";
 
 const MAX_COMMAND_OUTPUT = 1024 * 1024 * 64;
-const DEFAULT_SMOKE_CONCURRENCY = 4;
 const commandContext = new AsyncLocalStorage();
 
 export function createSmokeState(values = {}) {
@@ -229,10 +228,10 @@ export function prepareSmokeTasks(tasks) {
 
 export function resolveSmokeConcurrency(value = process.env.DOCNAV_SMOKE_CONCURRENCY) {
   if (value === undefined || value === null || value === "") {
-    return DEFAULT_SMOKE_CONCURRENCY;
+    return undefined;
   }
   const parsed = Number.parseInt(String(value), 10);
-  if (!Number.isFinite(parsed) || parsed < 1) {
+  if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== String(value)) {
     throw new Error(`DOCNAV_SMOKE_CONCURRENCY must be a positive integer: ${value}`);
   }
   return parsed;

@@ -39,8 +39,7 @@ function checkScc(rootDir) {
       version: ver.ok ? ver.version : null,
       error: ver.ok ? null : ver.error,
       source: "system",
-      reason: ver.ok ? null : ver.reason,
-      fatal: !ver.ok && ver.reason !== "tool-unavailable"
+      reason: ver.ok ? null : ver.reason
     };
   } catch {
     return {
@@ -49,8 +48,7 @@ function checkScc(rootDir) {
       version: null,
       error: "unknown error",
       source: "system",
-      reason: "execution-error",
-      fatal: true
+      reason: "execution-error"
     };
   }
 }

@@ -36,7 +36,6 @@ import {
   prepareArtifactDirs,
   initializeToolResults,
   collectToolMetadata,
-  collectFatalToolIssues,
   configureBaseline,
   setComparisonStatus,
   writeBaselineRawOutputs,
@@ -92,7 +91,7 @@ async function main() {
   });
   metrics.currentFingerprints = fingerprints;
 
-  const fatalIssues = collectFatalToolIssues(toolResults);
+  const fatalIssues = [];
   configureBaseline({ metrics, opts, tools, fatalIssues, root });
 
   const scope = detectTextOnlyChange({

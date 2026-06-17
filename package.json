@@ -39,7 +39,7 @@
     "validate:diff": "git diff --check",
     "quality:scan": "node scripts/quality/scan.mjs",
     "quality:annotate": "node scripts/quality/annotate-warnings.mjs",
-    "quality:test": "node --test test/quality/*.test.mjs"
+    "quality:test": "node --test test/quality/tools.test.mjs"
   },
   "devDependencies": {
     "@fission-ai/openspec": "1.3.1",

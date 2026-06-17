@@ -57,6 +57,47 @@ describe("parallel task runner", () => {
     assert.deepEqual(completed.slice(0, 2), ["fast-independent", "shared-one"]);
   });
 
+  it("does not limit concurrency when no explicit concurrency is provided", async () => {
+    const started = [];
+    const releaseTasks = [];
+    const tasks = Array.from({ length: 6 }, (_, index) => ({
+      id: `task-${index}`,
+      run: () => `task-${index}`
+    }));
+
+    const running = runParallelTasks(tasks, {
+      execute: async (task) => {
+        started.push(task.id);
+        await new Promise((resolve) => {
+          releaseTasks.push(resolve);
+        });
+        return task.id;
+      }
+    });
+
+    await waitFor(() => started.length === tasks.length);
+    releaseTasks.forEach((release) => release());
+
+    assert.deepEqual((await running).sort(), tasks.map((task) => task.id));
+  });
+
+  it("respects an explicit concurrency limit", async () => {
+    let activeCount = 0;
+    let maxActiveCount = 0;
+
+    await runParallelTasks(Array.from({ length: 5 }, (_, index) => ({ id: `limited-${index}` })), {
+      concurrency: 2,
+      execute: async () => {
+        activeCount += 1;
+        maxActiveCount = Math.max(maxActiveCount, activeCount);
+        await delay(5);
+        activeCount -= 1;
+      }
+    });
+
+    assert.equal(maxActiveCount, 2);
+  });
+
   it("waits for topological dependencies before starting dependent tasks", async () => {
     const events = [];
     const tasks = [
@@ -147,6 +188,16 @@ function delay(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+async function waitFor(condition) {
+  const deadline = Date.now() + 1000;
+  while (!condition()) {
+    if (Date.now() > deadline) {
+      throw new Error("condition timed out");
+    }
+    await delay(1);
+  }
 }
 
 function taskById(tasks, id) {

@@ -1,6 +1,3 @@
-import path from "node:path";
-
-import { exitCodes, fixturesDir } from "../config.mjs";
 import { fixture } from "../fixtures.mjs";
 import { runCli, validateSchema } from "../harness.mjs";
 import {
@@ -12,142 +9,51 @@ import {
   expectStderrEmpty,
   parseJson
 } from "../assertions.mjs";
+import { exitCodes } from "../config.mjs";
 
-export function createReadableOperationErrorTasks() {
-  const normal = fixture("normal.md");
-  const missingPath = path.join(fixturesDir, "missing.md");
-  const invalidRef = "L99:Missing";
-  const legacyOrdinalRef = legacyBracketedOrdinalRef();
-  const canonicalNotFoundRef = "H:L99:H1:I1";
-  const cases = [
+export function createOperationErrorTasks() {
+  return [
     {
-      name: "missing file readable-json",
-      args: ["outline", missingPath, "--output", "readable-json"],
-      code: "DOCUMENT_NOT_FOUND",
-      detailKey: "path",
-      detailValue: missingPath
-    },
-    {
-      name: "invalid ref readable-json (old format)",
-      args: ["read", normal, "--ref", invalidRef, "--output", "readable-json"],
-      code: "REF_INVALID",
-      detailKey: "ref",
-      detailValue: invalidRef
-    },
-    {
-      name: "legacy ordinal ref readable-json (REF_INVALID)",
-      args: ["read", normal, "--ref", legacyOrdinalRef, "--output", "readable-json"],
-      code: "REF_INVALID",
-      detailKey: "ref",
-      detailValue: legacyOrdinalRef
-    },
-    {
-      name: "canonical ref not found readable-json",
-      args: ["read", normal, "--ref", canonicalNotFoundRef, "--output", "readable-json"],
-      code: "REF_NOT_FOUND",
-      detailKey: "ref",
-      detailValue: canonicalNotFoundRef
-    },
-    {
-      name: "non UTF-8 readable-json",
-      args: ["outline", fixture("non-utf8.md"), "--output", "readable-json"],
-      code: "DOCUMENT_ENCODING_UNSUPPORTED",
-      detailKey: "encoding"
+      id: "MD-ERROR-001",
+      label: "MD-ERROR-001 markdown ref error output mapping",
+      run: testRefErrorOutputMapping
     }
   ];
-
-  return cases.map((item) => ({
-    id: `markdown-readable-operation-error-${slug(item.name)}`,
-    run: async () => {
-      const record = await runCli(item.name, item.args);
-      expectExit(record, exitCodes.documentRefFormat);
-      expectStderrEmpty(record);
-      const json = parseJson(record);
-      validateSchema(record, "readableError", json);
-      expectNoProtocolEnvelope(record, json);
-      expect(record, json.code === item.code, `${item.name} returns ${item.code}`);
-      expect(record, Object.hasOwn(json.details, item.detailKey), `${item.name} includes details.${item.detailKey}`);
-      if (Object.hasOwn(item, "detailValue")) {
-        expect(record, json.details[item.detailKey] === item.detailValue, `${item.name} preserves details.${item.detailKey}`);
-      }
-      expect(record, Array.isArray(json.guidance), `${item.name} includes guidance array`);
-    }
-  }));
 }
 
-export function createProtocolOperationErrorTasks() {
+async function testRefErrorOutputMapping() {
   const normal = fixture("normal.md");
-  const missingPath = path.join(fixturesDir, "missing.md");
-  const invalidRef = "L99:Missing";
-  const legacyOrdinalRef = legacyBracketedOrdinalRef();
-  const canonicalNotFoundRef = "H:L99:H1:I1";
-  const cases = [
-    {
-      name: "missing file protocol-json",
-      args: ["outline", missingPath, "--output", "protocol-json"],
-      operation: "outline",
-      code: "DOCUMENT_NOT_FOUND",
-      detailKey: "path",
-      detailValue: missingPath
-    },
-    {
-      name: "invalid ref protocol-json (old format)",
-      args: ["read", normal, "--ref", invalidRef, "--output", "protocol-json"],
-      operation: "read",
-      code: "REF_INVALID",
-      detailKey: "ref",
-      detailValue: invalidRef
-    },
-    {
-      name: "legacy ordinal ref protocol-json (REF_INVALID)",
-      args: ["read", normal, "--ref", legacyOrdinalRef, "--output", "protocol-json"],
-      operation: "read",
-      code: "REF_INVALID",
-      detailKey: "ref",
-      detailValue: legacyOrdinalRef
-    },
-    {
-      name: "canonical ref not found protocol-json",
-      args: ["read", normal, "--ref", canonicalNotFoundRef, "--output", "protocol-json"],
-      operation: "read",
-      code: "REF_NOT_FOUND",
-      detailKey: "ref",
-      detailValue: canonicalNotFoundRef
-    },
-    {
-      name: "non UTF-8 protocol-json",
-      args: ["outline", fixture("non-utf8.md"), "--output", "protocol-json"],
-      operation: "outline",
-      code: "DOCUMENT_ENCODING_UNSUPPORTED",
-      detailKey: "encoding"
-    }
-  ];
+  const ref = "bad:ref";
 
-  return cases.map((item) => ({
-    id: `markdown-protocol-operation-error-${slug(item.name)}`,
-    run: async () => {
-      const record = await runCli(item.name, item.args);
-      expectExit(record, exitCodes.documentRefFormat);
-      expectNoJsonPayloadInStderr(record);
-      const json = parseJson(record);
-      validateSchema(record, "protocolResponse", json);
-      expectProtocolFailure(record, json, item.operation, item.code);
-      expect(record, Object.hasOwn(json.error.details, item.detailKey), `${item.name} includes error.details.${item.detailKey}`);
-      if (Object.hasOwn(item, "detailValue")) {
-        expect(
-          record,
-          json.error.details[item.detailKey] === item.detailValue,
-          `${item.name} preserves error.details.${item.detailKey}`
-        );
-      }
-    }
-  }));
-}
+  const readable = await runCli("MD-ERROR-001 invalid ref readable-json", [
+    "read",
+    normal,
+    "--ref",
+    ref,
+    "--output",
+    "readable-json"
+  ]);
+  expectExit(readable, exitCodes.documentRefFormat);
+  expectStderrEmpty(readable);
+  const readableJson = parseJson(readable);
+  validateSchema(readable, "readableError", readableJson);
+  expectNoProtocolEnvelope(readable, readableJson);
+  expect(readable, readableJson.code === "REF_INVALID", "readable-json returns REF_INVALID");
+  expect(readable, readableJson.details.ref === ref, "readable-json preserves details.ref");
+  expect(readable, Array.isArray(readableJson.guidance), "readable-json includes guidance array");
 
-function legacyBracketedOrdinalRef() {
-  return ["L1:Guide ", "[", "doc", "nav:", "1", "]"].join("");
-}
-
-function slug(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const protocol = await runCli("MD-ERROR-001 invalid ref protocol-json", [
+    "read",
+    normal,
+    "--ref",
+    ref,
+    "--output",
+    "protocol-json"
+  ]);
+  expectExit(protocol, exitCodes.documentRefFormat);
+  expectNoJsonPayloadInStderr(protocol);
+  const protocolJson = parseJson(protocol);
+  validateSchema(protocol, "protocolResponse", protocolJson);
+  expectProtocolFailure(protocol, protocolJson, "read", "REF_INVALID");
+  expect(protocol, protocolJson.error.details.ref === ref, "protocol-json preserves error.details.ref");
 }

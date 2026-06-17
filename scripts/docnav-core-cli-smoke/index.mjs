@@ -12,15 +12,13 @@ import {
 } from "./harness.mjs";
 
 import {
-  createRealMarkdownFindRefReadTasks,
-  createRealMarkdownOutlineRefReadTasks,
-  createRealMarkdownRefInvalidTasks,
-  createRealMarkdownRefNotFoundTasks
+  createRealMarkdownLinkTasks,
+  createRealMarkdownRefErrorTasks
 } from "./cases/real-markdown.mjs";
-import { createDocumentOutputMatrixTasks } from "./cases/outputs.mjs";
+import { createDocumentOutputBoundaryTasks } from "./cases/outputs.mjs";
 import { createAdapterSelectionTasks } from "./cases/adapter-selection.mjs";
 import { createCliArgumentFailureTasks } from "./cases/cli-args.mjs";
-import { createConfigContextAndCompatibilityTasks } from "./cases/config-management.mjs";
+import { createConfigContextTasks, createToolCommandTasks } from "./cases/config-management.mjs";
 import { createRegistryAndContractFailureTasks } from "./cases/failures.mjs";
 
 let suiteFailure = null;
@@ -39,37 +37,32 @@ try {
 
   const results = await runSmokeTasks([
     {
-      id: "real-markdown-outline-read",
-      label: "real docnav + real docnav-markdown outline -> ref -> read",
-      tasks: createRealMarkdownOutlineRefReadTasks()
+      id: "real-markdown-link-chain",
+      label: "real docnav + real docnav-markdown ref handoff chain",
+      tasks: createRealMarkdownLinkTasks()
     },
     {
-      id: "real-markdown-find-read",
-      label: "real docnav + real docnav-markdown find -> ref -> read",
-      tasks: createRealMarkdownFindRefReadTasks()
+      id: "real-markdown-ref-error",
+      label: "real docnav + real docnav-markdown ref error mapping",
+      tasks: createRealMarkdownRefErrorTasks()
     },
+    { id: "document-output-boundary", label: "document output boundary", tasks: createDocumentOutputBoundaryTasks() },
+    { id: "adapter-selection", label: "adapter selection representative", tasks: createAdapterSelectionTasks() },
+    { id: "cli-argument-failure", label: "CLI argument failure representative", tasks: createCliArgumentFailureTasks() },
     {
-      id: "real-markdown-ref-invalid",
-      label: "real docnav + real docnav-markdown REF_INVALID mapping",
-      tasks: createRealMarkdownRefInvalidTasks()
-    },
-    {
-      id: "real-markdown-ref-not-found",
-      label: "real docnav + real docnav-markdown REF_NOT_FOUND mapping",
-      tasks: createRealMarkdownRefNotFoundTasks()
-    },
-    { id: "document-output-matrix", label: "document operation output matrix", tasks: createDocumentOutputMatrixTasks() },
-    { id: "adapter-selection", label: "adapter selection matrix", tasks: createAdapterSelectionTasks() },
-    { id: "cli-argument-failures", label: "CLI argument failure matrix", tasks: createCliArgumentFailureTasks() },
-    {
-      id: "config-context-compatibility",
-      label: "config context and compatibility warnings",
-      tasks: createConfigContextAndCompatibilityTasks()
+      id: "config-context",
+      label: "config precedence and path context",
+      tasks: createConfigContextTasks()
     },
     {
       id: "registry-contract-failures",
-      label: "registry and adapter contract failure matrix",
+      label: "registry and adapter contract failure representatives",
       tasks: createRegistryAndContractFailureTasks()
+    },
+    {
+      id: "tool-commands",
+      label: "init version doctor and help commands",
+      tasks: createToolCommandTasks()
     }
   ]);
   suiteFailure = results.find((result) => !result.ok)?.error ?? null;

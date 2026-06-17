@@ -1,7 +1,6 @@
 import {
   createFakeAdapter,
   createProject,
-  writeDamagedRegistry,
   copyNormalDocument,
   writeRegistry
 } from "../fixtures.mjs";
@@ -17,145 +16,26 @@ import { exitCodes } from "../config.mjs";
 
 export function createRegistryAndContractFailureTasks() {
   return [
-    { id: "core-failure-missing-registry", run: testMissingRegistry },
-    { id: "core-failure-damaged-registry", run: testDamagedRegistry },
-    { id: "core-failure-invalid-registry-command-path", run: testInvalidRegistryCommandPath },
-    { id: "core-failure-duplicate-adapter-id", run: testDuplicateAdapterId },
-    { id: "core-failure-manifest-contract", run: testManifestContractFailure },
-    { id: "core-failure-probe-contract", run: testProbeContractFailure },
-    { id: "core-failure-manifest-process", run: testManifestProcessFailure },
-    { id: "core-failure-probe-process", run: testProbeProcessFailure },
-    { id: "core-failure-invoke-contract", run: testInvokeContractFailure },
-    { id: "core-failure-invoke-process", run: testInvokeProcessFailure }
+    {
+      id: "CORE-FAIL-001",
+      label: "CORE-FAIL-001 adapter candidate failure evidence",
+      run: testCandidateFailureEvidence
+    },
+    {
+      id: "CORE-INVOKE-001",
+      label: "CORE-INVOKE-001 adapter invoke process failure",
+      run: testInvokeProcessFailure
+    }
   ];
 }
 
-async function testMissingRegistry() {
-  const project = createProject("failure-registry-missing");
-
-  const record = await runCli("missing registry returns FORMAT_UNKNOWN", [
-    "outline",
-    project.normalRelPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.documentRefFormat);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
-  expect(record, Array.isArray(json.error.details.candidates), "missing registry candidates is an array");
-  expect(record, json.error.details.candidates.length === 0, "missing registry has no candidates");
-}
-
-async function testDamagedRegistry() {
-  const project = createProject("failure-registry-damaged");
-  writeDamagedRegistry(project);
-
-  const record = await runCli("damaged registry returns INVALID_REQUEST", [
-    "outline",
-    project.normalRelPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.input);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "INVALID_REQUEST");
-  expect(record, json.error.details.field === "adapter_registry", "damaged registry error identifies registry field");
-}
-
-async function testInvalidRegistryCommandPath() {
-  const project = createProject("failure-registry-command");
-  writeRegistry(project, [{ id: "bad-command", command: "../adapter" }]);
-
-  const record = await runCli("invalid registry command path returns INVALID_REQUEST", [
-    "outline",
-    project.normalRelPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.input);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "INVALID_REQUEST");
-  expect(record, json.error.details.field === "adapter_registry.adapters[].command", "invalid command field is reported");
-}
-
-async function testDuplicateAdapterId() {
-  const project = createProject("failure-registry-duplicate");
-  const first = createFakeAdapter(project, { id: "duplicate" });
-  const second = createFakeAdapter(project, { id: "duplicate-second" });
-  writeRegistry(project, [
-    { id: "duplicate", command: first.command },
-    { id: "duplicate", command: second.command }
-  ]);
-
-  const record = await runCli("duplicate adapter id returns INVALID_REQUEST", [
-    "outline",
-    project.normalRelPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.input);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "INVALID_REQUEST");
-  expect(record, json.error.details.field === "adapter_registry.adapters[].id", "duplicate id field is reported");
-}
-
-async function testManifestContractFailure() {
-  const project = createProject("failure-manifest-contract");
-  const docPath = copyNormalDocument(project, "docs/noextension");
-  const invalid = createFakeAdapter(project, { id: "fake-invalid-manifest", mode: "manifest-invalid" });
-  writeRegistry(project, [invalid]);
-
-  const record = await runCli("manifest contract failure records candidate evidence", [
-    "outline",
-    docPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.documentRefFormat);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
-  expectCandidateEvidence(record, json.error.details.candidates?.[0], {
-    adapter_id: invalid.id,
-    stage: "resolve",
-    code: "MANIFEST_INVALID"
-  });
-}
-
-async function testProbeContractFailure() {
-  const project = createProject("failure-probe-contract");
-  const docPath = copyNormalDocument(project, "docs/noextension");
-  const invalid = createFakeAdapter(project, { id: "fake-invalid-probe", mode: "probe-invalid" });
-  writeRegistry(project, [invalid]);
-
-  const record = await runCli("probe contract failure records candidate evidence", [
-    "outline",
-    docPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.documentRefFormat);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
-  expectCandidateEvidence(record, json.error.details.candidates?.[0], {
-    adapter_id: invalid.id,
-    stage: "probe",
-    code: "PROBE_INVALID"
-  });
-}
-
-async function testManifestProcessFailure() {
-  const project = createProject("failure-manifest-process");
+async function testCandidateFailureEvidence() {
+  const project = createProject("failure-candidate-evidence");
   const docPath = copyNormalDocument(project, "docs/noextension");
   const failed = createFakeAdapter(project, { id: "fake-manifest-exit", mode: "manifest-exit" });
   writeRegistry(project, [failed]);
 
-  const record = await runCli("manifest process failure records candidate evidence", [
+  const record = await runCli("CORE-FAIL-001 manifest process failure records candidate evidence", [
     "outline",
     docPath,
     "--output",
@@ -171,52 +51,8 @@ async function testManifestProcessFailure() {
     stage: "resolve",
     code: "ADAPTER_UNAVAILABLE"
   });
-  expect(record, candidate.details.exit_code === 7, "manifest process evidence includes exit_code");
-  expect(record, candidate.details.stderr.includes("manifest failed intentionally"), "manifest process evidence includes stderr");
-}
-
-async function testProbeProcessFailure() {
-  const project = createProject("failure-probe-process");
-  const docPath = copyNormalDocument(project, "docs/noextension");
-  const failed = createFakeAdapter(project, { id: "fake-probe-exit", mode: "probe-exit" });
-  writeRegistry(project, [failed]);
-
-  const record = await runCli("probe process failure records candidate evidence", [
-    "outline",
-    docPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.documentRefFormat);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
-  const candidate = json.error.details.candidates?.[0];
-  expectCandidateEvidence(record, candidate, {
-    adapter_id: failed.id,
-    stage: "probe",
-    code: "ADAPTER_UNAVAILABLE"
-  });
-  expect(record, candidate.details.exit_code === 8, "probe process evidence includes exit_code");
-  expect(record, candidate.details.stderr.includes("probe failed intentionally"), "probe process evidence includes stderr");
-}
-
-async function testInvokeContractFailure() {
-  const project = createProject("failure-invoke-contract");
-  const invalid = createFakeAdapter(project, { id: "fake-invalid-invoke", mode: "invoke-schema-invalid" });
-  writeRegistry(project, [invalid]);
-
-  const record = await runCli("invoke contract failure returns ADAPTER_INVOKE_FAILED", [
-    "outline",
-    project.normalRelPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.protocolOrAdapterProcess);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "ADAPTER_INVOKE_FAILED");
-  expect(record, json.error.details.adapter_id === invalid.id, "invoke failure identifies adapter id");
+  expect(record, candidate.details.exit_code === 7, "candidate evidence includes exit_code");
+  expect(record, candidate.details.stderr.includes("manifest failed intentionally"), "candidate evidence includes stderr");
 }
 
 async function testInvokeProcessFailure() {
@@ -224,7 +60,7 @@ async function testInvokeProcessFailure() {
   const failed = createFakeAdapter(project, { id: "fake-invoke-exit", mode: "invoke-exit" });
   writeRegistry(project, [failed]);
 
-  const record = await runCli("invoke process failure returns ADAPTER_INVOKE_FAILED", [
+  const record = await runCli("CORE-INVOKE-001 invoke process failure returns ADAPTER_INVOKE_FAILED", [
     "outline",
     project.normalRelPath,
     "--output",

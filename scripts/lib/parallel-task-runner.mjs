@@ -1,12 +1,10 @@
-const DEFAULT_CONCURRENCY = 4;
-
 export async function runParallelTasks(taskList, options = {}) {
-  const concurrency = Math.max(1, options.concurrency ?? DEFAULT_CONCURRENCY);
   const prepareTasks = options.prepareTasks ?? normalizeTaskList;
   const execute = options.execute ?? executeTask;
   const onStart = options.onStart ?? noop;
   const onComplete = options.onComplete ?? noop;
   const pending = prepareTasks(taskList).map(normalizeTask);
+  const concurrency = resolveConcurrency(options.concurrency, pending.length);
   validateTaskGraph(pending);
 
   const completedIds = new Set();
@@ -68,6 +66,18 @@ export async function runParallelTasks(taskList, options = {}) {
   });
 
   return results;
+}
+
+function resolveConcurrency(value, taskCount) {
+  if (value === undefined || value === null) {
+    return taskCount;
+  }
+
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== String(value)) {
+    throw new Error(`task concurrency must be a positive integer: ${value}`);
+  }
+  return parsed;
 }
 
 export function expandTasks(taskList) {

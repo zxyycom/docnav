@@ -109,7 +109,8 @@ describe("smoke harness task scheduling", () => {
   });
 
   it("validates smoke concurrency values", () => {
-    assert.equal(resolveSmokeConcurrency(undefined), 4);
+    assert.equal(resolveSmokeConcurrency(undefined), undefined);
+    assert.equal(resolveSmokeConcurrency(""), undefined);
     assert.equal(resolveSmokeConcurrency("2"), 2);
     assert.throws(() => resolveSmokeConcurrency("0"), /positive integer/);
     assert.throws(() => resolveSmokeConcurrency("abc"), /positive integer/);
