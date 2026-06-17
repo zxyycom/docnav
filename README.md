@@ -81,3 +81,4 @@ pnpm run verify:docnav-workspace
 - [适配器契约](docs/adapter-contract.md)：adapter 命令、manifest、probe 和 invoke 行为。
 - [Ref](docs/refs.md)：ref 的共享调用流程、非空 opaque string 和 adapter 所有权。
 - [测试策略](docs/testing.md)：自动化测试层级、验证入口和一致性审计。
+- [工程工具链](docs/tooling.md)：脚本语言、包管理、TypeScript 脚本运行方式和本地验证工具。
