@@ -26,7 +26,7 @@
     "validate:json": "node scripts/validate-docs.mjs json",
     "validate:schema": "node scripts/validate-docs.mjs schema",
     "validate:mcp": "node scripts/validate-docs.mjs mcp",
-    "validate:semantics": "node scripts/validate-docs.mjs semantics",
+    "validate:examples": "node scripts/validate-docs.mjs examples",
     "validate:links": "node scripts/validate-docs.mjs links",
     "validate:openspec": "openspec validate --all --strict",
     "validate:diff": "git diff --check",

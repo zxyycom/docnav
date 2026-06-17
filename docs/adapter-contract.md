@@ -52,7 +52,7 @@ capabilities[]
 
 manifest 只声明 adapter 身份、支持格式、扩展名、content type 和 capabilities，不声明协议范围或格式默认参数。旧字段 `protocol.min`、`protocol.max` 和 `recommended_parameters` 必须被当前 manifest schema 拒绝。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
 
-Markdown adapter 直接 CLI 使用 `limit_chars: 6000` 和 `max_heading_level: 3` 作为内置默认值，允许其项目级和用户级配置覆盖。
+Markdown v0 adapter 的直接 CLI 默认值属于 `docnav-markdown` 配置域：当前默认 `limit_chars: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；直接 CLI 在进入 invoke 前把最终值显式写入 request，并允许项目级和用户级 adapter 配置覆盖。
 Markdown find 返回的 match ref 可按共享调用流程原样传给 read；没有局部导航区域时，可以返回 adapter 定义的全文 ref。find 的 ref 归属策略和 read 对该 ref 的接受与解释行为，由 [Markdown Adapter](adapters/markdown.md) 定义。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度。
 
 ## Probe

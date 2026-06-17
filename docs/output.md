@@ -81,7 +81,7 @@ Some install text.
 
 成功结果存在 adapter 选择候选 warning 时，`readable-json` 同样必须在顶层 `warnings` 数组中保留。adapter candidate warning 使用 `id: "adapter_candidate_failure"`，`effect: "candidate_skipped"`，并在 `details` 中保留 `adapter_id`、`stage`、`code` 和可选 `preselected`。没有 warning 时省略该字段。
 
-readable read 保留 adapter 返回的 `content_type`。如果调用方提供 `--adapter <adapter-id>` 或 MCP adapter 参数，`docnav` 先校验该 adapter；失败后再进入 registry 遍历。预选 adapter 失败不直接中断阅读链路，而是作为候选 warning 保留。
+readable read 保留 adapter 返回的 `content_type`。当 [架构](architecture.md#adapter-选择) 定义的 adapter 选择流程产生可恢复候选失败时，阅读输出将其承载为 `adapter_candidate_failure` warning；MCP adapter 参数映射到 core CLI 后按同一规则处理。
 
 阅读错误保留 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。需要机器可靠错误契约时使用完整协议输出。
 

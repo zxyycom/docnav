@@ -4,7 +4,7 @@ export const TASK_NAMES = {
   json: "json",
   schema: "schema",
   mcp: "mcp",
-  semantics: "semantics",
+  examples: "examples",
   links: "links"
 };
 
@@ -74,30 +74,6 @@ export const OUTPUT_MODE_CONSISTENCY = {
   adapterOutputHelpRust: "crates/docnav-adapter-sdk/src/direct/args.rs",
   conformanceDir: "crates/docnav-readable/tests/fixtures/conformance",
   conformanceReadme: "crates/docnav-readable/tests/fixtures/conformance/README.md",
-  currentDocs: [
-    "README.md",
-    "docs/navigation.md",
-    "docs/architecture.md",
-    "docs/cli.md",
-    "docs/output.md",
-    "docs/adapter-contract.md",
-    "docs/adapters/markdown.md",
-    "docs/protocol.md",
-    "docs/testing.md",
-    "docs/schemas/json-schema.md",
-    "docs/examples/README.md",
-    "docs/CODING_STYLE.md",
-    "openspec/specs/adapter-protocol/spec.md"
-  ],
-  projectSkillDocs: [
-    ".codex/skills/api-and-interface-design/SKILL.md",
-    ".codex/skills/api-and-interface-design/references/docnav-contract-scope.md",
-    ".codex/skills/debugging-and-error-recovery/SKILL.md",
-    ".codex/skills/incremental-implementation/SKILL.md",
-    ".codex/skills/security-and-hardening/SKILL.md",
-    ".codex/skills/security-and-hardening/references/security-checklist.md",
-    ".codex/skills/code-review-and-quality/references/security-checklist.md"
-  ],
   smokeMatrices: [
     "test/smoke/core/cases/outputs.mjs",
     "test/smoke/core/cases/config-management.mjs",

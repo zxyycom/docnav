@@ -10,7 +10,7 @@
 - ref 与分页：ref 由 adapter 生成和解析，core、CLI 和 MCP 只原样传递；分页继续读取按 [Ref](../refs.md) 和对应 adapter 规范验收。
 - 配置边界：每个 CLI 只读取自身配置域，最终 invoke 参数显式完整；配置不得改变协议字段、错误 code 或 readable 输出 shape。
 - adapter 管理：安装、更新、移除和列出 adapter 的流程按 CLI owner 和 adapter management 规格验收；测试覆盖 manifest 校验、fingerprint 边界和普通文档操作不重复安装期校验。
-- MCP bridge：MCP 只映射到核心 `docnav` CLI，不拥有文档解析、adapter 管理、项目初始化、核心配置或 adapter 路由职责；实现交付按 `implement-docnav-mcp-bridge` change 验收。
+- MCP bridge：MCP 只映射到核心 `docnav` CLI，不拥有文档解析、adapter 管理、项目初始化、核心配置或 adapter 路由职责；交付验收按 [MCP Handoff](../mcp.md)、[输出模式](../output.md) 和 [原始协议](../protocol.md) owner 文档执行。
 
 ## 输出测试
 
@@ -55,5 +55,5 @@ Capability 测试按入口类型覆盖，不在本节重复字段 shape：
 5. 调用方从 outline 或 find 取得 ref，并原样调用 `docnav read`。
 6. read 继续按 path 选择 adapter，并由 adapter 解析 ref。
 7. page 非 null 时，使用该 page 继续读取。
-8. `docnav-mcp` 的 tool call 映射、TextContent 和 structuredContent 包装属于 `implement-docnav-mcp-bridge` 的目标验收；当前端到端验收只把 MCP bridge 作为 handoff，不表示已交付 bridge E2E。
+8. `docnav-mcp` 的 tool call 映射、TextContent 和 structuredContent 包装按 [MCP Handoff](../mcp.md)、[输出模式](../output.md) 和 [JSON Schema 索引](../schemas/json-schema.md) 验收；当前端到端验收只把 MCP bridge 作为 handoff，不表示已交付 bridge E2E。
 9. 同一业务结果在 protocol 与 readable 层语义一致，但包装、字段集合和兼容目标不同；只有 protocol 层作为机器稳定接口。

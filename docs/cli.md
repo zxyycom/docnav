@@ -86,14 +86,9 @@ docnav-markdown probe <path> [--output protocol-json]
 docnav-markdown invoke
 ```
 
-Markdown 内置默认值：
+Adapter 直接 CLI 默认值由各 adapter 配置域拥有。`docnav-<adapter-id>` 在执行业务逻辑前解析显式参数、项目配置、用户配置和内置默认值，并在进入 `invoke` 前把最终有限参数显式写入请求。`docnav-markdown` 当前默认值见 [Markdown Adapter](adapters/markdown.md#默认值)。
 
-- outline 每页最多返回 `6000` 字符。
-- outline 默认只展示 H1-H3。
-- read 每页最多返回 `6000` 字符。
-- find 每页最多返回 `6000` 字符。
-
-这些值可由 `docnav-markdown` 自身配置域覆盖。CLI 在执行业务逻辑前解析最终参数；分页操作省略 page 时固定读取第一页，并输出下一页 page 或 null。adapter 文档操作默认使用 `readable-view`；`protocol-json` 使用原始协议 envelope；`manifest` 和 `probe` 使用各自专属 schema。
+分页操作省略 page 时固定读取第一页，并输出下一页 page 或 null。adapter 文档操作默认使用 `readable-view`；`protocol-json` 使用原始协议 envelope；`manifest` 和 `probe` 使用各自专属 schema。
 
 ## 直接 CLI 兼容参数规则
 

@@ -80,7 +80,7 @@ Document operation 当前只声明 `readable-view`、`readable-json` 和 `protoc
 - 定义格式原生导航参数、adapter 直接 CLI 原生参数和内置默认值。
 - 生成扁平 outline、ref、业务语义结果和下一页 page。
 - 按自身契约解析 ref 并读取。
-- 将业务语义交给共享 `docnav-readable` / SDK readable-view renderer path；不拥有通用 readable-view 渲染规则。
+- 将 readable payload 交给共享 `docnav-readable` 渲染路径；adapter 可通过 `docnav-adapter-sdk` 接入该路径，不拥有通用 readable-view 渲染规则。
 - 在 manifest 中声明 adapter 身份、支持格式、扩展名、content type 和 capabilities。
 
 adapter 只处理本格式请求，不承担跨格式路由、项目初始化、全局配置管理或接入层适配。
@@ -126,8 +126,8 @@ AI Client
 | CLI | 配置所有权 |
 | --- | --- |
 | `docnav` | 当前已实现 `defaults.adapter`、`defaults.limit_chars`、`defaults.output`，以及项目配置、用户配置和管理命令 |
-| `docnav-markdown` | Markdown 解析设置、导航默认参数和 adapter 直接 CLI 原生参数默认值；readable-view 渲染路径由共享 `docnav-readable` / SDK 承担 |
-| 其他 adapter | 对应格式的解析设置、导航默认参数和直接 CLI 原生参数默认值；readable-view 渲染路径由共享 `docnav-readable` / SDK 承担 |
+| `docnav-markdown` | Markdown 解析设置、导航默认参数和 adapter 直接 CLI 原生参数默认值；readable-view 渲染路径由共享 `docnav-readable` 和 `docnav-adapter-sdk` 承担 |
+| 其他 adapter | 对应格式的解析设置、导航默认参数和直接 CLI 原生参数默认值；readable-view 渲染路径由共享 `docnav-readable` 和 `docnav-adapter-sdk` 承担 |
 | `docnav-mcp` | 目标配置域由 `implement-docnav-mcp-bridge` 定义；当前 core 不交付 MCP package 配置键 |
 
 每个 CLI 固定使用：

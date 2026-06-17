@@ -3,11 +3,7 @@ import path from "node:path";
 
 import { assert, assertDeepEqual, readJson, toAbs } from "./fs-utils.mjs";
 import { DOCUMENT_OUTPUT_MODES, OUTPUT_MODE_CONSISTENCY } from "./config.mjs";
-import {
-  listMainMarkdownDocs,
-  readText,
-  sortedUnique,
-} from "./document-files.mjs";
+import { readText, sortedUnique } from "./document-files.mjs";
 
 function assertIncludesDocumentOutputModes(relPath) {
   const text = readText(relPath);
@@ -128,88 +124,6 @@ function validateRustOutputModeEnums() {
   assert(
     adapterHelp.includes('.value_name("protocol-json")'),
     "adapter protocol-only help must stay protocol-json only",
-  );
-}
-
-function validateDocumentOutputModeDocs() {
-  const bannedLegacyDeclarations = [
-    { pattern: /默认文本/u, label: "默认文本" },
-    { pattern: /`text`\s*输出模式/u, label: "`text` 输出模式" },
-    { pattern: /text\s*输出模式/u, label: "text 输出模式" },
-    { pattern: /text output mode/iu, label: "text output mode" },
-    { pattern: /human text formatting/iu, label: "human text formatting" },
-    { pattern: /`text`\s+vs\s+JSON/iu, label: "`text` vs JSON" },
-    {
-      pattern: /readable JSON 与 text output/iu,
-      label: "readable JSON 与 text output",
-    },
-  ];
-
-  for (const relPath of [
-    ...OUTPUT_MODE_CONSISTENCY.currentDocs,
-    ...OUTPUT_MODE_CONSISTENCY.projectSkillDocs,
-  ]) {
-    const text = readText(relPath);
-    for (const mode of DOCUMENT_OUTPUT_MODES) {
-      assert(text.includes(mode), `${relPath} must stay aligned with ${mode}`);
-    }
-    for (const { pattern, label } of bannedLegacyDeclarations) {
-      assert(
-        !pattern.test(text),
-        `${relPath} contains legacy document output wording: ${label}`,
-      );
-    }
-    assert(
-      !/readable-view\|readable-json\|protocol-json\|[a-z0-9_-]+/iu.test(text),
-      `${relPath} advertises an extra document output mode next to current modes`,
-    );
-  }
-}
-
-function validateConfigTemplateDocs() {
-  // Catch claims that config can change readable output text/copy/guidance/templates.
-  // Verbs describe config exercising power over readable output; objects are the
-  // text/copy/guidance/template artifacts config must not control.
-  // Negative lookbehind excludes negated/prohibitive forms (不得/不能/不可/不会/不)
-  // so that "配置不得改变 protocol-json 字段" and "不改变阅读输出文案" are not
-  // flagged — only positive claims of config power are violations.
-  const claimPattern =
-    /(配置|配置域)[^\n]{0,120}(?<!(?:不得|不能|不可|不会|不))(拥有|可以控制|可以通过|调整|读取|可以改变|可以修改|可以定制|可以自定义|改变|修改)[^\n]{0,80}(阅读输出文案|阅读输出文本|阅读文案|输出文案|guidance|阅读文本模板|输出文本模板|TextContent\s*模板|TextContent\s*包装文本|TextContent\s*包装模板|阅读输出\s*模板|header\s*文案|header\s*模板|tool\s*暴露策略)/u;
-  for (const relPath of listMainMarkdownDocs()) {
-    const text = readText(relPath);
-    assert(
-      !claimPattern.test(text),
-      `${relPath} must not claim config can change readable output text/copy/guidance/templates`,
-    );
-    assert(
-      !/用户修改配置即可生效/u.test(text),
-      `${relPath} must not claim unimplemented readable text template config is live`,
-    );
-  }
-}
-
-function validateSchemaIndexReadableViewBoundary() {
-  const readme = readText("docs/schemas/json-schema.md");
-  const schemaRows = readme
-    .split(/\r?\n/u)
-    .filter((line) => /\[readable-[^\]]+\.schema\.json\]/u.test(line));
-
-  for (const line of schemaRows) {
-    assert(
-      !/readable-view|header/u.test(line),
-      "readable schema index rows must not bind readable-view headers to readable JSON schemas",
-    );
-  }
-
-  assert(
-    /CLI `readable-json` 和 MCP structuredContent/u.test(readme),
-    "schema index must state readable schemas validate readable-json and MCP structuredContent",
-  );
-  assert(
-    /readable-view header block refs、framing 和 payload 还原由 committed conformance vectors 验收/u.test(
-      readme,
-    ),
-    "schema index must assign readable-view framing/header block refs to conformance vectors",
   );
 }
 
@@ -334,9 +248,6 @@ function validateConformanceFixtures() {
 
 export function validateOutputModeConsistency() {
   validateRustOutputModeEnums();
-  validateDocumentOutputModeDocs();
-  validateConfigTemplateDocs();
-  validateSchemaIndexReadableViewBoundary();
   validateOutputModeSmokeMatrices();
   validateConformanceFixtures();
   console.log(

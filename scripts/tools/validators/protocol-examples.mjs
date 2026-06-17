@@ -241,7 +241,7 @@ function validateManifestSemantics() {
     "markdown manifest example missing text/markdown content type",
   );
 
-  console.log("manifest semantics ok: markdown capabilities and format");
+  console.log("manifest example consistency ok: markdown capabilities and format");
 }
 
 export function validateProtocolExampleSemantics() {

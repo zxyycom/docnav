@@ -630,15 +630,14 @@ function docsValidatorChecks() {
       ]
     },
     {
-      id: "docs-semantics-validator",
-      label: "docs semantics validator",
+      id: "docs-example-consistency-validator",
+      label: "docs example consistency validator",
       command: "node",
-      args: ["scripts/validate-docs.mjs", "semantics"],
+      args: ["scripts/validate-docs.mjs", "examples"],
       ignoreOutput: [
         /^protocol\/readable mapping ok:/,
         /^error details ok:/,
-        /^manifest semantics ok:/,
-        /^MCP bridge handoff docs ok:/,
+        /^manifest example consistency ok:/,
         /^document output mode consistency ok:/
       ]
     },

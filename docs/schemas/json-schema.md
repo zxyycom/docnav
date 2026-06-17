@@ -22,7 +22,7 @@
 | [readable-error.schema.json](readable-error.schema.json) | CLI/MCP 精简错误 |
 | [readable-common.schema.json](readable-common.schema.json) | readable/MCP schema 共享 `$defs` |
 
-`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 校验 unchanged typed readable payload，即 CLI `readable-json` 和 MCP structuredContent。`readable-view` 的 block 替换只应用于 renderer config 声明的字符串字段；readable-view header block refs、framing 和 payload 还原由 committed conformance vectors 验收，不使用 unchanged readable JSON schema 校验；protocol schema 同样保持独立。
+`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 只校验 CLI `readable-json` 和 MCP structuredContent。`readable-view` 不使用 readable JSON schema 校验；framing、header block refs 和 payload 还原的验收边界见 [输出模式](../output.md) 和 readable-view conformance vectors。protocol schema 保持独立。
 
 原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例、MCP tool 声明和实现自测，不表示 readable 输出是长期机器解析协议。
 
@@ -32,6 +32,6 @@ operation readable schema 和 MCP structuredContent outputSchema 包含可省略
 
 本仓库的 docs validator 和 Markdown smoke 会先预加载 `docs/schemas/` 下的 schema，再按 `$id` 编译入口 schema；新增跨文件 `$ref` 时，应保持同目录相对引用，并为被引用 schema 设置稳定 `$id`。示例语义一致性由文档验证脚本检查，检查项必须能追溯到对应 owner 文档。
 
-文件系统边界、ref 唯一性、真实分页一致性和配置优先级仍需后续实现级业务测试。
+文件系统边界、ref 唯一性、真实分页一致性和配置优先级不属于 JSON Schema 校验范围，应由对应 owner 文档下的实现级业务测试覆盖。
 
 `$id` 中的 URL 是 schema 标识，不要求运行时联网访问。MCP tool 声明中的 `outputSchema` 必须内联或随工具声明打包，不依赖远程 schema URL，避免 client 无法解析外部 schema。
