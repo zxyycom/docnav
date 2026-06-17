@@ -1,0 +1,390 @@
+export type TaskEnv = Record<string, string | undefined>;
+
+export type StringList = string | readonly string[] | undefined;
+
+export interface TaskDefinition {
+  id: string;
+  label?: string;
+  type?: string;
+  mutex?: StringList;
+  dependsOn?: StringList;
+  env?: TaskEnv;
+  envFile?: string;
+  tasks?: readonly TaskDefinition[];
+  run?: (task: NormalizedTask) => unknown | Promise<unknown>;
+  [key: string]: any;
+}
+
+export interface NormalizedTask extends TaskDefinition {
+  label: string;
+  type: string;
+  mutex: string[];
+  dependsOn: string[];
+  tasks?: undefined;
+}
+
+interface InheritedTaskState {
+  type: string;
+  mutex: string[];
+  dependsOn: string[];
+  env?: TaskEnv;
+  envFile?: string;
+}
+
+interface ExpandTaskState {
+  ids: Set<string>;
+  groupLeafIds: Map<string, string[]>;
+  leafTasks: NormalizedTask[];
+}
+
+interface RunParallelTaskOptions<TResult> {
+  prepareTasks?: (taskList: readonly TaskDefinition[]) => NormalizedTask[];
+  execute?: (task: NormalizedTask) => TResult | Promise<TResult>;
+  onStart?: (task: NormalizedTask) => unknown | Promise<unknown>;
+  onComplete?: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
+  concurrency?: string | number | null;
+}
+
+interface StartTaskOptions<TResult> {
+  task: NormalizedTask;
+  execute: (task: NormalizedTask) => TResult | Promise<TResult>;
+  onStart: (task: NormalizedTask) => unknown | Promise<unknown>;
+  onComplete: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
+  completedIds: Set<string>;
+  runningMutexes: Set<string>;
+  results: TResult[];
+  onSettled: () => void;
+  onError: (error: unknown) => void;
+  isSettled: () => boolean;
+}
+
+export async function runParallelTasks<TResult = unknown>(
+  taskList: readonly TaskDefinition[],
+  options: RunParallelTaskOptions<TResult> = {}
+): Promise<TResult[]> {
+  const prepareTasks = options.prepareTasks ?? normalizeTaskList;
+  const execute = options.execute ?? (executeTask as (task: NormalizedTask) => TResult | Promise<TResult>);
+  const onStart = options.onStart ?? noop;
+  const onComplete = options.onComplete ?? noop;
+  const pending = prepareTasks(taskList);
+  const concurrency = resolveConcurrency(options.concurrency, pending.length);
+  validateTaskGraph(pending);
+
+  const completedIds = new Set<string>();
+  const runningMutexes = new Set<string>();
+  const results: TResult[] = [];
+  let activeCount = 0;
+  let settled = false;
+
+  await new Promise<void>((resolve, reject) => {
+    const finishIfDone = () => {
+      if (!settled && pending.length === 0 && activeCount === 0) {
+        settled = true;
+        resolve();
+      }
+    };
+
+    const fail = (error: unknown) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
+    const schedule = () => {
+      while (activeCount < concurrency) {
+        const nextIndex = pending.findIndex((task) => canRunTask(task, completedIds, runningMutexes));
+        if (nextIndex === -1) {
+          break;
+        }
+
+        const [task] = pending.splice(nextIndex, 1);
+        startTask({
+          task,
+          execute,
+          onStart,
+          onComplete,
+          completedIds,
+          runningMutexes,
+          results,
+          onSettled: () => {
+            activeCount -= 1;
+            schedule();
+            finishIfDone();
+          },
+          onError: fail,
+          isSettled: () => settled
+        });
+        activeCount += 1;
+      }
+
+      if (activeCount === 0 && pending.length > 0) {
+        fail(new Error(`unable to schedule tasks; unresolved dependencies or cycle: ${describePendingTasks(pending, completedIds)}`));
+        return;
+      }
+      finishIfDone();
+    };
+
+    schedule();
+  });
+
+  return results;
+}
+
+function resolveConcurrency(value: string | number | null | undefined, taskCount: number): number {
+  if (value === undefined || value === null) {
+    return taskCount;
+  }
+
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== String(value)) {
+    throw new Error(`task concurrency must be a positive integer: ${value}`);
+  }
+  return parsed;
+}
+
+export function expandTasks(taskList: readonly TaskDefinition[]): NormalizedTask[] {
+  if (!Array.isArray(taskList)) {
+    throw new Error("task list must be an array");
+  }
+
+  const ids = new Set<string>();
+  const groupLeafIds = new Map<string, string[]>();
+  const leafTasks: NormalizedTask[] = [];
+
+  for (const task of taskList) {
+    expandTask(task, {
+      type: "default",
+      mutex: [],
+      dependsOn: [],
+      env: undefined,
+      envFile: undefined
+    }, {
+      ids,
+      groupLeafIds,
+      leafTasks
+    });
+  }
+
+  return leafTasks.map((task) => ({
+    ...task,
+    dependsOn: resolveGroupDependencies(task.dependsOn, groupLeafIds, task.id)
+  }));
+}
+
+export function normalizeTask(task: TaskDefinition): NormalizedTask {
+  if (!task || typeof task !== "object") {
+    throw new Error("task must be an object");
+  }
+  if (typeof task.id !== "string" || task.id.trim().length === 0) {
+    throw new Error("task.id must be a non-empty string");
+  }
+
+  const { tasks: _tasks, ...rest } = task;
+  return {
+    label: task.id,
+    type: "default",
+    ...rest,
+    mutex: normalizeStringList(task.mutex, "mutex"),
+    dependsOn: normalizeStringList(task.dependsOn, "dependsOn")
+  };
+}
+
+export function validateTaskGraph(taskList: readonly NormalizedTask[]): void {
+  const ids = new Set<string>();
+  for (const task of taskList) {
+    if (ids.has(task.id)) {
+      throw new Error(`duplicate task id: ${task.id}`);
+    }
+    ids.add(task.id);
+  }
+
+  for (const task of taskList) {
+    for (const dependency of task.dependsOn) {
+      if (!ids.has(dependency)) {
+        throw new Error(`task ${task.id} depends on unknown task ${dependency}`);
+      }
+    }
+  }
+}
+
+function expandTask(task: TaskDefinition, inherited: InheritedTaskState, state: ExpandTaskState): void {
+  assertTaskObject(task);
+  registerTaskId(task.id, state.ids);
+
+  const taskMutex = normalizeStringList(task.mutex, "mutex");
+  const taskDependsOn = normalizeStringList(task.dependsOn, "dependsOn");
+  const taskEnv = mergeEnv(inherited.env, task.env);
+  const taskEnvFile = task.envFile ?? inherited.envFile;
+  const taskType = task.type ?? inherited.type;
+  const nextInherited = {
+    type: taskType,
+    mutex: [...inherited.mutex, ...taskMutex],
+    dependsOn: [...inherited.dependsOn, ...taskDependsOn],
+    env: taskEnv,
+    envFile: taskEnvFile
+  };
+
+  if (task.tasks !== undefined) {
+    if (!Array.isArray(task.tasks) || task.tasks.length === 0) {
+      throw new Error("task.tasks must be a non-empty array");
+    }
+
+    const startIndex = state.leafTasks.length;
+    for (const child of task.tasks) {
+      expandTask(child, nextInherited, state);
+    }
+    state.groupLeafIds.set(
+      task.id,
+      state.leafTasks.slice(startIndex).map((leaf) => leaf.id)
+    );
+    return;
+  }
+
+  const {
+    dependsOn: _dependsOn,
+    env: _env,
+    envFile: _envFile,
+    mutex: _mutex,
+    tasks: _tasks,
+    type: _type,
+    ...rest
+  } = task;
+  const leaf: TaskDefinition = {
+    type: taskType,
+    ...rest,
+    mutex: nextInherited.mutex,
+    dependsOn: nextInherited.dependsOn
+  };
+  if (taskEnv !== undefined) {
+    leaf.env = taskEnv;
+  }
+  if (taskEnvFile !== undefined) {
+    leaf.envFile = taskEnvFile;
+  }
+  state.leafTasks.push(normalizeTask(leaf));
+}
+
+function assertTaskObject(task: unknown): asserts task is TaskDefinition {
+  if (!task || typeof task !== "object") {
+    throw new Error("task must be an object");
+  }
+  const value = task as Record<string, unknown>;
+  if (typeof value.id !== "string" || value.id.trim().length === 0) {
+    throw new Error("task.id must be a non-empty string");
+  }
+}
+
+function registerTaskId(id: string, ids: Set<string>): void {
+  if (ids.has(id)) {
+    throw new Error(`duplicate task id: ${id}`);
+  }
+  ids.add(id);
+}
+
+function mergeEnv(parentEnv: TaskEnv | undefined, taskEnv: TaskEnv | undefined): TaskEnv | undefined {
+  if (parentEnv === undefined) {
+    return taskEnv;
+  }
+  if (taskEnv === undefined) {
+    return parentEnv;
+  }
+  return {
+    ...parentEnv,
+    ...taskEnv
+  };
+}
+
+function resolveGroupDependencies(dependsOn: readonly string[], groupLeafIds: Map<string, string[]>, taskId: string): string[] {
+  const resolved: string[] = [];
+  const seen = new Set<string>();
+  for (const dependency of dependsOn) {
+    const dependencies = groupLeafIds.get(dependency) ?? [dependency];
+    for (const id of dependencies) {
+      if (id !== taskId && !seen.has(id)) {
+        resolved.push(id);
+        seen.add(id);
+      }
+    }
+  }
+  return resolved;
+}
+
+function startTask<TResult>({
+  task,
+  execute,
+  onStart,
+  onComplete,
+  completedIds,
+  runningMutexes,
+  results,
+  onSettled,
+  onError,
+  isSettled
+}: StartTaskOptions<TResult>): void {
+  for (const mutex of task.mutex) {
+    runningMutexes.add(mutex);
+  }
+
+  void Promise.resolve()
+    .then(() => onStart(task))
+    .then(() => execute(task))
+    .then((result) => {
+      results.push(result);
+      completedIds.add(task.id);
+      return onComplete(result, task);
+    })
+    .catch(onError)
+    .finally(() => {
+      if (isSettled()) {
+        return;
+      }
+      for (const mutex of task.mutex) {
+        runningMutexes.delete(mutex);
+      }
+      onSettled();
+    });
+}
+
+function canRunTask(task: NormalizedTask, completedIds: Set<string>, runningMutexes: Set<string>): boolean {
+  return task.dependsOn.every((id) => completedIds.has(id))
+    && task.mutex.every((mutex) => !runningMutexes.has(mutex));
+}
+
+function describePendingTasks(pending: readonly NormalizedTask[], completedIds: Set<string>): string {
+  return pending
+    .map((task) => {
+      const blockedBy = task.dependsOn.filter((id) => !completedIds.has(id));
+      return blockedBy.length > 0 ? `${task.id} waits for ${blockedBy.join(", ")}` : task.id;
+    })
+    .join("; ");
+}
+
+function normalizeStringList(value: StringList, fieldName: string): string[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.length === 0)) {
+    throw new Error(`task.${fieldName} must be a string or string array`);
+  }
+  return [...value];
+}
+
+function normalizeTaskList(taskList: readonly TaskDefinition[]): NormalizedTask[] {
+  if (!Array.isArray(taskList)) {
+    throw new Error("task list must be an array");
+  }
+  return taskList.map(normalizeTask);
+}
+
+function executeTask(task: NormalizedTask): unknown {
+  if (typeof task.run !== "function") {
+    throw new Error(`task ${task.id} has no run function`);
+  }
+  return task.run(task);
+}
+
+function noop(): void {}
