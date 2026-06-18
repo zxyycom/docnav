@@ -23,7 +23,7 @@ export function scanInfo(metrics: QualityMetrics, options: ReportOptions): strin
     "",
     `- **Schema version**: ${m.schemaVersion}`,
     `- **Timestamp**: ${timestamp}`,
-    `- **Commit**: \`${m.commitSha}\``,
+    `- **Commit**: ${formatCommitDisplay(m.commitSha, m.commitTitle)}`,
     `- **Config version**: ${m.configVersion}`,
     `- **Scope**: ${m.scope.include.join(", ")}`,
     "",
@@ -51,7 +51,7 @@ export function comparisonInfo(metrics: QualityMetrics): string {
       "## Comparison",
       "",
       `**⚠️ Baseline 不可用:** ${reason} (\`${metrics.baseline.status}\`)。`,
-      "趋势比较无法生成，报告仅展示当前快照。"
+      "Baseline delta 不可用，报告仅展示当前快照。"
     ].join("\n");
   }
 
@@ -61,7 +61,7 @@ export function comparisonInfo(metrics: QualityMetrics): string {
     return [
       "## Comparison",
       "",
-      `- **Baseline commit**: \`${baseline.commitSha}\``,
+      `- **Baseline commit**: ${formatCommitDisplay(baseline.commitSha || "unknown", baselineMetadata.commitTitle)}`,
       `- **Baseline date**: ${baseline.commitDate || "unknown"}`,
       `- **Selection reason**: ${baselineMetadata.selectionReason}`,
       "",
@@ -118,6 +118,10 @@ function baselineUnavailableReason(status: BaselineStatus | string): string {
   if (status === "baseline-materialization-failed") return "Baseline commit 导出失败";
   if (status === "baseline-scan-failed") return "Baseline 扫描失败";
   return "未知原因";
+}
+
+function formatCommitDisplay(sha: string, title: string | null | undefined): string {
+  return title ? `\`${sha}\` - ${title}` : `\`${sha}\``;
 }
 
 export function formatReportTimestamp(timestamp: string, timeZone: string): string {

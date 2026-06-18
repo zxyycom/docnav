@@ -13,6 +13,7 @@ import type {
   FileMetric,
   FunctionMetric,
   QualityConfig,
+  WarningChannels,
   WarningRecord
 } from "./schema.ts";
 
@@ -30,15 +31,6 @@ type GenerateWarningsParams = {
   files: FileMetric[];
   functions: FunctionMetric[];
   scope: { changed: boolean; changedFiles: string[] };
-};
-
-type ShouldWarnParams = {
-  delta: number | null;
-  deltaFloor: number;
-  floor: number;
-  isChanged: boolean;
-  isWatchlistOnly: boolean;
-  value: number | null;
 };
 
 type AreaWarningPolicy = {
@@ -74,26 +66,43 @@ type WarningContext = {
   hasBaselineFunctions: boolean;
 };
 
-export function generateWarnings(params: GenerateWarningsParams): WarningRecord[] {
+type WarningCandidate = {
+  deltaFloor: number;
+  isWatchlistOnly: boolean;
+  record: WarningRecord;
+};
+
+export function generateWarningChannels(params: GenerateWarningsParams): WarningChannels {
   const { files, functions, duplicates, config, baseline, comparisonStatus } = params;
 
-  if (suppressesWarnings(comparisonStatus)) {
-    return [];
-  }
-
   const context = buildWarningContext(config, baseline);
-  const warnings = [
+  const candidates = [
     ...generateFileWarnings(files, context),
     ...generateFunctionWarnings(functions, context),
     ...generateDuplicateWarnings(duplicates, context)
   ];
 
-  warnings.sort(compareWarnings);
+  candidates.sort((a, b) => compareWarnings(a.record, b.record));
 
-  return warnings;
+  const all = candidates.map((candidate) => candidate.record);
+  const changedCandidates = suppressesChangedWarnings(comparisonStatus)
+    ? []
+    : candidates.filter(shouldEmitChangedWarning);
+
+  return {
+    all,
+    changed: changedCandidates.map((candidate) => candidate.record),
+    regressions: changedCandidates
+      .filter((candidate) => candidate.record.deltaValue !== null && candidate.record.deltaValue > candidate.deltaFloor)
+      .map((candidate) => candidate.record)
+  };
 }
 
-function suppressesWarnings(comparisonStatus: string): boolean {
+export function generateWarnings(params: GenerateWarningsParams): WarningRecord[] {
+  return generateWarningChannels(params).changed;
+}
+
+function suppressesChangedWarnings(comparisonStatus: string): boolean {
   return comparisonStatus === "input-unchanged" || comparisonStatus === "baseline-unavailable";
 }
 
@@ -116,8 +125,8 @@ function buildWarningContext(config: QualityConfig, baseline: WarningBaseline): 
   };
 }
 
-function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningRecord[] {
-  const warnings: WarningRecord[] = [];
+function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningCandidate[] {
+  const warnings: WarningCandidate[] = [];
 
   for (const file of files) {
     const areaPolicy = metricAreaWarningPolicy(context.config, file.codeArea);
@@ -134,32 +143,30 @@ function generateFileWarnings(files: FileMetric[], context: WarningContext): War
   return warnings;
 }
 
-function buildMetricWarning(spec: MetricWarningSpec): WarningRecord | null {
-  if (spec.value === null || !shouldWarn({
-    isChanged: spec.isChanged,
-    isWatchlistOnly: spec.areaPolicy.isWatchlistOnly,
-    value: spec.value,
-    floor: spec.floor,
-    delta: spec.deltaValue,
-    deltaFloor: spec.deltaFloor
-  })) {
+function buildMetricWarning(spec: MetricWarningSpec): WarningCandidate | null {
+  if (spec.value === null || !exceedsAbsoluteFloor(spec.value, spec.floor)) {
     return null;
   }
 
   return {
-    level: spec.areaPolicy.level,
-    ruleId: spec.ruleId,
-    sourceTool: spec.sourceTool,
-    path: spec.path,
-    line: spec.line,
-    codeArea: spec.codeArea,
-    metric: spec.metric,
-    value: spec.value,
-    comparisonBasis: basisFor(spec.isChanged, spec.deltaValue),
-    baselineValue: spec.baselineValue,
-    deltaValue: spec.deltaValue,
-    message: spec.message,
-    suggestion: spec.suggestion
+    deltaFloor: spec.deltaFloor,
+    isWatchlistOnly: spec.areaPolicy.isWatchlistOnly,
+    record: {
+      level: spec.areaPolicy.level,
+      ruleId: spec.ruleId,
+      sourceTool: spec.sourceTool,
+      path: spec.path,
+      line: spec.line,
+      codeArea: spec.codeArea,
+      metric: spec.metric,
+      value: spec.value,
+      comparisonBasis: basisFor(spec.isChanged, spec.deltaValue),
+      baselineValue: spec.baselineValue,
+      deltaValue: spec.deltaValue,
+      isChanged: spec.isChanged,
+      message: spec.message,
+      suggestion: spec.suggestion
+    }
   };
 }
 
@@ -168,7 +175,7 @@ function buildFileLineWarning(
   baseFile: FileMetric | undefined,
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
-): WarningRecord | null {
+): WarningCandidate | null {
   const lineFloor = context.config.scc?.fileLines?.absoluteFloor ?? 300;
   const lineDelta = context.config.scc?.fileLines?.changedDelta ?? 100;
   const baselineLines = baseFile?.lines ?? (context.hasBaselineFiles ? 0 : null);
@@ -183,7 +190,7 @@ function buildFileLineWarning(
     floor: lineFloor,
     isChanged: file.isChanged,
     line: null,
-    message: `File "${file.path}" has ${file.lines} lines (floor: ${lineFloor})`,
+    message: `File "${file.path}" has ${file.lines} lines (threshold: ${lineFloor} lines)`,
     metric: "lines",
     path: file.path,
     ruleId: "scc-file-lines",
@@ -200,7 +207,7 @@ function buildFileComplexityWarning(
   baseFile: FileMetric | undefined,
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
-): WarningRecord | null {
+): WarningCandidate | null {
   const ccFloor = context.config.scc?.fileComplexity?.absoluteFloor ?? 20;
   const ccDelta = context.config.scc?.fileComplexity?.changedDelta ?? 10;
   const baseComplexity = baseFile?.complexity?.value ?? (context.hasBaselineFiles ? 0 : null);
@@ -216,7 +223,7 @@ function buildFileComplexityWarning(
     floor: ccFloor,
     isChanged: file.isChanged,
     line: null,
-    message: `File "${file.path}" has complexity ${fileComplexity} (floor: ${ccFloor})`,
+    message: `File "${file.path}" has complexity ${fileComplexity} (threshold: ${ccFloor} complexity)`,
     metric: "complexity",
     path: file.path,
     ruleId: "scc-file-complexity",
@@ -226,8 +233,8 @@ function buildFileComplexityWarning(
   });
 }
 
-function generateFunctionWarnings(functions: FunctionMetric[], context: WarningContext): WarningRecord[] {
-  const warnings: WarningRecord[] = [];
+function generateFunctionWarnings(functions: FunctionMetric[], context: WarningContext): WarningCandidate[] {
+  const warnings: WarningCandidate[] = [];
 
   for (const func of functions) {
     const areaPolicy = metricAreaWarningPolicy(context.config, func.codeArea);
@@ -252,7 +259,7 @@ function buildFunctionComplexityWarning(
   baselineFunc: FunctionMetric | undefined,
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
-): WarningRecord | null {
+): WarningCandidate | null {
   const ccFloor = context.config.lizard?.cyclomaticComplexity?.absoluteFloor ?? 10;
   const ccDelta = context.config.lizard?.cyclomaticComplexity?.changedDelta ?? 5;
   const baselineCc = baselineFunc?.cyclomaticComplexity?.value ?? (context.hasBaselineFunctions ? 0 : null);
@@ -268,7 +275,7 @@ function buildFunctionComplexityWarning(
     floor: ccFloor,
     isChanged: func.isChanged,
     line: func.startLine,
-    message: `Function "${func.name}" in ${func.file}:${func.startLine} has cyclomatic complexity ${functionComplexity} (floor: ${ccFloor})`,
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has cyclomatic complexity ${functionComplexity} (threshold: ${ccFloor} CC)`,
     metric: "cyclomatic-complexity",
     path: func.file,
     ruleId: "lizard-cyclomatic-complexity",
@@ -283,7 +290,7 @@ function buildFunctionLineWarning(
   baselineFunc: FunctionMetric | undefined,
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
-): WarningRecord | null {
+): WarningCandidate | null {
   const lineFloor = context.config.lizard?.functionLines?.absoluteFloor ?? 50;
   const lineDeltaCfg = context.config.lizard?.functionLines?.changedDelta ?? 20;
   const baselineFunctionLines = baselineFunc?.lines ?? (context.hasBaselineFunctions ? 0 : null);
@@ -298,7 +305,7 @@ function buildFunctionLineWarning(
     floor: lineFloor,
     isChanged: func.isChanged,
     line: func.startLine,
-    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} lines (floor: ${lineFloor})`,
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} lines (threshold: ${lineFloor} lines)`,
     metric: "function-lines",
     path: func.file,
     ruleId: "lizard-function-lines",
@@ -313,7 +320,7 @@ function buildFunctionParameterWarning(
   baselineFunc: FunctionMetric | undefined,
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
-): WarningRecord | null {
+): WarningCandidate | null {
   const paramFloor = context.config.lizard?.parameterCount?.absoluteFloor ?? 5;
   const paramDeltaCfg = context.config.lizard?.parameterCount?.changedDelta ?? 2;
   const baselineParameterCount = baselineFunc?.parameterCount ?? (context.hasBaselineFunctions ? 0 : null);
@@ -328,7 +335,7 @@ function buildFunctionParameterWarning(
     floor: paramFloor,
     isChanged: func.isChanged,
     line: func.startLine,
-    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.parameterCount} parameters (floor: ${paramFloor})`,
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.parameterCount} parameters (threshold: ${paramFloor} parameters)`,
     metric: "parameter-count",
     path: func.file,
     ruleId: "lizard-parameter-count",
@@ -338,8 +345,8 @@ function buildFunctionParameterWarning(
   });
 }
 
-function generateDuplicateWarnings(duplicates: DuplicateCodeFragment[], context: WarningContext): WarningRecord[] {
-  const warnings: WarningRecord[] = [];
+function generateDuplicateWarnings(duplicates: DuplicateCodeFragment[], context: WarningContext): WarningCandidate[] {
+  const warnings: WarningCandidate[] = [];
 
   for (const dup of duplicates) {
     const uniqueAreas = duplicateCodeAreas(dup);
@@ -358,7 +365,7 @@ function buildDuplicateWarning(
   uniqueAreas: string[],
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
-): WarningRecord | null {
+): WarningCandidate | null {
   const primaryLocation = dup.locations[0];
   const baselineDuplicateCount = countMatchingBaselineDuplicates(
     dup,
@@ -435,26 +442,16 @@ function compareWarnings(a: WarningRecord, b: WarningRecord): number {
   return b.value - a.value;
 }
 
-function shouldWarn(params: ShouldWarnParams): boolean {
-  const { isChanged, isWatchlistOnly, value, floor, delta, deltaFloor } = params;
+function shouldEmitChangedWarning(candidate: WarningCandidate): boolean {
+  const { record, isWatchlistOnly, deltaFloor } = candidate;
+  if (!record.isChanged) return false;
+  if (isWatchlistOnly) return true;
+  if (record.deltaValue === null || record.deltaValue === undefined) return true;
+  return record.deltaValue > deltaFloor;
+}
 
-  if (value === null || value === undefined || value <= floor) {
-    return false;
-  }
-
-  if (isWatchlistOnly) {
-    return isChanged;
-  }
-
-  if (!isChanged) {
-    return false;
-  }
-
-  if (delta === null || delta === undefined) {
-    return true;
-  }
-
-  return delta > deltaFloor;
+function exceedsAbsoluteFloor(value: number | null | undefined, floor: number): boolean {
+  return value !== null && value !== undefined && value > floor;
 }
 
 function basisFor(isChanged: boolean, delta: number | null): string {

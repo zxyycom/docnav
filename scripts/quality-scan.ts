@@ -24,7 +24,7 @@ import {
   materializeBaseline,
   detectTextOnlyChange
 } from "./tools/quality/baseline.ts";
-import { generateWarnings } from "./tools/quality/warnings.ts";
+import { generateWarningChannels } from "./tools/quality/warnings.ts";
 import {
   collectScanFiles,
   getChangedFileList,
@@ -46,7 +46,8 @@ import {
   validateOutput,
   logFingerprints,
   formatFatalIssue,
-  getGitSha
+  getGitSha,
+  getGitCommitTitle
 } from "./tools/quality/scan-cli.ts";
 
 export { scanBaselineRevision } from "./tools/quality/baseline-scan.ts";
@@ -66,6 +67,7 @@ async function main() {
   const { rawDir } = prepareArtifactDirs(artifactDir);
 
   const commitSha = getGitSha(root);
+  const commitTitle = getGitCommitTitle(commitSha, root);
   const toolResults = initializeToolResults(root);
   const tools = collectToolMetadata(toolResults);
 
@@ -83,6 +85,7 @@ async function main() {
   const metrics = createEmptyMetrics({
     repository: root,
     commitSha,
+    commitTitle,
     configVersion: DEFAULT_CONFIG.version,
     tools,
     scope: {
@@ -105,15 +108,17 @@ async function main() {
   console.log(`  Changed files in scan scope: ${changedFiles.length}`);
 
   scanCurrentRevision({
-    metrics,
-    toolResults,
+    context: {
+      metrics,
+      toolResults,
+      changedFiles,
+      rawDir,
+      fatalIssues,
+      root,
+      config: DEFAULT_CONFIG
+    },
     scanFiles,
-    changedFiles,
-    fileMap,
-    rawDir,
-    fatalIssues,
-    root,
-    config: DEFAULT_CONFIG
+    fileMap
   });
 
   setComparisonStatus(metrics, scope);
@@ -125,7 +130,7 @@ async function main() {
   });
 
   console.log("Generating warnings...");
-  metrics.warnings = generateWarnings({
+  metrics.warnings = generateWarningChannels({
     files: metrics.fileMetrics,
     functions: metrics.functionMetrics,
     duplicates: metrics.duplicateCode,
@@ -140,7 +145,11 @@ async function main() {
       : null,
     comparisonStatus: metrics.comparisonStatus
   });
-  console.log(`  Warnings: ${metrics.warnings.length} generated`);
+  console.log(
+    `  Warnings: ${metrics.warnings.all.length} all, ` +
+    `${metrics.warnings.changed.length} changed, ` +
+    `${metrics.warnings.regressions.length} regressions generated`
+  );
 
   writeArtifacts({ artifactDir, metrics, topN: opts.topN });
   printSummary(metrics);
@@ -232,7 +241,7 @@ function scanMaterializedBaseline({
     const baselineSnapshot = scanBaselineRevision(matResult.workDir, toolResults, DEFAULT_CONFIG);
     metrics.baselineFingerprints = baselineSnapshot.fingerprints;
     metrics.trends = generateTrends(metrics, baselineSnapshot);
-    console.log(`  Trends: ${metrics.trends.length} trend deltas computed`);
+    console.log(`  Baseline deltas: ${metrics.trends.length} computed`);
     writeBaselineRawOutputs(rawDir, baselineSnapshot);
     return baselineSnapshot;
   } catch (err: unknown) {

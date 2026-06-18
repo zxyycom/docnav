@@ -22,59 +22,40 @@ import type {
   ToolAvailability
 } from "./schema.ts";
 
-export function scanCurrentRevision({
-  metrics,
-  toolResults,
-  scanFiles,
-  changedFiles,
-  fileMap,
-  rawDir,
-  fatalIssues,
-  root,
-  config
-}: {
+type ScanContext = {
   changedFiles: string[];
   config: QualityConfig;
   fatalIssues: FatalIssue[];
-  fileMap: CodeAreaFileMap;
   metrics: QualityMetrics;
   rawDir: string;
   root: string;
-  scanFiles: string[];
   toolResults: ToolAvailability[];
-}): void {
-  runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config });
-  runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config });
-  runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root, config });
+};
 
-  metrics.aggregates = buildAggregates({
-    fileMetrics: metrics.fileMetrics,
-    functionMetrics: metrics.functionMetrics,
-    duplicateCode: metrics.duplicateCode,
-    byLanguage: metrics.aggregates.byLanguage,
-    config
+export function scanCurrentRevision({
+  context,
+  scanFiles,
+  fileMap
+}: {
+  context: ScanContext;
+  fileMap: CodeAreaFileMap;
+  scanFiles: string[];
+}): void {
+  runSccScan(context, scanFiles);
+  runLizardScan(context, scanFiles);
+  runCpdScan(context, fileMap);
+
+  context.metrics.aggregates = buildAggregates({
+    fileMetrics: context.metrics.fileMetrics,
+    functionMetrics: context.metrics.functionMetrics,
+    duplicateCode: context.metrics.duplicateCode,
+    byLanguage: context.metrics.aggregates.byLanguage,
+    config: context.config
   });
 }
 
-function runSccScan({
-  metrics,
-  toolResults,
-  scanFiles,
-  changedFiles,
-  rawDir,
-  fatalIssues,
-  root,
-  config
-}: {
-  changedFiles: string[];
-  config: QualityConfig;
-  fatalIssues: FatalIssue[];
-  metrics: QualityMetrics;
-  rawDir: string;
-  root: string;
-  scanFiles: string[];
-  toolResults: ToolAvailability[];
-}): void {
+function runSccScan(context: ScanContext, scanFiles: string[]): void {
+  const { metrics, toolResults, changedFiles, rawDir, fatalIssues, root, config } = context;
   if (!isToolAvailable(toolResults, "scc")) return;
 
   console.log("Running scc...");
@@ -113,25 +94,8 @@ function runSccScan({
   writeFileSync(join(rawDir, "scc-output.json"), JSON.stringify(metrics.fileMetrics, null, 2), "utf8");
 }
 
-function runLizardScan({
-  metrics,
-  toolResults,
-  scanFiles,
-  changedFiles,
-  rawDir,
-  fatalIssues,
-  root,
-  config
-}: {
-  changedFiles: string[];
-  config: QualityConfig;
-  fatalIssues: FatalIssue[];
-  metrics: QualityMetrics;
-  rawDir: string;
-  root: string;
-  scanFiles: string[];
-  toolResults: ToolAvailability[];
-}): void {
+function runLizardScan(context: ScanContext, scanFiles: string[]): void {
+  const { metrics, toolResults, changedFiles, rawDir, fatalIssues, root, config } = context;
   if (!isToolAvailable(toolResults, "lizard")) return;
 
   console.log("Running Lizard...");
@@ -167,23 +131,8 @@ function runLizardScan({
   );
 }
 
-function runCpdScan({
-  metrics,
-  toolResults,
-  fileMap,
-  changedFiles,
-  rawDir,
-  root,
-  config
-}: {
-  changedFiles: string[];
-  config: QualityConfig;
-  fileMap: CodeAreaFileMap;
-  metrics: QualityMetrics;
-  rawDir: string;
-  root: string;
-  toolResults: ToolAvailability[];
-}): void {
+function runCpdScan(context: ScanContext, fileMap: CodeAreaFileMap): void {
+  const { metrics, toolResults, changedFiles, rawDir, root, config } = context;
   if (!isToolAvailable(toolResults, "pmd-cpd")) {
     console.log("  CPD not available, skipping duplicate detection");
     return;

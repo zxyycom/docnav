@@ -19,6 +19,12 @@ import {
   parseSccCSV
 } from "./tools/scc.ts";
 import { buildFingerprints } from "./files.ts";
+import { DEFAULT_CONFIG } from "./config.ts";
+import { createEmptyMetrics } from "./schema.ts";
+import type { FileMetric, QualityMetrics, WarningRecord } from "./schema.ts";
+import { changedFilesSection } from "./report/findings.ts";
+import { comparisonInfo, scanInfo } from "./report/summary.ts";
+import { generateWarningChannels } from "./warnings.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -203,6 +209,125 @@ describe("PMD CPD XML parsing", () => {
   });
 });
 
+describe("quality warning channels", () => {
+  it("keeps full quality debt separate from changed and regression warnings", () => {
+    const currentFiles: FileMetric[] = [
+      qualityFile("src/changed.ts", { isChanged: true, lines: 480, complexity: 45 }),
+      qualityFile("src/legacy.ts", { isChanged: false, lines: 700, complexity: 60 })
+    ];
+    const baselineFiles: FileMetric[] = [
+      qualityFile("src/changed.ts", { isChanged: false, lines: 300, complexity: 25 }),
+      qualityFile("src/legacy.ts", { isChanged: false, lines: 700, complexity: 60 })
+    ];
+
+    const channels = generateWarningChannels({
+      files: currentFiles,
+      functions: [],
+      duplicates: [],
+      config: DEFAULT_CONFIG,
+      scope: { changed: true, changedFiles: ["src/changed.ts"] },
+      baseline: { files: baselineFiles, functions: [], duplicates: [] },
+      comparisonStatus: "compared"
+    });
+
+    assert.equal(channels.all.length, 4);
+    assert.deepEqual(channels.changed.map((warning) => warning.path), [
+      "src/changed.ts",
+      "src/changed.ts"
+    ]);
+    assert.deepEqual(channels.regressions.map((warning) => warning.ruleId), [
+      "scc-file-lines",
+      "scc-file-complexity"
+    ]);
+  });
+
+  it("still reports all warnings when changed annotations are suppressed", () => {
+    const channels = generateWarningChannels({
+      files: [qualityFile("src/legacy.ts", { isChanged: false, lines: 700, complexity: 60 })],
+      functions: [],
+      duplicates: [],
+      config: DEFAULT_CONFIG,
+      scope: { changed: false, changedFiles: [] },
+      baseline: null,
+      comparisonStatus: "input-unchanged"
+    });
+
+    assert.equal(channels.all.length, 2);
+    assert.deepEqual(channels.changed, []);
+    assert.deepEqual(channels.regressions, []);
+  });
+});
+
+describe("quality report changed file watchlist", () => {
+  it("shows only risk-ranked changed files and keeps the full count in summary text", () => {
+    const metrics = qualityMetrics();
+    metrics.fileMetrics = [
+      qualityFile("src/risky.ts", { isChanged: true, lines: 480, complexity: 45 }),
+      qualityFile("src/duplicate.ts", { isChanged: true, lines: 120, complexity: 5 }),
+      qualityFile("src/quiet.ts", { isChanged: true, lines: 80, complexity: 2 })
+    ];
+    metrics.duplicateCode = [{
+      id: 1,
+      tokenCount: 90,
+      lineCount: 12,
+      codeAreas: ["node-production-scripts"],
+      hitsChangedScope: true,
+      locations: [{
+        path: "src/duplicate.ts",
+        startLine: 10,
+        endLine: 22,
+        codeArea: "node-production-scripts"
+      }]
+    }];
+    metrics.warnings = {
+      all: [warning("src/risky.ts", "scc-file-lines", 480, 180)],
+      changed: [warning("src/risky.ts", "scc-file-lines", 480, 180)],
+      regressions: [warning("src/risky.ts", "scc-file-lines", 480, 180)]
+    };
+
+    const section = changedFilesSection(metrics, 10);
+
+    assert.match(section, /Changed files: 3 total, 2 shown by risk ranking/);
+    assert.match(section, /src\/risky\.ts/);
+    assert.match(section, /src\/duplicate\.ts/);
+    assert.doesNotMatch(section, /src\/quiet\.ts/);
+  });
+});
+
+describe("quality report commit display", () => {
+  it("shows current commit hash with its title", () => {
+    const metrics = qualityMetrics();
+    metrics.metadata.commitSha = "abc123";
+    metrics.metadata.commitTitle = "add quality warning channels";
+
+    const section = scanInfo(metrics, { timeZone: "UTC" });
+
+    assert.match(section, /- \*\*Commit\*\*: `abc123` - add quality warning channels/);
+  });
+
+  it("shows baseline commit hash with its title", () => {
+    const metrics = qualityMetrics();
+    metrics.comparisonStatus = "compared";
+    metrics.baseline = {
+      status: "generated",
+      commitSha: "def456",
+      commitDate: "2026-06-18T01:02:03Z",
+      metadata: {
+        commitSha: "def456",
+        commitDate: "2026-06-18T01:02:03Z",
+        commitTitle: "implement quality observability",
+        selectionReason: "nearest-code-commit",
+        configVersion: DEFAULT_CONFIG.version,
+        toolMetadata: []
+      }
+    };
+
+    const section = comparisonInfo(metrics);
+
+    assert.match(section, /- \*\*Baseline commit\*\*: `def456` - implement quality observability/);
+  });
+});
+
 function createFakeSccToolConfig(versionOutput: string) {
   const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-scc-"));
   const fakeSccPath = join(tempDir, "fake-scc.ts");
@@ -230,4 +355,56 @@ function writeFixtureFile(rootDir: string, relPath: string, content: string): vo
   const absPath = join(rootDir, relPath);
   mkdirSync(dirname(absPath), { recursive: true });
   writeFileSync(absPath, content, "utf8");
+}
+
+function qualityMetrics(): QualityMetrics {
+  return createEmptyMetrics({
+    repository: REPO_ROOT,
+    commitSha: "test",
+    configVersion: DEFAULT_CONFIG.version,
+    tools: [],
+    scope: {
+      include: [],
+      excludeDirs: [],
+      generatedFiles: []
+    }
+  });
+}
+
+function qualityFile(
+  path: string,
+  options: { complexity: number; isChanged: boolean; lines: number }
+): FileMetric {
+  return {
+    path,
+    language: "TypeScript",
+    codeArea: "node-production-scripts",
+    lines: options.lines,
+    codeLines: options.lines,
+    complexity: { value: options.complexity, source: "scc" },
+    isChanged: options.isChanged
+  };
+}
+
+function warning(
+  path: string,
+  ruleId: string,
+  value: number,
+  deltaValue: number
+): WarningRecord {
+  return {
+    level: "warning",
+    ruleId,
+    sourceTool: "scc",
+    path,
+    line: null,
+    codeArea: "node-production-scripts",
+    metric: "lines",
+    value,
+    comparisonBasis: "delta",
+    baselineValue: value - deltaValue,
+    deltaValue,
+    isChanged: true,
+    message: "test warning"
+  };
 }

@@ -56,7 +56,7 @@ function readJsonStringArrayEnv(name: string): string[] {
  */
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.1.0",
+  version: "0.2.0",
 
   /** 纳入扫描的路径 glob */
   include: [

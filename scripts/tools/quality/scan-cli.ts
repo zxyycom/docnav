@@ -129,13 +129,15 @@ export function configureBaseline({
   });
 
   if (baselineResult.ok) {
-    console.log(`  Baseline commit: ${baselineResult.sha} (${baselineResult.reason})`);
+    const baselineTitle = getGitCommitTitle(baselineResult.sha, root);
+    console.log(`  Baseline commit: ${formatCommitLabel(baselineResult.sha, baselineTitle)} (${baselineResult.reason})`);
     metrics.baseline = createGeneratedBaseline(
       baselineResult.sha,
       baselineResult.reason,
       tools,
       root,
-      baselineResult.date ?? null
+      baselineResult.date ?? null,
+      baselineTitle
     );
   } else {
     console.log(`  ⚠️  No baseline: ${baselineResult.error}`);
@@ -209,9 +211,12 @@ export function writeArtifacts({
   console.log(`  report.md → ${reportPath}`);
 
   const warningsPath = join(artifactDir, "warnings.ndjson");
-  const ndjson = metrics.warnings.map((warning) => JSON.stringify(warning)).join("\n") + "\n";
-  writeFileSync(warningsPath, ndjson, "utf8");
+  writeFileSync(warningsPath, toNdjson(metrics.warnings.changed), "utf8");
   console.log(`  warnings.ndjson → ${warningsPath}`);
+
+  const allWarningsPath = join(artifactDir, "warnings-all.ndjson");
+  writeFileSync(allWarningsPath, toNdjson(metrics.warnings.all), "utf8");
+  console.log(`  warnings-all.ndjson → ${allWarningsPath}`);
 }
 
 export function printSummary(metrics: QualityMetrics): void {
@@ -221,12 +226,11 @@ export function printSummary(metrics: QualityMetrics): void {
   console.log(`  Files: ${metrics.fileMetrics.length}`);
   console.log(`  Functions: ${metrics.functionMetrics.length}`);
   console.log(`  Duplicate fragments: ${metrics.duplicateCode.length}`);
-  console.log(`  Warnings: ${metrics.warnings.length}`);
+  console.log(`  Warnings: ${metrics.warnings.all.length} all`);
+  console.log(`  Changed warnings: ${metrics.warnings.changed.length}`);
+  console.log(`  Regression warnings: ${metrics.warnings.regressions.length}`);
   console.log(`  Baseline status: ${metrics.baseline.status}`);
   console.log(`  Comparison status: ${metrics.comparisonStatus}`);
-  if (metrics.trends.length > 0) {
-    console.log(`  Trends: ${metrics.trends.length} deltas`);
-  }
   console.log("─".repeat(60));
 }
 
@@ -258,6 +262,15 @@ export function getGitSha(cwd: string): string {
   return (result.stdout || "").trim() || "unknown";
 }
 
+export function getGitCommitTitle(sha: string, cwd: string): string | null {
+  const result = spawnSync("git", ["log", "--format=%s", "--max-count=1", sha], {
+    cwd,
+    encoding: "utf8",
+    windowsHide: true
+  });
+  return (result.stdout || "").trim() || null;
+}
+
 function printHelp() {
   console.log(`
 Docnav Code Quality Observability — 非阻断代码质量观测
@@ -275,7 +288,8 @@ Options:
 Output:
   metrics.json            Machine-readable quality metrics
   report.md               Human-readable Markdown summary
-  warnings.ndjson         Warning records (newline-delimited JSON)
+  warnings.ndjson         Changed warning records for CI annotations (newline-delimited JSON)
+  warnings-all.ndjson     Full warning records for local/governance use
   raw/                    Raw tool outputs (Lizard, scc, PMD CPD)
 
 ⚠️  Non-blocking: Lizard/scc/PMD CPD metric values do not cause command failure.
@@ -288,9 +302,11 @@ function createGeneratedBaseline(
   selectionReason: string,
   tools: ToolInfo[],
   root: string,
-  commitDate: string | null = null
+  commitDate: string | null = null,
+  commitTitle: string | null = null
 ): QualityMetrics["baseline"] {
   const resolvedDate = commitDate || getGitCommitDate(commitSha, root);
+  const resolvedTitle = commitTitle || getGitCommitTitle(commitSha, root);
   return {
     status: "generated",
     commitSha,
@@ -298,6 +314,7 @@ function createGeneratedBaseline(
     metadata: {
       commitSha,
       commitDate: resolvedDate || "unknown",
+      commitTitle: resolvedTitle,
       selectionReason,
       configVersion: DEFAULT_CONFIG.version,
       toolMetadata: tools
@@ -316,4 +333,12 @@ function getGitCommitDate(sha: string, cwd: string): string | null {
 
 function writeJson(filePath: string, value: unknown): void {
   writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
+}
+
+function toNdjson(values: unknown[]): string {
+  return values.length === 0 ? "" : `${values.map((value) => JSON.stringify(value)).join("\n")}\n`;
+}
+
+function formatCommitLabel(sha: string, title: string | null): string {
+  return title ? `${sha} - ${title}` : sha;
 }

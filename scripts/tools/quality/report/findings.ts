@@ -1,5 +1,11 @@
 import { formatTable } from "./table.ts";
-import type { DuplicateCodeFragment, DuplicateCodeLocation, QualityMetrics } from "../schema.ts";
+import type {
+  DuplicateCodeFragment,
+  DuplicateCodeLocation,
+  FileMetric,
+  QualityMetrics,
+  WarningRecord
+} from "../schema.ts";
 
 export function duplicateCodeSection(metrics: QualityMetrics): string {
   const lines: string[] = [];
@@ -77,7 +83,7 @@ function formatDuplicateLocation(dup: DuplicateCodeFragment, location: Duplicate
   return `${location.path}:${location.startLine}${endLine} (${location.codeArea})`;
 }
 
-export function changedFilesSection(metrics: QualityMetrics): string {
+export function changedFilesSection(metrics: QualityMetrics, topN = 10): string {
   const lines: string[] = [];
   lines.push("## Changed Files Watchlist");
   lines.push("");
@@ -88,64 +94,26 @@ export function changedFilesSection(metrics: QualityMetrics): string {
     return lines.join("\n");
   }
 
-  lines.push(`**${changed.length} changed files in scan scope:**`);
+  const ranked = rankChangedFilesByRisk(changed, metrics).slice(0, topN);
+  lines.push(`Changed files: ${changed.length} total, ${ranked.length} shown by risk ranking`);
+
+  if (ranked.length === 0) {
+    lines.push("");
+    lines.push("*(no changed files matched warning, delta, or duplicate-code risk criteria)*");
+    return lines.join("\n");
+  }
+
   lines.push("");
 
-  const rows = [["File", "Area", "Lines", "Complexity"]];
-  for (const file of changed.slice(0, 20)) {
+  const rows = [["File", "Area", "Lines", "Complexity", "Risk"]];
+  for (const { file, reasons } of ranked) {
     const complexity = file.complexity.value !== null ? String(file.complexity.value) : "n/a";
     rows.push([
       file.path,
       file.codeArea,
       file.lines.toLocaleString(),
-      complexity
-    ]);
-  }
-  lines.push(formatTable(rows));
-
-  if (changed.length > 20) {
-    lines.push(`*... and ${changed.length - 20} more changed files*`);
-  }
-
-  return lines.join("\n");
-}
-
-export function trendSection(metrics: QualityMetrics): string {
-  const lines: string[] = [];
-  lines.push("## 趋势比较 (Previous-Code Baseline)");
-  lines.push("");
-
-  if (metrics.comparisonStatus === "input-unchanged") {
-    lines.push("*(text-only change — code input fingerprint 未变化)*");
-    return lines.join("\n");
-  }
-
-  if (metrics.comparisonStatus === "baseline-unavailable") {
-    lines.push("*(baseline 不可用，无法生成趋势)*");
-    return lines.join("\n");
-  }
-
-  const trends = metrics.trends || [];
-  if (trends.length === 0) {
-    lines.push("*(no trend data available)*");
-    return lines.join("\n");
-  }
-
-  const rows = [["Metric", "Current", "Baseline", "Delta", "Change %"]];
-  for (const trend of trends) {
-    const deltaStr = trend.delta !== null
-      ? (trend.delta >= 0 ? `+${trend.delta}` : `${trend.delta}`)
-      : "n/a";
-    const pctStr = trend.percentChange !== null
-      ? `${trend.percentChange >= 0 ? "+" : ""}${trend.percentChange.toFixed(1)}%`
-      : "n/a";
-
-    rows.push([
-      trend.metric,
-      trend.current !== null ? trend.current.toLocaleString() : "n/a",
-      trend.baseline !== null ? trend.baseline.toLocaleString() : "n/a",
-      deltaStr,
-      pctStr
+      complexity,
+      reasons.join(", ")
     ]);
   }
   lines.push(formatTable(rows));
@@ -158,39 +126,119 @@ export function warningsSection(metrics: QualityMetrics): string {
   lines.push("## Warnings");
   lines.push("");
 
-  const warnings = metrics.warnings || [];
-  if (warnings.length === 0) {
+  const allWarnings = metrics.warnings?.all || [];
+  const changedWarnings = metrics.warnings?.changed || [];
+  const regressionWarnings = metrics.warnings?.regressions || [];
+  if (allWarnings.length === 0) {
     lines.push("*(no warnings generated)*");
     return lines.join("\n");
   }
 
+  lines.push(
+    `**All warnings**: ${allWarnings.length} total ` +
+    `(${changedWarnings.length} changed, ${regressionWarnings.length} regressions)`
+  );
+  lines.push("");
+  appendWarningsByLevel(lines, allWarnings, "All Warnings Summary");
+
+  lines.push("### Changed Warnings");
+  lines.push("");
+  if (changedWarnings.length === 0) {
+    lines.push("*(no changed warnings for CI annotation)*");
+    return lines.join("\n");
+  }
+
+  appendWarningList(lines, changedWarnings.slice(0, 10));
+  if (changedWarnings.length > 10) {
+    lines.push(`- *... and ${changedWarnings.length - 10} more changed warnings*`);
+  }
+
+  return lines.join("\n");
+}
+
+function rankChangedFilesByRisk(
+  changed: FileMetric[],
+  metrics: QualityMetrics
+): { file: FileMetric; reasons: string[]; score: number }[] {
+  const changedWarningPaths = new Set((metrics.warnings?.changed || []).map((warning) => warning.path));
+  const deltaWarningPaths = new Set(
+    (metrics.warnings?.all || [])
+      .filter((warning) => warning.isChanged && warning.deltaValue !== null && warning.deltaValue !== 0)
+      .map((warning) => warning.path)
+  );
+  const duplicatePaths = changedDuplicatePaths(metrics.duplicateCode);
+
+  return changed
+    .map((file) => riskRankedFile(file, changedWarningPaths, deltaWarningPaths, duplicatePaths))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || b.file.lines - a.file.lines || a.file.path.localeCompare(b.file.path));
+}
+
+function riskRankedFile(
+  file: FileMetric,
+  changedWarningPaths: Set<string>,
+  deltaWarningPaths: Set<string>,
+  duplicatePaths: Set<string>
+): { file: FileMetric; reasons: string[]; score: number } {
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (changedWarningPaths.has(file.path)) {
+    reasons.push("changed warning");
+    score += 4;
+  }
+  if (deltaWarningPaths.has(file.path)) {
+    reasons.push("delta");
+    score += 2;
+  }
+  if (duplicatePaths.has(file.path)) {
+    reasons.push("duplicate code");
+    score += 3;
+  }
+
+  return { file, reasons, score };
+}
+
+function changedDuplicatePaths(duplicates: DuplicateCodeFragment[]): Set<string> {
+  const paths = new Set<string>();
+  for (const duplicate of duplicates) {
+    if (!duplicate.hitsChangedScope) continue;
+    for (const location of duplicate.locations) {
+      paths.add(location.path);
+    }
+  }
+  return paths;
+}
+
+function appendWarningsByLevel(lines: string[], warnings: WarningRecord[], title: string): void {
   const byLevel = {
     error: warnings.filter((warning) => warning.level === "error"),
     warning: warnings.filter((warning) => warning.level === "warning"),
     info: warnings.filter((warning) => warning.level === "info")
   };
 
-  lines.push(`**Total**: ${warnings.length} warnings (${byLevel.error.length} errors, ${byLevel.warning.length} warnings, ${byLevel.info.length} info)`);
+  lines.push(`### ${title}`);
   lines.push("");
-
   for (const [level, levelWarnings] of Object.entries(byLevel)) {
     if (levelWarnings.length === 0) continue;
     const icon = level === "error" ? "🔴" : level === "warning" ? "🟡" : "ℹ️";
-    lines.push(`### ${icon} ${level.toUpperCase()} (${levelWarnings.length})`);
+    lines.push(`#### ${icon} ${level.toUpperCase()} (${levelWarnings.length})`);
     lines.push("");
 
-    for (const warning of levelWarnings.slice(0, 10)) {
-      lines.push(`- **[${warning.sourceTool}] ${warning.metric}**: ${warning.message}`);
-      if (warning.suggestion) {
-        lines.push(`  → ${warning.suggestion}`);
-      }
-    }
+    appendWarningList(lines, levelWarnings.slice(0, 10));
 
     if (levelWarnings.length > 10) {
-      lines.push(`- *... and ${levelWarnings.length - 10} more ${level} warnings*`);
+      lines.push(`- *... and ${levelWarnings.length - 10} more ${level} records*`);
     }
     lines.push("");
   }
+}
 
-  return lines.join("\n");
+function appendWarningList(lines: string[], warnings: WarningRecord[]): void {
+  for (const warning of warnings) {
+    lines.push(`- **[${warning.sourceTool}] ${warning.metric}**: ${warning.message}`);
+    if (warning.suggestion) {
+      lines.push(`  → ${warning.suggestion}`);
+    }
+  }
 }

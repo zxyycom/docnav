@@ -3,7 +3,7 @@
  *
  * 从 QualityMetrics 生成人类可读的 Markdown summary report。
  * 默认栏目：仓库体量/语言占比、文件排名、文件复杂度、函数圈复杂度、
- * 函数行数/参数数量、重复代码、watchlist、changed files、trend section。
+ * 函数行数/参数数量、重复代码、watchlist、changed files 和 warnings。
  *
  * 来源：openspec/changes/implement-code-quality-observability/tasks.md task 2.4
  */
@@ -25,7 +25,6 @@ import {
 import {
   duplicateCodeSection,
   changedFilesSection,
-  trendSection,
   warningsSection
 } from "./findings.ts";
 import type { QualityMetrics } from "../schema.ts";
@@ -56,8 +55,7 @@ export function generateMarkdownReport(
     functionComplexityRankings(metrics, topN),
     functionSizeRankings(metrics, topN),
     duplicateCodeSection(metrics),
-    changedFilesSection(metrics),
-    trendSection(metrics),
+    changedFilesSection(metrics, Math.min(topN, 10)),
     warningsSection(metrics),
     footer(metrics, reportOptions)
   ].join("\n\n");

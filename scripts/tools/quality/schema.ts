@@ -12,7 +12,7 @@
 // ── Constants ──────────────────────────────────────────────────────────
 
 /** 当前 metrics schema version */
-export const METRICS_SCHEMA_VERSION = "0.1.0";
+export const METRICS_SCHEMA_VERSION = "0.2.0";
 
 /** 合法的 baseline status */
 export const BASELINE_STATUSES = Object.freeze([
@@ -119,6 +119,7 @@ export interface QualityThreshold {
 export interface ScanMetadata {
   commitDate?: string;
   commitSha: string;
+  commitTitle: string | null;
   configVersion: string;
   repository: string;
   schemaVersion: string;
@@ -142,6 +143,7 @@ export type CodeAreaFileMap = Map<string, string[]>;
 export interface BaselineMetadata {
   commitDate: string | null;
   commitSha: string;
+  commitTitle: string | null;
   configVersion: string;
   selectionReason: string;
   toolMetadata: ToolInfo[];
@@ -248,6 +250,7 @@ export interface WarningRecord {
   codeArea: string;
   comparisonBasis: string;
   deltaValue: number | null;
+  isChanged: boolean;
   level: WarningLevel | string;
   line: number | null;
   message: string;
@@ -257,6 +260,12 @@ export interface WarningRecord {
   sourceTool: string;
   suggestion?: string;
   value: number;
+}
+
+export interface WarningChannels {
+  all: WarningRecord[];
+  changed: WarningRecord[];
+  regressions: WarningRecord[];
 }
 
 export interface QualityMetrics {
@@ -275,7 +284,7 @@ export interface QualityMetrics {
   functionMetrics: FunctionMetric[];
   metadata: ScanMetadata;
   trends: TrendDelta[];
-  warnings: WarningRecord[];
+  warnings: WarningChannels;
 }
 
 export interface BaselineSnapshot {
@@ -304,6 +313,7 @@ export interface MetricsValidationResult {
  * @property {string} repository - Repository root path
  * @property {string} commitSha - Current commit SHA
  * @property {string} [commitDate] - Current commit date (ISO 8601)
+ * @property {string|null} commitTitle - Current commit title/subject
  * @property {ToolInfo[]} tools - Tool names and versions used
  * @property {{ include: string[], excludeDirs: string[], generatedFiles: string[] }} scope - Scan scope
  * @property {string} configVersion - Quality config version used
@@ -327,6 +337,7 @@ export interface MetricsValidationResult {
  * @typedef {object} BaselineMetadata
  * @property {string} commitSha
  * @property {string} commitDate - ISO 8601
+ * @property {string|null} commitTitle - Commit title/subject
  * @property {string} selectionReason - How the baseline commit was selected
  * @property {string} configVersion - Quality config version used for baseline scan
  * @property {ToolInfo[]} toolMetadata - Tool versions used for baseline scan
@@ -435,8 +446,16 @@ export interface MetricsValidationResult {
  * @property {string} comparisonBasis - "absolute", "delta", "changed-scope"
  * @property {number|null} baselineValue - Baseline value (null if unavailable)
  * @property {number|null} deltaValue - Delta value (null if unavailable)
+ * @property {boolean} isChanged - Whether this warning is related to changed scope
  * @property {string} message - Human-readable message
  * @property {string} [suggestion] - Optional fix suggestion
+ */
+
+/**
+ * @typedef {object} WarningChannels
+ * @property {WarningRecord[]} all - Full quality debt warnings for report/governance
+ * @property {WarningRecord[]} changed - Changed-scope warnings for CI annotations
+ * @property {WarningRecord[]} regressions - Changed warnings with baseline delta basis
  */
 
 /**
@@ -451,7 +470,7 @@ export interface MetricsValidationResult {
  * @property {DuplicateCodeFragment[]} duplicateCode
  * @property {AggregateMetrics} aggregates
  * @property {TrendDelta[]} trends
- * @property {WarningRecord[]} warnings
+ * @property {WarningChannels} warnings
  */
 
 /**
@@ -501,79 +520,107 @@ export function validateMetrics(metrics: unknown): MetricsValidationResult {
     return { valid: false, errors: ["metrics must be a non-null object"] };
   }
 
-  // metadata
-  const m = metrics.metadata;
-  if (!isRecord(m)) {
+  validateMetadata(metrics.metadata, errors);
+  validateBaseline(metrics.baseline, errors);
+  validateComparisonStatus(metrics.comparisonStatus, errors);
+  validateRequiredObjects(metrics, errors);
+  validateArrays(metrics, errors);
+  validateWarningChannels(metrics.warnings, errors);
+
+  return { valid: errors.length === 0, errors };
+}
+
+function validateMetadata(metadata: unknown, errors: string[]): void {
+  if (!isRecord(metadata)) {
     errors.push("metrics.metadata is required");
-  } else {
-    if (m.schemaVersion !== METRICS_SCHEMA_VERSION) {
-      errors.push(
-        `metadata.schemaVersion: expected "${METRICS_SCHEMA_VERSION}", got "${m.schemaVersion}"`
-      );
-    }
-    if (!m.timestamp) errors.push("metadata.timestamp is required");
-    if (!m.repository) errors.push("metadata.repository is required");
-    if (!m.commitSha) errors.push("metadata.commitSha is required");
-    if (!Array.isArray(m.tools)) errors.push("metadata.tools must be an array");
-    if (!isRecord(m.scope)) errors.push("metadata.scope is required");
-    if (!m.configVersion) errors.push("metadata.configVersion is required");
+    return;
   }
 
-  // baseline
-  const baseline = metrics.baseline;
+  if (metadata.schemaVersion !== METRICS_SCHEMA_VERSION) {
+    errors.push(
+      `metadata.schemaVersion: expected "${METRICS_SCHEMA_VERSION}", got "${metadata.schemaVersion}"`
+    );
+  }
+  if (!metadata.timestamp) errors.push("metadata.timestamp is required");
+  if (!metadata.repository) errors.push("metadata.repository is required");
+  if (!metadata.commitSha) errors.push("metadata.commitSha is required");
+  if (!Array.isArray(metadata.tools)) errors.push("metadata.tools must be an array");
+  if (!isRecord(metadata.scope)) errors.push("metadata.scope is required");
+  if (!metadata.configVersion) errors.push("metadata.configVersion is required");
+}
+
+function validateBaseline(baseline: unknown, errors: string[]): void {
   if (!isRecord(baseline)) {
     errors.push("metrics.baseline is required");
-  } else {
-    const status = baseline.status;
-    if (typeof status !== "string" || !BASELINE_STATUSES.includes(status)) {
-      errors.push(
-        `baseline.status: must be one of ${BASELINE_STATUSES.join(", ")}, got "${status}"`
-      );
-    }
+    return;
   }
 
-  // comparison status
-  const comparisonStatus = metrics.comparisonStatus;
+  const status = baseline.status;
+  if (typeof status !== "string" || !BASELINE_STATUSES.includes(status)) {
+    errors.push(
+      `baseline.status: must be one of ${BASELINE_STATUSES.join(", ")}, got "${status}"`
+    );
+  }
+}
+
+function validateComparisonStatus(comparisonStatus: unknown, errors: string[]): void {
   if (typeof comparisonStatus !== "string" || !COMPARISON_STATUSES.includes(comparisonStatus)) {
     errors.push(
       `comparisonStatus: must be one of ${COMPARISON_STATUSES.join(", ")}, got "${comparisonStatus}"`
     );
   }
+}
 
-  // fingerprints
+function validateRequiredObjects(metrics: Record<string, unknown>, errors: string[]): void {
   if (!isRecord(metrics.currentFingerprints)) {
     errors.push("currentFingerprints is required");
   }
-
-  // arrays
-  if (!isUnknownArray(metrics.fileMetrics)) errors.push("fileMetrics must be an array");
-  if (!isUnknownArray(metrics.functionMetrics)) errors.push("functionMetrics must be an array");
-  if (!isUnknownArray(metrics.duplicateCode)) errors.push("duplicateCode must be an array");
   if (!isRecord(metrics.aggregates)) {
     errors.push("aggregates is required");
   }
-  if (!isUnknownArray(metrics.trends)) errors.push("trends must be an array");
-  if (!isUnknownArray(metrics.warnings)) errors.push("warnings must be an array");
+}
 
-  // validate warnings
-  const warnings = metrics.warnings;
-  if (isUnknownArray(warnings)) {
-    for (let i = 0; i < warnings.length; i++) {
-      const w = warnings[i];
-      if (!isRecord(w)) {
-        errors.push(`warnings[${i}] must be an object`);
-        continue;
-      }
-      const level = w.level;
-      if (typeof level !== "string" || !WARNING_LEVELS.includes(level)) {
-        errors.push(`warnings[${i}].level: invalid level "${level}"`);
-      }
-      if (!w.ruleId) errors.push(`warnings[${i}].ruleId is required`);
-      if (!w.message) errors.push(`warnings[${i}].message is required`);
-    }
+function validateArrays(metrics: Record<string, unknown>, errors: string[]): void {
+  if (!isUnknownArray(metrics.fileMetrics)) errors.push("fileMetrics must be an array");
+  if (!isUnknownArray(metrics.functionMetrics)) errors.push("functionMetrics must be an array");
+  if (!isUnknownArray(metrics.duplicateCode)) errors.push("duplicateCode must be an array");
+  if (!isUnknownArray(metrics.trends)) errors.push("trends must be an array");
+}
+
+function validateWarningChannels(warnings: unknown, errors: string[]): void {
+  if (!isRecord(warnings)) {
+    errors.push("warnings must be an object with all, changed, and regressions arrays");
+    return;
   }
 
-  return { valid: errors.length === 0, errors };
+  for (const channel of ["all", "changed", "regressions"] as const) {
+    const channelWarnings = warnings[channel];
+    if (!isUnknownArray(channelWarnings)) {
+      errors.push(`warnings.${channel} must be an array`);
+      continue;
+    }
+    validateWarningRecords(channelWarnings, `warnings.${channel}`, errors);
+  }
+}
+
+function validateWarningRecords(warnings: unknown[], prefix: string, errors: string[]): void {
+  for (let i = 0; i < warnings.length; i++) {
+    validateWarningRecord(warnings[i], `${prefix}[${i}]`, errors);
+  }
+}
+
+function validateWarningRecord(warning: unknown, prefix: string, errors: string[]): void {
+  if (!isRecord(warning)) {
+    errors.push(`${prefix} must be an object`);
+    return;
+  }
+
+  const level = warning.level;
+  if (typeof level !== "string" || !WARNING_LEVELS.includes(level)) {
+    errors.push(`${prefix}.level: invalid level "${level}"`);
+  }
+  if (!warning.ruleId) errors.push(`${prefix}.ruleId is required`);
+  if (!warning.message) errors.push(`${prefix}.message is required`);
 }
 
 /**
@@ -582,6 +629,7 @@ export function validateMetrics(metrics: unknown): MetricsValidationResult {
  * @param {object} params
  * @param {string} params.repository
  * @param {string} params.commitSha
+ * @param {string|null} [params.commitTitle]
  * @param {string} params.configVersion
  * @param {ToolInfo[]} params.tools
  * @param {{ include: string[], excludeDirs: string[], generatedFiles: string[] }} params.scope
@@ -590,12 +638,14 @@ export function validateMetrics(metrics: unknown): MetricsValidationResult {
 export function createEmptyMetrics({
   repository,
   commitSha,
+  commitTitle = null,
   configVersion,
   tools,
   scope
 }: {
   configVersion: string;
   commitSha: string;
+  commitTitle?: string | null;
   repository: string;
   scope: ScanMetadata["scope"];
   tools: ToolInfo[];
@@ -606,6 +656,7 @@ export function createEmptyMetrics({
       timestamp: new Date().toISOString(),
       repository,
       commitSha,
+      commitTitle,
       tools,
       scope,
       configVersion
@@ -627,6 +678,10 @@ export function createEmptyMetrics({
       overall: { totalFiles: 0, totalLines: 0, totalCodeLines: 0, totalFunctions: 0 }
     },
     trends: [],
-    warnings: []
+    warnings: {
+      all: [],
+      changed: [],
+      regressions: []
+    }
   };
 }

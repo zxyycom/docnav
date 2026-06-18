@@ -3,9 +3,9 @@
 /**
  * Render quality warning records as non-blocking GitHub Actions annotations.
  *
- * Input is warnings.ndjson produced by scripts/quality-scan.ts. This script
- * never fails the job for metric values; malformed warning records are skipped
- * with diagnostics so the artifact remains the source of truth.
+ * Input is the changed-scope warnings.ndjson produced by scripts/quality-scan.ts.
+ * This script never fails the job for metric values; malformed warning records
+ * are skipped with diagnostics so the artifact remains the source of truth.
  */
 
 import { readFileSync } from "node:fs";
