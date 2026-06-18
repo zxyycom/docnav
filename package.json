@@ -29,7 +29,7 @@
     "validate:diff": "git diff --check",
     "quality:scan": "node scripts/quality-scan.ts",
     "quality:annotate": "node scripts/quality-annotate.ts",
-    "quality:test": "node --test scripts/tools/quality/tools.test.ts"
+    "quality:test": "node --test scripts/tools/quality/*.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

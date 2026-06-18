@@ -3,8 +3,6 @@
  *
  * 封装 scc 调用，统一输出仓库体量、语言占比、文件行数、文件级复杂度、
  * 路径和排序。
- *
- * 来源：openspec/changes/implement-code-quality-observability/tasks.md task 3.3
  */
 
 import { spawnSync } from "node:child_process";
@@ -16,20 +14,6 @@ export const SCC_VERSION = "3.7.0";
 export const SCC_VERSION_OUTPUT = `scc version ${SCC_VERSION}`;
 export const SCC_BY_FILE_CSV_HEADER = "Language,Provider,Filename,Lines,Code,Comments,Blanks,Complexity,Bytes,ULOC";
 
-/**
- * 使用 scc 扫描仓库，返回文件级指标。
- *
- * @param {object} params
- * @param {string} params.cwd - 工作目录
- * @param {string[]} params.includePaths - 纳入路径模式
- * @param {string[]} params.excludeDirs - 排除目录
- * @param {{ command: string, args: string[] }} params.toolConfig - scc 工具配置
- * @returns {{ ok: true, files: FileMetric[], aggregates: { byLanguage: LanguageAggregate[] } }
- *          | { ok: false, error: string }}
- *
- * @typedef {import('../schema.ts').FileMetric} FileMetric
- * @typedef {import('../schema.ts').LanguageAggregate} LanguageAggregate
- */
 interface ScanWithSccOptions {
   cwd: string;
   excludeDirs: string[];
@@ -91,15 +75,9 @@ export function buildSccArgs({
  * scc 3.7.0 `--by-file --format csv` 列：
  * Language,Provider,Filename,Lines,Code,Comments,Blanks,Complexity,Bytes,ULOC
  *
- * 注：
  * - Lines 包含所有行（code + comments + blanks）
  * - Complexity 是 scc 的文件级复杂度（非函数级 CC）
  * - ULOC (Usable Lines of Code) 由 3.7.0 输出，但首期不进入稳定 metrics
- *
- * @param {string} csv
- * @param {string} cwd
- * @returns {{ ok: true, files: FileMetric[], aggregates: { byLanguage: LanguageAggregate[] } }
- *          | { ok: false, error: string }}
  */
 export function parseSccCSV(csv: string, cwd: string): SccScanResult {
   try {
@@ -133,10 +111,8 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
       uloc: headerCols.indexOf("ULOC")
     };
 
-    /** @type {FileMetric[]} */
     const files: FileMetric[] = [];
 
-    /** @type {Map<string, LanguageAggregate>} */
     const langMap = new Map<string, LanguageAggregate>();
 
     for (let i = headerIdx + 1; i < lines.length; i++) {
@@ -151,8 +127,6 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
       const commentLines = parseInt(parts[colIdx.comments], 10);
       const blankLines = parseInt(parts[colIdx.blanks], 10);
       const complexity = colIdx.complexity >= 0 ? parseInt(parts[colIdx.complexity], 10) : NaN;
-      // parts[colIdx.bytes] = bytes，不强制使用
-      // parts[colIdx.uloc] = usable lines of code，不强制使用
 
       if (isNaN(lineCount) || !filename) continue;
 
@@ -171,7 +145,6 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
         isChanged: false
       });
 
-      // 聚合
       const existing = langMap.get(language);
       if (existing) {
         existing.files++;
@@ -192,7 +165,6 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
       }
     }
 
-    // 按行数降序
     files.sort((a, b) => b.lines - a.lines);
 
     const byLanguage = Array.from(langMap.values()).sort(
@@ -203,52 +175,6 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
   } catch (error: unknown) {
     return { ok: false, error: `Failed to parse scc CSV: ${errorMessage(error)}` };
   }
-}
-
-/**
- * 查询 scc 版本。
- *
- * @param {object} params
- * @param {string} params.cwd
- * @param {{ command: string, args: string[] }} params.toolConfig
- * @returns {{ ok: true, version: string } | { ok: false, error: string, reason?: string }}
- */
-export function getSccVersion({ cwd, toolConfig }: { cwd: string; toolConfig: ToolConfig }) {
-  const child = spawnSync(toolConfig.command, [...toolConfig.args, "--version"], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true,
-    maxBuffer: 1024 * 1024
-  });
-
-  if (child.error) {
-    if ((child.error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { ok: false, error: `scc not installed: ${child.error.message}`, reason: "tool-unavailable" };
-    }
-    return { ok: false, error: `scc version error: ${child.error.message}`, reason: "execution-error" };
-  }
-
-  const ver = (child.stdout || "").trim() || (child.stderr || "").trim();
-  if (child.status !== 0) {
-    const failure = typeof child.status === "number"
-      ? `exit ${child.status}`
-      : `signal ${child.signal || "unknown"}`;
-    return {
-      ok: false,
-      error: `scc --version failed, ${failure}${ver ? `: ${ver}` : ""}`,
-      reason: "execution-error"
-    };
-  }
-
-  if (ver !== SCC_VERSION_OUTPUT) {
-    return {
-      ok: false,
-      error: `expected ${SCC_VERSION_OUTPUT}, got "${ver || "unknown"}"`,
-      reason: "contract-error"
-    };
-  }
-
-  return { ok: true, version: ver };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -287,8 +213,5 @@ function parseCSVLine(line: string): string[] {
 }
 
 function normalizePath(filePath: string, _cwd: string): string {
-  // 将路径标准化为相对仓库根的路径
-  const rel = filePath.replace(/\\/g, "/");
-  // scc 输出中路径通常已经是相对路径
-  return rel;
+  return filePath.replace(/\\/g, "/");
 }

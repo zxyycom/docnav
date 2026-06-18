@@ -7,12 +7,18 @@ import { join } from "node:path";
 
 import { scanWithLizard } from "./tools/lizard.ts";
 import { scanWithScc } from "./tools/scc.ts";
-import { scanWithCpd } from "./tools/cpd.ts";
-import { classifyFile, isExcluded } from "./classify.ts";
+import { scanCpdPartitionsWithCache } from "./cpd-tasks.ts";
 import { buildAggregates } from "./aggregate.ts";
+import {
+  isToolAvailable,
+  normalizeFileMetrics,
+  normalizeFunctionMetrics,
+  selectLizardTargetFiles
+} from "./scan-metrics.ts";
 import type {
   CodeAreaAggregate,
   CodeAreaFileMap,
+  CodeAreaFingerprint,
   DuplicateCodeFragment,
   FatalIssue,
   FileMetric,
@@ -26,13 +32,14 @@ type ScanContext = {
   changedFiles: string[];
   config: QualityConfig;
   fatalIssues: FatalIssue[];
+  fingerprints: Record<string, CodeAreaFingerprint>;
   metrics: QualityMetrics;
   rawDir: string;
   root: string;
   toolResults: ToolAvailability[];
 };
 
-export function scanCurrentRevision({
+export async function scanCurrentRevision({
   context,
   scanFiles,
   fileMap
@@ -40,10 +47,10 @@ export function scanCurrentRevision({
   context: ScanContext;
   fileMap: CodeAreaFileMap;
   scanFiles: string[];
-}): void {
+}): Promise<void> {
   runSccScan(context, scanFiles);
   runLizardScan(context, scanFiles);
-  runCpdScan(context, fileMap);
+  await runCpdScan(context, fileMap);
 
   context.metrics.aggregates = buildAggregates({
     fileMetrics: context.metrics.fileMetrics,
@@ -55,10 +62,11 @@ export function scanCurrentRevision({
 }
 
 function runSccScan(context: ScanContext, scanFiles: string[]): void {
-  const { metrics, toolResults, changedFiles, rawDir, fatalIssues, root, config } = context;
+  const { metrics, toolResults, rawDir, fatalIssues, root, config } = context;
   if (!isToolAvailable(toolResults, "scc")) return;
 
   console.log("Running scc...");
+
   const sccResult = scanWithScc({
     cwd: root,
     includePaths: scanFiles,
@@ -67,43 +75,35 @@ function runSccScan(context: ScanContext, scanFiles: string[]): void {
   });
 
   if (sccResult.ok) {
-    const files = sccResult.files ?? [];
-    for (const file of files) {
-      file.codeArea = classifyFile(file.path, config.codeAreas, config.generatedFiles);
-      file.isChanged = isInChangedScope(file.path, changedFiles);
-    }
-
-    metrics.fileMetrics = files.filter(
-      (f) => !isExcluded(f.path, config.excludeDirs, config.generatedFiles)
-    );
+    metrics.fileMetrics = normalizeFileMetrics(sccResult.files ?? [], {
+      changedFiles: context.changedFiles,
+      config
+    });
     metrics.aggregates.byLanguage = sccResult.aggregates?.byLanguage ?? [];
-    metrics.aggregates.byCodeArea = buildFileAreaAggregates(metrics.fileMetrics, config);
-    metrics.aggregates.overall = {
-      totalFiles: metrics.fileMetrics.length,
-      totalLines: metrics.fileMetrics.reduce((s, f) => s + f.lines, 0),
-      totalCodeLines: metrics.fileMetrics.reduce((s, f) => s + (f.codeLines || 0), 0),
-      totalFunctions: 0
-    };
-
     console.log(`  scc: ${metrics.fileMetrics.length} files, ${metrics.aggregates.byLanguage.length} languages`);
   } else {
     fatalIssues.push({ tool: "scc", phase: "current-scan", error: sccResult.error });
     console.log(`  ❌ scc execution/config/schema error: ${sccResult.error}`);
   }
 
+  metrics.aggregates.byCodeArea = buildFileAreaAggregates(metrics.fileMetrics, config);
+  metrics.aggregates.overall = {
+    totalFiles: metrics.fileMetrics.length,
+    totalLines: metrics.fileMetrics.reduce((s, f) => s + f.lines, 0),
+    totalCodeLines: metrics.fileMetrics.reduce((s, f) => s + (f.codeLines || 0), 0),
+    totalFunctions: 0
+  };
+
   writeFileSync(join(rawDir, "scc-output.json"), JSON.stringify(metrics.fileMetrics, null, 2), "utf8");
 }
 
 function runLizardScan(context: ScanContext, scanFiles: string[]): void {
-  const { metrics, toolResults, changedFiles, rawDir, fatalIssues, root, config } = context;
+  const { metrics, toolResults, rawDir, fatalIssues, root, config } = context;
   if (!isToolAvailable(toolResults, "lizard")) return;
 
   console.log("Running Lizard...");
 
-  const targetFiles = scanFiles.filter(
-    (f) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
-      !isExcluded(f, config.excludeDirs, config.generatedFiles)
-  );
+  const targetFiles = selectLizardTargetFiles(scanFiles, config);
   console.log(`  Lizard targets: ${targetFiles.length} files`);
 
   const { functions: allFunctions, errors } = scanLizardBatches({ targetFiles, root, config });
@@ -112,14 +112,10 @@ function runLizardScan(context: ScanContext, scanFiles: string[]): void {
     console.log(`  ❌ Lizard execution/config/schema error: ${error}`);
   }
 
-  for (const func of allFunctions) {
-    func.codeArea = classifyFile(func.file, config.codeAreas, config.generatedFiles);
-    func.isChanged = isInChangedScope(func.file, changedFiles);
-  }
-
-  metrics.functionMetrics = allFunctions.filter(
-    (f) => !isExcluded(f.file, config.excludeDirs, config.generatedFiles)
-  );
+  metrics.functionMetrics = normalizeFunctionMetrics(allFunctions, {
+    changedFiles: context.changedFiles,
+    config
+  });
   updateFunctionCounts(metrics);
 
   console.log(`  Lizard: ${metrics.functionMetrics.length} functions`);
@@ -131,7 +127,7 @@ function runLizardScan(context: ScanContext, scanFiles: string[]): void {
   );
 }
 
-function runCpdScan(context: ScanContext, fileMap: CodeAreaFileMap): void {
+async function runCpdScan(context: ScanContext, fileMap: CodeAreaFileMap): Promise<void> {
   const { metrics, toolResults, changedFiles, rawDir, root, config } = context;
   if (!isToolAvailable(toolResults, "pmd-cpd")) {
     console.log("  CPD not available, skipping duplicate detection");
@@ -140,41 +136,19 @@ function runCpdScan(context: ScanContext, fileMap: CodeAreaFileMap): void {
 
   console.log("Running PMD CPD...");
 
-  const allFragments: DuplicateCodeFragment[] = [];
-
-  for (const [area, areaFiles] of fileMap.entries()) {
-    const targetFiles = areaFiles.filter(
-      (f) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
-    );
-
-    if (targetFiles.length < 2) {
-      console.log(`  CPD ${area}: too few files (${targetFiles.length}), skipping`);
-      continue;
-    }
-
-    const minTokens = config.pmdCpd.minimumTokens[area] ?? config.pmdCpd.defaultMinimumTokens;
-    console.log(`  CPD ${area}: ${targetFiles.length} files, minimum tokens=${minTokens}`);
-
-    const cpdResult = scanWithCpd({
-      files: targetFiles,
-      cwd: root,
-      toolConfig: config.tools.pmdCpd,
-      minimumTokens: minTokens,
-      codeArea: area,
-      skipIfUnavailable: true
-    });
-
-    if (cpdResult.ok) {
-      const fragments = cpdResult.fragments ?? [];
-      annotateDuplicateFragments(fragments, area, changedFiles);
-      allFragments.push(...fragments);
-      console.log(`    Found ${fragments.length} duplicate fragments`);
-    } else if (cpdResult.skipped) {
-      console.log(`  ⚠️  CPD ${area}: ${cpdResult.error} (skipped)`);
-    } else {
-      console.log(`  ⚠️  CPD ${area} error: ${cpdResult.error}`);
-    }
-  }
+  const allFragments = await scanCpdPartitionsWithCache({
+    cacheRootDir: root,
+    changedFiles,
+    commitSha: metrics.metadata.commitSha,
+    config,
+    cwd: root,
+    failOnSkipped: false,
+    fileMap,
+    fingerprints: context.fingerprints,
+    logPrefix: "  ",
+    scanKind: "current",
+    toolResults
+  });
 
   metrics.duplicateCode = allFragments;
   updateDuplicateCounts(metrics, allFragments);
@@ -270,22 +244,4 @@ function updateDuplicateCounts(metrics: QualityMetrics, allFragments: DuplicateC
   for (const agg of metrics.aggregates.byCodeArea) {
     agg.duplicateFragments = dupByArea.get(agg.codeArea) || 0;
   }
-}
-
-function annotateDuplicateFragments(fragments: DuplicateCodeFragment[], area: string, changedFiles: string[]): void {
-  for (const frag of fragments) {
-    for (const loc of frag.locations) {
-      loc.codeArea = area;
-    }
-    frag.codeAreas = [area];
-    frag.hitsChangedScope = frag.locations.some((l) => isInChangedScope(l.path, changedFiles));
-  }
-}
-
-function isToolAvailable(toolResults: ToolAvailability[], name: string): boolean {
-  return toolResults.find((t) => t.name === name)?.available === true;
-}
-
-function isInChangedScope(filePath: string, changedFiles: string[]): boolean {
-  return changedFiles.some((changedFile) => filePath.includes(changedFile) || changedFile.includes(filePath));
 }

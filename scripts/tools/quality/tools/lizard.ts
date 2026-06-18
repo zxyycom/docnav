@@ -3,8 +3,6 @@
  *
  * 封装 Lizard 调用，统一输出函数名称、所属文件、函数行数、参数数量、
  * 圈复杂度、路径和排序。
- *
- * 来源：openspec/changes/implement-code-quality-observability/tasks.md task 3.2
  */
 
 import { spawnSync } from "node:child_process";
@@ -12,17 +10,6 @@ import { spawnSync } from "node:child_process";
 import type { FunctionMetric, ToolConfig } from "../schema.ts";
 import { errorMessage } from "../../types.ts";
 
-/**
- * 使用 Lizard 扫描指定文件，返回函数级指标。
- *
- * @param {object} params
- * @param {string[]} params.files - 待扫描文件路径列表（绝对路径或相对于 cwd）
- * @param {string} params.cwd - 工作目录
- * @param {{ command: string, args: string[] }} params.toolConfig - Lizard 工具配置
- * @returns {{ ok: true, functions: FunctionMetric[] } | { ok: false, error: string }}
- *
- * @typedef {import('../schema.ts').FunctionMetric} FunctionMetric
- */
 interface ScanWithLizardOptions {
   cwd: string;
   files: string[];
@@ -72,9 +59,6 @@ export function scanWithLizard({ files, cwd, toolConfig }: ScanWithLizardOptions
  *
  * Lizard 1.23 CSV 列（--csv）：
  * NLOC,CCN,token count,parameter count,length,location,file path,function name,long name,start line,end line
- *
- * @param {string} csv
- * @returns {{ ok: true, functions: FunctionMetric[] } | { ok: false, error: string }}
  */
 export function parseLizardCSV(csv: string): LizardScanResult {
   try {
@@ -88,7 +72,6 @@ export function parseLizardCSV(csv: string): LizardScanResult {
       lines.shift(); // remove header line
     }
 
-    /** @type {FunctionMetric[]} */
     const functions: FunctionMetric[] = [];
 
     for (const line of lines) {
@@ -97,7 +80,6 @@ export function parseLizardCSV(csv: string): LizardScanResult {
 
       const nloc = parseInt(parts[0], 10);
       const ccn = parseInt(parts[1], 10);
-      // parts[2] = token count, unused
       const paramCount = parseInt(parts[3], 10);
       const startLine = parseInt(parts[9], 10);
       const endLine = parseInt(parts[10], 10);
@@ -122,7 +104,6 @@ export function parseLizardCSV(csv: string): LizardScanResult {
       });
     }
 
-    // 按圈复杂度降序，再按行数降序
     functions.sort((a, b) => {
       const ccDiff = (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0);
       if (ccDiff !== 0) return ccDiff;
@@ -143,12 +124,6 @@ function isIntegerText(value: string | undefined): boolean {
   return /^-?\d+$/.test(String(value ?? ""));
 }
 
-/**
- * 简单 CSV 行解析（处理引号字段）
- *
- * @param {string} line
- * @returns {string[]}
- */
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = "";
@@ -180,32 +155,4 @@ function parseCSVLine(line: string): string[] {
   }
   result.push(current.trim());
   return result;
-}
-
-/**
- * 查询 Lizard 版本。
- *
- * @param {object} params
- * @param {string} params.cwd
- * @param {{ command: string, args: string[] }} params.toolConfig
- * @returns {{ ok: true, version: string } | { ok: false, error: string }}
- */
-export function getLizardVersion({ cwd, toolConfig }: { cwd: string; toolConfig: ToolConfig }) {
-  const child = spawnSync(toolConfig.command, [...toolConfig.args, "--version"], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true,
-    maxBuffer: 1024 * 1024
-  });
-
-  if (child.error) {
-    return { ok: false, error: `lizard version error: ${child.error.message}` };
-  }
-
-  const ver = (child.stdout || "").trim() || (child.stderr || "").trim();
-  if (!ver && child.status !== 0) {
-    return { ok: false, error: `lizard --version failed, exit ${child.status}` };
-  }
-
-  return { ok: true, version: ver || "unknown" };
 }

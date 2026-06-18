@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { DEFAULT_CONFIG } from "./config.ts";
 import { locateBaselineCommit } from "./baseline.ts";
+import { getChangedFileList, type ChangedFilesOptions } from "./files.ts";
 import { validateMetrics } from "./schema.ts";
 import type {
   BaselineSnapshot,
@@ -35,13 +36,14 @@ export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
     changedFiles: null,
     topN: DEFAULT_CONFIG.report.topN,
     artifactDir: DEFAULT_CONFIG.artifactDir,
-    skipBaseline: false
+    skipBaseline: true
   };
 
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case "--baseline":
         opts.baseline = argv[++i];
+        opts.skipBaseline = false;
         break;
       case "--changed-files":
         opts.changedFiles = argv[++i];
@@ -54,6 +56,9 @@ export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
         break;
       case "--skip-baseline":
         opts.skipBaseline = true;
+        break;
+      case "--with-baseline":
+        opts.skipBaseline = false;
         break;
       case "--help":
         printHelp();
@@ -71,9 +76,9 @@ export function prepareArtifactDirs(artifactDir: string): { rawDir: string } {
   return { rawDir };
 }
 
-export function initializeToolResults(rootDir: string): ToolAvailability[] {
+export async function initializeToolResults(rootDir: string): Promise<ToolAvailability[]> {
   console.log("Checking tool availability...");
-  const toolResults = checkTools(rootDir);
+  const toolResults = await checkTools(rootDir);
   const availableTools = toolResults.filter((tool) => tool.available);
   console.log(`  Available: ${availableTools.map((tool) => tool.name).join(", ") || "none"}`);
 
@@ -113,6 +118,7 @@ export function configureBaseline({
   }
 
   if (opts.skipBaseline) {
+    console.log("Skipping baseline scan (default; use --with-baseline or --baseline <sha> to compare).");
     metrics.baseline = {
       status: "baseline-skipped",
       commitSha: null,
@@ -166,6 +172,28 @@ export function setComparisonStatus(metrics: QualityMetrics, scope: ChangeScope)
     metrics.comparisonStatus = "baseline-unavailable";
     console.log("  Comparison: baseline-unavailable");
   }
+}
+
+export function resolveChangedFilesForScan({
+  opts,
+  root,
+  scope,
+  collectChangedFiles = getChangedFileList
+}: {
+  collectChangedFiles?: (opts: ChangedFilesOptions, rootDir: string) => string[];
+  opts: ChangedFilesOptions;
+  root: string;
+  scope: ChangeScope;
+}): string[] {
+  if (opts.changedFiles) {
+    return collectChangedFiles(opts, root);
+  }
+
+  if (scope.changedFiles.length > 0 || !scope.changed) {
+    return scope.changedFiles;
+  }
+
+  return collectChangedFiles(opts, root);
 }
 
 export function writeBaselineRawOutputs(rawDir: string, baselineSnapshot: BaselineSnapshot): void {
@@ -278,17 +306,18 @@ Docnav Code Quality Observability — 非阻断代码质量观测
 Usage: node scripts/quality-scan.ts [options]
 
 Options:
-  --baseline <sha>        Baseline commit SHA (default: auto-detect from git history)
+  --baseline <sha>        Generate baseline delta from an explicit commit SHA (opt-in)
+  --with-baseline         Auto-detect and scan previous-code baseline (slower, opt-in)
   --changed-files <file>  File containing list of changed files (one per line)
   --top-n <n>             Top N for rankings (default: ${DEFAULT_CONFIG.report.topN})
   --artifact-dir <dir>    Artifact output directory (default: ${DEFAULT_CONFIG.artifactDir})
-  --skip-baseline         Skip baseline commit detection and scan
+  --skip-baseline         Skip baseline commit detection and scan (default)
   --help                  Show this help
 
 Output:
   metrics.json            Machine-readable quality metrics
   report.md               Human-readable Markdown summary
-  warnings.ndjson         Changed warning records for CI annotations (newline-delimited JSON)
+  warnings.ndjson         Changed warning records when baseline comparison is enabled (newline-delimited JSON)
   warnings-all.ndjson     Full warning records for local/governance use
   raw/                    Raw tool outputs (Lizard, scc, PMD CPD)
 

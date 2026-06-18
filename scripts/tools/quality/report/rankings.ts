@@ -8,6 +8,7 @@ export function fileRankings(metrics: QualityMetrics, topN: number): string {
 
   const sorted = metrics.fileMetrics
     .filter((file) => file.codeArea !== "generated")
+    .sort((a, b) => b.lines - a.lines || a.path.localeCompare(b.path))
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -38,7 +39,12 @@ export function fileComplexityRankings(metrics: QualityMetrics, topN: number): s
 
   const sorted = metrics.fileMetrics
     .filter((file) => file.codeArea !== "generated" && file.complexity.value !== null)
-    .sort((a, b) => (b.complexity.value ?? 0) - (a.complexity.value ?? 0))
+    .slice()
+    .sort((a, b) =>
+      (b.complexity.value ?? 0) - (a.complexity.value ?? 0) ||
+      b.lines - a.lines ||
+      a.path.localeCompare(b.path)
+    )
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -69,7 +75,12 @@ export function functionComplexityRankings(metrics: QualityMetrics, topN: number
 
   const sorted = metrics.functionMetrics
     .filter((func) => func.cyclomaticComplexity.value !== null)
-    .sort((a, b) => (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0))
+    .slice()
+    .sort((a, b) =>
+      (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0) ||
+      b.lines - a.lines ||
+      functionLocation(a).localeCompare(functionLocation(b))
+    )
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -99,7 +110,12 @@ export function functionSizeRankings(metrics: QualityMetrics, topN: number): str
   lines.push("");
 
   const sorted = metrics.functionMetrics
-    .sort((a, b) => b.lines - a.lines)
+    .slice()
+    .sort((a, b) =>
+      b.lines - a.lines ||
+      (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0) ||
+      functionLocation(a).localeCompare(functionLocation(b))
+    )
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -121,4 +137,8 @@ export function functionSizeRankings(metrics: QualityMetrics, topN: number): str
   lines.push(formatTable(rows));
 
   return lines.join("\n");
+}
+
+function functionLocation(func: QualityMetrics["functionMetrics"][number]): string {
+  return `${func.file}:${func.startLine}:${func.name}`;
 }

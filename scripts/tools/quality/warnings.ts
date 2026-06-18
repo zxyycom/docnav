@@ -1,11 +1,9 @@
 /**
  * Warning 规则生成器。
  *
- * 使用 changed scope、previous-code baseline delta 和绝对下限组合
- * 生成 warning records。优先指向 changed files 或 changed functions，
- * 避免对未改动历史热点或 text-only 变更默认刷 CI annotation。
- *
- * 来源：openspec/changes/implement-code-quality-observability/tasks.md task 4.3
+ * 使用当前快照、可选 changed scope、可选 baseline delta 和绝对下限组合
+ * 生成 warning records。默认聚焦全量观测报告；只有启用 comparison 时
+ * 才生成 changed/regression CI annotation 输入。
  */
 
 import type {

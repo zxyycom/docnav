@@ -5,13 +5,12 @@
  *
  * 非阻断代码质量扫描：Clippy 保持 Rust 阻断 gate，Lizard/scc/PMD CPD
  * 生成非阻断代码质量快照、warning 和报告。
- *
- * 来源：openspec/changes/implement-code-quality-observability/
  */
 
 import { rmSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { tmpdir } from "node:os";
+import { performance } from "node:perf_hooks";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
@@ -27,7 +26,6 @@ import {
 import { generateWarningChannels } from "./tools/quality/warnings.ts";
 import {
   collectScanFiles,
-  getChangedFileList,
   buildFingerprints
 } from "./tools/quality/files.ts";
 import { scanCurrentRevision } from "./tools/quality/scan-runner.ts";
@@ -40,6 +38,7 @@ import {
   collectToolMetadata,
   configureBaseline,
   setComparisonStatus,
+  resolveChangedFilesForScan,
   writeBaselineRawOutputs,
   writeArtifacts,
   printSummary,
@@ -55,8 +54,10 @@ export { buildAggregates } from "./tools/quality/aggregate.ts";
 export { generateTrends } from "./tools/quality/trends.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const timingsEnabled = process.env.DOCNAV_QUALITY_TIMINGS === "1";
 
 async function main() {
+  const timings = createTimings();
   const opts = parseArgs();
 
   console.log("Docnav Code Quality Observability");
@@ -64,25 +65,27 @@ async function main() {
   console.log("");
 
   const artifactDir = resolve(root, opts.artifactDir);
-  const { rawDir } = prepareArtifactDirs(artifactDir);
+  const { rawDir } = timings.measure("prepare artifact dirs", () => prepareArtifactDirs(artifactDir));
 
-  const commitSha = getGitSha(root);
-  const commitTitle = getGitCommitTitle(commitSha, root);
-  const toolResults = initializeToolResults(root);
-  const tools = collectToolMetadata(toolResults);
+  const commitSha = timings.measure("git rev-parse HEAD", () => getGitSha(root));
+  const commitTitle = timings.measure("git commit title", () => getGitCommitTitle(commitSha, root));
+  const toolResults = await timings.measureAsync("tool availability", () => initializeToolResults(root));
+  const tools = timings.measure("tool metadata", () => collectToolMetadata(toolResults));
 
   console.log("Collecting scan inputs...");
-  const scanFiles = collectScanFiles(root, DEFAULT_CONFIG);
+  const scanFiles = timings.measure("collect scan files", () => collectScanFiles(root, DEFAULT_CONFIG));
   console.log(`  Found ${scanFiles.length} files in scan scope`);
 
-  const fileMap = classifyFiles(scanFiles, DEFAULT_CONFIG.codeAreas, DEFAULT_CONFIG.generatedFiles);
+  const fileMap = timings.measure("classify scan files", () =>
+    classifyFiles(scanFiles, DEFAULT_CONFIG.codeAreas, DEFAULT_CONFIG.generatedFiles)
+  );
   const areaNames = Array.from(fileMap.keys());
   console.log(`  Code areas: ${areaNames.join(", ")}`);
 
-  const fingerprints = buildFingerprints(fileMap, root);
+  const fingerprints = timings.measure("build fingerprints", () => buildFingerprints(fileMap, root));
   logFingerprints(fingerprints);
 
-  const metrics = createEmptyMetrics({
+  const metrics = timings.measure("create metrics envelope", () => createEmptyMetrics({
     repository: root,
     commitSha,
     commitTitle,
@@ -93,21 +96,23 @@ async function main() {
       excludeDirs: DEFAULT_CONFIG.excludeDirs,
       generatedFiles: DEFAULT_CONFIG.generatedFiles
     }
-  });
+  }));
   metrics.currentFingerprints = fingerprints;
 
   const fatalIssues: FatalIssue[] = [];
-  configureBaseline({ metrics, opts, tools, root });
+  timings.measure("configure baseline", () => configureBaseline({ metrics, opts, tools, root }));
 
-  const scope = detectTextOnlyChange({
+  const scope = timings.measure("detect changed scan inputs", () => detectTextOnlyChange({
     baselineSha: metrics.baseline.commitSha,
     cwd: root,
     scanInputPaths: DEFAULT_CONFIG.include
-  });
-  const changedFiles = opts.changedFiles ? getChangedFileList(opts, root) : scope.changedFiles;
+  }));
+  const changedFiles = timings.measure("resolve changed files", () =>
+    resolveChangedFilesForScan({ opts, root, scope })
+  );
   console.log(`  Changed files in scan scope: ${changedFiles.length}`);
 
-  scanCurrentRevision({
+  await timings.measureAsync("scan current revision", () => scanCurrentRevision({
     context: {
       metrics,
       toolResults,
@@ -115,22 +120,23 @@ async function main() {
       rawDir,
       fatalIssues,
       root,
+      fingerprints,
       config: DEFAULT_CONFIG
     },
     scanFiles,
     fileMap
-  });
+  }));
 
-  setComparisonStatus(metrics, scope);
-  const baselineSnapshot = maybeScanBaseline({
+  timings.measure("set comparison status", () => setComparisonStatus(metrics, scope));
+  const baselineSnapshot = await timings.measureAsync("baseline snapshot", () => maybeScanBaseline({
     metrics,
     toolResults,
     rawDir,
     fatalIssues
-  });
+  }));
 
   console.log("Generating warnings...");
-  metrics.warnings = generateWarningChannels({
+  metrics.warnings = timings.measure("generate warnings", () => generateWarningChannels({
     files: metrics.fileMetrics,
     functions: metrics.functionMetrics,
     duplicates: metrics.duplicateCode,
@@ -144,16 +150,16 @@ async function main() {
         }
       : null,
     comparisonStatus: metrics.comparisonStatus
-  });
+  }));
   console.log(
     `  Warnings: ${metrics.warnings.all.length} all, ` +
     `${metrics.warnings.changed.length} changed, ` +
     `${metrics.warnings.regressions.length} regressions generated`
   );
 
-  writeArtifacts({ artifactDir, metrics, topN: opts.topN });
-  printSummary(metrics);
-  const validation = validateOutput(metrics);
+  timings.measure("write artifacts", () => writeArtifacts({ artifactDir, metrics, topN: opts.topN }));
+  timings.measure("print summary", () => printSummary(metrics));
+  const validation = timings.measure("validate output", () => validateOutput(metrics));
   if (!validation.valid) {
     fatalIssues.push({
       tool: "metrics",
@@ -175,10 +181,11 @@ async function main() {
     process.exit(2);
   }
 
+  timings.print();
   process.exit(0);
 }
 
-function maybeScanBaseline({
+async function maybeScanBaseline({
   metrics,
   toolResults,
   rawDir,
@@ -188,7 +195,7 @@ function maybeScanBaseline({
   metrics: QualityMetrics;
   rawDir: string;
   toolResults: ToolAvailability[];
-}): BaselineSnapshot | null {
+}): Promise<BaselineSnapshot | null> {
   if (fatalIssues.length > 0) {
     console.log("Skipping baseline scan because fatal current-scan errors were detected.");
     return null;
@@ -199,17 +206,27 @@ function maybeScanBaseline({
     return null;
   }
 
+  if (metrics.comparisonStatus === "input-unchanged") {
+    console.log("Skipping baseline scan because scan inputs are unchanged.");
+    const baselineSnapshot = createEquivalentBaselineSnapshot(metrics);
+    metrics.baselineFingerprints = baselineSnapshot.fingerprints;
+    metrics.trends = generateTrends(metrics, baselineSnapshot);
+    console.log(`  Baseline deltas: ${metrics.trends.length} computed from equivalent inputs`);
+    writeBaselineRawOutputs(rawDir, baselineSnapshot);
+    return baselineSnapshot;
+  }
+
   const baselineWorkDir = join(tmpdir(), `docnav-quality-baseline-${randomUUID()}`);
   console.log(`Materializing baseline ${baselineCommitSha.slice(0, 7)}...`);
 
   try {
-    return scanMaterializedBaseline({ baselineCommitSha, metrics, toolResults, rawDir, baselineWorkDir });
+    return await scanMaterializedBaseline({ baselineCommitSha, metrics, toolResults, rawDir, baselineWorkDir });
   } finally {
     rmSync(baselineWorkDir, { recursive: true, force: true });
   }
 }
 
-function scanMaterializedBaseline({
+async function scanMaterializedBaseline({
   baselineCommitSha,
   metrics,
   toolResults,
@@ -221,7 +238,7 @@ function scanMaterializedBaseline({
   metrics: QualityMetrics;
   rawDir: string;
   toolResults: ToolAvailability[];
-}): BaselineSnapshot | null {
+}): Promise<BaselineSnapshot | null> {
   const matResult = materializeBaseline({
     commitSha: baselineCommitSha,
     cwd: root,
@@ -238,7 +255,10 @@ function scanMaterializedBaseline({
   console.log(`  Baseline materialized to ${matResult.workDir}`);
 
   try {
-    const baselineSnapshot = scanBaselineRevision(matResult.workDir, toolResults, DEFAULT_CONFIG);
+    const baselineSnapshot = await scanBaselineRevision(matResult.workDir, toolResults, DEFAULT_CONFIG, {
+      cacheRootDir: root,
+      commitSha: baselineCommitSha
+    });
     metrics.baselineFingerprints = baselineSnapshot.fingerprints;
     metrics.trends = generateTrends(metrics, baselineSnapshot);
     console.log(`  Baseline deltas: ${metrics.trends.length} computed`);
@@ -250,6 +270,78 @@ function scanMaterializedBaseline({
     metrics.comparisonStatus = "baseline-unavailable";
     return null;
   }
+}
+
+function createTimings() {
+  const startedAt = performance.now();
+  const records: { durationMs: number; label: string }[] = [];
+
+  const record = (label: string, startMs: number) => {
+    records.push({ label, durationMs: performance.now() - startMs });
+  };
+
+  return {
+    measure<T>(label: string, callback: () => T): T {
+      if (!timingsEnabled) return callback();
+      const startMs = performance.now();
+      try {
+        return callback();
+      } finally {
+        record(label, startMs);
+      }
+    },
+    async measureAsync<T>(label: string, callback: () => Promise<T>): Promise<T> {
+      if (!timingsEnabled) return callback();
+      const startMs = performance.now();
+      try {
+        return await callback();
+      } finally {
+        record(label, startMs);
+      }
+    },
+    print(): void {
+      if (!timingsEnabled) return;
+      const totalMs = performance.now() - startedAt;
+      const longest = [...records].sort((a, b) => b.durationMs - a.durationMs).slice(0, 12);
+      console.log("");
+      console.log("Timing breakdown:");
+      for (const record of longest) {
+        console.log(`  ${formatTiming(record.durationMs).padStart(7)}  ${record.label}`);
+      }
+      console.log(`  ${formatTiming(totalMs).padStart(7)}  total`);
+    }
+  };
+}
+
+function formatTiming(durationMs: number): string {
+  return `${durationMs.toFixed(durationMs < 100 ? 1 : 0)}ms`;
+}
+
+function createEquivalentBaselineSnapshot(metrics: QualityMetrics): BaselineSnapshot {
+  return {
+    fingerprints: cloneJson(metrics.currentFingerprints),
+    fileMetrics: metrics.fileMetrics.map((file) => ({
+      ...file,
+      complexity: { ...file.complexity },
+      isChanged: false
+    })),
+    functionMetrics: metrics.functionMetrics.map((func) => ({
+      ...func,
+      cyclomaticComplexity: { ...func.cyclomaticComplexity },
+      isChanged: false
+    })),
+    duplicateCode: metrics.duplicateCode.map((fragment) => ({
+      ...fragment,
+      codeAreas: [...fragment.codeAreas],
+      hitsChangedScope: false,
+      locations: fragment.locations.map((location) => ({ ...location }))
+    })),
+    aggregates: cloneJson(metrics.aggregates)
+  };
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

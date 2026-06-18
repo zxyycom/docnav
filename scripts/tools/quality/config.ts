@@ -4,25 +4,15 @@
  * 用途：定义质量观测的扫描范围、排除规则、6 类默认 code areas、
  * 工具参数、warning policy 和产物目录默认值。配置文件是质量观测行为的 owner，
  * 脚本实现不将这些规则散落为硬编码逻辑。
- *
- * 来源：openspec/changes/implement-code-quality-observability/specs/code-quality-observability/spec.md
  */
 
 import { errorMessage, isStringArray } from "../types.ts";
 import type { QualityConfig } from "./schema.ts";
 
-/** @typedef {import('./schema.ts').CodeAreaDefinition} CodeAreaDefinition */
-/** @typedef {import('./schema.ts').ToolConfig} ToolConfig */
-/** @typedef {import('./schema.ts').WarningPolicy} WarningPolicy */
-/** @typedef {import('./schema.ts').QualityConfig} QualityConfig */
-
 /**
  * 读取 JSON 编码的字符串数组环境变量。
  *
  * 仅用于少量测试/临时覆盖，不改变默认配置语义。
- *
- * @param {string} name
- * @returns {string[]}
  */
 function readJsonStringArrayEnv(name: string): string[] {
   const raw = process.env[name];
@@ -42,21 +32,9 @@ function readJsonStringArrayEnv(name: string): string[] {
   return parsed;
 }
 
-// 6 类 code area 语义：
-// - rust-production: crates/<crate>/src/ 下非 tests/fixtures/generated 的 Rust production code，最严格 warning
-// - rust-tests: crates/<crate>/tests/、crates/<crate>/src/tests/、tests.rs，比 production 放宽
-// - node-production-scripts: scripts/<star>.ts 和 scripts/tools/ 下非测试、非 fixture、非 generated 的脚本模块，中等严格
-// - node-validation-smoke: scripts/tools/validators/、脚本单测、test/smoke/ 和 test/tools/，比 production scripts 放宽
-// - fixtures-examples: fixtures/cases/测试数据和示例输入输出，默认只进 summary/watchlist
-// - generated: generated files 和配置显式标记的生成物，默认排除 warning
-/**
- * 默认质量观测配置。
- *
- * @type {QualityConfig}
- */
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.2.0",
+  version: "0.4.0",
 
   /** 纳入扫描的路径 glob */
   include: [
@@ -198,6 +176,8 @@ export const DEFAULT_CONFIG = Object.freeze({
 
   /** PMD CPD 重复代码检测配置 */
   pmdCpd: {
+    /** CPD cache miss task 的最大并发数；任务按 code area 并行执行 */
+    maxParallelTasks: 4,
     /** 按 code area 拆分的 minimum tokens（超过此阈值才报告） */
     minimumTokens: Object.freeze({
       "rust-production": 75,

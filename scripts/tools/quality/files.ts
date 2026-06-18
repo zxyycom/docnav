@@ -6,10 +6,12 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { minimatch } from "minimatch";
 
 import { DEFAULT_CONFIG } from "./config.ts";
 import { buildFingerprint, isExcluded } from "./classify.ts";
 import { getWorkingTreeChangedFiles } from "./baseline.ts";
+import { gitGlobPathspecs } from "./git-pathspec.ts";
 import type { CodeAreaFileMap, CodeAreaFingerprint, QualityConfig } from "./schema.ts";
 
 export type ChangedFilesOptions = {
@@ -22,7 +24,8 @@ export function collectScanFiles(rootDir: string, config: QualityConfig): string
     "--cached",
     "--others",
     "--exclude-standard",
-    ...config.include
+    "--",
+    ...gitGlobPathspecs(config.include)
   ], {
     cwd: rootDir,
     encoding: "utf8",
@@ -46,7 +49,8 @@ export function collectBaselineFiles(workDir: string, config: QualityConfig): st
     "--cached",
     "--others",
     "--exclude-standard",
-    ...config.include
+    "--",
+    ...gitGlobPathspecs(config.include)
   ], {
     cwd: workDir,
     encoding: "utf8",
@@ -73,7 +77,13 @@ export function getChangedFileList(opts: ChangedFilesOptions, rootDir: string): 
     }
   }
 
-  const result = spawnSync("git", ["diff", "--name-only", "HEAD~1..HEAD"], {
+  const result = spawnSync("git", [
+    "diff",
+    "--name-only",
+    "HEAD~1..HEAD",
+    "--",
+    ...gitGlobPathspecs(DEFAULT_CONFIG.include)
+  ], {
     cwd: rootDir,
     encoding: "utf8",
     windowsHide: true
@@ -115,44 +125,37 @@ function normalizeFingerprintText(content: string): string {
 function collectFilesFallback(rootDir: string, config: QualityConfig): string[] {
   const files: string[] = [];
 
-  for (const pattern of config.include) {
-    const result = spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "--", pattern], {
-      cwd: rootDir,
-      encoding: "utf8",
-      windowsHide: true,
-      maxBuffer: 1024 * 1024 * 64
-    });
-
-    if (result.status === 0) {
-      files.push(...splitGitFileList(result.stdout));
+  listFilesRecursive(rootDir, "", (relPath) => {
+    if (isScanInputFile(relPath, config)) {
+      files.push(relPath);
     }
-  }
+  });
 
-  return files.filter((f) => !isExcluded(f, config.excludeDirs, config.generatedFiles));
+  return uniqueSorted(files);
 }
 
 function collectBaselineFilesFallback(workDir: string, config: QualityConfig): string[] {
   const files: string[] = [];
 
-  for (const pattern of config.include) {
-    const globPattern = pattern
-      .replace(/\*\*/g, "<<<GLOBSTAR>>>")
-      .replace(/\*/g, "[^/]*")
-      .replace(/<<<GLOBSTAR>>>/g, ".*");
+  listFilesRecursive(workDir, "", (relPath) => {
+    if (isScanInputFile(relPath, config)) {
+      files.push(relPath);
+    }
+  });
 
-    const fileRegex = new RegExp(`^${globPattern}$`);
-    listFilesRecursive(workDir, "", (relPath) => {
-      if (fileRegex.test(relPath) && !isExcluded(relPath, config.excludeDirs, config.generatedFiles)) {
-        files.push(relPath);
-      }
-    });
-  }
-
-  return [...new Set(files)].sort();
+  return uniqueSorted(files);
 }
 
 function getChangedFilesForSingleCommitRepo(rootDir: string): string[] {
-  const rootResult = spawnSync("git", ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"], {
+  const rootResult = spawnSync("git", [
+    "diff-tree",
+    "--no-commit-id",
+    "--name-only",
+    "-r",
+    "HEAD",
+    "--",
+    ...gitGlobPathspecs(DEFAULT_CONFIG.include)
+  ], {
     cwd: rootDir,
     encoding: "utf8",
     windowsHide: true
@@ -172,7 +175,7 @@ function normalizeAndFilterFiles(files: string[], config: QualityConfig, rootDir
   return files
     .map((f) => f.replace(/\\/g, "/"))
     .filter((f) => existsSync(resolve(rootDir, f)))
-    .filter((f) => !isExcluded(f, config.excludeDirs, config.generatedFiles));
+    .filter((f) => isScanInputFile(f, config));
 }
 
 function splitGitFileList(stdout: string): string[] {
@@ -181,6 +184,16 @@ function splitGitFileList(stdout: string): string[] {
     .split(/\r?\n/)
     .filter(Boolean)
     .map((f) => f.replace(/\\/g, "/"));
+}
+
+function isScanInputFile(filePath: string, config: QualityConfig): boolean {
+  const normalized = filePath.replace(/\\/g, "/");
+  return config.include.some((pattern) => minimatch(normalized, pattern)) &&
+    !isExcluded(normalized, config.excludeDirs, config.generatedFiles);
+}
+
+function uniqueSorted(files: string[]): string[] {
+  return [...new Set(files)].sort();
 }
 
 function listFilesRecursive(baseDir: string, subDir: string, callback: (relPath: string) => void): void {

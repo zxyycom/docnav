@@ -11,13 +11,6 @@ import type {
   TrendDelta
 } from "./schema.ts";
 
-/**
- * 生成趋势 delta，比较当前指标与 baseline snapshot。
- *
- * @param {import('./schema.ts').QualityMetrics} metrics
- * @param {{ fingerprints: object, fileMetrics: Array|null, aggregates: object|null }} baselineSnapshot
- * @returns {import('./schema.ts').TrendDelta[]}
- */
 export function generateTrends(metrics: QualityMetrics, baselineSnapshot: BaselineSnapshot): TrendDelta[] {
   const trends: TrendDelta[] = [];
 

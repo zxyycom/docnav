@@ -160,7 +160,11 @@ function rankChangedFilesByRisk(
   changed: FileMetric[],
   metrics: QualityMetrics
 ): { file: FileMetric; reasons: string[]; score: number }[] {
-  const changedWarningPaths = new Set((metrics.warnings?.changed || []).map((warning) => warning.path));
+  const changedWarningPaths = new Set(
+    (metrics.warnings?.all || [])
+      .filter((warning) => warning.isChanged)
+      .map((warning) => warning.path)
+  );
   const deltaWarningPaths = new Set(
     (metrics.warnings?.all || [])
       .filter((warning) => warning.isChanged && warning.deltaValue !== null && warning.deltaValue !== 0)
@@ -184,7 +188,7 @@ function riskRankedFile(
   let score = 0;
 
   if (changedWarningPaths.has(file.path)) {
-    reasons.push("changed warning");
+    reasons.push("current warning");
     score += 4;
   }
   if (deltaWarningPaths.has(file.path)) {

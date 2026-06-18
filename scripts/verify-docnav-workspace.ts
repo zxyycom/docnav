@@ -196,14 +196,14 @@ export const checks = defineChecks([
         id: "quality-tool-tests",
         label: "quality tool tests",
         tasks: nodeTestFileChecks([
-          ["quality-tools-tests", "quality tools tests", "scripts/tools/quality/tools.test.ts"]
+          ["quality-tools-tests", "quality tools tests", "scripts/tools/quality/*.test.ts"]
         ])
       },
       {
         id: "quality-scan",
         label: "quality scan",
-        command: "pnpm",
-        args: ["run", "quality:scan"],
+        command: "node",
+        args: ["scripts/quality-scan.ts"],
         dependsOn: ["quality-tool-tests"]
       },
       {

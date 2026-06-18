@@ -74,6 +74,8 @@ describe("workspace verifier configuration", () => {
     }
 
     assert.equal(checkByLabel("cargo test").type, PROFILE_FULL);
+    assert.equal(checkByLabel("quality scan").command, "node");
+    assert.deepEqual(checkByLabel("quality scan").args, ["scripts/quality-scan.ts"]);
     assert.deepEqual(checkByLabel("cargo test").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav development binaries").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav-markdown development smoke").mutex, []);
