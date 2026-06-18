@@ -20,15 +20,15 @@ import { collectBaselineFiles, buildFingerprints } from "./files.ts";
  * @param {object} config - Quality config
  * @returns {{ fingerprints: object, fileMetrics: Array, functionMetrics: Array, duplicateCode: Array, aggregates: object }}
  */
-export function scanBaselineRevision(workDir: any, toolResults: any, config: any) {
+export function scanBaselineRevision(workDir: ExternalValue, toolResults: ExternalValue, config: ExternalValue) {
   const baselineFiles = collectBaselineFiles(workDir, config);
   const fileMap = classifyFiles(baselineFiles, config.codeAreas, config.generatedFiles);
   const fingerprints = buildFingerprints(fileMap, workDir);
 
-  let fileMetrics: any[] = [];
-  let functionMetrics: any[] = [];
-  let duplicateCode: any[] = [];
-  let byLanguage: any[] = [];
+  let fileMetrics: ExternalValue[] = [];
+  let functionMetrics: ExternalValue[] = [];
+  let duplicateCode: ExternalValue[] = [];
+  let byLanguage: ExternalValue[] = [];
 
   if (isToolAvailable(toolResults, "scc")) {
     ({ fileMetrics, byLanguage } = scanBaselineScc({ workDir, baselineFiles, config }));
@@ -42,7 +42,7 @@ export function scanBaselineRevision(workDir: any, toolResults: any, config: any
     duplicateCode = scanBaselineCpd({ workDir, fileMap, config });
   }
 
-  const aggregates: any = buildAggregates({
+  const aggregates: ExternalValue = buildAggregates({
     fileMetrics,
     functionMetrics,
     duplicateCode,
@@ -53,7 +53,7 @@ export function scanBaselineRevision(workDir: any, toolResults: any, config: any
   return { fingerprints, fileMetrics, functionMetrics, duplicateCode, aggregates };
 }
 
-function scanBaselineScc({ workDir, baselineFiles, config }: any) {
+function scanBaselineScc({ workDir, baselineFiles, config }: ExternalValue) {
   console.log("  Running baseline scc...");
   const sccResult = scanWithScc({
     cwd: workDir,
@@ -80,10 +80,10 @@ function scanBaselineScc({ workDir, baselineFiles, config }: any) {
   return { fileMetrics, byLanguage: sccResult.aggregates?.byLanguage ?? [] };
 }
 
-function scanBaselineLizard({ workDir, baselineFiles, config }: any) {
+function scanBaselineLizard({ workDir, baselineFiles, config }: ExternalValue) {
   console.log("  Running baseline Lizard...");
   const targetFiles = baselineFiles.filter(
-    (f: any) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
+    (f: ExternalValue) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
       !isExcluded(f, config.excludeDirs, config.generatedFiles)
   );
   const lizardResult = scanWithLizard({
@@ -109,13 +109,13 @@ function scanBaselineLizard({ workDir, baselineFiles, config }: any) {
   return functionMetrics;
 }
 
-function scanBaselineCpd({ workDir, fileMap, config }: any) {
+function scanBaselineCpd({ workDir, fileMap, config }: ExternalValue) {
   console.log("  Running baseline PMD CPD...");
-  const fragments: any[] = [];
+  const fragments: ExternalValue[] = [];
 
   for (const [area, areaFiles] of fileMap.entries()) {
     const targetFiles = areaFiles.filter(
-      (f: any) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
+      (f: ExternalValue) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
     );
 
     if (targetFiles.length < 2) {
@@ -147,7 +147,7 @@ function scanBaselineCpd({ workDir, fileMap, config }: any) {
   return fragments;
 }
 
-function annotateBaselineDuplicates(fragments: any, area: any) {
+function annotateBaselineDuplicates(fragments: ExternalValue, area: ExternalValue) {
   for (const frag of fragments) {
     for (const loc of frag.locations) {
       loc.codeArea = area;
@@ -157,6 +157,6 @@ function annotateBaselineDuplicates(fragments: any, area: any) {
   }
 }
 
-function isToolAvailable(toolResults: any, name: any) {
-  return toolResults.find((t: any) => t.name === name)?.available;
+function isToolAvailable(toolResults: ExternalValue, name: ExternalValue) {
+  return toolResults.find((t: ExternalValue) => t.name === name)?.available;
 }

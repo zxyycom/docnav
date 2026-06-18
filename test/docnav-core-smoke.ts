@@ -21,17 +21,19 @@ import { createCliArgumentFailureTasks } from "./smoke/core/cases/cli-args.ts";
 import { createConfigContextTasks, createToolCommandTasks } from "./smoke/core/cases/config-management.ts";
 import { createRegistryAndContractFailureTasks } from "./smoke/core/cases/failures.ts";
 
-let suiteFailure = null;
+let suiteFailure;
 
 try {
   smokeState.validators = compileSchemas();
 
   assertSetup(smokeState.docnavBinaryPath, "docnav binary path is required; pass --bin <path> or DOCNAV_BIN");
-  assertSetup(fs.existsSync(smokeState.docnavBinaryPath), `docnav binary not found: ${smokeState.docnavBinaryPath}`);
+  const docnavBinaryPath = String(smokeState.docnavBinaryPath);
+  assertSetup(fs.existsSync(docnavBinaryPath), `docnav binary not found: ${docnavBinaryPath}`);
   assertSetup(smokeState.markdownBinaryPath, "docnav-markdown binary path is required; set DOCNAV_MARKDOWN_BIN");
+  const markdownBinaryPath = String(smokeState.markdownBinaryPath);
   assertSetup(
-    fs.existsSync(smokeState.markdownBinaryPath),
-    `docnav-markdown binary not found: ${smokeState.markdownBinaryPath}`
+    fs.existsSync(markdownBinaryPath),
+    `docnav-markdown binary not found: ${markdownBinaryPath}`
   );
   fs.mkdirSync(tempRoot, { recursive: true });
 

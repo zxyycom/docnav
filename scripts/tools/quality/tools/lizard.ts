@@ -9,6 +9,9 @@
 
 import { spawnSync } from "node:child_process";
 
+import type { FunctionMetric, ToolConfig } from "../schema.ts";
+import { errorMessage } from "../../types.ts";
+
 /**
  * 使用 Lizard 扫描指定文件，返回函数级指标。
  *
@@ -20,7 +23,17 @@ import { spawnSync } from "node:child_process";
  *
  * @typedef {import('../schema.ts').FunctionMetric} FunctionMetric
  */
-export function scanWithLizard({ files, cwd, toolConfig }: any) {
+interface ScanWithLizardOptions {
+  cwd: string;
+  files: string[];
+  toolConfig: ToolConfig;
+}
+
+type LizardScanResult =
+  | { functions: FunctionMetric[]; ok: true }
+  | { error: string; ok: false };
+
+export function scanWithLizard({ files, cwd, toolConfig }: ScanWithLizardOptions): LizardScanResult {
   if (files.length === 0) {
     return { ok: true, functions: [] };
   }
@@ -63,9 +76,9 @@ export function scanWithLizard({ files, cwd, toolConfig }: any) {
  * @param {string} csv
  * @returns {{ ok: true, functions: FunctionMetric[] } | { ok: false, error: string }}
  */
-export function parseLizardCSV(csv: any) {
+export function parseLizardCSV(csv: string): LizardScanResult {
   try {
-    const lines = csv.split(/\r?\n/).filter((l: any) => l.trim().length > 0);
+    const lines = csv.split(/\r?\n/).filter((line) => line.trim().length > 0);
     if (lines.length === 0) {
       return { ok: true, functions: [] };
     }
@@ -76,7 +89,7 @@ export function parseLizardCSV(csv: any) {
     }
 
     /** @type {FunctionMetric[]} */
-    const functions: any[] = [];
+    const functions: FunctionMetric[] = [];
 
     for (const line of lines) {
       const parts = parseCSVLine(line);
@@ -94,9 +107,9 @@ export function parseLizardCSV(csv: any) {
       if (isNaN(nloc) || isNaN(startLine)) continue;
 
       functions.push({
-        name: funcName || "unknown",
+        name: funcName || "ExternalValue",
         file: filePath,
-        codeArea: "unknown",
+        codeArea: "ExternalValue",
         startLine,
         endLine: isNaN(endLine) ? startLine : endLine,
         lines: nloc,
@@ -117,16 +130,16 @@ export function parseLizardCSV(csv: any) {
     });
 
     return { ok: true, functions };
-  } catch (err: any) {
-    return { ok: false, error: `Failed to parse lizard CSV: ${err.message}` };
+  } catch (error: unknown) {
+    return { ok: false, error: `Failed to parse lizard CSV: ${errorMessage(error)}` };
   }
 }
 
-function isLizard123Row(parts: any) {
+function isLizard123Row(parts: string[]): boolean {
   return parts.length >= 11 && isIntegerText(parts[9]) && isIntegerText(parts[10]);
 }
 
-function isIntegerText(value: any) {
+function isIntegerText(value: string | undefined): boolean {
   return /^-?\d+$/.test(String(value ?? ""));
 }
 
@@ -136,8 +149,8 @@ function isIntegerText(value: any) {
  * @param {string} line
  * @returns {string[]}
  */
-function parseCSVLine(line: any) {
-  const result: any[] = [];
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
   let current = "";
   let inQuotes = false;
 
@@ -177,7 +190,7 @@ function parseCSVLine(line: any) {
  * @param {{ command: string, args: string[] }} params.toolConfig
  * @returns {{ ok: true, version: string } | { ok: false, error: string }}
  */
-export function getLizardVersion({ cwd, toolConfig }: any) {
+export function getLizardVersion({ cwd, toolConfig }: { cwd: string; toolConfig: ToolConfig }) {
   const child = spawnSync(toolConfig.command, [...toolConfig.args, "--version"], {
     cwd,
     encoding: "utf8",
@@ -194,5 +207,5 @@ export function getLizardVersion({ cwd, toolConfig }: any) {
     return { ok: false, error: `lizard --version failed, exit ${child.status}` };
   }
 
-  return { ok: true, version: ver || "unknown" };
+  return { ok: true, version: ver || "ExternalValue" };
 }

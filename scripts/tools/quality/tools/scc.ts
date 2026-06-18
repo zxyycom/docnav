@@ -9,6 +9,9 @@
 
 import { spawnSync } from "node:child_process";
 
+import type { FileMetric, LanguageAggregate, ToolConfig } from "../schema.ts";
+import { errorMessage } from "../../types.ts";
+
 export const SCC_VERSION = "3.7.0";
 export const SCC_VERSION_OUTPUT = `scc version ${SCC_VERSION}`;
 export const SCC_BY_FILE_CSV_HEADER = "Language,Provider,Filename,Lines,Code,Comments,Blanks,Complexity,Bytes,ULOC";
@@ -27,7 +30,18 @@ export const SCC_BY_FILE_CSV_HEADER = "Language,Provider,Filename,Lines,Code,Com
  * @typedef {import('../schema.ts').FileMetric} FileMetric
  * @typedef {import('../schema.ts').LanguageAggregate} LanguageAggregate
  */
-export function scanWithScc({ cwd, includePaths, excludeDirs, toolConfig }: any) {
+interface ScanWithSccOptions {
+  cwd: string;
+  excludeDirs: string[];
+  includePaths: string[];
+  toolConfig: ToolConfig;
+}
+
+type SccScanResult =
+  | { aggregates: { byLanguage: LanguageAggregate[] }; files: FileMetric[]; ok: true }
+  | { error: string; ok: false };
+
+export function scanWithScc({ cwd, includePaths, excludeDirs, toolConfig }: ScanWithSccOptions): SccScanResult {
   const argv = buildSccArgs({ includePaths, excludeDirs, toolArgs: toolConfig.args });
 
   const child = spawnSync(toolConfig.command, argv, {
@@ -58,8 +72,16 @@ export function scanWithScc({ cwd, includePaths, excludeDirs, toolConfig }: any)
   return parseSccCSV(output, cwd);
 }
 
-export function buildSccArgs({ includePaths, excludeDirs, toolArgs }: any) {
-  const excludeArgs = excludeDirs.flatMap((d: any) => ["--exclude-dir", d]);
+export function buildSccArgs({
+  includePaths,
+  excludeDirs,
+  toolArgs
+}: {
+  excludeDirs: string[];
+  includePaths: string[];
+  toolArgs: string[];
+}): string[] {
+  const excludeArgs = excludeDirs.flatMap((d) => ["--exclude-dir", d]);
   return [...toolArgs, "--by-file", "--format", "csv", ...excludeArgs, ...includePaths];
 }
 
@@ -79,16 +101,16 @@ export function buildSccArgs({ includePaths, excludeDirs, toolArgs }: any) {
  * @returns {{ ok: true, files: FileMetric[], aggregates: { byLanguage: LanguageAggregate[] } }
  *          | { ok: false, error: string }}
  */
-export function parseSccCSV(csv: any, cwd: any) {
+export function parseSccCSV(csv: string, cwd: string): SccScanResult {
   try {
-    const lines = csv.split(/\r?\n/).filter((l: any) => l.trim().length > 0);
+    const lines = csv.split(/\r?\n/).filter((line) => line.trim().length > 0);
     if (lines.length === 0) {
       return { ok: true, files: [], aggregates: { byLanguage: [] } };
     }
 
-    const headerIdx = lines.findIndex((l: any) => l.trim() === SCC_BY_FILE_CSV_HEADER);
+    const headerIdx = lines.findIndex((line) => line.trim() === SCC_BY_FILE_CSV_HEADER);
     if (headerIdx < 0) {
-      const observedHeader = lines.find((l: any) => /^Language,/.test(l)) ?? lines[0];
+      const observedHeader = lines.find((line) => /^Language,/.test(line)) ?? lines[0];
       return {
         ok: false,
         error: `expected scc ${SCC_VERSION} by-file CSV header "${SCC_BY_FILE_CSV_HEADER}", got "${observedHeader}"`
@@ -112,10 +134,10 @@ export function parseSccCSV(csv: any, cwd: any) {
     };
 
     /** @type {FileMetric[]} */
-    const files: any[] = [];
+    const files: FileMetric[] = [];
 
     /** @type {Map<string, LanguageAggregate>} */
-    const langMap = new Map();
+    const langMap = new Map<string, LanguageAggregate>();
 
     for (let i = headerIdx + 1; i < lines.length; i++) {
       const parts = parseCSVLine(lines[i]);
@@ -137,7 +159,7 @@ export function parseSccCSV(csv: any, cwd: any) {
       files.push({
         path: normalizePath(path, cwd),
         language,
-        codeArea: "unknown",
+        codeArea: "ExternalValue",
         lines: lineCount,
         codeLines: isNaN(codeLines) ? 0 : codeLines,
         commentLines: isNaN(commentLines) ? 0 : commentLines,
@@ -178,8 +200,8 @@ export function parseSccCSV(csv: any, cwd: any) {
     );
 
     return { ok: true, files, aggregates: { byLanguage } };
-  } catch (err: any) {
-    return { ok: false, error: `Failed to parse scc CSV: ${err.message}` };
+  } catch (error: unknown) {
+    return { ok: false, error: `Failed to parse scc CSV: ${errorMessage(error)}` };
   }
 }
 
@@ -191,7 +213,7 @@ export function parseSccCSV(csv: any, cwd: any) {
  * @param {{ command: string, args: string[] }} params.toolConfig
  * @returns {{ ok: true, version: string } | { ok: false, error: string, reason?: string }}
  */
-export function getSccVersion({ cwd, toolConfig }: any) {
+export function getSccVersion({ cwd, toolConfig }: { cwd: string; toolConfig: ToolConfig }) {
   const child = spawnSync(toolConfig.command, [...toolConfig.args, "--version"], {
     cwd,
     encoding: "utf8",
@@ -210,7 +232,7 @@ export function getSccVersion({ cwd, toolConfig }: any) {
   if (child.status !== 0) {
     const failure = typeof child.status === "number"
       ? `exit ${child.status}`
-      : `signal ${child.signal || "unknown"}`;
+      : `signal ${child.signal || "ExternalValue"}`;
     return {
       ok: false,
       error: `scc --version failed, ${failure}${ver ? `: ${ver}` : ""}`,
@@ -221,7 +243,7 @@ export function getSccVersion({ cwd, toolConfig }: any) {
   if (ver !== SCC_VERSION_OUTPUT) {
     return {
       ok: false,
-      error: `expected ${SCC_VERSION_OUTPUT}, got "${ver || "unknown"}"`,
+      error: `expected ${SCC_VERSION_OUTPUT}, got "${ver || "ExternalValue"}"`,
       reason: "contract-error"
     };
   }
@@ -231,8 +253,8 @@ export function getSccVersion({ cwd, toolConfig }: any) {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-function parseCSVLine(line: any) {
-  const result: any[] = [];
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
   let current = "";
   let inQuotes = false;
 
@@ -264,7 +286,7 @@ function parseCSVLine(line: any) {
   return result;
 }
 
-function normalizePath(filePath: any, cwd: any) {
+function normalizePath(filePath: string, _cwd: string): string {
   // 将路径标准化为相对仓库根的路径
   const rel = filePath.replace(/\\/g, "/");
   // scc 输出中路径通常已经是相对路径

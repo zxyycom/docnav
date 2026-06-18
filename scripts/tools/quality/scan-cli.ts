@@ -49,14 +49,14 @@ export function parseArgs(argv = process.argv.slice(2)) {
   return opts;
 }
 
-export function prepareArtifactDirs(artifactDir: any) {
+export function prepareArtifactDirs(artifactDir: ExternalValue) {
   const rawDir = join(artifactDir, "raw");
   mkdirSync(artifactDir, { recursive: true });
   mkdirSync(rawDir, { recursive: true });
   return { rawDir };
 }
 
-export function initializeToolResults(rootDir: any) {
+export function initializeToolResults(rootDir: ExternalValue) {
   console.log("Checking tool availability...");
   const toolResults = checkTools(rootDir);
   const availableTools = toolResults.filter((tool) => tool.available);
@@ -71,17 +71,17 @@ export function initializeToolResults(rootDir: any) {
   return toolResults;
 }
 
-export function collectToolMetadata(toolResults: any) {
+export function collectToolMetadata(toolResults: ExternalValue) {
   return toolResults
-    .filter((tool: any) => tool.available && tool.version)
-    .map((tool: any) => ({
+    .filter((tool: ExternalValue) => tool.available && tool.version)
+    .map((tool: ExternalValue) => ({
       name: tool.name,
       version: tool.version,
       source: tool.source
     }));
 }
 
-export function configureBaseline({ metrics, opts, tools, fatalIssues, root }: any) {
+export function configureBaseline({ metrics, opts, tools, root }: ExternalValue) {
   if (opts.baseline) {
     metrics.baseline = createGeneratedBaseline(opts.baseline, "explicit", tools, root);
     return;
@@ -126,7 +126,7 @@ export function configureBaseline({ metrics, opts, tools, fatalIssues, root }: a
   }
 }
 
-export function setComparisonStatus(metrics: any, scope: any) {
+export function setComparisonStatus(metrics: ExternalValue, scope: ExternalValue) {
   if (metrics.baseline.status === "generated" && metrics.baseline.commitSha) {
     if (!scope.changed) {
       metrics.comparisonStatus = "input-unchanged";
@@ -141,7 +141,7 @@ export function setComparisonStatus(metrics: any, scope: any) {
   }
 }
 
-export function writeBaselineRawOutputs(rawDir: any, baselineSnapshot: any) {
+export function writeBaselineRawOutputs(rawDir: ExternalValue, baselineSnapshot: ExternalValue) {
   const baselineRawDir = join(rawDir, "baseline");
   mkdirSync(baselineRawDir, { recursive: true });
   writeJson(join(baselineRawDir, "baseline-fingerprints.json"), baselineSnapshot.fingerprints);
@@ -160,7 +160,7 @@ export function writeBaselineRawOutputs(rawDir: any, baselineSnapshot: any) {
   }
 }
 
-export function writeArtifacts({ artifactDir, metrics, topN }: any) {
+export function writeArtifacts({ artifactDir, metrics, topN }: ExternalValue) {
   console.log("Writing artifacts...");
 
   const metricsPath = join(artifactDir, "metrics.json");
@@ -176,12 +176,12 @@ export function writeArtifacts({ artifactDir, metrics, topN }: any) {
   console.log(`  report.md → ${reportPath}`);
 
   const warningsPath = join(artifactDir, "warnings.ndjson");
-  const ndjson = metrics.warnings.map((warning: any) => JSON.stringify(warning)).join("\n") + "\n";
+  const ndjson = metrics.warnings.map((warning: ExternalValue) => JSON.stringify(warning)).join("\n") + "\n";
   writeFileSync(warningsPath, ndjson, "utf8");
   console.log(`  warnings.ndjson → ${warningsPath}`);
 }
 
-export function printSummary(metrics: any) {
+export function printSummary(metrics: ExternalValue) {
   console.log("");
   console.log("─".repeat(60));
   console.log("Summary:");
@@ -197,7 +197,7 @@ export function printSummary(metrics: any) {
   console.log("─".repeat(60));
 }
 
-export function validateOutput(metrics: any) {
+export function validateOutput(metrics: ExternalValue) {
   const validation = validateMetrics(metrics);
   if (validation.valid) return validation;
 
@@ -209,20 +209,20 @@ export function validateOutput(metrics: any) {
   return validation;
 }
 
-export function logFingerprints(fingerprints: any) {
+export function logFingerprints(fingerprints: ExternalValue) {
   console.log("  Input fingerprints:");
-  for (const [area, fingerprint] of Object.entries(fingerprints) as Array<[string, any]>) {
+  for (const [area, fingerprint] of Object.entries(fingerprints) as Array<[string, ExternalValue]>) {
     console.log(`    ${area}: ${fingerprint.fileCount} files, ${fingerprint.fingerprint}`);
   }
 }
 
-export function formatFatalIssue(issue: any) {
+export function formatFatalIssue(issue: ExternalValue) {
   return `${issue.tool} ${issue.phase}: ${issue.error}`;
 }
 
-export function getGitSha(cwd: any) {
+export function getGitSha(cwd: ExternalValue) {
   const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8", windowsHide: true });
-  return (result.stdout || "").trim() || "unknown";
+  return (result.stdout || "").trim() || "ExternalValue";
 }
 
 function printHelp() {
@@ -250,7 +250,7 @@ Output:
 `);
 }
 
-function createGeneratedBaseline(commitSha: any, selectionReason: any, tools: any, root: any, commitDate: string | null = null) {
+function createGeneratedBaseline(commitSha: ExternalValue, selectionReason: ExternalValue, tools: ExternalValue, root: ExternalValue, commitDate: string | null = null) {
   const resolvedDate = commitDate || getGitCommitDate(commitSha, root);
   return {
     status: "generated",
@@ -258,7 +258,7 @@ function createGeneratedBaseline(commitSha: any, selectionReason: any, tools: an
     commitDate: resolvedDate,
     metadata: {
       commitSha,
-      commitDate: resolvedDate || "unknown",
+      commitDate: resolvedDate || "ExternalValue",
       selectionReason,
       configVersion: DEFAULT_CONFIG.version,
       toolMetadata: tools
@@ -266,7 +266,7 @@ function createGeneratedBaseline(commitSha: any, selectionReason: any, tools: an
   };
 }
 
-function getGitCommitDate(sha: any, cwd: any) {
+function getGitCommitDate(sha: ExternalValue, cwd: ExternalValue) {
   const result = spawnSync("git", ["log", "--format=%aI", "--max-count=1", sha], {
     cwd,
     encoding: "utf8",
@@ -275,6 +275,6 @@ function getGitCommitDate(sha: any, cwd: any) {
   return (result.stdout || "").trim() || null;
 }
 
-function writeJson(filePath: any, value: any) {
+function writeJson(filePath: ExternalValue, value: ExternalValue) {
   writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
 }

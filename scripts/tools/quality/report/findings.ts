@@ -1,7 +1,7 @@
 import { formatTable } from "./table.ts";
 
-export function duplicateCodeSection(metrics: any) {
-  const lines: any[] = [];
+export function duplicateCodeSection(metrics: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push("## 重复代码检测");
   lines.push("");
 
@@ -47,25 +47,25 @@ export function duplicateCodeSection(metrics: any) {
   return lines.join("\n");
 }
 
-function requireDuplicateAreas(dup: any) {
+function requireDuplicateAreas(dup: ExternalValue) {
   if (!Array.isArray(dup.codeAreas) || dup.codeAreas.length === 0) {
     throw new Error(`Duplicate fragment #${dup.id} is missing code areas`);
   }
   return dup.codeAreas;
 }
 
-function requireDuplicateLocations(dup: any) {
+function requireDuplicateLocations(dup: ExternalValue) {
   if (!Array.isArray(dup.locations) || dup.locations.length === 0) {
     throw new Error(`Duplicate fragment #${dup.id} is missing locations`);
   }
   return dup.locations;
 }
 
-function formatDuplicateLocation(dup: any, location: any) {
+function formatDuplicateLocation(dup: ExternalValue, location: ExternalValue) {
   if (!location.path || !Number.isInteger(location.startLine) || !Number.isInteger(location.endLine)) {
     throw new Error(`Duplicate fragment #${dup.id} has an incomplete location`);
   }
-  if (!location.codeArea || location.codeArea === "unknown") {
+  if (!location.codeArea || location.codeArea === "ExternalValue") {
     throw new Error(`Duplicate fragment #${dup.id} location is missing code area`);
   }
 
@@ -76,12 +76,12 @@ function formatDuplicateLocation(dup: any, location: any) {
   return `${location.path}:${location.startLine}${endLine} (${location.codeArea})`;
 }
 
-export function changedFilesSection(metrics: any) {
-  const lines: any[] = [];
+export function changedFilesSection(metrics: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push("## Changed Files Watchlist");
   lines.push("");
 
-  const changed = metrics.fileMetrics.filter((file: any) => file.isChanged);
+  const changed = metrics.fileMetrics.filter((file: ExternalValue) => file.isChanged);
   if (changed.length === 0) {
     lines.push("*(no changed files in scan scope)*");
     return lines.join("\n");
@@ -109,8 +109,8 @@ export function changedFilesSection(metrics: any) {
   return lines.join("\n");
 }
 
-export function trendSection(metrics: any) {
-  const lines: any[] = [];
+export function trendSection(metrics: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push("## 趋势比较 (Previous-Code Baseline)");
   lines.push("");
 
@@ -152,8 +152,8 @@ export function trendSection(metrics: any) {
   return lines.join("\n");
 }
 
-export function warningsSection(metrics: any) {
-  const lines: any[] = [];
+export function warningsSection(metrics: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push("## Warnings");
   lines.push("");
 
@@ -164,9 +164,9 @@ export function warningsSection(metrics: any) {
   }
 
   const byLevel = {
-    error: warnings.filter((warning: any) => warning.level === "error"),
-    warning: warnings.filter((warning: any) => warning.level === "warning"),
-    info: warnings.filter((warning: any) => warning.level === "info")
+    error: warnings.filter((warning: ExternalValue) => warning.level === "error"),
+    warning: warnings.filter((warning: ExternalValue) => warning.level === "warning"),
+    info: warnings.filter((warning: ExternalValue) => warning.level === "info")
   };
 
   lines.push(`**Total**: ${warnings.length} warnings (${byLevel.error.length} errors, ${byLevel.warning.length} warnings, ${byLevel.info.length} info)`);
@@ -179,7 +179,7 @@ export function warningsSection(metrics: any) {
     lines.push("");
 
     for (const warning of levelWarnings.slice(0, 10)) {
-      lines.push(`- **\[${warning.sourceTool}\] ${warning.metric}**: ${warning.message}`);
+      lines.push(`- **[${warning.sourceTool}] ${warning.metric}**: ${warning.message}`);
       if (warning.suggestion) {
         lines.push(`  → ${warning.suggestion}`);
       }

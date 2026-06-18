@@ -9,9 +9,9 @@
  * @param {{ fingerprints: object, fileMetrics: Array|null, aggregates: object|null }} baselineSnapshot
  * @returns {import('./schema.ts').TrendDelta[]}
  */
-export function generateTrends(metrics: any, baselineSnapshot: any) {
+export function generateTrends(metrics: ExternalValue, baselineSnapshot: ExternalValue) {
   /** @type {import('./schema.ts').TrendDelta[]} */
-  const trends: any[] = [];
+  const trends: ExternalValue[] = [];
 
   const current = metrics.aggregates.overall || {};
   const baseline = baselineSnapshot.aggregates?.overall || {};
@@ -47,7 +47,7 @@ export function generateTrends(metrics: any, baselineSnapshot: any) {
   return trends;
 }
 
-function appendLanguageTrends(trends: any, metrics: any, baselineSnapshot: any, current: any, baseline: any) {
+function appendLanguageTrends(trends: ExternalValue, metrics: ExternalValue, baselineSnapshot: ExternalValue, current: ExternalValue, baseline: ExternalValue) {
   const baselineLanguages = new Map();
   for (const lang of baselineSnapshot.aggregates.byLanguage) {
     baselineLanguages.set(lang.language, lang);
@@ -68,7 +68,7 @@ function appendLanguageTrends(trends: any, metrics: any, baselineSnapshot: any, 
   }
 }
 
-function appendCodeAreaTrends(trends: any, metrics: any, baselineSnapshot: any) {
+function appendCodeAreaTrends(trends: ExternalValue, metrics: ExternalValue, baselineSnapshot: ExternalValue) {
   const baselineAreas = new Map();
   for (const area of baselineSnapshot.aggregates.byCodeArea) {
     baselineAreas.set(area.codeArea, area);
@@ -101,10 +101,10 @@ function appendCodeAreaTrends(trends: any, metrics: any, baselineSnapshot: any) 
   }
 }
 
-function appendFingerprintTrends(trends: any, metrics: any, baselineSnapshot: any) {
+function appendFingerprintTrends(trends: ExternalValue, metrics: ExternalValue, baselineSnapshot: ExternalValue) {
   const currentFingerprints = metrics.currentFingerprints || {};
 
-  for (const [area, baselineFingerprint] of Object.entries(baselineSnapshot.fingerprints) as Array<[string, any]>) {
+  for (const [area, baselineFingerprint] of Object.entries(baselineSnapshot.fingerprints) as Array<[string, ExternalValue]>) {
     const currentFingerprint = currentFingerprints[area];
     if (!currentFingerprint) continue;
 
@@ -123,7 +123,7 @@ function appendFingerprintTrends(trends: any, metrics: any, baselineSnapshot: an
   }
 }
 
-function makeTrend(metric: any, current: any, baseline: any, unit: any) {
+function makeTrend(metric: ExternalValue, current: ExternalValue, baseline: ExternalValue, unit: ExternalValue) {
   const delta = (current !== null && baseline !== null) ? current - baseline : null;
   const percentChange = (delta !== null && baseline !== null && baseline !== 0)
     ? Math.round((delta / baseline) * 1000) / 10
@@ -132,7 +132,7 @@ function makeTrend(metric: any, current: any, baseline: any, unit: any) {
   return { metric, current, baseline, delta, percentChange, unit };
 }
 
-function percentOf(value: any, total: any) {
+function percentOf(value: ExternalValue, total: ExternalValue) {
   if (!total) return null;
   return Math.round((value / total) * 1000) / 10;
 }

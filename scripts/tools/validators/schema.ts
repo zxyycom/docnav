@@ -27,7 +27,7 @@ export {
   formatAjvErrors
 } from "./schema-registry.ts";
 
-function validateWithSchema(ajv: any, schemaRelPath: any, dataRelPaths: any) {
+function validateWithSchema(ajv: ExternalValue, schemaRelPath: ExternalValue, dataRelPaths: ExternalValue) {
   const validate = compileRegisteredSchema(ajv, schemaRelPath);
   for (const dataRelPath of dataRelPaths) {
     const data = readJson(dataRelPath);
@@ -93,7 +93,7 @@ function validateProtocolResponseErrorDetailsSchema() {
   console.log("protocol response error details requirements ok");
 }
 
-function protocolErrorResponse(code: any, details: any) {
+function protocolErrorResponse(code: ExternalValue, details: ExternalValue) {
   return {
     protocol_version: "0.1",
     request_id: "req-error-details",
@@ -108,7 +108,7 @@ function protocolErrorResponse(code: any, details: any) {
 }
 
 export function validateJsonSyntax() {
-  const jsonFiles = walk(toAbs(FILE_SYSTEM.docsDir), (filePath: any) =>
+  const jsonFiles = walk(toAbs(FILE_SYSTEM.docsDir), (filePath: ExternalValue) =>
     filePath.endsWith(FILE_SYSTEM.jsonExtension)
   );
   for (const filePath of jsonFiles) {

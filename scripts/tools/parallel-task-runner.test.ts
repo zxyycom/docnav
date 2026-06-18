@@ -30,8 +30,8 @@ describe("parallel task runner", () => {
   });
 
   it("runs independent tasks concurrently but serializes matching mutexes", async () => {
-    const events: any[] = [];
-    const completed: any[] = [];
+    const events: ExternalValue[] = [];
+    const completed: ExternalValue[] = [];
     const tasks = [
       { id: "slow-independent", delayMs: 30 },
       { id: "shared-one", delayMs: 20, mutex: ["cargo-build"] },
@@ -58,8 +58,8 @@ describe("parallel task runner", () => {
   });
 
   it("does not limit concurrency when no explicit concurrency is provided", async () => {
-    const started: any[] = [];
-    const releaseTasks: any[] = [];
+    const started: ExternalValue[] = [];
+    const releaseTasks: ExternalValue[] = [];
     const tasks = Array.from({ length: 6 }, (_, index) => ({
       id: `task-${index}`,
       run: () => `task-${index}`
@@ -99,7 +99,7 @@ describe("parallel task runner", () => {
   });
 
   it("waits for topological dependencies before starting dependent tasks", async () => {
-    const events: any[] = [];
+    const events: ExternalValue[] = [];
     const tasks = [
       { id: "dependent", dependsOn: ["base"], delayMs: 1 },
       { id: "base", delayMs: 10 },
@@ -153,7 +153,7 @@ describe("parallel task runner", () => {
   });
 
   it("accepts a task preparation strategy before graph validation and scheduling", async () => {
-    const seen: any[] = [];
+    const seen: ExternalValue[] = [];
 
     await runParallelTasks([{ id: "group", tasks: [{ id: "leaf", run: () => "done" }] }], {
       prepareTasks: expandTasks,
@@ -166,7 +166,7 @@ describe("parallel task runner", () => {
     assert.deepEqual(seen, ["leaf"]);
   });
 
-  it("rejects duplicate ids and unknown dependencies", async () => {
+  it("rejects duplicate ids and ExternalValue dependencies", async () => {
     assert.throws(
       () => validateTaskGraph([
         normalizeTask({ id: "same" }),
@@ -179,18 +179,18 @@ describe("parallel task runner", () => {
       () => runParallelTasks([
         { id: "dependent", dependsOn: ["missing"], run: () => "done" }
       ]),
-      /task dependent depends on unknown task missing/
+      /task dependent depends on ExternalValue task missing/
     );
   });
 });
 
-function delay(ms: any) {
+function delay(ms: ExternalValue) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
 }
 
-async function waitFor(condition: any) {
+async function waitFor(condition: ExternalValue) {
   const deadline = Date.now() + 1000;
   while (!condition()) {
     if (Date.now() > deadline) {
@@ -200,8 +200,8 @@ async function waitFor(condition: any) {
   }
 }
 
-function taskById(tasks: any, id: any) {
-  const task = tasks.find((candidate: any) => candidate.id === id);
+function taskById(tasks: ExternalValue, id: ExternalValue) {
+  const task = tasks.find((candidate: ExternalValue) => candidate.id === id);
   assert.ok(task, `expected task ${id}`);
   return task;
 }

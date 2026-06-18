@@ -50,7 +50,7 @@ export function buildReleasePackage(target = resolveHostTarget()) {
   }
 }
 
-function buildPackageFiles(packageDir: any, target: any) {
+function buildPackageFiles(packageDir: ExternalValue, target: ExternalValue) {
   return releaseComponents.map((component) => {
     const executablePath = buildReleaseBinary(
       component.packageName,
@@ -70,7 +70,7 @@ function buildPackageFiles(packageDir: any, target: any) {
   });
 }
 
-function createManifest(version: any, target: any, files: any) {
+function createManifest(version: ExternalValue, target: ExternalValue, files: ExternalValue) {
   return {
     schema_version: 1,
     product: "docnav",
@@ -80,13 +80,13 @@ function createManifest(version: any, target: any, files: any) {
     git_commit: getGitCommit(),
     source_dirty: isSourceDirty(),
     producer: resolveProducerMetadata(),
-    files: files.sort((left: any, right: any) => compareStrings(left.path, right.path)),
+    files: files.sort((left: ExternalValue, right: ExternalValue) => compareStrings(left.path, right.path)),
   };
 }
 
-function writeChecksums(layout: any, manifest: any) {
+function writeChecksums(layout: ExternalValue, manifest: ExternalValue) {
   const checksumEntries = [
-    ...manifest.files.map((entry: any) => [entry.path, entry.sha256]),
+    ...manifest.files.map((entry: ExternalValue) => [entry.path, entry.sha256]),
     ["manifest.json", sha256File(layout.manifestPath)],
   ];
   checksumEntries.sort((left, right) => compareStrings(left[0], right[0]));

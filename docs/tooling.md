@@ -26,15 +26,16 @@
 
 1. 项目提供脚本专用 `tsconfig`。
 2. 类型检查通过 `pnpm run typecheck:scripts` 执行。
-3. 脚本 `tsconfig` 以 `noEmit`、`module: "nodenext"`、`target: "esnext"`、`strict`、`erasableSyntaxOnly`、`verbatimModuleSyntax`、`rewriteRelativeImportExtensions`、`allowImportingTsExtensions` 和 Node.js types 为基线。
-4. 质量扫描、测试入口、验证脚本和文档引用覆盖 TypeScript 脚本源码。
+3. 代码 lint 通过 `pnpm run lint:scripts` 执行，覆盖未使用变量、未使用函数、显式 `any` 和常见脚本错误。
+4. 脚本 `tsconfig` 以 `noEmit`、`module: "nodenext"`、`target: "esnext"`、`strict`、`erasableSyntaxOnly`、`verbatimModuleSyntax`、`rewriteRelativeImportExtensions`、`allowImportingTsExtensions` 和 Node.js types 为基线。
+5. 质量扫描、测试入口、验证脚本和文档引用覆盖 TypeScript 脚本源码。
 
 运行时约束以 [Node.js TypeScript 文档](https://nodejs.org/docs/latest-v24.x/api/typescript.html) 为准；类型检查配置以 TypeScript 的 [`erasableSyntaxOnly`](https://www.typescriptlang.org/tsconfig/#erasableSyntaxOnly)、[`verbatimModuleSyntax`](https://www.typescriptlang.org/tsconfig/#verbatimModuleSyntax)、[`rewriteRelativeImportExtensions`](https://www.typescriptlang.org/tsconfig/#rewriteRelativeImportExtensions) 和 [`allowImportingTsExtensions`](https://www.typescriptlang.org/tsconfig/#allowImportingTsExtensions) 选项为准。
 
 ## 验证入口集成
 
-`typecheck:scripts` 是脚本模块 contract 的快速门禁。它证明脚本类型、模块边界和共享状态一致，不替代真实 CLI、schema、进程 smoke、Rust tests 或 release package 验证。
+`typecheck:scripts` 和 `lint:scripts` 是脚本模块 contract 的快速门禁。前者证明脚本类型、模块边界和共享状态一致；后者证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题。它们不替代真实 CLI、schema、进程 smoke、Rust tests 或 release package 验证。
 
-required profile 包含 `typecheck:scripts`。full profile 在 required profile 基础上追加更重的质量、smoke、Rust 和 OpenSpec 验证。
+required profile 包含 `typecheck:scripts` 和 `lint:scripts`。full profile 在 required profile 基础上追加更重的质量、smoke、Rust 和 OpenSpec 验证。
 
 验收标准：手写脚本可以同时由 Node.js 执行、被 `tsc --noEmit` 覆盖，并且不依赖 Node.js 运行时不会读取的 `tsconfig` 行为。

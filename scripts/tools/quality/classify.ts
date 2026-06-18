@@ -15,16 +15,16 @@ import { minimatch } from "minimatch";
  * 匹配优先级：
  * 1. generated files（最高优先）
  * 2. 按配置的 code areas 顺序匹配 globs
- * 3. 未匹配的文件归入 "unknown" code area
+ * 3. 未匹配的文件归入 "ExternalValue" code area
  *
  * @param {string} filePath - 仓库相对路径（使用 / 分隔符）
  * @param {import('./config.ts').DEFAULT_CONFIG['codeAreas']} codeAreas - 6 类 code area 定义
  * @param {string[]} generatedFileGlobs - generated files glob 模式
  * @returns {string} code area name
  */
-export function classifyFile(filePath: any, codeAreas: Record<string, any>, generatedFileGlobs: any) {
+export function classifyFile(filePath: ExternalValue, codeAreas: Record<string, ExternalValue>, generatedFileGlobs: ExternalValue) {
   // 1. 检查 generated files
-  if (generatedFileGlobs.some((g: any) => minimatch(filePath, g))) {
+  if (generatedFileGlobs.some((g: ExternalValue) => minimatch(filePath, g))) {
     return "generated";
   }
 
@@ -33,17 +33,17 @@ export function classifyFile(filePath: any, codeAreas: Record<string, any>, gene
     if (name === "generated") continue; // generated 只在步骤 1 匹配
 
     // exclude 优先：如果命中 exclude glob，此 area 不算
-    if (def.excludeGlobs.some((g: any) => minimatch(filePath, g))) {
+    if (def.excludeGlobs.some((g: ExternalValue) => minimatch(filePath, g))) {
       continue;
     }
     // 命中 include glob
-    if (def.globs.some((g: any) => minimatch(filePath, g))) {
+    if (def.globs.some((g: ExternalValue) => minimatch(filePath, g))) {
       return name;
     }
   }
 
   // 3. 兜底
-  return "unknown";
+  return "ExternalValue";
 }
 
 /**
@@ -54,16 +54,16 @@ export function classifyFile(filePath: any, codeAreas: Record<string, any>, gene
  * @param {string[]} generatedFileGlobs - generated files glob
  * @returns {boolean}
  */
-export function isExcluded(filePath: any, excludeDirs: any, generatedFileGlobs: any) {
+export function isExcluded(filePath: ExternalValue, excludeDirs: ExternalValue, generatedFileGlobs: ExternalValue) {
   const parts = filePath.split("/");
 
   // 检查排除目录
-  if (excludeDirs.some((d: any) => parts.includes(d))) {
+  if (excludeDirs.some((d: ExternalValue) => parts.includes(d))) {
     return true;
   }
 
   // 检查 generated files
-  if (generatedFileGlobs.some((g: any) => minimatch(filePath, g))) {
+  if (generatedFileGlobs.some((g: ExternalValue) => minimatch(filePath, g))) {
     return true;
   }
 
@@ -78,7 +78,7 @@ export function isExcluded(filePath: any, excludeDirs: any, generatedFileGlobs: 
  * @param {string[]} generatedFileGlobs
  * @returns {Map<string, string[]>} codeArea -> files 映射
  */
-export function classifyFiles(files: any, codeAreas: Record<string, any>, generatedFileGlobs: any) {
+export function classifyFiles(files: ExternalValue, codeAreas: Record<string, ExternalValue>, generatedFileGlobs: ExternalValue) {
   /** @type {Map<string, string[]>} */
   const groups = new Map();
 
@@ -106,9 +106,9 @@ export function classifyFiles(files: any, codeAreas: Record<string, any>, genera
  * @param {Function} gitHashFn - (filePath: string) => string: git hash-object 的输出
  * @returns {import('./schema.ts').CodeAreaFingerprint}
  */
-export function buildFingerprint(codeArea: any, files: any, gitHashFn: any) {
+export function buildFingerprint(codeArea: ExternalValue, files: ExternalValue, gitHashFn: ExternalValue) {
   // 指纹：对所有文件路径和 blob hash 做复合哈希
-  const parts = files.map((f: any) => `${f}:${gitHashFn(f)}`);
+  const parts = files.map((f: ExternalValue) => `${f}:${gitHashFn(f)}`);
   const full = parts.join("\n");
 
   // 简单指纹：用 path+hash 字符串的长度和 checksum

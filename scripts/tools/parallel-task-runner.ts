@@ -11,8 +11,8 @@ export interface TaskDefinition {
   env?: TaskEnv;
   envFile?: string;
   tasks?: readonly TaskDefinition[];
-  run?: (task: NormalizedTask) => unknown | Promise<unknown>;
-  [key: string]: any;
+  run?: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
+  [key: string]: ExternalValue;
 }
 
 export interface NormalizedTask extends TaskDefinition {
@@ -40,25 +40,25 @@ interface ExpandTaskState {
 interface RunParallelTaskOptions<TResult> {
   prepareTasks?: (taskList: readonly TaskDefinition[]) => NormalizedTask[];
   execute?: (task: NormalizedTask) => TResult | Promise<TResult>;
-  onStart?: (task: NormalizedTask) => unknown | Promise<unknown>;
-  onComplete?: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
+  onStart?: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
+  onComplete?: (result: TResult, task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
   concurrency?: string | number | null;
 }
 
 interface StartTaskOptions<TResult> {
   task: NormalizedTask;
   execute: (task: NormalizedTask) => TResult | Promise<TResult>;
-  onStart: (task: NormalizedTask) => unknown | Promise<unknown>;
-  onComplete: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
+  onStart: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
+  onComplete: (result: TResult, task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
   completedIds: Set<string>;
   runningMutexes: Set<string>;
   results: TResult[];
   onSettled: () => void;
-  onError: (error: unknown) => void;
+  onError: (error: ExternalValue) => void;
   isSettled: () => boolean;
 }
 
-export async function runParallelTasks<TResult = unknown>(
+export async function runParallelTasks<TResult = ExternalValue>(
   taskList: readonly TaskDefinition[],
   options: RunParallelTaskOptions<TResult> = {}
 ): Promise<TResult[]> {
@@ -84,7 +84,7 @@ export async function runParallelTasks<TResult = unknown>(
       }
     };
 
-    const fail = (error: unknown) => {
+    const fail = (error: ExternalValue) => {
       if (!settled) {
         settled = true;
         reject(error);
@@ -202,7 +202,7 @@ export function validateTaskGraph(taskList: readonly NormalizedTask[]): void {
   for (const task of taskList) {
     for (const dependency of task.dependsOn) {
       if (!ids.has(dependency)) {
-        throw new Error(`task ${task.id} depends on unknown task ${dependency}`);
+        throw new Error(`task ${task.id} depends on ExternalValue task ${dependency}`);
       }
     }
   }
@@ -265,11 +265,11 @@ function expandTask(task: TaskDefinition, inherited: InheritedTaskState, state: 
   state.leafTasks.push(normalizeTask(leaf));
 }
 
-function assertTaskObject(task: unknown): asserts task is TaskDefinition {
+function assertTaskObject(task: ExternalValue): asserts task is TaskDefinition {
   if (!task || typeof task !== "object") {
     throw new Error("task must be an object");
   }
-  const value = task as Record<string, unknown>;
+  const value = task as Record<string, ExternalValue>;
   if (typeof value.id !== "string" || value.id.trim().length === 0) {
     throw new Error("task.id must be a non-empty string");
   }
@@ -380,7 +380,7 @@ function normalizeTaskList(taskList: readonly TaskDefinition[]): NormalizedTask[
   return taskList.map(normalizeTask);
 }
 
-function executeTask(task: NormalizedTask): unknown {
+function executeTask(task: NormalizedTask): ExternalValue {
   if (typeof task.run !== "function") {
     throw new Error(`task ${task.id} has no run function`);
   }

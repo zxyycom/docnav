@@ -8,7 +8,7 @@ import { root } from "./config.ts";
 // Cargo JSON 构建输出可能较大，统一保留 64 MiB 缓冲以避免结果被截断。
 const DEFAULT_MAX_BUFFER = 1024 * 1024 * 64;
 
-export function runCommand(command: any, args: any, options: any = {}) {
+export function runCommand(command: ExternalValue, args: ExternalValue, options: ExternalValue = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
     env: options.env ?? process.env,
@@ -26,7 +26,7 @@ export function runCommand(command: any, args: any, options: any = {}) {
   return result;
 }
 
-export function runNodeScript(scriptPath: any, args: any[] = [], options: any = {}) {
+export function runNodeScript(scriptPath: ExternalValue, args: ExternalValue[] = [], options: ExternalValue = {}) {
   return runCommand(process.execPath, [scriptPath, ...args], {
     ...options,
     label: `node ${path.relative(root, scriptPath)}`,
@@ -34,42 +34,42 @@ export function runNodeScript(scriptPath: any, args: any[] = [], options: any = 
   });
 }
 
-export function copyExecutable(sourcePath: any, destPath: any) {
+export function copyExecutable(sourcePath: ExternalValue, destPath: ExternalValue) {
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   fs.copyFileSync(sourcePath, destPath);
   fs.chmodSync(destPath, fs.statSync(sourcePath).mode);
 }
 
-export function readJsonFile(filePath: any) {
+export function readJsonFile(filePath: ExternalValue) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
-export function writeJsonFile(filePath: any, value: any) {
+export function writeJsonFile(filePath: ExternalValue, value: ExternalValue) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-export function writeTextFile(filePath: any, content: any) {
+export function writeTextFile(filePath: ExternalValue, content: ExternalValue) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-export function readTextFile(filePath: any) {
+export function readTextFile(filePath: ExternalValue) {
   return fs.readFileSync(filePath, "utf8");
 }
 
-export function sha256File(filePath: any) {
+export function sha256File(filePath: ExternalValue) {
   const hash = crypto.createHash("sha256");
   hash.update(fs.readFileSync(filePath));
   return hash.digest("hex");
 }
 
-export function normalizeRelativePath(filePath: any) {
+export function normalizeRelativePath(filePath: ExternalValue) {
   return filePath.replaceAll(path.sep, "/");
 }
 
-function composeSpawnError(command: any, result: any) {
-  const details: any[] = [];
+function composeSpawnError(command: ExternalValue, result: ExternalValue) {
+  const details: ExternalValue[] = [];
   if (result.stdout) {
     details.push(`stdout:\n${result.stdout}`);
   }

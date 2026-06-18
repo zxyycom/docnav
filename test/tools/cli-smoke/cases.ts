@@ -5,8 +5,8 @@ import {
   parseJson
 } from "./assertions.ts";
 
-export function createCliSmokeCases({ runCli, validateSchema }: any) {
-  async function runSuccessfulJsonCase(name: any, args: any, options: any) {
+export function createCliSmokeCases({ runCli, validateSchema }: ExternalValue) {
+  async function runSuccessfulJsonCase(name: ExternalValue, args: ExternalValue, options: ExternalValue) {
     const {
       schema,
       commandOptions,
@@ -22,7 +22,7 @@ export function createCliSmokeCases({ runCli, validateSchema }: any) {
     return { record, json };
   }
 
-  async function runProtocolResponseCase(name: any, args: any, options: any) {
+  async function runProtocolResponseCase(name: ExternalValue, args: ExternalValue, options: ExternalValue) {
     const {
       operation,
       schema = "protocolResponse",
@@ -32,7 +32,7 @@ export function createCliSmokeCases({ runCli, validateSchema }: any) {
     return runSuccessfulJsonCase(name, args, {
       ...jsonOptions,
       schema,
-      check: (record: any, json: any) => {
+      check: (record: ExternalValue, json: ExternalValue) => {
         expectProtocolSuccess(record, json, operation);
         check?.(record, json);
       }

@@ -1,12 +1,12 @@
 import { formatTable } from "./table.ts";
 
-export function fileRankings(metrics: any, topN: any) {
-  const lines: any[] = [];
+export function fileRankings(metrics: ExternalValue, topN: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push(`## Top ${topN} 文件 (按行数)`);
   lines.push("");
 
   const sorted = metrics.fileMetrics
-    .filter((file: any) => file.codeArea !== "generated")
+    .filter((file: ExternalValue) => file.codeArea !== "generated")
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -15,7 +15,7 @@ export function fileRankings(metrics: any, topN: any) {
   }
 
   const rows = [["#", "File", "Area", "Lines", "Complexity"]];
-  sorted.forEach((file: any, index: any) => {
+  sorted.forEach((file: ExternalValue, index: ExternalValue) => {
     const complexity = file.complexity.value !== null ? String(file.complexity.value) : "n/a";
     rows.push([
       String(index + 1),
@@ -30,14 +30,14 @@ export function fileRankings(metrics: any, topN: any) {
   return lines.join("\n");
 }
 
-export function fileComplexityRankings(metrics: any, topN: any) {
-  const lines: any[] = [];
+export function fileComplexityRankings(metrics: ExternalValue, topN: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push(`## Top ${topN} 文件 (按复杂度)`);
   lines.push("");
 
   const sorted = metrics.fileMetrics
-    .filter((file: any) => file.codeArea !== "generated" && file.complexity.value !== null)
-    .sort((a: any, b: any) => (b.complexity.value ?? 0) - (a.complexity.value ?? 0))
+    .filter((file: ExternalValue) => file.codeArea !== "generated" && file.complexity.value !== null)
+    .sort((a: ExternalValue, b: ExternalValue) => (b.complexity.value ?? 0) - (a.complexity.value ?? 0))
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -46,7 +46,7 @@ export function fileComplexityRankings(metrics: any, topN: any) {
   }
 
   const rows = [["#", "File", "Area", "Complexity", "Lines", "Source"]];
-  sorted.forEach((file: any, index: any) => {
+  sorted.forEach((file: ExternalValue, index: ExternalValue) => {
     rows.push([
       String(index + 1),
       file.path,
@@ -61,14 +61,14 @@ export function fileComplexityRankings(metrics: any, topN: any) {
   return lines.join("\n");
 }
 
-export function functionComplexityRankings(metrics: any, topN: any) {
-  const lines: any[] = [];
+export function functionComplexityRankings(metrics: ExternalValue, topN: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push(`## Top ${topN} 函数 (按圈复杂度)`);
   lines.push("");
 
   const sorted = metrics.functionMetrics
-    .filter((func: any) => func.cyclomaticComplexity.value !== null)
-    .sort((a: any, b: any) => (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0))
+    .filter((func: ExternalValue) => func.cyclomaticComplexity.value !== null)
+    .sort((a: ExternalValue, b: ExternalValue) => (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0))
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -77,7 +77,7 @@ export function functionComplexityRankings(metrics: any, topN: any) {
   }
 
   const rows = [["#", "Function", "File", "CC", "Lines", "Params"]];
-  sorted.forEach((func: any, index: any) => {
+  sorted.forEach((func: ExternalValue, index: ExternalValue) => {
     rows.push([
       String(index + 1),
       func.name,
@@ -92,13 +92,13 @@ export function functionComplexityRankings(metrics: any, topN: any) {
   return lines.join("\n");
 }
 
-export function functionSizeRankings(metrics: any, topN: any) {
-  const lines: any[] = [];
+export function functionSizeRankings(metrics: ExternalValue, topN: ExternalValue) {
+  const lines: ExternalValue[] = [];
   lines.push(`## Top ${topN} 函数 (按行数)`);
   lines.push("");
 
   const sorted = metrics.functionMetrics
-    .sort((a: any, b: any) => b.lines - a.lines)
+    .sort((a: ExternalValue, b: ExternalValue) => b.lines - a.lines)
     .slice(0, topN);
 
   if (sorted.length === 0) {
@@ -107,7 +107,7 @@ export function functionSizeRankings(metrics: any, topN: any) {
   }
 
   const rows = [["#", "Function", "File", "Lines", "CC", "Params"]];
-  sorted.forEach((func: any, index: any) => {
+  sorted.forEach((func: ExternalValue, index: ExternalValue) => {
     rows.push([
       String(index + 1),
       func.name,

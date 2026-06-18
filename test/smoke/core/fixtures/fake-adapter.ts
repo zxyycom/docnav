@@ -25,7 +25,7 @@ switch (options.command) {
     handleInvoke(request);
     break;
   default:
-    console.error(`unknown command ${options.command ?? "(missing)"}`);
+    console.error(`ExternalValue command ${options.command ?? "(missing)"}`);
     process.exit(2);
 }
 
@@ -60,7 +60,7 @@ function manifest() {
   };
 }
 
-function probe(documentPath: any) {
+function probe(documentPath: ExternalValue) {
   if (options.mode === "probe-exit") {
     console.error(`${options.id} probe failed intentionally`);
     process.exit(8);
@@ -92,7 +92,7 @@ function probe(documentPath: any) {
   };
 }
 
-function handleInvoke(value: any) {
+function handleInvoke(value: ExternalValue) {
   if (options.mode === "invoke-exit") {
     console.error(`${options.id} invoke failed intentionally`);
     process.exit(9);
@@ -102,7 +102,7 @@ function handleInvoke(value: any) {
     return;
   }
   if (!value || typeof value !== "object") {
-    writeJson(failure("unknown", null, "INVALID_REQUEST", { field: "stdin", reason: "missing request JSON" }));
+    writeJson(failure("ExternalValue", null, "INVALID_REQUEST", { field: "stdin", reason: "missing request JSON" }));
     process.exit(2);
   }
   if (options.mode === "invoke-schema-invalid") {
@@ -127,7 +127,7 @@ function handleInvoke(value: any) {
   });
 }
 
-function resultFor(value: any) {
+function resultFor(value: ExternalValue) {
   const documentPath = value.document?.path ?? "(missing)";
   switch (value.operation) {
     case "outline":
@@ -168,7 +168,7 @@ function resultFor(value: any) {
   }
 }
 
-function failure(requestId: any, operation: any, code: any, details: any) {
+function failure(requestId: ExternalValue, operation: ExternalValue, code: ExternalValue, details: ExternalValue) {
   return {
     protocol_version: "0.1",
     request_id: requestId,
@@ -182,7 +182,7 @@ function failure(requestId: any, operation: any, code: any, details: any) {
   };
 }
 
-function recordCall(extra: any) {
+function recordCall(extra: ExternalValue) {
   if (!options.log) {
     return;
   }
@@ -201,7 +201,7 @@ function recordCall(extra: any) {
   );
 }
 
-function writeJson(value: any) {
+function writeJson(value: ExternalValue) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
@@ -213,7 +213,7 @@ async function readStdin() {
   return content;
 }
 
-function parseOptions(args: any) {
+function parseOptions(args: ExternalValue) {
   const parsed: {
     id: string;
     mode: string;

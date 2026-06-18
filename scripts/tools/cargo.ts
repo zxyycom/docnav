@@ -1,4 +1,4 @@
-export function findCargoExecutable(output: any, binName: any) {
+export function findCargoExecutable(output: ExternalValue, binName: ExternalValue) {
   let executable = null;
 
   for (const line of output.split(/\r?\n/)) {

@@ -2,7 +2,7 @@ import { expect } from "../../tools/cli-smoke/assertions.ts";
 
 export * from "../../tools/cli-smoke/assertions.ts";
 
-export function expectCandidateEvidence(record: any, candidate: any, expected: any) {
+export function expectCandidateEvidence(record: ExternalValue, candidate: ExternalValue, expected: ExternalValue) {
   expect(record, Boolean(candidate), `candidate evidence exists for ${expected.adapter_id}`);
   for (const key of ["adapter_id", "stage", "code", "reason", "details"]) {
     expect(record, Object.hasOwn(candidate, key), `candidate evidence has ${key}`);
@@ -12,7 +12,7 @@ export function expectCandidateEvidence(record: any, candidate: any, expected: a
   }
 }
 
-export function expectCandidateWarning(record: any, warning: any, expected: any) {
+export function expectCandidateWarning(record: ExternalValue, warning: ExternalValue, expected: ExternalValue) {
   expect(record, Boolean(warning), `candidate warning exists for ${expected.adapter_id}`);
   for (const key of ["id", "reason", "effect", "details"]) {
     expect(record, Object.hasOwn(warning, key), `candidate warning has ${key}`);

@@ -36,7 +36,7 @@ import {
  * @param {number} topN - Top N 数量
  * @returns {string} Markdown report
  */
-export function generateMarkdownReport(metrics: any, topN = 10, options: any = {}) {
+export function generateMarkdownReport(metrics: ExternalValue, topN = 10, options: ExternalValue = {}) {
   const reportOptions = {
     timeZone: options.timeZone || DEFAULT_CONFIG.report.timeZone
   };

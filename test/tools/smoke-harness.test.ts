@@ -6,8 +6,8 @@ import { createSmokeHarness, createSmokeState, resolveSmokeConcurrency } from ".
 describe("smoke harness task scheduling", () => {
   it("runs independent smoke tasks concurrently and keeps per-task command counts isolated", async () => {
     const state = createSmokeState();
-    const events: any[] = [];
-    const harness: any = createHarness(state, events);
+    const events: ExternalValue[] = [];
+    const harness: ExternalValue = createHarness(state, events);
 
     const startedAtMs = Date.now();
     const results = await harness.runSmokeTasks([
@@ -34,13 +34,13 @@ describe("smoke harness task scheduling", () => {
 
     assert.ok(Date.now() - startedAtMs < 80);
     assert.ok(events.indexOf("start:fast") < events.indexOf("end:slow"));
-    assert.deepEqual(results.map((result: any) => result.ok), [true, true]);
+    assert.deepEqual(results.map((result: ExternalValue) => result.ok), [true, true]);
     assert.deepEqual(
-      state.testResults.map((result: any) => [result.label, result.commandCount]),
+      state.testResults.map((result: ExternalValue) => [result.label, result.commandCount]),
       [["slow task", 1], ["fast task", 2]]
     );
     assert.deepEqual(
-      state.commandRecords.map((record: any) => record.name).sort(),
+      state.commandRecords.map((record: ExternalValue) => record.name).sort(),
       ["fast one", "fast two", "slow command"]
     );
   });
@@ -67,11 +67,12 @@ describe("smoke harness task scheduling", () => {
       }
     ], { concurrency: 2 });
 
-    assert.deepEqual(results.map((result: any) => result.ok).sort(), [false, true]);
+    assert.deepEqual(results.map((result: ExternalValue) => result.ok).sort(), [false, true]);
     assert.equal(state.testResults.length, 2);
-    assert.equal(state.testResults.find((result: any) => result.label === "failing task").error.message, "expected failure");
+    const failingResult = state.testResults.find((result) => result.label === "failing task");
+    assert.equal(failingResult?.error?.message, "expected failure");
     assert.deepEqual(
-      state.commandRecords.map((record: any) => record.name).sort(),
+      state.commandRecords.map((record: ExternalValue) => record.name).sort(),
       ["failing command", "passing command"]
     );
   });
@@ -103,7 +104,7 @@ describe("smoke harness task scheduling", () => {
 
     assert.equal(results.length, 1);
     assert.deepEqual(
-      state.testResults.map((result: any) => [result.label, result.commandCount]),
+      state.testResults.map((result: ExternalValue) => [result.label, result.commandCount]),
       [["case matrix", 2]]
     );
   });
@@ -117,7 +118,7 @@ describe("smoke harness task scheduling", () => {
   });
 });
 
-function createHarness(state: any, events: any) {
+function createHarness(state: ExternalValue, events: ExternalValue) {
   return createSmokeHarness({
     state,
     root: process.cwd(),
@@ -131,8 +132,8 @@ function createHarness(state: any, events: any) {
     binaryPath: () => process.execPath,
     binaryFallback: "node",
     resolveCwd: () => process.cwd(),
-    safeArgPattern: /^[A-Za-z0-9_./:=@+\-]+$/,
-    runProcess: async (_executable: any, args: any) => {
+    safeArgPattern: /^[A-Za-z0-9_./:=@+-]+$/,
+    runProcess: async (_executable: ExternalValue, args: ExternalValue) => {
       await delay(args[0] === "slow" ? 40 : 1);
       events.push(`command:${args[0]}`);
       return {
@@ -146,7 +147,7 @@ function createHarness(state: any, events: any) {
   });
 }
 
-function expect(record: any, condition: any, summary: any) {
+function expect(record: ExternalValue, condition: ExternalValue, summary: ExternalValue) {
   const ok = Boolean(condition);
   record.assertions.push({ ok, summary });
   if (!ok) {
@@ -154,7 +155,7 @@ function expect(record: any, condition: any, summary: any) {
   }
 }
 
-function delay(ms: any) {
+function delay(ms: ExternalValue) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });

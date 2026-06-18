@@ -11,10 +11,14 @@
  */
 
 import { spawnSync } from "node:child_process";
+import type { SpawnSyncOptionsWithStringEncoding, SpawnSyncReturns } from "node:child_process";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+
+import type { DuplicateCodeFragment, DuplicateCodeLocation, ToolConfig } from "../schema.ts";
+import { errorMessage } from "../../types.ts";
 
 /**
  * Code area 到 PMD CPD --language 的映射。
@@ -52,7 +56,27 @@ const CODE_AREA_LANGUAGE: Record<string, string | null> = {
  *
  * @typedef {import('../schema.ts').DuplicateCodeFragment} DuplicateCodeFragment
  */
-export function scanWithCpd({ files, cwd, toolConfig, minimumTokens, codeArea, skipIfUnavailable }: any): any {
+interface ScanWithCpdOptions {
+  codeArea?: string;
+  cwd: string;
+  files: string[];
+  minimumTokens: number;
+  skipIfUnavailable?: boolean;
+  toolConfig: ToolConfig;
+}
+
+type CpdScanResult =
+  | { fragments: DuplicateCodeFragment[]; ok: true }
+  | { error: string; ok: false; reason?: string; skipped: boolean };
+
+export function scanWithCpd({
+  files,
+  cwd,
+  toolConfig,
+  minimumTokens,
+  codeArea = "fixtures-examples",
+  skipIfUnavailable = false
+}: ScanWithCpdOptions): CpdScanResult {
   if (files.length < 2) {
     return { ok: true, fragments: [] };
   }
@@ -65,11 +89,11 @@ export function scanWithCpd({ files, cwd, toolConfig, minimumTokens, codeArea, s
   try {
     // 写相对路径（相对于 cwd），每行一个文件
     writeFileSync(fileListPath, files.join("\n"), "utf8");
-  } catch (err: any) {
+  } catch (error: unknown) {
     return {
       ok: false,
       skipped: false,
-      error: `Failed to write CPD file list: ${err.message}`
+      error: `Failed to write CPD file list: ${errorMessage(error)}`
     };
   }
 
@@ -97,8 +121,6 @@ export function scanWithCpd({ files, cwd, toolConfig, minimumTokens, codeArea, s
   // 清理临时文件
   tryCleanupFileList(fileListPath);
 
-  let output = "";
-
   if (child.error) {
     // 检查是否是 tool-not-found 错误
     if ((child.error as NodeJS.ErrnoException).code === "ENOENT") {
@@ -124,7 +146,7 @@ export function scanWithCpd({ files, cwd, toolConfig, minimumTokens, codeArea, s
     // CPD 即使发现重复代码也可能返回 exit 4（发现重复）
     // exit 0 = no duplicates, exit 4 = duplicates found
     if (child.status === 4) {
-      output = child.stdout || "";
+      return parseCpdXml(child.stdout || "", cwd);
     } else if (stderr) {
       // PMD 7.25：某些文件类型可能无法分析——视为非阻塞跳过
       if (skipIfUnavailable) {
@@ -137,12 +159,11 @@ export function scanWithCpd({ files, cwd, toolConfig, minimumTokens, codeArea, s
         reason: "tool-unavailable"
       };
     } else {
-      output = child.stdout || "";
+      return parseCpdXml(child.stdout || "", cwd);
     }
-  } else {
-    output = child.stdout || "";
   }
 
+  const output = child.stdout || "";
   if (!output) {
     return { ok: true, fragments: [] };
   }
@@ -168,10 +189,9 @@ export function scanWithCpd({ files, cwd, toolConfig, minimumTokens, codeArea, s
  * @param {string} cwd
  * @returns {{ ok: true, fragments: DuplicateCodeFragment[] } | { ok: false, error: string }}
  */
-export function parseCpdXml(xml: any, cwd: any): any {
+export function parseCpdXml(xml: string, cwd: string): CpdScanResult {
   try {
-    /** @type {DuplicateCodeFragment[]} */
-    const fragments: any[] = [];
+    const fragments: DuplicateCodeFragment[] = [];
     const dupRegex = /<duplication\b([^>]*)>([\s\S]*?)<\/duplication>/g;
     const fileRegex = /<file\b([^>]*)\/>/g;
 
@@ -185,9 +205,8 @@ export function parseCpdXml(xml: any, cwd: any): any {
       const inner = match[2];
 
       /** @type {{ path: string, startLine: number, endLine: number, codeArea: string }[]} */
-      const locations: any[] = [];
-      /** @type {Set<string>} */
-      const areaSet = new Set();
+      const locations: DuplicateCodeLocation[] = [];
+      const areaSet = new Set<string>();
 
       let fileMatch;
       while ((fileMatch = fileRegex.exec(inner)) !== null) {
@@ -208,7 +227,7 @@ export function parseCpdXml(xml: any, cwd: any): any {
           path,
           startLine,
           endLine,
-          codeArea: "unknown"
+          codeArea: "ExternalValue"
         });
       }
 
@@ -230,8 +249,8 @@ export function parseCpdXml(xml: any, cwd: any): any {
     fragments.sort((a, b) => b.tokenCount - a.tokenCount);
 
     return { ok: true, fragments };
-  } catch (err: any) {
-    return { ok: false, error: `Failed to parse CPD XML: ${err.message}` };
+  } catch (error: unknown) {
+    return { ok: false, skipped: false, error: `Failed to parse CPD XML: ${errorMessage(error)}` };
   }
 }
 
@@ -247,7 +266,7 @@ export function parseCpdXml(xml: any, cwd: any): any {
  * @param {{ command: string, args: string[] }} params.toolConfig
  * @returns {{ ok: true, version: string } | { ok: false, error: string, reason?: string }}
  */
-export function getCpdVersion({ cwd, toolConfig }: any): any {
+export function getCpdVersion({ cwd, toolConfig }: { cwd: string; toolConfig: ToolConfig }) {
   // PMD 7.25: use `pmd --version` instead of `pmd cpd --version`.
   // CPD subcommand requires --minimum-tokens to run, so version is
   // detected from the PMD launcher. CPD runtime availability is
@@ -280,18 +299,22 @@ export function getCpdVersion({ cwd, toolConfig }: any): any {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-function spawnPmd(command: any, args: any, options: any) {
+function spawnPmd(
+  command: string,
+  args: string[],
+  options: SpawnSyncOptionsWithStringEncoding
+): SpawnSyncReturns<string> {
   return spawnSync(buildPmdShellCommand(command, args), {
     ...options,
     shell: true
   });
 }
 
-export function buildPmdShellCommand(command: any, args: any) {
+export function buildPmdShellCommand(command: string, args: string[]): string {
   return [command, ...args].map(quoteShellArg).join(" ");
 }
 
-function quoteShellArg(value: any) {
+function quoteShellArg(value: string): string {
   const text = String(value);
   if (/^[A-Za-z0-9_./:=@+%\\-]+$/.test(text)) {
     return text;
@@ -299,34 +322,40 @@ function quoteShellArg(value: any) {
   return `"${text.replace(/"/g, "\\\"")}"`;
 }
 
-export function parsePmdVersionOutput(output: any) {
+export function parsePmdVersionOutput(output: string): string {
   const versionLine = output
     .split(/\r?\n/)
-    .map((line: any) => line.trim())
-    .find((line: any) => /^PMD\s+\d/.test(line));
+    .map((line) => line.trim())
+    .find((line) => /^PMD\s+\d/.test(line));
 
   if (!versionLine) {
-    return "unknown";
+    return "ExternalValue";
   }
 
   const match = versionLine.match(/^PMD\s+([^\s(]+)/);
   return match ? match[1] : versionLine;
 }
 
-function parseXmlAttributes(attributeText: any) {
-  const attrs = new Map();
+function parseXmlAttributes(attributeText: string): Map<string, string> {
+  const attrs = new Map<string, string>();
   const attrRegex = /([A-Za-z_:][\w:.-]*)\s*=\s*"([^"]*)"/g;
 
   let match;
   while ((match = attrRegex.exec(attributeText)) !== null) {
-    attrs.set(match[1], decodeXmlAttribute(match[2]));
+    const [, name, value] = match;
+    if (name !== undefined && value !== undefined) {
+      attrs.set(name, decodeXmlAttribute(value));
+    }
   }
 
   return attrs;
 }
 
-function parseIntegerAttribute(attrs: any, name: any) {
+function parseIntegerAttribute(attrs: Map<string, string>, name: string): number {
   const value = attrs.get(name);
+  if (value === undefined) {
+    throw new Error(`CPD XML attribute "${name}" is required`);
+  }
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) {
     throw new Error(`CPD XML attribute "${name}" must be an integer`);
@@ -334,8 +363,8 @@ function parseIntegerAttribute(attrs: any, name: any) {
   return parsed;
 }
 
-function decodeXmlAttribute(value: any) {
-  return value.replace(/&(?:#(\d+)|#x([0-9a-fA-F]+)|amp|quot|apos|lt|gt);/g, (entity: any, dec: any, hex: any) => {
+function decodeXmlAttribute(value: string): string {
+  return value.replace(/&(?:#(\d+)|#x([0-9a-fA-F]+)|amp|quot|apos|lt|gt);/g, (entity, dec, hex) => {
     if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
     if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
     switch (entity) {
@@ -355,7 +384,7 @@ function decodeXmlAttribute(value: any) {
   });
 }
 
-function normalizePath(filePath: any, cwd: any) {
+function normalizePath(filePath: string, cwd: string): string {
   const normalizedPath = filePath.replace(/\\/g, "/");
   const normalizedCwd = cwd.replace(/\\/g, "/").replace(/\/$/, "");
   if (normalizedPath === normalizedCwd) {
@@ -372,7 +401,7 @@ function normalizePath(filePath: any, cwd: any) {
  *
  * @param {string} path
  */
-function tryCleanupFileList(path: any) {
+function tryCleanupFileList(path: string): void {
   try {
     unlinkSync(path);
   } catch {

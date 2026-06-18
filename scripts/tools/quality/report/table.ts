@@ -1,7 +1,7 @@
-export function formatTable(rows: any) {
+export function formatTable(rows: ExternalValue) {
   if (rows.length === 0) return "";
 
-  const colCount = Math.max(...rows.map((row: any) => row.length));
+  const colCount = Math.max(...rows.map((row: ExternalValue) => row.length));
   const colWidths = new Array(colCount).fill(3);
 
   for (const row of rows) {
@@ -10,8 +10,8 @@ export function formatTable(rows: any) {
     }
   }
 
-  const formatRow = (row: any) => {
-    const cells: any[] = [];
+  const formatRow = (row: ExternalValue) => {
+    const cells: ExternalValue[] = [];
     for (let i = 0; i < colCount; i++) {
       cells.push((row[i] || "").padEnd(colWidths[i]));
     }

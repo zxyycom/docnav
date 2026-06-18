@@ -45,6 +45,233 @@ export const WARNING_POLICIES = Object.freeze([
 
 // ── Type helpers (JSDoc, validated at runtime) ────────────────────────
 
+export type BaselineStatus = typeof BASELINE_STATUSES[number];
+export type CodeAreaWarningPolicy = typeof WARNING_POLICIES[number];
+export type ComparisonStatus = typeof COMPARISON_STATUSES[number];
+export type WarningLevel = typeof WARNING_LEVELS[number];
+
+export interface ToolInfo {
+  name: string;
+  source: string;
+  version: string;
+}
+
+export interface ToolConfig {
+  args: string[];
+  command: string;
+}
+
+export interface CodeAreaDefinition {
+  description: string;
+  excludeGlobs: string[];
+  globs: string[];
+  warningPolicy: CodeAreaWarningPolicy;
+}
+
+export interface QualityConfig {
+  artifactDir: string;
+  codeAreas: Record<string, CodeAreaDefinition>;
+  excludeDirs: string[];
+  generatedFiles: string[];
+  include: string[];
+  lizard: {
+    cyclomaticComplexity: QualityThreshold;
+    functionLines: QualityThreshold;
+    parameterCount: QualityThreshold;
+  };
+  pmdCpd: {
+    defaultMinimumTokens: number;
+    duplicateFragments: { changedDelta: number };
+    minimumTokens: Record<string, number>;
+  };
+  report: {
+    showWatchlist: boolean;
+    timeZone: string;
+    topN: number;
+    watchlistMax: number;
+  };
+  scc: {
+    fileComplexity: QualityThreshold;
+    fileLines: QualityThreshold;
+  };
+  tools: {
+    lizard: ToolConfig;
+    pmdCpd: ToolConfig;
+    scc: ToolConfig;
+  };
+  version: string;
+}
+
+export interface QualityThreshold {
+  absoluteFloor: number;
+  changedDelta: number;
+}
+
+export interface ScanMetadata {
+  commitDate?: string;
+  commitSha: string;
+  configVersion: string;
+  repository: string;
+  schemaVersion: string;
+  scope: {
+    excludeDirs: string[];
+    generatedFiles: string[];
+    include: string[];
+  };
+  timestamp: string;
+  tools: ToolInfo[];
+}
+
+export interface CodeAreaFingerprint {
+  fileCount: number;
+  fileList: string[];
+  fingerprint: string;
+}
+
+export interface BaselineMetadata {
+  commitDate: string | null;
+  commitSha: string;
+  configVersion: string;
+  selectionReason: string;
+  toolMetadata: ToolInfo[];
+}
+
+export interface ComplexityValue {
+  source: string;
+  value: number | null;
+}
+
+export interface FileMetric {
+  blankLines?: number;
+  codeArea: string;
+  codeLines?: number;
+  commentLines?: number;
+  complexity: ComplexityValue;
+  isChanged: boolean;
+  language: string;
+  lines: number;
+  path: string;
+}
+
+export interface FunctionMetric {
+  codeArea: string;
+  cyclomaticComplexity: ComplexityValue;
+  endLine: number;
+  file: string;
+  isChanged: boolean;
+  lines: number;
+  name: string;
+  parameterCount: number;
+  startLine: number;
+}
+
+export interface DuplicateCodeLocation {
+  codeArea: string;
+  endLine: number;
+  path: string;
+  startLine: number;
+}
+
+export interface DuplicateCodeFragment {
+  codeAreas: string[];
+  hitsChangedScope: boolean;
+  id: number;
+  lineCount: number;
+  locations: DuplicateCodeLocation[];
+  tokenCount: number;
+}
+
+export interface LanguageAggregate {
+  blankLines: number;
+  codeLines: number;
+  comments?: number;
+  commentLines: number;
+  complexitySource: string;
+  complexitySum?: number;
+  files: number;
+  language: string;
+  lines: number;
+}
+
+export interface CodeAreaAggregate {
+  codeArea: string;
+  codeLines?: number;
+  cyclomaticComplexity?: number;
+  duplicateFragments?: number;
+  fileComplexity?: number;
+  files: number;
+  functionLines?: number;
+  functions: number;
+  lines: number;
+  parameterCount?: number;
+  warningPolicy: CodeAreaWarningPolicy | string;
+}
+
+export interface AggregateMetrics {
+  byCodeArea: CodeAreaAggregate[];
+  byLanguage: LanguageAggregate[];
+  overall: {
+    totalCodeLines: number;
+    totalDuplicateFragments?: number;
+    totalFileComplexity?: number;
+    totalFiles: number;
+    totalFunctionCyclomaticComplexity?: number;
+    totalFunctionLines?: number;
+    totalFunctionParameters?: number;
+    totalFunctions: number;
+    totalLines: number;
+  };
+}
+
+export interface TrendDelta {
+  baseline: number | null;
+  current: number | null;
+  delta: number | null;
+  metric: string;
+  percentChange: number | null;
+  unit: string;
+}
+
+export interface WarningRecord {
+  baselineValue: number | null;
+  codeArea: string;
+  comparisonBasis: string;
+  deltaValue: number | null;
+  level: WarningLevel | string;
+  line: number | null;
+  message: string;
+  metric: string;
+  path: string;
+  ruleId: string;
+  sourceTool: string;
+  suggestion?: string;
+  value: number;
+}
+
+export interface QualityMetrics {
+  aggregates: AggregateMetrics;
+  baseline: {
+    commitDate: string | null;
+    commitSha: string | null;
+    metadata: BaselineMetadata | null;
+    status: BaselineStatus | string;
+  };
+  baselineFingerprints?: Record<string, CodeAreaFingerprint>;
+  comparisonStatus: ComparisonStatus | string;
+  currentFingerprints: Record<string, CodeAreaFingerprint>;
+  duplicateCode: DuplicateCodeFragment[];
+  fileMetrics: FileMetric[];
+  functionMetrics: FunctionMetric[];
+  metadata: ScanMetadata;
+  trends: TrendDelta[];
+  warnings: WarningRecord[];
+}
+
+export interface MetricsValidationResult {
+  errors: string[];
+  valid: boolean;
+}
+
 /**
  * @typedef {object} ScanMetadata
  * @property {string} schemaVersion - Metrics schema version
@@ -113,7 +340,7 @@ export const WARNING_POLICIES = Object.freeze([
  * @property {number} lineCount - Approximate line count
  * @property {{ path: string, startLine: number, endLine: number, codeArea: string }[]} locations
  * @property {string[]} codeAreas - Code areas involved in this duplication
- * @property {boolean} hitsChangedScope - Whether any involved file was changed
+ * @property {boolean} hitsChangedScope - Whether ExternalValue involved file was changed
  */
 
 /**
@@ -240,8 +467,8 @@ export const WARNING_POLICIES = Object.freeze([
  * @param {QualityMetrics} metrics
  * @returns {{ valid: boolean, errors: string[] }}
  */
-export function validateMetrics(metrics: any) {
-  const errors: any[] = [];
+export function validateMetrics(metrics: ExternalValue) {
+  const errors: ExternalValue[] = [];
 
   if (!metrics || typeof metrics !== "object") {
     return { valid: false, errors: ["metrics must be a non-null object"] };
@@ -324,7 +551,7 @@ export function validateMetrics(metrics: any) {
  * @param {{ include: string[], excludeDirs: string[], generatedFiles: string[] }} params.scope
  * @returns {QualityMetrics}
  */
-export function createEmptyMetrics({ repository, commitSha, configVersion, tools, scope }: any) {
+export function createEmptyMetrics({ repository, commitSha, configVersion, tools, scope }: ExternalValue) {
   return {
     metadata: {
       schemaVersion: METRICS_SCHEMA_VERSION,

@@ -59,7 +59,7 @@ async function testCliArgumentCompatibilityWarnings() {
   expectStdoutIncludes(outlineHelp, "protocol-json");
   expect(outlineHelp, !outlineHelp.stdout.includes("text"), "outline help does not mention text output mode");
 
-  const readable = await runCli("MD-WARN-001 outline unknown readable-json warning", [
+  const readable = await runCli("MD-WARN-001 outline ExternalValue readable-json warning", [
     "outline",
     normal,
     "--future",
@@ -70,13 +70,13 @@ async function testCliArgumentCompatibilityWarnings() {
   expectStderrEmpty(readable);
   const readableJson = parseJson(readable);
   validateSchema(readable, "readableOutline", readableJson);
-  expectStructuredWarning(readable, readableJson.warnings?.[0], ["--future"], "unknown flag");
+  expectStructuredWarning(readable, readableJson.warnings?.[0], ["--future"], "ExternalValue flag");
 
   const unused = await runCli("MD-WARN-001 read unused known flag readable-json warning", [
     "read",
     normal,
     "--ref",
-    ref,
+    String(ref),
     "--max-heading-level",
     "3",
     "--output",
@@ -88,7 +88,7 @@ async function testCliArgumentCompatibilityWarnings() {
   validateSchema(unused, "readableRead", unusedJson);
   expectStructuredWarning(unused, unusedJson.warnings?.[0], ["--max-heading-level", "3"], "unused native flag");
 
-  const protocol = await runCli("MD-WARN-001 outline unknown flag protocol-json stderr warning", [
+  const protocol = await runCli("MD-WARN-001 outline ExternalValue flag protocol-json stderr warning", [
     "outline",
     normal,
     "--future",

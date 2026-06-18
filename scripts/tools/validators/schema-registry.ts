@@ -2,14 +2,14 @@ import Ajv2020Module from "ajv/dist/2020.js";
 
 import { assert, listSchemaJson, readJson } from "./fs-utils.ts";
 
-export function formatAjvErrors(validate: any) {
+export function formatAjvErrors(validate: ExternalValue) {
   return (validate.errors ?? [])
-    .map((error: any) => `${error.instancePath || "/"} ${error.message}`)
+    .map((error: ExternalValue) => `${error.instancePath || "/"} ${error.message}`)
     .join("; ");
 }
 
 export function createSchemaAjv() {
-  const Ajv2020 = (Ajv2020Module as any).default ?? Ajv2020Module;
+  const Ajv2020 = (Ajv2020Module as ExternalValue).default ?? Ajv2020Module;
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   for (const schemaRelPath of listSchemaJson()) {
     ajv.addSchema(readJson(schemaRelPath));
@@ -17,7 +17,7 @@ export function createSchemaAjv() {
   return ajv;
 }
 
-export function compileRegisteredSchema(ajv: any, schemaRelPath: any) {
+export function compileRegisteredSchema(ajv: ExternalValue, schemaRelPath: ExternalValue) {
   const schema = readJson(schemaRelPath);
   if (!schema.$id) {
     return ajv.compile(schema);

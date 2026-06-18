@@ -11,7 +11,7 @@ import { DEFAULT_CONFIG } from "./config.ts";
 import { buildFingerprint, isExcluded } from "./classify.ts";
 import { getWorkingTreeChangedFiles } from "./baseline.ts";
 
-export function collectScanFiles(rootDir: any, config: any) {
+export function collectScanFiles(rootDir: ExternalValue, config: ExternalValue) {
   const result = spawnSync("git", [
     "ls-files",
     "--cached",
@@ -35,7 +35,7 @@ export function collectScanFiles(rootDir: any, config: any) {
   return normalizeAndFilterFiles(allFiles, config, rootDir);
 }
 
-export function collectBaselineFiles(workDir: any, config: any) {
+export function collectBaselineFiles(workDir: ExternalValue, config: ExternalValue) {
   const result = spawnSync("git", [
     "ls-files",
     "--cached",
@@ -56,7 +56,7 @@ export function collectBaselineFiles(workDir: any, config: any) {
   return collectBaselineFilesFallback(workDir, config);
 }
 
-export function getChangedFileList(opts: any, rootDir: any) {
+export function getChangedFileList(opts: ExternalValue, rootDir: ExternalValue) {
   if (opts.changedFiles) {
     try {
       return readFileSync(opts.changedFiles, "utf8")
@@ -85,12 +85,12 @@ export function getChangedFileList(opts: any, rootDir: any) {
   return [...new Set([...committedChangedFiles, ...workingTreeChangedFiles])];
 }
 
-export function buildFingerprints(fileMap: any, rootDir: any) {
+export function buildFingerprints(fileMap: ExternalValue, rootDir: ExternalValue) {
   /** @type {Object<string, import('./schema.ts').CodeAreaFingerprint>} */
-  const fingerprints: Record<string, any> = {};
+  const fingerprints: Record<string, ExternalValue> = {};
 
   for (const [area, files] of fileMap.entries()) {
-    fingerprints[area] = buildFingerprint(area, files, (filePath: any) => {
+    fingerprints[area] = buildFingerprint(area, files, (filePath: ExternalValue) => {
       const absPath = resolve(rootDir, filePath);
       try {
         const content = readFileSync(absPath, "utf8");
@@ -104,8 +104,8 @@ export function buildFingerprints(fileMap: any, rootDir: any) {
   return fingerprints;
 }
 
-function collectFilesFallback(rootDir: any, config: any) {
-  const files: any[] = [];
+function collectFilesFallback(rootDir: ExternalValue, config: ExternalValue) {
+  const files: ExternalValue[] = [];
 
   for (const pattern of config.include) {
     const result = spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "--", pattern], {
@@ -123,8 +123,8 @@ function collectFilesFallback(rootDir: any, config: any) {
   return files.filter((f) => !isExcluded(f, config.excludeDirs, config.generatedFiles));
 }
 
-function collectBaselineFilesFallback(workDir: any, config: any) {
-  const files: any[] = [];
+function collectBaselineFilesFallback(workDir: ExternalValue, config: ExternalValue) {
+  const files: ExternalValue[] = [];
 
   for (const pattern of config.include) {
     const globPattern = pattern
@@ -133,7 +133,7 @@ function collectBaselineFilesFallback(workDir: any, config: any) {
       .replace(/<<<GLOBSTAR>>>/g, ".*");
 
     const fileRegex = new RegExp(`^${globPattern}$`);
-    listFilesRecursive(workDir, "", (relPath: any) => {
+    listFilesRecursive(workDir, "", (relPath: ExternalValue) => {
       if (fileRegex.test(relPath) && !isExcluded(relPath, config.excludeDirs, config.generatedFiles)) {
         files.push(relPath);
       }
@@ -143,7 +143,7 @@ function collectBaselineFilesFallback(workDir: any, config: any) {
   return [...new Set(files)].sort();
 }
 
-function getChangedFilesForSingleCommitRepo(rootDir: any) {
+function getChangedFilesForSingleCommitRepo(rootDir: ExternalValue) {
   const rootResult = spawnSync("git", ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"], {
     cwd: rootDir,
     encoding: "utf8",
@@ -160,22 +160,22 @@ function getChangedFilesForSingleCommitRepo(rootDir: any) {
   return [...new Set(workingTreeChangedFiles)];
 }
 
-function normalizeAndFilterFiles(files: any, config: any, rootDir: any) {
+function normalizeAndFilterFiles(files: ExternalValue, config: ExternalValue, rootDir: ExternalValue) {
   return files
-    .map((f: any) => f.replace(/\\/g, "/"))
-    .filter((f: any) => existsSync(resolve(rootDir, f)))
-    .filter((f: any) => !isExcluded(f, config.excludeDirs, config.generatedFiles));
+    .map((f: ExternalValue) => f.replace(/\\/g, "/"))
+    .filter((f: ExternalValue) => existsSync(resolve(rootDir, f)))
+    .filter((f: ExternalValue) => !isExcluded(f, config.excludeDirs, config.generatedFiles));
 }
 
-function splitGitFileList(stdout: any) {
+function splitGitFileList(stdout: ExternalValue) {
   return (stdout || "")
     .trim()
     .split(/\r?\n/)
     .filter(Boolean)
-    .map((f: any) => f.replace(/\\/g, "/"));
+    .map((f: ExternalValue) => f.replace(/\\/g, "/"));
 }
 
-function listFilesRecursive(baseDir: any, subDir: any, callback: any) {
+function listFilesRecursive(baseDir: ExternalValue, subDir: ExternalValue, callback: ExternalValue) {
   const currentDir = subDir ? join(baseDir, subDir) : baseDir;
   let entries;
 

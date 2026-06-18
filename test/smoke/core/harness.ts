@@ -33,10 +33,10 @@ export const {
     `docnav_binary: ${smokeState.docnavBinaryPath ?? "(missing)"}`,
     `docnav_markdown_binary: ${smokeState.markdownBinaryPath ?? "(missing)"}`
   ],
-  binaryPath: () => smokeState.docnavBinaryPath,
+  binaryPath: () => smokeState.docnavBinaryPath ?? null,
   binaryFallback: "docnav",
-  resolveCwd: (options: any) => options.cwd ?? options.project?.root ?? root,
-  resolveEnv: (options: any) => ({
+  resolveCwd: (options: ExternalValue) => options.cwd ?? options.project?.root ?? root,
+  resolveEnv: (options: ExternalValue) => ({
     ...process.env,
     ...(options.project?.env ?? {}),
     ...(options.env ?? {})

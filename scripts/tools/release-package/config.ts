@@ -24,7 +24,7 @@ export const releaseComponents = Object.freeze([
   }),
 ]);
 
-export function resolvePackageLayout(version: any, target: any) {
+export function resolvePackageLayout(version: ExternalValue, target: ExternalValue) {
   const packageDir = path.join(artifactsRoot, `v${version}`, target, "package");
   return {
     version,
@@ -36,15 +36,15 @@ export function resolvePackageLayout(version: any, target: any) {
   };
 }
 
-export function resolveBinaryDestPath(packageDir: any, executablePath: any) {
+export function resolveBinaryDestPath(packageDir: ExternalValue, executablePath: ExternalValue) {
   return path.join(packageDir, path.basename(executablePath));
 }
 
-export function expectedBinaryName(binName: any, target: any) {
+export function expectedBinaryName(binName: ExternalValue, target: ExternalValue) {
   return target.includes("windows") ? `${binName}.exe` : binName;
 }
 
-export function compareStrings(left: any, right: any) {
+export function compareStrings(left: ExternalValue, right: ExternalValue) {
   if (left < right) {
     return -1;
   }

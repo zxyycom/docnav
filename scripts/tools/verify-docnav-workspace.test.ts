@@ -46,6 +46,7 @@ describe("workspace verifier configuration", () => {
 
     assert.ok(requiredLabels.includes("cargo fmt"));
     assert.ok(requiredLabels.includes("TypeScript script typecheck"));
+    assert.ok(requiredLabels.includes("TypeScript script lint"));
     assert.ok(requiredLabels.includes("docs schema validator"));
     assert.ok(requiredLabels.includes("smoke harness tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
@@ -69,7 +70,7 @@ describe("workspace verifier configuration", () => {
       assert.ok(check.type === PROFILE_REQUIRED || check.type === PROFILE_FULL);
       assert.ok(Array.isArray(check.dependsOn));
       assert.ok(Array.isArray(check.mutex));
-      assert.equal((check as any).profiles, undefined);
+      assert.equal((check as ExternalValue).profiles, undefined);
     }
 
     assert.equal(checkByLabel("cargo test").type, PROFILE_FULL);
@@ -98,7 +99,7 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(parseArgs(["--concurrency", "2"]), { help: false, profile: PROFILE_FULL, concurrency: 2 });
     assert.deepEqual(parseArgs(["--concurrency=3"]), { help: false, profile: PROFILE_FULL, concurrency: 3 });
     assert.deepEqual(parseArgs(["--help"]), { help: true, profile: PROFILE_FULL, concurrency: undefined });
-    assert.throws(() => parseArgs(["--profile", "fast"]), /unknown verification profile: fast/);
+    assert.throws(() => parseArgs(["--profile", "fast"]), /ExternalValue verification profile: fast/);
     assert.throws(() => parseArgs(["--concurrency", "0"]), /positive integer/);
   });
 
@@ -116,7 +117,7 @@ describe("workspace verifier configuration", () => {
     assert.equal(
       formatCompletionLine({
         ok: true,
-        check: { label: "docs schema validator" },
+        check: { id: "docs-schema-validator", label: "docs schema validator" },
         durationMs: 1250
       }),
       "  passed: docs schema validator (1.3s)"
@@ -124,7 +125,7 @@ describe("workspace verifier configuration", () => {
     assert.equal(
       formatCompletionLine({
         ok: false,
-        check: { label: "cargo test" },
+        check: { id: "cargo-test", label: "cargo test" },
         durationMs: 65_000
       }),
       "  failed: cargo test (1m 05s)"
@@ -136,12 +137,12 @@ describe("workspace verifier configuration", () => {
 
     assert.ok(requiredChecks.some((check) => check.label === "docs schema validator"));
     assert.ok(!requiredChecks.some((check) => check.label === "docs validators"));
-    assert.equal(reportCountForChecks(requiredChecks), 7);
+    assert.equal(reportCountForChecks(requiredChecks), 8);
   });
 
 });
 
-function checkByLabel(label: any) {
+function checkByLabel(label: ExternalValue) {
   const check = checks.find((candidate) => candidate.label === label);
   assert.ok(check, `expected check ${label}`);
   return check;

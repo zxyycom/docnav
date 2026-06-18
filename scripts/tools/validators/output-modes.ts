@@ -5,7 +5,7 @@ import { assert, assertDeepEqual, readJson, toAbs } from "./fs-utils.ts";
 import { DOCUMENT_OUTPUT_MODES, OUTPUT_MODE_CONSISTENCY } from "./config.ts";
 import { readText, sortedUnique } from "./document-files.ts";
 
-function assertIncludesDocumentOutputModes(relPath: any) {
+function assertIncludesDocumentOutputModes(relPath: ExternalValue) {
   const text = readText(relPath);
   for (const mode of DOCUMENT_OUTPUT_MODES) {
     assert(
@@ -15,7 +15,7 @@ function assertIncludesDocumentOutputModes(relPath: any) {
   }
 }
 
-function assertDocumentOutputModeSet(values: any, label: any) {
+function assertDocumentOutputModeSet(values: ExternalValue, label: ExternalValue) {
   assertDeepEqual(
     values,
     DOCUMENT_OUTPUT_MODES,
@@ -23,7 +23,7 @@ function assertDocumentOutputModeSet(values: any, label: any) {
   );
 }
 
-function extractRustStringArray(source: any, constName: any, label: any) {
+function extractRustStringArray(source: ExternalValue, constName: ExternalValue, label: ExternalValue) {
   const pattern = new RegExp(
     `const\\s+${constName}\\s*:[^=]+?=\\s*&\\s*\\[([^\\]]*)\\]`,
     "su",
@@ -33,8 +33,8 @@ function extractRustStringArray(source: any, constName: any, label: any) {
   return [...match[1].matchAll(/"([^"]+)"/gu)].map((item) => item[1]);
 }
 
-function extractOutputValueConstants(source: any, label: any) {
-  const constants: Record<string, any> = {};
+function extractOutputValueConstants(source: ExternalValue, label: ExternalValue) {
+  const constants: Record<string, ExternalValue> = {};
   for (const match of source.matchAll(
     /const\s+(PROTOCOL_JSON|READABLE_JSON|READABLE_VIEW)\s*:\s*&str\s*=\s*"([^"]+)"/gu,
   )) {
@@ -52,7 +52,7 @@ function extractOutputValueConstants(source: any, label: any) {
   return values;
 }
 
-function assertOutputHelpShape(source: any, label: any) {
+function assertOutputHelpShape(source: ExternalValue, label: ExternalValue) {
   const valueName = "readable-view|readable-json|protocol-json";
   assert(
     source.includes(`"${valueName}"`),
@@ -230,7 +230,7 @@ function validateConformanceFixtures() {
     "fixture 12 must contain same-pointer marker-looking text in the payload",
   );
   const exactBlockAssertion = markerFixture.assertions.find(
-    (assertion: any) =>
+    (assertion: ExternalValue) =>
       assertion.type === "block" &&
       assertion.pointer === "/content" &&
       assertion.payload === markerPayload,

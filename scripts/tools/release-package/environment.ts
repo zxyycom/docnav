@@ -13,8 +13,8 @@ export function resolveWorkspaceVersion() {
   const workspaceMembers = new Set(metadata.workspace_members ?? []);
   const versions = new Set(
     (metadata.packages ?? [])
-      .filter((pkg: any) => workspaceMembers.has(pkg.id))
-      .map((pkg: any) => pkg.version),
+      .filter((pkg: ExternalValue) => workspaceMembers.has(pkg.id))
+      .map((pkg: ExternalValue) => pkg.version),
   );
 
   if (versions.size !== 1) {
@@ -40,7 +40,7 @@ export function resolveHostTarget() {
   return hostLine.slice("host: ".length).trim();
 }
 
-export function buildReleaseBinary(packageName: any, binName: any, target: any) {
+export function buildReleaseBinary(packageName: ExternalValue, binName: ExternalValue, target: ExternalValue) {
   const args = [
     "build",
     "--release",
@@ -102,7 +102,7 @@ export function resolveProducerMetadata() {
   };
 }
 
-function requiredEnv(name: any) {
+function requiredEnv(name: ExternalValue) {
   const value = process.env[name];
   if (!value) {
     throw new Error(`${name} is required`);
@@ -110,7 +110,7 @@ function requiredEnv(name: any) {
   return value;
 }
 
-function requiredIntEnv(name: any) {
+function requiredIntEnv(name: ExternalValue) {
   const value = requiredEnv(name);
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {

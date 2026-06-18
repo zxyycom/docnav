@@ -29,7 +29,7 @@ export const {
   title: "Docnav Markdown Development Smoke",
   auditTitle: "docnav-markdown development smoke audit",
   auditMetadata: () => [`binary: ${smokeState.binaryPath ?? "(missing)"}`],
-  binaryPath: () => smokeState.binaryPath,
+  binaryPath: () => smokeState.binaryPath ?? null,
   binaryFallback: "docnav-markdown"
 });
 

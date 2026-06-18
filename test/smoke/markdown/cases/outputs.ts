@@ -38,13 +38,13 @@ async function testMarkdownDocumentLinkChain() {
     ["outline", normal, "--output", "readable-json"],
     {
       schema: "readableOutline",
-      check: (record: any, json: any) => {
+      check: (record: ExternalValue, json: ExternalValue) => {
         expectNoProtocolEnvelope(record, json);
         expect(record, Array.isArray(json.entries) && json.entries.length > 0, "outline returns entries");
         expect(record, json.page === null, "outline page is null for normal fixture");
         expect(
           record,
-          new Set(json.entries.map((entry: any) => entry.ref)).size === json.entries.length,
+          new Set(json.entries.map((entry: ExternalValue) => entry.ref)).size === json.entries.length,
           "outline refs are unique"
         );
         expect(record, json.entries[0].display.includes("H1"), "outline first entry identifies a top-level heading");
@@ -60,7 +60,7 @@ async function testMarkdownDocumentLinkChain() {
     ["read", normal, "--ref", outlineRef, "--output", "readable-json"],
     {
       schema: "readableRead",
-      check: (record: any, json: any) => {
+      check: (record: ExternalValue, json: ExternalValue) => {
         expectNoProtocolEnvelope(record, json);
         expect(record, json.ref === outlineRef, "read result preserves outline ref");
         expect(record, json.content.includes("# Guide"), "read content includes heading");
@@ -76,7 +76,7 @@ async function testMarkdownDocumentLinkChain() {
     ["find", normal, "--query", "target", "--output", "readable-json"],
     {
       schema: "readableFind",
-      check: (record: any, json: any) => {
+      check: (record: ExternalValue, json: ExternalValue) => {
         expectNoProtocolEnvelope(record, json);
         expect(record, Array.isArray(json.matches) && json.matches.length > 0, "find returns matches");
         expect(record, typeof json.matches[0].ref === "string" && json.matches[0].ref.length > 0, "find exposes ref");
@@ -90,7 +90,7 @@ async function testMarkdownDocumentLinkChain() {
     ["read", normal, "--ref", find.matches[0].ref, "--output", "readable-json"],
     {
       schema: "readableRead",
-      check: (record: any, json: any) => {
+      check: (record: ExternalValue, json: ExternalValue) => {
         expectNoProtocolEnvelope(record, json);
         expect(record, json.ref === find.matches[0].ref, "read preserves find ref");
         expect(record, json.content_type === read.content_type, "read from find ref preserves content_type");
@@ -100,7 +100,7 @@ async function testMarkdownDocumentLinkChain() {
 
   await runSuccessfulJsonCase("MD-LINK-001 info normal readable-json", ["info", normal, "--output", "readable-json"], {
     schema: "readableInfo",
-    check: (record: any, json: any) => {
+    check: (record: ExternalValue, json: ExternalValue) => {
       expectNoProtocolEnvelope(record, json);
       expect(record, json.display.includes("Markdown | text/markdown"), "info readable result has Markdown display");
       for (const capability of ["outline", "read", "find", "info"]) {
@@ -149,7 +149,7 @@ async function testMarkdownOutputBoundary() {
     ["read", normal, "--ref", ref, "--output", "protocol-json"],
     {
       operation: "read",
-      check: (record: any, json: any) => {
+      check: (record: ExternalValue, json: ExternalValue) => {
         expect(record, json.result.ref === ref, "read protocol result preserves ref");
         expect(record, json.result.content_type === "text/markdown", "read protocol result has content_type");
         expectReadResultsEquivalent(record, json.result, readableRead, "read protocol-json result matches readable-json");
@@ -158,7 +158,7 @@ async function testMarkdownOutputBoundary() {
   );
 }
 
-async function ensureNormalRef(normal: any) {
+async function ensureNormalRef(normal: ExternalValue) {
   const { record, json } = await runSuccessfulJsonCase(
     "MD-OUTPUT-001 outline normal readable-json for ref",
     ["outline", normal, "--output", "readable-json"],

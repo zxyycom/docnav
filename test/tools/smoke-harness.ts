@@ -3,8 +3,11 @@ import { spawn } from "node:child_process";
 import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
+import type { ValidateFunction } from "ajv";
 
 import { expandTasks, runParallelTasks } from "../../scripts/tools/parallel-task-runner.ts";
+import type { NormalizedTask, TaskDefinition } from "../../scripts/tools/parallel-task-runner.ts";
+import { errorMessage } from "../../scripts/tools/types.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,
@@ -12,9 +15,101 @@ import {
 } from "../../scripts/tools/validators/schema-registry.ts";
 
 const MAX_COMMAND_OUTPUT = 1024 * 1024 * 64;
-const commandContext = new AsyncLocalStorage<{ commandRecords: any[] }>();
+const commandContext = new AsyncLocalStorage<{ commandRecords: CommandRecord[] }>();
 
-export function createSmokeState(values: any = {}) {
+export interface AssertionRecord {
+  ok: boolean;
+  summary: string;
+}
+
+export interface CommandRecord {
+  args: string[];
+  assertions: AssertionRecord[];
+  cwd: string;
+  error: string | null;
+  exitCode: number;
+  name: string;
+  signal: NodeJS.Signals | null;
+  stderr: string;
+  stdinSummary: string | null;
+  stdout: string;
+}
+
+export interface SmokeState {
+  binaryPath?: string | null;
+  commandRecords: CommandRecord[];
+  docnavBinaryPath?: string | null;
+  markdownBinaryPath?: string | null;
+  normalRef?: string | null;
+  normalRefPromise?: Promise<string> | null;
+  startedAt: Date;
+  testResults: SmokeTestResult[];
+  validators: Record<string, ValidateFunction> | null;
+  [key: string]: ExternalValue;
+}
+
+export interface SmokeTestResult {
+  commandCount: number;
+  durationMs: number;
+  endedAtMs: number;
+  error?: Error;
+  id: string;
+  label: string;
+  ok: boolean;
+  reportId?: string;
+  reportLabel?: string;
+  reportOrder?: number;
+  startedAtMs: number;
+}
+
+export interface SmokeTask extends TaskDefinition {
+  label: string;
+  reportId?: string;
+  reportLabel?: string;
+  reportOrder?: number;
+  run?: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
+}
+
+export interface SmokeCommandOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  maxBuffer?: number;
+  project?: { root?: string };
+  stdin?: Buffer | string | null;
+  stdinSummary?: string | null;
+}
+
+interface ProcessResult {
+  error: string | null;
+  exitCode: number;
+  signal: NodeJS.Signals | null;
+  stderr: string;
+  stdout: string;
+}
+
+interface CreateSmokeHarnessOptions {
+  auditMetadata: () => string[];
+  auditTitle: string;
+  binaryFallback: string;
+  binaryPath: () => string | null;
+  expect: (record: CommandRecord, condition: boolean, summary: string) => void;
+  logDir: string;
+  logPaths: string[];
+  resolveCwd?: (options: SmokeCommandOptions) => string;
+  resolveEnv?: (options: SmokeCommandOptions) => NodeJS.ProcessEnv | undefined;
+  root: string;
+  runProcess?: (executable: string, args: string[], options: SmokeCommandOptions) => Promise<ProcessResult>;
+  safeArgPattern?: RegExp;
+  schemaPaths: Record<string, string>;
+  state: SmokeState;
+  title: string;
+}
+
+interface SmokeTaskOptions {
+  concurrency?: string | number | null;
+}
+
+export function createSmokeState(values: Partial<SmokeState> = {}): SmokeState {
   return {
     commandRecords: [],
     testResults: [],
@@ -24,12 +119,12 @@ export function createSmokeState(values: any = {}) {
   };
 }
 
-export function argValue(flag: any) {
+export function argValue(flag: string): string | null {
   const index = process.argv.indexOf(flag);
   return index === -1 ? null : (process.argv[index + 1] ?? null);
 }
 
-export function resolveBinaryPath(root: any, value: any) {
+export function resolveBinaryPath(root: string, value: string | null | undefined): string | null {
   if (!value) {
     return null;
   }
@@ -47,7 +142,7 @@ export function resolveBinaryPath(root: any, value: any) {
   return resolved;
 }
 
-export function createSmokeHarness(options: any) {
+export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
   const {
     state,
     root,
@@ -63,22 +158,13 @@ export function createSmokeHarness(options: any) {
     resolveCwd = () => root,
     resolveEnv = () => undefined,
     runProcess = spawnCommand,
-    safeArgPattern = /^[A-Za-z0-9_./:=@+\-]+$/
+    safeArgPattern = /^[A-Za-z0-9_./:=@+-]+$/
   } = options;
 
-  async function runTest(label: any, fn: any, options: any = {}) {
-    const context = { commandRecords: [] as any[] };
+  async function runTest(label: string, fn: () => ExternalValue | Promise<ExternalValue>, options: { id?: string } = {}) {
+    const context = { commandRecords: [] as CommandRecord[] };
     const startedAtMs = Date.now();
-    const result: {
-      id: any;
-      label: any;
-      ok: boolean;
-      commandCount: number;
-      durationMs: number;
-      startedAtMs: number;
-      endedAtMs: number;
-      error?: any;
-    } = {
+    const result: SmokeTestResult = {
       id: options.id ?? label,
       label,
       ok: true,
@@ -91,7 +177,7 @@ export function createSmokeHarness(options: any) {
       await commandContext.run(context, () => fn());
     } catch (error) {
       result.ok = false;
-      result.error = error;
+      result.error = error instanceof Error ? error : new Error(String(error));
     }
     result.commandCount = context.commandRecords.length;
     result.endedAtMs = Date.now();
@@ -99,9 +185,12 @@ export function createSmokeHarness(options: any) {
     return result;
   }
 
-  async function runCli(name: any, args: any, commandOptions: any = {}) {
+  async function runCli(name: string, args: string[], commandOptions: SmokeCommandOptions = {}) {
     const cwd = resolveCwd(commandOptions);
     const executable = binaryPath();
+    if (!executable) {
+      throw new Error("smoke binary path is not configured");
+    }
     const result = await runProcess(executable, args, {
       cwd,
       env: resolveEnv(commandOptions),
@@ -128,10 +217,10 @@ export function createSmokeHarness(options: any) {
     return record;
   }
 
-  async function runSmokeTasks(tasks: any, taskOptions: any = {}) {
+  async function runSmokeTasks(tasks: readonly SmokeTask[], taskOptions: SmokeTaskOptions = {}) {
     const results = await runParallelTasks(tasks, {
       concurrency: resolveSmokeConcurrency(taskOptions.concurrency),
-      prepareTasks: prepareSmokeTasks,
+      prepareTasks: (taskList) => prepareSmokeTasks(taskList as readonly SmokeTask[]),
       execute: async (task) => withSmokeTaskMetadata(await runTest(task.label, () => task.run?.(task), { id: task.id }), task)
     });
     const reports = aggregateSmokeReports(results);
@@ -146,9 +235,12 @@ export function createSmokeHarness(options: any) {
     );
   }
 
-  function validateSchema(record: any, name: any, value: any) {
-    const validate = state.validators[name];
+  function validateSchema(record: CommandRecord, name: string, value: ExternalValue) {
+    const validate = state.validators?.[name];
     expect(record, Boolean(validate), `schema validator exists for ${name}`);
+    if (!validate) {
+      return;
+    }
     const ok = validate(value);
     const details = ok ? "" : `: ${formatAjvErrors(validate)}`;
     expect(record, ok, `${name} schema valid${details}`);
@@ -175,7 +267,7 @@ export function createSmokeHarness(options: any) {
     }
   }
 
-  function formatCommandRecord(record: any) {
+  function formatCommandRecord(record: CommandRecord) {
     return [
       `### ${record.name}`,
       `$ ${quoteArg(binaryPath() ?? binaryFallback)} ${record.args.map(quoteArg).join(" ")}`.trimEnd(),
@@ -202,19 +294,19 @@ export function createSmokeHarness(options: any) {
     printLogLocation(console.log);
   }
 
-  function printFailureSummary(error: any) {
+  function printFailureSummary(error: ExternalValue) {
     console.error("");
     console.error(title);
     console.error("Status: failed");
-    console.error(`Failure: ${error.message}`);
+    console.error(`Failure: ${errorMessage(error)}`);
     printLogLocation(console.error);
   }
 
-  function quoteArg(value: any) {
+  function quoteArg(value: string) {
     return safeArgPattern.test(value) ? value : JSON.stringify(value);
   }
 
-  function printLogLocation(writeLine: any) {
+  function printLogLocation(writeLine: (line: string) => void) {
     writeLine("");
     writeLine("Log:");
     writeLine(`  - ${relativeLogPath(root, logPaths[0])}`);
@@ -235,11 +327,11 @@ export function createSmokeHarness(options: any) {
   };
 }
 
-export function prepareSmokeTasks(tasks: any) {
+export function prepareSmokeTasks(tasks: readonly SmokeTask[]): NormalizedTask[] {
   return withSmokeReportMetadata(tasks);
 }
 
-export function resolveSmokeConcurrency(value = process.env.DOCNAV_SMOKE_CONCURRENCY) {
+export function resolveSmokeConcurrency(value: string | number | null | undefined = process.env.DOCNAV_SMOKE_CONCURRENCY): number | undefined {
   if (value === undefined || value === null || value === "") {
     return undefined;
   }
@@ -250,17 +342,21 @@ export function resolveSmokeConcurrency(value = process.env.DOCNAV_SMOKE_CONCURR
   return parsed;
 }
 
-function withSmokeReportMetadata(tasks: any) {
+function withSmokeReportMetadata(tasks: readonly SmokeTask[]): NormalizedTask[] {
   let reportOrder = 0;
-  return expandTasks(tasks.map((task: any) => annotateSmokeReport(task, null, () => reportOrder++)));
+  return expandTasks(tasks.map((task) => annotateSmokeReport(task, null, () => reportOrder++)));
 }
 
-function annotateSmokeReport(task: any, inheritedReport: any, nextReportOrder: any) {
+function annotateSmokeReport(
+  task: SmokeTask,
+  inheritedReport: { id: string; label: string; order: number } | null,
+  nextReportOrder: () => number
+): SmokeTask {
   const report = inheritedReport ?? createSmokeReport(task, nextReportOrder);
   if (Array.isArray(task.tasks)) {
     return {
       ...task,
-      tasks: task.tasks.map((child: any) => annotateSmokeReport(child, report, nextReportOrder))
+      tasks: task.tasks.map((child) => annotateSmokeReport(child as SmokeTask, report, nextReportOrder))
     };
   }
   return {
@@ -271,7 +367,7 @@ function annotateSmokeReport(task: any, inheritedReport: any, nextReportOrder: a
   };
 }
 
-function createSmokeReport(task: any, nextReportOrder: any) {
+function createSmokeReport(task: SmokeTask, nextReportOrder: () => number) {
   return {
     id: task.id,
     label: task.label ?? task.id,
@@ -279,38 +375,38 @@ function createSmokeReport(task: any, nextReportOrder: any) {
   };
 }
 
-function withSmokeTaskMetadata(result: any, task: any) {
+function withSmokeTaskMetadata(result: SmokeTestResult, task: NormalizedTask): SmokeTestResult {
   return {
     ...result,
-    reportId: task.reportId,
-    reportLabel: task.reportLabel,
-    reportOrder: task.reportOrder
+    reportId: task.reportId as string | undefined,
+    reportLabel: task.reportLabel as string | undefined,
+    reportOrder: task.reportOrder as number | undefined
   };
 }
 
-function recordCommand(state: any, record: any) {
+function recordCommand(state: SmokeState, record: CommandRecord) {
   state.commandRecords.push(record);
   const context = commandContext.getStore();
   context?.commandRecords.push(record);
 }
 
-function spawnCommand(executable: any, args: any, options: any) {
+function spawnCommand(executable: string, args: string[], options: SmokeCommandOptions): Promise<ProcessResult> {
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
     let stdoutBytes = 0;
     let stderrBytes = 0;
-    let childError: any = null;
+    let childError: Error | null = null;
     let settled = false;
 
     const child = spawn(executable, args, {
       cwd: options.cwd,
       env: options.env,
       windowsHide: true,
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: "pipe"
     });
 
-    const appendOutput = (chunk: any, streamName: any) => {
+    const appendOutput = (chunk: Buffer | string, streamName: "stderr" | "stdout") => {
       const text = chunk.toString("utf8");
       const bytes = Buffer.byteLength(text, "utf8");
       if (streamName === "stdout") {
@@ -320,15 +416,16 @@ function spawnCommand(executable: any, args: any, options: any) {
         stderr += text;
         stderrBytes += bytes;
       }
-      if (stdoutBytes + stderrBytes > options.maxBuffer && !child.killed) {
-        childError = new Error(`command output exceeded ${options.maxBuffer} bytes`);
+      const maxBuffer = options.maxBuffer ?? MAX_COMMAND_OUTPUT;
+      if (stdoutBytes + stderrBytes > maxBuffer && !child.killed) {
+        childError = new Error(`command output exceeded ${maxBuffer} bytes`);
         child.kill();
       }
     };
 
     child.stdout.on("data", (chunk) => appendOutput(chunk, "stdout"));
     child.stderr.on("data", (chunk) => appendOutput(chunk, "stderr"));
-    child.on("error", (error) => {
+    child.on("error", (error: Error) => {
       childError = error;
       finish(1, null);
     });
@@ -341,7 +438,7 @@ function spawnCommand(executable: any, args: any, options: any) {
       child.stdin.end();
     }
 
-    function finish(exitCode: any, signal: any) {
+    function finish(exitCode: number | null, signal: NodeJS.Signals | null) {
       if (settled) {
         return;
       }
@@ -357,15 +454,15 @@ function spawnCommand(executable: any, args: any, options: any) {
   });
 }
 
-function formatTestResult(result: any) {
+function formatTestResult(result: SmokeTestResult) {
   const status = result.ok ? "PASS" : "FAIL";
   const error = result.error ? `: ${result.error.message}` : "";
   const duration = Number.isFinite(result.durationMs) ? `, ${result.durationMs}ms` : "";
   return `${status} ${result.label} (${result.commandCount} command(s)${duration})${error}`;
 }
 
-function aggregateSmokeReports(results: any) {
-  const reports = new Map();
+function aggregateSmokeReports(results: readonly SmokeTestResult[]): SmokeTestResult[] {
+  const reports = new Map<string, SmokeTestResult>();
 
   for (const result of results) {
     const reportId = result.reportId ?? result.id ?? result.label;
@@ -393,17 +490,17 @@ function aggregateSmokeReports(results: any) {
     reports.set(reportId, report);
   }
 
-  return [...reports.values()].sort((left, right) => left.reportOrder - right.reportOrder);
+  return [...reports.values()].sort((left, right) => (left.reportOrder ?? 0) - (right.reportOrder ?? 0));
 }
 
-function formatAssertions(assertions: any) {
+function formatAssertions(assertions: readonly AssertionRecord[]): string[] {
   if (assertions.length === 0) {
     return ["  (none)"];
   }
-  return assertions.map((assertion: any) => `  ${assertion.ok ? "PASS" : "FAIL"} ${assertion.summary}`);
+  return assertions.map((assertion) => `  ${assertion.ok ? "PASS" : "FAIL"} ${assertion.summary}`);
 }
 
-function summarizeStdin(stdin: any) {
+function summarizeStdin(stdin: Buffer | string | null | undefined): string | null {
   if (stdin === undefined || stdin === null) {
     return null;
   }
@@ -412,6 +509,6 @@ function summarizeStdin(stdin: any) {
   return `${byteCount} ${unit} stdin`;
 }
 
-function relativeLogPath(root: any, logPath: any) {
+function relativeLogPath(root: string, logPath: string): string {
   return path.relative(root, logPath).replaceAll(path.sep, "/");
 }

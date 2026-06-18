@@ -32,9 +32,9 @@
  * @param {string} params.comparisonStatus - compared, input-unchanged, baseline-unavailable
  * @returns {WarningRecord[]}
  */
-export function generateWarnings({ files, functions, duplicates, config, scope, baseline, comparisonStatus }: any) {
+export function generateWarnings({ files, functions, duplicates, config, baseline, comparisonStatus }: ExternalValue) {
   /** @type {WarningRecord[]} */
-  const warnings: any[] = [];
+  const warnings: ExternalValue[] = [];
 
   // 当 comparison status 为 input-unchanged 或 baseline-unavailable 时，
   // 不生成复杂度或重复代码 annotation（CI annotation 降级为 summary/watchlist）
@@ -228,7 +228,7 @@ export function generateWarnings({ files, functions, duplicates, config, scope, 
   // Duplicate code warnings (from CPD)
   for (const dup of duplicates) {
     // 检查涉及的 code areas 的 warning policy
-    const involvedAreas = dup.locations.map((l: any) => l.codeArea).filter(Boolean);
+    const involvedAreas = dup.locations.map((l: ExternalValue) => l.codeArea).filter(Boolean);
     const uniqueAreas = [...new Set(involvedAreas)] as string[];
 
     // 如果所有涉及的 areas 都是 exclude-warnings，跳过
@@ -268,16 +268,16 @@ export function generateWarnings({ files, functions, duplicates, config, scope, 
         level,
         ruleId: "pmd-cpd-duplicate-code",
         sourceTool: "pmd-cpd",
-        path: primaryLocation?.path || "unknown",
+        path: primaryLocation?.path || "ExternalValue",
         line: primaryLocation?.startLine ?? null,
-        codeArea: uniqueAreas.join(",") || "unknown",
+        codeArea: uniqueAreas.join(",") || "ExternalValue",
         metric: "duplicate-tokens",
         value: dup.tokenCount,
         comparisonBasis: basisFor(dup.hitsChangedScope, duplicateDelta),
         baselineValue: baselineDuplicateCount,
         deltaValue: duplicateDelta,
         message: `Duplicate code fragment (${dup.tokenCount} tokens) across ${dup.locations.length} locations in areas [${uniqueAreas.join(", ")}]`,
-        suggestion: `Consider extracting shared code into a common function or module. Locations: ${dup.locations.map((l: any) => `${l.path}:${l.startLine}`).join(", ")}`
+        suggestion: `Consider extracting shared code into a common function or module. Locations: ${dup.locations.map((l: ExternalValue) => `${l.path}:${l.startLine}`).join(", ")}`
       });
     }
   }
@@ -293,7 +293,7 @@ export function generateWarnings({ files, functions, duplicates, config, scope, 
   return warnings;
 }
 
-function shouldWarn({ isChanged, isWatchlistOnly, value, floor, delta, deltaFloor }: any) {
+function shouldWarn({ isChanged, isWatchlistOnly, value, floor, delta, deltaFloor }: ExternalValue) {
   if (value === null || value === undefined || value <= floor) {
     return false;
   }
@@ -313,33 +313,33 @@ function shouldWarn({ isChanged, isWatchlistOnly, value, floor, delta, deltaFloo
   return delta > deltaFloor;
 }
 
-function basisFor(isChanged: any, delta: any) {
+function basisFor(isChanged: ExternalValue, delta: ExternalValue) {
   if (isChanged && delta !== null && delta !== undefined) {
     return "delta";
   }
   return isChanged ? "changed-scope" : "absolute";
 }
 
-function deltaFrom(current: any, baseline: any) {
+function deltaFrom(current: ExternalValue, baseline: ExternalValue) {
   if (current === null || current === undefined || baseline === null || baseline === undefined) {
     return null;
   }
   return current - baseline;
 }
 
-function buildFileBaselineMap(files: any): Map<string, any> {
-  return new Map(files.map((file: any) => [file.path, file]));
+function buildFileBaselineMap(files: ExternalValue): Map<string, ExternalValue> {
+  return new Map(files.map((file: ExternalValue) => [file.path, file]));
 }
 
-function buildFunctionBaselineMap(functions: any): Map<string, any> {
-  return new Map(functions.map((func: any) => [functionKey(func), func]));
+function buildFunctionBaselineMap(functions: ExternalValue): Map<string, ExternalValue> {
+  return new Map(functions.map((func: ExternalValue) => [functionKey(func), func]));
 }
 
-function functionKey(func: any) {
+function functionKey(func: ExternalValue) {
   return `${func.file}:${func.name}:${func.startLine}`;
 }
 
-function buildDuplicateBaselineIndex(duplicates: any): Map<string, number> {
+function buildDuplicateBaselineIndex(duplicates: ExternalValue): Map<string, number> {
   const index = new Map<string, number>();
   for (const dup of duplicates) {
     const key = duplicateKey(dup);
@@ -348,16 +348,16 @@ function buildDuplicateBaselineIndex(duplicates: any): Map<string, number> {
   return index;
 }
 
-function countMatchingBaselineDuplicates(dup: any, baselineIndex: any, hasBaselineDuplicates: any) {
+function countMatchingBaselineDuplicates(dup: ExternalValue, baselineIndex: ExternalValue, hasBaselineDuplicates: ExternalValue) {
   if (!hasBaselineDuplicates) {
     return null;
   }
   return baselineIndex.get(duplicateKey(dup)) || 0;
 }
 
-function duplicateKey(dup: any) {
+function duplicateKey(dup: ExternalValue) {
   return dup.locations
-    .map((loc: any) => `${loc.path}:${loc.startLine}`)
+    .map((loc: ExternalValue) => `${loc.path}:${loc.startLine}`)
     .sort()
     .join("|");
 }

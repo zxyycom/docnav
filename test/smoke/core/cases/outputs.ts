@@ -91,10 +91,10 @@ async function testDocumentOutputBoundary() {
   expectStderrEmpty(warningRecord);
   const warningHeader = parseReadableViewHeader(warningRecord);
   validateSchema(warningRecord, "readableOutline", warningHeader);
-  expectStructuredWarning(warningRecord, warningHeader.warnings?.[0], ["--future"], "unknown flag");
+  expectStructuredWarning(warningRecord, warningHeader.warnings?.[0], ["--future"], "ExternalValue flag");
 }
 
-async function runReadable(project: any, name: any, args: any, schemaName: any) {
+async function runReadable(project: ExternalValue, name: ExternalValue, args: ExternalValue, schemaName: ExternalValue) {
   const record = await runCli(name, args, { project });
   expectExit(record, 0);
   expectStderrEmpty(record);

@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 
 import { DEFAULT_CONFIG } from "./tools/quality/config.ts";
 import { createEmptyMetrics } from "./tools/quality/schema.ts";
+import { errorMessage } from "./tools/types.ts";
 import { classifyFiles } from "./tools/quality/classify.ts";
 import {
   materializeBaseline,
@@ -91,7 +92,7 @@ async function main() {
   });
   metrics.currentFingerprints = fingerprints;
 
-  const fatalIssues: any[] = [];
+  const fatalIssues: ExternalValue[] = [];
   configureBaseline({ metrics, opts, tools, fatalIssues, root });
 
   const scope = detectTextOnlyChange({
@@ -115,7 +116,7 @@ async function main() {
   });
 
   setComparisonStatus(metrics, scope);
-  const baselineSnapshot: any = maybeScanBaseline({
+  const baselineSnapshot: ExternalValue = maybeScanBaseline({
     metrics,
     toolResults,
     rawDir,
@@ -137,7 +138,7 @@ async function main() {
         }
       : null,
     comparisonStatus: metrics.comparisonStatus
-  }) as any;
+  }) as ExternalValue;
   console.log(`  Warnings: ${metrics.warnings.length} generated`);
 
   writeArtifacts({ artifactDir, metrics, topN: opts.topN });
@@ -167,7 +168,7 @@ async function main() {
   process.exit(0);
 }
 
-function maybeScanBaseline({ metrics, toolResults, rawDir, fatalIssues }: any) {
+function maybeScanBaseline({ metrics, toolResults, rawDir, fatalIssues }: ExternalValue) {
   if (fatalIssues.length > 0) {
     console.log("Skipping baseline scan because fatal current-scan errors were detected.");
     return null;
@@ -187,7 +188,7 @@ function maybeScanBaseline({ metrics, toolResults, rawDir, fatalIssues }: any) {
   }
 }
 
-function scanMaterializedBaseline({ metrics, toolResults, rawDir, baselineWorkDir }: any) {
+function scanMaterializedBaseline({ metrics, toolResults, rawDir, baselineWorkDir }: ExternalValue) {
   const matResult = materializeBaseline({
     commitSha: metrics.baseline.commitSha,
     cwd: root,
@@ -210,8 +211,8 @@ function scanMaterializedBaseline({ metrics, toolResults, rawDir, baselineWorkDi
     console.log(`  Trends: ${metrics.trends.length} trend deltas computed`);
     writeBaselineRawOutputs(rawDir, baselineSnapshot);
     return baselineSnapshot;
-  } catch (err: any) {
-    console.log(`  ⚠️  Baseline scan failed: ${err.message}`);
+  } catch (err: unknown) {
+    console.log(`  ⚠️  Baseline scan failed: ${errorMessage(err)}`);
     metrics.baseline.status = "baseline-scan-failed";
     metrics.comparisonStatus = "baseline-unavailable";
     return null;
@@ -219,9 +220,10 @@ function scanMaterializedBaseline({ metrics, toolResults, rawDir, baselineWorkDi
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((err) => {
-    console.error("Fatal error in quality scan:", err.message);
-    if (err.code === "ENOENT" || err.message?.includes("config")) {
+  main().catch((err: unknown) => {
+    const message = errorMessage(err);
+    console.error("Fatal error in quality scan:", message);
+    if ((err instanceof Error && "code" in err && err.code === "ENOENT") || message.includes("config")) {
       process.exit(3);
     }
     process.exit(2);

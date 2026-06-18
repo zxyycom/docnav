@@ -9,9 +9,9 @@ export function title() {
   ].join("\n");
 }
 
-export function scanInfo(metrics: any, options: any) {
+export function scanInfo(metrics: ExternalValue, options: ExternalValue) {
   const m = metrics.metadata;
-  const tools = m.tools.map((tool: any) => `- **${tool.name}**: ${tool.version} (via ${tool.source})`).join("\n");
+  const tools = m.tools.map((tool: ExternalValue) => `- **${tool.name}**: ${tool.version} (via ${tool.source})`).join("\n");
   const timestamp = formatReportTimestamp(m.timestamp, options?.timeZone);
   return [
     "## 扫描信息",
@@ -30,7 +30,7 @@ export function scanInfo(metrics: any, options: any) {
   ].join("\n");
 }
 
-export function comparisonInfo(metrics: any) {
+export function comparisonInfo(metrics: ExternalValue) {
   if (metrics.comparisonStatus === "input-unchanged") {
     return [
       "## Comparison",
@@ -56,7 +56,7 @@ export function comparisonInfo(metrics: any) {
       "## Comparison",
       "",
       `- **Baseline commit**: \`${baseline.commitSha}\``,
-      `- **Baseline date**: ${baseline.commitDate || "unknown"}`,
+      `- **Baseline date**: ${baseline.commitDate || "ExternalValue"}`,
       `- **Selection reason**: ${baseline.metadata.selectionReason}`,
       "",
       "### Code Area 指纹对比",
@@ -68,9 +68,9 @@ export function comparisonInfo(metrics: any) {
   return "";
 }
 
-export function repositorySize(metrics: any) {
+export function repositorySize(metrics: ExternalValue) {
   const agg = metrics.aggregates;
-  const lines: any[] = [];
+  const lines: ExternalValue[] = [];
 
   lines.push("## 仓库体量与语言占比");
   lines.push("");
@@ -92,7 +92,7 @@ export function repositorySize(metrics: any) {
   return lines.join("\n");
 }
 
-export function footer(metrics: any, options: any) {
+export function footer(metrics: ExternalValue, options: ExternalValue) {
   const timestamp = formatReportTimestamp(metrics.metadata.timestamp, options?.timeZone);
   return [
     "---",
@@ -105,7 +105,7 @@ export function footer(metrics: any, options: any) {
   ].join("\n");
 }
 
-function baselineUnavailableReason(status: any) {
+function baselineUnavailableReason(status: ExternalValue) {
   if (status === "baseline-skipped") return "Baseline scan was skipped";
   if (status === "history-unavailable") return "Git history 不足";
   if (status === "no-baseline-commit") return "找不到 previous-code baseline commit";
@@ -114,7 +114,7 @@ function baselineUnavailableReason(status: any) {
   return "未知原因";
 }
 
-export function formatReportTimestamp(timestamp: any, timeZone: any) {
+export function formatReportTimestamp(timestamp: ExternalValue, timeZone: ExternalValue) {
   if (typeof timestamp !== "string" || timestamp.length === 0) {
     throw new Error("report timestamp is required");
   }
@@ -147,7 +147,7 @@ export function formatReportTimestamp(timestamp: any, timeZone: any) {
   ].join(" ");
 }
 
-function fingerprintTable(metrics: any) {
+function fingerprintTable(metrics: ExternalValue) {
   const rows = [["Code Area", "Current Files", "Baseline Files", "Match"]];
   const current = metrics.currentFingerprints || {};
   const baseline = metrics.baselineFingerprints || {};
@@ -165,7 +165,7 @@ function fingerprintTable(metrics: any) {
   return formatTable(rows);
 }
 
-function appendLanguageTable(lines: any, agg: any) {
+function appendLanguageTable(lines: ExternalValue, agg: ExternalValue) {
   if (agg.byLanguage.length === 0) return;
 
   lines.push("### By Language");
@@ -184,7 +184,7 @@ function appendLanguageTable(lines: any, agg: any) {
   lines.push(formatTable(rows));
 }
 
-function appendCodeAreaTable(lines: any, agg: any) {
+function appendCodeAreaTable(lines: ExternalValue, agg: ExternalValue) {
   if (agg.byCodeArea.length === 0) return;
 
   lines.push("");

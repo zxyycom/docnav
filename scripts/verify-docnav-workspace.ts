@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import { expandTasks, runParallelTasks } from "./tools/parallel-task-runner.ts";
+import type { NormalizedTask, TaskDefinition } from "./tools/parallel-task-runner.ts";
+import { errorMessage, isRecord, processFailure } from "./tools/types.ts";
+import type { ProcessFailure, StringMap } from "./tools/types.ts";
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -14,6 +17,78 @@ const DEV_BIN_ENV_FILE = ".log/verify-docnav-workspace/dev-bins.json";
 
 export const PROFILE_REQUIRED = "required";
 export const PROFILE_FULL = "full";
+
+type Profile = typeof PROFILE_REQUIRED | typeof PROFILE_FULL;
+
+type CheckDefinition = TaskDefinition & {
+  args?: string[];
+  command?: string;
+  ignoreOutput?: RegExp[];
+  tasks?: readonly CheckDefinition[];
+};
+
+interface CheckTask extends NormalizedTask {
+  args: string[];
+  command: string;
+  ignoreOutput: RegExp[];
+  reportId?: string;
+  reportLabel?: string;
+}
+
+interface ParsedVerificationOptions {
+  help: boolean;
+  profile: Profile;
+  concurrency: string | number | undefined;
+}
+
+interface VerificationOptions {
+  help: boolean;
+  profile: Profile;
+  concurrency: number | undefined;
+}
+
+interface CheckReportRef {
+  id: string;
+  label: string;
+}
+
+interface CompletionResult {
+  check: CheckReportRef;
+  combinedOutput: string;
+  durationMs: number;
+  endedAtMs: number;
+  error: ProcessFailure | null;
+  exitCode: number;
+  ok: boolean;
+  startedAtMs: number;
+  stderr: string;
+  stdout: string;
+}
+
+interface CheckResult extends CompletionResult {
+  check: CheckTask;
+}
+
+interface CheckExecutionData {
+  endedAtMs: number;
+  error?: ExternalValue;
+  exitCode: number;
+  ok: boolean;
+  startedAtMs: number;
+  stderr: string;
+  stdout: string;
+}
+
+interface ReportAccumulator {
+  check: CheckReportRef;
+  completed: number;
+  endedAtMs: number;
+  error: ProcessFailure | null;
+  exitCode: number;
+  expected: number;
+  ok: boolean;
+  startedAtMs: number;
+}
 
 export const profiles = Object.freeze({
   [PROFILE_REQUIRED]: {
@@ -59,6 +134,15 @@ export const checks = defineChecks([
         args: ["run", "typecheck:scripts"],
         ignoreOutput: [
           /^\$ tsc -p tsconfig\.scripts\.json$/
+        ]
+      },
+      {
+        id: "lint-scripts",
+        label: "TypeScript script lint",
+        command: "pnpm",
+        args: ["run", "lint:scripts"],
+        ignoreOutput: [
+          /^\$ eslint --max-warnings 0 eslint\.config\.ts scripts\/\*\*\/\*\.ts test\/\*\*\/\*\.ts$/
         ]
       },
       {
@@ -201,12 +285,8 @@ if (isMainModule()) {
   void main();
 }
 
-export function parseArgs(argv: any) {
-  const options: {
-    help: boolean;
-    profile: string;
-    concurrency: number | undefined;
-  } = {
+export function parseArgs(argv: string[]): VerificationOptions {
+  const options: ParsedVerificationOptions = {
     help: false,
     profile: PROFILE_FULL,
     concurrency: undefined
@@ -223,12 +303,12 @@ export function parseArgs(argv: any) {
       if (!value) {
         throw new Error("--profile requires a value");
       }
-      options.profile = value;
+      options.profile = parseProfile(value);
       index += 1;
       continue;
     }
     if (arg.startsWith("--profile=")) {
-      options.profile = arg.slice("--profile=".length);
+      options.profile = parseProfile(arg.slice("--profile=".length));
       continue;
     }
     if (arg === "--concurrency") {
@@ -244,15 +324,16 @@ export function parseArgs(argv: any) {
       options.concurrency = arg.slice("--concurrency=".length);
       continue;
     }
-    throw new Error(`unknown argument: ${arg}`);
+    throw new Error(`ExternalValue argument: ${arg}`);
   }
 
-  assertProfile(options.profile);
-  options.concurrency = resolveVerificationConcurrency(options.concurrency?.toString());
-  return options;
+  return {
+    ...options,
+    concurrency: resolveVerificationConcurrency(options.concurrency?.toString())
+  };
 }
 
-export function checksForProfile(profile: any) {
+export function checksForProfile(profile: Profile): CheckTask[] {
   assertProfile(profile);
   if (profile === PROFILE_REQUIRED) {
     return checks.filter((check) => check.type === PROFILE_REQUIRED);
@@ -260,25 +341,25 @@ export function checksForProfile(profile: any) {
   return checks.filter((check) => check.type === PROFILE_REQUIRED || check.type === PROFILE_FULL);
 }
 
-export function visibleOutputLines(check: any, output: any) {
-  return lines(output).filter((line: any) => !isIgnoredOutput(check, line));
+export function visibleOutputLines(check: CheckTask, output: string): string[] {
+  return lines(output).filter((line) => !isIgnoredOutput(check, line));
 }
 
-export function isIgnoredOutput(check: any, line: any) {
-  return (check.ignoreOutput ?? []).some((pattern: any) => pattern.test(line));
+export function isIgnoredOutput(check: Pick<CheckTask, "ignoreOutput">, line: string): boolean {
+  return (check.ignoreOutput ?? []).some((pattern) => pattern.test(line));
 }
 
-export function formatCompletionLine(result: any) {
+export function formatCompletionLine(result: Pick<CompletionResult, "check" | "durationMs" | "ok">): string {
   return `  ${result.ok ? "passed" : "failed"}: ${result.check.label} (${formatDurationMs(result.durationMs)})`;
 }
 
-export function reportCountForChecks(checkList: any) {
+export function reportCountForChecks(checkList: readonly CheckTask[]): number {
   return new Set(checkList.map(reportIdForCheck)).size;
 }
 
-export function formatDurationMs(durationMs: any) {
+export function formatDurationMs(durationMs: number): string {
   if (!Number.isFinite(durationMs)) {
-    return "unknown";
+    return "ExternalValue";
   }
   if (durationMs < 1000) {
     return `${Math.max(0, Math.round(durationMs))}ms`;
@@ -312,14 +393,14 @@ async function main() {
       return;
     }
     process.exitCode = await runVerification(options);
-  } catch (error: any) {
-    console.error(error.message);
+  } catch (error: unknown) {
+    console.error(errorMessage(error));
     printUsage(console.error);
     process.exitCode = 2;
   }
 }
 
-async function runVerification({ profile, concurrency }: any) {
+async function runVerification({ profile, concurrency }: VerificationOptions): Promise<number> {
   const selectedChecks = checksForProfile(profile);
   const totalReports = reportCountForChecks(selectedChecks);
   const completeReport = createReportCompletionTracker(selectedChecks);
@@ -327,15 +408,14 @@ async function runVerification({ profile, concurrency }: any) {
   initializeLogs(logPaths, profile, totalReports, selectedChecks.length);
 
   const startedAtMs = Date.now();
-  const completedResults: any[] = [];
-  const completedReports: any[] = [];
+  const completedReports: CompletionResult[] = [];
 
   printHeader(profile, totalReports);
   await runParallelTasks(selectedChecks, {
+    prepareTasks: (taskList) => taskList as CheckTask[],
     concurrency,
-    execute: executeCheck,
+    execute: (task) => executeCheck(task as CheckTask),
     onComplete: (result) => {
-      completedResults.push(result);
       appendLog(logPaths, result);
       const report = completeReport(result);
       if (report) {
@@ -345,7 +425,7 @@ async function runVerification({ profile, concurrency }: any) {
     }
   });
 
-  const failures: any = completedReports.filter((result) => !result.ok);
+  const failures = completedReports.filter((result) => !result.ok);
   const totalDurationMs = Date.now() - startedAtMs;
   finalizeLogs(logPaths, totalDurationMs);
 
@@ -360,7 +440,7 @@ async function runVerification({ profile, concurrency }: any) {
   return failures.length > 0 ? 1 : 0;
 }
 
-async function executeCheck(check: any) {
+async function executeCheck(check: CheckTask): Promise<CheckResult> {
   const startedAtMs = Date.now();
   const invocation = commandInvocation(check);
   try {
@@ -379,26 +459,27 @@ async function executeCheck(check: any) {
       startedAtMs,
       endedAtMs: Date.now()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const failure = processFailure(error);
     return buildCheckResult(check, {
       ok: false,
-      exitCode: normalizeExitCode(error),
-      stdout: typeof error.stdout === "string" ? error.stdout : "",
-      stderr: typeof error.stderr === "string" ? error.stderr : "",
-      error,
+      exitCode: normalizeExitCode(failure),
+      stdout: typeof failure.stdout === "string" ? failure.stdout : "",
+      stderr: typeof failure.stderr === "string" ? failure.stderr : "",
+      error: failure,
       startedAtMs,
       endedAtMs: Date.now()
     });
   }
 }
 
-function buildCheckResult(check: any, data: any) {
+function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResult {
   const combinedOutput = [data.stdout, data.stderr].filter(Boolean).join("\n");
   return {
     check,
     ok: data.ok,
     exitCode: data.exitCode,
-    error: data.error ?? null,
+    error: data.error === undefined ? null : processFailure(data.error),
     stdout: data.stdout,
     stderr: data.stderr,
     combinedOutput,
@@ -408,11 +489,11 @@ function buildCheckResult(check: any, data: any) {
   };
 }
 
-function normalizeExitCode(error: any) {
+function normalizeExitCode(error: ProcessFailure): number {
   return typeof error?.code === "number" ? error.code : 1;
 }
 
-function commandInvocation(check: any) {
+function commandInvocation(check: CheckTask): { command: string; args: string[] } {
   if (process.platform !== "win32") {
     return check;
   }
@@ -423,7 +504,7 @@ function commandInvocation(check: any) {
   };
 }
 
-function environmentForCheck(check: any) {
+function environmentForCheck(check: CheckTask): NodeJS.ProcessEnv {
   return {
     ...process.env,
     ...readEnvFile(check.envFile),
@@ -431,18 +512,21 @@ function environmentForCheck(check: any) {
   };
 }
 
-function readEnvFile(envFile: any) {
+function readEnvFile(envFile: string | undefined): StringMap {
   if (!envFile) {
     return {};
   }
   const envPath = path.resolve(root, envFile);
   const parsed = JSON.parse(fs.readFileSync(envPath, "utf8"));
+  if (!isRecord(parsed)) {
+    throw new Error(`env file must contain an object: ${envFile}`);
+  }
   return Object.fromEntries(
     Object.entries(parsed).map(([key, value]) => [key, String(value)])
   );
 }
 
-function printHeader(profile: any, totalChecks: any) {
+function printHeader(profile: Profile, totalChecks: number): void {
   console.log("");
   console.log("Docnav Workspace Verification");
   console.log(`Profile: ${profile}`);
@@ -451,20 +535,32 @@ function printHeader(profile: any, totalChecks: any) {
   console.log("Checks:");
 }
 
-function printSummary({ profile, totalChecks, completedResults, totalDurationMs, logPaths }: any) {
+function printSummary({
+  profile,
+  totalChecks,
+  completedResults,
+  totalDurationMs,
+  logPaths
+}: {
+  profile: Profile;
+  totalChecks: number;
+  completedResults: readonly CompletionResult[];
+  totalDurationMs: number;
+  logPaths: readonly string[];
+}): void {
   console.log("");
   console.log("Summary:");
-  console.log(`  status: ${completedResults.some((result: any) => !result.ok) ? "failed" : "passed"}`);
+  console.log(`  status: ${completedResults.some((result) => !result.ok) ? "failed" : "passed"}`);
   console.log(`  profile: ${profile}`);
   console.log(`  total checks: ${totalChecks}`);
-  console.log(`  passed: ${completedResults.filter((result: any) => result.ok).length}`);
-  console.log(`  failed: ${completedResults.filter((result: any) => !result.ok).length}`);
+  console.log(`  passed: ${completedResults.filter((result) => result.ok).length}`);
+  console.log(`  failed: ${completedResults.filter((result) => !result.ok).length}`);
   console.log(`  duration: ${formatDurationMs(totalDurationMs)}`);
   console.log(`  log: ${relativeLogPath(logPaths[0])}`);
   console.log("");
 }
 
-function appendLog(logPaths: any, result: any) {
+function appendLog(logPaths: readonly string[], result: CheckResult): void {
   const section = [
     `## ${result.check.label}`,
     `$ ${commandLine(result.check)}`,
@@ -484,7 +580,7 @@ function appendLog(logPaths: any, result: any) {
   }
 }
 
-function createLogPaths() {
+function createLogPaths(): string[] {
   const timestamp = new Date().toISOString().replace(/[:]/g, "-");
   return [
     path.join(logDir, "latest.log"),
@@ -492,7 +588,7 @@ function createLogPaths() {
   ];
 }
 
-function initializeLogs(logPaths: any, profile: any, totalChecks: any, leafChecks: any) {
+function initializeLogs(logPaths: readonly string[], profile: Profile, totalChecks: number, leafChecks: number): void {
   fs.mkdirSync(logDir, { recursive: true });
   for (const logPath of logPaths) {
     fs.writeFileSync(
@@ -511,31 +607,32 @@ function initializeLogs(logPaths: any, profile: any, totalChecks: any, leafCheck
   }
 }
 
-function finalizeLogs(logPaths: any, totalDurationMs: any) {
+function finalizeLogs(logPaths: readonly string[], totalDurationMs: number): void {
   for (const logPath of logPaths) {
     fs.appendFileSync(logPath, `completed: ${new Date().toISOString()}\n`, "utf8");
     fs.appendFileSync(logPath, `duration: ${formatDurationMs(totalDurationMs)}\n`, "utf8");
   }
 }
 
-function defineChecks(checkList: any) {
+function defineChecks(checkList: readonly CheckDefinition[]): CheckTask[] {
   return withCheckReportMetadata(checkList).map((check) => ({
     args: [],
+    command: "",
     ignoreOutput: [],
     ...check
-  }));
+  })) as CheckTask[];
 }
 
-function withCheckReportMetadata(checkList: any) {
-  return expandTasks(checkList.map((check: any) => annotateCheckReport(check, null)));
+function withCheckReportMetadata(checkList: readonly CheckDefinition[]): NormalizedTask[] {
+  return expandTasks(checkList.map((check) => annotateCheckReport(check, null)));
 }
 
-function annotateCheckReport(check: any, inheritedReport: any) {
+function annotateCheckReport(check: CheckDefinition, inheritedReport: CheckReportRef | null): CheckDefinition {
   const report = inheritedReport ?? (typeof check.label === "string" ? createCheckReport(check) : null);
   if (Array.isArray(check.tasks)) {
     return {
       ...check,
-      tasks: check.tasks.map((child: any) => annotateCheckReport(child, report))
+      tasks: check.tasks.map((child) => annotateCheckReport(child, report))
     };
   }
   const leafReport = report ?? createCheckReport(check);
@@ -546,15 +643,15 @@ function annotateCheckReport(check: any, inheritedReport: any) {
   };
 }
 
-function createCheckReport(check: any) {
+function createCheckReport(check: CheckDefinition): CheckReportRef {
   return {
     id: check.id,
     label: check.label ?? check.id
   };
 }
 
-function createReportCompletionTracker(checkList: any) {
-  const reports = new Map();
+function createReportCompletionTracker(checkList: readonly CheckTask[]): (result: CheckResult) => CompletionResult | null {
+  const reports = new Map<string, ReportAccumulator>();
   for (const check of checkList) {
     const reportId = reportIdForCheck(check);
     const report = reports.get(reportId) ?? {
@@ -574,8 +671,11 @@ function createReportCompletionTracker(checkList: any) {
     reports.set(reportId, report);
   }
 
-  return (result: any) => {
+  return (result: CheckResult) => {
     const report = reports.get(reportIdForCheck(result.check));
+    if (!report) {
+      throw new Error(`missing report for check: ${result.check.id}`);
+    }
     report.completed += 1;
     report.ok &&= result.ok;
     report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
@@ -602,15 +702,15 @@ function createReportCompletionTracker(checkList: any) {
   };
 }
 
-function reportIdForCheck(check: any) {
+function reportIdForCheck(check: CheckTask): string {
   return check.reportId ?? check.id;
 }
 
-function reportLabelForCheck(check: any) {
+function reportLabelForCheck(check: CheckTask): string {
   return check.reportLabel ?? check.label;
 }
 
-function docsValidatorChecks() {
+function docsValidatorChecks(): CheckDefinition[] {
   return [
     {
       id: "docs-json-validator",
@@ -666,8 +766,8 @@ function docsValidatorChecks() {
   ];
 }
 
-function nodeTestFileChecks(testFiles: any) {
-  return testFiles.map(([id, label, filePath]: any) => ({
+function nodeTestFileChecks(testFiles: readonly [id: string, label: string, filePath: string][]): CheckDefinition[] {
+  return testFiles.map(([id, label, filePath]) => ({
     id,
     label,
     command: "node",
@@ -678,7 +778,7 @@ function nodeTestFileChecks(testFiles: any) {
   }));
 }
 
-function smokeSuccessOutput(title: any, logPath: any) {
+function smokeSuccessOutput(title: string, logPath: string): RegExp[] {
   return [
     new RegExp(`^${escapeRegex(title)}$`),
     /^Status: passed$/,
@@ -688,32 +788,37 @@ function smokeSuccessOutput(title: any, logPath: any) {
   ];
 }
 
-function commandLine(check: any) {
+function commandLine(check: { args: readonly string[]; command: string }): string {
   return [check.command, ...check.args].map(quoteArg).join(" ");
 }
 
-function quoteArg(value: any) {
+function quoteArg(value: string): string {
   if (/^[A-Za-z0-9_./:=@+-]+$/.test(value)) {
     return value;
   }
   return JSON.stringify(value);
 }
 
-function lines(output: any) {
-  return output.split(/\r?\n/).filter((line: any) => line.length > 0);
+function lines(output: string): string[] {
+  return output.split(/\r?\n/).filter((line) => line.length > 0);
 }
 
-function escapeRegex(value: any) {
+function escapeRegex(value: string): string {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function assertProfile(profile: any) {
+function parseProfile(profile: string): Profile {
+  assertProfile(profile);
+  return profile;
+}
+
+function assertProfile(profile: string): asserts profile is Profile {
   if (!Object.hasOwn(profiles, profile)) {
-    throw new Error(`unknown verification profile: ${profile}`);
+    throw new Error(`ExternalValue verification profile: ${profile}`);
   }
 }
 
-function printUsage(writeLine: any) {
+function printUsage(writeLine: (line: string) => void): void {
   writeLine("Usage: node scripts/verify-docnav-workspace.ts [--profile required|full] [--concurrency <n>]");
   writeLine("");
   writeLine("Profiles:");
@@ -722,7 +827,7 @@ function printUsage(writeLine: any) {
   }
 }
 
-function relativeLogPath(logPath: any) {
+function relativeLogPath(logPath: string): string {
   return path.relative(root, logPath).replaceAll(path.sep, "/");
 }
 

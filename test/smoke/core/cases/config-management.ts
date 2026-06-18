@@ -128,10 +128,10 @@ async function testInitVersionDoctorAndHelp() {
   expectExit(doctor, exitCodes.protocolOrAdapterProcess);
   const doctorJson = parseJson(doctor);
   expect(doctor, Array.isArray(doctorJson.checks), "doctor output contains checks array");
-  expect(doctor, doctorJson.checks.some((check: any) => check.status === "fail"), "doctor reports failing check");
+  expect(doctor, doctorJson.checks.some((check: ExternalValue) => check.status === "fail"), "doctor reports failing check");
   expect(doctor, readAdapterCalls(bad).some((call) => call.command === "manifest"), "doctor validates adapter manifest");
 }
 
-function valueFor(configListJson: any, key: any) {
-  return configListJson.values.find((item: any) => item.key === key);
+function valueFor(configListJson: ExternalValue, key: ExternalValue) {
+  return configListJson.values.find((item: ExternalValue) => item.key === key);
 }

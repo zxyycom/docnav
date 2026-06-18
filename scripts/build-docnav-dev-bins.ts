@@ -23,7 +23,7 @@ if (options.outputEnvJson) {
 
 console.log(`dev binaries ok: ${Object.keys(env).join(", ")}`);
 
-function parseArgs(args: any) {
+function parseArgs(args: ExternalValue) {
   const options = {
     outputEnvJson: null,
     quiet: false
@@ -48,13 +48,13 @@ function parseArgs(args: any) {
       options.outputEnvJson = arg.slice("--output-env-json=".length);
       continue;
     }
-    usage(`unknown option ${arg}`);
+    usage(`ExternalValue option ${arg}`);
   }
 
   return options;
 }
 
-function buildDevBins(quiet: any) {
+function buildDevBins(quiet: ExternalValue) {
   const cargoArgs = [
     "build",
     ...binaries.flatMap((binary) => ["-p", binary.packageName]),
@@ -80,7 +80,7 @@ function buildDevBins(quiet: any) {
     process.stderr.write(result.stderr);
   }
 
-  const env: Record<string, any> = {};
+  const env: Record<string, ExternalValue> = {};
   for (const binary of binaries) {
     const executable = findCargoExecutable(result.stdout ?? "", binary.binName);
     if (!executable) {
@@ -92,7 +92,7 @@ function buildDevBins(quiet: any) {
   return env;
 }
 
-function writeOutput(result: any) {
+function writeOutput(result: ExternalValue) {
   if (result.stdout) {
     process.stdout.write(result.stdout);
   }
@@ -101,7 +101,7 @@ function writeOutput(result: any) {
   }
 }
 
-function usage(message: any) {
+function usage(message: ExternalValue) {
   console.error(message);
   console.error("usage: node scripts/build-docnav-dev-bins.ts [--quiet] [--output-env-json <path>]");
   process.exit(2);

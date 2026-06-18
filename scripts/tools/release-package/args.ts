@@ -1,4 +1,4 @@
-export function parseOptionalTarget(args: any) {
+export function parseOptionalTarget(args: ExternalValue) {
   let target: string | null = null;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -9,7 +9,7 @@ export function parseOptionalTarget(args: any) {
       continue;
     }
     if (arg.startsWith("--")) {
-      throw new Error(`unknown option ${arg}`);
+      throw new Error(`ExternalValue option ${arg}`);
     }
     throw new Error(`unexpected positional argument ${arg}`);
   }
@@ -17,7 +17,7 @@ export function parseOptionalTarget(args: any) {
   return target;
 }
 
-export function parseManifestArgs(args: any) {
+export function parseManifestArgs(args: ExternalValue) {
   const parsed: {
     manifestPath: string | null;
     target: string | null;
@@ -51,7 +51,7 @@ export function parseManifestArgs(args: any) {
         parsed.expectSourceDirty = parseBoolean(value, "--expect-source-dirty");
         break;
       default:
-        throw new Error(`unknown option ${arg}`);
+        throw new Error(`ExternalValue option ${arg}`);
     }
     index += 1;
   }
@@ -70,14 +70,14 @@ export function parseManifestArgs(args: any) {
   return parsed;
 }
 
-function parseTarget(value: any) {
+function parseTarget(value: ExternalValue) {
   if (value.includes("/") || value.includes("\\") || value.includes("..")) {
     throw new Error("--target must be a Rust target triple, not a path");
   }
   return value;
 }
 
-function requireOptionValue(args: any, index: any, option: any) {
+function requireOptionValue(args: ExternalValue, index: ExternalValue, option: ExternalValue) {
   const value = args[index + 1];
   if (!value || value.startsWith("--")) {
     throw new Error(`${option} requires a value`);
@@ -85,7 +85,7 @@ function requireOptionValue(args: any, index: any, option: any) {
   return value;
 }
 
-function parseBoolean(value: any, label: any) {
+function parseBoolean(value: ExternalValue, label: ExternalValue) {
   if (value === "true") {
     return true;
   }

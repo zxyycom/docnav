@@ -7,7 +7,7 @@ let projectCounter = 0;
 const fixturesDir = path.join(root, "test", "smoke", "core", "fixtures");
 const normalDocumentFixture = path.join(fixturesDir, "normal.md");
 
-export function createProject(name: any, options: any = {}) {
+export function createProject(name: ExternalValue, options: ExternalValue = {}) {
   const projectRoot = path.join(tempRoot, `${String(projectCounter++).padStart(2, "0")}-${slug(name)}`);
   const docnavDir = path.join(projectRoot, ".docnav");
   const docsDir = path.join(projectRoot, "docs");
@@ -42,34 +42,34 @@ export function createProject(name: any, options: any = {}) {
   return project;
 }
 
-export function writeProjectConfig(project: any, config: any) {
+export function writeProjectConfig(project: ExternalValue, config: ExternalValue) {
   fs.mkdirSync(project.docnavDir, { recursive: true });
   writeJson(path.join(project.docnavDir, "docnav.json"), config);
 }
 
-export function writeRegistry(project: any, adapters: any) {
+export function writeRegistry(project: ExternalValue, adapters: ExternalValue) {
   fs.mkdirSync(project.docnavDir, { recursive: true });
   writeJson(path.join(project.docnavDir, "adapters.json"), {
     version: 1,
-    adapters: adapters.map((adapter: any) => ({
+    adapters: adapters.map((adapter: ExternalValue) => ({
       id: adapter.id,
       command: adapter.command
     }))
   });
 }
 
-export function writeDamagedRegistry(project: any) {
+export function writeDamagedRegistry(project: ExternalValue) {
   fs.mkdirSync(project.docnavDir, { recursive: true });
   writeText(path.join(project.docnavDir, "adapters.json"), "{ invalid json");
 }
 
-export function copyNormalDocument(project: any, relativePath: any) {
+export function copyNormalDocument(project: ExternalValue, relativePath: ExternalValue) {
   const filePath = path.join(project.root, relativePath);
   copyFile(normalDocumentFixture, filePath);
   return relativePath.replaceAll(path.sep, "/");
 }
 
-export function createRealMarkdownAdapter(project: any, id = "docnav-markdown") {
+export function createRealMarkdownAdapter(project: ExternalValue, id = "docnav-markdown") {
   const commandPath = wrapperPath(project, id);
   if (process.platform === "win32") {
     writeText(
@@ -91,7 +91,7 @@ export function createRealMarkdownAdapter(project: any, id = "docnav-markdown") 
   };
 }
 
-export function createFakeAdapter(project: any, options: any = {}) {
+export function createFakeAdapter(project: ExternalValue, options: ExternalValue = {}) {
   const id = options.id ?? "fake-adapter";
   const mode = options.mode ?? "valid";
   const extensions = options.extensions ?? [".md", ".core"];
@@ -152,7 +152,7 @@ export function createFakeAdapter(project: any, options: any = {}) {
   };
 }
 
-export function readAdapterCalls(adapter: any) {
+export function readAdapterCalls(adapter: ExternalValue) {
   if (!fs.existsSync(adapter.logPath)) {
     return [];
   }
@@ -163,31 +163,31 @@ export function readAdapterCalls(adapter: any) {
     .map((line) => JSON.parse(line));
 }
 
-export function writeJson(filePath: any, value: any) {
+export function writeJson(filePath: ExternalValue, value: ExternalValue) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-function writeText(filePath: any, content: any) {
+function writeText(filePath: ExternalValue, content: ExternalValue) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-function copyFile(sourcePath: any, destinationPath: any) {
+function copyFile(sourcePath: ExternalValue, destinationPath: ExternalValue) {
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
   fs.copyFileSync(sourcePath, destinationPath);
 }
 
-function wrapperPath(project: any, id: any) {
+function wrapperPath(project: ExternalValue, id: ExternalValue) {
   const extension = process.platform === "win32" ? ".cmd" : "";
   return path.join(project.binDir, `${slug(id)}${extension}`);
 }
 
-function relativeCommand(project: any, commandPath: any) {
+function relativeCommand(project: ExternalValue, commandPath: ExternalValue) {
   return path.relative(project.root, commandPath).replaceAll(path.sep, "/");
 }
 
-function isolatedEnv(projectRoot: any, userConfigDir: any) {
+function isolatedEnv(projectRoot: ExternalValue, userConfigDir: ExternalValue) {
   return {
     DOCNAV_CONFIG_DIR: userConfigDir,
     HOME: path.join(projectRoot, ".home"),
@@ -197,14 +197,14 @@ function isolatedEnv(projectRoot: any, userConfigDir: any) {
   };
 }
 
-function slug(value: any) {
+function slug(value: ExternalValue) {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
 }
 
-function cmdQuote(value: any) {
+function cmdQuote(value: ExternalValue) {
   return `"${String(value).replaceAll("\"", "\"\"")}"`;
 }
 
-function shQuote(value: any) {
+function shQuote(value: ExternalValue) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }

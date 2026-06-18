@@ -10,17 +10,17 @@ import {
   parseJson
 } from "./assertions.ts";
 
-export function fixture(name: any) {
+export function fixture(name: ExternalValue) {
   const filePath = path.join(fixturesDir, name);
   assertSetup(fs.existsSync(filePath), `missing fixture: ${filePath}`);
   return filePath;
 }
 
-export function setNormalRef(ref: any) {
-  smokeState.normalRef = ref;
+export function setNormalRef(ref: ExternalValue) {
+  smokeState.normalRef = String(ref);
 }
 
-export async function getNormalRef() {
+export async function getNormalRef(): Promise<string> {
   if (smokeState.normalRef) {
     return smokeState.normalRef;
   }
@@ -43,6 +43,6 @@ async function loadNormalRef() {
   expectStderrEmpty(record);
   const json = parseJson(record);
   validateSchema(record, "readableOutline", json);
-  smokeState.normalRef = json.entries[0].ref;
+  smokeState.normalRef = String(json.entries[0].ref);
   return smokeState.normalRef;
 }

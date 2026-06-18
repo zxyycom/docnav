@@ -17,11 +17,11 @@ import {
   REQUIRED_ERROR_DETAILS_BY_CODE,
 } from "./config.ts";
 
-function toReadablePayload(operation: any, protocolResult: any) {
+function toReadablePayload(operation: ExternalValue, protocolResult: ExternalValue) {
   return protocolResult;
 }
 
-function validateProtocolPair(operation: any) {
+function validateProtocolPair(operation: ExternalValue) {
   const request = readJson(PROTOCOL_EXAMPLE_FILE.request(operation));
   const response = readJson(PROTOCOL_EXAMPLE_FILE.response(operation));
 
@@ -59,7 +59,7 @@ function validateProtocolPair(operation: any) {
   return { request, response };
 }
 
-function validateProtocolResultBinding(operation: any, response: any, label: any) {
+function validateProtocolResultBinding(operation: ExternalValue, response: ExternalValue, label: ExternalValue) {
   const result = response[FIELDS.result];
   assert(
     result && typeof result === "object",
@@ -92,7 +92,7 @@ function validateProtocolResultBinding(operation: any, response: any, label: any
   );
 }
 
-function validateExampleBudget(operation: any, request: any, result: any) {
+function validateExampleBudget(operation: ExternalValue, request: ExternalValue, result: ExternalValue) {
   const limit = request[FIELDS.arguments][FIELDS.limitChars];
   if (typeof limit !== "number") {
     return;
@@ -110,12 +110,12 @@ function validateExampleBudget(operation: any, request: any, result: any) {
     operation === OPERATION_NAMES.outline
       ? result[FIELDS.entries]
       : result[FIELDS.matches];
-  const recordSizes = records.map((record: any) => ({
+  const recordSizes = records.map((record: ExternalValue) => ({
     ref: charLength(record[FIELDS.ref]),
     display: charLength(record[FIELDS.display]),
   }));
   const totalChars = recordSizes.reduce(
-    (sum: any, record: any) => sum + record.ref + record.display,
+    (sum: ExternalValue, record: ExternalValue) => sum + record.ref + record.display,
     0,
   );
   if (totalChars <= limit) {
@@ -123,7 +123,7 @@ function validateExampleBudget(operation: any, request: any, result: any) {
   }
 
   const oversizedRefRecords = recordSizes.filter(
-    (record: any) => record.ref > limit,
+    (record: ExternalValue) => record.ref > limit,
   );
   assert(
     records.length === 1 && oversizedRefRecords.length === 1,
@@ -182,7 +182,7 @@ function validateErrorDetails() {
     const requiredDetails = (REQUIRED_ERROR_DETAILS_BY_CODE as Record<string, readonly string[]>)[errorCode];
     assert(
       requiredDetails,
-      `${errorRelPath} uses unknown error code ${errorCode}`,
+      `${errorRelPath} uses ExternalValue error code ${errorCode}`,
     );
     for (const field of requiredDetails) {
       assert(
@@ -195,7 +195,7 @@ function validateErrorDetails() {
   const readableError = readJson(EXAMPLES.readableError);
   assert(
     readableError[FIELDS.code] in REQUIRED_ERROR_DETAILS_BY_CODE,
-    "readable-error.json uses unknown error code",
+    "readable-error.json uses ExternalValue error code",
   );
   for (const field of (REQUIRED_ERROR_DETAILS_BY_CODE as Record<string, readonly string[]>)[
     readableError[FIELDS.code]
@@ -225,7 +225,7 @@ function validateManifestSemantics() {
   }
 
   const markdownFormat = manifest[FIELDS.formats].find(
-    (format: any) => format[FIELDS.id] === MARKDOWN_MANIFEST_EXPECTED.formatId,
+    (format: ExternalValue) => format[FIELDS.id] === MARKDOWN_MANIFEST_EXPECTED.formatId,
   );
   assert(markdownFormat, "manifest example missing markdown format");
   assert(

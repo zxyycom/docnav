@@ -22,7 +22,7 @@ async function testMachineProtocolChain() {
 
   await runSuccessfulJsonCase("MD-MACHINE-001 manifest protocol-json", ["manifest", "--output", "protocol-json"], {
     schema: "manifest",
-    check: (record: any, json: any) => {
+    check: (record: ExternalValue, json: ExternalValue) => {
       expect(record, json.adapter.id === "docnav-markdown", "manifest adapter id is docnav-markdown");
       for (const capability of ["outline", "read", "find", "info"]) {
         expectIncludes(record, json.capabilities, capability, `manifest includes ${capability}`);
@@ -37,12 +37,12 @@ async function testMachineProtocolChain() {
 
   await runSuccessfulJsonCase("MD-MACHINE-001 probe normal protocol-json", ["probe", normal, "--output", "protocol-json"], {
     schema: "probe",
-    check: (record: any, json: any) => {
+    check: (record: ExternalValue, json: ExternalValue) => {
       expect(record, json.supported === true, "normal.md probe is supported");
       expect(record, json.format === "markdown", "normal.md probe format is markdown");
       expect(
         record,
-        json.reasons.some((reason: any) => reason.code === "EXTENSION_MATCH"),
+        json.reasons.some((reason: ExternalValue) => reason.code === "EXTENSION_MATCH"),
         "normal.md probe records extension evidence"
       );
       expect(record, !Object.hasOwn(json, "result"), "probe is not a response envelope");
@@ -76,7 +76,7 @@ async function testMachineProtocolChain() {
       stdin: JSON.stringify(request),
       stdinSummary: "protocol read request for normal.md"
     },
-    check: (record: any, json: any) => {
+    check: (record: ExternalValue, json: ExternalValue) => {
       expect(record, json.request_id === "smoke-valid-read", "invoke preserves request_id");
       expect(record, json.result.ref === ref, "invoke read preserves ref");
       expectReadResultsEquivalent(record, json.result, readableRead, "invoke read result matches readable-json");

@@ -27,7 +27,7 @@ if (result.error) {
 
 process.exit(result.status ?? 1);
 
-function parseArgs(args: any) {
+function parseArgs(args: ExternalValue) {
   const separatorIndex = args.indexOf("--");
   if (separatorIndex === -1) {
     usage("missing -- command separator");
@@ -39,7 +39,7 @@ function parseArgs(args: any) {
     usage("missing command after --");
   }
 
-  const binaries: any[] = [];
+  const binaries: ExternalValue[] = [];
   let quiet = false;
   for (let index = 0; index < optionArgs.length;) {
     const flag = optionArgs[index];
@@ -53,7 +53,7 @@ function parseArgs(args: any) {
     const binName = optionArgs[index + 2];
     const envName = optionArgs[index + 3];
     if (flag !== "--bin") {
-      usage(`unknown option ${String(flag)}`);
+      usage(`ExternalValue option ${String(flag)}`);
     }
     if (!packageName || !binName || !envName) {
       usage("--bin requires <cargo-package> <bin-name> <ENV_NAME>");
@@ -78,12 +78,12 @@ function parseArgs(args: any) {
   return { binaries, command, quiet };
 }
 
-function buildCargoBins(binaries: any, quiet: any) {
-  const packages = [...new Set(binaries.map((binary: any) => binary.packageName))];
+function buildCargoBins(binaries: ExternalValue, quiet: ExternalValue) {
+  const packages = [...new Set(binaries.map((binary: ExternalValue) => binary.packageName))];
   const cargoArgs = [
     "build",
     ...packages.flatMap((packageName) => ["-p", packageName]),
-    ...binaries.flatMap((binary: any) => ["--bin", binary.binName]),
+    ...binaries.flatMap((binary: ExternalValue) => ["--bin", binary.binName]),
     "--message-format=json"
   ];
   const result = spawnSync("cargo", cargoArgs, {
@@ -117,7 +117,7 @@ function buildCargoBins(binaries: any, quiet: any) {
   return executables;
 }
 
-function writeOutput(result: any) {
+function writeOutput(result: ExternalValue) {
   if (result.stdout) {
     process.stdout.write(result.stdout);
   }
@@ -126,7 +126,7 @@ function writeOutput(result: any) {
   }
 }
 
-function usage(message: any) {
+function usage(message: ExternalValue) {
   console.error(message);
   console.error(
     "usage: node scripts/with-cargo-bins.ts [--quiet] --bin <cargo-package> <bin-name> <ENV_NAME> [--bin ...] -- <command> [args...]"

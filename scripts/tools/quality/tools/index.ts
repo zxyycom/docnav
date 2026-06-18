@@ -7,7 +7,7 @@ import { getLizardVersion } from "./lizard.ts";
 import { getSccVersion } from "./scc.ts";
 import { getCpdVersion } from "./cpd.ts";
 
-export function checkTools(rootDir: any) {
+export function checkTools(rootDir: ExternalValue) {
   return [
     checkLizard(rootDir),
     checkScc(rootDir),
@@ -15,7 +15,7 @@ export function checkTools(rootDir: any) {
   ];
 }
 
-function checkLizard(rootDir: any) {
+function checkLizard(rootDir: ExternalValue) {
   try {
     const ver = getLizardVersion({ cwd: rootDir, toolConfig: DEFAULT_CONFIG.tools.lizard });
     return {
@@ -26,11 +26,11 @@ function checkLizard(rootDir: any) {
       source: "uv"
     };
   } catch {
-    return { name: "lizard", available: false, version: null, error: "unknown error", source: "uv" };
+    return { name: "lizard", available: false, version: null, error: "ExternalValue error", source: "uv" };
   }
 }
 
-function checkScc(rootDir: any) {
+function checkScc(rootDir: ExternalValue) {
   try {
     const ver = getSccVersion({ cwd: rootDir, toolConfig: DEFAULT_CONFIG.tools.scc });
     return {
@@ -46,14 +46,14 @@ function checkScc(rootDir: any) {
       name: "scc",
       available: false,
       version: null,
-      error: "unknown error",
+      error: "ExternalValue error",
       source: "system",
       reason: "execution-error"
     };
   }
 }
 
-function checkPmdCpd(rootDir: any) {
+function checkPmdCpd(rootDir: ExternalValue) {
   try {
     const ver = getCpdVersion({ cwd: rootDir, toolConfig: DEFAULT_CONFIG.tools.pmdCpd });
     return {
@@ -64,6 +64,6 @@ function checkPmdCpd(rootDir: any) {
       source: "system"
     };
   } catch {
-    return { name: "pmd-cpd", available: false, version: null, error: "unknown error", source: "system" };
+    return { name: "pmd-cpd", available: false, version: null, error: "ExternalValue error", source: "system" };
   }
 }

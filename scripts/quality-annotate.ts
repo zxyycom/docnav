@@ -11,8 +11,10 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-export function renderGithubAnnotations(warnings: any) {
-  return warnings.filter((warning: any) => warning.level !== "info").map((warning: any) => {
+import { errorMessage } from "./tools/types.ts";
+
+export function renderGithubAnnotations(warnings: ExternalValue) {
+  return warnings.filter((warning: ExternalValue) => warning.level !== "info").map((warning: ExternalValue) => {
     const attrs = [
       ["file", warning.path],
       ["line", warning.line],
@@ -40,9 +42,9 @@ export function renderGithubAnnotations(warnings: any) {
   });
 }
 
-export function parseWarningsNdjson(content: any) {
-  const warnings: any[] = [];
-  const diagnostics: any[] = [];
+export function parseWarningsNdjson(content: ExternalValue) {
+  const warnings: ExternalValue[] = [];
+  const diagnostics: ExternalValue[] = [];
 
   for (const [index, line] of content.split(/\r?\n/).entries()) {
     if (!line.trim()) continue;
@@ -53,15 +55,15 @@ export function parseWarningsNdjson(content: any) {
       } else {
         diagnostics.push(`line ${index + 1}: missing required warning fields`);
       }
-    } catch (err: any) {
-      diagnostics.push(`line ${index + 1}: invalid JSON: ${err.message}`);
+    } catch (err: unknown) {
+      diagnostics.push(`line ${index + 1}: invalid JSON: ${errorMessage(err)}`);
     }
   }
 
   return { warnings, diagnostics };
 }
 
-function isRenderableWarning(record: any) {
+function isRenderableWarning(record: ExternalValue) {
   return record &&
     typeof record === "object" &&
     typeof record.ruleId === "string" &&
@@ -69,14 +71,14 @@ function isRenderableWarning(record: any) {
     typeof record.message === "string";
 }
 
-function escapeData(value: any) {
+function escapeData(value: ExternalValue) {
   return value
     .replace(/%/g, "%25")
     .replace(/\r/g, "%0D")
     .replace(/\n/g, "%0A");
 }
 
-function escapeProperty(value: any) {
+function escapeProperty(value: ExternalValue) {
   return escapeData(value)
     .replace(/:/g, "%3A")
     .replace(/,/g, "%2C");
@@ -84,21 +86,18 @@ function escapeProperty(value: any) {
 
 function main() {
   const warningsPath = process.argv[2] || "artifacts/docnav-quality/warnings.ndjson";
-  let content = "";
-
   try {
-    content = readFileSync(warningsPath, "utf8");
-  } catch (err: any) {
-    console.log(`No quality warnings rendered: ${err.message}`);
+    const content = readFileSync(warningsPath, "utf8");
+    const { warnings, diagnostics } = parseWarningsNdjson(content);
+    for (const diagnostic of diagnostics) {
+      console.log(`Quality warning annotation skipped: ${diagnostic}`);
+    }
+    for (const annotation of renderGithubAnnotations(warnings)) {
+      console.log(annotation);
+    }
+  } catch (err: unknown) {
+    console.log(`No quality warnings rendered: ${errorMessage(err)}`);
     return;
-  }
-
-  const { warnings, diagnostics } = parseWarningsNdjson(content);
-  for (const diagnostic of diagnostics) {
-    console.log(`Quality warning annotation skipped: ${diagnostic}`);
-  }
-  for (const annotation of renderGithubAnnotations(warnings)) {
-    console.log(annotation);
   }
 }
 

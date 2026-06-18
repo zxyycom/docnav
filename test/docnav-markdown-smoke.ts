@@ -21,13 +21,14 @@ import {
 import { createOperationErrorTasks } from "./smoke/markdown/cases/operation-errors.ts";
 import { createInvokeFailureTasks } from "./smoke/markdown/cases/invoke-errors.ts";
 
-let suiteFailure = null;
+let suiteFailure;
 
 try {
   smokeState.validators = compileSchemas();
 
   assertSetup(smokeState.binaryPath, "docnav-markdown binary path is required; pass --bin <path>");
-  assertSetup(fs.existsSync(smokeState.binaryPath), `docnav-markdown binary not found: ${smokeState.binaryPath}`);
+  const binaryPath = String(smokeState.binaryPath);
+  assertSetup(fs.existsSync(binaryPath), `docnav-markdown binary not found: ${binaryPath}`);
   assertSetup(fs.existsSync(fixturesDir), `fixture directory not found: ${fixturesDir}`);
 
   const results = await runSmokeTasks([

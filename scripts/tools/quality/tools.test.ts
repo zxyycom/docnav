@@ -107,7 +107,7 @@ describe("Lizard CSV parsing", () => {
     assert.deepEqual(result.functions![0], {
       name: "generateWarnings",
       file: "scripts/tools/quality/warnings.ts",
-      codeArea: "unknown",
+      codeArea: "ExternalValue",
       startLine: 35,
       endLine: 360,
       lines: 271,
@@ -171,19 +171,19 @@ describe("PMD CPD XML parsing", () => {
         path: "crates/docnav/src/a.rs",
         startLine: 10,
         endLine: 20,
-        codeArea: "unknown"
+        codeArea: "ExternalValue"
       },
       {
         path: "crates/docnav/src/b.rs",
         startLine: 5,
         endLine: 15,
-        codeArea: "unknown"
+        codeArea: "ExternalValue"
       }
     ]);
   });
 });
 
-function createFakeSccToolConfig(versionOutput: any) {
+function createFakeSccToolConfig(versionOutput: ExternalValue) {
   const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-scc-"));
   const fakeSccPath = join(tempDir, "fake-scc.ts");
 

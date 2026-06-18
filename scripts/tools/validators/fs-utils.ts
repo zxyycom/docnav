@@ -3,21 +3,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { FILE_SYSTEM } from "./config.ts";
+import { errorMessage } from "../types.ts";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const ignoredDirs = new Set(FILE_SYSTEM.ignoredDirs);
 
-export function toAbs(relPath: any) {
+export function toAbs(relPath: ExternalValue) {
   return path.join(root, relPath);
 }
 
-export function toRel(absPath: any) {
+export function toRel(absPath: ExternalValue) {
   return path.relative(root, absPath).replaceAll(path.sep, "/");
 }
 
-export function walk(dir: any, predicate: (filePath: string) => boolean = () => true) {
-  const results: any[] = [];
+export function walk(dir: ExternalValue, predicate: (filePath: string) => boolean = () => true) {
+  const results: ExternalValue[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       if (!ignoredDirs.has(entry.name)) {
@@ -34,16 +35,16 @@ export function walk(dir: any, predicate: (filePath: string) => boolean = () => 
   return results;
 }
 
-export function readJson(relPath: any) {
+export function readJson(relPath: ExternalValue) {
   const source = fs.readFileSync(toAbs(relPath), "utf8");
   try {
     return JSON.parse(source);
-  } catch (error: any) {
-    throw new Error(`${relPath} JSON parse failed: ${error.message}`);
+  } catch (error: unknown) {
+    throw new Error(`${relPath} JSON parse failed: ${errorMessage(error)}`, { cause: error });
   }
 }
 
-export function listExampleJson(pattern: any) {
+export function listExampleJson(pattern: ExternalValue) {
   return fs
     .readdirSync(toAbs(FILE_SYSTEM.examplesJsonDir))
     .filter((name) => pattern.test(name))
@@ -52,20 +53,20 @@ export function listExampleJson(pattern: any) {
 }
 
 export function listSchemaJson() {
-  return walk(toAbs(FILE_SYSTEM.schemasDir), (filePath: any) =>
+  return walk(toAbs(FILE_SYSTEM.schemasDir), (filePath: ExternalValue) =>
     filePath.endsWith(FILE_SYSTEM.schemaExtension)
   )
     .map(toRel)
     .sort();
 }
 
-export function assert(condition: any, message: any) {
+export function assert(condition: ExternalValue, message: ExternalValue) {
   if (!condition) {
     throw new Error(message);
   }
 }
 
-export function assertDeepEqual(actual: any, expected: any, message: any) {
+export function assertDeepEqual(actual: ExternalValue, expected: ExternalValue, message: ExternalValue) {
   const actualJson = JSON.stringify(actual);
   const expectedJson = JSON.stringify(expected);
   if (actualJson !== expectedJson) {
@@ -73,6 +74,6 @@ export function assertDeepEqual(actual: any, expected: any, message: any) {
   }
 }
 
-export function charLength(value: any) {
+export function charLength(value: ExternalValue) {
   return [...value].length;
 }

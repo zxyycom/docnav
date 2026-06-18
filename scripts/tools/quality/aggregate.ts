@@ -4,7 +4,7 @@
  * Keeps summary math separate from CLI orchestration and tool wrappers.
  */
 
-export function buildAggregates({ fileMetrics, functionMetrics, duplicateCode, byLanguage, config }: any) {
+export function buildAggregates({ fileMetrics, functionMetrics, duplicateCode, byLanguage, config }: ExternalValue) {
   const duplicateByArea = new Map();
   for (const dup of duplicateCode) {
     for (const area of dup.codeAreas || []) {
@@ -54,15 +54,15 @@ export function buildAggregates({ fileMetrics, functionMetrics, duplicateCode, b
 
   const overall = {
     totalFiles: fileMetrics.length,
-    totalLines: sum(fileMetrics, (file: any) => file.lines || 0),
-    totalCodeLines: sum(fileMetrics, (file: any) => file.codeLines || 0),
-    totalFileComplexity: sum(fileMetrics, (file: any) => file.complexity?.value ?? 0),
+    totalLines: sum(fileMetrics, (file: ExternalValue) => file.lines || 0),
+    totalCodeLines: sum(fileMetrics, (file: ExternalValue) => file.codeLines || 0),
+    totalFileComplexity: sum(fileMetrics, (file: ExternalValue) => file.complexity?.value ?? 0),
     totalFunctions: functionMetrics.length,
-    totalFunctionLines: sum(functionMetrics, (func: any) => func.lines || 0),
-    totalFunctionParameters: sum(functionMetrics, (func: any) => func.parameterCount || 0),
+    totalFunctionLines: sum(functionMetrics, (func: ExternalValue) => func.lines || 0),
+    totalFunctionParameters: sum(functionMetrics, (func: ExternalValue) => func.parameterCount || 0),
     totalFunctionCyclomaticComplexity: sum(
       functionMetrics,
-      (func: any) => func.cyclomaticComplexity?.value ?? 0
+      (func: ExternalValue) => func.cyclomaticComplexity?.value ?? 0
     ),
     totalDuplicateFragments: duplicateCode.length
   };
@@ -74,7 +74,7 @@ export function buildAggregates({ fileMetrics, functionMetrics, duplicateCode, b
   };
 }
 
-function createCodeAreaAggregate(codeArea: any, config: any) {
+function createCodeAreaAggregate(codeArea: ExternalValue, config: ExternalValue) {
   return {
     codeArea,
     files: 0,
@@ -90,6 +90,6 @@ function createCodeAreaAggregate(codeArea: any, config: any) {
   };
 }
 
-function sum(items: any, selector: any) {
-  return items.reduce((total: any, item: any) => total + selector(item), 0);
+function sum(items: ExternalValue, selector: ExternalValue) {
+  return items.reduce((total: ExternalValue, item: ExternalValue) => total + selector(item), 0);
 }

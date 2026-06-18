@@ -21,7 +21,7 @@ export function scanCurrentRevision({
   fatalIssues,
   root,
   config
-}: any) {
+}: ExternalValue) {
   runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config });
   runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config });
   runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root, config });
@@ -35,7 +35,7 @@ export function scanCurrentRevision({
   });
 }
 
-function runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config }: any) {
+function runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config }: ExternalValue) {
   if (!isToolAvailable(toolResults, "scc")) return;
 
   console.log("Running scc...");
@@ -60,8 +60,8 @@ function runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fat
     metrics.aggregates.byCodeArea = buildFileAreaAggregates(metrics.fileMetrics, config);
     metrics.aggregates.overall = {
       totalFiles: metrics.fileMetrics.length,
-      totalLines: metrics.fileMetrics.reduce((s: any, f: any) => s + f.lines, 0),
-      totalCodeLines: metrics.fileMetrics.reduce((s: any, f: any) => s + (f.codeLines || 0), 0),
+      totalLines: metrics.fileMetrics.reduce((s: ExternalValue, f: ExternalValue) => s + f.lines, 0),
+      totalCodeLines: metrics.fileMetrics.reduce((s: ExternalValue, f: ExternalValue) => s + (f.codeLines || 0), 0),
       totalFunctions: 0
     };
 
@@ -74,13 +74,13 @@ function runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fat
   writeFileSync(join(rawDir, "scc-output.json"), JSON.stringify(metrics.fileMetrics, null, 2), "utf8");
 }
 
-function runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config }: any) {
+function runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config }: ExternalValue) {
   if (!isToolAvailable(toolResults, "lizard")) return;
 
   console.log("Running Lizard...");
 
   const targetFiles = scanFiles.filter(
-    (f: any) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
+    (f: ExternalValue) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
       !isExcluded(f, config.excludeDirs, config.generatedFiles)
   );
   console.log(`  Lizard targets: ${targetFiles.length} files`);
@@ -110,7 +110,7 @@ function runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, 
   );
 }
 
-function runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root, config }: any) {
+function runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root, config }: ExternalValue) {
   if (!isToolAvailable(toolResults, "pmd-cpd")) {
     console.log("  CPD not available, skipping duplicate detection");
     return;
@@ -118,11 +118,11 @@ function runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root,
 
   console.log("Running PMD CPD...");
 
-  const allFragments: any[] = [];
+  const allFragments: ExternalValue[] = [];
 
   for (const [area, areaFiles] of fileMap.entries()) {
     const targetFiles = areaFiles.filter(
-      (f: any) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
+      (f: ExternalValue) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
     );
 
     if (targetFiles.length < 2) {
@@ -166,10 +166,10 @@ function runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root,
   );
 }
 
-function scanLizardBatches({ targetFiles, root, config }: any) {
+function scanLizardBatches({ targetFiles, root, config }: ExternalValue) {
   const maxFilesPerBatch = 200;
-  const allFunctions: any[] = [];
-  const errors: any[] = [];
+  const allFunctions: ExternalValue[] = [];
+  const errors: ExternalValue[] = [];
 
   for (let i = 0; i < targetFiles.length; i += maxFilesPerBatch) {
     const batch = targetFiles.slice(i, i + maxFilesPerBatch);
@@ -196,7 +196,7 @@ function scanLizardBatches({ targetFiles, root, config }: any) {
   return { functions: allFunctions, errors };
 }
 
-function buildFileAreaAggregates(fileMetrics: any, config: any) {
+function buildFileAreaAggregates(fileMetrics: ExternalValue, config: ExternalValue) {
   const areaAggMap = new Map();
 
   for (const file of fileMetrics) {
@@ -219,7 +219,7 @@ function buildFileAreaAggregates(fileMetrics: any, config: any) {
   return Array.from(areaAggMap.values()).sort((a, b) => b.lines - a.lines);
 }
 
-function updateFunctionCounts(metrics: any) {
+function updateFunctionCounts(metrics: ExternalValue) {
   const funcByArea = new Map();
   for (const func of metrics.functionMetrics) {
     funcByArea.set(func.codeArea, (funcByArea.get(func.codeArea) || 0) + 1);
@@ -230,7 +230,7 @@ function updateFunctionCounts(metrics: any) {
   metrics.aggregates.overall.totalFunctions = metrics.functionMetrics.length;
 }
 
-function updateDuplicateCounts(metrics: any, allFragments: any) {
+function updateDuplicateCounts(metrics: ExternalValue, allFragments: ExternalValue) {
   const dupByArea = new Map();
   for (const dup of allFragments) {
     for (const area of dup.codeAreas) {
@@ -242,20 +242,20 @@ function updateDuplicateCounts(metrics: any, allFragments: any) {
   }
 }
 
-function annotateDuplicateFragments(fragments: any, area: any, changedFiles: any) {
+function annotateDuplicateFragments(fragments: ExternalValue, area: ExternalValue, changedFiles: ExternalValue) {
   for (const frag of fragments) {
     for (const loc of frag.locations) {
       loc.codeArea = area;
     }
     frag.codeAreas = [area];
-    frag.hitsChangedScope = frag.locations.some((l: any) => isInChangedScope(l.path, changedFiles));
+    frag.hitsChangedScope = frag.locations.some((l: ExternalValue) => isInChangedScope(l.path, changedFiles));
   }
 }
 
-function isToolAvailable(toolResults: any, name: any) {
-  return toolResults.find((t: any) => t.name === name)?.available;
+function isToolAvailable(toolResults: ExternalValue, name: ExternalValue) {
+  return toolResults.find((t: ExternalValue) => t.name === name)?.available;
 }
 
-function isInChangedScope(path: any, changedFiles: any) {
-  return changedFiles.some((changedFile: any) => path.includes(changedFile) || changedFile.includes(path));
+function isInChangedScope(path: ExternalValue, changedFiles: ExternalValue) {
+  return changedFiles.some((changedFile: ExternalValue) => path.includes(changedFile) || changedFile.includes(path));
 }

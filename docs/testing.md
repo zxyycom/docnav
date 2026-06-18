@@ -66,6 +66,7 @@ Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明
 
 - 不要求依赖预先全局安装；脚本应通过项目命令或临时工具执行保持可复现。
 - `pnpm run typecheck:scripts` 证明脚本模块 contract 和边界类型一致，不替代真实 CLI、schema 或进程 smoke 验证。
+- `pnpm run lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 和常见静态质量问题。
 
 ## 统一验证入口
 
@@ -85,7 +86,7 @@ pnpm run verify:docnav-workspace:required
 
 required profile 只保留快速、确定性的必需门禁，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。full profile 在 required profile 的基础上追加质量观测测试、CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。
 
-required profile 包含 `typecheck:scripts`，确保 `.ts` 脚本类型 contract 不会在常规快速门禁之外漂移。
+required profile 包含 `typecheck:scripts` 和 `lint:scripts`，确保 `.ts` 脚本类型 contract 与静态质量规则不会在常规快速门禁之外漂移。
 
 开发期快捷入口：
 

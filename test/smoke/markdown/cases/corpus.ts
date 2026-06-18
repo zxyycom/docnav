@@ -51,10 +51,10 @@ async function testUnicodePagination() {
   expect(paged.lastRecord, paged.content === fullJson.content, "unicode paged reads reassemble the full content");
 }
 
-async function readAllPages(documentPath: any, ref: any, limitChars: any, label: any) {
+async function readAllPages(documentPath: ExternalValue, ref: ExternalValue, limitChars: ExternalValue, label: ExternalValue) {
   let page = 1;
   let content = "";
-  let lastRecord = null;
+  let lastRecord;
   for (let count = 0; count < 20; count += 1) {
     const record = await runCli(`${label} page ${page} readable-json`, [
       "read",

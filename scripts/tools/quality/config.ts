@@ -8,6 +8,8 @@
  * 来源：openspec/changes/implement-code-quality-observability/specs/code-quality-observability/spec.md
  */
 
+import { errorMessage } from "../types.ts";
+
 /** @typedef {import('./schema.ts').CodeAreaDefinition} CodeAreaDefinition */
 /** @typedef {import('./schema.ts').ToolConfig} ToolConfig */
 /** @typedef {import('./schema.ts').WarningPolicy} WarningPolicy */
@@ -21,15 +23,15 @@
  * @param {string} name
  * @returns {string[]}
  */
-function readJsonStringArrayEnv(name: any) {
+function readJsonStringArrayEnv(name: ExternalValue) {
   const raw = process.env[name];
   if (!raw) return [];
 
   let parsed;
   try {
     parsed = JSON.parse(raw);
-  } catch (err: any) {
-    throw new Error(`${name} must be a JSON array of strings: ${err.message}`);
+  } catch (err: unknown) {
+    throw new Error(`${name} must be a JSON array of strings: ${errorMessage(err)}`, { cause: err });
   }
 
   if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
