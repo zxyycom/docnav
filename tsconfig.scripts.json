@@ -2,11 +2,13 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
+    "incremental": true,
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "noEmit": true,
     "strict": true,
     "target": "esnext",
+    "tsBuildInfoFile": "tsconfig.scripts.tsbuildinfo",
     "types": ["node"],
     "verbatimModuleSyntax": true,
     "rewriteRelativeImportExtensions": true

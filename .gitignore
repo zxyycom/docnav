@@ -12,6 +12,8 @@
 *.py[cod]
 *.pdb
 *.log
+/.eslintcache
+*.tsbuildinfo
 .env
 .env.*
 .DS_Store
