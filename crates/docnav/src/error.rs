@@ -1,4 +1,4 @@
-use docnav_protocol::{StableError, StableErrorCode};
+use docnav_protocol::{StableError, StableErrorCategory, StableErrorCode};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DocnavExitCode {
@@ -53,21 +53,10 @@ impl From<StableError> for AppError {
 }
 
 pub fn exit_code_for_error(code: StableErrorCode) -> DocnavExitCode {
-    match code {
-        StableErrorCode::InvalidRequest | StableErrorCode::CapabilityUnsupported => {
-            DocnavExitCode::InputError
-        }
-        StableErrorCode::InternalError => DocnavExitCode::InternalError,
-        StableErrorCode::AdapterUnavailable | StableErrorCode::AdapterInvokeFailed => {
-            DocnavExitCode::AdapterOrProtocolError
-        }
-        StableErrorCode::DocumentNotFound
-        | StableErrorCode::DocumentPathInvalid
-        | StableErrorCode::DocumentEncodingUnsupported
-        | StableErrorCode::FormatUnknown
-        | StableErrorCode::FormatAmbiguous
-        | StableErrorCode::RefNotFound
-        | StableErrorCode::RefAmbiguous
-        | StableErrorCode::RefInvalid => DocnavExitCode::DocumentError,
+    match code.category() {
+        StableErrorCategory::Request => DocnavExitCode::InputError,
+        StableErrorCategory::Document => DocnavExitCode::DocumentError,
+        StableErrorCategory::AdapterBoundary => DocnavExitCode::AdapterOrProtocolError,
+        StableErrorCategory::Internal => DocnavExitCode::InternalError,
     }
 }

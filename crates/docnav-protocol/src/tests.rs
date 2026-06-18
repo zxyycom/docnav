@@ -57,6 +57,17 @@ fn constructs_outline_success_response() {
 }
 
 #[test]
+fn generated_request_id_uses_docnav_prefix_and_numeric_suffix() {
+    let request_id = generate_request_id();
+    let suffix = request_id
+        .strip_prefix(GENERATED_REQUEST_ID_PREFIX)
+        .expect("generated id prefix");
+
+    assert!(!suffix.is_empty());
+    suffix.parse::<u128>().expect("generated suffix is nanos");
+}
+
+#[test]
 fn failure_response_rules_preserve_or_null_operation() {
     let request: RequestEnvelope =
         serde_json::from_str(&read_fixture("protocol-read-request.json")).expect("request parses");
@@ -75,6 +86,119 @@ fn failure_response_rules_preserve_or_null_operation() {
     assert_eq!(unparsed.protocol_version, PROTOCOL_VERSION);
     assert_eq!(unparsed.operation, None);
     unparsed.validate().expect("unparsed failure validates");
+}
+
+#[test]
+fn decode_protocol_request_runs_schema_before_deserialize() {
+    let schema_invalid = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "outline",
+        "document": { "path": "doc.md" },
+        "arguments": { "limit_chars": 80, "page": 1 },
+        "extra": true
+    });
+
+    let error = decode_protocol_request_value(schema_invalid)
+        .expect_err("unknown field should fail schema first");
+    assert_eq!(error.stage(), DecodePipelineStage::Schema);
+    match error {
+        DecodePipelineError::Schema(error) => {
+            assert_eq!(error.schema, "protocol-request.schema.json");
+        }
+        _ => panic!("expected schema error"),
+    }
+
+    let deserialize_invalid = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "outline",
+        "document": { "path": "doc.md" },
+        "arguments": { "limit_chars": 4_294_967_296u64, "page": 1 }
+    });
+
+    let error = decode_protocol_request_value(deserialize_invalid)
+        .expect_err("u64 larger than NonZeroU32 should fail typed decode");
+    assert_eq!(error.stage(), DecodePipelineStage::Deserialize);
+}
+
+#[test]
+fn decode_probe_result_returns_semantic_error_with_typed_value() {
+    let semantic_invalid = serde_json::json!({
+        "probe_version": "0.1",
+        "adapter_id": "stub",
+        "path": "doc.stub",
+        "supported": true,
+        "format": null,
+        "confidence": 1.0,
+        "reasons": [
+            { "code": "EXTENSION_MATCH", "detail": "extension matched" }
+        ]
+    });
+
+    let error = decode_probe_result_value(semantic_invalid)
+        .expect_err("supported probe without format should fail semantics");
+    assert_eq!(error.stage(), DecodePipelineStage::Semantic);
+    match error {
+        DecodePipelineError::Semantic { value, error } => {
+            assert!(value.supported);
+            assert_eq!(error, ProbeValidationError::SupportedWithoutFormat);
+        }
+        _ => panic!("expected semantic error"),
+    }
+}
+
+#[test]
+fn stable_error_codes_have_shared_categories() {
+    let cases = [
+        (
+            StableErrorCode::InvalidRequest,
+            StableErrorCategory::Request,
+        ),
+        (
+            StableErrorCode::CapabilityUnsupported,
+            StableErrorCategory::Request,
+        ),
+        (
+            StableErrorCode::DocumentNotFound,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::DocumentPathInvalid,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::DocumentEncodingUnsupported,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::FormatUnknown,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::FormatAmbiguous,
+            StableErrorCategory::Document,
+        ),
+        (StableErrorCode::RefNotFound, StableErrorCategory::Document),
+        (StableErrorCode::RefAmbiguous, StableErrorCategory::Document),
+        (StableErrorCode::RefInvalid, StableErrorCategory::Document),
+        (
+            StableErrorCode::AdapterUnavailable,
+            StableErrorCategory::AdapterBoundary,
+        ),
+        (
+            StableErrorCode::AdapterInvokeFailed,
+            StableErrorCategory::AdapterBoundary,
+        ),
+        (
+            StableErrorCode::InternalError,
+            StableErrorCategory::Internal,
+        ),
+    ];
+
+    for (code, expected) in cases {
+        assert_eq!(code.category(), expected, "{code:?}");
+    }
 }
 
 #[test]

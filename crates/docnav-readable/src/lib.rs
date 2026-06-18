@@ -1,4 +1,4 @@
-//! `docnav-readable` — readable output layer helpers.
+//! `docnav-readable` — readable payload and readable-view rendering helpers.
 //!
 //! This crate provides:
 //!
@@ -12,10 +12,10 @@
 //!
 //! # Architecture boundary
 //!
-//! This crate owns the *readable output layer* (JSON value conversion,
-//! renderer config, and the readable-view format).  It does **not** own
-//! protocol envelopes, adapter routing, document parsing, or CLI/MCP wiring.
-//! Those responsibilities stay with their existing crates.
+//! This crate owns readable payload/value conversion, renderer config,
+//! `ReadableViewKind`, readable-view block framing, and conformance vectors.
+//! It does **not** own output mode dispatch, protocol envelopes, warning
+//! placement, adapter routing, document parsing, or CLI/MCP wiring.
 
 pub mod config;
 pub mod conformance;

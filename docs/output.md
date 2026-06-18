@@ -4,7 +4,9 @@
 
 ## 输出层边界
 
-`--output` 只选择输出层的序列化、错误包装和通道承载方式，不改变 `docnav` 的 adapter 选择、配置合并、参数显式化、probe、invoke 或业务结果判断。Document operation 当前只接受 `readable-view`、`readable-json` 和 `protocol-json`。实现应先产出统一 outcome，再按输出模式渲染为 readable-view、readable JSON 或 protocol envelope。
+`--output` 只选择输出层的序列化、错误包装和通道承载方式，不改变 `docnav` 的 adapter 选择、配置合并、参数显式化、probe、invoke 或业务结果判断。Document operation 只接受 `readable-view`、`readable-json` 和 `protocol-json`。实现应先产出统一 outcome，再按输出模式渲染为 readable-view、readable JSON 或 protocol envelope。
+
+`docnav-output` 是 document operation 输出编排 owner：调用方传入 operation、request id、output mode、document outcome 和 warnings，由该层决定 `readable-view`、`readable-json` 或 `protocol-json` 的包装、warning 注入和 stdout/stderr 分流。共享 crate 边界见 [架构](architecture.md#共享库)；本文件只定义文档输出模式和通道契约。help、version、manifest、probe 和其它非 document output 不进入 document output mode。
 
 机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；错误发生在 CLI 参数解析、adapter 选择、adapter invoke 或输出转换阶段时，只要输出模式可以从 argv 或请求中确定，也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
 
@@ -23,9 +25,11 @@ adapter outline docs/guide.md --output protocol-json
 
 文档操作输出完整原始协议 envelope。`manifest` 和 `probe` 输出其专属协议 schema。
 
-`docnav --output protocol-json` 由核心 CLI 生成非空 request id，按当前协议 schema 和字段 shape 解析最终有限参数，再调用 adapter `invoke`。
+`docnav --output protocol-json` 由核心 CLI 生成非空 request id，按 protocol schema 和字段 shape 解析最终有限参数，再调用 adapter `invoke`。
 
 `protocol-json` stdout 不承载直接 CLI 兼容性 warning 或 adapter 选择候选 warning。若直接 CLI argv 中存在被兼容忽略的 token，或 adapter 选择过程中跳过了不可用、契约不匹配、probe 不支持的候选，warning 写入 stderr，stdout 仍只输出一个符合 protocol response schema 的 JSON envelope。若参数解析失败但 argv 已能确定 `--output protocol-json`，stdout 仍输出 protocol failure envelope，而不是退回文本错误。
+
+`docnav-json-io` 拥有低层 JSON serialization、newline writing 和 write failure plumbing；protocol envelope、warning stderr text、错误归属和 exit code policy 仍由 document output 编排和调用方 surface 决定。
 
 ## `readable-view`
 
@@ -33,7 +37,7 @@ adapter outline docs/guide.md --output protocol-json
 
 header 始终包含操作语义字段（ref、display、content_type、cost、page、capabilities 等）和可选 `warnings` 数组。renderer config 声明为 block 的字符串字段（例如 read 的 `/content`、readable error 的 `/error`）在 header 中以 `{"$block": "<pointer>", "bytes": <utf8-byte-length>}` 引用替代；实际字符串内容写入 `[block <pointer> bytes=<n>]` ... `[endblock <pointer>]` section。
 
-renderer config 是仓库内提交的代码契约，不通过用户配置、项目配置、环境变量或 CLI flag 控制。当前声明：
+renderer config 是仓库内提交的代码契约，不通过用户配置、项目配置、环境变量或 CLI flag 控制。声明：
 
 | View Kind | Block Pointers |
 | --- | --- |
@@ -87,9 +91,9 @@ readable read 保留 adapter 返回的 `content_type`。当 [架构](architectur
 
 ## 阅读文案配置
 
-当前已实现配置不包含阅读文本模板、`readable-view` header 模板、MCP TextContent 包装模板或任意可改写 readable 字段 shape 的模板。`readable-view` 的 renderer config（block 字段声明和 framing 规则）是仓库内代码契约，不受用户配置、项目配置、环境变量或 CLI flag 控制。
+已定义配置项不包含阅读文本模板、`readable-view` header 模板、MCP TextContent 包装模板或任意可改写 readable 字段 shape 的模板。`readable-view` 的 renderer config（block 字段声明和 framing 规则）是仓库内代码契约，不受用户配置、项目配置、环境变量或 CLI flag 控制。
 
-后续 owner change 如需增加阅读文案配置，必须把可配置项限制在提示文案、usage、guidance 或包装文案，不得改变 protocol-json 的稳定字段、字段类型和错误 code，也不得改写 readable-json 或 MCP structuredContent 的 documented shape。
+阅读文案配置如需扩展，必须把可配置项限制在提示文案、usage、guidance 或包装文案，不得改变 protocol-json 的稳定字段、字段类型和错误 code，也不得改写 readable-json 或 MCP structuredContent 的 documented shape。
 
 ## 通道
 
@@ -98,3 +102,4 @@ readable read 保留 adapter 返回的 `content_type`。当 [架构](architectur
 - 诊断写 stderr。
 - adapter 选择候选 warning 在 `readable-view`、`readable-json` 和 MCP 中跟随最终阅读结果输出；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
 - 直接 CLI argv 的兼容和 warning 归属见 [直接 CLI 兼容参数规则](cli.md#直接-cli-兼容参数规则)；通道承载必须与该规则一致。
+- 非 document machine output 若复用低层 JSON writer，仍由各自 owner 决定 schema、plain text/stderr 边界和 exit behavior。

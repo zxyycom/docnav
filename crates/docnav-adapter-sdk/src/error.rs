@@ -1,4 +1,4 @@
-use docnav_protocol::{StableError, StableErrorCode};
+use docnav_protocol::{StableError, StableErrorCategory, StableErrorCode};
 use std::fmt;
 
 use crate::constants::diagnostics;
@@ -19,22 +19,11 @@ impl AdapterExitCode {
 }
 
 pub fn exit_code_for_error(code: StableErrorCode) -> AdapterExitCode {
-    match code {
-        StableErrorCode::InvalidRequest | StableErrorCode::CapabilityUnsupported => {
-            AdapterExitCode::ProtocolError
-        }
-        StableErrorCode::InternalError => AdapterExitCode::InternalError,
-        StableErrorCode::AdapterUnavailable | StableErrorCode::AdapterInvokeFailed => {
-            AdapterExitCode::IoError
-        }
-        StableErrorCode::DocumentNotFound
-        | StableErrorCode::DocumentPathInvalid
-        | StableErrorCode::DocumentEncodingUnsupported
-        | StableErrorCode::FormatUnknown
-        | StableErrorCode::FormatAmbiguous
-        | StableErrorCode::RefNotFound
-        | StableErrorCode::RefAmbiguous
-        | StableErrorCode::RefInvalid => AdapterExitCode::HandlerError,
+    match code.category() {
+        StableErrorCategory::Request => AdapterExitCode::ProtocolError,
+        StableErrorCategory::Document => AdapterExitCode::HandlerError,
+        StableErrorCategory::AdapterBoundary => AdapterExitCode::IoError,
+        StableErrorCategory::Internal => AdapterExitCode::InternalError,
     }
 }
 

@@ -34,4 +34,6 @@ operation readable schema 和 MCP structuredContent outputSchema 包含可省略
 
 文件系统边界、ref 唯一性、真实分页一致性和配置优先级不属于 JSON Schema 校验范围，应由对应 owner 文档下的实现级业务测试覆盖。
 
+`docnav-json-io` 拥有低层 serialization、newline writing 和 write failure plumbing。protocol request/response、manifest、probe 和 readable schema 的字段 shape 仍由本目录维护；语义校验、错误归属和通道承载由对应 owner 文档与实现测试验收。
+
 `$id` 中的 URL 是 schema 标识，不要求运行时联网访问。MCP tool 声明中的 `outputSchema` 必须内联或随工具声明打包，不依赖远程 schema URL，避免 client 无法解析外部 schema。

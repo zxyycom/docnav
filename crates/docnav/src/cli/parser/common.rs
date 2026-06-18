@@ -1,12 +1,14 @@
 use std::num::NonZeroU32;
 
 use clap::parser::{ArgMatches, ValueSource};
+use docnav_cli_args::{IgnoredArg, KnownValueFlag as LooseKnownValueFlag, MissingValue};
 use docnav_protocol::{Operation, PositiveInteger};
 
 use crate::error::{AppError, AppResult};
 
 use super::super::flags;
 use super::super::types::OutputMode;
+use super::super::warning::CliWarning;
 use super::arg_ids;
 
 #[derive(Clone, Copy)]
@@ -19,6 +21,29 @@ pub(super) enum ValueFlag {
     Path,
     Query,
     Ref,
+}
+
+const VALUE_FLAGS: &[(&str, ValueFlag)] = &[
+    (flags::ADAPTER, ValueFlag::Adapter),
+    (flags::LIMIT_CHARS, ValueFlag::LimitChars),
+    (flags::OPERATION, ValueFlag::Operation),
+    (flags::OUTPUT, ValueFlag::Output),
+    (flags::PAGE, ValueFlag::Page),
+    (flags::PATH, ValueFlag::Path),
+    (flags::QUERY, ValueFlag::Query),
+    (flags::REF, ValueFlag::Ref),
+];
+
+pub(super) fn loose_value_flags(
+    uses_flag: impl Fn(ValueFlag) -> bool,
+) -> Vec<LooseKnownValueFlag<'static>> {
+    VALUE_FLAGS
+        .iter()
+        .map(|(flag, value_flag)| LooseKnownValueFlag {
+            flag,
+            used: uses_flag(*value_flag),
+        })
+        .collect()
 }
 
 pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
@@ -36,6 +61,22 @@ pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
     }
 }
 
+pub(super) fn warning_from_ignored_arg(ignored: IgnoredArg) -> CliWarning {
+    match ignored {
+        IgnoredArg::UnknownFlag { token } => CliWarning::unknown_flag(&token),
+        IgnoredArg::ExtraPositional { token } => CliWarning::extra_positional(&token),
+        IgnoredArg::UnusedValueFlag {
+            flag,
+            value,
+            command,
+        } => CliWarning::unused_operation_flag(&flag, value.as_deref(), &command),
+    }
+}
+
+pub(super) fn missing_value_error(error: MissingValue) -> AppError {
+    AppError::invalid_request(error.flag(), "flag requires a value")
+}
+
 pub(super) fn is_flag(token: &str) -> bool {
     token.starts_with("--")
 }
@@ -44,47 +85,6 @@ pub(super) fn split_equals(token: &str) -> (&str, Option<&str>) {
     token
         .split_once('=')
         .map_or((token, None), |(flag, value)| (flag, Some(value)))
-}
-
-pub(super) fn push_clap_value_arg(
-    clap_args: &mut Vec<String>,
-    args: &[String],
-    index: &mut usize,
-    flag: &str,
-) -> AppResult<String> {
-    let token = &args[*index];
-    if let Some((_flag, value)) = token.split_once('=') {
-        clap_args.push(token.clone());
-        *index += 1;
-        return Ok(value.to_owned());
-    }
-
-    let value = args
-        .get(*index + 1)
-        .ok_or_else(|| AppError::invalid_request(flag, "flag requires a value"))?
-        .clone();
-    clap_args.push(token.clone());
-    clap_args.push(value.clone());
-    *index += 2;
-    Ok(value)
-}
-
-pub(super) fn warning_value<'a>(
-    args: &'a [String],
-    index: &mut usize,
-    flag: &str,
-) -> AppResult<Option<&'a str>> {
-    let token = &args[*index];
-    if let Some((_flag, value)) = token.split_once('=') {
-        *index += 1;
-        return Ok(Some(value));
-    }
-
-    let value = args
-        .get(*index + 1)
-        .ok_or_else(|| AppError::invalid_request(flag, "flag requires a value"))?;
-    *index += 2;
-    Ok(Some(value.as_str()))
 }
 
 pub(super) fn clap_argv(command: &str, args: Vec<String>) -> Vec<String> {

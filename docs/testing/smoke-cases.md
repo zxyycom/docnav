@@ -41,6 +41,8 @@ Markdown CLI smoke 位于 `test/smoke/markdown/cases/`，只覆盖 `docnav-markd
 | `MD-ERROR-001` | [operation-errors.ts](../../test/smoke/markdown/cases/operation-errors.ts) | 同一 invalid ref 错误在 readable-json 与 protocol-json 中的映射；其它错误码由 lower-level tests 覆盖。 |
 | `MD-INVOKE-001` | [invoke-errors.ts](../../test/smoke/markdown/cases/invoke-errors.ts) | malformed `invoke` stdin 返回 protocol failure；证明 stdin request 解析失败时仍返回稳定 protocol error envelope。 |
 
+涉及共享 helper 的改动，smoke 清单继续按外部链路类型维护。可观察外部入口覆盖由现有 core output/selection、Markdown warning/machine/invoke/corpus cases 承担；token scanning、protocol decode stage、manifest/probe semantic invalid 和 pagination mechanics 的细粒度边界由 Rust tests 承担。
+
 ## 新增或修改用例
 
 新增 case 前先确认它代表新的外部链路类型。若只是已有类型中的另一组参数、另一个非法值、另一个 output/operation 组合或另一个同阶段错误，应优先补充较低层测试或扩展现有 case 的断言。

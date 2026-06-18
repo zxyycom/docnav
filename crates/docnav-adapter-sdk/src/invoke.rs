@@ -1,7 +1,7 @@
 use docnav_protocol::{
-    extract_request_context_from_value, validate_protocol_request_value, FailureResponse,
-    Operation, OperationArguments, OperationResult, ProtocolResponse, RequestEnvelope, StableError,
-    PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
+    decode_protocol_request_value, extract_request_context_from_value, DecodePipelineError,
+    FailureResponse, Operation, OperationArguments, OperationResult, ProtocolResponse,
+    RequestEnvelope, StableError, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 use serde_json::Value;
 use std::io::{Read, Write};
@@ -67,28 +67,27 @@ where
         .clone()
         .unwrap_or_else(|| UNKNOWN_REQUEST_ID.to_owned());
 
-    if let Err(error) = validate_protocol_request_value(&request_value) {
-        let response = ProtocolResponse::failure(
-            PROTOCOL_VERSION,
-            request_id,
-            context.operation,
-            StableError::invalid_request(fields::REQUEST, error.to_string()),
-        );
-        let _ = emit_diagnostic(
-            &mut stderr,
-            &format!("{}: {error}", diagnostics::REQUEST_SCHEMA_VALIDATION_FAILED),
-        );
-        return write_protocol_response(
-            &response,
-            &mut stdout,
-            &mut stderr,
-            AdapterExitCode::ProtocolError,
-        );
-    }
-
-    let request: RequestEnvelope = match serde_json::from_value(request_value) {
+    let request = match decode_protocol_request_value(request_value) {
         Ok(request) => request,
-        Err(error) => {
+        Err(DecodePipelineError::Schema(error)) => {
+            let response = ProtocolResponse::failure(
+                PROTOCOL_VERSION,
+                request_id.clone(),
+                context.operation,
+                StableError::invalid_request(fields::REQUEST, error.to_string()),
+            );
+            let _ = emit_diagnostic(
+                &mut stderr,
+                &format!("{}: {error}", diagnostics::REQUEST_SCHEMA_VALIDATION_FAILED),
+            );
+            return write_protocol_response(
+                &response,
+                &mut stdout,
+                &mut stderr,
+                AdapterExitCode::ProtocolError,
+            );
+        }
+        Err(DecodePipelineError::Deserialize(error)) => {
             let response = ProtocolResponse::failure(
                 PROTOCOL_VERSION,
                 request_id,
@@ -106,17 +105,16 @@ where
                 AdapterExitCode::ProtocolError,
             );
         }
+        Err(DecodePipelineError::Semantic { value, error }) => {
+            let response = ProtocolResponse::failure_for_request(&value, error);
+            return write_protocol_response(
+                &response,
+                &mut stdout,
+                &mut stderr,
+                AdapterExitCode::ProtocolError,
+            );
+        }
     };
-
-    if let Err(error) = request.operation_arguments() {
-        let response = ProtocolResponse::failure_for_request(&request, error);
-        return write_protocol_response(
-            &response,
-            &mut stdout,
-            &mut stderr,
-            AdapterExitCode::ProtocolError,
-        );
-    }
 
     match execute_operation(adapter, &request) {
         Ok(result) => {

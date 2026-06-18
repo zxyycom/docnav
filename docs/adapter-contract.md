@@ -22,7 +22,7 @@ probe
 
 适配器直接 CLI argv 必须复用 [CLI](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
 
-`manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在 CLI warning 时按直接 CLI 规则写 stderr。`--help` 和子命令 help 只输出可纠错参数说明，不执行文档导航业务。
+`manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在 CLI warning 时按直接 CLI 规则写 stderr。`--help` 和子命令 help 只输出可纠错参数说明，不执行文档导航业务。共享 helper 的复用验收标准是保持这些 schema、plain text、stderr boundary 和 exit behavior 不变；document output owner 见 [输出模式](output.md#输出层边界)。
 
 ## 适配器职责
 
@@ -50,9 +50,9 @@ formats[].content_types[]
 capabilities[]
 ```
 
-manifest 只声明 adapter 身份、支持格式、扩展名、content type 和 capabilities，不声明协议范围或格式默认参数。旧字段 `protocol.min`、`protocol.max` 和 `recommended_parameters` 必须被当前 manifest schema 拒绝。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
+manifest 只接受 adapter 身份、支持格式、扩展名、content type 和 capabilities 字段，不声明协议范围或格式默认参数。manifest 字段扩展必须先由本文件和 manifest schema 定义。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
 
-Markdown v0 adapter 的直接 CLI 默认值属于 `docnav-markdown` 配置域：当前默认 `limit_chars: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；直接 CLI 在进入 invoke 前把最终值显式写入 request，并允许项目级和用户级 adapter 配置覆盖。
+Markdown v0 adapter 的直接 CLI 默认值属于 `docnav-markdown` 配置域：默认 `limit_chars: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；直接 CLI 在进入 invoke 前把最终值显式写入 request，并允许项目级和用户级 adapter 配置覆盖。
 Markdown find 返回的 match ref 可按共享调用流程原样传给 read；没有局部导航区域时，可以返回 adapter 定义的全文 ref。find 的 ref 归属策略和 read 对该 ref 的接受与解释行为，由 [Markdown Adapter](adapters/markdown.md) 定义。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度。
 
 ## Probe
@@ -77,9 +77,11 @@ reasons[]
 
 直接 CLI 兼容参数规则不适用于 `invoke` stdin JSON。`invoke` 必须在进入 canonical document operation input 或等价 semantic request 前按 protocol request schema 严格校验请求；malformed JSON、未知字段、缺少必需字段或参数类型错误不得被 warning 后忽略。schema-valid `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
 
+SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、typed deserialization 和 semantic validation；failure surface 仍必须是 protocol-shaped failure response。`invoke` stdin JSON 不是直接 CLI argv，按 [原始协议](protocol.md#schema-所有权) 的 decode 边界验收。
+
 适配器必须：
 
-- 校验 `protocol_version` 字段和当前请求 schema。
+- 校验 `protocol_version` 字段和请求 schema。
 - 只处理一个请求。
 - stdout 只返回原始协议 envelope。
 - 为分页操作返回下一页页码，结束时返回 null。
@@ -97,9 +99,9 @@ reasons[]
 
 ## 协议字段对齐
 
-`docnav` 不在 adapter 选择阶段做协议版本协商。候选适配器的 manifest 和 probe 输出必须通过当前 schema、必需字段、字段类型和语义校验；字段缺失、字段类型不符、shape 不对齐、语义校验失败、进程不可用或 `supported: false` 时，`docnav` 必须能形成包含 adapter id、阶段和原因的候选失败证据。候选遍历策略由 [架构](architecture.md#adapter-选择) 定义；选择成功或全部候选失败后的输出映射由 `docnav` 输出层负责。
+`docnav` 不在 adapter 选择阶段做协议版本协商。候选适配器的 manifest 和 probe 输出必须通过 schema、必需字段、字段类型和语义校验；字段缺失、字段类型不符、shape 不对齐、语义校验失败、进程不可用或 `supported: false` 时，`docnav` 必须能形成包含 adapter id、阶段和原因的候选失败证据。候选遍历策略由 [架构](architecture.md#adapter-选择) 定义；选择成功或全部候选失败后的输出映射由 `docnav` 输出层负责。
 
-选定 adapter 后的 `invoke` 响应不再属于候选选择阶段。`invoke` 响应必须通过当前 protocol response schema、必需字段、字段类型、operation/result shape 和语义校验；校验失败时返回 adapter/protocol 稳定错误，不能把已经选定 adapter 的 invoke 失败当作普通候选失败继续静默切换。
+选定 adapter 后的 `invoke` 响应不再属于候选选择阶段。`invoke` 响应必须通过 protocol response schema、必需字段、字段类型、operation/result shape 和语义校验；校验失败时返回 adapter/protocol 稳定错误，不能把已经选定 adapter 的 invoke 失败当作普通候选失败继续静默切换。
 
 正式 schema：
 

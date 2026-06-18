@@ -217,6 +217,34 @@ impl StableErrorCode {
     pub const fn required_details(self) -> &'static [&'static str] {
         error_rules::required_details(self)
     }
+
+    pub const fn category(self) -> StableErrorCategory {
+        match self {
+            StableErrorCode::InvalidRequest | StableErrorCode::CapabilityUnsupported => {
+                StableErrorCategory::Request
+            }
+            StableErrorCode::DocumentNotFound
+            | StableErrorCode::DocumentPathInvalid
+            | StableErrorCode::DocumentEncodingUnsupported
+            | StableErrorCode::FormatUnknown
+            | StableErrorCode::FormatAmbiguous
+            | StableErrorCode::RefNotFound
+            | StableErrorCode::RefAmbiguous
+            | StableErrorCode::RefInvalid => StableErrorCategory::Document,
+            StableErrorCode::AdapterUnavailable | StableErrorCode::AdapterInvokeFailed => {
+                StableErrorCategory::AdapterBoundary
+            }
+            StableErrorCode::InternalError => StableErrorCategory::Internal,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StableErrorCategory {
+    Request,
+    Document,
+    AdapterBoundary,
+    Internal,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

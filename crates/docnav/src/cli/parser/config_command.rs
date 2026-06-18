@@ -1,13 +1,15 @@
+use docnav_cli_args::{scan_loose_args, LooseArgScan};
+
 use crate::error::{AppError, AppResult};
 
 use super::super::flags;
 use super::super::types::{
     CliCommand, ConfigCommand, ConfigGet, ConfigList, ConfigSet, ConfigUnset, ParsedCli,
 };
-use super::super::warning::CliWarning;
 use super::common::{
-    clap_argv, is_flag, known_value_flag, optional_explicit_string, parse_operation,
-    push_clap_value_arg, required_string, split_equals, warning_value, ValueFlag,
+    clap_argv, is_flag, known_value_flag, loose_value_flags,
+    missing_value_error as scan_missing_value_error, optional_explicit_string, parse_operation,
+    required_string, split_equals, warning_from_ignored_arg, ValueFlag,
 };
 use super::{
     arg_ids, command_names, config_get_command, config_list_command, config_set_command,
@@ -109,7 +111,7 @@ enum ConfigFlagUsage {
 
 struct ParsedConfigCommon {
     clap_args: Vec<String>,
-    warnings: Vec<CliWarning>,
+    warnings: Vec<super::super::warning::CliWarning>,
 }
 
 fn collect_config_args(
@@ -118,52 +120,30 @@ fn collect_config_args(
     usage: ConfigFlagUsage,
     expected_positionals: usize,
 ) -> AppResult<ParsedConfigCommon> {
-    let mut parsed = ParsedConfigCommon {
-        clap_args: Vec::new(),
-        warnings: Vec::new(),
-    };
-
     let list_has_path = matches!(usage, ConfigFlagUsage::PathContext) && has_path_flag(args);
-    let mut positional_count = 0;
-    let mut index = 0;
-    while index < args.len() {
-        let token = &args[index];
-        if token == flags::USER {
-            parsed.clap_args.push(token.clone());
-            index += 1;
-        } else if let Some(flag) = known_value_flag(token) {
-            match (usage, flag) {
-                (ConfigFlagUsage::PathContext, ValueFlag::Path) => {
-                    let (flag_token, _inline_value) = split_equals(token);
-                    push_clap_value_arg(&mut parsed.clap_args, args, &mut index, flag_token)?;
-                }
-                (ConfigFlagUsage::PathContext, ValueFlag::Operation) if list_has_path => {
-                    let (flag_token, _inline_value) = split_equals(token);
-                    push_clap_value_arg(&mut parsed.clap_args, args, &mut index, flag_token)?;
-                }
-                _ => {
-                    let (flag_token, _inline_value) = split_equals(token);
-                    let value = warning_value(args, &mut index, flag_token)?;
-                    parsed
-                        .warnings
-                        .push(CliWarning::unused_operation_flag(token, value, command));
-                }
-            }
-        } else if is_flag(token) {
-            parsed.warnings.push(CliWarning::unknown_flag(token));
-            index += 1;
-        } else {
-            if positional_count < expected_positionals {
-                parsed.clap_args.push(token.clone());
-            } else {
-                parsed.warnings.push(CliWarning::extra_positional(token));
-            }
-            positional_count += 1;
-            index += 1;
-        }
-    }
+    let known_value_flags = loose_value_flags(|flag| {
+        matches!(
+            (usage, flag),
+            (ConfigFlagUsage::PathContext, ValueFlag::Path)
+                | (ConfigFlagUsage::PathContext, ValueFlag::Operation)
+                    if list_has_path
+        )
+    });
+    let scan = scan_loose_args(
+        args,
+        &LooseArgScan::new(command, expected_positionals, &known_value_flags)
+            .with_known_switch_flags(&[flags::USER]),
+    )
+    .map_err(scan_missing_value_error)?;
 
-    Ok(parsed)
+    Ok(ParsedConfigCommon {
+        clap_args: scan.retained_args,
+        warnings: scan
+            .ignored
+            .into_iter()
+            .map(warning_from_ignored_arg)
+            .collect(),
+    })
 }
 
 fn has_path_flag(args: &[String]) -> bool {
@@ -176,12 +156,12 @@ fn has_path_flag(args: &[String]) -> bool {
 }
 
 fn config_get_error(args: &[String]) -> AppError {
-    missing_value_error(args)
+    first_missing_value_error(args)
         .unwrap_or_else(|| AppError::invalid_request("key", "config get requires <key>"))
 }
 
 fn config_set_error(args: &[String]) -> AppError {
-    missing_value_error(args).unwrap_or_else(|| {
+    first_missing_value_error(args).unwrap_or_else(|| {
         if args.iter().any(|token| !is_flag(token)) {
             AppError::invalid_request("value", "config set requires <value>")
         } else {
@@ -191,19 +171,19 @@ fn config_set_error(args: &[String]) -> AppError {
 }
 
 fn config_unset_error(args: &[String]) -> AppError {
-    missing_value_error(args)
+    first_missing_value_error(args)
         .unwrap_or_else(|| AppError::invalid_request("key", "config unset requires <key>"))
 }
 
 fn config_list_error(args: &[String]) -> AppError {
-    missing_value_error(args).unwrap_or_else(|| {
+    first_missing_value_error(args).unwrap_or_else(|| {
         invalid_operation_error(args).unwrap_or_else(|| {
             AppError::invalid_request("config list", "invalid config list arguments")
         })
     })
 }
 
-fn missing_value_error(args: &[String]) -> Option<AppError> {
+fn first_missing_value_error(args: &[String]) -> Option<AppError> {
     let mut index = 0;
     while index < args.len() {
         let token = &args[index];

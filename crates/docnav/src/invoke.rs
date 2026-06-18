@@ -1,9 +1,7 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use docnav_protocol::{
-    validate_protocol_request_value, Document, FindArguments, InfoArguments, Operation,
-    OperationArguments, OutlineArguments, ProtocolResponse, ReadArguments, RequestEnvelope,
-    StableError, PROTOCOL_VERSION,
+    decode_protocol_request_value, generate_request_id, DecodePipelineError, Document,
+    FindArguments, InfoArguments, Operation, OperationArguments, OutlineArguments,
+    ProtocolResponse, ReadArguments, RequestEnvelope, StableError, PROTOCOL_VERSION,
 };
 
 use crate::contract::{adapter_invoke_failed, protocol_response_from_output};
@@ -44,14 +42,17 @@ fn validate_protocol_request(request: &RequestEnvelope) -> Result<(), StableErro
     let value = serde_json::to_value(request).map_err(|error| {
         StableError::internal_error(format!("serialize-protocol-request:{error}"))
     })?;
-    validate_protocol_request_value(&value).map_err(|error| {
-        StableError::invalid_request(
+    match decode_protocol_request_value(value) {
+        Ok(_) => Ok(()),
+        Err(DecodePipelineError::Schema(error)) => Err(StableError::invalid_request(
             "protocol_request",
             format!("protocol request schema validation failed: {error}"),
-        )
-    })?;
-    request.operation_arguments()?;
-    Ok(())
+        )),
+        Err(DecodePipelineError::Deserialize(error)) => Err(StableError::internal_error(format!(
+            "decode-protocol-request:{error}"
+        ))),
+        Err(DecodePipelineError::Semantic { error, .. }) => Err(error),
+    }
 }
 
 fn protocol_request(
@@ -99,19 +100,11 @@ fn protocol_request(
 
     Ok(RequestEnvelope {
         protocol_version: PROTOCOL_VERSION.to_owned(),
-        request_id: request_id(),
+        request_id: generate_request_id(),
         operation: request.operation,
         document: Document {
             path: document.adapter_path.clone(),
         },
         arguments,
     })
-}
-
-fn request_id() -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .unwrap_or(0);
-    format!("docnav-{nanos}")
 }

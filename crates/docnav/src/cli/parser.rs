@@ -312,7 +312,7 @@ fn positional_value_arg(id: &'static str, value_name: &'static str) -> Arg {
 
 #[cfg(test)]
 mod tests {
-    use super::super::warning::{CliWarningDetails, CliWarningEffect, CliWarningId};
+    use super::super::warning::{CliWarningDetails, CliWarningEffect, CLI_ARGV_IGNORED};
     use super::*;
     use crate::cli::{CliCommand, OutputMode};
     use crate::error::exit_code_for_error;
@@ -540,7 +540,7 @@ mod tests {
         }
         assert_eq!(parsed.warnings.len(), 1);
         let warning = &parsed.warnings[0];
-        assert_eq!(warning.id, CliWarningId::CliArgvIgnored);
+        assert_eq!(warning.id, CLI_ARGV_IGNORED);
         assert_eq!(warning.effect, CliWarningEffect::OperationContinued);
         match &warning.details {
             CliWarningDetails::CliArgv { tokens } => {

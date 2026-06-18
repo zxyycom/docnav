@@ -1,6 +1,6 @@
 # docnav-readable
 
-Readable output layer helpers for the Docnav document navigation system.
+Readable payload and readable-view rendering helpers for the Docnav document navigation system.
 
 ## Overview
 
@@ -100,7 +100,7 @@ The following are **NOT** part of the stable semantic contract and MUST NOT be a
 
 ## Architecture boundary
 
-This crate owns the **readable output layer** (JSON value conversion, renderer config, and the readable-view format). It does NOT own protocol envelopes, adapter routing, document parsing, or CLI/MCP wiring. Those responsibilities stay with their existing crates.
+This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, warning placement, adapter routing, document parsing, or CLI/MCP wiring. Those responsibilities stay with their existing crates.
 
 ## Testing
 

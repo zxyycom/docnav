@@ -1,14 +1,14 @@
+use docnav_cli_args::{scan_loose_args, LooseArgScan};
 use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
 
 use super::super::flags;
 use super::super::types::{CliCommand, DocumentCommand, ParsedCli};
-use super::super::warning::CliWarning;
 use super::common::{
-    clap_argv, is_flag, known_value_flag, optional_explicit_output, optional_explicit_positive,
-    optional_explicit_string, push_clap_value_arg, required_string, split_equals, warning_value,
-    ValueFlag,
+    clap_argv, is_flag, known_value_flag, loose_value_flags, missing_value_error,
+    optional_explicit_output, optional_explicit_positive, optional_explicit_string,
+    required_string, split_equals, warning_from_ignored_arg, ValueFlag,
 };
 use super::{arg_ids, document_clap_command};
 
@@ -65,47 +65,24 @@ pub(super) fn parse_document_command(
 
 struct LooseDocumentArgs {
     clap_args: Vec<String>,
-    warnings: Vec<CliWarning>,
+    warnings: Vec<super::super::warning::CliWarning>,
 }
 
 fn collect_document_args(operation: Operation, args: &[String]) -> AppResult<LooseDocumentArgs> {
-    let mut clap_args = Vec::new();
-    let mut path_seen = false;
-    let mut warnings = Vec::new();
-
-    let mut index = 0;
-    while index < args.len() {
-        let token = &args[index];
-        if let Some(flag) = known_value_flag(token) {
-            if document_uses_flag(operation, flag) {
-                let (flag_token, _inline_value) = split_equals(token);
-                push_clap_value_arg(&mut clap_args, args, &mut index, flag_token)?;
-            } else {
-                let (flag_token, _inline_value) = split_equals(token);
-                let value = warning_value(args, &mut index, flag_token)?;
-                warnings.push(CliWarning::unused_operation_flag(
-                    token,
-                    value,
-                    operation.as_str(),
-                ));
-            }
-        } else if is_flag(token) {
-            warnings.push(CliWarning::unknown_flag(token));
-            index += 1;
-        } else {
-            if path_seen {
-                warnings.push(CliWarning::extra_positional(token));
-            } else {
-                clap_args.push(token.clone());
-                path_seen = true;
-            }
-            index += 1;
-        }
-    }
+    let known_value_flags = loose_value_flags(|flag| document_uses_flag(operation, flag));
+    let scan = scan_loose_args(
+        args,
+        &LooseArgScan::new(operation.as_str(), 1, &known_value_flags),
+    )
+    .map_err(missing_value_error)?;
 
     Ok(LooseDocumentArgs {
-        clap_args,
-        warnings,
+        clap_args: scan.retained_args,
+        warnings: scan
+            .ignored
+            .into_iter()
+            .map(warning_from_ignored_arg)
+            .collect(),
     })
 }
 

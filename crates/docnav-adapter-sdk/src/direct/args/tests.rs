@@ -1,4 +1,4 @@
-use super::super::warnings::{DirectCliWarningEffect, DirectCliWarningId};
+use super::super::warnings::{DirectCliWarning, DirectCliWarningEffect, CLI_ARGV_IGNORED};
 use super::super::NativeOptionValueSpec;
 use super::*;
 
@@ -39,12 +39,12 @@ fn unknown_flag_with_equals_is_one_ignored_token() {
     .expect("parse options");
 
     assert_eq!(options.warnings.len(), 1);
-    assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
+    assert_eq!(options.warnings[0].id, CLI_ARGV_IGNORED);
     assert_eq!(
         options.warnings[0].effect,
         DirectCliWarningEffect::OperationContinued
     );
-    assert_eq!(options.warnings[0].details.tokens, ["--future=value"]);
+    assert_eq!(warning_tokens(&options.warnings[0]), ["--future=value"]);
 }
 
 #[test]
@@ -55,8 +55,8 @@ fn extra_positional_warns_after_path_slot_is_filled() {
 
     assert_eq!(options.path, "doc.md");
     assert_eq!(options.warnings.len(), 1);
-    assert_eq!(options.warnings[0].id, DirectCliWarningId::CliArgvIgnored);
-    assert_eq!(options.warnings[0].details.tokens, ["extra"]);
+    assert_eq!(options.warnings[0].id, CLI_ARGV_IGNORED);
+    assert_eq!(warning_tokens(&options.warnings[0]), ["extra"]);
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn operation_only_validates_flags_it_uses() {
     )
     .expect("unused native value should be ignored");
     assert_eq!(
-        read.warnings[0].details.tokens,
+        warning_tokens(&read.warnings[0]),
         ["--max-heading-level", "nope"]
     );
 
@@ -81,7 +81,7 @@ fn operation_only_validates_flags_it_uses() {
     )
     .expect("unused core value should be ignored");
     assert_eq!(info.limit_chars.get(), 6000);
-    assert_eq!(info.warnings[0].details.tokens, ["--limit-chars", "nope"]);
+    assert_eq!(warning_tokens(&info.warnings[0]), ["--limit-chars", "nope"]);
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn unused_value_flag_consumes_value_that_looks_like_flag() {
 
     assert_eq!(options.ref_id.as_deref(), Some("L1:Guide"));
     assert_eq!(
-        options.warnings[0].details.tokens,
+        warning_tokens(&options.warnings[0]),
         ["--query", "--future-value"]
     );
 }
@@ -124,8 +124,8 @@ fn protocol_only_command_warns_without_losing_required_output() {
     .expect("parse protocol-only options");
 
     assert_eq!(warnings.len(), 2);
-    assert_eq!(warnings[0].details.tokens, ["--future"]);
-    assert_eq!(warnings[1].details.tokens, ["extra"]);
+    assert_eq!(warning_tokens(&warnings[0]), ["--future"]);
+    assert_eq!(warning_tokens(&warnings[1]), ["extra"]);
 }
 
 #[test]
@@ -137,7 +137,17 @@ fn probe_path_can_follow_unknown_flag() {
     .expect("parse probe options");
 
     assert_eq!(parsed.path, "doc.md");
-    assert_eq!(parsed.warnings[0].details.tokens, ["--future"]);
+    assert_eq!(warning_tokens(&parsed.warnings[0]), ["--future"]);
+}
+
+fn warning_tokens(warning: &DirectCliWarning) -> Vec<&str> {
+    warning
+        .details
+        .cli_argv_tokens()
+        .expect("CLI argv warning details")
+        .iter()
+        .map(String::as_str)
+        .collect()
 }
 
 fn args(values: &[&str]) -> Vec<String> {
