@@ -70,7 +70,7 @@ describe("workspace verifier configuration", () => {
       assert.ok(check.type === PROFILE_REQUIRED || check.type === PROFILE_FULL);
       assert.ok(Array.isArray(check.dependsOn));
       assert.ok(Array.isArray(check.mutex));
-      assert.equal((check as ExternalValue).profiles, undefined);
+      assert.equal((check as { profiles?: unknown }).profiles, undefined);
     }
 
     assert.equal(checkByLabel("cargo test").type, PROFILE_FULL);
@@ -99,7 +99,7 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(parseArgs(["--concurrency", "2"]), { help: false, profile: PROFILE_FULL, concurrency: 2 });
     assert.deepEqual(parseArgs(["--concurrency=3"]), { help: false, profile: PROFILE_FULL, concurrency: 3 });
     assert.deepEqual(parseArgs(["--help"]), { help: true, profile: PROFILE_FULL, concurrency: undefined });
-    assert.throws(() => parseArgs(["--profile", "fast"]), /ExternalValue verification profile: fast/);
+    assert.throws(() => parseArgs(["--profile", "fast"]), /unknown verification profile: fast/);
     assert.throws(() => parseArgs(["--concurrency", "0"]), /positive integer/);
   });
 
@@ -142,7 +142,7 @@ describe("workspace verifier configuration", () => {
 
 });
 
-function checkByLabel(label: ExternalValue) {
+function checkByLabel(label: string) {
   const check = checks.find((candidate) => candidate.label === label);
   assert.ok(check, `expected check ${label}`);
   return check;

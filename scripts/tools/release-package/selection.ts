@@ -1,7 +1,8 @@
 import { resolvePackageLayout } from "./config.ts";
 import { resolveHostTarget, resolveWorkspaceVersion } from "./environment.ts";
+import type { ManifestArgs } from "./args.ts";
 
-export function resolvePackageManifestPath({ manifestPath, target }: ExternalValue) {
+export function resolvePackageManifestPath({ manifestPath, target }: Pick<ManifestArgs, "manifestPath" | "target">): string {
   if (manifestPath) {
     return manifestPath;
   }

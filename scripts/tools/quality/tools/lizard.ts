@@ -107,9 +107,9 @@ export function parseLizardCSV(csv: string): LizardScanResult {
       if (isNaN(nloc) || isNaN(startLine)) continue;
 
       functions.push({
-        name: funcName || "ExternalValue",
+        name: funcName || "unknown",
         file: filePath,
-        codeArea: "ExternalValue",
+        codeArea: "unknown",
         startLine,
         endLine: isNaN(endLine) ? startLine : endLine,
         lines: nloc,
@@ -207,5 +207,5 @@ export function getLizardVersion({ cwd, toolConfig }: { cwd: string; toolConfig:
     return { ok: false, error: `lizard --version failed, exit ${child.status}` };
   }
 
-  return { ok: true, version: ver || "ExternalValue" };
+  return { ok: true, version: ver || "unknown" };
 }

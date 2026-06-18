@@ -8,6 +8,16 @@ import { scanWithCpd } from "./tools/cpd.ts";
 import { classifyFile, classifyFiles, isExcluded } from "./classify.ts";
 import { buildAggregates } from "./aggregate.ts";
 import { collectBaselineFiles, buildFingerprints } from "./files.ts";
+import type {
+  BaselineSnapshot,
+  CodeAreaFileMap,
+  DuplicateCodeFragment,
+  FileMetric,
+  FunctionMetric,
+  LanguageAggregate,
+  QualityConfig,
+  ToolAvailability
+} from "./schema.ts";
 
 /**
  * 在 materialized baseline 目录中运行当前工具扫描。
@@ -20,15 +30,15 @@ import { collectBaselineFiles, buildFingerprints } from "./files.ts";
  * @param {object} config - Quality config
  * @returns {{ fingerprints: object, fileMetrics: Array, functionMetrics: Array, duplicateCode: Array, aggregates: object }}
  */
-export function scanBaselineRevision(workDir: ExternalValue, toolResults: ExternalValue, config: ExternalValue) {
+export function scanBaselineRevision(workDir: string, toolResults: ToolAvailability[], config: QualityConfig): BaselineSnapshot {
   const baselineFiles = collectBaselineFiles(workDir, config);
   const fileMap = classifyFiles(baselineFiles, config.codeAreas, config.generatedFiles);
   const fingerprints = buildFingerprints(fileMap, workDir);
 
-  let fileMetrics: ExternalValue[] = [];
-  let functionMetrics: ExternalValue[] = [];
-  let duplicateCode: ExternalValue[] = [];
-  let byLanguage: ExternalValue[] = [];
+  let fileMetrics: FileMetric[] = [];
+  let functionMetrics: FunctionMetric[] = [];
+  let duplicateCode: DuplicateCodeFragment[] = [];
+  let byLanguage: LanguageAggregate[] = [];
 
   if (isToolAvailable(toolResults, "scc")) {
     ({ fileMetrics, byLanguage } = scanBaselineScc({ workDir, baselineFiles, config }));
@@ -42,7 +52,7 @@ export function scanBaselineRevision(workDir: ExternalValue, toolResults: Extern
     duplicateCode = scanBaselineCpd({ workDir, fileMap, config });
   }
 
-  const aggregates: ExternalValue = buildAggregates({
+  const aggregates = buildAggregates({
     fileMetrics,
     functionMetrics,
     duplicateCode,
@@ -53,7 +63,15 @@ export function scanBaselineRevision(workDir: ExternalValue, toolResults: Extern
   return { fingerprints, fileMetrics, functionMetrics, duplicateCode, aggregates };
 }
 
-function scanBaselineScc({ workDir, baselineFiles, config }: ExternalValue) {
+function scanBaselineScc({
+  workDir,
+  baselineFiles,
+  config
+}: {
+  baselineFiles: string[];
+  config: QualityConfig;
+  workDir: string;
+}): { byLanguage: LanguageAggregate[]; fileMetrics: FileMetric[] } {
   console.log("  Running baseline scc...");
   const sccResult = scanWithScc({
     cwd: workDir,
@@ -80,10 +98,18 @@ function scanBaselineScc({ workDir, baselineFiles, config }: ExternalValue) {
   return { fileMetrics, byLanguage: sccResult.aggregates?.byLanguage ?? [] };
 }
 
-function scanBaselineLizard({ workDir, baselineFiles, config }: ExternalValue) {
+function scanBaselineLizard({
+  workDir,
+  baselineFiles,
+  config
+}: {
+  baselineFiles: string[];
+  config: QualityConfig;
+  workDir: string;
+}): FunctionMetric[] {
   console.log("  Running baseline Lizard...");
   const targetFiles = baselineFiles.filter(
-    (f: ExternalValue) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
+    (f) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
       !isExcluded(f, config.excludeDirs, config.generatedFiles)
   );
   const lizardResult = scanWithLizard({
@@ -109,13 +135,21 @@ function scanBaselineLizard({ workDir, baselineFiles, config }: ExternalValue) {
   return functionMetrics;
 }
 
-function scanBaselineCpd({ workDir, fileMap, config }: ExternalValue) {
+function scanBaselineCpd({
+  workDir,
+  fileMap,
+  config
+}: {
+  config: QualityConfig;
+  fileMap: CodeAreaFileMap;
+  workDir: string;
+}): DuplicateCodeFragment[] {
   console.log("  Running baseline PMD CPD...");
-  const fragments: ExternalValue[] = [];
+  const fragments: DuplicateCodeFragment[] = [];
 
   for (const [area, areaFiles] of fileMap.entries()) {
     const targetFiles = areaFiles.filter(
-      (f: ExternalValue) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
+      (f) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
     );
 
     if (targetFiles.length < 2) {
@@ -147,7 +181,7 @@ function scanBaselineCpd({ workDir, fileMap, config }: ExternalValue) {
   return fragments;
 }
 
-function annotateBaselineDuplicates(fragments: ExternalValue, area: ExternalValue) {
+function annotateBaselineDuplicates(fragments: DuplicateCodeFragment[], area: string): void {
   for (const frag of fragments) {
     for (const loc of frag.locations) {
       loc.codeArea = area;
@@ -157,6 +191,6 @@ function annotateBaselineDuplicates(fragments: ExternalValue, area: ExternalValu
   }
 }
 
-function isToolAvailable(toolResults: ExternalValue, name: ExternalValue) {
-  return toolResults.find((t: ExternalValue) => t.name === name)?.available;
+function isToolAvailable(toolResults: ToolAvailability[], name: string): boolean {
+  return toolResults.find((t) => t.name === name)?.available === true;
 }

@@ -2,13 +2,25 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import type { SpawnSyncOptionsWithStringEncoding, SpawnSyncReturns } from "node:child_process";
 
 import { root } from "./config.ts";
 
 // Cargo JSON 构建输出可能较大，统一保留 64 MiB 缓冲以避免结果被截断。
 const DEFAULT_MAX_BUFFER = 1024 * 1024 * 64;
 
-export function runCommand(command: ExternalValue, args: ExternalValue, options: ExternalValue = {}) {
+export type RunCommandOptions = Omit<
+  SpawnSyncOptionsWithStringEncoding,
+  "cwd" | "encoding" | "env" | "maxBuffer" | "windowsHide"
+> & {
+  cwd?: string;
+  encoding?: BufferEncoding;
+  env?: NodeJS.ProcessEnv;
+  label?: string;
+  maxBuffer?: number;
+};
+
+export function runCommand(command: string, args: string[], options: RunCommandOptions = {}): SpawnSyncReturns<string> {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
     env: options.env ?? process.env,
@@ -26,7 +38,11 @@ export function runCommand(command: ExternalValue, args: ExternalValue, options:
   return result;
 }
 
-export function runNodeScript(scriptPath: ExternalValue, args: ExternalValue[] = [], options: ExternalValue = {}) {
+export function runNodeScript(
+  scriptPath: string,
+  args: string[] = [],
+  options: RunCommandOptions = {},
+): SpawnSyncReturns<string> {
   return runCommand(process.execPath, [scriptPath, ...args], {
     ...options,
     label: `node ${path.relative(root, scriptPath)}`,
@@ -34,42 +50,43 @@ export function runNodeScript(scriptPath: ExternalValue, args: ExternalValue[] =
   });
 }
 
-export function copyExecutable(sourcePath: ExternalValue, destPath: ExternalValue) {
+export function copyExecutable(sourcePath: string, destPath: string): void {
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   fs.copyFileSync(sourcePath, destPath);
   fs.chmodSync(destPath, fs.statSync(sourcePath).mode);
 }
 
-export function readJsonFile(filePath: ExternalValue) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+export function readJsonFile(filePath: string): unknown {
+  const parsed: unknown = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  return parsed;
 }
 
-export function writeJsonFile(filePath: ExternalValue, value: ExternalValue) {
+export function writeJsonFile(filePath: string, value: unknown): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-export function writeTextFile(filePath: ExternalValue, content: ExternalValue) {
+export function writeTextFile(filePath: string, content: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-export function readTextFile(filePath: ExternalValue) {
+export function readTextFile(filePath: string): string {
   return fs.readFileSync(filePath, "utf8");
 }
 
-export function sha256File(filePath: ExternalValue) {
+export function sha256File(filePath: string): string {
   const hash = crypto.createHash("sha256");
   hash.update(fs.readFileSync(filePath));
   return hash.digest("hex");
 }
 
-export function normalizeRelativePath(filePath: ExternalValue) {
+export function normalizeRelativePath(filePath: string): string {
   return filePath.replaceAll(path.sep, "/");
 }
 
-function composeSpawnError(command: ExternalValue, result: ExternalValue) {
-  const details: ExternalValue[] = [];
+function composeSpawnError(command: string, result: SpawnSyncReturns<string>): string {
+  const details: string[] = [];
   if (result.stdout) {
     details.push(`stdout:\n${result.stdout}`);
   }

@@ -1,8 +1,8 @@
-export function formatTable(rows: ExternalValue) {
+export function formatTable(rows: string[][]): string {
   if (rows.length === 0) return "";
 
-  const colCount = Math.max(...rows.map((row: ExternalValue) => row.length));
-  const colWidths = new Array(colCount).fill(3);
+  const colCount = Math.max(...rows.map((row) => row.length));
+  const colWidths = Array.from({ length: colCount }, () => 3);
 
   for (const row of rows) {
     for (let i = 0; i < colCount; i++) {
@@ -10,8 +10,8 @@ export function formatTable(rows: ExternalValue) {
     }
   }
 
-  const formatRow = (row: ExternalValue) => {
-    const cells: ExternalValue[] = [];
+  const formatRow = (row: string[]) => {
+    const cells: string[] = [];
     for (let i = 0; i < colCount; i++) {
       cells.push((row[i] || "").padEnd(colWidths[i]));
     }

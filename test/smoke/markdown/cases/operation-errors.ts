@@ -3,8 +3,10 @@ import { runCli, validateSchema } from "../harness.ts";
 import {
   expect,
   expectExit,
+  expectJsonObject,
   expectNoJsonPayloadInStderr,
   expectNoProtocolEnvelope,
+  expectObjectArray,
   expectProtocolFailure,
   expectStderrEmpty,
   parseJson
@@ -38,9 +40,10 @@ async function testRefErrorOutputMapping() {
   const readableJson = parseJson(readable);
   validateSchema(readable, "readableError", readableJson);
   expectNoProtocolEnvelope(readable, readableJson);
+  const readableDetails = expectJsonObject(readable, readableJson.details, "readable-json details is an object");
+  expectObjectArray(readable, readableJson.guidance, "readable-json guidance is an array");
   expect(readable, readableJson.code === "REF_INVALID", "readable-json returns REF_INVALID");
-  expect(readable, readableJson.details.ref === ref, "readable-json preserves details.ref");
-  expect(readable, Array.isArray(readableJson.guidance), "readable-json includes guidance array");
+  expect(readable, readableDetails.ref === ref, "readable-json preserves details.ref");
 
   const protocol = await runCli("MD-ERROR-001 invalid ref protocol-json", [
     "read",
@@ -55,5 +58,7 @@ async function testRefErrorOutputMapping() {
   const protocolJson = parseJson(protocol);
   validateSchema(protocol, "protocolResponse", protocolJson);
   expectProtocolFailure(protocol, protocolJson, "read", "REF_INVALID");
-  expect(protocol, protocolJson.error.details.ref === ref, "protocol-json preserves error.details.ref");
+  const error = expectJsonObject(protocol, protocolJson.error, "protocol error is an object");
+  const details = expectJsonObject(protocol, error.details, "protocol error details is an object");
+  expect(protocol, details.ref === ref, "protocol-json preserves error.details.ref");
 }

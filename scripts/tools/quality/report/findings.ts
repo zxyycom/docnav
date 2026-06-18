@@ -1,7 +1,8 @@
 import { formatTable } from "./table.ts";
+import type { DuplicateCodeFragment, DuplicateCodeLocation, QualityMetrics } from "../schema.ts";
 
-export function duplicateCodeSection(metrics: ExternalValue) {
-  const lines: ExternalValue[] = [];
+export function duplicateCodeSection(metrics: QualityMetrics): string {
+  const lines: string[] = [];
   lines.push("## 重复代码检测");
   lines.push("");
 
@@ -11,11 +12,11 @@ export function duplicateCodeSection(metrics: ExternalValue) {
     return lines.join("\n");
   }
 
-  const byArea = new Map();
+  const byArea = new Map<string, DuplicateCodeFragment[]>();
   for (const dup of duplicates) {
     for (const area of requireDuplicateAreas(dup)) {
       if (!byArea.has(area)) byArea.set(area, []);
-      byArea.get(area).push(dup);
+      byArea.get(area)?.push(dup);
     }
   }
 
@@ -47,25 +48,25 @@ export function duplicateCodeSection(metrics: ExternalValue) {
   return lines.join("\n");
 }
 
-function requireDuplicateAreas(dup: ExternalValue) {
+function requireDuplicateAreas(dup: DuplicateCodeFragment): string[] {
   if (!Array.isArray(dup.codeAreas) || dup.codeAreas.length === 0) {
     throw new Error(`Duplicate fragment #${dup.id} is missing code areas`);
   }
   return dup.codeAreas;
 }
 
-function requireDuplicateLocations(dup: ExternalValue) {
+function requireDuplicateLocations(dup: DuplicateCodeFragment): DuplicateCodeLocation[] {
   if (!Array.isArray(dup.locations) || dup.locations.length === 0) {
     throw new Error(`Duplicate fragment #${dup.id} is missing locations`);
   }
   return dup.locations;
 }
 
-function formatDuplicateLocation(dup: ExternalValue, location: ExternalValue) {
+function formatDuplicateLocation(dup: DuplicateCodeFragment, location: DuplicateCodeLocation): string {
   if (!location.path || !Number.isInteger(location.startLine) || !Number.isInteger(location.endLine)) {
     throw new Error(`Duplicate fragment #${dup.id} has an incomplete location`);
   }
-  if (!location.codeArea || location.codeArea === "ExternalValue") {
+  if (!location.codeArea || location.codeArea === "unknown") {
     throw new Error(`Duplicate fragment #${dup.id} location is missing code area`);
   }
 
@@ -76,12 +77,12 @@ function formatDuplicateLocation(dup: ExternalValue, location: ExternalValue) {
   return `${location.path}:${location.startLine}${endLine} (${location.codeArea})`;
 }
 
-export function changedFilesSection(metrics: ExternalValue) {
-  const lines: ExternalValue[] = [];
+export function changedFilesSection(metrics: QualityMetrics): string {
+  const lines: string[] = [];
   lines.push("## Changed Files Watchlist");
   lines.push("");
 
-  const changed = metrics.fileMetrics.filter((file: ExternalValue) => file.isChanged);
+  const changed = metrics.fileMetrics.filter((file) => file.isChanged);
   if (changed.length === 0) {
     lines.push("*(no changed files in scan scope)*");
     return lines.join("\n");
@@ -109,8 +110,8 @@ export function changedFilesSection(metrics: ExternalValue) {
   return lines.join("\n");
 }
 
-export function trendSection(metrics: ExternalValue) {
-  const lines: ExternalValue[] = [];
+export function trendSection(metrics: QualityMetrics): string {
+  const lines: string[] = [];
   lines.push("## 趋势比较 (Previous-Code Baseline)");
   lines.push("");
 
@@ -152,8 +153,8 @@ export function trendSection(metrics: ExternalValue) {
   return lines.join("\n");
 }
 
-export function warningsSection(metrics: ExternalValue) {
-  const lines: ExternalValue[] = [];
+export function warningsSection(metrics: QualityMetrics): string {
+  const lines: string[] = [];
   lines.push("## Warnings");
   lines.push("");
 
@@ -164,9 +165,9 @@ export function warningsSection(metrics: ExternalValue) {
   }
 
   const byLevel = {
-    error: warnings.filter((warning: ExternalValue) => warning.level === "error"),
-    warning: warnings.filter((warning: ExternalValue) => warning.level === "warning"),
-    info: warnings.filter((warning: ExternalValue) => warning.level === "info")
+    error: warnings.filter((warning) => warning.level === "error"),
+    warning: warnings.filter((warning) => warning.level === "warning"),
+    info: warnings.filter((warning) => warning.level === "info")
   };
 
   lines.push(`**Total**: ${warnings.length} warnings (${byLevel.error.length} errors, ${byLevel.warning.length} warnings, ${byLevel.info.length} info)`);

@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 
 import { expandTasks, runParallelTasks } from "./tools/parallel-task-runner.ts";
 import type { NormalizedTask, TaskDefinition } from "./tools/parallel-task-runner.ts";
-import { errorMessage, isRecord, processFailure } from "./tools/types.ts";
+import { errorMessage, isRecord, isStringArray, isUnknownArray, processFailure } from "./tools/types.ts";
 import type { ProcessFailure, StringMap } from "./tools/types.ts";
 
 const execFileAsync = promisify(execFile);
@@ -71,7 +71,7 @@ interface CheckResult extends CompletionResult {
 
 interface CheckExecutionData {
   endedAtMs: number;
-  error?: ExternalValue;
+  error?: unknown;
   exitCode: number;
   ok: boolean;
   startedAtMs: number;
@@ -324,7 +324,7 @@ export function parseArgs(argv: string[]): VerificationOptions {
       options.concurrency = arg.slice("--concurrency=".length);
       continue;
     }
-    throw new Error(`ExternalValue argument: ${arg}`);
+    throw new Error(`unknown argument: ${arg}`);
   }
 
   return {
@@ -359,7 +359,7 @@ export function reportCountForChecks(checkList: readonly CheckTask[]): number {
 
 export function formatDurationMs(durationMs: number): string {
   if (!Number.isFinite(durationMs)) {
-    return "ExternalValue";
+    return "unknown";
   }
   if (durationMs < 1000) {
     return `${Math.max(0, Math.round(durationMs))}ms`;
@@ -411,10 +411,9 @@ async function runVerification({ profile, concurrency }: VerificationOptions): P
   const completedReports: CompletionResult[] = [];
 
   printHeader(profile, totalReports);
-  await runParallelTasks(selectedChecks, {
-    prepareTasks: (taskList) => taskList as CheckTask[],
+  await runParallelTasks<CheckResult>(selectedChecks, {
     concurrency,
-    execute: (task) => executeCheck(task as CheckTask),
+    execute: (task) => executeCheck(asCheckTask(task)),
     onComplete: (result) => {
       appendLog(logPaths, result);
       const report = completeReport(result);
@@ -517,7 +516,7 @@ function readEnvFile(envFile: string | undefined): StringMap {
     return {};
   }
   const envPath = path.resolve(root, envFile);
-  const parsed = JSON.parse(fs.readFileSync(envPath, "utf8"));
+  const parsed: unknown = JSON.parse(fs.readFileSync(envPath, "utf8"));
   if (!isRecord(parsed)) {
     throw new Error(`env file must contain an object: ${envFile}`);
   }
@@ -615,12 +614,7 @@ function finalizeLogs(logPaths: readonly string[], totalDurationMs: number): voi
 }
 
 function defineChecks(checkList: readonly CheckDefinition[]): CheckTask[] {
-  return withCheckReportMetadata(checkList).map((check) => ({
-    args: [],
-    command: "",
-    ignoreOutput: [],
-    ...check
-  })) as CheckTask[];
+  return withCheckReportMetadata(checkList).map(asCheckTask);
 }
 
 function withCheckReportMetadata(checkList: readonly CheckDefinition[]): NormalizedTask[] {
@@ -629,10 +623,15 @@ function withCheckReportMetadata(checkList: readonly CheckDefinition[]): Normali
 
 function annotateCheckReport(check: CheckDefinition, inheritedReport: CheckReportRef | null): CheckDefinition {
   const report = inheritedReport ?? (typeof check.label === "string" ? createCheckReport(check) : null);
-  if (Array.isArray(check.tasks)) {
+  const childChecks = check.tasks;
+  if (childChecks !== undefined) {
+    const maybeChildChecks: unknown = childChecks;
+    if (!Array.isArray(maybeChildChecks)) {
+      throw new Error(`check ${check.id} tasks must be an array`);
+    }
     return {
       ...check,
-      tasks: check.tasks.map((child) => annotateCheckReport(child, report))
+      tasks: childChecks.map((child) => annotateCheckReport(child, report))
     };
   }
   const leafReport = report ?? createCheckReport(check);
@@ -648,6 +647,22 @@ function createCheckReport(check: CheckDefinition): CheckReportRef {
     id: check.id,
     label: check.label ?? check.id
   };
+}
+
+function asCheckTask(task: NormalizedTask): CheckTask {
+  const args = isStringArray(task.args) ? task.args : [];
+  const command = typeof task.command === "string" ? task.command : "";
+  const ignoreOutput = isRegExpArray(task.ignoreOutput) ? task.ignoreOutput : [];
+  return {
+    ...task,
+    args,
+    command,
+    ignoreOutput
+  };
+}
+
+function isRegExpArray(value: unknown): value is RegExp[] {
+  return isUnknownArray(value) && value.every((item) => item instanceof RegExp);
 }
 
 function createReportCompletionTracker(checkList: readonly CheckTask[]): (result: CheckResult) => CompletionResult | null {
@@ -814,7 +829,7 @@ function parseProfile(profile: string): Profile {
 
 function assertProfile(profile: string): asserts profile is Profile {
   if (!Object.hasOwn(profiles, profile)) {
-    throw new Error(`ExternalValue verification profile: ${profile}`);
+    throw new Error(`unknown verification profile: ${profile}`);
   }
 }
 

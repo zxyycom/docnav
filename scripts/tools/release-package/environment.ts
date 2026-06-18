@@ -1,7 +1,14 @@
 import { findCargoExecutable } from "../cargo.ts";
+import { isRecord } from "../types.ts";
+import type { ReleaseProducer } from "./config.ts";
 import { runCommand } from "./io.ts";
 
-export function resolveWorkspaceVersion() {
+type CargoPackageMetadata = {
+  id: string;
+  version: string;
+};
+
+export function resolveWorkspaceVersion(): string {
   const result = runCommand(
     "cargo",
     ["metadata", "--no-deps", "--format-version", "1"],
@@ -9,22 +16,27 @@ export function resolveWorkspaceVersion() {
       label: "cargo metadata",
     },
   );
-  const metadata = JSON.parse(result.stdout);
-  const workspaceMembers = new Set(metadata.workspace_members ?? []);
+  const metadata: unknown = JSON.parse(result.stdout);
+  assertCargoMetadata(metadata);
+  const workspaceMembers = new Set(metadata.workspace_members);
   const versions = new Set(
-    (metadata.packages ?? [])
-      .filter((pkg: ExternalValue) => workspaceMembers.has(pkg.id))
-      .map((pkg: ExternalValue) => pkg.version),
+    metadata.packages
+      .filter((pkg) => workspaceMembers.has(pkg.id))
+      .map((pkg) => pkg.version),
   );
 
   if (versions.size !== 1) {
     throw new Error(`expected one workspace version, found ${versions.size}`);
   }
 
-  return [...versions][0];
+  const version = [...versions][0];
+  if (!version) {
+    throw new Error("cargo metadata did not report a workspace version");
+  }
+  return version;
 }
 
-export function resolveHostTarget() {
+export function resolveHostTarget(): string {
   const result = runCommand("rustc", ["-vV"], {
     label: "rustc -vV",
     maxBuffer: 1024 * 1024,
@@ -40,7 +52,7 @@ export function resolveHostTarget() {
   return hostLine.slice("host: ".length).trim();
 }
 
-export function buildReleaseBinary(packageName: ExternalValue, binName: ExternalValue, target: ExternalValue) {
+export function buildReleaseBinary(packageName: string, binName: string, target: string): string {
   const args = [
     "build",
     "--release",
@@ -64,7 +76,7 @@ export function buildReleaseBinary(packageName: ExternalValue, binName: External
   return executable;
 }
 
-export function getGitCommit() {
+export function getGitCommit(): string {
   const result = runCommand("git", ["rev-parse", "HEAD"], {
     label: "git rev-parse HEAD",
     maxBuffer: 1024 * 1024,
@@ -72,7 +84,7 @@ export function getGitCommit() {
   return (result.stdout ?? "").trim();
 }
 
-export function isSourceDirty() {
+export function isSourceDirty(): boolean {
   const result = runCommand(
     "git",
     ["status", "--porcelain=v1", "--untracked-files=all", "--ignored=no"],
@@ -84,7 +96,7 @@ export function isSourceDirty() {
   return (result.stdout ?? "").trim().length > 0;
 }
 
-export function resolveProducerMetadata() {
+export function resolveProducerMetadata(): ReleaseProducer {
   if (process.env.GITHUB_ACTIONS !== "true") {
     return {
       kind: "local",
@@ -102,7 +114,7 @@ export function resolveProducerMetadata() {
   };
 }
 
-function requiredEnv(name: ExternalValue) {
+function requiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
     throw new Error(`${name} is required`);
@@ -110,11 +122,34 @@ function requiredEnv(name: ExternalValue) {
   return value;
 }
 
-function requiredIntEnv(name: ExternalValue) {
+function requiredIntEnv(name: string): number {
   const value = requiredEnv(name);
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${name} must be a positive integer`);
   }
   return parsed;
+}
+
+function assertCargoMetadata(value: unknown): asserts value is {
+  packages: CargoPackageMetadata[];
+  workspace_members: string[];
+} {
+  if (!isRecord(value)) {
+    throw new Error("cargo metadata root must be an object");
+  }
+
+  const workspaceMembers = Array.isArray(value.workspace_members)
+    ? value.workspace_members.filter((member): member is string => typeof member === "string")
+    : [];
+  const packages = Array.isArray(value.packages)
+    ? value.packages.filter(isCargoPackageMetadata)
+    : [];
+
+  value.workspace_members = workspaceMembers;
+  value.packages = packages;
+}
+
+function isCargoPackageMetadata(value: unknown): value is CargoPackageMetadata {
+  return isRecord(value) && typeof value.id === "string" && typeof value.version === "string";
 }

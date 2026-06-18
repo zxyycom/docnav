@@ -45,7 +45,7 @@ export interface SmokeState {
   startedAt: Date;
   testResults: SmokeTestResult[];
   validators: Record<string, ValidateFunction> | null;
-  [key: string]: ExternalValue;
+  [key: string]: unknown;
 }
 
 export interface SmokeTestResult {
@@ -67,14 +67,14 @@ export interface SmokeTask extends TaskDefinition {
   reportId?: string;
   reportLabel?: string;
   reportOrder?: number;
-  run?: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
+  run?: (task: NormalizedTask) => unknown | Promise<unknown>;
 }
 
 export interface SmokeCommandOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   maxBuffer?: number;
-  project?: { root?: string };
+  project?: { env?: NodeJS.ProcessEnv; root?: string };
   stdin?: Buffer | string | null;
   stdinSummary?: string | null;
 }
@@ -161,7 +161,7 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     safeArgPattern = /^[A-Za-z0-9_./:=@+-]+$/
   } = options;
 
-  async function runTest(label: string, fn: () => ExternalValue | Promise<ExternalValue>, options: { id?: string } = {}) {
+  async function runTest(label: string, fn: () => unknown | Promise<unknown>, options: { id?: string } = {}) {
     const context = { commandRecords: [] as CommandRecord[] };
     const startedAtMs = Date.now();
     const result: SmokeTestResult = {
@@ -235,7 +235,7 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     );
   }
 
-  function validateSchema(record: CommandRecord, name: string, value: ExternalValue) {
+  function validateSchema(record: CommandRecord, name: string, value: unknown) {
     const validate = state.validators?.[name];
     expect(record, Boolean(validate), `schema validator exists for ${name}`);
     if (!validate) {
@@ -294,7 +294,7 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     printLogLocation(console.log);
   }
 
-  function printFailureSummary(error: ExternalValue) {
+  function printFailureSummary(error: unknown) {
     console.error("");
     console.error(title);
     console.error("Status: failed");
@@ -406,8 +406,12 @@ function spawnCommand(executable: string, args: string[], options: SmokeCommandO
       stdio: "pipe"
     });
 
-    const appendOutput = (chunk: Buffer | string, streamName: "stderr" | "stdout") => {
-      const text = chunk.toString("utf8");
+    const appendOutput = (chunk: unknown, streamName: "stderr" | "stdout") => {
+      const text = Buffer.isBuffer(chunk)
+        ? chunk.toString("utf8")
+        : typeof chunk === "string"
+          ? chunk
+          : String(chunk);
       const bytes = Buffer.byteLength(text, "utf8");
       if (streamName === "stdout") {
         stdout += text;
@@ -423,8 +427,8 @@ function spawnCommand(executable: string, args: string[], options: SmokeCommandO
       }
     };
 
-    child.stdout.on("data", (chunk) => appendOutput(chunk, "stdout"));
-    child.stderr.on("data", (chunk) => appendOutput(chunk, "stderr"));
+    child.stdout.on("data", (chunk: unknown) => appendOutput(chunk, "stdout"));
+    child.stderr.on("data", (chunk: unknown) => appendOutput(chunk, "stderr"));
     child.on("error", (error: Error) => {
       childError = error;
       finish(1, null);

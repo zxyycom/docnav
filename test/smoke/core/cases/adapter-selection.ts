@@ -9,8 +9,10 @@ import {
   expect,
   expectCandidateWarning,
   expectExit,
+  expectObjectArray,
   expectNoProtocolEnvelope,
   expectStderrEmpty,
+  expectString,
   parseJson
 } from "../assertions.ts";
 
@@ -43,8 +45,11 @@ async function testPreselectedAdapterFailureFallsBack() {
   const json = parseJson(record);
   validateSchema(record, "readableOutline", json);
   expectNoProtocolEnvelope(record, json);
-  expect(record, json.entries[0].display.includes(selected.id), "adapter after invalid preselection is selected");
-  expectCandidateWarning(record, json.warnings?.[0], {
+  const entries = expectObjectArray(record, json.entries, "outline entries are objects");
+  const firstDisplay = expectString(record, entries[0]?.display, "first outline entry has display");
+  expect(record, firstDisplay.includes(selected.id), "adapter after invalid preselection is selected");
+  const warnings = expectObjectArray(record, json.warnings, "outline warnings are objects");
+  expectCandidateWarning(record, warnings[0], {
     adapter_id: invalid.id,
     stage: "resolve",
     code: "MANIFEST_INVALID",

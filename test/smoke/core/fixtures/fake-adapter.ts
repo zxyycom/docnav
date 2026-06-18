@@ -1,12 +1,29 @@
 import fs from "node:fs";
 import path from "node:path";
 
+interface AdapterRequest extends Record<string, unknown> {
+  arguments?: unknown;
+  document?: unknown;
+  operation?: unknown;
+  request_id?: unknown;
+}
+
+interface FakeAdapterOptions {
+  command: string | null;
+  commandArgs: string[];
+  extensions: string[];
+  id: string;
+  log: string | null;
+  mode: string;
+}
+
 const options = parseOptions(process.argv.slice(2));
 const stdin = options.command === "invoke" ? await readStdin() : "";
-let request = null;
+let request: unknown = null;
 if (stdin.trim().length > 0) {
   try {
-    request = JSON.parse(stdin);
+    const parsed: unknown = JSON.parse(stdin);
+    request = parsed;
   } catch {
     request = null;
   }
@@ -19,13 +36,13 @@ switch (options.command) {
     writeJson(manifest());
     break;
   case "probe":
-    writeJson(probe(options.commandArgs[0]));
+    writeJson(probe(options.commandArgs[0] ?? ""));
     break;
   case "invoke":
     handleInvoke(request);
     break;
   default:
-    console.error(`ExternalValue command ${options.command ?? "(missing)"}`);
+    console.error(`Unknown command ${options.command ?? "(missing)"}`);
     process.exit(2);
 }
 
@@ -60,7 +77,7 @@ function manifest() {
   };
 }
 
-function probe(documentPath: ExternalValue) {
+function probe(documentPath: string) {
   if (options.mode === "probe-exit") {
     console.error(`${options.id} probe failed intentionally`);
     process.exit(8);
@@ -92,7 +109,7 @@ function probe(documentPath: ExternalValue) {
   };
 }
 
-function handleInvoke(value: ExternalValue) {
+function handleInvoke(value: unknown) {
   if (options.mode === "invoke-exit") {
     console.error(`${options.id} invoke failed intentionally`);
     process.exit(9);
@@ -101,15 +118,16 @@ function handleInvoke(value: ExternalValue) {
     process.stdout.write("{ invalid json");
     return;
   }
-  if (!value || typeof value !== "object") {
-    writeJson(failure("ExternalValue", null, "INVALID_REQUEST", { field: "stdin", reason: "missing request JSON" }));
+  if (!isRecord(value)) {
+    writeJson(failure("unknown", null, "INVALID_REQUEST", { field: "stdin", reason: "missing request JSON" }));
     process.exit(2);
   }
+  const request = value as AdapterRequest;
   if (options.mode === "invoke-schema-invalid") {
     writeJson({
       protocol_version: "0.1",
-      request_id: value.request_id,
-      operation: value.operation,
+      request_id: request.request_id,
+      operation: request.operation,
       ok: true,
       result: {
         entries: "not an array"
@@ -120,15 +138,17 @@ function handleInvoke(value: ExternalValue) {
 
   writeJson({
     protocol_version: "0.1",
-    request_id: value.request_id,
-    operation: value.operation,
+    request_id: request.request_id,
+    operation: request.operation,
     ok: true,
-    result: resultFor(value)
+    result: resultFor(request)
   });
 }
 
-function resultFor(value: ExternalValue) {
-  const documentPath = value.document?.path ?? "(missing)";
+function resultFor(value: AdapterRequest) {
+  const document = isRecord(value.document) ? value.document : {};
+  const args = isRecord(value.arguments) ? value.arguments : {};
+  const documentPath = typeof document.path === "string" ? document.path : "(missing)";
   switch (value.operation) {
     case "outline":
       return {
@@ -142,7 +162,7 @@ function resultFor(value: ExternalValue) {
       };
     case "read":
       return {
-        ref: value.arguments?.ref ?? "fake:root",
+        ref: typeof args.ref === "string" ? args.ref : "fake:root",
         content: `# Fake ${options.id}\n\nRead ${documentPath}`,
         content_type: "text/markdown",
         cost: "0.1 KB",
@@ -153,7 +173,7 @@ function resultFor(value: ExternalValue) {
         matches: [
           {
             ref: "fake:root",
-            display: `${options.id} match for ${value.arguments?.query ?? ""}`
+            display: `${options.id} match for ${typeof args.query === "string" ? args.query : ""}`
           }
         ],
         page: null
@@ -168,7 +188,7 @@ function resultFor(value: ExternalValue) {
   }
 }
 
-function failure(requestId: ExternalValue, operation: ExternalValue, code: ExternalValue, details: ExternalValue) {
+function failure(requestId: unknown, operation: unknown, code: string, details: Record<string, unknown>) {
   return {
     protocol_version: "0.1",
     request_id: requestId,
@@ -182,7 +202,7 @@ function failure(requestId: ExternalValue, operation: ExternalValue, code: Exter
   };
 }
 
-function recordCall(extra: ExternalValue) {
+function recordCall(extra: Record<string, unknown>) {
   if (!options.log) {
     return;
   }
@@ -201,7 +221,7 @@ function recordCall(extra: ExternalValue) {
   );
 }
 
-function writeJson(value: ExternalValue) {
+function writeJson(value: unknown) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
@@ -213,15 +233,8 @@ async function readStdin() {
   return content;
 }
 
-function parseOptions(args: ExternalValue) {
-  const parsed: {
-    id: string;
-    mode: string;
-    log: string | null;
-    extensions: string[];
-    command: string | null;
-    commandArgs: string[];
-  } = {
+function parseOptions(args: string[]): FakeAdapterOptions {
+  const parsed: FakeAdapterOptions = {
     id: "fake-adapter",
     mode: "valid",
     log: null,
@@ -233,22 +246,26 @@ function parseOptions(args: ExternalValue) {
   while (index < args.length) {
     const token = args[index];
     if (token === "--id") {
-      parsed.id = args[index + 1];
+      parsed.id = args[index + 1] ?? "";
       index += 2;
     } else if (token === "--mode") {
-      parsed.mode = args[index + 1];
+      parsed.mode = args[index + 1] ?? "";
       index += 2;
     } else if (token === "--log") {
-      parsed.log = args[index + 1];
+      parsed.log = args[index + 1] ?? "";
       index += 2;
     } else if (token === "--extensions") {
-      parsed.extensions = args[index + 1].split(",").filter(Boolean);
+      parsed.extensions = (args[index + 1] ?? "").split(",").filter(Boolean);
       index += 2;
     } else {
-      parsed.command = token;
+      parsed.command = token ?? null;
       parsed.commandArgs = args.slice(index + 1);
       break;
     }
   }
   return parsed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

@@ -10,6 +10,17 @@ import { scanWithScc } from "./tools/scc.ts";
 import { scanWithCpd } from "./tools/cpd.ts";
 import { classifyFile, isExcluded } from "./classify.ts";
 import { buildAggregates } from "./aggregate.ts";
+import type {
+  CodeAreaAggregate,
+  CodeAreaFileMap,
+  DuplicateCodeFragment,
+  FatalIssue,
+  FileMetric,
+  FunctionMetric,
+  QualityConfig,
+  QualityMetrics,
+  ToolAvailability
+} from "./schema.ts";
 
 export function scanCurrentRevision({
   metrics,
@@ -21,7 +32,17 @@ export function scanCurrentRevision({
   fatalIssues,
   root,
   config
-}: ExternalValue) {
+}: {
+  changedFiles: string[];
+  config: QualityConfig;
+  fatalIssues: FatalIssue[];
+  fileMap: CodeAreaFileMap;
+  metrics: QualityMetrics;
+  rawDir: string;
+  root: string;
+  scanFiles: string[];
+  toolResults: ToolAvailability[];
+}): void {
   runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config });
   runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config });
   runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root, config });
@@ -35,7 +56,25 @@ export function scanCurrentRevision({
   });
 }
 
-function runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config }: ExternalValue) {
+function runSccScan({
+  metrics,
+  toolResults,
+  scanFiles,
+  changedFiles,
+  rawDir,
+  fatalIssues,
+  root,
+  config
+}: {
+  changedFiles: string[];
+  config: QualityConfig;
+  fatalIssues: FatalIssue[];
+  metrics: QualityMetrics;
+  rawDir: string;
+  root: string;
+  scanFiles: string[];
+  toolResults: ToolAvailability[];
+}): void {
   if (!isToolAvailable(toolResults, "scc")) return;
 
   console.log("Running scc...");
@@ -60,8 +99,8 @@ function runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fat
     metrics.aggregates.byCodeArea = buildFileAreaAggregates(metrics.fileMetrics, config);
     metrics.aggregates.overall = {
       totalFiles: metrics.fileMetrics.length,
-      totalLines: metrics.fileMetrics.reduce((s: ExternalValue, f: ExternalValue) => s + f.lines, 0),
-      totalCodeLines: metrics.fileMetrics.reduce((s: ExternalValue, f: ExternalValue) => s + (f.codeLines || 0), 0),
+      totalLines: metrics.fileMetrics.reduce((s, f) => s + f.lines, 0),
+      totalCodeLines: metrics.fileMetrics.reduce((s, f) => s + (f.codeLines || 0), 0),
       totalFunctions: 0
     };
 
@@ -74,13 +113,31 @@ function runSccScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fat
   writeFileSync(join(rawDir, "scc-output.json"), JSON.stringify(metrics.fileMetrics, null, 2), "utf8");
 }
 
-function runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, fatalIssues, root, config }: ExternalValue) {
+function runLizardScan({
+  metrics,
+  toolResults,
+  scanFiles,
+  changedFiles,
+  rawDir,
+  fatalIssues,
+  root,
+  config
+}: {
+  changedFiles: string[];
+  config: QualityConfig;
+  fatalIssues: FatalIssue[];
+  metrics: QualityMetrics;
+  rawDir: string;
+  root: string;
+  scanFiles: string[];
+  toolResults: ToolAvailability[];
+}): void {
   if (!isToolAvailable(toolResults, "lizard")) return;
 
   console.log("Running Lizard...");
 
   const targetFiles = scanFiles.filter(
-    (f: ExternalValue) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
+    (f) => (f.endsWith(".rs") || f.endsWith(".ts") || f.endsWith(".js")) &&
       !isExcluded(f, config.excludeDirs, config.generatedFiles)
   );
   console.log(`  Lizard targets: ${targetFiles.length} files`);
@@ -110,7 +167,23 @@ function runLizardScan({ metrics, toolResults, scanFiles, changedFiles, rawDir, 
   );
 }
 
-function runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root, config }: ExternalValue) {
+function runCpdScan({
+  metrics,
+  toolResults,
+  fileMap,
+  changedFiles,
+  rawDir,
+  root,
+  config
+}: {
+  changedFiles: string[];
+  config: QualityConfig;
+  fileMap: CodeAreaFileMap;
+  metrics: QualityMetrics;
+  rawDir: string;
+  root: string;
+  toolResults: ToolAvailability[];
+}): void {
   if (!isToolAvailable(toolResults, "pmd-cpd")) {
     console.log("  CPD not available, skipping duplicate detection");
     return;
@@ -118,11 +191,11 @@ function runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root,
 
   console.log("Running PMD CPD...");
 
-  const allFragments: ExternalValue[] = [];
+  const allFragments: DuplicateCodeFragment[] = [];
 
   for (const [area, areaFiles] of fileMap.entries()) {
     const targetFiles = areaFiles.filter(
-      (f: ExternalValue) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
+      (f) => !isExcluded(f, config.excludeDirs, config.generatedFiles)
     );
 
     if (targetFiles.length < 2) {
@@ -166,10 +239,18 @@ function runCpdScan({ metrics, toolResults, fileMap, changedFiles, rawDir, root,
   );
 }
 
-function scanLizardBatches({ targetFiles, root, config }: ExternalValue) {
+function scanLizardBatches({
+  targetFiles,
+  root,
+  config
+}: {
+  config: QualityConfig;
+  root: string;
+  targetFiles: string[];
+}): { errors: string[]; functions: FunctionMetric[] } {
   const maxFilesPerBatch = 200;
-  const allFunctions: ExternalValue[] = [];
-  const errors: ExternalValue[] = [];
+  const allFunctions: FunctionMetric[] = [];
+  const errors: string[] = [];
 
   for (let i = 0; i < targetFiles.length; i += maxFilesPerBatch) {
     const batch = targetFiles.slice(i, i + maxFilesPerBatch);
@@ -196,8 +277,8 @@ function scanLizardBatches({ targetFiles, root, config }: ExternalValue) {
   return { functions: allFunctions, errors };
 }
 
-function buildFileAreaAggregates(fileMetrics: ExternalValue, config: ExternalValue) {
-  const areaAggMap = new Map();
+function buildFileAreaAggregates(fileMetrics: FileMetric[], config: QualityConfig): CodeAreaAggregate[] {
+  const areaAggMap = new Map<string, CodeAreaAggregate>();
 
   for (const file of fileMetrics) {
     const existing = areaAggMap.get(file.codeArea);
@@ -219,8 +300,8 @@ function buildFileAreaAggregates(fileMetrics: ExternalValue, config: ExternalVal
   return Array.from(areaAggMap.values()).sort((a, b) => b.lines - a.lines);
 }
 
-function updateFunctionCounts(metrics: ExternalValue) {
-  const funcByArea = new Map();
+function updateFunctionCounts(metrics: QualityMetrics): void {
+  const funcByArea = new Map<string, number>();
   for (const func of metrics.functionMetrics) {
     funcByArea.set(func.codeArea, (funcByArea.get(func.codeArea) || 0) + 1);
   }
@@ -230,8 +311,8 @@ function updateFunctionCounts(metrics: ExternalValue) {
   metrics.aggregates.overall.totalFunctions = metrics.functionMetrics.length;
 }
 
-function updateDuplicateCounts(metrics: ExternalValue, allFragments: ExternalValue) {
-  const dupByArea = new Map();
+function updateDuplicateCounts(metrics: QualityMetrics, allFragments: DuplicateCodeFragment[]): void {
+  const dupByArea = new Map<string, number>();
   for (const dup of allFragments) {
     for (const area of dup.codeAreas) {
       dupByArea.set(area, (dupByArea.get(area) || 0) + 1);
@@ -242,20 +323,20 @@ function updateDuplicateCounts(metrics: ExternalValue, allFragments: ExternalVal
   }
 }
 
-function annotateDuplicateFragments(fragments: ExternalValue, area: ExternalValue, changedFiles: ExternalValue) {
+function annotateDuplicateFragments(fragments: DuplicateCodeFragment[], area: string, changedFiles: string[]): void {
   for (const frag of fragments) {
     for (const loc of frag.locations) {
       loc.codeArea = area;
     }
     frag.codeAreas = [area];
-    frag.hitsChangedScope = frag.locations.some((l: ExternalValue) => isInChangedScope(l.path, changedFiles));
+    frag.hitsChangedScope = frag.locations.some((l) => isInChangedScope(l.path, changedFiles));
   }
 }
 
-function isToolAvailable(toolResults: ExternalValue, name: ExternalValue) {
-  return toolResults.find((t: ExternalValue) => t.name === name)?.available;
+function isToolAvailable(toolResults: ToolAvailability[], name: string): boolean {
+  return toolResults.find((t) => t.name === name)?.available === true;
 }
 
-function isInChangedScope(path: ExternalValue, changedFiles: ExternalValue) {
-  return changedFiles.some((changedFile: ExternalValue) => path.includes(changedFile) || changedFile.includes(path));
+function isInChangedScope(filePath: string, changedFiles: string[]): boolean {
+  return changedFiles.some((changedFile) => filePath.includes(changedFile) || changedFile.includes(filePath));
 }

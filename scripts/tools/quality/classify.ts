@@ -8,6 +8,7 @@
  */
 
 import { minimatch } from "minimatch";
+import type { CodeAreaDefinition, CodeAreaFileMap, CodeAreaFingerprint } from "./schema.ts";
 
 /**
  * 将文件路径归类到配置定义的 code area。
@@ -15,16 +16,20 @@ import { minimatch } from "minimatch";
  * 匹配优先级：
  * 1. generated files（最高优先）
  * 2. 按配置的 code areas 顺序匹配 globs
- * 3. 未匹配的文件归入 "ExternalValue" code area
+ * 3. 未匹配的文件归入 "unknown" code area
  *
  * @param {string} filePath - 仓库相对路径（使用 / 分隔符）
  * @param {import('./config.ts').DEFAULT_CONFIG['codeAreas']} codeAreas - 6 类 code area 定义
  * @param {string[]} generatedFileGlobs - generated files glob 模式
  * @returns {string} code area name
  */
-export function classifyFile(filePath: ExternalValue, codeAreas: Record<string, ExternalValue>, generatedFileGlobs: ExternalValue) {
+export function classifyFile(
+  filePath: string,
+  codeAreas: Record<string, CodeAreaDefinition>,
+  generatedFileGlobs: readonly string[]
+): string {
   // 1. 检查 generated files
-  if (generatedFileGlobs.some((g: ExternalValue) => minimatch(filePath, g))) {
+  if (generatedFileGlobs.some((g) => minimatch(filePath, g))) {
     return "generated";
   }
 
@@ -33,17 +38,17 @@ export function classifyFile(filePath: ExternalValue, codeAreas: Record<string, 
     if (name === "generated") continue; // generated 只在步骤 1 匹配
 
     // exclude 优先：如果命中 exclude glob，此 area 不算
-    if (def.excludeGlobs.some((g: ExternalValue) => minimatch(filePath, g))) {
+    if (def.excludeGlobs.some((g) => minimatch(filePath, g))) {
       continue;
     }
     // 命中 include glob
-    if (def.globs.some((g: ExternalValue) => minimatch(filePath, g))) {
+    if (def.globs.some((g) => minimatch(filePath, g))) {
       return name;
     }
   }
 
   // 3. 兜底
-  return "ExternalValue";
+  return "unknown";
 }
 
 /**
@@ -54,16 +59,16 @@ export function classifyFile(filePath: ExternalValue, codeAreas: Record<string, 
  * @param {string[]} generatedFileGlobs - generated files glob
  * @returns {boolean}
  */
-export function isExcluded(filePath: ExternalValue, excludeDirs: ExternalValue, generatedFileGlobs: ExternalValue) {
+export function isExcluded(filePath: string, excludeDirs: readonly string[], generatedFileGlobs: readonly string[]): boolean {
   const parts = filePath.split("/");
 
   // 检查排除目录
-  if (excludeDirs.some((d: ExternalValue) => parts.includes(d))) {
+  if (excludeDirs.some((d) => parts.includes(d))) {
     return true;
   }
 
   // 检查 generated files
-  if (generatedFileGlobs.some((g: ExternalValue) => minimatch(filePath, g))) {
+  if (generatedFileGlobs.some((g) => minimatch(filePath, g))) {
     return true;
   }
 
@@ -78,16 +83,19 @@ export function isExcluded(filePath: ExternalValue, excludeDirs: ExternalValue, 
  * @param {string[]} generatedFileGlobs
  * @returns {Map<string, string[]>} codeArea -> files 映射
  */
-export function classifyFiles(files: ExternalValue, codeAreas: Record<string, ExternalValue>, generatedFileGlobs: ExternalValue) {
-  /** @type {Map<string, string[]>} */
-  const groups = new Map();
+export function classifyFiles(
+  files: readonly string[],
+  codeAreas: Record<string, CodeAreaDefinition>,
+  generatedFileGlobs: readonly string[]
+): CodeAreaFileMap {
+  const groups: CodeAreaFileMap = new Map();
 
   for (const file of files) {
     const area = classifyFile(file, codeAreas, generatedFileGlobs);
     if (!groups.has(area)) {
       groups.set(area, []);
     }
-    groups.get(area).push(file);
+    groups.get(area)?.push(file);
   }
 
   // 按文件名排序
@@ -106,9 +114,13 @@ export function classifyFiles(files: ExternalValue, codeAreas: Record<string, Ex
  * @param {Function} gitHashFn - (filePath: string) => string: git hash-object 的输出
  * @returns {import('./schema.ts').CodeAreaFingerprint}
  */
-export function buildFingerprint(codeArea: ExternalValue, files: ExternalValue, gitHashFn: ExternalValue) {
+export function buildFingerprint(
+  _codeArea: string,
+  files: readonly string[],
+  gitHashFn: (filePath: string) => string
+): CodeAreaFingerprint {
   // 指纹：对所有文件路径和 blob hash 做复合哈希
-  const parts = files.map((f: ExternalValue) => `${f}:${gitHashFn(f)}`);
+  const parts = files.map((f) => `${f}:${gitHashFn(f)}`);
   const full = parts.join("\n");
 
   // 简单指纹：用 path+hash 字符串的长度和 checksum

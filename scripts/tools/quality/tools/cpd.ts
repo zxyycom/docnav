@@ -227,7 +227,7 @@ export function parseCpdXml(xml: string, cwd: string): CpdScanResult {
           path,
           startLine,
           endLine,
-          codeArea: "ExternalValue"
+          codeArea: "unknown"
         });
       }
 
@@ -329,7 +329,7 @@ export function parsePmdVersionOutput(output: string): string {
     .find((line) => /^PMD\s+\d/.test(line));
 
   if (!versionLine) {
-    return "ExternalValue";
+    return "unknown";
   }
 
   const match = versionLine.match(/^PMD\s+([^\s(]+)/);
@@ -364,7 +364,11 @@ function parseIntegerAttribute(attrs: Map<string, string>, name: string): number
 }
 
 function decodeXmlAttribute(value: string): string {
-  return value.replace(/&(?:#(\d+)|#x([0-9a-fA-F]+)|amp|quot|apos|lt|gt);/g, (entity, dec, hex) => {
+  return value.replace(/&(?:#(\d+)|#x([0-9a-fA-F]+)|amp|quot|apos|lt|gt);/g, (
+    entity: string,
+    dec: string | undefined,
+    hex: string | undefined
+  ) => {
     if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
     if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
     switch (entity) {

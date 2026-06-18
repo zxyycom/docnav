@@ -6,6 +6,7 @@ import {
   expectExit,
   expectNoJsonPayloadInStderr,
   expectNoWarningsField,
+  expectObjectArray,
   expectProtocolSuccess,
   expectStderrEmpty,
   expectStderrIncludes,
@@ -59,7 +60,7 @@ async function testCliArgumentCompatibilityWarnings() {
   expectStdoutIncludes(outlineHelp, "protocol-json");
   expect(outlineHelp, !outlineHelp.stdout.includes("text"), "outline help does not mention text output mode");
 
-  const readable = await runCli("MD-WARN-001 outline ExternalValue readable-json warning", [
+  const readable = await runCli("MD-WARN-001 outline future readable-json warning", [
     "outline",
     normal,
     "--future",
@@ -70,7 +71,8 @@ async function testCliArgumentCompatibilityWarnings() {
   expectStderrEmpty(readable);
   const readableJson = parseJson(readable);
   validateSchema(readable, "readableOutline", readableJson);
-  expectStructuredWarning(readable, readableJson.warnings?.[0], ["--future"], "ExternalValue flag");
+  const readableWarnings = expectObjectArray(readable, readableJson.warnings, "readable warnings are objects");
+  expectStructuredWarning(readable, readableWarnings[0], ["--future"], "future flag");
 
   const unused = await runCli("MD-WARN-001 read unused known flag readable-json warning", [
     "read",
@@ -86,9 +88,10 @@ async function testCliArgumentCompatibilityWarnings() {
   expectStderrEmpty(unused);
   const unusedJson = parseJson(unused);
   validateSchema(unused, "readableRead", unusedJson);
-  expectStructuredWarning(unused, unusedJson.warnings?.[0], ["--max-heading-level", "3"], "unused native flag");
+  const unusedWarnings = expectObjectArray(unused, unusedJson.warnings, "unused flag warnings are objects");
+  expectStructuredWarning(unused, unusedWarnings[0], ["--max-heading-level", "3"], "unused native flag");
 
-  const protocol = await runCli("MD-WARN-001 outline ExternalValue flag protocol-json stderr warning", [
+  const protocol = await runCli("MD-WARN-001 outline future flag protocol-json stderr warning", [
     "outline",
     normal,
     "--future",

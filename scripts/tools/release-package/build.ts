@@ -7,6 +7,7 @@ import {
   resolveBinaryDestPath,
   resolvePackageLayout,
 } from "./config.ts";
+import type { PackageLayout, ReleaseManifest, ReleaseManifestFile } from "./config.ts";
 import {
   buildReleaseBinary,
   getGitCommit,
@@ -24,7 +25,12 @@ import {
 } from "./io.ts";
 import { validateReleasePackage } from "./validation.ts";
 
-export function buildReleasePackage(target = resolveHostTarget()) {
+export type ReleasePackageBuildResult = PackageLayout & {
+  manifest: ReleaseManifest;
+  fileCount: number;
+};
+
+export function buildReleasePackage(target = resolveHostTarget()): ReleasePackageBuildResult {
   const version = resolveWorkspaceVersion();
   const layout = resolvePackageLayout(version, target);
 
@@ -50,7 +56,7 @@ export function buildReleasePackage(target = resolveHostTarget()) {
   }
 }
 
-function buildPackageFiles(packageDir: ExternalValue, target: ExternalValue) {
+function buildPackageFiles(packageDir: string, target: string): ReleaseManifestFile[] {
   return releaseComponents.map((component) => {
     const executablePath = buildReleaseBinary(
       component.packageName,
@@ -70,7 +76,7 @@ function buildPackageFiles(packageDir: ExternalValue, target: ExternalValue) {
   });
 }
 
-function createManifest(version: ExternalValue, target: ExternalValue, files: ExternalValue) {
+function createManifest(version: string, target: string, files: ReleaseManifestFile[]): ReleaseManifest {
   return {
     schema_version: 1,
     product: "docnav",
@@ -80,13 +86,13 @@ function createManifest(version: ExternalValue, target: ExternalValue, files: Ex
     git_commit: getGitCommit(),
     source_dirty: isSourceDirty(),
     producer: resolveProducerMetadata(),
-    files: files.sort((left: ExternalValue, right: ExternalValue) => compareStrings(left.path, right.path)),
+    files: files.sort((left, right) => compareStrings(left.path, right.path)),
   };
 }
 
-function writeChecksums(layout: ExternalValue, manifest: ExternalValue) {
+function writeChecksums(layout: PackageLayout, manifest: ReleaseManifest): void {
   const checksumEntries = [
-    ...manifest.files.map((entry: ExternalValue) => [entry.path, entry.sha256]),
+    ...manifest.files.map((entry) => [entry.path, entry.sha256]),
     ["manifest.json", sha256File(layout.manifestPath)],
   ];
   checksumEntries.sort((left, right) => compareStrings(left[0], right[0]));

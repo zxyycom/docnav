@@ -1,4 +1,5 @@
 import { formatTable } from "./table.ts";
+import type { AggregateMetrics, BaselineStatus, QualityMetrics } from "../schema.ts";
 
 export function title() {
   const nonBlocking = "**⚠️ 非阻断观测快照 — Lizard、scc 和 PMD CPD 指标值不作为合并阻断条件。Clippy 继续承担 Rust 阻断式 lint gate。**";
@@ -9,9 +10,13 @@ export function title() {
   ].join("\n");
 }
 
-export function scanInfo(metrics: ExternalValue, options: ExternalValue) {
+type ReportOptions = {
+  timeZone: string;
+};
+
+export function scanInfo(metrics: QualityMetrics, options: ReportOptions): string {
   const m = metrics.metadata;
-  const tools = m.tools.map((tool: ExternalValue) => `- **${tool.name}**: ${tool.version} (via ${tool.source})`).join("\n");
+  const tools = m.tools.map((tool) => `- **${tool.name}**: ${tool.version} (via ${tool.source})`).join("\n");
   const timestamp = formatReportTimestamp(m.timestamp, options?.timeZone);
   return [
     "## 扫描信息",
@@ -30,7 +35,7 @@ export function scanInfo(metrics: ExternalValue, options: ExternalValue) {
   ].join("\n");
 }
 
-export function comparisonInfo(metrics: ExternalValue) {
+export function comparisonInfo(metrics: QualityMetrics): string {
   if (metrics.comparisonStatus === "input-unchanged") {
     return [
       "## Comparison",
@@ -52,12 +57,13 @@ export function comparisonInfo(metrics: ExternalValue) {
 
   if (metrics.comparisonStatus === "compared" && metrics.baseline.metadata) {
     const baseline = metrics.baseline;
+    const baselineMetadata = metrics.baseline.metadata;
     return [
       "## Comparison",
       "",
       `- **Baseline commit**: \`${baseline.commitSha}\``,
-      `- **Baseline date**: ${baseline.commitDate || "ExternalValue"}`,
-      `- **Selection reason**: ${baseline.metadata.selectionReason}`,
+      `- **Baseline date**: ${baseline.commitDate || "unknown"}`,
+      `- **Selection reason**: ${baselineMetadata.selectionReason}`,
       "",
       "### Code Area 指纹对比",
       "",
@@ -68,9 +74,9 @@ export function comparisonInfo(metrics: ExternalValue) {
   return "";
 }
 
-export function repositorySize(metrics: ExternalValue) {
+export function repositorySize(metrics: QualityMetrics): string {
   const agg = metrics.aggregates;
-  const lines: ExternalValue[] = [];
+  const lines: string[] = [];
 
   lines.push("## 仓库体量与语言占比");
   lines.push("");
@@ -92,7 +98,7 @@ export function repositorySize(metrics: ExternalValue) {
   return lines.join("\n");
 }
 
-export function footer(metrics: ExternalValue, options: ExternalValue) {
+export function footer(metrics: QualityMetrics, options: ReportOptions): string {
   const timestamp = formatReportTimestamp(metrics.metadata.timestamp, options?.timeZone);
   return [
     "---",
@@ -105,7 +111,7 @@ export function footer(metrics: ExternalValue, options: ExternalValue) {
   ].join("\n");
 }
 
-function baselineUnavailableReason(status: ExternalValue) {
+function baselineUnavailableReason(status: BaselineStatus | string): string {
   if (status === "baseline-skipped") return "Baseline scan was skipped";
   if (status === "history-unavailable") return "Git history 不足";
   if (status === "no-baseline-commit") return "找不到 previous-code baseline commit";
@@ -114,7 +120,7 @@ function baselineUnavailableReason(status: ExternalValue) {
   return "未知原因";
 }
 
-export function formatReportTimestamp(timestamp: ExternalValue, timeZone: ExternalValue) {
+export function formatReportTimestamp(timestamp: string, timeZone: string): string {
   if (typeof timestamp !== "string" || timestamp.length === 0) {
     throw new Error("report timestamp is required");
   }
@@ -147,7 +153,7 @@ export function formatReportTimestamp(timestamp: ExternalValue, timeZone: Extern
   ].join(" ");
 }
 
-function fingerprintTable(metrics: ExternalValue) {
+function fingerprintTable(metrics: QualityMetrics): string {
   const rows = [["Code Area", "Current Files", "Baseline Files", "Match"]];
   const current = metrics.currentFingerprints || {};
   const baseline = metrics.baselineFingerprints || {};
@@ -165,7 +171,7 @@ function fingerprintTable(metrics: ExternalValue) {
   return formatTable(rows);
 }
 
-function appendLanguageTable(lines: ExternalValue, agg: ExternalValue) {
+function appendLanguageTable(lines: string[], agg: AggregateMetrics): void {
   if (agg.byLanguage.length === 0) return;
 
   lines.push("### By Language");
@@ -184,7 +190,7 @@ function appendLanguageTable(lines: ExternalValue, agg: ExternalValue) {
   lines.push(formatTable(rows));
 }
 
-function appendCodeAreaTable(lines: ExternalValue, agg: ExternalValue) {
+function appendCodeAreaTable(lines: string[], agg: AggregateMetrics): void {
   if (agg.byCodeArea.length === 0) return;
 
   lines.push("");

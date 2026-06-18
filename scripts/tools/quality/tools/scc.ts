@@ -159,7 +159,7 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
       files.push({
         path: normalizePath(path, cwd),
         language,
-        codeArea: "ExternalValue",
+        codeArea: "unknown",
         lines: lineCount,
         codeLines: isNaN(codeLines) ? 0 : codeLines,
         commentLines: isNaN(commentLines) ? 0 : commentLines,
@@ -232,7 +232,7 @@ export function getSccVersion({ cwd, toolConfig }: { cwd: string; toolConfig: To
   if (child.status !== 0) {
     const failure = typeof child.status === "number"
       ? `exit ${child.status}`
-      : `signal ${child.signal || "ExternalValue"}`;
+      : `signal ${child.signal || "unknown"}`;
     return {
       ok: false,
       error: `scc --version failed, ${failure}${ver ? `: ${ver}` : ""}`,
@@ -243,7 +243,7 @@ export function getSccVersion({ cwd, toolConfig }: { cwd: string; toolConfig: To
   if (ver !== SCC_VERSION_OUTPUT) {
     return {
       ok: false,
-      error: `expected ${SCC_VERSION_OUTPUT}, got "${ver || "ExternalValue"}"`,
+      error: `expected ${SCC_VERSION_OUTPUT}, got "${ver || "unknown"}"`,
       reason: "contract-error"
     };
   }

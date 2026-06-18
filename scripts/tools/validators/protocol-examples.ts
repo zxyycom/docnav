@@ -16,14 +16,15 @@ import {
   READABLE_EXAMPLE_FILE,
   REQUIRED_ERROR_DETAILS_BY_CODE,
 } from "./config.ts";
+import { isRecord } from "../types.ts";
 
-function toReadablePayload(operation: ExternalValue, protocolResult: ExternalValue) {
+function toReadablePayload(_operation: string, protocolResult: unknown): unknown {
   return protocolResult;
 }
 
-function validateProtocolPair(operation: ExternalValue) {
-  const request = readJson(PROTOCOL_EXAMPLE_FILE.request(operation));
-  const response = readJson(PROTOCOL_EXAMPLE_FILE.response(operation));
+function validateProtocolPair(operation: string) {
+  const request = jsonObject(readJson(PROTOCOL_EXAMPLE_FILE.request(operation)), `${operation} request`);
+  const response = jsonObject(readJson(PROTOCOL_EXAMPLE_FILE.response(operation)), `${operation} response`);
 
   assert(
     response[FIELDS.protocolVersion] === request[FIELDS.protocolVersion],
@@ -47,8 +48,10 @@ function validateProtocolPair(operation: ExternalValue) {
     PROTOCOL_EXAMPLE_FILE.responseName(operation),
   );
 
-  const requestedPage = request[FIELDS.arguments][FIELDS.page];
-  const returnedPage = response[FIELDS.result][FIELDS.page];
+  const requestArgs = jsonObject(request[FIELDS.arguments], `${operation} request arguments`);
+  const result = jsonObject(response[FIELDS.result], `${operation} response result`);
+  const requestedPage = requestArgs[FIELDS.page];
+  const returnedPage = result[FIELDS.page];
   if (typeof requestedPage === "number" && returnedPage !== null) {
     assert(
       returnedPage === requestedPage + 1,
@@ -59,10 +62,10 @@ function validateProtocolPair(operation: ExternalValue) {
   return { request, response };
 }
 
-function validateProtocolResultBinding(operation: ExternalValue, response: ExternalValue, label: ExternalValue) {
+function validateProtocolResultBinding(operation: string, response: Record<string, unknown>, label: string): void {
   const result = response[FIELDS.result];
   assert(
-    result && typeof result === "object",
+    isRecord(result),
     `${label} missing result object`,
   );
 
@@ -92,15 +95,18 @@ function validateProtocolResultBinding(operation: ExternalValue, response: Exter
   );
 }
 
-function validateExampleBudget(operation: ExternalValue, request: ExternalValue, result: ExternalValue) {
-  const limit = request[FIELDS.arguments][FIELDS.limitChars];
+function validateExampleBudget(operation: string, request: Record<string, unknown>, result: Record<string, unknown>): void {
+  const requestArgs = jsonObject(request[FIELDS.arguments], `${operation} request arguments`);
+  const limit = requestArgs[FIELDS.limitChars];
   if (typeof limit !== "number") {
     return;
   }
 
   if (operation === OPERATION_NAMES.read) {
+    const content = result[FIELDS.content];
+    assert(typeof content === "string", `${operation} content must be a string`);
     assert(
-      charLength(result[FIELDS.content]) <= limit,
+      charLength(content) <= limit,
       `${operation} content exceeds limit_chars in example`,
     );
     return;
@@ -108,14 +114,21 @@ function validateExampleBudget(operation: ExternalValue, request: ExternalValue,
 
   const records =
     operation === OPERATION_NAMES.outline
-      ? result[FIELDS.entries]
-      : result[FIELDS.matches];
-  const recordSizes = records.map((record: ExternalValue) => ({
-    ref: charLength(record[FIELDS.ref]),
-    display: charLength(record[FIELDS.display]),
-  }));
+      ? jsonArray(result[FIELDS.entries], `${operation} entries`)
+      : jsonArray(result[FIELDS.matches], `${operation} matches`);
+  const recordSizes = records.map((record, index) => {
+    const recordObject = jsonObject(record, `${operation} record ${index}`);
+    const ref = recordObject[FIELDS.ref];
+    const display = recordObject[FIELDS.display];
+    assert(typeof ref === "string", `${operation} record ${index} ref must be a string`);
+    assert(typeof display === "string", `${operation} record ${index} display must be a string`);
+    return {
+      ref: charLength(ref),
+      display: charLength(display),
+    };
+  });
   const totalChars = recordSizes.reduce(
-    (sum: ExternalValue, record: ExternalValue) => sum + record.ref + record.display,
+    (sum, record) => sum + record.ref + record.display,
     0,
   );
   if (totalChars <= limit) {
@@ -123,7 +136,7 @@ function validateExampleBudget(operation: ExternalValue, request: ExternalValue,
   }
 
   const oversizedRefRecords = recordSizes.filter(
-    (record: ExternalValue) => record.ref > limit,
+    (record) => record.ref > limit,
   );
   assert(
     records.length === 1 && oversizedRefRecords.length === 1,
@@ -138,7 +151,8 @@ function validateExampleBudget(operation: ExternalValue, request: ExternalValue,
 function validateProtocolReadableMappings() {
   for (const operation of OPERATIONS) {
     const { request, response } = validateProtocolPair(operation);
-    validateExampleBudget(operation, request, response[FIELDS.result]);
+    const result = jsonObject(response[FIELDS.result], `${operation} response result`);
+    validateExampleBudget(operation, request, result);
 
     const readable = readJson(READABLE_EXAMPLE_FILE.result(operation));
     assertDeepEqual(
@@ -147,9 +161,10 @@ function validateProtocolReadableMappings() {
       `${operation} readable JSON must preserve protocol result semantics`,
     );
 
-    const mcp = readJson(MCP_EXAMPLE_FILE.response(operation));
+    const mcp = jsonObject(readJson(MCP_EXAMPLE_FILE.response(operation)), `${operation} MCP response`);
+    const mcpResult = jsonObject(mcp[FIELDS.result], `${operation} MCP result`);
     assertDeepEqual(
-      mcp[FIELDS.result][FIELDS.structuredContent],
+      mcpResult[FIELDS.structuredContent],
       readable,
       `${operation} MCP structuredContent must match readable JSON example`,
     );
@@ -163,7 +178,7 @@ function validateProtocolReadableMappings() {
 function validateErrorDetails() {
   const errorFiles = listExampleJson(/^error-.*\.json$/);
   for (const errorRelPath of errorFiles) {
-    const response = readJson(errorRelPath);
+    const response = jsonObject(readJson(errorRelPath), errorRelPath);
     assert(
       response[FIELDS.ok] === false,
       `${errorRelPath} must be an error response`,
@@ -172,17 +187,20 @@ function validateErrorDetails() {
       !(FIELDS.result in response),
       `${errorRelPath} error response must not include result`,
     );
+    const responseOperation = response[FIELDS.operation];
     assert(
-      response[FIELDS.operation] === null ||
-        OPERATIONS.includes(response[FIELDS.operation]),
+      responseOperation === null ||
+        (typeof responseOperation === "string" && OPERATIONS.includes(responseOperation)),
       `${errorRelPath} error operation must be known operation or null`,
     );
-    const details = response[FIELDS.error][FIELDS.details];
-    const errorCode = response[FIELDS.error][FIELDS.code];
+    const error = jsonObject(response[FIELDS.error], `${errorRelPath} error`);
+    const details = jsonObject(error[FIELDS.details], `${errorRelPath} error details`);
+    const errorCode = error[FIELDS.code];
+    assert(typeof errorCode === "string", `${errorRelPath} error code must be a string`);
     const requiredDetails = (REQUIRED_ERROR_DETAILS_BY_CODE as Record<string, readonly string[]>)[errorCode];
     assert(
       requiredDetails,
-      `${errorRelPath} uses ExternalValue error code ${errorCode}`,
+      `${errorRelPath} uses unknown error code ${errorCode}`,
     );
     for (const field of requiredDetails) {
       assert(
@@ -192,16 +210,18 @@ function validateErrorDetails() {
     }
   }
 
-  const readableError = readJson(EXAMPLES.readableError);
+  const readableError = jsonObject(readJson(EXAMPLES.readableError), EXAMPLES.readableError);
+  const readableErrorCode = readableError[FIELDS.code];
+  assert(typeof readableErrorCode === "string", "readable-error.json code must be a string");
   assert(
-    readableError[FIELDS.code] in REQUIRED_ERROR_DETAILS_BY_CODE,
-    "readable-error.json uses ExternalValue error code",
+    readableErrorCode in REQUIRED_ERROR_DETAILS_BY_CODE,
+    "readable-error.json uses unknown error code",
   );
   for (const field of (REQUIRED_ERROR_DETAILS_BY_CODE as Record<string, readonly string[]>)[
-    readableError[FIELDS.code]
+    readableErrorCode
   ]) {
     assert(
-      field in (readableError[FIELDS.details] ?? {}),
+      field in jsonObject(readableError[FIELDS.details] ?? {}, "readable-error.json details"),
       `readable-error.json missing details.${field}`,
     );
   }
@@ -210,32 +230,38 @@ function validateErrorDetails() {
 }
 
 function validateManifestSemantics() {
-  const manifest = readJson(EXAMPLES.manifest);
+  const manifest = jsonObject(readJson(EXAMPLES.manifest), EXAMPLES.manifest);
+  const adapter = jsonObject(manifest[FIELDS.adapter], "manifest adapter");
   assert(
-    manifest[FIELDS.adapter][FIELDS.id] ===
+    adapter[FIELDS.id] ===
       MARKDOWN_MANIFEST_EXPECTED.adapterId,
     "manifest example must describe docnav-markdown",
   );
 
+  const capabilities = jsonArray(manifest[FIELDS.capabilities], "manifest capabilities");
   for (const capability of MARKDOWN_MANIFEST_EXPECTED.capabilities) {
     assert(
-      manifest[FIELDS.capabilities].includes(capability),
+      capabilities.includes(capability),
       `markdown manifest example missing capability ${capability}`,
     );
   }
 
-  const markdownFormat = manifest[FIELDS.formats].find(
-    (format: ExternalValue) => format[FIELDS.id] === MARKDOWN_MANIFEST_EXPECTED.formatId,
+  const formats = jsonArray(manifest[FIELDS.formats], "manifest formats");
+  const markdownFormat = formats.find(
+    (format): format is Record<string, unknown> =>
+      isRecord(format) && format[FIELDS.id] === MARKDOWN_MANIFEST_EXPECTED.formatId,
   );
   assert(markdownFormat, "manifest example missing markdown format");
+  const extensions = jsonArray(markdownFormat[FIELDS.extensions], "markdown format extensions");
   assert(
-    markdownFormat[FIELDS.extensions].includes(
+    extensions.includes(
       MARKDOWN_MANIFEST_EXPECTED.extension,
     ),
     "markdown manifest example missing .md extension",
   );
+  const contentTypes = jsonArray(markdownFormat[FIELDS.contentTypes], "markdown format content_types");
   assert(
-    markdownFormat[FIELDS.contentTypes].includes(
+    contentTypes.includes(
       MARKDOWN_MANIFEST_EXPECTED.contentType,
     ),
     "markdown manifest example missing text/markdown content type",
@@ -248,4 +274,14 @@ export function validateProtocolExampleSemantics() {
   validateProtocolReadableMappings();
   validateErrorDetails();
   validateManifestSemantics();
+}
+
+function jsonObject(value: unknown, label: string): Record<string, unknown> {
+  assert(isRecord(value), `${label} must be an object`);
+  return value;
+}
+
+function jsonArray(value: unknown, label: string): unknown[] {
+  assert(Array.isArray(value), `${label} must be an array`);
+  return value;
 }

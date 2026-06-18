@@ -1,4 +1,5 @@
 import { argValue, createSmokeHarness, createSmokeState, resolveBinaryPath } from "../../tools/smoke-harness.ts";
+import type { SmokeCommandOptions } from "../../tools/smoke-harness.ts";
 import { createCliSmokeCases } from "../../tools/cli-smoke/cases.ts";
 import { expect } from "./assertions.ts";
 import { logDir, logPaths, root, schemaPaths, tempRoot } from "./config.ts";
@@ -35,8 +36,8 @@ export const {
   ],
   binaryPath: () => smokeState.docnavBinaryPath ?? null,
   binaryFallback: "docnav",
-  resolveCwd: (options: ExternalValue) => options.cwd ?? options.project?.root ?? root,
-  resolveEnv: (options: ExternalValue) => ({
+  resolveCwd: (options: SmokeCommandOptions) => options.cwd ?? options.project?.root ?? root,
+  resolveEnv: (options: SmokeCommandOptions) => ({
     ...process.env,
     ...(options.project?.env ?? {}),
     ...(options.env ?? {})

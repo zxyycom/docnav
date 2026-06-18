@@ -1,26 +1,38 @@
 import { expect } from "../../tools/cli-smoke/assertions.ts";
+import type { CommandRecord } from "../../tools/smoke-harness.ts";
 
 export * from "../../tools/cli-smoke/assertions.ts";
 
-export function expectCandidateEvidence(record: ExternalValue, candidate: ExternalValue, expected: ExternalValue) {
-  expect(record, Boolean(candidate), `candidate evidence exists for ${expected.adapter_id}`);
+export function expectCandidateEvidence(record: CommandRecord, candidate: unknown, expected: Record<string, unknown>) {
+  const candidateRecord = isRecord(candidate) ? candidate : {};
+  expect(record, isRecord(candidate), `candidate evidence exists for ${String(expected.adapter_id)}`);
   for (const key of ["adapter_id", "stage", "code", "reason", "details"]) {
-    expect(record, Object.hasOwn(candidate, key), `candidate evidence has ${key}`);
+    expect(record, Object.hasOwn(candidateRecord, key), `candidate evidence has ${key}`);
   }
   for (const [key, value] of Object.entries(expected)) {
-    expect(record, candidate[key] === value, `candidate ${key} is ${value}`);
+    expect(record, candidateRecord[key] === value, `candidate ${key} is ${String(value)}`);
   }
 }
 
-export function expectCandidateWarning(record: ExternalValue, warning: ExternalValue, expected: ExternalValue) {
-  expect(record, Boolean(warning), `candidate warning exists for ${expected.adapter_id}`);
+export function expectCandidateWarning(record: CommandRecord, warning: unknown, expected: Record<string, unknown>) {
+  const warningRecord = isRecord(warning) ? warning : {};
+  const details = isRecord(warningRecord.details) ? warningRecord.details : {};
+  expect(record, isRecord(warning), `candidate warning exists for ${String(expected.adapter_id)}`);
   for (const key of ["id", "reason", "effect", "details"]) {
-    expect(record, Object.hasOwn(warning, key), `candidate warning has ${key}`);
+    expect(record, Object.hasOwn(warningRecord, key), `candidate warning has ${key}`);
   }
-  expect(record, warning.id === "adapter_candidate_failure", "candidate warning id matches");
-  expect(record, warning.effect === "candidate_skipped", "candidate warning effect matches");
-  expect(record, typeof warning.reason === "string" && warning.reason.length > 0, "candidate warning reason is nonempty");
+  expect(record, warningRecord.id === "adapter_candidate_failure", "candidate warning id matches");
+  expect(record, warningRecord.effect === "candidate_skipped", "candidate warning effect matches");
+  expect(
+    record,
+    typeof warningRecord.reason === "string" && warningRecord.reason.length > 0,
+    "candidate warning reason is nonempty"
+  );
   for (const [key, value] of Object.entries(expected)) {
-    expect(record, warning.details?.[key] === value, `candidate warning details.${key} is ${value}`);
+    expect(record, details[key] === value, `candidate warning details.${key} is ${String(value)}`);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

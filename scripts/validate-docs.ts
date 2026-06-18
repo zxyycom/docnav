@@ -19,6 +19,6 @@ const tasks = {
 const selectedTasks = runAll ? Object.keys(tasks) : [...requested];
 for (const taskName of selectedTasks) {
   const task = tasks[taskName];
-  assert(task, `ExternalValue validation task: ${taskName}`);
+  assert(task, `unknown validation task: ${taskName}`);
   task();
 }

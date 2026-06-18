@@ -4,9 +4,34 @@ import {
   expectStderrEmpty,
   parseJson
 } from "./assertions.ts";
+import type { JsonRecord } from "./assertions.ts";
+import type { CommandRecord, SmokeCommandOptions } from "../smoke-harness.ts";
 
-export function createCliSmokeCases({ runCli, validateSchema }: ExternalValue) {
-  async function runSuccessfulJsonCase(name: ExternalValue, args: ExternalValue, options: ExternalValue) {
+type JsonCaseCheck = (record: CommandRecord, json: JsonRecord) => void;
+type StderrCheck = (record: CommandRecord) => void;
+
+interface SuccessfulJsonCaseOptions {
+  check?: JsonCaseCheck;
+  checkStderr?: StderrCheck;
+  commandOptions?: SmokeCommandOptions;
+  schema: string;
+}
+
+interface ProtocolResponseCaseOptions {
+  check?: JsonCaseCheck;
+  checkStderr?: StderrCheck;
+  commandOptions?: SmokeCommandOptions;
+  operation: string;
+  schema?: string;
+}
+
+interface CliSmokeCaseFactoryOptions {
+  runCli: (name: string, args: string[], options?: SmokeCommandOptions) => Promise<CommandRecord>;
+  validateSchema: (record: CommandRecord, name: string, value: unknown) => void;
+}
+
+export function createCliSmokeCases({ runCli, validateSchema }: CliSmokeCaseFactoryOptions) {
+  async function runSuccessfulJsonCase(name: string, args: string[], options: SuccessfulJsonCaseOptions) {
     const {
       schema,
       commandOptions,
@@ -22,19 +47,15 @@ export function createCliSmokeCases({ runCli, validateSchema }: ExternalValue) {
     return { record, json };
   }
 
-  async function runProtocolResponseCase(name: ExternalValue, args: ExternalValue, options: ExternalValue) {
-    const {
-      operation,
-      schema = "protocolResponse",
-      check,
-      ...jsonOptions
-    } = options;
+  async function runProtocolResponseCase(name: string, args: string[], options: ProtocolResponseCaseOptions) {
+    const schema = options.schema ?? "protocolResponse";
     return runSuccessfulJsonCase(name, args, {
-      ...jsonOptions,
+      commandOptions: options.commandOptions,
+      checkStderr: options.checkStderr,
       schema,
-      check: (record: ExternalValue, json: ExternalValue) => {
-        expectProtocolSuccess(record, json, operation);
-        check?.(record, json);
+      check: (record, json) => {
+        expectProtocolSuccess(record, json, options.operation);
+        options.check?.(record, json);
       }
     });
   }

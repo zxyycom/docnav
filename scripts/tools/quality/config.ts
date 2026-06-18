@@ -8,7 +8,8 @@
  * 来源：openspec/changes/implement-code-quality-observability/specs/code-quality-observability/spec.md
  */
 
-import { errorMessage } from "../types.ts";
+import { errorMessage, isStringArray } from "../types.ts";
+import type { QualityConfig } from "./schema.ts";
 
 /** @typedef {import('./schema.ts').CodeAreaDefinition} CodeAreaDefinition */
 /** @typedef {import('./schema.ts').ToolConfig} ToolConfig */
@@ -23,18 +24,18 @@ import { errorMessage } from "../types.ts";
  * @param {string} name
  * @returns {string[]}
  */
-function readJsonStringArrayEnv(name: ExternalValue) {
+function readJsonStringArrayEnv(name: string): string[] {
   const raw = process.env[name];
   if (!raw) return [];
 
-  let parsed;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch (err: unknown) {
     throw new Error(`${name} must be a JSON array of strings: ${errorMessage(err)}`, { cause: err });
   }
 
-  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+  if (!isStringArray(parsed)) {
     throw new Error(`${name} must be a JSON array of strings`);
   }
 
@@ -249,4 +250,4 @@ export const DEFAULT_CONFIG = Object.freeze({
       args: ["cpd"]
     }
   }
-});
+}) satisfies QualityConfig;

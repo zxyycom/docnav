@@ -1,23 +1,31 @@
-export function findCargoExecutable(output: ExternalValue, binName: ExternalValue) {
-  let executable = null;
+import { isRecord } from "./types.ts";
+
+export function findCargoExecutable(output: string, binName: string): string | null {
+  let executable: string | null = null;
 
   for (const line of output.split(/\r?\n/)) {
     if (line.trim().length === 0) {
       continue;
     }
 
-    let message;
+    let message: unknown;
     try {
-      message = JSON.parse(line);
+      const parsed: unknown = JSON.parse(line);
+      message = parsed;
     } catch {
       continue;
     }
 
+    if (!isRecord(message)) {
+      continue;
+    }
+    const target = isRecord(message.target) ? message.target : null;
+    const targetKinds = Array.isArray(target?.kind) ? target.kind : [];
     if (
       message.reason === "compiler-artifact" &&
-      message.executable &&
-      message.target?.name === binName &&
-      message.target?.kind?.includes("bin")
+      typeof message.executable === "string" &&
+      target?.name === binName &&
+      targetKinds.includes("bin")
     ) {
       executable = message.executable;
     }

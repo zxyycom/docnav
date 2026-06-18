@@ -98,17 +98,17 @@ export const OUTPUT_MODE_CONSISTENCY = {
 };
 
 export const PROTOCOL_EXAMPLE_FILE = {
-  request: (operation: ExternalValue) => `docs/examples/json/protocol-${operation}-request.json`,
-  response: (operation: ExternalValue) => `docs/examples/json/protocol-${operation}-response.json`,
-  responseName: (operation: ExternalValue) => `protocol-${operation}-response.json`
+  request: (operation: string) => `docs/examples/json/protocol-${operation}-request.json`,
+  response: (operation: string) => `docs/examples/json/protocol-${operation}-response.json`,
+  responseName: (operation: string) => `protocol-${operation}-response.json`
 };
 
 export const READABLE_EXAMPLE_FILE = {
-  result: (operation: ExternalValue) => `docs/examples/json/readable-${operation}.json`
+  result: (operation: string) => `docs/examples/json/readable-${operation}.json`
 };
 
 export const MCP_EXAMPLE_FILE = {
-  response: (operation: ExternalValue) => `docs/examples/json/mcp-${operation}-response.json`
+  response: (operation: string) => `docs/examples/json/mcp-${operation}-response.json`
 };
 
 // 协议与 readable/MCP 示例中反复出现的字段名，集中后避免局部拼写漂移。

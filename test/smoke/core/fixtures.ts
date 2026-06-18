@@ -1,13 +1,50 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { isRecord, isUnknownArray, parseJsonValue } from "../../../scripts/tools/types.ts";
 import { root, tempRoot } from "./config.ts";
+
+export interface SmokeProject {
+  binDir: string;
+  docnavDir: string;
+  docsDir: string;
+  env: NodeJS.ProcessEnv;
+  normalPath: string;
+  normalRelPath: string;
+  root: string;
+}
+
+export interface RegistryAdapter {
+  command: string;
+  id: string;
+}
+
+export interface FakeAdapter extends RegistryAdapter {
+  logPath: string;
+}
+
+export interface AdapterCall {
+  command?: unknown;
+  [key: string]: unknown;
+}
+
+interface CreateProjectOptions {
+  config?: unknown;
+  docnavDir?: boolean;
+  normalDocument?: boolean;
+}
+
+interface CreateFakeAdapterOptions {
+  extensions?: string[];
+  id?: string;
+  mode?: string;
+}
 
 let projectCounter = 0;
 const fixturesDir = path.join(root, "test", "smoke", "core", "fixtures");
 const normalDocumentFixture = path.join(fixturesDir, "normal.md");
 
-export function createProject(name: ExternalValue, options: ExternalValue = {}) {
+export function createProject(name: string, options: CreateProjectOptions = {}): SmokeProject {
   const projectRoot = path.join(tempRoot, `${String(projectCounter++).padStart(2, "0")}-${slug(name)}`);
   const docnavDir = path.join(projectRoot, ".docnav");
   const docsDir = path.join(projectRoot, "docs");
@@ -42,34 +79,34 @@ export function createProject(name: ExternalValue, options: ExternalValue = {}) 
   return project;
 }
 
-export function writeProjectConfig(project: ExternalValue, config: ExternalValue) {
+export function writeProjectConfig(project: SmokeProject, config: unknown) {
   fs.mkdirSync(project.docnavDir, { recursive: true });
   writeJson(path.join(project.docnavDir, "docnav.json"), config);
 }
 
-export function writeRegistry(project: ExternalValue, adapters: ExternalValue) {
+export function writeRegistry(project: SmokeProject, adapters: readonly RegistryAdapter[]) {
   fs.mkdirSync(project.docnavDir, { recursive: true });
   writeJson(path.join(project.docnavDir, "adapters.json"), {
     version: 1,
-    adapters: adapters.map((adapter: ExternalValue) => ({
+    adapters: adapters.map((adapter) => ({
       id: adapter.id,
       command: adapter.command
     }))
   });
 }
 
-export function writeDamagedRegistry(project: ExternalValue) {
+export function writeDamagedRegistry(project: SmokeProject) {
   fs.mkdirSync(project.docnavDir, { recursive: true });
   writeText(path.join(project.docnavDir, "adapters.json"), "{ invalid json");
 }
 
-export function copyNormalDocument(project: ExternalValue, relativePath: ExternalValue) {
+export function copyNormalDocument(project: SmokeProject, relativePath: string) {
   const filePath = path.join(project.root, relativePath);
   copyFile(normalDocumentFixture, filePath);
   return relativePath.replaceAll(path.sep, "/");
 }
 
-export function createRealMarkdownAdapter(project: ExternalValue, id = "docnav-markdown") {
+export function createRealMarkdownAdapter(project: SmokeProject, id = "docnav-markdown"): RegistryAdapter {
   const commandPath = wrapperPath(project, id);
   if (process.platform === "win32") {
     writeText(
@@ -91,7 +128,7 @@ export function createRealMarkdownAdapter(project: ExternalValue, id = "docnav-m
   };
 }
 
-export function createFakeAdapter(project: ExternalValue, options: ExternalValue = {}) {
+export function createFakeAdapter(project: SmokeProject, options: CreateFakeAdapterOptions = {}): FakeAdapter {
   const id = options.id ?? "fake-adapter";
   const mode = options.mode ?? "valid";
   const extensions = options.extensions ?? [".md", ".core"];
@@ -152,7 +189,7 @@ export function createFakeAdapter(project: ExternalValue, options: ExternalValue
   };
 }
 
-export function readAdapterCalls(adapter: ExternalValue) {
+export function readAdapterCalls(adapter: FakeAdapter): AdapterCall[] {
   if (!fs.existsSync(adapter.logPath)) {
     return [];
   }
@@ -160,34 +197,42 @@ export function readAdapterCalls(adapter: ExternalValue) {
     .readFileSync(adapter.logPath, "utf8")
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0)
-    .map((line) => JSON.parse(line));
+    .map(parseAdapterCall);
 }
 
-export function writeJson(filePath: ExternalValue, value: ExternalValue) {
+function parseAdapterCall(line: string): AdapterCall {
+  const value = parseJsonValue(line, "adapter call log line");
+  if (!isRecord(value) || isUnknownArray(value)) {
+    throw new Error("adapter call log line must be a JSON object");
+  }
+  return value;
+}
+
+export function writeJson(filePath: string, value: unknown) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-function writeText(filePath: ExternalValue, content: ExternalValue) {
+function writeText(filePath: string, content: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-function copyFile(sourcePath: ExternalValue, destinationPath: ExternalValue) {
+function copyFile(sourcePath: string, destinationPath: string) {
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
   fs.copyFileSync(sourcePath, destinationPath);
 }
 
-function wrapperPath(project: ExternalValue, id: ExternalValue) {
+function wrapperPath(project: SmokeProject, id: string) {
   const extension = process.platform === "win32" ? ".cmd" : "";
   return path.join(project.binDir, `${slug(id)}${extension}`);
 }
 
-function relativeCommand(project: ExternalValue, commandPath: ExternalValue) {
+function relativeCommand(project: SmokeProject, commandPath: string) {
   return path.relative(project.root, commandPath).replaceAll(path.sep, "/");
 }
 
-function isolatedEnv(projectRoot: ExternalValue, userConfigDir: ExternalValue) {
+function isolatedEnv(projectRoot: string, userConfigDir: string): NodeJS.ProcessEnv {
   return {
     DOCNAV_CONFIG_DIR: userConfigDir,
     HOME: path.join(projectRoot, ".home"),
@@ -197,14 +242,14 @@ function isolatedEnv(projectRoot: ExternalValue, userConfigDir: ExternalValue) {
   };
 }
 
-function slug(value: ExternalValue) {
+function slug(value: string) {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
 }
 
-function cmdQuote(value: ExternalValue) {
+function cmdQuote(value: string) {
   return `"${String(value).replaceAll("\"", "\"\"")}"`;
 }
 
-function shQuote(value: ExternalValue) {
+function shQuote(value: string) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }

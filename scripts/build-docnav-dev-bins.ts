@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import type { SpawnSyncReturns } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,11 @@ const binaries = [
   { packageName: "docnav-markdown", binName: "docnav-markdown", envName: "DOCNAV_MARKDOWN_BIN" }
 ];
 
+type DevBinOptions = {
+  outputEnvJson: string | null;
+  quiet: boolean;
+};
+
 const options = parseArgs(process.argv.slice(2));
 const env = buildDevBins(options.quiet);
 
@@ -23,8 +29,8 @@ if (options.outputEnvJson) {
 
 console.log(`dev binaries ok: ${Object.keys(env).join(", ")}`);
 
-function parseArgs(args: ExternalValue) {
-  const options = {
+function parseArgs(args: string[]): DevBinOptions {
+  const options: DevBinOptions = {
     outputEnvJson: null,
     quiet: false
   };
@@ -48,13 +54,13 @@ function parseArgs(args: ExternalValue) {
       options.outputEnvJson = arg.slice("--output-env-json=".length);
       continue;
     }
-    usage(`ExternalValue option ${arg}`);
+    usage(`unknown option ${arg}`);
   }
 
   return options;
 }
 
-function buildDevBins(quiet: ExternalValue) {
+function buildDevBins(quiet: boolean): Record<string, string> {
   const cargoArgs = [
     "build",
     ...binaries.flatMap((binary) => ["-p", binary.packageName]),
@@ -80,7 +86,7 @@ function buildDevBins(quiet: ExternalValue) {
     process.stderr.write(result.stderr);
   }
 
-  const env: Record<string, ExternalValue> = {};
+  const env: Record<string, string> = {};
   for (const binary of binaries) {
     const executable = findCargoExecutable(result.stdout ?? "", binary.binName);
     if (!executable) {
@@ -92,7 +98,7 @@ function buildDevBins(quiet: ExternalValue) {
   return env;
 }
 
-function writeOutput(result: ExternalValue) {
+function writeOutput(result: SpawnSyncReturns<string>) {
   if (result.stdout) {
     process.stdout.write(result.stdout);
   }
@@ -101,7 +107,7 @@ function writeOutput(result: ExternalValue) {
   }
 }
 
-function usage(message: ExternalValue) {
+function usage(message: string): never {
   console.error(message);
   console.error("usage: node scripts/build-docnav-dev-bins.ts [--quiet] [--output-env-json <path>]");
   process.exit(2);

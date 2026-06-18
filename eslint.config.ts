@@ -1,6 +1,11 @@
 import eslint from "@eslint/js";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+
+const tsconfigRootDir = dirname(fileURLToPath(import.meta.url));
+const scriptFiles = ["scripts/**/*.ts", "test/**/*.ts"];
 
 export default tseslint.config(
   {
@@ -14,7 +19,7 @@ export default tseslint.config(
     ]
   },
   {
-    files: ["eslint.config.ts", "scripts/**/*.ts", "test/**/*.ts"],
+    files: ["eslint.config.ts", ...scriptFiles],
     extends: [
       eslint.configs.recommended,
       ...tseslint.configs.recommended
@@ -37,6 +42,22 @@ export default tseslint.config(
         }
       ],
       "no-unused-vars": "off"
+    }
+  },
+  {
+    files: scriptFiles,
+    languageOptions: {
+      parserOptions: {
+        project: "./tsconfig.scripts.json",
+        tsconfigRootDir
+      }
+    },
+    rules: {
+      "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-return": "error"
     }
   }
 );

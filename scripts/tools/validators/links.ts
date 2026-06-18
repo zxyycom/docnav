@@ -6,7 +6,7 @@ import { toAbs, toRel, walk } from "./fs-utils.ts";
 
 export function validateMarkdownLinks() {
   const markdownFiles = markdownFilesForLinkValidation();
-  const missing: ExternalValue[] = [];
+  const missing: string[] = [];
   const linkPattern = /\[[^\]]+\]\(([^)]+)\)/g;
 
   for (const filePath of markdownFiles) {
@@ -40,8 +40,8 @@ export function validateMarkdownLinks() {
   console.log(`markdown links ok: ${markdownFiles.length} file(s)`);
 }
 
-function markdownFilesForLinkValidation() {
-  const markdownFiles: ExternalValue[] = [];
+function markdownFilesForLinkValidation(): string[] {
+  const markdownFiles: string[] = [];
   for (const relPath of FILE_SYSTEM.markdownLinkRoots) {
     const absPath = toAbs(relPath);
     if (!fs.existsSync(absPath)) {
@@ -51,7 +51,7 @@ function markdownFilesForLinkValidation() {
     const stat = fs.statSync(absPath);
     if (stat.isDirectory()) {
       markdownFiles.push(
-        ...walk(absPath, (filePath: ExternalValue) => filePath.endsWith(FILE_SYSTEM.markdownExtension))
+        ...walk(absPath, (filePath) => filePath.endsWith(FILE_SYSTEM.markdownExtension))
       );
       continue;
     }

@@ -52,11 +52,11 @@ test("package build target defaults to host target", () => {
 });
 
 test("package build target accepts one target option", () => {
-  assert.equal(parseOptionalTarget(["--target", "x86_64-ExternalValue-linux-gnu"]), "x86_64-ExternalValue-linux-gnu");
+  assert.equal(parseOptionalTarget(["--target", "x86_64-unknown-linux-gnu"]), "x86_64-unknown-linux-gnu");
 });
 
 test("package build target rejects extra options and paths", () => {
-  assert.throws(() => parseOptionalTarget(["--manifest", "package/manifest.json"]), /ExternalValue option --manifest/);
+  assert.throws(() => parseOptionalTarget(["--manifest", "package/manifest.json"]), /unknown option --manifest/);
   assert.throws(() => parseOptionalTarget(["--target", "artifacts/package"]), /Rust target triple/);
-  assert.throws(() => parseOptionalTarget(["x86_64-ExternalValue-linux-gnu"]), /unexpected positional argument/);
+  assert.throws(() => parseOptionalTarget(["x86_64-unknown-linux-gnu"]), /unexpected positional argument/);
 });

@@ -9,11 +9,15 @@ import { runCli } from "../harness.ts";
 import {
   expect,
   expectExit,
+  expectJsonObject,
+  expectObjectArray,
   expectReadableViewFieldValue,
   expectStderrEmpty,
   expectStdoutIncludes,
   parseJson
 } from "../assertions.ts";
+import type { JsonRecord } from "../assertions.ts";
+import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 import { exitCodes } from "../config.ts";
 
 export function createConfigContextTasks() {
@@ -90,10 +94,14 @@ async function testConfigPrecedenceAndPathContext() {
   expectExit(list, 0);
   expectStderrEmpty(list);
   const listJson = parseJson(list);
-  expect(list, valueFor(listJson, "defaults.output").value === "readable-json", "config list shows project output value");
-  expect(list, valueFor(listJson, "defaults.limit_chars").value === 321, "config list shows user limit value");
-  expect(list, listJson.path_context?.adapter?.selected === fake.id, "config list --path reports selected adapter");
-  expect(list, listJson.path_context?.defaults?.limit_chars?.value === 321, "config list --path reports final limit");
+  expect(list, valueFor(list, listJson, "defaults.output").value === "readable-json", "config list shows project output value");
+  expect(list, valueFor(list, listJson, "defaults.limit_chars").value === 321, "config list shows user limit value");
+  const pathContext = expectJsonObject(list, listJson.path_context, "config list path_context is an object");
+  const adapter = expectJsonObject(list, pathContext.adapter, "config list path_context.adapter is an object");
+  const defaults = expectJsonObject(list, pathContext.defaults, "config list path_context.defaults is an object");
+  const limitChars = expectJsonObject(list, defaults.limit_chars, "config list limit_chars context is an object");
+  expect(list, adapter.selected === fake.id, "config list --path reports selected adapter");
+  expect(list, limitChars.value === 321, "config list --path reports final limit");
 }
 
 async function testInitVersionDoctorAndHelp() {
@@ -127,11 +135,13 @@ async function testInitVersionDoctorAndHelp() {
   });
   expectExit(doctor, exitCodes.protocolOrAdapterProcess);
   const doctorJson = parseJson(doctor);
-  expect(doctor, Array.isArray(doctorJson.checks), "doctor output contains checks array");
-  expect(doctor, doctorJson.checks.some((check: ExternalValue) => check.status === "fail"), "doctor reports failing check");
+  const checks = expectObjectArray(doctor, doctorJson.checks, "doctor output contains checks array");
+  expect(doctor, checks.some((check) => check.status === "fail"), "doctor reports failing check");
   expect(doctor, readAdapterCalls(bad).some((call) => call.command === "manifest"), "doctor validates adapter manifest");
 }
 
-function valueFor(configListJson: ExternalValue, key: ExternalValue) {
-  return configListJson.values.find((item: ExternalValue) => item.key === key);
+function valueFor(record: CommandRecord, configListJson: JsonRecord, key: string): JsonRecord {
+  const values = expectObjectArray(record, configListJson.values, "config list values are objects");
+  const item = values.find((entry) => entry.key === key);
+  return expectJsonObject(record, item, `config list includes ${key}`);
 }

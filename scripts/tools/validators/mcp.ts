@@ -6,6 +6,7 @@ import {
   READABLE_SCHEMA_BY_OPERATION
 } from "./config.ts";
 import { compileRegisteredSchema, createSchemaAjv, formatAjvErrors } from "./schema-registry.ts";
+import { isRecord } from "../types.ts";
 
 export function validateMcpStructuredContent() {
   const ajv = createSchemaAjv();
@@ -16,8 +17,11 @@ export function validateMcpStructuredContent() {
 
   for (const [responseRelPath, schemaRelPath] of cases) {
     const response = readJson(responseRelPath);
-    const structuredContent = response?.[FIELDS.result]?.[FIELDS.structuredContent];
-    assert(structuredContent && typeof structuredContent === "object", `${responseRelPath} missing structuredContent`);
+    assert(isRecord(response), `${responseRelPath} must be an object`);
+    const result = response[FIELDS.result];
+    assert(isRecord(result), `${responseRelPath} missing result`);
+    const structuredContent = result[FIELDS.structuredContent];
+    assert(isRecord(structuredContent), `${responseRelPath} missing structuredContent`);
 
     for (const field of MCP_STRUCTURED_CONTENT_FORBIDDEN_FIELDS) {
       assert(!(field in structuredContent), `${responseRelPath} leaks ${field} in structuredContent`);

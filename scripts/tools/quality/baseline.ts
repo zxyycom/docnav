@@ -11,6 +11,19 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+type BaselineCommitResult =
+  | { date: string | null; ok: true; reason: string; sha: string }
+  | { error: string; ok: false };
+
+type MaterializeBaselineResult =
+  | { ok: true; workDir: string }
+  | { error: string; ok: false; reason: string };
+
+type ChangeScope = {
+  changed: boolean;
+  changedFiles: string[];
+};
+
 /**
  * 定位 previous-code baseline commit。
  *
@@ -25,7 +38,13 @@ import { join } from "node:path";
  * @returns {{ ok: true, sha: string, date: string, reason: string }
  *          | { ok: false, error: string }}
  */
-export function locateBaselineCommit({ cwd, scanInputPaths }: ExternalValue) {
+export function locateBaselineCommit({
+  cwd,
+  scanInputPaths
+}: {
+  cwd: string;
+  scanInputPaths: string[];
+}): BaselineCommitResult {
   // 获取 HEAD commit
   const headResult = spawnSync("git", ["rev-parse", "HEAD"], {
     cwd,
@@ -69,7 +88,7 @@ export function locateBaselineCommit({ cwd, scanInputPaths }: ExternalValue) {
 
   const headChangedFiles = (headDiff.stdout || "").trim().split(/\r?\n/).filter(Boolean);
   const headModifiedScanInputs = headChangedFiles.some((f) =>
-    scanInputPaths.some((p: ExternalValue) => fileMatchesPattern(f, p))
+    scanInputPaths.some((p) => fileMatchesPattern(f, p))
   );
 
   if (headModifiedScanInputs) {
@@ -169,7 +188,15 @@ export function locateBaselineCommit({ cwd, scanInputPaths }: ExternalValue) {
  * @param {string} params.baselineWorkDir - 隔离工作目录
  * @returns {{ ok: true, workDir: string } | { ok: false, error: string, reason: string }}
  */
-export function materializeBaseline({ commitSha, cwd, baselineWorkDir }: ExternalValue) {
+export function materializeBaseline({
+  commitSha,
+  cwd,
+  baselineWorkDir
+}: {
+  baselineWorkDir: string;
+  commitSha: string;
+  cwd: string;
+}): MaterializeBaselineResult {
   mkdirSync(baselineWorkDir, { recursive: true });
 
   // 使用 git archive 导出 baseline commit 的文件
@@ -225,7 +252,15 @@ export function materializeBaseline({ commitSha, cwd, baselineWorkDir }: Externa
  * @param {string[]} params.scanInputPaths
  * @returns {{ changed: boolean, changedFiles: string[] }}
  */
-export function detectTextOnlyChange({ baselineSha, cwd, scanInputPaths }: ExternalValue) {
+export function detectTextOnlyChange({
+  baselineSha,
+  cwd,
+  scanInputPaths
+}: {
+  baselineSha: string | null;
+  cwd: string;
+  scanInputPaths: string[];
+}): ChangeScope {
   if (!baselineSha) {
     return { changed: true, changedFiles: [] };
   }
@@ -253,7 +288,7 @@ export function detectTextOnlyChange({ baselineSha, cwd, scanInputPaths }: Exter
   ].map((f) => f.replace(/\\/g, "/"));
   const uniqueChangedFiles = [...new Set(changedFiles)];
   const scanInputChanged = changedFiles.some((f) =>
-    scanInputPaths.some((p: ExternalValue) => fileMatchesPattern(f, p))
+    scanInputPaths.some((p) => fileMatchesPattern(f, p))
   );
 
   return { changed: scanInputChanged, changedFiles: uniqueChangedFiles };
@@ -266,7 +301,7 @@ export function detectTextOnlyChange({ baselineSha, cwd, scanInputPaths }: Exter
  * @param {string} cwd
  * @returns {string[]}
  */
-export function getChangedFiles(commitSha: ExternalValue, cwd: ExternalValue) {
+export function getChangedFiles(commitSha: string, cwd: string): string[] {
   // 对于 HEAD 提交，使用 diff-tree 获取变更文件
   const diffResult = spawnSync("git", [
     "diff-tree",
@@ -303,7 +338,7 @@ export function getChangedFiles(commitSha: ExternalValue, cwd: ExternalValue) {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-function getCommitDate(sha: ExternalValue, cwd: ExternalValue) {
+function getCommitDate(sha: string, cwd: string): string | null {
   const result = spawnSync("git", ["log", "--format=%aI", "--max-count=1", sha], {
     cwd,
     encoding: "utf8",
@@ -312,7 +347,7 @@ function getCommitDate(sha: ExternalValue, cwd: ExternalValue) {
   return (result.stdout || "").trim() || null;
 }
 
-export function getWorkingTreeChangedFiles(cwd: ExternalValue, scanInputPaths: ExternalValue) {
+export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]): string[] {
   const statusResult = spawnSync("git", [
     "status",
     "--porcelain",
@@ -343,7 +378,7 @@ export function getWorkingTreeChangedFiles(cwd: ExternalValue, scanInputPaths: E
     .filter(Boolean);
 }
 
-function fileMatchesPattern(filePath: ExternalValue, pattern: ExternalValue) {
+function fileMatchesPattern(filePath: string, pattern: string): boolean {
   // 简单的 glob 模式匹配（处理 ** 和 *）
   const regex = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")

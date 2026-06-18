@@ -20,6 +20,7 @@ import {
   createSchemaAjv,
   formatAjvErrors
 } from "./schema-registry.ts";
+import { isRecord } from "../types.ts";
 
 export {
   compileRegisteredSchema,
@@ -27,7 +28,7 @@ export {
   formatAjvErrors
 } from "./schema-registry.ts";
 
-function validateWithSchema(ajv: ExternalValue, schemaRelPath: ExternalValue, dataRelPaths: ExternalValue) {
+function validateWithSchema(ajv: ReturnType<typeof createSchemaAjv>, schemaRelPath: string, dataRelPaths: string[]): void {
   const validate = compileRegisteredSchema(ajv, schemaRelPath);
   for (const dataRelPath of dataRelPaths) {
     const data = readJson(dataRelPath);
@@ -56,7 +57,8 @@ function validateStrictSchemaCompilation() {
 function validateProtocolResponseBindingSchema() {
   const ajv = createSchemaAjv();
   const validate = compileRegisteredSchema(ajv, SCHEMAS.protocolResponse);
-  const mismatched = JSON.parse(JSON.stringify(readJson(EXAMPLES.protocolReadResponse)));
+  const mismatched = structuredClone(readJson(EXAMPLES.protocolReadResponse));
+  assert(isRecord(mismatched), "protocol read response example must be an object");
   mismatched[FIELDS.operation] = OPERATION_NAMES.outline;
 
   assert(
@@ -93,7 +95,7 @@ function validateProtocolResponseErrorDetailsSchema() {
   console.log("protocol response error details requirements ok");
 }
 
-function protocolErrorResponse(code: ExternalValue, details: ExternalValue) {
+function protocolErrorResponse(code: string, details: Record<string, string>) {
   return {
     protocol_version: "0.1",
     request_id: "req-error-details",
@@ -108,7 +110,7 @@ function protocolErrorResponse(code: ExternalValue, details: ExternalValue) {
 }
 
 export function validateJsonSyntax() {
-  const jsonFiles = walk(toAbs(FILE_SYSTEM.docsDir), (filePath: ExternalValue) =>
+  const jsonFiles = walk(toAbs(FILE_SYSTEM.docsDir), (filePath) =>
     filePath.endsWith(FILE_SYSTEM.jsonExtension)
   );
   for (const filePath of jsonFiles) {

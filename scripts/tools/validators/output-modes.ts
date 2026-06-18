@@ -4,8 +4,9 @@ import path from "node:path";
 import { assert, assertDeepEqual, readJson, toAbs } from "./fs-utils.ts";
 import { DOCUMENT_OUTPUT_MODES, OUTPUT_MODE_CONSISTENCY } from "./config.ts";
 import { readText, sortedUnique } from "./document-files.ts";
+import { isRecord } from "../types.ts";
 
-function assertIncludesDocumentOutputModes(relPath: ExternalValue) {
+function assertIncludesDocumentOutputModes(relPath: string): void {
   const text = readText(relPath);
   for (const mode of DOCUMENT_OUTPUT_MODES) {
     assert(
@@ -15,7 +16,7 @@ function assertIncludesDocumentOutputModes(relPath: ExternalValue) {
   }
 }
 
-function assertDocumentOutputModeSet(values: ExternalValue, label: ExternalValue) {
+function assertDocumentOutputModeSet(values: string[], label: string): void {
   assertDeepEqual(
     values,
     DOCUMENT_OUTPUT_MODES,
@@ -23,7 +24,7 @@ function assertDocumentOutputModeSet(values: ExternalValue, label: ExternalValue
   );
 }
 
-function extractRustStringArray(source: ExternalValue, constName: ExternalValue, label: ExternalValue) {
+function extractRustStringArray(source: string, constName: string, label: string): string[] {
   const pattern = new RegExp(
     `const\\s+${constName}\\s*:[^=]+?=\\s*&\\s*\\[([^\\]]*)\\]`,
     "su",
@@ -33,8 +34,8 @@ function extractRustStringArray(source: ExternalValue, constName: ExternalValue,
   return [...match[1].matchAll(/"([^"]+)"/gu)].map((item) => item[1]);
 }
 
-function extractOutputValueConstants(source: ExternalValue, label: ExternalValue) {
-  const constants: Record<string, ExternalValue> = {};
+function extractOutputValueConstants(source: string, label: string): string[] {
+  const constants: Record<string, string> = {};
   for (const match of source.matchAll(
     /const\s+(PROTOCOL_JSON|READABLE_JSON|READABLE_VIEW)\s*:\s*&str\s*=\s*"([^"]+)"/gu,
   )) {
@@ -52,7 +53,7 @@ function extractOutputValueConstants(source: ExternalValue, label: ExternalValue
   return values;
 }
 
-function assertOutputHelpShape(source: ExternalValue, label: ExternalValue) {
+function assertOutputHelpShape(source: string, label: string): void {
   const valueName = "readable-view|readable-json|protocol-json";
   assert(
     source.includes(`"${valueName}"`),
@@ -222,21 +223,27 @@ function validateConformanceFixtures() {
   const markerFixture = readJson(
     path.posix.join(conformanceDir, "12_block_marker_in_body.json"),
   );
-  const markerPayload = markerFixture.input?.content;
+  assert(isRecord(markerFixture), "fixture 12 must be a JSON object");
+  const markerInput = markerFixture.input;
+  assert(isRecord(markerInput), "fixture 12 input must be a JSON object");
+  const markerPayload = markerInput.content;
   assert(
     typeof markerPayload === "string" &&
       markerPayload.includes("[block /content bytes=1]") &&
       markerPayload.includes("[endblock /content]"),
     "fixture 12 must contain same-pointer marker-looking text in the payload",
   );
-  const exactBlockAssertion = markerFixture.assertions.find(
-    (assertion: ExternalValue) =>
+  const assertions = markerFixture.assertions;
+  assert(Array.isArray(assertions), "fixture 12 assertions must be an array");
+  const exactBlockAssertion = assertions.find(
+    (assertion) =>
+      isRecord(assertion) &&
       assertion.type === "block" &&
       assertion.pointer === "/content" &&
       assertion.payload === markerPayload,
   );
   assert(
-    exactBlockAssertion,
+    isRecord(exactBlockAssertion),
     "fixture 12 must assert exact payload restoration",
   );
   assert(

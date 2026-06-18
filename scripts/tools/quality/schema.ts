@@ -56,6 +56,15 @@ export interface ToolInfo {
   version: string;
 }
 
+export interface ToolAvailability {
+  available: boolean;
+  error?: string | null;
+  name: string;
+  reason?: string | null;
+  source: string;
+  version: string | null;
+}
+
 export interface ToolConfig {
   args: string[];
   command: string;
@@ -127,6 +136,8 @@ export interface CodeAreaFingerprint {
   fileList: string[];
   fingerprint: string;
 }
+
+export type CodeAreaFileMap = Map<string, string[]>;
 
 export interface BaselineMetadata {
   commitDate: string | null;
@@ -267,6 +278,20 @@ export interface QualityMetrics {
   warnings: WarningRecord[];
 }
 
+export interface BaselineSnapshot {
+  aggregates: AggregateMetrics;
+  duplicateCode: DuplicateCodeFragment[];
+  fileMetrics: FileMetric[];
+  fingerprints: Record<string, CodeAreaFingerprint>;
+  functionMetrics: FunctionMetric[];
+}
+
+export interface FatalIssue {
+  error: string;
+  phase: string;
+  tool: string;
+}
+
 export interface MetricsValidationResult {
   errors: string[];
   valid: boolean;
@@ -340,7 +365,7 @@ export interface MetricsValidationResult {
  * @property {number} lineCount - Approximate line count
  * @property {{ path: string, startLine: number, endLine: number, codeArea: string }[]} locations
  * @property {string[]} codeAreas - Code areas involved in this duplication
- * @property {boolean} hitsChangedScope - Whether ExternalValue involved file was changed
+ * @property {boolean} hitsChangedScope - Whether any involved file was changed
  */
 
 /**
@@ -458,6 +483,8 @@ export interface MetricsValidationResult {
  * @property {string[]} args
  */
 
+import { isRecord, isUnknownArray } from "../types.ts";
+
 // ── Validation ─────────────────────────────────────────────────────────
 
 /**
@@ -467,16 +494,16 @@ export interface MetricsValidationResult {
  * @param {QualityMetrics} metrics
  * @returns {{ valid: boolean, errors: string[] }}
  */
-export function validateMetrics(metrics: ExternalValue) {
-  const errors: ExternalValue[] = [];
+export function validateMetrics(metrics: unknown): MetricsValidationResult {
+  const errors: string[] = [];
 
-  if (!metrics || typeof metrics !== "object") {
+  if (!isRecord(metrics)) {
     return { valid: false, errors: ["metrics must be a non-null object"] };
   }
 
   // metadata
   const m = metrics.metadata;
-  if (!m || typeof m !== "object") {
+  if (!isRecord(m)) {
     errors.push("metrics.metadata is required");
   } else {
     if (m.schemaVersion !== METRICS_SCHEMA_VERSION) {
@@ -488,49 +515,58 @@ export function validateMetrics(metrics: ExternalValue) {
     if (!m.repository) errors.push("metadata.repository is required");
     if (!m.commitSha) errors.push("metadata.commitSha is required");
     if (!Array.isArray(m.tools)) errors.push("metadata.tools must be an array");
-    if (!m.scope || typeof m.scope !== "object") errors.push("metadata.scope is required");
+    if (!isRecord(m.scope)) errors.push("metadata.scope is required");
     if (!m.configVersion) errors.push("metadata.configVersion is required");
   }
 
   // baseline
-  if (!metrics.baseline || typeof metrics.baseline !== "object") {
+  const baseline = metrics.baseline;
+  if (!isRecord(baseline)) {
     errors.push("metrics.baseline is required");
   } else {
-    if (!BASELINE_STATUSES.includes(metrics.baseline.status)) {
+    const status = baseline.status;
+    if (typeof status !== "string" || !BASELINE_STATUSES.includes(status)) {
       errors.push(
-        `baseline.status: must be one of ${BASELINE_STATUSES.join(", ")}, got "${metrics.baseline.status}"`
+        `baseline.status: must be one of ${BASELINE_STATUSES.join(", ")}, got "${status}"`
       );
     }
   }
 
   // comparison status
-  if (!COMPARISON_STATUSES.includes(metrics.comparisonStatus)) {
+  const comparisonStatus = metrics.comparisonStatus;
+  if (typeof comparisonStatus !== "string" || !COMPARISON_STATUSES.includes(comparisonStatus)) {
     errors.push(
-      `comparisonStatus: must be one of ${COMPARISON_STATUSES.join(", ")}, got "${metrics.comparisonStatus}"`
+      `comparisonStatus: must be one of ${COMPARISON_STATUSES.join(", ")}, got "${comparisonStatus}"`
     );
   }
 
   // fingerprints
-  if (!metrics.currentFingerprints || typeof metrics.currentFingerprints !== "object") {
+  if (!isRecord(metrics.currentFingerprints)) {
     errors.push("currentFingerprints is required");
   }
 
   // arrays
-  if (!Array.isArray(metrics.fileMetrics)) errors.push("fileMetrics must be an array");
-  if (!Array.isArray(metrics.functionMetrics)) errors.push("functionMetrics must be an array");
-  if (!Array.isArray(metrics.duplicateCode)) errors.push("duplicateCode must be an array");
-  if (!metrics.aggregates || typeof metrics.aggregates !== "object") {
+  if (!isUnknownArray(metrics.fileMetrics)) errors.push("fileMetrics must be an array");
+  if (!isUnknownArray(metrics.functionMetrics)) errors.push("functionMetrics must be an array");
+  if (!isUnknownArray(metrics.duplicateCode)) errors.push("duplicateCode must be an array");
+  if (!isRecord(metrics.aggregates)) {
     errors.push("aggregates is required");
   }
-  if (!Array.isArray(metrics.trends)) errors.push("trends must be an array");
-  if (!Array.isArray(metrics.warnings)) errors.push("warnings must be an array");
+  if (!isUnknownArray(metrics.trends)) errors.push("trends must be an array");
+  if (!isUnknownArray(metrics.warnings)) errors.push("warnings must be an array");
 
   // validate warnings
-  if (Array.isArray(metrics.warnings)) {
-    for (let i = 0; i < metrics.warnings.length; i++) {
-      const w = metrics.warnings[i];
-      if (!WARNING_LEVELS.includes(w.level)) {
-        errors.push(`warnings[${i}].level: invalid level "${w.level}"`);
+  const warnings = metrics.warnings;
+  if (isUnknownArray(warnings)) {
+    for (let i = 0; i < warnings.length; i++) {
+      const w = warnings[i];
+      if (!isRecord(w)) {
+        errors.push(`warnings[${i}] must be an object`);
+        continue;
+      }
+      const level = w.level;
+      if (typeof level !== "string" || !WARNING_LEVELS.includes(level)) {
+        errors.push(`warnings[${i}].level: invalid level "${level}"`);
       }
       if (!w.ruleId) errors.push(`warnings[${i}].ruleId is required`);
       if (!w.message) errors.push(`warnings[${i}].message is required`);
@@ -551,7 +587,19 @@ export function validateMetrics(metrics: ExternalValue) {
  * @param {{ include: string[], excludeDirs: string[], generatedFiles: string[] }} params.scope
  * @returns {QualityMetrics}
  */
-export function createEmptyMetrics({ repository, commitSha, configVersion, tools, scope }: ExternalValue) {
+export function createEmptyMetrics({
+  repository,
+  commitSha,
+  configVersion,
+  tools,
+  scope
+}: {
+  configVersion: string;
+  commitSha: string;
+  repository: string;
+  scope: ScanMetadata["scope"];
+  tools: ToolInfo[];
+}): QualityMetrics {
   return {
     metadata: {
       schemaVersion: METRICS_SCHEMA_VERSION,

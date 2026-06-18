@@ -1,17 +1,22 @@
 import { createProject, createRealMarkdownAdapter, writeRegistry } from "../fixtures.ts";
+import type { SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
   expect,
   expectExit,
+  expectJsonObject,
   expectNoProtocolEnvelope,
+  expectObjectArray,
   expectProtocolSuccess,
   expectReadableViewBlockRestoresField,
   expectStderrEmpty,
+  expectString,
   expectStdoutIncludes,
   expectStructuredWarning,
   parseJson,
   parseReadableViewHeader
 } from "../assertions.ts";
+import type { JsonRecord } from "../assertions.ts";
 
 export function createDocumentOutputBoundaryTasks() {
   return [
@@ -36,13 +41,15 @@ async function testDocumentOutputBoundary() {
     "--output",
     "readable-json"
   ], "readableRead");
+  const readableRef = expectString(readable.record, readable.json.ref, "read readable-json ref is a string");
+  const readableContent = expectString(readable.record, readable.json.content, "read readable-json content is a string");
   expect(readable.record, readable.json.content_type === "text/markdown", "read readable-json preserves content_type");
 
   const readableView = await runCli("CORE-OUTPUT-001 read readable-view output", [
     "read",
     project.normalRelPath,
     "--ref",
-    readable.json.ref,
+    readableRef,
     "--output",
     "readable-view"
   ], { project });
@@ -51,13 +58,13 @@ async function testDocumentOutputBoundary() {
   expect(readableView, readableView.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
   expect(readableView, !readableView.stdout.includes("\"protocol_version\""), "readable-view omits protocol envelope");
   expectStdoutIncludes(readableView, "\"$block\": \"/content\"");
-  expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", readable.json.content);
+  expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", readableContent);
 
   const defaultOutput = await runCli("CORE-OUTPUT-001 read default output is readable-view", [
     "read",
     project.normalRelPath,
     "--ref",
-    readable.json.ref
+    readableRef
   ], { project });
   expectExit(defaultOutput, 0);
   expectStderrEmpty(defaultOutput);
@@ -68,7 +75,7 @@ async function testDocumentOutputBoundary() {
     "read",
     project.normalRelPath,
     "--ref",
-    readable.json.ref,
+    readableRef,
     "--output",
     "protocol-json"
   ], { project });
@@ -77,8 +84,9 @@ async function testDocumentOutputBoundary() {
   const protocolJson = parseJson(protocol);
   validateSchema(protocol, "protocolResponse", protocolJson);
   expectProtocolSuccess(protocol, protocolJson, "read");
-  expect(protocol, protocolJson.result.ref === readable.json.ref, "protocol-json result preserves ref");
-  expect(protocol, protocolJson.result.content === readable.json.content, "protocol-json result matches readable-json content");
+  const protocolResult = expectJsonObject(protocol, protocolJson.result, "protocol result is an object");
+  expect(protocol, protocolResult.ref === readableRef, "protocol-json result preserves ref");
+  expect(protocol, protocolResult.content === readableContent, "protocol-json result matches readable-json content");
 
   const warningRecord = await runCli("CORE-OUTPUT-001 readable-view warning stays on stdout", [
     "outline",
@@ -91,10 +99,14 @@ async function testDocumentOutputBoundary() {
   expectStderrEmpty(warningRecord);
   const warningHeader = parseReadableViewHeader(warningRecord);
   validateSchema(warningRecord, "readableOutline", warningHeader);
-  expectStructuredWarning(warningRecord, warningHeader.warnings?.[0], ["--future"], "ExternalValue flag");
+  const warnings = expectObjectArray(warningRecord, warningHeader.warnings, "readable-view warnings are objects");
+  expectStructuredWarning(warningRecord, warnings[0], ["--future"], "future flag");
 }
 
-async function runReadable(project: ExternalValue, name: ExternalValue, args: ExternalValue, schemaName: ExternalValue) {
+async function runReadable(project: SmokeProject, name: string, args: string[], schemaName: string): Promise<{
+  json: JsonRecord;
+  record: Awaited<ReturnType<typeof runCli>>;
+}> {
   const record = await runCli(name, args, { project });
   expectExit(record, 0);
   expectStderrEmpty(record);

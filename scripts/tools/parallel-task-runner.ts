@@ -11,8 +11,8 @@ export interface TaskDefinition {
   env?: TaskEnv;
   envFile?: string;
   tasks?: readonly TaskDefinition[];
-  run?: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
-  [key: string]: ExternalValue;
+  run?: (task: NormalizedTask) => unknown | Promise<unknown>;
+  [key: string]: unknown;
 }
 
 export interface NormalizedTask extends TaskDefinition {
@@ -40,25 +40,25 @@ interface ExpandTaskState {
 interface RunParallelTaskOptions<TResult> {
   prepareTasks?: (taskList: readonly TaskDefinition[]) => NormalizedTask[];
   execute?: (task: NormalizedTask) => TResult | Promise<TResult>;
-  onStart?: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
-  onComplete?: (result: TResult, task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
+  onStart?: (task: NormalizedTask) => unknown | Promise<unknown>;
+  onComplete?: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
   concurrency?: string | number | null;
 }
 
 interface StartTaskOptions<TResult> {
   task: NormalizedTask;
   execute: (task: NormalizedTask) => TResult | Promise<TResult>;
-  onStart: (task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
-  onComplete: (result: TResult, task: NormalizedTask) => ExternalValue | Promise<ExternalValue>;
+  onStart: (task: NormalizedTask) => unknown | Promise<unknown>;
+  onComplete: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
   completedIds: Set<string>;
   runningMutexes: Set<string>;
   results: TResult[];
   onSettled: () => void;
-  onError: (error: ExternalValue) => void;
+  onError: (error: unknown) => void;
   isSettled: () => boolean;
 }
 
-export async function runParallelTasks<TResult = ExternalValue>(
+export async function runParallelTasks<TResult = unknown>(
   taskList: readonly TaskDefinition[],
   options: RunParallelTaskOptions<TResult> = {}
 ): Promise<TResult[]> {
@@ -84,7 +84,7 @@ export async function runParallelTasks<TResult = ExternalValue>(
       }
     };
 
-    const fail = (error: ExternalValue) => {
+    const fail = (error: unknown) => {
       if (!settled) {
         settled = true;
         reject(error);
@@ -144,7 +144,8 @@ function resolveConcurrency(value: string | number | null | undefined, taskCount
 }
 
 export function expandTasks(taskList: readonly TaskDefinition[]): NormalizedTask[] {
-  if (!Array.isArray(taskList)) {
+  const maybeTaskList: unknown = taskList;
+  if (!Array.isArray(maybeTaskList)) {
     throw new Error("task list must be an array");
   }
 
@@ -202,7 +203,7 @@ export function validateTaskGraph(taskList: readonly NormalizedTask[]): void {
   for (const task of taskList) {
     for (const dependency of task.dependsOn) {
       if (!ids.has(dependency)) {
-        throw new Error(`task ${task.id} depends on ExternalValue task ${dependency}`);
+        throw new Error(`task ${task.id} depends on unknown task ${dependency}`);
       }
     }
   }
@@ -225,13 +226,15 @@ function expandTask(task: TaskDefinition, inherited: InheritedTaskState, state: 
     envFile: taskEnvFile
   };
 
-  if (task.tasks !== undefined) {
-    if (!Array.isArray(task.tasks) || task.tasks.length === 0) {
+  const childTasks = task.tasks;
+  if (childTasks !== undefined) {
+    const maybeChildTasks: unknown = childTasks;
+    if (!Array.isArray(maybeChildTasks) || childTasks.length === 0) {
       throw new Error("task.tasks must be a non-empty array");
     }
 
     const startIndex = state.leafTasks.length;
-    for (const child of task.tasks) {
+    for (const child of childTasks) {
       expandTask(child, nextInherited, state);
     }
     state.groupLeafIds.set(
@@ -265,11 +268,11 @@ function expandTask(task: TaskDefinition, inherited: InheritedTaskState, state: 
   state.leafTasks.push(normalizeTask(leaf));
 }
 
-function assertTaskObject(task: ExternalValue): asserts task is TaskDefinition {
+function assertTaskObject(task: unknown): asserts task is TaskDefinition {
   if (!task || typeof task !== "object") {
     throw new Error("task must be an object");
   }
-  const value = task as Record<string, ExternalValue>;
+  const value = task as Record<string, unknown>;
   if (typeof value.id !== "string" || value.id.trim().length === 0) {
     throw new Error("task.id must be a non-empty string");
   }
@@ -367,20 +370,22 @@ function normalizeStringList(value: StringList, fieldName: string): string[] {
   if (typeof value === "string") {
     return [value];
   }
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.length === 0)) {
+  const maybeItems: unknown = value;
+  if (!Array.isArray(maybeItems) || value.some((item) => item.length === 0)) {
     throw new Error(`task.${fieldName} must be a string or string array`);
   }
   return [...value];
 }
 
 function normalizeTaskList(taskList: readonly TaskDefinition[]): NormalizedTask[] {
-  if (!Array.isArray(taskList)) {
+  const maybeTaskList: unknown = taskList;
+  if (!Array.isArray(maybeTaskList)) {
     throw new Error("task list must be an array");
   }
   return taskList.map(normalizeTask);
 }
 
-function executeTask(task: NormalizedTask): ExternalValue {
+function executeTask(task: NormalizedTask): unknown {
   if (typeof task.run !== "function") {
     throw new Error(`task ${task.id} has no run function`);
   }

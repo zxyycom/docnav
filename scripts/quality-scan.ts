@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 
 import { DEFAULT_CONFIG } from "./tools/quality/config.ts";
 import { createEmptyMetrics } from "./tools/quality/schema.ts";
+import type { BaselineSnapshot, FatalIssue, QualityMetrics, ToolAvailability } from "./tools/quality/schema.ts";
 import { errorMessage } from "./tools/types.ts";
 import { classifyFiles } from "./tools/quality/classify.ts";
 import {
@@ -92,8 +93,8 @@ async function main() {
   });
   metrics.currentFingerprints = fingerprints;
 
-  const fatalIssues: ExternalValue[] = [];
-  configureBaseline({ metrics, opts, tools, fatalIssues, root });
+  const fatalIssues: FatalIssue[] = [];
+  configureBaseline({ metrics, opts, tools, root });
 
   const scope = detectTextOnlyChange({
     baselineSha: metrics.baseline.commitSha,
@@ -116,7 +117,7 @@ async function main() {
   });
 
   setComparisonStatus(metrics, scope);
-  const baselineSnapshot: ExternalValue = maybeScanBaseline({
+  const baselineSnapshot = maybeScanBaseline({
     metrics,
     toolResults,
     rawDir,
@@ -138,7 +139,7 @@ async function main() {
         }
       : null,
     comparisonStatus: metrics.comparisonStatus
-  }) as ExternalValue;
+  });
   console.log(`  Warnings: ${metrics.warnings.length} generated`);
 
   writeArtifacts({ artifactDir, metrics, topN: opts.topN });
@@ -168,29 +169,52 @@ async function main() {
   process.exit(0);
 }
 
-function maybeScanBaseline({ metrics, toolResults, rawDir, fatalIssues }: ExternalValue) {
+function maybeScanBaseline({
+  metrics,
+  toolResults,
+  rawDir,
+  fatalIssues
+}: {
+  fatalIssues: FatalIssue[];
+  metrics: QualityMetrics;
+  rawDir: string;
+  toolResults: ToolAvailability[];
+}): BaselineSnapshot | null {
   if (fatalIssues.length > 0) {
     console.log("Skipping baseline scan because fatal current-scan errors were detected.");
     return null;
   }
 
-  if (metrics.baseline.status !== "generated" || !metrics.baseline.commitSha) {
+  const baselineCommitSha = metrics.baseline.commitSha;
+  if (metrics.baseline.status !== "generated" || !baselineCommitSha) {
     return null;
   }
 
   const baselineWorkDir = join(tmpdir(), `docnav-quality-baseline-${randomUUID()}`);
-  console.log(`Materializing baseline ${metrics.baseline.commitSha.slice(0, 7)}...`);
+  console.log(`Materializing baseline ${baselineCommitSha.slice(0, 7)}...`);
 
   try {
-    return scanMaterializedBaseline({ metrics, toolResults, rawDir, baselineWorkDir });
+    return scanMaterializedBaseline({ baselineCommitSha, metrics, toolResults, rawDir, baselineWorkDir });
   } finally {
     rmSync(baselineWorkDir, { recursive: true, force: true });
   }
 }
 
-function scanMaterializedBaseline({ metrics, toolResults, rawDir, baselineWorkDir }: ExternalValue) {
+function scanMaterializedBaseline({
+  baselineCommitSha,
+  metrics,
+  toolResults,
+  rawDir,
+  baselineWorkDir
+}: {
+  baselineCommitSha: string;
+  baselineWorkDir: string;
+  metrics: QualityMetrics;
+  rawDir: string;
+  toolResults: ToolAvailability[];
+}): BaselineSnapshot | null {
   const matResult = materializeBaseline({
-    commitSha: metrics.baseline.commitSha,
+    commitSha: baselineCommitSha,
     cwd: root,
     baselineWorkDir
   });

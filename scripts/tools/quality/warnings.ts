@@ -16,6 +16,14 @@
  * @typedef {import('./config.ts').DEFAULT_CONFIG} QualityConfig
  */
 
+import type {
+  DuplicateCodeFragment,
+  FileMetric,
+  FunctionMetric,
+  QualityConfig,
+  WarningRecord
+} from "./schema.ts";
+
 /**
  * 生成 warning records。
  *
@@ -32,9 +40,43 @@
  * @param {string} params.comparisonStatus - compared, input-unchanged, baseline-unavailable
  * @returns {WarningRecord[]}
  */
-export function generateWarnings({ files, functions, duplicates, config, baseline, comparisonStatus }: ExternalValue) {
-  /** @type {WarningRecord[]} */
-  const warnings: ExternalValue[] = [];
+type WarningBaseline = {
+  duplicates: DuplicateCodeFragment[];
+  files: FileMetric[];
+  functions: FunctionMetric[];
+} | null;
+
+type WarningScope = {
+  changed: boolean;
+  changedFiles: string[];
+};
+
+type ShouldWarnParams = {
+  delta: number | null;
+  deltaFloor: number;
+  floor: number;
+  isChanged: boolean;
+  isWatchlistOnly: boolean;
+  value: number | null;
+};
+
+export function generateWarnings({
+  files,
+  functions,
+  duplicates,
+  config,
+  baseline,
+  comparisonStatus
+}: {
+  baseline: WarningBaseline;
+  comparisonStatus: string;
+  config: QualityConfig;
+  duplicates: DuplicateCodeFragment[];
+  files: FileMetric[];
+  functions: FunctionMetric[];
+  scope: WarningScope;
+}): WarningRecord[] {
+  const warnings: WarningRecord[] = [];
 
   // 当 comparison status 为 input-unchanged 或 baseline-unavailable 时，
   // 不生成复杂度或重复代码 annotation（CI annotation 降级为 summary/watchlist）
@@ -97,11 +139,12 @@ export function generateWarnings({ files, functions, duplicates, config, baselin
     const ccFloor = config.scc?.fileComplexity?.absoluteFloor ?? 20;
     const ccDelta = config.scc?.fileComplexity?.changedDelta ?? 10;
     const baseComplexity = baseFile?.complexity?.value ?? (hasBaselineFiles ? 0 : null);
-    const ccDeltaValue = deltaFrom(file.complexity.value, baseComplexity);
-    if (shouldWarn({
+    const fileComplexity = file.complexity.value;
+    const ccDeltaValue = deltaFrom(fileComplexity, baseComplexity);
+    if (fileComplexity !== null && shouldWarn({
       isChanged: file.isChanged,
       isWatchlistOnly,
-      value: file.complexity.value,
+      value: fileComplexity,
       floor: ccFloor,
       delta: ccDeltaValue,
       deltaFloor: ccDelta
@@ -114,11 +157,11 @@ export function generateWarnings({ files, functions, duplicates, config, baselin
         line: null,
         codeArea: file.codeArea,
         metric: "complexity",
-        value: file.complexity.value,
+        value: fileComplexity,
         comparisonBasis: basisFor(file.isChanged, ccDeltaValue),
         baselineValue: baseComplexity,
         deltaValue: ccDeltaValue,
-        message: `File "${file.path}" has complexity ${file.complexity.value} (floor: ${ccFloor})`,
+        message: `File "${file.path}" has complexity ${fileComplexity} (floor: ${ccFloor})`,
         suggestion: "Consider splitting complex logic into smaller functions"
       });
     }
@@ -138,11 +181,12 @@ export function generateWarnings({ files, functions, duplicates, config, baselin
     const ccDelta = config.lizard?.cyclomaticComplexity?.changedDelta ?? 5;
     const baselineFunc = baselineFunctions.get(functionKey(func));
     const baselineCc = baselineFunc?.cyclomaticComplexity?.value ?? (hasBaselineFunctions ? 0 : null);
-    const ccDeltaValue = deltaFrom(func.cyclomaticComplexity.value, baselineCc);
-    if (shouldWarn({
+    const functionComplexity = func.cyclomaticComplexity.value;
+    const ccDeltaValue = deltaFrom(functionComplexity, baselineCc);
+    if (functionComplexity !== null && shouldWarn({
       isChanged: func.isChanged,
       isWatchlistOnly,
-      value: func.cyclomaticComplexity.value,
+      value: functionComplexity,
       floor: ccFloor,
       delta: ccDeltaValue,
       deltaFloor: ccDelta
@@ -155,11 +199,11 @@ export function generateWarnings({ files, functions, duplicates, config, baselin
         line: func.startLine,
         codeArea: func.codeArea,
         metric: "cyclomatic-complexity",
-        value: func.cyclomaticComplexity.value,
+        value: functionComplexity,
         comparisonBasis: basisFor(func.isChanged, ccDeltaValue),
         baselineValue: baselineCc,
         deltaValue: ccDeltaValue,
-        message: `Function "${func.name}" in ${func.file}:${func.startLine} has cyclomatic complexity ${func.cyclomaticComplexity.value} (floor: ${ccFloor})`,
+        message: `Function "${func.name}" in ${func.file}:${func.startLine} has cyclomatic complexity ${functionComplexity} (floor: ${ccFloor})`,
         suggestion: "Consider breaking this function into smaller, more focused functions"
       });
     }
@@ -228,7 +272,7 @@ export function generateWarnings({ files, functions, duplicates, config, baselin
   // Duplicate code warnings (from CPD)
   for (const dup of duplicates) {
     // 检查涉及的 code areas 的 warning policy
-    const involvedAreas = dup.locations.map((l: ExternalValue) => l.codeArea).filter(Boolean);
+    const involvedAreas = dup.locations.map((l) => l.codeArea).filter(Boolean);
     const uniqueAreas = [...new Set(involvedAreas)] as string[];
 
     // 如果所有涉及的 areas 都是 exclude-warnings，跳过
@@ -268,16 +312,16 @@ export function generateWarnings({ files, functions, duplicates, config, baselin
         level,
         ruleId: "pmd-cpd-duplicate-code",
         sourceTool: "pmd-cpd",
-        path: primaryLocation?.path || "ExternalValue",
+        path: primaryLocation?.path || "unknown",
         line: primaryLocation?.startLine ?? null,
-        codeArea: uniqueAreas.join(",") || "ExternalValue",
+        codeArea: uniqueAreas.join(",") || "unknown",
         metric: "duplicate-tokens",
         value: dup.tokenCount,
         comparisonBasis: basisFor(dup.hitsChangedScope, duplicateDelta),
         baselineValue: baselineDuplicateCount,
         deltaValue: duplicateDelta,
         message: `Duplicate code fragment (${dup.tokenCount} tokens) across ${dup.locations.length} locations in areas [${uniqueAreas.join(", ")}]`,
-        suggestion: `Consider extracting shared code into a common function or module. Locations: ${dup.locations.map((l: ExternalValue) => `${l.path}:${l.startLine}`).join(", ")}`
+        suggestion: `Consider extracting shared code into a common function or module. Locations: ${dup.locations.map((l) => `${l.path}:${l.startLine}`).join(", ")}`
       });
     }
   }
@@ -293,7 +337,7 @@ export function generateWarnings({ files, functions, duplicates, config, baselin
   return warnings;
 }
 
-function shouldWarn({ isChanged, isWatchlistOnly, value, floor, delta, deltaFloor }: ExternalValue) {
+function shouldWarn({ isChanged, isWatchlistOnly, value, floor, delta, deltaFloor }: ShouldWarnParams): boolean {
   if (value === null || value === undefined || value <= floor) {
     return false;
   }
@@ -313,33 +357,33 @@ function shouldWarn({ isChanged, isWatchlistOnly, value, floor, delta, deltaFloo
   return delta > deltaFloor;
 }
 
-function basisFor(isChanged: ExternalValue, delta: ExternalValue) {
+function basisFor(isChanged: boolean, delta: number | null): string {
   if (isChanged && delta !== null && delta !== undefined) {
     return "delta";
   }
   return isChanged ? "changed-scope" : "absolute";
 }
 
-function deltaFrom(current: ExternalValue, baseline: ExternalValue) {
+function deltaFrom(current: number | null | undefined, baseline: number | null | undefined): number | null {
   if (current === null || current === undefined || baseline === null || baseline === undefined) {
     return null;
   }
   return current - baseline;
 }
 
-function buildFileBaselineMap(files: ExternalValue): Map<string, ExternalValue> {
-  return new Map(files.map((file: ExternalValue) => [file.path, file]));
+function buildFileBaselineMap(files: FileMetric[]): Map<string, FileMetric> {
+  return new Map(files.map((file) => [file.path, file]));
 }
 
-function buildFunctionBaselineMap(functions: ExternalValue): Map<string, ExternalValue> {
-  return new Map(functions.map((func: ExternalValue) => [functionKey(func), func]));
+function buildFunctionBaselineMap(functions: FunctionMetric[]): Map<string, FunctionMetric> {
+  return new Map(functions.map((func) => [functionKey(func), func]));
 }
 
-function functionKey(func: ExternalValue) {
+function functionKey(func: FunctionMetric): string {
   return `${func.file}:${func.name}:${func.startLine}`;
 }
 
-function buildDuplicateBaselineIndex(duplicates: ExternalValue): Map<string, number> {
+function buildDuplicateBaselineIndex(duplicates: DuplicateCodeFragment[]): Map<string, number> {
   const index = new Map<string, number>();
   for (const dup of duplicates) {
     const key = duplicateKey(dup);
@@ -348,16 +392,20 @@ function buildDuplicateBaselineIndex(duplicates: ExternalValue): Map<string, num
   return index;
 }
 
-function countMatchingBaselineDuplicates(dup: ExternalValue, baselineIndex: ExternalValue, hasBaselineDuplicates: ExternalValue) {
+function countMatchingBaselineDuplicates(
+  dup: DuplicateCodeFragment,
+  baselineIndex: Map<string, number>,
+  hasBaselineDuplicates: boolean
+): number | null {
   if (!hasBaselineDuplicates) {
     return null;
   }
   return baselineIndex.get(duplicateKey(dup)) || 0;
 }
 
-function duplicateKey(dup: ExternalValue) {
+function duplicateKey(dup: DuplicateCodeFragment): string {
   return dup.locations
-    .map((loc: ExternalValue) => `${loc.path}:${loc.startLine}`)
+    .map((loc) => `${loc.path}:${loc.startLine}`)
     .sort()
     .join("|");
 }

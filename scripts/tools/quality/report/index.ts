@@ -28,6 +28,7 @@ import {
   trendSection,
   warningsSection
 } from "./findings.ts";
+import type { QualityMetrics } from "../schema.ts";
 
 /**
  * 生成 Markdown summary。
@@ -36,7 +37,11 @@ import {
  * @param {number} topN - Top N 数量
  * @returns {string} Markdown report
  */
-export function generateMarkdownReport(metrics: ExternalValue, topN = 10, options: ExternalValue = {}) {
+export function generateMarkdownReport(
+  metrics: QualityMetrics,
+  topN = 10,
+  options: { timeZone?: string } = {}
+): string {
   const reportOptions = {
     timeZone: options.timeZone || DEFAULT_CONFIG.report.timeZone
   };

@@ -5,17 +5,32 @@ import { join } from "node:path";
 import { DEFAULT_CONFIG } from "./config.ts";
 import { locateBaselineCommit } from "./baseline.ts";
 import { validateMetrics } from "./schema.ts";
+import type {
+  BaselineSnapshot,
+  CodeAreaFingerprint,
+  FatalIssue,
+  QualityMetrics,
+  ToolAvailability,
+  ToolInfo
+} from "./schema.ts";
 import { generateMarkdownReport } from "./report/index.ts";
 import { checkTools } from "./tools/index.ts";
 
-export function parseArgs(argv = process.argv.slice(2)) {
-  const opts: {
-    baseline: string | null;
-    changedFiles: string | null;
-    topN: number;
-    artifactDir: string;
-    skipBaseline: boolean;
-  } = {
+export type QualityScanOptions = {
+  artifactDir: string;
+  baseline: string | null;
+  changedFiles: string | null;
+  skipBaseline: boolean;
+  topN: number;
+};
+
+type ChangeScope = {
+  changed: boolean;
+  changedFiles: string[];
+};
+
+export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
+  const opts: QualityScanOptions = {
     baseline: null,
     changedFiles: null,
     topN: DEFAULT_CONFIG.report.topN,
@@ -49,14 +64,14 @@ export function parseArgs(argv = process.argv.slice(2)) {
   return opts;
 }
 
-export function prepareArtifactDirs(artifactDir: ExternalValue) {
+export function prepareArtifactDirs(artifactDir: string): { rawDir: string } {
   const rawDir = join(artifactDir, "raw");
   mkdirSync(artifactDir, { recursive: true });
   mkdirSync(rawDir, { recursive: true });
   return { rawDir };
 }
 
-export function initializeToolResults(rootDir: ExternalValue) {
+export function initializeToolResults(rootDir: string): ToolAvailability[] {
   console.log("Checking tool availability...");
   const toolResults = checkTools(rootDir);
   const availableTools = toolResults.filter((tool) => tool.available);
@@ -71,17 +86,27 @@ export function initializeToolResults(rootDir: ExternalValue) {
   return toolResults;
 }
 
-export function collectToolMetadata(toolResults: ExternalValue) {
+export function collectToolMetadata(toolResults: ToolAvailability[]): ToolInfo[] {
   return toolResults
-    .filter((tool: ExternalValue) => tool.available && tool.version)
-    .map((tool: ExternalValue) => ({
+    .filter((tool): tool is ToolAvailability & { version: string } => tool.available && typeof tool.version === "string")
+    .map((tool) => ({
       name: tool.name,
       version: tool.version,
       source: tool.source
     }));
 }
 
-export function configureBaseline({ metrics, opts, tools, root }: ExternalValue) {
+export function configureBaseline({
+  metrics,
+  opts,
+  tools,
+  root
+}: {
+  metrics: QualityMetrics;
+  opts: QualityScanOptions;
+  root: string;
+  tools: ToolInfo[];
+}): void {
   if (opts.baseline) {
     metrics.baseline = createGeneratedBaseline(opts.baseline, "explicit", tools, root);
     return;
@@ -126,7 +151,7 @@ export function configureBaseline({ metrics, opts, tools, root }: ExternalValue)
   }
 }
 
-export function setComparisonStatus(metrics: ExternalValue, scope: ExternalValue) {
+export function setComparisonStatus(metrics: QualityMetrics, scope: ChangeScope): void {
   if (metrics.baseline.status === "generated" && metrics.baseline.commitSha) {
     if (!scope.changed) {
       metrics.comparisonStatus = "input-unchanged";
@@ -141,7 +166,7 @@ export function setComparisonStatus(metrics: ExternalValue, scope: ExternalValue
   }
 }
 
-export function writeBaselineRawOutputs(rawDir: ExternalValue, baselineSnapshot: ExternalValue) {
+export function writeBaselineRawOutputs(rawDir: string, baselineSnapshot: BaselineSnapshot): void {
   const baselineRawDir = join(rawDir, "baseline");
   mkdirSync(baselineRawDir, { recursive: true });
   writeJson(join(baselineRawDir, "baseline-fingerprints.json"), baselineSnapshot.fingerprints);
@@ -160,7 +185,15 @@ export function writeBaselineRawOutputs(rawDir: ExternalValue, baselineSnapshot:
   }
 }
 
-export function writeArtifacts({ artifactDir, metrics, topN }: ExternalValue) {
+export function writeArtifacts({
+  artifactDir,
+  metrics,
+  topN
+}: {
+  artifactDir: string;
+  metrics: QualityMetrics;
+  topN: number;
+}): void {
   console.log("Writing artifacts...");
 
   const metricsPath = join(artifactDir, "metrics.json");
@@ -176,12 +209,12 @@ export function writeArtifacts({ artifactDir, metrics, topN }: ExternalValue) {
   console.log(`  report.md → ${reportPath}`);
 
   const warningsPath = join(artifactDir, "warnings.ndjson");
-  const ndjson = metrics.warnings.map((warning: ExternalValue) => JSON.stringify(warning)).join("\n") + "\n";
+  const ndjson = metrics.warnings.map((warning) => JSON.stringify(warning)).join("\n") + "\n";
   writeFileSync(warningsPath, ndjson, "utf8");
   console.log(`  warnings.ndjson → ${warningsPath}`);
 }
 
-export function printSummary(metrics: ExternalValue) {
+export function printSummary(metrics: QualityMetrics): void {
   console.log("");
   console.log("─".repeat(60));
   console.log("Summary:");
@@ -197,7 +230,7 @@ export function printSummary(metrics: ExternalValue) {
   console.log("─".repeat(60));
 }
 
-export function validateOutput(metrics: ExternalValue) {
+export function validateOutput(metrics: QualityMetrics) {
   const validation = validateMetrics(metrics);
   if (validation.valid) return validation;
 
@@ -209,20 +242,20 @@ export function validateOutput(metrics: ExternalValue) {
   return validation;
 }
 
-export function logFingerprints(fingerprints: ExternalValue) {
+export function logFingerprints(fingerprints: Record<string, CodeAreaFingerprint>): void {
   console.log("  Input fingerprints:");
-  for (const [area, fingerprint] of Object.entries(fingerprints) as Array<[string, ExternalValue]>) {
+  for (const [area, fingerprint] of Object.entries(fingerprints)) {
     console.log(`    ${area}: ${fingerprint.fileCount} files, ${fingerprint.fingerprint}`);
   }
 }
 
-export function formatFatalIssue(issue: ExternalValue) {
+export function formatFatalIssue(issue: FatalIssue): string {
   return `${issue.tool} ${issue.phase}: ${issue.error}`;
 }
 
-export function getGitSha(cwd: ExternalValue) {
+export function getGitSha(cwd: string): string {
   const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8", windowsHide: true });
-  return (result.stdout || "").trim() || "ExternalValue";
+  return (result.stdout || "").trim() || "unknown";
 }
 
 function printHelp() {
@@ -250,7 +283,13 @@ Output:
 `);
 }
 
-function createGeneratedBaseline(commitSha: ExternalValue, selectionReason: ExternalValue, tools: ExternalValue, root: ExternalValue, commitDate: string | null = null) {
+function createGeneratedBaseline(
+  commitSha: string,
+  selectionReason: string,
+  tools: ToolInfo[],
+  root: string,
+  commitDate: string | null = null
+): QualityMetrics["baseline"] {
   const resolvedDate = commitDate || getGitCommitDate(commitSha, root);
   return {
     status: "generated",
@@ -258,7 +297,7 @@ function createGeneratedBaseline(commitSha: ExternalValue, selectionReason: Exte
     commitDate: resolvedDate,
     metadata: {
       commitSha,
-      commitDate: resolvedDate || "ExternalValue",
+      commitDate: resolvedDate || "unknown",
       selectionReason,
       configVersion: DEFAULT_CONFIG.version,
       toolMetadata: tools
@@ -266,7 +305,7 @@ function createGeneratedBaseline(commitSha: ExternalValue, selectionReason: Exte
   };
 }
 
-function getGitCommitDate(sha: ExternalValue, cwd: ExternalValue) {
+function getGitCommitDate(sha: string, cwd: string): string | null {
   const result = spawnSync("git", ["log", "--format=%aI", "--max-count=1", sha], {
     cwd,
     encoding: "utf8",
@@ -275,6 +314,6 @@ function getGitCommitDate(sha: ExternalValue, cwd: ExternalValue) {
   return (result.stdout || "").trim() || null;
 }
 
-function writeJson(filePath: ExternalValue, value: ExternalValue) {
+function writeJson(filePath: string, value: unknown): void {
   writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
 }

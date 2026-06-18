@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import type { SpawnSyncReturns } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,11 +7,28 @@ import { findCargoExecutable } from "./tools/cargo.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+type BinarySpec = {
+  packageName: string;
+  binName: string;
+  envName: string;
+};
+
+type Options = {
+  binaries: BinarySpec[];
+  command: [string, ...string[]];
+  quiet: boolean;
+};
+
 const options = parseArgs(process.argv.slice(2));
 const executables = buildCargoBins(options.binaries, options.quiet);
 const env = { ...process.env };
 for (const binary of options.binaries) {
-  env[binary.envName] = executables.get(binary.binName);
+  const executable = executables.get(binary.binName);
+  if (!executable) {
+    console.error(`cargo build did not report a ${binary.binName} executable`);
+    process.exit(1);
+  }
+  env[binary.envName] = executable;
 }
 
 const result = spawnSync(options.command[0], options.command.slice(1), {
@@ -27,7 +45,7 @@ if (result.error) {
 
 process.exit(result.status ?? 1);
 
-function parseArgs(args: ExternalValue) {
+function parseArgs(args: string[]): Options {
   const separatorIndex = args.indexOf("--");
   if (separatorIndex === -1) {
     usage("missing -- command separator");
@@ -39,7 +57,7 @@ function parseArgs(args: ExternalValue) {
     usage("missing command after --");
   }
 
-  const binaries: ExternalValue[] = [];
+  const binaries: BinarySpec[] = [];
   let quiet = false;
   for (let index = 0; index < optionArgs.length;) {
     const flag = optionArgs[index];
@@ -53,7 +71,7 @@ function parseArgs(args: ExternalValue) {
     const binName = optionArgs[index + 2];
     const envName = optionArgs[index + 3];
     if (flag !== "--bin") {
-      usage(`ExternalValue option ${String(flag)}`);
+      usage(`unknown option ${String(flag)}`);
     }
     if (!packageName || !binName || !envName) {
       usage("--bin requires <cargo-package> <bin-name> <ENV_NAME>");
@@ -75,15 +93,15 @@ function parseArgs(args: ExternalValue) {
     usage("environment variable names must be unique");
   }
 
-  return { binaries, command, quiet };
+  return { binaries, command: command as [string, ...string[]], quiet };
 }
 
-function buildCargoBins(binaries: ExternalValue, quiet: ExternalValue) {
-  const packages = [...new Set(binaries.map((binary: ExternalValue) => binary.packageName))];
+function buildCargoBins(binaries: BinarySpec[], quiet: boolean): Map<string, string> {
+  const packages = [...new Set(binaries.map((binary) => binary.packageName))];
   const cargoArgs = [
     "build",
     ...packages.flatMap((packageName) => ["-p", packageName]),
-    ...binaries.flatMap((binary: ExternalValue) => ["--bin", binary.binName]),
+    ...binaries.flatMap((binary) => ["--bin", binary.binName]),
     "--message-format=json"
   ];
   const result = spawnSync("cargo", cargoArgs, {
@@ -105,7 +123,7 @@ function buildCargoBins(binaries: ExternalValue, quiet: ExternalValue) {
     process.stderr.write(result.stderr);
   }
 
-  const executables = new Map();
+  const executables = new Map<string, string>();
   for (const binary of binaries) {
     const executable = findCargoExecutable(result.stdout ?? "", binary.binName);
     if (!executable) {
@@ -117,7 +135,7 @@ function buildCargoBins(binaries: ExternalValue, quiet: ExternalValue) {
   return executables;
 }
 
-function writeOutput(result: ExternalValue) {
+function writeOutput(result: SpawnSyncReturns<string>) {
   if (result.stdout) {
     process.stdout.write(result.stdout);
   }
@@ -126,7 +144,7 @@ function writeOutput(result: ExternalValue) {
   }
 }
 
-function usage(message: ExternalValue) {
+function usage(message: string): never {
   console.error(message);
   console.error(
     "usage: node scripts/with-cargo-bins.ts [--quiet] --bin <cargo-package> <bin-name> <ENV_NAME> [--bin ...] -- <command> [args...]"

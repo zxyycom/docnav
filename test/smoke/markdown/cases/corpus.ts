@@ -1,9 +1,13 @@
 import { fixture } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
+import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 import {
   expect,
   expectExit,
+  expectObjectArray,
   expectStderrEmpty,
+  expectString,
+  expectNumber,
   parseJson
 } from "../assertions.ts";
 
@@ -29,7 +33,8 @@ async function testUnicodePagination() {
   expectStderrEmpty(outline);
   const outlineJson = parseJson(outline);
   validateSchema(outline, "readableOutline", outlineJson);
-  const ref = outlineJson.entries[0].ref;
+  const entries = expectObjectArray(outline, outlineJson.entries, "outline entries are objects");
+  const ref = expectString(outline, entries[0]?.ref, "outline first entry ref is a string");
 
   const full = await runCli("MD-CORPUS-001 read unicode full readable-json", [
     "read",
@@ -43,18 +48,23 @@ async function testUnicodePagination() {
   expectStderrEmpty(full);
   const fullJson = parseJson(full);
   validateSchema(full, "readableRead", fullJson);
-  expect(full, fullJson.content.includes("世界"), "unicode full read includes CJK text");
-  expect(full, fullJson.content.includes("🙂"), "unicode full read includes emoji");
-  expect(full, !fullJson.content.includes("\uFFFD"), "unicode full read has no replacement characters");
+  const fullContent = expectString(full, fullJson.content, "full read content is a string");
+  expect(full, fullContent.includes("世界"), "unicode full read includes CJK text");
+  expect(full, fullContent.includes("🙂"), "unicode full read includes emoji");
+  expect(full, !fullContent.includes("\uFFFD"), "unicode full read has no replacement characters");
 
   const paged = await readAllPages(unicode, ref, 12, "MD-CORPUS-001 unicode");
-  expect(paged.lastRecord, paged.content === fullJson.content, "unicode paged reads reassemble the full content");
+  expect(paged.lastRecord, paged.content === fullContent, "unicode paged reads reassemble the full content");
 }
 
-async function readAllPages(documentPath: ExternalValue, ref: ExternalValue, limitChars: ExternalValue, label: ExternalValue) {
+async function readAllPages(
+  documentPath: string,
+  ref: string,
+  limitChars: number,
+  label: string
+): Promise<{ content: string; lastRecord: CommandRecord }> {
   let page = 1;
   let content = "";
-  let lastRecord;
   for (let count = 0; count < 20; count += 1) {
     const record = await runCli(`${label} page ${page} readable-json`, [
       "read",
@@ -68,17 +78,17 @@ async function readAllPages(documentPath: ExternalValue, ref: ExternalValue, lim
       "--output",
       "readable-json"
     ]);
-    lastRecord = record;
     expectExit(record, 0);
     expectStderrEmpty(record);
     const json = parseJson(record);
     validateSchema(record, "readableRead", json);
-    content += json.content;
+    const chunk = expectString(record, json.content, `${label} page content is a string`);
+    content += chunk;
     if (json.page === null) {
-      return { content, lastRecord };
+      return { content, lastRecord: record };
     }
     expect(record, json.page === page + 1, `${label} page advances by one`);
-    page = json.page;
+    page = expectNumber(record, json.page, `${label} next page is a number`);
   }
   throw new Error(`${label} pagination did not terminate`);
 }

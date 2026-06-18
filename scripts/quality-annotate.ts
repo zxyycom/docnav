@@ -12,9 +12,22 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { errorMessage } from "./tools/types.ts";
+import { isRecord } from "./tools/types.ts";
 
-export function renderGithubAnnotations(warnings: ExternalValue) {
-  return warnings.filter((warning: ExternalValue) => warning.level !== "info").map((warning: ExternalValue) => {
+type RenderableWarning = {
+  baselineValue?: number | null;
+  comparisonBasis?: string;
+  deltaValue?: number | null;
+  level?: string;
+  line?: number | null;
+  message: string;
+  path: string;
+  ruleId: string;
+  suggestion?: string;
+};
+
+export function renderGithubAnnotations(warnings: RenderableWarning[]): string[] {
+  return warnings.filter((warning) => warning.level !== "info").map((warning) => {
     const attrs = [
       ["file", warning.path],
       ["line", warning.line],
@@ -42,14 +55,14 @@ export function renderGithubAnnotations(warnings: ExternalValue) {
   });
 }
 
-export function parseWarningsNdjson(content: ExternalValue) {
-  const warnings: ExternalValue[] = [];
-  const diagnostics: ExternalValue[] = [];
+export function parseWarningsNdjson(content: string): { diagnostics: string[]; warnings: RenderableWarning[] } {
+  const warnings: RenderableWarning[] = [];
+  const diagnostics: string[] = [];
 
   for (const [index, line] of content.split(/\r?\n/).entries()) {
     if (!line.trim()) continue;
     try {
-      const record = JSON.parse(line);
+      const record: unknown = JSON.parse(line);
       if (isRenderableWarning(record)) {
         warnings.push(record);
       } else {
@@ -63,22 +76,21 @@ export function parseWarningsNdjson(content: ExternalValue) {
   return { warnings, diagnostics };
 }
 
-function isRenderableWarning(record: ExternalValue) {
-  return record &&
-    typeof record === "object" &&
+function isRenderableWarning(record: unknown): record is RenderableWarning {
+  return isRecord(record) &&
     typeof record.ruleId === "string" &&
     typeof record.path === "string" &&
     typeof record.message === "string";
 }
 
-function escapeData(value: ExternalValue) {
+function escapeData(value: string): string {
   return value
     .replace(/%/g, "%25")
     .replace(/\r/g, "%0D")
     .replace(/\n/g, "%0A");
 }
 
-function escapeProperty(value: ExternalValue) {
+function escapeProperty(value: string): string {
   return escapeData(value)
     .replace(/:/g, "%3A")
     .replace(/,/g, "%2C");

@@ -9,7 +9,10 @@ import {
   expect,
   expectCandidateEvidence,
   expectExit,
+  expectJsonObject,
+  expectObjectArray,
   expectProtocolFailure,
+  expectString,
   parseJson
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
@@ -45,14 +48,19 @@ async function testCandidateFailureEvidence() {
   const json = parseJson(record);
   validateSchema(record, "protocolResponse", json);
   expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
-  const candidate = json.error.details.candidates?.[0];
+  const error = expectJsonObject(record, json.error, "protocol error is an object");
+  const details = expectJsonObject(record, error.details, "protocol error details is an object");
+  const candidates = expectObjectArray(record, details.candidates, "FORMAT_UNKNOWN candidates are objects");
+  const candidate = candidates[0];
   expectCandidateEvidence(record, candidate, {
     adapter_id: failed.id,
     stage: "resolve",
     code: "ADAPTER_UNAVAILABLE"
   });
-  expect(record, candidate.details.exit_code === 7, "candidate evidence includes exit_code");
-  expect(record, candidate.details.stderr.includes("manifest failed intentionally"), "candidate evidence includes stderr");
+  const candidateDetails = expectJsonObject(record, candidate?.details, "candidate evidence details is an object");
+  const stderr = expectString(record, candidateDetails.stderr, "candidate evidence stderr is a string");
+  expect(record, candidateDetails.exit_code === 7, "candidate evidence includes exit_code");
+  expect(record, stderr.includes("manifest failed intentionally"), "candidate evidence includes stderr");
 }
 
 async function testInvokeProcessFailure() {
@@ -70,7 +78,10 @@ async function testInvokeProcessFailure() {
   const json = parseJson(record);
   validateSchema(record, "protocolResponse", json);
   expectProtocolFailure(record, json, "outline", "ADAPTER_INVOKE_FAILED");
-  expect(record, json.error.details.adapter_id === failed.id, "invoke process failure identifies adapter id");
-  expect(record, json.error.details.exit_code === 9, "invoke process failure includes exit_code");
-  expect(record, json.error.details.stderr.includes("invoke failed intentionally"), "invoke process failure includes stderr");
+  const error = expectJsonObject(record, json.error, "protocol error is an object");
+  const details = expectJsonObject(record, error.details, "protocol error details is an object");
+  const stderr = expectString(record, details.stderr, "invoke failure stderr is a string");
+  expect(record, details.adapter_id === failed.id, "invoke process failure identifies adapter id");
+  expect(record, details.exit_code === 9, "invoke process failure includes exit_code");
+  expect(record, stderr.includes("invoke failed intentionally"), "invoke process failure includes stderr");
 }

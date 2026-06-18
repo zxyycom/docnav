@@ -6,18 +6,20 @@ import { runCli, smokeState, validateSchema } from "./harness.ts";
 import {
   assertSetup,
   expectExit,
+  expectObjectArray,
   expectStderrEmpty,
+  expectString,
   parseJson
 } from "./assertions.ts";
 
-export function fixture(name: ExternalValue) {
+export function fixture(name: string) {
   const filePath = path.join(fixturesDir, name);
   assertSetup(fs.existsSync(filePath), `missing fixture: ${filePath}`);
   return filePath;
 }
 
-export function setNormalRef(ref: ExternalValue) {
-  smokeState.normalRef = String(ref);
+export function setNormalRef(ref: string) {
+  smokeState.normalRef = ref;
 }
 
 export async function getNormalRef(): Promise<string> {
@@ -43,6 +45,7 @@ async function loadNormalRef() {
   expectStderrEmpty(record);
   const json = parseJson(record);
   validateSchema(record, "readableOutline", json);
-  smokeState.normalRef = String(json.entries[0].ref);
+  const entries = expectObjectArray(record, json.entries, "normal outline entries are objects");
+  smokeState.normalRef = expectString(record, entries[0]?.ref, "normal outline first ref is a string");
   return smokeState.normalRef;
 }

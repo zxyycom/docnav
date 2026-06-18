@@ -6,9 +6,16 @@ import {
   expectedBinaryName,
   releaseComponents,
 } from "./config.ts";
+import type { ReleaseManifest, ReleaseManifestFile, ReleaseProducer } from "./config.ts";
 import { readJsonFile, readTextFile, sha256File } from "./io.ts";
+import { isRecord } from "../types.ts";
 
-export function resolveReleaseManifest(manifestPath: ExternalValue) {
+export type ManifestValidationOptions = {
+  expectProducerKind?: ReleaseProducer["kind"] | null;
+  expectSourceDirty?: boolean | null;
+};
+
+export function resolveReleaseManifest(manifestPath: string): { packageDir: string; manifest: unknown } {
   const packageDir = path.dirname(path.resolve(manifestPath));
   return {
     packageDir,
@@ -16,13 +23,13 @@ export function resolveReleaseManifest(manifestPath: ExternalValue) {
   };
 }
 
-export function validateReleasePackage(manifestPath: ExternalValue, options: ExternalValue = {}) {
+export function validateReleasePackage(manifestPath: string, options: ManifestValidationOptions = {}) {
   const resolvedManifestPath = path.resolve(manifestPath);
   const packageDir = path.dirname(resolvedManifestPath);
   const manifest = readJsonFile(resolvedManifestPath);
 
-  validateManifestLocation(resolvedManifestPath, packageDir, manifest);
   validateManifestMetadata(manifest, options);
+  validateManifestLocation(resolvedManifestPath, packageDir, manifest);
 
   const expectedFileNames = releaseComponents.map((component) =>
     expectedBinaryName(component.binName, manifest.target),
@@ -56,7 +63,7 @@ export function validateReleasePackage(manifestPath: ExternalValue, options: Ext
   };
 }
 
-function validateManifestLocation(manifestPath: ExternalValue, packageDir: ExternalValue, manifest: ExternalValue) {
+function validateManifestLocation(manifestPath: string, packageDir: string, manifest: ReleaseManifest): void {
   assert(
     path.basename(manifestPath) === "manifest.json",
     "manifest path must end with manifest.json",
@@ -81,7 +88,8 @@ function validateManifestLocation(manifestPath: ExternalValue, packageDir: Exter
   );
 }
 
-function validateManifestMetadata(manifest: ExternalValue, options: ExternalValue) {
+function validateManifestMetadata(manifest: unknown, options: ManifestValidationOptions): asserts manifest is ReleaseManifest {
+  assert(isRecord(manifest), "manifest root must be an object");
   assert(manifest.schema_version === 1, "manifest.schema_version must be 1");
   assert(manifest.product === "docnav", "manifest.product must be docnav");
   assertNonEmptyString(manifest.version, "manifest.version");
@@ -98,11 +106,15 @@ function validateManifestMetadata(manifest: ExternalValue, options: ExternalValu
     "manifest.files must list all release binaries",
   );
 
-  validateProducer(manifest.producer ?? {});
+  const producer = manifest.producer;
+  validateProducer(producer);
+  for (const entry of manifest.files) {
+    validateManifestFile(entry);
+  }
 
   if (options.expectProducerKind) {
     assert(
-      manifest.producer.kind === options.expectProducerKind,
+      producer.kind === options.expectProducerKind,
       `manifest.producer.kind must be ${options.expectProducerKind}`,
     );
   }
@@ -117,7 +129,8 @@ function validateManifestMetadata(manifest: ExternalValue, options: ExternalValu
   }
 }
 
-function validateProducer(producer: ExternalValue) {
+function validateProducer(producer: unknown): asserts producer is ReleaseProducer {
+  assert(isRecord(producer), "manifest.producer must be an object");
   assert(
     producer.kind === "local" || producer.kind === "github-actions",
     "manifest.producer.kind must be local or github-actions",
@@ -144,8 +157,8 @@ function validateProducer(producer: ExternalValue) {
   );
 }
 
-function validateManifestFiles(files: ExternalValue, expectedFileNames: ExternalValue) {
-  const actualFileNames = files.map((entry: ExternalValue) => entry.path);
+function validateManifestFiles(files: ReleaseManifestFile[], expectedFileNames: string[]): Map<string, ReleaseManifestFile> {
+  const actualFileNames = files.map((entry) => entry.path);
   const expectedSortedFiles = [...expectedFileNames].sort(compareStrings);
   const actualSortedFiles = [...actualFileNames].sort(compareStrings);
   assertEqualLists(
@@ -154,7 +167,7 @@ function validateManifestFiles(files: ExternalValue, expectedFileNames: External
     `manifest.files must list exactly ${expectedSortedFiles.join(", ")}`,
   );
 
-  const filesByPath = new Map();
+  const filesByPath = new Map<string, ReleaseManifestFile>();
   for (const entry of files) {
     validateManifestFile(entry);
     filesByPath.set(entry.path, entry);
@@ -162,7 +175,8 @@ function validateManifestFiles(files: ExternalValue, expectedFileNames: External
   return filesByPath;
 }
 
-function validateManifestFile(entry: ExternalValue) {
+function validateManifestFile(entry: unknown): asserts entry is ReleaseManifestFile {
+  assert(isRecord(entry), "manifest file entry must be an object");
   assertNonEmptyString(entry.path, "manifest file path");
   assert(
     !entry.path.includes("/") && !entry.path.includes("\\"),
@@ -172,10 +186,8 @@ function validateManifestFile(entry: ExternalValue) {
     entry.component === "core" || entry.component === "adapter",
     "manifest file component must be core or adapter",
   );
-  assert(
-    Number.isInteger(entry.size_bytes) && entry.size_bytes >= 0,
-    "manifest file size_bytes must be an integer",
-  );
+  const sizeBytes = entry.size_bytes;
+  assert(typeof sizeBytes === "number" && Number.isInteger(sizeBytes) && sizeBytes >= 0, "manifest file size_bytes must be an integer");
   assert(
     typeof entry.sha256 === "string" && /^[0-9a-f]{64}$/.test(entry.sha256),
     "manifest file sha256 must be lowercase hex",
@@ -194,7 +206,7 @@ function validateManifestFile(entry: ExternalValue) {
   }
 }
 
-function validatePackageDirectory(packageDir: ExternalValue, expectedFileNames: ExternalValue) {
+function validatePackageDirectory(packageDir: string, expectedFileNames: string[]): void {
   const actualEntries = fs.readdirSync(packageDir).sort(compareStrings);
   const expectedEntries = [
     ...expectedFileNames,
@@ -209,10 +221,10 @@ function validatePackageDirectory(packageDir: ExternalValue, expectedFileNames: 
 }
 
 function validatePackagedBinaries(
-  packageDir: ExternalValue,
-  expectedFileNames: ExternalValue,
-  manifestFilesByPath: ExternalValue,
-) {
+  packageDir: string,
+  expectedFileNames: string[],
+  manifestFilesByPath: Map<string, ReleaseManifestFile>,
+): void {
   for (const fileName of expectedFileNames) {
     const entry = manifestFilesByPath.get(fileName);
     assert(entry, `manifest missing file entry for ${fileName}`);
@@ -232,19 +244,19 @@ function validatePackagedBinaries(
 }
 
 function validateChecksums(
-  packageDir: ExternalValue,
-  manifestPath: ExternalValue,
-  expectedFileNames: ExternalValue,
-  manifestFilesByPath: ExternalValue,
-  manifestHash: ExternalValue,
-) {
+  packageDir: string,
+  manifestPath: string,
+  expectedFileNames: string[],
+  manifestFilesByPath: Map<string, ReleaseManifestFile>,
+  manifestHash: string,
+): void {
   const checksumLines = readTextFile(path.join(packageDir, "SHA256SUMS.txt"))
     .trimEnd()
     .split(/\r?\n/);
   const checksumEntries = [
-    ...expectedFileNames.map((name: ExternalValue) => [
+    ...expectedFileNames.map((name) => [
       name,
-      manifestFilesByPath.get(name).sha256,
+      requiredManifestEntry(manifestFilesByPath, name).sha256,
     ]),
     [path.basename(manifestPath), manifestHash],
   ];
@@ -260,30 +272,39 @@ function validateChecksums(
   );
 }
 
-function assertEqualLists(actual: ExternalValue, expected: ExternalValue, message: ExternalValue) {
+function assertEqualLists(actual: string[], expected: string[], message: string): void {
   assert(
     actual.length === expected.length &&
-      actual.every((value: ExternalValue, index: ExternalValue) => value === expected[index]),
+      actual.every((value, index) => value === expected[index]),
     message,
   );
 }
 
-function assertNonEmptyString(value: ExternalValue, label: ExternalValue) {
+function assertNonEmptyString(value: unknown, label: string): asserts value is string {
   assert(
     typeof value === "string" && value.length > 0,
     `${label} must be a string`,
   );
 }
 
-function assertPositiveInteger(value: ExternalValue, label: ExternalValue) {
+function assertPositiveInteger(value: unknown, label: string): asserts value is number {
   assert(
-    Number.isInteger(value) && value > 0,
+    typeof value === "number" && Number.isInteger(value) && value > 0,
     `${label} must be a positive integer`,
   );
 }
 
-function assert(condition: ExternalValue, message: ExternalValue) {
+function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function requiredManifestEntry(
+  manifestFilesByPath: Map<string, ReleaseManifestFile>,
+  fileName: string,
+): ReleaseManifestFile {
+  const entry = manifestFilesByPath.get(fileName);
+  assert(entry, `manifest missing file entry for ${fileName}`);
+  return entry;
 }
