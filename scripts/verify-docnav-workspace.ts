@@ -97,7 +97,7 @@ export const profiles = Object.freeze({
   },
   [PROFILE_FULL]: {
     label: "full",
-    description: "required checks plus smoke, Rust, and OpenSpec gates"
+    description: "required checks plus quality scan, smoke, Rust, and OpenSpec gates"
   }
 });
 
@@ -198,6 +198,13 @@ export const checks = defineChecks([
         tasks: nodeTestFileChecks([
           ["quality-tools-tests", "quality tools tests", "scripts/tools/quality/tools.test.ts"]
         ])
+      },
+      {
+        id: "quality-scan",
+        label: "quality scan",
+        command: "pnpm",
+        args: ["run", "quality:scan"],
+        dependsOn: ["quality-tool-tests"]
       },
       {
         id: "docnav-development-smoke",
@@ -730,18 +737,20 @@ function docsValidatorChecks(): CheckDefinition[] {
     {
       id: "docs-json-validator",
       label: "docs json validator",
-      command: "node",
-      args: ["scripts/validate-docs.ts", "json"],
+      command: "pnpm",
+      args: ["run", "validate:docs", "json"],
       ignoreOutput: [
+        /^\$ node scripts\/validate-docs\.ts "?json"?$/,
         /^json syntax ok:/
       ]
     },
     {
       id: "docs-schema-validator",
       label: "docs schema validator",
-      command: "node",
-      args: ["scripts/validate-docs.ts", "schema"],
+      command: "pnpm",
+      args: ["run", "validate:docs", "schema"],
       ignoreOutput: [
+        /^\$ node scripts\/validate-docs\.ts "?schema"?$/,
         /^schema strict compile ok:/,
         /^schema ok:/,
         /^protocol response operation\/result binding ok$/,
@@ -751,18 +760,20 @@ function docsValidatorChecks(): CheckDefinition[] {
     {
       id: "docs-mcp-validator",
       label: "docs mcp validator",
-      command: "node",
-      args: ["scripts/validate-docs.ts", "mcp"],
+      command: "pnpm",
+      args: ["run", "validate:docs", "mcp"],
       ignoreOutput: [
+        /^\$ node scripts\/validate-docs\.ts "?mcp"?$/,
         /^mcp structuredContent ok:/
       ]
     },
     {
       id: "docs-example-consistency-validator",
       label: "docs example consistency validator",
-      command: "node",
-      args: ["scripts/validate-docs.ts", "examples"],
+      command: "pnpm",
+      args: ["run", "validate:docs", "examples"],
       ignoreOutput: [
+        /^\$ node scripts\/validate-docs\.ts "?examples"?$/,
         /^protocol\/readable mapping ok:/,
         /^error details ok:/,
         /^manifest example consistency ok:/,
@@ -772,9 +783,10 @@ function docsValidatorChecks(): CheckDefinition[] {
     {
       id: "docs-links-validator",
       label: "docs links validator",
-      command: "node",
-      args: ["scripts/validate-docs.ts", "links"],
+      command: "pnpm",
+      args: ["run", "validate:docs", "links"],
       ignoreOutput: [
+        /^\$ node scripts\/validate-docs\.ts "?links"?$/,
         /^markdown links ok:/
       ]
     }

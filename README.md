@@ -49,7 +49,7 @@ cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-s
 轻量文档链接检查：
 
 ```bash
-pnpm run validate:links
+pnpm run validate:docs links
 ```
 
 文档、schema、示例和语义校验：
