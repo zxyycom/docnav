@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,8 +18,28 @@ import {
   getSccVersion,
   parseSccCSV
 } from "./tools/scc.ts";
+import { buildFingerprints } from "./files.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+
+describe("quality fingerprints", () => {
+  it("uses the same code area fingerprint for LF and CRLF text", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-fingerprint-"));
+    const fileMap = new Map([["typescript", ["src/example.ts"]]]);
+
+    try {
+      writeFixtureFile(tempDir, "lf/src/example.ts", "export const value = 1;\nconsole.log(value);\n");
+      writeFixtureFile(tempDir, "crlf/src/example.ts", "export const value = 1;\r\nconsole.log(value);\r\n");
+
+      const lfFingerprint = buildFingerprints(fileMap, join(tempDir, "lf")).typescript;
+      const crlfFingerprint = buildFingerprints(fileMap, join(tempDir, "crlf")).typescript;
+
+      assert.deepEqual(crlfFingerprint, lfFingerprint);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("scc 3.7 CSV parsing", () => {
   it("uses the scc 3.7 by-file CSV invocation shape", () => {
@@ -204,4 +224,10 @@ process.exit(1);
     args: [fakeSccPath],
     cleanup: () => rmSync(tempDir, { recursive: true, force: true })
   };
+}
+
+function writeFixtureFile(rootDir: string, relPath: string, content: string): void {
+  const absPath = join(rootDir, relPath);
+  mkdirSync(dirname(absPath), { recursive: true });
+  writeFileSync(absPath, content, "utf8");
 }

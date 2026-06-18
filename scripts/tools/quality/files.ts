@@ -97,7 +97,7 @@ export function buildFingerprints(fileMap: CodeAreaFileMap, rootDir: string): Re
     fingerprints[area] = buildFingerprint(area, files, (filePath) => {
       const absPath = resolve(rootDir, filePath);
       try {
-        const content = readFileSync(absPath, "utf8");
+        const content = normalizeFingerprintText(readFileSync(absPath, "utf8"));
         return createHash("sha256").update(content).digest("hex");
       } catch {
         return "file-not-readable";
@@ -106,6 +106,10 @@ export function buildFingerprints(fileMap: CodeAreaFileMap, rootDir: string): Re
   }
 
   return fingerprints;
+}
+
+function normalizeFingerprintText(content: string): string {
+  return content.replace(/\r\n?/g, "\n");
 }
 
 function collectFilesFallback(rootDir: string, config: QualityConfig): string[] {

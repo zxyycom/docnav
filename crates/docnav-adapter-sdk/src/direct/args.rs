@@ -243,6 +243,34 @@ struct LooseArgs {
 }
 
 #[derive(Clone, Copy)]
+enum LooseArgContext<'a> {
+    ProtocolOnly { command: &'a str },
+    Probe,
+    Operation(Operation),
+}
+
+impl LooseArgContext<'_> {
+    fn accepts_path(self) -> bool {
+        !matches!(self, Self::ProtocolOnly { .. })
+    }
+
+    fn command_label(&self) -> &str {
+        match self {
+            Self::ProtocolOnly { command } => command,
+            Self::Probe => command_labels::PROBE,
+            Self::Operation(operation) => operation.as_str(),
+        }
+    }
+
+    fn uses_flag(self, flag: KnownValueFlag<'_>) -> bool {
+        match self {
+            Self::ProtocolOnly { .. } | Self::Probe => matches!(flag, KnownValueFlag::Output),
+            Self::Operation(operation) => operation_uses_flag(operation, flag),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 enum KnownValueFlag<'a> {
     Page,
     LimitChars,
@@ -376,74 +404,15 @@ fn collect_protocol_only_args(
     args: &[String],
     native_options: &[NativeOptionSpec],
 ) -> Result<LooseArgs, String> {
-    let mut clap_args = Vec::new();
-    let mut warnings = Vec::new();
-    let mut index = 0;
-    while index < args.len() {
-        let token = &args[index];
-        if let Some(flag) = known_value_flag(token, native_options) {
-            let (flag_token, _inline_value) = split_equals(token);
-            match flag {
-                KnownValueFlag::Output => {
-                    push_clap_value_arg(&mut clap_args, args, &mut index, flag_token)?
-                }
-                _ => {
-                    let value = warning_value(args, &mut index, flag_token)?;
-                    push_unused_warning(&mut warnings, token, value, command);
-                }
-            }
-        } else if is_flag(token) {
-            push_unknown_warning(&mut warnings, token);
-            index += 1;
-        } else {
-            push_extra_positional_warning(&mut warnings, token);
-            index += 1;
-        }
-    }
-    Ok(LooseArgs {
-        clap_args,
-        warnings,
-    })
+    let context = LooseArgContext::ProtocolOnly { command };
+    collect_loose_args(context, args, native_options)
 }
 
 fn collect_probe_args(
     args: &[String],
     native_options: &[NativeOptionSpec],
 ) -> Result<LooseArgs, String> {
-    let mut clap_args = Vec::new();
-    let mut path_seen = false;
-    let mut warnings = Vec::new();
-    let mut index = 0;
-    while index < args.len() {
-        let token = &args[index];
-        if let Some(flag) = known_value_flag(token, native_options) {
-            let (flag_token, _inline_value) = split_equals(token);
-            match flag {
-                KnownValueFlag::Output => {
-                    push_clap_value_arg(&mut clap_args, args, &mut index, flag_token)?
-                }
-                _ => {
-                    let value = warning_value(args, &mut index, flag_token)?;
-                    push_unused_warning(&mut warnings, token, value, command_labels::PROBE);
-                }
-            }
-        } else if is_flag(token) {
-            push_unknown_warning(&mut warnings, token);
-            index += 1;
-        } else {
-            if path_seen {
-                push_extra_positional_warning(&mut warnings, token);
-            } else {
-                clap_args.push(token.clone());
-                path_seen = true;
-            }
-            index += 1;
-        }
-    }
-    Ok(LooseArgs {
-        clap_args,
-        warnings,
-    })
+    collect_loose_args(LooseArgContext::Probe, args, native_options)
 }
 
 fn collect_operation_args(
@@ -451,6 +420,14 @@ fn collect_operation_args(
     args: &[String],
     native_options: &[NativeOptionSpec],
 ) -> Result<LooseArgs, String> {
+    collect_loose_args(LooseArgContext::Operation(operation), args, native_options)
+}
+
+fn collect_loose_args(
+    context: LooseArgContext,
+    args: &[String],
+    native_options: &[NativeOptionSpec],
+) -> Result<LooseArgs, String> {
     let mut clap_args = Vec::new();
     let mut path_seen = false;
     let mut warnings = Vec::new();
@@ -459,17 +436,17 @@ fn collect_operation_args(
         let token = &args[index];
         if let Some(flag) = known_value_flag(token, native_options) {
             let (flag_token, _inline_value) = split_equals(token);
-            if operation_uses_flag(operation, flag) {
+            if context.uses_flag(flag) {
                 push_clap_value_arg(&mut clap_args, args, &mut index, flag_token)?;
             } else {
                 let value = warning_value(args, &mut index, flag_token)?;
-                push_unused_warning(&mut warnings, token, value, operation.as_str());
+                push_unused_warning(&mut warnings, token, value, context.command_label());
             }
         } else if is_flag(token) {
             push_unknown_warning(&mut warnings, token);
             index += 1;
         } else {
-            if path_seen {
+            if !context.accepts_path() || path_seen {
                 push_extra_positional_warning(&mut warnings, token);
             } else {
                 clap_args.push(token.clone());

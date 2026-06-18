@@ -8,14 +8,6 @@
  * 来源：openspec/changes/implement-code-quality-observability/tasks.md task 4.3
  */
 
-/**
- * @typedef {import('./schema.ts').FileMetric} FileMetric
- * @typedef {import('./schema.ts').FunctionMetric} FunctionMetric
- * @typedef {import('./schema.ts').DuplicateCodeFragment} DuplicateCodeFragment
- * @typedef {import('./schema.ts').WarningRecord} WarningRecord
- * @typedef {import('./config.ts').DEFAULT_CONFIG} QualityConfig
- */
-
 import type {
   DuplicateCodeFragment,
   FileMetric,
@@ -24,31 +16,20 @@ import type {
   WarningRecord
 } from "./schema.ts";
 
-/**
- * 生成 warning records。
- *
- * @param {object} params
- * @param {FileMetric[]} params.files - 当前文件指标
- * @param {FunctionMetric[]} params.functions - 当前函数指标
- * @param {DuplicateCodeFragment[]} params.duplicates - 当前重复代码片段
- * @param {QualityConfig} params.config - 质量观测配置
- * @param {{ changed: boolean, changedFiles: string[] }} params.scope - Change scope
- * @param {object} [params.baseline] - Baseline metrics used to compute deltas
- * @param {FileMetric[]} [params.baseline.files]
- * @param {FunctionMetric[]} [params.baseline.functions]
- * @param {DuplicateCodeFragment[]} [params.baseline.duplicates]
- * @param {string} params.comparisonStatus - compared, input-unchanged, baseline-unavailable
- * @returns {WarningRecord[]}
- */
 type WarningBaseline = {
   duplicates: DuplicateCodeFragment[];
   files: FileMetric[];
   functions: FunctionMetric[];
 } | null;
 
-type WarningScope = {
-  changed: boolean;
-  changedFiles: string[];
+type GenerateWarningsParams = {
+  baseline: WarningBaseline;
+  comparisonStatus: string;
+  config: QualityConfig;
+  duplicates: DuplicateCodeFragment[];
+  files: FileMetric[];
+  functions: FunctionMetric[];
+  scope: { changed: boolean; changedFiles: string[] };
 };
 
 type ShouldWarnParams = {
@@ -60,31 +41,63 @@ type ShouldWarnParams = {
   value: number | null;
 };
 
-export function generateWarnings({
-  files,
-  functions,
-  duplicates,
-  config,
-  baseline,
-  comparisonStatus
-}: {
-  baseline: WarningBaseline;
-  comparisonStatus: string;
-  config: QualityConfig;
-  duplicates: DuplicateCodeFragment[];
-  files: FileMetric[];
-  functions: FunctionMetric[];
-  scope: WarningScope;
-}): WarningRecord[] {
-  const warnings: WarningRecord[] = [];
+type AreaWarningPolicy = {
+  isWatchlistOnly: boolean;
+  level: "info" | "warning";
+};
 
-  // 当 comparison status 为 input-unchanged 或 baseline-unavailable 时，
-  // 不生成复杂度或重复代码 annotation（CI annotation 降级为 summary/watchlist）
-  if (comparisonStatus === "input-unchanged" || comparisonStatus === "baseline-unavailable") {
-    // 仍可以生成 info-level watchlist entries
+type MetricWarningSpec = {
+  areaPolicy: AreaWarningPolicy;
+  baselineValue: number | null;
+  codeArea: string;
+  deltaFloor: number;
+  deltaValue: number | null;
+  floor: number;
+  isChanged: boolean;
+  line: number | null;
+  message: string;
+  metric: string;
+  path: string;
+  ruleId: string;
+  sourceTool: string;
+  suggestion: string;
+  value: number | null;
+};
+
+type WarningContext = {
+  baselineDuplicateIndex: Map<string, number>;
+  baselineFiles: Map<string, FileMetric>;
+  baselineFunctions: Map<string, FunctionMetric>;
+  config: QualityConfig;
+  hasBaselineDuplicates: boolean;
+  hasBaselineFiles: boolean;
+  hasBaselineFunctions: boolean;
+};
+
+export function generateWarnings(params: GenerateWarningsParams): WarningRecord[] {
+  const { files, functions, duplicates, config, baseline, comparisonStatus } = params;
+
+  if (suppressesWarnings(comparisonStatus)) {
     return [];
   }
 
+  const context = buildWarningContext(config, baseline);
+  const warnings = [
+    ...generateFileWarnings(files, context),
+    ...generateFunctionWarnings(functions, context),
+    ...generateDuplicateWarnings(duplicates, context)
+  ];
+
+  warnings.sort(compareWarnings);
+
+  return warnings;
+}
+
+function suppressesWarnings(comparisonStatus: string): boolean {
+  return comparisonStatus === "input-unchanged" || comparisonStatus === "baseline-unavailable";
+}
+
+function buildWarningContext(config: QualityConfig, baseline: WarningBaseline): WarningContext {
   const baselineFiles = buildFileBaselineMap(baseline?.files || []);
   const baselineFunctions = buildFunctionBaselineMap(baseline?.functions || []);
   const baselineDuplicateIndex = buildDuplicateBaselineIndex(baseline?.duplicates || []);
@@ -92,252 +105,339 @@ export function generateWarnings({
   const hasBaselineFunctions = Array.isArray(baseline?.functions);
   const hasBaselineDuplicates = Array.isArray(baseline?.duplicates);
 
-  // File-level warnings (from scc data)
+  return {
+    baselineDuplicateIndex,
+    baselineFiles,
+    baselineFunctions,
+    config,
+    hasBaselineDuplicates,
+    hasBaselineFiles,
+    hasBaselineFunctions
+  };
+}
+
+function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningRecord[] {
+  const warnings: WarningRecord[] = [];
+
   for (const file of files) {
-    const areaConfig = config.codeAreas[file.codeArea];
-    if (!areaConfig) continue;
-    if (areaConfig.warningPolicy === "exclude-warnings") continue;
+    const areaPolicy = metricAreaWarningPolicy(context.config, file.codeArea);
+    if (!areaPolicy) continue;
 
-    const isWatchlistOnly = areaConfig.warningPolicy === "watchlist-only";
-    const level = isWatchlistOnly ? "info" : "warning";
+    const baseFile = context.baselineFiles.get(file.path);
+    const lineWarning = buildFileLineWarning(file, baseFile, context, areaPolicy);
+    if (lineWarning) warnings.push(lineWarning);
 
-    // 文件行数 warning
-    const lineFloor = config.scc?.fileLines?.absoluteFloor ?? 300;
-    const lineDelta = config.scc?.fileLines?.changedDelta ?? 100;
-    const baseFile = baselineFiles.get(file.path);
-    const baselineLines = baseFile?.lines ?? (hasBaselineFiles ? 0 : null);
-    const lineDeltaValue = deltaFrom(file.lines, baselineLines);
-
-    if (shouldWarn({
-      isChanged: file.isChanged,
-      isWatchlistOnly,
-      value: file.lines,
-      floor: lineFloor,
-      delta: lineDeltaValue,
-      deltaFloor: lineDelta
-    })) {
-      warnings.push({
-        level,
-        ruleId: "scc-file-lines",
-        sourceTool: "scc",
-        path: file.path,
-        line: null,
-        codeArea: file.codeArea,
-        metric: "lines",
-        value: file.lines,
-        comparisonBasis: basisFor(file.isChanged, lineDeltaValue),
-        baselineValue: baselineLines,
-        deltaValue: lineDeltaValue,
-        message: `File "${file.path}" has ${file.lines} lines (floor: ${lineFloor})`,
-        suggestion: file.lines > lineFloor * 3
-          ? "Consider splitting this file into smaller modules"
-          : "Review if the file can be refactored"
-      });
-    }
-
-    // 文件级复杂度 warning
-    const ccFloor = config.scc?.fileComplexity?.absoluteFloor ?? 20;
-    const ccDelta = config.scc?.fileComplexity?.changedDelta ?? 10;
-    const baseComplexity = baseFile?.complexity?.value ?? (hasBaselineFiles ? 0 : null);
-    const fileComplexity = file.complexity.value;
-    const ccDeltaValue = deltaFrom(fileComplexity, baseComplexity);
-    if (fileComplexity !== null && shouldWarn({
-      isChanged: file.isChanged,
-      isWatchlistOnly,
-      value: fileComplexity,
-      floor: ccFloor,
-      delta: ccDeltaValue,
-      deltaFloor: ccDelta
-    })) {
-      warnings.push({
-        level,
-        ruleId: "scc-file-complexity",
-        sourceTool: "scc",
-        path: file.path,
-        line: null,
-        codeArea: file.codeArea,
-        metric: "complexity",
-        value: fileComplexity,
-        comparisonBasis: basisFor(file.isChanged, ccDeltaValue),
-        baselineValue: baseComplexity,
-        deltaValue: ccDeltaValue,
-        message: `File "${file.path}" has complexity ${fileComplexity} (floor: ${ccFloor})`,
-        suggestion: "Consider splitting complex logic into smaller functions"
-      });
-    }
+    const complexityWarning = buildFileComplexityWarning(file, baseFile, context, areaPolicy);
+    if (complexityWarning) warnings.push(complexityWarning);
   }
-
-  // Function-level warnings (from Lizard data)
-  for (const func of functions) {
-    const areaConfig = config.codeAreas[func.codeArea];
-    if (!areaConfig) continue;
-    if (areaConfig.warningPolicy === "exclude-warnings") continue;
-
-    const isWatchlistOnly = areaConfig.warningPolicy === "watchlist-only";
-    const level = isWatchlistOnly ? "info" : "warning";
-
-    // 圈复杂度 warning
-    const ccFloor = config.lizard?.cyclomaticComplexity?.absoluteFloor ?? 10;
-    const ccDelta = config.lizard?.cyclomaticComplexity?.changedDelta ?? 5;
-    const baselineFunc = baselineFunctions.get(functionKey(func));
-    const baselineCc = baselineFunc?.cyclomaticComplexity?.value ?? (hasBaselineFunctions ? 0 : null);
-    const functionComplexity = func.cyclomaticComplexity.value;
-    const ccDeltaValue = deltaFrom(functionComplexity, baselineCc);
-    if (functionComplexity !== null && shouldWarn({
-      isChanged: func.isChanged,
-      isWatchlistOnly,
-      value: functionComplexity,
-      floor: ccFloor,
-      delta: ccDeltaValue,
-      deltaFloor: ccDelta
-    })) {
-      warnings.push({
-        level,
-        ruleId: "lizard-cyclomatic-complexity",
-        sourceTool: "lizard",
-        path: func.file,
-        line: func.startLine,
-        codeArea: func.codeArea,
-        metric: "cyclomatic-complexity",
-        value: functionComplexity,
-        comparisonBasis: basisFor(func.isChanged, ccDeltaValue),
-        baselineValue: baselineCc,
-        deltaValue: ccDeltaValue,
-        message: `Function "${func.name}" in ${func.file}:${func.startLine} has cyclomatic complexity ${functionComplexity} (floor: ${ccFloor})`,
-        suggestion: "Consider breaking this function into smaller, more focused functions"
-      });
-    }
-
-    // 函数行数 warning
-    const lineFloor = config.lizard?.functionLines?.absoluteFloor ?? 50;
-    const lineDeltaCfg = config.lizard?.functionLines?.changedDelta ?? 20;
-    const baselineFunctionLines = baselineFunc?.lines ?? (hasBaselineFunctions ? 0 : null);
-    const functionLineDelta = deltaFrom(func.lines, baselineFunctionLines);
-    if (shouldWarn({
-      isChanged: func.isChanged,
-      isWatchlistOnly,
-      value: func.lines,
-      floor: lineFloor,
-      delta: functionLineDelta,
-      deltaFloor: lineDeltaCfg
-    })) {
-      warnings.push({
-        level,
-        ruleId: "lizard-function-lines",
-        sourceTool: "lizard",
-        path: func.file,
-        line: func.startLine,
-        codeArea: func.codeArea,
-        metric: "function-lines",
-        value: func.lines,
-        comparisonBasis: basisFor(func.isChanged, functionLineDelta),
-        baselineValue: baselineFunctionLines,
-        deltaValue: functionLineDelta,
-        message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} lines (floor: ${lineFloor})`,
-        suggestion: "Consider extracting parts of this function into separate functions"
-      });
-    }
-
-    // 参数数量 warning
-    const paramFloor = config.lizard?.parameterCount?.absoluteFloor ?? 5;
-    const paramDeltaCfg = config.lizard?.parameterCount?.changedDelta ?? 2;
-    const baselineParameterCount = baselineFunc?.parameterCount ?? (hasBaselineFunctions ? 0 : null);
-    const paramDeltaValue = deltaFrom(func.parameterCount, baselineParameterCount);
-    if (shouldWarn({
-      isChanged: func.isChanged,
-      isWatchlistOnly,
-      value: func.parameterCount,
-      floor: paramFloor,
-      delta: paramDeltaValue,
-      deltaFloor: paramDeltaCfg
-    })) {
-      warnings.push({
-        level,
-        ruleId: "lizard-parameter-count",
-        sourceTool: "lizard",
-        path: func.file,
-        line: func.startLine,
-        codeArea: func.codeArea,
-        metric: "parameter-count",
-        value: func.parameterCount,
-        comparisonBasis: basisFor(func.isChanged, paramDeltaValue),
-        baselineValue: baselineParameterCount,
-        deltaValue: paramDeltaValue,
-        message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.parameterCount} parameters (floor: ${paramFloor})`,
-        suggestion: "Consider using a parameter object or splitting the function"
-      });
-    }
-  }
-
-  // Duplicate code warnings (from CPD)
-  for (const dup of duplicates) {
-    // 检查涉及的 code areas 的 warning policy
-    const involvedAreas = dup.locations.map((l) => l.codeArea).filter(Boolean);
-    const uniqueAreas = [...new Set(involvedAreas)] as string[];
-
-    // 如果所有涉及的 areas 都是 exclude-warnings，跳过
-    if (uniqueAreas.length > 0 && uniqueAreas.every((a) => {
-      const ac = config.codeAreas[a];
-      return ac && ac.warningPolicy === "exclude-warnings";
-    })) {
-      continue;
-    }
-
-    // 如果只涉及 watchlist-only areas，使用 info level
-    const isWatchlistOnly = uniqueAreas.length > 0 && uniqueAreas.every((a) => {
-      const ac = config.codeAreas[a];
-      return ac && ac.warningPolicy === "watchlist-only";
-    });
-
-    const level = isWatchlistOnly ? "info" : "warning";
-    const primaryLocation = dup.locations[0];
-
-    const baselineDuplicateCount = countMatchingBaselineDuplicates(
-      dup,
-      baselineDuplicateIndex,
-      hasBaselineDuplicates
-    );
-    const duplicateDelta = baselineDuplicateCount === null ? null : 1 - baselineDuplicateCount;
-    const duplicateDeltaFloor = config.pmdCpd?.duplicateFragments?.changedDelta ?? 0;
-
-    if (shouldWarn({
-      isChanged: dup.hitsChangedScope,
-      isWatchlistOnly,
-      value: dup.tokenCount,
-      floor: 0,
-      delta: duplicateDelta,
-      deltaFloor: duplicateDeltaFloor
-    })) {
-      warnings.push({
-        level,
-        ruleId: "pmd-cpd-duplicate-code",
-        sourceTool: "pmd-cpd",
-        path: primaryLocation?.path || "unknown",
-        line: primaryLocation?.startLine ?? null,
-        codeArea: uniqueAreas.join(",") || "unknown",
-        metric: "duplicate-tokens",
-        value: dup.tokenCount,
-        comparisonBasis: basisFor(dup.hitsChangedScope, duplicateDelta),
-        baselineValue: baselineDuplicateCount,
-        deltaValue: duplicateDelta,
-        message: `Duplicate code fragment (${dup.tokenCount} tokens) across ${dup.locations.length} locations in areas [${uniqueAreas.join(", ")}]`,
-        suggestion: `Consider extracting shared code into a common function or module. Locations: ${dup.locations.map((l) => `${l.path}:${l.startLine}`).join(", ")}`
-      });
-    }
-  }
-
-  // 排序：error > warning > info，然后按 value 降序
-  warnings.sort((a, b) => {
-    const lvlOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };
-    const lvlDiff = lvlOrder[a.level] - lvlOrder[b.level];
-    if (lvlDiff !== 0) return lvlDiff;
-    return b.value - a.value;
-  });
 
   return warnings;
 }
 
-function shouldWarn({ isChanged, isWatchlistOnly, value, floor, delta, deltaFloor }: ShouldWarnParams): boolean {
+function buildMetricWarning(spec: MetricWarningSpec): WarningRecord | null {
+  if (spec.value === null || !shouldWarn({
+    isChanged: spec.isChanged,
+    isWatchlistOnly: spec.areaPolicy.isWatchlistOnly,
+    value: spec.value,
+    floor: spec.floor,
+    delta: spec.deltaValue,
+    deltaFloor: spec.deltaFloor
+  })) {
+    return null;
+  }
+
+  return {
+    level: spec.areaPolicy.level,
+    ruleId: spec.ruleId,
+    sourceTool: spec.sourceTool,
+    path: spec.path,
+    line: spec.line,
+    codeArea: spec.codeArea,
+    metric: spec.metric,
+    value: spec.value,
+    comparisonBasis: basisFor(spec.isChanged, spec.deltaValue),
+    baselineValue: spec.baselineValue,
+    deltaValue: spec.deltaValue,
+    message: spec.message,
+    suggestion: spec.suggestion
+  };
+}
+
+function buildFileLineWarning(
+  file: FileMetric,
+  baseFile: FileMetric | undefined,
+  context: WarningContext,
+  areaPolicy: AreaWarningPolicy
+): WarningRecord | null {
+  const lineFloor = context.config.scc?.fileLines?.absoluteFloor ?? 300;
+  const lineDelta = context.config.scc?.fileLines?.changedDelta ?? 100;
+  const baselineLines = baseFile?.lines ?? (context.hasBaselineFiles ? 0 : null);
+  const lineDeltaValue = deltaFrom(file.lines, baselineLines);
+
+  return buildMetricWarning({
+    areaPolicy,
+    baselineValue: baselineLines,
+    codeArea: file.codeArea,
+    deltaFloor: lineDelta,
+    deltaValue: lineDeltaValue,
+    floor: lineFloor,
+    isChanged: file.isChanged,
+    line: null,
+    message: `File "${file.path}" has ${file.lines} lines (floor: ${lineFloor})`,
+    metric: "lines",
+    path: file.path,
+    ruleId: "scc-file-lines",
+    sourceTool: "scc",
+    suggestion: file.lines > lineFloor * 3
+      ? "Consider splitting this file into smaller modules"
+      : "Review if the file can be refactored",
+    value: file.lines
+  });
+}
+
+function buildFileComplexityWarning(
+  file: FileMetric,
+  baseFile: FileMetric | undefined,
+  context: WarningContext,
+  areaPolicy: AreaWarningPolicy
+): WarningRecord | null {
+  const ccFloor = context.config.scc?.fileComplexity?.absoluteFloor ?? 20;
+  const ccDelta = context.config.scc?.fileComplexity?.changedDelta ?? 10;
+  const baseComplexity = baseFile?.complexity?.value ?? (context.hasBaselineFiles ? 0 : null);
+  const fileComplexity = file.complexity.value;
+  const ccDeltaValue = deltaFrom(fileComplexity, baseComplexity);
+
+  return buildMetricWarning({
+    areaPolicy,
+    baselineValue: baseComplexity,
+    codeArea: file.codeArea,
+    deltaFloor: ccDelta,
+    deltaValue: ccDeltaValue,
+    floor: ccFloor,
+    isChanged: file.isChanged,
+    line: null,
+    message: `File "${file.path}" has complexity ${fileComplexity} (floor: ${ccFloor})`,
+    metric: "complexity",
+    path: file.path,
+    ruleId: "scc-file-complexity",
+    sourceTool: "scc",
+    suggestion: "Consider splitting complex logic into smaller functions",
+    value: fileComplexity
+  });
+}
+
+function generateFunctionWarnings(functions: FunctionMetric[], context: WarningContext): WarningRecord[] {
+  const warnings: WarningRecord[] = [];
+
+  for (const func of functions) {
+    const areaPolicy = metricAreaWarningPolicy(context.config, func.codeArea);
+    if (!areaPolicy) continue;
+
+    const baselineFunc = context.baselineFunctions.get(functionKey(func));
+    const complexityWarning = buildFunctionComplexityWarning(func, baselineFunc, context, areaPolicy);
+    if (complexityWarning) warnings.push(complexityWarning);
+
+    const lineWarning = buildFunctionLineWarning(func, baselineFunc, context, areaPolicy);
+    if (lineWarning) warnings.push(lineWarning);
+
+    const parameterWarning = buildFunctionParameterWarning(func, baselineFunc, context, areaPolicy);
+    if (parameterWarning) warnings.push(parameterWarning);
+  }
+
+  return warnings;
+}
+
+function buildFunctionComplexityWarning(
+  func: FunctionMetric,
+  baselineFunc: FunctionMetric | undefined,
+  context: WarningContext,
+  areaPolicy: AreaWarningPolicy
+): WarningRecord | null {
+  const ccFloor = context.config.lizard?.cyclomaticComplexity?.absoluteFloor ?? 10;
+  const ccDelta = context.config.lizard?.cyclomaticComplexity?.changedDelta ?? 5;
+  const baselineCc = baselineFunc?.cyclomaticComplexity?.value ?? (context.hasBaselineFunctions ? 0 : null);
+  const functionComplexity = func.cyclomaticComplexity.value;
+  const ccDeltaValue = deltaFrom(functionComplexity, baselineCc);
+
+  return buildMetricWarning({
+    areaPolicy,
+    baselineValue: baselineCc,
+    codeArea: func.codeArea,
+    deltaFloor: ccDelta,
+    deltaValue: ccDeltaValue,
+    floor: ccFloor,
+    isChanged: func.isChanged,
+    line: func.startLine,
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has cyclomatic complexity ${functionComplexity} (floor: ${ccFloor})`,
+    metric: "cyclomatic-complexity",
+    path: func.file,
+    ruleId: "lizard-cyclomatic-complexity",
+    sourceTool: "lizard",
+    suggestion: "Consider breaking this function into smaller, more focused functions",
+    value: functionComplexity
+  });
+}
+
+function buildFunctionLineWarning(
+  func: FunctionMetric,
+  baselineFunc: FunctionMetric | undefined,
+  context: WarningContext,
+  areaPolicy: AreaWarningPolicy
+): WarningRecord | null {
+  const lineFloor = context.config.lizard?.functionLines?.absoluteFloor ?? 50;
+  const lineDeltaCfg = context.config.lizard?.functionLines?.changedDelta ?? 20;
+  const baselineFunctionLines = baselineFunc?.lines ?? (context.hasBaselineFunctions ? 0 : null);
+  const functionLineDelta = deltaFrom(func.lines, baselineFunctionLines);
+
+  return buildMetricWarning({
+    areaPolicy,
+    baselineValue: baselineFunctionLines,
+    codeArea: func.codeArea,
+    deltaFloor: lineDeltaCfg,
+    deltaValue: functionLineDelta,
+    floor: lineFloor,
+    isChanged: func.isChanged,
+    line: func.startLine,
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} lines (floor: ${lineFloor})`,
+    metric: "function-lines",
+    path: func.file,
+    ruleId: "lizard-function-lines",
+    sourceTool: "lizard",
+    suggestion: "Consider extracting parts of this function into separate functions",
+    value: func.lines
+  });
+}
+
+function buildFunctionParameterWarning(
+  func: FunctionMetric,
+  baselineFunc: FunctionMetric | undefined,
+  context: WarningContext,
+  areaPolicy: AreaWarningPolicy
+): WarningRecord | null {
+  const paramFloor = context.config.lizard?.parameterCount?.absoluteFloor ?? 5;
+  const paramDeltaCfg = context.config.lizard?.parameterCount?.changedDelta ?? 2;
+  const baselineParameterCount = baselineFunc?.parameterCount ?? (context.hasBaselineFunctions ? 0 : null);
+  const paramDeltaValue = deltaFrom(func.parameterCount, baselineParameterCount);
+
+  return buildMetricWarning({
+    areaPolicy,
+    baselineValue: baselineParameterCount,
+    codeArea: func.codeArea,
+    deltaFloor: paramDeltaCfg,
+    deltaValue: paramDeltaValue,
+    floor: paramFloor,
+    isChanged: func.isChanged,
+    line: func.startLine,
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.parameterCount} parameters (floor: ${paramFloor})`,
+    metric: "parameter-count",
+    path: func.file,
+    ruleId: "lizard-parameter-count",
+    sourceTool: "lizard",
+    suggestion: "Consider using a parameter object or splitting the function",
+    value: func.parameterCount
+  });
+}
+
+function generateDuplicateWarnings(duplicates: DuplicateCodeFragment[], context: WarningContext): WarningRecord[] {
+  const warnings: WarningRecord[] = [];
+
+  for (const dup of duplicates) {
+    const uniqueAreas = duplicateCodeAreas(dup);
+    const areaPolicy = duplicateAreaWarningPolicy(uniqueAreas, context.config);
+    if (!areaPolicy) continue;
+
+    const warning = buildDuplicateWarning(dup, uniqueAreas, context, areaPolicy);
+    if (warning) warnings.push(warning);
+  }
+
+  return warnings;
+}
+
+function buildDuplicateWarning(
+  dup: DuplicateCodeFragment,
+  uniqueAreas: string[],
+  context: WarningContext,
+  areaPolicy: AreaWarningPolicy
+): WarningRecord | null {
+  const primaryLocation = dup.locations[0];
+  const baselineDuplicateCount = countMatchingBaselineDuplicates(
+    dup,
+    context.baselineDuplicateIndex,
+    context.hasBaselineDuplicates
+  );
+  const duplicateDelta = baselineDuplicateCount === null ? null : 1 - baselineDuplicateCount;
+  const duplicateDeltaFloor = context.config.pmdCpd?.duplicateFragments?.changedDelta ?? 0;
+  const locations = dup.locations.map(formatDuplicateWarningLocation).join(", ");
+
+  return buildMetricWarning({
+    areaPolicy,
+    baselineValue: baselineDuplicateCount,
+    codeArea: uniqueAreas.join(",") || "unknown",
+    deltaFloor: duplicateDeltaFloor,
+    deltaValue: duplicateDelta,
+    floor: 0,
+    isChanged: dup.hitsChangedScope,
+    line: primaryLocation?.startLine ?? null,
+    message: `Duplicate code fragment (${dup.tokenCount} tokens) across ${dup.locations.length} locations in areas [${uniqueAreas.join(", ")}]`,
+    metric: "duplicate-tokens",
+    path: primaryLocation?.path || "unknown",
+    ruleId: "pmd-cpd-duplicate-code",
+    sourceTool: "pmd-cpd",
+    suggestion: `Consider extracting shared code into a common function or module. Locations: ${locations}`,
+    value: dup.tokenCount
+  });
+}
+
+function metricAreaWarningPolicy(config: QualityConfig, codeArea: string): AreaWarningPolicy | null {
+  const areaConfig = config.codeAreas[codeArea];
+  if (!areaConfig) return null;
+  if (areaConfig.warningPolicy === "exclude-warnings") return null;
+
+  const isWatchlistOnly = areaConfig.warningPolicy === "watchlist-only";
+  return {
+    isWatchlistOnly,
+    level: isWatchlistOnly ? "info" : "warning"
+  };
+}
+
+function duplicateAreaWarningPolicy(uniqueAreas: string[], config: QualityConfig): AreaWarningPolicy | null {
+  if (uniqueAreas.length > 0 && uniqueAreas.every((area) => codeAreaHasPolicy(config, area, "exclude-warnings"))) {
+    return null;
+  }
+
+  const isWatchlistOnly = uniqueAreas.length > 0
+    && uniqueAreas.every((area) => codeAreaHasPolicy(config, area, "watchlist-only"));
+
+  return {
+    isWatchlistOnly,
+    level: isWatchlistOnly ? "info" : "warning"
+  };
+}
+
+function codeAreaHasPolicy(config: QualityConfig, codeArea: string, warningPolicy: string): boolean {
+  const areaConfig = config.codeAreas[codeArea];
+  return Boolean(areaConfig && areaConfig.warningPolicy === warningPolicy);
+}
+
+function duplicateCodeAreas(dup: DuplicateCodeFragment): string[] {
+  const involvedAreas = dup.locations.map((location) => location.codeArea).filter(Boolean);
+  return [...new Set(involvedAreas)] as string[];
+}
+
+function formatDuplicateWarningLocation(location: DuplicateCodeFragment["locations"][number]): string {
+  return `${location.path}:${location.startLine}`;
+}
+
+function compareWarnings(a: WarningRecord, b: WarningRecord): number {
+  const lvlOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };
+  const lvlDiff = lvlOrder[a.level] - lvlOrder[b.level];
+  if (lvlDiff !== 0) return lvlDiff;
+  return b.value - a.value;
+}
+
+function shouldWarn(params: ShouldWarnParams): boolean {
+  const { isChanged, isWatchlistOnly, value, floor, delta, deltaFloor } = params;
+
   if (value === null || value === undefined || value <= floor) {
     return false;
   }
