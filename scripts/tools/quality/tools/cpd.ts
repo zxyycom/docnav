@@ -9,15 +9,17 @@
 
 import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import path, { join } from "node:path";
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { XMLParser } from "fast-xml-parser";
 
-import type { DuplicateCodeFragment, DuplicateCodeLocation, ToolConfig } from "../schema.ts";
+import type { ToolConfig } from "../schema.ts";
 import { runProcess, runProcessSync } from "../../process.ts";
-import type { ProcessResult } from "../../process.ts";
-import { toSlashPath } from "../../path-utils.ts";
-import { errorMessage, isNonArrayRecord } from "../../types.ts";
+import { errorMessage } from "../../types.ts";
+import { handleCpdProcessResult } from "./cpd-process.ts";
+import type { CpdScanResult } from "./cpd-types.ts";
+
+export type { CpdScanResult } from "./cpd-types.ts";
+export { parseCpdXml } from "./cpd-xml.ts";
 
 const CODE_AREA_LANGUAGE: Record<string, string | null> = {
   "rust-production": "rust",
@@ -28,15 +30,8 @@ const CODE_AREA_LANGUAGE: Record<string, string | null> = {
   "generated": null
 };
 
-const cpdXmlParser = new XMLParser({
-  attributeNamePrefix: "",
-  ignoreAttributes: false,
-  isArray: (tagName, _jPath, _isLeafNode, isAttribute) =>
-    !isAttribute && (tagName === "duplication" || tagName === "file"),
-  parseAttributeValue: false,
-  parseTagValue: false,
-  trimValues: true
-});
+const CPD_PROCESS_MAX_BUFFER = 1024 * 1024 * 64;
+const CPD_PROCESS_TIMEOUT_MS = 600_000;
 
 export function getCpdLanguageForCodeArea(codeArea: string): string | null {
   return CODE_AREA_LANGUAGE[codeArea] ?? null;
@@ -51,165 +46,104 @@ interface ScanWithCpdOptions {
   toolConfig: ToolConfig;
 }
 
-export type CpdScanResult =
-  | { fragments: DuplicateCodeFragment[]; ok: true }
-  | { error: string; ok: false; reason?: string; skipped: boolean };
+type PreparedCpdInvocation = { argv: string[]; fileListPath: string; ok: true };
+
+type CpdInvocation =
+  | PreparedCpdInvocation
+  | { ok: false; result: CpdScanResult };
+
+type ExecutableCpdScan = {
+  cwd: string;
+  invocation: PreparedCpdInvocation;
+  ok: true;
+  skipIfUnavailable: boolean;
+  toolConfig: ToolConfig;
+};
+
+type PreparedCpdScan =
+  | ExecutableCpdScan
+  | { ok: false; result: CpdScanResult };
 
 /**
  * 使用 PMD CPD 扫描指定文件，返回重复代码片段指标。
  *
  * CPD 扫描失败时返回显式 error；调用方决定 skipped 是否阻断。
  */
-export function scanWithCpd({
-  files,
-  cwd,
-  toolConfig,
-  minimumTokens,
-  codeArea = "fixtures-examples",
-  skipIfUnavailable = false
-}: ScanWithCpdOptions): CpdScanResult {
-  if (files.length < 2) {
-    return { ok: true, fragments: [] };
-  }
-
-  const invocation = prepareCpdInvocation({ files, toolConfig, minimumTokens, codeArea });
-  if (!invocation.ok) return invocation.result;
+export function scanWithCpd(options: ScanWithCpdOptions): CpdScanResult {
+  const scan = prepareCpdScan(options);
+  if (!scan.ok) return scan.result;
 
   try {
-    const child = runProcessSync(toolConfig.command, invocation.argv, {
-      cwd,
+    const child = runProcessSync(scan.toolConfig.command, scan.invocation.argv, {
+      cwd: scan.cwd,
       encoding: "utf8",
       windowsHide: true,
-      maxBuffer: 1024 * 1024 * 64,
-      timeout: 600_000
+      maxBuffer: CPD_PROCESS_MAX_BUFFER,
+      timeout: CPD_PROCESS_TIMEOUT_MS
     });
 
     return handleCpdProcessResult({
       child,
-      cwd,
-      skipIfUnavailable
+      cwd: scan.cwd,
+      skipIfUnavailable: scan.skipIfUnavailable
     });
   } finally {
-    tryCleanupFileList(invocation.fileListPath);
+    tryCleanupFileList(scan.invocation.fileListPath);
   }
 }
 
-export async function scanWithCpdAsync({
-  files,
-  cwd,
-  toolConfig,
-  minimumTokens,
-  codeArea = "fixtures-examples",
-  skipIfUnavailable = false
-}: ScanWithCpdOptions): Promise<CpdScanResult> {
-  if (files.length < 2) {
-    return { ok: true, fragments: [] };
-  }
-
-  const invocation = prepareCpdInvocation({ files, toolConfig, minimumTokens, codeArea });
-  if (!invocation.ok) return invocation.result;
+export async function scanWithCpdAsync(options: ScanWithCpdOptions): Promise<CpdScanResult> {
+  const scan = prepareCpdScan(options);
+  if (!scan.ok) return scan.result;
 
   try {
     const child = await runProcess({
-      args: invocation.argv,
-      command: toolConfig.command,
-      cwd,
+      args: scan.invocation.argv,
+      command: scan.toolConfig.command,
+      cwd: scan.cwd,
       label: "PMD CPD",
-      maxBuffer: 1024 * 1024 * 64,
-      timeout: 600_000,
+      maxBuffer: CPD_PROCESS_MAX_BUFFER,
+      timeout: CPD_PROCESS_TIMEOUT_MS,
       windowsHide: true
     });
 
     return handleCpdProcessResult({
       child,
-      cwd,
-      skipIfUnavailable
+      cwd: scan.cwd,
+      skipIfUnavailable: scan.skipIfUnavailable
     });
   } finally {
-    tryCleanupFileList(invocation.fileListPath);
+    tryCleanupFileList(scan.invocation.fileListPath);
   }
 }
 
-/**
- * 解析 CPD XML 输出。
- *
- * CPD 格式：
- * ```xml
- * <?xml version="1.0" encoding="UTF-8"?>
- * <pmd-cpd>
- *   <duplication lines="10" tokens="50">
- *     <file path="/path/to/file1.rs" line="10" endline="20"/>
- *     <file path="/path/to/file2.rs" line="5" endline="15"/>
- *   </duplication>
- * </pmd-cpd>
- * ```
- */
-export function parseCpdXml(xml: string, cwd: string): CpdScanResult {
-  try {
-    const fragments: DuplicateCodeFragment[] = [];
-    const parsed = cpdXmlParser.parse(xml) as unknown;
-    const root = isNonArrayRecord(parsed) ? parsed["pmd-cpd"] : undefined;
-    if (!isNonArrayRecord(root)) {
-      return { ok: true, fragments };
-    }
+function prepareCpdScan(options: ScanWithCpdOptions): PreparedCpdScan {
+  const {
+    files,
+    cwd,
+    toolConfig,
+    minimumTokens,
+    codeArea = "fixtures-examples",
+    skipIfUnavailable = false
+  } = options;
 
-    const duplications = toRecordArray(root.duplication);
-    let idCounter = 0;
-
-    for (const duplication of duplications) {
-      const lines = parseIntegerAttribute(duplication, "lines");
-      const tokens = parseIntegerAttribute(duplication, "tokens");
-
-      const locations: DuplicateCodeLocation[] = [];
-
-      for (const file of toRecordArray(duplication.file)) {
-        const rawPath = stringAttribute(file, "path");
-        const rawLine = stringAttribute(file, "line");
-        if (!rawPath || !rawLine) {
-          throw new Error("CPD XML file entry must include path and line attributes");
-        }
-
-        const path = normalizeCpdPath(rawPath, cwd);
-        const startLine = parseIntegerAttribute(file, "line");
-        const endLine = stringAttribute(file, "endline") !== undefined
-          ? parseIntegerAttribute(file, "endline")
-          : startLine + lines;
-
-        locations.push({
-          path,
-          startLine,
-          endLine,
-          codeArea: "unknown"
-        });
-      }
-
-      if (locations.length === 0) {
-        throw new Error("CPD XML duplication must include at least one file location");
-      }
-
-      fragments.push({
-        id: ++idCounter,
-        tokenCount: tokens,
-        lineCount: lines,
-        locations,
-        codeAreas: [],
-        hitsChangedScope: false
-      });
-    }
-
-    fragments.sort((a, b) => b.tokenCount - a.tokenCount);
-
-    return { ok: true, fragments };
-  } catch (error: unknown) {
-    return { ok: false, skipped: false, error: `Failed to parse CPD XML: ${errorMessage(error)}` };
+  if (files.length < 2) {
+    return { ok: false, result: { ok: true, fragments: [] } };
   }
+
+  const invocation = prepareCpdInvocation({ files, toolConfig, minimumTokens, codeArea });
+  if (!invocation.ok) return { ok: false, result: invocation.result };
+
+  return {
+    ok: true,
+    cwd,
+    toolConfig,
+    skipIfUnavailable,
+    invocation
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
-
-type CpdInvocation =
-  | { argv: string[]; fileListPath: string; ok: true }
-  | { ok: false; result: CpdScanResult };
 
 function prepareCpdInvocation({
   files,
@@ -275,64 +209,6 @@ function buildCpdArgs({
   return argv;
 }
 
-function handleCpdProcessResult({
-  child,
-  cwd,
-  skipIfUnavailable
-}: {
-  child: ProcessResult;
-  cwd: string;
-  skipIfUnavailable: boolean;
-}): CpdScanResult {
-  if (child.error) {
-    if ((child.error as NodeJS.ErrnoException).code === "ENOENT") {
-      return {
-        ok: false,
-        skipped: true,
-        error: `PMD CPD not found: ${child.error.message}`,
-        reason: "tool-unavailable"
-      };
-    }
-    return {
-      ok: false,
-      skipped: false,
-      error: `PMD CPD process error: ${child.error.message}`
-    };
-  }
-
-  if (child.status !== 0 && child.status !== null) {
-    const stderr = (child.stderr || "").trim();
-    if (child.status === 4) {
-      const stdout = child.stdout || "";
-      if (!stdout.trim()) {
-        return cpdExecutionFailure(child.status, "no output", skipIfUnavailable);
-      }
-      if (!/<pmd-cpd\b/.test(stdout)) {
-        return cpdExecutionFailure(child.status, "missing PMD CPD XML output", skipIfUnavailable);
-      }
-      return parseCpdXml(stdout, cwd);
-    }
-    const output = stderr || (child.stdout || "").trim() || "no output";
-    return cpdExecutionFailure(child.status, output, skipIfUnavailable);
-  }
-
-  const output = child.stdout || "";
-  if (!output) {
-    return { ok: true, fragments: [] };
-  }
-
-  return parseCpdXml(output, cwd);
-}
-
-function cpdExecutionFailure(status: number, output: string, skipIfUnavailable: boolean): CpdScanResult {
-  return {
-    ok: false,
-    skipped: true,
-    error: `PMD CPD exit ${status}: ${output}`,
-    reason: skipIfUnavailable ? "cpd-scan-skipped" : "cpd-execution-error"
-  };
-}
-
 export function parsePmdVersionOutput(output: string): string {
   const versionLine = output
     .split(/\r?\n/)
@@ -345,44 +221,6 @@ export function parsePmdVersionOutput(output: string): string {
 
   const match = versionLine.match(/^PMD\s+([^\s(]+)/);
   return match ? match[1] : versionLine;
-}
-
-function parseIntegerAttribute(attrs: Record<string, unknown>, name: string): number {
-  const value = stringAttribute(attrs, name);
-  if (value === undefined) {
-    throw new Error(`CPD XML attribute "${name}" is required`);
-  }
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`CPD XML attribute "${name}" must be an integer`);
-  }
-  return parsed;
-}
-
-function stringAttribute(attrs: Record<string, unknown>, name: string): string | undefined {
-  const value = attrs[name];
-  return typeof value === "string" ? value : undefined;
-}
-
-function normalizeCpdPath(filePath: string, cwd: string): string {
-  if (!path.isAbsolute(filePath)) {
-    return toSlashPath(filePath);
-  }
-
-  const relativePath = path.relative(cwd, filePath);
-  if (relativePath === "") {
-    return ".";
-  }
-  if (!relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
-    return toSlashPath(relativePath);
-  }
-  return toSlashPath(filePath);
-}
-
-function toRecordArray(value: unknown): Record<string, unknown>[] {
-  if (value === undefined) return [];
-  const values = Array.isArray(value) ? value : [value];
-  return values.filter(isNonArrayRecord);
 }
 
 function tryCleanupFileList(path: string): void {
