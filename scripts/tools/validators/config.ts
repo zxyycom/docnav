@@ -150,7 +150,7 @@ export const MCP_STRUCTURED_CONTENT_FORBIDDEN_FIELDS = [
 ];
 
 // 稳定错误语义由 docs/protocol.md 拥有；这里复用 error-rules.json 生成的 required details 常量。
-export { REQUIRED_ERROR_DETAILS_BY_CODE } from "./generated/error-rules.ts";
+export { REQUIRED_ERROR_DETAILS_BY_CODE } from "./generated/error/rules.ts";
 
 // Markdown manifest 示例的语义期望，来源是 v0 首期 adapter 契约。
 export const MARKDOWN_MANIFEST_EXPECTED = {

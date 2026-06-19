@@ -1,6 +1,6 @@
 import { processFailed, runProcessSync } from "./process.ts";
 import type { ProcessResult, RunProcessSyncOptions } from "./process.ts";
-import { toSlashPath } from "./path-utils.ts";
+import { toSlashPath } from "./path/utils.ts";
 
 export function runGit(args: string[], options: RunProcessSyncOptions = {}): ProcessResult {
   return runProcessSync("git", args, options);

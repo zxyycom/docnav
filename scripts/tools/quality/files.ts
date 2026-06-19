@@ -9,11 +9,11 @@ import { minimatch } from "minimatch";
 
 import { DEFAULT_CONFIG } from "./config.ts";
 import { buildFingerprint, isExcluded } from "./classify.ts";
-import { getWorkingTreeChangedFiles } from "./baseline.ts";
-import { gitGlobPathspecs } from "./git-pathspec.ts";
+import { getWorkingTreeChangedFiles } from "./baseline/index.ts";
+import { gitGlobPathspecs } from "./git/pathspec.ts";
 import { runGit, splitGitFileList } from "../git.ts";
 import { processFailed } from "../process.ts";
-import { toSlashPath } from "../path-utils.ts";
+import { toSlashPath } from "../path/utils.ts";
 import { walkFiles } from "../fs.ts";
 import type { CodeAreaFileMap, CodeAreaFingerprint, QualityConfig } from "./schema.ts";
 

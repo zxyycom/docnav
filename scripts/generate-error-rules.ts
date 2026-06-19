@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-import { assert, readJson, toAbs } from "./tools/validators/fs-utils.ts";
+import { assert, readJson, toAbs } from "./tools/validators/fs/utils.ts";
 import { booleanOption, parseScriptArgs } from "./tools/args.ts";
 import { readTextFile, writeTextFile } from "./tools/fs.ts";
 import { errorMessage, isRecord } from "./tools/types.ts";
@@ -9,7 +9,7 @@ const paths = {
   source: "docs/protocol/error-rules.json",
   rustMod: "crates/docnav-protocol/src/generated/mod.rs",
   rustRules: "crates/docnav-protocol/src/generated/error_rules.rs",
-  jsRules: "scripts/tools/validators/generated/error-rules.ts",
+  jsRules: "scripts/tools/validators/generated/error/rules.ts",
   protocolResponseSchema: "docs/schemas/protocol-response.schema.json"
 };
 

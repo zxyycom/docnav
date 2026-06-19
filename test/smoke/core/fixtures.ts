@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { ensureDirForFile, writeJsonFile, writeTextFile } from "../../../scripts/tools/fs.ts";
-import { toSlashPath } from "../../../scripts/tools/path-utils.ts";
+import { toSlashPath } from "../../../scripts/tools/path/utils.ts";
 import { isRecord, isUnknownArray, parseJsonValue } from "../../../scripts/tools/types.ts";
 import { root, tempRoot } from "./config.ts";
 

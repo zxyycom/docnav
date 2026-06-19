@@ -1,6 +1,6 @@
 import { type CaseIdCollection } from "./collection.ts";
 import { CASE_CATALOG_DOC, type DocumentedCase } from "./documented.ts";
-import { markerPathMismatches } from "./path-mismatches.ts";
+import { markerPathMismatches } from "./path/mismatches.ts";
 
 export function formatInvalidMarkers(markers: CaseIdCollection): string | null {
   if (markers.ids.length === 0) {

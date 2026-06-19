@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { FILE_SYSTEM } from "./config.ts";
-import { toAbs, toRel, walk } from "./fs-utils.ts";
+import { toAbs, toRel, walk } from "./fs/utils.ts";
 
 export function validateMarkdownLinks() {
   const markdownFiles = markdownFilesForLinkValidation();

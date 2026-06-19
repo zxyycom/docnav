@@ -4,7 +4,7 @@
 
 import { DEFAULT_CONFIG } from "../config.ts";
 import { SCC_VERSION_OUTPUT } from "./scc.ts";
-import { parsePmdVersionOutput } from "./cpd.ts";
+import { parsePmdVersionOutput } from "./cpd/index.ts";
 import { runProcess } from "../../process.ts";
 import type { ToolAvailability, ToolConfig } from "../schema.ts";
 

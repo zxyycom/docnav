@@ -624,7 +624,7 @@ Proves:
 
 ### AUX-WORKSPACE-VERIFY-001 Workspace verifier 保持 required/full gate 语义
 Status: implemented
-Code: `scripts/tools/verify-docnav-workspace.test.ts`
+Code: `scripts/docnav-workspace/verify.test.ts`
 
 Proves:
 - required 和 full verifier profile 保持区分。
@@ -672,7 +672,7 @@ flowchart LR
 
 ### AUX-PARALLEL-RUNNER-001 Parallel task runner 保持调度契约
 Status: implemented
-Code: `scripts/tools/parallel-task-runner.test.ts`
+Code: `scripts/tools/parallel-task-runner/index.test.ts`
 
 Proves:
 - task normalization、concurrency、mutex serialization、dependency ordering 和 nested task expansion 保持稳定。
@@ -711,7 +711,7 @@ Proves:
 
 ### AUX-QUALITY-CPD-TASK-001 Quality CPD task planning 稳定
 Status: implemented
-Code: `scripts/tools/quality/cpd-tasks.test.ts`
+Code: `scripts/tools/quality/cpd/tasks/index.test.ts`
 
 Proves:
 - PMD CPD 每个 code area 生成一个 scan task。
@@ -727,7 +727,7 @@ Proves:
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
-Code: `scripts/tools/quality/report.test.ts`
+Code: `scripts/tools/quality/report/index.test.ts`
 
 Proves:
 - baseline unavailable 时 changed-file watchlist 仍按风险展示有用文件。
@@ -735,7 +735,7 @@ Proves:
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented
-Code: `scripts/tools/quality/scan-cli.test.ts`
+Code: `scripts/tools/quality/scan/cli/index.test.ts`
 
 Proves:
 - quality scan 默认跳过 baseline，baseline generation 保持 opt-in。
@@ -764,7 +764,7 @@ flowchart LR
 
 ### AUX-CASE-CATALOG-001 Case catalog validator 覆盖 planned/status/path 语义
 Status: implemented
-Code: `scripts/tools/validators/case-catalog.test.ts`
+Code: `scripts/tools/validators/case-catalog/index.test.ts`
 
 Proves:
 - case catalog validator 对 `Status:`、planned case、duplicate marker 和 `Code:` 路径错配有独立测试。

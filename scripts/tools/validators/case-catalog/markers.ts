@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { FILE_SYSTEM } from "../config.ts";
-import { readText } from "../document-files.ts";
-import { toAbs, toRel, walk } from "../fs-utils.ts";
+import { readText } from "../document/files.ts";
+import { toAbs, toRel, walk } from "../fs/utils.ts";
 import { collectionFromEntries, type CaseIdCollection } from "./collection.ts";
 
 const SOURCE_ROOTS = ["test", "crates", "scripts"];
@@ -55,4 +55,3 @@ function isCaseSourceFile(filePath: string): boolean {
   }
   return SOURCE_EXTENSIONS.has(path.extname(filePath));
 }
-

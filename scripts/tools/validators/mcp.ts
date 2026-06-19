@@ -1,11 +1,11 @@
-import { assert, readJson } from "./fs-utils.ts";
+import { assert, readJson } from "./fs/utils.ts";
 import {
   FIELDS,
   MCP_EXAMPLE_FILE,
   MCP_STRUCTURED_CONTENT_FORBIDDEN_FIELDS,
   READABLE_SCHEMA_BY_OPERATION
 } from "./config.ts";
-import { compileRegisteredSchema, createSchemaAjv, formatAjvErrors } from "./schema-registry.ts";
+import { compileRegisteredSchema, createSchemaAjv, formatAjvErrors } from "./schema/registry.ts";
 import { isRecord } from "../types.ts";
 
 export function validateMcpStructuredContent() {

@@ -11,7 +11,7 @@ import {
   parseCpdXml,
   parsePmdVersionOutput,
   scanWithCpd
-} from "./tools/cpd.ts";
+} from "./tools/cpd/index.ts";
 import {
   SCC_BY_FILE_CSV_HEADER,
   parseSccCSV
@@ -25,7 +25,7 @@ describe("quality tool output parsing", () => {
     const csv = [
       SCC_BY_FILE_CSV_HEADER,
       "Rust,crates/docnav/src/lib.rs,lib.rs,120,90,20,10,17,4096,70",
-      "JavaScript,scripts/quality-scan.ts,scan.ts,60,50,5,5,8,2048,45"
+      "JavaScript,scripts/quality/scan.ts,scan.ts,60,50,5,5,8,2048,45"
     ].join("\n");
 
     const result = parseSccCSV(csv, "/repo");
@@ -33,7 +33,7 @@ describe("quality tool output parsing", () => {
     assert.equal(result.ok, true);
     assert.deepEqual(result.files!.map((f) => f.path), [
       "crates/docnav/src/lib.rs",
-      "scripts/quality-scan.ts"
+      "scripts/quality/scan.ts"
     ]);
     assert.equal(result.files![0]!.complexity.value, 17);
     assert.equal(

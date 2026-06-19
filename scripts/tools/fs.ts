@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { toSlashPath } from "./path-utils.ts";
+import { toSlashPath } from "./path/utils.ts";
 
 export function ensureDirForFile(filePath: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });

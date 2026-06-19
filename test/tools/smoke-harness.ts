@@ -5,14 +5,14 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ValidateFunction } from "ajv";
 
-import { expandTasks, runParallelTasks } from "../../scripts/tools/parallel-task-runner.ts";
-import type { NormalizedTask, TaskDefinition } from "../../scripts/tools/parallel-task-runner.ts";
+import { expandTasks, runParallelTasks } from "../../scripts/tools/parallel-task-runner/index.ts";
+import type { NormalizedTask, TaskDefinition } from "../../scripts/tools/parallel-task-runner/index.ts";
 import { errorMessage } from "../../scripts/tools/types.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,
   formatAjvErrors
-} from "../../scripts/tools/validators/schema-registry.ts";
+} from "../../scripts/tools/validators/schema/registry.ts";
 
 const MAX_COMMAND_OUTPUT = 1024 * 1024 * 64;
 const commandContext = new AsyncLocalStorage<{ commandRecords: CommandRecord[] }>();
