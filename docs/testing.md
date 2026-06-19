@@ -1,7 +1,8 @@
 # 测试策略
 
-本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。具体 smoke case 清单、覆盖矩阵和发布包预验收分别由子文档维护：
+本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。具体测试用例编号账本、smoke case 清单、覆盖矩阵和发布包预验收分别由子文档维护：
 
+- [测试用例编号账本](testing/cases.md)：可审计 Case ID、证明目标和源码 `@case` marker 的映射。
 - [Smoke Case 清单](testing/smoke-cases.md)：JavaScript smoke 的 case inventory 和新增用例规则。
 - [覆盖矩阵](testing/coverage.md)：跨入口、命令族和 capability 的最低覆盖目标。
 - [发布包验证](testing/release.md)：release package 的本地预验收和 CI/CD 验证边界。

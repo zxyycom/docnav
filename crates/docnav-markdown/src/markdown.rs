@@ -287,6 +287,7 @@ mod tests {
     }
 
     #[test]
+    // @case WB-MD-LINK-001
     fn outline_to_read_roundtrip_with_canonical_ref() {
         let document =
             MarkdownDocument::parse("# Top\nintro\n## Sub\ndetail\n### Deep\nmore\n".to_owned());

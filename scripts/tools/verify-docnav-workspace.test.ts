@@ -14,6 +14,7 @@ import {
   visibleOutputLines
 } from "../verify-docnav-workspace.ts";
 
+// @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {
   it("filters successful node test runner output from release package script tests", () => {
     const check = checkByLabel("release package script tests");

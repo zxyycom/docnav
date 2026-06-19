@@ -4,11 +4,13 @@ import { validateMarkdownLinks } from "./tools/validators/links.ts";
 import { validateMcpStructuredContent } from "./tools/validators/mcp.ts";
 import { validateJsonSyntax, validateSchemas } from "./tools/validators/schema.ts";
 import { validateExampleConsistency } from "./tools/validators/example-consistency.ts";
+import { validateTestCaseCatalog } from "./tools/validators/case-catalog.ts";
 
 const requested = new Set(process.argv.slice(2));
 const runAll = requested.size === 0;
 
 const tasks = {
+  [TASK_NAMES.cases]: validateTestCaseCatalog,
   [TASK_NAMES.json]: validateJsonSyntax,
   [TASK_NAMES.schema]: validateSchemas,
   [TASK_NAMES.mcp]: validateMcpStructuredContent,

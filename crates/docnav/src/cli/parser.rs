@@ -498,6 +498,7 @@ mod tests {
     // ── existing tests ─────────────────────────────────────────────────────
 
     #[test]
+    // @case WB-CORE-ARGS-001
     fn used_known_argument_stays_strict() {
         let error = parse(["outline", "doc.md", "--page", "0"]).expect_err("page is invalid");
 

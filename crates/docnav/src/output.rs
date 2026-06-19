@@ -234,6 +234,7 @@ mod tests {
     }
 
     #[test]
+    // @case WB-CORE-OUTPUT-001
     fn document_readable_view_uses_shared_output_facade() {
         let response = ProtocolResponse::success(
             PROTOCOL_VERSION,

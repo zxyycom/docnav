@@ -224,6 +224,7 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
 }
 
 #[test]
+// @case WB-MD-REF-001
 fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
     let path = write_doc("duplicates.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
     let arguments = outline_args(6000, 1, Some(3));
@@ -271,6 +272,7 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
 }
 
 #[test]
+// @case WB-MD-REF-002
 fn read_reports_ref_invalid_for_old_format_and_non_canonical_refs() {
     let path = write_doc("refs.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
 
@@ -309,6 +311,7 @@ fn read_reports_ref_not_found_for_canonical_no_match() {
 }
 
 #[test]
+// @case WB-MD-PAGE-001
 fn read_paginates_unicode_without_splitting_characters() {
     let path = write_doc("unicode.md", "# A\n界界界abc\n");
     let ref_id = "H:L1:H1:I1";

@@ -10,6 +10,7 @@ import { exitCodes } from "../config.ts";
 
 export function createCliArgumentFailureTasks() {
   return [
+    // @case BB-CORE-ARGS-001
     {
       id: "CORE-ARGS-001",
       label: "CORE-ARGS-001 strict CLI argument failure",

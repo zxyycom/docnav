@@ -489,6 +489,7 @@ fn run_vector(vector: &ConformanceVector) {
 // in-test construction.
 
 #[test]
+// @case WB-READABLE-VIEW-001
 fn conformance_01_no_block_outline() {
     run_vector(&load_vector!(
         "fixtures/conformance/01_no_block_outline.json"

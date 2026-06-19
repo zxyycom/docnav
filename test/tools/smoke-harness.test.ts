@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { createSmokeHarness, createSmokeState, resolveSmokeConcurrency } from "./smoke-harness.ts";
 import type { CommandRecord, SmokeState } from "./smoke-harness.ts";
 
+// @case AUX-SMOKE-HARNESS-001
 describe("smoke harness task scheduling", () => {
   it("runs independent smoke tasks concurrently and keeps per-task command counts isolated", async () => {
     const state = createSmokeState();

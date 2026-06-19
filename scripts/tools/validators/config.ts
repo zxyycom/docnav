@@ -1,6 +1,7 @@
 // 文档验证脚本的配置中心：这里只集中任务名、验证材料路径和稳定字段名。
 // 这些值用于校验文档导航指向的主规范和 schema，不把脚本变成新的业务规则来源。
 export const TASK_NAMES = {
+  cases: "cases",
   json: "json",
   schema: "schema",
   mcp: "mcp",

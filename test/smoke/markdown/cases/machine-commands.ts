@@ -12,6 +12,7 @@ import {
 
 export function createMachineProtocolTasks() {
   return [
+    // @case BB-MD-MACHINE-001
     {
       id: "MD-MACHINE-001",
       label: "MD-MACHINE-001 manifest probe and invoke protocol",

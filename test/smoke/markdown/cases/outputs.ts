@@ -16,6 +16,7 @@ import {
 
 export function createDocumentLinkTasks() {
   return [
+    // @case BB-MD-LINK-001
     {
       id: "MD-LINK-001",
       label: "MD-LINK-001 markdown outline find read info chain",
@@ -26,6 +27,7 @@ export function createDocumentLinkTasks() {
 
 export function createDocumentOutputBoundaryTasks() {
   return [
+    // @case BB-MD-OUTPUT-001
     {
       id: "MD-OUTPUT-001",
       label: "MD-OUTPUT-001 markdown output boundary",

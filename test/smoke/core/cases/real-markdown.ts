@@ -16,6 +16,7 @@ import {
 
 export function createRealMarkdownLinkTasks() {
   return [
+    // @case BB-CORE-LINK-001
     {
       id: "CORE-LINK-001",
       label: "CORE-LINK-001 real markdown ref handoff chain",
@@ -26,6 +27,7 @@ export function createRealMarkdownLinkTasks() {
 
 export function createRealMarkdownRefErrorTasks() {
   return [
+    // @case BB-CORE-REF-001
     {
       id: "CORE-REF-001",
       label: "CORE-REF-001 real markdown ref error mapping",

@@ -89,6 +89,7 @@ fn failure_response_rules_preserve_or_null_operation() {
 }
 
 #[test]
+// @case WB-PROTO-DECODE-001
 fn decode_protocol_request_runs_schema_before_deserialize() {
     let schema_invalid = serde_json::json!({
         "protocol_version": "0.1",
@@ -202,6 +203,7 @@ fn stable_error_codes_have_shared_categories() {
 }
 
 #[test]
+// @case WB-PROTO-SCHEMA-001
 fn parses_protocol_fixtures_into_shared_types() {
     for operation in ["outline", "read", "find", "info"] {
         let request_value = read_json_fixture(&format!("protocol-{operation}-request.json"));

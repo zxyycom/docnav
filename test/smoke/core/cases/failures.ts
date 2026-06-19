@@ -19,11 +19,13 @@ import { exitCodes } from "../config.ts";
 
 export function createRegistryAndContractFailureTasks() {
   return [
+    // @case BB-CORE-FAIL-001
     {
       id: "CORE-FAIL-001",
       label: "CORE-FAIL-001 adapter candidate failure evidence",
       run: testCandidateFailureEvidence
     },
+    // @case BB-CORE-INVOKE-001
     {
       id: "CORE-INVOKE-001",
       label: "CORE-INVOKE-001 adapter invoke process failure",

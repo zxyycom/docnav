@@ -22,6 +22,7 @@ import { exitCodes } from "../config.ts";
 
 export function createConfigContextTasks() {
   return [
+    // @case BB-CORE-CONFIG-001
     {
       id: "CORE-CONFIG-001",
       label: "CORE-CONFIG-001 config precedence and path context",
@@ -32,6 +33,7 @@ export function createConfigContextTasks() {
 
 export function createToolCommandTasks() {
   return [
+    // @case BB-CORE-TOOLS-001
     {
       id: "CORE-TOOLS-001",
       label: "CORE-TOOLS-001 init version doctor and help commands",

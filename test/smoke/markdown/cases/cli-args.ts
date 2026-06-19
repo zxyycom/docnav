@@ -19,6 +19,7 @@ import {
 
 export function createCliArgumentFailureTasks() {
   return [
+    // @case BB-MD-ARGS-001
     {
       id: "MD-ARGS-001",
       label: "MD-ARGS-001 strict CLI argument failure",
@@ -29,6 +30,7 @@ export function createCliArgumentFailureTasks() {
 
 export function createCliArgumentCompatibilityWarningTasks() {
   return [
+    // @case BB-MD-WARN-001
     {
       id: "MD-WARN-001",
       label: "MD-WARN-001 CLI compatibility warnings and help",

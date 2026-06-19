@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { parseManifestArgs, parseOptionalTarget } from "./args.ts";
 
+// @case AUX-RELEASE-ARGS-001
 test("package selection defaults to the current host package", () => {
   assert.deepEqual(parseManifestArgs([]), {
     manifestPath: null,

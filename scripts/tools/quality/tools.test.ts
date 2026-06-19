@@ -19,6 +19,7 @@ import {
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
+// @case AUX-QUALITY-PARSER-001
 describe("quality tool output parsing", () => {
   it("parses scc 3.7 Provider paths and rejects unknown CSV headers", () => {
     const csv = [

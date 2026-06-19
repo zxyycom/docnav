@@ -5,6 +5,7 @@ use docnav_protocol::{
 };
 
 #[test]
+// @case WB-SDK-INVOKE-001
 fn invoke_reads_one_request_and_writes_one_protocol_response() {
     let input = br#"{
           "protocol_version": "0.1",

@@ -20,6 +20,7 @@ import type { JsonRecord } from "../assertions.ts";
 
 export function createDocumentOutputBoundaryTasks() {
   return [
+    // @case BB-CORE-OUTPUT-001
     {
       id: "CORE-OUTPUT-001",
       label: "CORE-OUTPUT-001 document output boundary",

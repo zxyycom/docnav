@@ -15,6 +15,7 @@ import { exitCodes } from "../config.ts";
 
 export function createOperationErrorTasks() {
   return [
+    // @case BB-MD-ERROR-001
     {
       id: "MD-ERROR-001",
       label: "MD-ERROR-001 markdown ref error output mapping",

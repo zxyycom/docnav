@@ -12,6 +12,7 @@ const MAX_HEADING_LEVEL: NativeOptionSpec = NativeOptionSpec {
 };
 
 #[test]
+// @case WB-SDK-DIRECT-ARGS-001
 fn unknown_flag_does_not_consume_following_positional() {
     let options = parse_operation_options(
         Operation::Outline,
