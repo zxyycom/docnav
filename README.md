@@ -72,7 +72,7 @@ pnpm run verify:docnav-workspace
 
 ## 文档入口
 
-- [文档导航](docs/navigation.md)：角色化阅读路径、文档分层、规则 owner 和术语。
+- [文档导航](docs/navigation.md)：改动前定位任务主规范、规则 owner 和交付验证入口。
 - [架构](docs/architecture.md)：制品职责、接入方式、语义层、配置所有权和进程边界。
 - [CLI](docs/cli.md)：命令、配置、adapter 管理、直接 CLI 和 argv 兼容规则。
 - [输出模式](docs/output.md)：`readable-view`、`readable-json`、`protocol-json`、warning 和通道承载。

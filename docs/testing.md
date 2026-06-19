@@ -1,13 +1,12 @@
 # 测试策略
 
-本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。具体测试用例编号账本、smoke case 清单、覆盖矩阵和发布包预验收分别由子文档维护：
+本文定义 Docnav 自动化测试的层级、所有权、统一验证入口、JavaScript smoke 组织规则和一致性审计规则。测试用例编号账本、覆盖矩阵和发布包预验收分别由子文档维护：
 
-- [测试用例编号账本](testing/cases.md)：可审计 Case ID、证明目标和源码 `@case` marker 的映射。
-- [Smoke Case 清单](testing/smoke-cases.md)：JavaScript smoke 的 case inventory 和新增用例规则。
+- [测试用例编号账本](testing/cases.md)：可审计测试用例编号、证明目标和源码 `@case` 标记的映射。
 - [覆盖矩阵](testing/coverage.md)：跨入口、命令族和 capability 的最低覆盖目标。
 - [发布包验证](testing/release.md)：release package 的本地预验收和 CI/CD 验证边界。
 
-稳定字段、错误码、命令语义、adapter 行为和 schema shape 以 [文档导航](navigation.md#规则所有权) 指向的 owner 文档为准；测试文档只记录覆盖目标和验收边界。
+稳定字段、错误码、命令语义、adapter 行为和字段形状以 [文档导航](navigation.md#规则所有权) 指向的 owner 文档为准；测试文档只记录覆盖目标和验收边界。
 
 ## 测试层级
 
@@ -35,6 +34,8 @@ JavaScript smoke 从发布给用户的可执行入口验证外部契约。覆盖
 - core、adapter、MCP bridge 和 release package 的跨进程链路。
 
 每个契约维度至少保留一个代表性用例。同一校验规则下的多个同类非法值视为一个等价类，只选择能证明外部行为的用例。覆盖完整性由契约维度判断，不以代码覆盖率或参数组合数量衡量。
+
+JavaScript smoke 用例按外部链路类型组织，不按 operation、output mode、非法参数或 fixture 做笛卡尔积扩展。连续链路可以在一个 case 内串行执行多个 CLI 命令；只有独立链路才拆成独立 task 调度。现有报告继续使用 `CORE-*` 和 `MD-*` task id；审计编号和证明目标由 [测试用例编号账本](testing/cases.md) 维护。
 
 ### Rust tests
 

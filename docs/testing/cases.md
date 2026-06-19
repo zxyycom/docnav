@@ -1,25 +1,25 @@
 # 测试用例编号账本
 
-本文记录可审计的测试用例编号、证明目标和源码 `@case` marker。它不改变现有 smoke task id、测试名称或测试执行语义；现有 JavaScript smoke 报告仍使用 [Smoke Case 清单](smoke-cases.md) 中的 `CORE-*` 和 `MD-*`。
+本文记录可审计的测试用例编号、证明目标和源码 `@case` 标记。它不改变现有 smoke task id、测试名称或测试执行语义；现有 JavaScript smoke 报告仍使用 `CORE-*` 和 `MD-*` 任务编号。
 
 ## 编号规则
 
-Case ID 使用 `类别-责任域-证明意图-NNN`：
+测试用例编号使用 `类别-责任域-证明意图-NNN`：
 
 1. `BB`: 黑盒测试，从真实入口观察用户链路、进程边界或输出边界。
 2. `WB`: 白盒测试，从 owner 边界、函数、fixture 或 conformance 入口证明内部语义。
 3. `AUX`: 辅助脚本语义守卫，只证明测试、验证或调度语义不会静默漂移。
 
-责任域当前使用 `CORE`、`MD`、`PROTO`、`READABLE`、`SDK`、`WORKSPACE`、`SMOKE`、`PARALLEL`、`QUALITY`、`RELEASE`。新增责任域时先更新本文，再补源码 `@case` marker。
+责任域当前使用 `CORE`、`MD`、`PROTO`、`READABLE`、`SDK`、`WORKSPACE`、`SMOKE`、`PARALLEL`、`QUALITY`、`RELEASE`。新增责任域时先更新本文，再补源码 `@case` 标记。
 
 ## 维护与验收
 
 新增或调整 case 时：
 
 1. 在本文新增或更新一个 `### CASE-ID ...` entry，并填写 `Code:` 和 `Proves:`。
-2. 在负责该测试语义的源码位置添加 `@case CASE-ID` marker；黑盒 smoke case 保持现有 smoke task id，不为审计编号重命名。
-3. 只登记已有源码 marker 支撑的 case；需要新增测试语义时，先按 [测试策略](../testing.md) 选择测试层级。
-4. 运行 `pnpm run validate:docs cases`，确保本文 case ID 与源码 marker 双向一致。
+2. 在负责该测试语义的源码位置添加 `@case CASE-ID` 标记；黑盒 smoke case 保持现有 smoke task id，不为审计编号重命名。
+3. 只登记已有源码标记支撑的 case；需要新增测试语义时，先按 [测试策略](../testing.md) 选择测试层级。
+4. 运行 `pnpm run validate:docs cases`，确保本文测试用例编号与源码标记双向一致。
 
 ## Black-box Cases
 

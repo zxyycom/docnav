@@ -113,7 +113,7 @@ ref 是 adapter 生成和解释的非空 opaque string。共享协议、`docnav`
 
 ## 7. 规则来源单一
 
-协议字段、错误码、必需 details、schema shape、capability、输出层语义和 adapter 管理规则必须能追溯到主规范或 schema。示例和验证脚本用于校验，不成为新的规则来源。
+协议字段、错误码、必需 details、schema 字段形状、capability、输出层语义和 adapter 管理规则必须能追溯到主规范或 schema。示例和验证脚本用于校验，不成为新的规则来源。
 
 当契约变化时，同步检查：
 
