@@ -1,10 +1,10 @@
-import { spawnSync } from "node:child_process";
-import type { SpawnSyncReturns } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { findCargoExecutable } from "./tools/cargo.ts";
+import { booleanOption, parseScriptArgs, stringOption } from "./tools/args.ts";
+import { processFailed, runProcessSync, writeProcessOutput } from "./tools/process.ts";
+import { writeJsonFile } from "./tools/fs.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -23,41 +23,28 @@ const env = buildDevBins(options.quiet);
 
 if (options.outputEnvJson) {
   const envFile = path.resolve(root, options.outputEnvJson);
-  fs.mkdirSync(path.dirname(envFile), { recursive: true });
-  fs.writeFileSync(envFile, `${JSON.stringify(env, null, 2)}\n`, "utf8");
+  writeJsonFile(envFile, env);
 }
 
 console.log(`dev binaries ok: ${Object.keys(env).join(", ")}`);
 
 function parseArgs(args: string[]): DevBinOptions {
-  const options: DevBinOptions = {
-    outputEnvJson: null,
-    quiet: false
-  };
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--quiet") {
-      options.quiet = true;
-      continue;
-    }
-    if (arg === "--output-env-json") {
-      const value = args[index + 1];
-      if (!value) {
-        usage("--output-env-json requires a value");
+  try {
+    const parsed = parseScriptArgs({
+      args,
+      options: {
+        quiet: { type: "boolean" },
+        "output-env-json": { type: "string" }
       }
-      options.outputEnvJson = value;
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--output-env-json=")) {
-      options.outputEnvJson = arg.slice("--output-env-json=".length);
-      continue;
-    }
-    usage(`unknown option ${arg}`);
-  }
+    });
 
-  return options;
+    return {
+      outputEnvJson: stringOption(parsed.values, "output-env-json") ?? null,
+      quiet: booleanOption(parsed.values, "quiet")
+    };
+  } catch (error: unknown) {
+    usage(error instanceof Error ? error.message : String(error));
+  }
 }
 
 function buildDevBins(quiet: boolean): Record<string, string> {
@@ -67,15 +54,13 @@ function buildDevBins(quiet: boolean): Record<string, string> {
     ...binaries.flatMap((binary) => ["--bin", binary.binName]),
     "--message-format=json"
   ];
-  const result = spawnSync("cargo", cargoArgs, {
+  const result = runProcessSync("cargo", cargoArgs, {
     cwd: root,
-    encoding: "utf8",
-    windowsHide: true,
     maxBuffer: 1024 * 1024 * 64
   });
 
-  if (result.error || result.status !== 0) {
-    writeOutput(result);
+  if (processFailed(result)) {
+    writeProcessOutput(result);
     if (result.error) {
       console.error(result.error.message);
     }
@@ -96,15 +81,6 @@ function buildDevBins(quiet: boolean): Record<string, string> {
     env[binary.envName] = executable;
   }
   return env;
-}
-
-function writeOutput(result: SpawnSyncReturns<string>) {
-  if (result.stdout) {
-    process.stdout.write(result.stdout);
-  }
-  if (result.stderr) {
-    process.stderr.write(result.stderr);
-  }
 }
 
 function usage(message: string): never {

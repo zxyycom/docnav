@@ -5,9 +5,9 @@
  * 圈复杂度、路径和排序。
  */
 
-import { spawnSync } from "node:child_process";
-
 import type { FunctionMetric, ToolConfig } from "../schema.ts";
+import { parseCsvRows } from "../../csv.ts";
+import { runProcessSync } from "../../process.ts";
 import { errorMessage } from "../../types.ts";
 
 interface ScanWithLizardOptions {
@@ -27,18 +27,15 @@ export function scanWithLizard({ files, cwd, toolConfig }: ScanWithLizardOptions
 
   const argv = [...toolConfig.args, ...files, "--csv"];
 
-  const child = spawnSync(toolConfig.command, argv, {
+  const child = runProcessSync(toolConfig.command, argv, {
     cwd,
-    encoding: "utf8",
-    windowsHide: true,
-    maxBuffer: 1024 * 1024 * 64,
     timeout: 300_000
   });
 
   if (child.error) {
     return {
       ok: false,
-      error: `lizard spawn error: ${child.error.message}`
+      error: `lizard process error: ${child.error.message}`
     };
   }
 
@@ -62,20 +59,19 @@ export function scanWithLizard({ files, cwd, toolConfig }: ScanWithLizardOptions
  */
 export function parseLizardCSV(csv: string): LizardScanResult {
   try {
-    const lines = csv.split(/\r?\n/).filter((line) => line.trim().length > 0);
-    if (lines.length === 0) {
+    const rows = parseCsvRows(csv);
+    if (rows.length === 0) {
       return { ok: true, functions: [] };
     }
 
-    const header = lines[0];
+    const header = rows[0] ?? [];
     if (header.includes("NLOC") && header.includes("CCN")) {
-      lines.shift(); // remove header line
+      rows.shift(); // remove header row
     }
 
     const functions: FunctionMetric[] = [];
 
-    for (const line of lines) {
-      const parts = parseCSVLine(line);
+    for (const parts of rows) {
       if (!isLizard123Row(parts)) continue;
 
       const nloc = parseInt(parts[0], 10);
@@ -122,37 +118,4 @@ function isLizard123Row(parts: string[]): boolean {
 
 function isIntegerText(value: string | undefined): boolean {
   return /^-?\d+$/.test(String(value ?? ""));
-}
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ",") {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-  }
-  result.push(current.trim());
-  return result;
 }

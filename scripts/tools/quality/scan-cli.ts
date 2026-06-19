@@ -1,11 +1,16 @@
-import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { DEFAULT_CONFIG } from "./config.ts";
 import { locateBaselineCommit } from "./baseline.ts";
 import { getChangedFileList, type ChangedFilesOptions } from "./files.ts";
 import { validateMetrics } from "./schema.ts";
+import { booleanOption, parseScriptArgs, stringOption, type ScriptArgToken } from "../args.ts";
+import { gitCommitDate as readGitCommitDate, gitCommitTitle as readGitCommitTitle, gitHeadSha } from "../git.ts";
+import { writeTextFile } from "../fs.ts";
+import { toNdjson } from "../ndjson.ts";
+import { parsePositiveInteger } from "../types.ts";
+import { writeQualityJsonArtifact } from "./artifacts.ts";
 import type {
   BaselineSnapshot,
   CodeAreaFingerprint,
@@ -31,42 +36,32 @@ type ChangeScope = {
 };
 
 export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
-  const opts: QualityScanOptions = {
-    baseline: null,
-    changedFiles: null,
-    topN: DEFAULT_CONFIG.report.topN,
-    artifactDir: DEFAULT_CONFIG.artifactDir,
-    skipBaseline: true
-  };
-
-  for (let i = 0; i < argv.length; i++) {
-    switch (argv[i]) {
-      case "--baseline":
-        opts.baseline = argv[++i];
-        opts.skipBaseline = false;
-        break;
-      case "--changed-files":
-        opts.changedFiles = argv[++i];
-        break;
-      case "--top-n":
-        opts.topN = parseInt(argv[++i], 10);
-        break;
-      case "--artifact-dir":
-        opts.artifactDir = argv[++i];
-        break;
-      case "--skip-baseline":
-        opts.skipBaseline = true;
-        break;
-      case "--with-baseline":
-        opts.skipBaseline = false;
-        break;
-      case "--help":
-        printHelp();
-        process.exit(0);
+  const parsed = parseScriptArgs({
+    args: argv,
+    options: {
+      baseline: { type: "string" },
+      "changed-files": { type: "string" },
+      "top-n": { type: "string" },
+      "artifact-dir": { type: "string" },
+      "skip-baseline": { type: "boolean" },
+      "with-baseline": { type: "boolean" },
+      help: { type: "boolean" }
     }
+  });
+
+  if (booleanOption(parsed.values, "help")) {
+    printHelp();
+    process.exit(0);
   }
 
-  return opts;
+  const baseline = stringOption(parsed.values, "baseline") ?? null;
+  return {
+    artifactDir: stringOption(parsed.values, "artifact-dir") ?? DEFAULT_CONFIG.artifactDir,
+    baseline,
+    changedFiles: stringOption(parsed.values, "changed-files") ?? null,
+    skipBaseline: resolveSkipBaseline(parsed.tokens, baseline === null),
+    topN: parsePositiveInteger(stringOption(parsed.values, "top-n") ?? String(DEFAULT_CONFIG.report.topN), "--top-n")
+  };
 }
 
 export function prepareArtifactDirs(artifactDir: string): { rawDir: string } {
@@ -199,19 +194,19 @@ export function resolveChangedFilesForScan({
 export function writeBaselineRawOutputs(rawDir: string, baselineSnapshot: BaselineSnapshot): void {
   const baselineRawDir = join(rawDir, "baseline");
   mkdirSync(baselineRawDir, { recursive: true });
-  writeJson(join(baselineRawDir, "baseline-fingerprints.json"), baselineSnapshot.fingerprints);
+  writeQualityJsonArtifact(join(baselineRawDir, "baseline-fingerprints.json"), baselineSnapshot.fingerprints);
 
   if (baselineSnapshot.fileMetrics) {
-    writeJson(join(baselineRawDir, "baseline-scc-files.json"), baselineSnapshot.fileMetrics);
+    writeQualityJsonArtifact(join(baselineRawDir, "baseline-scc-files.json"), baselineSnapshot.fileMetrics);
   }
   if (baselineSnapshot.functionMetrics) {
-    writeJson(join(baselineRawDir, "baseline-lizard-functions.json"), baselineSnapshot.functionMetrics);
+    writeQualityJsonArtifact(join(baselineRawDir, "baseline-lizard-functions.json"), baselineSnapshot.functionMetrics);
   }
   if (baselineSnapshot.duplicateCode) {
-    writeJson(join(baselineRawDir, "baseline-cpd-fragments.json"), baselineSnapshot.duplicateCode);
+    writeQualityJsonArtifact(join(baselineRawDir, "baseline-cpd-fragments.json"), baselineSnapshot.duplicateCode);
   }
   if (baselineSnapshot.aggregates) {
-    writeJson(join(baselineRawDir, "baseline-aggregates.json"), baselineSnapshot.aggregates);
+    writeQualityJsonArtifact(join(baselineRawDir, "baseline-aggregates.json"), baselineSnapshot.aggregates);
   }
 }
 
@@ -227,23 +222,22 @@ export function writeArtifacts({
   console.log("Writing artifacts...");
 
   const metricsPath = join(artifactDir, "metrics.json");
-  writeJson(metricsPath, metrics);
+  writeQualityJsonArtifact(metricsPath, metrics);
   console.log(`  metrics.json → ${metricsPath}`);
 
   const reportPath = join(artifactDir, "report.md");
-  writeFileSync(
+  writeTextFile(
     reportPath,
-    generateMarkdownReport(metrics, topN, { timeZone: DEFAULT_CONFIG.report.timeZone }),
-    "utf8"
+    generateMarkdownReport(metrics, topN, { timeZone: DEFAULT_CONFIG.report.timeZone })
   );
   console.log(`  report.md → ${reportPath}`);
 
   const warningsPath = join(artifactDir, "warnings.ndjson");
-  writeFileSync(warningsPath, toNdjson(metrics.warnings.changed), "utf8");
+  writeTextFile(warningsPath, toNdjson(metrics.warnings.changed));
   console.log(`  warnings.ndjson → ${warningsPath}`);
 
   const allWarningsPath = join(artifactDir, "warnings-all.ndjson");
-  writeFileSync(allWarningsPath, toNdjson(metrics.warnings.all), "utf8");
+  writeTextFile(allWarningsPath, toNdjson(metrics.warnings.all));
   console.log(`  warnings-all.ndjson → ${allWarningsPath}`);
 }
 
@@ -286,17 +280,11 @@ export function formatFatalIssue(issue: FatalIssue): string {
 }
 
 export function getGitSha(cwd: string): string {
-  const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8", windowsHide: true });
-  return (result.stdout || "").trim() || "unknown";
+  return gitHeadSha(cwd) ?? "unknown";
 }
 
 export function getGitCommitTitle(sha: string, cwd: string): string | null {
-  const result = spawnSync("git", ["log", "--format=%s", "--max-count=1", sha], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
-  });
-  return (result.stdout || "").trim() || null;
+  return readGitCommitTitle(sha, cwd);
 }
 
 function printHelp() {
@@ -352,20 +340,20 @@ function createGeneratedBaseline(
 }
 
 function getGitCommitDate(sha: string, cwd: string): string | null {
-  const result = spawnSync("git", ["log", "--format=%aI", "--max-count=1", sha], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
-  });
-  return (result.stdout || "").trim() || null;
+  return readGitCommitDate(sha, cwd);
 }
 
-function writeJson(filePath: string, value: unknown): void {
-  writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
-}
-
-function toNdjson(values: unknown[]): string {
-  return values.length === 0 ? "" : `${values.map((value) => JSON.stringify(value)).join("\n")}\n`;
+function resolveSkipBaseline(tokens: readonly ScriptArgToken[], defaultValue: boolean): boolean {
+  let skipBaseline = defaultValue;
+  for (const token of tokens) {
+    if (token.kind !== "option") continue;
+    if (token.name === "skip-baseline") {
+      skipBaseline = true;
+    } else if (token.name === "baseline" || token.name === "with-baseline") {
+      skipBaseline = false;
+    }
+  }
+  return skipBaseline;
 }
 
 function formatCommitLabel(sha: string, title: string | null): string {

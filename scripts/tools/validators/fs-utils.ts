@@ -3,7 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { FILE_SYSTEM } from "./config.ts";
-import { errorMessage, isJsonValue } from "../types.ts";
+import { readTextFile, walkFiles } from "../fs.ts";
+import { toSlashPath } from "../path-utils.ts";
+import { parseJsonValue } from "../types.ts";
 import type { JsonValue } from "../types.ts";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -15,37 +17,17 @@ export function toAbs(relPath: string): string {
 }
 
 export function toRel(absPath: string): string {
-  return path.relative(root, absPath).replaceAll(path.sep, "/");
+  return toSlashPath(path.relative(root, absPath));
 }
 
 export function walk(dir: string, predicate: (filePath: string) => boolean = () => true): string[] {
-  const results: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      if (!ignoredDirs.has(entry.name)) {
-        results.push(...walk(path.join(dir, entry.name), predicate));
-      }
-      continue;
-    }
-
-    const filePath = path.join(dir, entry.name);
-    if (predicate(filePath)) {
-      results.push(filePath);
-    }
-  }
-  return results;
+  return walkFiles(dir, { ignoredDirs })
+    .map((relPath) => path.join(dir, relPath))
+    .filter(predicate);
 }
 
 export function readJson(relPath: string): JsonValue {
-  const source = fs.readFileSync(toAbs(relPath), "utf8");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(source);
-  } catch (error: unknown) {
-    throw new Error(`${relPath} JSON parse failed: ${errorMessage(error)}`, { cause: error });
-  }
-  assert(isJsonValue(parsed), `${relPath} must contain a JSON value`);
-  return parsed;
+  return parseJsonValue(readTextFile(toAbs(relPath)), `${relPath} JSON`);
 }
 
 export function listExampleJson(pattern: RegExp): string[] {

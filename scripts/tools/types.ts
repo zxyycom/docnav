@@ -15,6 +15,10 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+export function isNonArrayRecord(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && !Array.isArray(value);
+}
+
 export function isUnknownArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
 }
@@ -56,6 +60,15 @@ export function parseJsonValue(source: string, label = "JSON"): JsonValue {
 
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+export function parsePositiveInteger(value: number | string, label: string): number {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isInteger(parsed) || parsed <= 0 || String(parsed) !== String(value)) {
+    throw new Error(`${label} must be a positive integer: ${value}`);
+  }
+
+  return parsed;
 }
 
 export function processFailure(error: unknown): ProcessFailure {

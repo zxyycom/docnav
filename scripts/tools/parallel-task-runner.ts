@@ -1,3 +1,5 @@
+import { parsePositiveInteger } from "./types.ts";
+
 export type TaskEnv = Record<string, string | undefined>;
 
 export type StringList = string | readonly string[] | undefined;
@@ -136,11 +138,7 @@ function resolveConcurrency(value: string | number | null | undefined, taskCount
     return taskCount;
   }
 
-  const parsed = Number.parseInt(String(value), 10);
-  if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== String(value)) {
-    throw new Error(`task concurrency must be a positive integer: ${value}`);
-  }
-  return parsed;
+  return parsePositiveInteger(value, "task concurrency");
 }
 
 export function expandTasks(taskList: readonly TaskDefinition[]): NormalizedTask[] {

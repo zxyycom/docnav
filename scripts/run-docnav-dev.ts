@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { runProcessSync } from "./tools/process.ts";
 
 const binaries = new Map([
   ["docnav", process.env.DOCNAV_BIN],
@@ -19,11 +19,10 @@ const requestedBinary: string = firstArg && binaries.has(firstArg) ? args.shift(
 const binaryPath = binaries.get(requestedBinary);
 assertBinaryPath(requestedBinary, binaryPath);
 
-const result = spawnSync(binaryPath, args, {
+const result = runProcessSync(binaryPath, args, {
   cwd: process.cwd(),
   env: process.env,
   stdio: "inherit",
-  windowsHide: true,
 });
 
 if (result.error) {

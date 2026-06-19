@@ -2,9 +2,9 @@
  * Current revision quality scan runner.
  */
 
-import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { writeQualityJsonArtifact } from "./artifacts.ts";
 import { scanWithLizard } from "./tools/lizard.ts";
 import { scanWithScc } from "./tools/scc.ts";
 import { scanCpdPartitionsWithCache } from "./cpd-tasks.ts";
@@ -94,7 +94,7 @@ function runSccScan(context: ScanContext, scanFiles: string[]): void {
     totalFunctions: 0
   };
 
-  writeFileSync(join(rawDir, "scc-output.json"), JSON.stringify(metrics.fileMetrics, null, 2), "utf8");
+  writeQualityJsonArtifact(join(rawDir, "scc-output.json"), metrics.fileMetrics);
 }
 
 function runLizardScan(context: ScanContext, scanFiles: string[]): void {
@@ -120,11 +120,7 @@ function runLizardScan(context: ScanContext, scanFiles: string[]): void {
 
   console.log(`  Lizard: ${metrics.functionMetrics.length} functions`);
 
-  writeFileSync(
-    join(rawDir, "lizard-functions.json"),
-    JSON.stringify(metrics.functionMetrics, null, 2),
-    "utf8"
-  );
+  writeQualityJsonArtifact(join(rawDir, "lizard-functions.json"), metrics.functionMetrics);
 }
 
 async function runCpdScan(context: ScanContext, fileMap: CodeAreaFileMap): Promise<void> {
@@ -155,11 +151,7 @@ async function runCpdScan(context: ScanContext, fileMap: CodeAreaFileMap): Promi
 
   console.log(`  CPD total: ${allFragments.length} duplicate fragments`);
 
-  writeFileSync(
-    join(rawDir, "cpd-fragments.json"),
-    JSON.stringify(metrics.duplicateCode, null, 2),
-    "utf8"
-  );
+  writeQualityJsonArtifact(join(rawDir, "cpd-fragments.json"), metrics.duplicateCode);
 }
 
 function scanLizardBatches({

@@ -5,9 +5,10 @@
  * 路径和排序。
  */
 
-import { spawnSync } from "node:child_process";
-
 import type { FileMetric, LanguageAggregate, ToolConfig } from "../schema.ts";
+import { parseCsvRows } from "../../csv.ts";
+import { runProcessSync } from "../../process.ts";
+import { toSlashPath } from "../../path-utils.ts";
 import { errorMessage } from "../../types.ts";
 
 export const SCC_VERSION = "3.7.0";
@@ -28,18 +29,15 @@ type SccScanResult =
 export function scanWithScc({ cwd, includePaths, excludeDirs, toolConfig }: ScanWithSccOptions): SccScanResult {
   const argv = buildSccArgs({ includePaths, excludeDirs, toolArgs: toolConfig.args });
 
-  const child = spawnSync(toolConfig.command, argv, {
+  const child = runProcessSync(toolConfig.command, argv, {
     cwd,
-    encoding: "utf8",
-    windowsHide: true,
-    maxBuffer: 1024 * 1024 * 64,
     timeout: 300_000
   });
 
   if (child.error) {
     return {
       ok: false,
-      error: `scc spawn error: ${child.error.message}`
+      error: `scc process error: ${child.error.message}`
     };
   }
 
@@ -79,24 +77,24 @@ export function buildSccArgs({
  * - Complexity 是 scc 的文件级复杂度（非函数级 CC）
  * - ULOC (Usable Lines of Code) 由 3.7.0 输出，但首期不进入稳定 metrics
  */
-export function parseSccCSV(csv: string, cwd: string): SccScanResult {
+export function parseSccCSV(csv: string, _cwd: string): SccScanResult {
   try {
-    const lines = csv.split(/\r?\n/).filter((line) => line.trim().length > 0);
-    if (lines.length === 0) {
+    const rows = parseCsvRows(csv);
+    if (rows.length === 0) {
       return { ok: true, files: [], aggregates: { byLanguage: [] } };
     }
 
-    const headerIdx = lines.findIndex((line) => line.trim() === SCC_BY_FILE_CSV_HEADER);
+    const expectedHeader = SCC_BY_FILE_CSV_HEADER.split(",");
+    const headerIdx = rows.findIndex((row) => isCsvRow(row, expectedHeader));
     if (headerIdx < 0) {
-      const observedHeader = lines.find((line) => /^Language,/.test(line)) ?? lines[0];
+      const observedHeader = rows.find((row) => row[0] === "Language")?.join(",") ?? rows[0]?.join(",") ?? "";
       return {
         ok: false,
         error: `expected scc ${SCC_VERSION} by-file CSV header "${SCC_BY_FILE_CSV_HEADER}", got "${observedHeader}"`
       };
     }
 
-    const headerLine = lines[headerIdx];
-    const headerCols = parseCSVLine(headerLine);
+    const headerCols = rows[headerIdx] ?? [];
 
     const colIdx = {
       language: headerCols.indexOf("Language"),
@@ -115,8 +113,8 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
 
     const langMap = new Map<string, LanguageAggregate>();
 
-    for (let i = headerIdx + 1; i < lines.length; i++) {
-      const parts = parseCSVLine(lines[i]);
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const parts = rows[i] ?? [];
       if (parts.length < Math.max(6, colIdx.filename + 1)) continue;
 
       const language = parts[colIdx.language] || "";
@@ -131,7 +129,7 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
       if (isNaN(lineCount) || !filename) continue;
 
       files.push({
-        path: normalizePath(path, cwd),
+        path: toSlashPath(path),
         language,
         codeArea: "unknown",
         lines: lineCount,
@@ -177,41 +175,6 @@ export function parseSccCSV(csv: string, cwd: string): SccScanResult {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────
-
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ",") {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-  }
-  result.push(current.trim());
-  return result;
-}
-
-function normalizePath(filePath: string, _cwd: string): string {
-  return filePath.replace(/\\/g, "/");
+function isCsvRow(row: string[], expected: string[]): boolean {
+  return row.length === expected.length && row.every((value, index) => value === expected[index]);
 }

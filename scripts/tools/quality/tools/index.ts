@@ -2,20 +2,11 @@
  * Tool availability checks for quality scanners.
  */
 
-import { spawn } from "node:child_process";
-
 import { DEFAULT_CONFIG } from "../config.ts";
 import { SCC_VERSION_OUTPUT } from "./scc.ts";
-import { buildPmdShellCommand, parsePmdVersionOutput } from "./cpd.ts";
+import { parsePmdVersionOutput } from "./cpd.ts";
+import { runProcess } from "../../process.ts";
 import type { ToolAvailability, ToolConfig } from "../schema.ts";
-
-type VersionCommandResult = {
-  error?: Error;
-  signal: NodeJS.Signals | null;
-  status: number | null;
-  stderr: string;
-  stdout: string;
-};
 
 export async function checkTools(rootDir: string): Promise<ToolAvailability[]> {
   return Promise.all([
@@ -27,11 +18,7 @@ export async function checkTools(rootDir: string): Promise<ToolAvailability[]> {
 
 async function checkLizard(rootDir: string): Promise<ToolAvailability> {
   try {
-    const result = await runVersionCommand({
-      args: [...DEFAULT_CONFIG.tools.lizard.args, "--version"],
-      command: DEFAULT_CONFIG.tools.lizard.command,
-      cwd: rootDir
-    });
+    const result = await runToolCommand(rootDir, DEFAULT_CONFIG.tools.lizard, ["--version"]);
     if (result.error) {
       return {
         name: "lizard",
@@ -61,11 +48,7 @@ async function checkLizard(rootDir: string): Promise<ToolAvailability> {
 
 async function checkScc(rootDir: string): Promise<ToolAvailability> {
   try {
-    const result = await runVersionCommand({
-      args: [...DEFAULT_CONFIG.tools.scc.args, "--version"],
-      command: DEFAULT_CONFIG.tools.scc.command,
-      cwd: rootDir
-    });
+    const result = await runToolCommand(rootDir, DEFAULT_CONFIG.tools.scc, ["--version"]);
     if (result.error) {
       const code = (result.error as NodeJS.ErrnoException).code;
       return {
@@ -119,7 +102,11 @@ async function checkScc(rootDir: string): Promise<ToolAvailability> {
 
 async function checkPmdCpd(rootDir: string): Promise<ToolAvailability> {
   try {
-    const result = await runPmdVersionCommand(rootDir, DEFAULT_CONFIG.tools.pmdCpd);
+    const result = await runProcess({
+      args: ["--version"],
+      command: DEFAULT_CONFIG.tools.pmdCpd.command,
+      cwd: rootDir
+    });
     if (result.error) {
       const code = (result.error as NodeJS.ErrnoException).code;
       return {
@@ -154,48 +141,10 @@ async function checkPmdCpd(rootDir: string): Promise<ToolAvailability> {
   }
 }
 
-function runPmdVersionCommand(rootDir: string, toolConfig: ToolConfig): Promise<VersionCommandResult> {
-  return runVersionCommand({
-    command: buildPmdShellCommand(toolConfig.command, ["--version"]),
-    cwd: rootDir,
-    shell: true
-  });
-}
-
-function runVersionCommand({
-  args = [],
-  command,
-  cwd,
-  shell = false
-}: {
-  args?: string[];
-  command: string;
-  cwd: string;
-  shell?: boolean;
-}): Promise<VersionCommandResult> {
-  return new Promise((resolve) => {
-    const child = spawn(command, args, {
-      cwd,
-      shell,
-      windowsHide: true
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-
-    const finish = (result: VersionCommandResult) => {
-      if (settled) return;
-      settled = true;
-      resolve(result);
-    };
-
-    child.stdout?.on("data", (chunk: Buffer | string) => {
-      stdout += chunk.toString();
-    });
-    child.stderr?.on("data", (chunk: Buffer | string) => {
-      stderr += chunk.toString();
-    });
-    child.on("error", (error) => finish({ status: null, signal: null, stdout, stderr, error }));
-    child.on("close", (status, signal) => finish({ status, signal, stdout, stderr }));
+function runToolCommand(rootDir: string, toolConfig: ToolConfig, args: string[]) {
+  return runProcess({
+    args: [...toolConfig.args, ...args],
+    command: toolConfig.command,
+    cwd: rootDir
   });
 }

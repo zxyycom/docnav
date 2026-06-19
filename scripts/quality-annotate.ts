@@ -11,6 +11,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
+import { parseNdjson } from "./tools/ndjson.ts";
 import { errorMessage } from "./tools/types.ts";
 import { isRecord } from "./tools/types.ts";
 
@@ -58,18 +59,17 @@ export function renderGithubAnnotations(warnings: RenderableWarning[]): string[]
 export function parseWarningsNdjson(content: string): { diagnostics: string[]; warnings: RenderableWarning[] } {
   const warnings: RenderableWarning[] = [];
   const diagnostics: string[] = [];
+  const parsed = parseNdjson(content);
 
-  for (const [index, line] of content.split(/\r?\n/).entries()) {
-    if (!line.trim()) continue;
-    try {
-      const record: unknown = JSON.parse(line);
-      if (isRenderableWarning(record)) {
-        warnings.push(record);
-      } else {
-        diagnostics.push(`line ${index + 1}: missing required warning fields`);
-      }
-    } catch (err: unknown) {
-      diagnostics.push(`line ${index + 1}: invalid JSON: ${errorMessage(err)}`);
+  for (const diagnostic of parsed.diagnostics) {
+    diagnostics.push(`line ${diagnostic.line}: ${diagnostic.message}`);
+  }
+
+  for (const record of parsed.records) {
+    if (isRenderableWarning(record.value)) {
+      warnings.push(record.value);
+    } else {
+      diagnostics.push(`line ${record.line}: missing required warning fields`);
     }
   }
 

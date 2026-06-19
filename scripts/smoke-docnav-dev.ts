@@ -7,22 +7,16 @@ const withCargoBins = path.join(root, "scripts", "with-cargo-bins.ts");
 try {
   runNodeScript(withCargoBins, [
     "--bin",
-    "docnav-markdown",
-    "docnav-markdown",
-    "DOCNAV_MARKDOWN_BIN",
+    "docnav-markdown:docnav-markdown:DOCNAV_MARKDOWN_BIN",
     "--",
     "node",
     "test/docnav-markdown-smoke.ts",
   ]);
   runNodeScript(withCargoBins, [
     "--bin",
-    "docnav",
-    "docnav",
-    "DOCNAV_BIN",
+    "docnav:docnav:DOCNAV_BIN",
     "--bin",
-    "docnav-markdown",
-    "docnav-markdown",
-    "DOCNAV_MARKDOWN_BIN",
+    "docnav-markdown:docnav-markdown:DOCNAV_MARKDOWN_BIN",
     "--",
     "node",
     "test/docnav-core-smoke.ts",

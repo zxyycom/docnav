@@ -5,12 +5,14 @@
  * 用当前配置和当前 wrapper/tool 扫描 baseline commit。
  */
 
-import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { minimatch } from "minimatch";
 
 import { gitGlobPathspecs } from "./git-pathspec.ts";
+import { gitCommitDate, gitHeadSha, parseGitStatusPaths, runGit, splitGitFileList } from "../git.ts";
+import { processFailed, runProcessSync } from "../process.ts";
+import { toSlashPath } from "../path-utils.ts";
 
 type BaselineCommitResult =
   | { date: string | null; ok: true; reason: string; sha: string }
@@ -40,27 +42,16 @@ export function locateBaselineCommit({
   cwd: string;
   scanInputPaths: string[];
 }): BaselineCommitResult {
-  const headResult = spawnSync("git", ["rev-parse", "HEAD"], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
-  });
-
-  if (headResult.error || headResult.status !== 0) {
-    return { ok: false, error: `git rev-parse HEAD failed: ${headResult.error?.message || "no git repository"}` };
+  const headSha = gitHeadSha(cwd);
+  if (!headSha) {
+    return { ok: false, error: "git rev-parse HEAD failed: no git repository" };
   }
-
-  const headSha = headResult.stdout.trim();
 
   const patternArgs = scanInputPaths.length > 0
     ? ["--", ...gitGlobPathspecs(scanInputPaths)]
     : [];
 
-  const parentCount = spawnSync("git", ["rev-list", "--count", "--max-count=1", `${headSha}^`], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
-  });
+  const parentCount = runGit(["rev-list", "--count", "--max-count=1", `${headSha}^`], { cwd });
 
   const hasParent = parentCount.status === 0 && parseInt(parentCount.stdout.trim(), 10) > 0;
 
@@ -69,90 +60,70 @@ export function locateBaselineCommit({
   }
 
   const headDiffArgs = ["diff-tree", "--no-commit-id", "--name-only", "-r", headSha, ...patternArgs];
-  const headDiff = spawnSync("git", headDiffArgs, {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
-  });
+  const headDiff = runGit(headDiffArgs, { cwd });
 
-  const headChangedFiles = (headDiff.stdout || "").trim().split(/\r?\n/).filter(Boolean);
+  const headChangedFiles = splitGitFileList(headDiff.stdout);
   const headModifiedScanInputs = headChangedFiles.some((f) =>
     scanInputPaths.some((p) => fileMatchesPattern(f, p))
   );
 
   if (headModifiedScanInputs) {
-    const logResult = spawnSync("git", [
+    const logResult = runGit([
       "log",
       "--format=%H",
       "--max-count=1",
       "--skip=0",
       `${headSha}~1`
-    ].concat(patternArgs), {
-      cwd,
-      encoding: "utf8",
-      windowsHide: true
-    });
+    ].concat(patternArgs), { cwd });
 
     const baselineSha = (logResult.stdout || "").trim();
     if (baselineSha) {
       return {
         ok: true,
         sha: baselineSha,
-        date: getCommitDate(baselineSha, cwd),
+        date: gitCommitDate(baselineSha, cwd),
         reason: "previous-code-commit"
       };
     }
 
-    const parentResult = spawnSync("git", ["rev-parse", `${headSha}~1`], {
-      cwd,
-      encoding: "utf8",
-      windowsHide: true
-    });
+    const parentResult = runGit(["rev-parse", `${headSha}~1`], { cwd });
 
     if (parentResult.status === 0 && parentResult.stdout.trim()) {
       const parentSha = parentResult.stdout.trim();
       return {
         ok: true,
         sha: parentSha,
-        date: getCommitDate(parentSha, cwd),
+        date: gitCommitDate(parentSha, cwd),
         reason: "parent-commit"
       };
     }
 
     return { ok: false, error: "no-baseline-commit: no previous commit found" };
   } else {
-    const logResult = spawnSync("git", [
+    const logResult = runGit([
       "log",
       "--format=%H",
       "--max-count=1"
-    ].concat(patternArgs), {
-      cwd,
-      encoding: "utf8",
-      windowsHide: true
-    });
+    ].concat(patternArgs), { cwd });
 
     const baselineSha = (logResult.stdout || "").trim();
     if (baselineSha) {
       return {
         ok: true,
         sha: baselineSha,
-        date: getCommitDate(baselineSha, cwd),
+        date: gitCommitDate(baselineSha, cwd),
         reason: "nearest-code-commit"
       };
     }
 
-    const parentResult = spawnSync("git", ["rev-parse", `${headSha}~1`], {
-      cwd,
-      encoding: "utf8",
-      windowsHide: true
-    });
+    const parentResult = runGit(["rev-parse", `${headSha}~1`], { cwd });
 
     if (parentResult.status === 0 && parentResult.stdout.trim()) {
       const parentSha = parentResult.stdout.trim();
       return {
         ok: true,
         sha: parentSha,
-        date: getCommitDate(parentSha, cwd),
+        date: gitCommitDate(parentSha, cwd),
         reason: "parent-commit-fallback"
       };
     }
@@ -179,18 +150,16 @@ export function materializeBaseline({
 
   const archivePath = join(baselineWorkDir, "baseline.tar");
 
-  const archiveResult = spawnSync("git", [
+  const archiveResult = runGit([
     "archive",
     "--format=tar",
     "--output", archivePath,
     commitSha
   ], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
+    cwd
   });
 
-  if (archiveResult.error || archiveResult.status !== 0) {
+  if (processFailed(archiveResult)) {
     return {
       ok: false,
       error: `git archive failed: ${archiveResult.error?.message || archiveResult.stderr || "exit " + archiveResult.status}`,
@@ -201,13 +170,9 @@ export function materializeBaseline({
   const untarDir = join(baselineWorkDir, "repo");
   mkdirSync(untarDir, { recursive: true });
 
-  const untarResult = spawnSync("tar", ["-xf", archivePath, "-C", untarDir], {
-    cwd: baselineWorkDir,
-    encoding: "utf8",
-    windowsHide: true
-  });
+  const untarResult = runProcessSync("tar", ["-xf", archivePath, "-C", untarDir], { cwd: baselineWorkDir });
 
-  if (untarResult.error || untarResult.status !== 0) {
+  if (processFailed(untarResult)) {
     return {
       ok: false,
       error: `tar extract failed: ${untarResult.error?.message || untarResult.stderr || "exit " + untarResult.status}`,
@@ -239,20 +204,16 @@ export function detectTextOnlyChange({
     ...gitGlobPathspecs(scanInputPaths)
   ];
 
-  const diffResult = spawnSync("git", diffArgs, {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
-  });
+  const diffResult = runGit(diffArgs, { cwd });
 
   if (diffResult.error) {
     return { changed: true, changedFiles: [] };
   }
 
   const changedFiles = [
-    ...(diffResult.stdout || "").trim().split(/\r?\n/).filter(Boolean),
+    ...splitGitFileList(diffResult.stdout),
     ...getWorkingTreeChangedFiles(cwd, scanInputPaths)
-  ].map((f) => f.replace(/\\/g, "/"));
+  ].map(toSlashPath);
   const uniqueChangedFiles = [...new Set(changedFiles)];
   const scanInputChanged = changedFiles.some((f) =>
     scanInputPaths.some((p) => fileMatchesPattern(f, p))
@@ -263,46 +224,24 @@ export function detectTextOnlyChange({
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-function getCommitDate(sha: string, cwd: string): string | null {
-  const result = spawnSync("git", ["log", "--format=%aI", "--max-count=1", sha], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
-  });
-  return (result.stdout || "").trim() || null;
-}
-
 export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]): string[] {
-  const statusResult = spawnSync("git", [
+  const statusResult = runGit([
     "status",
     "--porcelain",
     "--untracked-files=all",
     "--",
     ...gitGlobPathspecs(scanInputPaths)
   ], {
-    cwd,
-    encoding: "utf8",
-    windowsHide: true
+    cwd
   });
 
-  if (statusResult.error || statusResult.status !== 0) {
+  if (processFailed(statusResult)) {
     return [];
   }
 
-  return (statusResult.stdout || "")
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter(Boolean)
-    .map((line) => {
-      const rawPath = line.slice(3).trim();
-      const renameMarker = " -> ";
-      return rawPath.includes(renameMarker)
-        ? rawPath.slice(rawPath.indexOf(renameMarker) + renameMarker.length)
-        : rawPath;
-    })
-    .filter(Boolean);
+  return parseGitStatusPaths(statusResult.stdout);
 }
 
 function fileMatchesPattern(filePath: string, pattern: string): boolean {
-  return minimatch(filePath.replace(/\\/g, "/"), pattern);
+  return minimatch(toSlashPath(filePath), pattern);
 }

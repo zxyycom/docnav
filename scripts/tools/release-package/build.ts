@@ -16,13 +16,9 @@ import {
   resolveProducerMetadata,
   resolveWorkspaceVersion,
 } from "./environment.ts";
-import {
-  copyExecutable,
-  normalizeRelativePath,
-  sha256File,
-  writeJsonFile,
-  writeTextFile,
-} from "./io.ts";
+import { writeJsonFile, writeTextFile } from "../fs.ts";
+import { copyExecutable, sha256File } from "./io.ts";
+import { toSlashPath } from "../path-utils.ts";
 import { validateReleasePackage } from "./validation.ts";
 
 export type ReleasePackageBuildResult = PackageLayout & {
@@ -67,7 +63,7 @@ function buildPackageFiles(packageDir: string, target: string): ReleaseManifestF
     copyExecutable(executablePath, destPath);
 
     return {
-      path: normalizeRelativePath(path.basename(destPath)),
+      path: toSlashPath(path.basename(destPath)),
       component: component.component,
       ...(component.component === "adapter" ? { adapter_id: component.adapterId } : {}),
       size_bytes: fs.statSync(destPath).size,

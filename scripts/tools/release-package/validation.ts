@@ -7,21 +7,14 @@ import {
   releaseComponents,
 } from "./config.ts";
 import type { ReleaseManifest, ReleaseManifestFile, ReleaseProducer } from "./config.ts";
-import { readJsonFile, readTextFile, sha256File } from "./io.ts";
+import { readJsonFile, readTextFile } from "../fs.ts";
 import { isRecord } from "../types.ts";
+import { sha256File } from "./io.ts";
 
 export type ManifestValidationOptions = {
   expectProducerKind?: ReleaseProducer["kind"] | null;
   expectSourceDirty?: boolean | null;
 };
-
-export function resolveReleaseManifest(manifestPath: string): { packageDir: string; manifest: unknown } {
-  const packageDir = path.dirname(path.resolve(manifestPath));
-  return {
-    packageDir,
-    manifest: readJsonFile(manifestPath),
-  };
-}
 
 export function validateReleasePackage(manifestPath: string, options: ManifestValidationOptions = {}) {
   const resolvedManifestPath = path.resolve(manifestPath);

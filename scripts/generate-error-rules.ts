@@ -1,7 +1,8 @@
 import fs from "node:fs";
-import path from "node:path";
 
 import { assert, readJson, toAbs } from "./tools/validators/fs-utils.ts";
+import { booleanOption, parseScriptArgs } from "./tools/args.ts";
+import { readTextFile, writeTextFile } from "./tools/fs.ts";
 import { errorMessage, isRecord } from "./tools/types.ts";
 
 const paths = {
@@ -41,19 +42,16 @@ const generatedHeader = (sourcePath: string): string =>
   "// Do not edit by hand.\n\n";
 
 function parseArgs(args: string[]): Options {
-  const options: Options = {
-    checkOnly: false
-  };
-
-  for (const arg of args) {
-    if (arg === "--check" && !options.checkOnly) {
-      options.checkOnly = true;
-      continue;
+  const parsed = parseScriptArgs({
+    args,
+    options: {
+      check: { type: "boolean" }
     }
-    throw new Error(`unknown argument: ${arg}`);
-  }
+  });
 
-  return options;
+  return {
+    checkOnly: booleanOption(parsed.values, "check")
+  };
 }
 
 function isJsonSchemaObject(value: unknown): value is JsonSchemaObject {
@@ -246,7 +244,7 @@ function generateProtocolResponseSchema(rules: ErrorRules): string {
 
 function writeOrCheck(relPath: string, content: string, options: Options): void {
   const absPath = toAbs(relPath);
-  const current = fs.existsSync(absPath) ? fs.readFileSync(absPath, "utf8") : null;
+  const current = fs.existsSync(absPath) ? readTextFile(absPath) : null;
   if (current === content) {
     return;
   }
@@ -255,8 +253,7 @@ function writeOrCheck(relPath: string, content: string, options: Options): void 
     throw new Error(`${relPath} is out of date; run pnpm run generate:error-rules`);
   }
 
-  fs.mkdirSync(path.dirname(absPath), { recursive: true });
-  fs.writeFileSync(absPath, content, "utf8");
+  writeTextFile(absPath, content);
 }
 
 function main(args: string[]): void {

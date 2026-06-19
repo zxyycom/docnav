@@ -7,15 +7,17 @@
  * PMD 7.25 CPD 使用 --file-list 接收扫描输入。
  */
 
-import { spawn, spawnSync } from "node:child_process";
-import type { SpawnSyncOptionsWithStringEncoding, SpawnSyncReturns } from "node:child_process";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path, { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { XMLParser } from "fast-xml-parser";
 
 import type { DuplicateCodeFragment, DuplicateCodeLocation, ToolConfig } from "../schema.ts";
-import { errorMessage } from "../../types.ts";
+import { runProcess, runProcessSync } from "../../process.ts";
+import type { ProcessResult } from "../../process.ts";
+import { toSlashPath } from "../../path-utils.ts";
+import { errorMessage, isNonArrayRecord } from "../../types.ts";
 
 const CODE_AREA_LANGUAGE: Record<string, string | null> = {
   "rust-production": "rust",
@@ -25,6 +27,16 @@ const CODE_AREA_LANGUAGE: Record<string, string | null> = {
   "fixtures-examples": null,   // 不传 --language，让 PMD 自动检测
   "generated": null
 };
+
+const cpdXmlParser = new XMLParser({
+  attributeNamePrefix: "",
+  ignoreAttributes: false,
+  isArray: (tagName, _jPath, _isLeafNode, isAttribute) =>
+    !isAttribute && (tagName === "duplication" || tagName === "file"),
+  parseAttributeValue: false,
+  parseTagValue: false,
+  trimValues: true
+});
 
 export function getCpdLanguageForCodeArea(codeArea: string): string | null {
   return CODE_AREA_LANGUAGE[codeArea] ?? null;
@@ -64,7 +76,7 @@ export function scanWithCpd({
   if (!invocation.ok) return invocation.result;
 
   try {
-    const child = spawnPmd(toolConfig.command, invocation.argv, {
+    const child = runProcessSync(toolConfig.command, invocation.argv, {
       cwd,
       encoding: "utf8",
       windowsHide: true,
@@ -98,11 +110,14 @@ export async function scanWithCpdAsync({
   if (!invocation.ok) return invocation.result;
 
   try {
-    const child = await spawnPmdAsync(toolConfig.command, invocation.argv, {
+    const child = await runProcess({
+      args: invocation.argv,
+      command: toolConfig.command,
       cwd,
-      windowsHide: true,
+      label: "PMD CPD",
       maxBuffer: 1024 * 1024 * 64,
-      timeout: 600_000
+      timeout: 600_000,
+      windowsHide: true
     });
 
     return handleCpdProcessResult({
@@ -132,34 +147,32 @@ export async function scanWithCpdAsync({
 export function parseCpdXml(xml: string, cwd: string): CpdScanResult {
   try {
     const fragments: DuplicateCodeFragment[] = [];
-    const dupRegex = /<duplication\b([^>]*)>([\s\S]*?)<\/duplication>/g;
-    const fileRegex = /<file\b([^>]*)\/>/g;
+    const parsed = cpdXmlParser.parse(xml) as unknown;
+    const root = isNonArrayRecord(parsed) ? parsed["pmd-cpd"] : undefined;
+    if (!isNonArrayRecord(root)) {
+      return { ok: true, fragments };
+    }
 
-    let match;
+    const duplications = toRecordArray(root.duplication);
     let idCounter = 0;
 
-    while ((match = dupRegex.exec(xml)) !== null) {
-      const duplicateAttrs = parseXmlAttributes(match[1]);
-      const lines = parseIntegerAttribute(duplicateAttrs, "lines");
-      const tokens = parseIntegerAttribute(duplicateAttrs, "tokens");
-      const inner = match[2];
+    for (const duplication of duplications) {
+      const lines = parseIntegerAttribute(duplication, "lines");
+      const tokens = parseIntegerAttribute(duplication, "tokens");
 
       const locations: DuplicateCodeLocation[] = [];
-      const areaSet = new Set<string>();
 
-      let fileMatch;
-      while ((fileMatch = fileRegex.exec(inner)) !== null) {
-        const fileAttrs = parseXmlAttributes(fileMatch[1]);
-        const rawPath = fileAttrs.get("path");
-        const rawLine = fileAttrs.get("line");
+      for (const file of toRecordArray(duplication.file)) {
+        const rawPath = stringAttribute(file, "path");
+        const rawLine = stringAttribute(file, "line");
         if (!rawPath || !rawLine) {
           throw new Error("CPD XML file entry must include path and line attributes");
         }
 
-        const path = normalizePath(rawPath, cwd);
-        const startLine = parseIntegerAttribute(fileAttrs, "line");
-        const endLine = fileAttrs.has("endline")
-          ? parseIntegerAttribute(fileAttrs, "endline")
+        const path = normalizeCpdPath(rawPath, cwd);
+        const startLine = parseIntegerAttribute(file, "line");
+        const endLine = stringAttribute(file, "endline") !== undefined
+          ? parseIntegerAttribute(file, "endline")
           : startLine + lines;
 
         locations.push({
@@ -179,7 +192,7 @@ export function parseCpdXml(xml: string, cwd: string): CpdScanResult {
         tokenCount: tokens,
         lineCount: lines,
         locations,
-        codeAreas: Array.from(areaSet),
+        codeAreas: [],
         hitsChangedScope: false
       });
     }
@@ -193,13 +206,6 @@ export function parseCpdXml(xml: string, cwd: string): CpdScanResult {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
-
-type CpdProcessResult = {
-  error?: Error;
-  status: number | null;
-  stderr: string;
-  stdout: string;
-};
 
 type CpdInvocation =
   | { argv: string[]; fileListPath: string; ok: true }
@@ -274,7 +280,7 @@ function handleCpdProcessResult({
   cwd,
   skipIfUnavailable
 }: {
-  child: CpdProcessResult;
+  child: ProcessResult;
   cwd: string;
   skipIfUnavailable: boolean;
 }): CpdScanResult {
@@ -290,7 +296,7 @@ function handleCpdProcessResult({
     return {
       ok: false,
       skipped: false,
-      error: `PMD CPD spawn error: ${child.error.message}`
+      error: `PMD CPD process error: ${child.error.message}`
     };
   }
 
@@ -327,90 +333,6 @@ function cpdExecutionFailure(status: number, output: string, skipIfUnavailable: 
   };
 }
 
-function spawnPmd(
-  command: string,
-  args: string[],
-  options: SpawnSyncOptionsWithStringEncoding
-): SpawnSyncReturns<string> {
-  return spawnSync(buildPmdShellCommand(command, args), {
-    ...options,
-    shell: true
-  });
-}
-
-function spawnPmdAsync(
-  command: string,
-  args: string[],
-  options: {
-    cwd: string;
-    maxBuffer: number;
-    timeout: number;
-    windowsHide: boolean;
-  }
-): Promise<CpdProcessResult> {
-  return new Promise((resolve) => {
-    const child = spawn(buildPmdShellCommand(command, args), {
-      cwd: options.cwd,
-      shell: true,
-      windowsHide: options.windowsHide
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-
-    const finish = (result: CpdProcessResult) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(result);
-    };
-
-    const append = (stream: "stderr" | "stdout", chunk: Buffer | string) => {
-      if (stream === "stdout") {
-        stdout += chunk.toString();
-      } else {
-        stderr += chunk.toString();
-      }
-      if (stdout.length + stderr.length > options.maxBuffer) {
-        child.kill();
-        finish({
-          status: null,
-          stdout,
-          stderr,
-          error: new Error(`PMD CPD output exceeded maxBuffer ${options.maxBuffer}`)
-        });
-      }
-    };
-
-    const timer = setTimeout(() => {
-      child.kill();
-      finish({
-        status: null,
-        stdout,
-        stderr,
-        error: new Error(`PMD CPD timed out after ${options.timeout}ms`)
-      });
-    }, options.timeout);
-
-    child.stdout?.on("data", (chunk: Buffer | string) => append("stdout", chunk));
-    child.stderr?.on("data", (chunk: Buffer | string) => append("stderr", chunk));
-    child.on("error", (error) => finish({ status: null, stdout, stderr, error }));
-    child.on("close", (status) => finish({ status, stdout, stderr }));
-  });
-}
-
-export function buildPmdShellCommand(command: string, args: string[]): string {
-  return [command, ...args].map(quoteShellArg).join(" ");
-}
-
-function quoteShellArg(value: string): string {
-  const text = String(value);
-  if (/^[A-Za-z0-9_./:=@+%\\-]+$/.test(text)) {
-    return text;
-  }
-  return `"${text.replace(/"/g, "\\\"")}"`;
-}
-
 export function parsePmdVersionOutput(output: string): string {
   const versionLine = output
     .split(/\r?\n/)
@@ -425,23 +347,8 @@ export function parsePmdVersionOutput(output: string): string {
   return match ? match[1] : versionLine;
 }
 
-function parseXmlAttributes(attributeText: string): Map<string, string> {
-  const attrs = new Map<string, string>();
-  const attrRegex = /([A-Za-z_:][\w:.-]*)\s*=\s*"([^"]*)"/g;
-
-  let match;
-  while ((match = attrRegex.exec(attributeText)) !== null) {
-    const [, name, value] = match;
-    if (name !== undefined && value !== undefined) {
-      attrs.set(name, decodeXmlAttribute(value));
-    }
-  }
-
-  return attrs;
-}
-
-function parseIntegerAttribute(attrs: Map<string, string>, name: string): number {
-  const value = attrs.get(name);
+function parseIntegerAttribute(attrs: Record<string, unknown>, name: string): number {
+  const value = stringAttribute(attrs, name);
   if (value === undefined) {
     throw new Error(`CPD XML attribute "${name}" is required`);
   }
@@ -452,41 +359,30 @@ function parseIntegerAttribute(attrs: Map<string, string>, name: string): number
   return parsed;
 }
 
-function decodeXmlAttribute(value: string): string {
-  return value.replace(/&(?:#(\d+)|#x([0-9a-fA-F]+)|amp|quot|apos|lt|gt);/g, (
-    entity: string,
-    dec: string | undefined,
-    hex: string | undefined
-  ) => {
-    if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
-    if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
-    switch (entity) {
-      case "&amp;":
-        return "&";
-      case "&quot;":
-        return "\"";
-      case "&apos;":
-        return "'";
-      case "&lt;":
-        return "<";
-      case "&gt;":
-        return ">";
-      default:
-        return entity;
-    }
-  });
+function stringAttribute(attrs: Record<string, unknown>, name: string): string | undefined {
+  const value = attrs[name];
+  return typeof value === "string" ? value : undefined;
 }
 
-function normalizePath(filePath: string, cwd: string): string {
-  const normalizedPath = filePath.replace(/\\/g, "/");
-  const normalizedCwd = cwd.replace(/\\/g, "/").replace(/\/$/, "");
-  if (normalizedPath === normalizedCwd) {
+function normalizeCpdPath(filePath: string, cwd: string): string {
+  if (!path.isAbsolute(filePath)) {
+    return toSlashPath(filePath);
+  }
+
+  const relativePath = path.relative(cwd, filePath);
+  if (relativePath === "") {
     return ".";
   }
-  if (normalizedPath.startsWith(`${normalizedCwd}/`)) {
-    return normalizedPath.slice(normalizedCwd.length + 1);
+  if (!relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
+    return toSlashPath(relativePath);
   }
-  return normalizedPath;
+  return toSlashPath(filePath);
+}
+
+function toRecordArray(value: unknown): Record<string, unknown>[] {
+  if (value === undefined) return [];
+  const values = Array.isArray(value) ? value : [value];
+  return values.filter(isNonArrayRecord);
 }
 
 function tryCleanupFileList(path: string): void {

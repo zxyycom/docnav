@@ -1,3 +1,6 @@
+import { parseScriptArgs, stringOption } from "../args.ts";
+import { errorMessage } from "../types.ts";
+
 export type ManifestArgs = {
   manifestPath: string | null;
   target: string | null;
@@ -6,62 +9,36 @@ export type ManifestArgs = {
 };
 
 export function parseOptionalTarget(args: string[]): string | null {
-  let target: string | null = null;
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--target") {
-      target = parseTarget(requireOptionValue(args, index, arg));
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--")) {
-      throw new Error(`unknown option ${arg}`);
-    }
-    throw new Error(`unexpected positional argument ${arg}`);
-  }
-
-  return target;
+  const parsed = parseReleaseArgs(args, {
+    target: { type: "string" }
+  });
+  rejectPositionals(parsed.positionals);
+  return parseOptionalTargetValue(stringOption(parsed.values, "target"));
 }
 
 export function parseManifestArgs(args: string[]): ManifestArgs {
-  const parsed: ManifestArgs = {
-    manifestPath: null,
-    target: null,
-    expectProducerKind: null,
-    expectSourceDirty: null,
-  };
+  const parsed = parseReleaseArgs(args, {
+    manifest: { type: "string" },
+    target: { type: "string" },
+    "expect-producer-kind": { type: "string" },
+    "expect-source-dirty": { type: "string" }
+  });
+  rejectPositionals(parsed.positionals);
 
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (!arg.startsWith("--")) {
-      throw new Error(`unexpected positional argument ${arg}`);
-    }
+  const manifestPath = stringOption(parsed.values, "manifest") ?? null;
+  const target = parseOptionalTargetValue(stringOption(parsed.values, "target"));
+  const expectProducerKind = parseOptionalProducerKind(stringOption(parsed.values, "expect-producer-kind"));
+  const expectSourceDirty = parseOptionalBoolean(stringOption(parsed.values, "expect-source-dirty"), "--expect-source-dirty");
 
-    const value = requireOptionValue(args, index, arg);
-    switch (arg) {
-      case "--manifest":
-        parsed.manifestPath = value;
-        break;
-      case "--target":
-        parsed.target = parseTarget(value);
-        break;
-      case "--expect-producer-kind":
-        parsed.expectProducerKind = parseProducerKind(value);
-        break;
-      case "--expect-source-dirty":
-        parsed.expectSourceDirty = parseBoolean(value, "--expect-source-dirty");
-        break;
-      default:
-        throw new Error(`unknown option ${arg}`);
-    }
-    index += 1;
-  }
-
-  if (parsed.manifestPath && parsed.target) {
+  if (manifestPath && target) {
     throw new Error("--manifest and --target cannot be used together");
   }
-  return parsed;
+  return {
+    expectProducerKind,
+    expectSourceDirty,
+    manifestPath,
+    target
+  };
 }
 
 function parseTarget(value: string): string {
@@ -71,15 +48,14 @@ function parseTarget(value: string): string {
   return value;
 }
 
-function requireOptionValue(args: string[], index: number, option: string): string {
-  const value = args[index + 1];
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${option} requires a value`);
-  }
-  return value;
+function parseOptionalTargetValue(value: string | undefined): string | null {
+  return value === undefined ? null : parseTarget(value);
 }
 
-function parseBoolean(value: string, label: string): boolean {
+function parseOptionalBoolean(value: string | undefined, label: string): boolean | null {
+  if (value === undefined) {
+    return null;
+  }
   if (value === "true") {
     return true;
   }
@@ -89,9 +65,52 @@ function parseBoolean(value: string, label: string): boolean {
   throw new Error(`${label} must be true or false`);
 }
 
-function parseProducerKind(value: string): "github-actions" | "local" {
+function parseOptionalProducerKind(value: string | undefined): "github-actions" | "local" | null {
+  if (value === undefined) {
+    return null;
+  }
   if (value === "local" || value === "github-actions") {
     return value;
   }
   throw new Error("--expect-producer-kind must be local or github-actions");
+}
+
+function parseReleaseArgs(
+  args: string[],
+  options: Parameters<typeof parseScriptArgs>[0]["options"]
+): ReturnType<typeof parseScriptArgs> {
+  try {
+    return parseScriptArgs({
+      allowPositionals: true,
+      args,
+      options
+    });
+  } catch (error: unknown) {
+    throw new Error(normalizeParseArgsError(errorMessage(error)), { cause: error });
+  }
+}
+
+function rejectPositionals(positionals: readonly string[]): void {
+  if (positionals.length > 0) {
+    throw new Error(`unexpected positional argument ${positionals[0]}`);
+  }
+}
+
+function normalizeParseArgsError(message: string): string {
+  const unknownOption = message.match(/^Unknown option '(--[^']+)'/);
+  if (unknownOption) {
+    return `unknown option ${unknownOption[1]}`;
+  }
+
+  const missingOptionValue = message.match(/^Option '(--[^ ]+) <value>' argument missing$/);
+  if (missingOptionValue) {
+    return `${missingOptionValue[1]} requires a value`;
+  }
+
+  const unexpectedArgument = message.match(/^Unexpected argument '([^']+)'/);
+  if (unexpectedArgument) {
+    return `unexpected positional argument ${unexpectedArgument[1]}`;
+  }
+
+  return message;
 }

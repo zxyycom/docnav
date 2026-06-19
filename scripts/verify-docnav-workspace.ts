@@ -1,15 +1,16 @@
-import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 
+import { booleanOption, parseScriptArgs, stringOption } from "./tools/args.ts";
 import { expandTasks, runParallelTasks } from "./tools/parallel-task-runner.ts";
 import type { NormalizedTask, TaskDefinition } from "./tools/parallel-task-runner.ts";
-import { errorMessage, isRecord, isStringArray, isUnknownArray, processFailure } from "./tools/types.ts";
+import { processFailureFromResult, runProcess } from "./tools/process.ts";
+import { readJsonFile } from "./tools/fs.ts";
+import { toSlashPath } from "./tools/path-utils.ts";
+import { errorMessage, isRecord, isStringArray, isUnknownArray, parsePositiveInteger, processFailure } from "./tools/types.ts";
 import type { ProcessFailure, StringMap } from "./tools/types.ts";
 
-const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logDir = path.join(root, ".log", "verify-docnav-workspace");
 const MAX_BUFFER = 1024 * 1024 * 64;
@@ -33,12 +34,6 @@ interface CheckTask extends NormalizedTask {
   ignoreOutput: RegExp[];
   reportId?: string;
   reportLabel?: string;
-}
-
-interface ParsedVerificationOptions {
-  help: boolean;
-  profile: Profile;
-  concurrency: string | number | undefined;
 }
 
 interface VerificationOptions {
@@ -293,50 +288,19 @@ if (isMainModule()) {
 }
 
 export function parseArgs(argv: string[]): VerificationOptions {
-  const options: ParsedVerificationOptions = {
-    help: false,
-    profile: PROFILE_FULL,
-    concurrency: undefined
-  };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    if (arg === "--help" || arg === "-h") {
-      options.help = true;
-      continue;
+  const parsed = parseScriptArgs({
+    args: argv,
+    options: {
+      concurrency: { type: "string" },
+      help: { type: "boolean", short: "h" },
+      profile: { type: "string" }
     }
-    if (arg === "--profile") {
-      const value = argv[index + 1];
-      if (!value) {
-        throw new Error("--profile requires a value");
-      }
-      options.profile = parseProfile(value);
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--profile=")) {
-      options.profile = parseProfile(arg.slice("--profile=".length));
-      continue;
-    }
-    if (arg === "--concurrency") {
-      const value = argv[index + 1];
-      if (!value) {
-        throw new Error("--concurrency requires a value");
-      }
-      options.concurrency = value;
-      index += 1;
-      continue;
-    }
-    if (arg.startsWith("--concurrency=")) {
-      options.concurrency = arg.slice("--concurrency=".length);
-      continue;
-    }
-    throw new Error(`unknown argument: ${arg}`);
-  }
+  });
 
   return {
-    ...options,
-    concurrency: resolveVerificationConcurrency(options.concurrency?.toString())
+    help: booleanOption(parsed.values, "help"),
+    profile: parseProfile(stringOption(parsed.values, "profile") ?? PROFILE_FULL),
+    concurrency: resolveVerificationConcurrency(stringOption(parsed.values, "concurrency"))
   };
 }
 
@@ -384,11 +348,7 @@ export function resolveVerificationConcurrency(value = process.env.DOCNAV_VERIFY
   if (value === undefined || value === null || value === "") {
     return undefined;
   }
-  const parsed = Number.parseInt(String(value), 10);
-  if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== String(value)) {
-    throw new Error(`verification concurrency must be a positive integer: ${value}`);
-  }
-  return parsed;
+  return parsePositiveInteger(value, "verification concurrency");
 }
 
 async function main() {
@@ -448,35 +408,23 @@ async function runVerification({ profile, concurrency }: VerificationOptions): P
 
 async function executeCheck(check: CheckTask): Promise<CheckResult> {
   const startedAtMs = Date.now();
-  const invocation = commandInvocation(check);
-  try {
-    const { stdout, stderr } = await execFileAsync(invocation.command, invocation.args, {
-      cwd: root,
-      env: environmentForCheck(check),
-      encoding: "utf8",
-      windowsHide: true,
-      maxBuffer: MAX_BUFFER
-    });
-    return buildCheckResult(check, {
-      ok: true,
-      exitCode: 0,
-      stdout: stdout ?? "",
-      stderr: stderr ?? "",
-      startedAtMs,
-      endedAtMs: Date.now()
-    });
-  } catch (error: unknown) {
-    const failure = processFailure(error);
-    return buildCheckResult(check, {
-      ok: false,
-      exitCode: normalizeExitCode(failure),
-      stdout: typeof failure.stdout === "string" ? failure.stdout : "",
-      stderr: typeof failure.stderr === "string" ? failure.stderr : "",
-      error: failure,
-      startedAtMs,
-      endedAtMs: Date.now()
-    });
-  }
+  const result = await runProcess({
+    args: check.args,
+    command: check.command,
+    cwd: root,
+    env: environmentForCheck(check),
+    maxBuffer: MAX_BUFFER
+  });
+  const failure = processFailureFromResult(result);
+  return buildCheckResult(check, {
+    ok: failure === null,
+    exitCode: failure === null ? 0 : normalizeExitCode(failure),
+    stdout: result.stdout,
+    stderr: result.stderr,
+    error: failure ?? undefined,
+    startedAtMs,
+    endedAtMs: Date.now()
+  });
 }
 
 function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResult {
@@ -499,17 +447,6 @@ function normalizeExitCode(error: ProcessFailure): number {
   return typeof error?.code === "number" ? error.code : 1;
 }
 
-function commandInvocation(check: CheckTask): { command: string; args: string[] } {
-  if (process.platform !== "win32") {
-    return check;
-  }
-
-  return {
-    command: process.env.ComSpec || "cmd.exe",
-    args: ["/d", "/s", "/c", commandLine(check)]
-  };
-}
-
 function environmentForCheck(check: CheckTask): NodeJS.ProcessEnv {
   return {
     ...process.env,
@@ -523,7 +460,7 @@ function readEnvFile(envFile: string | undefined): StringMap {
     return {};
   }
   const envPath = path.resolve(root, envFile);
-  const parsed: unknown = JSON.parse(fs.readFileSync(envPath, "utf8"));
+  const parsed = readJsonFile(envPath);
   if (!isRecord(parsed)) {
     throw new Error(`env file must contain an object: ${envFile}`);
   }
@@ -569,10 +506,10 @@ function printSummary({
 function appendLog(logPaths: readonly string[], result: CheckResult): void {
   const section = [
     `## ${result.check.label}`,
-    `$ ${commandLine(result.check)}`,
+    `$ ${formatCommandLine(result.check.command, result.check.args)}`,
     `exit: ${result.exitCode}`,
     `duration: ${formatDurationMs(result.durationMs)}`,
-    result.error ? `spawn_error: ${result.error.message}` : null,
+    result.error ? `process_error: ${result.error.message}` : null,
     "",
     result.combinedOutput || "(no output)",
     "",
@@ -584,6 +521,18 @@ function appendLog(logPaths: readonly string[], result: CheckResult): void {
   for (const logPath of logPaths) {
     fs.appendFileSync(logPath, section, "utf8");
   }
+}
+
+function formatCommandLine(command: string, args: readonly string[] = []): string {
+  return [command, ...args].map(quoteCommandArg).join(" ");
+}
+
+function quoteCommandArg(value: string): string {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:=@+%\\-]+$/.test(text)) {
+    return text;
+  }
+  return `"${text.replace(/"/g, "\\\"")}"`;
 }
 
 function createLogPaths(): string[] {
@@ -815,17 +764,6 @@ function smokeSuccessOutput(title: string, logPath: string): RegExp[] {
   ];
 }
 
-function commandLine(check: { args: readonly string[]; command: string }): string {
-  return [check.command, ...check.args].map(quoteArg).join(" ");
-}
-
-function quoteArg(value: string): string {
-  if (/^[A-Za-z0-9_./:=@+-]+$/.test(value)) {
-    return value;
-  }
-  return JSON.stringify(value);
-}
-
 function lines(output: string): string[] {
   return output.split(/\r?\n/).filter((line) => line.length > 0);
 }
@@ -855,7 +793,7 @@ function printUsage(writeLine: (line: string) => void): void {
 }
 
 function relativeLogPath(logPath: string): string {
-  return path.relative(root, logPath).replaceAll(path.sep, "/");
+  return toSlashPath(path.relative(root, logPath));
 }
 
 function isMainModule() {

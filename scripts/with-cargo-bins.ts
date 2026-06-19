@@ -1,9 +1,15 @@
-import { spawnSync } from "node:child_process";
-import type { SpawnSyncReturns } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { findCargoExecutable } from "./tools/cargo.ts";
+import {
+  booleanOption,
+  parseScriptArgs,
+  stringArrayOption,
+  type ParsedScriptArgs,
+  type ScriptArgToken
+} from "./tools/args.ts";
+import { processFailed, runProcessSync, writeProcessOutput } from "./tools/process.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -31,11 +37,10 @@ for (const binary of options.binaries) {
   env[binary.envName] = executable;
 }
 
-const result = spawnSync(options.command[0], options.command.slice(1), {
+const result = runProcessSync(options.command[0], options.command.slice(1), {
   cwd: root,
   env,
-  stdio: "inherit",
-  windowsHide: true
+  stdio: "inherit"
 });
 
 if (result.error) {
@@ -46,43 +51,21 @@ if (result.error) {
 process.exit(result.status ?? 1);
 
 function parseArgs(args: string[]): Options {
-  const separatorIndex = args.indexOf("--");
-  if (separatorIndex === -1) {
-    usage("missing -- command separator");
+  let parsed: ParsedScriptArgs;
+  try {
+    parsed = parseScriptArgs({
+      allowPositionals: true,
+      args,
+      options: {
+        bin: { type: "string", multiple: true },
+        quiet: { type: "boolean" }
+      }
+    });
+  } catch (error: unknown) {
+    usage(error instanceof Error ? error.message : String(error));
   }
 
-  const optionArgs = args.slice(0, separatorIndex);
-  const command = args.slice(separatorIndex + 1);
-  if (command.length === 0) {
-    usage("missing command after --");
-  }
-
-  const binaries: BinarySpec[] = [];
-  let quiet = false;
-  for (let index = 0; index < optionArgs.length;) {
-    const flag = optionArgs[index];
-    if (flag === "--quiet") {
-      quiet = true;
-      index += 1;
-      continue;
-    }
-
-    const packageName = optionArgs[index + 1];
-    const binName = optionArgs[index + 2];
-    const envName = optionArgs[index + 3];
-    if (flag !== "--bin") {
-      usage(`unknown option ${String(flag)}`);
-    }
-    if (!packageName || !binName || !envName) {
-      usage("--bin requires <cargo-package> <bin-name> <ENV_NAME>");
-    }
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(envName)) {
-      usage(`${envName} must be a valid environment variable name`);
-    }
-    binaries.push({ packageName, binName, envName });
-    index += 4;
-  }
-
+  const binaries = stringArrayOption(parsed.values, "bin").map(parseBinarySpec);
   if (binaries.length === 0) {
     usage("at least one --bin declaration is required");
   }
@@ -93,7 +76,48 @@ function parseArgs(args: string[]): Options {
     usage("environment variable names must be unique");
   }
 
-  return { binaries, command: command as [string, ...string[]], quiet };
+  return {
+    binaries,
+    command: commandFromTokens(parsed.tokens),
+    quiet: booleanOption(parsed.values, "quiet")
+  };
+}
+
+function parseBinarySpec(value: string): BinarySpec {
+  const parts = value.split(":");
+  if (parts.length !== 3 || parts.some((part) => part.length === 0)) {
+    usage(`--bin requires <cargo-package>:<bin-name>:<ENV_NAME>, got ${value}`);
+  }
+
+  const [packageName, binName, envName] = parts as [string, string, string];
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(envName)) {
+    usage(`${envName} must be a valid environment variable name`);
+  }
+  return { packageName, binName, envName };
+}
+
+function commandFromTokens(tokens: readonly ScriptArgToken[]): [string, ...string[]] {
+  const separator = tokens.find((token) => token.kind === "option-terminator");
+  if (!separator) {
+    usage("missing -- command separator");
+  }
+
+  const unexpectedPositional = tokens.find(
+    (token) => token.kind === "positional" && token.index < separator.index
+  );
+  if (unexpectedPositional) {
+    usage(`unexpected positional argument before --: ${unexpectedPositional.value ?? ""}`);
+  }
+
+  const command = tokens
+    .filter((token) => token.kind === "positional" && token.index > separator.index)
+    .map((token) => token.value)
+    .filter((value): value is string => value !== undefined);
+  if (command.length === 0) {
+    usage("missing command after --");
+  }
+
+  return command as [string, ...string[]];
 }
 
 function buildCargoBins(binaries: BinarySpec[], quiet: boolean): Map<string, string> {
@@ -104,15 +128,13 @@ function buildCargoBins(binaries: BinarySpec[], quiet: boolean): Map<string, str
     ...binaries.flatMap((binary) => ["--bin", binary.binName]),
     "--message-format=json"
   ];
-  const result = spawnSync("cargo", cargoArgs, {
+  const result = runProcessSync("cargo", cargoArgs, {
     cwd: root,
-    encoding: "utf8",
-    windowsHide: true,
     maxBuffer: 1024 * 1024 * 64
   });
 
-  if (result.error || result.status !== 0) {
-    writeOutput(result);
+  if (processFailed(result)) {
+    writeProcessOutput(result);
     if (result.error) {
       console.error(result.error.message);
     }
@@ -135,19 +157,10 @@ function buildCargoBins(binaries: BinarySpec[], quiet: boolean): Map<string, str
   return executables;
 }
 
-function writeOutput(result: SpawnSyncReturns<string>) {
-  if (result.stdout) {
-    process.stdout.write(result.stdout);
-  }
-  if (result.stderr) {
-    process.stderr.write(result.stderr);
-  }
-}
-
 function usage(message: string): never {
   console.error(message);
   console.error(
-    "usage: node scripts/with-cargo-bins.ts [--quiet] --bin <cargo-package> <bin-name> <ENV_NAME> [--bin ...] -- <command> [args...]"
+    "usage: node scripts/with-cargo-bins.ts [--quiet] --bin <cargo-package>:<bin-name>:<ENV_NAME> [--bin ...] -- <command> [args...]"
   );
   process.exit(2);
 }

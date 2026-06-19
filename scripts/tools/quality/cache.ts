@@ -3,9 +3,10 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { readJsonFile, writeJsonFile } from "../fs.ts";
+import { isNonArrayRecord } from "../types.ts";
 import type {
   CodeAreaFingerprint,
   DuplicateCodeFragment,
@@ -88,7 +89,7 @@ export function loadScanCacheEntry({
 
   let payload: unknown;
   try {
-    payload = JSON.parse(readFileSync(cachePath, "utf8"));
+    payload = readJsonFile(cachePath);
   } catch {
     return { hit: false, reason: "cache-miss", cacheKey, cachePath };
   }
@@ -130,8 +131,7 @@ export function writeScanCacheEntry({
     createdAt: new Date().toISOString()
   };
 
-  mkdirSync(join(rootDir, ".log", "docnav-quality-cache", SCAN_CACHE_VERSION), { recursive: true });
-  writeFileSync(cachePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  writeJsonFile(cachePath, payload);
   return { cacheKey, cachePath };
 }
 
@@ -149,7 +149,7 @@ function isMatchingPayload(
   identity: CpdCacheIdentity,
   cacheKey: string
 ): payload is ScanCachePayload {
-  if (!isRecord(payload)) return false;
+  if (!isNonArrayRecord(payload)) return false;
 
   return payload.scanCacheVersion === SCAN_CACHE_VERSION &&
     payload.cacheKey === cacheKey &&
@@ -169,7 +169,7 @@ function isMetricArray(value: unknown): value is DuplicateCodeFragment[] {
 }
 
 function isDuplicateCodeFragment(value: unknown): value is DuplicateCodeFragment {
-  return isRecord(value) &&
+  return isNonArrayRecord(value) &&
     isFiniteNumber(value.id) &&
     isFiniteNumber(value.tokenCount) &&
     isFiniteNumber(value.lineCount) &&
@@ -181,7 +181,7 @@ function isDuplicateCodeFragment(value: unknown): value is DuplicateCodeFragment
 }
 
 function isDuplicateCodeLocation(value: unknown): value is DuplicateCodeLocation {
-  return isRecord(value) &&
+  return isNonArrayRecord(value) &&
     typeof value.path === "string" &&
     isFiniteNumber(value.startLine) &&
     isFiniteNumber(value.endLine) &&
@@ -192,16 +192,12 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(",")}]`;
   }
 
-  if (isRecord(value)) {
+  if (isNonArrayRecord(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)

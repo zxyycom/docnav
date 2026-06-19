@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { ensureDirForFile, writeJsonFile, writeTextFile } from "../../../scripts/tools/fs.ts";
+import { toSlashPath } from "../../../scripts/tools/path-utils.ts";
 import { isRecord, isUnknownArray, parseJsonValue } from "../../../scripts/tools/types.ts";
 import { root, tempRoot } from "./config.ts";
 
@@ -103,7 +105,7 @@ export function writeDamagedRegistry(project: SmokeProject) {
 export function copyNormalDocument(project: SmokeProject, relativePath: string) {
   const filePath = path.join(project.root, relativePath);
   copyFile(normalDocumentFixture, filePath);
-  return relativePath.replaceAll(path.sep, "/");
+  return toSlashPath(relativePath);
 }
 
 export function createRealMarkdownAdapter(project: SmokeProject, id = "docnav-markdown"): RegistryAdapter {
@@ -209,17 +211,15 @@ function parseAdapterCall(line: string): AdapterCall {
 }
 
 export function writeJson(filePath: string, value: unknown) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  writeJsonFile(filePath, value);
 }
 
 function writeText(filePath: string, content: string) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, content, "utf8");
+  writeTextFile(filePath, content);
 }
 
 function copyFile(sourcePath: string, destinationPath: string) {
-  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+  ensureDirForFile(destinationPath);
   fs.copyFileSync(sourcePath, destinationPath);
 }
 
@@ -229,7 +229,7 @@ function wrapperPath(project: SmokeProject, id: string) {
 }
 
 function relativeCommand(project: SmokeProject, commandPath: string) {
-  return path.relative(project.root, commandPath).replaceAll(path.sep, "/");
+  return toSlashPath(path.relative(project.root, commandPath));
 }
 
 function isolatedEnv(projectRoot: string, userConfigDir: string): NodeJS.ProcessEnv {
