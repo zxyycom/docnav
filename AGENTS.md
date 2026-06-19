@@ -29,8 +29,9 @@ outline -> ref -> read
 ## 上下文获取规则
 
 - 读取项目文档时，先从 `docs/navigation.md` 的“如何阅读这些文档”进入，只读取当前任务角色匹配的主规范。
+- 新增、拆分或合并文档前，先能说明 owner、读取时机和验证方式；能归入已有 owner 文档时，优先更新已有文档。
 - `openspec/changes/` 只在处理 OpenSpec change、审计历史、验收或用户明确要求时读取；涉及 OpenSpec 时先运行 `openspec list --json`。
-- `docs/schemas/` 和 `docs/examples/` 是契约与校验材料；在实现、修改或验证字段、示例、schema、输出 shape 时读取。
+- `docs/schemas/` 和 `docs/examples/` 是验证材料；在实现、修改或验证字段、示例、schema、输出 shape 时读取。
 - 探索仓库内产品规范、设计文档、OpenSpec 文档，或需要理解 Markdown 层级结构时，先运行 `pnpm --silent dnm outline <path>` 获取 ref，再用 `pnpm --silent dnm read <path> --ref "<ref>"` 按 ref 读取；短小配置、入口提示词或工具说明可直接读取，验证 Docnav 导航行为时除外。仓库命令不可运行时，回退到常规文件读取。
 - 后续交互引用已读内容时只提炼关键结论和文件位置，不展开原文；跟踪变化用局部搜索和 diff。
 - 优先使用 CodeGraph 理解代码结构：先用 `codegraph_search` 定位符号或文件，再用 `codegraph_node` 查看签名、位置和调用 trail。
