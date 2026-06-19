@@ -4,6 +4,7 @@ use super::common::{
 };
 use crate::{run_command, Adapter, AdapterExitCode, SdkCommand};
 
+// @case WB-SDK-BOUNDARY-001
 #[test]
 fn invalid_manifest_is_not_written_to_stdout() {
     let mut stdout = Vec::new();

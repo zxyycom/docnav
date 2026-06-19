@@ -197,6 +197,7 @@ fn split_equals(token: &str) -> (&str, Option<&str>) {
 
 #[cfg(test)]
 mod tests {
+    // @case WB-CLIARGS-COMPAT-001
     use super::*;
 
     #[test]

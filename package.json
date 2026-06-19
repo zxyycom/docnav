@@ -18,6 +18,7 @@
     "verify:docnav-package": "node scripts/verify-docnav-package.ts",
     "smoke:docnav-package": "node scripts/docnav-package-smoke.ts",
     "test:workspace-verifier": "node --test scripts/tools/verify-docnav-workspace.test.ts test/tools/smoke-harness.test.ts scripts/tools/parallel-task-runner.test.ts",
+    "test:validators": "node --test scripts/tools/validators/*.test.ts",
     "test:release-package-scripts": "node --test scripts/tools/release-package/args.test.ts",
     "verify:docnav-workspace": "node scripts/verify-docnav-workspace.ts",
     "verify:docnav-workspace:required": "node scripts/verify-docnav-workspace.ts --profile required",

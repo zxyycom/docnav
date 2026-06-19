@@ -1,8 +1,8 @@
 use super::common::StubAdapter;
 use crate::{run_command, AdapterExitCode, SdkCommand};
 
-#[test]
 // @case WB-SDK-MACHINE-001
+#[test]
 fn manifest_and_probe_are_not_wrapped_in_invoke_envelope() {
     let mut manifest_stdout = Vec::new();
     let exit = run_command(

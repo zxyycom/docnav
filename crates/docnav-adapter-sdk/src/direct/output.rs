@@ -150,6 +150,7 @@ fn write_cli_warnings<W: Write>(warnings: &[DirectCliWarning], writer: &mut W) -
 
 #[cfg(test)]
 mod tests {
+    // @case WB-SDK-DIRECT-OUTPUT-001
     use super::*;
     use docnav_protocol::{OperationResult, ReadResult};
 

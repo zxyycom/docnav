@@ -6,6 +6,7 @@ fn positive(value: u32) -> PositiveInteger {
     try_positive(value).expect("test positive integer")
 }
 
+// @case WB-PROTO-BASIC-001
 #[test]
 fn positive_integer_constructors_do_not_panic_on_zero() {
     assert_eq!(try_positive(0), None);
@@ -89,7 +90,60 @@ fn failure_response_rules_preserve_or_null_operation() {
 }
 
 #[test]
+fn stable_error_codes_have_shared_categories() {
+    let cases = [
+        (
+            StableErrorCode::InvalidRequest,
+            StableErrorCategory::Request,
+        ),
+        (
+            StableErrorCode::CapabilityUnsupported,
+            StableErrorCategory::Request,
+        ),
+        (
+            StableErrorCode::DocumentNotFound,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::DocumentPathInvalid,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::DocumentEncodingUnsupported,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::FormatUnknown,
+            StableErrorCategory::Document,
+        ),
+        (
+            StableErrorCode::FormatAmbiguous,
+            StableErrorCategory::Document,
+        ),
+        (StableErrorCode::RefNotFound, StableErrorCategory::Document),
+        (StableErrorCode::RefAmbiguous, StableErrorCategory::Document),
+        (StableErrorCode::RefInvalid, StableErrorCategory::Document),
+        (
+            StableErrorCode::AdapterUnavailable,
+            StableErrorCategory::AdapterBoundary,
+        ),
+        (
+            StableErrorCode::AdapterInvokeFailed,
+            StableErrorCategory::AdapterBoundary,
+        ),
+        (
+            StableErrorCode::InternalError,
+            StableErrorCategory::Internal,
+        ),
+    ];
+
+    for (code, expected) in cases {
+        assert_eq!(code.category(), expected, "{code:?}");
+    }
+}
+
 // @case WB-PROTO-DECODE-001
+#[test]
 fn decode_protocol_request_runs_schema_before_deserialize() {
     let schema_invalid = serde_json::json!({
         "protocol_version": "0.1",
@@ -149,61 +203,8 @@ fn decode_probe_result_returns_semantic_error_with_typed_value() {
     }
 }
 
-#[test]
-fn stable_error_codes_have_shared_categories() {
-    let cases = [
-        (
-            StableErrorCode::InvalidRequest,
-            StableErrorCategory::Request,
-        ),
-        (
-            StableErrorCode::CapabilityUnsupported,
-            StableErrorCategory::Request,
-        ),
-        (
-            StableErrorCode::DocumentNotFound,
-            StableErrorCategory::Document,
-        ),
-        (
-            StableErrorCode::DocumentPathInvalid,
-            StableErrorCategory::Document,
-        ),
-        (
-            StableErrorCode::DocumentEncodingUnsupported,
-            StableErrorCategory::Document,
-        ),
-        (
-            StableErrorCode::FormatUnknown,
-            StableErrorCategory::Document,
-        ),
-        (
-            StableErrorCode::FormatAmbiguous,
-            StableErrorCategory::Document,
-        ),
-        (StableErrorCode::RefNotFound, StableErrorCategory::Document),
-        (StableErrorCode::RefAmbiguous, StableErrorCategory::Document),
-        (StableErrorCode::RefInvalid, StableErrorCategory::Document),
-        (
-            StableErrorCode::AdapterUnavailable,
-            StableErrorCategory::AdapterBoundary,
-        ),
-        (
-            StableErrorCode::AdapterInvokeFailed,
-            StableErrorCategory::AdapterBoundary,
-        ),
-        (
-            StableErrorCode::InternalError,
-            StableErrorCategory::Internal,
-        ),
-    ];
-
-    for (code, expected) in cases {
-        assert_eq!(code.category(), expected, "{code:?}");
-    }
-}
-
-#[test]
 // @case WB-PROTO-SCHEMA-001
+#[test]
 fn parses_protocol_fixtures_into_shared_types() {
     for operation in ["outline", "read", "find", "info"] {
         let request_value = read_json_fixture(&format!("protocol-{operation}-request.json"));

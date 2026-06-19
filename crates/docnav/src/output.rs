@@ -183,6 +183,7 @@ fn write_io_error<E: Write>(error: io::Error, stderr: &mut E) -> i32 {
 
 #[cfg(test)]
 mod tests {
+    // @case WB-CORE-OUTPUT-001
     use super::*;
     use crate::cli::warning::{CliWarningDetails, CliWarningEffect, CLI_ARGV_IGNORED};
     use docnav_protocol::{
@@ -234,7 +235,6 @@ mod tests {
     }
 
     #[test]
-    // @case WB-CORE-OUTPUT-001
     fn document_readable_view_uses_shared_output_facade() {
         let response = ProtocolResponse::success(
             PROTOCOL_VERSION,

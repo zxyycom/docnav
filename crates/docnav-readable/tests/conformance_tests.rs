@@ -487,9 +487,9 @@ fn run_vector(vector: &ConformanceVector) {
 // Each test loads its fixture at compile time via `include_str!` so the
 // vector file is a committed, auditable acceptance artifact, not an ad-hoc
 // in-test construction.
+// @case WB-READABLE-VIEW-001
 
 #[test]
-// @case WB-READABLE-VIEW-001
 fn conformance_01_no_block_outline() {
     run_vector(&load_vector!(
         "fixtures/conformance/01_no_block_outline.json"

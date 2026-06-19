@@ -4,6 +4,7 @@ import { strict as assert } from "node:assert";
 import { DEFAULT_CONFIG } from "./config.ts";
 import { parseArgs, resolveChangedFilesForScan } from "./scan-cli.ts";
 
+// @case AUX-QUALITY-SCAN-CLI-001
 describe("quality scan CLI args", () => {
   it("skips baseline by default and keeps baseline generation opt-in", () => {
     const defaults = parseArgs([]);

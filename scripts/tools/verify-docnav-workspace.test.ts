@@ -48,7 +48,9 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("cargo fmt"));
     assert.ok(requiredLabels.includes("TypeScript script typecheck"));
     assert.ok(requiredLabels.includes("TypeScript script lint"));
+    assert.ok(requiredLabels.includes("docs case catalog validator"));
     assert.ok(requiredLabels.includes("docs schema validator"));
+    assert.ok(requiredLabels.includes("case catalog validator tests"));
     assert.ok(requiredLabels.includes("smoke harness tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
     assert.ok(!requiredLabels.includes("cargo test"));
@@ -84,7 +86,9 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(checkByLabel("docnav-markdown development smoke").dependsOn, ["docnav-development-binaries"]);
     assert.deepEqual(checkByLabel("docnav core development smoke").dependsOn, ["docnav-development-binaries"]);
     assert.equal(checkByLabel("docnav-markdown development smoke").envFile, ".log/verify-docnav-workspace/dev-bins.json");
+    assert.deepEqual(checkByLabel("docs case catalog validator").dependsOn, []);
     assert.deepEqual(checkByLabel("docs schema validator").dependsOn, []);
+    assert.deepEqual(checkByLabel("case catalog validator tests").dependsOn, []);
   });
 
   it("parses verification profile arguments", () => {
@@ -138,9 +142,10 @@ describe("workspace verifier configuration", () => {
   it("counts top-level report groups separately from executable leaf checks", () => {
     const requiredChecks = checksForProfile(PROFILE_REQUIRED);
 
+    assert.ok(requiredChecks.some((check) => check.label === "docs case catalog validator"));
     assert.ok(requiredChecks.some((check) => check.label === "docs schema validator"));
     assert.ok(!requiredChecks.some((check) => check.label === "docs validators"));
-    assert.equal(reportCountForChecks(requiredChecks), 8);
+    assert.equal(reportCountForChecks(requiredChecks), 9);
   });
 
 });

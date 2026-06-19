@@ -76,6 +76,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    // @case WB-JSONIO-WRITE-001
     use super::*;
     use serde::ser::{Error as _, SerializeStruct};
     use serde::Serializer;

@@ -164,6 +164,13 @@ export const checks = defineChecks([
         ])
       },
       {
+        id: "validator-script-tests",
+        label: "validator script tests",
+        tasks: nodeTestFileChecks([
+          ["case-catalog-validator-tests", "case catalog validator tests", "scripts/tools/validators/case-catalog.test.ts"]
+        ])
+      },
+      {
         id: "release-package-script-tests",
         label: "release package script tests",
         command: "node",
@@ -683,6 +690,16 @@ function reportLabelForCheck(check: CheckTask): string {
 
 function docsValidatorChecks(): CheckDefinition[] {
   return [
+    {
+      id: "docs-case-catalog-validator",
+      label: "docs case catalog validator",
+      command: "pnpm",
+      args: ["run", "validate:docs", "cases"],
+      ignoreOutput: [
+        /^\$ node scripts\/validate-docs\.ts "?cases"?$/,
+        /^test case catalog ok:/
+      ]
+    },
     {
       id: "docs-json-validator",
       label: "docs json validator",

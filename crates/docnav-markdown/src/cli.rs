@@ -48,6 +48,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    // @case WB-MD-CLI-WRITE-001
     use super::*;
     use std::fs;
     use std::io;

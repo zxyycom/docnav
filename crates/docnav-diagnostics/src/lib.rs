@@ -234,6 +234,7 @@ pub fn write_warning_text_lines<W: Write>(warnings: &[Warning], writer: &mut W) 
 
 #[cfg(test)]
 mod tests {
+    // @case WB-DIAG-WARN-001
     use super::*;
     use serde_json::json;
 

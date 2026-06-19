@@ -56,6 +56,7 @@ impl ParsedRef {
 
 #[cfg(test)]
 mod tests {
+    // @case WB-MD-REF-GRAMMAR-001
     use super::*;
 
     #[test]
@@ -147,6 +148,7 @@ mod tests {
         }
     }
 
+    // @case WB-MD-REF-MATCH-001
     #[test]
     fn matches_exact_line_level_index() {
         let heading = Heading {

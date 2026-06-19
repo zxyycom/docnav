@@ -8,6 +8,7 @@ pub(super) use docnav_diagnostics::{
 
 #[cfg(test)]
 mod tests {
+    // @case WB-SDK-DIRECT-WARN-001
     use super::*;
 
     #[test]

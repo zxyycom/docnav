@@ -12,6 +12,7 @@ import {
 } from "./cache.ts";
 import type { DuplicateCodeFragment } from "./schema.ts";
 
+// @case AUX-QUALITY-CACHE-001
 describe("quality CPD cache", () => {
   it("keys duplicate-code cache by scan identity and strips changed-scope annotations", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-cache-"));

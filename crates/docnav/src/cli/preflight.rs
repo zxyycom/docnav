@@ -53,6 +53,7 @@ fn operation(command: &str) -> Option<Operation> {
 
 #[cfg(test)]
 mod tests {
+    // @case WB-CORE-PREFLIGHT-001
     use super::*;
 
     fn strings(args: &[&str]) -> Vec<String> {

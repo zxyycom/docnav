@@ -1,6 +1,7 @@
 use crate::{exit_code_for_error, AdapterError, AdapterExitCode};
 use docnav_protocol::{StableError, StableErrorCode};
 
+// @case WB-SDK-ERROR-001
 #[test]
 fn internal_error_maps_to_internal_exit_code() {
     assert_eq!(AdapterExitCode::InternalError.code(), 1);

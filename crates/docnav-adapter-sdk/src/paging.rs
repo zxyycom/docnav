@@ -154,6 +154,7 @@ fn take_chars(value: &str, count: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    // @case WB-SDK-PAGE-001
     use super::*;
 
     fn positive(value: u32) -> PositiveInteger {
@@ -161,7 +162,6 @@ mod tests {
     }
 
     #[test]
-    // @case WB-SDK-PAGE-001
     fn text_paging_counts_unicode_characters() {
         let (page, next) = paginate_text("a界b", positive(1), positive(2));
         assert_eq!(page, "a界");

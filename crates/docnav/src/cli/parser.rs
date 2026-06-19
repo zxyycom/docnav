@@ -317,6 +317,7 @@ mod tests {
     use crate::cli::{CliCommand, OutputMode};
     use crate::error::exit_code_for_error;
 
+    // @case WB-CORE-HELP-001
     #[test]
     fn help_returns_typed_help_command() {
         let parsed = parse(["outline", "--help"]).expect("parse help");
@@ -363,8 +364,27 @@ mod tests {
         }
     }
 
+    #[test]
+    fn help_command_has_no_output_mode() {
+        let parsed = parse(["--help"]).expect("parse --help");
+        match parsed.command {
+            CliCommand::Help(_) => {} // Help is not a document command
+            command => panic!("expected help command, got {command:?}"),
+        }
+    }
+
+    #[test]
+    fn version_command_has_no_output_mode() {
+        let parsed = parse(["version"]).expect("parse version");
+        match parsed.command {
+            CliCommand::Version => {} // Version is not a document command
+            command => panic!("expected version command, got {command:?}"),
+        }
+    }
+
     // ── 2.8: Default output mode is readable-view ─────────────────────────
 
+    // @case WB-CORE-OUTPUTMODE-001
     #[test]
     fn default_arg_output_is_readable_view() {
         // clap default_value for --output should be "readable-view".
@@ -475,30 +495,10 @@ mod tests {
         assert!(reason.contains("bogus"));
     }
 
-    // ── 2.8: Help/version are separate from document output mode ────────────
-
-    #[test]
-    fn help_command_has_no_output_mode() {
-        let parsed = parse(["--help"]).expect("parse --help");
-        match parsed.command {
-            CliCommand::Help(_) => {} // Help is not a document command
-            command => panic!("expected help command, got {command:?}"),
-        }
-    }
-
-    #[test]
-    fn version_command_has_no_output_mode() {
-        let parsed = parse(["version"]).expect("parse version");
-        match parsed.command {
-            CliCommand::Version => {} // Version is not a document command
-            command => panic!("expected version command, got {command:?}"),
-        }
-    }
-
     // ── existing tests ─────────────────────────────────────────────────────
 
-    #[test]
     // @case WB-CORE-ARGS-001
+    #[test]
     fn used_known_argument_stays_strict() {
         let error = parse(["outline", "doc.md", "--page", "0"]).expect_err("page is invalid");
 

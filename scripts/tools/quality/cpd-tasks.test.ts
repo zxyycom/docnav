@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 
 import { planCpdScanTasks } from "./cpd-tasks.ts";
 
+// @case AUX-QUALITY-CPD-TASK-001
 describe("PMD CPD tasks", () => {
   it("plans one scan task per code area", () => {
     const tasks = planCpdScanTasks([

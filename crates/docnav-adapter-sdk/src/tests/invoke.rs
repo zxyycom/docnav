@@ -4,8 +4,8 @@ use docnav_protocol::{
     Operation, ProtocolResponse, StableErrorCode, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 
-#[test]
 // @case WB-SDK-INVOKE-001
+#[test]
 fn invoke_reads_one_request_and_writes_one_protocol_response() {
     let input = br#"{
           "protocol_version": "0.1",

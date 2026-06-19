@@ -247,6 +247,7 @@ fn write_readable_view_value<W: Write>(
 
 #[cfg(test)]
 mod tests {
+    // @case WB-OUTPUT-DOCUMENT-001
     use super::*;
     use docnav_diagnostics::{Warning, CLI_ARGV_IGNORED};
     use docnav_protocol::{Entry, OutlineResult, ReadResult, StableErrorCode};

@@ -5,6 +5,7 @@ use docnav_protocol::{
     StableErrorCode, PROTOCOL_VERSION,
 };
 
+// @case WB-SDK-EXECUTE-001
 #[test]
 fn execute_operation_dispatches_typed_request() {
     let request = RequestEnvelope {

@@ -5,6 +5,7 @@ import { createEmptyMetrics, type QualityMetrics, type WarningRecord } from "./s
 import { changedFilesSection } from "./report/findings.ts";
 import { fileRankings, functionSizeRankings } from "./report/rankings.ts";
 
+// @case AUX-QUALITY-REPORT-001
 describe("quality report", () => {
   it("keeps changed-file watchlist useful without baseline annotations", () => {
     const metrics = qualityMetrics();

@@ -189,6 +189,7 @@ pub fn process_error_details(error: &AdapterProcessError) -> Value {
 
 #[cfg(test)]
 mod tests {
+    // @case WB-CORE-ADAPTER-001
     use super::*;
     use docnav_protocol::StableErrorCode;
 
@@ -209,7 +210,6 @@ mod tests {
     }
 
     #[test]
-    // @case WB-CORE-ADAPTER-001
     fn protocol_response_schema_invalid_maps_to_adapter_invoke_failed() {
         let output = adapter_output(
             r#"{

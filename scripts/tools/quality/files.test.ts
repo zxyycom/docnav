@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 
 import { buildFingerprints } from "./files.ts";
 
+// @case AUX-QUALITY-FINGERPRINT-001
 describe("quality input fingerprints", () => {
   it("uses stable SHA-256 fingerprints for sorted file content", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-fingerprint-"));

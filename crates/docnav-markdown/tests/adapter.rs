@@ -107,6 +107,7 @@ fn find_result(path: &Path, arguments: &FindArguments) -> FindResult {
         .expect("find result")
 }
 
+// @case WB-MD-META-001
 #[test]
 fn manifest_declares_markdown_v0_capabilities() {
     let manifest = MarkdownAdapter.manifest();
@@ -152,6 +153,31 @@ fn probe_returns_format_evidence_without_navigation_payload() {
     assert!(value.get("content").is_none());
 }
 
+#[test]
+fn info_returns_markdown_summary_and_capabilities() {
+    let path = write_doc("info.md", "# A\nBody\n");
+    let arguments = InfoArguments { options: None };
+    let request = make_request(
+        &path,
+        Operation::Info,
+        OperationArguments::Info(arguments.clone()),
+    );
+
+    let info = MarkdownAdapter.info(&request, &arguments).expect("info");
+
+    assert!(info.display.contains("text/markdown"));
+    assert_eq!(
+        info.capabilities,
+        vec![
+            Operation::Outline,
+            Operation::Read,
+            Operation::Find,
+            Operation::Info
+        ]
+    );
+}
+
+// @case WB-MD-ADAPTER-OUTLINE-001
 #[test]
 fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
     let path = write_doc(
@@ -223,8 +249,8 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
     }
 }
 
-#[test]
 // @case WB-MD-REF-001
+#[test]
 fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
     let path = write_doc("duplicates.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
     let arguments = outline_args(6000, 1, Some(3));
@@ -271,8 +297,8 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
     assert!(!first_a.content.contains("second"));
 }
 
-#[test]
 // @case WB-MD-REF-002
+#[test]
 fn read_reports_ref_invalid_for_old_format_and_non_canonical_refs() {
     let path = write_doc("refs.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
 
@@ -311,7 +337,25 @@ fn read_reports_ref_not_found_for_canonical_no_match() {
 }
 
 #[test]
+fn structure_snapshot_old_ref_may_fail_after_document_change() {
+    let path1 = write_doc("snap1.md", "# A\nBody\n## B\nMore\n");
+    let arguments = outline_args(6000, 1, Some(3));
+    let outline1 = outline_result(&path1, &arguments);
+    let ref_a = &outline1.entries[0].ref_id;
+
+    // 原文档中可以正常读取
+    let read1 = read_ref(&path1, ref_a);
+    assert!(read1.content.contains("# A"));
+
+    // 文档变化后重新解析，使用旧 ref
+    let path2 = write_doc("snap2.md", "No headings\nJust text\n");
+    let error = read_ref_error(&path2, ref_a);
+    // 结构坐标变化后旧 ref 返回 REF_NOT_FOUND（而非 REF_INVALID）
+    assert_ref_not_found(&error, ref_a);
+}
+
 // @case WB-MD-PAGE-001
+#[test]
 fn read_paginates_unicode_without_splitting_characters() {
     let path = write_doc("unicode.md", "# A\n界界界abc\n");
     let ref_id = "H:L1:H1:I1";
@@ -349,6 +393,7 @@ fn read_paginates_unicode_without_splitting_characters() {
     assert!(second.content.starts_with("界界"));
 }
 
+// @case WB-MD-FIND-001
 #[test]
 fn find_ref_targets_current_visible_region_and_read_contains_match() {
     let path = write_doc(
@@ -396,6 +441,7 @@ fn find_falls_back_to_full_document_when_no_heading_is_visible() {
     assert_eq!(result.matches[0].ref_id, "doc:full");
 }
 
+// @case WB-MD-PAGE-002
 #[test]
 fn outline_paginates_with_response_page_until_end_and_past_end() {
     let path = write_doc("outline-pages.md", "# A\none\n# B\ntwo\n# C\nthree\n");
@@ -467,6 +513,7 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
     assert_eq!(past_end.page, None);
 }
 
+// @case WB-MD-OPTIONS-001
 #[test]
 fn adapter_owned_options_shape_outline_and_find_granularity() {
     let path = write_doc("adapter-owned-options.md", "# Top\n\n#### Deep\nneedle\n");
@@ -507,30 +554,7 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
     assert_eq!(entry_refs(&expanded_matches.matches), vec!["H:L3:H4:I2"]);
 }
 
-#[test]
-fn info_returns_markdown_summary_and_capabilities() {
-    let path = write_doc("info.md", "# A\nBody\n");
-    let arguments = InfoArguments { options: None };
-    let request = make_request(
-        &path,
-        Operation::Info,
-        OperationArguments::Info(arguments.clone()),
-    );
-
-    let info = MarkdownAdapter.info(&request, &arguments).expect("info");
-
-    assert!(info.display.contains("text/markdown"));
-    assert_eq!(
-        info.capabilities,
-        vec![
-            Operation::Outline,
-            Operation::Read,
-            Operation::Find,
-            Operation::Info
-        ]
-    );
-}
-
+// @case WB-MD-ERROR-001
 #[test]
 fn non_utf8_document_returns_stable_encoding_error() {
     let path = write_bytes("bad.md", &[0xFF, 0xFE, 0x00]);
@@ -551,6 +575,7 @@ fn non_utf8_document_returns_stable_encoding_error() {
     );
 }
 
+// @case WB-MD-INVOKE-001
 #[test]
 fn invoke_writes_protocol_envelope() {
     let path = write_doc("invoke.md", "# A\nBody\n");
@@ -577,6 +602,7 @@ fn invoke_writes_protocol_envelope() {
     }
 }
 
+// @case WB-MD-DISPLAY-001
 #[test]
 fn outline_display_includes_heading_title() {
     let path = write_doc("display.md", "# Installation Guide\n\n## Setup\nBody\n");
@@ -605,24 +631,6 @@ fn find_display_contains_match_snippet() {
     assert!(result.matches[0].display.contains("needle"));
     // ref 不受 display 内容影响
     assert_canonical_ref(&result.matches[0].ref_id);
-}
-
-#[test]
-fn structure_snapshot_old_ref_may_fail_after_document_change() {
-    let path1 = write_doc("snap1.md", "# A\nBody\n## B\nMore\n");
-    let arguments = outline_args(6000, 1, Some(3));
-    let outline1 = outline_result(&path1, &arguments);
-    let ref_a = &outline1.entries[0].ref_id;
-
-    // 原文档中可以正常读取
-    let read1 = read_ref(&path1, ref_a);
-    assert!(read1.content.contains("# A"));
-
-    // 文档变化后重新解析，使用旧 ref
-    let path2 = write_doc("snap2.md", "No headings\nJust text\n");
-    let error = read_ref_error(&path2, ref_a);
-    // 结构坐标变化后旧 ref 返回 REF_NOT_FOUND（而非 REF_INVALID）
-    assert_ref_not_found(&error, ref_a);
 }
 
 fn entry_refs(entries: &[docnav_protocol::Entry]) -> Vec<&str> {

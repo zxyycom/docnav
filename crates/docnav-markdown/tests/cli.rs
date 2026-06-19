@@ -50,6 +50,7 @@ fn path_arg(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
+// @case WB-MD-CLI-001
 #[test]
 fn direct_cli_and_invoke_share_outline_execution_result() {
     let path = write_doc("shared-outline.md", "# Top\nintro\n\n## Section\ntext\n");
@@ -157,6 +158,7 @@ fn direct_cli_and_invoke_share_find_execution_result() {
     assert_eq!(direct_json, protocol_json["result"]);
 }
 
+// @case WB-MD-CLI-ERROR-001
 #[test]
 fn readable_json_error_returns_ref_invalid_for_non_canonical_refs() {
     let path = write_doc("invalid-ref-read.md", "# Guide\nBody\n");

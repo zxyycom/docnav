@@ -176,6 +176,7 @@ fn block_sections_capacity(blocks: &[RenderedBlock]) -> usize {
 
 #[cfg(test)]
 mod tests {
+    // @case WB-READABLE-RENDERER-001
     use super::*;
     use crate::config::RendererConfig;
     use crate::value::{self, TestErrorPayload, TestReadPayload};
@@ -496,90 +497,7 @@ mod tests {
         assert_contains(&output, "\"$block\": \"/content\"");
     }
 
-    // ── 1.6.10 Config validation: pointer missing ─────────────────────
-
-    #[test]
-    fn pointer_missing_from_value_fails() {
-        let value = json!({"not_content": "x"});
-
-        let config = RendererConfig::default_config();
-        config.validate().unwrap();
-
-        let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
-        assert_eq!(err.id, RenderError::ERROR_ID);
-        assert!(
-            err.message.contains("/content"),
-            "error should mention missing pointer"
-        );
-    }
-
-    // ── 1.6.11 Config validation: non-string target ───────────────────
-
-    #[test]
-    fn non_string_target_fails() {
-        let value = json!({"content": 42, "content_type": "text/plain"});
-
-        let config = RendererConfig::default_config();
-        config.validate().unwrap();
-
-        let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
-        assert_eq!(err.id, RenderError::ERROR_ID);
-        assert!(
-            err.message.contains("not resolve to a string"),
-            "error should mention non-string target"
-        );
-    }
-
-    // ── 1.6.12 Config validation: duplicate pointer ───────────────────
-
-    #[test]
-    fn duplicate_pointer_in_config_fails() {
-        let mut custom_config = RendererConfig::default_config();
-        custom_config.views.insert(
-            ReadableViewKind::Read,
-            crate::config::ViewBlockConfig {
-                blocks: vec!["/content".to_owned(), "/content".to_owned()],
-            },
-        );
-
-        let err = custom_config.validate().unwrap_err();
-        assert_eq!(err.id, RenderError::ERROR_ID);
-        assert!(
-            err.message.contains("duplicate block pointer"),
-            "error should mention duplicate"
-        );
-    }
-
-    // ── 1.6.13 Config validation: pointer syntax ──────────────────────
-
-    #[test]
-    fn pointer_without_leading_slash_fails_config_validation() {
-        let mut custom_config = RendererConfig::default_config();
-        custom_config.views.insert(
-            ReadableViewKind::Read,
-            crate::config::ViewBlockConfig {
-                blocks: vec!["content".to_owned()], // missing leading /
-            },
-        );
-
-        let err = custom_config.validate().unwrap_err();
-        assert_eq!(err.id, RenderError::ERROR_ID);
-        assert!(err.message.contains("must start with '/'"));
-    }
-
-    // ── 1.6.14 Renderer error id is stable ────────────────────────────
-
-    #[test]
-    fn render_error_uses_stable_id() {
-        let value = json!({"wrong": "shape"});
-        let config = RendererConfig::default_config();
-        config.validate().unwrap();
-
-        let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
-        assert_eq!(err.id, "readable_view_render_failed");
-    }
-
-    // ── 1.6.15 Readable error payload ─────────────────────────────────
+    // ── 1.6.10 Readable error payload ─────────────────────────────────
 
     #[test]
     fn readable_error_block() {
@@ -604,7 +522,7 @@ mod tests {
         assert_contains(&output, "Check available entries");
     }
 
-    // ── 1.6.16 separator LF is platform-independent LF (0x0A) ────────
+    // ── 1.6.11 separator LF is platform-independent LF (0x0A) ────────
 
     #[test]
     fn framing_uses_lf_byte() {
@@ -629,7 +547,7 @@ mod tests {
         assert_contains(&output, "[endblock /content]");
     }
 
-    // ── 1.6.17 Info operation (no blocks) ─────────────────────────────
+    // ── 1.6.12 Info operation (no blocks) ─────────────────────────────
 
     #[test]
     fn info_operation_no_blocks() {
@@ -646,7 +564,7 @@ mod tests {
         assert_not_contains(&output, "[block");
     }
 
-    // ── 1.6.18 Find operation (no blocks) ─────────────────────────────
+    // ── 1.6.13 Find operation (no blocks) ─────────────────────────────
 
     #[test]
     fn find_operation_no_blocks() {
@@ -663,7 +581,7 @@ mod tests {
         assert_not_contains(&output, "[block");
     }
 
-    // ── 1.6.19 Pretty JSON header is valid standalone JSON ────────────
+    // ── 1.6.14 Pretty JSON header is valid standalone JSON ────────────
 
     #[test]
     fn header_json_is_valid_standalone() {
@@ -693,13 +611,10 @@ mod tests {
         assert!(content_ref["bytes"].is_u64());
     }
 
-    // ── 1.6.20 to_readable_value errors produce RenderError ───────────
+    // ── 1.6.15 Typed payload to readable JSON value ───────────────────
 
     #[test]
-    fn to_readable_value_wraps_serialization_error() {
-        // serde_json::to_value on a type that fails to serialize.
-        // We use a custom type that panics, but for practical testing we
-        // verify that valid payloads work and the error carries the right id.
+    fn to_readable_value_serializes_valid_payload() {
         let payload = TestReadPayload {
             ref_id: "ok".into(),
             content: "test".into(),
@@ -712,11 +627,95 @@ mod tests {
         assert_eq!(value["ref"], "ok");
     }
 
-    // ── 1.6.21 Default config validates successfully ──────────────────
+    // ── 1.6.16 Default config validates successfully ──────────────────
 
     #[test]
     fn default_config_passes_validation() {
         let config = RendererConfig::default_config();
         config.validate().unwrap(); // should not panic or error
+    }
+
+    // @case WB-READABLE-RENDERER-002
+    // ── 1.7.1 Config validation: pointer missing ──────────────────────
+
+    #[test]
+    fn pointer_missing_from_value_fails() {
+        let value = json!({"not_content": "x"});
+
+        let config = RendererConfig::default_config();
+        config.validate().unwrap();
+
+        let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
+        assert_eq!(err.id, RenderError::ERROR_ID);
+        assert!(
+            err.message.contains("/content"),
+            "error should mention missing pointer"
+        );
+    }
+
+    // ── 1.7.2 Config validation: non-string target ────────────────────
+
+    #[test]
+    fn non_string_target_fails() {
+        let value = json!({"content": 42, "content_type": "text/plain"});
+
+        let config = RendererConfig::default_config();
+        config.validate().unwrap();
+
+        let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
+        assert_eq!(err.id, RenderError::ERROR_ID);
+        assert!(
+            err.message.contains("not resolve to a string"),
+            "error should mention non-string target"
+        );
+    }
+
+    // ── 1.7.3 Config validation: duplicate pointer ────────────────────
+
+    #[test]
+    fn duplicate_pointer_in_config_fails() {
+        let mut custom_config = RendererConfig::default_config();
+        custom_config.views.insert(
+            ReadableViewKind::Read,
+            crate::config::ViewBlockConfig {
+                blocks: vec!["/content".to_owned(), "/content".to_owned()],
+            },
+        );
+
+        let err = custom_config.validate().unwrap_err();
+        assert_eq!(err.id, RenderError::ERROR_ID);
+        assert!(
+            err.message.contains("duplicate block pointer"),
+            "error should mention duplicate"
+        );
+    }
+
+    // ── 1.7.4 Config validation: pointer syntax ───────────────────────
+
+    #[test]
+    fn pointer_without_leading_slash_fails_config_validation() {
+        let mut custom_config = RendererConfig::default_config();
+        custom_config.views.insert(
+            ReadableViewKind::Read,
+            crate::config::ViewBlockConfig {
+                blocks: vec!["content".to_owned()], // missing leading /
+            },
+        );
+
+        let err = custom_config.validate().unwrap_err();
+        assert_eq!(err.id, RenderError::ERROR_ID);
+        assert!(err.message.contains("must start with '/'"));
+    }
+
+    // ── 1.7.5 Renderer error id is stable ─────────────────────────────
+
+    #[test]
+    fn render_error_uses_stable_id() {
+        let value = json!({"wrong": "shape"});
+        let config = RendererConfig::default_config();
+        config.validate().unwrap();
+
+        let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
+        assert_eq!(err.id, "readable_view_render_failed");
     }
 }

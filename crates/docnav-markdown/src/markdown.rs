@@ -15,6 +15,7 @@ mod tests {
     use super::refs::FULL_DOCUMENT_REF;
     use super::*;
 
+    // @case WB-MD-PARSE-001
     #[test]
     fn parser_ignores_code_fence_pseudo_heading_and_invalid_heading() {
         let document = MarkdownDocument::parse(
@@ -29,6 +30,26 @@ mod tests {
         assert_eq!(titles, vec!["Real", "Child"]);
     }
 
+    #[test]
+    fn frontmatter_does_not_create_outline_heading() {
+        let document = MarkdownDocument::parse("---\ntitle: Sample\n---\n\n# Real\n".to_owned());
+
+        assert_eq!(document.headings().len(), 1);
+        assert_eq!(document.headings()[0].title, "Real");
+    }
+
+    #[test]
+    fn read_section_ends_at_next_same_or_higher_heading() {
+        let document = MarkdownDocument::parse("# A\nIntro\n## B\nNested\n# C\nEnd\n".to_owned());
+        let heading = &document.headings()[0];
+
+        assert_eq!(
+            document.section_content(heading),
+            "# A\nIntro\n## B\nNested\n"
+        );
+    }
+
+    // @case WB-MD-OUTLINE-001
     #[test]
     fn outline_generates_canonical_heading_refs() {
         let document = MarkdownDocument::parse("# Guide\n\n## Install\n".to_owned());
@@ -120,6 +141,27 @@ mod tests {
         assert_eq!(entries[0].ref_id, "H:L1:H1:I1");
     }
 
+    #[test]
+    fn deep_heading_can_be_filtered_to_full_document() {
+        let document = MarkdownDocument::parse("Intro\n\n#### Deep\nBody\n".to_owned());
+
+        let entries = document.outline_entries(3);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].ref_id, FULL_DOCUMENT_REF);
+    }
+
+    #[test]
+    fn ref_does_not_contain_title_or_breadcrumb() {
+        let document = MarkdownDocument::parse("# Long Title Here\nBody\n".to_owned());
+        let entries = document.outline_entries(3);
+
+        assert_eq!(entries[0].ref_id, "H:L1:H1:I1");
+        assert!(!entries[0].ref_id.contains("Long"));
+        assert!(!entries[0].ref_id.contains("Title"));
+    }
+
+    // @case WB-MD-READ-001
     #[test]
     fn read_canonical_ref_resolves_matching_heading() {
         let document = MarkdownDocument::parse("# Guide\nIntro\n## Install\nBody\n".to_owned());
@@ -247,47 +289,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn deep_heading_can_be_filtered_to_full_document() {
-        let document = MarkdownDocument::parse("Intro\n\n#### Deep\nBody\n".to_owned());
-
-        let entries = document.outline_entries(3);
-
-        assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].ref_id, FULL_DOCUMENT_REF);
-    }
-
-    #[test]
-    fn read_section_ends_at_next_same_or_higher_heading() {
-        let document = MarkdownDocument::parse("# A\nIntro\n## B\nNested\n# C\nEnd\n".to_owned());
-        let heading = &document.headings()[0];
-
-        assert_eq!(
-            document.section_content(heading),
-            "# A\nIntro\n## B\nNested\n"
-        );
-    }
-
-    #[test]
-    fn frontmatter_does_not_create_outline_heading() {
-        let document = MarkdownDocument::parse("---\ntitle: Sample\n---\n\n# Real\n".to_owned());
-
-        assert_eq!(document.headings().len(), 1);
-        assert_eq!(document.headings()[0].title, "Real");
-    }
-
-    #[test]
-    fn ref_does_not_contain_title_or_breadcrumb() {
-        let document = MarkdownDocument::parse("# Long Title Here\nBody\n".to_owned());
-        let entries = document.outline_entries(3);
-
-        assert_eq!(entries[0].ref_id, "H:L1:H1:I1");
-        assert!(!entries[0].ref_id.contains("Long"));
-        assert!(!entries[0].ref_id.contains("Title"));
-    }
-
-    #[test]
     // @case WB-MD-LINK-001
+    #[test]
     fn outline_to_read_roundtrip_with_canonical_ref() {
         let document =
             MarkdownDocument::parse("# Top\nintro\n## Sub\ndetail\n### Deep\nmore\n".to_owned());
@@ -326,36 +329,5 @@ mod tests {
                 resolved.err()
             );
         }
-    }
-
-    #[test]
-    fn find_display_contains_match_snippet() {
-        let document =
-            MarkdownDocument::parse("# Top\nfind target here\n## Sub\nother\n".to_owned());
-
-        let entries = document.find_entries("target", 3);
-        assert_eq!(entries.len(), 1);
-        // find display 保留匹配位置附近的非空文本片段
-        assert!(entries[0].display.contains("target"));
-    }
-
-    #[test]
-    fn structure_snapshot_line_change_returns_ref_not_found() {
-        // 修改文档后重新解析，旧 ref 可能失效
-        let modified = MarkdownDocument::parse("# A\nExtra line\nBody\n".to_owned());
-
-        // 原文档中 heading 在 line 1，修改后仍在 line 1，所以 H:L1:H1:I1 仍匹配
-        let ok = modified.resolve_ref("H:L1:H1:I1");
-        assert!(ok.is_ok());
-
-        // 但如果文档完全变化，旧 ref 可能不再匹配
-        let different = MarkdownDocument::parse("No heading here\nJust text\n".to_owned());
-        let error = different
-            .resolve_ref("H:L1:H1:I1")
-            .expect_err("no headings");
-        assert_eq!(
-            error.error().code,
-            docnav_protocol::StableErrorCode::RefNotFound
-        );
     }
 }
