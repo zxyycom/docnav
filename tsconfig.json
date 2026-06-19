@@ -8,12 +8,13 @@
     "noEmit": true,
     "strict": true,
     "target": "esnext",
-    "tsBuildInfoFile": "tsconfig.scripts.tsbuildinfo",
+    "tsBuildInfoFile": ".cache/typescript/tsconfig.tsbuildinfo",
     "types": ["node"],
     "verbatimModuleSyntax": true,
     "rewriteRelativeImportExtensions": true
   },
   "include": [
+    "eslint.config.ts",
     "scripts/**/*.ts",
     "test/**/*.ts"
   ]

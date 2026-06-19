@@ -48,7 +48,7 @@ export default tseslint.config(
     files: scriptFiles,
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.scripts.json",
+        project: "./tsconfig.json",
         tsconfigRootDir
       }
     },
