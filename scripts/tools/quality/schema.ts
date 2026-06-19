@@ -9,10 +9,8 @@
 
 // ── Constants ──────────────────────────────────────────────────────────
 
-/** 当前 metrics schema version */
 export const METRICS_SCHEMA_VERSION = "0.2.0";
 
-/** 合法的 baseline status */
 export const BASELINE_STATUSES = Object.freeze([
   "generated",
   "baseline-skipped",
@@ -22,17 +20,14 @@ export const BASELINE_STATUSES = Object.freeze([
   "baseline-scan-failed"
 ]);
 
-/** 合法的 comparison status */
 export const COMPARISON_STATUSES = Object.freeze([
   "compared",
   "input-unchanged",
   "baseline-unavailable"
 ]);
 
-/** 合法的 warning levels */
 export const WARNING_LEVELS = Object.freeze(["info", "warning", "error"]);
 
-/** 合法的 code area warning policies */
 export const WARNING_POLICIES = Object.freeze([
   "strict",
   "moderate",

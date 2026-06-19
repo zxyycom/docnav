@@ -8,6 +8,11 @@ use crate::view_kind::ReadableViewKind;
 
 /// Platform-independent LF byte used in all readable-view framing.
 const LF: u8 = 0x0A;
+const BLOCK_START_PREFIX: &str = "[block ";
+const BLOCK_BYTES_PREFIX: &str = " bytes=";
+const BLOCK_END_PREFIX: &str = "[endblock ";
+const BLOCK_MARKER_SUFFIX: &str = "]\n";
+const MAX_FRAMING_LF_LEN: usize = 1;
 
 /// Rendered output for a single block field.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,52 +25,41 @@ pub struct RenderedBlock {
     pub payload: String,
 }
 
-/// Render a complete readable value into a `readable-view` string.
+/// Render a complete readable value into `readable-view` text.
 ///
-/// # Flow
-///
-/// 1. Look up the renderer config for `kind`.
-/// 2. Validate block pointer syntax (done by `RendererConfig::validate`).
-/// 3. Clone the value → header JSON.
-/// 4. For each declared block pointer, extract the string field, replace it
-///    with a `{"$block": "...", "bytes": n}` reference, and collect the
-///    payload.
-/// 5. Serialize the modified header as pretty JSON.
-/// 6. If there are blocks, append a separator LF, then emit each block section
-///    with `[block ...]` / `[endblock ...]` markers.
+/// The renderer clones the readable JSON value, replaces configured string
+/// fields with block references in the header, and appends length-delimited
+/// block sections. Callers that build custom configs should validate them
+/// before rendering.
 ///
 /// # Errors
 ///
 /// Returns `RenderError` when:
 /// - The config is missing an entry for `kind`.
-/// - A block pointer does not resolve to a string field.
+/// - A configured block pointer is missing or targets a non-string field.
 /// - Header JSON serialization fails.
 pub fn render_readable_view(
     value: &Value,
     kind: ReadableViewKind,
     config: &RendererConfig,
 ) -> Result<String, RenderError> {
-    // 1. Look up config for this view kind.
     let view_config = config.view_config(kind)?;
-
-    // 2. Extract blocks and build the header value.
     let (header_value, blocks) = extract_blocks(value, view_config)?;
 
-    // 3. Serialize the header as pretty JSON and enforce the readable-view
-    //    framing LF explicitly. serde_json currently emits no trailing LF;
-    //    the contract owns that newline, not the serializer.
+    // serde_json currently emits no trailing LF; readable-view framing owns it.
     let mut header_json = serde_json::to_string_pretty(&header_value)
         .map_err(RenderError::header_serialization_failed)?;
     if !header_json.ends_with('\n') {
         header_json.push(char::from(LF));
     }
 
-    // 4. Emit the complete readable-view output.
-    let mut output = String::with_capacity(header_json.len() + blocks_payload_size(&blocks) + 256);
+    let separator_capacity = usize::from(!blocks.is_empty());
+    let mut output = String::with_capacity(
+        header_json.len() + separator_capacity + block_sections_capacity(&blocks),
+    );
     output.push_str(&header_json);
 
     if !blocks.is_empty() {
-        // Empty separator line between header and first block section.
         output.push(char::from(LF));
         for block in &blocks {
             emit_block_section(&mut output, block);
@@ -85,11 +79,9 @@ fn extract_blocks(
     let mut blocks: Vec<RenderedBlock> = Vec::with_capacity(view_config.blocks.len());
 
     for pointer_str in &view_config.blocks {
-        // Read the string field from the (current) header value.
         let block_content = read_block_field(&header, pointer_str)?;
         let byte_length = block_content.len() as u64;
 
-        // Replace the string field with the block reference object.
         replace_with_block_ref(&mut header, pointer_str, byte_length)?;
 
         blocks.push(RenderedBlock {
@@ -143,15 +135,12 @@ fn replace_with_block_ref(
 /// [endblock <pointer>]\n
 /// ```
 fn emit_block_section(output: &mut String, block: &RenderedBlock) {
-    // Start marker.
-    output.push_str("[block ");
+    output.push_str(BLOCK_START_PREFIX);
     output.push_str(&block.pointer);
-    output.push_str(" bytes=");
+    output.push_str(BLOCK_BYTES_PREFIX);
     output.push_str(&block.byte_length.to_string());
-    output.push(']');
-    output.push(char::from(LF));
+    output.push_str(BLOCK_MARKER_SUFFIX);
 
-    // Payload written as-is.
     output.push_str(&block.payload);
 
     // Framing LF: if payload does not already end with LF, add one
@@ -160,27 +149,25 @@ fn emit_block_section(output: &mut String, block: &RenderedBlock) {
         output.push(char::from(LF));
     }
 
-    // End marker.
-    output.push_str("[endblock ");
+    output.push_str(BLOCK_END_PREFIX);
     output.push_str(&block.pointer);
-    output.push(']');
-    output.push(char::from(LF));
+    output.push_str(BLOCK_MARKER_SUFFIX);
 }
 
-/// Estimate total byte size of block payloads for capacity pre-allocation.
-fn blocks_payload_size(blocks: &[RenderedBlock]) -> usize {
+fn block_sections_capacity(blocks: &[RenderedBlock]) -> usize {
     blocks
         .iter()
         .map(|b| {
-            // "[block <pointer> bytes=<n>]\n" + payload + maybe LF + "[endblock <pointer>]\n"
-            10 + b.pointer.len()
-                + 8
-                + b.byte_length.to_string().len()
-                + b.payload.len()
-                + 1
-                + 12
+            BLOCK_START_PREFIX.len()
                 + b.pointer.len()
-                + 2
+                + BLOCK_BYTES_PREFIX.len()
+                + b.byte_length.to_string().len()
+                + BLOCK_MARKER_SUFFIX.len()
+                + b.payload.len()
+                + MAX_FRAMING_LF_LEN
+                + BLOCK_END_PREFIX.len()
+                + b.pointer.len()
+                + BLOCK_MARKER_SUFFIX.len()
         })
         .sum()
 }
@@ -563,15 +550,10 @@ mod tests {
         );
     }
 
-    // ── 1.6.13 identity conflict within view config ───────────────────
-    //
-    // Identity-conflict validation checks that each pointer in a view's
-    // block list is unique — already covered by the duplicate test above.
-    // Additional semantic: a block pointer that starts with '/' but is
-    // otherwise empty or malformed should fail validation.
+    // ── 1.6.13 Config validation: pointer syntax ──────────────────────
 
     #[test]
-    fn invalid_pointer_syntax_fails_config_validation() {
+    fn pointer_without_leading_slash_fails_config_validation() {
         let mut custom_config = RendererConfig::default_config();
         custom_config.views.insert(
             ReadableViewKind::Read,

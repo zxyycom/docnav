@@ -36,7 +36,6 @@ export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
   version: "0.4.0",
 
-  /** 纳入扫描的路径 glob */
   include: [
     "crates/**/*.rs",
     "scripts/**/*.ts",
@@ -45,7 +44,6 @@ export const DEFAULT_CONFIG = Object.freeze({
     "test/**/*.js"
   ],
 
-  /** 排除目录（总是排除） */
   excludeDirs: [
     ".git",
     "target",
@@ -60,14 +58,12 @@ export const DEFAULT_CONFIG = Object.freeze({
     ".log"
   ],
 
-  /** 显式标记的 generated files（glob 或精确路径） */
   generatedFiles: [
     "scripts/tools/validators/generated/**",
     "scripts/generated/**",
     "**/generated/**"
   ],
 
-  /** 6 类默认 code areas */
   codeAreas: Object.freeze({
     "rust-production": {
       description: "Rust production code (non-test, non-fixture, non-generated)",
@@ -139,7 +135,6 @@ export const DEFAULT_CONFIG = Object.freeze({
     }
   }),
 
-  /** Lizard 工具配置 */
   lizard: {
     /** 圈复杂度 thresholds（用于 warning，不用于阻断） */
     cyclomaticComplexity: {
@@ -148,33 +143,27 @@ export const DEFAULT_CONFIG = Object.freeze({
       /** 仅 changed function 且 delta > 此值时触发 warning */
       changedDelta: 5
     },
-    /** 函数行数 thresholds */
     functionLines: {
       absoluteFloor: 50,
       changedDelta: 20
     },
-    /** 参数数量 thresholds */
     parameterCount: {
       absoluteFloor: 5,
       changedDelta: 2
     }
   },
 
-  /** scc 工具配置 */
   scc: {
-    /** 文件级行数 thresholds */
     fileLines: {
       absoluteFloor: 300,
       changedDelta: 100
     },
-    /** 文件级复杂度 (scc complexity) thresholds */
     fileComplexity: {
       absoluteFloor: 20,
       changedDelta: 10
     }
   },
 
-  /** PMD CPD 重复代码检测配置 */
   pmdCpd: {
     /** CPD cache miss task 的最大并发数；任务按 code area 并行执行 */
     maxParallelTasks: 4,
@@ -195,19 +184,14 @@ export const DEFAULT_CONFIG = Object.freeze({
     }
   },
 
-  /** 报告配置 */
   report: {
-    /** summary top N 数量 */
     topN: 10,
     /** 人类可读报告中使用的展示时区；metrics.json 保持 ISO UTC timestamp */
     timeZone: "Asia/Shanghai",
-    /** 是否在 summary 中展示 watchlist */
     showWatchlist: true,
-    /** watchlist 最多条目数 */
     watchlistMax: 20
   },
 
-  /** 产物目录默认值 */
   artifactDir: "artifacts/docnav-quality",
 
   /** 工具可用性：如何发现 lizard/scc/pmd 命令 */

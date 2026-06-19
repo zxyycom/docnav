@@ -12,21 +12,21 @@ use crate::view_kind::ReadableViewKind;
 
 // ── Block pointer ──────────────────────────────────────────────────────────
 
-/// A validated JSON Pointer that identifies a block-eligible string field
-/// within a readable JSON value.
+/// A JSON Pointer that identifies a block-eligible string field within a
+/// readable JSON value.
 ///
-/// Valid pointers start with `"/"`.
+/// Valid block pointers start with `"/"` and use only `~0` / `~1` escapes.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BlockPointer(String);
 
 impl BlockPointer {
-    /// Create a new `BlockPointer`, validating that it starts with `"/"`.
+    /// Create a new `BlockPointer`, validating JSON Pointer syntax.
     pub fn new(pointer: impl Into<String>) -> Result<Self, RenderError> {
         let s = pointer.into();
-        if !s.starts_with('/') {
+        if let Some(reason) = block_pointer_syntax_error(&s) {
             return Err(RenderError::config_invalid(format!(
-                "block pointer \"{s}\" must start with '/'"
+                "block pointer {s:?} {reason}"
             )));
         }
         Ok(Self(s))
@@ -42,6 +42,27 @@ impl std::fmt::Display for BlockPointer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
+}
+
+fn block_pointer_syntax_error(pointer: &str) -> Option<&'static str> {
+    if !pointer.starts_with('/') {
+        return Some("must start with '/'");
+    }
+
+    let bytes = pointer.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'~' {
+            match bytes.get(index + 1) {
+                Some(b'0' | b'1') => index += 2,
+                _ => return Some("must escape '~' as '~0' or '~1'"),
+            }
+        } else {
+            index += 1;
+        }
+    }
+
+    None
 }
 
 // ── View config ────────────────────────────────────────────────────────────
@@ -118,21 +139,19 @@ impl RendererConfig {
     /// violation.
     ///
     /// Checks:
-    /// - Every pointer must start with `"/"`.
+    /// - Every pointer has valid JSON Pointer syntax.
     /// - No duplicate pointers within a single view config.
     pub fn validate(&self) -> Result<(), RenderError> {
         for (kind, view) in &self.views {
             let mut seen = BTreeSet::new();
 
             for (i, pointer) in view.blocks.iter().enumerate() {
-                // Validate pointer syntax.
-                if !pointer.starts_with('/') {
+                if let Some(reason) = block_pointer_syntax_error(pointer) {
                     return Err(RenderError::config_invalid(format!(
-                        "view \"{kind}\" block pointer at index {i} ({pointer:?}) must start with '/'"
+                        "view \"{kind}\" block pointer at index {i} ({pointer:?}) {reason}"
                     )));
                 }
 
-                // Detect duplicates.
                 if !seen.insert(pointer.as_str()) {
                     return Err(RenderError::config_invalid(format!(
                         "view \"{kind}\" contains duplicate block pointer {pointer:?}"

@@ -30,11 +30,6 @@ export function getCpdLanguageForCodeArea(codeArea: string): string | null {
   return CODE_AREA_LANGUAGE[codeArea] ?? null;
 }
 
-/**
- * 使用 PMD CPD 扫描指定文件，返回重复代码片段指标。
- *
- * CPD 扫描失败时返回显式 error；调用方决定 skipped 是否阻断。
- */
 interface ScanWithCpdOptions {
   codeArea?: string;
   cwd: string;
@@ -48,6 +43,11 @@ export type CpdScanResult =
   | { fragments: DuplicateCodeFragment[]; ok: true }
   | { error: string; ok: false; reason?: string; skipped: boolean };
 
+/**
+ * 使用 PMD CPD 扫描指定文件，返回重复代码片段指标。
+ *
+ * CPD 扫描失败时返回显式 error；调用方决定 skipped 是否阻断。
+ */
 export function scanWithCpd({
   files,
   cwd,
