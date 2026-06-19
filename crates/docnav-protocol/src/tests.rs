@@ -279,7 +279,20 @@ fn protocol_request_schema_rejects_empty_required_strings() {
 
 #[test]
 fn manifest_schema_rejects_removed_manifest_fields() {
-    let current = serde_json::json!({
+    let current = minimal_manifest();
+    validate_manifest_value(&current).expect("current manifest schema");
+    serde_json::from_value::<Manifest>(current).expect("current manifest parses");
+
+    for value in [
+        manifest_with_removed_protocol(),
+        manifest_with_removed_recommended_parameters(),
+    ] {
+        assert_manifest_rejected(value);
+    }
+}
+
+fn minimal_manifest() -> Value {
+    serde_json::json!({
         "manifest_version": "0.1",
         "adapter": {
             "id": "stub",
@@ -294,12 +307,11 @@ fn manifest_schema_rejects_removed_manifest_fields() {
             }
         ],
         "capabilities": ["outline", "read", "find", "info"]
-    });
+    })
+}
 
-    validate_manifest_value(&current).expect("current manifest schema");
-    serde_json::from_value::<Manifest>(current).expect("current manifest parses");
-
-    let old_protocol = serde_json::json!({
+fn manifest_with_removed_protocol() -> Value {
+    serde_json::json!({
         "manifest_version": "0.1",
         "adapter": {
             "id": "stub",
@@ -318,9 +330,11 @@ fn manifest_schema_rejects_removed_manifest_fields() {
             }
         ],
         "capabilities": ["outline", "read", "find", "info"]
-    });
+    })
+}
 
-    let old_recommended_parameters = serde_json::json!({
+fn manifest_with_removed_recommended_parameters() -> Value {
+    serde_json::json!({
         "manifest_version": "0.1",
         "adapter": {
             "id": "stub",
@@ -340,12 +354,12 @@ fn manifest_schema_rejects_removed_manifest_fields() {
                 "limit_chars": 80
             }
         }
-    });
+    })
+}
 
-    for value in [old_protocol, old_recommended_parameters] {
-        assert!(validate_manifest_value(&value).is_err());
-        assert!(serde_json::from_value::<Manifest>(value).is_err());
-    }
+fn assert_manifest_rejected(value: Value) {
+    assert!(validate_manifest_value(&value).is_err());
+    assert!(serde_json::from_value::<Manifest>(value).is_err());
 }
 
 #[test]

@@ -1,12 +1,12 @@
 use std::io::{self, Write};
 
-use docnav_diagnostics::write_warning_text_lines;
+use docnav_diagnostics::{attach_warnings_to_value, write_warning_text_lines};
 use docnav_json_io::write_json_value_pretty;
 use docnav_output::{
     write_document_error, write_document_response, DocumentOutputMode, ProtocolOutputContext,
 };
 use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, PROTOCOL_VERSION};
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::cli::{CliWarning, OutputMode};
 use crate::error::{exit_code_for_error, AppError, AppResult, DocnavExitCode};
@@ -91,7 +91,8 @@ pub fn write_outcome<W: Write, E: Write>(
     let result = match outcome.output {
         CommandOutput::PlainText(text) => write_plain_text(&text, &combined_warnings, stdout),
         CommandOutput::Json(value) => {
-            write_json(add_warnings(value, &combined_warnings), stdout).map_err(io::Error::other)
+            write_json(attach_warnings_to_value(value, &combined_warnings), stdout)
+                .map_err(io::Error::other)
         }
         CommandOutput::DocumentResponse { response, mode } => {
             write_document_response(&response, mode, &combined_warnings, stdout, stderr)
@@ -106,14 +107,15 @@ pub fn write_outcome<W: Write, E: Write>(
     }
 }
 
-pub fn write_error<W: Write, E: Write>(
-    error: &AppError,
-    output_mode: OutputMode,
-    operation: Option<Operation>,
-    warnings: &[CliWarning],
-    stdout: &mut W,
-    stderr: &mut E,
-) -> i32 {
+pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
+    let ErrorOutput {
+        error,
+        output_mode,
+        operation,
+        warnings,
+        stdout,
+        stderr,
+    } = request;
     let request_id = generate_request_id();
     let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, &request_id, operation);
     let result = write_document_error(
@@ -132,30 +134,20 @@ pub fn write_error<W: Write, E: Write>(
     }
 }
 
+pub struct ErrorOutput<'a, W: Write, E: Write> {
+    pub error: &'a AppError,
+    pub output_mode: OutputMode,
+    pub operation: Option<Operation>,
+    pub warnings: &'a [CliWarning],
+    pub stdout: &'a mut W,
+    pub stderr: &'a mut E,
+}
+
 fn document_output_mode(mode: OutputMode) -> DocumentOutputMode {
     match mode {
         OutputMode::ReadableView => DocumentOutputMode::ReadableView,
         OutputMode::ReadableJson => DocumentOutputMode::ReadableJson,
         OutputMode::ProtocolJson => DocumentOutputMode::ProtocolJson,
-    }
-}
-
-fn add_warnings(mut value: Value, warnings: &[CliWarning]) -> Value {
-    if warnings.is_empty() {
-        return value;
-    }
-    let warnings = serde_json::to_value(warnings).unwrap_or_else(|_| Value::Array(Vec::new()));
-    match &mut value {
-        Value::Object(object) => {
-            object.insert("warnings".to_owned(), warnings);
-            value
-        }
-        _ => {
-            let mut object = Map::new();
-            object.insert("value".to_owned(), value);
-            object.insert("warnings".to_owned(), warnings);
-            Value::Object(object)
-        }
     }
 }
 
@@ -208,13 +200,18 @@ mod tests {
         map.iter().map(|(k, v)| (k.to_string(), json!(v))).collect()
     }
 
+    fn write_success(outcome: CommandOutcome, warnings: &[CliWarning]) -> (Vec<u8>, Vec<u8>) {
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let exit = write_outcome(outcome, warnings, &mut stdout, &mut stderr);
+        assert_eq!(exit, 0);
+        (stdout, stderr)
+    }
+
     #[test]
     fn plain_text_outcome_writes_text_directly() {
         let outcome = CommandOutcome::plain_text("hello world");
-        let mut stdout = Vec::new();
-        let mut stderr = Vec::new();
-        let exit = write_outcome(outcome, &[], &mut stdout, &mut stderr);
-        assert_eq!(exit, 0);
+        let (stdout, _) = write_success(outcome, &[]);
         let output = String::from_utf8(stdout).unwrap();
         assert!(output.contains("hello world"));
         assert!(!output.trim().starts_with('{'));
@@ -224,10 +221,7 @@ mod tests {
     fn non_document_json_warnings_stay_in_json_payload() {
         let outcome = CommandOutcome::json(json!({"config": "ok"}));
         let warning = cli_argv_warning(&["--extra"]);
-        let mut stdout = Vec::new();
-        let mut stderr = Vec::new();
-        let exit = write_outcome(outcome, &[warning], &mut stdout, &mut stderr);
-        assert_eq!(exit, 0);
+        let (stdout, stderr) = write_success(outcome, &[warning]);
         assert!(stderr.is_empty());
         let value: Value = serde_json::from_slice(&stdout).unwrap();
         assert_eq!(value["config"], "ok");
@@ -248,10 +242,7 @@ mod tests {
             }),
         );
         let outcome = outcome_for_response(response, OutputMode::ReadableView).unwrap();
-        let mut stdout = Vec::new();
-        let mut stderr = Vec::new();
-        let exit = write_outcome(outcome, &[], &mut stdout, &mut stderr);
-        assert_eq!(exit, 0);
+        let (stdout, _) = write_success(outcome, &[]);
         let output = String::from_utf8(stdout).unwrap();
         assert!(output.contains("\"$block\": \"/content\""));
         assert!(output.contains("[block /content bytes=4]"));
@@ -272,10 +263,7 @@ mod tests {
         );
         let outcome = outcome_for_response(response, OutputMode::ReadableJson).unwrap();
         let warning = cli_argv_warning(&["--extra"]);
-        let mut stdout = Vec::new();
-        let mut stderr = Vec::new();
-        let exit = write_outcome(outcome, &[warning], &mut stdout, &mut stderr);
-        assert_eq!(exit, 0);
+        let (stdout, stderr) = write_success(outcome, &[warning]);
         assert!(stderr.is_empty());
         let value: Value = serde_json::from_slice(&stdout).unwrap();
         assert_eq!(value["entries"][0]["ref"], "R1");
@@ -295,10 +283,7 @@ mod tests {
         );
         let outcome = outcome_for_response(response, OutputMode::ProtocolJson).unwrap();
         let warning = cli_argv_warning(&["--extra"]);
-        let mut stdout = Vec::new();
-        let mut stderr = Vec::new();
-        let exit = write_outcome(outcome, &[warning], &mut stdout, &mut stderr);
-        assert_eq!(exit, 0);
+        let (stdout, stderr) = write_success(outcome, &[warning]);
         let stdout: Value = serde_json::from_slice(&stdout).unwrap();
         assert!(stdout.get("warnings").is_none());
         assert_eq!(stdout["protocol_version"], PROTOCOL_VERSION);
@@ -316,14 +301,14 @@ mod tests {
         });
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
-        let exit = write_error(
-            &error,
-            OutputMode::ReadableView,
-            Some(Operation::Read),
-            &[],
-            &mut stdout,
-            &mut stderr,
-        );
+        let exit = write_error(ErrorOutput {
+            error: &error,
+            output_mode: OutputMode::ReadableView,
+            operation: Some(Operation::Read),
+            warnings: &[],
+            stdout: &mut stdout,
+            stderr: &mut stderr,
+        });
         assert_eq!(exit, DocnavExitCode::DocumentError.code());
         let output = String::from_utf8(stdout).unwrap();
         assert!(output.contains("[block /error bytes="));

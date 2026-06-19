@@ -48,14 +48,14 @@ where
     let parsed = match cli::parse(args) {
         Ok(parsed) => parsed,
         Err(error) => {
-            return output::write_error(
-                &error,
-                output_context.output_mode,
-                output_context.operation,
-                &[],
-                &mut stdout,
-                &mut stderr,
-            )
+            return output::write_error(output::ErrorOutput {
+                error: &error,
+                output_mode: output_context.output_mode,
+                operation: output_context.operation,
+                warnings: &[],
+                stdout: &mut stdout,
+                stderr: &mut stderr,
+            })
         }
     };
 
@@ -64,14 +64,14 @@ where
     let operation = command.operation();
     match execute(command, runtime) {
         Ok(outcome) => output::write_outcome(outcome, &warnings, &mut stdout, &mut stderr),
-        Err(error) => output::write_error(
-            &error,
+        Err(error) => output::write_error(output::ErrorOutput {
+            error: &error,
             output_mode,
             operation,
-            &warnings,
-            &mut stdout,
-            &mut stderr,
-        ),
+            warnings: &warnings,
+            stdout: &mut stdout,
+            stderr: &mut stderr,
+        }),
     }
 }
 

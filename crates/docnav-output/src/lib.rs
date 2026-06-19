@@ -1,13 +1,13 @@
 use std::fmt;
 use std::io::{self, Write};
 
-use docnav_diagnostics::{write_warning_text_lines, Warning};
+use docnav_diagnostics::{attach_warnings_to_value, write_warning_text_lines, Warning};
 use docnav_json_io::{write_json_value_pretty, JsonIoError};
 use docnav_protocol::{
     Operation, OperationResult, ProtocolResponse, StableError, PROTOCOL_VERSION,
 };
 use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind, RenderError};
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DocumentOutputMode {
@@ -208,23 +208,8 @@ pub fn stable_error_readable(error: &StableError) -> Value {
     })
 }
 
-pub fn add_warnings(mut value: Value, warnings: &[Warning]) -> Value {
-    if warnings.is_empty() {
-        return value;
-    }
-    let warnings = serde_json::to_value(warnings).unwrap_or_else(|_| Value::Array(Vec::new()));
-    match &mut value {
-        Value::Object(object) => {
-            object.insert("warnings".to_owned(), warnings);
-            value
-        }
-        _ => {
-            let mut object = Map::new();
-            object.insert("value".to_owned(), value);
-            object.insert("warnings".to_owned(), warnings);
-            Value::Object(object)
-        }
-    }
+pub fn add_warnings(value: Value, warnings: &[Warning]) -> Value {
+    attach_warnings_to_value(value, warnings)
 }
 
 fn write_readable_view_value<W: Write>(

@@ -690,73 +690,54 @@ function reportLabelForCheck(check: CheckTask): string {
 
 function docsValidatorChecks(): CheckDefinition[] {
   return [
-    {
-      id: "docs-case-catalog-validator",
-      label: "docs case catalog validator",
-      command: "pnpm",
-      args: ["run", "validate:docs", "cases"],
-      ignoreOutput: [
-        /^\$ node scripts\/validate-docs\.ts "?cases"?$/,
-        /^test case catalog ok:/
-      ]
-    },
-    {
-      id: "docs-json-validator",
-      label: "docs json validator",
-      command: "pnpm",
-      args: ["run", "validate:docs", "json"],
-      ignoreOutput: [
-        /^\$ node scripts\/validate-docs\.ts "?json"?$/,
-        /^json syntax ok:/
-      ]
-    },
-    {
-      id: "docs-schema-validator",
-      label: "docs schema validator",
-      command: "pnpm",
-      args: ["run", "validate:docs", "schema"],
-      ignoreOutput: [
-        /^\$ node scripts\/validate-docs\.ts "?schema"?$/,
-        /^schema strict compile ok:/,
-        /^schema ok:/,
-        /^protocol response operation\/result binding ok$/,
-        /^protocol response error details requirements ok$/
-      ]
-    },
-    {
-      id: "docs-mcp-validator",
-      label: "docs mcp validator",
-      command: "pnpm",
-      args: ["run", "validate:docs", "mcp"],
-      ignoreOutput: [
-        /^\$ node scripts\/validate-docs\.ts "?mcp"?$/,
-        /^mcp structuredContent ok:/
-      ]
-    },
-    {
-      id: "docs-example-consistency-validator",
-      label: "docs example consistency validator",
-      command: "pnpm",
-      args: ["run", "validate:docs", "examples"],
-      ignoreOutput: [
-        /^\$ node scripts\/validate-docs\.ts "?examples"?$/,
+    docsValidatorCheck("docs-case-catalog-validator", "docs case catalog validator", "cases", [
+      /^test case catalog ok:/
+    ]),
+    docsValidatorCheck("docs-json-validator", "docs json validator", "json", [
+      /^json syntax ok:/
+    ]),
+    docsValidatorCheck("docs-schema-validator", "docs schema validator", "schema", [
+      /^schema strict compile ok:/,
+      /^schema ok:/,
+      /^protocol response operation\/result binding ok$/,
+      /^protocol response error details requirements ok$/
+    ]),
+    docsValidatorCheck("docs-mcp-validator", "docs mcp validator", "mcp", [
+      /^mcp structuredContent ok:/
+    ]),
+    docsValidatorCheck(
+      "docs-example-consistency-validator",
+      "docs example consistency validator",
+      "examples",
+      [
         /^protocol\/readable mapping ok:/,
         /^error details ok:/,
         /^manifest example consistency ok:/,
         /^document output mode consistency ok:/
       ]
-    },
-    {
-      id: "docs-links-validator",
-      label: "docs links validator",
-      command: "pnpm",
-      args: ["run", "validate:docs", "links"],
-      ignoreOutput: [
-        /^\$ node scripts\/validate-docs\.ts "?links"?$/,
-        /^markdown links ok:/
-      ]
-    }
+    ),
+    docsValidatorCheck("docs-links-validator", "docs links validator", "links", [
+      /^markdown links ok:/
+    ])
   ];
+}
+
+function docsValidatorCheck(
+  id: string,
+  label: string,
+  target: string,
+  successOutput: readonly RegExp[]
+): CheckDefinition {
+  return {
+    id,
+    label,
+    command: "pnpm",
+    args: ["run", "validate:docs", target],
+    ignoreOutput: [
+      new RegExp(`^\\$ node scripts\\/validate-docs\\.ts "?${target}"?$`),
+      ...successOutput
+    ]
+  };
 }
 
 function nodeTestFileChecks(testFiles: readonly [id: string, label: string, filePath: string][]): CheckDefinition[] {

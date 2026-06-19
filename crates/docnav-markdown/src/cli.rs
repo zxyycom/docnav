@@ -57,11 +57,11 @@ mod tests {
 
     static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-    struct FailingWriter;
+    struct ClosedStdout;
 
-    impl Write for FailingWriter {
+    impl Write for ClosedStdout {
         fn write(&mut self, _buffer: &[u8]) -> io::Result<usize> {
-            Err(io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed"))
+            Err(closed_stdout())
         }
 
         fn flush(&mut self) -> io::Result<()> {
@@ -69,11 +69,15 @@ mod tests {
         }
     }
 
+    fn closed_stdout() -> io::Error {
+        io::Error::new(io::ErrorKind::BrokenPipe, "stdout closed")
+    }
+
     #[test]
     fn readable_view_output_write_failure_reports_diagnostic() {
         let path = write_doc("stdout-failure.md", "# Guide\n");
         let args = vec!["outline".to_owned(), path.to_string_lossy().into_owned()];
-        let mut stdout = FailingWriter;
+        let mut stdout = ClosedStdout;
         let mut stderr = Vec::new();
 
         let exit = run(args, io::empty(), &mut stdout, &mut stderr);

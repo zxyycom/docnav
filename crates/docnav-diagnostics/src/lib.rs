@@ -221,6 +221,26 @@ pub fn warning_text_line(warning: &Warning) -> Result<String, serde_json::Error>
     ))
 }
 
+pub fn attach_warnings_to_value<T: Serialize>(mut value: Value, warnings: &[T]) -> Value {
+    if warnings.is_empty() {
+        return value;
+    }
+
+    let warnings = serde_json::to_value(warnings).unwrap_or_else(|_| Value::Array(Vec::new()));
+    match &mut value {
+        Value::Object(object) => {
+            object.insert("warnings".to_owned(), warnings);
+            value
+        }
+        _ => {
+            let mut object = Map::new();
+            object.insert("value".to_owned(), value);
+            object.insert("warnings".to_owned(), warnings);
+            Value::Object(object)
+        }
+    }
+}
+
 pub fn write_warning_text_lines<W: Write>(warnings: &[Warning], writer: &mut W) -> io::Result<()> {
     for warning in warnings {
         writeln!(
@@ -295,5 +315,18 @@ mod tests {
             warning_text_line(&warning).unwrap(),
             "warning: id=cli_argv_ignored, effect=operation_continued, reason=unknown CLI flag ignored, details={\"tokens\":[\"--future\"]}"
         );
+    }
+
+    #[test]
+    fn attach_warnings_keeps_json_payload_shape() {
+        let warning = Warning::cli_argv_ignored(vec!["--future".to_owned()], "test warning");
+
+        let object = attach_warnings_to_value(json!({"ok": true}), std::slice::from_ref(&warning));
+        assert_eq!(object["ok"], json!(true));
+        assert_eq!(object["warnings"][0]["id"], "cli_argv_ignored");
+
+        let scalar = attach_warnings_to_value(json!("ok"), &[warning]);
+        assert_eq!(scalar["value"], json!("ok"));
+        assert_eq!(scalar["warnings"][0]["id"], "cli_argv_ignored");
     }
 }
