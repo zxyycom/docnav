@@ -49,55 +49,65 @@ async function checkLizard(rootDir: string): Promise<ToolAvailability> {
 async function checkScc(rootDir: string): Promise<ToolAvailability> {
   try {
     const result = await runToolCommand(rootDir, DEFAULT_CONFIG.tools.scc, ["--version"]);
-    if (result.error) {
-      const code = (result.error as NodeJS.ErrnoException).code;
-      return {
-        name: "scc",
-        available: false,
-        version: null,
-        error: code === "ENOENT" ? `scc not installed: ${result.error.message}` : `scc version error: ${result.error.message}`,
-        source: "system",
-        reason: code === "ENOENT" ? "tool-unavailable" : "execution-error"
-      };
-    }
-
-    const version = (result.stdout || "").trim() || (result.stderr || "").trim();
-    if (result.status !== 0) {
-      const failure = typeof result.status === "number"
-        ? `exit ${result.status}`
-        : `signal ${result.signal || "unknown"}`;
-      return {
-        name: "scc",
-        available: false,
-        version: null,
-        error: `scc --version failed, ${failure}${version ? `: ${version}` : ""}`,
-        source: "system",
-        reason: "execution-error"
-      };
-    }
-
-    if (version !== SCC_VERSION_OUTPUT) {
-      return {
-        name: "scc",
-        available: false,
-        version: null,
-        error: `expected ${SCC_VERSION_OUTPUT}, got "${version || "unknown"}"`,
-        source: "system",
-        reason: "contract-error"
-      };
-    }
-
-    return { name: "scc", available: true, version, error: null, source: "system", reason: null };
+    return sccAvailabilityFromVersionResult(result);
   } catch {
-    return {
-      name: "scc",
-      available: false,
-      version: null,
-      error: "unknown error",
-      source: "system",
-      reason: "execution-error"
-    };
+    return unavailableScc("unknown error", "execution-error");
   }
+}
+
+function sccAvailabilityFromVersionResult(
+  result: Awaited<ReturnType<typeof runToolCommand>>
+): ToolAvailability {
+  if (result.error) {
+    return sccProcessErrorAvailability(result.error);
+  }
+
+  const version = versionOutput(result);
+  if (result.status !== 0) {
+    return unavailableScc(
+      `scc --version failed, ${processFailure(result)}${version ? `: ${version}` : ""}`,
+      "execution-error"
+    );
+  }
+
+  if (version !== SCC_VERSION_OUTPUT) {
+    return unavailableScc(
+      `expected ${SCC_VERSION_OUTPUT}, got "${version || "unknown"}"`,
+      "contract-error"
+    );
+  }
+
+  return { name: "scc", available: true, version, error: null, source: "system", reason: null };
+}
+
+function sccProcessErrorAvailability(error: Error): ToolAvailability {
+  const code = (error as NodeJS.ErrnoException).code;
+  const isMissingTool = code === "ENOENT";
+  return unavailableScc(
+    isMissingTool ? `scc not installed: ${error.message}` : `scc version error: ${error.message}`,
+    isMissingTool ? "tool-unavailable" : "execution-error"
+  );
+}
+
+function unavailableScc(error: string, reason: NonNullable<ToolAvailability["reason"]>): ToolAvailability {
+  return {
+    name: "scc",
+    available: false,
+    version: null,
+    error,
+    source: "system",
+    reason
+  };
+}
+
+function versionOutput(result: Awaited<ReturnType<typeof runToolCommand>>): string {
+  return (result.stdout || "").trim() || (result.stderr || "").trim();
+}
+
+function processFailure(result: Awaited<ReturnType<typeof runToolCommand>>): string {
+  return typeof result.status === "number"
+    ? `exit ${result.status}`
+    : `signal ${result.signal || "unknown"}`;
 }
 
 async function checkPmdCpd(rootDir: string): Promise<ToolAvailability> {

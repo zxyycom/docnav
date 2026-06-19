@@ -26,6 +26,19 @@ type SccScanResult =
   | { aggregates: { byLanguage: LanguageAggregate[] }; files: FileMetric[]; ok: true }
   | { error: string; ok: false };
 
+interface SccColumnIndexes {
+  blanks: number;
+  code: number;
+  comments: number;
+  complexity: number;
+  filename: number;
+  language: number;
+  lines: number;
+  provider: number;
+}
+
+type ParsedSccFileMetric = FileMetric & Required<Pick<FileMetric, "blankLines" | "codeLines" | "commentLines">>;
+
 export function scanWithScc({ cwd, includePaths, excludeDirs, toolConfig }: ScanWithSccOptions): SccScanResult {
   const argv = buildSccArgs({ includePaths, excludeDirs, toolArgs: toolConfig.args });
 
@@ -84,95 +97,132 @@ export function parseSccCSV(csv: string, _cwd: string): SccScanResult {
       return { ok: true, files: [], aggregates: { byLanguage: [] } };
     }
 
-    const expectedHeader = SCC_BY_FILE_CSV_HEADER.split(",");
-    const headerIdx = rows.findIndex((row) => isCsvRow(row, expectedHeader));
+    const headerIdx = findSccHeaderIndex(rows);
     if (headerIdx < 0) {
-      const observedHeader = rows.find((row) => row[0] === "Language")?.join(",") ?? rows[0]?.join(",") ?? "";
       return {
         ok: false,
-        error: `expected scc ${SCC_VERSION} by-file CSV header "${SCC_BY_FILE_CSV_HEADER}", got "${observedHeader}"`
+        error: `expected scc ${SCC_VERSION} by-file CSV header "${SCC_BY_FILE_CSV_HEADER}", got "${observedSccHeader(rows)}"`
       };
     }
 
-    const headerCols = rows[headerIdx] ?? [];
-
-    const colIdx = {
-      language: headerCols.indexOf("Language"),
-      provider: headerCols.indexOf("Provider"),
-      filename: headerCols.indexOf("Filename"),
-      lines: headerCols.indexOf("Lines"),
-      code: headerCols.indexOf("Code"),
-      comments: headerCols.indexOf("Comments"),
-      blanks: headerCols.indexOf("Blanks"),
-      complexity: headerCols.indexOf("Complexity"),
-      bytes: headerCols.indexOf("Bytes"),
-      uloc: headerCols.indexOf("ULOC")
-    };
-
-    const files: FileMetric[] = [];
-
-    const langMap = new Map<string, LanguageAggregate>();
-
-    for (let i = headerIdx + 1; i < rows.length; i++) {
-      const parts = rows[i] ?? [];
-      if (parts.length < Math.max(6, colIdx.filename + 1)) continue;
-
-      const language = parts[colIdx.language] || "";
-      const filename = parts[colIdx.filename] || "";
-      const path = parts[colIdx.provider] || filename;
-      const lineCount = parseInt(parts[colIdx.lines], 10);
-      const codeLines = parseInt(parts[colIdx.code], 10);
-      const commentLines = parseInt(parts[colIdx.comments], 10);
-      const blankLines = parseInt(parts[colIdx.blanks], 10);
-      const complexity = colIdx.complexity >= 0 ? parseInt(parts[colIdx.complexity], 10) : NaN;
-
-      if (isNaN(lineCount) || !filename) continue;
-
-      files.push({
-        path: toSlashPath(path),
-        language,
-        codeArea: "unknown",
-        lines: lineCount,
-        codeLines: isNaN(codeLines) ? 0 : codeLines,
-        commentLines: isNaN(commentLines) ? 0 : commentLines,
-        blankLines: isNaN(blankLines) ? 0 : blankLines,
-        complexity: {
-          value: isNaN(complexity) ? null : complexity,
-          source: "scc"
-        },
-        isChanged: false
-      });
-
-      const existing = langMap.get(language);
-      if (existing) {
-        existing.files++;
-        existing.lines += lineCount;
-        existing.codeLines += isNaN(codeLines) ? 0 : codeLines;
-        existing.commentLines += isNaN(commentLines) ? 0 : commentLines;
-        existing.blankLines += isNaN(blankLines) ? 0 : blankLines;
-      } else {
-        langMap.set(language, {
-          language,
-          files: 1,
-          lines: lineCount,
-          codeLines: isNaN(codeLines) ? 0 : codeLines,
-          commentLines: isNaN(commentLines) ? 0 : commentLines,
-          blankLines: isNaN(blankLines) ? 0 : blankLines,
-          complexitySource: "scc"
-        });
-      }
-    }
-
-    files.sort((a, b) => b.lines - a.lines);
-
-    const byLanguage = Array.from(langMap.values()).sort(
-      (a, b) => b.lines - a.lines
-    );
-
-    return { ok: true, files, aggregates: { byLanguage } };
+    const columns = sccColumnIndexes(rows[headerIdx] ?? []);
+    const parsed = parseSccMetrics(rows.slice(headerIdx + 1), columns);
+    return { ok: true, files: parsed.files, aggregates: { byLanguage: parsed.byLanguage } };
   } catch (error: unknown) {
     return { ok: false, error: `Failed to parse scc CSV: ${errorMessage(error)}` };
   }
+}
+
+function findSccHeaderIndex(rows: string[][]): number {
+  const expectedHeader = SCC_BY_FILE_CSV_HEADER.split(",");
+  return rows.findIndex((row) => isCsvRow(row, expectedHeader));
+}
+
+function observedSccHeader(rows: string[][]): string {
+  return rows.find((row) => row[0] === "Language")?.join(",") ?? rows[0]?.join(",") ?? "";
+}
+
+function sccColumnIndexes(headerCols: string[]): SccColumnIndexes {
+  return {
+    language: headerCols.indexOf("Language"),
+    provider: headerCols.indexOf("Provider"),
+    filename: headerCols.indexOf("Filename"),
+    lines: headerCols.indexOf("Lines"),
+    code: headerCols.indexOf("Code"),
+    comments: headerCols.indexOf("Comments"),
+    blanks: headerCols.indexOf("Blanks"),
+    complexity: headerCols.indexOf("Complexity")
+  };
+}
+
+function parseSccMetrics(rows: string[][], columns: SccColumnIndexes): {
+  byLanguage: LanguageAggregate[];
+  files: FileMetric[];
+} {
+  const files: FileMetric[] = [];
+  const langMap = new Map<string, LanguageAggregate>();
+
+  for (const row of rows) {
+    const metric = parseSccFileMetric(row, columns);
+    if (!metric) continue;
+
+    files.push(metric);
+    addLanguageMetric(langMap, metric);
+  }
+
+  files.sort((a, b) => b.lines - a.lines);
+  const byLanguage = Array.from(langMap.values()).sort((a, b) => b.lines - a.lines);
+  return { files, byLanguage };
+}
+
+function parseSccFileMetric(parts: string[], columns: SccColumnIndexes): ParsedSccFileMetric | null {
+  if (parts.length < Math.max(6, columns.filename + 1)) return null;
+
+  const language = parts[columns.language] || "";
+  const filename = parts[columns.filename] || "";
+  const lineCount = parseInt(parts[columns.lines], 10);
+  if (isNaN(lineCount) || !filename) return null;
+
+  const path = parts[columns.provider] || filename;
+  const codeLines = parseOptionalInt(parts[columns.code]);
+  const commentLines = parseOptionalInt(parts[columns.comments]);
+  const blankLines = parseOptionalInt(parts[columns.blanks]);
+  const complexity = columns.complexity >= 0
+    ? parseInt(parts[columns.complexity], 10)
+    : NaN;
+
+  return {
+    path: toSlashPath(path),
+    language,
+    codeArea: "unknown",
+    lines: lineCount,
+    codeLines,
+    commentLines,
+    blankLines,
+    complexity: {
+      value: isNaN(complexity) ? null : complexity,
+      source: "scc"
+    },
+    isChanged: false
+  };
+}
+
+function addLanguageMetric(langMap: Map<string, LanguageAggregate>, metric: ParsedSccFileMetric): void {
+  const existing = langMap.get(metric.language);
+  if (existing) {
+    incrementLanguageAggregate(existing, metric);
+    return;
+  }
+
+  langMap.set(metric.language, createLanguageAggregate(metric));
+}
+
+function incrementLanguageAggregate(
+  existing: LanguageAggregate,
+  metric: ParsedSccFileMetric
+): void {
+  existing.files++;
+  existing.lines += metric.lines;
+  existing.codeLines += metric.codeLines;
+  existing.commentLines += metric.commentLines;
+  existing.blankLines += metric.blankLines;
+}
+
+function createLanguageAggregate(metric: ParsedSccFileMetric): LanguageAggregate {
+  return {
+    language: metric.language,
+    files: 1,
+    lines: metric.lines,
+    codeLines: metric.codeLines,
+    commentLines: metric.commentLines,
+    blankLines: metric.blankLines,
+    complexitySource: "scc"
+  };
+}
+
+function parseOptionalInt(value: string): number {
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 function isCsvRow(row: string[], expected: string[]): boolean {
