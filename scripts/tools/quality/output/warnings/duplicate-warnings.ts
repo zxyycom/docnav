@@ -4,6 +4,13 @@ import { countMatchingBaselineDuplicates } from "./baseline-context.ts";
 import { buildMetricWarning } from "./metric-warning.ts";
 import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./warning-model.ts";
 
+type DuplicateWarningInput = {
+  areaPolicy: AreaWarningPolicy;
+  context: WarningContext;
+  dup: DuplicateCodeFragment;
+  uniqueAreas: string[];
+};
+
 export function generateDuplicateWarnings(duplicates: DuplicateCodeFragment[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];
 
@@ -12,19 +19,15 @@ export function generateDuplicateWarnings(duplicates: DuplicateCodeFragment[], c
     const areaPolicy = duplicateAreaWarningPolicy(uniqueAreas, context.config);
     if (!areaPolicy) continue;
 
-    const warning = buildDuplicateWarning(dup, uniqueAreas, context, areaPolicy);
+    const warning = buildDuplicateWarning({ areaPolicy, context, dup, uniqueAreas });
     if (warning) warnings.push(warning);
   }
 
   return warnings;
 }
 
-function buildDuplicateWarning(
-  dup: DuplicateCodeFragment,
-  uniqueAreas: string[],
-  context: WarningContext,
-  areaPolicy: AreaWarningPolicy
-): WarningCandidate | null {
+function buildDuplicateWarning(input: DuplicateWarningInput): WarningCandidate | null {
+  const { areaPolicy, context, dup, uniqueAreas } = input;
   const primaryLocation = dup.locations[0];
   const baselineDuplicateCount = countMatchingBaselineDuplicates(
     dup,

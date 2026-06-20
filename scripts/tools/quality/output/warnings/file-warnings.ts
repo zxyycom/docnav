@@ -3,6 +3,13 @@ import { metricAreaWarningPolicy } from "./area-policy.ts";
 import { buildMetricWarning, deltaFrom } from "./metric-warning.ts";
 import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./warning-model.ts";
 
+type FileWarningInput = {
+  areaPolicy: AreaWarningPolicy;
+  baseFile: FileMetric | undefined;
+  context: WarningContext;
+  file: FileMetric;
+};
+
 export function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];
 
@@ -11,22 +18,19 @@ export function generateFileWarnings(files: FileMetric[], context: WarningContex
     if (!areaPolicy) continue;
 
     const baseFile = context.baselineFiles.get(file.path);
-    const lineWarning = buildFileLineWarning(file, baseFile, context, areaPolicy);
+    const warningInput = { areaPolicy, baseFile, context, file };
+    const lineWarning = buildFileLineWarning(warningInput);
     if (lineWarning) warnings.push(lineWarning);
 
-    const complexityWarning = buildFileComplexityWarning(file, baseFile, context, areaPolicy);
+    const complexityWarning = buildFileComplexityWarning(warningInput);
     if (complexityWarning) warnings.push(complexityWarning);
   }
 
   return warnings;
 }
 
-function buildFileLineWarning(
-  file: FileMetric,
-  baseFile: FileMetric | undefined,
-  context: WarningContext,
-  areaPolicy: AreaWarningPolicy
-): WarningCandidate | null {
+function buildFileLineWarning(input: FileWarningInput): WarningCandidate | null {
+  const { areaPolicy, baseFile, context, file } = input;
   const lineFloor = context.config.scc?.fileCodeLines?.absoluteFloor ?? 300;
   const lineDelta = context.config.scc?.fileCodeLines?.changedDelta ?? 100;
   const fileCodeLines = file.codeLines ?? null;
@@ -52,12 +56,8 @@ function buildFileLineWarning(
   });
 }
 
-function buildFileComplexityWarning(
-  file: FileMetric,
-  baseFile: FileMetric | undefined,
-  context: WarningContext,
-  areaPolicy: AreaWarningPolicy
-): WarningCandidate | null {
+function buildFileComplexityWarning(input: FileWarningInput): WarningCandidate | null {
+  const { areaPolicy, baseFile, context, file } = input;
   const ccFloor = context.config.scc?.fileComplexity?.absoluteFloor ?? 20;
   const ccDelta = context.config.scc?.fileComplexity?.changedDelta ?? 10;
   const baseComplexity = baseFile?.complexity?.value ?? (context.hasBaselineFiles ? 0 : null);

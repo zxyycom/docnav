@@ -6,6 +6,11 @@ import type {
 } from "../../../model/schema.ts";
 
 type RankedChangedFile = { file: FileMetric; reasons: string[]; score: number };
+type ChangedFileRiskSignals = {
+  changedWarningPaths: Set<string>;
+  deltaWarningPaths: Set<string>;
+  duplicatePaths: Set<string>;
+};
 
 export function changedFilesSection(metrics: QualityMetrics, topN = 10): string {
   const lines: string[] = [];
@@ -55,42 +60,44 @@ function rankChangedFilesByRisk(
   changed: FileMetric[],
   metrics: QualityMetrics
 ): RankedChangedFile[] {
-  const changedWarningPaths = new Set(
-    (metrics.warnings?.all || [])
-      .filter((warning) => warning.isChanged)
-      .map((warning) => warning.path)
-  );
-  const deltaWarningPaths = new Set(
-    (metrics.warnings?.all || [])
-      .filter((warning) => warning.isChanged && warning.deltaValue !== null && warning.deltaValue !== 0)
-      .map((warning) => warning.path)
-  );
-  const duplicatePaths = changedDuplicatePaths(metrics.duplicateCode);
+  const signals = changedFileRiskSignals(metrics);
 
   return changed
-    .map((file) => riskRankedFile(file, changedWarningPaths, deltaWarningPaths, duplicatePaths))
+    .map((file) => riskRankedFile(file, signals))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score || b.file.lines - a.file.lines || a.file.path.localeCompare(b.file.path));
 }
 
-function riskRankedFile(
-  file: FileMetric,
-  changedWarningPaths: Set<string>,
-  deltaWarningPaths: Set<string>,
-  duplicatePaths: Set<string>
-): RankedChangedFile {
+function changedFileRiskSignals(metrics: QualityMetrics): ChangedFileRiskSignals {
+  const warnings = metrics.warnings?.all || [];
+  return {
+    changedWarningPaths: new Set(
+      warnings
+        .filter((warning) => warning.isChanged)
+        .map((warning) => warning.path)
+    ),
+    deltaWarningPaths: new Set(
+      warnings
+        .filter((warning) => warning.isChanged && warning.deltaValue !== null && warning.deltaValue !== 0)
+        .map((warning) => warning.path)
+    ),
+    duplicatePaths: changedDuplicatePaths(metrics.duplicateCode)
+  };
+}
+
+function riskRankedFile(file: FileMetric, signals: ChangedFileRiskSignals): RankedChangedFile {
   const reasons: string[] = [];
   let score = 0;
 
-  if (changedWarningPaths.has(file.path)) {
+  if (signals.changedWarningPaths.has(file.path)) {
     reasons.push("current warning");
     score += 4;
   }
-  if (deltaWarningPaths.has(file.path)) {
+  if (signals.deltaWarningPaths.has(file.path)) {
     reasons.push("delta");
     score += 2;
   }
-  if (duplicatePaths.has(file.path)) {
+  if (signals.duplicatePaths.has(file.path)) {
     reasons.push("duplicate code");
     score += 3;
   }

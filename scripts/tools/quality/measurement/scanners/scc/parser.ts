@@ -24,6 +24,16 @@ interface SccColumnIndexes {
 
 type ParsedSccFileMetric = FileMetric & Required<Pick<FileMetric, "blankLines" | "codeLines" | "commentLines">>;
 
+type ParsedSccRow = {
+  blankLines: number;
+  codeLines: number;
+  commentLines: number;
+  complexity: number | null;
+  language: string;
+  lineCount: number;
+  path: string;
+};
+
 /**
  * 解析 scc CSV 输出。
  *
@@ -101,34 +111,40 @@ function parseSccMetrics(rows: string[][], columns: SccColumnIndexes): {
 }
 
 function parseSccFileMetric(parts: string[], columns: SccColumnIndexes): ParsedSccFileMetric | null {
-  if (parts.length < Math.max(6, columns.filename + 1)) return null;
-
-  const language = parts[columns.language] || "";
-  const filename = parts[columns.filename] || "";
-  const lineCount = parseInt(parts[columns.lines], 10);
-  if (isNaN(lineCount) || !filename) return null;
-
-  const path = parts[columns.provider] || filename;
-  const codeLines = parseOptionalInt(parts[columns.code]);
-  const commentLines = parseOptionalInt(parts[columns.comments]);
-  const blankLines = parseOptionalInt(parts[columns.blanks]);
-  const complexity = columns.complexity >= 0
-    ? parseInt(parts[columns.complexity], 10)
-    : NaN;
+  const row = parseSccRow(parts, columns);
+  if (!row) return null;
 
   return {
-    path: toSlashPath(path),
-    language,
+    path: toSlashPath(row.path),
+    language: row.language,
     codeArea: "unknown",
-    lines: lineCount,
-    codeLines,
-    commentLines,
-    blankLines,
+    lines: row.lineCount,
+    codeLines: row.codeLines,
+    commentLines: row.commentLines,
+    blankLines: row.blankLines,
     complexity: {
-      value: isNaN(complexity) ? null : complexity,
+      value: row.complexity,
       source: "scc"
     },
     isChanged: false
+  };
+}
+
+function parseSccRow(parts: string[], columns: SccColumnIndexes): ParsedSccRow | null {
+  if (parts.length < Math.max(6, columns.filename + 1)) return null;
+
+  const filename = sccColumnValue(parts, columns.filename);
+  const lineCount = parseInt(sccColumnValue(parts, columns.lines), 10);
+  if (isNaN(lineCount) || !filename) return null;
+
+  return {
+    path: sccColumnValue(parts, columns.provider) || filename,
+    language: sccColumnValue(parts, columns.language),
+    lineCount,
+    codeLines: parseOptionalInt(sccColumnValue(parts, columns.code)),
+    commentLines: parseOptionalInt(sccColumnValue(parts, columns.comments)),
+    blankLines: parseOptionalInt(sccColumnValue(parts, columns.blanks)),
+    complexity: parseOptionalIntOrNull(sccColumnValue(parts, columns.complexity))
   };
 }
 
@@ -168,6 +184,15 @@ function createLanguageAggregate(metric: ParsedSccFileMetric): LanguageAggregate
 function parseOptionalInt(value: string): number {
   const parsed = parseInt(value, 10);
   return isNaN(parsed) ? 0 : parsed;
+}
+
+function parseOptionalIntOrNull(value: string): number | null {
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? null : parsed;
+}
+
+function sccColumnValue(parts: string[], index: number): string {
+  return index >= 0 ? parts[index] || "" : "";
 }
 
 function isCsvRow(row: string[], expected: string[]): boolean {

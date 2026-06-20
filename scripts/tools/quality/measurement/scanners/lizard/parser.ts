@@ -6,6 +6,16 @@ export type LizardScanResult =
   | { functions: FunctionMetric[]; ok: true }
   | { error: string; ok: false };
 
+const LIZARD_COLUMNS = {
+  nloc: 0,
+  ccn: 1,
+  parameterCount: 3,
+  filePath: 6,
+  functionName: 7,
+  startLine: 9,
+  endLine: 10
+} as const;
+
 /**
  * 将 Lizard CSV 输出解析为 FunctionMetric 数组。
  *
@@ -41,19 +51,19 @@ function functionMetricFromLizardRow(parts: string[]): FunctionMetric | null {
     return null;
   }
 
-  const nloc = parseOptionalInteger(parts[0]);
-  const ccn = parseOptionalInteger(parts[1]);
-  const paramCount = parseOptionalInteger(parts[3]);
-  const startLine = parseOptionalInteger(parts[9]);
-  const endLine = parseOptionalInteger(parts[10]);
+  const nloc = parseOptionalInteger(parts[LIZARD_COLUMNS.nloc]);
+  const ccn = parseOptionalInteger(parts[LIZARD_COLUMNS.ccn]);
+  const paramCount = parseOptionalInteger(parts[LIZARD_COLUMNS.parameterCount]);
+  const startLine = parseOptionalInteger(parts[LIZARD_COLUMNS.startLine]);
+  const endLine = parseOptionalInteger(parts[LIZARD_COLUMNS.endLine]);
 
   if (nloc === null || startLine === null) {
     return null;
   }
 
   return {
-    name: parts[7] || "unknown",
-    file: parts[6],
+    name: parts[LIZARD_COLUMNS.functionName] || "unknown",
+    file: parts[LIZARD_COLUMNS.filePath],
     codeArea: "unknown",
     startLine,
     endLine: endLine ?? startLine,
@@ -79,7 +89,9 @@ function parseOptionalInteger(value: string | undefined): number | null {
 }
 
 function isLizard123Row(parts: string[]): boolean {
-  return parts.length >= 11 && isIntegerText(parts[9]) && isIntegerText(parts[10]);
+  return parts.length >= 11
+    && isIntegerText(parts[LIZARD_COLUMNS.startLine])
+    && isIntegerText(parts[LIZARD_COLUMNS.endLine]);
 }
 
 function isIntegerText(value: string | undefined): boolean {

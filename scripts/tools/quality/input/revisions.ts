@@ -47,15 +47,8 @@ export function locateBaselineCommit({
     return { ok: false, error: "git rev-parse HEAD failed: no git repository" };
   }
 
-  const patternArgs = scanInputPaths.length > 0
-    ? ["--", ...gitGlobPathspecs(scanInputPaths)]
-    : [];
-
-  const parentCount = runGit(["rev-list", "--count", "--max-count=1", `${headSha}^`], { cwd });
-
-  const hasParent = parentCount.status === 0 && parseInt(parentCount.stdout.trim(), 10) > 0;
-
-  if (!hasParent) {
+  const patternArgs = scanInputPathspecArgs(scanInputPaths);
+  if (!hasParentCommit(cwd, headSha)) {
     return { ok: false, error: "no-baseline-commit: repository has only one commit" };
   }
 
@@ -67,30 +60,10 @@ export function locateBaselineCommit({
   });
 
   if (headModifiedScanInputs) {
-    const baselineSha = latestCodeCommitBeforeHead(cwd, headSha, patternArgs);
-    if (baselineSha) {
-      return baselineCommit(cwd, baselineSha, "previous-code-commit");
-    }
-
-    const parentBaseline = parentBaselineCommit(cwd, headSha, "parent-commit");
-    if (parentBaseline) {
-      return parentBaseline;
-    }
-
-    return { ok: false, error: "no-baseline-commit: no previous commit found" };
+    return baselineForChangedHead(cwd, headSha, patternArgs);
   }
 
-  const baselineSha = latestCodeCommit(cwd, patternArgs);
-  if (baselineSha) {
-    return baselineCommit(cwd, baselineSha, "nearest-code-commit");
-  }
-
-  const parentBaseline = parentBaselineCommit(cwd, headSha, "parent-commit-fallback");
-  if (parentBaseline) {
-    return parentBaseline;
-  }
-
-  return { ok: false, error: "no-baseline-commit: no previous code commit found" };
+  return baselineForUnchangedHead(cwd, headSha, patternArgs);
 }
 
 /**
@@ -201,6 +174,45 @@ export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]
   }
 
   return parseGitStatusPaths(statusResult.stdout);
+}
+
+function scanInputPathspecArgs(scanInputPaths: string[]): string[] {
+  return scanInputPaths.length > 0
+    ? ["--", ...gitGlobPathspecs(scanInputPaths)]
+    : [];
+}
+
+function hasParentCommit(cwd: string, headSha: string): boolean {
+  const parentCount = runGit(["rev-list", "--count", "--max-count=1", `${headSha}^`], { cwd });
+  return parentCount.status === 0 && parseInt(parentCount.stdout.trim(), 10) > 0;
+}
+
+function baselineForChangedHead(cwd: string, headSha: string, patternArgs: string[]): BaselineCommitResult {
+  const baselineSha = latestCodeCommitBeforeHead(cwd, headSha, patternArgs);
+  if (baselineSha) {
+    return baselineCommit(cwd, baselineSha, "previous-code-commit");
+  }
+
+  const parentBaseline = parentBaselineCommit(cwd, headSha, "parent-commit");
+  if (parentBaseline) {
+    return parentBaseline;
+  }
+
+  return { ok: false, error: "no-baseline-commit: no previous commit found" };
+}
+
+function baselineForUnchangedHead(cwd: string, headSha: string, patternArgs: string[]): BaselineCommitResult {
+  const baselineSha = latestCodeCommit(cwd, patternArgs);
+  if (baselineSha) {
+    return baselineCommit(cwd, baselineSha, "nearest-code-commit");
+  }
+
+  const parentBaseline = parentBaselineCommit(cwd, headSha, "parent-commit-fallback");
+  if (parentBaseline) {
+    return parentBaseline;
+  }
+
+  return { ok: false, error: "no-baseline-commit: no previous code commit found" };
 }
 
 function commitModifiesScanInputs({

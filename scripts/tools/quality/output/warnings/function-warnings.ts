@@ -4,6 +4,13 @@ import { functionKey } from "./baseline-context.ts";
 import { buildMetricWarning, deltaFrom } from "./metric-warning.ts";
 import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./warning-model.ts";
 
+type FunctionWarningInput = {
+  areaPolicy: AreaWarningPolicy;
+  baselineFunc: FunctionMetric | undefined;
+  context: WarningContext;
+  func: FunctionMetric;
+};
+
 export function generateFunctionWarnings(functions: FunctionMetric[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];
 
@@ -12,25 +19,22 @@ export function generateFunctionWarnings(functions: FunctionMetric[], context: W
     if (!areaPolicy) continue;
 
     const baselineFunc = context.baselineFunctions.get(functionKey(func));
-    const complexityWarning = buildFunctionComplexityWarning(func, baselineFunc, context, areaPolicy);
+    const warningInput = { areaPolicy, baselineFunc, context, func };
+    const complexityWarning = buildFunctionComplexityWarning(warningInput);
     if (complexityWarning) warnings.push(complexityWarning);
 
-    const lineWarning = buildFunctionLineWarning(func, baselineFunc, context, areaPolicy);
+    const lineWarning = buildFunctionLineWarning(warningInput);
     if (lineWarning) warnings.push(lineWarning);
 
-    const parameterWarning = buildFunctionParameterWarning(func, baselineFunc, context, areaPolicy);
+    const parameterWarning = buildFunctionParameterWarning(warningInput);
     if (parameterWarning) warnings.push(parameterWarning);
   }
 
   return warnings;
 }
 
-function buildFunctionComplexityWarning(
-  func: FunctionMetric,
-  baselineFunc: FunctionMetric | undefined,
-  context: WarningContext,
-  areaPolicy: AreaWarningPolicy
-): WarningCandidate | null {
+function buildFunctionComplexityWarning(input: FunctionWarningInput): WarningCandidate | null {
+  const { areaPolicy, baselineFunc, context, func } = input;
   const ccFloor = context.config.lizard?.cyclomaticComplexity?.absoluteFloor ?? 10;
   const ccDelta = context.config.lizard?.cyclomaticComplexity?.changedDelta ?? 5;
   const baselineCc = baselineFunc?.cyclomaticComplexity?.value ?? (context.hasBaselineFunctions ? 0 : null);
@@ -56,12 +60,8 @@ function buildFunctionComplexityWarning(
   });
 }
 
-function buildFunctionLineWarning(
-  func: FunctionMetric,
-  baselineFunc: FunctionMetric | undefined,
-  context: WarningContext,
-  areaPolicy: AreaWarningPolicy
-): WarningCandidate | null {
+function buildFunctionLineWarning(input: FunctionWarningInput): WarningCandidate | null {
+  const { areaPolicy, baselineFunc, context, func } = input;
   const lineFloor = context.config.lizard?.functionCodeLines?.absoluteFloor ?? 50;
   const lineDeltaCfg = context.config.lizard?.functionCodeLines?.changedDelta ?? 20;
   const baselineFunctionLines = baselineFunc?.lines ?? (context.hasBaselineFunctions ? 0 : null);
@@ -86,12 +86,8 @@ function buildFunctionLineWarning(
   });
 }
 
-function buildFunctionParameterWarning(
-  func: FunctionMetric,
-  baselineFunc: FunctionMetric | undefined,
-  context: WarningContext,
-  areaPolicy: AreaWarningPolicy
-): WarningCandidate | null {
+function buildFunctionParameterWarning(input: FunctionWarningInput): WarningCandidate | null {
+  const { areaPolicy, baselineFunc, context, func } = input;
   const paramFloor = context.config.lizard?.parameterCount?.absoluteFloor ?? 5;
   const paramDeltaCfg = context.config.lizard?.parameterCount?.changedDelta ?? 2;
   const baselineParameterCount = baselineFunc?.parameterCount ?? (context.hasBaselineFunctions ? 0 : null);
