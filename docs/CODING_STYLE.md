@@ -4,6 +4,8 @@
 
 具体命令、协议字段、adapter 契约、ref 语义、schema 形状和测试矩阵，以 [文档导航](navigation.md) 的“如何阅读这些文档”指向的主规范为准。编码规范只回答一个问题：实现这些契约时，代码应该保持什么性质。
 
+读者是正在修改代码的实现者、AI coding agent 和 reviewer。使用时先按任务读取主规范，再用本文件约束实现取舍；它用于改动前的归属判断、实现中的边界处理，以及交付前的自检。
+
 ---
 
 ## 1. 契约优先
@@ -12,7 +14,7 @@
 
 1. `docnav` 负责格式识别、adapter 路由、配置、项目初始化、adapter 管理、输出模式和错误映射。
 2. 格式 adapter 负责本格式的识别、解析、导航策略、ref、分页结果和 adapter 直接输出。
-3. `docnav-mcp` 的目标职责是 MCP 接入和 tool 映射，由 `implement-docnav-mcp-bridge` change 交付；不拥有文档解析、adapter 路由或 adapter 管理职责。
+3. `docnav-mcp` 负责 MCP 接入和 tool 映射；不拥有文档解析、adapter 路由或 adapter 管理职责。
 4. 原始协议层服务稳定校验、脚本和调试；阅读输出层服务人类和 AI 阅读。两层可以共享业务语义，但不能共享传输包装。
 
 验收标准：新增代码可以明确指出它属于哪个制品、哪个语义层、哪个主规范所有权；不能说明所有权的代码，应先澄清边界再实现。
@@ -28,6 +30,8 @@
 1. 产品入口返回稳定错误、明确退出码或可行动诊断。
 2. 验证脚本失败时说明文件、字段和原因。
 3. 机器输出和诊断输出保持各自通道职责。
+
+跨边界数据必须保持拥有者清晰。边界层只做解析、校验、归一化和主规范定义的显式映射；属于下游 owner 的 opaque 值或业务语义原样传递，不在接入层重新生成、解析或判断。
 
 边界规则可以保留否定式，但必须配套正向做法：
 
@@ -53,7 +57,7 @@
 
 1. 稳定协议字段、operation、capability、错误码、退出码、schema 名、示例路径、固定诊断前缀和其它跨函数复用的字符串或数字，应使用枚举、新类型、常量模块或职责内配置中心表达。
 2. 配置中心按职责归属拆分，例如协议常量归协议模块、SDK 输出标签归 SDK 模块、文档校验路径归验证脚本配置；不建立跨制品的全局杂物常量池。
-3. 常量或配置项需要用中文注释说明来源、用途和边界，尤其要说明它来自主规范、schema、示例校验材料还是运行环境。
+3. 跨边界稳定常量或配置项需要能说明来源、用途和边界，尤其要能区分它来自主规范、schema、示例校验材料还是运行环境。
 4. 测试 fixture、一次性局部标签和只在单个小作用域中用于构造示例的数据可以保留直写，但不能把稳定规则、跨边界字段或错误映射散落为魔法字符串。
 
 验收标准：阅读函数签名时，可以区分“原始输入”“协议字段”“业务对象”和“格式私有参数”。
@@ -62,43 +66,13 @@
 
 ---
 
-## 4. 输出分层
-
-输出代码必须保持 protocol、readable-view、readable-json 和 MCP 的兼容目标不同。
-
-1. protocol 输出保持完整 envelope、稳定字段、稳定错误 code 和必需 details。
-2. `readable-view` 和 `readable-json` 必须从同一个完整的 typed readable payload 派生：`readable-json` 直接序列化该 payload；`readable-view` 在同一 JSON value 上应用仓库内 renderer config 指定的 block 替换和 framing。两种输出保持相同业务字段和值。
-3. renderer config 只声明 block 字段（JSON Pointer 列表），不定义展示模板、排序或样式。稳定语义通过字段名和值、block pointer 和 UTF-8 byte length 表达；header JSON object key 顺序和多个 block section 的输出顺序不作为稳定契约。
-4. 每个 operation 或 adapter 的 document output 通过共享 readable payload 进入 renderer path。renderer 按 config 声明的 JSON Pointer 只把字符串字段外置为 block；未声明字段保持 header JSON 值。
-5. document output mode 只包含 `readable-view`、`readable-json` 和 `protocol-json`；help、version、config 等非文档纯文本通道使用 `PlainText` 或等价明确名称，并与 document output mode 类型分离。
-6. MCP structuredContent 使用 readable shape；TextContent 使用精简阅读文本，其渲染任务消费本仓库的 readable-view contract、renderer config 和 conformance vectors。
-7. 用户可配置文案只能影响阅读文本、guidance、usage 和包装文案，不能改变稳定机器字段。renderer config（block 字段声明和 framing 规则）是仓库内代码契约，不受用户配置、项目配置、环境变量或 CLI flag 控制。
-
-边界：protocol envelope 不进入 readable-view header、readable JSON、MCP structuredContent 或 TextContent。
-
-做法：在入口转换层显式完成 protocol result 到 typed readable payload 的映射；readable-view 和 readable-json 在同一个 payload JSON value 上分流。用 schema、conformance vectors 或测试验证字段集合一致和 block payload 还原。
-
-验收标准：同一业务结果在 readable-view 和 readable-json 中语义一致（除 block 表示形式外）；不同输出层包装字段、稳定性承诺和消费对象清晰不同。
-
----
-
-## 5. Ref 与分页保持格式所有权
-
-ref 是 adapter 生成和解释的非空 opaque string。共享协议、`docnav`、MCP 和其它接入层只校验 ref 是非空字符串、原样传递且不解析 ref 内部结构。ref 的 grammar、定位语义、唯一性、稳定性和错误分类由 adapter 专属契约定义。
-
-分页使用有限结果和可继续位置表达，不通过无限输出、隐式截断或隐藏状态完成。
-
-验收标准：
-
-1. `outline -> ref -> read` 链路中，ref 可以原样从 outline 进入 read。
-2. ref 非法 grammar、无匹配等失败由 adapter 按其专属契约转换为稳定错误。
-3. page 和 limit 的处理可以通过输出字段和测试观察，不依赖调用方猜测内部状态。
-
----
-
-## 6. 职责聚合受控
+## 4. 职责按归属聚合
 
 文件、模块、函数和脚本应围绕单一变化原因组织。编码规范不规定固定目录方案；具体拆分应服从当前代码形状和相邻模块惯例。
+
+新增代码先进入最明确的现有归属；只有独立职责、变化原因、复用边界或命名空间清晰时，才新增文件或目录。文件大小、函数长度和质量检查结果只是观察信号，不是拆分依据。
+
+拆分后仍要保持语义密度：只服务一个父模块的 helper、wrapper、常量和小类型，优先作为父模块内部实现；多个同级文件若只能靠共同前缀表达分组，优先把该分组表达为目录或模块，除非项目惯例、外部契约、生成规则或测试编号要求保持当前形态。
 
 需要拆分的信号：
 
@@ -107,11 +81,11 @@ ref 是 adapter 生成和解释的非空 opaque string。共享协议、`docnav`
 3. 测试、fixture、解析、输出和错误映射互相遮蔽，难以局部阅读。
 4. 代码评审无法用一个简短句子说明该单元的主职责。
 
-验收标准：新增或修改的代码有清晰所有权，局部改动不会迫使读者理解无关制品或无关语义层。
+验收标准：文件路径和文件名能表达归属；新增或修改的代码有清晰所有权，局部改动不会迫使读者理解无关制品或无关语义层。
 
 ---
 
-## 7. 规则来源单一
+## 5. 规则来源单一
 
 协议字段、错误码、必需 details、schema 字段形状、capability、输出层语义和 adapter 管理规则必须能追溯到主规范或 schema。示例和验证脚本用于校验，不成为新的规则来源。
 
@@ -127,7 +101,7 @@ ref 是 adapter 生成和解释的非空 opaque string。共享协议、`docnav`
 
 ---
 
-## 8. 测试按风险选层级
+## 6. 测试按风险选层级
 
 测试范围随风险和影响面扩展。窄改动用局部测试验证不变量；跨边界改动必须覆盖调用链、输出层和错误映射；契约改动必须覆盖 schema、示例和语义校验。
 
@@ -143,16 +117,15 @@ ref 是 adapter 生成和解释的非空 opaque string。共享协议、`docnav`
 
 ---
 
-## 9. 变更前后自检
+## 7. 变更前后自检
 
-提交或交付前检查：
+实现前确认任务归属、受影响边界和验证方式；提交或交付前检查：
 
 1. 职责边界是否仍符合文档导航指向的主规范。
-2. 边界失败是否显式反馈，没有静默兜底。
-3. 公开 API 是否通过类型或返回值表达不变量和失败。
-4. protocol、readable-view、readable-json 和 MCP 输出是否保持分层；readable-view 和 readable-json 是否从同一 typed payload 派生。
-5. ref 是否仍由 adapter 拥有，接入层只原样传递。
+2. 涉及文件布局变化时，路径、文件名和分组是否能表达归属和独立职责。
+3. 边界失败是否显式反馈，没有静默兜底。
+4. 公开 API 是否通过类型或返回值表达不变量和失败。
+5. 跨边界数据是否保持拥有者清晰，边界层未复制下游 owner 的解析、生成或语义判断。
 6. 稳定规则是否只有一个来源，并同步到 schema、示例、代码和验证。
-7. 用户可见文案是否与稳定机器字段分离。
-8. 模块职责是否清晰，未把新功能堆进无关入口。
-9. 验证命令是否按改动范围运行并记录结果。
+7. 模块职责是否清晰，未把新功能堆进无关入口。
+8. 验证命令是否按改动范围运行并记录结果。
