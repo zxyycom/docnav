@@ -77,7 +77,6 @@ export interface SmokeState {
   startedAt: Date;
   testResults: SmokeTestResult[];
   validators: Record<string, ValidateFunction> | null;
-  [key: string]: unknown;
 }
 
 interface CreateSmokeHarnessOptions {

@@ -184,6 +184,26 @@ describe("parallel task runner", () => {
       /task dependent depends on unknown task missing/
     );
   });
+
+  it("rejects invalid task list metadata at the normalization boundary", () => {
+    const invalidDependsOn = {
+      id: "bad-dependency",
+      dependsOn: [123]
+    } as unknown as Parameters<typeof normalizeTask>[0];
+    const emptyMutex = {
+      id: "bad-mutex",
+      mutex: [""]
+    };
+
+    assert.throws(
+      () => normalizeTask(invalidDependsOn),
+      /task\.dependsOn\[0\] must be a non-empty string/
+    );
+    assert.throws(
+      () => normalizeTask(emptyMutex),
+      /task\.mutex\[0\] must be a non-empty string/
+    );
+  });
 });
 
 function delay(ms: number) {

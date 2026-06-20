@@ -112,7 +112,11 @@ export const DEFAULT_CONFIG = Object.freeze({
         "test/**/*.ts",
         "test/**/*.js"
       ],
-      excludeGlobs: ["**/generated/**"],
+      excludeGlobs: [
+        "test/**/cases/**",
+        "test/**/fixtures/**",
+        "**/generated/**"
+      ],
       warningPolicy: "relaxed"
     },
     "fixtures-examples": {

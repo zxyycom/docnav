@@ -654,7 +654,7 @@ Code: `scripts/tools/parallel-task-runner/index.test.ts`
 
 Proves:
 - task normalization、concurrency、mutex serialization、dependency ordering 和 nested task expansion 保持稳定。
-- prepare strategy、duplicate id 和 unknown dependency failure 保持可诊断。
+- prepare strategy、invalid list metadata、duplicate id 和 unknown dependency failure 保持可诊断。
 
 ```mermaid
 flowchart LR
@@ -702,6 +702,14 @@ Code: `scripts/tools/quality/input/files.test.ts`
 Proves:
 - quality input fingerprint 使用排序后的文件内容生成稳定 SHA-256。
 - 文件内容变化会改变 fingerprint，文件顺序变化不会改变 fingerprint。
+
+### AUX-QUALITY-CODE-AREAS-001 Quality code area 分类稳定
+Status: implemented
+Code: `scripts/tools/quality/model/code-areas.test.ts`
+
+Proves:
+- smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `node-validation-smoke` 的广泛 globs 遮蔽。
+- smoke harness 和 validator infrastructure 仍归入 `node-validation-smoke`。
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
