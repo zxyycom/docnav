@@ -4,7 +4,7 @@
 
 ## 如何阅读这些文档
 
-按任务进入对应主规范；跨模块、边界或规则归属不清时补读 [架构](architecture.md) 和“规则所有权”。
+按任务进入对应主规范；跨模块、边界、状态或规则归属不清时补读 [架构](architecture.md)、“规范状态与实现状态”和“规则所有权”。
 
 | 角色 / 任务 | 必读 | 需要时再读 |
 | --- | --- | --- |
@@ -32,16 +32,27 @@ pnpm run verify:docnav-workspace
 | 类型 | 文档 | 使用时机 |
 | --- | --- | --- |
 | 项目首页 | [README](../README.md) | 确认项目目标、v0 范围或运行入口 |
-| 文档导航 | 本文档 | 定位任务主规范、规则 owner 和交付验证入口 |
+| 文档导航 | 本文档 | 定位任务主规范、状态语义、规则 owner 和交付验证入口 |
 | 主规范 | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md)、[MCP Handoff](mcp.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[Ref](refs.md)、[测试策略](testing.md) | 修改稳定规则或实现职责 |
 | 测试资料 | [测试用例编号账本](testing/cases.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 调整测试编号、覆盖目标或 release 验证 |
 | Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](CODING_STYLE.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
 | 参考材料 | [MarkdownNavigator 参考](references/markdown-navigator.md) | 追溯 Markdown 行为来源或迁移依据 |
-| 变更历史 | `../openspec/changes/` | 审计 change 设计、验收或历史决策 |
+| 变更工作流 | `../openspec/changes/`、`../openspec/specs/` | 规划较大 PR、审计 change 设计、验收、归档或历史决策 |
 
-Schema、示例和机器规则文件是验证材料；与主规范不一致时修正验证材料，不在这些文件重新定义产品语义。
+Schema、示例和机器规则文件是验证材料，不在这些文件重新定义产品语义。与主规范不一致时默认修正验证材料；若验证材料代表有意契约变更，必须同步更新 owner 主规范。
+
+## 规范状态与实现状态
+
+Docnav 采用 docs-first 工作流：`docs/` 是长期规范基础；代码、测试和 release artifact 证明当前实现状态。除非明确标注为 Current 或已实现，规范中的 `MUST` / `SHALL` 表示目标契约或决策要求，不自动表示当前二进制已经支持。
+
+状态词只在影响实现或验收判断时使用：
+
+- Current：当前应已支持，并能由代码、测试、验证命令或 release artifact 证明。
+- Target / Planned / Historical：分别表示目标、计划或历史背景，不单独证明当前支持。
+
+OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改 docs、代码和测试。冲突时先判断类型：长期方向以 owner 主规范为准；当前支持状态以实现证据为准；同一目标内部冲突必须归并为一个决策；schema、示例或机器规则默认作为验证材料同步。
 
 ## 规则所有权
 

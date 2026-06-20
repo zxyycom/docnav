@@ -8,7 +8,9 @@ Docnav 是 CLI-first 的结构化文档导航系统。核心入口是 `docnav` C
 outline -> ref -> read
 ```
 
-当前实现、规划和 adapter 能力边界以 `docs/navigation.md` 指向的主规范为准；涉及产品、协议、CLI、adapter、schema 或测试细节时，按对应主规范判断。
+Docnav 采用 docs-first 工作流：`docs/` 是长期规范基础，OpenSpec 是较大 change 的规划和审计工具，代码、测试和 release artifact 证明当前实现状态。除非文档明确标注 Current 或已实现，目标性 `MUST` / `SHALL` 不自动表示当前二进制已经支持。
+
+当前实现、规划和 adapter 能力边界以 `docs/navigation.md` 指向的主规范和状态语义为准；涉及产品、协议、CLI、adapter、schema 或测试细节时，按对应主规范判断。
 
 ## 架构边界摘要
 
@@ -48,6 +50,6 @@ outline -> ref -> read
 - 改动跨 Rust 行为、OpenSpec、schema、示例、输出契约或多个包边界时，最终优先运行 `pnpm run verify:docnav-workspace`；纯提示词或说明文档改动可用 `dnm outline`、局部 diff 等范围匹配的验证。
 - 新增或运行脚本依赖时，Node.js / JavaScript 使用 `pnpm`，Python 使用 `uv`；不默认使用全局 `npm` 或 `pip` 安装。
 - 涉及协议、schema、示例、CLI、adapter 或 MCP 映射时，同步更新对应主规范和验证材料。
-- 当实现与 docs、OpenSpec、schema 或 examples 发生偏离时，说明偏离点、原因和潜在影响；能确定正确方向时同步修正，不能确定时让用户选择更新代码、更新文档或记录偏差原因。
+- 当实现与 docs、OpenSpec、schema 或 examples 看似偏离时，先按 `docs/navigation.md` 的状态语义判断是当前实现缺口、目标能力、计划中 change、历史记录还是同一目标内部冲突；能确定正确方向时同步修正，不能确定时让用户选择更新代码、更新文档或记录偏差原因。
 - 修改后运行与范围匹配的格式化、静态检查、schema、单元或集成验证；无法运行时在最终说明中写明。
 - 修改后用局部 diff 确认只改了目标范围。

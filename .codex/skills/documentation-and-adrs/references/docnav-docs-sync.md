@@ -19,9 +19,9 @@
 ## OpenSpec
 
 - 处理 OpenSpec change、验收、归档或历史审计时，先运行 `openspec list --json`。
-- OpenSpec 用于说明要改变什么行为、为什么这个 change 可接受，以及如何验收；不是长期 rationale 索引。
+- OpenSpec 用于说明要改变什么行为、为什么这个 change 可接受，以及如何验收；不是 `docs/` 主规范的 owner。
 - 长期架构 rationale 可以写 ADR 并链接 OpenSpec，但不要把 OpenSpec proposal、tasks、spec delta 或 acceptance 复制进 ADR。
-- 主规范描述当前承诺的行为；ADR 只解释为什么长期选择这条路。
+- 主规范可以记录当前行为、目标方向、计划能力和已接受决策；状态语义和冲突归并规则由 `docs/navigation.md` 拥有。ADR 只解释为什么长期选择这条路。
 
 ## Schema 与 Examples
 
@@ -29,8 +29,8 @@
 
 同步完成的验收标准：
 
-1. 主规范描述当前行为。
+1. 主规范描述对应行为或目标，并按需要区分 Current、Target、Planned 或 Historical。
 2. schema 能验证对应 raw protocol。
 3. examples 展示真实输出或输入。
 4. tests 覆盖变更面。
-5. 文档没有把未来 adapter 能力写成已交付事实。
+5. 文档没有把目标能力写成 Current 或已交付事实。
