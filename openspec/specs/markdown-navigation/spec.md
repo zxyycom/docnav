@@ -1,7 +1,7 @@
 # markdown-navigation Specification
 
 ## Purpose
-定义 Markdown 导航能力，包括 Markdown adapter 的 manifest、probe、outline、read、find、info、ref handling、pagination、direct CLI output、边界案例验证，以及 MarkdownNavigator 参考基线的来源和复验要求。
+定义 Markdown 导航能力，包括 Markdown adapter 的 manifest、probe、outline、read、find、info、ref handling、pagination、direct CLI output 和边界案例验证。
 ## Requirements
 ### Requirement: Markdown adapter 必须声明完整 v0 能力
 `docnav-markdown` MUST 输出符合当前 manifest schema 的 manifest，并声明 Markdown 格式身份、扩展名、content type，以及 `outline`、`read`、`find`、`info` 全部 capability。Manifest 字段集合 MUST 排除协议范围字段和 `recommended_parameters`。
@@ -283,20 +283,6 @@ Smoke suite 必须覆盖：
 - **THEN** stdout 包含 `INVALID_REQUEST` protocol failure envelope
 - **THEN** failure envelope 的 operation 在可解析时保留对应 operation，否则为 null
 - **THEN** 进程非零退出
-
-### Requirement: 记录 MarkdownNavigator 来源和复验方法
-Markdown 参考文档 MUST 记录参考项目路径、提交、命令入口和可复验行为边界，并明确其不是 Docnav 兼容目标。
-
-#### Scenario: 复验参考来源
-- **WHEN** 实现者查看 Markdown 行为来源
-- **THEN** 文档能够定位参考仓库、提交和复验方法
-
-### Requirement: 记录 Markdown 行为迁移决策
-Markdown 参考文档 MUST 为 heading、章节范围、frontmatter、代码围栏、重复项、编码、默认限制和 page 标注迁移决策。
-
-#### Scenario: 评估旧行为
-- **WHEN** 实现者查看参考 CLI 行为
-- **THEN** 文档明确该行为在 Docnav 中保留、调整、推迟或移除
 
 ### Requirement: 保留成熟 parser 行为基线
 Markdown 适配器 MUST 使用成熟 parser；章节 MUST 从目标 heading 开始，并在下一个同级或更高级 heading 前结束。
