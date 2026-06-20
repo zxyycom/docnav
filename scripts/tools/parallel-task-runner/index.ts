@@ -60,6 +60,19 @@ interface StartTaskOptions<TResult> {
   isSettled: () => boolean;
 }
 
+interface ParallelTaskScheduler<TResult> {
+  pending: NormalizedTask[];
+  concurrency: number;
+  execute: (task: NormalizedTask) => TResult | Promise<TResult>;
+  onStart: (task: NormalizedTask) => unknown | Promise<unknown>;
+  onComplete: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
+  completedIds: Set<string>;
+  runningMutexes: Set<string>;
+  results: TResult[];
+  activeCount: number;
+  settled: boolean;
+}
+
 export async function runParallelTasks<TResult = unknown>(
   taskList: readonly TaskDefinition[],
   options: RunParallelTaskOptions<TResult> = {}
@@ -72,65 +85,16 @@ export async function runParallelTasks<TResult = unknown>(
   const concurrency = resolveConcurrency(options.concurrency, pending.length);
   validateTaskGraph(pending);
 
-  const completedIds = new Set<string>();
-  const runningMutexes = new Set<string>();
-  const results: TResult[] = [];
-  let activeCount = 0;
-  let settled = false;
-
-  await new Promise<void>((resolve, reject) => {
-    const finishIfDone = () => {
-      if (!settled && pending.length === 0 && activeCount === 0) {
-        settled = true;
-        resolve();
-      }
-    };
-
-    const fail = (error: unknown) => {
-      if (!settled) {
-        settled = true;
-        reject(error);
-      }
-    };
-
-    const schedule = () => {
-      while (activeCount < concurrency) {
-        const nextIndex = pending.findIndex((task) => canRunTask(task, completedIds, runningMutexes));
-        if (nextIndex === -1) {
-          break;
-        }
-
-        const [task] = pending.splice(nextIndex, 1);
-        startTask({
-          task,
-          execute,
-          onStart,
-          onComplete,
-          completedIds,
-          runningMutexes,
-          results,
-          onSettled: () => {
-            activeCount -= 1;
-            schedule();
-            finishIfDone();
-          },
-          onError: fail,
-          isSettled: () => settled
-        });
-        activeCount += 1;
-      }
-
-      if (activeCount === 0 && pending.length > 0) {
-        fail(new Error(`unable to schedule tasks; unresolved dependencies or cycle: ${describePendingTasks(pending, completedIds)}`));
-        return;
-      }
-      finishIfDone();
-    };
-
-    schedule();
+  const scheduler = createParallelTaskScheduler({
+    pending,
+    concurrency,
+    execute,
+    onStart,
+    onComplete
   });
 
-  return results;
+  await runTaskScheduler(scheduler);
+  return scheduler.results;
 }
 
 function resolveConcurrency(value: string | number | null | undefined, taskCount: number): number {
@@ -139,6 +103,105 @@ function resolveConcurrency(value: string | number | null | undefined, taskCount
   }
 
   return parsePositiveInteger(value, "task concurrency");
+}
+
+function createParallelTaskScheduler<TResult>({
+  pending,
+  concurrency,
+  execute,
+  onStart,
+  onComplete
+}: Pick<ParallelTaskScheduler<TResult>, "pending" | "concurrency" | "execute" | "onStart" | "onComplete">): ParallelTaskScheduler<TResult> {
+  return {
+    pending,
+    concurrency,
+    execute,
+    onStart,
+    onComplete,
+    completedIds: new Set<string>(),
+    runningMutexes: new Set<string>(),
+    results: [],
+    activeCount: 0,
+    settled: false
+  };
+}
+
+async function runTaskScheduler<TResult>(scheduler: ParallelTaskScheduler<TResult>): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const finishIfDone = () => {
+      if (completeSchedulerIfDone(scheduler)) {
+        resolve();
+      }
+    };
+
+    const fail = (error: unknown) => {
+      if (failScheduler(scheduler)) {
+        reject(error);
+      }
+    };
+
+    const schedule = () => {
+      scheduleReadyTasks(scheduler, {
+        onSettled: () => {
+          scheduler.activeCount -= 1;
+          schedule();
+          finishIfDone();
+        },
+        onError: fail,
+        isSettled: () => scheduler.settled
+      });
+
+      if (scheduler.activeCount === 0 && scheduler.pending.length > 0) {
+        fail(new Error(`unable to schedule tasks; unresolved dependencies or cycle: ${describePendingTasks(scheduler.pending, scheduler.completedIds)}`));
+        return;
+      }
+
+      finishIfDone();
+    };
+
+    schedule();
+  });
+}
+
+function scheduleReadyTasks<TResult>(
+  scheduler: ParallelTaskScheduler<TResult>,
+  callbacks: Pick<StartTaskOptions<TResult>, "onSettled" | "onError" | "isSettled">
+): void {
+  while (scheduler.activeCount < scheduler.concurrency) {
+    const nextIndex = scheduler.pending.findIndex((task) => canRunTask(task, scheduler.completedIds, scheduler.runningMutexes));
+    if (nextIndex === -1) {
+      break;
+    }
+
+    const [task] = scheduler.pending.splice(nextIndex, 1);
+    startTask({
+      task,
+      execute: scheduler.execute,
+      onStart: scheduler.onStart,
+      onComplete: scheduler.onComplete,
+      completedIds: scheduler.completedIds,
+      runningMutexes: scheduler.runningMutexes,
+      results: scheduler.results,
+      ...callbacks
+    });
+    scheduler.activeCount += 1;
+  }
+}
+
+function completeSchedulerIfDone<TResult>(scheduler: ParallelTaskScheduler<TResult>): boolean {
+  if (scheduler.settled || scheduler.pending.length > 0 || scheduler.activeCount > 0) {
+    return false;
+  }
+  scheduler.settled = true;
+  return true;
+}
+
+function failScheduler<TResult>(scheduler: ParallelTaskScheduler<TResult>): boolean {
+  if (scheduler.settled) {
+    return false;
+  }
+  scheduler.settled = true;
+  return true;
 }
 
 export function expandTasks(taskList: readonly TaskDefinition[]): NormalizedTask[] {

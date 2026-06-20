@@ -7,6 +7,12 @@ import type {
   WarningRecord
 } from "../schema.ts";
 
+interface WarningGroups {
+  all: WarningRecord[];
+  changed: WarningRecord[];
+  regressions: WarningRecord[];
+}
+
 export function duplicateCodeSection(metrics: QualityMetrics): string {
   const lines: string[] = [];
   lines.push("## 重复代码检测");
@@ -140,34 +146,47 @@ export function warningsSection(metrics: QualityMetrics): string {
   lines.push("## Warnings");
   lines.push("");
 
-  const allWarnings = metrics.warnings?.all || [];
-  const changedWarnings = metrics.warnings?.changed || [];
-  const regressionWarnings = metrics.warnings?.regressions || [];
-  if (allWarnings.length === 0) {
+  const warnings = collectWarningGroups(metrics);
+  if (warnings.all.length === 0) {
     lines.push("*(no warnings generated)*");
     return lines.join("\n");
   }
 
+  appendWarningTotals(lines, warnings);
+  appendWarningsByLevel(lines, warnings.all, "All Warnings Summary");
+  appendChangedWarningsSection(lines, warnings.changed);
+
+  return lines.join("\n");
+}
+
+function collectWarningGroups(metrics: QualityMetrics): WarningGroups {
+  return {
+    all: metrics.warnings?.all || [],
+    changed: metrics.warnings?.changed || [],
+    regressions: metrics.warnings?.regressions || []
+  };
+}
+
+function appendWarningTotals(lines: string[], warnings: WarningGroups): void {
   lines.push(
-    `**All warnings**: ${allWarnings.length} total ` +
-    `(${changedWarnings.length} changed, ${regressionWarnings.length} regressions)`
+    `**All warnings**: ${warnings.all.length} total ` +
+    `(${warnings.changed.length} changed, ${warnings.regressions.length} regressions)`
   );
   lines.push("");
-  appendWarningsByLevel(lines, allWarnings, "All Warnings Summary");
+}
 
+function appendChangedWarningsSection(lines: string[], changedWarnings: WarningRecord[]): void {
   lines.push("### Changed Warnings");
   lines.push("");
   if (changedWarnings.length === 0) {
     lines.push("*(no changed warnings for CI annotation)*");
-    return lines.join("\n");
+    return;
   }
 
   appendWarningList(lines, changedWarnings.slice(0, 10));
   if (changedWarnings.length > 10) {
     lines.push(`- *... and ${changedWarnings.length - 10} more changed warnings*`);
   }
-
-  return lines.join("\n");
 }
 
 function rankChangedFilesByRisk(

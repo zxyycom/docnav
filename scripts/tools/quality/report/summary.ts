@@ -37,41 +37,57 @@ export function scanInfo(metrics: QualityMetrics, options: ReportOptions): strin
 
 export function comparisonInfo(metrics: QualityMetrics): string {
   if (metrics.comparisonStatus === "input-unchanged") {
-    return [
-      "## Comparison",
-      "",
-      "**代码输入未变化。** 本次变更未修改任何纳入扫描的代码文件。",
-      "当前快照已生成，但不生成动态复杂度或重复代码 annotation。"
-    ].join("\n");
+    return inputUnchangedComparisonSection();
   }
 
   if (metrics.comparisonStatus === "baseline-unavailable") {
-    const reason = baselineUnavailableReason(metrics.baseline.status);
-    return [
-      "## Comparison",
-      "",
-      `**⚠️ Baseline 不可用:** ${reason} (\`${metrics.baseline.status}\`)。`,
-      "Baseline delta 不可用，报告仅展示当前快照。"
-    ].join("\n");
+    return baselineUnavailableComparisonSection(metrics.baseline.status);
   }
 
   if (metrics.comparisonStatus === "compared" && metrics.baseline.metadata) {
-    const baseline = metrics.baseline;
-    const baselineMetadata = metrics.baseline.metadata;
-    return [
-      "## Comparison",
-      "",
-      `- **Baseline commit**: ${formatCommitDisplay(baseline.commitSha || "unknown", baselineMetadata.commitTitle)}`,
-      `- **Baseline date**: ${baseline.commitDate || "unknown"}`,
-      `- **Selection reason**: ${baselineMetadata.selectionReason}`,
-      "",
-      "### Code Area 指纹对比",
-      "",
-      fingerprintTable(metrics)
-    ].join("\n");
+    return comparedComparisonSection(metrics);
   }
 
   return "";
+}
+
+function inputUnchangedComparisonSection(): string {
+  return [
+    "## Comparison",
+    "",
+    "**代码输入未变化。** 本次变更未修改任何纳入扫描的代码文件。",
+    "当前快照已生成，但不生成动态复杂度或重复代码 annotation。"
+  ].join("\n");
+}
+
+function baselineUnavailableComparisonSection(status: BaselineStatus | string): string {
+  const reason = baselineUnavailableReason(status);
+  return [
+    "## Comparison",
+    "",
+    `**⚠️ Baseline 不可用:** ${reason} (\`${status}\`)。`,
+    "Baseline delta 不可用，报告仅展示当前快照。"
+  ].join("\n");
+}
+
+function comparedComparisonSection(metrics: QualityMetrics): string {
+  const baseline = metrics.baseline;
+  const baselineMetadata = metrics.baseline.metadata;
+  if (!baselineMetadata) {
+    return "";
+  }
+
+  return [
+    "## Comparison",
+    "",
+    `- **Baseline commit**: ${formatCommitDisplay(baseline.commitSha || "unknown", baselineMetadata.commitTitle)}`,
+    `- **Baseline date**: ${baseline.commitDate || "unknown"}`,
+    `- **Selection reason**: ${baselineMetadata.selectionReason}`,
+    "",
+    "### Code Area 指纹对比",
+    "",
+    fingerprintTable(metrics)
+  ].join("\n");
 }
 
 export function repositorySize(metrics: QualityMetrics): string {
