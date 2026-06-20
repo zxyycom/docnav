@@ -14,6 +14,22 @@ type ReportOptions = {
   timeZone: string;
 };
 
+type ComparisonSectionRenderer = (metrics: QualityMetrics) => string;
+
+const comparisonSectionRenderers: Partial<Record<string, ComparisonSectionRenderer>> = {
+  "input-unchanged": () => inputUnchangedComparisonSection(),
+  "baseline-unavailable": (metrics) => baselineUnavailableComparisonSection(metrics.baseline.status),
+  compared: (metrics) => (metrics.baseline.metadata ? comparedComparisonSection(metrics) : "")
+};
+
+const baselineUnavailableReasons: Partial<Record<string, string>> = {
+  "baseline-skipped": "Baseline scan was skipped",
+  "history-unavailable": "Git history 不足",
+  "no-baseline-commit": "找不到 previous-code baseline commit",
+  "baseline-materialization-failed": "Baseline commit 导出失败",
+  "baseline-scan-failed": "Baseline 扫描失败"
+};
+
 export function scanInfo(metrics: QualityMetrics, options: ReportOptions): string {
   const m = metrics.metadata;
   const tools = m.tools.map((tool) => `- **${tool.name}**: ${tool.version} (via ${tool.source})`).join("\n");
@@ -36,19 +52,7 @@ export function scanInfo(metrics: QualityMetrics, options: ReportOptions): strin
 }
 
 export function comparisonInfo(metrics: QualityMetrics): string {
-  if (metrics.comparisonStatus === "input-unchanged") {
-    return inputUnchangedComparisonSection();
-  }
-
-  if (metrics.comparisonStatus === "baseline-unavailable") {
-    return baselineUnavailableComparisonSection(metrics.baseline.status);
-  }
-
-  if (metrics.comparisonStatus === "compared" && metrics.baseline.metadata) {
-    return comparedComparisonSection(metrics);
-  }
-
-  return "";
+  return comparisonSectionRenderers[metrics.comparisonStatus]?.(metrics) ?? "";
 }
 
 function inputUnchangedComparisonSection(): string {
@@ -128,12 +132,7 @@ export function footer(metrics: QualityMetrics, options: ReportOptions): string 
 }
 
 function baselineUnavailableReason(status: BaselineStatus | string): string {
-  if (status === "baseline-skipped") return "Baseline scan was skipped";
-  if (status === "history-unavailable") return "Git history 不足";
-  if (status === "no-baseline-commit") return "找不到 previous-code baseline commit";
-  if (status === "baseline-materialization-failed") return "Baseline commit 导出失败";
-  if (status === "baseline-scan-failed") return "Baseline 扫描失败";
-  return "未知原因";
+  return baselineUnavailableReasons[status] ?? "未知原因";
 }
 
 function formatCommitDisplay(sha: string, title: string | null | undefined): string {

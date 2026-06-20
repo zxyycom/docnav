@@ -2,6 +2,12 @@ import { DEFAULT_CONFIG } from "../model/config.ts";
 import { booleanOption, parsePositiveInteger, parseScriptArgs, stringOption, type ScriptArgToken } from "../../args.ts";
 import type { QualityScanOptions } from "./command-model.ts";
 
+const skipBaselineByToken: Partial<Record<string, boolean>> = {
+  baseline: false,
+  "skip-baseline": true,
+  "with-baseline": false
+};
+
 export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
   const parsed = parseScriptArgs({
     args: argv,
@@ -34,12 +40,8 @@ export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
 function resolveSkipBaseline(tokens: readonly ScriptArgToken[], defaultValue: boolean): boolean {
   let skipBaseline = defaultValue;
   for (const token of tokens) {
-    if (token.kind !== "option") continue;
-    if (token.name === "skip-baseline") {
-      skipBaseline = true;
-    } else if (token.name === "baseline" || token.name === "with-baseline") {
-      skipBaseline = false;
-    }
+    if (token.kind !== "option" || token.name === undefined) continue;
+    skipBaseline = skipBaselineByToken[token.name] ?? skipBaseline;
   }
   return skipBaseline;
 }

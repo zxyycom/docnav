@@ -18,6 +18,11 @@ interface FakeAdapterOptions {
 }
 
 type OptionHandler = (options: FakeAdapterOptions, value: string) => void;
+type CommandHandler = () => void;
+type OperationResultBuilder = (context: {
+  args: Record<string, unknown>;
+  documentPath: string;
+}) => Record<string, unknown>;
 
 const optionHandlers: Record<string, OptionHandler> = {
   "--id": (parsed, value) => {
@@ -48,20 +53,50 @@ if (stdin.trim().length > 0) {
 
 recordCall({ stdin: request ?? stdin });
 
-switch (options.command) {
-  case "manifest":
-    writeJson(manifest());
-    break;
-  case "probe":
-    writeJson(probe(options.commandArgs[0] ?? ""));
-    break;
-  case "invoke":
-    handleInvoke(request);
-    break;
-  default:
-    console.error(`Unknown command ${options.command ?? "(missing)"}`);
-    process.exit(2);
+const operationResultBuilders: Partial<Record<string, OperationResultBuilder>> = {
+  outline: ({ documentPath }) => ({
+    entries: [
+      {
+        ref: "fake:root",
+        display: `${options.id} outline for ${documentPath}`
+      }
+    ],
+    page: null
+  }),
+  read: ({ args, documentPath }) => ({
+    ref: typeof args.ref === "string" ? args.ref : "fake:root",
+    content: `# Fake ${options.id}\n\nRead ${documentPath}`,
+    content_type: "text/markdown",
+    cost: "0.1 KB",
+    page: null
+  }),
+  find: ({ args }) => ({
+    matches: [
+      {
+        ref: "fake:root",
+        display: `${options.id} match for ${typeof args.query === "string" ? args.query : ""}`
+      }
+    ],
+    page: null
+  }),
+  info: () => ({
+    display: `Fake ${options.id} | text/markdown`,
+    capabilities: ["outline", "read", "find", "info"]
+  })
+};
+
+const commandHandlers: Partial<Record<string, CommandHandler>> = {
+  manifest: () => writeJson(manifest()),
+  probe: () => writeJson(probe(options.commandArgs[0] ?? "")),
+  invoke: () => handleInvoke(request)
+};
+
+const commandHandler = options.command === null ? undefined : commandHandlers[options.command];
+if (commandHandler === undefined) {
+  console.error(`Unknown command ${options.command ?? "(missing)"}`);
+  process.exit(2);
 }
+commandHandler();
 
 function manifest() {
   if (options.mode === "manifest-exit") {
@@ -166,43 +201,8 @@ function resultFor(value: AdapterRequest) {
   const document = isRecord(value.document) ? value.document : {};
   const args = isRecord(value.arguments) ? value.arguments : {};
   const documentPath = typeof document.path === "string" ? document.path : "(missing)";
-  switch (value.operation) {
-    case "outline":
-      return {
-        entries: [
-          {
-            ref: "fake:root",
-            display: `${options.id} outline for ${documentPath}`
-          }
-        ],
-        page: null
-      };
-    case "read":
-      return {
-        ref: typeof args.ref === "string" ? args.ref : "fake:root",
-        content: `# Fake ${options.id}\n\nRead ${documentPath}`,
-        content_type: "text/markdown",
-        cost: "0.1 KB",
-        page: null
-      };
-    case "find":
-      return {
-        matches: [
-          {
-            ref: "fake:root",
-            display: `${options.id} match for ${typeof args.query === "string" ? args.query : ""}`
-          }
-        ],
-        page: null
-      };
-    case "info":
-      return {
-        display: `Fake ${options.id} | text/markdown`,
-        capabilities: ["outline", "read", "find", "info"]
-      };
-    default:
-      return {};
-  }
+  const resultBuilder = typeof value.operation === "string" ? operationResultBuilders[value.operation] : undefined;
+  return resultBuilder?.({ args, documentPath }) ?? {};
 }
 
 function failure(requestId: unknown, operation: unknown, code: string, details: Record<string, unknown>) {
