@@ -11,6 +11,14 @@ type FunctionWarningInput = {
   func: FunctionMetric;
 };
 
+type FunctionWarningBuilder = (input: FunctionWarningInput) => WarningCandidate | null;
+
+const FUNCTION_WARNING_BUILDERS: FunctionWarningBuilder[] = [
+  buildFunctionComplexityWarning,
+  buildFunctionLineWarning,
+  buildFunctionParameterWarning
+];
+
 export function generateFunctionWarnings(functions: FunctionMetric[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];
 
@@ -20,14 +28,10 @@ export function generateFunctionWarnings(functions: FunctionMetric[], context: W
 
     const baselineFunc = context.baselineFunctions.get(functionKey(func));
     const warningInput = { areaPolicy, baselineFunc, context, func };
-    const complexityWarning = buildFunctionComplexityWarning(warningInput);
-    if (complexityWarning) warnings.push(complexityWarning);
-
-    const lineWarning = buildFunctionLineWarning(warningInput);
-    if (lineWarning) warnings.push(lineWarning);
-
-    const parameterWarning = buildFunctionParameterWarning(warningInput);
-    if (parameterWarning) warnings.push(parameterWarning);
+    for (const buildWarning of FUNCTION_WARNING_BUILDERS) {
+      const warning = buildWarning(warningInput);
+      if (warning) warnings.push(warning);
+    }
   }
 
   return warnings;

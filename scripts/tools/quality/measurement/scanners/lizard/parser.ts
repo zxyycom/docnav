@@ -16,6 +16,16 @@ const LIZARD_COLUMNS = {
   endLine: 10
 } as const;
 
+type LizardMetricRow = {
+  ccn: number | null;
+  endLine: number | null;
+  filePath: string;
+  functionName: string;
+  nloc: number | null;
+  parameterCount: number | null;
+  startLine: number | null;
+};
+
 /**
  * 将 Lizard CSV 输出解析为 FunctionMetric 数组。
  *
@@ -51,26 +61,30 @@ function functionMetricFromLizardRow(parts: string[]): FunctionMetric | null {
     return null;
   }
 
-  const nloc = parseOptionalInteger(parts[LIZARD_COLUMNS.nloc]);
-  const ccn = parseOptionalInteger(parts[LIZARD_COLUMNS.ccn]);
-  const paramCount = parseOptionalInteger(parts[LIZARD_COLUMNS.parameterCount]);
-  const startLine = parseOptionalInteger(parts[LIZARD_COLUMNS.startLine]);
-  const endLine = parseOptionalInteger(parts[LIZARD_COLUMNS.endLine]);
+  const row: LizardMetricRow = {
+    ccn: parseOptionalInteger(parts[LIZARD_COLUMNS.ccn]),
+    endLine: parseOptionalInteger(parts[LIZARD_COLUMNS.endLine]),
+    filePath: parts[LIZARD_COLUMNS.filePath],
+    functionName: parts[LIZARD_COLUMNS.functionName],
+    nloc: parseOptionalInteger(parts[LIZARD_COLUMNS.nloc]),
+    parameterCount: parseOptionalInteger(parts[LIZARD_COLUMNS.parameterCount]),
+    startLine: parseOptionalInteger(parts[LIZARD_COLUMNS.startLine])
+  };
 
-  if (nloc === null || startLine === null) {
+  if (row.nloc === null || row.startLine === null) {
     return null;
   }
 
   return {
-    name: parts[LIZARD_COLUMNS.functionName] || "unknown",
-    file: parts[LIZARD_COLUMNS.filePath],
+    name: row.functionName || "unknown",
+    file: row.filePath,
     codeArea: "unknown",
-    startLine,
-    endLine: endLine ?? startLine,
-    lines: nloc,
-    parameterCount: paramCount ?? 0,
+    startLine: row.startLine,
+    endLine: row.endLine ?? row.startLine,
+    lines: row.nloc,
+    parameterCount: row.parameterCount ?? 0,
     cyclomaticComplexity: {
-      value: ccn,
+      value: row.ccn,
       source: "lizard"
     },
     isChanged: false

@@ -9,7 +9,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { minimatch } from "minimatch";
 
-import { gitGlobPathspecs } from "./git-pathspec.ts";
+import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 import { gitCommitDate, gitHeadSha, parseGitStatusPaths, runGit, splitGitFileList } from "../../git.ts";
 import { processFailed, runProcessSync } from "../../process.ts";
 import { toSlashPath } from "../../path.ts";
@@ -47,7 +47,7 @@ export function locateBaselineCommit({
     return { ok: false, error: "git rev-parse HEAD failed: no git repository" };
   }
 
-  const patternArgs = scanInputPathspecArgs(scanInputPaths);
+  const patternArgs = gitGlobPathspecArgs(scanInputPaths, { omitWhenEmpty: true });
   if (!hasParentCommit(cwd, headSha)) {
     return { ok: false, error: "no-baseline-commit: repository has only one commit" };
   }
@@ -134,8 +134,7 @@ export function detectScanInputChange({
     "diff",
     "--name-only",
     `${baselineSha}..HEAD`,
-    "--",
-    ...gitGlobPathspecs(scanInputPaths)
+    ...gitGlobPathspecArgs(scanInputPaths)
   ];
 
   const diffResult = runGit(diffArgs, { cwd });
@@ -163,8 +162,7 @@ export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]
     "status",
     "--porcelain",
     "--untracked-files=all",
-    "--",
-    ...gitGlobPathspecs(scanInputPaths)
+    ...gitGlobPathspecArgs(scanInputPaths)
   ], {
     cwd
   });
@@ -174,12 +172,6 @@ export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]
   }
 
   return parseGitStatusPaths(statusResult.stdout);
-}
-
-function scanInputPathspecArgs(scanInputPaths: string[]): string[] {
-  return scanInputPaths.length > 0
-    ? ["--", ...gitGlobPathspecs(scanInputPaths)]
-    : [];
 }
 
 function hasParentCommit(cwd: string, headSha: string): boolean {

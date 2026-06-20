@@ -10,6 +10,13 @@ type FileWarningInput = {
   file: FileMetric;
 };
 
+type FileWarningBuilder = (input: FileWarningInput) => WarningCandidate | null;
+
+const FILE_WARNING_BUILDERS: FileWarningBuilder[] = [
+  buildFileLineWarning,
+  buildFileComplexityWarning
+];
+
 export function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];
 
@@ -19,11 +26,10 @@ export function generateFileWarnings(files: FileMetric[], context: WarningContex
 
     const baseFile = context.baselineFiles.get(file.path);
     const warningInput = { areaPolicy, baseFile, context, file };
-    const lineWarning = buildFileLineWarning(warningInput);
-    if (lineWarning) warnings.push(lineWarning);
-
-    const complexityWarning = buildFileComplexityWarning(warningInput);
-    if (complexityWarning) warnings.push(complexityWarning);
+    for (const buildWarning of FILE_WARNING_BUILDERS) {
+      const warning = buildWarning(warningInput);
+      if (warning) warnings.push(warning);
+    }
   }
 
   return warnings;

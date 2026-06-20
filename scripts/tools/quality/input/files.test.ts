@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { buildFingerprints } from "./files.ts";
+import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 
 // @case AUX-QUALITY-FINGERPRINT-001
 describe("quality input fingerprints", () => {
@@ -28,6 +29,15 @@ describe("quality input fingerprints", () => {
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+});
+
+// @case AUX-QUALITY-GIT-PATHSPEC-001
+describe("quality input git pathspecs", () => {
+  it("builds explicit git pathspec arguments and can omit empty pathspecs", () => {
+    assert.deepEqual(gitGlobPathspecArgs(["scripts/**/*.ts"]), ["--", ":(glob)scripts/**/*.ts"]);
+    assert.deepEqual(gitGlobPathspecArgs([]), ["--"]);
+    assert.deepEqual(gitGlobPathspecArgs([], { omitWhenEmpty: true }), []);
   });
 });
 

@@ -10,7 +10,7 @@ import { minimatch } from "minimatch";
 import { DEFAULT_CONFIG } from "../model/config.ts";
 import { buildFingerprint, isExcluded } from "../model/code-areas.ts";
 import { getWorkingTreeChangedFiles } from "./revisions.ts";
-import { gitGlobPathspecs } from "./git-pathspec.ts";
+import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 import { runGit, splitGitFileList } from "../../git.ts";
 import { processFailed } from "../../process.ts";
 import { toSlashPath } from "../../path.ts";
@@ -27,8 +27,7 @@ export function collectScanFiles(rootDir: string, config: QualityConfig): string
     "--cached",
     "--others",
     "--exclude-standard",
-    "--",
-    ...gitGlobPathspecs(config.include)
+    ...gitGlobPathspecArgs(config.include)
   ], {
     cwd: rootDir,
     maxBuffer: 1024 * 1024 * 64
@@ -48,8 +47,7 @@ export function collectBaselineFiles(workDir: string, config: QualityConfig): st
     "--cached",
     "--others",
     "--exclude-standard",
-    "--",
-    ...gitGlobPathspecs(config.include)
+    ...gitGlobPathspecArgs(config.include)
   ], {
     cwd: workDir,
     maxBuffer: 1024 * 1024 * 64
@@ -78,8 +76,7 @@ export function getChangedFileList(opts: ChangedFilesOptions, rootDir: string): 
     "diff",
     "--name-only",
     "HEAD~1..HEAD",
-    "--",
-    ...gitGlobPathspecs(DEFAULT_CONFIG.include)
+    ...gitGlobPathspecArgs(DEFAULT_CONFIG.include)
   ], {
     cwd: rootDir
   });
@@ -148,8 +145,7 @@ function getChangedFilesForSingleCommitRepo(rootDir: string): string[] {
     "--name-only",
     "-r",
     "HEAD",
-    "--",
-    ...gitGlobPathspecs(DEFAULT_CONFIG.include)
+    ...gitGlobPathspecArgs(DEFAULT_CONFIG.include)
   ], {
     cwd: rootDir
   });

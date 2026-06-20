@@ -34,6 +34,17 @@ type ParsedSccRow = {
   path: string;
 };
 
+type SccRawRow = {
+  blankLines: string;
+  codeLines: string;
+  commentLines: string;
+  complexity: string;
+  filename: string;
+  language: string;
+  lineCount: string;
+  providerPath: string;
+};
+
 /**
  * 解析 scc CSV 输出。
  *
@@ -133,18 +144,31 @@ function parseSccFileMetric(parts: string[], columns: SccColumnIndexes): ParsedS
 function parseSccRow(parts: string[], columns: SccColumnIndexes): ParsedSccRow | null {
   if (parts.length < Math.max(6, columns.filename + 1)) return null;
 
-  const filename = sccColumnValue(parts, columns.filename);
-  const lineCount = parseInt(sccColumnValue(parts, columns.lines), 10);
-  if (isNaN(lineCount) || !filename) return null;
+  const rawRow = sccRawRow(parts, columns);
+  const lineCount = parseInt(rawRow.lineCount, 10);
+  if (isNaN(lineCount) || !rawRow.filename) return null;
 
   return {
-    path: sccColumnValue(parts, columns.provider) || filename,
-    language: sccColumnValue(parts, columns.language),
+    path: rawRow.providerPath || rawRow.filename,
+    language: rawRow.language,
     lineCount,
-    codeLines: parseOptionalInt(sccColumnValue(parts, columns.code)),
-    commentLines: parseOptionalInt(sccColumnValue(parts, columns.comments)),
-    blankLines: parseOptionalInt(sccColumnValue(parts, columns.blanks)),
-    complexity: parseOptionalIntOrNull(sccColumnValue(parts, columns.complexity))
+    codeLines: parseOptionalInt(rawRow.codeLines),
+    commentLines: parseOptionalInt(rawRow.commentLines),
+    blankLines: parseOptionalInt(rawRow.blankLines),
+    complexity: parseOptionalIntOrNull(rawRow.complexity)
+  };
+}
+
+function sccRawRow(parts: string[], columns: SccColumnIndexes): SccRawRow {
+  return {
+    blankLines: sccColumnValue(parts, columns.blanks),
+    codeLines: sccColumnValue(parts, columns.code),
+    commentLines: sccColumnValue(parts, columns.comments),
+    complexity: sccColumnValue(parts, columns.complexity),
+    filename: sccColumnValue(parts, columns.filename),
+    language: sccColumnValue(parts, columns.language),
+    lineCount: sccColumnValue(parts, columns.lines),
+    providerPath: sccColumnValue(parts, columns.provider)
   };
 }
 
