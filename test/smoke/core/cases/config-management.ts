@@ -5,6 +5,7 @@ import {
   writeProjectConfig,
   writeRegistry
 } from "../fixtures.ts";
+import type { SmokeProject } from "../fixtures.ts";
 import { runCli } from "../harness.ts";
 import {
   expect,
@@ -53,6 +54,12 @@ async function testConfigPrecedenceAndPathContext() {
   });
   writeRegistry(project, [fake]);
 
+  await assertUserLimitConfigSet(project);
+  await assertRemovedTextOutputFails(project);
+  await assertConfigListPathContext(project, fake.id);
+}
+
+async function assertUserLimitConfigSet(project: SmokeProject) {
   const setUser = await runCli("CORE-CONFIG-001 config set user defaults.limit_chars", [
     "config",
     "set",
@@ -65,7 +72,9 @@ async function testConfigPrecedenceAndPathContext() {
   const setUserJson = parseJson(setUser);
   expect(setUser, setUserJson.scope === "user", "user config set writes user scope");
   expect(setUser, setUserJson.value === 321, "user config set stores limit chars");
+}
 
+async function assertRemovedTextOutputFails(project: SmokeProject) {
   const setRemovedOutput = await runCli("CORE-CONFIG-001 config set defaults.output text fails", [
     "config",
     "set",
@@ -74,17 +83,23 @@ async function testConfigPrecedenceAndPathContext() {
   ], { project });
   expectExit(setRemovedOutput, exitCodes.input);
   expectStderrEmpty(setRemovedOutput);
-  expectStdoutIncludes(setRemovedOutput, "\"$block\": \"/error\"");
-  expectStdoutIncludes(setRemovedOutput, "\"code\": \"INVALID_REQUEST\"");
-  expectReadableViewFieldValue(setRemovedOutput, setRemovedOutput.stdout, "/details/field", "defaults.output");
-  expectReadableViewFieldValue(setRemovedOutput, setRemovedOutput.stdout, "/details/received", "text");
-  expectReadableViewFieldValue(setRemovedOutput, setRemovedOutput.stdout, "/details/accepted", [
+  expectInvalidOutputModeErrorShape(setRemovedOutput);
+}
+
+function expectInvalidOutputModeErrorShape(record: CommandRecord) {
+  expectStdoutIncludes(record, "\"$block\": \"/error\"");
+  expectStdoutIncludes(record, "\"code\": \"INVALID_REQUEST\"");
+  expectReadableViewFieldValue(record, record.stdout, "/details/field", "defaults.output");
+  expectReadableViewFieldValue(record, record.stdout, "/details/received", "text");
+  expectReadableViewFieldValue(record, record.stdout, "/details/accepted", [
     "readable-view",
     "readable-json",
     "protocol-json"
   ]);
-  expectStdoutIncludes(setRemovedOutput, "accepted values: readable-view, readable-json, protocol-json");
+  expectStdoutIncludes(record, "accepted values: readable-view, readable-json, protocol-json");
+}
 
+async function assertConfigListPathContext(project: SmokeProject, adapterId: string) {
   const list = await runCli("CORE-CONFIG-001 config list --path selects adapter and defaults", [
     "config",
     "list",
@@ -102,7 +117,7 @@ async function testConfigPrecedenceAndPathContext() {
   const adapter = expectJsonObject(list, pathContext.adapter, "config list path_context.adapter is an object");
   const defaults = expectJsonObject(list, pathContext.defaults, "config list path_context.defaults is an object");
   const limitChars = expectJsonObject(list, defaults.limit_chars, "config list limit_chars context is an object");
-  expect(list, adapter.selected === fake.id, "config list --path reports selected adapter");
+  expect(list, adapter.selected === adapterId, "config list --path reports selected adapter");
   expect(list, limitChars.value === 321, "config list --path reports final limit");
 }
 
