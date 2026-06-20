@@ -1,4 +1,33 @@
 import { isRecord } from "./types.ts";
+import { processFailed, runProcessSync, writeProcessOutput } from "./process.ts";
+import type { ProcessResult } from "./process.ts";
+
+export type CargoBinarySpec = {
+  binName: string;
+  packageName: string;
+};
+
+export type BuildCargoExecutablesResult =
+  | {
+      executables: Map<string, string>;
+      ok: true;
+      stderr: string;
+    }
+  | {
+      ok: false;
+      reason: "process-failed";
+      result: ProcessResult;
+    }
+  | {
+      binName: string;
+      ok: false;
+      reason: "missing-executable";
+    };
+
+export type BuildCargoExecutablesFailure = Exclude<
+  BuildCargoExecutablesResult,
+  { ok: true }
+>;
 
 export function findCargoExecutable(output: string, binName: string): string | null {
   let executable: string | null = null;
@@ -32,4 +61,63 @@ export function findCargoExecutable(output: string, binName: string): string | n
   }
 
   return executable;
+}
+
+export function buildCargoExecutables({
+  binaries,
+  cwd
+}: {
+  binaries: readonly CargoBinarySpec[];
+  cwd: string;
+}): BuildCargoExecutablesResult {
+  const packages = [...new Set(binaries.map((binary) => binary.packageName))];
+  const cargoArgs = [
+    "build",
+    ...packages.flatMap((packageName) => ["-p", packageName]),
+    ...binaries.flatMap((binary) => ["--bin", binary.binName]),
+    "--message-format=json"
+  ];
+  const result = runProcessSync("cargo", cargoArgs, { cwd });
+
+  if (processFailed(result)) {
+    return {
+      ok: false,
+      reason: "process-failed",
+      result
+    };
+  }
+
+  const executables = new Map<string, string>();
+  for (const binary of binaries) {
+    const executable = findCargoExecutable(result.stdout ?? "", binary.binName);
+    if (!executable) {
+      return {
+        binName: binary.binName,
+        ok: false,
+        reason: "missing-executable"
+      };
+    }
+    executables.set(binary.binName, executable);
+  }
+
+  return {
+    executables,
+    ok: true,
+    stderr: result.stderr
+  };
+}
+
+export function reportCargoExecutableBuildFailure(
+  failure: BuildCargoExecutablesFailure
+): number {
+  if (failure.reason === "process-failed") {
+    writeProcessOutput(failure.result);
+    if (failure.result.error) {
+      console.error(failure.result.error.message);
+    }
+    return failure.result.status ?? 1;
+  }
+
+  console.error(`cargo build did not report a ${failure.binName} executable`);
+  return 1;
 }

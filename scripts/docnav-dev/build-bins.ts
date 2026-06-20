@@ -1,14 +1,17 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { findCargoExecutable } from "../tools/cargo.ts";
+import {
+  buildCargoExecutables,
+  reportCargoExecutableBuildFailure,
+  type CargoBinarySpec
+} from "../tools/cargo.ts";
 import { booleanOption, parseScriptArgs, stringOption } from "../tools/args.ts";
-import { processFailed, runProcessSync, writeProcessOutput } from "../tools/process.ts";
 import { writeJsonFile } from "../tools/fs.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-const binaries = [
+const binaries: Array<CargoBinarySpec & { envName: string }> = [
   { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" },
   { packageName: "docnav-markdown", binName: "docnav-markdown", envName: "DOCNAV_MARKDOWN_BIN" }
 ];
@@ -48,39 +51,19 @@ function parseArgs(args: string[]): DevBinOptions {
 }
 
 function buildDevBins(quiet: boolean): Record<string, string> {
-  const cargoArgs = [
-    "build",
-    ...binaries.flatMap((binary) => ["-p", binary.packageName]),
-    ...binaries.flatMap((binary) => ["--bin", binary.binName]),
-    "--message-format=json"
-  ];
-  const result = runProcessSync("cargo", cargoArgs, {
-    cwd: root,
-    maxBuffer: 1024 * 1024 * 64
-  });
+  const result = buildCargoExecutables({ binaries, cwd: root });
 
-  if (processFailed(result)) {
-    writeProcessOutput(result);
-    if (result.error) {
-      console.error(result.error.message);
-    }
-    process.exit(result.status ?? 1);
+  if (!result.ok) {
+    process.exit(reportCargoExecutableBuildFailure(result));
   }
 
   if (result.stderr && !quiet) {
     process.stderr.write(result.stderr);
   }
 
-  const env: Record<string, string> = {};
-  for (const binary of binaries) {
-    const executable = findCargoExecutable(result.stdout ?? "", binary.binName);
-    if (!executable) {
-      console.error(`cargo build did not report a ${binary.binName} executable`);
-      process.exit(1);
-    }
-    env[binary.envName] = executable;
-  }
-  return env;
+  return Object.fromEntries(
+    binaries.map((binary) => [binary.envName, result.executables.get(binary.binName)!])
+  );
 }
 
 function usage(message: string): never {

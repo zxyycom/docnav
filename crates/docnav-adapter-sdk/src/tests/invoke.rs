@@ -1,7 +1,8 @@
 use super::common::{ManifestShapeErrorAdapter, MissingDetailsErrorAdapter, StubAdapter};
 use crate::{invoke_once, AdapterExitCode};
 use docnav_protocol::{
-    Operation, ProtocolResponse, StableErrorCode, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
+    FailureResponse, Operation, ProtocolResponse, StableErrorCode, PROTOCOL_VERSION,
+    UNKNOWN_REQUEST_ID,
 };
 
 // @case WB-SDK-INVOKE-001
@@ -44,17 +45,11 @@ fn invalid_request_outputs_structured_failure_on_stdout() {
 
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
     assert!(!stderr.is_empty());
-    let response: ProtocolResponse =
-        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
-    match response {
-        ProtocolResponse::Failure(response) => {
-            assert_eq!(response.protocol_version, PROTOCOL_VERSION);
-            assert_eq!(response.request_id, UNKNOWN_REQUEST_ID);
-            assert_eq!(response.operation, None);
-            assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
-        }
-        ProtocolResponse::Success(_) => panic!("expected failure response"),
-    }
+    let response = failure_response_from_stdout(&stdout);
+    assert_eq!(response.protocol_version, PROTOCOL_VERSION);
+    assert_eq!(response.request_id, UNKNOWN_REQUEST_ID);
+    assert_eq!(response.operation, None);
+    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
 }
 
 #[test]
@@ -73,17 +68,11 @@ fn unsupported_protocol_version_is_invalid_request_schema_failure() {
 
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
     assert!(!stderr.is_empty());
-    let response: ProtocolResponse =
-        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
-    match response {
-        ProtocolResponse::Failure(response) => {
-            assert_eq!(response.protocol_version, PROTOCOL_VERSION);
-            assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
-            assert_eq!(response.operation, Some(Operation::Outline));
-            assert_eq!(response.request_id, "req-1");
-        }
-        ProtocolResponse::Success(_) => panic!("expected failure response"),
-    }
+    let response = failure_response_from_stdout(&stdout);
+    assert_eq!(response.protocol_version, PROTOCOL_VERSION);
+    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
+    assert_eq!(response.operation, Some(Operation::Outline));
+    assert_eq!(response.request_id, "req-1");
 }
 
 #[test]
@@ -101,17 +90,11 @@ fn request_schema_failure_without_version_uses_current_protocol_version() {
 
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
     assert!(!stderr.is_empty());
-    let response: ProtocolResponse =
-        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
-    match response {
-        ProtocolResponse::Failure(response) => {
-            assert_eq!(response.protocol_version, PROTOCOL_VERSION);
-            assert_eq!(response.operation, Some(Operation::Outline));
-            assert_eq!(response.request_id, "req-1");
-            assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
-        }
-        ProtocolResponse::Success(_) => panic!("expected failure response"),
-    }
+    let response = failure_response_from_stdout(&stdout);
+    assert_eq!(response.protocol_version, PROTOCOL_VERSION);
+    assert_eq!(response.operation, Some(Operation::Outline));
+    assert_eq!(response.request_id, "req-1");
+    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
 }
 
 #[test]
@@ -155,16 +138,10 @@ fn request_schema_rejections_are_structured_invalid_request_failures() {
 
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
     assert!(!stderr.is_empty());
-    let response: ProtocolResponse =
-        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
-    match response {
-        ProtocolResponse::Failure(response) => {
-            assert_eq!(response.request_id, UNKNOWN_REQUEST_ID);
-            assert_eq!(response.operation, Some(Operation::Read));
-            assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
-        }
-        ProtocolResponse::Success(_) => panic!("expected failure response"),
-    }
+    let response = failure_response_from_stdout(&stdout);
+    assert_eq!(response.request_id, UNKNOWN_REQUEST_ID);
+    assert_eq!(response.operation, Some(Operation::Read));
+    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
 }
 
 #[test]
@@ -189,4 +166,13 @@ fn handler_error_missing_required_details_is_not_written_to_stdout() {
     assert_eq!(exit, AdapterExitCode::ProtocolError.code());
     assert!(stdout.is_empty());
     assert!(!stderr.is_empty());
+}
+
+fn failure_response_from_stdout(stdout: &[u8]) -> FailureResponse {
+    let response: ProtocolResponse =
+        serde_json::from_slice(stdout).expect("stdout is one JSON response");
+    match response {
+        ProtocolResponse::Failure(response) => response,
+        ProtocolResponse::Success(_) => panic!("expected failure response"),
+    }
 }

@@ -1,7 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { findCargoExecutable } from "../tools/cargo.ts";
+import {
+  buildCargoExecutables,
+  reportCargoExecutableBuildFailure,
+  type CargoBinarySpec
+} from "../tools/cargo.ts";
 import {
   booleanOption,
   parseScriptArgs,
@@ -9,13 +13,11 @@ import {
   type ParsedScriptArgs,
   type ScriptArgToken
 } from "../tools/args.ts";
-import { processFailed, runProcessSync, writeProcessOutput } from "../tools/process.ts";
+import { runProcessSync } from "../tools/process.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-type BinarySpec = {
-  packageName: string;
-  binName: string;
+type BinarySpec = CargoBinarySpec & {
   envName: string;
 };
 
@@ -121,40 +123,17 @@ function commandFromTokens(tokens: readonly ScriptArgToken[]): [string, ...strin
 }
 
 function buildCargoBins(binaries: BinarySpec[], quiet: boolean): Map<string, string> {
-  const packages = [...new Set(binaries.map((binary) => binary.packageName))];
-  const cargoArgs = [
-    "build",
-    ...packages.flatMap((packageName) => ["-p", packageName]),
-    ...binaries.flatMap((binary) => ["--bin", binary.binName]),
-    "--message-format=json"
-  ];
-  const result = runProcessSync("cargo", cargoArgs, {
-    cwd: root,
-    maxBuffer: 1024 * 1024 * 64
-  });
+  const result = buildCargoExecutables({ binaries, cwd: root });
 
-  if (processFailed(result)) {
-    writeProcessOutput(result);
-    if (result.error) {
-      console.error(result.error.message);
-    }
-    process.exit(result.status ?? 1);
+  if (!result.ok) {
+    process.exit(reportCargoExecutableBuildFailure(result));
   }
 
   if (result.stderr && !quiet) {
     process.stderr.write(result.stderr);
   }
 
-  const executables = new Map<string, string>();
-  for (const binary of binaries) {
-    const executable = findCargoExecutable(result.stdout ?? "", binary.binName);
-    if (!executable) {
-      console.error(`cargo build did not report a ${binary.binName} executable`);
-      process.exit(1);
-    }
-    executables.set(binary.binName, executable);
-  }
-  return executables;
+  return result.executables;
 }
 
 function usage(message: string): never {
