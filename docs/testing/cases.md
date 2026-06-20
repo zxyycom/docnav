@@ -671,17 +671,17 @@ flowchart LR
   I --> J
 ```
 
-### AUX-QUALITY-PARSER-001 Quality tool parsers 保持 fixture 语义
+### AUX-QUALITY-PARSER-001 Quality scanner parsers 保持 fixture 语义
 Status: implemented
-Code: `scripts/tools/quality/tools.test.ts`
+Code: `scripts/tools/quality/measurement/scanners.test.ts`
 
 Proves:
-- quality scan wrapper 仍能解析预期的 scc、Lizard 和 PMD CPD output shape。
+- quality scanner wrapper 仍能解析预期的 scc、Lizard 和 PMD CPD output shape。
 - PMD CPD exit 4 没有 XML 时不被误判为空扫描成功。
 
 ### AUX-QUALITY-CACHE-001 Quality CPD cache identity 稳定
 Status: implemented
-Code: `scripts/tools/quality/cache.test.ts`
+Code: `scripts/tools/quality/measurement/cache.test.ts`
 
 Proves:
 - duplicate-code cache key 由 scan identity、tool args、config、code area 和 input fingerprint 决定。
@@ -689,7 +689,7 @@ Proves:
 
 ### AUX-QUALITY-CPD-TASK-001 Quality CPD task planning 稳定
 Status: implemented
-Code: `scripts/tools/quality/cpd/tasks/index.test.ts`
+Code: `scripts/tools/quality/measurement/scanners/pmd-cpd/area-scans.test.ts`
 
 Proves:
 - PMD CPD 每个 code area 生成一个 scan task。
@@ -697,7 +697,7 @@ Proves:
 
 ### AUX-QUALITY-FINGERPRINT-001 Quality input fingerprint 稳定
 Status: implemented
-Code: `scripts/tools/quality/files.test.ts`
+Code: `scripts/tools/quality/input/files.test.ts`
 
 Proves:
 - quality input fingerprint 使用排序后的文件内容生成稳定 SHA-256。
@@ -705,7 +705,7 @@ Proves:
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
-Code: `scripts/tools/quality/report/index.test.ts`
+Code: `scripts/tools/quality/output/report/index.test.ts`
 
 Proves:
 - baseline unavailable 时 changed-file watchlist 仍按风险展示有用文件。
@@ -713,7 +713,7 @@ Proves:
 
 ### AUX-QUALITY-WARNINGS-001 Quality warning 阈值语义稳定
 Status: implemented
-Code: `scripts/tools/quality/warnings.test.ts`
+Code: `scripts/tools/quality/output/warnings/index.test.ts`
 
 Proves:
 - 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。
@@ -721,7 +721,7 @@ Proves:
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented
-Code: `scripts/tools/quality/scan/cli/index.test.ts`
+Code: `scripts/tools/quality/scan-command/index.test.ts`
 
 Proves:
 - quality scan 默认跳过 baseline，baseline generation 保持 opt-in。

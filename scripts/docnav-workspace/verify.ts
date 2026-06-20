@@ -195,10 +195,10 @@ export const checks = defineChecks([
     type: PROFILE_FULL,
     tasks: [
       {
-        id: "quality-tool-tests",
-        label: "quality tool tests",
+        id: "quality-internal-tests",
+        label: "quality internal tests",
         tasks: nodeTestFileChecks([
-          ["quality-tools-tests", "quality tools tests", "scripts/tools/quality/*.test.ts"]
+          ["quality-internal-node-tests", "quality internal node tests", "scripts/tools/quality/**/*.test.ts"]
         ])
       },
       {
@@ -206,7 +206,7 @@ export const checks = defineChecks([
         label: "quality scan",
         command: "node",
         args: ["scripts/quality/scan.ts"],
-        dependsOn: ["quality-tool-tests"]
+        dependsOn: ["quality-internal-tests"]
       },
       {
         id: "docnav-development-smoke",

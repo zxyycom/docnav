@@ -14,23 +14,23 @@ import { performance } from "node:perf_hooks";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 
-import { DEFAULT_CONFIG } from "../tools/quality/config.ts";
-import { createEmptyMetrics } from "../tools/quality/schema.ts";
-import type { BaselineSnapshot, FatalIssue, QualityMetrics, ToolAvailability } from "../tools/quality/schema.ts";
+import { DEFAULT_CONFIG } from "../tools/quality/model/config.ts";
+import { createEmptyMetrics } from "../tools/quality/model/schema.ts";
+import type { BaselineSnapshot, FatalIssue, QualityMetrics, ToolAvailability } from "../tools/quality/model/schema.ts";
 import { errorMessage } from "../tools/types.ts";
-import { classifyFiles } from "../tools/quality/classify.ts";
+import { classifyFiles } from "../tools/quality/model/code-areas.ts";
 import {
-  materializeBaseline,
-  detectTextOnlyChange
-} from "../tools/quality/baseline/index.ts";
-import { generateWarningChannels } from "../tools/quality/warnings.ts";
+  materializeBaselineRevision,
+  detectScanInputChange
+} from "../tools/quality/input/revisions.ts";
+import { generateWarningChannels } from "../tools/quality/output/warnings/index.ts";
 import {
   collectScanFiles,
   buildFingerprints
-} from "../tools/quality/files.ts";
-import { scanCurrentRevision } from "../tools/quality/scan/current/index.ts";
-import { scanBaselineRevision } from "../tools/quality/baseline/scan.ts";
-import { generateTrends } from "../tools/quality/trends.ts";
+} from "../tools/quality/input/files.ts";
+import { runCurrentRevisionScan } from "../tools/quality/measurement/current/index.ts";
+import { runBaselineRevisionScan } from "../tools/quality/measurement/baseline.ts";
+import { generateTrends } from "../tools/quality/output/trends.ts";
 import {
   parseArgs,
   prepareArtifactDirs,
@@ -47,11 +47,11 @@ import {
   formatFatalIssue,
   getGitSha,
   getGitCommitTitle
-} from "../tools/quality/scan/cli/index.ts";
+} from "../tools/quality/scan-command/index.ts";
 
-export { scanBaselineRevision } from "../tools/quality/baseline/scan.ts";
-export { buildAggregates } from "../tools/quality/aggregate.ts";
-export { generateTrends } from "../tools/quality/trends.ts";
+export { runBaselineRevisionScan } from "../tools/quality/measurement/baseline.ts";
+export { buildAggregates } from "../tools/quality/measurement/aggregate.ts";
+export { generateTrends } from "../tools/quality/output/trends.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const timingsEnabled = process.env.DOCNAV_QUALITY_TIMINGS === "1";
@@ -102,7 +102,7 @@ async function main() {
   const fatalIssues: FatalIssue[] = [];
   timings.measure("configure baseline", () => configureBaseline({ metrics, opts, tools, root }));
 
-  const scope = timings.measure("detect changed scan inputs", () => detectTextOnlyChange({
+  const scope = timings.measure("detect changed scan inputs", () => detectScanInputChange({
     baselineSha: metrics.baseline.commitSha,
     cwd: root,
     scanInputPaths: DEFAULT_CONFIG.include
@@ -112,7 +112,7 @@ async function main() {
   );
   console.log(`  Changed files in scan scope: ${changedFiles.length}`);
 
-  await timings.measureAsync("scan current revision", () => scanCurrentRevision({
+  await timings.measureAsync("scan current revision", () => runCurrentRevisionScan({
     context: {
       metrics,
       toolResults,
@@ -239,7 +239,7 @@ async function scanMaterializedBaseline({
   rawDir: string;
   toolResults: ToolAvailability[];
 }): Promise<BaselineSnapshot | null> {
-  const matResult = materializeBaseline({
+  const matResult = materializeBaselineRevision({
     commitSha: baselineCommitSha,
     cwd: root,
     baselineWorkDir
@@ -255,7 +255,7 @@ async function scanMaterializedBaseline({
   console.log(`  Baseline materialized to ${matResult.workDir}`);
 
   try {
-    const baselineSnapshot = await scanBaselineRevision(matResult.workDir, toolResults, DEFAULT_CONFIG, {
+    const baselineSnapshot = await runBaselineRevisionScan(matResult.workDir, toolResults, DEFAULT_CONFIG, {
       cacheRootDir: root,
       commitSha: baselineCommitSha
     });

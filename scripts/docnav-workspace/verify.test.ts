@@ -54,11 +54,11 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("smoke harness tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
     assert.ok(!requiredLabels.includes("cargo test"));
-    assert.ok(!requiredLabels.includes("quality tools tests"));
+    assert.ok(!requiredLabels.includes("quality internal node tests"));
     assert.ok(!requiredLabels.includes("docnav core development smoke"));
 
     assert.ok(fullLabels.includes("cargo fmt"));
-    assert.ok(fullLabels.includes("quality tools tests"));
+    assert.ok(fullLabels.includes("quality internal node tests"));
     assert.ok(!fullLabels.includes("quality report tests"));
     assert.ok(fullLabels.includes("cargo test"));
     assert.ok(fullLabels.includes("docnav development binaries"));
