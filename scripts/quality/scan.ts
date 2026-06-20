@@ -7,12 +7,8 @@
  * 生成非阻断代码质量快照、warning 和报告。
  */
 
-import { rmSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
-import { tmpdir } from "node:os";
-import { performance } from "node:perf_hooks";
+import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { randomUUID } from "node:crypto";
 
 import { DEFAULT_CONFIG } from "../tools/quality/model/config.ts";
 import { createEmptyMetrics } from "../tools/quality/model/schema.ts";
@@ -26,18 +22,13 @@ import type {
 } from "../tools/quality/model/schema.ts";
 import { errorMessage } from "../tools/errors.ts";
 import { classifyFiles } from "../tools/quality/model/code-areas.ts";
-import {
-  materializeBaselineRevision,
-  detectScanInputChange
-} from "../tools/quality/input/revisions.ts";
+import { detectScanInputChange } from "../tools/quality/input/revisions.ts";
 import { generateWarningChannels } from "../tools/quality/output/warnings/generator.ts";
 import {
   collectScanFiles,
   buildFingerprints
 } from "../tools/quality/input/files.ts";
 import { runCurrentRevisionScan } from "../tools/quality/measurement/current-revision/index.ts";
-import { runBaselineRevisionScan } from "../tools/quality/measurement/baseline-revision.ts";
-import { generateTrends } from "../tools/quality/output/trends.ts";
 import type { ChangeScope, QualityScanOptions } from "../tools/quality/scan-command/index.ts";
 import {
   parseArgs,
@@ -47,14 +38,16 @@ import {
   configureBaseline,
   setComparisonStatus,
   resolveChangedFilesForScan,
-  writeBaselineRawOutputs,
   writeArtifacts,
   printSummary,
   validateOutput,
   logFingerprints,
   formatFatalIssue,
   getGitSha,
-  getGitCommitTitle
+  getGitCommitTitle,
+  createTimings,
+  maybeScanBaselineRevision,
+  type Timings
 } from "../tools/quality/scan-command/index.ts";
 
 export { runBaselineRevisionScan } from "../tools/quality/measurement/baseline-revision.ts";
@@ -62,9 +55,6 @@ export { buildAggregates } from "../tools/quality/measurement/aggregate.ts";
 export { generateTrends } from "../tools/quality/output/trends.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const timingsEnabled = process.env.DOCNAV_QUALITY_TIMINGS === "1";
-
-type Timings = ReturnType<typeof createTimings>;
 
 type ScanInputs = {
   fileMap: CodeAreaFileMap;
@@ -108,7 +98,9 @@ async function main() {
   await scanCurrentRevision(runtime, inputs, changedInput.changedFiles, timings);
   timings.measure("set comparison status", () => setComparisonStatus(runtime.metrics, changedInput.inputScope));
 
-  const baselineSnapshot = await timings.measureAsync("baseline snapshot", () => maybeScanBaseline(runtime));
+  const baselineSnapshot = await timings.measureAsync("baseline snapshot", () =>
+    maybeScanBaselineRevision({ config: DEFAULT_CONFIG, root, runtime })
+  );
   generateWarnings(runtime.metrics, changedInput.inputScope, baselineSnapshot, timings);
   finishScan({ artifactDir, runtime, timings });
 }
@@ -277,160 +269,6 @@ function finishScan({
 
   timings.print();
   process.exit(0);
-}
-
-async function maybeScanBaseline({
-  metrics,
-  toolResults,
-  rawDir,
-  fatalIssues
-}: RuntimeContext): Promise<BaselineSnapshot | null> {
-  if (fatalIssues.length > 0) {
-    console.log("Skipping baseline scan because fatal current-scan errors were detected.");
-    return null;
-  }
-
-  const baselineCommitSha = metrics.baseline.commitSha;
-  if (metrics.baseline.status !== "generated" || !baselineCommitSha) {
-    return null;
-  }
-
-  if (metrics.comparisonStatus === "input-unchanged") {
-    console.log("Skipping baseline scan because scan inputs are unchanged.");
-    const baselineSnapshot = createEquivalentBaselineSnapshot(metrics);
-    metrics.baselineFingerprints = baselineSnapshot.fingerprints;
-    metrics.trends = generateTrends(metrics, baselineSnapshot);
-    console.log(`  Baseline deltas: ${metrics.trends.length} computed from equivalent inputs`);
-    writeBaselineRawOutputs(rawDir, baselineSnapshot);
-    return baselineSnapshot;
-  }
-
-  const baselineWorkDir = join(tmpdir(), `docnav-quality-baseline-${randomUUID()}`);
-  console.log(`Materializing baseline ${baselineCommitSha.slice(0, 7)}...`);
-
-  try {
-    return await scanMaterializedBaseline({ baselineCommitSha, metrics, toolResults, rawDir, baselineWorkDir });
-  } finally {
-    rmSync(baselineWorkDir, { recursive: true, force: true });
-  }
-}
-
-async function scanMaterializedBaseline({
-  baselineCommitSha,
-  metrics,
-  toolResults,
-  rawDir,
-  baselineWorkDir
-}: {
-  baselineCommitSha: string;
-  baselineWorkDir: string;
-  metrics: QualityMetrics;
-  rawDir: string;
-  toolResults: ToolAvailability[];
-}): Promise<BaselineSnapshot | null> {
-  const matResult = materializeBaselineRevision({
-    commitSha: baselineCommitSha,
-    cwd: root,
-    baselineWorkDir
-  });
-
-  if (!matResult.ok) {
-    console.log(`  ⚠️  Baseline materialization failed: ${matResult.error}`);
-    metrics.baseline.status = "baseline-materialization-failed";
-    metrics.comparisonStatus = "baseline-unavailable";
-    return null;
-  }
-
-  console.log(`  Baseline materialized to ${matResult.workDir}`);
-
-  try {
-    const baselineSnapshot = await runBaselineRevisionScan(matResult.workDir, toolResults, DEFAULT_CONFIG, {
-      cacheRootDir: root,
-      commitSha: baselineCommitSha
-    });
-    metrics.baselineFingerprints = baselineSnapshot.fingerprints;
-    metrics.trends = generateTrends(metrics, baselineSnapshot);
-    console.log(`  Baseline deltas: ${metrics.trends.length} computed`);
-    writeBaselineRawOutputs(rawDir, baselineSnapshot);
-    return baselineSnapshot;
-  } catch (err: unknown) {
-    console.log(`  ⚠️  Baseline scan failed: ${errorMessage(err)}`);
-    metrics.baseline.status = "baseline-scan-failed";
-    metrics.comparisonStatus = "baseline-unavailable";
-    return null;
-  }
-}
-
-function createTimings() {
-  const startedAt = performance.now();
-  const records: { durationMs: number; label: string }[] = [];
-
-  const record = (label: string, startMs: number) => {
-    records.push({ label, durationMs: performance.now() - startMs });
-  };
-
-  return {
-    measure<T>(label: string, callback: () => T): T {
-      if (!timingsEnabled) return callback();
-      const startMs = performance.now();
-      try {
-        return callback();
-      } finally {
-        record(label, startMs);
-      }
-    },
-    async measureAsync<T>(label: string, callback: () => Promise<T>): Promise<T> {
-      if (!timingsEnabled) return callback();
-      const startMs = performance.now();
-      try {
-        return await callback();
-      } finally {
-        record(label, startMs);
-      }
-    },
-    print(): void {
-      if (!timingsEnabled) return;
-      const totalMs = performance.now() - startedAt;
-      const longest = [...records].sort((a, b) => b.durationMs - a.durationMs).slice(0, 12);
-      console.log("");
-      console.log("Timing breakdown:");
-      for (const record of longest) {
-        console.log(`  ${formatTiming(record.durationMs).padStart(7)}  ${record.label}`);
-      }
-      console.log(`  ${formatTiming(totalMs).padStart(7)}  total`);
-    }
-  };
-}
-
-function formatTiming(durationMs: number): string {
-  return `${durationMs.toFixed(durationMs < 100 ? 1 : 0)}ms`;
-}
-
-function createEquivalentBaselineSnapshot(metrics: QualityMetrics): BaselineSnapshot {
-  return {
-    fingerprints: cloneJson(metrics.currentFingerprints),
-    fileMetrics: metrics.fileMetrics.map((file) => ({
-      ...file,
-      complexity: { ...file.complexity },
-      isChanged: false
-    })),
-    functionMetrics: metrics.functionMetrics.map((func) => ({
-      ...func,
-      cyclomaticComplexity: { ...func.cyclomaticComplexity },
-      isChanged: false
-    })),
-    duplicateCode: metrics.duplicateCode.map((fragment) => ({
-      ...fragment,
-      codeAreas: [...fragment.codeAreas],
-      hitsChangedScope: false,
-      locations: fragment.locations.map((location) => ({ ...location }))
-    })),
-    aggregates: cloneJson(metrics.aggregates)
-  };
-}
-
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

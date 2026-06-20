@@ -1,8 +1,8 @@
-import { DEFAULT_CONFIG } from "../model/config.ts";
-import { locateBaselineCommit } from "../input/revisions.ts";
-import { gitCommitDate as readGitCommitDate, gitCommitTitle as readGitCommitTitle } from "../../git.ts";
-import type { QualityScanOptions } from "./command-model.ts";
-import type { QualityMetrics, ToolInfo } from "../model/schema.ts";
+import { DEFAULT_CONFIG } from "../../model/config.ts";
+import { locateBaselineCommit } from "../../input/revisions.ts";
+import { gitCommitDate as readGitCommitDate, gitCommitTitle as readGitCommitTitle } from "../../../git.ts";
+import type { QualityScanOptions } from "../command-model.ts";
+import type { QualityMetrics, ToolInfo } from "../../model/schema.ts";
 
 type ChangeScope = {
   changed: boolean;
