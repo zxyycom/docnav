@@ -392,12 +392,9 @@ function recordCommand(state: SmokeState, record: CommandRecord) {
 
 function spawnCommand(executable: string, args: string[], options: SmokeCommandOptions): Promise<ProcessResult> {
   return new Promise((resolve) => {
-    let stdout = "";
-    let stderr = "";
-    let stdoutBytes = 0;
-    let stderrBytes = 0;
     let childError: Error | null = null;
     let settled = false;
+    const maxBuffer = options.maxBuffer ?? MAX_COMMAND_OUTPUT;
 
     const child = spawn(executable, args, {
       cwd: options.cwd,
@@ -406,29 +403,15 @@ function spawnCommand(executable: string, args: string[], options: SmokeCommandO
       stdio: "pipe"
     });
 
-    const appendOutput = (chunk: unknown, streamName: "stderr" | "stdout") => {
-      const text = Buffer.isBuffer(chunk)
-        ? chunk.toString("utf8")
-        : typeof chunk === "string"
-          ? chunk
-          : String(chunk);
-      const bytes = Buffer.byteLength(text, "utf8");
-      if (streamName === "stdout") {
-        stdout += text;
-        stdoutBytes += bytes;
-      } else {
-        stderr += text;
-        stderrBytes += bytes;
-      }
-      const maxBuffer = options.maxBuffer ?? MAX_COMMAND_OUTPUT;
-      if (stdoutBytes + stderrBytes > maxBuffer && !child.killed) {
+    const output = createCommandOutputCapture(maxBuffer, () => {
+      if (!child.killed) {
         childError = new Error(`command output exceeded ${maxBuffer} bytes`);
         child.kill();
       }
-    };
+    });
 
-    child.stdout.on("data", (chunk: unknown) => appendOutput(chunk, "stdout"));
-    child.stderr.on("data", (chunk: unknown) => appendOutput(chunk, "stderr"));
+    child.stdout.on("data", (chunk: unknown) => output.append(chunk, "stdout"));
+    child.stderr.on("data", (chunk: unknown) => output.append(chunk, "stderr"));
     child.on("error", (error: Error) => {
       childError = error;
       finish(1, null);
@@ -447,6 +430,7 @@ function spawnCommand(executable: string, args: string[], options: SmokeCommandO
         return;
       }
       settled = true;
+      const { stdout, stderr } = output.snapshot();
       resolve({
         exitCode: exitCode ?? 1,
         signal,
@@ -456,6 +440,50 @@ function spawnCommand(executable: string, args: string[], options: SmokeCommandO
       });
     }
   });
+}
+
+interface CommandOutputCapture {
+  append: (chunk: unknown, streamName: "stderr" | "stdout") => void;
+  snapshot: () => Pick<ProcessResult, "stderr" | "stdout">;
+}
+
+function createCommandOutputCapture(maxBuffer: number, onMaxBufferExceeded: () => void): CommandOutputCapture {
+  let stdout = "";
+  let stderr = "";
+  let stdoutBytes = 0;
+  let stderrBytes = 0;
+  let maxBufferExceeded = false;
+
+  return {
+    append(chunk, streamName) {
+      const text = commandOutputText(chunk);
+      const bytes = Buffer.byteLength(text, "utf8");
+      if (streamName === "stdout") {
+        stdout += text;
+        stdoutBytes += bytes;
+      } else {
+        stderr += text;
+        stderrBytes += bytes;
+      }
+      if (stdoutBytes + stderrBytes > maxBuffer && !maxBufferExceeded) {
+        maxBufferExceeded = true;
+        onMaxBufferExceeded();
+      }
+    },
+    snapshot() {
+      return { stdout, stderr };
+    }
+  };
+}
+
+function commandOutputText(chunk: unknown): string {
+  if (Buffer.isBuffer(chunk)) {
+    return chunk.toString("utf8");
+  }
+  if (typeof chunk === "string") {
+    return chunk;
+  }
+  return String(chunk);
 }
 
 function formatTestResult(result: SmokeTestResult) {

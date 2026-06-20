@@ -111,6 +111,21 @@ describe("smoke harness task scheduling", () => {
     );
   });
 
+  it("records default runner stdout and stderr on command records", async () => {
+    const state = createSmokeState();
+    const harness = createSpawnHarness(state);
+
+    const record = await harness.runCli("node output", [
+      "-e",
+      "process.stdout.write('out'); process.stderr.write('err');"
+    ]);
+
+    assert.equal(record.exitCode, 0);
+    assert.equal(record.stdout, "out");
+    assert.equal(record.stderr, "err");
+    assert.equal(state.commandRecords[0], record);
+  });
+
   it("validates smoke concurrency values", () => {
     assert.equal(resolveSmokeConcurrency(undefined), undefined);
     assert.equal(resolveSmokeConcurrency(""), undefined);
@@ -146,6 +161,24 @@ function createHarness(state: SmokeState, events: string[]) {
         stderr: ""
       };
     }
+  });
+}
+
+function createSpawnHarness(state: SmokeState) {
+  return createSmokeHarness({
+    state,
+    root: process.cwd(),
+    logDir: process.cwd(),
+    logPaths: [],
+    schemaPaths: {},
+    expect,
+    title: "test smoke",
+    auditTitle: "test smoke audit",
+    auditMetadata: () => [],
+    binaryPath: () => process.execPath,
+    binaryFallback: "node",
+    resolveCwd: () => process.cwd(),
+    safeArgPattern: /^[A-Za-z0-9_./:=@+-]+$/
   });
 }
 

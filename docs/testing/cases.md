@@ -645,29 +645,33 @@ flowchart LR
   I --> J["统计 report groups 和 leaf checks"]
 ```
 
-### AUX-SMOKE-HARNESS-001 Smoke harness 正确记录 task 语义
+### AUX-SMOKE-HARNESS-001 Smoke harness 正确记录 task 和 command 输出语义
 Status: implemented
 Code: `test/tools/smoke-harness.test.ts`
 
 Proves:
 - independent smoke tasks 可以并发运行，同时 command count 按 report 隔离。
-- failed task、nested task group 和 concurrency validation 保持预期 audit result shape。
+- failed task、nested task group、默认 runner 的 stdout/stderr command record 和 concurrency validation 保持预期 audit result shape。
 
 ```mermaid
 flowchart LR
-  A["输入：smoke task 列表或嵌套 task group"] --> B["runSmokeTasks 使用共享 SmokeState"]
-  B --> C{"task 形态"}
-  C -->|"independent"| D["并发执行并隔离 command count"]
-  C -->|"failed"| E["记录失败 result 并继续其它独立 task"]
-  C -->|"nested group"| F["执行子 task 但只记录父级 report"]
-  B --> G{"concurrency 参数"}
-  G -->|"valid"| H["解析为并发上限"]
-  G -->|"invalid"| I["抛出可诊断错误"]
-  D --> J["audit result shape 稳定"]
-  E --> J
-  F --> J
-  H --> J
-  I --> J
+  A["输入：smoke task 列表、嵌套 task group 或 runCli command"] --> B{"入口"}
+  B -->|"runSmokeTasks"| C["使用共享 SmokeState 执行 task"]
+  B -->|"runCli default runner"| K["执行真实子进程并取得 stdout/stderr"]
+  C --> D{"task 形态"}
+  D -->|"independent"| E["并发执行并隔离 command count"]
+  D -->|"failed"| F["记录失败 result 并继续其它独立 task"]
+  D -->|"nested group"| G["执行子 task 但只记录父级 report"]
+  C --> H{"concurrency 参数"}
+  H -->|"valid"| I["解析为并发上限"]
+  H -->|"invalid"| J["抛出可诊断错误"]
+  K --> L["stdout/stderr 写入 CommandRecord 和 SmokeState"]
+  E --> M["audit result shape 稳定"]
+  F --> M
+  G --> M
+  I --> M
+  J --> M
+  L --> M
 ```
 
 ### AUX-PARALLEL-RUNNER-001 Parallel task runner 保持调度契约

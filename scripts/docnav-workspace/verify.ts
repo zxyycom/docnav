@@ -629,54 +629,71 @@ function isRegExpArray(value: unknown): value is RegExp[] {
 }
 
 function createReportCompletionTracker(checkList: readonly CheckTask[]): (result: CheckResult) => CompletionResult | null {
-  const reports = new Map<string, ReportAccumulator>();
-  for (const check of checkList) {
-    const reportId = reportIdForCheck(check);
-    const report = reports.get(reportId) ?? {
-      check: {
-        id: reportId,
-        label: reportLabelForCheck(check)
-      },
-      expected: 0,
-      completed: 0,
-      ok: true,
-      exitCode: 0,
-      error: null,
-      startedAtMs: Number.POSITIVE_INFINITY,
-      endedAtMs: 0
-    };
-    report.expected += 1;
-    reports.set(reportId, report);
-  }
+  const reports = createReportAccumulators(checkList);
 
   return (result: CheckResult) => {
     const report = reports.get(reportIdForCheck(result.check));
     if (!report) {
       throw new Error(`missing report for check: ${result.check.id}`);
     }
-    report.completed += 1;
-    report.ok &&= result.ok;
-    report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
-    report.endedAtMs = Math.max(report.endedAtMs, result.endedAtMs);
-    if (!result.ok && !report.error) {
-      report.error = result.error;
-      report.exitCode = result.exitCode;
-    }
+    recordReportCompletion(report, result);
     if (report.completed !== report.expected) {
       return null;
     }
-    return {
-      check: report.check,
-      ok: report.ok,
-      exitCode: report.exitCode,
-      error: report.error,
-      stdout: "",
-      stderr: "",
-      combinedOutput: "",
-      durationMs: report.endedAtMs - report.startedAtMs,
-      startedAtMs: report.startedAtMs,
-      endedAtMs: report.endedAtMs
-    };
+    return completeReportResult(report);
+  };
+}
+
+function createReportAccumulators(checkList: readonly CheckTask[]): Map<string, ReportAccumulator> {
+  const reports = new Map<string, ReportAccumulator>();
+  for (const check of checkList) {
+    const reportId = reportIdForCheck(check);
+    const report = reports.get(reportId) ?? createReportAccumulator(check, reportId);
+    report.expected += 1;
+    reports.set(reportId, report);
+  }
+  return reports;
+}
+
+function createReportAccumulator(check: CheckTask, reportId: string): ReportAccumulator {
+  return {
+    check: {
+      id: reportId,
+      label: reportLabelForCheck(check)
+    },
+    expected: 0,
+    completed: 0,
+    ok: true,
+    exitCode: 0,
+    error: null,
+    startedAtMs: Number.POSITIVE_INFINITY,
+    endedAtMs: 0
+  };
+}
+
+function recordReportCompletion(report: ReportAccumulator, result: CheckResult): void {
+  report.completed += 1;
+  report.ok &&= result.ok;
+  report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
+  report.endedAtMs = Math.max(report.endedAtMs, result.endedAtMs);
+  if (!result.ok && !report.error) {
+    report.error = result.error;
+    report.exitCode = result.exitCode;
+  }
+}
+
+function completeReportResult(report: ReportAccumulator): CompletionResult {
+  return {
+    check: report.check,
+    ok: report.ok,
+    exitCode: report.exitCode,
+    error: report.error,
+    stdout: "",
+    stderr: "",
+    combinedOutput: "",
+    durationMs: report.endedAtMs - report.startedAtMs,
+    startedAtMs: report.startedAtMs,
+    endedAtMs: report.endedAtMs
   };
 }
 
