@@ -9,7 +9,7 @@
 
 // ── Constants ──────────────────────────────────────────────────────────
 
-export const METRICS_SCHEMA_VERSION = "0.2.0";
+export const METRICS_SCHEMA_VERSION = "0.2.1";
 
 export const BASELINE_STATUSES = Object.freeze([
   "generated",
@@ -78,7 +78,7 @@ export interface QualityConfig {
   include: string[];
   lizard: {
     cyclomaticComplexity: QualityThreshold;
-    functionLines: QualityThreshold;
+    functionCodeLines: QualityThreshold;
     parameterCount: QualityThreshold;
   };
   pmdCpd: {
@@ -95,7 +95,7 @@ export interface QualityConfig {
   };
   scc: {
     fileComplexity: QualityThreshold;
-    fileLines: QualityThreshold;
+    fileCodeLines: QualityThreshold;
   };
   tools: {
     lizard: ToolConfig;

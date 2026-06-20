@@ -1,7 +1,7 @@
 /**
  * scc 仓库/文件级指标 wrapper。
  *
- * 封装 scc 调用，统一输出仓库体量、语言占比、文件行数、文件级复杂度、
+ * 封装 scc 调用，统一输出仓库体量、语言占比、文件总行数/代码行数、文件级复杂度、
  * 路径和排序。
  */
 
@@ -87,6 +87,7 @@ export function buildSccArgs({
  * Language,Provider,Filename,Lines,Code,Comments,Blanks,Complexity,Bytes,ULOC
  *
  * - Lines 包含所有行（code + comments + blanks）
+ * - Code 是文件级代码行数，用于文件大小 warning
  * - Complexity 是 scc 的文件级复杂度（非函数级 CC）
  * - ULOC (Usable Lines of Code) 由 3.7.0 输出，但首期不进入稳定 metrics
  */

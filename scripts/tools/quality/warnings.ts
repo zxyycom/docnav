@@ -174,29 +174,32 @@ function buildFileLineWarning(
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
 ): WarningCandidate | null {
-  const lineFloor = context.config.scc?.fileLines?.absoluteFloor ?? 300;
-  const lineDelta = context.config.scc?.fileLines?.changedDelta ?? 100;
-  const baselineLines = baseFile?.lines ?? (context.hasBaselineFiles ? 0 : null);
-  const lineDeltaValue = deltaFrom(file.lines, baselineLines);
+  const lineFloor = context.config.scc?.fileCodeLines?.absoluteFloor ?? 300;
+  const lineDelta = context.config.scc?.fileCodeLines?.changedDelta ?? 100;
+  const fileCodeLines = file.codeLines ?? null;
+  const baselineCodeLines = baseFile
+    ? baseFile.codeLines ?? null
+    : (context.hasBaselineFiles ? 0 : null);
+  const lineDeltaValue = deltaFrom(fileCodeLines, baselineCodeLines);
 
   return buildMetricWarning({
     areaPolicy,
-    baselineValue: baselineLines,
+    baselineValue: baselineCodeLines,
     codeArea: file.codeArea,
     deltaFloor: lineDelta,
     deltaValue: lineDeltaValue,
     floor: lineFloor,
     isChanged: file.isChanged,
     line: null,
-    message: `File "${file.path}" has ${file.lines} lines (threshold: ${lineFloor} lines)`,
-    metric: "lines",
+    message: `File "${file.path}" has ${fileCodeLines} code lines (threshold: ${lineFloor} code lines)`,
+    metric: "code-lines",
     path: file.path,
-    ruleId: "scc-file-lines",
+    ruleId: "scc-file-code-lines",
     sourceTool: "scc",
-    suggestion: file.lines > lineFloor * 3
+    suggestion: fileCodeLines !== null && fileCodeLines > lineFloor * 3
       ? "Consider splitting this file into smaller modules"
       : "Review if the file can be refactored",
-    value: file.lines
+    value: fileCodeLines
   });
 }
 
@@ -289,8 +292,8 @@ function buildFunctionLineWarning(
   context: WarningContext,
   areaPolicy: AreaWarningPolicy
 ): WarningCandidate | null {
-  const lineFloor = context.config.lizard?.functionLines?.absoluteFloor ?? 50;
-  const lineDeltaCfg = context.config.lizard?.functionLines?.changedDelta ?? 20;
+  const lineFloor = context.config.lizard?.functionCodeLines?.absoluteFloor ?? 50;
+  const lineDeltaCfg = context.config.lizard?.functionCodeLines?.changedDelta ?? 20;
   const baselineFunctionLines = baselineFunc?.lines ?? (context.hasBaselineFunctions ? 0 : null);
   const functionLineDelta = deltaFrom(func.lines, baselineFunctionLines);
 
@@ -303,10 +306,10 @@ function buildFunctionLineWarning(
     floor: lineFloor,
     isChanged: func.isChanged,
     line: func.startLine,
-    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} lines (threshold: ${lineFloor} lines)`,
-    metric: "function-lines",
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} code lines (Lizard NLOC; threshold: ${lineFloor} code lines)`,
+    metric: "function-code-lines",
     path: func.file,
-    ruleId: "lizard-function-lines",
+    ruleId: "lizard-function-code-lines",
     sourceTool: "lizard",
     suggestion: "Consider extracting parts of this function into separate functions",
     value: func.lines

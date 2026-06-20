@@ -50,12 +50,14 @@ function buildFileAreaAggregates(fileMetrics: FileMetric[], config: QualityConfi
     if (existing) {
       existing.files++;
       existing.lines += file.lines;
+      existing.codeLines = (existing.codeLines ?? 0) + (file.codeLines || 0);
     } else {
       const areaDef = config.codeAreas[file.codeArea];
       areaAggMap.set(file.codeArea, {
         codeArea: file.codeArea,
         files: 1,
         lines: file.lines,
+        codeLines: file.codeLines || 0,
         functions: 0,
         warningPolicy: areaDef?.warningPolicy || "moderate"
       });

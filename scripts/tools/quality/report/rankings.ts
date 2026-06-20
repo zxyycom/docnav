@@ -88,7 +88,7 @@ export function functionComplexityRankings(metrics: QualityMetrics, topN: number
     return lines.join("\n");
   }
 
-  const rows = [["#", "Function", "File", "CC", "Lines", "Params"]];
+  const rows = [["#", "Function", "File", "CC", "Code Lines (NLOC)", "Params"]];
   sorted.forEach((func, index) => {
     rows.push([
       String(index + 1),
@@ -106,7 +106,7 @@ export function functionComplexityRankings(metrics: QualityMetrics, topN: number
 
 export function functionSizeRankings(metrics: QualityMetrics, topN: number): string {
   const lines: string[] = [];
-  lines.push(`## Top ${topN} 函数 (按行数)`);
+  lines.push(`## Top ${topN} 函数 (按代码行数 / NLOC)`);
   lines.push("");
 
   const sorted = metrics.functionMetrics
@@ -123,7 +123,7 @@ export function functionSizeRankings(metrics: QualityMetrics, topN: number): str
     return lines.join("\n");
   }
 
-  const rows = [["#", "Function", "File", "Lines", "CC", "Params"]];
+  const rows = [["#", "Function", "File", "Code Lines (NLOC)", "CC", "Params"]];
   sorted.forEach((func, index) => {
     rows.push([
       String(index + 1),

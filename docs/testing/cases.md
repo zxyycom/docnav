@@ -733,6 +733,14 @@ Proves:
 - baseline unavailable 时 changed-file watchlist 仍按风险展示有用文件。
 - rankings 排序不修改 scanner output 原始顺序。
 
+### AUX-QUALITY-WARNINGS-001 Quality warning 阈值语义稳定
+Status: implemented
+Code: `scripts/tools/quality/warnings.test.ts`
+
+Proves:
+- 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。
+- warning record 的 rule id、metric 和 message 反映代码行数语义。
+
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented
 Code: `scripts/tools/quality/scan/cli/index.test.ts`

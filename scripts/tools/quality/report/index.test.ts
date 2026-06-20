@@ -15,7 +15,7 @@ describe("quality report", () => {
       qualityFile("src/quiet.ts", { isChanged: true, lines: 80, complexity: 2 })
     ];
     metrics.warnings = {
-      all: [warning("src/risky.ts", "scc-file-lines", 480)],
+      all: [warning("src/risky.ts", "scc-file-code-lines", 480)],
       changed: [],
       regressions: []
     };
@@ -109,7 +109,7 @@ function warning(path: string, ruleId: string, value: number): WarningRecord {
     path,
     line: null,
     codeArea: "node-production-scripts",
-    metric: "lines",
+    metric: "code-lines",
     value,
     comparisonBasis: "changed-scope",
     baselineValue: null,
