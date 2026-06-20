@@ -2,42 +2,107 @@ import { formatTable } from "./markdown-table.ts";
 import type { QualityMetrics } from "../../model/schema.ts";
 
 export function fileRankings(metrics: QualityMetrics, topN: number): string {
-  const lines: string[] = [];
-  lines.push(`## Top ${topN} 文件 (按行数)`);
-  lines.push("");
-
-  const sorted = metrics.fileMetrics
-    .filter((file) => file.codeArea !== "generated")
-    .sort((a, b) => b.lines - a.lines || a.path.localeCompare(b.path))
-    .slice(0, topN);
-
-  if (sorted.length === 0) {
-    lines.push("*(no file data available)*");
-    return lines.join("\n");
-  }
-
-  const rows = [["#", "File", "Area", "Lines", "Complexity"]];
-  sorted.forEach((file, index) => {
-    const complexity = file.complexity.value !== null ? String(file.complexity.value) : "n/a";
-    rows.push([
+  return renderRanking({
+    title: `## Top ${topN} 文件 (按行数)`,
+    emptyMessage: "*(no file data available)*",
+    headers: ["#", "File", "Area", "Lines", "Complexity"],
+    items: topFilesByLines(metrics, topN),
+    row: (file, index) => [
       String(index + 1),
       file.path,
       file.codeArea,
       file.lines.toLocaleString(),
-      complexity
-    ]);
+      file.complexity.value !== null ? String(file.complexity.value) : "n/a"
+    ]
   });
-  lines.push(formatTable(rows));
-
-  return lines.join("\n");
 }
 
 export function fileComplexityRankings(metrics: QualityMetrics, topN: number): string {
-  const lines: string[] = [];
-  lines.push(`## Top ${topN} 文件 (按复杂度)`);
-  lines.push("");
+  return renderRanking({
+    title: `## Top ${topN} 文件 (按复杂度)`,
+    emptyMessage: "*(no file complexity data available)*",
+    headers: ["#", "File", "Area", "Complexity", "Lines", "Source"],
+    items: topFilesByComplexity(metrics, topN),
+    row: (file, index) => [
+      String(index + 1),
+      file.path,
+      file.codeArea,
+      String(file.complexity.value),
+      file.lines.toLocaleString(),
+      file.complexity.source
+    ]
+  });
+}
 
-  const sorted = metrics.fileMetrics
+export function functionComplexityRankings(metrics: QualityMetrics, topN: number): string {
+  return renderRanking({
+    title: `## Top ${topN} 函数 (按圈复杂度)`,
+    emptyMessage: "*(no function complexity data available)*",
+    headers: ["#", "Function", "File", "CC", "Code Lines (NLOC)", "Params"],
+    items: topFunctionsByComplexity(metrics, topN),
+    row: (func, index) => [
+      String(index + 1),
+      func.name,
+      `${func.file}:${func.startLine}`,
+      String(func.cyclomaticComplexity.value),
+      String(func.lines),
+      String(func.parameterCount)
+    ]
+  });
+}
+
+export function functionSizeRankings(metrics: QualityMetrics, topN: number): string {
+  return renderRanking({
+    title: `## Top ${topN} 函数 (按代码行数 / NLOC)`,
+    emptyMessage: "*(no function size data available)*",
+    headers: ["#", "Function", "File", "Code Lines (NLOC)", "CC", "Params"],
+    items: topFunctionsBySize(metrics, topN),
+    row: (func, index) => [
+      String(index + 1),
+      func.name,
+      `${func.file}:${func.startLine}`,
+      String(func.lines),
+      func.cyclomaticComplexity.value !== null ? String(func.cyclomaticComplexity.value) : "n/a",
+      String(func.parameterCount)
+    ]
+  });
+}
+
+type FileMetric = QualityMetrics["fileMetrics"][number];
+type FunctionMetric = QualityMetrics["functionMetrics"][number];
+
+function renderRanking<T>({
+  title,
+  emptyMessage,
+  headers,
+  items,
+  row
+}: {
+  emptyMessage: string;
+  headers: string[];
+  items: readonly T[];
+  row: (item: T, index: number) => string[];
+  title: string;
+}): string {
+  const lines = [title, ""];
+  if (items.length === 0) {
+    lines.push(emptyMessage);
+    return lines.join("\n");
+  }
+
+  lines.push(formatTable([headers, ...items.map(row)]));
+  return lines.join("\n");
+}
+
+function topFilesByLines(metrics: QualityMetrics, topN: number): FileMetric[] {
+  return metrics.fileMetrics
+    .filter((file) => file.codeArea !== "generated")
+    .sort((a, b) => b.lines - a.lines || a.path.localeCompare(b.path))
+    .slice(0, topN);
+}
+
+function topFilesByComplexity(metrics: QualityMetrics, topN: number): FileMetric[] {
+  return metrics.fileMetrics
     .filter((file) => file.codeArea !== "generated" && file.complexity.value !== null)
     .slice()
     .sort((a, b) =>
@@ -46,34 +111,10 @@ export function fileComplexityRankings(metrics: QualityMetrics, topN: number): s
       a.path.localeCompare(b.path)
     )
     .slice(0, topN);
-
-  if (sorted.length === 0) {
-    lines.push("*(no file complexity data available)*");
-    return lines.join("\n");
-  }
-
-  const rows = [["#", "File", "Area", "Complexity", "Lines", "Source"]];
-  sorted.forEach((file, index) => {
-    rows.push([
-      String(index + 1),
-      file.path,
-      file.codeArea,
-      String(file.complexity.value),
-      file.lines.toLocaleString(),
-      file.complexity.source
-    ]);
-  });
-  lines.push(formatTable(rows));
-
-  return lines.join("\n");
 }
 
-export function functionComplexityRankings(metrics: QualityMetrics, topN: number): string {
-  const lines: string[] = [];
-  lines.push(`## Top ${topN} 函数 (按圈复杂度)`);
-  lines.push("");
-
-  const sorted = metrics.functionMetrics
+function topFunctionsByComplexity(metrics: QualityMetrics, topN: number): FunctionMetric[] {
+  return metrics.functionMetrics
     .filter((func) => func.cyclomaticComplexity.value !== null)
     .slice()
     .sort((a, b) =>
@@ -82,34 +123,10 @@ export function functionComplexityRankings(metrics: QualityMetrics, topN: number
       functionLocation(a).localeCompare(functionLocation(b))
     )
     .slice(0, topN);
-
-  if (sorted.length === 0) {
-    lines.push("*(no function complexity data available)*");
-    return lines.join("\n");
-  }
-
-  const rows = [["#", "Function", "File", "CC", "Code Lines (NLOC)", "Params"]];
-  sorted.forEach((func, index) => {
-    rows.push([
-      String(index + 1),
-      func.name,
-      `${func.file}:${func.startLine}`,
-      String(func.cyclomaticComplexity.value),
-      String(func.lines),
-      String(func.parameterCount)
-    ]);
-  });
-  lines.push(formatTable(rows));
-
-  return lines.join("\n");
 }
 
-export function functionSizeRankings(metrics: QualityMetrics, topN: number): string {
-  const lines: string[] = [];
-  lines.push(`## Top ${topN} 函数 (按代码行数 / NLOC)`);
-  lines.push("");
-
-  const sorted = metrics.functionMetrics
+function topFunctionsBySize(metrics: QualityMetrics, topN: number): FunctionMetric[] {
+  return metrics.functionMetrics
     .slice()
     .sort((a, b) =>
       b.lines - a.lines ||
@@ -117,26 +134,6 @@ export function functionSizeRankings(metrics: QualityMetrics, topN: number): str
       functionLocation(a).localeCompare(functionLocation(b))
     )
     .slice(0, topN);
-
-  if (sorted.length === 0) {
-    lines.push("*(no function size data available)*");
-    return lines.join("\n");
-  }
-
-  const rows = [["#", "Function", "File", "Code Lines (NLOC)", "CC", "Params"]];
-  sorted.forEach((func, index) => {
-    rows.push([
-      String(index + 1),
-      func.name,
-      `${func.file}:${func.startLine}`,
-      String(func.lines),
-      func.cyclomaticComplexity.value !== null ? String(func.cyclomaticComplexity.value) : "n/a",
-      String(func.parameterCount)
-    ]);
-  });
-  lines.push(formatTable(rows));
-
-  return lines.join("\n");
 }
 
 function functionLocation(func: QualityMetrics["functionMetrics"][number]): string {
