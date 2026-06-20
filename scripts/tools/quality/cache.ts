@@ -151,6 +151,15 @@ function isMatchingPayload(
 ): payload is ScanCachePayload {
   if (!isNonArrayRecord(payload)) return false;
 
+  return cacheIdentityFieldsMatch(payload, identity, cacheKey) &&
+    cacheStructuredFieldsMatch(payload, identity);
+}
+
+function cacheIdentityFieldsMatch(
+  payload: Record<string, unknown>,
+  identity: CpdCacheIdentity,
+  cacheKey: string
+): boolean {
   return payload.scanCacheVersion === SCAN_CACHE_VERSION &&
     payload.cacheKey === cacheKey &&
     payload.scanKind === identity.scanKind &&
@@ -158,8 +167,11 @@ function isMatchingPayload(
     payload.toolVersion === identity.toolVersion &&
     payload.configVersion === identity.configVersion &&
     payload.codeArea === identity.codeArea &&
-    payload.commitSha === identity.commitSha &&
-    stableStringify(payload.normalizedToolArgs) === stableStringify([...identity.normalizedToolArgs]) &&
+    payload.commitSha === identity.commitSha;
+}
+
+function cacheStructuredFieldsMatch(payload: Record<string, unknown>, identity: CpdCacheIdentity): boolean {
+  return stableStringify(payload.normalizedToolArgs) === stableStringify([...identity.normalizedToolArgs]) &&
     stableStringify(payload.inputFingerprint) === stableStringify(identity.inputFingerprint);
 }
 

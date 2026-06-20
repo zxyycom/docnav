@@ -211,37 +211,52 @@ function expandTask(task: TaskDefinition, inherited: InheritedTaskState, state: 
   assertTaskObject(task);
   registerTaskId(task.id, state.ids);
 
-  const taskMutex = normalizeStringList(task.mutex, "mutex");
-  const taskDependsOn = normalizeStringList(task.dependsOn, "dependsOn");
-  const taskEnv = mergeEnv(inherited.env, task.env);
-  const taskEnvFile = task.envFile ?? inherited.envFile;
-  const taskType = task.type ?? inherited.type;
-  const nextInherited = {
-    type: taskType,
-    mutex: [...inherited.mutex, ...taskMutex],
-    dependsOn: [...inherited.dependsOn, ...taskDependsOn],
-    env: taskEnv,
-    envFile: taskEnvFile
-  };
+  const nextInherited = inheritedTaskState(task, inherited);
 
   const childTasks = task.tasks;
   if (childTasks !== undefined) {
-    const maybeChildTasks: unknown = childTasks;
-    if (!Array.isArray(maybeChildTasks) || childTasks.length === 0) {
-      throw new Error("task.tasks must be a non-empty array");
-    }
-
-    const startIndex = state.leafTasks.length;
-    for (const child of childTasks) {
-      expandTask(child, nextInherited, state);
-    }
-    state.groupLeafIds.set(
-      task.id,
-      state.leafTasks.slice(startIndex).map((leaf) => leaf.id)
-    );
+    expandTaskGroup(task.id, childTasks, nextInherited, state);
     return;
   }
 
+  state.leafTasks.push(normalizeTask(leafTaskDefinition(task, nextInherited)));
+}
+
+function inheritedTaskState(task: TaskDefinition, inherited: InheritedTaskState): InheritedTaskState {
+  const taskMutex = normalizeStringList(task.mutex, "mutex");
+  const taskDependsOn = normalizeStringList(task.dependsOn, "dependsOn");
+
+  return {
+    type: task.type ?? inherited.type,
+    mutex: [...inherited.mutex, ...taskMutex],
+    dependsOn: [...inherited.dependsOn, ...taskDependsOn],
+    env: mergeEnv(inherited.env, task.env),
+    envFile: task.envFile ?? inherited.envFile
+  };
+}
+
+function expandTaskGroup(
+  taskId: string,
+  childTasks: readonly TaskDefinition[],
+  inherited: InheritedTaskState,
+  state: ExpandTaskState
+): void {
+  const maybeChildTasks: unknown = childTasks;
+  if (!Array.isArray(maybeChildTasks) || childTasks.length === 0) {
+    throw new Error("task.tasks must be a non-empty array");
+  }
+
+  const startIndex = state.leafTasks.length;
+  for (const child of childTasks) {
+    expandTask(child, inherited, state);
+  }
+  state.groupLeafIds.set(
+    taskId,
+    state.leafTasks.slice(startIndex).map((leaf) => leaf.id)
+  );
+}
+
+function leafTaskDefinition(task: TaskDefinition, inherited: InheritedTaskState): TaskDefinition {
   const {
     dependsOn: _dependsOn,
     env: _env,
@@ -252,18 +267,18 @@ function expandTask(task: TaskDefinition, inherited: InheritedTaskState, state: 
     ...rest
   } = task;
   const leaf: TaskDefinition = {
-    type: taskType,
+    type: inherited.type,
     ...rest,
-    mutex: nextInherited.mutex,
-    dependsOn: nextInherited.dependsOn
+    mutex: inherited.mutex,
+    dependsOn: inherited.dependsOn
   };
-  if (taskEnv !== undefined) {
-    leaf.env = taskEnv;
+  if (inherited.env !== undefined) {
+    leaf.env = inherited.env;
   }
-  if (taskEnvFile !== undefined) {
-    leaf.envFile = taskEnvFile;
+  if (inherited.envFile !== undefined) {
+    leaf.envFile = inherited.envFile;
   }
-  state.leafTasks.push(normalizeTask(leaf));
+  return leaf;
 }
 
 function assertTaskObject(task: unknown): asserts task is TaskDefinition {

@@ -18,40 +18,54 @@ export function duplicateCodeSection(metrics: QualityMetrics): string {
     return lines.join("\n");
   }
 
-  const byArea = new Map<string, DuplicateCodeFragment[]>();
-  for (const dup of duplicates) {
-    for (const area of requireDuplicateAreas(dup)) {
-      if (!byArea.has(area)) byArea.set(area, []);
-      byArea.get(area)?.push(dup);
-    }
-  }
+  const byArea = groupDuplicatesByArea(duplicates);
 
   lines.push(`**Total**: ${duplicates.length} duplicate code fragments`);
   lines.push("");
 
   for (const [area, fragments] of byArea.entries()) {
-    lines.push(`### ${area} (${fragments.length} fragments)`);
-    lines.push("");
-
-    for (const frag of fragments.slice(0, 5)) {
-      const locations = requireDuplicateLocations(frag);
-      lines.push(`- **Fragment #${frag.id}**: ${frag.tokenCount} tokens, ${frag.lineCount} lines`);
-      lines.push(`  - Locations (${locations.length}):`);
-      for (const location of locations) {
-        lines.push(`    - ${formatDuplicateLocation(frag, location)}`);
-      }
-      if (frag.hitsChangedScope) {
-        lines.push("  - ⚠️ 命中 changed scope");
-      }
-    }
-
-    if (fragments.length > 5) {
-      lines.push(`- *... and ${fragments.length - 5} more fragments*`);
-    }
-    lines.push("");
+    appendDuplicateArea(lines, area, fragments);
   }
 
   return lines.join("\n");
+}
+
+function groupDuplicatesByArea(duplicates: readonly DuplicateCodeFragment[]): Map<string, DuplicateCodeFragment[]> {
+  const byArea = new Map<string, DuplicateCodeFragment[]>();
+  for (const duplicate of duplicates) {
+    for (const area of requireDuplicateAreas(duplicate)) {
+      const areaDuplicates = byArea.get(area) ?? [];
+      areaDuplicates.push(duplicate);
+      byArea.set(area, areaDuplicates);
+    }
+  }
+  return byArea;
+}
+
+function appendDuplicateArea(lines: string[], area: string, fragments: readonly DuplicateCodeFragment[]): void {
+  lines.push(`### ${area} (${fragments.length} fragments)`);
+  lines.push("");
+
+  for (const fragment of fragments.slice(0, 5)) {
+    appendDuplicateFragment(lines, fragment);
+  }
+
+  if (fragments.length > 5) {
+    lines.push(`- *... and ${fragments.length - 5} more fragments*`);
+  }
+  lines.push("");
+}
+
+function appendDuplicateFragment(lines: string[], fragment: DuplicateCodeFragment): void {
+  const locations = requireDuplicateLocations(fragment);
+  lines.push(`- **Fragment #${fragment.id}**: ${fragment.tokenCount} tokens, ${fragment.lineCount} lines`);
+  lines.push(`  - Locations (${locations.length}):`);
+  for (const location of locations) {
+    lines.push(`    - ${formatDuplicateLocation(fragment, location)}`);
+  }
+  if (fragment.hitsChangedScope) {
+    lines.push("  - ⚠️ 命中 changed scope");
+  }
 }
 
 function requireDuplicateAreas(dup: DuplicateCodeFragment): string[] {

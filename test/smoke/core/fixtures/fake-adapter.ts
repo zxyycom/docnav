@@ -17,6 +17,23 @@ interface FakeAdapterOptions {
   mode: string;
 }
 
+type OptionHandler = (options: FakeAdapterOptions, value: string) => void;
+
+const optionHandlers: Record<string, OptionHandler> = {
+  "--id": (parsed, value) => {
+    parsed.id = value;
+  },
+  "--mode": (parsed, value) => {
+    parsed.mode = value;
+  },
+  "--log": (parsed, value) => {
+    parsed.log = value;
+  },
+  "--extensions": (parsed, value) => {
+    parsed.extensions = value.split(",").filter(Boolean);
+  }
+};
+
 const options = parseOptions(process.argv.slice(2));
 const stdin = options.command === "invoke" ? await readStdin() : "";
 let request: unknown = null;
@@ -245,23 +262,15 @@ function parseOptions(args: string[]): FakeAdapterOptions {
   let index = 0;
   while (index < args.length) {
     const token = args[index];
-    if (token === "--id") {
-      parsed.id = args[index + 1] ?? "";
-      index += 2;
-    } else if (token === "--mode") {
-      parsed.mode = args[index + 1] ?? "";
-      index += 2;
-    } else if (token === "--log") {
-      parsed.log = args[index + 1] ?? "";
-      index += 2;
-    } else if (token === "--extensions") {
-      parsed.extensions = (args[index + 1] ?? "").split(",").filter(Boolean);
-      index += 2;
-    } else {
+    const handler = optionHandlers[token];
+    if (handler === undefined) {
       parsed.command = token ?? null;
       parsed.commandArgs = args.slice(index + 1);
       break;
     }
+
+    handler(parsed, args[index + 1] ?? "");
+    index += 2;
   }
   return parsed;
 }

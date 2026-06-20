@@ -54,6 +54,14 @@ struct ParsedBlock {
     payload: String,
 }
 
+struct AssertionContext<'a> {
+    vector: &'a ConformanceVector,
+    output: &'a str,
+    header_str: &'a str,
+    header_value: &'a Value,
+    blocks: &'a [ParsedBlock],
+}
+
 /// Parse all `[block ...]...[endblock ...]` sections from output.
 fn parse_blocks(output: &str) -> Vec<ParsedBlock> {
     let mut blocks = Vec::new();
@@ -216,201 +224,273 @@ fn check_assertions(vector: &ConformanceVector, output: &str, is_failure: bool) 
     // block carries the verification.  We skip header/block parsing since the
     // output is an error message string, not readable-view output.
     if is_failure {
-        // Only check assertions that make sense against an error message.
-        for assertion in &vector.assertions {
-            match assertion {
-                Assertion::OutputContains { text } => {
-                    assert!(
-                        output.contains(text.as_str()),
-                        "error message does not contain expected text.\n\
-                         Expected: {text:?}\n\
-                         Message: {output}\n\
-                         Vector: {desc}",
-                        text = text,
-                        output = output,
-                        desc = vector.description,
-                    );
-                }
-                _ => {
-                    panic!(
-                        "assertion type {:?} is not valid for failure vectors.\n\
-                         Vector: {desc}",
-                        std::mem::discriminant(assertion),
-                        desc = vector.description,
-                    );
-                }
-            }
-        }
+        check_failure_assertions(vector, output);
         return;
     }
 
+    check_readable_view_assertions(vector, output);
+}
+
+fn check_failure_assertions(vector: &ConformanceVector, output: &str) {
+    // Only check assertions that make sense against an error message.
+    for assertion in &vector.assertions {
+        match assertion {
+            Assertion::OutputContains { text } => {
+                assert!(
+                    output.contains(text.as_str()),
+                    "error message does not contain expected text.\n\
+                     Expected: {text:?}\n\
+                     Message: {output}\n\
+                     Vector: {desc}",
+                    text = text,
+                    output = output,
+                    desc = vector.description,
+                );
+            }
+            _ => {
+                panic!(
+                    "assertion type {:?} is not valid for failure vectors.\n\
+                     Vector: {desc}",
+                    std::mem::discriminant(assertion),
+                    desc = vector.description,
+                );
+            }
+        }
+    }
+}
+
+fn check_readable_view_assertions(vector: &ConformanceVector, output: &str) {
     let header_str = extract_header(output);
     let header_value: Value =
         serde_json::from_str(header_str).expect("header JSON should be valid");
     let blocks = parse_blocks(output);
     assert_restores_source(vector, &header_value, &blocks);
+    let context = AssertionContext {
+        vector,
+        output,
+        header_str,
+        header_value: &header_value,
+        blocks: &blocks,
+    };
 
     for assertion in &vector.assertions {
-        match assertion {
-            Assertion::Block {
-                pointer,
-                byte_length,
-                payload,
-                payload_contains,
-            } => {
-                let matched = blocks.iter().find(|b| &b.pointer == pointer);
-                assert!(
-                    matched.is_some(),
-                    "expected block with pointer {pointer:?}, but not found in output.\n\
-                     Found blocks: {blocks:?}\n\
-                     Vector: {desc}",
-                    pointer = pointer,
-                    blocks = blocks.iter().map(|b| &b.pointer).collect::<Vec<_>>(),
-                    desc = vector.description,
-                );
-                let block = matched.unwrap();
-
-                if let Some(expected_len) = byte_length {
-                    assert_eq!(
-                        block.byte_length, *expected_len,
-                        "block {pointer:?} byte_length mismatch: expected {expected_len}, got {actual}.\n\
-                         Vector: {desc}",
-                        pointer = pointer,
-                        expected_len = expected_len,
-                        actual = block.byte_length,
-                        desc = vector.description,
-                    );
-                }
-
-                if let Some(expected_payload) = payload {
-                    assert_eq!(
-                        &block.payload,
-                        expected_payload,
-                        "block {pointer:?} payload mismatch.\n\
-                         Expected: {expected_payload:?}\n\
-                         Actual:   {actual:?}\n\
-                         Vector: {desc}",
-                        pointer = pointer,
-                        expected_payload = expected_payload,
-                        actual = block.payload,
-                        desc = vector.description,
-                    );
-                }
-
-                if let Some(expected_substr) = payload_contains {
-                    assert!(
-                        block.payload.contains(expected_substr.as_str()),
-                        "block {pointer:?} payload does not contain expected text.\n\
-                         Expected substring: {expected_substr:?}\n\
-                         Actual payload: {payload:?}\n\
-                         Vector: {desc}",
-                        pointer = pointer,
-                        expected_substr = expected_substr,
-                        payload = block.payload,
-                        desc = vector.description,
-                    );
-                }
-            }
-
-            Assertion::NoBlocks => {
-                assert!(
-                    blocks.is_empty(),
-                    "expected no blocks, but found {} block(s): {found:?}.\n\
-                     Vector: {desc}",
-                    blocks.len(),
-                    found = blocks.iter().map(|b| &b.pointer).collect::<Vec<_>>(),
-                    desc = vector.description,
-                );
-                assert!(
-                    !output.contains("[block"),
-                    "output should not contain '[block' marker.\nVector: {desc}",
-                    desc = vector.description,
-                );
-                assert!(
-                    !output.contains("[endblock"),
-                    "output should not contain '[endblock' marker.\nVector: {desc}",
-                    desc = vector.description,
-                );
-            }
-
-            Assertion::HeaderField { pointer, value } => {
-                let actual = header_value.pointer(pointer).unwrap_or_else(|| {
-                    panic!(
-                        "header field {pointer:?} not found in header JSON.\n\
-                         Header: {header_str}\n\
-                         Vector: {desc}",
-                        pointer = pointer,
-                        header_str = header_str,
-                        desc = vector.description,
-                    )
-                });
-
-                assert_eq!(
-                    actual,
-                    value,
-                    "header field {pointer:?} value mismatch.\n\
-                     Expected: {expected}\n\
-                     Actual:   {actual}\n\
-                     Vector: {desc}",
-                    pointer = pointer,
-                    expected = value,
-                    actual = actual,
-                    desc = vector.description,
-                );
-            }
-
-            Assertion::HeaderContains { text } => {
-                assert!(
-                    header_str.contains(text.as_str()),
-                    "header JSON does not contain expected text.\n\
-                     Expected: {text:?}\n\
-                     Header: {header_str}\n\
-                     Vector: {desc}",
-                    text = text,
-                    header_str = header_str,
-                    desc = vector.description,
-                );
-            }
-
-            Assertion::OutputContains { text } => {
-                assert!(
-                    output.contains(text.as_str()),
-                    "output does not contain expected text.\n\
-                     Expected: {text:?}\n\
-                     Output: {output}\n\
-                     Vector: {desc}",
-                    text = text,
-                    output = output,
-                    desc = vector.description,
-                );
-            }
-
-            Assertion::OutputNotContains { text } => {
-                assert!(
-                    !output.contains(text.as_str()),
-                    "output should not contain: {text:?}\n\
-                     Output: {output}\n\
-                     Vector: {desc}",
-                    text = text,
-                    output = output,
-                    desc = vector.description,
-                );
-            }
-
-            Assertion::NoCrInFraming => {
-                let cr_count = output.bytes().filter(|&b| b == b'\r').count();
-                assert_eq!(
-                    cr_count,
-                    0,
-                    "readable-view output contains {cr_count} CR (\\r) bytes; \
-                     framing must use LF (0x0A) only.\n\
-                     Vector: {desc}",
-                    cr_count = cr_count,
-                    desc = vector.description,
-                );
-            }
-        }
+        check_readable_view_assertion(&context, assertion);
     }
+}
+
+fn check_readable_view_assertion(context: &AssertionContext<'_>, assertion: &Assertion) {
+    match assertion {
+        Assertion::Block {
+            pointer,
+            byte_length,
+            payload,
+            payload_contains,
+        } => check_block_assertion(context, pointer, byte_length, payload, payload_contains),
+        Assertion::NoBlocks => check_no_blocks_assertion(context),
+        Assertion::HeaderField { pointer, value } => {
+            check_header_field_assertion(context, pointer, value);
+        }
+        Assertion::HeaderContains { text } => check_header_contains_assertion(context, text),
+        Assertion::OutputContains { text } => check_output_contains_assertion(context, text),
+        Assertion::OutputNotContains { text } => check_output_not_contains_assertion(context, text),
+        Assertion::NoCrInFraming => check_no_cr_in_framing(context),
+    }
+}
+
+fn check_block_assertion(
+    context: &AssertionContext<'_>,
+    pointer: &str,
+    byte_length: &Option<u64>,
+    payload: &Option<String>,
+    payload_contains: &Option<String>,
+) {
+    let block = expected_block(context, pointer);
+    check_block_byte_length(context, block, pointer, byte_length);
+    check_block_payload(context, block, pointer, payload);
+    check_block_payload_contains(context, block, pointer, payload_contains);
+}
+
+fn expected_block<'a>(context: &AssertionContext<'a>, pointer: &str) -> &'a ParsedBlock {
+    let matched = context.blocks.iter().find(|block| block.pointer == pointer);
+    assert!(
+        matched.is_some(),
+        "expected block with pointer {pointer:?}, but not found in output.\n\
+         Found blocks: {blocks:?}\n\
+         Vector: {desc}",
+        pointer = pointer,
+        blocks = context
+            .blocks
+            .iter()
+            .map(|block| &block.pointer)
+            .collect::<Vec<_>>(),
+        desc = context.vector.description,
+    );
+    matched.unwrap()
+}
+
+fn check_block_byte_length(
+    context: &AssertionContext<'_>,
+    block: &ParsedBlock,
+    pointer: &str,
+    byte_length: &Option<u64>,
+) {
+    if let Some(expected_len) = byte_length {
+        assert_eq!(
+            block.byte_length,
+            *expected_len,
+            "block {pointer:?} byte_length mismatch: expected {expected_len}, got {actual}.\n\
+             Vector: {desc}",
+            pointer = pointer,
+            expected_len = expected_len,
+            actual = block.byte_length,
+            desc = context.vector.description,
+        );
+    }
+}
+
+fn check_block_payload(
+    context: &AssertionContext<'_>,
+    block: &ParsedBlock,
+    pointer: &str,
+    payload: &Option<String>,
+) {
+    if let Some(expected_payload) = payload {
+        assert_eq!(
+            &block.payload,
+            expected_payload,
+            "block {pointer:?} payload mismatch.\n\
+             Expected: {expected_payload:?}\n\
+             Actual:   {actual:?}\n\
+             Vector: {desc}",
+            pointer = pointer,
+            expected_payload = expected_payload,
+            actual = block.payload,
+            desc = context.vector.description,
+        );
+    }
+}
+
+fn check_block_payload_contains(
+    context: &AssertionContext<'_>,
+    block: &ParsedBlock,
+    pointer: &str,
+    payload_contains: &Option<String>,
+) {
+    if let Some(expected_substr) = payload_contains {
+        assert!(
+            block.payload.contains(expected_substr.as_str()),
+            "block {pointer:?} payload does not contain expected text.\n\
+             Expected substring: {expected_substr:?}\n\
+             Actual payload: {payload:?}\n\
+             Vector: {desc}",
+            pointer = pointer,
+            expected_substr = expected_substr,
+            payload = block.payload,
+            desc = context.vector.description,
+        );
+    }
+}
+
+fn check_no_blocks_assertion(context: &AssertionContext<'_>) {
+    assert!(
+        context.blocks.is_empty(),
+        "expected no blocks, but found {} block(s): {found:?}.\n\
+         Vector: {desc}",
+        context.blocks.len(),
+        found = context
+            .blocks
+            .iter()
+            .map(|block| &block.pointer)
+            .collect::<Vec<_>>(),
+        desc = context.vector.description,
+    );
+    assert!(
+        !context.output.contains("[block"),
+        "output should not contain '[block' marker.\nVector: {desc}",
+        desc = context.vector.description,
+    );
+    assert!(
+        !context.output.contains("[endblock"),
+        "output should not contain '[endblock' marker.\nVector: {desc}",
+        desc = context.vector.description,
+    );
+}
+
+fn check_header_field_assertion(context: &AssertionContext<'_>, pointer: &str, value: &Value) {
+    let actual = context.header_value.pointer(pointer).unwrap_or_else(|| {
+        panic!(
+            "header field {pointer:?} not found in header JSON.\n\
+             Header: {header_str}\n\
+             Vector: {desc}",
+            pointer = pointer,
+            header_str = context.header_str,
+            desc = context.vector.description,
+        )
+    });
+
+    assert_eq!(
+        actual,
+        value,
+        "header field {pointer:?} value mismatch.\n\
+         Expected: {expected}\n\
+         Actual:   {actual}\n\
+         Vector: {desc}",
+        pointer = pointer,
+        expected = value,
+        actual = actual,
+        desc = context.vector.description,
+    );
+}
+
+fn check_header_contains_assertion(context: &AssertionContext<'_>, text: &str) {
+    assert!(
+        context.header_str.contains(text),
+        "header JSON does not contain expected text.\n\
+         Expected: {text:?}\n\
+         Header: {header_str}\n\
+         Vector: {desc}",
+        text = text,
+        header_str = context.header_str,
+        desc = context.vector.description,
+    );
+}
+
+fn check_output_contains_assertion(context: &AssertionContext<'_>, text: &str) {
+    assert!(
+        context.output.contains(text),
+        "output does not contain expected text.\n\
+         Expected: {text:?}\n\
+         Output: {output}\n\
+         Vector: {desc}",
+        text = text,
+        output = context.output,
+        desc = context.vector.description,
+    );
+}
+
+fn check_output_not_contains_assertion(context: &AssertionContext<'_>, text: &str) {
+    assert!(
+        !context.output.contains(text),
+        "output should not contain: {text:?}\n\
+         Output: {output}\n\
+         Vector: {desc}",
+        text = text,
+        output = context.output,
+        desc = context.vector.description,
+    );
+}
+
+fn check_no_cr_in_framing(context: &AssertionContext<'_>) {
+    let cr_count = context.output.bytes().filter(|&byte| byte == b'\r').count();
+    assert_eq!(
+        cr_count,
+        0,
+        "readable-view output contains {cr_count} CR (\\r) bytes; \
+         framing must use LF (0x0A) only.\n\
+         Vector: {desc}",
+        cr_count = cr_count,
+        desc = context.vector.description,
+    );
 }
 
 /// Run a single conformance vector.

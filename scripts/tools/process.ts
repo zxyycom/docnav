@@ -51,16 +51,18 @@ export function runProcessSync(
   return toProcessResult(result, command);
 }
 
-export function runProcess({
-  args = [],
-  command,
-  cwd,
-  env,
-  label = command,
-  maxBuffer = DEFAULT_PROCESS_MAX_BUFFER,
-  timeout,
-  windowsHide = true
-}: RunProcessOptions): Promise<ProcessResult> {
+export function runProcess(options: RunProcessOptions): Promise<ProcessResult> {
+  const {
+    args = [],
+    command,
+    cwd,
+    env,
+    label = command,
+    maxBuffer = DEFAULT_PROCESS_MAX_BUFFER,
+    timeout,
+    windowsHide = true
+  } = options;
+
   return execa(command, args, {
     cwd,
     env,
