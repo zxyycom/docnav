@@ -1,12 +1,14 @@
 # 覆盖矩阵
 
-本文供测试作者和 reviewer 判断改动是否触达最低覆盖面。它不列具体测试用例，不定义稳定字段、错误码、命令语义或字段形状；产品语义以 [文档导航](../navigation.md#规则所有权) 指向的 owner 文档为准，具体证明目标和源码 `@case` 标记见 [测试用例编号账本](cases.md)。
+本文供测试作者和 reviewer 判断改动是否触达最低覆盖面，只定义最低覆盖维度；不列具体测试用例，不定义稳定字段、错误码、命令语义或字段形状。产品语义以 [文档导航](../navigation.md#规则所有权) 指向的 owner 文档为准。
+
+测试函数变更时，按 [测试用例维护](case-maintenance.md) 判断 case 归属；最终 case 条目记录在 [测试用例编号账本](cases.md)。
 
 ## 使用方式
 
 1. 先按 [测试策略](../testing.md) 选择测试层级。
 2. 再用本文确认改动触及哪些覆盖维度。
-3. 若新增了新的证明目标，在 [测试用例编号账本](cases.md) 登记编号并补源码 `@case` 标记。
+3. 新增证明目标时，按 [测试用例维护](case-maintenance.md) 判断登记、合并或拆分 case，并补源码 `@case` 标记。
 
 ## 覆盖维度
 
@@ -28,7 +30,8 @@
 - JavaScript smoke：证明真实进程入口、跨二进制链路、stdout/stderr、exit code、warning placement 和 package 可执行性。
 - Rust tests：证明 parser、ref、分页、decode stage、helper、renderer 和内部状态转换等自定义逻辑不变量。
 - schema/docs validators：证明字段形状、示例链路、schema 映射和文档化 fixture 没有漂移。
-- 测试用例编号账本：只维护审计编号、证明目标和源码 `@case` 标记映射，不替代测试实现或覆盖矩阵。
+- 测试用例维护：定义测试函数变更时的 case 归属、账本更新和 `@case` 标记维护流程。
+- 测试用例编号账本：保存最终 case 条目、证明目标和源码 `@case` 标记映射，不替代测试实现或覆盖矩阵。
 
 ## 审查规则
 

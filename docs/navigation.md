@@ -12,7 +12,7 @@
 | 实现 `docnav-mcp` | [MCP Handoff](mcp.md)、[输出模式](output.md)、[原始协议](protocol.md) | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) |
 | 实现协议或 SDK | [原始协议](protocol.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
 | 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](refs.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | [MarkdownNavigator 参考](references/markdown-navigator.md) |
-| 写测试或验证脚本 | [测试策略](testing.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [测试用例编号账本](testing/cases.md)、[覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |
+| 写测试或验证脚本 | [测试策略](testing.md)、[测试用例维护](testing/case-maintenance.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |
 | 审计历史或变更依据 | `../openspec/changes/` | 按 change 目录读取对应 proposal、design、specs、tasks |
 
 `../openspec/changes/` 用于变更设计、验收和审计历史；日常实现从对应任务主规范进入。
@@ -34,7 +34,7 @@ pnpm run verify:docnav-workspace
 | 项目首页 | [README](../README.md) | 确认项目目标、v0 范围或运行入口 |
 | 文档导航 | 本文档 | 定位任务主规范、状态语义、规则 owner 和交付验证入口 |
 | 主规范 | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md)、[MCP Handoff](mcp.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[Ref](refs.md)、[测试策略](testing.md) | 修改稳定规则或实现职责 |
-| 测试资料 | [测试用例编号账本](testing/cases.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 调整测试编号、覆盖目标或 release 验证 |
+| 测试资料 | [测试用例维护](testing/case-maintenance.md)、[测试用例编号账本](testing/cases.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、case 条目、覆盖目标或 release 验证 |
 | Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](CODING_STYLE.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
@@ -69,7 +69,8 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | ref 的共享调用流程、非空 opaque string、原样传递和 adapter 所有权 | [Ref](refs.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
 | 自动化测试层级、覆盖目标、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
-| 测试用例编号、证明目标和源码 `@case` 标记映射 | [测试用例编号账本](testing/cases.md) |
+| 测试函数变更时的 case 归属、账本更新和源码 `@case` 标记维护流程 | [测试用例维护](testing/case-maintenance.md) |
+| 最终 case 条目、证明目标和源码 `@case` 标记映射 | [测试用例编号账本](testing/cases.md) |
 | 脚本语言、包管理、Node.js/TypeScript 脚本运行方式和脚本类型检查门禁 | [工程工具链](tooling.md) |
 | JSON 字段形状和示例语义校验 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) |
 

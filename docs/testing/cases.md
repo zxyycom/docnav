@@ -1,31 +1,5 @@
 # 测试用例编号账本
 
-本文只维护可审计的测试用例编号、证明目标和源码 `@case` 标记。它不改变现有 smoke task id、测试名称或测试执行语义；现有 JavaScript smoke 报告仍使用 `CORE-*` 和 `MD-*` 任务编号。
-
-## 编号规则
-
-测试用例编号使用 `类别-责任域-证明意图-NNN`：
-
-1. `BB`: 黑盒测试，从真实入口观察用户链路、进程边界或输出边界。
-2. `WB`: 白盒测试，从 owner 边界、函数、fixture 或 conformance 入口证明内部语义。
-3. `AUX`: 辅助脚本语义守卫，证明测试、验证、质量观测、打包或调度链路不会静默漂移。
-
-责任域当前使用 `CORE`、`MD`、`PROTO`、`READABLE`、`SDK`、`DIAG`、`CLIARGS`、`JSONIO`、`OUTPUT`、`MCP`、`WORKSPACE`、`SMOKE`、`PARALLEL`、`QUALITY`、`RELEASE`、`CASE`。新增责任域时先更新本文，再补源码 `@case` 标记。
-
-## 维护与验收
-
-新增或调整 case 时：
-
-1. 在本文新增或更新一个 `### CASE-ID ...` entry，并填写 `Status:` 和 `Proves:`。
-2. `Status: implemented` 必须填写 `Code:`，并在负责该测试语义的入口位置添加唯一 `@case CASE-ID` 标记。
-3. `Status: planned` 可先不填写 `Code:`，也不得提前添加源码 `@case` 标记；实现时改为 `implemented`。
-4. `@case` 标记对应测试用例，不对应测试函数。一个用例可以覆盖多个测试函数，但必须证明同一责任边界或同一行为链路。
-5. 标记位置优先放在入口处：smoke task object、`describe(...)`、测试文件入口、Rust `mod tests` 内的 case 段落开头，或同一语义分组的第一个测试前。
-6. 默认按单一路径描述 case：输入或触发 -> 被测行为 -> 可观察结果。若同一 case 必须覆盖多个分支，使用 Mermaid `flowchart LR`，按“输入或触发 -> 分支判断 -> 处理阶段 -> 可观察结果”组织；每个叶子节点应对应一个断言分支或验证点。
-7. 多分支 case 是否拆分由共享基座和证明责任决定：若多个分支必须共享同一初始状态、执行上下文或行为链路，拆分会制造不同基座或额外同步成本时，保留一个 case 并补足流程说明；若可以抽出清晰的底座函数、fixture builder 或状态获取函数，并且拆分能降低审计范围和维护成本，则拆成多个 case。
-8. 保留多分支 case 时，`Proves:` 或 Mermaid `flowchart LR` 必须写清共享基座、分支条件、处理阶段和各叶子断言；使用具体验证点替代“覆盖多种场景”这类概括。
-9. 运行 `pnpm run validate:docs cases`，确保 implemented case、源码标记和 `Code:` 路径一致。
-
 ## Black-box Cases
 
 ### BB-CORE-LINK-001 Core 原样传递真实 Markdown ref
