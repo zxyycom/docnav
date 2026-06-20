@@ -5,7 +5,7 @@ export function fileRankings(metrics: QualityMetrics, topN: number): string {
   return renderRanking({
     title: `## Top ${topN} 文件 (按行数)`,
     emptyMessage: "*(no file data available)*",
-    headers: ["#", "File", "Area", "Lines", "Complexity"],
+    headers: ["#", "File", "Area", "Lines", "Decision Tokens"],
     items: topFilesByLines(metrics, topN),
     row: (file, index) => [
       String(index + 1),
@@ -17,18 +17,27 @@ export function fileRankings(metrics: QualityMetrics, topN: number): string {
   });
 }
 
-export function fileComplexityRankings(metrics: QualityMetrics, topN: number): string {
+export function fileDecisionTokenRankings(metrics: QualityMetrics, topN: number): string {
+  const totalDecisionTokens = totalFileDecisionTokens(metrics);
+
   return renderRanking({
-    title: `## Top ${topN} 文件 (按复杂度)`,
-    emptyMessage: "*(no file complexity data available)*",
-    headers: ["#", "File", "Area", "Complexity", "Lines", "Source"],
-    items: topFilesByComplexity(metrics, topN),
+    title: `## Top ${topN} 文件 (按 scc decision tokens)`,
+    emptyMessage: "*(no scc decision-token data available)*",
+    headers: [
+      "#",
+      "File",
+      "Area",
+      "Decision Tokens",
+      "file-decision-tokens / total-file-decision-tokens",
+      "Source"
+    ],
+    items: topFilesByDecisionTokens(metrics, topN),
     row: (file, index) => [
       String(index + 1),
       file.path,
       file.codeArea,
       String(file.complexity.value),
-      file.lines.toLocaleString(),
+      formatDecisionTokenShare(file.complexity.value, totalDecisionTokens),
       file.complexity.source
     ]
   });
@@ -101,7 +110,7 @@ function topFilesByLines(metrics: QualityMetrics, topN: number): FileMetric[] {
     .slice(0, topN);
 }
 
-function topFilesByComplexity(metrics: QualityMetrics, topN: number): FileMetric[] {
+function topFilesByDecisionTokens(metrics: QualityMetrics, topN: number): FileMetric[] {
   return metrics.fileMetrics
     .filter((file) => file.codeArea !== "generated" && file.complexity.value !== null)
     .slice()
@@ -111,6 +120,20 @@ function topFilesByComplexity(metrics: QualityMetrics, topN: number): FileMetric
       a.path.localeCompare(b.path)
     )
     .slice(0, topN);
+}
+
+function formatDecisionTokenShare(decisionTokens: number | null | undefined, totalDecisionTokens: number): string {
+  if (decisionTokens === null || decisionTokens === undefined || totalDecisionTokens <= 0) return "n/a";
+  return `${((decisionTokens / totalDecisionTokens) * 100).toFixed(1)}%`;
+}
+
+function totalFileDecisionTokens(metrics: QualityMetrics): number {
+  const aggregateTotal = metrics.aggregates.overall.totalFileComplexity;
+  if (aggregateTotal !== undefined && aggregateTotal > 0) return aggregateTotal;
+
+  return metrics.fileMetrics
+    .filter((file) => file.codeArea !== "generated")
+    .reduce((total, file) => total + (file.complexity.value ?? 0), 0);
 }
 
 function topFunctionsByComplexity(metrics: QualityMetrics, topN: number): FunctionMetric[] {

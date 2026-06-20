@@ -61,7 +61,7 @@ function inputUnchangedComparisonSection(): string {
     "## Comparison",
     "",
     "**代码输入未变化。** 本次变更未修改任何纳入扫描的代码文件。",
-    "当前快照已生成，但不生成动态复杂度或重复代码 annotation。"
+    "当前快照已生成，但不生成动态质量指标或重复代码 annotation。"
   ].join("\n");
 }
 

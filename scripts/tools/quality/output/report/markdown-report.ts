@@ -2,7 +2,7 @@
  * Markdown summary 报告生成器。
  *
  * 从 QualityMetrics 生成人类可读的 Markdown summary report。
- * 默认栏目：仓库体量/语言占比、文件排名、文件复杂度、函数圈复杂度、
+ * 默认栏目：仓库体量/语言占比、文件排名、文件 decision tokens、函数圈复杂度、
  * 函数行数/参数数量、重复代码、watchlist、changed files 和 warnings。
  */
 
@@ -16,7 +16,7 @@ import {
 } from "./summary.ts";
 import {
   fileRankings,
-  fileComplexityRankings,
+  fileDecisionTokenRankings,
   functionComplexityRankings,
   functionSizeRankings
 } from "./rankings.ts";
@@ -42,7 +42,7 @@ export function generateMarkdownReport(
     repositorySize(metrics),
     comparisonInfo(metrics),
     fileRankings(metrics, topN),
-    fileComplexityRankings(metrics, topN),
+    fileDecisionTokenRankings(metrics, topN),
     functionComplexityRankings(metrics, topN),
     functionSizeRankings(metrics, topN),
     duplicateCodeSection(metrics),

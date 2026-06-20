@@ -39,20 +39,20 @@ export function changedFilesSection(metrics: QualityMetrics, topN = 10): string 
 }
 
 function appendChangedFilesTable(lines: string[], ranked: RankedChangedFile[]): void {
-  const rows = [["File", "Area", "Lines", "Complexity", "Risk"]];
+  const rows = [["File", "Area", "Lines", "Decision Tokens", "Risk"]];
   for (const { file, reasons } of ranked) {
     rows.push([
       file.path,
       file.codeArea,
       file.lines.toLocaleString(),
-      formatComplexity(file),
+      formatDecisionTokens(file),
       reasons.join(", ")
     ]);
   }
   lines.push(formatTable(rows));
 }
 
-function formatComplexity(file: FileMetric): string {
+function formatDecisionTokens(file: FileMetric): string {
   return file.complexity.value !== null ? String(file.complexity.value) : "n/a";
 }
 

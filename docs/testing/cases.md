@@ -703,6 +703,14 @@ Proves:
 - quality input fingerprint 使用排序后的文件内容生成稳定 SHA-256。
 - 文件内容变化会改变 fingerprint，文件顺序变化不会改变 fingerprint。
 
+### AUX-QUALITY-GIT-PATHSPEC-001 Quality git pathspec 参数稳定
+Status: implemented
+Code: `scripts/tools/quality/input/files.test.ts`
+
+Proves:
+- quality input git pathspec 参数使用显式 `--` 分隔并保留 glob pathspec magic。
+- 空 pathspec 可按调用方需要保留 `--` 或完全省略。
+
 ### AUX-QUALITY-CODE-AREAS-001 Quality code area 分类稳定
 Status: implemented
 Code: `scripts/tools/quality/model/code-areas.test.ts`
@@ -718,6 +726,8 @@ Code: `scripts/tools/quality/output/report/markdown-report.test.ts`
 Proves:
 - baseline unavailable 时 changed-file watchlist 仍按风险展示有用文件。
 - rankings 排序不修改 scanner output 原始顺序。
+- scc `Complexity` 文件列在人类报告中展示为 decision-token count，并补充 `file-decision-tokens / total-file-decision-tokens` 热点占比。
+- Code Area 汇总表展示 decision-token count 和总量占比，用于定位热点区域。
 
 ### AUX-QUALITY-WARNINGS-001 Quality warning 阈值语义稳定
 Status: implemented
@@ -726,6 +736,7 @@ Code: `scripts/tools/quality/output/warnings/generator.test.ts`
 Proves:
 - 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。
 - warning record 的 rule id、metric 和 message 反映代码行数语义。
+- scc `Complexity` 文件 warning 的 rule id、metric 和 message 反映 decision-token count 语义。
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented

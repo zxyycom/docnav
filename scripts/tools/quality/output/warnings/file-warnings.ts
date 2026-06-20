@@ -14,7 +14,7 @@ type FileWarningBuilder = (input: FileWarningInput) => WarningCandidate | null;
 
 const FILE_WARNING_BUILDERS: FileWarningBuilder[] = [
   buildFileLineWarning,
-  buildFileComplexityWarning
+  buildFileDecisionTokenWarning
 ];
 
 export function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningCandidate[] {
@@ -62,30 +62,30 @@ function buildFileLineWarning(input: FileWarningInput): WarningCandidate | null 
   });
 }
 
-function buildFileComplexityWarning(input: FileWarningInput): WarningCandidate | null {
+function buildFileDecisionTokenWarning(input: FileWarningInput): WarningCandidate | null {
   const { areaPolicy, baseFile, context, file } = input;
-  const ccFloor = context.config.scc?.fileComplexity?.absoluteFloor ?? 20;
-  const ccDelta = context.config.scc?.fileComplexity?.changedDelta ?? 10;
-  const baseComplexity = baseFile?.complexity?.value ?? (context.hasBaselineFiles ? 0 : null);
-  const fileComplexity = file.complexity.value;
-  const ccDeltaValue = deltaFrom(fileComplexity, baseComplexity);
+  const decisionTokenFloor = context.config.scc?.fileComplexity?.absoluteFloor ?? 20;
+  const decisionTokenDelta = context.config.scc?.fileComplexity?.changedDelta ?? 10;
+  const baselineDecisionTokens = baseFile?.complexity?.value ?? (context.hasBaselineFiles ? 0 : null);
+  const decisionTokenCount = file.complexity.value;
+  const decisionTokenDeltaValue = deltaFrom(decisionTokenCount, baselineDecisionTokens);
 
   return buildMetricWarning({
     areaPolicy,
-    baselineValue: baseComplexity,
+    baselineValue: baselineDecisionTokens,
     codeArea: file.codeArea,
-    deltaFloor: ccDelta,
-    deltaValue: ccDeltaValue,
-    floor: ccFloor,
+    deltaFloor: decisionTokenDelta,
+    deltaValue: decisionTokenDeltaValue,
+    floor: decisionTokenFloor,
     isChanged: file.isChanged,
     line: null,
-    message: `File "${file.path}" has complexity ${fileComplexity} (threshold: ${ccFloor} complexity)`,
-    metric: "complexity",
+    message: `File "${file.path}" has ${decisionTokenCount} scc decision tokens (threshold: ${decisionTokenFloor} decision tokens)`,
+    metric: "decision-tokens",
     path: file.path,
-    ruleId: "scc-file-complexity",
+    ruleId: "scc-file-decision-tokens",
     sourceTool: "scc",
-    suggestion: "Consider splitting complex logic into smaller functions",
-    value: fileComplexity
+    suggestion: "Review with lizard function CC and file responsibility before refactoring",
+    value: decisionTokenCount
   });
 }
 

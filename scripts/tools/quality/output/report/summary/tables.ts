@@ -44,15 +44,39 @@ export function appendCodeAreaTable(lines: string[], agg: AggregateMetrics): voi
   lines.push("");
   lines.push("### By Code Area");
   lines.push("");
-  const rows = [["Code Area", "Files", "Lines", "Functions", "Policy"]];
+  const totalDecisionTokens = totalCodeAreaDecisionTokens(agg);
+  const rows = [
+    [
+      "Code Area",
+      "Files",
+      "Lines",
+      "Functions",
+      "Decision Tokens",
+      "file-decision-tokens / total-file-decision-tokens",
+      "Policy"
+    ]
+  ];
   for (const area of agg.byCodeArea) {
     rows.push([
       area.codeArea,
       String(area.files),
       area.lines.toLocaleString(),
       String(area.functions || 0),
+      String(area.fileComplexity ?? 0),
+      formatDecisionTokenShare(area.fileComplexity, totalDecisionTokens),
       area.warningPolicy
     ]);
   }
   lines.push(formatTable(rows));
+}
+
+function totalCodeAreaDecisionTokens(agg: AggregateMetrics): number {
+  const aggregateTotal = agg.overall.totalFileComplexity;
+  if (aggregateTotal !== undefined && aggregateTotal > 0) return aggregateTotal;
+  return agg.byCodeArea.reduce((total, area) => total + (area.fileComplexity ?? 0), 0);
+}
+
+function formatDecisionTokenShare(decisionTokens: number | null | undefined, totalDecisionTokens: number): string {
+  if (decisionTokens === null || decisionTokens === undefined || totalDecisionTokens <= 0) return "n/a";
+  return `${((decisionTokens / totalDecisionTokens) * 100).toFixed(1)}%`;
 }

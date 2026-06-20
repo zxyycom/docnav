@@ -53,7 +53,7 @@ type SccRawRow = {
  *
  * - Lines 包含所有行（code + comments + blanks）
  * - Code 是文件级代码行数，用于文件大小 warning
- * - Complexity 是 scc 的文件级复杂度（非函数级 CC）
+ * - Complexity 是 scc complexitychecks token 命中数，不是完整语言解析后的函数级 CC
  * - ULOC (Usable Lines of Code) 由 3.7.0 输出，但首期不进入稳定 metrics
  */
 export function parseSccCSV(csv: string, _cwd: string): SccScanResult {

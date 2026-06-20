@@ -35,7 +35,7 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.4.1",
+  version: "0.4.2",
 
   include: [
     "crates/**/*.rs",
@@ -163,6 +163,7 @@ export const DEFAULT_CONFIG = Object.freeze({
       absoluteFloor: 300,
       changedDelta: 100
     },
+    /** scc Complexity: complexitychecks token 命中数，不是严格圈复杂度。 */
     fileComplexity: {
       absoluteFloor: 20,
       changedDelta: 10

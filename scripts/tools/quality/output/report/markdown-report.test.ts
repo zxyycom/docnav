@@ -3,7 +3,8 @@ import { strict as assert } from "node:assert";
 
 import { createEmptyMetrics, type QualityMetrics, type WarningRecord } from "../../model/schema.ts";
 import { changedFilesSection } from "./findings.ts";
-import { fileRankings, functionSizeRankings } from "./rankings.ts";
+import { fileDecisionTokenRankings, fileRankings, functionSizeRankings } from "./rankings.ts";
+import { repositorySize } from "./summary.ts";
 
 // @case AUX-QUALITY-REPORT-001
 describe("quality report", () => {
@@ -52,6 +53,48 @@ describe("quality report", () => {
     assert.deepEqual(metrics.fileMetrics.map((file) => file.path), originalFileOrder);
     assert.deepEqual(metrics.functionMetrics.map((func) => func.name), originalFunctionOrder);
   });
+
+  it("labels scc file Complexity as decision-token count and shows total-token share", () => {
+    const metrics = qualityMetrics();
+    metrics.fileMetrics = [
+      qualityFile("src/dense.ts", { isChanged: false, lines: 80, codeLines: 50, complexity: 10 }),
+      qualityFile("src/sparse.ts", { isChanged: false, lines: 500, codeLines: 400, complexity: 20 })
+    ];
+
+    const byLines = fileRankings(metrics, 1);
+    const byDecisionTokens = fileDecisionTokenRankings(metrics, 2);
+
+    assert.match(byLines, /Decision Tokens/);
+    assert.doesNotMatch(byLines, /\bComplexity\b/);
+    assert.match(byDecisionTokens, /scc decision tokens/);
+    assert.match(byDecisionTokens, /file-decision-tokens \/ total-file-decision-tokens/);
+    assert.match(byDecisionTokens, /src\/sparse\.ts/);
+    assert.match(byDecisionTokens, /\|\s*66\.7%\s*\|/);
+    assert.match(byDecisionTokens, /\|\s*33\.3%\s*\|/);
+  });
+
+  it("shows code-area decision-token hotspots by total-token share", () => {
+    const metrics = qualityMetrics();
+    metrics.aggregates = {
+      ...metrics.aggregates,
+      overall: {
+        ...metrics.aggregates.overall,
+        totalFileComplexity: 40
+      },
+      byCodeArea: [
+        codeAreaAggregate("node-production-scripts", { decisionTokens: 30, lines: 300 }),
+        codeAreaAggregate("rust-production", { decisionTokens: 10, lines: 100 })
+      ]
+    };
+
+    const section = repositorySize(metrics);
+
+    assert.match(section, /Decision Tokens/);
+    assert.match(section, /file-decision-tokens \/ total-file-decision-tokens/);
+    assert.match(section, /node-production-scripts/);
+    assert.match(section, /\|\s*30\s*\|\s*75\.0%\s*\|/);
+    assert.match(section, /\|\s*10\s*\|\s*25\.0%\s*\|/);
+  });
 });
 
 function qualityMetrics(): QualityMetrics {
@@ -70,14 +113,14 @@ function qualityMetrics(): QualityMetrics {
 
 function qualityFile(
   path: string,
-  options: { complexity: number; isChanged: boolean; lines: number }
+  options: { codeLines?: number; complexity: number; isChanged: boolean; lines: number }
 ): QualityMetrics["fileMetrics"][number] {
   return {
     path,
     language: "TypeScript",
     codeArea: "node-production-scripts",
     lines: options.lines,
-    codeLines: options.lines,
+    codeLines: options.codeLines ?? options.lines,
     complexity: { value: options.complexity, source: "scc" },
     isChanged: options.isChanged
   };
@@ -98,6 +141,21 @@ function qualityFunction(
     parameterCount: 1,
     cyclomaticComplexity: { value: options.complexity, source: "lizard" },
     isChanged: false
+  };
+}
+
+function codeAreaAggregate(
+  codeArea: string,
+  options: { decisionTokens: number; lines: number }
+): QualityMetrics["aggregates"]["byCodeArea"][number] {
+  return {
+    codeArea,
+    files: 1,
+    lines: options.lines,
+    codeLines: options.lines,
+    fileComplexity: options.decisionTokens,
+    functions: 1,
+    warningPolicy: "moderate"
   };
 }
 
