@@ -1,15 +1,17 @@
 import {
+  normalizeStringList,
+  normalizeTask
+} from "./definition/normalization.ts";
+import {
   assertNonEmptyTaskList,
   assertTaskList,
   assertTaskObject,
-  normalizeStringList,
-  normalizeTask,
   registerTaskId
-} from "./definition.ts";
-import type { NormalizedTask, TaskDefinition, TaskEnv } from "./definition.ts";
+} from "./definition/validation.ts";
+import type { NormalizedTask, TaskDefinition, TaskEnv } from "./definition/types.ts";
 
-export { normalizeTask, normalizeTaskList } from "./definition.ts";
-export type { NormalizedTask, StringList, TaskDefinition, TaskEnv } from "./definition.ts";
+export { normalizeTask, normalizeTaskList } from "./definition/normalization.ts";
+export type { NormalizedTask, StringList, TaskDefinition, TaskEnv } from "./definition/types.ts";
 
 interface InheritedTaskState {
   type: string;

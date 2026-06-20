@@ -1,5 +1,5 @@
-import { registerTaskId } from "./definition.ts";
-import type { NormalizedTask } from "./definition.ts";
+import { registerTaskId } from "./definition/validation.ts";
+import type { NormalizedTask } from "./definition/types.ts";
 
 export function validateTaskGraph(taskList: readonly NormalizedTask[]): void {
   const ids = collectTaskIds(taskList);

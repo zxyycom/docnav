@@ -1,4 +1,4 @@
-import type { NormalizedTask } from "./definition.ts";
+import type { NormalizedTask } from "./definition/types.ts";
 
 export interface TaskSchedulerOptions<TResult> {
   pending: NormalizedTask[];
