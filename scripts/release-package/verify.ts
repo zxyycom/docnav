@@ -1,5 +1,6 @@
 import {
   parseManifestArgs,
+  printReleasePackageSummary,
   resolvePackageManifestPath,
   validateReleasePackage,
 } from "../tools/release-package/index.ts";
@@ -13,14 +14,11 @@ try {
     expectProducerKind,
     expectSourceDirty
   });
-  console.log("");
-  console.log("Docnav Release Package Validation");
-  console.log("Status: passed");
-  console.log(`Version: ${result.manifest.version}`);
-  console.log(`Target: ${result.manifest.target}`);
-  console.log(`Package: ${result.packageDir}`);
-  console.log(`Files: ${result.manifest.files.length + 2}`);
-  console.log("");
+  printReleasePackageSummary({
+    title: "Docnav Release Package Validation",
+    manifest: result.manifest,
+    packageDir: result.packageDir
+  });
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);

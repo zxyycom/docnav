@@ -18,6 +18,28 @@ import {
 } from "../config.ts";
 import { isRecord } from "../../types.ts";
 
+type ProtocolResultCheck = (result: Record<string, unknown>) => boolean;
+
+const PROTOCOL_RESULT_CHECKS: Partial<Record<string, ProtocolResultCheck>> = {
+  outline: (result) =>
+    Array.isArray(result[FIELDS.entries]) &&
+    FIELDS.page in result &&
+    !(FIELDS.matches in result),
+  read: (result) =>
+    FIELDS.ref in result &&
+    FIELDS.content in result &&
+    FIELDS.contentType in result &&
+    FIELDS.cost in result,
+  find: (result) =>
+    Array.isArray(result[FIELDS.matches]) &&
+    FIELDS.page in result &&
+    !(FIELDS.entries in result),
+  info: (result) =>
+    FIELDS.display in result &&
+    Array.isArray(result[FIELDS.capabilities]) &&
+    !(FIELDS.page in result),
+};
+
 function toReadablePayload(_operation: string, protocolResult: unknown): unknown {
   return protocolResult;
 }
@@ -69,28 +91,8 @@ function validateProtocolResultBinding(operation: string, response: Record<strin
     `${label} missing result object`,
   );
 
-  const resultKindChecks = {
-    outline: () =>
-      Array.isArray(result[FIELDS.entries]) &&
-      FIELDS.page in result &&
-      !(FIELDS.matches in result),
-    read: () =>
-      FIELDS.ref in result &&
-      FIELDS.content in result &&
-      FIELDS.contentType in result &&
-      FIELDS.cost in result,
-    find: () =>
-      Array.isArray(result[FIELDS.matches]) &&
-      FIELDS.page in result &&
-      !(FIELDS.entries in result),
-    info: () =>
-      FIELDS.display in result &&
-      Array.isArray(result[FIELDS.capabilities]) &&
-      !(FIELDS.page in result),
-  };
-
   assert(
-    (resultKindChecks as Record<string, () => boolean>)[operation]?.(),
+    PROTOCOL_RESULT_CHECKS[operation]?.(result),
     `${label} result does not match ${operation}`,
   );
 }

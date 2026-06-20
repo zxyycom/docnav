@@ -161,6 +161,21 @@ function validateOutputModeSmokeMatrices() {
 
 function validateConformanceFixtures() {
   const conformanceDir = OUTPUT_MODE_CONSISTENCY.conformanceDir;
+
+  assertConformanceFixturesExist(conformanceDir);
+  assertConformanceReadmeIndexesFixtures();
+  assertWarningFixtureOmitsLegacyTextMode(conformanceDir);
+  assertConformanceDirectoryMatchesIndex(conformanceDir);
+
+  const conformanceTests = readText(
+    "crates/docnav-readable/tests/conformance_tests.rs",
+  );
+  assertConformanceTestsLoadIndexedFixtures(conformanceTests);
+  assertConformanceParserConsumesDeclaredByteLength(conformanceTests);
+  assertMarkerFixtureRestoresPayload(conformanceDir);
+}
+
+function assertConformanceFixturesExist(conformanceDir: string): void {
   for (const fixture of OUTPUT_MODE_CONSISTENCY.conformanceFixtures) {
     const relPath = path.posix.join(conformanceDir, fixture);
     assert(
@@ -168,7 +183,9 @@ function validateConformanceFixtures() {
       `missing readable-view conformance fixture ${relPath}`,
     );
   }
+}
 
+function assertConformanceReadmeIndexesFixtures(): void {
   const readme = readText(OUTPUT_MODE_CONSISTENCY.conformanceReadme);
   for (const fixture of OUTPUT_MODE_CONSISTENCY.conformanceFixtures) {
     assert(
@@ -176,7 +193,9 @@ function validateConformanceFixtures() {
       `conformance README must index ${fixture}`,
     );
   }
+}
 
+function assertWarningFixtureOmitsLegacyTextMode(conformanceDir: string): void {
   const warningFixture = readText(
     path.posix.join(conformanceDir, "13_warning.json"),
   );
@@ -184,7 +203,9 @@ function validateConformanceFixtures() {
     !warningFixture.includes("--text"),
     "warning conformance fixture must not describe removed text output as a current mode",
   );
+}
 
+function assertConformanceDirectoryMatchesIndex(conformanceDir: string): void {
   const fixtureDirAbs = toAbs(conformanceDir);
   const actualFixtures = fs
     .readdirSync(fixtureDirAbs)
@@ -195,31 +216,45 @@ function validateConformanceFixtures() {
     OUTPUT_MODE_CONSISTENCY.conformanceFixtures,
     "conformance fixture directory must match validator index",
   );
+}
 
-  const conformanceTests = readText(
-    "crates/docnav-readable/tests/conformance_tests.rs",
-  );
-  const loadedFixtures = [
-    ...conformanceTests.matchAll(
-      /load_vector!\(\s*"fixtures\/conformance\/([^"]+\.json)"\s*\)/gu,
-    ),
-  ].map((match) => match[1]);
+function assertConformanceTestsLoadIndexedFixtures(conformanceTests: string): void {
+  const loadedFixtures = loadedConformanceFixtureNames(conformanceTests);
+  const uniqueLoadedFixtures = sortedUnique(loadedFixtures);
   assertDeepEqual(
-    sortedUnique(loadedFixtures),
+    uniqueLoadedFixtures,
     OUTPUT_MODE_CONSISTENCY.conformanceFixtures,
     "each conformance fixture must be consumed by exactly one test",
   );
   assert(
-    loadedFixtures.length === sortedUnique(loadedFixtures).length,
+    loadedFixtures.length === uniqueLoadedFixtures.length,
     "conformance tests must not load the same fixture more than once",
   );
+}
+
+function loadedConformanceFixtureNames(conformanceTests: string): string[] {
+  return [...conformanceTests.matchAll(conformanceFixtureLoadPattern())].map(
+    (match) => match[1],
+  );
+}
+
+function conformanceFixtureLoadPattern(): RegExp {
+  return new RegExp(
+    'load_vector!\\(\\s*"fixtures\\/conformance\\/([^"]+\\.json)"\\s*\\)',
+    "gu",
+  );
+}
+
+function assertConformanceParserConsumesDeclaredByteLength(conformanceTests: string): void {
   assert(
     conformanceTests.includes("checked_add(byte_length_usize)") &&
       conformanceTests.includes("starts_with(end_marker_bytes)") &&
       !conformanceTests.includes(".find(&end_marker)"),
     "conformance test parser must consume declared byte length before checking end marker",
   );
+}
 
+function assertMarkerFixtureRestoresPayload(conformanceDir: string): void {
   const markerFixture = readJson(
     path.posix.join(conformanceDir, "12_block_marker_in_body.json"),
   );

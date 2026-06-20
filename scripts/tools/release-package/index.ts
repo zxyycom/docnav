@@ -7,6 +7,7 @@ export {
   parseManifestArgs,
   parseOptionalTarget,
 } from "./args.ts";
+export { printReleasePackageSummary } from "./summary.ts";
 export { resolvePackageManifestPath } from "./selection.ts";
 export {
   resolveHostTarget,

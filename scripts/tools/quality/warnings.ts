@@ -177,9 +177,7 @@ function buildFileLineWarning(
   const lineFloor = context.config.scc?.fileCodeLines?.absoluteFloor ?? 300;
   const lineDelta = context.config.scc?.fileCodeLines?.changedDelta ?? 100;
   const fileCodeLines = file.codeLines ?? null;
-  const baselineCodeLines = baseFile
-    ? baseFile.codeLines ?? null
-    : (context.hasBaselineFiles ? 0 : null);
+  const baselineCodeLines = baselineFileCodeLines(baseFile, context.hasBaselineFiles);
   const lineDeltaValue = deltaFrom(fileCodeLines, baselineCodeLines);
 
   return buildMetricWarning({
@@ -196,11 +194,26 @@ function buildFileLineWarning(
     path: file.path,
     ruleId: "scc-file-code-lines",
     sourceTool: "scc",
-    suggestion: fileCodeLines !== null && fileCodeLines > lineFloor * 3
-      ? "Consider splitting this file into smaller modules"
-      : "Review if the file can be refactored",
+    suggestion: fileLineSuggestion(fileCodeLines, lineFloor),
     value: fileCodeLines
   });
+}
+
+function baselineFileCodeLines(
+  baseFile: FileMetric | undefined,
+  hasBaselineFiles: boolean
+): number | null {
+  if (baseFile) {
+    return baseFile.codeLines ?? null;
+  }
+  return hasBaselineFiles ? 0 : null;
+}
+
+function fileLineSuggestion(codeLines: number | null, floor: number): string {
+  if (codeLines !== null && codeLines > floor * 3) {
+    return "Consider splitting this file into smaller modules";
+  }
+  return "Review if the file can be refactored";
 }
 
 function buildFileComplexityWarning(
