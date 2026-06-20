@@ -16,20 +16,41 @@ export type RunCommandOptions = Pick<
 };
 
 export function runCommand(command: string, args: string[], options: RunCommandOptions = {}): ProcessResult {
-  const result = runProcessSync(command, args, {
+  const result = runProcessSync(command, args, resolveRunCommandOptions(options));
+  assertCommandSucceeded(command, args, options, result);
+  return result;
+}
+
+function resolveRunCommandOptions(options: RunCommandOptions): RunProcessSyncOptions {
+  return {
     cwd: options.cwd ?? root,
     env: options.env ?? process.env,
     stdio: options.stdio,
     encoding: options.encoding ?? "utf8",
     maxBuffer: options.maxBuffer ?? DEFAULT_PROCESS_MAX_BUFFER,
-  });
+  };
+}
 
-  if (processFailed(result)) {
-    const label = options.label ?? [command, ...args].join(" ");
-    throw new Error(composeProcessError(label, result));
+function assertCommandSucceeded(
+  command: string,
+  args: string[],
+  options: RunCommandOptions,
+  result: ProcessResult,
+): void {
+  if (!processFailed(result)) {
+    return;
   }
+  throw new Error(
+    composeProcessError(commandLabel(command, args, options), result),
+  );
+}
 
-  return result;
+function commandLabel(
+  command: string,
+  args: string[],
+  options: RunCommandOptions,
+): string {
+  return options.label ?? [command, ...args].join(" ");
 }
 
 export function runNodeScript(

@@ -70,63 +70,78 @@ function assertOutputHelpShape(source: string, label: string): void {
   );
 }
 
-function validateRustOutputModeEnums() {
-  const core = readText(OUTPUT_MODE_CONSISTENCY.coreOutputModeRust);
+function assertCoreOutputModeEnum(source: string): void {
   assert(
-    core.includes("pub enum OutputMode"),
+    source.includes("pub enum OutputMode"),
     "core OutputMode enum must remain declared in cli/command_model.rs",
   );
   assertDocumentOutputModeSet(
-    extractRustStringArray(core, "ACCEPTED_VALUES", "core OutputMode"),
+    extractRustStringArray(source, "ACCEPTED_VALUES", "core OutputMode"),
     "core OutputMode::ACCEPTED_VALUES",
   );
   assert(
-    core.includes("ACCEPTED_VALUES") &&
-      DOCUMENT_OUTPUT_MODES.every((mode) => core.includes(`"${mode}"`)),
+    source.includes("ACCEPTED_VALUES") &&
+      DOCUMENT_OUTPUT_MODES.every((mode) => source.includes(`"${mode}"`)),
     "core OutputMode::ACCEPTED_VALUES must list the three document output modes",
   );
   assert(
-    !core.includes("OutputMode::Text"),
+    !source.includes("OutputMode::Text"),
     "core OutputMode must not retain Text variant use",
   );
   assert(
-    !/^\s*Text\s*,/mu.test(core),
+    !/^\s*Text\s*,/mu.test(source),
     "core OutputMode enum must not declare Text",
   );
+}
 
-  const adapter = readText(OUTPUT_MODE_CONSISTENCY.adapterOutputModeRust);
+function assertAdapterDirectOutputModeEnum(source: string): void {
   assert(
-    adapter.includes("pub enum DirectOutputMode"),
+    source.includes("pub enum DirectOutputMode"),
     "adapter DirectOutputMode enum must remain declared",
   );
   for (const variant of ["ReadableView", "ReadableJson", "ProtocolJson"]) {
     assert(
-      adapter.includes(variant),
+      source.includes(variant),
       `adapter DirectOutputMode missing ${variant}`,
     );
   }
   assert(
-    !adapter.includes("DirectOutputMode::Text") &&
-      !/^\s*Text\s*,/mu.test(adapter),
+    !source.includes("DirectOutputMode::Text") &&
+      !/^\s*Text\s*,/mu.test(source),
     "adapter DirectOutputMode must not retain Text",
   );
+}
 
-  const coreHelp = readText(OUTPUT_MODE_CONSISTENCY.coreOutputHelpRust);
+function assertCoreDocumentOutputHelp(source: string): void {
   assertDocumentOutputModeSet(
-    extractOutputValueConstants(coreHelp, "core parser output_values"),
+    extractOutputValueConstants(source, "core parser output_values"),
     "core parser output_values",
   );
-  assertOutputHelpShape(coreHelp, "core document output help");
+  assertOutputHelpShape(source, "core document output help");
+}
 
-  const adapterHelp = readText(OUTPUT_MODE_CONSISTENCY.adapterOutputHelpRust);
+function assertAdapterDirectDocumentOutputHelp(source: string): void {
   assertDocumentOutputModeSet(
-    extractOutputValueConstants(adapterHelp, "adapter direct output_values"),
+    extractOutputValueConstants(source, "adapter direct output_values"),
     "adapter direct output_values",
   );
-  assertOutputHelpShape(adapterHelp, "adapter direct document output help");
+  assertOutputHelpShape(source, "adapter direct document output help");
   assert(
-    adapterHelp.includes('.value_name("protocol-json")'),
+    source.includes('.value_name("protocol-json")'),
     "adapter protocol-only help must stay protocol-json only",
+  );
+}
+
+function validateRustOutputModeEnums() {
+  assertCoreOutputModeEnum(readText(OUTPUT_MODE_CONSISTENCY.coreOutputModeRust));
+  assertAdapterDirectOutputModeEnum(
+    readText(OUTPUT_MODE_CONSISTENCY.adapterOutputModeRust),
+  );
+  assertCoreDocumentOutputHelp(
+    readText(OUTPUT_MODE_CONSISTENCY.coreOutputHelpRust),
+  );
+  assertAdapterDirectDocumentOutputHelp(
+    readText(OUTPUT_MODE_CONSISTENCY.adapterOutputHelpRust),
   );
 }
 

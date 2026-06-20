@@ -1,20 +1,52 @@
-import { Buffer } from "node:buffer";
-import { spawn } from "node:child_process";
 import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
 import type { ValidateFunction } from "ajv";
 
-import { expandTasks, runParallelTasks } from "../../scripts/tools/parallel-task-runner/index.ts";
-import type { NormalizedTask, TaskDefinition } from "../../scripts/tools/parallel-task-runner/index.ts";
+import { runParallelTasks } from "../../scripts/tools/parallel-task-runner/index.ts";
 import { errorMessage } from "../../scripts/tools/errors.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,
   formatAjvErrors
 } from "../../scripts/tools/validators/schema/registry.ts";
+import {
+  createProcessOptions,
+  normalizeProcessResult,
+  spawnCommand,
+  summarizeCommandStdin
+} from "./smoke-harness/process.ts";
+import type {
+  PreparedCliCommand,
+  ProcessResult,
+  SmokeCommandOptions
+} from "./smoke-harness/process.ts";
+import {
+  aggregateSmokeReports,
+  prepareSmokeTasks,
+  resolveSmokeConcurrency,
+  withSmokeTaskMetadata
+} from "./smoke-harness/tasks.ts";
+import type {
+  SmokeTask,
+  SmokeTaskOptions,
+  SmokeTestResult
+} from "./smoke-harness/tasks.ts";
+import {
+  createSmokeAuditLog,
+  formatAssertions
+} from "./smoke-harness/audit-log.ts";
 
-const MAX_COMMAND_OUTPUT = 1024 * 1024 * 64;
+export type { SmokeCommandOptions } from "./smoke-harness/process.ts";
+export {
+  prepareSmokeTasks,
+  resolveSmokeConcurrency
+} from "./smoke-harness/tasks.ts";
+export type {
+  SmokeTask,
+  SmokeTestResult
+} from "./smoke-harness/tasks.ts";
+
 const commandContext = new AsyncLocalStorage<{ commandRecords: CommandRecord[] }>();
 
 export interface AssertionRecord {
@@ -48,51 +80,6 @@ export interface SmokeState {
   [key: string]: unknown;
 }
 
-export interface SmokeTestResult {
-  commandCount: number;
-  durationMs: number;
-  endedAtMs: number;
-  error?: Error;
-  id: string;
-  label: string;
-  ok: boolean;
-  reportId?: string;
-  reportLabel?: string;
-  reportOrder?: number;
-  startedAtMs: number;
-}
-
-export interface SmokeTask extends TaskDefinition {
-  label: string;
-  reportId?: string;
-  reportLabel?: string;
-  reportOrder?: number;
-  run?: (task: NormalizedTask) => unknown | Promise<unknown>;
-}
-
-export interface SmokeCommandOptions {
-  cwd?: string;
-  env?: NodeJS.ProcessEnv;
-  maxBuffer?: number;
-  project?: { env?: NodeJS.ProcessEnv; root?: string };
-  stdin?: Buffer | string | null;
-  stdinSummary?: string | null;
-}
-
-interface ProcessResult {
-  error: string | null;
-  exitCode: number;
-  signal: NodeJS.Signals | null;
-  stderr: string;
-  stdout: string;
-}
-
-interface PreparedCliCommand {
-  cwd: string;
-  executable: string;
-  processOptions: SmokeCommandOptions;
-}
-
 interface CreateSmokeHarnessOptions {
   auditMetadata: () => string[];
   auditTitle: string;
@@ -109,10 +96,6 @@ interface CreateSmokeHarnessOptions {
   schemaPaths: Record<string, string>;
   state: SmokeState;
   title: string;
-}
-
-interface SmokeTaskOptions {
-  concurrency?: string | number | null;
 }
 
 export function createSmokeState(values: Partial<SmokeState> = {}): SmokeState {
@@ -166,6 +149,17 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     runProcess = spawnCommand,
     safeArgPattern = /^[A-Za-z0-9_./:=@+-]+$/
   } = options;
+  const auditLog = createSmokeAuditLog({
+    auditMetadata,
+    auditTitle,
+    binaryFallback,
+    binaryPath,
+    logDir,
+    logPaths,
+    root,
+    safeArgPattern,
+    state
+  });
 
   async function runTest(label: string, fn: () => unknown | Promise<unknown>, options: { id?: string } = {}) {
     const context = { commandRecords: [] as CommandRecord[] };
@@ -217,19 +211,6 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     };
   }
 
-  function createProcessOptions(
-    commandOptions: SmokeCommandOptions,
-    cwd: string,
-    env: NodeJS.ProcessEnv | undefined
-  ): SmokeCommandOptions {
-    return {
-      cwd,
-      env,
-      stdin: commandOptions.stdin,
-      maxBuffer: MAX_COMMAND_OUTPUT
-    };
-  }
-
   function createCommandRecord(
     name: string,
     args: string[],
@@ -276,46 +257,6 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     expect(record, ok, `${name} schema valid${details}`);
   }
 
-  function writeAuditLogs() {
-    fs.mkdirSync(logDir, { recursive: true });
-    const content = [
-      auditTitle,
-      `started: ${state.startedAt.toISOString()}`,
-      `completed: ${new Date().toISOString()}`,
-      `cwd: ${root}`,
-      ...auditMetadata(),
-      "",
-      "## Tests",
-      ...state.testResults.map(formatTestResult),
-      "",
-      "## Commands",
-      ...state.commandRecords.flatMap(formatCommandRecord)
-    ].join("\n");
-
-    for (const logPath of logPaths) {
-      fs.writeFileSync(logPath, `${content}\n`, "utf8");
-    }
-  }
-
-  function formatCommandRecord(record: CommandRecord) {
-    return [
-      `### ${record.name}`,
-      `$ ${quoteArg(binaryPath() ?? binaryFallback)} ${record.args.map(quoteArg).join(" ")}`.trimEnd(),
-      `cwd: ${record.cwd}`,
-      `stdin: ${record.stdinSummary ?? "(none)"}`,
-      `exit: ${record.exitCode}`,
-      record.signal ? `signal: ${record.signal}` : null,
-      record.error ? `spawn_error: ${record.error}` : null,
-      "stdout:",
-      record.stdout.length > 0 ? record.stdout : "(empty)",
-      "stderr:",
-      record.stderr.length > 0 ? record.stderr : "(empty)",
-      "assertions:",
-      ...formatAssertions(record.assertions),
-      ""
-    ].filter((line) => line !== null);
-  }
-
   function printSuccessSummary() {
     console.log("");
     console.log(title);
@@ -332,10 +273,6 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     printLogLocation(console.error);
   }
 
-  function quoteArg(value: string) {
-    return safeArgPattern.test(value) ? value : JSON.stringify(value);
-  }
-
   function printLogLocation(writeLine: (line: string) => void) {
     writeLine("");
     writeLine("Log:");
@@ -346,71 +283,14 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
   return {
     compileSchemas,
     formatAssertions,
-    formatCommandRecord,
+    formatCommandRecord: auditLog.formatCommandRecord,
     printFailureSummary,
     printSuccessSummary,
     runCli,
     runSmokeTasks,
     runTest,
     validateSchema,
-    writeAuditLogs
-  };
-}
-
-export function prepareSmokeTasks(tasks: readonly SmokeTask[]): NormalizedTask[] {
-  return withSmokeReportMetadata(tasks);
-}
-
-export function resolveSmokeConcurrency(value: string | number | null | undefined = process.env.DOCNAV_SMOKE_CONCURRENCY): number | undefined {
-  if (value === undefined || value === null || value === "") {
-    return undefined;
-  }
-  const parsed = Number.parseInt(String(value), 10);
-  if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== String(value)) {
-    throw new Error(`DOCNAV_SMOKE_CONCURRENCY must be a positive integer: ${value}`);
-  }
-  return parsed;
-}
-
-function withSmokeReportMetadata(tasks: readonly SmokeTask[]): NormalizedTask[] {
-  let reportOrder = 0;
-  return expandTasks(tasks.map((task) => annotateSmokeReport(task, null, () => reportOrder++)));
-}
-
-function annotateSmokeReport(
-  task: SmokeTask,
-  inheritedReport: { id: string; label: string; order: number } | null,
-  nextReportOrder: () => number
-): SmokeTask {
-  const report = inheritedReport ?? createSmokeReport(task, nextReportOrder);
-  if (Array.isArray(task.tasks)) {
-    return {
-      ...task,
-      tasks: task.tasks.map((child) => annotateSmokeReport(child as SmokeTask, report, nextReportOrder))
-    };
-  }
-  return {
-    ...task,
-    reportId: report.id,
-    reportLabel: report.label,
-    reportOrder: report.order
-  };
-}
-
-function createSmokeReport(task: SmokeTask, nextReportOrder: () => number) {
-  return {
-    id: task.id,
-    label: task.label ?? task.id,
-    order: nextReportOrder()
-  };
-}
-
-function withSmokeTaskMetadata(result: SmokeTestResult, task: NormalizedTask): SmokeTestResult {
-  return {
-    ...result,
-    reportId: task.reportId as string | undefined,
-    reportLabel: task.reportLabel as string | undefined,
-    reportOrder: task.reportOrder as number | undefined
+    writeAuditLogs: auditLog.writeAuditLogs
   };
 }
 
@@ -418,197 +298,6 @@ function recordCommand(state: SmokeState, record: CommandRecord) {
   state.commandRecords.push(record);
   const context = commandContext.getStore();
   context?.commandRecords.push(record);
-}
-
-function normalizeProcessResult(result: ProcessResult): ProcessResult {
-  return {
-    exitCode: defaultValue(result.exitCode, 1),
-    signal: defaultValue(result.signal, null),
-    error: defaultValue(result.error, null),
-    stdout: defaultValue(result.stdout, ""),
-    stderr: defaultValue(result.stderr, "")
-  };
-}
-
-function defaultValue<T>(value: T | null | undefined, fallback: T): T {
-  return value ?? fallback;
-}
-
-function summarizeCommandStdin(commandOptions: SmokeCommandOptions): string | null {
-  return commandOptions.stdinSummary ?? summarizeStdin(commandOptions.stdin);
-}
-
-function spawnCommand(executable: string, args: string[], options: SmokeCommandOptions): Promise<ProcessResult> {
-  return new Promise((resolve) => {
-    let childError: Error | null = null;
-    let settled = false;
-    const maxBuffer = options.maxBuffer ?? MAX_COMMAND_OUTPUT;
-
-    const child = spawn(executable, args, {
-      cwd: options.cwd,
-      env: options.env,
-      windowsHide: true,
-      stdio: "pipe"
-    });
-
-    const output = createCommandOutputCapture(maxBuffer, () => {
-      if (!child.killed) {
-        childError = new Error(`command output exceeded ${maxBuffer} bytes`);
-        child.kill();
-      }
-    });
-
-    child.stdout.on("data", (chunk: unknown) => output.append(chunk, "stdout"));
-    child.stderr.on("data", (chunk: unknown) => output.append(chunk, "stderr"));
-    child.on("error", (error: Error) => {
-      childError = error;
-      finish(1, null);
-    });
-    child.on("close", (exitCode, signal) => finish(exitCode, signal));
-    child.stdin.on("error", () => {});
-
-    if (options.stdin !== undefined && options.stdin !== null) {
-      child.stdin.end(options.stdin);
-    } else {
-      child.stdin.end();
-    }
-
-    function finish(exitCode: number | null, signal: NodeJS.Signals | null) {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      const { stdout, stderr } = output.snapshot();
-      resolve({
-        exitCode: exitCode ?? 1,
-        signal,
-        error: childError?.message ?? null,
-        stdout,
-        stderr
-      });
-    }
-  });
-}
-
-interface CommandOutputCapture {
-  append: (chunk: unknown, streamName: "stderr" | "stdout") => void;
-  snapshot: () => Pick<ProcessResult, "stderr" | "stdout">;
-}
-
-function createCommandOutputCapture(maxBuffer: number, onMaxBufferExceeded: () => void): CommandOutputCapture {
-  let stdout = "";
-  let stderr = "";
-  let stdoutBytes = 0;
-  let stderrBytes = 0;
-  let maxBufferExceeded = false;
-
-  return {
-    append(chunk, streamName) {
-      const text = commandOutputText(chunk);
-      const bytes = Buffer.byteLength(text, "utf8");
-      if (streamName === "stdout") {
-        stdout += text;
-        stdoutBytes += bytes;
-      } else {
-        stderr += text;
-        stderrBytes += bytes;
-      }
-      if (stdoutBytes + stderrBytes > maxBuffer && !maxBufferExceeded) {
-        maxBufferExceeded = true;
-        onMaxBufferExceeded();
-      }
-    },
-    snapshot() {
-      return { stdout, stderr };
-    }
-  };
-}
-
-function commandOutputText(chunk: unknown): string {
-  if (Buffer.isBuffer(chunk)) {
-    return chunk.toString("utf8");
-  }
-  if (typeof chunk === "string") {
-    return chunk;
-  }
-  return String(chunk);
-}
-
-function formatTestResult(result: SmokeTestResult) {
-  const status = result.ok ? "PASS" : "FAIL";
-  const error = result.error ? `: ${result.error.message}` : "";
-  const duration = Number.isFinite(result.durationMs) ? `, ${result.durationMs}ms` : "";
-  return `${status} ${result.label} (${result.commandCount} command(s)${duration})${error}`;
-}
-
-function aggregateSmokeReports(results: readonly SmokeTestResult[]): SmokeTestResult[] {
-  const reports = new Map<string, SmokeTestResult>();
-
-  for (const result of results) {
-    const report = getSmokeReport(reports, result);
-    mergeSmokeReportResult(report, result);
-  }
-
-  return sortSmokeReports(reports);
-}
-
-function getSmokeReport(reports: Map<string, SmokeTestResult>, result: SmokeTestResult): SmokeTestResult {
-  const reportId = result.reportId ?? result.id ?? result.label;
-  const report = reports.get(reportId);
-  if (report) {
-    return report;
-  }
-
-  const createdReport = createSmokeReportResult(result, reportId, reports.size);
-  reports.set(reportId, createdReport);
-  return createdReport;
-}
-
-function createSmokeReportResult(result: SmokeTestResult, reportId: string, reportOrder: number): SmokeTestResult {
-  const reportLabel = result.reportLabel ?? result.label;
-  return {
-    id: reportId,
-    label: reportLabel,
-    reportId,
-    reportLabel,
-    reportOrder: result.reportOrder ?? reportOrder,
-    ok: true,
-    commandCount: 0,
-    durationMs: 0,
-    startedAtMs: result.startedAtMs,
-    endedAtMs: result.endedAtMs
-  };
-}
-
-function mergeSmokeReportResult(report: SmokeTestResult, result: SmokeTestResult) {
-  report.ok &&= result.ok;
-  report.commandCount += result.commandCount;
-  report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
-  report.endedAtMs = Math.max(report.endedAtMs, result.endedAtMs);
-  report.durationMs = report.endedAtMs - report.startedAtMs;
-  if (!result.ok && !report.error) {
-    report.error = result.error;
-  }
-}
-
-function sortSmokeReports(reports: Map<string, SmokeTestResult>): SmokeTestResult[] {
-  return [...reports.values()].sort((left, right) => (left.reportOrder ?? 0) - (right.reportOrder ?? 0));
-}
-
-function formatAssertions(assertions: readonly AssertionRecord[]): string[] {
-  if (assertions.length === 0) {
-    return ["  (none)"];
-  }
-  return assertions.map((assertion) => `  ${assertion.ok ? "PASS" : "FAIL"} ${assertion.summary}`);
-}
-
-function summarizeStdin(stdin: Buffer | string | null | undefined): string | null {
-  if (stdin === undefined || stdin === null) {
-    return null;
-  }
-  const byteCount = Buffer.isBuffer(stdin) ? stdin.length : Buffer.byteLength(String(stdin), "utf8");
-  const unit = byteCount === 1 ? "byte" : "bytes";
-  return `${byteCount} ${unit} stdin`;
 }
 
 function relativeLogPath(root: string, logPath: string): string {
