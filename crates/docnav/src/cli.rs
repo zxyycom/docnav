@@ -1,13 +1,13 @@
+mod command_model;
 mod flags;
 mod parser;
 mod preflight;
-mod types;
 pub mod warning;
 
-pub use parser::parse;
-pub use preflight::output_context;
-pub use types::{
+pub use command_model::{
     CliCommand, ConfigCommand, ConfigGet, ConfigList, ConfigSet, ConfigUnset, DocumentCommand,
     OutputMode, ParsedCli,
 };
+pub use parser::parse;
+pub use preflight::output_context;
 pub use warning::CliWarning;

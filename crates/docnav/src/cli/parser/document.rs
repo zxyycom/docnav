@@ -3,9 +3,9 @@ use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
 
+use super::super::command_model::{CliCommand, DocumentCommand, ParsedCli};
 use super::super::flags;
-use super::super::types::{CliCommand, DocumentCommand, ParsedCli};
-use super::common::{
+use super::argument_helpers::{
     clap_argv, is_flag, known_value_flag, loose_value_flags, missing_value_error,
     optional_explicit_output, optional_explicit_positive, optional_explicit_string,
     required_string, split_equals, warning_from_ignored_arg, ValueFlag,
@@ -175,7 +175,7 @@ fn first_invalid_used_flag(operation: Operation, args: &[String]) -> Option<AppE
                     ));
                 }
                 (ValueFlag::Output, Some(value)) => {
-                    if let Err(reason) = value.parse::<super::super::types::OutputMode>() {
+                    if let Err(reason) = value.parse::<super::super::command_model::OutputMode>() {
                         return Some(AppError::invalid_request(
                             flags::OUTPUT,
                             format!("invalid {}: {reason}", flags::OUTPUT),

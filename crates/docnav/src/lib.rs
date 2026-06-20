@@ -1,12 +1,12 @@
+mod adapter_output_contract;
+mod adapter_process;
 mod cli;
 mod config;
-mod context;
-mod contract;
 mod error;
 mod invoke;
 mod output;
-mod process;
-mod project;
+mod project_context;
+mod project_paths;
 mod registry;
 mod routing;
 mod runtime;

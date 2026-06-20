@@ -1,5 +1,5 @@
 import { parseScriptArgs, stringOption } from "../args.ts";
-import { errorMessage } from "../types.ts";
+import { errorMessage } from "../errors.ts";
 
 export type ManifestArgs = {
   manifestPath: string | null;

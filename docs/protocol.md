@@ -141,7 +141,7 @@ capabilities  array<string>, required
 
 ## Ref
 
-ref 规则由 [refs.md](refs.md) 定义。原始协议、`docnav` 和接入层只把 ref 当作非空字符串；适配器负责生成和解析。
+ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav` 和接入层只把 ref 当作非空字符串；适配器负责生成和解析。
 
 ## 编码
 

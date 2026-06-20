@@ -1,5 +1,5 @@
-import { type CaseIdCollection, duplicateIds } from "./collection.ts";
-import { CASE_CATALOG_DOC, type DocumentedCaseIndex } from "./documented.ts";
+import { type CaseIdCollection, duplicateIds } from "./case-id-index.ts";
+import { CASE_CATALOG_DOC, type DocumentedCaseIndex } from "./documented-cases.ts";
 import {
   formatInvalidDocumentedCases,
   formatInvalidMarkers,
@@ -9,7 +9,7 @@ import {
   formatMissingDocs,
   formatMissingMarkers,
   formatPlannedMarkers
-} from "./messages.ts";
+} from "./diagnostics.ts";
 
 export function collectCaseCatalogFailures(
   documented: DocumentedCaseIndex,

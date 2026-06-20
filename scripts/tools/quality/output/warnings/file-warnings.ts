@@ -1,7 +1,7 @@
 import type { FileMetric } from "../../model/schema.ts";
-import { metricAreaWarningPolicy } from "./policy.ts";
-import { buildMetricWarning, deltaFrom } from "./record.ts";
-import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./types.ts";
+import { metricAreaWarningPolicy } from "./area-policy.ts";
+import { buildMetricWarning, deltaFrom } from "./metric-warning.ts";
+import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./warning-model.ts";
 
 export function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];

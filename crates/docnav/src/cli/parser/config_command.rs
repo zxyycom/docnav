@@ -2,11 +2,11 @@ use docnav_cli_args::{scan_loose_args, LooseArgScan};
 
 use crate::error::{AppError, AppResult};
 
-use super::super::flags;
-use super::super::types::{
+use super::super::command_model::{
     CliCommand, ConfigCommand, ConfigGet, ConfigList, ConfigSet, ConfigUnset, ParsedCli,
 };
-use super::common::{
+use super::super::flags;
+use super::argument_helpers::{
     clap_argv, is_flag, known_value_flag, loose_value_flags,
     missing_value_error as scan_missing_value_error, optional_explicit_string, parse_operation,
     required_string, split_equals, warning_from_ignored_arg, ValueFlag,

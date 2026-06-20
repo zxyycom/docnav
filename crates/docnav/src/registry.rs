@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::context::ProjectContext;
 use crate::error::{AppError, AppResult};
-use crate::project::{path_to_slash, resolve_project_relative_command};
+use crate::project_context::ProjectContext;
+use crate::project_paths::{path_to_slash, resolve_project_relative_command};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdapterRegistry {

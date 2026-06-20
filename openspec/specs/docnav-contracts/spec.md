@@ -318,7 +318,7 @@ Rust CLI 参数解析文档 MUST 将 `clap` 定义为本 change 覆盖的核心 
 ### Requirement: 已实现 adapter 的私有行为必须有独立主文档
 文档导航 MUST 为需要长期维护私有导航行为的已实现 adapter 指向独立主文档。
 
-Markdown v0 adapter MUST 使用 `docs/adapters/markdown.md` 记录当前实现的导航行为、ref grammar、保证范围、错误分类和验证入口。`docs/references/markdown-navigator.md` MUST 只记录外部来源和迁移依据。
+Markdown v0 adapter MUST 使用 `docs/adapters/markdown.md` 记录当前实现的导航行为、ref grammar、保证范围、错误分类和验证入口。`docs/reference-materials/markdown-navigator.md` MUST 只记录外部来源和迁移依据。
 
 #### Scenario: 阅读 Markdown adapter 契约
 - **WHEN** 实现者或审计者需要了解 Markdown adapter 的私有导航行为

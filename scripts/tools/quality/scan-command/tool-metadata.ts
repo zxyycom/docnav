@@ -1,5 +1,5 @@
 import { gitCommitTitle as readGitCommitTitle, gitHeadSha } from "../../git.ts";
-import { checkTools } from "../measurement/scanners/index.ts";
+import { checkTools } from "../measurement/scanners/tool-availability.ts";
 import type { ToolAvailability, ToolInfo } from "../model/schema.ts";
 
 export async function initializeToolResults(rootDir: string): Promise<ToolAvailability[]> {

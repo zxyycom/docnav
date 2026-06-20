@@ -1,5 +1,5 @@
 import { getChangedFileList, type ChangedFilesOptions } from "../input/files.ts";
-import type { ChangeScope } from "./types.ts";
+import type { ChangeScope } from "./command-model.ts";
 
 export function resolveChangedFilesForScan({
   opts,

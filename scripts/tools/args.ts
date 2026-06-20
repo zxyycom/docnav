@@ -61,3 +61,12 @@ export function booleanOption(
   const value = values[name];
   return typeof value === "boolean" ? value : defaultValue;
 }
+
+export function parsePositiveInteger(value: number | string, label: string): number {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isInteger(parsed) || parsed <= 0 || String(parsed) !== String(value)) {
+    throw new Error(`${label} must be a positive integer: ${value}`);
+  }
+
+  return parsed;
+}

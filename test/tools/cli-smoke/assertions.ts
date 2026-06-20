@@ -1,10 +1,10 @@
+import { errorMessage } from "../../../scripts/tools/errors.ts";
+import { parseJsonValue } from "../../../scripts/tools/json/value.ts";
 import {
-  errorMessage,
   isRecord,
   isStringArray,
-  isUnknownArray,
-  parseJsonValue
-} from "../../../scripts/tools/types.ts";
+  isUnknownArray
+} from "../../../scripts/tools/type-guards.ts";
 import type { CommandRecord } from "../smoke-harness.ts";
 
 export type JsonRecord = Record<string, unknown>;

@@ -1,9 +1,12 @@
 import fs from "node:fs";
 
-import { assert, readJson, toAbs } from "./tools/validators/fs/utils.ts";
+import { errorMessage } from "./tools/errors.ts";
+import { isRecord } from "./tools/type-guards.ts";
+import { assert } from "./tools/validators/assertions.ts";
+import { readJson } from "./tools/validators/json/files.ts";
+import { toAbs } from "./tools/validators/repo/paths.ts";
 import { booleanOption, parseScriptArgs } from "./tools/args.ts";
 import { readTextFile, writeTextFile } from "./tools/fs.ts";
-import { errorMessage, isRecord } from "./tools/types.ts";
 
 const paths = {
   source: "docs/protocol/error-rules.json",

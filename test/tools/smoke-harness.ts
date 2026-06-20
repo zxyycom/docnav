@@ -7,7 +7,7 @@ import type { ValidateFunction } from "ajv";
 
 import { expandTasks, runParallelTasks } from "../../scripts/tools/parallel-task-runner/index.ts";
 import type { NormalizedTask, TaskDefinition } from "../../scripts/tools/parallel-task-runner/index.ts";
-import { errorMessage } from "../../scripts/tools/types.ts";
+import { errorMessage } from "../../scripts/tools/errors.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,

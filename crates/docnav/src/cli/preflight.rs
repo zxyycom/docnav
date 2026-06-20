@@ -1,7 +1,7 @@
 use docnav_protocol::Operation;
 
+use super::command_model::OutputMode;
 use super::flags;
-use super::types::OutputMode;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CliOutputContext {

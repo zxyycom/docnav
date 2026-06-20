@@ -1,9 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::context::ProjectContext;
 use crate::error::{AppError, AppResult};
-use crate::project::path_to_slash;
+use crate::project_context::ProjectContext;
+use crate::project_paths::path_to_slash;
 
 use super::keys::{validate_output_key, validate_positive_key};
 use super::model::{ConfigContext, CoreConfig};

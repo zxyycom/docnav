@@ -1,6 +1,6 @@
-export type { ChangeScope, QualityScanOptions } from "./types.ts";
+export type { ChangeScope, QualityScanOptions } from "./command-model.ts";
 export { parseArgs } from "./args.ts";
-export { configureBaseline, setComparisonStatus } from "./baseline.ts";
+export { configureBaseline, setComparisonStatus } from "./baseline-selection.ts";
 export { resolveChangedFilesForScan } from "./changed-files.ts";
 export {
   formatFatalIssue,
@@ -10,7 +10,7 @@ export {
   validateOutput,
   writeArtifacts,
   writeBaselineRawOutputs
-} from "./output.ts";
+} from "./command-output.ts";
 export {
   collectToolMetadata,
   getGitCommitTitle,

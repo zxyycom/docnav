@@ -1,4 +1,4 @@
-import { formatTable } from "./table.ts";
+import { formatTable } from "./markdown-table.ts";
 import type {
   DuplicateCodeFragment,
   DuplicateCodeLocation,

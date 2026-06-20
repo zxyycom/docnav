@@ -11,7 +11,7 @@
 | 实现 `docnav` 核心 CLI | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md) | [原始协议](protocol.md)、[测试策略](testing.md) |
 | 实现 `docnav-mcp` | [MCP Handoff](mcp.md)、[输出模式](output.md)、[原始协议](protocol.md) | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) |
 | 实现协议或 SDK | [原始协议](protocol.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
-| 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](refs.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | [MarkdownNavigator 参考](references/markdown-navigator.md) |
+| 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | [MarkdownNavigator 参考](reference-materials/markdown-navigator.md) |
 | 写测试或验证脚本 | [测试策略](testing.md)、[测试用例维护](testing/case-maintenance.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |
 | 审计历史或变更依据 | `../openspec/changes/` | 按 change 目录读取对应 proposal、design、specs、tasks |
 
@@ -33,12 +33,12 @@ pnpm run verify:docnav-workspace
 | --- | --- | --- |
 | 项目首页 | [README](../README.md) | 确认项目目标、v0 范围或运行入口 |
 | 文档导航 | 本文档 | 定位任务主规范、状态语义、规则 owner 和交付验证入口 |
-| 主规范 | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md)、[MCP Handoff](mcp.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[Ref](refs.md)、[测试策略](testing.md) | 修改稳定规则或实现职责 |
+| 主规范 | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md)、[MCP Handoff](mcp.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[测试策略](testing.md) | 修改稳定规则或实现职责 |
 | 测试资料 | [测试用例维护](testing/case-maintenance.md)、[测试用例编号账本](testing/cases.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、case 条目、覆盖目标或 release 验证 |
 | Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](CODING_STYLE.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
-| 参考材料 | [MarkdownNavigator 参考](references/markdown-navigator.md) | 追溯 Markdown 行为来源或迁移依据 |
+| 参考材料 | [MarkdownNavigator 参考](reference-materials/markdown-navigator.md) | 追溯 Markdown 行为来源或迁移依据 |
 | 变更工作流 | `../openspec/changes/`、`../openspec/specs/` | 规划较大 PR、审计 change 设计、验收、归档或历史决策 |
 
 Schema、示例和机器规则文件是验证材料，不在这些文件重新定义产品语义。与主规范不一致时默认修正验证材料；若验证材料代表有意契约变更，必须同步更新 owner 主规范。
@@ -66,7 +66,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | MCP target tools、tool 参数映射、TextContent 和 structuredContent 交接边界 | [MCP Handoff](mcp.md) |
 | invoke envelope、operation、紧凑结果、page、稳定错误 | [原始协议](protocol.md) |
 | adapter 命令、manifest、probe、格式默认值、invoke 行为 | [适配器契约](adapter-contract.md) |
-| ref 的共享调用流程、非空 opaque string、原样传递和 adapter 所有权 | [Ref](refs.md) |
+| ref 的共享调用流程、非空 opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
 | 自动化测试层级、覆盖目标、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
 | 测试函数变更时的 case 归属、账本更新和源码 `@case` 标记维护流程 | [测试用例维护](testing/case-maintenance.md) |

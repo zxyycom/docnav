@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 import { readJsonFile, writeJsonFile } from "../../fs.ts";
-import { isNonArrayRecord } from "../../types.ts";
+import { isNonArrayRecord } from "../../type-guards.ts";
 import type {
   CodeAreaFingerprint,
   DuplicateCodeFragment,

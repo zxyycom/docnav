@@ -4,11 +4,11 @@ use serde_json::{json, Value};
 
 use crate::cli::{CliWarning, DocumentCommand, OutputMode};
 use crate::config::{self, ConfigContext, ResolvedValue};
-use crate::context::ProjectContext;
 use crate::error::AppResult;
 use crate::invoke::invoke_adapter;
 use crate::output::{outcome_for_response, CommandOutcome};
-use crate::project::normalize_document_path;
+use crate::project_context::ProjectContext;
+use crate::project_paths::normalize_document_path;
 use crate::registry::AdapterRegistry;
 use crate::routing::{select_adapter, AdapterSelectionWarning};
 

@@ -69,7 +69,7 @@ export const READABLE_SCHEMA_BY_OPERATION = {
 };
 
 export const OUTPUT_MODE_CONSISTENCY = {
-  coreOutputModeRust: "crates/docnav/src/cli/types.rs",
+  coreOutputModeRust: "crates/docnav/src/cli/command_model.rs",
   coreOutputHelpRust: "crates/docnav/src/cli/parser.rs",
   adapterOutputModeRust: "crates/docnav-adapter-sdk/src/direct/output.rs",
   adapterOutputHelpRust: "crates/docnav-adapter-sdk/src/direct/args.rs",

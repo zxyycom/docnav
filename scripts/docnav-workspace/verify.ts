@@ -2,14 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { booleanOption, parseScriptArgs, stringOption } from "../tools/args.ts";
+import { booleanOption, parsePositiveInteger, parseScriptArgs, stringOption } from "../tools/args.ts";
 import { expandTasks, runParallelTasks } from "../tools/parallel-task-runner/index.ts";
 import type { NormalizedTask, TaskDefinition } from "../tools/parallel-task-runner/index.ts";
-import { processFailureFromResult, runProcess } from "../tools/process.ts";
+import { processFailure, processFailureFromResult, runProcess } from "../tools/process.ts";
+import type { ProcessFailure } from "../tools/process.ts";
 import { readJsonFile } from "../tools/fs.ts";
-import { toSlashPath } from "../tools/path/utils.ts";
-import { errorMessage, isRecord, isStringArray, isUnknownArray, parsePositiveInteger, processFailure } from "../tools/types.ts";
-import type { ProcessFailure, StringMap } from "../tools/types.ts";
+import { toSlashPath } from "../tools/path.ts";
+import { errorMessage } from "../tools/errors.ts";
+import { isRecord, isStringArray, isUnknownArray } from "../tools/type-guards.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const logDir = path.join(root, ".log", "verify-docnav-workspace");
@@ -20,6 +21,7 @@ export const PROFILE_REQUIRED = "required";
 export const PROFILE_FULL = "full";
 
 type Profile = typeof PROFILE_REQUIRED | typeof PROFILE_FULL;
+type StringMap = Record<string, string>;
 
 type CheckDefinition = TaskDefinition & {
   args?: string[];

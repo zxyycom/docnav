@@ -1,4 +1,4 @@
-import { isRecord } from "./types.ts";
+import { isRecord } from "./type-guards.ts";
 import { processFailed, runProcessSync, writeProcessOutput } from "./process.ts";
 import type { ProcessResult } from "./process.ts";
 

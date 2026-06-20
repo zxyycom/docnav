@@ -1,10 +1,10 @@
 use serde_json::{json, Value};
 
-use crate::context::ProjectContext;
-use crate::contract::manifest_from_output;
+use crate::adapter_output_contract::manifest_from_output;
+use crate::adapter_process::run_manifest;
 use crate::error::{AppResult, DocnavExitCode};
 use crate::output::CommandOutcome;
-use crate::process::run_manifest;
+use crate::project_context::ProjectContext;
 use crate::registry::{self, AdapterRegistry};
 
 use super::store::{path_string, read_config};

@@ -8,8 +8,8 @@
 import type { FileMetric, LanguageAggregate, ToolConfig } from "../../model/schema.ts";
 import { parseCsvRows } from "../../../csv.ts";
 import { runProcessSync } from "../../../process.ts";
-import { toSlashPath } from "../../../path/utils.ts";
-import { errorMessage } from "../../../types.ts";
+import { toSlashPath } from "../../../path.ts";
+import { errorMessage } from "../../../errors.ts";
 
 export const SCC_VERSION = "3.7.0";
 export const SCC_VERSION_OUTPUT = `scc version ${SCC_VERSION}`;

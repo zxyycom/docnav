@@ -6,7 +6,8 @@
  * 脚本实现不将这些规则散落为硬编码逻辑。
  */
 
-import { errorMessage, isStringArray } from "../../types.ts";
+import { errorMessage } from "../../errors.ts";
+import { isStringArray } from "../../type-guards.ts";
 import type { QualityConfig } from "./schema.ts";
 
 /**

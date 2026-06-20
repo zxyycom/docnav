@@ -4,9 +4,9 @@ use docnav_protocol::{
     ProtocolResponse, ReadArguments, RequestEnvelope, StableError, PROTOCOL_VERSION,
 };
 
-use crate::contract::{adapter_invoke_failed, protocol_response_from_output};
-use crate::process::run_invoke;
-use crate::project::NormalizedDocumentPath;
+use crate::adapter_output_contract::{adapter_invoke_failed, protocol_response_from_output};
+use crate::adapter_process::run_invoke;
+use crate::project_paths::NormalizedDocumentPath;
 use crate::registry::AdapterRecord;
 use crate::runtime::DocumentRequest;
 

@@ -1,12 +1,11 @@
 import {
-  assert,
   listExampleJson,
   listSchemaJson,
-  readJson,
-  toAbs,
-  toRel,
-  walk
-} from "../fs/utils.ts";
+  readJson
+} from "../json/files.ts";
+import { walk } from "../repo/files.ts";
+import { toAbs, toRel } from "../repo/paths.ts";
+import { assert } from "../assertions.ts";
 import {
   EXAMPLES,
   FIELDS,
@@ -20,7 +19,7 @@ import {
   createSchemaAjv,
   formatAjvErrors
 } from "./registry.ts";
-import { isRecord } from "../../types.ts";
+import { isRecord } from "../../type-guards.ts";
 
 export {
   compileRegisteredSchema,

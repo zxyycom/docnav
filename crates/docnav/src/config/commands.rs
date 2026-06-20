@@ -3,9 +3,9 @@ use std::fs;
 use serde_json::json;
 
 use crate::cli::{ConfigCommand, ConfigGet, ConfigList, ConfigSet, ConfigUnset};
-use crate::context::ProjectContext;
 use crate::error::{AppError, AppResult};
 use crate::output::CommandOutcome;
+use crate::project_context::ProjectContext;
 use crate::runtime::{self, DocnavRuntime};
 
 use super::keys::{

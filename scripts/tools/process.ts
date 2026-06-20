@@ -1,10 +1,15 @@
 import { execa, execaSync } from "execa";
 import type { SyncOptions } from "execa";
 
-import { processFailure } from "./types.ts";
-import type { ProcessFailure } from "./types.ts";
-
 export const DEFAULT_PROCESS_MAX_BUFFER = 1024 * 1024 * 64;
+
+export interface ProcessFailure extends Error {
+  code?: number | string | null;
+  signal?: NodeJS.Signals | null;
+  status?: number | null;
+  stderr?: Buffer | string;
+  stdout?: Buffer | string;
+}
 
 export type ProcessResult = {
   error?: Error;
@@ -72,6 +77,10 @@ export function runProcess(options: RunProcessOptions): Promise<ProcessResult> {
     timeout,
     windowsHide
   }).then((result) => toProcessResult(result, label));
+}
+
+export function processFailure(error: unknown): ProcessFailure {
+  return error instanceof Error ? error as ProcessFailure : new Error(String(error));
 }
 
 export function processFailureFromResult(result: ProcessResult): ProcessFailure | null {

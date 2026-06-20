@@ -15,10 +15,10 @@
 //! payload**.  Header key order, multi-block output order, and byte-for-byte
 //! consistency are intentionally excluded from the stable contract.
 
-use docnav_readable::config::{RendererConfig, ViewBlockConfig};
 use docnav_readable::conformance::{Assertion, ConformanceVector};
 use docnav_readable::renderer::render_readable_view;
 use docnav_readable::view_kind::ReadableViewKind;
+use docnav_readable::{RendererConfig, ViewBlockConfig};
 use serde_json::Value;
 
 // ── Fixture loading ──────────────────────────────────────────────────────

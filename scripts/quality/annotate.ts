@@ -12,8 +12,8 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { parseNdjson } from "../tools/ndjson.ts";
-import { errorMessage } from "../tools/types.ts";
-import { isRecord } from "../tools/types.ts";
+import { errorMessage } from "../tools/errors.ts";
+import { isRecord } from "../tools/type-guards.ts";
 
 type RenderableWarning = {
   baselineValue?: number | null;

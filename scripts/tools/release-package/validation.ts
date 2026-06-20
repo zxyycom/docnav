@@ -8,7 +8,7 @@ import {
 } from "./config.ts";
 import type { ReleaseManifest, ReleaseManifestFile, ReleaseProducer } from "./config.ts";
 import { readJsonFile, readTextFile } from "../fs.ts";
-import { isRecord } from "../types.ts";
+import { isRecord } from "../type-guards.ts";
 import { sha256File } from "./io.ts";
 
 export type ManifestValidationOptions = {

@@ -1,7 +1,7 @@
-mod common;
+mod argument_helpers;
 mod config_command;
 mod document;
-mod nullary;
+mod utility_command;
 
 use clap::builder::NonEmptyStringValueParser;
 use clap::{Arg, ArgAction, Command};
@@ -9,7 +9,7 @@ use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
 
-use super::types::{CliCommand, ParsedCli};
+use super::command_model::{CliCommand, ParsedCli};
 
 pub(super) mod command_names {
     pub(super) const CONFIG: &str = "config";
@@ -90,14 +90,16 @@ where
         command_names::INFO => document::parse_document_command(Operation::Info, rest),
         command_names::CONFIG => config_command::parse_config_command(rest),
         command_names::INIT => {
-            nullary::parse_nullary_command(CliCommand::Init, command_names::INIT, rest)
+            utility_command::parse_utility_command(CliCommand::Init, command_names::INIT, rest)
         }
         command_names::DOCTOR => {
-            nullary::parse_nullary_command(CliCommand::Doctor, command_names::DOCTOR, rest)
+            utility_command::parse_utility_command(CliCommand::Doctor, command_names::DOCTOR, rest)
         }
-        command_names::VERSION => {
-            nullary::parse_nullary_command(CliCommand::Version, command_names::VERSION, rest)
-        }
+        command_names::VERSION => utility_command::parse_utility_command(
+            CliCommand::Version,
+            command_names::VERSION,
+            rest,
+        ),
         _ => unreachable!("known root commands are handled above"),
     }
 }
@@ -141,15 +143,15 @@ fn cli_command() -> Command {
         .subcommand(document_clap_command(Operation::Find))
         .subcommand(document_clap_command(Operation::Info))
         .subcommand(config_command())
-        .subcommand(nullary_clap_command(
+        .subcommand(utility_clap_command(
             command_names::INIT,
             "Initialize .docnav project configuration",
         ))
-        .subcommand(nullary_clap_command(
+        .subcommand(utility_clap_command(
             command_names::DOCTOR,
             "Check Docnav project and adapter health",
         ))
-        .subcommand(nullary_clap_command(
+        .subcommand(utility_clap_command(
             command_names::VERSION,
             "Print docnav version",
         ))
@@ -226,7 +228,7 @@ pub(super) fn config_list_command() -> Command {
         .arg(operation_arg())
 }
 
-pub(super) fn nullary_clap_command(name: &'static str, about: &'static str) -> Command {
+pub(super) fn utility_clap_command(name: &'static str, about: &'static str) -> Command {
     Command::new(name).about(about)
 }
 

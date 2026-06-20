@@ -17,19 +17,19 @@ import { randomUUID } from "node:crypto";
 import { DEFAULT_CONFIG } from "../tools/quality/model/config.ts";
 import { createEmptyMetrics } from "../tools/quality/model/schema.ts";
 import type { BaselineSnapshot, FatalIssue, QualityMetrics, ToolAvailability } from "../tools/quality/model/schema.ts";
-import { errorMessage } from "../tools/types.ts";
+import { errorMessage } from "../tools/errors.ts";
 import { classifyFiles } from "../tools/quality/model/code-areas.ts";
 import {
   materializeBaselineRevision,
   detectScanInputChange
 } from "../tools/quality/input/revisions.ts";
-import { generateWarningChannels } from "../tools/quality/output/warnings/index.ts";
+import { generateWarningChannels } from "../tools/quality/output/warnings/generator.ts";
 import {
   collectScanFiles,
   buildFingerprints
 } from "../tools/quality/input/files.ts";
-import { runCurrentRevisionScan } from "../tools/quality/measurement/current/index.ts";
-import { runBaselineRevisionScan } from "../tools/quality/measurement/baseline.ts";
+import { runCurrentRevisionScan } from "../tools/quality/measurement/current-revision/index.ts";
+import { runBaselineRevisionScan } from "../tools/quality/measurement/baseline-revision.ts";
 import { generateTrends } from "../tools/quality/output/trends.ts";
 import {
   parseArgs,
@@ -49,7 +49,7 @@ import {
   getGitCommitTitle
 } from "../tools/quality/scan-command/index.ts";
 
-export { runBaselineRevisionScan } from "../tools/quality/measurement/baseline.ts";
+export { runBaselineRevisionScan } from "../tools/quality/measurement/baseline-revision.ts";
 export { buildAggregates } from "../tools/quality/measurement/aggregate.ts";
 export { generateTrends } from "../tools/quality/output/trends.ts";
 

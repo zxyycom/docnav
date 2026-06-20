@@ -1,8 +1,8 @@
 import type { DuplicateCodeFragment } from "../../model/schema.ts";
-import { countMatchingBaselineDuplicates } from "./context.ts";
-import { duplicateAreaWarningPolicy } from "./policy.ts";
-import { buildMetricWarning } from "./record.ts";
-import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./types.ts";
+import { duplicateAreaWarningPolicy } from "./area-policy.ts";
+import { countMatchingBaselineDuplicates } from "./baseline-context.ts";
+import { buildMetricWarning } from "./metric-warning.ts";
+import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./warning-model.ts";
 
 export function generateDuplicateWarnings(duplicates: DuplicateCodeFragment[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];

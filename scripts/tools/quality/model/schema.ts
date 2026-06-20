@@ -300,7 +300,7 @@ export interface MetricsValidationResult {
   valid: boolean;
 }
 
-import { isRecord, isUnknownArray } from "../../types.ts";
+import { isRecord, isUnknownArray } from "../../type-guards.ts";
 
 // ── Validation ─────────────────────────────────────────────────────────
 

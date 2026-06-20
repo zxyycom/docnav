@@ -2,8 +2,8 @@
 
 use serde_json::Value;
 
-use crate::config::{RendererConfig, ViewBlockConfig};
 use crate::error::RenderError;
+use crate::renderer_config::{RendererConfig, ViewBlockConfig};
 use crate::view_kind::ReadableViewKind;
 
 /// Platform-independent LF byte used in all readable-view framing.
@@ -178,8 +178,9 @@ fn block_sections_capacity(blocks: &[RenderedBlock]) -> usize {
 mod tests {
     // @case WB-READABLE-RENDERER-001
     use super::*;
-    use crate::config::RendererConfig;
-    use crate::value::{self, TestErrorPayload, TestReadPayload};
+    use crate::readable_value::to_readable_value;
+    use crate::renderer_config::RendererConfig;
+    use crate::test_payloads::{self, TestErrorPayload, TestReadPayload};
     use serde_json::json;
 
     // ── helpers ─────────────────────────────────────────────────────────
@@ -189,7 +190,7 @@ mod tests {
         payload: &T,
         kind: ReadableViewKind,
     ) -> Result<String, RenderError> {
-        let value = value::to_readable_value(payload)?;
+        let value = to_readable_value(payload)?;
         let config = RendererConfig::default_config();
         config.validate()?;
         render_readable_view(&value, kind, &config)
@@ -213,8 +214,8 @@ mod tests {
 
     #[test]
     fn outline_no_blocks_emits_header_only() {
-        let payload = value::TestOutlinePayload {
-            entries: vec![value::TestEntry {
+        let payload = test_payloads::TestOutlinePayload {
+            entries: vec![test_payloads::TestEntry {
                 ref_id: "L5".into(),
                 display: "Install".into(),
             }],
@@ -420,7 +421,7 @@ mod tests {
         let mut custom_config = RendererConfig::default_config();
         custom_config.views.insert(
             ReadableViewKind::Read,
-            crate::config::ViewBlockConfig {
+            crate::renderer_config::ViewBlockConfig {
                 blocks: vec![
                     "/content".to_owned(),
                     "/meta/summary".to_owned(),
@@ -551,7 +552,7 @@ mod tests {
 
     #[test]
     fn info_operation_no_blocks() {
-        let payload = value::TestInfoPayload {
+        let payload = test_payloads::TestInfoPayload {
             display: "Markdown Adapter v0.1.0".into(),
             capabilities: vec!["outline".into(), "read".into(), "find".into()],
         };
@@ -568,8 +569,8 @@ mod tests {
 
     #[test]
     fn find_operation_no_blocks() {
-        let payload = value::TestFindPayload {
-            matches: vec![value::TestEntry {
+        let payload = test_payloads::TestFindPayload {
+            matches: vec![test_payloads::TestEntry {
                 ref_id: "L5".into(),
                 display: "Install".into(),
             }],
@@ -622,7 +623,7 @@ mod tests {
             cost: "".into(),
             page: None,
         };
-        let value = value::to_readable_value(&payload).unwrap();
+        let value = to_readable_value(&payload).unwrap();
         assert!(value.is_object());
         assert_eq!(value["ref"], "ok");
     }
@@ -677,7 +678,7 @@ mod tests {
         let mut custom_config = RendererConfig::default_config();
         custom_config.views.insert(
             ReadableViewKind::Read,
-            crate::config::ViewBlockConfig {
+            crate::renderer_config::ViewBlockConfig {
                 blocks: vec!["/content".to_owned(), "/content".to_owned()],
             },
         );
@@ -697,7 +698,7 @@ mod tests {
         let mut custom_config = RendererConfig::default_config();
         custom_config.views.insert(
             ReadableViewKind::Read,
-            crate::config::ViewBlockConfig {
+            crate::renderer_config::ViewBlockConfig {
                 blocks: vec!["content".to_owned()], // missing leading /
             },
         );

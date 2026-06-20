@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 
 use crate::cli::OutputMode;
 use crate::error::{AppError, AppResult};
-use crate::project::path_to_slash;
+use crate::project_paths::path_to_slash;
 
 use super::model::{
     ConfigContext, ConfigSource, CoreConfig, ResolvedValue, DEFAULT_LIMIT_CHARS, DEFAULT_OUTPUT,

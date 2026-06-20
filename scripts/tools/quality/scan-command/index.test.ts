@@ -2,7 +2,8 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import { DEFAULT_CONFIG } from "../model/config.ts";
-import { parseArgs, resolveChangedFilesForScan } from "./index.ts";
+import { parseArgs } from "./args.ts";
+import { resolveChangedFilesForScan } from "./changed-files.ts";
 
 // @case AUX-QUALITY-SCAN-CLI-001
 describe("quality scan CLI args", () => {

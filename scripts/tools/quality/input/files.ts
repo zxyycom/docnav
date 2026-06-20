@@ -13,7 +13,7 @@ import { getWorkingTreeChangedFiles } from "./revisions.ts";
 import { gitGlobPathspecs } from "./git-pathspec.ts";
 import { runGit, splitGitFileList } from "../../git.ts";
 import { processFailed } from "../../process.ts";
-import { toSlashPath } from "../../path/utils.ts";
+import { toSlashPath } from "../../path.ts";
 import { walkFiles } from "../../fs.ts";
 import type { CodeAreaFileMap, CodeAreaFingerprint, QualityConfig } from "../model/schema.ts";
 

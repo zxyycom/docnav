@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { validateCaseCatalogSnapshot } from "./index.ts";
+import { validateCaseCatalogSnapshot } from "./validator.ts";
 
 // @case AUX-CASE-CATALOG-001
 describe("case catalog validator", () => {

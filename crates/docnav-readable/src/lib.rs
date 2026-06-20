@@ -17,16 +17,18 @@
 //! It does **not** own output mode dispatch, protocol envelopes, warning
 //! placement, adapter routing, document parsing, or CLI/MCP wiring.
 
-pub mod config;
 pub mod conformance;
 pub mod error;
+pub mod readable_value;
 pub mod renderer;
-pub mod value;
+pub mod renderer_config;
+#[cfg(test)]
+mod test_payloads;
 pub mod view_kind;
 
 // Re-export key types for convenience.
-pub use config::{BlockPointer, RendererConfig, ViewBlockConfig};
 pub use error::RenderError;
+pub use readable_value::to_readable_value;
 pub use renderer::{render_readable_view, RenderedBlock};
-pub use value::to_readable_value;
+pub use renderer_config::{BlockPointer, RendererConfig, ViewBlockConfig};
 pub use view_kind::ReadableViewKind;

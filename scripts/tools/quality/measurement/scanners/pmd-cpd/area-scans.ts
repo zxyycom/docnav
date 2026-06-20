@@ -9,7 +9,7 @@ import {
   type ScanKind
 } from "../../cache.ts";
 import { isExcluded } from "../../../model/code-areas.ts";
-import { getPmdCpdLanguageForCodeArea, scanWithPmdCpdAsync, type PmdCpdScanResult } from "./index.ts";
+import { getPmdCpdLanguageForCodeArea, scanWithPmdCpdAsync, type PmdCpdScanResult } from "./scanner.ts";
 import { runBoundedTasks } from "./parallel.ts";
 import type {
   CodeAreaFileMap,

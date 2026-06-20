@@ -11,7 +11,7 @@ import {
   parsePmdCpdXml,
   parsePmdVersionOutput,
   scanWithPmdCpd
-} from "./scanners/pmd-cpd/index.ts";
+} from "./scanners/pmd-cpd/scanner.ts";
 import {
   SCC_BY_FILE_CSV_HEADER,
   parseSccCSV
@@ -44,7 +44,7 @@ describe("quality scanner output parsing", () => {
 
   it("parses Lizard 1.23 function rows", () => {
     const csv = [
-      "271,88,1887,7,326,\"generateWarnings@35-360@scripts/tools/quality/output/warnings/index.ts\",\"scripts/tools/quality/output/warnings/index.ts\",\"generateWarnings\",\"generateWarnings ( files , functions , duplicates , config , scope , baseline , comparisonStatus )\",35,360"
+      "271,88,1887,7,326,\"generateWarnings@35-360@scripts/tools/quality/output/warnings/generator.ts\",\"scripts/tools/quality/output/warnings/generator.ts\",\"generateWarnings\",\"generateWarnings ( files , functions , duplicates , config , scope , baseline , comparisonStatus )\",35,360"
     ].join("\n");
 
     const result = parseLizardCSV(csv);
@@ -52,7 +52,7 @@ describe("quality scanner output parsing", () => {
     assert.equal(result.ok, true);
     assert.deepEqual(result.functions![0], {
       name: "generateWarnings",
-      file: "scripts/tools/quality/output/warnings/index.ts",
+      file: "scripts/tools/quality/output/warnings/generator.ts",
       codeArea: "unknown",
       startLine: 35,
       endLine: 360,

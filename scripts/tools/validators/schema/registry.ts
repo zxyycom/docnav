@@ -1,8 +1,9 @@
 import { Ajv2020 } from "ajv/dist/2020.js";
 import type { AnySchema, ValidateFunction } from "ajv";
 
-import { assert, listSchemaJson, readJson } from "../fs/utils.ts";
-import { isRecord } from "../../types.ts";
+import { isRecord } from "../../type-guards.ts";
+import { assert } from "../assertions.ts";
+import { listSchemaJson, readJson } from "../json/files.ts";
 
 export function formatAjvErrors(validate: Pick<ValidateFunction, "errors">): string {
   return (validate.errors ?? [])

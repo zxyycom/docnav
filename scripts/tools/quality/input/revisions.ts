@@ -12,7 +12,7 @@ import { minimatch } from "minimatch";
 import { gitGlobPathspecs } from "./git-pathspec.ts";
 import { gitCommitDate, gitHeadSha, parseGitStatusPaths, runGit, splitGitFileList } from "../../git.ts";
 import { processFailed, runProcessSync } from "../../process.ts";
-import { toSlashPath } from "../../path/utils.ts";
+import { toSlashPath } from "../../path.ts";
 
 type BaselineCommitResult =
   | { date: string | null; ok: true; reason: string; sha: string }

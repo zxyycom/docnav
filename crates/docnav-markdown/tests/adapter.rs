@@ -300,7 +300,10 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
 // @case WB-MD-REF-002
 #[test]
 fn read_reports_ref_invalid_for_old_format_and_non_canonical_refs() {
-    let path = write_doc("refs.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
+    let path = write_doc(
+        "invalid-ref-formats.md",
+        "# A\n## B\nfirst\n# A\n## B\nsecond\n",
+    );
 
     // 旧格式 → REF_INVALID
     let old_refs = ["L99:Missing", "L1:A", "L2#2:A > B", "L1#1:A"];

@@ -4,13 +4,13 @@ use docnav_protocol::{Manifest, Operation, ProbeResult, StableError};
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::context::ProjectContext;
-use crate::contract::{
+use crate::adapter_output_contract::{
     ensure_capability, manifest_from_output, probe_from_output, process_error_details,
 };
+use crate::adapter_process::{run_manifest, run_probe};
 use crate::error::AppResult;
-use crate::process::{run_manifest, run_probe};
-use crate::project::NormalizedDocumentPath;
+use crate::project_context::ProjectContext;
+use crate::project_paths::NormalizedDocumentPath;
 use crate::registry::{AdapterRecord, AdapterRegistry};
 
 #[derive(Clone, Debug)]

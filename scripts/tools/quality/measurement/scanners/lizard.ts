@@ -8,7 +8,7 @@
 import type { FunctionMetric, ToolConfig } from "../../model/schema.ts";
 import { parseCsvRows } from "../../../csv.ts";
 import { runProcessSync } from "../../../process.ts";
-import { errorMessage } from "../../../types.ts";
+import { errorMessage } from "../../../errors.ts";
 
 interface ScanWithLizardOptions {
   cwd: string;

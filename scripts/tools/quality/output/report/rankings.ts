@@ -1,4 +1,4 @@
-import { formatTable } from "./table.ts";
+import { formatTable } from "./markdown-table.ts";
 import type { QualityMetrics } from "../../model/schema.ts";
 
 export function fileRankings(metrics: QualityMetrics, topN: number): string {

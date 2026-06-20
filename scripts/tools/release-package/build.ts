@@ -18,7 +18,7 @@ import {
 } from "./environment.ts";
 import { writeJsonFile, writeTextFile } from "../fs.ts";
 import { copyExecutable, sha256File } from "./io.ts";
-import { toSlashPath } from "../path/utils.ts";
+import { toSlashPath } from "../path.ts";
 import { validateReleasePackage } from "./validation.ts";
 
 export type ReleasePackageBuildResult = PackageLayout & {

@@ -1,4 +1,4 @@
-import { parsePositiveInteger } from "../types.ts";
+import { parsePositiveInteger } from "../args.ts";
 
 export type TaskEnv = Record<string, string | undefined>;
 

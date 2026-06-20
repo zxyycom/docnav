@@ -1,4 +1,6 @@
-import { assert, readJson } from "./fs/utils.ts";
+import { isRecord } from "../type-guards.ts";
+import { assert } from "./assertions.ts";
+import { readJson } from "./json/files.ts";
 import {
   FIELDS,
   MCP_EXAMPLE_FILE,
@@ -6,7 +8,6 @@ import {
   READABLE_SCHEMA_BY_OPERATION
 } from "./config.ts";
 import { compileRegisteredSchema, createSchemaAjv, formatAjvErrors } from "./schema/registry.ts";
-import { isRecord } from "../types.ts";
 
 export function validateMcpStructuredContent() {
   const ajv = createSchemaAjv();

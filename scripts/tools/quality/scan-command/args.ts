@@ -1,7 +1,6 @@
 import { DEFAULT_CONFIG } from "../model/config.ts";
-import { booleanOption, parseScriptArgs, stringOption, type ScriptArgToken } from "../../args.ts";
-import { parsePositiveInteger } from "../../types.ts";
-import type { QualityScanOptions } from "./types.ts";
+import { booleanOption, parsePositiveInteger, parseScriptArgs, stringOption, type ScriptArgToken } from "../../args.ts";
+import type { QualityScanOptions } from "./command-model.ts";
 
 export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
   const parsed = parseScriptArgs({

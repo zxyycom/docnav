@@ -1,4 +1,4 @@
-import { errorMessage } from "./types.ts";
+import { errorMessage } from "./errors.ts";
 
 export type NdjsonRecord<T = unknown> = {
   line: number;

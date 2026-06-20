@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::context::ProjectContext;
+use crate::project_context::ProjectContext;
 
 pub(super) const DEFAULT_LIMIT_CHARS: u32 = 6000;
 pub(super) const DEFAULT_OUTPUT: &str = "readable-view";

@@ -241,7 +241,7 @@ Proves:
 
 ### WB-CORE-ADAPTER-001 Core 检测 adapter contract 漂移
 Status: implemented
-Code: `crates/docnav/src/contract.rs`
+Code: `crates/docnav/src/adapter_output_contract.rs`
 
 Proves:
 - Core 区分 adapter discovery、selection、invoke process 和 malformed adapter output 边界。
@@ -705,7 +705,7 @@ Proves:
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
-Code: `scripts/tools/quality/output/report/index.test.ts`
+Code: `scripts/tools/quality/output/report/markdown-report.test.ts`
 
 Proves:
 - baseline unavailable 时 changed-file watchlist 仍按风险展示有用文件。
@@ -713,7 +713,7 @@ Proves:
 
 ### AUX-QUALITY-WARNINGS-001 Quality warning 阈值语义稳定
 Status: implemented
-Code: `scripts/tools/quality/output/warnings/index.test.ts`
+Code: `scripts/tools/quality/output/warnings/generator.test.ts`
 
 Proves:
 - 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。

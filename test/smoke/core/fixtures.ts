@@ -2,8 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { ensureDirForFile, writeJsonFile, writeTextFile } from "../../../scripts/tools/fs.ts";
-import { toSlashPath } from "../../../scripts/tools/path/utils.ts";
-import { isRecord, isUnknownArray, parseJsonValue } from "../../../scripts/tools/types.ts";
+import { toSlashPath } from "../../../scripts/tools/path.ts";
+import { parseJsonValue } from "../../../scripts/tools/json/value.ts";
+import { isRecord, isUnknownArray } from "../../../scripts/tools/type-guards.ts";
 import { root, tempRoot } from "./config.ts";
 
 export interface SmokeProject {
