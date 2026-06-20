@@ -59,57 +59,68 @@ export function scanWithLizard({ files, cwd, toolConfig }: ScanWithLizardOptions
  */
 export function parseLizardCSV(csv: string): LizardScanResult {
   try {
-    const rows = parseCsvRows(csv);
-    if (rows.length === 0) {
-      return { ok: true, functions: [] };
-    }
-
-    const header = rows[0] ?? [];
-    if (header.includes("NLOC") && header.includes("CCN")) {
-      rows.shift(); // remove header row
-    }
-
     const functions: FunctionMetric[] = [];
 
-    for (const parts of rows) {
-      if (!isLizard123Row(parts)) continue;
-
-      const nloc = parseInt(parts[0], 10);
-      const ccn = parseInt(parts[1], 10);
-      const paramCount = parseInt(parts[3], 10);
-      const startLine = parseInt(parts[9], 10);
-      const endLine = parseInt(parts[10], 10);
-      const filePath = parts[6];
-      const funcName = parts[7];
-
-      if (isNaN(nloc) || isNaN(startLine)) continue;
-
-      functions.push({
-        name: funcName || "unknown",
-        file: filePath,
-        codeArea: "unknown",
-        startLine,
-        endLine: isNaN(endLine) ? startLine : endLine,
-        lines: nloc,
-        parameterCount: isNaN(paramCount) ? 0 : paramCount,
-        cyclomaticComplexity: {
-          value: isNaN(ccn) ? null : ccn,
-          source: "lizard"
-        },
-        isChanged: false
-      });
+    for (const row of lizardDataRows(parseCsvRows(csv))) {
+      const metric = functionMetricFromLizardRow(row);
+      if (metric) {
+        functions.push(metric);
+      }
     }
 
-    functions.sort((a, b) => {
-      const ccDiff = (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0);
-      if (ccDiff !== 0) return ccDiff;
-      return b.lines - a.lines;
-    });
+    functions.sort(compareFunctionMetrics);
 
     return { ok: true, functions };
   } catch (error: unknown) {
     return { ok: false, error: `Failed to parse lizard CSV: ${errorMessage(error)}` };
   }
+}
+
+function lizardDataRows(rows: string[][]): string[][] {
+  const header = rows[0] ?? [];
+  return header.includes("NLOC") && header.includes("CCN") ? rows.slice(1) : rows;
+}
+
+function functionMetricFromLizardRow(parts: string[]): FunctionMetric | null {
+  if (!isLizard123Row(parts)) {
+    return null;
+  }
+
+  const nloc = parseOptionalInteger(parts[0]);
+  const ccn = parseOptionalInteger(parts[1]);
+  const paramCount = parseOptionalInteger(parts[3]);
+  const startLine = parseOptionalInteger(parts[9]);
+  const endLine = parseOptionalInteger(parts[10]);
+
+  if (nloc === null || startLine === null) {
+    return null;
+  }
+
+  return {
+    name: parts[7] || "unknown",
+    file: parts[6],
+    codeArea: "unknown",
+    startLine,
+    endLine: endLine ?? startLine,
+    lines: nloc,
+    parameterCount: paramCount ?? 0,
+    cyclomaticComplexity: {
+      value: ccn,
+      source: "lizard"
+    },
+    isChanged: false
+  };
+}
+
+function compareFunctionMetrics(a: FunctionMetric, b: FunctionMetric): number {
+  const ccDiff = (b.cyclomaticComplexity.value ?? 0) - (a.cyclomaticComplexity.value ?? 0);
+  if (ccDiff !== 0) return ccDiff;
+  return b.lines - a.lines;
+}
+
+function parseOptionalInteger(value: string | undefined): number | null {
+  const parsed = parseInt(String(value ?? ""), 10);
+  return isNaN(parsed) ? null : parsed;
 }
 
 function isLizard123Row(parts: string[]): boolean {

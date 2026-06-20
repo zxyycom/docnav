@@ -59,77 +59,38 @@ export function locateBaselineCommit({
     return { ok: false, error: "no-baseline-commit: repository has only one commit" };
   }
 
-  const headDiffArgs = ["diff-tree", "--no-commit-id", "--name-only", "-r", headSha, ...patternArgs];
-  const headDiff = runGit(headDiffArgs, { cwd });
-
-  const headChangedFiles = splitGitFileList(headDiff.stdout);
-  const headModifiedScanInputs = headChangedFiles.some((f) =>
-    scanInputPaths.some((p) => fileMatchesPattern(f, p))
-  );
+  const headModifiedScanInputs = commitModifiesScanInputs({
+    cwd,
+    headSha,
+    patternArgs,
+    scanInputPaths
+  });
 
   if (headModifiedScanInputs) {
-    const logResult = runGit([
-      "log",
-      "--format=%H",
-      "--max-count=1",
-      "--skip=0",
-      `${headSha}~1`
-    ].concat(patternArgs), { cwd });
-
-    const baselineSha = (logResult.stdout || "").trim();
+    const baselineSha = latestCodeCommitBeforeHead(cwd, headSha, patternArgs);
     if (baselineSha) {
-      return {
-        ok: true,
-        sha: baselineSha,
-        date: gitCommitDate(baselineSha, cwd),
-        reason: "previous-code-commit"
-      };
+      return baselineCommit(cwd, baselineSha, "previous-code-commit");
     }
 
-    const parentResult = runGit(["rev-parse", `${headSha}~1`], { cwd });
-
-    if (parentResult.status === 0 && parentResult.stdout.trim()) {
-      const parentSha = parentResult.stdout.trim();
-      return {
-        ok: true,
-        sha: parentSha,
-        date: gitCommitDate(parentSha, cwd),
-        reason: "parent-commit"
-      };
+    const parentBaseline = parentBaselineCommit(cwd, headSha, "parent-commit");
+    if (parentBaseline) {
+      return parentBaseline;
     }
 
     return { ok: false, error: "no-baseline-commit: no previous commit found" };
-  } else {
-    const logResult = runGit([
-      "log",
-      "--format=%H",
-      "--max-count=1"
-    ].concat(patternArgs), { cwd });
-
-    const baselineSha = (logResult.stdout || "").trim();
-    if (baselineSha) {
-      return {
-        ok: true,
-        sha: baselineSha,
-        date: gitCommitDate(baselineSha, cwd),
-        reason: "nearest-code-commit"
-      };
-    }
-
-    const parentResult = runGit(["rev-parse", `${headSha}~1`], { cwd });
-
-    if (parentResult.status === 0 && parentResult.stdout.trim()) {
-      const parentSha = parentResult.stdout.trim();
-      return {
-        ok: true,
-        sha: parentSha,
-        date: gitCommitDate(parentSha, cwd),
-        reason: "parent-commit-fallback"
-      };
-    }
-
-    return { ok: false, error: "no-baseline-commit: no previous code commit found" };
   }
+
+  const baselineSha = latestCodeCommit(cwd, patternArgs);
+  if (baselineSha) {
+    return baselineCommit(cwd, baselineSha, "nearest-code-commit");
+  }
+
+  const parentBaseline = parentBaselineCommit(cwd, headSha, "parent-commit-fallback");
+  if (parentBaseline) {
+    return parentBaseline;
+  }
+
+  return { ok: false, error: "no-baseline-commit: no previous code commit found" };
 }
 
 /**
@@ -240,6 +201,64 @@ export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]
   }
 
   return parseGitStatusPaths(statusResult.stdout);
+}
+
+function commitModifiesScanInputs({
+  cwd,
+  headSha,
+  patternArgs,
+  scanInputPaths
+}: {
+  cwd: string;
+  headSha: string;
+  patternArgs: string[];
+  scanInputPaths: string[];
+}): boolean {
+  const headDiff = runGit(["diff-tree", "--no-commit-id", "--name-only", "-r", headSha, ...patternArgs], {
+    cwd
+  });
+  const headChangedFiles = splitGitFileList(headDiff.stdout);
+  return headChangedFiles.some((file) => scanInputPaths.some((pattern) => fileMatchesPattern(file, pattern)));
+}
+
+function latestCodeCommitBeforeHead(cwd: string, headSha: string, patternArgs: string[]): string | null {
+  return latestCommit(cwd, [
+    "log",
+    "--format=%H",
+    "--max-count=1",
+    "--skip=0",
+    `${headSha}~1`,
+    ...patternArgs
+  ]);
+}
+
+function latestCodeCommit(cwd: string, patternArgs: string[]): string | null {
+  return latestCommit(cwd, ["log", "--format=%H", "--max-count=1", ...patternArgs]);
+}
+
+function latestCommit(cwd: string, args: string[]): string | null {
+  const logResult = runGit(args, { cwd });
+  return trimStdout(logResult.stdout);
+}
+
+function parentBaselineCommit(cwd: string, headSha: string, reason: string): BaselineCommitResult | null {
+  const parentResult = runGit(["rev-parse", `${headSha}~1`], { cwd });
+  const parentSha = parentResult.status === 0 ? trimStdout(parentResult.stdout) : null;
+  return parentSha ? baselineCommit(cwd, parentSha, reason) : null;
+}
+
+function baselineCommit(cwd: string, sha: string, reason: string): BaselineCommitResult {
+  return {
+    ok: true,
+    sha,
+    date: gitCommitDate(sha, cwd),
+    reason
+  };
+}
+
+function trimStdout(stdout: string | null | undefined): string | null {
+  const value = (stdout || "").trim();
+  return value || null;
 }
 
 function fileMatchesPattern(filePath: string, pattern: string): boolean {
