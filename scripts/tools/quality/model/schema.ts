@@ -7,6 +7,8 @@
  * 趋势比较和 warning records。
  */
 
+import { isRecord, isUnknownArray } from "../../type-guards.ts";
+
 // ── Constants ──────────────────────────────────────────────────────────
 
 export const METRICS_SCHEMA_VERSION = "0.2.1";
@@ -300,8 +302,6 @@ export interface MetricsValidationResult {
   valid: boolean;
 }
 
-import { isRecord, isUnknownArray } from "../../type-guards.ts";
-
 // ── Validation ─────────────────────────────────────────────────────────
 
 /**
@@ -317,9 +317,14 @@ export function validateMetrics(metrics: unknown): MetricsValidationResult {
 
   validateMetadata(metrics.metadata, errors);
   validateBaseline(metrics.baseline, errors);
-  validateComparisonStatus(metrics.comparisonStatus, errors);
+  validateStatusField(
+    metrics.comparisonStatus,
+    COMPARISON_STATUSES,
+    "comparisonStatus",
+    errors
+  );
   validateRequiredObjects(metrics, errors);
-  validateArrays(metrics, errors);
+  validateMetricArrays(metrics, errors);
   validateWarningChannels(metrics.warnings, errors);
 
   return { valid: errors.length === 0, errors };
@@ -331,17 +336,18 @@ function validateMetadata(metadata: unknown, errors: string[]): void {
     return;
   }
 
-  if (metadata.schemaVersion !== METRICS_SCHEMA_VERSION) {
-    errors.push(
-      `metadata.schemaVersion: expected "${METRICS_SCHEMA_VERSION}", got "${metadata.schemaVersion}"`
-    );
-  }
-  if (!metadata.timestamp) errors.push("metadata.timestamp is required");
-  if (!metadata.repository) errors.push("metadata.repository is required");
-  if (!metadata.commitSha) errors.push("metadata.commitSha is required");
-  if (!Array.isArray(metadata.tools)) errors.push("metadata.tools must be an array");
-  if (!isRecord(metadata.scope)) errors.push("metadata.scope is required");
-  if (!metadata.configVersion) errors.push("metadata.configVersion is required");
+  validateExactValue(
+    metadata.schemaVersion,
+    METRICS_SCHEMA_VERSION,
+    "metadata.schemaVersion",
+    errors
+  );
+  requireTruthyField(metadata.timestamp, "metadata.timestamp", errors);
+  requireTruthyField(metadata.repository, "metadata.repository", errors);
+  requireTruthyField(metadata.commitSha, "metadata.commitSha", errors);
+  requireArrayField(metadata.tools, "metadata.tools", errors);
+  requireRecordField(metadata.scope, "metadata.scope", errors);
+  requireTruthyField(metadata.configVersion, "metadata.configVersion", errors);
 }
 
 function validateBaseline(baseline: unknown, errors: string[]): void {
@@ -350,36 +356,19 @@ function validateBaseline(baseline: unknown, errors: string[]): void {
     return;
   }
 
-  const status = baseline.status;
-  if (typeof status !== "string" || !BASELINE_STATUSES.includes(status)) {
-    errors.push(
-      `baseline.status: must be one of ${BASELINE_STATUSES.join(", ")}, got "${status}"`
-    );
-  }
-}
-
-function validateComparisonStatus(comparisonStatus: unknown, errors: string[]): void {
-  if (typeof comparisonStatus !== "string" || !COMPARISON_STATUSES.includes(comparisonStatus)) {
-    errors.push(
-      `comparisonStatus: must be one of ${COMPARISON_STATUSES.join(", ")}, got "${comparisonStatus}"`
-    );
-  }
+  validateStatusField(baseline.status, BASELINE_STATUSES, "baseline.status", errors);
 }
 
 function validateRequiredObjects(metrics: Record<string, unknown>, errors: string[]): void {
-  if (!isRecord(metrics.currentFingerprints)) {
-    errors.push("currentFingerprints is required");
-  }
-  if (!isRecord(metrics.aggregates)) {
-    errors.push("aggregates is required");
-  }
+  requireRecordField(metrics.currentFingerprints, "currentFingerprints", errors);
+  requireRecordField(metrics.aggregates, "aggregates", errors);
 }
 
-function validateArrays(metrics: Record<string, unknown>, errors: string[]): void {
-  if (!isUnknownArray(metrics.fileMetrics)) errors.push("fileMetrics must be an array");
-  if (!isUnknownArray(metrics.functionMetrics)) errors.push("functionMetrics must be an array");
-  if (!isUnknownArray(metrics.duplicateCode)) errors.push("duplicateCode must be an array");
-  if (!isUnknownArray(metrics.trends)) errors.push("trends must be an array");
+function validateMetricArrays(metrics: Record<string, unknown>, errors: string[]): void {
+  requireUnknownArrayField(metrics.fileMetrics, "fileMetrics", errors);
+  requireUnknownArrayField(metrics.functionMetrics, "functionMetrics", errors);
+  requireUnknownArrayField(metrics.duplicateCode, "duplicateCode", errors);
+  requireUnknownArrayField(metrics.trends, "trends", errors);
 }
 
 function validateWarningChannels(warnings: unknown, errors: string[]): void {
@@ -410,22 +399,53 @@ function validateWarningRecord(warning: unknown, prefix: string, errors: string[
     return;
   }
 
-  const level = warning.level;
-  if (typeof level !== "string" || !WARNING_LEVELS.includes(level)) {
-    errors.push(`${prefix}.level: invalid level "${level}"`);
-  }
-  if (!warning.ruleId) errors.push(`${prefix}.ruleId is required`);
-  if (!warning.message) errors.push(`${prefix}.message is required`);
+  validateWarningLevel(warning.level, `${prefix}.level`, errors);
+  requireTruthyField(warning.ruleId, `${prefix}.ruleId`, errors);
+  requireTruthyField(warning.message, `${prefix}.message`, errors);
 }
 
-export function createEmptyMetrics({
-  repository,
-  commitSha,
-  commitTitle = null,
-  configVersion,
-  tools,
-  scope
-}: {
+function validateStatusField(
+  value: unknown,
+  allowedValues: readonly string[],
+  fieldName: string,
+  errors: string[]
+): void {
+  if (typeof value === "string" && allowedValues.includes(value)) return;
+  errors.push(`${fieldName}: must be one of ${allowedValues.join(", ")}, got "${value}"`);
+}
+
+function validateWarningLevel(value: unknown, fieldName: string, errors: string[]): void {
+  if (typeof value === "string" && WARNING_LEVELS.includes(value)) return;
+  errors.push(`${fieldName}: invalid level "${value}"`);
+}
+
+function validateExactValue(
+  value: unknown,
+  expected: string,
+  fieldName: string,
+  errors: string[]
+): void {
+  if (value === expected) return;
+  errors.push(`${fieldName}: expected "${expected}", got "${value}"`);
+}
+
+function requireTruthyField(value: unknown, fieldName: string, errors: string[]): void {
+  if (!value) errors.push(`${fieldName} is required`);
+}
+
+function requireArrayField(value: unknown, fieldName: string, errors: string[]): void {
+  if (!Array.isArray(value)) errors.push(`${fieldName} must be an array`);
+}
+
+function requireRecordField(value: unknown, fieldName: string, errors: string[]): void {
+  if (!isRecord(value)) errors.push(`${fieldName} is required`);
+}
+
+function requireUnknownArrayField(value: unknown, fieldName: string, errors: string[]): void {
+  if (!isUnknownArray(value)) errors.push(`${fieldName} must be an array`);
+}
+
+export function createEmptyMetrics(options: {
   configVersion: string;
   commitSha: string;
   commitTitle?: string | null;
@@ -437,12 +457,12 @@ export function createEmptyMetrics({
     metadata: {
       schemaVersion: METRICS_SCHEMA_VERSION,
       timestamp: new Date().toISOString(),
-      repository,
-      commitSha,
-      commitTitle,
-      tools,
-      scope,
-      configVersion
+      repository: options.repository,
+      commitSha: options.commitSha,
+      commitTitle: options.commitTitle ?? null,
+      tools: options.tools,
+      scope: options.scope,
+      configVersion: options.configVersion
     },
     baseline: {
       status: "history-unavailable",

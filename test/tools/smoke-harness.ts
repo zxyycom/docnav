@@ -87,6 +87,12 @@ interface ProcessResult {
   stdout: string;
 }
 
+interface PreparedCliCommand {
+  cwd: string;
+  executable: string;
+  processOptions: SmokeCommandOptions;
+}
+
 interface CreateSmokeHarnessOptions {
   auditMetadata: () => string[];
   auditTitle: string;
@@ -186,35 +192,59 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
   }
 
   async function runCli(name: string, args: string[], commandOptions: SmokeCommandOptions = {}) {
-    const cwd = resolveCwd(commandOptions);
-    const executable = binaryPath();
-    if (!executable) {
-      throw new Error("smoke binary path is not configured");
-    }
-    const result = await runProcess(executable, args, {
-      cwd,
-      env: resolveEnv(commandOptions),
-      stdin: commandOptions.stdin,
-      maxBuffer: MAX_COMMAND_OUTPUT
-    });
+    const command = prepareCliCommand(commandOptions);
+    const result = await runProcess(command.executable, args, command.processOptions);
+    const record = createCommandRecord(name, args, command, commandOptions, result);
 
-    const record = {
-      name,
-      args,
-      cwd,
-      stdinSummary: commandOptions.stdinSummary ?? summarizeStdin(commandOptions.stdin),
-      exitCode: result.exitCode ?? 1,
-      signal: result.signal ?? null,
-      error: result.error ?? null,
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? "",
-      assertions: []
-    };
     recordCommand(state, record);
     if (record.error) {
       expect(record, false, `process spawned successfully: ${record.error}`);
     }
     return record;
+  }
+
+  function prepareCliCommand(commandOptions: SmokeCommandOptions): PreparedCliCommand {
+    const cwd = resolveCwd(commandOptions);
+    const executable = binaryPath();
+    if (!executable) {
+      throw new Error("smoke binary path is not configured");
+    }
+
+    return {
+      cwd,
+      executable,
+      processOptions: createProcessOptions(commandOptions, cwd, resolveEnv(commandOptions))
+    };
+  }
+
+  function createProcessOptions(
+    commandOptions: SmokeCommandOptions,
+    cwd: string,
+    env: NodeJS.ProcessEnv | undefined
+  ): SmokeCommandOptions {
+    return {
+      cwd,
+      env,
+      stdin: commandOptions.stdin,
+      maxBuffer: MAX_COMMAND_OUTPUT
+    };
+  }
+
+  function createCommandRecord(
+    name: string,
+    args: string[],
+    command: PreparedCliCommand,
+    commandOptions: SmokeCommandOptions,
+    result: ProcessResult
+  ): CommandRecord {
+    return {
+      name,
+      args,
+      cwd: command.cwd,
+      stdinSummary: summarizeCommandStdin(commandOptions),
+      ...normalizeProcessResult(result),
+      assertions: []
+    };
   }
 
   async function runSmokeTasks(tasks: readonly SmokeTask[], taskOptions: SmokeTaskOptions = {}) {
@@ -388,6 +418,24 @@ function recordCommand(state: SmokeState, record: CommandRecord) {
   state.commandRecords.push(record);
   const context = commandContext.getStore();
   context?.commandRecords.push(record);
+}
+
+function normalizeProcessResult(result: ProcessResult): ProcessResult {
+  return {
+    exitCode: defaultValue(result.exitCode, 1),
+    signal: defaultValue(result.signal, null),
+    error: defaultValue(result.error, null),
+    stdout: defaultValue(result.stdout, ""),
+    stderr: defaultValue(result.stderr, "")
+  };
+}
+
+function defaultValue<T>(value: T | null | undefined, fallback: T): T {
+  return value ?? fallback;
+}
+
+function summarizeCommandStdin(commandOptions: SmokeCommandOptions): string | null {
+  return commandOptions.stdinSummary ?? summarizeStdin(commandOptions.stdin);
 }
 
 function spawnCommand(executable: string, args: string[], options: SmokeCommandOptions): Promise<ProcessResult> {

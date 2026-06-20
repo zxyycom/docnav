@@ -173,7 +173,10 @@ function validateConformanceFixtures() {
     "crates/docnav-readable/tests/conformance_tests.rs",
   );
   assertConformanceTestsLoadIndexedFixtures(conformanceTests);
-  assertConformanceParserConsumesDeclaredByteLength(conformanceTests);
+  const conformanceParser = readText(
+    "crates/docnav-readable/tests/conformance_support/output_blocks.rs",
+  );
+  assertConformanceParserConsumesDeclaredByteLength(conformanceParser);
   assertMarkerFixtureRestoresPayload(conformanceDir);
 }
 
@@ -247,11 +250,11 @@ function conformanceFixtureLoadPattern(): RegExp {
   );
 }
 
-function assertConformanceParserConsumesDeclaredByteLength(conformanceTests: string): void {
+function assertConformanceParserConsumesDeclaredByteLength(parserSource: string): void {
   assert(
-    conformanceTests.includes("checked_add(byte_length_usize)") &&
-      conformanceTests.includes("starts_with(end_marker_bytes)") &&
-      !conformanceTests.includes(".find(&end_marker)"),
+    parserSource.includes("checked_add(byte_length_usize)") &&
+      parserSource.includes("starts_with(end_marker_bytes)") &&
+      !parserSource.includes(".find(&end_marker)"),
     "conformance test parser must consume declared byte length before checking end marker",
   );
 }

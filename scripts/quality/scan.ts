@@ -16,7 +16,14 @@ import { randomUUID } from "node:crypto";
 
 import { DEFAULT_CONFIG } from "../tools/quality/model/config.ts";
 import { createEmptyMetrics } from "../tools/quality/model/schema.ts";
-import type { BaselineSnapshot, FatalIssue, QualityMetrics, ToolAvailability } from "../tools/quality/model/schema.ts";
+import type {
+  BaselineSnapshot,
+  CodeAreaFileMap,
+  CodeAreaFingerprint,
+  FatalIssue,
+  QualityMetrics,
+  ToolAvailability
+} from "../tools/quality/model/schema.ts";
 import { errorMessage } from "../tools/errors.ts";
 import { classifyFiles } from "../tools/quality/model/code-areas.ts";
 import {
@@ -31,6 +38,7 @@ import {
 import { runCurrentRevisionScan } from "../tools/quality/measurement/current-revision/index.ts";
 import { runBaselineRevisionScan } from "../tools/quality/measurement/baseline-revision.ts";
 import { generateTrends } from "../tools/quality/output/trends.ts";
+import type { ChangeScope, QualityScanOptions } from "../tools/quality/scan-command/index.ts";
 import {
   parseArgs,
   prepareArtifactDirs,
@@ -56,22 +64,91 @@ export { generateTrends } from "../tools/quality/output/trends.ts";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const timingsEnabled = process.env.DOCNAV_QUALITY_TIMINGS === "1";
 
+type Timings = ReturnType<typeof createTimings>;
+
+type ScanInputs = {
+  fileMap: CodeAreaFileMap;
+  fingerprints: Record<string, CodeAreaFingerprint>;
+  scanFiles: string[];
+};
+
+type ChangedInputScope = {
+  changedFiles: string[];
+  inputScope: ChangeScope;
+};
+
+type RuntimeContext = {
+  fatalIssues: FatalIssue[];
+  metrics: QualityMetrics;
+  opts: QualityScanOptions;
+  rawDir: string;
+  toolResults: ToolAvailability[];
+};
+
 async function main() {
   const timings = createTimings();
   const opts = parseArgs();
 
-  console.log("Docnav Code Quality Observability");
-  console.log("Non-blocking snapshot — metric values do not cause failure.");
-  console.log("");
+  printBanner();
 
   const artifactDir = resolve(root, opts.artifactDir);
   const { rawDir } = timings.measure("prepare artifact dirs", () => prepareArtifactDirs(artifactDir));
+  const runtime = await prepareRuntimeContext({ opts, rawDir, timings });
+  const inputs = collectScanInputs(timings);
+  attachFingerprints(runtime.metrics, inputs.fingerprints);
 
+  timings.measure("configure baseline", () => configureBaseline({
+    metrics: runtime.metrics,
+    opts,
+    tools: runtime.metrics.metadata.tools,
+    root
+  }));
+
+  const changedInput = detectChangedInputScope(runtime.metrics, opts, timings);
+  await scanCurrentRevision(runtime, inputs, changedInput.changedFiles, timings);
+  timings.measure("set comparison status", () => setComparisonStatus(runtime.metrics, changedInput.inputScope));
+
+  const baselineSnapshot = await timings.measureAsync("baseline snapshot", () => maybeScanBaseline(runtime));
+  generateWarnings(runtime.metrics, changedInput.inputScope, baselineSnapshot, timings);
+  finishScan({ artifactDir, runtime, timings });
+}
+
+function printBanner(): void {
+  console.log("Docnav Code Quality Observability");
+  console.log("Non-blocking snapshot — metric values do not cause failure.");
+  console.log("");
+}
+
+async function prepareRuntimeContext({
+  opts,
+  rawDir,
+  timings
+}: {
+  opts: QualityScanOptions;
+  rawDir: string;
+  timings: Timings;
+}): Promise<RuntimeContext> {
   const commitSha = timings.measure("git rev-parse HEAD", () => getGitSha(root));
   const commitTitle = timings.measure("git commit title", () => getGitCommitTitle(commitSha, root));
   const toolResults = await timings.measureAsync("tool availability", () => initializeToolResults(root));
   const tools = timings.measure("tool metadata", () => collectToolMetadata(toolResults));
+  const metrics = timings.measure("create metrics envelope", () => createEmptyMetrics({
+    repository: root,
+    commitSha,
+    commitTitle,
+    configVersion: DEFAULT_CONFIG.version,
+    tools,
+    scope: {
+      include: DEFAULT_CONFIG.include,
+      excludeDirs: DEFAULT_CONFIG.excludeDirs,
+      generatedFiles: DEFAULT_CONFIG.generatedFiles
+    }
+  }));
 
+  return { fatalIssues: [], metrics, opts, rawDir, toolResults };
+}
+
+function collectScanInputs(timings: Timings): ScanInputs {
   console.log("Collecting scan inputs...");
   const scanFiles = timings.measure("collect scan files", () => collectScanFiles(root, DEFAULT_CONFIG));
   console.log(`  Found ${scanFiles.length} files in scan scope`);
@@ -85,56 +162,61 @@ async function main() {
   const fingerprints = timings.measure("build fingerprints", () => buildFingerprints(fileMap, root));
   logFingerprints(fingerprints);
 
-  const metrics = timings.measure("create metrics envelope", () => createEmptyMetrics({
-    repository: root,
-    commitSha,
-    commitTitle,
-    configVersion: DEFAULT_CONFIG.version,
-    tools,
-    scope: {
-      include: DEFAULT_CONFIG.include,
-      excludeDirs: DEFAULT_CONFIG.excludeDirs,
-      generatedFiles: DEFAULT_CONFIG.generatedFiles
-    }
-  }));
+  return { fileMap, fingerprints, scanFiles };
+}
+
+function attachFingerprints(
+  metrics: QualityMetrics,
+  fingerprints: Record<string, CodeAreaFingerprint>
+): void {
   metrics.currentFingerprints = fingerprints;
+}
 
-  const fatalIssues: FatalIssue[] = [];
-  timings.measure("configure baseline", () => configureBaseline({ metrics, opts, tools, root }));
-
-  const scope = timings.measure("detect changed scan inputs", () => detectScanInputChange({
+function detectChangedInputScope(
+  metrics: QualityMetrics,
+  opts: QualityScanOptions,
+  timings: Timings
+): ChangedInputScope {
+  const inputScope = timings.measure("detect changed scan inputs", () => detectScanInputChange({
     baselineSha: metrics.baseline.commitSha,
     cwd: root,
     scanInputPaths: DEFAULT_CONFIG.include
   }));
   const changedFiles = timings.measure("resolve changed files", () =>
-    resolveChangedFilesForScan({ opts, root, scope })
+    resolveChangedFilesForScan({ opts, root, scope: inputScope })
   );
   console.log(`  Changed files in scan scope: ${changedFiles.length}`);
+  return { changedFiles, inputScope };
+}
 
+async function scanCurrentRevision(
+  runtime: RuntimeContext,
+  inputs: ScanInputs,
+  changedFiles: string[],
+  timings: Timings
+): Promise<void> {
   await timings.measureAsync("scan current revision", () => runCurrentRevisionScan({
     context: {
-      metrics,
-      toolResults,
+      metrics: runtime.metrics,
+      toolResults: runtime.toolResults,
       changedFiles,
-      rawDir,
-      fatalIssues,
+      rawDir: runtime.rawDir,
+      fatalIssues: runtime.fatalIssues,
       root,
-      fingerprints,
+      fingerprints: inputs.fingerprints,
       config: DEFAULT_CONFIG
     },
-    scanFiles,
-    fileMap
+    scanFiles: inputs.scanFiles,
+    fileMap: inputs.fileMap
   }));
+}
 
-  timings.measure("set comparison status", () => setComparisonStatus(metrics, scope));
-  const baselineSnapshot = await timings.measureAsync("baseline snapshot", () => maybeScanBaseline({
-    metrics,
-    toolResults,
-    rawDir,
-    fatalIssues
-  }));
-
+function generateWarnings(
+  metrics: QualityMetrics,
+  scope: ChangeScope,
+  baselineSnapshot: BaselineSnapshot | null,
+  timings: Timings
+): void {
   console.log("Generating warnings...");
   metrics.warnings = timings.measure("generate warnings", () => generateWarningChannels({
     files: metrics.fileMetrics,
@@ -156,6 +238,18 @@ async function main() {
     `${metrics.warnings.changed.length} changed, ` +
     `${metrics.warnings.regressions.length} regressions generated`
   );
+}
+
+function finishScan({
+  artifactDir,
+  runtime,
+  timings
+}: {
+  artifactDir: string;
+  runtime: RuntimeContext;
+  timings: Timings;
+}): void {
+  const { fatalIssues, metrics, opts } = runtime;
 
   timings.measure("write artifacts", () => writeArtifacts({ artifactDir, metrics, topN: opts.topN }));
   timings.measure("print summary", () => printSummary(metrics));
@@ -190,12 +284,7 @@ async function maybeScanBaseline({
   toolResults,
   rawDir,
   fatalIssues
-}: {
-  fatalIssues: FatalIssue[];
-  metrics: QualityMetrics;
-  rawDir: string;
-  toolResults: ToolAvailability[];
-}): Promise<BaselineSnapshot | null> {
+}: RuntimeContext): Promise<BaselineSnapshot | null> {
   if (fatalIssues.length > 0) {
     console.log("Skipping baseline scan because fatal current-scan errors were detected.");
     return null;

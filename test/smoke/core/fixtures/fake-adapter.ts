@@ -17,12 +17,19 @@ interface FakeAdapterOptions {
   mode: string;
 }
 
-type OptionHandler = (options: FakeAdapterOptions, value: string) => void;
-type CommandHandler = () => void;
-type OperationResultBuilder = (context: {
+interface InvokeInput {
+  request: unknown;
+  stdin: string;
+}
+
+interface OperationContext {
+  adapterId: string;
   args: Record<string, unknown>;
   documentPath: string;
-}) => Record<string, unknown>;
+}
+
+type OptionHandler = (options: FakeAdapterOptions, value: string) => void;
+type OperationResultBuilder = (context: OperationContext) => Record<string, unknown>;
 
 const optionHandlers: Record<string, OptionHandler> = {
   "--id": (parsed, value) => {
@@ -39,66 +46,61 @@ const optionHandlers: Record<string, OptionHandler> = {
   }
 };
 
-const options = parseOptions(process.argv.slice(2));
-const stdin = options.command === "invoke" ? await readStdin() : "";
-let request: unknown = null;
-if (stdin.trim().length > 0) {
-  try {
-    const parsed: unknown = JSON.parse(stdin);
-    request = parsed;
-  } catch {
-    request = null;
-  }
-}
-
-recordCall({ stdin: request ?? stdin });
-
 const operationResultBuilders: Partial<Record<string, OperationResultBuilder>> = {
-  outline: ({ documentPath }) => ({
+  outline: ({ adapterId, documentPath }) => ({
     entries: [
       {
         ref: "fake:root",
-        display: `${options.id} outline for ${documentPath}`
+        display: `${adapterId} outline for ${documentPath}`
       }
     ],
     page: null
   }),
-  read: ({ args, documentPath }) => ({
+  read: ({ adapterId, args, documentPath }) => ({
     ref: typeof args.ref === "string" ? args.ref : "fake:root",
-    content: `# Fake ${options.id}\n\nRead ${documentPath}`,
+    content: `# Fake ${adapterId}\n\nRead ${documentPath}`,
     content_type: "text/markdown",
     cost: "0.1 KB",
     page: null
   }),
-  find: ({ args }) => ({
+  find: ({ adapterId, args }) => ({
     matches: [
       {
         ref: "fake:root",
-        display: `${options.id} match for ${typeof args.query === "string" ? args.query : ""}`
+        display: `${adapterId} match for ${typeof args.query === "string" ? args.query : ""}`
       }
     ],
     page: null
   }),
-  info: () => ({
-    display: `Fake ${options.id} | text/markdown`,
+  info: ({ adapterId }) => ({
+    display: `Fake ${adapterId} | text/markdown`,
     capabilities: ["outline", "read", "find", "info"]
   })
 };
 
-const commandHandlers: Partial<Record<string, CommandHandler>> = {
-  manifest: () => writeJson(manifest()),
-  probe: () => writeJson(probe(options.commandArgs[0] ?? "")),
-  invoke: () => handleInvoke(request)
-};
+const options = parseOptions(process.argv.slice(2));
+const invokeInput = options.command === "invoke" ? await readInvokeInput() : emptyInvokeInput();
+recordCall(options, { stdin: invokeInput.request ?? invokeInput.stdin });
+runCommand(options, invokeInput.request);
 
-const commandHandler = options.command === null ? undefined : commandHandlers[options.command];
-if (commandHandler === undefined) {
-  console.error(`Unknown command ${options.command ?? "(missing)"}`);
-  process.exit(2);
+function runCommand(options: FakeAdapterOptions, request: unknown) {
+  switch (options.command) {
+    case "manifest":
+      writeJson(createManifest(options));
+      return;
+    case "probe":
+      writeJson(createProbe(options, options.commandArgs[0] ?? ""));
+      return;
+    case "invoke":
+      handleInvoke(options, request);
+      return;
+    default:
+      console.error(`Unknown command ${options.command ?? "(missing)"}`);
+      process.exit(2);
+  }
 }
-commandHandler();
 
-function manifest() {
+function createManifest(options: FakeAdapterOptions) {
   if (options.mode === "manifest-exit") {
     console.error(`${options.id} manifest failed intentionally`);
     process.exit(7);
@@ -129,7 +131,7 @@ function manifest() {
   };
 }
 
-function probe(documentPath: string) {
+function createProbe(options: FakeAdapterOptions, documentPath: string) {
   if (options.mode === "probe-exit") {
     console.error(`${options.id} probe failed intentionally`);
     process.exit(8);
@@ -161,7 +163,7 @@ function probe(documentPath: string) {
   };
 }
 
-function handleInvoke(value: unknown) {
+function handleInvoke(options: FakeAdapterOptions, value: unknown) {
   if (options.mode === "invoke-exit") {
     console.error(`${options.id} invoke failed intentionally`);
     process.exit(9);
@@ -171,7 +173,7 @@ function handleInvoke(value: unknown) {
     return;
   }
   if (!isRecord(value)) {
-    writeJson(failure("unknown", null, "INVALID_REQUEST", { field: "stdin", reason: "missing request JSON" }));
+    writeJson(createFailure("unknown", null, "INVALID_REQUEST", { field: "stdin", reason: "missing request JSON" }));
     process.exit(2);
   }
   const request = value as AdapterRequest;
@@ -193,19 +195,19 @@ function handleInvoke(value: unknown) {
     request_id: request.request_id,
     operation: request.operation,
     ok: true,
-    result: resultFor(request)
+    result: resultFor(options, request)
   });
 }
 
-function resultFor(value: AdapterRequest) {
+function resultFor(options: FakeAdapterOptions, value: AdapterRequest) {
   const document = isRecord(value.document) ? value.document : {};
   const args = isRecord(value.arguments) ? value.arguments : {};
   const documentPath = typeof document.path === "string" ? document.path : "(missing)";
   const resultBuilder = typeof value.operation === "string" ? operationResultBuilders[value.operation] : undefined;
-  return resultBuilder?.({ args, documentPath }) ?? {};
+  return resultBuilder?.({ adapterId: options.id, args, documentPath }) ?? {};
 }
 
-function failure(requestId: unknown, operation: unknown, code: string, details: Record<string, unknown>) {
+function createFailure(requestId: unknown, operation: unknown, code: string, details: Record<string, unknown>) {
   return {
     protocol_version: "0.1",
     request_id: requestId,
@@ -219,7 +221,7 @@ function failure(requestId: unknown, operation: unknown, code: string, details: 
   };
 }
 
-function recordCall(extra: Record<string, unknown>) {
+function recordCall(options: FakeAdapterOptions, extra: Record<string, unknown>) {
   if (!options.log) {
     return;
   }
@@ -240,6 +242,32 @@ function recordCall(extra: Record<string, unknown>) {
 
 function writeJson(value: unknown) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
+}
+
+function emptyInvokeInput(): InvokeInput {
+  return {
+    request: null,
+    stdin: ""
+  };
+}
+
+async function readInvokeInput(): Promise<InvokeInput> {
+  const stdin = await readStdin();
+  return {
+    request: parseRequestJson(stdin),
+    stdin
+  };
+}
+
+function parseRequestJson(stdin: string): unknown {
+  if (stdin.trim().length === 0) {
+    return null;
+  }
+  try {
+    return JSON.parse(stdin) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 async function readStdin() {

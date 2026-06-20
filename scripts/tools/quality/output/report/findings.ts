@@ -7,11 +7,28 @@ import type {
   WarningRecord
 } from "../../model/schema.ts";
 
+const DUPLICATE_FRAGMENTS_PER_AREA = 5;
+const WARNING_RECORDS_PER_SECTION = 10;
+
 interface WarningGroups {
   all: WarningRecord[];
   changed: WarningRecord[];
   regressions: WarningRecord[];
 }
+
+type RankedChangedFile = { file: FileMetric; reasons: string[]; score: number };
+
+type WarningLevelSection = {
+  icon: string;
+  label: string;
+  level: string;
+};
+
+const WARNING_LEVEL_SECTIONS: WarningLevelSection[] = [
+  { level: "error", icon: "🔴", label: "ERROR" },
+  { level: "warning", icon: "🟡", label: "WARNING" },
+  { level: "info", icon: "ℹ️", label: "INFO" }
+];
 
 export function duplicateCodeSection(metrics: QualityMetrics): string {
   const lines: string[] = [];
@@ -24,16 +41,20 @@ export function duplicateCodeSection(metrics: QualityMetrics): string {
     return lines.join("\n");
   }
 
-  const byArea = groupDuplicatesByArea(duplicates);
-
   lines.push(`**Total**: ${duplicates.length} duplicate code fragments`);
   lines.push("");
-
-  for (const [area, fragments] of byArea.entries()) {
-    appendDuplicateArea(lines, area, fragments);
-  }
+  appendDuplicateAreas(lines, groupDuplicatesByArea(duplicates));
 
   return lines.join("\n");
+}
+
+function appendDuplicateAreas(
+  lines: string[],
+  duplicatesByArea: Map<string, DuplicateCodeFragment[]>
+): void {
+  for (const [area, fragments] of duplicatesByArea.entries()) {
+    appendDuplicateArea(lines, area, fragments);
+  }
 }
 
 function groupDuplicatesByArea(duplicates: readonly DuplicateCodeFragment[]): Map<string, DuplicateCodeFragment[]> {
@@ -52,13 +73,11 @@ function appendDuplicateArea(lines: string[], area: string, fragments: readonly 
   lines.push(`### ${area} (${fragments.length} fragments)`);
   lines.push("");
 
-  for (const fragment of fragments.slice(0, 5)) {
+  for (const fragment of fragments.slice(0, DUPLICATE_FRAGMENTS_PER_AREA)) {
     appendDuplicateFragment(lines, fragment);
   }
 
-  if (fragments.length > 5) {
-    lines.push(`- *... and ${fragments.length - 5} more fragments*`);
-  }
+  appendRemainingCount(lines, fragments.length, DUPLICATE_FRAGMENTS_PER_AREA, "fragments");
   lines.push("");
 }
 
@@ -124,21 +143,27 @@ export function changedFilesSection(metrics: QualityMetrics, topN = 10): string 
   }
 
   lines.push("");
+  appendChangedFilesTable(lines, ranked);
 
+  return lines.join("\n");
+}
+
+function appendChangedFilesTable(lines: string[], ranked: RankedChangedFile[]): void {
   const rows = [["File", "Area", "Lines", "Complexity", "Risk"]];
   for (const { file, reasons } of ranked) {
-    const complexity = file.complexity.value !== null ? String(file.complexity.value) : "n/a";
     rows.push([
       file.path,
       file.codeArea,
       file.lines.toLocaleString(),
-      complexity,
+      formatComplexity(file),
       reasons.join(", ")
     ]);
   }
   lines.push(formatTable(rows));
+}
 
-  return lines.join("\n");
+function formatComplexity(file: FileMetric): string {
+  return file.complexity.value !== null ? String(file.complexity.value) : "n/a";
 }
 
 export function warningsSection(metrics: QualityMetrics): string {
@@ -183,16 +208,14 @@ function appendChangedWarningsSection(lines: string[], changedWarnings: WarningR
     return;
   }
 
-  appendWarningList(lines, changedWarnings.slice(0, 10));
-  if (changedWarnings.length > 10) {
-    lines.push(`- *... and ${changedWarnings.length - 10} more changed warnings*`);
-  }
+  appendWarningList(lines, changedWarnings.slice(0, WARNING_RECORDS_PER_SECTION));
+  appendRemainingCount(lines, changedWarnings.length, WARNING_RECORDS_PER_SECTION, "changed warnings");
 }
 
 function rankChangedFilesByRisk(
   changed: FileMetric[],
   metrics: QualityMetrics
-): { file: FileMetric; reasons: string[]; score: number }[] {
+): RankedChangedFile[] {
   const changedWarningPaths = new Set(
     (metrics.warnings?.all || [])
       .filter((warning) => warning.isChanged)
@@ -216,7 +239,7 @@ function riskRankedFile(
   changedWarningPaths: Set<string>,
   deltaWarningPaths: Set<string>,
   duplicatePaths: Set<string>
-): { file: FileMetric; reasons: string[]; score: number } {
+): RankedChangedFile {
   const reasons: string[] = [];
   let score = 0;
 
@@ -248,25 +271,17 @@ function changedDuplicatePaths(duplicates: DuplicateCodeFragment[]): Set<string>
 }
 
 function appendWarningsByLevel(lines: string[], warnings: WarningRecord[], title: string): void {
-  const byLevel = {
-    error: warnings.filter((warning) => warning.level === "error"),
-    warning: warnings.filter((warning) => warning.level === "warning"),
-    info: warnings.filter((warning) => warning.level === "info")
-  };
-
   lines.push(`### ${title}`);
   lines.push("");
-  for (const [level, levelWarnings] of Object.entries(byLevel)) {
+
+  for (const section of WARNING_LEVEL_SECTIONS) {
+    const levelWarnings = warnings.filter((warning) => warning.level === section.level);
     if (levelWarnings.length === 0) continue;
-    const icon = level === "error" ? "🔴" : level === "warning" ? "🟡" : "ℹ️";
-    lines.push(`#### ${icon} ${level.toUpperCase()} (${levelWarnings.length})`);
+
+    lines.push(`#### ${section.icon} ${section.label} (${levelWarnings.length})`);
     lines.push("");
-
-    appendWarningList(lines, levelWarnings.slice(0, 10));
-
-    if (levelWarnings.length > 10) {
-      lines.push(`- *... and ${levelWarnings.length - 10} more ${level} records*`);
-    }
+    appendWarningList(lines, levelWarnings.slice(0, WARNING_RECORDS_PER_SECTION));
+    appendRemainingCount(lines, levelWarnings.length, WARNING_RECORDS_PER_SECTION, `${section.level} records`);
     lines.push("");
   }
 }
@@ -277,5 +292,11 @@ function appendWarningList(lines: string[], warnings: WarningRecord[]): void {
     if (warning.suggestion) {
       lines.push(`  → ${warning.suggestion}`);
     }
+  }
+}
+
+function appendRemainingCount(lines: string[], total: number, shown: number, label: string): void {
+  if (total > shown) {
+    lines.push(`- *... and ${total - shown} more ${label}*`);
   }
 }

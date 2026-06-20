@@ -43,6 +43,14 @@ interface CreateFakeAdapterOptions {
   mode?: string;
 }
 
+interface FakeAdapterConfig {
+  extensions: string[];
+  id: string;
+  logPath: string;
+  mode: string;
+  scriptPath: string;
+}
+
 let projectCounter = 0;
 const fixturesDir = path.join(root, "test", "smoke", "core", "fixtures");
 const normalDocumentFixture = path.join(fixturesDir, "normal.md");
@@ -132,63 +140,26 @@ export function createRealMarkdownAdapter(project: SmokeProject, id = "docnav-ma
 }
 
 export function createFakeAdapter(project: SmokeProject, options: CreateFakeAdapterOptions = {}): FakeAdapter {
-  const id = options.id ?? "fake-adapter";
-  const mode = options.mode ?? "valid";
-  const extensions = options.extensions ?? [".md", ".core"];
-  const logPath = path.join(project.docnavDir, `${id}-calls.jsonl`);
-  const commandPath = wrapperPath(project, id);
-  const fakeAdapterScript = path.join(fixturesDir, "fake-adapter.ts");
+  const adapter = fakeAdapterConfig(project, options);
+  const commandPath = wrapperPath(project, adapter.id);
 
   if (process.platform === "win32") {
     writeText(
       commandPath,
-      [
-        "@echo off",
-        [
-          "node",
-          cmdQuote(fakeAdapterScript),
-          "--id",
-          cmdQuote(id),
-          "--mode",
-          cmdQuote(mode),
-          "--log",
-          cmdQuote(logPath),
-          "--extensions",
-          cmdQuote(extensions.join(",")),
-          "%*"
-        ].join(" "),
-        "exit /b %ERRORLEVEL%",
-        ""
-      ].join("\r\n")
+      ["@echo off", fakeAdapterCommand(adapter, cmdQuote, "%*"), "exit /b %ERRORLEVEL%", ""].join("\r\n")
     );
   } else {
     writeText(
       commandPath,
-      [
-        "#!/usr/bin/env sh",
-        [
-          "exec node",
-          shQuote(fakeAdapterScript),
-          "--id",
-          shQuote(id),
-          "--mode",
-          shQuote(mode),
-          "--log",
-          shQuote(logPath),
-          "--extensions",
-          shQuote(extensions.join(",")),
-          "\"$@\""
-        ].join(" "),
-        ""
-      ].join("\n")
+      ["#!/usr/bin/env sh", fakeAdapterCommand(adapter, shQuote, "\"$@\"", "exec node"), ""].join("\n")
     );
     fs.chmodSync(commandPath, 0o755);
   }
 
   return {
-    id,
+    id: adapter.id,
     command: relativeCommand(project, commandPath),
-    logPath
+    logPath: adapter.logPath
   };
 }
 
@@ -201,6 +172,33 @@ export function readAdapterCalls(adapter: FakeAdapter): AdapterCall[] {
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0)
     .map(parseAdapterCall);
+}
+
+function fakeAdapterConfig(project: SmokeProject, options: CreateFakeAdapterOptions): FakeAdapterConfig {
+  const id = options.id ?? "fake-adapter";
+  return {
+    id,
+    mode: options.mode ?? "valid",
+    extensions: options.extensions ?? [".md", ".core"],
+    logPath: path.join(project.docnavDir, `${id}-calls.jsonl`),
+    scriptPath: path.join(fixturesDir, "fake-adapter.ts")
+  };
+}
+
+function fakeAdapterCommand(adapter: FakeAdapterConfig, quote: (value: string) => string, forwardedArgs: string, node = "node") {
+  return [
+    node,
+    quote(adapter.scriptPath),
+    "--id",
+    quote(adapter.id),
+    "--mode",
+    quote(adapter.mode),
+    "--log",
+    quote(adapter.logPath),
+    "--extensions",
+    quote(adapter.extensions.join(",")),
+    forwardedArgs
+  ].join(" ");
 }
 
 function parseAdapterCall(line: string): AdapterCall {

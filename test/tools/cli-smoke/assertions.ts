@@ -9,7 +9,13 @@ import type { CommandRecord } from "../smoke-harness.ts";
 
 export type JsonRecord = Record<string, unknown>;
 
-const protocolEnvelopeKeys = ["protocol_version", "request_id", "operation", "ok"];
+type ProtocolEnvelopeKey = "protocol_version" | "request_id" | "operation" | "ok";
+type ProtocolEnvelopeKeyLocation = { key: ProtocolEnvelopeKey; path: string };
+type EntryListExpectation = { field: "entries" | "matches"; itemLabel: "entry" | "match" };
+
+const protocolEnvelopeKeys: readonly ProtocolEnvelopeKey[] = ["protocol_version", "request_id", "operation", "ok"];
+const readResultFields = ["ref", "content", "content_type", "cost", "page"] as const;
+const cliArgvWarningFragments = ["id=cli_argv_ignored", "effect=operation_continued", "details="] as const;
 
 export function expectExit(record: CommandRecord, expected: number) {
   expect(record, record.exitCode === expected, `exit code is ${expected}`);
@@ -24,61 +30,34 @@ export function expectStderrEmpty(record: CommandRecord) {
 }
 
 export function expectStdoutIncludes(record: CommandRecord, value: string) {
-  expect(record, record.stdout.includes(value), `stdout includes ${JSON.stringify(value)}`);
+  expectOutputIncludes(record, record.stdout, "stdout", value);
 }
 
 export function expectStderrIncludes(record: CommandRecord, value: string) {
-  expect(record, record.stderr.includes(value), `stderr includes ${JSON.stringify(value)}`);
+  expectOutputIncludes(record, record.stderr, "stderr", value);
 }
 
 export function expectStdoutWarning(record: CommandRecord, expectedTokens: readonly string[]) {
-  expectStdoutIncludes(record, "id=cli_argv_ignored");
-  expectStdoutIncludes(record, "effect=operation_continued");
-  expectStdoutIncludes(record, "details=");
-  for (const token of expectedTokens) {
-    expectStdoutIncludes(record, JSON.stringify(token));
-  }
+  expectCliArgvWarningText(record, expectedTokens, expectStdoutIncludes);
 }
 
 export function expectStderrWarning(record: CommandRecord, expectedTokens: readonly string[]) {
-  expectStderrIncludes(record, "id=cli_argv_ignored");
-  expectStderrIncludes(record, "effect=operation_continued");
-  expectStderrIncludes(record, "details=");
-  for (const token of expectedTokens) {
-    expectStderrIncludes(record, JSON.stringify(token));
-  }
+  expectCliArgvWarningText(record, expectedTokens, expectStderrIncludes);
 }
 
 export function parseJson(record: CommandRecord): JsonRecord {
-  let value: unknown;
-  try {
-    value = parseJsonValue(record.stdout, "stdout JSON");
-    record.assertions.push({ ok: true, summary: "stdout parses as JSON" });
-  } catch (error: unknown) {
-    record.assertions.push({
-      ok: false,
-      summary: `stdout parses as JSON: ${errorMessage(error)}`
-    });
-    throw error;
-  }
-  return expectJsonObject(record, value, "stdout JSON is an object");
+  return parseJsonObjectFromText(record, record.stdout, "stdout JSON", "stdout parses as JSON", "stdout JSON is an object");
 }
 
 export function parseReadableViewHeader(record: CommandRecord, output = record.stdout): JsonRecord {
-  const headerBoundary = output.indexOf("\n\n[block ");
-  const headerText = output.slice(0, headerBoundary >= 0 ? headerBoundary : output.length);
-  let value: unknown;
-  try {
-    value = parseJsonValue(headerText, "readable-view header JSON");
-    record.assertions.push({ ok: true, summary: "readable-view header parses as JSON" });
-  } catch (error: unknown) {
-    record.assertions.push({
-      ok: false,
-      summary: `readable-view header parses as JSON: ${errorMessage(error)}`
-    });
-    throw error;
-  }
-  return expectJsonObject(record, value, "readable-view header is an object");
+  const headerText = readableViewHeaderText(output);
+  return parseJsonObjectFromText(
+    record,
+    headerText,
+    "readable-view header JSON",
+    "readable-view header parses as JSON",
+    "readable-view header is an object"
+  );
 }
 
 export function expectNoProtocolEnvelope(record: CommandRecord, value: unknown) {
@@ -92,10 +71,7 @@ export function expectNoProtocolEnvelope(record: CommandRecord, value: unknown) 
 
 export function expectProtocolSuccess(record: CommandRecord, value: unknown, operation: string) {
   const envelope = expectJsonObject(record, value, "protocol response is an object");
-  expect(record, envelope.protocol_version === "0.1", "protocol_version is 0.1");
-  expect(record, typeof envelope.request_id === "string" && envelope.request_id.length > 0, "request_id is nonempty");
-  expect(record, envelope.operation === operation, `operation is ${operation}`);
-  expect(record, envelope.ok === true, "ok is true");
+  expectProtocolEnvelopeFields(record, envelope, operation, true);
   expect(record, Object.hasOwn(envelope, "result"), "protocol success has result");
   expectNoWarningsField(record, envelope, "protocol-json stdout");
 }
@@ -103,10 +79,7 @@ export function expectProtocolSuccess(record: CommandRecord, value: unknown, ope
 export function expectProtocolFailure(record: CommandRecord, value: unknown, operation: string | null, code: string) {
   const envelope = expectJsonObject(record, value, "protocol response is an object");
   const error = expectJsonObject(record, envelope.error, "protocol failure has error object");
-  expect(record, envelope.protocol_version === "0.1", "protocol_version is 0.1");
-  expect(record, typeof envelope.request_id === "string" && envelope.request_id.length > 0, "request_id is nonempty");
-  expect(record, envelope.operation === operation, `operation is ${operation}`);
-  expect(record, envelope.ok === false, "ok is false");
+  expectProtocolEnvelopeFields(record, envelope, operation, false);
   expect(record, error.code === code, `error code is ${code}`);
   expect(record, Object.hasOwn(error, "details"), "protocol failure has error.details");
   expectNoWarningsField(record, envelope, "protocol-json stdout");
@@ -139,24 +112,13 @@ export function expectStructuredWarning(
 }
 
 export function expectOutlineResultsEquivalent(record: CommandRecord, actual: unknown, expected: unknown, summary: string) {
-  const actualObject = expectJsonObject(record, actual, `${summary}: actual is an object`);
-  const expectedObject = expectJsonObject(record, expected, `${summary}: expected is an object`);
-  const actualEntries = expectObjectArray(record, actualObject.entries, `${summary}: actual entries are objects`);
-  const expectedEntries = expectObjectArray(record, expectedObject.entries, `${summary}: expected entries are objects`);
-  expect(record, actualObject.page === expectedObject.page, `${summary}: page matches`);
-  expect(record, actualEntries.length === expectedEntries.length, `${summary}: entry count matches`);
-  for (const index of actualEntries.keys()) {
-    const actualEntry = actualEntries[index];
-    const expectedEntry = expectedEntries[index];
-    expect(record, actualEntry.ref === expectedEntry.ref, `${summary}: entry ${index + 1} ref matches`);
-    expect(record, actualEntry.display === expectedEntry.display, `${summary}: entry ${index + 1} display matches`);
-  }
+  expectEntryListEquivalent(record, actual, expected, summary, { field: "entries", itemLabel: "entry" });
 }
 
 export function expectReadResultsEquivalent(record: CommandRecord, actual: unknown, expected: unknown, summary: string) {
   const actualObject = expectJsonObject(record, actual, `${summary}: actual is an object`);
   const expectedObject = expectJsonObject(record, expected, `${summary}: expected is an object`);
-  for (const field of ["ref", "content", "content_type", "cost", "page"]) {
+  for (const field of readResultFields) {
     expect(record, actualObject[field] === expectedObject[field], `${summary}: ${field} matches`);
   }
 }
@@ -216,18 +178,7 @@ export function expectNoReadableViewBlocks(record: CommandRecord, output = recor
 }
 
 export function expectFindResultsEquivalent(record: CommandRecord, actual: unknown, expected: unknown, summary: string) {
-  const actualObject = expectJsonObject(record, actual, `${summary}: actual is an object`);
-  const expectedObject = expectJsonObject(record, expected, `${summary}: expected is an object`);
-  const actualMatches = expectObjectArray(record, actualObject.matches, `${summary}: actual matches are objects`);
-  const expectedMatches = expectObjectArray(record, expectedObject.matches, `${summary}: expected matches are objects`);
-  expect(record, actualObject.page === expectedObject.page, `${summary}: page matches`);
-  expect(record, actualMatches.length === expectedMatches.length, `${summary}: match count matches`);
-  for (const index of actualMatches.keys()) {
-    const actualMatch = actualMatches[index];
-    const expectedMatch = expectedMatches[index];
-    expect(record, actualMatch.ref === expectedMatch.ref, `${summary}: match ${index + 1} ref matches`);
-    expect(record, actualMatch.display === expectedMatch.display, `${summary}: match ${index + 1} display matches`);
-  }
+  expectEntryListEquivalent(record, actual, expected, summary, { field: "matches", itemLabel: "match" });
 }
 
 export function expectInfoResultsEquivalent(record: CommandRecord, actual: unknown, expected: unknown, summary: string) {
@@ -273,48 +224,29 @@ export function assertSetup(condition: unknown, message: string) {
 }
 
 export function expectJsonObject(record: CommandRecord, value: unknown, summary: string): JsonRecord {
-  if (isJsonRecord(value)) {
-    expect(record, true, summary);
-    return value;
-  }
-  expect(record, false, summary);
-  return {};
+  return expectTypedValue(record, value, summary, isJsonRecord, {});
 }
 
 export function expectObjectArray(record: CommandRecord, value: unknown, summary: string): JsonRecord[] {
-  if (isUnknownArray(value) && value.every(isJsonRecord)) {
-    expect(record, true, summary);
-    return value;
-  }
-  expect(record, false, summary);
-  return [];
+  return expectTypedValue(
+    record,
+    value,
+    summary,
+    (item): item is JsonRecord[] => isUnknownArray(item) && item.every(isJsonRecord),
+    []
+  );
 }
 
 export function expectString(record: CommandRecord, value: unknown, summary: string): string {
-  if (typeof value === "string") {
-    expect(record, true, summary);
-    return value;
-  }
-  expect(record, false, summary);
-  return "";
+  return expectTypedValue(record, value, summary, (item): item is string => typeof item === "string", "");
 }
 
 export function expectNumber(record: CommandRecord, value: unknown, summary: string): number {
-  if (typeof value === "number") {
-    expect(record, true, summary);
-    return value;
-  }
-  expect(record, false, summary);
-  return 0;
+  return expectTypedValue(record, value, summary, (item): item is number => typeof item === "number", 0);
 }
 
 export function expectStringArray(record: CommandRecord, value: unknown, summary: string): string[] {
-  if (isStringArray(value)) {
-    expect(record, true, summary);
-    return value;
-  }
-  expect(record, false, summary);
-  return [];
+  return expectTypedValue(record, value, summary, isStringArray, []);
 }
 
 export function looksLikeJson(value: string) {
@@ -326,22 +258,113 @@ export function containsProtocolResponseEnvelope(value: string) {
   return value.includes("\"protocol_version\"") && value.includes("\"ok\"");
 }
 
-function findProtocolEnvelopeKeys(value: unknown, path = "$"): { key: string; path: string }[] {
+function expectOutputIncludes(record: CommandRecord, output: string, outputName: "stdout" | "stderr", value: string) {
+  expect(record, output.includes(value), `${outputName} includes ${JSON.stringify(value)}`);
+}
+
+function expectCliArgvWarningText(
+  record: CommandRecord,
+  expectedTokens: readonly string[],
+  expectIncludes: (record: CommandRecord, value: string) => void
+) {
+  for (const fragment of cliArgvWarningFragments) {
+    expectIncludes(record, fragment);
+  }
+  for (const token of expectedTokens) {
+    expectIncludes(record, JSON.stringify(token));
+  }
+}
+
+function parseJsonObjectFromText(
+  record: CommandRecord,
+  text: string,
+  parseLabel: string,
+  parseSummary: string,
+  objectSummary: string
+): JsonRecord {
+  let value: unknown;
+  try {
+    value = parseJsonValue(text, parseLabel);
+    record.assertions.push({ ok: true, summary: parseSummary });
+  } catch (error: unknown) {
+    record.assertions.push({
+      ok: false,
+      summary: `${parseSummary}: ${errorMessage(error)}`
+    });
+    throw error;
+  }
+  return expectJsonObject(record, value, objectSummary);
+}
+
+function readableViewHeaderText(output: string) {
+  const headerBoundary = output.indexOf("\n\n[block ");
+  return output.slice(0, headerBoundary >= 0 ? headerBoundary : output.length);
+}
+
+function expectProtocolEnvelopeFields(record: CommandRecord, envelope: JsonRecord, operation: string | null, ok: boolean) {
+  expect(record, envelope.protocol_version === "0.1", "protocol_version is 0.1");
+  expect(record, typeof envelope.request_id === "string" && envelope.request_id.length > 0, "request_id is nonempty");
+  expect(record, envelope.operation === operation, `operation is ${operation}`);
+  expect(record, envelope.ok === ok, `ok is ${ok}`);
+}
+
+function expectEntryListEquivalent(
+  record: CommandRecord,
+  actual: unknown,
+  expected: unknown,
+  summary: string,
+  expectation: EntryListExpectation
+) {
+  const actualObject = expectJsonObject(record, actual, `${summary}: actual is an object`);
+  const expectedObject = expectJsonObject(record, expected, `${summary}: expected is an object`);
+  const actualItems = expectObjectArray(record, actualObject[expectation.field], `${summary}: actual ${expectation.field} are objects`);
+  const expectedItems = expectObjectArray(record, expectedObject[expectation.field], `${summary}: expected ${expectation.field} are objects`);
+  expect(record, actualObject.page === expectedObject.page, `${summary}: page matches`);
+  expect(record, actualItems.length === expectedItems.length, `${summary}: ${expectation.itemLabel} count matches`);
+  for (const index of actualItems.keys()) {
+    const actualItem = actualItems[index];
+    const expectedItem = expectedItems[index];
+    expect(record, actualItem.ref === expectedItem.ref, `${summary}: ${expectation.itemLabel} ${index + 1} ref matches`);
+    expect(record, actualItem.display === expectedItem.display, `${summary}: ${expectation.itemLabel} ${index + 1} display matches`);
+  }
+}
+
+function expectTypedValue<T>(
+  record: CommandRecord,
+  value: unknown,
+  summary: string,
+  predicate: (value: unknown) => value is T,
+  fallback: T
+): T {
+  if (predicate(value)) {
+    expect(record, true, summary);
+    return value;
+  }
+  expect(record, false, summary);
+  return fallback;
+}
+
+function findProtocolEnvelopeKeys(value: unknown, path = "$"): ProtocolEnvelopeKeyLocation[] {
   if (isUnknownArray(value)) {
     return value.flatMap((item, index) => findProtocolEnvelopeKeys(item, `${path}[${index}]`));
   }
   if (!isJsonRecord(value)) {
     return [];
   }
-  const found: { key: string; path: string }[] = [];
+
+  const found: ProtocolEnvelopeKeyLocation[] = [];
   for (const [key, child] of Object.entries(value)) {
     const childPath = `${path}.${key}`;
-    if (protocolEnvelopeKeys.includes(key)) {
+    if (isProtocolEnvelopeKey(key)) {
       found.push({ key, path: childPath });
     }
     found.push(...findProtocolEnvelopeKeys(child, childPath));
   }
   return found;
+}
+
+function isProtocolEnvelopeKey(key: string): key is ProtocolEnvelopeKey {
+  return protocolEnvelopeKeys.includes(key as ProtocolEnvelopeKey);
 }
 
 function jsonPointer(value: unknown, pointer: string): unknown {
