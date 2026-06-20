@@ -1,7 +1,7 @@
 # readable-view-output Specification
 
 ## Purpose
-TBD - created by archiving change replace-text-with-readable-view. Update Purpose after archive.
+定义 Docnav document operation 的 readable-view/readable-json 输出契约，包括默认阅读输出、renderer config ownership、block framing、三种 document output mode，以及 readable-view 与 readable-json 从同一 typed readable payload 派生的分层边界。
 ## Requirements
 ### Requirement: readable-view 必须成为统一默认阅读输出
 `docnav` 和 adapter direct CLI 的 document operation MUST 支持 `readable-view`，并 MUST 在调用方省略 `--output` 时使用该模式。outline、read、find、info、后续组合 operation、成功 warning 和 readable error MUST 使用同一 readable-view 格式和通用 renderer。
@@ -200,4 +200,3 @@ Document operation 的当前输出模式 MUST 只包含 `readable-view`、`reada
 - **THEN** 该输出不需要 readable-view framing
 - **THEN** 该输出不通过 `docnav-output` 编排
 - **THEN** 只有在不改变既有 schema、plain text 或 stderr boundary 时，才可以复用 `docnav-json-io` 或 diagnostics helper
-

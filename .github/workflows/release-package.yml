@@ -51,7 +51,7 @@ jobs:
 
       - name: Resolve package layout
         id: info
-        run: node scripts/release-package-info.mjs --target "${{ matrix.target }}"
+        run: pnpm run info:docnav-package -- --target "${{ matrix.target }}"
 
       - name: Build release package
         run: pnpm run package:docnav -- --target "${{ matrix.target }}"
