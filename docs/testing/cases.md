@@ -604,11 +604,11 @@ Code: `scripts/docnav-workspace/verify.test.ts`
 
 Proves:
 - required 和 full verifier profile 保持区分。
-- profile membership、check label、arguments、dependencies、mutex、output filtering 和 report counting 由 verifier tests 明确证明。
+- profile membership、check label、arguments、dependencies、mutex 和 report counting 由 verifier tests 明确证明。
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 追加 full quality check。
 - completion line 和 summary 可区分 passed、warning 和 failed。
-- completion line 后输出该 report 过滤后的子命令可见输出。
+- 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
 
 ```mermaid
 flowchart LR
@@ -619,10 +619,10 @@ flowchart LR
   D --> F["构建 task graph"]
   E --> F
   F --> G["应用 dependencies / mutexes"]
-  G --> H["执行 checks 并过滤已知噪声"]
+  G --> H["执行 checks 并过滤终端可见输出"]
   H --> I{"result status"}
   I -->|"passed / warning / failed"| J["输出 completion lines"]
-  J --> K["输出 report 可见子命令输出"]
+  J --> K["输出允许显示的诊断"]
   K --> L["统计 report groups 和 leaf checks"]
 ```
 

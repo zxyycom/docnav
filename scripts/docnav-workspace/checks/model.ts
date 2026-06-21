@@ -18,6 +18,7 @@ export const profiles = Object.freeze({
 });
 
 export type CheckDefinition = TaskDefinition & {
+  allowOutput?: RegExp[];
   args?: string[];
   command?: string;
   ignoreOutput?: RegExp[];
@@ -26,6 +27,7 @@ export type CheckDefinition = TaskDefinition & {
 };
 
 export interface CheckTask extends NormalizedTask {
+  allowOutput?: RegExp[];
   args: string[];
   command: string;
   ignoreOutput: RegExp[];

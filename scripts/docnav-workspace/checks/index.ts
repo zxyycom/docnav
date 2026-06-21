@@ -1,6 +1,6 @@
 import { checks } from "./definitions.ts";
 import { PROFILE_FULL, PROFILE_REQUIRED, profiles } from "./model.ts";
-import type { CheckTask, Profile } from "./model.ts";
+import type { CheckStatus, CheckTask, Profile } from "./model.ts";
 
 export { asCheckTask } from "./normalization.ts";
 export { checks } from "./definitions.ts";
@@ -38,8 +38,16 @@ export function assertProfile(profile: string): asserts profile is Profile {
   }
 }
 
-export function visibleOutputLines(check: CheckTask, output: string): string[] {
-  return lines(output).filter((line) => !isIgnoredOutput(check, line));
+export function visibleOutputLines(check: CheckTask, output: string, status: CheckStatus = "failed"): string[] {
+  const allowedLines = lines(output).filter((line) => isAllowedOutput(check, line, status));
+  return allowedLines.filter((line) => !isIgnoredOutput(check, line));
+}
+
+export function isAllowedOutput(check: Pick<CheckTask, "allowOutput">, line: string, status: CheckStatus): boolean {
+  if (status === "failed" || !check.allowOutput || check.allowOutput.length === 0) {
+    return true;
+  }
+  return check.allowOutput.some((pattern) => pattern.test(line));
 }
 
 export function isIgnoredOutput(check: Pick<CheckTask, "ignoreOutput">, line: string): boolean {

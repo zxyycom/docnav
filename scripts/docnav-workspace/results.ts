@@ -70,8 +70,8 @@ export function createReportCompletionTracker(checkList: readonly CheckTask[]): 
   };
 }
 
-export function visibleOutputForCheck(check: CheckTask, output: string): string {
-  return visibleOutputLines(check, output).join("\n");
+export function visibleOutputForCheck(check: CheckTask, output: string, status: CheckStatus = "failed"): string {
+  return visibleOutputLines(check, output, status).join("\n");
 }
 
 function createReportAccumulators(checkList: readonly CheckTask[]): Map<string, ReportAccumulator> {

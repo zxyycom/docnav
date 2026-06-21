@@ -40,12 +40,14 @@ function createCheckReport(check: CheckDefinition): CheckReportRef {
 }
 
 export function asCheckTask(task: NormalizedTask): CheckTask {
+  const allowOutput = isRegExpArray(task.allowOutput) ? task.allowOutput : [];
   const args = isStringArray(task.args) ? task.args : [];
   const command = typeof task.command === "string" ? task.command : "";
   const ignoreOutput = isRegExpArray(task.ignoreOutput) ? task.ignoreOutput : [];
   const warningOutput = isRegExpArray(task.warningOutput) ? task.warningOutput : [];
   return {
     ...task,
+    allowOutput,
     args,
     command,
     ignoreOutput,

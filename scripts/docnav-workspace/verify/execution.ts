@@ -53,7 +53,7 @@ function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResu
     stdout: data.stdout,
     stderr: data.stderr,
     combinedOutput,
-    visibleOutput: visibleOutputForCheck(check, combinedOutput),
+    visibleOutput: visibleOutputForCheck(check, combinedOutput, data.status),
     durationMs: data.endedAtMs - data.startedAtMs,
     startedAtMs: data.startedAtMs,
     endedAtMs: data.endedAtMs

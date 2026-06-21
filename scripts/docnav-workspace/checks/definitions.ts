@@ -15,8 +15,17 @@ const nodeTestSuccessOutput = [
   /^# (tests|suites|pass|fail|cancelled|skipped|todo|duration_ms) /
 ];
 
-const cargoFinishedOutput = [
-  /^\s*Finished `.*` profile .*$/
+const cargoProgressOutput = [/^\s*(Checking|Compiling) .*$/, /^\s*Finished `.*` profile .*$/];
+
+const qualityWarningOutput = [
+  /^Quality check status: warning$/,
+  /^Warnings: \d+ total \(\d+ changed, \d+ regressions\)$/,
+  /^This is a quick quality check, not a full quality scan\.$/,
+  /^Showing first \d+ warnings:$/,
+  /^\s*\d+\. \[.+\] .+$/,
+  /^\s*\.\.\. and \d+ more warnings$/,
+  /^Detailed report: .+$/,
+  /^Warning records: .+$/
 ];
 
 export const checks = defineChecks([
@@ -58,6 +67,9 @@ export const checks = defineChecks([
           "quick",
           "--artifact-dir",
           "artifacts/docnav-quality/quick"
+        ],
+        allowOutput: [
+          ...qualityWarningOutput
         ],
         warningOutput: [
           /^Quality check status: warning$/m
@@ -108,7 +120,7 @@ export const checks = defineChecks([
         command: "git",
         args: ["diff", "--check"],
         ignoreOutput: [
-          /LF will be replaced by CRLF/i
+          /\b(CRLF|LF) will be replaced by (CRLF|LF)\b/i
         ]
       }
     ]
@@ -130,6 +142,9 @@ export const checks = defineChecks([
         command: "node",
         args: ["scripts/quality/scan.ts", "--profile", "full", "--with-baseline"],
         dependsOn: ["quality-internal-tests"],
+        allowOutput: [
+          ...qualityWarningOutput
+        ],
         warningOutput: [
           /^Quality check status: warning$/m
         ]
@@ -182,7 +197,7 @@ export const checks = defineChecks([
         args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],
         mutex: ["cargo-build"],
         ignoreOutput: [
-          ...cargoFinishedOutput
+          ...cargoProgressOutput
         ]
       },
       {
@@ -192,7 +207,7 @@ export const checks = defineChecks([
         args: ["test", "--workspace"],
         mutex: ["cargo-build"],
         ignoreOutput: [
-          ...cargoFinishedOutput,
+          ...cargoProgressOutput,
           /^\s*Running unittests .*$/,
           /^\s*Running tests[\\/].*$/,
           /^\s*Doc-tests .*$/,
