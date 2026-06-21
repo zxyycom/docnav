@@ -4,7 +4,8 @@ use std::io::{self, Write};
 use docnav_diagnostics::{attach_warnings_to_value, write_warning_text_lines, Warning};
 use docnav_json_io::{write_json_value_pretty, JsonIoError};
 use docnav_protocol::{
-    Operation, OperationResult, ProtocolResponse, StableError, PROTOCOL_VERSION,
+    FailureResponse, Operation, OperationResult, ProtocolResponse, StableError, SuccessResponse,
+    PROTOCOL_VERSION,
 };
 use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind, RenderError};
 use serde_json::{json, Value};
@@ -101,38 +102,78 @@ where
     let output = DocumentOutputOptions::new(mode, warnings);
 
     if output.mode == DocumentOutputMode::ProtocolJson {
-        write_json_value_pretty(response, stdout).map_err(DocumentOutputError::StdoutJson)?;
-        write_warning_text_lines(output.warnings, stderr)
-            .map_err(DocumentOutputError::StderrWarning)?;
-        return Ok(match response {
-            ProtocolResponse::Success(_) => DocumentOutputStatus::Success,
-            ProtocolResponse::Failure(failure) => {
-                DocumentOutputStatus::Failure(failure.error.clone())
-            }
-        });
+        return write_protocol_response(response, output.warnings, stdout, stderr);
     }
 
     match response {
         ProtocolResponse::Success(success) => {
-            write_document_success(
-                &success.result,
-                success.request_id.as_str(),
-                output,
-                stdout,
-                stderr,
-            )?;
-            Ok(DocumentOutputStatus::Success)
+            write_success_response(success, output, stdout, stderr)
         }
         ProtocolResponse::Failure(failure) => {
-            let context = ProtocolOutputContext::new(
-                failure.protocol_version.as_str(),
-                failure.request_id.as_str(),
-                failure.operation,
-            );
-            write_document_failure(&failure.error, context, output, stdout, stderr)?;
-            Ok(DocumentOutputStatus::Failure(failure.error.clone()))
+            write_failure_response(failure, output, stdout, stderr)
         }
     }
+}
+
+fn write_protocol_response<W, E>(
+    response: &ProtocolResponse,
+    warnings: &[Warning],
+    stdout: &mut W,
+    stderr: &mut E,
+) -> Result<DocumentOutputStatus, DocumentOutputError>
+where
+    W: Write,
+    E: Write,
+{
+    write_json_value_pretty(response, stdout).map_err(DocumentOutputError::StdoutJson)?;
+    write_warning_text_lines(warnings, stderr).map_err(DocumentOutputError::StderrWarning)?;
+    Ok(response_status(response))
+}
+
+fn response_status(response: &ProtocolResponse) -> DocumentOutputStatus {
+    match response {
+        ProtocolResponse::Success(_) => DocumentOutputStatus::Success,
+        ProtocolResponse::Failure(failure) => DocumentOutputStatus::Failure(failure.error.clone()),
+    }
+}
+
+fn write_success_response<W, E>(
+    success: &SuccessResponse,
+    output: DocumentOutputOptions<'_>,
+    stdout: &mut W,
+    stderr: &mut E,
+) -> Result<DocumentOutputStatus, DocumentOutputError>
+where
+    W: Write,
+    E: Write,
+{
+    write_document_success(
+        &success.result,
+        success.request_id.as_str(),
+        output,
+        stdout,
+        stderr,
+    )?;
+    Ok(DocumentOutputStatus::Success)
+}
+
+fn write_failure_response<W, E>(
+    failure: &FailureResponse,
+    output: DocumentOutputOptions<'_>,
+    stdout: &mut W,
+    stderr: &mut E,
+) -> Result<DocumentOutputStatus, DocumentOutputError>
+where
+    W: Write,
+    E: Write,
+{
+    let context = ProtocolOutputContext::new(
+        failure.protocol_version.as_str(),
+        failure.request_id.as_str(),
+        failure.operation,
+    );
+    write_document_failure(&failure.error, context, output, stdout, stderr)?;
+    Ok(DocumentOutputStatus::Failure(failure.error.clone()))
 }
 
 pub fn write_document_result<W, E>(

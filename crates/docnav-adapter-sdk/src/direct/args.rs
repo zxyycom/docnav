@@ -809,44 +809,73 @@ fn first_invalid_used_flag(
 ) -> Option<String> {
     let mut index = 0;
     while index < args.len() {
-        let token = &args[index];
-        let Some(flag) = known_value_flag(token, native_options) else {
+        let Some(occurrence) = direct_value_flag_occurrence(args, index, native_options) else {
             index += 1;
             continue;
         };
-        let (flag_token, inline_value) = split_equals(token);
-        let value = inline_value.or_else(|| args.get(index + 1).map(String::as_str));
-        if operation_uses_flag(operation, flag) {
-            match (flag, value) {
-                (_, None) => return Some(format!("{flag_token} requires a value")),
-                (KnownValueFlag::Page, Some(value))
-                    if value.parse::<u32>().ok().filter(|v| *v > 0).is_none() =>
-                {
-                    return Some(format!("{} must be a positive integer", flags::PAGE));
-                }
-                (KnownValueFlag::LimitChars, Some(value))
-                    if value.parse::<u32>().ok().filter(|v| *v > 0).is_none() =>
-                {
-                    return Some(format!("{} must be a positive integer", flags::LIMIT_CHARS));
-                }
-                (KnownValueFlag::Output, Some(value)) if parse_output(value).is_err() => {
-                    return Some(format!("invalid {} {value:?}", flags::OUTPUT));
-                }
-                (KnownValueFlag::Ref, Some("")) => {
-                    return Some(format!("{} must not be empty", flags::REF));
-                }
-                (KnownValueFlag::Query, Some("")) => {
-                    return Some(format!("{} must not be empty", flags::QUERY));
-                }
-                (KnownValueFlag::Native(spec), Some(value)) if spec.parse_value(value).is_err() => {
-                    return spec.parse_value(value).err();
-                }
-                _ => {}
+        if operation_uses_flag(operation, occurrence.flag) {
+            if let Some(error) = direct_value_flag_error(occurrence) {
+                return Some(error);
             }
         }
-        index += if inline_value.is_some() { 1 } else { 2 };
+        index += occurrence.consumed;
     }
     None
+}
+
+#[derive(Clone, Copy)]
+struct DirectValueFlagOccurrence<'a> {
+    flag: KnownValueFlag<'a>,
+    flag_token: &'a str,
+    value: Option<&'a str>,
+    consumed: usize,
+}
+
+fn direct_value_flag_occurrence<'a>(
+    args: &'a [String],
+    index: usize,
+    native_options: &'a [NativeOptionSpec],
+) -> Option<DirectValueFlagOccurrence<'a>> {
+    let token = &args[index];
+    let flag = known_value_flag(token, native_options)?;
+    let (flag_token, inline_value) = split_equals(token);
+    Some(DirectValueFlagOccurrence {
+        flag,
+        flag_token,
+        value: inline_value.or_else(|| args.get(index + 1).map(String::as_str)),
+        consumed: if inline_value.is_some() { 1 } else { 2 },
+    })
+}
+
+fn direct_value_flag_error(occurrence: DirectValueFlagOccurrence<'_>) -> Option<String> {
+    match (occurrence.flag, occurrence.value) {
+        (_, None) => Some(format!("{} requires a value", occurrence.flag_token)),
+        (KnownValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
+        (KnownValueFlag::LimitChars, Some(value)) => positive_flag_error(flags::LIMIT_CHARS, value),
+        (KnownValueFlag::Output, Some(value)) => output_flag_error(value),
+        (KnownValueFlag::Ref, Some("")) => Some(format!("{} must not be empty", flags::REF)),
+        (KnownValueFlag::Query, Some("")) => Some(format!("{} must not be empty", flags::QUERY)),
+        (KnownValueFlag::Native(spec), Some(value)) => spec.parse_value(value).err(),
+        _ => None,
+    }
+}
+
+fn positive_flag_error(flag: &str, value: &str) -> Option<String> {
+    if value
+        .parse::<u32>()
+        .ok()
+        .filter(|value| *value > 0)
+        .is_some()
+    {
+        return None;
+    }
+    Some(format!("{flag} must be a positive integer"))
+}
+
+fn output_flag_error(value: &str) -> Option<String> {
+    parse_output(value)
+        .err()
+        .map(|_| format!("invalid {} {value:?}", flags::OUTPUT))
 }
 
 #[cfg(test)]

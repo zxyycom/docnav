@@ -27,19 +27,9 @@ impl ParsedRef {
         let (line_str, rest) = rest.split_once(":H")?;
         let (level_str, index_str) = rest.split_once(":I")?;
 
-        // 拒绝前导零
-        if line_str.starts_with('0') || level_str.starts_with('0') || index_str.starts_with('0') {
-            return None;
-        }
-
-        let line = line_str.parse::<usize>().ok()?;
-        let level = level_str.parse::<u8>().ok()?;
-        let index = index_str.parse::<usize>().ok()?;
-
-        // 正整数 + level 1-6
-        if line == 0 || level == 0 || level > 6 || index == 0 {
-            return None;
-        }
+        let line = parse_positive_usize(line_str)?;
+        let level = parse_heading_level(level_str)?;
+        let index = parse_positive_usize(index_str)?;
 
         Some(Self::Heading { line, level, index })
     }
@@ -52,6 +42,23 @@ impl ParsedRef {
             }
         }
     }
+}
+
+fn parse_positive_usize(value: &str) -> Option<usize> {
+    if value.starts_with('0') {
+        return None;
+    }
+    value.parse::<usize>().ok().filter(|parsed| *parsed > 0)
+}
+
+fn parse_heading_level(value: &str) -> Option<u8> {
+    if value.starts_with('0') {
+        return None;
+    }
+    value
+        .parse::<u8>()
+        .ok()
+        .filter(|parsed| (1..=6).contains(parsed))
 }
 
 #[cfg(test)]

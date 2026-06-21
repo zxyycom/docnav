@@ -24,41 +24,8 @@ pub(super) fn parse_document_command(
         .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
         .map_err(|_| document_parse_error(operation, args))?;
 
-    let path = required_string(&matches, arg_ids::PATH, "path")?;
-    let ref_id = if operation == Operation::Read {
-        optional_explicit_string(&matches, arg_ids::REF)
-    } else {
-        None
-    };
-    let query = if operation == Operation::Find {
-        optional_explicit_string(&matches, arg_ids::QUERY)
-    } else {
-        None
-    };
-    let page = if operation == Operation::Info {
-        None
-    } else {
-        optional_explicit_positive(&matches, arg_ids::PAGE, flags::PAGE)?
-    };
-    let limit_chars = if operation == Operation::Info {
-        None
-    } else {
-        optional_explicit_positive(&matches, arg_ids::LIMIT_CHARS, flags::LIMIT_CHARS)?
-    };
-    let output = optional_explicit_output(&matches)?;
-    let adapter = optional_explicit_string(&matches, arg_ids::ADAPTER);
-
     Ok(ParsedCli {
-        command: CliCommand::Document(DocumentCommand {
-            operation,
-            path,
-            ref_id,
-            query,
-            page,
-            limit_chars,
-            output,
-            adapter,
-        }),
+        command: CliCommand::Document(document_command_from_matches(operation, &matches)?),
         warnings,
     })
 }
@@ -84,6 +51,54 @@ fn collect_document_args(operation: Operation, args: &[String]) -> AppResult<Loo
             .map(warning_from_ignored_arg)
             .collect(),
     })
+}
+
+fn document_command_from_matches(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> AppResult<DocumentCommand> {
+    Ok(DocumentCommand {
+        operation,
+        path: required_string(matches, arg_ids::PATH, "path")?,
+        ref_id: parse_ref_id(operation, matches),
+        query: parse_query(operation, matches),
+        page: parse_page(operation, matches)?,
+        limit_chars: parse_limit_chars(operation, matches)?,
+        output: optional_explicit_output(matches)?,
+        adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
+    })
+}
+
+fn parse_ref_id(operation: Operation, matches: &clap::parser::ArgMatches) -> Option<String> {
+    (operation == Operation::Read)
+        .then(|| optional_explicit_string(matches, arg_ids::REF))
+        .flatten()
+}
+
+fn parse_query(operation: Operation, matches: &clap::parser::ArgMatches) -> Option<String> {
+    (operation == Operation::Find)
+        .then(|| optional_explicit_string(matches, arg_ids::QUERY))
+        .flatten()
+}
+
+fn parse_page(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> AppResult<Option<docnav_protocol::PositiveInteger>> {
+    if operation == Operation::Info {
+        return Ok(None);
+    }
+    optional_explicit_positive(matches, arg_ids::PAGE, flags::PAGE)
+}
+
+fn parse_limit_chars(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> AppResult<Option<docnav_protocol::PositiveInteger>> {
+    if operation == Operation::Info {
+        return Ok(None);
+    }
+    optional_explicit_positive(matches, arg_ids::LIMIT_CHARS, flags::LIMIT_CHARS)
 }
 
 fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
@@ -143,61 +158,82 @@ fn has_value_flag(args: &[String], expected: &str) -> bool {
 fn first_invalid_used_flag(operation: Operation, args: &[String]) -> Option<AppError> {
     let mut index = 0;
     while index < args.len() {
-        let token = &args[index];
-        let Some(flag) = known_value_flag(token) else {
+        let Some(occurrence) = value_flag_occurrence(args, index) else {
             index += 1;
             continue;
         };
-        let (flag_token, inline_value) = split_equals(token);
-        let value = inline_value.or_else(|| args.get(index + 1).map(String::as_str));
-        if document_uses_flag(operation, flag) {
-            match (flag, value) {
-                (_, None) => {
-                    return Some(AppError::invalid_request(
-                        flag_token,
-                        "flag requires a value",
-                    ))
-                }
-                (ValueFlag::Page, Some(value))
-                    if value.parse::<u32>().ok().filter(|v| *v > 0).is_none() =>
-                {
-                    return Some(AppError::invalid_request(
-                        flags::PAGE,
-                        format!("{} must be a positive integer", flags::PAGE),
-                    ));
-                }
-                (ValueFlag::LimitChars, Some(value))
-                    if value.parse::<u32>().ok().filter(|v| *v > 0).is_none() =>
-                {
-                    return Some(AppError::invalid_request(
-                        flags::LIMIT_CHARS,
-                        format!("{} must be a positive integer", flags::LIMIT_CHARS),
-                    ));
-                }
-                (ValueFlag::Output, Some(value)) => {
-                    if let Err(reason) = value.parse::<super::super::command_model::OutputMode>() {
-                        return Some(AppError::invalid_request(
-                            flags::OUTPUT,
-                            format!("invalid {}: {reason}", flags::OUTPUT),
-                        ));
-                    }
-                }
-                (ValueFlag::Ref, Some("")) => {
-                    return Some(AppError::invalid_request(
-                        flags::REF,
-                        format!("{} value must not be empty", flags::REF),
-                    ));
-                }
-                (ValueFlag::Query, Some("")) => {
-                    return Some(AppError::invalid_request(
-                        flags::QUERY,
-                        format!("{} value must not be empty", flags::QUERY),
-                    ));
-                }
-                _ => {}
+        if document_uses_flag(operation, occurrence.flag) {
+            if let Some(error) = value_flag_error(occurrence) {
+                return Some(error);
             }
         }
-        index += if inline_value.is_some() { 1 } else { 2 };
+        index += occurrence.consumed;
     }
     None
+}
+
+#[derive(Clone, Copy)]
+struct ValueFlagOccurrence<'a> {
+    flag: ValueFlag,
+    flag_token: &'a str,
+    value: Option<&'a str>,
+    consumed: usize,
+}
+
+fn value_flag_occurrence(args: &[String], index: usize) -> Option<ValueFlagOccurrence<'_>> {
+    let token = &args[index];
+    let flag = known_value_flag(token)?;
+    let (flag_token, inline_value) = split_equals(token);
+    Some(ValueFlagOccurrence {
+        flag,
+        flag_token,
+        value: inline_value.or_else(|| args.get(index + 1).map(String::as_str)),
+        consumed: if inline_value.is_some() { 1 } else { 2 },
+    })
+}
+
+fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
+    match (occurrence.flag, occurrence.value) {
+        (_, None) => Some(AppError::invalid_request(
+            occurrence.flag_token,
+            "flag requires a value",
+        )),
+        (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
+        (ValueFlag::LimitChars, Some(value)) => positive_flag_error(flags::LIMIT_CHARS, value),
+        (ValueFlag::Output, Some(value)) => output_flag_error(value),
+        (ValueFlag::Ref, Some("")) => Some(empty_value_error(flags::REF)),
+        (ValueFlag::Query, Some("")) => Some(empty_value_error(flags::QUERY)),
+        _ => None,
+    }
+}
+
+fn positive_flag_error(flag: &str, value: &str) -> Option<AppError> {
+    if value
+        .parse::<u32>()
+        .ok()
+        .filter(|value| *value > 0)
+        .is_some()
+    {
+        return None;
+    }
+    Some(AppError::invalid_request(
+        flag,
+        format!("{flag} must be a positive integer"),
+    ))
+}
+
+fn output_flag_error(value: &str) -> Option<AppError> {
+    value
+        .parse::<super::super::command_model::OutputMode>()
+        .err()
+        .map(|reason| {
+            AppError::invalid_request(
+                flags::OUTPUT,
+                format!("invalid {}: {reason}", flags::OUTPUT),
+            )
+        })
+}
+
+fn empty_value_error(flag: &str) -> AppError {
+    AppError::invalid_request(flag, format!("{flag} value must not be empty"))
 }

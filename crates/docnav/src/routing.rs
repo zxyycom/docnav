@@ -22,6 +22,16 @@ pub struct AdapterSelection {
     pub warnings: Vec<AdapterSelectionWarning>,
 }
 
+#[derive(Clone, Copy)]
+pub struct AdapterSelectionRequest<'a> {
+    pub project: &'a ProjectContext,
+    pub registry: &'a AdapterRegistry,
+    pub document: &'a NormalizedDocumentPath,
+    pub operation: Operation,
+    pub preselected_adapter_id: Option<&'a str>,
+    pub preselected_source: &'a str,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdapterSelectionWarning {
     pub adapter_id: String,
@@ -64,14 +74,15 @@ struct SelectedCandidate {
     probe: ProbeResult,
 }
 
-pub fn select_adapter(
-    project: &ProjectContext,
-    registry: &AdapterRegistry,
-    document: &NormalizedDocumentPath,
-    operation: Operation,
-    preselected_adapter_id: Option<&str>,
-    preselected_source: &str,
-) -> AppResult<AdapterSelection> {
+pub fn select_adapter(request: AdapterSelectionRequest<'_>) -> AppResult<AdapterSelection> {
+    let AdapterSelectionRequest {
+        project,
+        registry,
+        document,
+        operation,
+        preselected_adapter_id,
+        preselected_source,
+    } = request;
     let mut state = SelectionState::default();
     let preselected_source = PreselectedSource::from_raw(preselected_source);
 

@@ -10,7 +10,7 @@ use crate::output::{outcome_for_response, CommandOutcome};
 use crate::project_context::ProjectContext;
 use crate::project_paths::normalize_document_path;
 use crate::registry::AdapterRegistry;
-use crate::routing::{select_adapter, AdapterSelectionWarning};
+use crate::routing::{select_adapter, AdapterSelectionRequest, AdapterSelectionWarning};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DocumentRequest {
@@ -69,14 +69,14 @@ impl DocnavRuntime for AdapterRuntime {
     fn execute_document(&self, request: DocumentRequest) -> AppResult<CommandOutcome> {
         let document = normalize_document_path(&request.project, &request.path)?;
         let registry = AdapterRegistry::load(&request.project)?;
-        let selection = select_adapter(
-            &request.project,
-            &registry,
-            &document,
-            request.operation,
-            request.adapter.as_deref(),
-            &request.defaults.adapter.source,
-        )?;
+        let selection = select_adapter(AdapterSelectionRequest {
+            project: &request.project,
+            registry: &registry,
+            document: &document,
+            operation: request.operation,
+            preselected_adapter_id: request.adapter.as_deref(),
+            preselected_source: &request.defaults.adapter.source,
+        })?;
         let invoke = invoke_adapter(
             &request.project.project_root,
             &selection.record,
@@ -104,14 +104,14 @@ impl DocnavRuntime for AdapterRuntime {
         let effective_operation = operation.unwrap_or(Operation::Outline);
         let document = normalize_document_path(&context.project, &path)?;
         let registry = AdapterRegistry::load(&context.project)?;
-        let selection = select_adapter(
-            &context.project,
-            &registry,
-            &document,
-            effective_operation,
-            defaults.adapter.value.as_str(),
-            &defaults.adapter.source,
-        )?;
+        let selection = select_adapter(AdapterSelectionRequest {
+            project: &context.project,
+            registry: &registry,
+            document: &document,
+            operation: effective_operation,
+            preselected_adapter_id: defaults.adapter.value.as_str(),
+            preselected_source: &defaults.adapter.source,
+        })?;
 
         Ok(DocumentContextOutput {
             path: document.adapter_path,

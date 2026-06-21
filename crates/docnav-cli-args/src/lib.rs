@@ -78,56 +78,95 @@ pub fn scan_loose_args(
     args: &[String],
     config: &LooseArgScan<'_>,
 ) -> Result<LooseArgScanResult, MissingValue> {
-    let mut retained_args = Vec::new();
-    let mut ignored = Vec::new();
-    let mut positional_count = 0;
-    let mut index = 0;
+    let mut state = LooseArgScanState::default();
+    while state.has_next(args) {
+        scan_next_arg(args, config, &mut state)?;
+    }
+    Ok(state.finish())
+}
 
-    while index < args.len() {
-        let token = &args[index];
-        let (flag_token, inline_value) = split_equals(token);
-        if config
-            .known_switch_flags
-            .iter()
-            .any(|known| *known == token)
-        {
-            retained_args.push(token.clone());
-            index += 1;
-        } else if let Some(flag) = known_value_flag(config.known_value_flags, flag_token) {
-            if flag.used {
-                push_retained_value_arg(&mut retained_args, args, &mut index, flag_token)?;
-            } else {
-                let value = ignored_value(args, &mut index, flag_token)?;
-                ignored.push(IgnoredArg::UnusedValueFlag {
-                    flag: token.clone(),
-                    value,
-                    command: config.command.to_owned(),
-                });
-            }
-        } else if is_long_flag(token) {
-            ignored.push(IgnoredArg::UnknownFlag {
-                token: token.clone(),
-            });
-            index += 1;
-        } else {
-            if positional_count < config.positional_limit {
-                retained_args.push(token.clone());
-            } else {
-                ignored.push(IgnoredArg::ExtraPositional {
-                    token: token.clone(),
-                });
-            }
-            positional_count += 1;
-            index += 1;
-        }
+#[derive(Default)]
+struct LooseArgScanState {
+    retained_args: Vec<String>,
+    ignored: Vec<IgnoredArg>,
+    positional_count: usize,
+    index: usize,
+}
 
-        let _ = inline_value;
+impl LooseArgScanState {
+    fn has_next(&self, args: &[String]) -> bool {
+        self.index < args.len()
     }
 
-    Ok(LooseArgScanResult {
-        retained_args,
-        ignored,
-    })
+    fn finish(self) -> LooseArgScanResult {
+        LooseArgScanResult {
+            retained_args: self.retained_args,
+            ignored: self.ignored,
+        }
+    }
+}
+
+fn scan_next_arg(
+    args: &[String],
+    config: &LooseArgScan<'_>,
+    state: &mut LooseArgScanState,
+) -> Result<(), MissingValue> {
+    let token = &args[state.index];
+    let (flag_token, _inline_value) = split_equals(token);
+
+    if is_known_switch_flag(config, token) {
+        state.retained_args.push(token.clone());
+        state.index += 1;
+    } else if let Some(flag) = known_value_flag(config.known_value_flags, flag_token) {
+        scan_value_flag_arg(args, config, state, flag, flag_token)?;
+    } else if is_long_flag(token) {
+        state.ignored.push(IgnoredArg::UnknownFlag {
+            token: token.clone(),
+        });
+        state.index += 1;
+    } else {
+        scan_positional_arg(args, config, state);
+    }
+
+    Ok(())
+}
+
+fn is_known_switch_flag(config: &LooseArgScan<'_>, token: &str) -> bool {
+    config.known_switch_flags.contains(&token)
+}
+
+fn scan_value_flag_arg(
+    args: &[String],
+    config: &LooseArgScan<'_>,
+    state: &mut LooseArgScanState,
+    flag: KnownValueFlag<'_>,
+    flag_token: &str,
+) -> Result<(), MissingValue> {
+    if flag.used {
+        push_retained_value_arg(&mut state.retained_args, args, &mut state.index, flag_token)
+    } else {
+        let token = args[state.index].clone();
+        let value = ignored_value(args, &mut state.index, flag_token)?;
+        state.ignored.push(IgnoredArg::UnusedValueFlag {
+            flag: token,
+            value,
+            command: config.command.to_owned(),
+        });
+        Ok(())
+    }
+}
+
+fn scan_positional_arg(args: &[String], config: &LooseArgScan<'_>, state: &mut LooseArgScanState) {
+    let token = &args[state.index];
+    if state.positional_count < config.positional_limit {
+        state.retained_args.push(token.clone());
+    } else {
+        state.ignored.push(IgnoredArg::ExtraPositional {
+            token: token.clone(),
+        });
+    }
+    state.positional_count += 1;
+    state.index += 1;
 }
 
 fn known_value_flag<'a>(
