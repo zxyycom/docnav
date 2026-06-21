@@ -2,7 +2,7 @@ import {
   buildCargoExecutables,
   reportCargoExecutableBuildFailure
 } from "../../tools/cargo.ts";
-import type { BinarySpec } from "./specs.ts";
+import type { BinarySpec } from "./args.ts";
 
 export function buildCargoBins(cwd: string, binaries: BinarySpec[], quiet: boolean): Map<string, string> {
   const result = buildCargoExecutables({ binaries, cwd });

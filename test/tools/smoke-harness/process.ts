@@ -1,8 +1,6 @@
 import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
 
-import { createCommandOutputCapture } from "./process/output.ts";
-
 export const MAX_COMMAND_OUTPUT = 1024 * 1024 * 64;
 
 export interface SmokeCommandOptions {
@@ -26,6 +24,11 @@ export interface PreparedCliCommand {
   cwd: string;
   executable: string;
   processOptions: SmokeCommandOptions;
+}
+
+interface CommandOutputCapture {
+  append: (chunk: unknown, streamName: "stderr" | "stdout") => void;
+  snapshot: () => { stderr: string; stdout: string };
 }
 
 export function createProcessOptions(
@@ -118,4 +121,46 @@ function summarizeStdin(stdin: Buffer | string | null | undefined): string | nul
   const byteCount = Buffer.isBuffer(stdin) ? stdin.length : Buffer.byteLength(String(stdin), "utf8");
   const unit = byteCount === 1 ? "byte" : "bytes";
   return `${byteCount} ${unit} stdin`;
+}
+
+function createCommandOutputCapture(
+  maxBuffer: number,
+  onMaxBufferExceeded: () => void
+): CommandOutputCapture {
+  let stdout = "";
+  let stderr = "";
+  let stdoutBytes = 0;
+  let stderrBytes = 0;
+  let maxBufferExceeded = false;
+
+  return {
+    append(chunk, streamName) {
+      const text = commandOutputText(chunk);
+      const bytes = Buffer.byteLength(text, "utf8");
+      if (streamName === "stdout") {
+        stdout += text;
+        stdoutBytes += bytes;
+      } else {
+        stderr += text;
+        stderrBytes += bytes;
+      }
+      if (stdoutBytes + stderrBytes > maxBuffer && !maxBufferExceeded) {
+        maxBufferExceeded = true;
+        onMaxBufferExceeded();
+      }
+    },
+    snapshot() {
+      return { stdout, stderr };
+    }
+  };
+}
+
+function commandOutputText(chunk: unknown): string {
+  if (Buffer.isBuffer(chunk)) {
+    return chunk.toString("utf8");
+  }
+  if (typeof chunk === "string") {
+    return chunk;
+  }
+  return String(chunk);
 }
