@@ -12,10 +12,7 @@ type FileWarningInput = {
 
 type FileWarningBuilder = (input: FileWarningInput) => WarningCandidate | null;
 
-const FILE_WARNING_BUILDERS: FileWarningBuilder[] = [
-  buildFileLineWarning,
-  buildFileDecisionTokenWarning
-];
+const FILE_WARNING_BUILDERS: FileWarningBuilder[] = [buildFileLineWarning];
 
 export function generateFileWarnings(files: FileMetric[], context: WarningContext): WarningCandidate[] {
   const warnings: WarningCandidate[] = [];
@@ -59,33 +56,6 @@ function buildFileLineWarning(input: FileWarningInput): WarningCandidate | null 
     sourceTool: "scc",
     suggestion: fileLineSuggestion(fileCodeLines, lineFloor),
     value: fileCodeLines
-  });
-}
-
-function buildFileDecisionTokenWarning(input: FileWarningInput): WarningCandidate | null {
-  const { areaPolicy, baseFile, context, file } = input;
-  const decisionTokenFloor = context.config.scc?.fileDecisionTokens?.absoluteFloor ?? 20;
-  const decisionTokenDelta = context.config.scc?.fileDecisionTokens?.changedDelta ?? 10;
-  const baselineDecisionTokens = baseFile?.decisionTokens?.value ?? (context.hasBaselineFiles ? 0 : null);
-  const decisionTokenCount = file.decisionTokens.value;
-  const decisionTokenDeltaValue = deltaFrom(decisionTokenCount, baselineDecisionTokens);
-
-  return buildMetricWarning({
-    areaPolicy,
-    baselineValue: baselineDecisionTokens,
-    codeArea: file.codeArea,
-    deltaFloor: decisionTokenDelta,
-    deltaValue: decisionTokenDeltaValue,
-    floor: decisionTokenFloor,
-    isChanged: file.isChanged,
-    line: null,
-    message: `File "${file.path}" has ${decisionTokenCount} scc decision tokens (threshold: ${decisionTokenFloor} decision tokens)`,
-    metric: "decision-tokens",
-    path: file.path,
-    ruleId: "scc-file-decision-tokens",
-    sourceTool: "scc",
-    suggestion: "Review with lizard function CC and file responsibility before refactoring",
-    value: decisionTokenCount
   });
 }
 

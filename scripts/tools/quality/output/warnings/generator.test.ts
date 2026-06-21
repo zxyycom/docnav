@@ -31,35 +31,11 @@ describe("quality warning generation", () => {
     assert.match(warnings.all[0]!.suggestion ?? "", /responsibility/);
     assert.doesNotMatch(warnings.all[0]!.suggestion ?? "", /\bsplitting\b|\bsplit\b/i);
   });
-
-  it("labels scc Complexity warnings as decision-token counts", () => {
-    const files = [
-      qualityFile("scripts/branchy.ts", { lines: 90, codeLines: 80, decisionTokens: 21 })
-    ];
-
-    const warnings = generateWarningChannels({
-      baseline: null,
-      comparisonStatus: "baseline-unavailable",
-      config: DEFAULT_CONFIG,
-      duplicates: [],
-      files,
-      functions: [],
-      scope: { changed: false, changedFiles: [] }
-    });
-
-    assert.deepEqual(
-      warnings.all.map((warning) => [warning.ruleId, warning.path, warning.metric, warning.value]),
-      [["scc-file-decision-tokens", "scripts/branchy.ts", "decision-tokens", 21]]
-    );
-    assert.match(warnings.all[0]!.message, /21 scc decision tokens/);
-    assert.doesNotMatch(warnings.all[0]!.message, /\bcomplexity\b/i);
-    assert.match(warnings.all[0]!.suggestion ?? "", /lizard function CC/);
-  });
 });
 
 function qualityFile(
   path: string,
-  options: { codeLines: number; decisionTokens?: number; lines: number }
+  options: { codeLines: number; lines: number }
 ): FileMetric {
   return {
     path,
@@ -67,7 +43,7 @@ function qualityFile(
     codeArea: "node-production-scripts",
     lines: options.lines,
     codeLines: options.codeLines,
-    decisionTokens: { value: options.decisionTokens ?? 1, source: "scc" },
+    decisionTokens: { value: 1, source: "scc" },
     isChanged: false
   };
 }

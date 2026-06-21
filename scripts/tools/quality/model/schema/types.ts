@@ -82,7 +82,6 @@ export interface QualityConfig {
   };
   scc: {
     fileCodeLines: QualityThreshold;
-    fileDecisionTokens: QualityThreshold;
   };
   tools: {
     lizard: ToolConfig;
