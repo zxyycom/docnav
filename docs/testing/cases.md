@@ -241,7 +241,7 @@ Proves:
 
 ### WB-CORE-ADAPTER-001 Core 校验 adapter contract 对齐
 Status: implemented
-Code: `crates/docnav/src/adapter_output_contract.rs`
+Code: `crates/docnav/src/adapter_output_contract/tests.rs`
 
 Proves:
 - Core 区分 adapter discovery、selection、invoke process 和 malformed adapter output 边界。
@@ -281,7 +281,7 @@ Proves:
 
 ### WB-READABLE-RENDERER-001 Readable renderer success path block/framing 规则
 Status: implemented
-Code: `crates/docnav-readable/src/renderer.rs`
+Code: `crates/docnav-readable/src/renderer/tests/success.rs`
 
 Proves:
 - readable-view header、block replacement、UTF-8 byte length、LF framing、extension fields 和 operation-specific block/no-block config 保持稳定。
@@ -304,7 +304,7 @@ flowchart LR
 
 ### WB-READABLE-RENDERER-002 Readable renderer config/error 边界稳定
 Status: implemented
-Code: `crates/docnav-readable/src/renderer.rs`
+Code: `crates/docnav-readable/src/renderer/tests/errors.rs`
 
 Proves:
 - renderer 可以区分 missing pointer、non-string target、duplicate pointer 和 pointer syntax。
@@ -330,7 +330,7 @@ Proves:
 
 ### WB-PROTO-BASIC-001 Protocol 基础类型和 envelope 规则稳定
 Status: implemented
-Code: `crates/docnav-protocol/src/tests.rs`
+Code: `crates/docnav-protocol/src/tests/basic.rs`
 
 Proves:
 - positive integer、generated request id、success response 和 failure operation preservation 保持协议基础不变量。
@@ -338,7 +338,7 @@ Proves:
 
 ### WB-PROTO-DECODE-001 Protocol request decode 按阶段失败
 Status: implemented
-Code: `crates/docnav-protocol/src/tests.rs`
+Code: `crates/docnav-protocol/src/tests/decode.rs`
 
 Proves:
 - Protocol request decoding 先运行 schema validation，再进入 typed deserialization。
@@ -346,7 +346,7 @@ Proves:
 
 ### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema constraints 被实现测试消费
 Status: implemented
-Code: `crates/docnav-protocol/src/tests.rs`
+Code: `crates/docnav-protocol/src/tests/schema.rs`
 
 Proves:
 - 已文档化的 protocol fixtures 仍能 deserialize 为共享 protocol types。
@@ -484,7 +484,7 @@ Proves:
 
 ### WB-MD-ADAPTER-OUTLINE-001 Markdown adapter outline 默认层级和 fallback 稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/outline_ref.rs`
 
 Proves:
 - adapter outline 默认显示 H1-H3，并忽略 code fence 内 heading 和超出默认层级的 heading。
@@ -508,7 +508,7 @@ Proves:
 
 ### WB-MD-REF-001 Markdown 重复标题生成唯一可读 ref
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/outline_ref.rs`
 
 Proves:
 - 重复 heading path 会生成唯一 ref，且每个 ref 都能读取目标 section。
@@ -516,7 +516,7 @@ Proves:
 
 ### WB-MD-REF-002 Markdown ref 错误区分 invalid 和 not-found
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/outline_ref.rs`
 
 Proves:
 - non-canonical ref 失败为 `REF_INVALID`。
@@ -524,7 +524,7 @@ Proves:
 
 ### WB-MD-PAGE-001 Markdown read 分页按 Unicode 字符计数
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/paging_find.rs`
 
 Proves:
 - Markdown read pagination 按 Unicode 字符计数，不拆分字符。
@@ -532,7 +532,7 @@ Proves:
 
 ### WB-MD-PAGE-002 Markdown outline/find pagination 保持 continuation
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/paging_find.rs`
 
 Proves:
 - outline 和 find 结果按 response page 继续读取直到结束。
@@ -548,7 +548,7 @@ Proves:
 
 ### WB-MD-FIND-001 Markdown find ref 和 display 语义稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/paging_find.rs`
 
 Proves:
 - find 匹配 hidden heading 或 heading 前内容时，ref 指向当前 visible region 或 full document fallback。
@@ -556,7 +556,7 @@ Proves:
 
 ### WB-MD-OPTIONS-001 Markdown adapter-owned options 控制可见粒度
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
 
 Proves:
 - `max_heading_level` options 同时影响 outline 和 find 的 visible heading granularity。
@@ -564,7 +564,7 @@ Proves:
 
 ### WB-MD-META-001 Markdown manifest/probe/info 元数据稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/meta.rs`
 
 Proves:
 - manifest 声明 Markdown v0 capabilities，probe 返回 format evidence 而不泄漏 navigation payload。
@@ -572,7 +572,7 @@ Proves:
 
 ### WB-MD-ERROR-001 Markdown adapter document error 稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
 
 Proves:
 - non-UTF-8 document 返回稳定 encoding error。
@@ -580,7 +580,7 @@ Proves:
 
 ### WB-MD-INVOKE-001 Markdown adapter invoke 写 protocol envelope
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
 
 Proves:
 - Markdown adapter 的 SDK invoke path 写出 protocol response envelope。
@@ -588,7 +588,7 @@ Proves:
 
 ### WB-MD-DISPLAY-001 Markdown outline/find display 保留可读文本
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter.rs`
+Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
 
 Proves:
 - outline display 包含 heading title，find display 包含 match snippet。

@@ -1,7 +1,8 @@
 use std::io::{Read, Write};
 
 use docnav_adapter_sdk::{
-    run_direct_cli, DirectCliConfig, NativeOptionDefault, NativeOptionSpec, NativeOptionValueSpec,
+    run_direct_cli, DirectCliConfig, DirectCliInvocation, NativeOptionDefault, NativeOptionSpec,
+    NativeOptionValueSpec,
 };
 use docnav_protocol::Operation;
 
@@ -30,20 +31,20 @@ where
     E: Write,
 {
     let adapter = MarkdownAdapter;
-    run_direct_cli(
-        &adapter,
+    run_direct_cli(DirectCliInvocation {
+        adapter: &adapter,
         args,
         stdin,
         stdout,
         stderr,
-        DirectCliConfig {
+        config: DirectCliConfig {
             program_name: "docnav-markdown",
             usage: USAGE,
             request_id: REQUEST_ID,
             default_limit_chars: DEFAULT_LIMIT_CHARS,
             native_options: NATIVE_OPTIONS,
         },
-    )
+    })
 }
 
 #[cfg(test)]
