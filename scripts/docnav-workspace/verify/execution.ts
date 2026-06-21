@@ -3,6 +3,7 @@ import type { ProcessFailure } from "../../tools/process.ts";
 import type { CheckStatus } from "../checks/index.ts";
 import type { CheckTask } from "../checks/index.ts";
 import type { CheckResult } from "../results.ts";
+import { visibleOutputForCheck } from "../results.ts";
 import { environmentForCheck } from "./environment.ts";
 import { root } from "./paths.ts";
 
@@ -42,6 +43,7 @@ export async function executeCheck(check: CheckTask): Promise<CheckResult> {
 }
 
 function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResult {
+  const combinedOutput = combinedProcessOutput(data);
   return {
     check,
     ok: data.ok,
@@ -50,7 +52,8 @@ function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResu
     status: data.status,
     stdout: data.stdout,
     stderr: data.stderr,
-    combinedOutput: combinedProcessOutput(data),
+    combinedOutput,
+    visibleOutput: visibleOutputForCheck(check, combinedOutput),
     durationMs: data.endedAtMs - data.startedAtMs,
     startedAtMs: data.startedAtMs,
     endedAtMs: data.endedAtMs

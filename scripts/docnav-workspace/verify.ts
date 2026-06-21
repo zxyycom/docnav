@@ -16,8 +16,15 @@ export {
   visibleOutputLines,
   isIgnoredOutput
 } from "./checks/index.ts";
-export { formatCompletionLine, formatDurationMs } from "./results.ts";
+export {
+  createReportCompletionTracker,
+  formatCompletionLine,
+  formatDurationMs,
+  visibleOutputForCheck
+} from "./results.ts";
+export type { CheckResult, CompletionResult } from "./results.ts";
 export { parseArgs, resolveVerificationConcurrency };
+export { printCompletionResult } from "./verify/output.ts";
 
 if (isMainModule()) {
   void main();

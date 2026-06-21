@@ -4,13 +4,17 @@ import assert from "node:assert/strict";
 import {
   PROFILE_FULL,
   PROFILE_REQUIRED,
+  createReportCompletionTracker,
   checks,
   checksForProfile,
   formatCompletionLine,
   formatDurationMs,
   parseArgs,
+  printCompletionResult,
   reportCountForChecks,
   resolveVerificationConcurrency,
+  type CheckResult,
+  visibleOutputForCheck,
   visibleOutputLines
 } from "./verify.ts";
 import { executeCheck } from "./verify/execution.ts";
@@ -40,6 +44,59 @@ describe("workspace verifier configuration", () => {
     ].join("\n");
 
     assert.deepEqual(visibleOutputLines(check, output), ["unexpected diagnostic"]);
+  });
+
+  it("filters package manager echoes from successful script checks", () => {
+    const check = checkByLabel("TypeScript script typecheck");
+
+    assert.deepEqual(visibleOutputLines(check, "$ tsc -p tsconfig.json"), []);
+  });
+
+  it("carries visible child output into report completions", () => {
+    const catalogCheck = checkByLabel("docs case catalog validator");
+    const schemaCheck = checkByLabel("docs schema validator");
+    const completeReport = createReportCompletionTracker([catalogCheck, schemaCheck]);
+
+    assert.equal(
+      completeReport(checkResult(catalogCheck, {
+        stdout: [
+          "test case catalog ok: 86 implemented, 0 planned",
+          "catalog diagnostic"
+        ].join("\n")
+      })),
+      null
+    );
+
+    const report = completeReport(checkResult(schemaCheck, {
+      stderr: [
+        "schema ok: docs/schemas/readable-read.schema.json",
+        "schema diagnostic"
+      ].join("\n")
+    }));
+
+    assert.ok(report);
+    assert.equal(report.check.label, "docs validators");
+    assert.equal(report.visibleOutput, "catalog diagnostic\nschema diagnostic");
+    assert.equal(report.combinedOutput, report.visibleOutput);
+  });
+
+  it("prints visible report output immediately after completion lines", () => {
+    const lines: string[] = [];
+
+    printCompletionResult(
+      {
+        status: "passed",
+        check: { id: "docs-validators", label: "docs validators" },
+        durationMs: 1250,
+        visibleOutput: "catalog diagnostic\nschema diagnostic"
+      },
+      (line) => lines.push(line)
+    );
+
+    assert.deepEqual(lines, [
+      "  passed: docs validators (1.3s)",
+      "catalog diagnostic\nschema diagnostic"
+    ]);
   });
 
   it("separates required and full verification profiles", () => {
@@ -200,4 +257,27 @@ function checkByLabel(label: string) {
   const check = checks.find((candidate) => candidate.label === label);
   assert.ok(check, `expected check ${label}`);
   return check;
+}
+
+type TestCheckTask = (typeof checks)[number];
+
+function checkResult(
+  check: TestCheckTask,
+  { stdout = "", stderr = "" }: { stdout?: string; stderr?: string }
+): CheckResult {
+  const combinedOutput = [stdout, stderr].filter(Boolean).join("\n");
+  return {
+    check,
+    ok: true,
+    exitCode: 0,
+    error: null,
+    status: "passed",
+    stdout,
+    stderr,
+    combinedOutput,
+    visibleOutput: visibleOutputForCheck(check, combinedOutput),
+    durationMs: 1,
+    startedAtMs: 1,
+    endedAtMs: 2
+  };
 }

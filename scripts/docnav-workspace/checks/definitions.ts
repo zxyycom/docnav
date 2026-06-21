@@ -36,7 +36,7 @@ export const checks = defineChecks([
         command: "pnpm",
         args: ["run", "typecheck:scripts"],
         ignoreOutput: [
-          /^\$ tsc -p tsconfig\.scripts\.json$/
+          /^\$ tsc -p tsconfig\.json$/
         ]
       },
       {

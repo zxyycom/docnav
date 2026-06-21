@@ -5,14 +5,11 @@ import {
   reportCountForChecks
 } from "../checks/index.ts";
 import type { CheckResult, CompletionResult } from "../results.ts";
-import {
-  createReportCompletionTracker,
-  formatCompletionLine
-} from "../results.ts";
+import { createReportCompletionTracker } from "../results.ts";
 import type { VerificationOptions } from "./args.ts";
 import { executeCheck } from "./execution.ts";
 import { appendLog, createLogPaths, finalizeLogs, initializeLogs } from "./logs.ts";
-import { printHeader, printSummary } from "./output.ts";
+import { printCompletionResult, printHeader, printSummary } from "./output.ts";
 
 export async function runVerification({ profile, concurrency }: VerificationOptions): Promise<number> {
   const selectedChecks = checksForProfile(profile);
@@ -33,7 +30,7 @@ export async function runVerification({ profile, concurrency }: VerificationOpti
       const report = completeReport(result);
       if (report) {
         completedReports.push(report);
-        console.log(formatCompletionLine(report));
+        printCompletionResult(report);
       }
     }
   });

@@ -606,6 +606,7 @@ Proves:
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 追加 full quality check。
 - completion line 和 summary 可区分 passed、warning 和 failed。
+- completion line 后输出该 report 过滤后的子命令可见输出。
 
 ```mermaid
 flowchart LR
@@ -619,7 +620,8 @@ flowchart LR
   G --> H["执行 checks 并过滤已知噪声"]
   H --> I{"result status"}
   I -->|"passed / warning / failed"| J["输出 completion lines"]
-  J --> K["统计 report groups 和 leaf checks"]
+  J --> K["输出 report 可见子命令输出"]
+  K --> L["统计 report groups 和 leaf checks"]
 ```
 
 ### AUX-SMOKE-HARNESS-001 Smoke harness 正确记录 task 和 command 输出语义

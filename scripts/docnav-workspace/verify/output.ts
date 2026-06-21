@@ -1,6 +1,6 @@
 import { profiles } from "../checks/index.ts";
 import type { Profile } from "../checks/index.ts";
-import { formatDurationMs } from "../results.ts";
+import { formatCompletionLine, formatDurationMs } from "../results.ts";
 import type { CompletionResult } from "../results.ts";
 import { relativeLogPath } from "./paths.ts";
 
@@ -19,6 +19,16 @@ export function printHeader(profile: Profile, totalChecks: number): void {
   console.log(`Total checks: ${totalChecks}`);
   console.log("");
   console.log("Checks:");
+}
+
+export function printCompletionResult(
+  result: Pick<CompletionResult, "check" | "durationMs" | "status" | "visibleOutput">,
+  writeLine: (line: string) => void = console.log
+): void {
+  writeLine(formatCompletionLine(result));
+  if (result.visibleOutput.length > 0) {
+    writeLine(result.visibleOutput);
+  }
 }
 
 export function printSummary({

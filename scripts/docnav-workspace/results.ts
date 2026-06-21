@@ -1,6 +1,6 @@
 import type { ProcessFailure } from "../tools/process.ts";
 import type { CheckReportRef, CheckStatus, CheckTask } from "./checks/index.ts";
-import { reportIdForCheck, reportLabelForCheck } from "./checks/index.ts";
+import { reportIdForCheck, reportLabelForCheck, visibleOutputLines } from "./checks/index.ts";
 
 export interface CompletionResult {
   check: CheckReportRef;
@@ -14,6 +14,7 @@ export interface CompletionResult {
   status: CheckStatus;
   stderr: string;
   stdout: string;
+  visibleOutput: string;
 }
 
 export interface CheckResult extends CompletionResult {
@@ -30,6 +31,7 @@ interface ReportAccumulator {
   ok: boolean;
   startedAtMs: number;
   status: CheckStatus;
+  visibleOutputChunks: string[];
 }
 
 export function formatCompletionLine(result: Pick<CompletionResult, "check" | "durationMs" | "status">): string {
@@ -68,6 +70,10 @@ export function createReportCompletionTracker(checkList: readonly CheckTask[]): 
   };
 }
 
+export function visibleOutputForCheck(check: CheckTask, output: string): string {
+  return visibleOutputLines(check, output).join("\n");
+}
+
 function createReportAccumulators(checkList: readonly CheckTask[]): Map<string, ReportAccumulator> {
   const reports = new Map<string, ReportAccumulator>();
   for (const check of checkList) {
@@ -92,7 +98,8 @@ function createReportAccumulator(check: CheckTask, reportId: string): ReportAccu
     error: null,
     startedAtMs: Number.POSITIVE_INFINITY,
     endedAtMs: 0,
-    status: "passed"
+    status: "passed",
+    visibleOutputChunks: []
   };
 }
 
@@ -102,6 +109,9 @@ function recordReportCompletion(report: ReportAccumulator, result: CheckResult):
   report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
   report.endedAtMs = Math.max(report.endedAtMs, result.endedAtMs);
   report.status = combineStatus(report.status, result.status);
+  if (result.visibleOutput.length > 0) {
+    report.visibleOutputChunks.push(result.visibleOutput);
+  }
   if (!result.ok && !report.error) {
     report.error = result.error;
     report.exitCode = result.exitCode;
@@ -109,6 +119,7 @@ function recordReportCompletion(report: ReportAccumulator, result: CheckResult):
 }
 
 function completeReportResult(report: ReportAccumulator): CompletionResult {
+  const visibleOutput = report.visibleOutputChunks.join("\n");
   return {
     check: report.check,
     ok: report.ok,
@@ -117,7 +128,8 @@ function completeReportResult(report: ReportAccumulator): CompletionResult {
     status: report.status,
     stdout: "",
     stderr: "",
-    combinedOutput: "",
+    combinedOutput: visibleOutput,
+    visibleOutput,
     durationMs: report.endedAtMs - report.startedAtMs,
     startedAtMs: report.startedAtMs,
     endedAtMs: report.endedAtMs
