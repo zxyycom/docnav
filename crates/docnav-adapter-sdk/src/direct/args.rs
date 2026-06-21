@@ -183,61 +183,32 @@ pub(super) fn parse_operation_options(
     .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
     .map_err(|_| operation_parse_error(operation, args, native_options))?;
 
-    let path = required_string(
-        &matches,
-        arg_ids::PATH,
-        &format!("{operation} requires <path>"),
-    )?;
-    let page = if operation == Operation::Info {
-        positive_result(1).expect("static positive integer")
-    } else {
-        let raw = matches.get_one::<u32>(arg_ids::PAGE).copied().unwrap_or(1);
-        positive_from_u32(raw, flags::PAGE)?
-    };
-    let limit_chars = if operation == Operation::Info {
-        positive_result(default_limit_chars).expect("static positive integer")
-    } else {
-        let raw = matches
-            .get_one::<u32>(arg_ids::LIMIT_CHARS)
-            .copied()
-            .unwrap_or(default_limit_chars);
-        positive_from_u32(raw, flags::LIMIT_CHARS)?
-    };
-    let output = parse_output(&required_string(
-        &matches,
-        arg_ids::OUTPUT,
-        "missing output mode",
-    )?)?;
-    let ref_id = if operation == Operation::Read {
-        Some(required_string(
-            &matches,
-            arg_ids::REF,
-            "read requires --ref <ref>",
-        )?)
-    } else {
-        None
-    };
-    let query = if operation == Operation::Find {
-        Some(required_string(
-            &matches,
-            arg_ids::QUERY,
-            "find requires --query <text>",
-        )?)
-    } else {
-        None
-    };
+    let common = parse_common_operation_options(operation, &matches, default_limit_chars)?;
+    let specific = parse_specific_operation_fields(operation, &matches)?;
     let native_options = parsed_native_options(operation, &matches, native_options)?;
 
     Ok(DirectOperationOptions {
-        path,
-        page,
-        limit_chars,
-        output,
-        ref_id,
-        query,
+        path: common.path,
+        page: common.page,
+        limit_chars: common.limit_chars,
+        output: common.output,
+        ref_id: specific.ref_id,
+        query: specific.query,
         warnings,
         native_options,
     })
+}
+
+struct CommonOperationOptions {
+    path: String,
+    page: PositiveInteger,
+    limit_chars: PositiveInteger,
+    output: DirectOutputMode,
+}
+
+struct SpecificOperationFields {
+    ref_id: Option<String>,
+    query: Option<String>,
 }
 
 struct LooseArgs {
@@ -344,6 +315,86 @@ fn parse_output(value: &str) -> Result<DirectOutputMode, String> {
 
 fn positive_from_u32(value: u32, flag: &str) -> Result<PositiveInteger, String> {
     positive_result(value).map_err(|_| format!("{flag} must be a positive integer"))
+}
+
+fn parse_common_operation_options(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+    default_limit_chars: u32,
+) -> Result<CommonOperationOptions, String> {
+    let path = required_string(
+        matches,
+        arg_ids::PATH,
+        &format!("{operation} requires <path>"),
+    )?;
+    let page = parse_operation_page(operation, matches)?;
+    let limit_chars = parse_operation_limit_chars(operation, matches, default_limit_chars)?;
+    let output = parse_output(&required_string(
+        matches,
+        arg_ids::OUTPUT,
+        "missing output mode",
+    )?)?;
+
+    Ok(CommonOperationOptions {
+        path,
+        page,
+        limit_chars,
+        output,
+    })
+}
+
+fn parse_operation_page(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> Result<PositiveInteger, String> {
+    if operation == Operation::Info {
+        return Ok(positive_result(1).expect("static positive integer"));
+    }
+
+    let raw = matches.get_one::<u32>(arg_ids::PAGE).copied().unwrap_or(1);
+    positive_from_u32(raw, flags::PAGE)
+}
+
+fn parse_operation_limit_chars(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+    default_limit_chars: u32,
+) -> Result<PositiveInteger, String> {
+    if operation == Operation::Info {
+        return Ok(positive_result(default_limit_chars).expect("static positive integer"));
+    }
+
+    let raw = matches
+        .get_one::<u32>(arg_ids::LIMIT_CHARS)
+        .copied()
+        .unwrap_or(default_limit_chars);
+    positive_from_u32(raw, flags::LIMIT_CHARS)
+}
+
+fn parse_specific_operation_fields(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> Result<SpecificOperationFields, String> {
+    let ref_id = if operation == Operation::Read {
+        Some(required_string(
+            matches,
+            arg_ids::REF,
+            "read requires --ref <ref>",
+        )?)
+    } else {
+        None
+    };
+    let query = if operation == Operation::Find {
+        Some(required_string(
+            matches,
+            arg_ids::QUERY,
+            "find requires --query <text>",
+        )?)
+    } else {
+        None
+    };
+
+    Ok(SpecificOperationFields { ref_id, query })
 }
 
 fn is_flag(value: &str) -> bool {

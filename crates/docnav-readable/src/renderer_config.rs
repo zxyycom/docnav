@@ -10,6 +10,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::error::RenderError;
 use crate::view_kind::ReadableViewKind;
 
+const BLOCK_POINTER_ROOT_ERROR: &str = "must start with '/'";
+const BLOCK_POINTER_ESCAPE_ERROR: &str = "must escape '~' as '~0' or '~1'";
+
 // ── Block pointer ──────────────────────────────────────────────────────────
 
 /// A JSON Pointer that identifies a block-eligible string field within a
@@ -45,24 +48,32 @@ impl std::fmt::Display for BlockPointer {
 }
 
 fn block_pointer_syntax_error(pointer: &str) -> Option<&'static str> {
-    if !pointer.starts_with('/') {
-        return Some("must start with '/'");
-    }
+    block_pointer_root_error(pointer).or_else(|| block_pointer_escape_error(pointer))
+}
 
+fn block_pointer_root_error(pointer: &str) -> Option<&'static str> {
+    (!pointer.starts_with('/')).then_some(BLOCK_POINTER_ROOT_ERROR)
+}
+
+fn block_pointer_escape_error(pointer: &str) -> Option<&'static str> {
+    has_invalid_tilde_escape(pointer).then_some(BLOCK_POINTER_ESCAPE_ERROR)
+}
+
+fn has_invalid_tilde_escape(pointer: &str) -> bool {
     let bytes = pointer.as_bytes();
     let mut index = 0;
     while index < bytes.len() {
         if bytes[index] == b'~' {
             match bytes.get(index + 1) {
                 Some(b'0' | b'1') => index += 2,
-                _ => return Some("must escape '~' as '~0' or '~1'"),
+                _ => return true,
             }
         } else {
             index += 1;
         }
     }
 
-    None
+    false
 }
 
 // ── View config ────────────────────────────────────────────────────────────

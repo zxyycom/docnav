@@ -61,75 +61,132 @@ where
         return usage(&mut stderr, config.usage);
     }
 
-    match command {
-        command_names::MANIFEST => {
-            match parse_protocol_only_options(&args[1..], config.native_options) {
-                Ok(warnings) => {
-                    let exit_code = run_command(
-                        adapter,
-                        SdkCommand::Manifest,
-                        std::io::empty(),
-                        &mut stdout,
-                        &mut stderr,
-                    );
-                    append_cli_warnings_to_stderr(exit_code, &warnings, &mut stderr)
-                }
-                Err(message) => input_error(&mut stderr, &message),
-            }
+    let context = DirectCliContext { adapter, config };
+    let command = DirectCommandInvocation {
+        name: command,
+        args: &args[1..],
+    };
+    run_direct_command(&context, command, stdin, &mut stdout, &mut stderr)
+}
+
+struct DirectCliContext<'a, A> {
+    adapter: &'a A,
+    config: DirectCliConfig<'a>,
+}
+
+struct DirectOperationInvocation {
+    request: RequestEnvelope,
+    output: DirectOutputMode,
+    warnings: Vec<DirectCliWarning>,
+}
+
+struct DirectCommandInvocation<'a> {
+    name: &'a str,
+    args: &'a [String],
+}
+
+fn run_direct_command<A, R, W, E>(
+    context: &DirectCliContext<'_, A>,
+    command: DirectCommandInvocation<'_>,
+    stdin: R,
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32
+where
+    A: Adapter,
+    R: Read,
+    W: Write,
+    E: Write,
+{
+    match command.name {
+        command_names::MANIFEST => run_manifest_command(context, command.args, stdout, stderr),
+        command_names::PROBE => run_probe_command(context, command.args, stdout, stderr),
+        command_names::INVOKE => run_invoke_command(context, command.args, stdin, stdout, stderr),
+        command_names::OUTLINE => {
+            run_operation(context, Operation::Outline, command.args, stdout, stderr)
         }
-        command_names::PROBE => match parse_probe(&args[1..], config.native_options) {
-            Ok(options) => {
-                let exit_code = run_command(
-                    adapter,
-                    SdkCommand::Probe { path: options.path },
-                    std::io::empty(),
-                    &mut stdout,
-                    &mut stderr,
-                );
-                append_cli_warnings_to_stderr(exit_code, &options.warnings, &mut stderr)
-            }
-            Err(message) => input_error(&mut stderr, &message),
-        },
-        command_names::INVOKE => {
-            if args.len() != 1 {
-                return input_error(&mut stderr, "invoke does not accept positional arguments");
-            }
-            run_command(adapter, SdkCommand::Invoke, stdin, stdout, stderr)
+        command_names::READ => {
+            run_operation(context, Operation::Read, command.args, stdout, stderr)
         }
-        command_names::OUTLINE => run_operation(
-            adapter,
-            Operation::Outline,
-            &args[1..],
-            &config,
-            &mut stdout,
-            &mut stderr,
-        ),
-        command_names::READ => run_operation(
-            adapter,
-            Operation::Read,
-            &args[1..],
-            &config,
-            &mut stdout,
-            &mut stderr,
-        ),
-        command_names::FIND => run_operation(
-            adapter,
-            Operation::Find,
-            &args[1..],
-            &config,
-            &mut stdout,
-            &mut stderr,
-        ),
-        command_names::INFO => run_operation(
-            adapter,
-            Operation::Info,
-            &args[1..],
-            &config,
-            &mut stdout,
-            &mut stderr,
-        ),
+        command_names::FIND => {
+            run_operation(context, Operation::Find, command.args, stdout, stderr)
+        }
+        command_names::INFO => {
+            run_operation(context, Operation::Info, command.args, stdout, stderr)
+        }
         _ => unreachable!("known direct CLI commands are handled above"),
     }
+}
+
+fn run_manifest_command<A, W, E>(
+    context: &DirectCliContext<'_, A>,
+    args: &[String],
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32
+where
+    A: Adapter,
+    W: Write,
+    E: Write,
+{
+    match parse_protocol_only_options(args, context.config.native_options) {
+        Ok(warnings) => {
+            let exit_code = run_command(
+                context.adapter,
+                SdkCommand::Manifest,
+                std::io::empty(),
+                &mut *stdout,
+                &mut *stderr,
+            );
+            append_cli_warnings_to_stderr(exit_code, &warnings, stderr)
+        }
+        Err(message) => input_error(stderr, &message),
+    }
+}
+
+fn run_probe_command<A, W, E>(
+    context: &DirectCliContext<'_, A>,
+    args: &[String],
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32
+where
+    A: Adapter,
+    W: Write,
+    E: Write,
+{
+    match parse_probe(args, context.config.native_options) {
+        Ok(options) => {
+            let exit_code = run_command(
+                context.adapter,
+                SdkCommand::Probe { path: options.path },
+                std::io::empty(),
+                &mut *stdout,
+                &mut *stderr,
+            );
+            append_cli_warnings_to_stderr(exit_code, &options.warnings, stderr)
+        }
+        Err(message) => input_error(stderr, &message),
+    }
+}
+
+fn run_invoke_command<A, R, W, E>(
+    context: &DirectCliContext<'_, A>,
+    args: &[String],
+    stdin: R,
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32
+where
+    A: Adapter,
+    R: Read,
+    W: Write,
+    E: Write,
+{
+    if !args.is_empty() {
+        return input_error(stderr, "invoke does not accept positional arguments");
+    }
+    run_command(context.adapter, SdkCommand::Invoke, stdin, stdout, stderr)
 }
 
 fn help_text(
@@ -165,10 +222,9 @@ fn is_known_command(
 }
 
 fn run_operation<A, W, E>(
-    adapter: &A,
+    context: &DirectCliContext<'_, A>,
     operation: Operation,
     args: &[String],
-    config: &DirectCliConfig<'_>,
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32
@@ -177,23 +233,34 @@ where
     W: Write,
     E: Write,
 {
-    let mut options = match parse_operation_options(
+    let invocation = match operation_invocation(operation, args, &context.config) {
+        Ok(invocation) => invocation,
+        Err(message) => return input_error(stderr, &message),
+    };
+
+    run_operation_request(context.adapter, &invocation, stdout, stderr)
+}
+
+fn operation_invocation(
+    operation: Operation,
+    args: &[String],
+    config: &DirectCliConfig<'_>,
+) -> Result<DirectOperationInvocation, String> {
+    let mut options = parse_operation_options(
         operation,
         args,
         config.default_limit_chars,
         config.native_options,
-    ) {
-        Ok(options) => options,
-        Err(message) => return input_error(stderr, &message),
-    };
+    )?;
     let output = options.output;
     let warnings = std::mem::take(&mut options.warnings);
-    let request = match operation_request(operation, options, config.request_id) {
-        Ok(request) => request,
-        Err(message) => return input_error(stderr, &message),
-    };
+    let request = operation_request(operation, options, config.request_id)?;
 
-    run_operation_request(adapter, &request, output, &warnings, stdout, stderr)
+    Ok(DirectOperationInvocation {
+        request,
+        output,
+        warnings,
+    })
 }
 
 fn operation_request(
@@ -246,9 +313,7 @@ fn operation_request(
 
 fn run_operation_request<A, W, E>(
     adapter: &A,
-    request: &RequestEnvelope,
-    output: DirectOutputMode,
-    warnings: &[DirectCliWarning],
+    invocation: &DirectOperationInvocation,
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32
@@ -257,14 +322,26 @@ where
     W: Write,
     E: Write,
 {
-    if output == DirectOutputMode::ProtocolJson {
-        let exit_code = invoke_request(adapter, request, stdout, stderr);
-        return append_cli_warnings_to_stderr(exit_code, warnings, stderr);
+    if invocation.output == DirectOutputMode::ProtocolJson {
+        let exit_code = invoke_request(adapter, &invocation.request, stdout, stderr);
+        return append_cli_warnings_to_stderr(exit_code, &invocation.warnings, stderr);
     }
 
-    match execute_operation(adapter, request) {
-        Ok(result) => write_operation_output(result, output, warnings, stdout, stderr),
-        Err(error) => handler_error(error, output, warnings, stdout, stderr),
+    match execute_operation(adapter, &invocation.request) {
+        Ok(result) => write_operation_output(
+            result,
+            invocation.output,
+            &invocation.warnings,
+            stdout,
+            stderr,
+        ),
+        Err(error) => handler_error(
+            error,
+            invocation.output,
+            &invocation.warnings,
+            stdout,
+            stderr,
+        ),
     }
 }
 

@@ -3,7 +3,8 @@ use std::io::{self, Write};
 use docnav_diagnostics::{attach_warnings_to_value, write_warning_text_lines};
 use docnav_json_io::write_json_value_pretty;
 use docnav_output::{
-    write_document_error, write_document_response, DocumentOutputMode, ProtocolOutputContext,
+    write_document_error, write_document_response, DocumentOutputMode, DocumentOutputOptions,
+    ProtocolOutputContext,
 };
 use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, PROTOCOL_VERSION};
 use serde_json::Value;
@@ -120,9 +121,8 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
     let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, &request_id, operation);
     let result = write_document_error(
         error.error(),
-        document_output_mode(output_mode),
         protocol,
-        warnings,
+        DocumentOutputOptions::new(document_output_mode(output_mode), warnings),
         stdout,
         stderr,
     )

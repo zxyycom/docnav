@@ -45,28 +45,38 @@ pub fn render_readable_view(
 ) -> Result<String, RenderError> {
     let view_config = config.view_config(kind)?;
     let (header_value, blocks) = extract_blocks(value, view_config)?;
+    let header_json = render_header_json(&header_value)?;
 
+    let mut output = String::with_capacity(rendered_output_capacity(&header_json, &blocks));
+    output.push_str(&header_json);
+    append_block_sections(&mut output, &blocks);
+
+    Ok(output)
+}
+
+fn render_header_json(header_value: &Value) -> Result<String, RenderError> {
     // serde_json currently emits no trailing LF; readable-view framing owns it.
-    let mut header_json = serde_json::to_string_pretty(&header_value)
+    let mut header_json = serde_json::to_string_pretty(header_value)
         .map_err(RenderError::header_serialization_failed)?;
     if !header_json.ends_with('\n') {
         header_json.push(char::from(LF));
     }
 
-    let separator_capacity = usize::from(!blocks.is_empty());
-    let mut output = String::with_capacity(
-        header_json.len() + separator_capacity + block_sections_capacity(&blocks),
-    );
-    output.push_str(&header_json);
+    Ok(header_json)
+}
 
+fn rendered_output_capacity(header_json: &str, blocks: &[RenderedBlock]) -> usize {
+    let separator_capacity = usize::from(!blocks.is_empty());
+    header_json.len() + separator_capacity + block_sections_capacity(blocks)
+}
+
+fn append_block_sections(output: &mut String, blocks: &[RenderedBlock]) {
     if !blocks.is_empty() {
         output.push(char::from(LF));
-        for block in &blocks {
-            emit_block_section(&mut output, block);
+        for block in blocks {
+            emit_block_section(output, block);
         }
     }
-
-    Ok(output)
 }
 
 /// Extract block payloads from the JSON value and replace them with

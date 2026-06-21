@@ -11,6 +11,19 @@ use crate::constants::{diagnostics, fields};
 use crate::output::{emit_diagnostic, write_adapter_boundary_error, write_protocol_response};
 use crate::{Adapter, AdapterExitCode, AdapterResult};
 
+struct InvokeFailure {
+    response: ProtocolResponse,
+    diagnostic: Option<String>,
+    exit_code: AdapterExitCode,
+}
+
+struct InvokeResponse {
+    response: ProtocolResponse,
+    exit_code: AdapterExitCode,
+}
+
+type InvokeResult<T> = Result<T, Box<InvokeFailure>>;
+
 pub fn invoke_once<A, R, W, E>(adapter: &A, mut stdin: R, mut stdout: W, mut stderr: E) -> i32
 where
     A: Adapter,
@@ -18,49 +31,83 @@ where
     W: Write,
     E: Write,
 {
-    match validated_manifest(adapter) {
-        Ok(_) => {}
-        Err(error) => return write_adapter_boundary_error(&error, &mut stderr),
-    };
-    let mut input = String::new();
-    if let Err(error) = stdin.read_to_string(&mut input) {
-        let response = ProtocolResponse::Failure(FailureResponse::unparsed(
-            StableError::invalid_request(fields::REQUEST, error.to_string()),
-        ));
-        let _ = emit_diagnostic(
-            &mut stderr,
-            &format!("{}: {error}", diagnostics::FAILED_TO_READ_REQUEST),
-        );
-        return write_protocol_response(
-            &response,
-            &mut stdout,
-            &mut stderr,
-            AdapterExitCode::IoError,
-        );
+    if let Err(exit_code) = validate_manifest_for_invoke(adapter, &mut stderr) {
+        return exit_code;
     }
 
-    let request_value: Value = match serde_json::from_str(&input) {
-        Ok(value) => value,
-        Err(error) => {
-            let response = ProtocolResponse::failure(
+    let request = match read_and_decode_request(&mut stdin) {
+        Ok(request) => request,
+        Err(failure) => return write_invoke_failure(*failure, &mut stdout, &mut stderr),
+    };
+
+    let response = execute_request(adapter, &request);
+    write_protocol_response(
+        &response.response,
+        &mut stdout,
+        &mut stderr,
+        response.exit_code,
+    )
+}
+
+fn validate_manifest_for_invoke<A, E>(adapter: &A, stderr: &mut E) -> Result<(), i32>
+where
+    A: Adapter,
+    E: Write,
+{
+    validated_manifest(adapter)
+        .map(|_| ())
+        .map_err(|error| write_adapter_boundary_error(&error, stderr))
+}
+
+fn read_and_decode_request<R>(stdin: &mut R) -> InvokeResult<RequestEnvelope>
+where
+    R: Read,
+{
+    let input = read_request_text(stdin)?;
+    let request_value = parse_request_json(&input)?;
+    decode_request_value(request_value)
+}
+
+fn read_request_text<R>(stdin: &mut R) -> InvokeResult<String>
+where
+    R: Read,
+{
+    let mut input = String::new();
+    if let Err(error) = stdin.read_to_string(&mut input) {
+        return Err(Box::new(read_request_failure(error)));
+    }
+
+    Ok(input)
+}
+
+fn read_request_failure(error: std::io::Error) -> InvokeFailure {
+    let reason = error.to_string();
+    InvokeFailure {
+        response: ProtocolResponse::Failure(FailureResponse::unparsed(
+            StableError::invalid_request(fields::REQUEST, reason),
+        )),
+        diagnostic: Some(format!("{}: {error}", diagnostics::FAILED_TO_READ_REQUEST)),
+        exit_code: AdapterExitCode::IoError,
+    }
+}
+
+fn parse_request_json(input: &str) -> InvokeResult<Value> {
+    serde_json::from_str(input).map_err(|error| {
+        let reason = error.to_string();
+        Box::new(InvokeFailure {
+            response: ProtocolResponse::failure(
                 PROTOCOL_VERSION,
                 UNKNOWN_REQUEST_ID,
                 None,
-                StableError::invalid_request(fields::REQUEST, error.to_string()),
-            );
-            let _ = emit_diagnostic(
-                &mut stderr,
-                &format!("{}: {error}", diagnostics::INVALID_REQUEST_JSON),
-            );
-            return write_protocol_response(
-                &response,
-                &mut stdout,
-                &mut stderr,
-                AdapterExitCode::ProtocolError,
-            );
-        }
-    };
+                StableError::invalid_request(fields::REQUEST, reason),
+            ),
+            diagnostic: Some(format!("{}: {error}", diagnostics::INVALID_REQUEST_JSON)),
+            exit_code: AdapterExitCode::ProtocolError,
+        })
+    })
+}
 
+fn decode_request_value(request_value: Value) -> InvokeResult<RequestEnvelope> {
     let context = extract_request_context_from_value(&request_value);
     let request_id = context
         .request_id
@@ -70,72 +117,84 @@ where
     let request = match decode_protocol_request_value(request_value) {
         Ok(request) => request,
         Err(DecodePipelineError::Schema(error)) => {
-            let response = ProtocolResponse::failure(
-                PROTOCOL_VERSION,
-                request_id.clone(),
-                context.operation,
-                StableError::invalid_request(fields::REQUEST, error.to_string()),
-            );
-            let _ = emit_diagnostic(
-                &mut stderr,
-                &format!("{}: {error}", diagnostics::REQUEST_SCHEMA_VALIDATION_FAILED),
-            );
-            return write_protocol_response(
-                &response,
-                &mut stdout,
-                &mut stderr,
-                AdapterExitCode::ProtocolError,
-            );
+            let reason = error.to_string();
+            return Err(Box::new(InvokeFailure {
+                response: ProtocolResponse::failure(
+                    PROTOCOL_VERSION,
+                    request_id.clone(),
+                    context.operation,
+                    StableError::invalid_request(fields::REQUEST, reason),
+                ),
+                diagnostic: Some(format!(
+                    "{}: {error}",
+                    diagnostics::REQUEST_SCHEMA_VALIDATION_FAILED
+                )),
+                exit_code: AdapterExitCode::ProtocolError,
+            }));
         }
         Err(DecodePipelineError::Deserialize(error)) => {
-            let response = ProtocolResponse::failure(
-                PROTOCOL_VERSION,
-                request_id,
-                context.operation,
-                StableError::invalid_request(fields::REQUEST, error.to_string()),
-            );
-            let _ = emit_diagnostic(
-                &mut stderr,
-                &format!("{}: {error}", diagnostics::REQUEST_DESERIALIZATION_FAILED),
-            );
-            return write_protocol_response(
-                &response,
-                &mut stdout,
-                &mut stderr,
-                AdapterExitCode::ProtocolError,
-            );
+            let reason = error.to_string();
+            return Err(Box::new(InvokeFailure {
+                response: ProtocolResponse::failure(
+                    PROTOCOL_VERSION,
+                    request_id,
+                    context.operation,
+                    StableError::invalid_request(fields::REQUEST, reason),
+                ),
+                diagnostic: Some(format!(
+                    "{}: {error}",
+                    diagnostics::REQUEST_DESERIALIZATION_FAILED
+                )),
+                exit_code: AdapterExitCode::ProtocolError,
+            }));
         }
         Err(DecodePipelineError::Semantic { value, error }) => {
-            let response = ProtocolResponse::failure_for_request(&value, error);
-            return write_protocol_response(
-                &response,
-                &mut stdout,
-                &mut stderr,
-                AdapterExitCode::ProtocolError,
-            );
+            return Err(Box::new(InvokeFailure {
+                response: ProtocolResponse::failure_for_request(&value, error),
+                diagnostic: None,
+                exit_code: AdapterExitCode::ProtocolError,
+            }));
         }
     };
+    Ok(request)
+}
 
-    match execute_operation(adapter, &request) {
+fn execute_request<A>(adapter: &A, request: &RequestEnvelope) -> InvokeResponse
+where
+    A: Adapter,
+{
+    match execute_operation(adapter, request) {
         Ok(result) => {
             let response = ProtocolResponse::success(
                 request.protocol_version.clone(),
                 request.request_id.clone(),
                 result,
             );
-            write_protocol_response(
-                &response,
-                &mut stdout,
-                &mut stderr,
-                AdapterExitCode::Success,
-            )
+            InvokeResponse {
+                response,
+                exit_code: AdapterExitCode::Success,
+            }
         }
         Err(error) => {
             let exit_code = error.exit_code();
-            let response = ProtocolResponse::failure_for_request(&request, error.into_error());
-            write_protocol_response(&response, &mut stdout, &mut stderr, exit_code)
+            let response = ProtocolResponse::failure_for_request(request, error.into_error());
+            InvokeResponse {
+                response,
+                exit_code,
+            }
         }
     }
+}
+
+fn write_invoke_failure<W, E>(failure: InvokeFailure, stdout: &mut W, stderr: &mut E) -> i32
+where
+    W: Write,
+    E: Write,
+{
+    if let Some(diagnostic) = failure.diagnostic {
+        let _ = emit_diagnostic(stderr, &diagnostic);
+    }
+    write_protocol_response(&failure.response, stdout, stderr, failure.exit_code)
 }
 
 pub fn execute_operation<A: Adapter>(

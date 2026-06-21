@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use docnav_diagnostics::write_warning_text_lines;
 use docnav_output::{
     write_document_error, write_document_result, DocumentOutputError, DocumentOutputMode,
-    ProtocolOutputContext,
+    DocumentOutputOptions, ProtocolOutputContext,
 };
 use docnav_protocol::{OperationResult, PROTOCOL_VERSION};
 
@@ -35,9 +35,8 @@ where
         DirectOutputMode::ReadableView | DirectOutputMode::ReadableJson => {
             match write_document_result(
                 &result,
-                document_output_mode(output),
                 "adapter-direct",
-                warnings,
+                DocumentOutputOptions::new(document_output_mode(output), warnings),
                 stdout,
                 stderr,
             ) {
@@ -63,9 +62,8 @@ pub(super) fn handler_error<W: Write, E: Write>(
             let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, "adapter-direct", None);
             match write_document_error(
                 stable,
-                document_output_mode(output),
                 protocol,
-                warnings,
+                DocumentOutputOptions::new(document_output_mode(output), warnings),
                 stdout,
                 stderr,
             ) {

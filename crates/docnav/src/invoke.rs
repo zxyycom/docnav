@@ -1,6 +1,6 @@
 use docnav_protocol::{
     decode_protocol_request_value, generate_request_id, DecodePipelineError, Document,
-    FindArguments, InfoArguments, Operation, OperationArguments, OutlineArguments,
+    FindArguments, InfoArguments, Operation, OperationArguments, OutlineArguments, PositiveInteger,
     ProtocolResponse, ReadArguments, RequestEnvelope, StableError, PROTOCOL_VERSION,
 };
 
@@ -59,44 +59,7 @@ fn protocol_request(
     document: &NormalizedDocumentPath,
     request: &DocumentRequest,
 ) -> Result<RequestEnvelope, StableError> {
-    let arguments = match request.operation {
-        Operation::Outline => OperationArguments::Outline(OutlineArguments {
-            limit_chars: request.limit_chars.ok_or_else(|| {
-                StableError::invalid_request("limit_chars", "outline requires limit_chars")
-            })?,
-            page: request
-                .page
-                .ok_or_else(|| StableError::invalid_request("page", "outline requires page"))?,
-            options: None,
-        }),
-        Operation::Read => OperationArguments::Read(ReadArguments {
-            ref_id: request
-                .ref_id
-                .clone()
-                .ok_or_else(|| StableError::invalid_request("ref", "read requires ref"))?,
-            limit_chars: request.limit_chars.ok_or_else(|| {
-                StableError::invalid_request("limit_chars", "read requires limit_chars")
-            })?,
-            page: request
-                .page
-                .ok_or_else(|| StableError::invalid_request("page", "read requires page"))?,
-            options: None,
-        }),
-        Operation::Find => OperationArguments::Find(FindArguments {
-            query: request
-                .query
-                .clone()
-                .ok_or_else(|| StableError::invalid_request("query", "find requires query"))?,
-            limit_chars: request.limit_chars.ok_or_else(|| {
-                StableError::invalid_request("limit_chars", "find requires limit_chars")
-            })?,
-            page: request
-                .page
-                .ok_or_else(|| StableError::invalid_request("page", "find requires page"))?,
-            options: None,
-        }),
-        Operation::Info => OperationArguments::Info(InfoArguments { options: None }),
-    };
+    let arguments = operation_arguments(request)?;
 
     Ok(RequestEnvelope {
         protocol_version: PROTOCOL_VERSION.to_owned(),
@@ -107,4 +70,79 @@ fn protocol_request(
         },
         arguments,
     })
+}
+
+fn operation_arguments(request: &DocumentRequest) -> Result<OperationArguments, StableError> {
+    match request.operation {
+        Operation::Outline => Ok(OperationArguments::Outline(outline_arguments(request)?)),
+        Operation::Read => Ok(OperationArguments::Read(read_arguments(request)?)),
+        Operation::Find => Ok(OperationArguments::Find(find_arguments(request)?)),
+        Operation::Info => Ok(OperationArguments::Info(info_arguments())),
+    }
+}
+
+fn outline_arguments(request: &DocumentRequest) -> Result<OutlineArguments, StableError> {
+    Ok(OutlineArguments {
+        limit_chars: required_limit_chars(request, "outline")?,
+        page: required_page(request, "outline")?,
+        options: None,
+    })
+}
+
+fn read_arguments(request: &DocumentRequest) -> Result<ReadArguments, StableError> {
+    Ok(ReadArguments {
+        ref_id: required_ref_id(request)?,
+        limit_chars: required_limit_chars(request, "read")?,
+        page: required_page(request, "read")?,
+        options: None,
+    })
+}
+
+fn find_arguments(request: &DocumentRequest) -> Result<FindArguments, StableError> {
+    Ok(FindArguments {
+        query: required_query(request)?,
+        limit_chars: required_limit_chars(request, "find")?,
+        page: required_page(request, "find")?,
+        options: None,
+    })
+}
+
+fn info_arguments() -> InfoArguments {
+    InfoArguments { options: None }
+}
+
+fn required_limit_chars(
+    request: &DocumentRequest,
+    operation: &str,
+) -> Result<PositiveInteger, StableError> {
+    request
+        .limit_chars
+        .ok_or_else(|| missing_argument("limit_chars", operation, "limit_chars"))
+}
+
+fn required_page(
+    request: &DocumentRequest,
+    operation: &str,
+) -> Result<PositiveInteger, StableError> {
+    request
+        .page
+        .ok_or_else(|| missing_argument("page", operation, "page"))
+}
+
+fn required_ref_id(request: &DocumentRequest) -> Result<String, StableError> {
+    request
+        .ref_id
+        .clone()
+        .ok_or_else(|| missing_argument("ref", "read", "ref"))
+}
+
+fn required_query(request: &DocumentRequest) -> Result<String, StableError> {
+    request
+        .query
+        .clone()
+        .ok_or_else(|| missing_argument("query", "find", "query"))
+}
+
+fn missing_argument(field: &str, operation: &str, argument: &str) -> StableError {
+    StableError::invalid_request(field, format!("{operation} requires {argument}"))
 }
