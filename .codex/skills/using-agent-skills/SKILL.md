@@ -23,7 +23,7 @@ description: >-
 2. 选择最小 skill 集：只选能改变执行路径的 skill；多个 skill 同时适用时说明使用顺序。
 3. 读取目标 skill 的 `SKILL.md`，并只按其说明加载必要 reference。
 4. 如果所需 skill 未安装，明确说明 unavailable，再使用仓库规则或最接近的 installed workflow 继续。
-5. 完成前检查：路由是否来自 installed skills、是否遗漏验证步骤、是否把本 skill 当成默认入口。
+5. 完成前检查：路由是否来自 installed skills、是否按 changed surface 选择最小验证证据、是否把本 skill 当成默认入口。
 
 ## Reference 读取
 
@@ -41,21 +41,21 @@ description: >-
 | protocol、schema、ref、CLI/MCP contract | `api-and-interface-design` |
 | 需要 official docs 或 authoritative source | `source-driven-development` |
 | 高风险 protocol/ref/schema 决策 | `doubt-driven-development` |
-| tests、fixtures、行为证明 | `test-driven-development` |
-| failure、regression、异常行为 | `debugging-and-error-recovery` |
-| pre-merge review、quality gate、风险审查 | `code-review-and-quality` |
+| 新增或改变 behavior 需要可执行证明 | `test-driven-development` |
+| 可复现 failure、root cause、异常行为 | `debugging-and-error-recovery` |
+| pre-merge/local diff review、correctness 和验证充分性 | `code-review-and-quality` |
 | 保持行为不变地减复杂度 | `code-simplification` |
 | untrusted docs、paths、refs、stdio、secrets | `security-and-hardening` |
-| 已测量的 performance regression 或 budget | `performance-optimization` |
-| CI、validation、automation pipeline | `ci-cd-and-automation` |
+| performance surface、budget 或 profile 指向瓶颈 | `performance-optimization` |
+| declared contract automation、CI workflow、failure triage | `ci-cd-and-automation` |
 | docs、ADR、durable decisions | `documentation-and-adrs` |
 | OpenSpec change 探索、提案、实现、归档 | `openspec-explore` / `openspec-propose` / `openspec-apply-change` / `openspec-archive-change` |
 
 ## 组合规则
 
-1. 常规实现：`incremental-implementation` 可与 `test-driven-development`、`api-and-interface-design` 或 `source-driven-development` 组合。
-2. 缺陷修复：优先 `debugging-and-error-recovery`，需要行为锁定时加 `test-driven-development`。
-3. 高风险公共契约：`api-and-interface-design` 后接 `doubt-driven-development`，再用 tests 或 docs 验证。
+1. 常规实现：`incremental-implementation` 可与 `api-and-interface-design`、`source-driven-development` 组合；新增或改变 behavior 需要可执行证明时接 `test-driven-development`。
+2. 缺陷修复：优先 `debugging-and-error-recovery`，修复改变 observable behavior 或 contract 时接 `test-driven-development` 选择最小验证证据。
+3. 高风险公共契约：`api-and-interface-design` 后接 `doubt-driven-development`，再按 changed surface 选择 tests、docs、schema 或 examples 中的最小验证证据。
 4. OpenSpec 工作：只在任务确实涉及 OpenSpec change 时使用 `openspec-*` skills，并遵循仓库 OpenSpec 读取规则。
 5. Skill 维护：同时遵循 `skill-creator`；若是在优化规则文本，同时遵循 `prompt-optimize`。
 

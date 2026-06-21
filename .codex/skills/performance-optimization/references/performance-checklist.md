@@ -8,10 +8,10 @@
 - [Fixture Shape](#fixture-shape)
 - [Bottleneck Triage](#bottleneck-triage)
 - [Command Templates](#command-templates)
-- [Budget Template](#budget-template)
+- [Budget / Evidence Template](#budget--evidence-template)
 - [Fix Checklist](#fix-checklist)
-- [Common Rationalizations](#common-rationalizations)
-- [Red Flags](#red-flags)
+- [Decision Cues](#decision-cues)
+- [Contract Preservation Cues](#contract-preservation-cues)
 - [Verification](#verification)
 
 ## Baseline
@@ -104,7 +104,9 @@ while (-not $p.HasExited) {
 }
 ```
 
-## Budget Template
+## Budget / Evidence Template
+
+只有已有 budget、baseline、用户报告或 merge policy 需要后续比较时，才把 measurement 沉淀成性能验证证据。普通 measurement 优先记录为 observation。
 
 ```text
 Command: docnav outline fixtures/large.md --output protocol-json --limit-chars 8000
@@ -113,7 +115,7 @@ Build: release
 Host: agreed local benchmark machine, warm cache
 Budget: p50 <= 300 ms, variance <= 10%
 Memory: peak working set <= 150 MB
-Guard: adapter CLI smoke fixture plus ref lookup unit test
+Evidence: adapter CLI smoke fixture plus ref lookup unit test
 ```
 
 Budget 必须写明 command、fixture、output mode、page/limit、build profile、host 假设和允许噪声；否则不同测量不可比较。
@@ -124,30 +126,28 @@ Budget 必须写明 command、fixture、output mode、page/limit、build profile
 - [ ] Adapter-owned `ref` 在 core CLI、MCP 和其它接入层保持 opaque。
 - [ ] Output schema、ordering、pagination、continuation 和 error behavior 保持稳定。
 - [ ] 协议允许时，先应用 limit，再做昂贵 formatting。
-- [ ] 不为每个 result clone full document text，除非已有测量和理由。
+- [ ] Result payload 使用可复用 slice、borrowed data 或 bounded copy；只有测量证明必要时才复制 full document text。
 - [ ] Cache 有明确 lifecycle、invalidation、memory bound 和 cross-call 行为。
 - [ ] 大型 intermediate result list 已被 bound、stream 或避免。
 
-## Common Rationalizations
+## Decision Cues
 
-| 说法 | 处理方式 |
+| 场景 | 当前做法 |
 |---|---|
-| "parser 应该是问题" | 先比较 adapter CLI、core CLI 和 MCP path。 |
-| "output 大，所以慢是正常的" | 仍要测 pagination、limit 和 output construction。 |
-| "cache 会解决" | CLI process 短生命周期；只有 lifecycle 匹配 workload 时 cache 才有效。 |
-| "换更快的 ref 格式" | `ref` 是 adapter-owned protocol value；保持 opacity 和兼容性。 |
-| "小文件很快" | Docnav 面向大型文档导航；用真实规模和结构测。 |
+| 慢点归因不清 | 比较 adapter CLI、core CLI 和 MCP path。 |
+| Output 或 pagination 可能主导成本 | 测量 pagination、limit 和 output construction。 |
+| Cache 看起来可用 | 先确认 lifecycle、invalidation、memory bound 和 workload 匹配。 |
+| Ref lookup 成本高 | `ref` 仍是 adapter-owned protocol value；优化 lookup 而保持 opacity 和兼容性。 |
+| 小文件表现正常 | 用真实规模和结构证明大型文档导航 workload。 |
 
-## Red Flags
+## Contract Preservation Cues
 
-- 没有 before/after numbers 就优化。
-- 用 tiny document 证明 large-document navigation 问题。
-- debug baseline 和 release after 混比。
-- 为速度改变 output shape、ordering、`ref`、pagination 或 error mapping。
-- core 或 MCP 解析 adapter-owned `ref`。
-- 在 limit 前无界收集全部 results。
-- 为每个 match/read result clone full document text。
-- 加 global cache 但没有 invalidation、memory bound 或 lifecycle rationale。
+- before/after 使用同一 command、fixture、output mode、build profile 和机器条件。
+- Large-document navigation 用真实规模和结构证明。
+- Output shape、ordering、`ref`、pagination 和 error mapping 保持稳定。
+- Core CLI、MCP 和其它接入层继续把 adapter-owned `ref` 当作 opaque value。
+- Result collection 在协议允许的位置 bound、stream 或 limit。
+- Cache 有明确 lifecycle、invalidation、memory bound 和 cross-call 行为。
 
 ## Verification
 
@@ -170,5 +170,5 @@ Budget 必须写明 command、fixture、output mode、page/limit、build profile
 
 - [ ] before/after 使用同一 fixture、command、output mode、build profile 和机器条件。
 - [ ] improvement 大于 measurement noise。
-- [ ] regression guard 覆盖 optimized code path。
-- [ ] 无法自动化的 performance budget 已写明精确复现步骤。
+- [ ] 当 budget、baseline、用户报告或 merge policy 需要后续比较时，最小性能验证证据覆盖 optimized code path。
+- [ ] 无法自动化的 performance evidence 已写明精确复现步骤。

@@ -86,18 +86,18 @@ pnpm run verify:docnav-workspace
 pnpm run verify:docnav-workspace:required
 ```
 
-required profile 只保留快速、确定性的必需门禁，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。full profile 在 required profile 基础上追加质量观测扫描与测试、CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。
+required profile 是快速、确定性的必需验证集合，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。full profile 在 required profile 基础上追加质量观测扫描与测试、CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。
 
-质量观测在 full profile 中保护扫描链路本身：工具封装测试、扫描执行、配置读取和输出结构必须通过。Lizard、scc 和 PMD CPD 的指标值只进入快照、报告和 warning records，不作为失败条件。
+full profile 会验证质量观测链路本身：工具封装测试、扫描执行、配置读取和输出结构必须通过。Lizard、scc 和 PMD CPD 的观测结果只进入快照、报告和 warning records，不作为失败条件。
 
-required profile 包含 `typecheck:scripts` 和 `lint:scripts`，确保 `.ts` 脚本类型 contract 与静态质量规则不会在常规快速门禁之外漂移。
+required profile 包含 `typecheck:scripts` 和 `lint:scripts`，分别验证 `.ts` 脚本类型 contract 与静态质量规则。
 
 开发期快捷入口：
 
 | 命令 | 用途 |
 | --- | --- |
-| `pnpm run verify:docnav-workspace:required` | 快速门禁，只跑必需检查 |
-| `pnpm run verify:docnav-workspace:full` | 完整门禁，显式运行 full profile |
+| `pnpm run verify:docnav-workspace:required` | 快速验证，只跑必需检查 |
+| `pnpm run verify:docnav-workspace:full` | 完整验证，显式运行 full profile |
 | `pnpm run smoke:docnav` | 对当前开发构建运行 core 和 Markdown CLI smoke |
 | `pnpm run cli:dev -- <args>` | 构建并运行当前开发版 `docnav` |
 | `pnpm run cli:dev -- docnav-markdown <args>` | 构建并运行当前开发版 Markdown adapter |

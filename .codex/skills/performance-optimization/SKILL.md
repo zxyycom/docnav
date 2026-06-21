@@ -1,15 +1,15 @@
 ---
 name: performance-optimization
-description: "用于 performance optimization：当 measured budget、regression、profiling data 指向 CLI/API、parser/navigation、pagination、identifier lookup、bridge latency、output serialization、CPU 或 memory bottleneck 时使用。"
+description: "用于 performance optimization：当 measured budget、baseline、用户报告或 profiling data 指向 CLI/API、parser/navigation、pagination、identifier lookup、bridge latency、output serialization、CPU 或 memory bottleneck 时使用。"
 ---
 
 # Performance Optimization
 
 ## 使用边界
 
-- 只在已有性能证据时使用：spec、OpenSpec、review 写出 budget，用户报告 regression，或 profiling/benchmark 指出慢路径。
+- 只在已有性能证据时使用：spec、OpenSpec、review 写出 budget，已有 baseline 可比较，用户报告慢行为，或 profiling/benchmark 指出慢路径。
 - 默认面向本地工具和文档导航类 workload：CLI/API、parser/navigation、pagination、identifier lookup、output serialization、process/stdio overhead、CPU 或 memory 增长。
-- 普通文档或小型代码改动不触发本 skill；只有已有 baseline、budget、regression report 或 profiling 证据时才进入性能流程。
+- 普通文档或小型代码改动不触发本 skill；只有已有 baseline、budget、用户报告或 profiling 证据时才进入性能流程。
 - 不为直觉 micro-optimization 启动；没有 baseline 时，先建立 baseline。
 - 不默认处理 Web performance。Core Web Vitals、Lighthouse、React、bundle、image optimization 只在用户明确要求 web UI 时参考。
 
@@ -32,7 +32,7 @@ description: "用于 performance optimization：当 measured budget、regression
 4. Benchmark：优先 release build；有 `hyperfine` 时用它，否则用 PowerShell `Measure-Command`；保持命令、fixture、output mode 和机器条件一致。
 5. Fix：只改已证明的最小慢路径，保持 owner boundary、opaque identifier、schema、ordering、pagination 和 error behavior 稳定。
 6. Remeasure：用同一 workload 比较 before/after；噪声较大时报告多次运行的 median 或保守范围。
-7. Guard：加入覆盖优化路径的 unit test、smoke check、benchmark note 或 budget 文档。
+7. Evidence：只有已有 budget、baseline、用户报告或 profiling 结果需要后续比较时，沉淀覆盖优化路径的最小性能验证证据：unit test、smoke check、benchmark note 或 budget 文档。Timing measurement 默认作为 observation；只有明确 budget 或 merge policy 时才成为 required check。
 
 ## 参考加载
 
@@ -48,4 +48,4 @@ description: "用于 performance optimization：当 measured budget、regression
 - 已说明 bottleneck 分类，以及为什么当前改动命中该分类。
 - User-visible behavior、opaque identifiers、pagination、schema、ordering 和 error mapping 没有被性能改动破坏。
 - 已运行覆盖改动范围的最小 benchmark/test/smoke；跨语言/runtime、schema/examples、output layer、CLI/API、bridge 或 docs 边界时优先运行仓库约定的 workspace verification。
-- 无法自动化 timing guard 时，已记录复现命令、fixture、budget 和原因。
+- 无法沉淀自动化 timing evidence 时，已记录复现命令、fixture、budget 或 baseline，以及原因。

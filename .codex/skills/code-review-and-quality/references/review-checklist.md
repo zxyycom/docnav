@@ -12,7 +12,7 @@
 ## Correctness（正确性）
 - [ ] 改动符合 task/spec。
 - [ ] Edge cases 与 error paths 已处理。
-- [ ] Tests 覆盖该行为，并能捕获合理 regression。
+- [ ] Touched surface 有验证证据：tests、fixture、schema/example validation、docs sync、smoke command 或 reproduction note，足以证明声明的 contract 或 observable semantics。
 - [ ] 适用时，`outline -> ref -> read` 仍完整。
 
 ## Architecture（架构）
@@ -27,7 +27,7 @@
 - [ ] 新 dependency 有必要性说明，并经过 supply-chain 检查。
 
 ## Verification（验证）
-- [ ] Scoped tests/build/smoke checks 已通过。
+- [ ] 验证 touched surface 的最小 tests/build/smoke/schema/docs checks 已通过。
 - [ ] 适用时，schema、examples、specs 与 OpenSpec artifacts 已同步。
 - [ ] 已按改动范围运行必要 Docnav verification command。
 
@@ -50,11 +50,11 @@ mapping、schema/example/spec sync、适用时的 OpenSpec consistency，
 请 findings first 返回结果，按 severity 排序，并带 file/line references。
 ```
 
-## 常见风险信号（Red Flags）
+## 行动线索（Action Cues）
 
-- 没有 review 证据的 “LGTM”。
-- Bug fix 没有 regression test。
-- Security-sensitive change 没有 security-focused review。
-- Diff 过大或跨面太多，无法可靠审查。
-- Review comment 没有 severity 或明确 author action。
-- 把 deferred cleanup 说成可接受，但没有 tracked reason。
+- Review 结论带上已审查 scope、证据和 verdict。
+- Bug fix 新增或改变 stable observable semantics 时，验证证据证明修正后的行为。
+- Security-sensitive change 包含 security-focused review。
+- Diff scope 足够聚焦，reviewer 可以可靠追踪 touched surfaces。
+- Review comment 带 severity 和明确 author action。
+- Deferred cleanup 有 owner、reason 和 follow-up 条件。

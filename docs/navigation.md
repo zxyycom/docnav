@@ -55,7 +55,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 
 ## 规则所有权
 
-关键规则只由一个主文档拥有，其它文档只摘要或引用，避免重复定义造成漂移。
+关键规则只由一个主文档拥有，其它文档只摘要或引用，保持规则来源单一。
 
 | 规则面 | Owner 文档 |
 | --- | --- |
@@ -70,7 +70,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | 自动化测试层级、覆盖目标、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
 | 测试函数变更时的 case 归属、账本更新和源码 `@case` 标记维护流程 | [测试用例维护](testing/case-maintenance.md) |
 | 最终 case 条目、证明目标和源码 `@case` 标记映射 | [测试用例编号账本](testing/cases.md) |
-| 脚本语言、包管理、Node.js/TypeScript 脚本运行方式和脚本类型检查门禁 | [工程工具链](tooling.md) |
+| 脚本语言、包管理、Node.js/TypeScript 脚本运行方式和脚本类型检查验证入口 | [工程工具链](tooling.md) |
 | JSON 字段形状和示例语义校验 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) |
 
 ## 术语

@@ -13,18 +13,18 @@
 | Skill | 使用条件 | 常见组合 |
 | --- | --- | --- |
 | `interview-me` | 需求缺少 who、why、success、constraint，或用户要求 interview/grill/stress-test | 之后接 `context-engineering` 或 `incremental-implementation` |
-| `context-engineering` | agent drift、docs 入口不清、任务切换后上下文风险高 | 之后接具体实现、测试或文档 skill |
-| `incremental-implementation` | multi-file change、vertical slice、分阶段验证 | 常接 `test-driven-development`、`api-and-interface-design` |
-| `api-and-interface-design` | raw protocol、readable CLI output、adapter contract、ref、pagination、schema、MCP tool mapping | 常接 `doubt-driven-development` 和 `test-driven-development` |
-| `source-driven-development` | framework/library/API/correctness-sensitive implementation 需要官方资料 | 常接实现或测试 skill |
-| `doubt-driven-development` | protocol、schema、ref、adapter contract、CLI/MCP output 等高风险决策需要 bounded challenge | 常接 API 设计、测试、docs |
-| `test-driven-development` | 行为变更、bug fix、schema/example、adapter protocol、CLI raw/readable、MCP mapping 需要可执行证明 | 常接 debug、implementation、review |
-| `debugging-and-error-recovery` | tests fail、build break、behavior regression、adapter/CLI/MCP failure | 常接 TDD 添加 guard |
-| `code-review-and-quality` | PR/local diff/handoff review，关注 bug、risk、missing tests | 可接 `code-simplification` 或 security/performance |
+| `context-engineering` | agent drift、docs 入口不清、任务切换后上下文风险高 | 之后接具体实现、验证或文档 skill |
+| `incremental-implementation` | multi-file change、vertical slice、分阶段验证 | 常接 `api-and-interface-design`；新增或改变 behavior 时接验证 skill |
+| `api-and-interface-design` | raw protocol、readable CLI output、adapter contract、ref、pagination、schema、MCP tool mapping | 常接 `doubt-driven-development`，并按 changed surface 选择验证证据 |
+| `source-driven-development` | framework/library/API/correctness-sensitive implementation 需要官方资料 | 常接实现或验证 skill |
+| `doubt-driven-development` | protocol、schema、ref、adapter contract、CLI/MCP output 等高风险决策需要 bounded challenge | 常接 API 设计和 changed-surface 验证 |
+| `test-driven-development` | 新增或改变 behavior、schema/example、adapter protocol、CLI raw/readable、MCP mapping 需要可执行证明 | 常接 debug、implementation、review |
+| `debugging-and-error-recovery` | tests fail、build break、可复现异常行为、adapter/CLI/MCP failure 需要 root cause 修复 | 需要新的可执行证明时接 TDD |
+| `code-review-and-quality` | PR/local diff/handoff review，关注 correctness、risk 和验证充分性 | 可接 `code-simplification` 或 security/performance |
 | `code-simplification` | 在不改行为的前提下降低复杂度、重复或不必要抽象 | 常在 review 后或小重构中使用 |
-| `security-and-hardening` | untrusted documents、refs、paths、adapter processes、stdio/JSON、secrets、dependencies | 常接 API 设计和测试 |
-| `performance-optimization` | 已有 measurement、budget 或 profiling 指向 CPU、memory、latency bottleneck | 常接 debugging 和 targeted tests |
-| `ci-cd-and-automation` | CLI/Rust/Node/schema/examples/docs 的 quality gate、workflow、matrix 或 CI failure triage | 常接 docs 或 tests |
+| `security-and-hardening` | untrusted documents、refs、paths、adapter processes、stdio/JSON、secrets、dependencies | 常接 API 设计和 changed-surface 验证 |
+| `performance-optimization` | performance surface、budget 或 profiling 指向 CPU、memory、latency bottleneck | 常接 debugging，并用同一 changed surface 验证优化结果 |
+| `ci-cd-and-automation` | declared CLI/Rust/Node/schema/examples/docs contract 需要 automation、workflow、matrix 或 CI failure triage | 常接 docs 或验证 skill |
 | `documentation-and-adrs` | ADR、README、CHANGELOG、OpenSpec/docs sync、durable decisions | 常在 public behavior 变化后使用 |
 
 ## OpenSpec Skills
@@ -48,13 +48,13 @@ OpenSpec skills 只用于 OpenSpec 工作；涉及 `openspec/changes/` 时先按
 4. 增量实现：`incremental-implementation`
 5. 保护 public contract：`api-and-interface-design`
 6. 挑战高风险决策：`doubt-driven-development`
-7. 证明行为：`test-driven-development`
+7. 验证 changed surface：`test-driven-development`
 8. 修复失败：`debugging-and-error-recovery`
 9. 审查风险：`code-review-and-quality`
 10. 降低复杂度：`code-simplification`
 11. 加固边界：`security-and-hardening`
 12. 优化性能：`performance-optimization`
-13. 更新自动化：`ci-cd-and-automation`
+13. 自动化 declared contract：`ci-cd-and-automation`
 14. 记录决策：`documentation-and-adrs`
 
 OpenSpec-only 常见组合：`openspec-explore` -> `openspec-propose` -> `openspec-apply-change` -> `openspec-archive-change`。
@@ -68,7 +68,7 @@ OpenSpec-only 常见组合：`openspec-explore` -> `openspec-propose` -> `opensp
 3. 异议：方案有明确代价时，给出具体风险、可量化影响和替代方案；用户知情坚持后按用户决定执行。
 4. 简化：新增抽象前确认它消除了真实重复、稳定了跨模块契约，或降低了长期维护成本。
 5. 范围：只改任务要求的文件和行为；相邻清理、顺手重构和删除未知内容需要明确授权。
-6. 验证：交付前运行与改动范围匹配的检查；无法运行时说明原因和剩余风险。
+6. 验证：交付前按 changed surface 运行最小必要验证；已有验证覆盖目标时直接使用它，新增验证只覆盖本次新增或改变的 contract/behavior；无法运行时说明原因和剩余风险。
 
 ## Unavailable Recommendations
 

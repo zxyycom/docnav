@@ -1,6 +1,6 @@
 # Triage Cues
 
-本引用用于根据症状定位 boundary、选择 regression guard 和识别调试风险。
+本引用用于根据症状定位 boundary、选择验证证据和识别调试风险。
 
 ## Symptom To Boundary
 
@@ -13,10 +13,10 @@
 - Schema mismatch：先把失败字段与 owning type 对比，再修改 fixtures。
 - 只有 `readable-view` framing 变化：先验证 JSON modes，再按 formatting-only change 处理。
 - Bridge 与 CLI/API 不同：检查 stdio JSON、tool arg/result mapping、error mapping、child process invocation。
-- Windows-only failure：在复现和 regression test 中保留精确 path form 和 shell quoting。
+- Windows-only failure：在复现和验证中保留精确 path form 和 shell quoting。
 - Generated fixture changed：确认变化来自 generator、source fixture、schema 还是 implementation。
 
-## Regression Guard Cues
+## Validation Cues
 
 - 解析或切片：fixture document 应小到能一眼看出 line/section boundary。
 - Identifier/read：test 同时检查 generated identifier 和 read/detail result，避免只证明其中一半。
@@ -42,4 +42,4 @@
 2. 选择一个相邻层比较，证明问题在哪一侧。
 3. 删除与复现无关的输入，同时保留触发失败的 path/identifier/page/output mode。
 4. 把修复限制在 owning boundary。
-5. 让 guard 先表达失败，再验证修复。
+5. 让选定验证先表达失败或缺口，再验证修复。

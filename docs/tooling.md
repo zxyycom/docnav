@@ -34,7 +34,7 @@
 
 ## 验证入口集成
 
-`typecheck:scripts` 和 `lint:scripts` 是脚本模块 contract 的快速门禁。前者证明脚本类型、模块边界和共享状态一致；后者证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题。它们不替代真实 CLI、schema、进程 smoke、Rust tests 或 release package 验证。
+`typecheck:scripts` 和 `lint:scripts` 是脚本模块 contract 的快速验证入口。前者证明脚本类型、模块边界和共享状态一致；后者证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题。它们不替代真实 CLI、schema、进程 smoke、Rust tests 或 release package 验证。
 
 required profile 包含 `typecheck:scripts` 和 `lint:scripts`。full profile 会追加更宽验证；profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
 

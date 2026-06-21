@@ -88,7 +88,9 @@ await expect(asyncFn()).rejects.toThrow(Error);
 - 优先写 DAMP tests：每个测试都应像一小段行为规格，即使这会重复一些 setup。
 - 优先使用 real implementations，其次 fakes，再其次 stubs。只有在真实依赖 slow、non-deterministic 或 unsafe 的边界上，才谨慎使用 mocks。
 - 每个测试聚焦一个 behavior concept。多个 assertions 可以存在，只要它们证明的是同一概念。
-- 用 expected behavior 和 condition 命名测试，不用 implementation detail 命名。
+- 新增 automated test 时，先写一句测试意图：`<owner surface> proves <current contract / invariant / observable path>`；写不清时用现有验证、手动复现或不新增 automated test。
+- 让 automated test 证明当前稳定 contract、自定义不变量、等价类或当前 owner 明确承诺的可观察语义。
+- 用 expected current behavior 和 condition 命名测试；小标题使用 owner surface 和当前行为，例如 `MCP bridge readable-error detail preservation`。
 - 保持测试 deterministic：隔离状态、控制时间、避免顺序依赖，并始终 `await` async work。
 
 ## Mock 模式（Mocking Patterns）
@@ -242,5 +244,5 @@ test('user can create and complete a task', async ({ page }) => {
 | Testing third-party code | 浪费时间，且不是你的 bug | Mock the boundary |
 | Skipping tests to pass CI | 隐藏真实问题 | 修复或删除该 test |
 | Permanently using `test.skip` | 形成 dead code | 删除或修复它 |
-| Overly broad assertions | 抓不住 regression | 具体断言 |
+| Overly broad assertions | 难以证明目标行为 | 断言当前 behavior concept 的具体输出 |
 | No async error handling | 吞掉错误，造成 false passes | 始终 `await` async tests |

@@ -1,6 +1,6 @@
 # 性能清单（Performance Checklist）
 
-这是 code review 时使用的 Docnav performance quick reference。只有当改动触及 hot path、large document behavior、pagination、adapter invocation、serialization、MCP bridge 或可能引入 regression 时才加载。
+这是 code review 时使用的 Docnav performance quick reference。只有当改动触及 hot path、large document behavior、pagination、adapter invocation、serialization、MCP bridge 或可能改变可观察性能成本时才加载。
 
 性能判断必须以 measurement 或明确复杂度变化为依据。不要把主观“看起来更快/更慢”当作 finding。
 

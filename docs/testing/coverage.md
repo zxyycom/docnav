@@ -29,7 +29,7 @@
 
 - JavaScript smoke：证明真实进程入口、跨二进制链路、stdout/stderr、exit code、warning placement 和 package 可执行性。
 - Rust tests：证明 parser、ref、分页、decode stage、helper、renderer 和内部状态转换等自定义逻辑不变量。
-- schema/docs validators：证明字段形状、示例链路、schema 映射和文档化 fixture 没有漂移。
+- schema/docs validators：证明字段形状、示例链路、schema 映射和文档化 fixture 与当前 owner 文档一致。
 - 测试用例维护：定义测试函数变更时的 case 归属、账本更新和 `@case` 标记维护流程。
 - 测试用例编号账本：保存最终 case 条目、证明目标和源码 `@case` 标记映射，不替代测试实现或覆盖矩阵。
 

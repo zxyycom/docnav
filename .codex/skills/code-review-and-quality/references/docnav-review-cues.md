@@ -16,13 +16,14 @@
 - When protocol, schema, examples, CLI output, adapter behavior or MCP mapping changes, verify the governing docs and validation artifacts are updated.
 - If the work item has OpenSpec artifacts, review consistency across artifacts, implementation, tests and verification.
 
-## Test Layer Cues
+## Verification Evidence Cues
 
 - Adapter behavior: adapter unit/smoke tests and focused fixtures.
 - Core CLI/routing/config/output mode: CLI integration or smoke tests.
 - MCP mapping: bridge tests that compare tool args/results with owning CLI behavior.
 - Schema/example changes: schema validation, fixture/example round trip, generated output diff.
-- Bug fixes: regression proof that fails before the fix and passes after it.
+- Bug fixes that change stable observable semantics: evidence that the corrected behavior is observable and tied to the owning surface; when feasible, show it would fail or be unsupported before the fix and pass after it.
+- Review wording: describe gaps as current verification evidence gaps, e.g. "`document_outline` mapping evidence does not show `INVALID_REQUEST.details` reaches MCP structuredContent"; labels use the owner surface and current behavior, such as `MCP bridge readable-error mapping` or `Markdown empty-document outline`.
 
 ## Verification Scope
 
@@ -31,4 +32,4 @@ Use repository-declared commands and current docs rather than hardcoded build ou
 - Markdown-only skill/reference changes: run available Markdown shape/link checks, then `git diff --check -- .codex/skills`.
 - Adapter or direct CLI behavior: run the relevant adapter smoke/integration checks.
 - Core CLI/routing/config: run the relevant core CLI smoke/integration checks.
-- Protocol, schema, examples, docs, MCP mapping or cross-boundary work: run the repository workspace verifier when feasible, or record the narrow checks and skipped wider gate.
+- Protocol, schema, examples, docs, MCP mapping or cross-boundary work: run the repository workspace verifier when feasible, or record the narrow checks and skipped wider verification.

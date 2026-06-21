@@ -16,7 +16,7 @@ Read-only context:
 Out of scope:
 - <items>
 
-Guard / verification:
+Evidence / verification:
 - <commands or manual replay>
 
 Stop and report if:
@@ -51,7 +51,7 @@ Observed out of scope:
 
 出现这些信号时，收窄 slice：
 
-- 写了约 100 行以上代码还没有 guard 或 replay。
+- 写了约 100 行以上代码还没有验证或 replay。
 - 一个 diff 同时改 feature、refactor、formatting 和 generated files。
 - Build 或 tests 在 slice 之间保持失败，且失败原因没有记录。
 - 为一个真实用例创建通用 framework、registry 或 config language。

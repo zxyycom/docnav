@@ -1,10 +1,10 @@
-# Docnav Quality Gates
+# Docnav Contract Validation Automation
 
 ## 适用范围
 
-只在 Docnav 仓库内设置、修改或调试 CLI、Rust adapter、Node MCP bridge、schema、examples、docs、OpenSpec 或 workspace verification 时读取本 reference。不要把这里的 gate map 迁移成通用 CI 规则。
+只在 Docnav 仓库内设置、修改或调试 CLI、Rust adapter、Node MCP bridge、schema、examples、docs、OpenSpec 或 workspace verification 时读取本 reference。这里的 validation map 只描述 Docnav surfaces 的最小自动化验证入口，不迁移成通用 CI 规则。
 
-## Gate Map
+## Validation Map
 
 - CLI/core: affected crate tests、binary build，以及覆盖 `info`、`outline`、`read`、output mode 和 error mapping 的 CLI smoke check。
 - Rust adapter: adapter crate tests、fixture-based direct adapter smoke、protocol JSON verification、pagination tests 和 ref parsing tests。
@@ -27,8 +27,8 @@
 1. Re-run the exact failing command locally before changing code or workflow YAML.
 2. Classify failure: environment/setup、Rust compile/test、Node package、CLI/adapter smoke、schema/example/docs、OpenSpec 或 MCP bridge mapping。
 3. Shrink to the smallest failing fixture、ref、page、request payload、generated artifact 或 test name。
-4. Fix the underlying contract first; update the gate only when it no longer matches repository policy.
-5. Re-run the narrow failed gate, then the wider gate that should have caught the regression.
+4. Fix the underlying contract first; update the check only when it no longer matches repository policy.
+5. Re-run the narrow failed check, then the wider verification that proves the declared merge risk.
 
 ## Workspace Verification Trigger
 

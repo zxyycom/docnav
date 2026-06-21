@@ -239,7 +239,7 @@ Proves:
 - Core preflight 可以在解析失败前识别空格分隔和等号形式的 `--output protocol-json`。
 - 该识别只服务错误输出模式选择，不替代正式 parser。
 
-### WB-CORE-ADAPTER-001 Core 检测 adapter contract 漂移
+### WB-CORE-ADAPTER-001 Core 校验 adapter contract 对齐
 Status: implemented
 Code: `crates/docnav/src/adapter_output_contract.rs`
 
@@ -253,7 +253,7 @@ Code: `crates/docnav-diagnostics/src/lib.rs`
 
 Proves:
 - warning id、effect、details 和 stderr text line 保持稳定。
-- CLI argv warning 和 adapter candidate warning 的结构化 payload 不漂移。
+- CLI argv warning 和 adapter candidate warning 的结构化 payload 保持当前 documented shape。
 
 ### WB-CLIARGS-COMPAT-001 Loose CLI 参数扫描保持兼容边界
 Status: implemented
@@ -344,13 +344,13 @@ Proves:
 - Protocol request decoding 先运行 schema validation，再进入 typed deserialization。
 - schema-invalid、typed-invalid 和 semantic-invalid request/probe 保持可区分。
 
-### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema guard 被实现测试消费
+### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema constraints 被实现测试消费
 Status: implemented
 Code: `crates/docnav-protocol/src/tests.rs`
 
 Proves:
 - 已文档化的 protocol fixtures 仍能 deserialize 为共享 protocol types。
-- protocol request、manifest 和 probe schema 的 removed-field / required-field guard 不漂移。
+- protocol request、manifest 和 probe schema 的 removed-field / required-field constraints 被实现测试消费。
 
 ### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数
 Status: implemented
@@ -463,7 +463,7 @@ Code: `crates/docnav-markdown/src/markdown/refs.rs`
 
 Proves:
 - parsed heading ref 只在 line、level、index 同时匹配时命中目标 heading。
-- line、level 或 index 任一字段漂移都会被 matcher 拒绝。
+- matcher 以 line、level 和 index 同时匹配作为命中条件。
 
 ### WB-MD-PARSE-001 Markdown parser 忽略非 heading 结构
 Status: implemented
@@ -596,21 +596,21 @@ Proves:
 
 ## Auxiliary Script Cases
 
-### AUX-WORKSPACE-VERIFY-001 Workspace verifier 保持 required/full gate 语义
+### AUX-WORKSPACE-VERIFY-001 Workspace verifier 保持 required/full profile 语义
 Status: implemented
 Code: `scripts/docnav-workspace/verify.test.ts`
 
 Proves:
 - required 和 full verifier profile 保持区分。
-- profile membership、check label、arguments、dependencies、mutex、output filtering 和 report counting 的变化会被测试暴露。
-- required gate 显式包含 case catalog docs validator 和 validator script tests。
+- profile membership、check label、arguments、dependencies、mutex、output filtering 和 report counting 由 verifier tests 明确证明。
+- required profile 显式包含 case catalog docs validator 和 validator script tests。
 
 ```mermaid
 flowchart LR
   A["输入：workspace verifier CLI args"] --> B["解析 profile / concurrency"]
   B --> C{"profile"}
-  C -->|"required"| D["选择 required gate checks"]
-  C -->|"full"| E["选择 full gate checks"]
+  C -->|"required"| D["选择 required checks"]
+  C -->|"full"| E["选择 full checks"]
   D --> F["构建 task graph"]
   E --> F
   F --> G["应用 dependencies / mutexes"]
@@ -773,4 +773,4 @@ Code: `scripts/tools/validators/case-catalog/index.test.ts`
 
 Proves:
 - case catalog validator 对 `Status:`、planned case、duplicate marker 和 `Code:` 路径错配有独立测试。
-- 真实仓库仍由 `pnpm run validate:docs cases` 作为集成 guard。
+- 真实仓库由 `pnpm run validate:docs cases` 作为集成验证。
