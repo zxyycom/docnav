@@ -209,7 +209,7 @@ flowchart LR
 
 ### WB-CORE-HELP-001 Core parser help/version 不进入 document output mode
 Status: implemented
-Code: `crates/docnav/src/cli/parser.rs`
+Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
 - `--help` 和 operation help 返回 typed help command，并展示当前支持的 document output mode。
@@ -217,7 +217,7 @@ Proves:
 
 ### WB-CORE-OUTPUTMODE-001 Core parser document output mode 解析稳定
 Status: implemented
-Code: `crates/docnav/src/cli/parser.rs`
+Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
 - 未显式传入 `--output` 时 parser 不抢先解析默认值，由 document request/config chain 决定。
@@ -225,7 +225,7 @@ Proves:
 
 ### WB-CORE-ARGS-001 Core parser 保持 operation 参数所有权
 Status: implemented
-Code: `crates/docnav/src/cli/parser.rs`
+Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
 - operation-owned 参数保持严格校验，例如 `outline --page 0` 会暴露 page 边界错误。
@@ -273,7 +273,7 @@ Proves:
 
 ### WB-OUTPUT-DOCUMENT-001 共享 document output facade 分层
 Status: implemented
-Code: `crates/docnav-output/src/lib.rs`
+Code: `crates/docnav-output/src/tests.rs`
 
 Proves:
 - readable JSON 不带 protocol envelope，protocol JSON warning 只写 stderr。

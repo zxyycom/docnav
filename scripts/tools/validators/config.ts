@@ -70,9 +70,9 @@ export const READABLE_SCHEMA_BY_OPERATION = {
 
 export const OUTPUT_MODE_CONSISTENCY = {
   coreOutputModeRust: "crates/docnav/src/cli/command_model.rs",
-  coreOutputHelpRust: "crates/docnav/src/cli/parser.rs",
+  coreOutputHelpRust: "crates/docnav/src/cli/parser/spec.rs",
   adapterOutputModeRust: "crates/docnav-adapter-sdk/src/direct/output.rs",
-  adapterOutputHelpRust: "crates/docnav-adapter-sdk/src/direct/args.rs",
+  adapterOutputHelpRust: "crates/docnav-adapter-sdk/src/direct/args/spec.rs",
   conformanceDir: "crates/docnav-readable/tests/fixtures/conformance",
   conformanceReadme: "crates/docnav-readable/tests/fixtures/conformance/README.md",
   smokeMatrices: [
