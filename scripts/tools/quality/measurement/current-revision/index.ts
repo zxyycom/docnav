@@ -8,19 +8,26 @@ import { runLizardScan } from "./lizard.ts";
 import { runSccScan } from "./scc.ts";
 import type { ScanContext } from "./scan-context.ts";
 import type { CodeAreaFileMap } from "../../model/schema.ts";
+import type { QualityScanProfile } from "../../scan-command/command-model.ts";
 
 export async function runCurrentRevisionScan({
   context,
   scanFiles,
-  fileMap
+  fileMap,
+  scanProfile
 }: {
   context: ScanContext;
   fileMap: CodeAreaFileMap;
+  scanProfile: QualityScanProfile;
   scanFiles: string[];
 }): Promise<void> {
   runSccScan(context, scanFiles);
   runLizardScan(context, scanFiles);
-  await runPmdCpdScan(context, fileMap);
+  if (scanProfile === "full") {
+    await runPmdCpdScan(context, fileMap);
+  } else {
+    console.log("Skipping PMD CPD duplicate detection for quick quality check");
+  }
 
   context.metrics.aggregates = buildAggregates({
     fileMetrics: context.metrics.fileMetrics,

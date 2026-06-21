@@ -5,7 +5,7 @@ import type { CheckTask, Profile } from "./model.ts";
 export { asCheckTask } from "./normalization.ts";
 export { checks } from "./definitions.ts";
 export { PROFILE_FULL, PROFILE_REQUIRED, profiles } from "./model.ts";
-export type { CheckDefinition, CheckReportRef, CheckTask, Profile } from "./model.ts";
+export type { CheckDefinition, CheckReportRef, CheckStatus, CheckTask, Profile } from "./model.ts";
 
 export function checksForProfile(profile: Profile): CheckTask[] {
   assertProfile(profile);

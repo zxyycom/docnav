@@ -103,7 +103,15 @@ jobs:
           if [ -f artifacts/docnav-quality/report.md ]; then
             echo "# Code Quality Observability" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Metric values do not cause CI failure; quality scan execution/config/output failures still fail this job. Clippy remains the Rust blocking lint gate.**" >> $GITHUB_STEP_SUMMARY
+            if [ -s artifacts/docnav-quality/warnings-all.ndjson ]; then
+              echo "**Status: warning**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Quality warnings were generated. The first non-info warning annotations are shown on this run; full details are in \`artifacts/docnav-quality/report.md\`." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**Status: passed**" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Warning records do not cause CI failure; quality scan execution/config/output failures still fail this job. Clippy remains the Rust blocking lint gate.**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             tail -n +2 artifacts/docnav-quality/report.md >> $GITHUB_STEP_SUMMARY
           else

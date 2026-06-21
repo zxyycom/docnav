@@ -3,8 +3,8 @@
 /**
  * Docnav 代码质量观测命令入口。
  *
- * 非阻断代码质量扫描：Clippy 保持 Rust 阻断 gate，Lizard/scc/PMD CPD
- * 生成非阻断代码质量快照、warning 和报告。
+ * 代码质量扫描：Clippy 保持 Rust 阻断 gate，Lizard/scc/PMD CPD
+ * 生成代码质量快照、warning 状态和报告。
  */
 
 import { resolve, dirname } from "node:path";
@@ -40,6 +40,8 @@ import {
   resolveChangedFilesForScan,
   writeArtifacts,
   printSummary,
+  printWarningStatus,
+  qualityCheckStatus,
   validateOutput,
   logFingerprints,
   formatFatalIssue,
@@ -79,7 +81,7 @@ async function main() {
   const timings = createTimings();
   const opts = parseArgs();
 
-  printBanner();
+  printBanner(opts.scanProfile);
 
   const artifactDir = resolve(root, opts.artifactDir);
   const { rawDir } = timings.measure("prepare artifact dirs", () => prepareArtifactDirs(artifactDir));
@@ -105,9 +107,14 @@ async function main() {
   finishScan({ artifactDir, runtime, timings });
 }
 
-function printBanner(): void {
+function printBanner(scanProfile: QualityScanOptions["scanProfile"]): void {
   console.log("Docnav Code Quality Observability");
-  console.log("Non-blocking snapshot — metric values do not cause failure.");
+  console.log(`Profile: ${scanProfile}`);
+  if (scanProfile === "quick") {
+    console.log("Quick check — skips baseline comparison and PMD CPD duplicate detection.");
+  } else {
+    console.log("Full check — runs all configured scanners; baseline comparison is opt-in.");
+  }
   console.log("");
 }
 
@@ -199,7 +206,8 @@ async function scanCurrentRevision(
       config: DEFAULT_CONFIG
     },
     scanFiles: inputs.scanFiles,
-    fileMap: inputs.fileMap
+    fileMap: inputs.fileMap,
+    scanProfile: runtime.opts.scanProfile
   }));
 }
 
@@ -246,29 +254,55 @@ function finishScan({
   timings.measure("write artifacts", () => writeArtifacts({ artifactDir, metrics, topN: opts.topN }));
   timings.measure("print summary", () => printSummary(metrics));
   const validation = timings.measure("validate output", () => validateOutput(metrics));
-  if (!validation.valid) {
-    fatalIssues.push({
-      tool: "metrics",
-      phase: "validation",
-      error: validation.errors.join("; ")
-    });
+  recordValidationIssues(fatalIssues, validation.errors);
+
+  if (fatalIssues.length > 0) {
+    finishFatalScan(artifactDir, fatalIssues);
+    return;
   }
 
-  const hasFatalIssues = fatalIssues.length > 0;
-  console.log("");
-  console.log(hasFatalIssues ? "❌ Quality scan failed." : "✅ Quality scan complete.");
-  console.log(`Artifacts in: ${artifactDir}/`);
-
-  if (hasFatalIssues) {
-    console.error("Fatal quality scan issues:");
-    for (const issue of fatalIssues) {
-      console.error(`  - ${formatFatalIssue(issue)}`);
-    }
-    process.exit(2);
-  }
+  timings.measure("print warning status", () =>
+    printWarningStatus({ artifactDir, metrics, scanProfile: opts.scanProfile })
+  );
+  printSuccessfulScanCompletion(qualityCheckStatus(metrics), artifactDir);
 
   timings.print();
   process.exit(0);
+}
+
+function recordValidationIssues(fatalIssues: FatalIssue[], validationErrors: string[]): void {
+  if (validationErrors.length === 0) {
+    return;
+  }
+  fatalIssues.push({
+    tool: "metrics",
+    phase: "validation",
+    error: validationErrors.join("; ")
+  });
+}
+
+function finishFatalScan(artifactDir: string, fatalIssues: FatalIssue[]): void {
+  console.log("");
+  console.log("❌ Quality scan failed.");
+  console.log(`Artifacts in: ${artifactDir}/`);
+  console.error("Fatal quality scan issues:");
+  for (const issue of fatalIssues) {
+    console.error(`  - ${formatFatalIssue(issue)}`);
+  }
+  process.exit(2);
+}
+
+function printSuccessfulScanCompletion(status: "passed" | "warning", artifactDir: string): void {
+  console.log("");
+  console.log(successfulScanMessage(status));
+  console.log(`Artifacts in: ${artifactDir}/`);
+}
+
+function successfulScanMessage(status: "passed" | "warning"): string {
+  if (status === "warning") {
+    return "⚠️ Quality scan complete with warnings.";
+  }
+  return "✅ Quality scan complete.";
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

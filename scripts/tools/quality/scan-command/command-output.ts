@@ -11,8 +11,14 @@ import type {
   BaselineSnapshot,
   CodeAreaFingerprint,
   FatalIssue,
-  QualityMetrics
+  QualityMetrics,
+  WarningRecord
 } from "../model/schema.ts";
+import type { QualityScanProfile } from "./command-model.ts";
+
+const WARNING_PREVIEW_LIMIT = 5;
+
+export type QualityCheckStatus = "passed" | "warning";
 
 export function prepareArtifactDirs(artifactDir: string): { rawDir: string } {
   const rawDir = join(artifactDir, "raw");
@@ -84,6 +90,52 @@ export function printSummary(metrics: QualityMetrics): void {
   console.log(`  Baseline status: ${metrics.baseline.status}`);
   console.log(`  Comparison status: ${metrics.comparisonStatus}`);
   console.log("─".repeat(60));
+}
+
+export function qualityCheckStatus(metrics: QualityMetrics): QualityCheckStatus {
+  return metrics.warnings.all.length > 0 ? "warning" : "passed";
+}
+
+export function printWarningStatus({
+  artifactDir,
+  metrics,
+  scanProfile
+}: {
+  artifactDir: string;
+  metrics: QualityMetrics;
+  scanProfile: QualityScanProfile;
+}): void {
+  const warnings = metrics.warnings.all;
+  const status = qualityCheckStatus(metrics);
+
+  console.log("");
+  console.log(`Quality check status: ${status}`);
+
+  if (warnings.length === 0) {
+    return;
+  }
+
+  console.log(
+    `Warnings: ${warnings.length} total ` +
+    `(${metrics.warnings.changed.length} changed, ${metrics.warnings.regressions.length} regressions)`
+  );
+  if (scanProfile === "quick") {
+    console.log("This is a quick quality check, not a full quality scan.");
+  }
+  console.log(`Showing first ${Math.min(WARNING_PREVIEW_LIMIT, warnings.length)} warnings:`);
+  for (const [index, warning] of warnings.slice(0, WARNING_PREVIEW_LIMIT).entries()) {
+    console.log(`  ${index + 1}. ${formatWarningPreview(warning)}`);
+  }
+  if (warnings.length > WARNING_PREVIEW_LIMIT) {
+    console.log(`  ... and ${warnings.length - WARNING_PREVIEW_LIMIT} more warnings`);
+  }
+  console.log(`Detailed report: ${join(artifactDir, "report.md")}`);
+  console.log(`Warning records: ${join(artifactDir, "warnings-all.ndjson")}`);
+}
+
+function formatWarningPreview(warning: WarningRecord): string {
+  const location = warning.line === null ? warning.path : `${warning.path}:${warning.line}`;
+  return `[${warning.level}/${warning.ruleId}] ${location} - ${warning.message}`;
 }
 
 export function validateOutput(metrics: QualityMetrics) {

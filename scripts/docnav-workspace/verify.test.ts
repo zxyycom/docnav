@@ -13,6 +13,7 @@ import {
   resolveVerificationConcurrency,
   visibleOutputLines
 } from "./verify.ts";
+import { executeCheck } from "./verify/execution.ts";
 
 // @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {
@@ -48,6 +49,7 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("cargo fmt"));
     assert.ok(requiredLabels.includes("TypeScript script typecheck"));
     assert.ok(requiredLabels.includes("TypeScript script lint"));
+    assert.ok(requiredLabels.includes("quality quick check"));
     assert.ok(requiredLabels.includes("docs case catalog validator"));
     assert.ok(requiredLabels.includes("docs schema validator"));
     assert.ok(requiredLabels.includes("case catalog validator tests"));
@@ -58,6 +60,8 @@ describe("workspace verifier configuration", () => {
     assert.ok(!requiredLabels.includes("docnav core development smoke"));
 
     assert.ok(fullLabels.includes("cargo fmt"));
+    assert.ok(fullLabels.includes("quality quick check"));
+    assert.ok(fullLabels.includes("quality full check"));
     assert.ok(fullLabels.includes("quality internal node tests"));
     assert.ok(!fullLabels.includes("quality report tests"));
     assert.ok(fullLabels.includes("cargo test"));
@@ -77,8 +81,25 @@ describe("workspace verifier configuration", () => {
     }
 
     assert.equal(checkByLabel("cargo test").type, PROFILE_FULL);
-    assert.equal(checkByLabel("quality scan").command, "node");
-    assert.deepEqual(checkByLabel("quality scan").args, ["scripts/quality/scan.ts"]);
+    assert.equal(checkByLabel("quality quick check").type, PROFILE_REQUIRED);
+    assert.equal(checkByLabel("quality quick check").command, "node");
+    assert.deepEqual(checkByLabel("quality quick check").args, [
+      "scripts/quality/scan.ts",
+      "--profile",
+      "quick",
+      "--artifact-dir",
+      "artifacts/docnav-quality/quick"
+    ]);
+    assert.deepEqual(checkByLabel("quality quick check").warningOutput, [/^Quality check status: warning$/m]);
+    assert.equal(checkByLabel("quality full check").type, PROFILE_FULL);
+    assert.equal(checkByLabel("quality full check").command, "node");
+    assert.deepEqual(checkByLabel("quality full check").args, [
+      "scripts/quality/scan.ts",
+      "--profile",
+      "full",
+      "--with-baseline"
+    ]);
+    assert.deepEqual(checkByLabel("quality full check").warningOutput, [/^Quality check status: warning$/m]);
     assert.deepEqual(checkByLabel("cargo test").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav development binaries").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav-markdown development smoke").mutex, []);
@@ -123,7 +144,7 @@ describe("workspace verifier configuration", () => {
     assert.equal(formatDurationMs(65_000), "1m 05s");
     assert.equal(
       formatCompletionLine({
-        ok: true,
+        status: "passed",
         check: { id: "docs-schema-validator", label: "docs schema validator" },
         durationMs: 1250
       }),
@@ -131,12 +152,37 @@ describe("workspace verifier configuration", () => {
     );
     assert.equal(
       formatCompletionLine({
-        ok: false,
+        status: "failed",
         check: { id: "cargo-test", label: "cargo test" },
         durationMs: 65_000
       }),
       "  failed: cargo test (1m 05s)"
     );
+    assert.equal(
+      formatCompletionLine({
+        status: "warning",
+        check: { id: "quality-quick-check", label: "quality quick check" },
+        durationMs: 987
+      }),
+      "  warning: quality quick check (987ms)"
+    );
+  });
+
+  it("maps quality warning markers to warning check status", async () => {
+    const result = await executeCheck({
+      id: "quality-warning-marker-test",
+      label: "quality warning marker test",
+      type: PROFILE_REQUIRED,
+      command: process.execPath,
+      args: ["-e", "console.log('Quality check status: warning')"],
+      dependsOn: [],
+      mutex: [],
+      ignoreOutput: [],
+      warningOutput: [/^Quality check status: warning$/m]
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.status, "warning");
   });
 
   it("counts top-level report groups separately from executable leaf checks", () => {
@@ -145,7 +191,7 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredChecks.some((check) => check.label === "docs case catalog validator"));
     assert.ok(requiredChecks.some((check) => check.label === "docs schema validator"));
     assert.ok(!requiredChecks.some((check) => check.label === "docs validators"));
-    assert.equal(reportCountForChecks(requiredChecks), 9);
+    assert.equal(reportCountForChecks(requiredChecks), 10);
   });
 
 });

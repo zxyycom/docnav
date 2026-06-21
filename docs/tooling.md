@@ -34,8 +34,8 @@
 
 ## 验证入口集成
 
-`typecheck:scripts` 和 `lint:scripts` 是脚本模块 contract 的快速验证入口。前者证明脚本类型、模块边界和共享状态一致；后者证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题。它们不替代真实 CLI、schema、进程 smoke、Rust tests 或 release package 验证。
+`typecheck:scripts`、`lint:scripts` 和 `quality:check` 是脚本模块与质量观测的快速验证入口。前者证明脚本类型、模块边界和共享状态一致；`lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题；`quality:check` 运行 quick quality profile 并在出现 warning records 时输出前几个 warning、报告路径和“当前不是全量质检”的提示。它们不替代真实 CLI、schema、进程 smoke、Rust tests、release package 验证或 `quality:full-check`。
 
-required profile 包含 `typecheck:scripts` 和 `lint:scripts`。full profile 会追加更宽验证；profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
+required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check。full profile 会追加 full quality check 与更宽验证；profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
 
 验收标准：手写脚本可以同时由 Node.js 执行、被 `tsc --noEmit` 覆盖，并且不依赖 Node.js 运行时不会读取的 `tsconfig` 行为。

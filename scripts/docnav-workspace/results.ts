@@ -1,5 +1,5 @@
 import type { ProcessFailure } from "../tools/process.ts";
-import type { CheckReportRef, CheckTask } from "./checks/index.ts";
+import type { CheckReportRef, CheckStatus, CheckTask } from "./checks/index.ts";
 import { reportIdForCheck, reportLabelForCheck } from "./checks/index.ts";
 
 export interface CompletionResult {
@@ -11,6 +11,7 @@ export interface CompletionResult {
   exitCode: number;
   ok: boolean;
   startedAtMs: number;
+  status: CheckStatus;
   stderr: string;
   stdout: string;
 }
@@ -28,10 +29,11 @@ interface ReportAccumulator {
   expected: number;
   ok: boolean;
   startedAtMs: number;
+  status: CheckStatus;
 }
 
-export function formatCompletionLine(result: Pick<CompletionResult, "check" | "durationMs" | "ok">): string {
-  return `  ${result.ok ? "passed" : "failed"}: ${result.check.label} (${formatDurationMs(result.durationMs)})`;
+export function formatCompletionLine(result: Pick<CompletionResult, "check" | "durationMs" | "status">): string {
+  return `  ${result.status}: ${result.check.label} (${formatDurationMs(result.durationMs)})`;
 }
 
 export function formatDurationMs(durationMs: number): string {
@@ -89,7 +91,8 @@ function createReportAccumulator(check: CheckTask, reportId: string): ReportAccu
     exitCode: 0,
     error: null,
     startedAtMs: Number.POSITIVE_INFINITY,
-    endedAtMs: 0
+    endedAtMs: 0,
+    status: "passed"
   };
 }
 
@@ -98,6 +101,7 @@ function recordReportCompletion(report: ReportAccumulator, result: CheckResult):
   report.ok &&= result.ok;
   report.startedAtMs = Math.min(report.startedAtMs, result.startedAtMs);
   report.endedAtMs = Math.max(report.endedAtMs, result.endedAtMs);
+  report.status = combineStatus(report.status, result.status);
   if (!result.ok && !report.error) {
     report.error = result.error;
     report.exitCode = result.exitCode;
@@ -110,6 +114,7 @@ function completeReportResult(report: ReportAccumulator): CompletionResult {
     ok: report.ok,
     exitCode: report.exitCode,
     error: report.error,
+    status: report.status,
     stdout: "",
     stderr: "",
     combinedOutput: "",
@@ -117,4 +122,14 @@ function completeReportResult(report: ReportAccumulator): CompletionResult {
     startedAtMs: report.startedAtMs,
     endedAtMs: report.endedAtMs
   };
+}
+
+function combineStatus(current: CheckStatus, next: CheckStatus): CheckStatus {
+  if (current === "failed" || next === "failed") {
+    return "failed";
+  }
+  if (current === "warning" || next === "warning") {
+    return "warning";
+  }
+  return "passed";
 }

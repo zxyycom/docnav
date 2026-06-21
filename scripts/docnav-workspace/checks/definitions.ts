@@ -49,6 +49,21 @@ export const checks = defineChecks([
         ]
       },
       {
+        id: "quality-quick-check",
+        label: "quality quick check",
+        command: "node",
+        args: [
+          "scripts/quality/scan.ts",
+          "--profile",
+          "quick",
+          "--artifact-dir",
+          "artifacts/docnav-quality/quick"
+        ],
+        warningOutput: [
+          /^Quality check status: warning$/m
+        ]
+      },
+      {
         id: "generated-error-rules",
         label: "generated error rules",
         command: "node",
@@ -110,11 +125,14 @@ export const checks = defineChecks([
         ])
       },
       {
-        id: "quality-scan",
-        label: "quality scan",
+        id: "quality-full-check",
+        label: "quality full check",
         command: "node",
-        args: ["scripts/quality/scan.ts"],
-        dependsOn: ["quality-internal-tests"]
+        args: ["scripts/quality/scan.ts", "--profile", "full", "--with-baseline"],
+        dependsOn: ["quality-internal-tests"],
+        warningOutput: [
+          /^Quality check status: warning$/m
+        ]
       },
       {
         id: "docnav-development-smoke",

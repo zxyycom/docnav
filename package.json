@@ -31,6 +31,8 @@
     "validate:generated": "node scripts/generate-error-rules.ts --check",
     "validate:openspec": "openspec validate --all --strict",
     "validate:diff": "git diff --check",
+    "quality:check": "node scripts/quality/scan.ts --profile quick --artifact-dir artifacts/docnav-quality/quick",
+    "quality:full-check": "node scripts/quality/scan.ts --profile full --with-baseline",
     "quality:scan": "node scripts/quality/scan.ts",
     "quality:annotate": "node scripts/quality/annotate.ts",
     "quality:test": "node --test scripts/tools/quality/**/*.test.ts"

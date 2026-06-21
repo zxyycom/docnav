@@ -7,7 +7,9 @@ export {
   formatFatalIssue,
   logFingerprints,
   prepareArtifactDirs,
+  printWarningStatus,
   printSummary,
+  qualityCheckStatus,
   validateOutput,
   writeArtifacts,
   writeBaselineRawOutputs

@@ -28,13 +28,19 @@ export function printSummary({
   totalDurationMs,
   logPaths
 }: SummaryInput): void {
+  const failed = completedResults.filter((result) => result.status === "failed").length;
+  const warnings = completedResults.filter((result) => result.status === "warning").length;
+  const passed = completedResults.filter((result) => result.status === "passed").length;
+  const status = failed > 0 ? "failed" : warnings > 0 ? "warning" : "passed";
+
   console.log("");
   console.log("Summary:");
-  console.log(`  status: ${completedResults.some((result) => !result.ok) ? "failed" : "passed"}`);
+  console.log(`  status: ${status}`);
   console.log(`  profile: ${profile}`);
   console.log(`  total checks: ${totalChecks}`);
-  console.log(`  passed: ${completedResults.filter((result) => result.ok).length}`);
-  console.log(`  failed: ${completedResults.filter((result) => !result.ok).length}`);
+  console.log(`  passed: ${passed}`);
+  console.log(`  warning: ${warnings}`);
+  console.log(`  failed: ${failed}`);
   console.log(`  duration: ${formatDurationMs(totalDurationMs)}`);
   console.log(`  log: ${relativeLogPath(logPaths[0])}`);
   console.log("");

@@ -604,6 +604,8 @@ Proves:
 - required 和 full verifier profile 保持区分。
 - profile membership、check label、arguments、dependencies、mutex、output filtering 和 report counting 由 verifier tests 明确证明。
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
+- required profile 包含 quick quality check；full profile 追加 full quality check。
+- completion line 和 summary 可区分 passed、warning 和 failed。
 
 ```mermaid
 flowchart LR
@@ -615,8 +617,9 @@ flowchart LR
   E --> F
   F --> G["应用 dependencies / mutexes"]
   G --> H["执行 checks 并过滤已知噪声"]
-  H --> I["输出 completion lines"]
-  I --> J["统计 report groups 和 leaf checks"]
+  H --> I{"result status"}
+  I -->|"passed / warning / failed"| J["输出 completion lines"]
+  J --> K["统计 report groups 和 leaf checks"]
 ```
 
 ### AUX-SMOKE-HARNESS-001 Smoke harness 正确记录 task 和 command 输出语义
@@ -743,6 +746,7 @@ Code: `scripts/tools/quality/scan-command/index.test.ts`
 
 Proves:
 - quality scan 默认跳过 baseline，baseline generation 保持 opt-in。
+- quality scan profile 默认为 full；quick profile 固定跳过 baseline，并拒绝 baseline 参数。
 - changed file collection 在 CLI defaults 下仍能解析当前 changed scope。
 
 ### AUX-RELEASE-ARGS-001 Release package 参数解析保持边界

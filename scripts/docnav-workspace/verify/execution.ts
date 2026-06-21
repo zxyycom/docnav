@@ -1,5 +1,6 @@
 import { processFailure, processFailureFromResult, runProcess } from "../../tools/process.ts";
 import type { ProcessFailure } from "../../tools/process.ts";
+import type { CheckStatus } from "../checks/index.ts";
 import type { CheckTask } from "../checks/index.ts";
 import type { CheckResult } from "../results.ts";
 import { environmentForCheck } from "./environment.ts";
@@ -13,6 +14,7 @@ interface CheckExecutionData {
   exitCode: number;
   ok: boolean;
   startedAtMs: number;
+  status: CheckStatus;
   stderr: string;
   stdout: string;
 }
@@ -33,6 +35,7 @@ export async function executeCheck(check: CheckTask): Promise<CheckResult> {
     stdout: result.stdout,
     stderr: result.stderr,
     error: failure ?? undefined,
+    status: statusForExecution(check, failure === null, result.stdout, result.stderr),
     startedAtMs,
     endedAtMs: Date.now()
   });
@@ -44,6 +47,7 @@ function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResu
     ok: data.ok,
     exitCode: data.exitCode,
     error: data.error === undefined ? null : processFailure(data.error),
+    status: data.status,
     stdout: data.stdout,
     stderr: data.stderr,
     combinedOutput: combinedProcessOutput(data),
@@ -51,6 +55,19 @@ function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResu
     startedAtMs: data.startedAtMs,
     endedAtMs: data.endedAtMs
   };
+}
+
+function statusForExecution(
+  check: CheckTask,
+  ok: boolean,
+  stdout: string,
+  stderr: string
+): CheckStatus {
+  if (!ok) {
+    return "failed";
+  }
+  const output = combinedProcessOutput({ stdout, stderr });
+  return check.warningOutput.some((pattern) => pattern.test(output)) ? "warning" : "passed";
 }
 
 function combinedProcessOutput({ stdout, stderr }: Pick<CheckExecutionData, "stderr" | "stdout">): string {

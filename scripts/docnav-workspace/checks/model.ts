@@ -4,15 +4,16 @@ export const PROFILE_REQUIRED = "required";
 export const PROFILE_FULL = "full";
 
 export type Profile = typeof PROFILE_REQUIRED | typeof PROFILE_FULL;
+export type CheckStatus = "passed" | "warning" | "failed";
 
 export const profiles = Object.freeze({
   [PROFILE_REQUIRED]: {
     label: "required",
-    description: "fast deterministic checks for routine development"
+    description: "fast deterministic checks and quick quality check for routine development"
   },
   [PROFILE_FULL]: {
     label: "full",
-    description: "required checks plus quality scan, smoke, Rust, and OpenSpec gates"
+    description: "required checks plus full quality check, smoke, Rust, and OpenSpec gates"
   }
 });
 
@@ -21,6 +22,7 @@ export type CheckDefinition = TaskDefinition & {
   command?: string;
   ignoreOutput?: RegExp[];
   tasks?: readonly CheckDefinition[];
+  warningOutput?: RegExp[];
 };
 
 export interface CheckTask extends NormalizedTask {
@@ -29,6 +31,7 @@ export interface CheckTask extends NormalizedTask {
   ignoreOutput: RegExp[];
   reportId?: string;
   reportLabel?: string;
+  warningOutput: RegExp[];
 }
 
 export interface CheckReportRef {
