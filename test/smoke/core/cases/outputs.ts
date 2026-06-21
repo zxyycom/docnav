@@ -50,7 +50,7 @@ async function readDocumentReadableJson(project: SmokeProject): Promise<Readable
     "read",
     project.normalRelPath,
     "--ref",
-    "H:L1:H1:I1",
+    "H:L1:H1",
     "--output",
     "readable-json"
   ], "readableRead");

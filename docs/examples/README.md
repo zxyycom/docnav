@@ -34,7 +34,7 @@ MCP bridge 目标 tool 的 `outputSchema` 内联 readable schema，见 [mcp-outl
 outline 返回：
 
 ```text
-H:L4:H2:I2
+H:L4:H2
 ```
 
 该 ref 在 [protocol-read-request.json](json/protocol-read-request.json) 和 [mcp-read-request.json](json/mcp-read-request.json) 中原样复用。

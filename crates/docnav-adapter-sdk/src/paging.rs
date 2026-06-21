@@ -196,7 +196,7 @@ mod tests {
     fn truncated_display_includes_ellipsis_marker() {
         let entries = vec![
             Entry {
-                ref_id: "H:L1:H1:I1".to_owned(),
+                ref_id: "R:longref1".to_owned(),
                 display: "A very long display text that should be truncated".to_owned(),
             },
             Entry {
@@ -207,7 +207,7 @@ mod tests {
 
         let (page, next) = paginate_entries(&entries, positive(1), positive(30));
         assert_eq!(page.len(), 1);
-        assert_eq!(page[0].ref_id, "H:L1:H1:I1");
+        assert_eq!(page[0].ref_id, "R:longref1");
         assert!(
             page[0].display.ends_with("..."),
             "truncated display must end with '...' marker, got: '{}'",
@@ -223,7 +223,7 @@ mod tests {
     fn unicode_truncated_display_includes_marker() {
         let entries = vec![
             Entry {
-                ref_id: "H:L1:H1:I1".to_owned(),
+                ref_id: "R:longref1".to_owned(),
                 display: "界世界世界世界世界世界世界世界世界世界世".to_owned(),
             },
             Entry {
@@ -234,7 +234,7 @@ mod tests {
 
         let (page, next) = paginate_entries(&entries, positive(1), positive(25));
         assert_eq!(page.len(), 1);
-        assert_eq!(page[0].ref_id, "H:L1:H1:I1");
+        assert_eq!(page[0].ref_id, "R:longref1");
         assert!(
             page[0].display.ends_with("..."),
             "unicode truncated display must end with '...' marker"
@@ -252,7 +252,7 @@ mod tests {
     fn tiny_budget_no_room_for_marker_still_truncates() {
         let entries = vec![
             Entry {
-                ref_id: "H:L1:H1:I1".to_owned(),
+                ref_id: "R:longref1".to_owned(),
                 display: "a very long display text".to_owned(),
             },
             Entry {
@@ -263,7 +263,7 @@ mod tests {
 
         let (page, next) = paginate_entries(&entries, positive(1), positive(11));
         assert_eq!(page.len(), 1);
-        assert_eq!(page[0].ref_id, "H:L1:H1:I1");
+        assert_eq!(page[0].ref_id, "R:longref1");
         assert!(!page[0].display.is_empty(), "display should not be empty");
 
         let cost = page[0].ref_id.chars().count() + page[0].display.chars().count();

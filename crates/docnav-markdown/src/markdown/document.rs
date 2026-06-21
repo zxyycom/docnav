@@ -125,7 +125,7 @@ impl MarkdownDocument {
         let Some(parsed) = ParsedRef::parse(ref_id) else {
             return Err(StableError::ref_invalid(
                 ref_id,
-                "not a valid Markdown heading ref; expected H:L{line}:H{level}:I{index} or doc:full",
+                "expected H:L{line}:H{level} or doc:full",
             )
             .into());
         };

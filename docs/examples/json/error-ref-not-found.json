@@ -7,7 +7,7 @@
     "code": "REF_NOT_FOUND",
     "message": "ref 未定位到文档区域。",
     "details": {
-      "ref": "H:L999:H1:I1"
+      "ref": "H:L999:H1"
     },
     "guidance": [
       "重新调用 outline 获取有效 ref。"

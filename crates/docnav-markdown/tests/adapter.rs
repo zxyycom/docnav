@@ -180,25 +180,31 @@ fn assert_ref_invalid(error: &StableError, ref_id: &str) {
 }
 
 fn assert_canonical_ref(ref_id: &str) {
-    // canonical ref 必须以 H:L 开头，包含 :H 和 :I
-    assert!(
-        ref_id.starts_with("H:L"),
-        "ref must start with H:L: {:?}",
+    // canonical ref 使用 line 和 level 两个结构字段。
+    let parts: Vec<_> = ref_id.split(':').collect();
+    assert_eq!(
+        parts.len(),
+        3,
+        "ref must contain type, line, and level fields: {:?}",
         ref_id
     );
-    assert!(ref_id.contains(":H"), "ref must contain :H: {:?}", ref_id);
-    assert!(ref_id.contains(":I"), "ref must contain :I: {:?}", ref_id);
-    // 不包含旧格式的 # 或 path 文本
-    assert!(
-        !ref_id.contains('#'),
-        "ref must not contain #: {:?}",
-        ref_id
-    );
-    // 不包含前导零模式（H:L0, :H0, :I0）
-    let after_hl = ref_id.strip_prefix("H:L").unwrap();
+    assert_eq!(parts[0], "H", "ref type must be H: {:?}", ref_id);
+    // 数值字段使用 canonical 十进制形式。
+    let after_hl = parts[1].strip_prefix('L').expect("line field");
     assert!(
         !after_hl.starts_with('0'),
-        "ref must not have leading zero in line: {:?}",
+        "line field must use canonical decimal digits: {:?}",
+        ref_id
+    );
+    assert!(
+        after_hl.chars().all(|ch| ch.is_ascii_digit()),
+        "line field must be decimal digits: {:?}",
+        ref_id
+    );
+    let level = parts[2].strip_prefix('H').expect("level field");
+    assert!(
+        level.len() == 1 && matches!(level, "1" | "2" | "3" | "4" | "5" | "6"),
+        "level field must be 1-6: {:?}",
         ref_id
     );
 }

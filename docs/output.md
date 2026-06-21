@@ -56,7 +56,7 @@ Markdown adapter read 的 `readable-view` 示例（省略了 entry style 格式�
 
 ```text
 {
-  "ref": "H:L4:H2:I2",
+  "ref": "H:L4:H2",
   "content": {
     "$block": "/content",
     "bytes": 38

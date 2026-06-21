@@ -6,7 +6,7 @@
     "name": "document_read",
     "arguments": {
       "path": "docs/examples/markdown/nested-duplicate.md",
-      "ref": "H:L4:H2:I2",
+      "ref": "H:L4:H2",
       "page": 1,
       "limit_chars": 64
     }

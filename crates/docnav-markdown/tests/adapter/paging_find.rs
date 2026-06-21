@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn read_paginates_unicode_without_splitting_characters() {
     let path = write_doc("unicode.md", "# A\n界界界abc\n");
-    let ref_id = "H:L1:H1:I1";
+    let ref_id = "H:L1:H1";
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
         limit_chars: positive(5),
@@ -52,8 +52,8 @@ fn find_ref_targets_current_visible_region_and_read_contains_match() {
 
     assert_eq!(result.matches.len(), 1);
     // target 在 H4 "Hidden" 下，但 Hidden 不 visible (max=3)，
-    // 最近 visible heading 是 "Current" (line 1, H1, index 1)
-    assert_eq!(result.matches[0].ref_id, "H:L1:H1:I1");
+    // 最近 visible heading 是 "Current" (line 1, H1)
+    assert_eq!(result.matches[0].ref_id, "H:L1:H1");
     assert_canonical_ref(&result.matches[0].ref_id);
     assert!(result.matches[0].display.contains("target"));
 
@@ -94,7 +94,7 @@ fn outline_paginates_with_response_page_until_end_and_past_end() {
     let first_arguments = outline_args(10, 1, Some(3));
 
     let first = outline_result(&path, &first_arguments);
-    assert_eq!(entry_refs(&first.entries), vec!["H:L1:H1:I1"]);
+    assert_eq!(entry_refs(&first.entries), vec!["H:L1:H1"]);
     let second_page = first.page.expect("second page");
 
     let second_arguments = OutlineArguments {
@@ -102,7 +102,7 @@ fn outline_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let second = outline_result(&path, &second_arguments);
-    assert_eq!(entry_refs(&second.entries), vec!["H:L3:H1:I2"]);
+    assert_eq!(entry_refs(&second.entries), vec!["H:L3:H1"]);
     let third_page = second.page.expect("third page");
 
     let third_arguments = OutlineArguments {
@@ -110,7 +110,7 @@ fn outline_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let third = outline_result(&path, &third_arguments);
-    assert_eq!(entry_refs(&third.entries), vec!["H:L5:H1:I3"]);
+    assert_eq!(entry_refs(&third.entries), vec!["H:L5:H1"]);
     assert_eq!(third.page, None);
 
     let past_end_arguments = OutlineArguments {
@@ -131,7 +131,7 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
     let first_arguments = find_args("target", 10, 1, Some(3));
 
     let first = find_result(&path, &first_arguments);
-    assert_eq!(entry_refs(&first.matches), vec!["H:L1:H1:I1"]);
+    assert_eq!(entry_refs(&first.matches), vec!["H:L1:H1"]);
     let second_page = first.page.expect("second page");
 
     let second_arguments = FindArguments {
@@ -139,7 +139,7 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let second = find_result(&path, &second_arguments);
-    assert_eq!(entry_refs(&second.matches), vec!["H:L3:H1:I2"]);
+    assert_eq!(entry_refs(&second.matches), vec!["H:L3:H1"]);
     let third_page = second.page.expect("third page");
 
     let third_arguments = FindArguments {
@@ -147,7 +147,7 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
         ..first_arguments.clone()
     };
     let third = find_result(&path, &third_arguments);
-    assert_eq!(entry_refs(&third.matches), vec!["H:L5:H1:I3"]);
+    assert_eq!(entry_refs(&third.matches), vec!["H:L5:H1"]);
     assert_eq!(third.page, None);
 
     let past_end_arguments = FindArguments {

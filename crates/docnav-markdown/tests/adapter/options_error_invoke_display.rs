@@ -15,13 +15,10 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
     };
 
     let default = outline_result(&path, &default_outline);
-    assert_eq!(entry_refs(&default.entries), vec!["H:L1:H1:I1"]);
+    assert_eq!(entry_refs(&default.entries), vec!["H:L1:H1"]);
 
     let expanded = outline_result(&path, &expanded_outline);
-    assert_eq!(
-        entry_refs(&expanded.entries),
-        vec!["H:L1:H1:I1", "H:L3:H4:I2"]
-    );
+    assert_eq!(entry_refs(&expanded.entries), vec!["H:L1:H1", "H:L3:H4"]);
 
     let default_find = FindArguments {
         query: "needle".to_owned(),
@@ -35,10 +32,10 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
     };
 
     let default_matches = find_result(&path, &default_find);
-    assert_eq!(entry_refs(&default_matches.matches), vec!["H:L1:H1:I1"]);
+    assert_eq!(entry_refs(&default_matches.matches), vec!["H:L1:H1"]);
 
     let expanded_matches = find_result(&path, &expanded_find);
-    assert_eq!(entry_refs(&expanded_matches.matches), vec!["H:L3:H4:I2"]);
+    assert_eq!(entry_refs(&expanded_matches.matches), vec!["H:L3:H4"]);
 }
 
 // @case WB-MD-ERROR-001

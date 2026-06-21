@@ -19,12 +19,11 @@ fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
         .expect("outline result");
 
     assert_eq!(result.entries.len(), 2);
-    // Guide: line 1, level 1, index 1
-    // Install: line 8, level 2, index 2 (Fake 不在 outline 中但 index 在过滤前分配)
-    // Fake 在代码围栏内被忽略，不算有效 heading。所以只有 Guide(index=1) 和 Install(index=2)
-    // Hidden 是 H4，max_heading_level=3 时不显示
-    assert_eq!(result.entries[0].ref_id, "H:L1:H1:I1");
-    assert_eq!(result.entries[1].ref_id, "H:L8:H2:I2");
+    // Guide: line 1, level 1
+    // Install: line 8, level 2
+    // 有效 outline entries 为 Guide 与 Install。
+    assert_eq!(result.entries[0].ref_id, "H:L1:H1");
+    assert_eq!(result.entries[1].ref_id, "H:L8:H2");
     for entry in &result.entries {
         assert_canonical_ref(&entry.ref_id);
     }
@@ -92,52 +91,49 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
         .iter()
         .map(|entry| entry.ref_id.clone())
         .collect();
-    // # A (line 1, H1, index 1)
-    // ## B (line 2, H2, index 2)
-    // # A (line 4, H1, index 3)
-    // ## B (line 5, H2, index 4)
-    assert_eq!(
-        all_refs,
-        vec!["H:L1:H1:I1", "H:L2:H2:I2", "H:L4:H1:I3", "H:L5:H2:I4",]
-    );
+    // # A (line 1, H1)
+    // ## B (line 2, H2)
+    // # A (line 4, H1)
+    // ## B (line 5, H2)
+    assert_eq!(all_refs, vec!["H:L1:H1", "H:L2:H2", "H:L4:H1", "H:L5:H2",]);
     for ref_id in &all_refs {
         assert_canonical_ref(ref_id);
     }
 
     // 读取第一个 B section（包含 "first"）
-    let first = read_ref(&path, "H:L2:H2:I2");
+    let first = read_ref(&path, "H:L2:H2");
     assert!(first.content.contains("first"));
     assert!(!first.content.contains("second"));
 
     // 读取第二个 B section（包含 "second"）
-    let second = read_ref(&path, "H:L5:H2:I4");
+    let second = read_ref(&path, "H:L5:H2");
     assert!(second.content.contains("second"));
     assert!(!second.content.contains("first"));
 
     // 读取第一个 A section
-    let first_a = read_ref(&path, "H:L1:H1:I1");
+    let first_a = read_ref(&path, "H:L1:H1");
     assert!(first_a.content.contains("first"));
     assert!(!first_a.content.contains("second"));
 }
 
 // @case WB-MD-REF-002
 #[test]
-fn read_reports_ref_invalid_for_old_format_and_non_canonical_refs() {
+fn read_reports_ref_invalid_for_grammar_outside_refs() {
     let path = write_doc(
         "invalid-ref-formats.md",
         "# A\n## B\nfirst\n# A\n## B\nsecond\n",
     );
 
-    // 旧格式 → REF_INVALID
-    let old_refs = ["L99:Missing", "L1:A", "L2#2:A > B", "L1#1:A"];
-    for ref_id in &old_refs {
-        let error = read_ref_error(&path, ref_id);
-        assert_ref_invalid(&error, ref_id);
-    }
-
-    // 非法字段 → REF_INVALID
-    let invalid_refs = ["P:A > B", "H:L01:H1:I1", "H:L1:H0:I1", "not-a-ref", ""];
-    for ref_id in &invalid_refs {
+    let grammar_outside_refs = [
+        "P:A > B",
+        "H:L01:H1",
+        "H:L1:H0",
+        "H:L1",
+        "H:L1:H1:extra",
+        "not-a-ref",
+        "",
+    ];
+    for ref_id in &grammar_outside_refs {
         if ref_id.is_empty() {
             // 空字符串可能触发共享层校验（非空字符串要求）
             continue;
@@ -152,18 +148,15 @@ fn read_reports_ref_not_found_for_canonical_no_match() {
     let path = write_doc("nofound.md", "# Guide\nBody\n");
 
     // Canonical grammar 但无匹配 → REF_NOT_FOUND
-    let error = read_ref_error(&path, "H:L99:H1:I1");
-    assert_ref_not_found(&error, "H:L99:H1:I1");
+    let error = read_ref_error(&path, "H:L99:H1");
+    assert_ref_not_found(&error, "H:L99:H1");
 
-    let error = read_ref_error(&path, "H:L1:H2:I1");
-    assert_ref_not_found(&error, "H:L1:H2:I1");
-
-    let error = read_ref_error(&path, "H:L1:H1:I99");
-    assert_ref_not_found(&error, "H:L1:H1:I99");
+    let error = read_ref_error(&path, "H:L1:H2");
+    assert_ref_not_found(&error, "H:L1:H2");
 }
 
 #[test]
-fn structure_snapshot_old_ref_may_fail_after_document_change() {
+fn structure_snapshot_ref_is_evaluated_against_current_document() {
     let path1 = write_doc("snap1.md", "# A\nBody\n## B\nMore\n");
     let arguments = outline_args(6000, 1, Some(3));
     let outline1 = outline_result(&path1, &arguments);
@@ -173,9 +166,9 @@ fn structure_snapshot_old_ref_may_fail_after_document_change() {
     let read1 = read_ref(&path1, ref_a);
     assert!(read1.content.contains("# A"));
 
-    // 文档变化后重新解析，使用旧 ref
+    // 文档变化后重新解析，使用先前生成的 ref
     let path2 = write_doc("snap2.md", "No headings\nJust text\n");
     let error = read_ref_error(&path2, ref_a);
-    // 结构坐标变化后旧 ref 返回 REF_NOT_FOUND（而非 REF_INVALID）
+    // 结构坐标变化后的 canonical ref 返回 REF_NOT_FOUND。
     assert_ref_not_found(&error, ref_a);
 }

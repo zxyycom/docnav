@@ -6,11 +6,11 @@
   "result": {
     "entries": [
       {
-        "ref": "H:L1:H1:I1",
+        "ref": "H:L1:H1",
         "display": "H1 Guide | 10 lines | 0.1 KB"
       },
       {
-        "ref": "H:L4:H2:I2",
+        "ref": "H:L4:H2",
         "display": "H2 Install | 7 lines | 0.1 KB"
       }
     ],

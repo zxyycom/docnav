@@ -438,7 +438,7 @@ Code: `crates/docnav-markdown/tests/cli.rs`
 
 Proves:
 - direct CLI ref error 在 readable-json、protocol-json 和 readable-view 中保持稳定映射。
-- non-canonical ref 样本不改变错误输出 shape。
+- grammar 外 ref 样本保持错误输出 shape 稳定。
 
 ### WB-MD-CLI-WRITE-001 Markdown direct CLI 写失败诊断稳定
 Status: implemented
@@ -453,8 +453,8 @@ Status: implemented
 Code: `crates/docnav-markdown/src/markdown/refs.rs`
 
 Proves:
-- canonical heading ref 格式不包含 title 或 breadcrumb。
-- parser 拒绝前导零、非法 level、非数字字段、非 canonical 格式和错误 prefix。
+- canonical heading ref 由 line 和 level 结构字段构成。
+- parser 将前导零、非法 level、非数字字段、grammar 外格式和错误 prefix 映射到 grammar 外输入。
 - `doc:full` sentinel 仍作为 adapter-owned full document ref 保留。
 
 ### WB-MD-REF-MATCH-001 Markdown parsed ref 精确匹配 heading 坐标
@@ -462,8 +462,8 @@ Status: implemented
 Code: `crates/docnav-markdown/src/markdown/refs.rs`
 
 Proves:
-- parsed heading ref 只在 line、level、index 同时匹配时命中目标 heading。
-- matcher 以 line、level 和 index 同时匹配作为命中条件。
+- parsed heading ref 在 line 和 level 同时匹配时命中目标 heading。
+- matcher 的命中条件由 parsed ref 的 line 和 level 决定。
 
 ### WB-MD-PARSE-001 Markdown parser 忽略非 heading 结构
 Status: implemented
@@ -496,7 +496,8 @@ Code: `crates/docnav-markdown/src/markdown.rs`
 
 Proves:
 - canonical ref 可解析到 heading，`doc:full` 可解析完整文档。
-- canonical 但不匹配的 ref 返回 `REF_NOT_FOUND`，non-canonical ref 返回 `REF_INVALID`。
+- 符合 canonical grammar 但缺少匹配项的 ref 返回 `REF_NOT_FOUND`。
+- grammar 外输入返回 `REF_INVALID`。
 
 ### WB-MD-LINK-001 Markdown outline/find ref 可通过 read roundtrip
 Status: implemented
@@ -519,8 +520,9 @@ Status: implemented
 Code: `crates/docnav-markdown/tests/adapter/outline_ref.rs`
 
 Proves:
-- non-canonical ref 失败为 `REF_INVALID`。
-- canonical 但没有匹配 section 的 ref 失败为 `REF_NOT_FOUND`，包括文档结构变化后原 ref 不再匹配的场景。
+- grammar 外输入返回 `REF_INVALID`。
+- 符合 canonical grammar 且当前结构缺少匹配 section 的 ref 返回 `REF_NOT_FOUND`。
+- 文档结构变化后的先前 ref 由当前结构重新判定。
 
 ### WB-MD-PAGE-001 Markdown read 分页按 Unicode 字符计数
 Status: implemented

@@ -5,11 +5,11 @@
     "content": [
       {
         "type": "text",
-        "text": "ref: H:L4:H2:I2\n## Install\nPrimary installation instructions.\n\n### Windows\nRun s\ncontent_type: text/markdown\ncost: 7 lines | 0.1 KB\npage: 2"
+        "text": "ref: H:L4:H2\n## Install\nPrimary installation instructions.\n\n### Windows\nRun s\ncontent_type: text/markdown\ncost: 7 lines | 0.1 KB\npage: 2"
       }
     ],
     "structuredContent": {
-      "ref": "H:L4:H2:I2",
+      "ref": "H:L4:H2",
       "content": "## Install\nPrimary installation instructions.\n\n### Windows\nRun s",
       "content_type": "text/markdown",
       "cost": "7 lines | 0.1 KB",

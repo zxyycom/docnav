@@ -160,10 +160,10 @@ fn direct_cli_and_invoke_share_find_execution_result() {
 
 // @case WB-MD-CLI-ERROR-001
 #[test]
-fn readable_json_error_returns_ref_invalid_for_non_canonical_refs() {
+fn readable_json_error_returns_ref_invalid_for_grammar_outside_refs() {
     let path = write_doc("invalid-ref-read.md", "# Guide\nBody\n");
     let path = path_arg(&path);
-    let invalid_ref = "L99:Missing";
+    let invalid_ref = "bad:ref";
 
     let output = run(&[
         "read",
@@ -179,7 +179,6 @@ fn readable_json_error_returns_ref_invalid_for_non_canonical_refs() {
     let stdout = std::str::from_utf8(&output.stdout).expect("readable error stdout");
     assert_no_legacy_ordinal_suffix(stdout);
     let error_json: Value = serde_json::from_slice(&output.stdout).expect("readable error JSON");
-    // 旧格式 → REF_INVALID (不是 REF_NOT_FOUND)
     assert_eq!(error_json["code"], "REF_INVALID");
     assert_eq!(error_json["details"]["ref"], invalid_ref);
     assert!(error_json["details"]["reason"]
@@ -194,7 +193,7 @@ fn readable_json_error_returns_ref_invalid_for_non_canonical_refs() {
 fn readable_json_error_returns_ref_not_found_for_canonical_no_match() {
     let path = write_doc("canonical-no-match.md", "# Guide\nBody\n");
     let path = path_arg(&path);
-    let canonical_ref = "H:L99:H1:I1";
+    let canonical_ref = "H:L99:H1";
 
     let output = run(&[
         "read",
@@ -215,7 +214,7 @@ fn readable_json_error_returns_ref_not_found_for_canonical_no_match() {
 }
 
 #[test]
-fn protocol_json_error_returns_ref_invalid_for_non_canonical_refs() {
+fn protocol_json_error_returns_ref_invalid_for_grammar_outside_refs() {
     let path = write_doc("missing-ref-protocol.md", "# Guide\nBody\n");
     let path = path_arg(&path);
     let invalid_ref = "L99:Missing";
@@ -236,7 +235,6 @@ fn protocol_json_error_returns_ref_invalid_for_non_canonical_refs() {
     let error_json: Value = serde_json::from_slice(&output.stdout).expect("protocol error JSON");
     assert_eq!(error_json["operation"], "read");
     assert_eq!(error_json["ok"], false);
-    // 旧格式 → REF_INVALID
     assert_eq!(error_json["error"]["code"], "REF_INVALID");
     assert_eq!(error_json["error"]["details"]["ref"], invalid_ref);
     assert!(error_json["error"]["details"]["reason"]
@@ -246,7 +244,7 @@ fn protocol_json_error_returns_ref_invalid_for_non_canonical_refs() {
 }
 
 #[test]
-fn readable_view_error_returns_ref_invalid_for_non_canonical_ref() {
+fn readable_view_error_returns_ref_invalid_for_grammar_outside_ref() {
     let path = write_doc("missing-ref-readable-view.md", "# Guide\nBody\n");
     let path = path_arg(&path);
 

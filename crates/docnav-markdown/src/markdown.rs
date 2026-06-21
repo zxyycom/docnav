@@ -31,7 +31,7 @@ mod tests {
     }
 
     #[test]
-    fn frontmatter_does_not_create_outline_heading() {
+    fn frontmatter_is_excluded_from_outline_headings() {
         let document = MarkdownDocument::parse("---\ntitle: Sample\n---\n\n# Real\n".to_owned());
 
         assert_eq!(document.headings().len(), 1);
@@ -56,9 +56,9 @@ mod tests {
         let entries = document.outline_entries(3);
         let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
 
-        // index 1: Guide (line 1, level 1)
-        // index 2: Install (line 3, level 2)
-        assert_eq!(refs, vec!["H:L1:H1:I1", "H:L3:H2:I2"]);
+        // Guide (line 1, level 1)
+        // Install (line 3, level 2)
+        assert_eq!(refs, vec!["H:L1:H1", "H:L3:H2"]);
     }
 
     #[test]
@@ -68,11 +68,8 @@ mod tests {
         let entries = document.outline_entries(3);
         let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
 
-        // All four headings have different (line, index)
-        assert_eq!(
-            refs,
-            vec!["H:L1:H1:I1", "H:L2:H2:I2", "H:L3:H1:I3", "H:L4:H2:I4",]
-        );
+        // All four headings have different structural coordinates.
+        assert_eq!(refs, vec!["H:L1:H1", "H:L2:H2", "H:L3:H1", "H:L4:H2",]);
     }
 
     #[test]
@@ -81,8 +78,8 @@ mod tests {
         let entries = document.outline_entries(3);
         let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
 
-        // 尽管 title 和 path 可能重复，ref 只由结构坐标决定
-        assert_eq!(refs, vec!["H:L1:H1:I1", "H:L2:H2:I2", "H:L3:H1:I3"]);
+        // 重复 title/path 的 entries 使用各自结构坐标生成 ref。
+        assert_eq!(refs, vec!["H:L1:H1", "H:L2:H2", "H:L3:H1"]);
     }
 
     #[test]
@@ -94,26 +91,26 @@ mod tests {
         let entries_h3 = document.outline_entries(3);
         let entries_h4 = document.outline_entries(4);
 
-        // index 分配在过滤前，所以同一 heading 无论是否可见 ref 相同
-        let top_ref = "H:L1:H1:I1";
+        // 可见性过滤保持同一 heading 的 line/level ref 稳定。
+        let top_ref = "H:L1:H1";
         assert_eq!(entries_h2[0].ref_id, top_ref);
         assert_eq!(entries_h3[0].ref_id, top_ref);
         assert_eq!(entries_h4[0].ref_id, top_ref);
 
-        let a_ref = "H:L3:H2:I2";
+        let a_ref = "H:L3:H2";
         // H2 可见，H3 可见，H4 可见时 A 都在
         assert_eq!(entries_h2[1].ref_id, a_ref);
         assert_eq!(entries_h3[1].ref_id, a_ref);
         assert_eq!(entries_h4[1].ref_id, a_ref);
 
-        let deep_ref = "H:L5:H3:I3";
-        // H3 只在 level >= 3 时可见
+        let deep_ref = "H:L5:H3";
+        // level >= 3 时包含 H3。
         assert!(!entries_h2.iter().any(|e| e.ref_id == deep_ref));
         assert_eq!(entries_h3[2].ref_id, deep_ref);
         assert_eq!(entries_h4[2].ref_id, deep_ref);
 
-        let hidden_ref = "H:L7:H4:I4";
-        // H4 只在 level >= 4 时可见
+        let hidden_ref = "H:L7:H4";
+        // level >= 4 时包含 H4。
         assert_eq!(entries_h4[3].ref_id, hidden_ref);
         assert!(!entries_h3.iter().any(|e| e.ref_id == hidden_ref));
     }
@@ -137,8 +134,8 @@ mod tests {
         // 仅空白标题经 compact_text 归一化为 "."，仍包含 H1 和 cost
         assert!(entries[0].display.contains("H1"));
         assert!(entries[0].display.contains("."));
-        // ref 仍为 canonical 格式，不包含标题文本
-        assert_eq!(entries[0].ref_id, "H:L1:H1:I1");
+        // ref 仍为 canonical line/level 格式。
+        assert_eq!(entries[0].ref_id, "H:L1:H1");
     }
 
     #[test]
@@ -152,13 +149,11 @@ mod tests {
     }
 
     #[test]
-    fn ref_does_not_contain_title_or_breadcrumb() {
+    fn ref_uses_structural_coordinates_for_textual_title() {
         let document = MarkdownDocument::parse("# Long Title Here\nBody\n".to_owned());
         let entries = document.outline_entries(3);
 
-        assert_eq!(entries[0].ref_id, "H:L1:H1:I1");
-        assert!(!entries[0].ref_id.contains("Long"));
-        assert!(!entries[0].ref_id.contains("Title"));
+        assert_eq!(entries[0].ref_id, "H:L1:H1");
     }
 
     // @case WB-MD-READ-001
@@ -166,12 +161,12 @@ mod tests {
     fn read_canonical_ref_resolves_matching_heading() {
         let document = MarkdownDocument::parse("# Guide\nIntro\n## Install\nBody\n".to_owned());
 
-        // Guide: index=1, line=1, level=1
-        let resolved = document.resolve_ref("H:L1:H1:I1").unwrap();
+        // Guide: line=1, level=1
+        let resolved = document.resolve_ref("H:L1:H1").unwrap();
         assert_eq!(resolved, ResolvedRef::Heading(&document.headings()[0]));
 
-        // Install: index=2, line=3, level=2
-        let resolved = document.resolve_ref("H:L3:H2:I2").unwrap();
+        // Install: line=3, level=2
+        let resolved = document.resolve_ref("H:L3:H2").unwrap();
         assert_eq!(resolved, ResolvedRef::Heading(&document.headings()[1]));
     }
 
@@ -181,7 +176,7 @@ mod tests {
 
         // Canonical grammar but wrong line
         let error = document
-            .resolve_ref("H:L99:H1:I1")
+            .resolve_ref("H:L99:H1")
             .expect_err("no such heading");
         assert_eq!(
             error.error().code,
@@ -189,16 +184,7 @@ mod tests {
         );
 
         // Canonical grammar but wrong level
-        let error = document.resolve_ref("H:L1:H2:I1").expect_err("wrong level");
-        assert_eq!(
-            error.error().code,
-            docnav_protocol::StableErrorCode::RefNotFound
-        );
-
-        // Canonical grammar but wrong index
-        let error = document
-            .resolve_ref("H:L1:H1:I99")
-            .expect_err("wrong index");
+        let error = document.resolve_ref("H:L1:H2").expect_err("wrong level");
         assert_eq!(
             error.error().code,
             docnav_protocol::StableErrorCode::RefNotFound
@@ -206,29 +192,23 @@ mod tests {
     }
 
     #[test]
-    fn read_returns_ref_invalid_for_non_canonical_input() {
+    fn read_returns_ref_invalid_for_grammar_outside_input() {
         let document = MarkdownDocument::parse("# Guide\nBody\n".to_owned());
 
         for ref_id in [
-            // 旧格式
-            "L1:Guide",
-            "L3#2:Repeat",
-            "L1#1:Guide",
             // 字段缺失/错误
-            "H:L1:H2",
             "H:L1",
-            "X:L1:H1:I1",
+            "H:L1:H2:extra",
+            "X:L1:H1",
             // 前导零
-            "H:L01:H1:I1",
-            "H:L1:H02:I1",
-            "H:L1:H2:I01",
+            "H:L01:H1",
+            "H:L1:H02",
             // 非法 level
-            "H:L1:H0:I1",
-            "H:L1:H7:I1",
-            // 非法 line/index
-            "H:L0:H1:I1",
-            "H:L1:H1:I0",
-            // 随机字符串
+            "H:L1:H0",
+            "H:L1:H7",
+            // line=0 位于 grammar 外。
+            "H:L0:H1",
+            // grammar 外字符串
             "not-a-ref",
         ] {
             let error = document
@@ -261,21 +241,23 @@ mod tests {
         let document = MarkdownDocument::parse("# A\nBody\n".to_owned());
 
         // 合法 canonical ref，但 heading 不存在 → REF_NOT_FOUND
-        let error = document.resolve_ref("H:L5:H2:I3").expect_err("not found");
+        let error = document.resolve_ref("H:L5:H2").expect_err("not found");
         assert_eq!(
             error.error().code,
             docnav_protocol::StableErrorCode::RefNotFound
         );
 
-        // 旧格式 ref → REF_INVALID（即使文档中存在该 heading）
-        let error = document.resolve_ref("L1:A").expect_err("old format");
+        // 当前 grammar 外输入 → REF_INVALID。
+        let error = document
+            .resolve_ref("H:L1:H1:extra")
+            .expect_err("grammar outside");
         assert_eq!(
             error.error().code,
             docnav_protocol::StableErrorCode::RefInvalid
         );
         assert_eq!(
             error.error().details.get("ref").and_then(|v| v.as_str()),
-            Some("L1:A")
+            Some("H:L1:H1:extra")
         );
     }
 
