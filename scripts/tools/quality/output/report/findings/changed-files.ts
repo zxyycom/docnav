@@ -53,7 +53,7 @@ function appendChangedFilesTable(lines: string[], ranked: RankedChangedFile[]): 
 }
 
 function formatDecisionTokens(file: FileMetric): string {
-  return file.complexity.value !== null ? String(file.complexity.value) : "n/a";
+  return file.decisionTokens.value !== null ? String(file.decisionTokens.value) : "n/a";
 }
 
 function rankChangedFilesByRisk(

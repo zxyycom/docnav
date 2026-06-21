@@ -16,7 +16,7 @@ export function normalizeFileMetrics(files: FileMetric[], options: NormalizeMetr
       .map((file) => ({
         ...file,
         codeArea: classifyFile(file.path, options.config.codeAreas, options.config.generatedFiles),
-        complexity: { ...file.complexity },
+        decisionTokens: { ...file.decisionTokens },
         isChanged: isInChangedScope(file.path, options.changedFiles)
       }))
       .filter((file) => !isExcluded(file.path, options.config.excludeDirs, options.config.generatedFiles))

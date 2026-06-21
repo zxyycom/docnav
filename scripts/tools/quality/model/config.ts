@@ -164,7 +164,7 @@ export const DEFAULT_CONFIG = Object.freeze({
       changedDelta: 100
     },
     /** scc Complexity: complexitychecks token 命中数，不是严格圈复杂度。 */
-    fileComplexity: {
+    fileDecisionTokens: {
       absoluteFloor: 20,
       changedDelta: 10
     }

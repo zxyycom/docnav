@@ -133,7 +133,7 @@ function parseSccFileMetric(parts: string[], columns: SccColumnIndexes): ParsedS
     codeLines: row.codeLines,
     commentLines: row.commentLines,
     blankLines: row.blankLines,
-    complexity: {
+    decisionTokens: {
       value: row.complexity,
       source: "scc"
     },
@@ -200,8 +200,7 @@ function createLanguageAggregate(metric: ParsedSccFileMetric): LanguageAggregate
     lines: metric.lines,
     codeLines: metric.codeLines,
     commentLines: metric.commentLines,
-    blankLines: metric.blankLines,
-    complexitySource: "scc"
+    blankLines: metric.blankLines
   };
 }
 

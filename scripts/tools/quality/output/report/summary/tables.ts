@@ -62,8 +62,8 @@ export function appendCodeAreaTable(lines: string[], agg: AggregateMetrics): voi
       String(area.files),
       area.lines.toLocaleString(),
       String(area.functions || 0),
-      String(area.fileComplexity ?? 0),
-      formatDecisionTokenShare(area.fileComplexity, totalDecisionTokens),
+      String(area.fileDecisionTokens ?? 0),
+      formatDecisionTokenShare(area.fileDecisionTokens, totalDecisionTokens),
       area.warningPolicy
     ]);
   }
@@ -71,9 +71,9 @@ export function appendCodeAreaTable(lines: string[], agg: AggregateMetrics): voi
 }
 
 function totalCodeAreaDecisionTokens(agg: AggregateMetrics): number {
-  const aggregateTotal = agg.overall.totalFileComplexity;
+  const aggregateTotal = agg.overall.totalFileDecisionTokens;
   if (aggregateTotal !== undefined && aggregateTotal > 0) return aggregateTotal;
-  return agg.byCodeArea.reduce((total, area) => total + (area.fileComplexity ?? 0), 0);
+  return agg.byCodeArea.reduce((total, area) => total + (area.fileDecisionTokens ?? 0), 0);
 }
 
 function formatDecisionTokenShare(decisionTokens: number | null | undefined, totalDecisionTokens: number): string {

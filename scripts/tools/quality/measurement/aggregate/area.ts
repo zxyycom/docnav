@@ -41,7 +41,7 @@ function addFileMetrics(
     existing.files++;
     existing.lines += file.lines || 0;
     existing.codeLines = (existing.codeLines ?? 0) + (file.codeLines || 0);
-    existing.fileComplexity = (existing.fileComplexity ?? 0) + (file.complexity?.value ?? 0);
+    existing.fileDecisionTokens = (existing.fileDecisionTokens ?? 0) + (file.decisionTokens?.value ?? 0);
   }
 }
 
@@ -121,7 +121,7 @@ function createCodeAreaAggregate(codeArea: string, config: QualityConfig): CodeA
     files: 0,
     lines: 0,
     codeLines: 0,
-    fileComplexity: 0,
+    fileDecisionTokens: 0,
     functions: 0,
     functionLines: 0,
     parameterCount: 0,

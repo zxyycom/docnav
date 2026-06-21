@@ -12,7 +12,7 @@ export function fileRankings(metrics: QualityMetrics, topN: number): string {
       file.path,
       file.codeArea,
       file.lines.toLocaleString(),
-      file.complexity.value !== null ? String(file.complexity.value) : "n/a"
+      file.decisionTokens.value !== null ? String(file.decisionTokens.value) : "n/a"
     ]
   });
 }
@@ -36,9 +36,9 @@ export function fileDecisionTokenRankings(metrics: QualityMetrics, topN: number)
       String(index + 1),
       file.path,
       file.codeArea,
-      String(file.complexity.value),
-      formatDecisionTokenShare(file.complexity.value, totalDecisionTokens),
-      file.complexity.source
+      String(file.decisionTokens.value),
+      formatDecisionTokenShare(file.decisionTokens.value, totalDecisionTokens),
+      file.decisionTokens.source
     ]
   });
 }
@@ -112,10 +112,10 @@ function topFilesByLines(metrics: QualityMetrics, topN: number): FileMetric[] {
 
 function topFilesByDecisionTokens(metrics: QualityMetrics, topN: number): FileMetric[] {
   return metrics.fileMetrics
-    .filter((file) => file.codeArea !== "generated" && file.complexity.value !== null)
+    .filter((file) => file.codeArea !== "generated" && file.decisionTokens.value !== null)
     .slice()
     .sort((a, b) =>
-      (b.complexity.value ?? 0) - (a.complexity.value ?? 0) ||
+      (b.decisionTokens.value ?? 0) - (a.decisionTokens.value ?? 0) ||
       b.lines - a.lines ||
       a.path.localeCompare(b.path)
     )
@@ -128,12 +128,12 @@ function formatDecisionTokenShare(decisionTokens: number | null | undefined, tot
 }
 
 function totalFileDecisionTokens(metrics: QualityMetrics): number {
-  const aggregateTotal = metrics.aggregates.overall.totalFileComplexity;
+  const aggregateTotal = metrics.aggregates.overall.totalFileDecisionTokens;
   if (aggregateTotal !== undefined && aggregateTotal > 0) return aggregateTotal;
 
   return metrics.fileMetrics
     .filter((file) => file.codeArea !== "generated")
-    .reduce((total, file) => total + (file.complexity.value ?? 0), 0);
+    .reduce((total, file) => total + (file.decisionTokens.value ?? 0), 0);
 }
 
 function topFunctionsByComplexity(metrics: QualityMetrics, topN: number): FunctionMetric[] {

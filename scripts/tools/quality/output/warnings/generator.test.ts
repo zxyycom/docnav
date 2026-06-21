@@ -28,11 +28,13 @@ describe("quality warning generation", () => {
       [["scc-file-code-lines", "scripts/large-code.ts", "code-lines", 360]]
     );
     assert.match(warnings.all[0]!.message, /360 code lines/);
+    assert.match(warnings.all[0]!.suggestion ?? "", /responsibility/);
+    assert.doesNotMatch(warnings.all[0]!.suggestion ?? "", /\bsplitting\b|\bsplit\b/i);
   });
 
   it("labels scc Complexity warnings as decision-token counts", () => {
     const files = [
-      qualityFile("scripts/branchy.ts", { lines: 90, codeLines: 80, complexity: 21 })
+      qualityFile("scripts/branchy.ts", { lines: 90, codeLines: 80, decisionTokens: 21 })
     ];
 
     const warnings = generateWarningChannels({
@@ -57,7 +59,7 @@ describe("quality warning generation", () => {
 
 function qualityFile(
   path: string,
-  options: { codeLines: number; complexity?: number; lines: number }
+  options: { codeLines: number; decisionTokens?: number; lines: number }
 ): FileMetric {
   return {
     path,
@@ -65,7 +67,7 @@ function qualityFile(
     codeArea: "node-production-scripts",
     lines: options.lines,
     codeLines: options.codeLines,
-    complexity: { value: options.complexity ?? 1, source: "scc" },
+    decisionTokens: { value: options.decisionTokens ?? 1, source: "scc" },
     isChanged: false
   };
 }

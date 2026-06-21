@@ -1,4 +1,4 @@
-export const METRICS_SCHEMA_VERSION = "0.2.1";
+export const METRICS_SCHEMA_VERSION = "0.3.0";
 
 export const BASELINE_STATUSES = Object.freeze([
   "generated",
@@ -81,8 +81,8 @@ export interface QualityConfig {
     watchlistMax: number;
   };
   scc: {
-    fileComplexity: QualityThreshold;
     fileCodeLines: QualityThreshold;
+    fileDecisionTokens: QualityThreshold;
   };
   tools: {
     lizard: ToolConfig;
@@ -130,7 +130,7 @@ export interface BaselineMetadata {
   toolMetadata: ToolInfo[];
 }
 
-export interface ComplexityValue {
+export interface MetricValue {
   source: string;
   value: number | null;
 }
@@ -140,7 +140,7 @@ export interface FileMetric {
   codeArea: string;
   codeLines?: number;
   commentLines?: number;
-  complexity: ComplexityValue;
+  decisionTokens: MetricValue;
   isChanged: boolean;
   language: string;
   lines: number;
@@ -149,7 +149,7 @@ export interface FileMetric {
 
 export interface FunctionMetric {
   codeArea: string;
-  cyclomaticComplexity: ComplexityValue;
+  cyclomaticComplexity: MetricValue;
   endLine: number;
   file: string;
   isChanged: boolean;
@@ -180,8 +180,6 @@ export interface LanguageAggregate {
   codeLines: number;
   comments?: number;
   commentLines: number;
-  complexitySource: string;
-  complexitySum?: number;
   files: number;
   language: string;
   lines: number;
@@ -192,7 +190,7 @@ export interface CodeAreaAggregate {
   codeLines?: number;
   cyclomaticComplexity?: number;
   duplicateFragments?: number;
-  fileComplexity?: number;
+  fileDecisionTokens?: number;
   files: number;
   functionLines?: number;
   functions: number;
@@ -207,7 +205,7 @@ export interface AggregateMetrics {
   overall: {
     totalCodeLines: number;
     totalDuplicateFragments?: number;
-    totalFileComplexity?: number;
+    totalFileDecisionTokens?: number;
     totalFiles: number;
     totalFunctionCyclomaticComplexity?: number;
     totalFunctionLines?: number;

@@ -35,7 +35,7 @@ describe("quality scanner output parsing", () => {
       "crates/docnav/src/lib.rs",
       "scripts/quality/scan.ts"
     ]);
-    assert.equal(result.files![0]!.complexity.value, 17);
+    assert.equal(result.files![0]!.decisionTokens.value, 17);
     assert.equal(
       parseSccCSV("Language,Location,Filename,Lines,Code,Comments,Blanks,Complexity,Bytes\n", "/repo").ok,
       false

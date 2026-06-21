@@ -8,7 +8,7 @@ import {
   selectLizardTargetFiles
 } from "../metrics.ts";
 import type { ScanContext } from "./scan-context.ts";
-import type { FunctionMetric, QualityConfig, QualityMetrics } from "../../model/schema.ts";
+import type { FunctionMetric, QualityConfig } from "../../model/schema.ts";
 
 export function runLizardScan(context: ScanContext, scanFiles: string[]): void {
   const { metrics, toolResults, rawDir, fatalIssues, root, config } = context;
@@ -29,7 +29,6 @@ export function runLizardScan(context: ScanContext, scanFiles: string[]): void {
     changedFiles: context.changedFiles,
     config
   });
-  updateFunctionCounts(metrics);
 
   console.log(`  Lizard: ${metrics.functionMetrics.length} functions`);
 
@@ -72,15 +71,4 @@ function scanLizardBatches({
   }
 
   return { functions: allFunctions, errors };
-}
-
-function updateFunctionCounts(metrics: QualityMetrics): void {
-  const funcByArea = new Map<string, number>();
-  for (const func of metrics.functionMetrics) {
-    funcByArea.set(func.codeArea, (funcByArea.get(func.codeArea) || 0) + 1);
-  }
-  for (const agg of metrics.aggregates.byCodeArea) {
-    agg.functions = funcByArea.get(agg.codeArea) || 0;
-  }
-  metrics.aggregates.overall.totalFunctions = metrics.functionMetrics.length;
 }

@@ -130,7 +130,7 @@ function createEquivalentBaselineSnapshot(metrics: QualityMetrics): BaselineSnap
     fingerprints: cloneJson(metrics.currentFingerprints),
     fileMetrics: metrics.fileMetrics.map((file) => ({
       ...file,
-      complexity: { ...file.complexity },
+      decisionTokens: { ...file.decisionTokens },
       isChanged: false
     })),
     functionMetrics: metrics.functionMetrics.map((func) => ({

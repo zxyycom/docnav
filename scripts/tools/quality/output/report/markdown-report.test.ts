@@ -12,8 +12,8 @@ describe("quality report", () => {
     const metrics = qualityMetrics();
     metrics.comparisonStatus = "baseline-unavailable";
     metrics.fileMetrics = [
-      qualityFile("src/risky.ts", { isChanged: true, lines: 480, complexity: 45 }),
-      qualityFile("src/quiet.ts", { isChanged: true, lines: 80, complexity: 2 })
+      qualityFile("src/risky.ts", { isChanged: true, lines: 480, decisionTokens: 45 }),
+      qualityFile("src/quiet.ts", { isChanged: true, lines: 80, decisionTokens: 2 })
     ];
     metrics.warnings = {
       all: [warning("src/risky.ts", "scc-file-code-lines", 480)],
@@ -31,9 +31,9 @@ describe("quality report", () => {
   it("sorts rankings by metric without mutating scanner output order", () => {
     const metrics = qualityMetrics();
     metrics.fileMetrics = [
-      qualityFile("src/a-small.ts", { isChanged: false, lines: 10, complexity: 1 }),
-      qualityFile("src/b-large.ts", { isChanged: false, lines: 500, complexity: 3 }),
-      qualityFile("src/c-medium.ts", { isChanged: false, lines: 200, complexity: 2 })
+      qualityFile("src/a-small.ts", { isChanged: false, lines: 10, decisionTokens: 1 }),
+      qualityFile("src/b-large.ts", { isChanged: false, lines: 500, decisionTokens: 3 }),
+      qualityFile("src/c-medium.ts", { isChanged: false, lines: 200, decisionTokens: 2 })
     ];
     metrics.functionMetrics = [
       qualityFunction("small", "src/a-small.ts", { lines: 5, complexity: 1 }),
@@ -57,8 +57,8 @@ describe("quality report", () => {
   it("labels scc file Complexity as decision-token count and shows total-token share", () => {
     const metrics = qualityMetrics();
     metrics.fileMetrics = [
-      qualityFile("src/dense.ts", { isChanged: false, lines: 80, codeLines: 50, complexity: 10 }),
-      qualityFile("src/sparse.ts", { isChanged: false, lines: 500, codeLines: 400, complexity: 20 })
+      qualityFile("src/dense.ts", { isChanged: false, lines: 80, codeLines: 50, decisionTokens: 10 }),
+      qualityFile("src/sparse.ts", { isChanged: false, lines: 500, codeLines: 400, decisionTokens: 20 })
     ];
 
     const byLines = fileRankings(metrics, 1);
@@ -79,7 +79,7 @@ describe("quality report", () => {
       ...metrics.aggregates,
       overall: {
         ...metrics.aggregates.overall,
-        totalFileComplexity: 40
+        totalFileDecisionTokens: 40
       },
       byCodeArea: [
         codeAreaAggregate("node-production-scripts", { decisionTokens: 30, lines: 300 }),
@@ -113,7 +113,7 @@ function qualityMetrics(): QualityMetrics {
 
 function qualityFile(
   path: string,
-  options: { codeLines?: number; complexity: number; isChanged: boolean; lines: number }
+  options: { codeLines?: number; decisionTokens: number; isChanged: boolean; lines: number }
 ): QualityMetrics["fileMetrics"][number] {
   return {
     path,
@@ -121,7 +121,7 @@ function qualityFile(
     codeArea: "node-production-scripts",
     lines: options.lines,
     codeLines: options.codeLines ?? options.lines,
-    complexity: { value: options.complexity, source: "scc" },
+    decisionTokens: { value: options.decisionTokens, source: "scc" },
     isChanged: options.isChanged
   };
 }
@@ -153,7 +153,7 @@ function codeAreaAggregate(
     files: 1,
     lines: options.lines,
     codeLines: options.lines,
-    fileComplexity: options.decisionTokens,
+    fileDecisionTokens: options.decisionTokens,
     functions: 1,
     warningPolicy: "moderate"
   };

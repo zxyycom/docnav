@@ -64,10 +64,10 @@ function buildFileLineWarning(input: FileWarningInput): WarningCandidate | null 
 
 function buildFileDecisionTokenWarning(input: FileWarningInput): WarningCandidate | null {
   const { areaPolicy, baseFile, context, file } = input;
-  const decisionTokenFloor = context.config.scc?.fileComplexity?.absoluteFloor ?? 20;
-  const decisionTokenDelta = context.config.scc?.fileComplexity?.changedDelta ?? 10;
-  const baselineDecisionTokens = baseFile?.complexity?.value ?? (context.hasBaselineFiles ? 0 : null);
-  const decisionTokenCount = file.complexity.value;
+  const decisionTokenFloor = context.config.scc?.fileDecisionTokens?.absoluteFloor ?? 20;
+  const decisionTokenDelta = context.config.scc?.fileDecisionTokens?.changedDelta ?? 10;
+  const baselineDecisionTokens = baseFile?.decisionTokens?.value ?? (context.hasBaselineFiles ? 0 : null);
+  const decisionTokenCount = file.decisionTokens.value;
   const decisionTokenDeltaValue = deltaFrom(decisionTokenCount, baselineDecisionTokens);
 
   return buildMetricWarning({
@@ -101,7 +101,7 @@ function baselineFileCodeLines(
 
 function fileLineSuggestion(codeLines: number | null, floor: number): string {
   if (codeLines !== null && codeLines > floor * 3) {
-    return "Consider splitting this file into smaller modules";
+    return "Review ownership, responsibilities, and change reasons before refactoring";
   }
-  return "Review if the file can be refactored";
+  return "Review file responsibility before refactoring";
 }

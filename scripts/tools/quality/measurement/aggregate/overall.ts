@@ -18,7 +18,7 @@ export function buildOverallAggregates({
     totalFiles: fileMetrics.length,
     totalLines: sum(fileMetrics, (file) => file.lines || 0),
     totalCodeLines: sum(fileMetrics, (file) => file.codeLines || 0),
-    totalFileComplexity: sum(fileMetrics, (file) => file.complexity?.value ?? 0),
+    totalFileDecisionTokens: sum(fileMetrics, (file) => file.decisionTokens?.value ?? 0),
     totalFunctions: functionMetrics.length,
     totalFunctionLines: sum(functionMetrics, (func) => func.lines || 0),
     totalFunctionParameters: sum(functionMetrics, (func) => func.parameterCount || 0),
