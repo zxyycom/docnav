@@ -3,23 +3,22 @@
 ## ADDED Requirements
 
 ### Requirement: Adapter SDK direct CLI 支持可覆盖配置路径
-`docnav-adapter-sdk` direct CLI MUST 将项目级配置文件路径和用户级配置文件路径作为 SDK-owned standard direct CLI 参数。SDK MUST 为两者提供默认值：项目级默认路径为项目根下 `.docnav/<adapter-id>.json`，用户级默认路径为用户配置目录下 `<adapter-id>.json`；调用方 MUST 能在配置加载前覆盖任一路径。
+`docnav-adapter-sdk` direct CLI MUST 将项目级配置文件路径和用户级配置文件路径作为 SDK-owned standard direct CLI 参数。SDK MUST 暴露 `--project-config-path <path>` 和 `--user-config-path <path>` 作为 document operation 的配置路径覆盖参数。SDK MUST 为两者提供默认值：项目级默认路径为项目根下 `.docnav/<adapter-id>.json`，用户级默认路径为用户配置目录下 `<adapter-id>.json`；调用方 MUST 能在配置加载前覆盖任一路径。相对覆盖路径 MUST 按启动 cwd 解析。
 
 #### Scenario: 使用默认配置路径
 - **WHEN** 调用方执行 `docnav-markdown outline docs/guide.md` 且未覆盖配置路径
 - **THEN** SDK 使用默认项目级路径 `.docnav/docnav-markdown.json`
-- **THEN** SDK 使用默认用户级路径 `docnav-markdown.json`
+- **THEN** SDK 使用默认用户级路径：用户配置目录下的 `docnav-markdown.json`
 - **THEN** 路径参数不进入 protocol request 或 adapter-owned options
 
 #### Scenario: 覆盖配置路径
-- **WHEN** 调用方为 adapter direct CLI 提供项目级配置路径覆盖值
-- **AND** 调用方为 adapter direct CLI 提供用户级配置路径覆盖值
+- **WHEN** 调用方执行 `docnav-markdown outline docs/guide.md --project-config-path fixtures/project.json --user-config-path fixtures/user.json`
 - **THEN** SDK 从覆盖后的两个路径读取配置
 - **THEN** 默认配置路径不参与本次配置合并
 - **THEN** 覆盖路径参数不传给 operation handler
 
 ### Requirement: Adapter SDK direct CLI 支持自身配置域
-`docnav-adapter-sdk` direct CLI MUST 支持读取解析后的项目级和用户级 adapter 配置文件。Direct CLI document operation MUST 按“显式 argv > 项目级 adapter 配置 > 用户级 adapter 配置 > 内置默认值”的优先级解析最终默认值，并 MUST 在进入 operation request construction 前合并为标准 direct CLI operation 参数。
+`docnav-adapter-sdk` direct CLI MUST 支持读取解析后的项目级和用户级 adapter 配置文件。Direct CLI document operation MUST 按“显式 argv > 项目级 adapter 配置 > 用户级 adapter 配置 > 内置默认值”的优先级解析最终默认值，并 MUST 在进入 operation request construction 前合并为标准 direct CLI operation 参数。配置文件只可贡献 `defaults.limit_chars`、`defaults.output` 和当前 operation 适用的 `options`；`path`、`ref`、`query` MUST 来自 argv，`page` MUST 来自 argv 或入口固定默认 `1`。
 
 #### Scenario: Direct CLI 使用项目级配置
 - **WHEN** 项目级 `.docnav/docnav-markdown.json` 设置 `defaults.limit_chars`
@@ -43,6 +42,7 @@
 - **WHEN** SDK 完成 argv、项目级配置、用户级配置和内置默认值合并
 - **THEN** operation request construction 只消费标准 direct CLI operation 参数
 - **THEN** operation handler 不需要知道配置文件路径、配置来源或合并细节
+- **THEN** 配置文件中的字段不会生成或覆盖 `path`、`ref`、`query` 或 `page`
 
 ### Requirement: Adapter SDK direct CLI 配置必须校验通用默认值和 native options
 Adapter direct CLI config MUST 支持通用 `defaults.limit_chars`、`defaults.output` 和 `options` object。`defaults.limit_chars` MUST 是正整数；`defaults.output` MUST 是 document output mode；`options` 中的 key MUST 来自 adapter 注册的 `NativeOptionSpec`，value MUST 通过对应 native option validation。
@@ -61,8 +61,16 @@ Adapter direct CLI config MUST 支持通用 `defaults.limit_chars`、`defaults.o
 
 #### Scenario: 配置非法时失败
 - **WHEN** adapter direct CLI document operation 读取到未知配置 key、非法 output、非正整数 limit_chars 或非法 native option value
-- **THEN** direct CLI 返回输入/config 错误
+- **THEN** direct CLI 返回输入/config 错误，并使用 `INVALID_REQUEST` 表示 protocol-json failure
 - **THEN** document operation handler 不执行
+
+#### Scenario: protocol-json 配置错误保持协议 envelope
+- **WHEN** 调用方执行 `docnav-markdown outline docs/guide.md --output protocol-json`
+- **AND** 项目级配置文件包含非法 `defaults.limit_chars`
+- **THEN** stdout 输出 protocol failure envelope
+- **THEN** failure 使用 `INVALID_REQUEST`
+- **THEN** `details.field` 指向非法配置 key
+- **THEN** stderr 不承载替代 stdout envelope 的协议外错误
 
 ### Requirement: Adapter invoke 不读取 direct CLI 配置
 Adapter `invoke` stdin JSON MUST 保持严格 protocol input。SDK MUST NOT 在 `invoke` 路径读取项目级或用户级 adapter direct CLI 配置，也 MUST NOT 用 direct CLI 配置补全缺失的 protocol request arguments 或 adapter-owned options。

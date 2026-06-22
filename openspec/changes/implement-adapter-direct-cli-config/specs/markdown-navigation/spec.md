@@ -3,12 +3,18 @@
 ## ADDED Requirements
 
 ### Requirement: docnav-markdown direct CLI 支持 JSON 配置文件
-`docnav-markdown` direct CLI MUST 读取项目级 `.docnav/docnav-markdown.json` 和用户级 `docnav-markdown.json` 配置，并 MUST 支持 SDK-owned standard parameters 覆盖这两个配置文件路径。首期配置 MUST 支持 `defaults.limit_chars`、`defaults.output` 和 `options.max_heading_level`。
+`docnav-markdown` direct CLI MUST 读取项目级 `.docnav/docnav-markdown.json` 和用户级 `docnav-markdown.json` 配置，并 MUST 支持 SDK-owned `--project-config-path <path>` 和 `--user-config-path <path>` 覆盖这两个配置文件路径。首期配置 MUST 支持 `defaults.limit_chars`、`defaults.output` 和 `options.max_heading_level`。
 
 #### Scenario: max_heading_level 来自配置
 - **WHEN** `.docnav/docnav-markdown.json` 包含 `options.max_heading_level: 2`
 - **AND** 调用方执行 `docnav-markdown outline docs/guide.md`
 - **THEN** outline 只显示当前 max_heading_level 下可见的 heading entries
+- **THEN** 该结果与显式传入 `--max-heading-level 2` 的行为一致
+
+#### Scenario: find 使用配置中的 max_heading_level
+- **WHEN** `.docnav/docnav-markdown.json` 包含 `options.max_heading_level: 2`
+- **AND** 调用方执行 `docnav-markdown find docs/guide.md --query install`
+- **THEN** find 只搜索当前 max_heading_level 下可见的 heading entries
 - **THEN** 该结果与显式传入 `--max-heading-level 2` 的行为一致
 
 #### Scenario: 显式 max_heading_level 覆盖配置
@@ -18,7 +24,7 @@
 - **THEN** 配置值 `2` 不覆盖显式 argv
 
 #### Scenario: 配置路径覆盖生效
-- **WHEN** 调用方为 `docnav-markdown` direct CLI 提供项目级配置路径覆盖值
+- **WHEN** 调用方执行 `docnav-markdown outline docs/guide.md --project-config-path fixtures/project.json`
 - **AND** 覆盖路径中的 JSON 包含 `options.max_heading_level: 2`
 - **AND** 默认项目级路径中的 JSON 包含 `options.max_heading_level: 4`
 - **THEN** direct CLI 使用覆盖路径中的 `max_heading_level: 2`
@@ -38,6 +44,7 @@
 - **THEN** 测试证明显式 argv 覆盖项目级配置
 - **THEN** 项目级配置覆盖用户级配置
 - **THEN** 用户级配置覆盖内置默认值
+- **THEN** 测试证明 `outline` 和 `find` 都消费适用的 `options.max_heading_level`
 
 #### Scenario: Smoke 覆盖配置路径覆盖
 - **WHEN** smoke suite 提供默认配置路径和覆盖配置路径
@@ -47,7 +54,8 @@
 #### Scenario: 负向矩阵覆盖非法配置
 - **WHEN** smoke 或矩阵 fixture 提供非法 `defaults.limit_chars`、非法 `defaults.output` 或非法 `options.max_heading_level`
 - **THEN** `docnav-markdown` document operation 非零退出
-- **THEN** 诊断包含配置 key 和失败原因
+- **THEN** 错误 payload 或诊断包含配置 key 和失败原因
+- **THEN** `--output protocol-json` 下的非法配置仍输出 protocol failure envelope
 
 #### Scenario: Invoke 不受配置影响
 - **WHEN** 项目级 `docnav-markdown.json` 设置 `options.max_heading_level`
