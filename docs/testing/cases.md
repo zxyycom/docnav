@@ -744,6 +744,7 @@ Code: `scripts/tools/quality/output/warnings/generator.test.ts`
 
 Proves:
 - 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。
+- 文件大小 warning 根据 scc decision-token count 选择 code-line floor，低 decision-token 文件可使用更高行数阈值。
 - warning record 的 rule id、metric、message 和 suggestion 反映代码行数语义，且 suggestion 不直接把行数信号转成拆分建议。
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定

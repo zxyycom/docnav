@@ -1,4 +1,4 @@
-import type { FileMetric } from "../../model/schema.ts";
+import type { FileMetric, QualityConfig } from "../../model/schema.ts";
 import { metricAreaWarningPolicy } from "./area-policy.ts";
 import { buildMetricWarning, deltaFrom } from "./metric-warning.ts";
 import type { AreaWarningPolicy, WarningCandidate, WarningContext } from "./warning-model.ts";
@@ -34,7 +34,7 @@ export function generateFileWarnings(files: FileMetric[], context: WarningContex
 
 function buildFileLineWarning(input: FileWarningInput): WarningCandidate | null {
   const { areaPolicy, baseFile, context, file } = input;
-  const lineFloor = context.config.scc?.fileCodeLines?.absoluteFloor ?? 300;
+  const lineFloor = fileCodeLineFloor(file, context.config);
   const lineDelta = context.config.scc?.fileCodeLines?.changedDelta ?? 100;
   const fileCodeLines = file.codeLines ?? null;
   const baselineCodeLines = baselineFileCodeLines(baseFile, context.hasBaselineFiles);
@@ -57,6 +57,17 @@ function buildFileLineWarning(input: FileWarningInput): WarningCandidate | null 
     suggestion: fileLineSuggestion(fileCodeLines, lineFloor),
     value: fileCodeLines
   });
+}
+
+function fileCodeLineFloor(file: FileMetric, config: QualityConfig): number {
+  const threshold = config.scc.fileCodeLines;
+  const allowance = threshold.lowDecisionTokenAllowance;
+  const decisionTokens = file.decisionTokens.value;
+
+  if (decisionTokens !== null && decisionTokens <= allowance.maxDecisionTokens) {
+    return allowance.codeLineFloor;
+  }
+  return threshold.absoluteFloor;
 }
 
 function baselineFileCodeLines(

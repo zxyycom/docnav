@@ -81,7 +81,12 @@ export interface QualityConfig {
     watchlistMax: number;
   };
   scc: {
-    fileCodeLines: QualityThreshold;
+    fileCodeLines: QualityThreshold & {
+      lowDecisionTokenAllowance: {
+        codeLineFloor: number;
+        maxDecisionTokens: number;
+      };
+    };
   };
   tools: {
     lizard: ToolConfig;

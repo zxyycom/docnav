@@ -7,10 +7,19 @@ import { generateWarningChannels } from "./generator.ts";
 
 // @case AUX-QUALITY-WARNINGS-001
 describe("quality warning generation", () => {
-  it("uses scc code lines instead of physical lines for file-size warnings", () => {
+  it("uses scc code lines and low decision-token allowance for file-size warnings", () => {
     const files = [
       qualityFile("scripts/comment-heavy.ts", { lines: 420, codeLines: 120 }),
-      qualityFile("scripts/large-code.ts", { lines: 420, codeLines: 360 })
+      qualityFile("scripts/low-token-config.ts", {
+        lines: 540,
+        codeLines: 500,
+        decisionTokens: 10
+      }),
+      qualityFile("scripts/high-token-module.ts", {
+        lines: 540,
+        codeLines: 500,
+        decisionTokens: 11
+      })
     ];
 
     const warnings = generateWarningChannels({
@@ -25,9 +34,9 @@ describe("quality warning generation", () => {
 
     assert.deepEqual(
       warnings.all.map((warning) => [warning.ruleId, warning.path, warning.metric, warning.value]),
-      [["scc-file-code-lines", "scripts/large-code.ts", "code-lines", 360]]
+      [["scc-file-code-lines", "scripts/high-token-module.ts", "code-lines", 500]]
     );
-    assert.match(warnings.all[0]!.message, /360 code lines/);
+    assert.match(warnings.all[0]!.message, /500 code lines/);
     assert.match(warnings.all[0]!.suggestion ?? "", /responsibility/);
     assert.doesNotMatch(warnings.all[0]!.suggestion ?? "", /\bsplitting\b|\bsplit\b/i);
   });
@@ -35,7 +44,7 @@ describe("quality warning generation", () => {
 
 function qualityFile(
   path: string,
-  options: { codeLines: number; lines: number }
+  options: { codeLines: number; decisionTokens?: number; lines: number }
 ): FileMetric {
   return {
     path,
@@ -43,7 +52,7 @@ function qualityFile(
     codeArea: "typescript-production-scripts",
     lines: options.lines,
     codeLines: options.codeLines,
-    decisionTokens: { value: 1, source: "scc" },
+    decisionTokens: { value: options.decisionTokens ?? 1, source: "scc" },
     isChanged: false
   };
 }
