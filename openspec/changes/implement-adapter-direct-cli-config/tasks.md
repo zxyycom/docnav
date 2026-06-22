@@ -47,6 +47,6 @@
 
 - [ ] 6.1 运行 Rust 格式化和相关 crate 测试，至少覆盖 `docnav-adapter-sdk` 和 `docnav-markdown`。
 - [ ] 6.2 运行 Markdown adapter CLI smoke 和负向矩阵测试，确认 stdout、stderr、exit code 和配置错误诊断符合契约。
-- [ ] 6.3 对涉及 CLI、adapter、docs 和测试边界的最终改动运行 `pnpm run verify:docnav-workspace`，除非有明确、记录在最终说明中的环境阻塞。
+- [ ] 6.3 对涉及 CLI、adapter、docs 和测试边界的最终改动运行 `bun run verify:docnav-workspace`，除非有明确、记录在最终说明中的环境阻塞。
 - [ ] 6.4 使用局部 diff 确认实现只改动 adapter direct CLI 配置相关代码、文档、测试和本 change artifacts。
 - [ ] 6.5 在所有实现任务和验证任务完成后，再运行 `openspec validate implement-adapter-direct-cli-config --type change --strict --no-interactive` 并准备归档评估。

@@ -36,6 +36,6 @@
 
 - [x] 5.1 运行 Rust 格式化和 Markdown adapter 范围测试，至少覆盖 `crates/docnav-markdown` 的单元、adapter 和 CLI smoke 路径。
 - [x] 5.2 运行 schema/example 验证，确认 readable/protocol/MCP 示例与当前 schema 和 canonical ref 字符串一致。
-- [x] 5.3 对涉及 CLI、adapter、schema/example 和 docs 边界的最终改动运行 `pnpm run verify:docnav-workspace`。
+- [x] 5.3 对涉及 CLI、adapter、schema/example 和 docs 边界的最终改动运行 `bun run verify:docnav-workspace`。
 - [x] 5.4 使用局部 diff 确认实现范围聚焦 Markdown ref grammar 相关代码、文档、示例、测试和本 change artifacts。
 - [x] 5.5 在所有实现任务和验证任务完成后，再运行 `openspec validate remove-markdown-heading-ref-index --type change --strict --no-interactive` 并准备归档评估。

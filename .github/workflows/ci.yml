@@ -47,7 +47,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check OpenSpec CLI
-        run: pnpm exec openspec --version
+        run: bun run openspec --version
 
       - name: Install Python
         uses: actions/setup-python@v5

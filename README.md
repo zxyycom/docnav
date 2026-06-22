@@ -21,7 +21,7 @@ v0 首期聚焦 Markdown 纵向链路：
 
 ## Quick Start
 
-准备 Node.js、pnpm 和 Rust toolchain 后安装依赖：
+准备 Node.js、pnpm、Bun 和 Rust toolchain；依赖由 pnpm 安装，项目脚本由 Bun 执行：
 
 ```bash
 pnpm install
@@ -30,7 +30,7 @@ pnpm install
 运行 Markdown adapter development smoke：
 
 ```bash
-pnpm run smoke:docnav-markdown:dev
+bun run smoke:docnav-markdown:dev
 ```
 
 本地最小用法：
@@ -49,25 +49,25 @@ cargo run -p docnav-markdown -- read crates/docnav-markdown/tests/fixtures/cli-s
 轻量文档链接检查：
 
 ```bash
-pnpm run validate:docs links
+bun run validate:docs links
 ```
 
 文档、schema、示例和语义校验：
 
 ```bash
-pnpm run validate:docs
+bun run validate:docs
 ```
 
 日常快速验证入口：
 
 ```bash
-pnpm run verify:docnav-workspace:required
+bun run verify:docnav-workspace:required
 ```
 
 交付前综合验证入口：
 
 ```bash
-pnpm run verify:docnav-workspace
+bun run verify:docnav-workspace
 ```
 
 ## 文档入口

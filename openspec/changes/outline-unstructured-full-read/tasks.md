@@ -44,6 +44,6 @@
 
 - [ ] 6.1 运行 Rust 格式化和相关 crate 测试，至少覆盖 `docnav-protocol`、`docnav-readable`、`docnav-output`、`docnav` core 和 `docnav-markdown`。
 - [ ] 6.2 运行 schema/example 验证，确认 protocol、readable 和 MCP 示例都符合新 union shape。
-- [ ] 6.3 对涉及 CLI、adapter、schema/example 和 docs 边界的最终改动运行 `pnpm run verify:docnav-workspace`，除非有明确、记录在最终说明中的环境阻塞。
+- [ ] 6.3 对涉及 CLI、adapter、schema/example 和 docs 边界的最终改动运行 `bun run verify:docnav-workspace`，除非有明确、记录在最终说明中的环境阻塞。
 - [ ] 6.4 使用局部 diff 确认实现只改动非结构化 outline 相关代码、文档、示例、测试和本 change artifacts。
 - [ ] 6.5 在所有实现任务和验证任务完成后，再运行 `openspec validate outline-unstructured-full-read --type change --strict --no-interactive` 并准备归档评估。
