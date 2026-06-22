@@ -169,7 +169,7 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 
 错误 message 和 guidance 是可定制文案；调用方只解析 code 和 details。
 
-本节是稳定错误语义的 owner；[error-rules.json](protocol/error-rules.json) 是 required details 的机器维护入口，用于统一 Rust 校验、文档验证常量和 `protocol-response.schema.json` 的错误 details 校验块。修改错误码或 required details 后运行 `pnpm run generate:error-rules`。
+本节是稳定错误语义的 owner；[error-rules.json](protocol/error-rules.json) 是 required details 的机器维护入口，用于统一 Rust 校验、文档验证常量和 `protocol-response.schema.json` 的错误 details 校验块。修改错误码或 required details 后运行 `bun run generate:error-rules`。
 
 ## Schema 所有权
 

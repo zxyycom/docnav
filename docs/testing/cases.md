@@ -606,7 +606,7 @@ Proves:
 - required 和 full verifier profile 保持区分。
 - profile membership、check label、arguments、dependencies、mutex 和 report counting 由 verifier tests 明确证明。
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
-- required profile 包含 quick quality check；full profile 追加 full quality check。
+- required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
 - completion line 和 summary 可区分 passed、warning 和 failed。
 - 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
 
@@ -686,13 +686,14 @@ Proves:
 - quality scanner wrapper 仍能解析预期的 scc、Lizard 和 PMD CPD output shape。
 - PMD CPD exit 4 没有 XML 时不被误判为空扫描成功。
 
-### AUX-QUALITY-CACHE-001 Quality CPD cache identity 稳定
+### AUX-QUALITY-CACHE-001 Quality measurement cache identity 稳定
 Status: implemented
 Code: `scripts/tools/quality/measurement/cache.test.ts`
 
 Proves:
 - duplicate-code cache key 由 scan identity、tool args、config、code area 和 input fingerprint 决定。
 - cache hit 返回不带 changed-scope annotation 的 metric，保持复用扫描与当前 diff 语义分离。
+- baseline snapshot cache key 由 baseline commit、scan config 和工具版本决定，命中时通过 snapshot hash 防止错读缓存内容。
 
 ### AUX-QUALITY-CPD-TASK-001 Quality CPD task planning 稳定
 Status: implemented
@@ -723,8 +724,9 @@ Status: implemented
 Code: `scripts/tools/quality/model/code-areas.test.ts`
 
 Proves:
-- smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `node-validation-smoke` 的广泛 globs 遮蔽。
-- smoke harness 和 validator infrastructure 仍归入 `node-validation-smoke`。
+- smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `typescript-validation-smoke` 的广泛 globs 遮蔽。
+- smoke harness 和 validator infrastructure 仍归入 `typescript-validation-smoke`。
+- quality scan input globs 只覆盖 TypeScript 脚本源码。
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
@@ -780,4 +782,4 @@ Code: `scripts/tools/validators/case-catalog/index.test.ts`
 
 Proves:
 - case catalog validator 对 `Status:`、planned case、duplicate marker 和 `Code:` 路径错配有独立测试。
-- 真实仓库由 `pnpm run validate:docs cases` 作为集成验证。
+- 真实仓库由 `bun run validate:docs cases` 作为集成验证。

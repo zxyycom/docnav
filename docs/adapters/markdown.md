@@ -183,11 +183,11 @@ Markdown adapter 测试必须覆盖本页拥有的行为语义：
 Markdown adapter 的开发期快捷命令：
 
 ```bash
-pnpm run smoke:docnav-markdown:dev
-pnpm --silent dnm outline <path>
-pnpm --silent dnm read <path> --ref "<ref>"
-pnpm --silent dnm find <path> --query "<text>"
-pnpm --silent dnm outline <path> --output readable-json
+bun run smoke:docnav-markdown:dev
+bun --silent run dnm outline <path>
+bun --silent run dnm read <path> --ref "<ref>"
+bun --silent run dnm find <path> --query "<text>"
+bun --silent run dnm outline <path> --output readable-json
 ```
 
 省略 `--output` 时使用 `readable-view`；需要结构化阅读结果时显式使用 `readable-json`，需要完整协议 envelope 时使用 `protocol-json`。

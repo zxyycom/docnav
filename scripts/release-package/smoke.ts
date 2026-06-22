@@ -5,7 +5,7 @@ import {
   parseManifestArgs,
   resolvePackageManifestPath,
   root,
-  runNodeScript,
+  runScript,
   validateReleasePackage,
 } from "../tools/release-package/index.ts";
 
@@ -36,12 +36,12 @@ try {
   console.log(`Package: ${packageDir}`);
   console.log("");
 
-  runNodeScript(
+  runScript(
     path.join(root, "test", "docnav-markdown-smoke.ts"),
     [],
     { env },
   );
-  runNodeScript(
+  runScript(
     path.join(root, "test", "docnav-core-smoke.ts"),
     [],
     { env },

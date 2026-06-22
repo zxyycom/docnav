@@ -1,9 +1,13 @@
 import type {
+  BaselineSnapshot,
   CodeAreaFingerprint,
-  DuplicateCodeFragment
+  CodeAreaDefinition,
+  DuplicateCodeFragment,
+  ToolAvailability
 } from "../../model/schema.ts";
 
 export const SCAN_CACHE_VERSION = "quality-scan-cache-v1";
+export const BASELINE_SNAPSHOT_CACHE_KIND = "baseline-snapshot";
 
 export type ScanKind = "baseline" | "current";
 
@@ -45,4 +49,45 @@ export type ScanCachePayload = {
   scanKind: ScanKind;
   toolName: "pmd-cpd";
   toolVersion: string;
+};
+
+export type BaselineSnapshotCacheIdentity = {
+  codeAreas: Record<string, CodeAreaDefinition>;
+  commitSha: string;
+  configVersion: string;
+  excludeDirs: string[];
+  generatedFiles: string[];
+  include: string[];
+  pmdCpd: {
+    defaultMinimumTokens: number;
+    minimumTokens: Record<string, number>;
+  };
+  toolArgs: {
+    lizard: string[];
+    pmdCpd: string[];
+    scc: string[];
+  };
+  tools: Pick<ToolAvailability, "available" | "name" | "source" | "version">[];
+};
+
+export type BaselineSnapshotCacheHit = {
+  cacheDir: string;
+  cacheKey: string;
+  hit: true;
+  snapshot: BaselineSnapshot;
+};
+
+export type BaselineSnapshotCacheMiss = {
+  cacheDir: string;
+  cacheKey: string;
+  hit: false;
+  reason: string;
+};
+
+export type BaselineSnapshotCacheManifest = {
+  cacheKey: string;
+  createdAt: string;
+  identity: BaselineSnapshotCacheIdentity;
+  scanCacheVersion: string;
+  snapshotHash: string;
 };

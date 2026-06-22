@@ -75,7 +75,7 @@ function printHelp() {
   console.log(`
 Docnav Code Quality Observability — 非阻断代码质量观测
 
-Usage: node scripts/quality/scan.ts [options]
+Usage: bun scripts/quality/scan.ts [options]
 
 Options:
   --profile <quick|full>  Select quick or full quality check mode (default: full)

@@ -68,6 +68,6 @@ function buildDevBins(quiet: boolean): Record<string, string> {
 
 function usage(message: string): never {
   console.error(message);
-  console.error("usage: node scripts/docnav-dev/build-bins.ts [--quiet] [--output-env-json <path>]");
+  console.error("usage: bun scripts/docnav-dev/build-bins.ts [--quiet] [--output-env-json <path>]");
   process.exit(2);
 }

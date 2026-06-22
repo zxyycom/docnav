@@ -2,6 +2,8 @@ import { checks } from "./definitions.ts";
 import { PROFILE_FULL, PROFILE_REQUIRED, profiles } from "./model.ts";
 import type { CheckStatus, CheckTask, Profile } from "./model.ts";
 
+const QUICK_QUALITY_CHECK_ID = "quality-quick-check";
+
 export { asCheckTask } from "./normalization.ts";
 export { checks } from "./definitions.ts";
 export { PROFILE_FULL, PROFILE_REQUIRED, profiles } from "./model.ts";
@@ -12,7 +14,10 @@ export function checksForProfile(profile: Profile): CheckTask[] {
   if (profile === PROFILE_REQUIRED) {
     return checks.filter((check) => check.type === PROFILE_REQUIRED);
   }
-  return checks.filter((check) => check.type === PROFILE_REQUIRED || check.type === PROFILE_FULL);
+  return checks.filter((check) =>
+    check.type === PROFILE_FULL ||
+    (check.type === PROFILE_REQUIRED && check.id !== QUICK_QUALITY_CHECK_ID)
+  );
 }
 
 export function reportCountForChecks(checkList: readonly CheckTask[]): number {

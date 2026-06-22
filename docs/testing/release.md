@@ -4,7 +4,7 @@
 
 ## 制品形状
 
-正式发布制品由 `pnpm run package:docnav -- --target <triple>` 生成，落在 `artifacts/docnav/v<version>/<target>/package/`。
+正式发布制品由 `bun run package:docnav -- --target <triple>` 生成，落在 `artifacts/docnav/v<version>/<target>/package/`。
 
 该目录只包含：
 
@@ -22,12 +22,12 @@
 本地预验收通常按下面顺序跑：
 
 ```bash
-pnpm run package:docnav
-pnpm run verify:docnav-package
-pnpm run smoke:docnav-package
+bun run package:docnav
+bun run verify:docnav-package
+bun run smoke:docnav-package
 ```
 
-发布包验证和 smoke 命令会自动定位当前 workspace 版本与 host target 对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用 `--manifest <path>` 验证显式 package。`pnpm run info:docnav-package` 可打印自动定位结果。
+发布包验证和 smoke 命令会自动定位当前 workspace 版本与 host target 对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用 `--manifest <path>` 验证显式 package。`bun run info:docnav-package` 可打印自动定位结果。
 
 `package:docnav` 在生成结束时校验文件集合、manifest、大小和校验和，但不运行 CLI smoke。`smoke:docnav-package` 直接测试 package 中的可执行文件。
 

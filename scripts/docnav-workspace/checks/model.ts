@@ -13,7 +13,7 @@ export const profiles = Object.freeze({
   },
   [PROFILE_FULL]: {
     label: "full",
-    description: "required checks plus full quality check, smoke, Rust, and OpenSpec gates"
+    description: "required non-quality checks plus full quality check, smoke, Rust, and OpenSpec gates"
   }
 });
 

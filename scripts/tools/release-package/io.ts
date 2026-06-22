@@ -53,14 +53,14 @@ function commandLabel(
   return options.label ?? [command, ...args].join(" ");
 }
 
-export function runNodeScript(
+export function runScript(
   scriptPath: string,
   args: string[] = [],
   options: RunCommandOptions = {},
 ): ProcessResult {
-  return runCommand(process.execPath, [scriptPath, ...args], {
+  return runCommand("bun", [scriptPath, ...args], {
     ...options,
-    label: `node ${path.relative(root, scriptPath)}`,
+    label: `bun ${path.relative(root, scriptPath)}`,
     stdio: options.stdio ?? "inherit",
   });
 }

@@ -3,7 +3,9 @@ import { join } from "node:path";
 
 import { isNonArrayRecord } from "../../../type-guards.ts";
 import {
+  BASELINE_SNAPSHOT_CACHE_KIND,
   SCAN_CACHE_VERSION,
+  type BaselineSnapshotCacheIdentity,
   type CpdCacheIdentity
 } from "./types.ts";
 
@@ -20,11 +22,33 @@ export function buildScanCacheKey(identity: CpdCacheIdentity): string {
     input_fingerprint: identity.inputFingerprint
   };
 
-  return createHash("sha256").update(stableStringify(keyInput)).digest("hex");
+  return hashStable(keyInput);
+}
+
+export function buildBaselineSnapshotCacheKey(identity: BaselineSnapshotCacheIdentity): string {
+  const keyInput = {
+    scan_cache_version: SCAN_CACHE_VERSION,
+    cache_kind: BASELINE_SNAPSHOT_CACHE_KIND,
+    identity
+  };
+
+  return hashStable(keyInput);
 }
 
 export function getScanCachePath(rootDir: string, cacheKey: string): string {
-  return join(rootDir, ".log", "docnav-quality-cache", SCAN_CACHE_VERSION, `${cacheKey}.json`);
+  return join(getQualityCacheRoot(rootDir), `${cacheKey}.json`);
+}
+
+export function getBaselineSnapshotCacheDir(rootDir: string, cacheKey: string): string {
+  return join(getQualityCacheRoot(rootDir), "baseline-snapshots", cacheKey);
+}
+
+function getQualityCacheRoot(rootDir: string): string {
+  return join(rootDir, ".log", "docnav-quality-cache", SCAN_CACHE_VERSION);
+}
+
+function hashStable(value: unknown): string {
+  return createHash("sha256").update(stableStringify(value)).digest("hex");
 }
 
 export function stableStringify(value: unknown): string {

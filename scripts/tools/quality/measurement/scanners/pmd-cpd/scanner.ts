@@ -24,8 +24,8 @@ export { parsePmdCpdXml } from "./xml-report.ts";
 const CODE_AREA_LANGUAGE: Record<string, string | null> = {
   "rust-production": "rust",
   "rust-tests": "rust",
-  "node-production-scripts": "typescript",
-  "node-validation-smoke": "typescript",
+  "typescript-production-scripts": "typescript",
+  "typescript-validation-smoke": "typescript",
   "fixtures-examples": null,   // 不传 --language，让 PMD 自动检测
   "generated": null
 };

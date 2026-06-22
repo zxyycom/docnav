@@ -4,15 +4,13 @@ import type { CheckDefinition } from "./model.ts";
 
 const DEV_BIN_ENV_FILE = ".log/verify-docnav-workspace/dev-bins.json";
 
-const nodeTestSuccessOutput = [
-  /^TAP version \d+$/,
-  /^\s*▶ /,
-  /^\s*✔ /,
-  /^\s*ℹ /,
-  /^# Subtest:/,
-  /^ok \d+ -/,
-  /^1\.\.\d+$/,
-  /^# (tests|suites|pass|fail|cancelled|skipped|todo|duration_ms) /
+const testRunnerSuccessOutput = [
+  /^bun test v\d+\.\d+\.\d+ \([0-9a-f]+\)$/,
+  /^.*\.test\.ts:$/,
+  /^\(pass\) .+ \[[\d.]+(?:ms|s)\]$/,
+  /^\s*\d+ pass$/,
+  /^\s*0 fail$/,
+  /^Ran \d+ tests? across \d+ files?\. \[[\d.]+(?:ms|s)\]$/
 ];
 
 const cargoProgressOutput = [/^\s*(Checking|Compiling) .*$/, /^\s*Finished `.*` profile .*$/];
@@ -42,16 +40,16 @@ export const checks = defineChecks([
       {
         id: "typecheck-scripts",
         label: "TypeScript script typecheck",
-        command: "pnpm",
+        command: "bun",
         args: ["run", "typecheck:scripts"],
         ignoreOutput: [
-          /^\$ tsc -p tsconfig\.json$/
+          /^\$ tsgo -p tsconfig\.json$/
         ]
       },
       {
         id: "lint-scripts",
         label: "TypeScript script lint",
-        command: "pnpm",
+        command: "bun",
         args: ["run", "lint:scripts"],
         ignoreOutput: [
           /^\$ eslint --max-warnings 0 --cache --cache-location \.eslintcache --cache-strategy content eslint\.config\.ts scripts\/\*\*\/\*\.ts test\/\*\*\/\*\.ts$/
@@ -60,7 +58,7 @@ export const checks = defineChecks([
       {
         id: "quality-quick-check",
         label: "quality quick check",
-        command: "node",
+        command: "bun",
         args: [
           "scripts/quality/scan.ts",
           "--profile",
@@ -78,7 +76,7 @@ export const checks = defineChecks([
       {
         id: "generated-error-rules",
         label: "generated error rules",
-        command: "node",
+        command: "bun",
         args: ["scripts/generate-error-rules.ts", "--check"],
         ignoreOutput: [
           /^generated error rules ok$/
@@ -92,7 +90,7 @@ export const checks = defineChecks([
       {
         id: "workspace-verifier-script-tests",
         label: "workspace verifier script tests",
-        tasks: nodeTestFileChecks([
+        tasks: scriptTestChecks([
           ["workspace-verifier-tests", "workspace verifier tests", "scripts/docnav-workspace/verify.test.ts"],
           ["smoke-harness-tests", "smoke harness tests", "test/tools/smoke-harness.test.ts"],
           ["parallel-task-runner-tests", "parallel task runner tests", "scripts/tools/parallel-task-runner/index.test.ts"]
@@ -101,17 +99,17 @@ export const checks = defineChecks([
       {
         id: "validator-script-tests",
         label: "validator script tests",
-        tasks: nodeTestFileChecks([
+        tasks: scriptTestChecks([
           ["case-catalog-validator-tests", "case catalog validator tests", "scripts/tools/validators/case-catalog/index.test.ts"]
         ])
       },
       {
         id: "release-package-script-tests",
         label: "release package script tests",
-        command: "node",
-        args: ["--test", "scripts/tools/release-package/args.test.ts"],
+        command: "bun",
+        args: ["test", "scripts/tools/release-package/args.test.ts"],
         ignoreOutput: [
-          ...nodeTestSuccessOutput
+          ...testRunnerSuccessOutput
         ]
       },
       {
@@ -132,14 +130,14 @@ export const checks = defineChecks([
       {
         id: "quality-internal-tests",
         label: "quality internal tests",
-        tasks: nodeTestFileChecks([
-          ["quality-internal-node-tests", "quality internal node tests", "scripts/tools/quality/**/*.test.ts"]
+        tasks: scriptTestChecks([
+          ["quality-internal-script-tests", "quality internal script tests", "scripts/tools/quality"]
         ])
       },
       {
         id: "quality-full-check",
         label: "quality full check",
-        command: "node",
+        command: "bun",
         args: ["scripts/quality/scan.ts", "--profile", "full", "--with-baseline"],
         dependsOn: ["quality-internal-tests"],
         allowOutput: [
@@ -156,7 +154,7 @@ export const checks = defineChecks([
           {
             id: "docnav-development-binaries",
             label: "docnav development binaries",
-            command: "node",
+            command: "bun",
             args: ["scripts/docnav-dev/build-bins.ts", "--quiet", "--output-env-json", DEV_BIN_ENV_FILE],
             mutex: ["cargo-build"],
             ignoreOutput: [
@@ -171,7 +169,7 @@ export const checks = defineChecks([
               {
                 id: "docnav-markdown-development-smoke",
                 label: "docnav-markdown development smoke",
-                command: "node",
+                command: "bun",
                 args: ["test/docnav-markdown-smoke.ts"],
                 ignoreOutput: [
                   ...smokeSuccessOutput("Docnav Markdown Development Smoke", ".log/docnav-markdown-cli-smoke/latest.log")
@@ -180,7 +178,7 @@ export const checks = defineChecks([
               {
                 id: "docnav-core-development-smoke",
                 label: "docnav core development smoke",
-                command: "node",
+                command: "bun",
                 args: ["test/docnav-core-smoke.ts"],
                 ignoreOutput: [
                   ...smokeSuccessOutput("Docnav Core Development Smoke", ".log/docnav-core-cli-smoke/latest.log")
@@ -274,23 +272,23 @@ function docsValidatorCheck(
   return {
     id,
     label,
-    command: "pnpm",
+    command: "bun",
     args: ["run", "validate:docs", target],
     ignoreOutput: [
-      new RegExp(`^\\$ node scripts\\/docs\\/validate\\.ts "?${target}"?$`),
+      new RegExp(`^\\$ bun scripts\\/docs\\/validate\\.ts "?${target}"?$`),
       ...successOutput
     ]
   };
 }
 
-function nodeTestFileChecks(testFiles: readonly [id: string, label: string, filePath: string][]): CheckDefinition[] {
-  return testFiles.map(([id, label, filePath]) => ({
+function scriptTestChecks(testTargets: readonly [id: string, label: string, targetPath: string][]): CheckDefinition[] {
+  return testTargets.map(([id, label, targetPath]) => ({
     id,
     label,
-    command: "node",
-    args: ["--test", filePath],
+    command: "bun",
+    args: ["test", targetPath],
     ignoreOutput: [
-      ...nodeTestSuccessOutput
+      ...testRunnerSuccessOutput
     ]
   }));
 }

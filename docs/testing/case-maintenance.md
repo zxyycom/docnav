@@ -41,7 +41,7 @@
 
 否定性断言只在 owner 文档把该行为定义为稳定契约、安全边界、错误映射或输出通道边界时进入测试。该限制同时适用于新增 case、拆分 case、为已有 case 增加分支，以及在已有正向行为链路中增加辅助断言。
 
-JavaScript smoke case 以外部链路类型作为归属基座：
+CLI smoke case 以外部链路类型作为归属基座：
 
 1. operation、output mode、非法参数和 fixture 是覆盖维度，并入对应链路 case，不展开为笛卡尔积 case。
 2. 连续链路可以在一个 case 内串行执行多个 CLI 命令。
@@ -77,7 +77,7 @@ JavaScript smoke case 以外部链路类型作为归属基座：
 修改测试用例维护文档、账本、源码 `@case` 标记或 `Code:` 路径后，运行：
 
 ```bash
-pnpm run validate:docs -- cases
+bun run validate:docs -- cases
 ```
 
-若同时修改测试代码，继续运行覆盖该 owner 边界的最窄测试命令；跨多个验证入口时再运行 `pnpm run verify:docnav-workspace:required` 或更高层级验证。
+若同时修改测试代码，继续运行覆盖该 owner 边界的最窄测试命令；跨多个验证入口时再运行 `bun run verify:docnav-workspace:required` 或更高层级验证。

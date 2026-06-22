@@ -13,7 +13,7 @@ describe("PMD CPD tasks", () => {
         minimumTokens: 75
       },
       {
-        area: "node-production-scripts",
+        area: "typescript-production-scripts",
         files: ["scripts/a.ts", "scripts/b.ts"],
         minimumTokens: 75
       }
@@ -21,7 +21,7 @@ describe("PMD CPD tasks", () => {
 
     assert.deepEqual(tasks.map((task) => task.id), [
       "pmd-cpd:rust-production",
-      "pmd-cpd:node-production-scripts"
+      "pmd-cpd:typescript-production-scripts"
     ]);
     assert.deepEqual(tasks[0]!.files, [
       "crates/a/src/lib.rs",

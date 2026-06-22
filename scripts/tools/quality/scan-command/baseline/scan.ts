@@ -6,6 +6,12 @@ import { join } from "node:path";
 import { errorMessage } from "../../../errors.ts";
 import { materializeBaselineRevision } from "../../input/revisions.ts";
 import { runBaselineRevisionScan } from "../../measurement/baseline-revision.ts";
+import {
+  createBaselineSnapshotCacheIdentity,
+  loadBaselineSnapshotCacheEntry,
+  writeBaselineSnapshotCacheEntry,
+  type BaselineSnapshotCacheIdentity
+} from "../../measurement/cache.ts";
 import { generateTrends } from "../../output/trends.ts";
 import type {
   BaselineSnapshot,
@@ -25,6 +31,7 @@ export type BaselineScanRuntime = {
 
 type MaterializedBaselineScanOptions = {
   baselineCommitSha: string;
+  cacheIdentity: BaselineSnapshotCacheIdentity;
   baselineWorkDir: string;
   config: QualityConfig;
   metrics: QualityMetrics;
@@ -53,15 +60,22 @@ export async function maybeScanBaselineRevision({
     return null;
   }
 
-  if (metrics.comparisonStatus === "input-unchanged") {
-    console.log("Skipping baseline scan because scan inputs are unchanged.");
-    const baselineSnapshot = createEquivalentBaselineSnapshot(metrics);
-    metrics.baselineFingerprints = baselineSnapshot.fingerprints;
-    metrics.trends = generateTrends(metrics, baselineSnapshot);
-    console.log(`  Baseline deltas: ${metrics.trends.length} computed from equivalent inputs`);
-    writeBaselineRawOutputs(rawDir, baselineSnapshot);
-    return baselineSnapshot;
-  }
+  const equivalentBaseline = reuseCurrentSnapshotForUnchangedInput(metrics, rawDir);
+  if (equivalentBaseline) return equivalentBaseline;
+
+  const cacheIdentity = createBaselineSnapshotCacheIdentity({
+    commitSha: baselineCommitSha,
+    config,
+    toolResults
+  });
+  const cachedBaseline = reuseCachedBaselineSnapshot({
+    baselineCommitSha,
+    cacheIdentity,
+    metrics,
+    rawDir,
+    root
+  });
+  if (cachedBaseline) return cachedBaseline;
 
   const baselineWorkDir = join(tmpdir(), `docnav-quality-baseline-${randomUUID()}`);
   console.log(`Materializing baseline ${baselineCommitSha.slice(0, 7)}...`);
@@ -69,6 +83,7 @@ export async function maybeScanBaselineRevision({
   try {
     return await scanMaterializedBaseline({
       baselineCommitSha,
+      cacheIdentity,
       baselineWorkDir,
       config,
       metrics,
@@ -81,9 +96,54 @@ export async function maybeScanBaselineRevision({
   }
 }
 
+function reuseCurrentSnapshotForUnchangedInput(
+  metrics: QualityMetrics,
+  rawDir: string
+): BaselineSnapshot | null {
+  if (metrics.comparisonStatus !== "input-unchanged") {
+    return null;
+  }
+
+  console.log("Skipping baseline scan because scan inputs are unchanged.");
+  const baselineSnapshot = createEquivalentBaselineSnapshot(metrics);
+  applyBaselineSnapshot({ metrics, rawDir, baselineSnapshot, message: "computed from equivalent inputs" });
+  return baselineSnapshot;
+}
+
+function reuseCachedBaselineSnapshot({
+  baselineCommitSha,
+  cacheIdentity,
+  metrics,
+  rawDir,
+  root
+}: {
+  baselineCommitSha: string;
+  cacheIdentity: BaselineSnapshotCacheIdentity;
+  metrics: QualityMetrics;
+  rawDir: string;
+  root: string;
+}): BaselineSnapshot | null {
+  const cachedBaseline = loadBaselineSnapshotCacheEntry({ rootDir: root, identity: cacheIdentity });
+  if (cachedBaseline.hit) {
+    console.log(
+      `Reusing baseline snapshot ${baselineCommitSha.slice(0, 7)} ` +
+      `from cache ${cachedBaseline.cacheKey.slice(0, 12)}`
+    );
+    applyBaselineSnapshot({ metrics, rawDir, baselineSnapshot: cachedBaseline.snapshot, message: "computed from cache" });
+    return cachedBaseline.snapshot;
+  }
+
+  if (cachedBaseline.reason !== "cache-miss") {
+    console.log(`Ignoring baseline snapshot cache ${cachedBaseline.cacheKey.slice(0, 12)}: ${cachedBaseline.reason}`);
+  }
+
+  return null;
+}
+
 async function scanMaterializedBaseline(options: MaterializedBaselineScanOptions): Promise<BaselineSnapshot | null> {
   const {
     baselineCommitSha,
+    cacheIdentity,
     baselineWorkDir,
     config,
     metrics,
@@ -112,10 +172,13 @@ async function scanMaterializedBaseline(options: MaterializedBaselineScanOptions
       cacheRootDir: root,
       commitSha: baselineCommitSha
     });
-    metrics.baselineFingerprints = baselineSnapshot.fingerprints;
-    metrics.trends = generateTrends(metrics, baselineSnapshot);
-    console.log(`  Baseline deltas: ${metrics.trends.length} computed`);
-    writeBaselineRawOutputs(rawDir, baselineSnapshot);
+    const cacheEntry = writeBaselineSnapshotCacheEntry({
+      rootDir: root,
+      identity: cacheIdentity,
+      snapshot: baselineSnapshot
+    });
+    console.log(`  Baseline snapshot cached: ${cacheEntry.cacheKey.slice(0, 12)}`);
+    applyBaselineSnapshot({ metrics, rawDir, baselineSnapshot });
     return baselineSnapshot;
   } catch (err: unknown) {
     console.log(`  ⚠️  Baseline scan failed: ${errorMessage(err)}`);
@@ -123,6 +186,23 @@ async function scanMaterializedBaseline(options: MaterializedBaselineScanOptions
     metrics.comparisonStatus = "baseline-unavailable";
     return null;
   }
+}
+
+function applyBaselineSnapshot({
+  metrics,
+  rawDir,
+  baselineSnapshot,
+  message = "computed"
+}: {
+  baselineSnapshot: BaselineSnapshot;
+  message?: string;
+  metrics: QualityMetrics;
+  rawDir: string;
+}): void {
+  metrics.baselineFingerprints = baselineSnapshot.fingerprints;
+  metrics.trends = generateTrends(metrics, baselineSnapshot);
+  console.log(`  Baseline deltas: ${metrics.trends.length} ${message}`);
+  writeBaselineRawOutputs(rawDir, baselineSnapshot);
 }
 
 function createEquivalentBaselineSnapshot(metrics: QualityMetrics): BaselineSnapshot {

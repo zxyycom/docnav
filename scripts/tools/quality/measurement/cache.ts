@@ -1,22 +1,59 @@
 /**
- * Code-area cache for normalized PMD CPD duplicate-code results.
+ * Quality measurement cache helpers.
  */
 
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+
 import { readJsonFile, writeJsonFile } from "../../fs.ts";
-import type { DuplicateCodeFragment } from "../model/schema.ts";
-import { buildScanCacheKey, getScanCachePath } from "./cache/key.ts";
-import { isMatchingPayload, isMetricArray, stripDuplicateChangedScope } from "./cache/payload.ts";
+import type {
+  BaselineSnapshot,
+  DuplicateCodeFragment,
+  QualityConfig,
+  ToolAvailability
+} from "../model/schema.ts";
+import {
+  buildBaselineSnapshotCacheKey,
+  buildScanCacheKey,
+  getBaselineSnapshotCacheDir,
+  getScanCachePath,
+  stableStringify
+} from "./cache/key.ts";
+import {
+  isBaselineSnapshot,
+  isMatchingBaselineSnapshotManifest,
+  isMatchingPayload,
+  isMetricArray,
+  stripDuplicateChangedScope
+} from "./cache/payload.ts";
 import {
   SCAN_CACHE_VERSION,
+  type BaselineSnapshotCacheHit,
+  type BaselineSnapshotCacheIdentity,
+  type BaselineSnapshotCacheManifest,
+  type BaselineSnapshotCacheMiss,
   type CpdCacheHit,
   type CpdCacheIdentity,
   type CpdCacheMiss,
   type ScanCachePayload
 } from "./cache/types.ts";
 
-export { buildScanCacheKey, getScanCachePath } from "./cache/key.ts";
+export {
+  buildBaselineSnapshotCacheKey,
+  buildScanCacheKey,
+  getBaselineSnapshotCacheDir,
+  getScanCachePath
+} from "./cache/key.ts";
 export { SCAN_CACHE_VERSION } from "./cache/types.ts";
-export type { CpdCacheHit, CpdCacheIdentity, CpdCacheMiss, ScanKind } from "./cache/types.ts";
+export type {
+  BaselineSnapshotCacheHit,
+  BaselineSnapshotCacheIdentity,
+  BaselineSnapshotCacheMiss,
+  CpdCacheHit,
+  CpdCacheIdentity,
+  CpdCacheMiss,
+  ScanKind
+} from "./cache/types.ts";
 
 export function loadScanCacheEntry({
   rootDir,
@@ -74,4 +111,106 @@ export function writeScanCacheEntry({
 
   writeJsonFile(cachePath, payload);
   return { cacheKey, cachePath };
+}
+
+export function createBaselineSnapshotCacheIdentity({
+  commitSha,
+  config,
+  toolResults
+}: {
+  commitSha: string;
+  config: QualityConfig;
+  toolResults: ToolAvailability[];
+}): BaselineSnapshotCacheIdentity {
+  return {
+    commitSha,
+    configVersion: config.version,
+    include: [...config.include],
+    excludeDirs: [...config.excludeDirs],
+    generatedFiles: [...config.generatedFiles],
+    codeAreas: config.codeAreas,
+    pmdCpd: {
+      defaultMinimumTokens: config.pmdCpd.defaultMinimumTokens,
+      minimumTokens: { ...config.pmdCpd.minimumTokens }
+    },
+    toolArgs: {
+      lizard: [...config.tools.lizard.args],
+      pmdCpd: [...config.tools.pmdCpd.args],
+      scc: [...config.tools.scc.args]
+    },
+    tools: toolResults
+      .map((tool) => ({
+        available: tool.available,
+        name: tool.name,
+        source: tool.source,
+        version: tool.version
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  };
+}
+
+export function loadBaselineSnapshotCacheEntry({
+  rootDir,
+  identity
+}: {
+  identity: BaselineSnapshotCacheIdentity;
+  rootDir: string;
+}): BaselineSnapshotCacheHit | BaselineSnapshotCacheMiss {
+  const cacheKey = buildBaselineSnapshotCacheKey(identity);
+  const cacheDir = getBaselineSnapshotCacheDir(rootDir, cacheKey);
+  const manifestPath = join(cacheDir, "manifest.json");
+  const snapshotPath = join(cacheDir, "snapshot.json");
+
+  let manifest: unknown;
+  let snapshot: unknown;
+  try {
+    manifest = readJsonFile(manifestPath);
+    snapshot = readJsonFile(snapshotPath);
+  } catch {
+    return { hit: false, reason: "cache-miss", cacheKey, cacheDir };
+  }
+
+  if (!isMatchingBaselineSnapshotManifest(manifest, identity, cacheKey)) {
+    return { hit: false, reason: "cache-manifest-mismatch", cacheKey, cacheDir };
+  }
+
+  if (!isBaselineSnapshot(snapshot)) {
+    return { hit: false, reason: "cache-snapshot-invalid", cacheKey, cacheDir };
+  }
+
+  if (manifest.snapshotHash !== hashBaselineSnapshot(snapshot)) {
+    return { hit: false, reason: "cache-snapshot-hash-mismatch", cacheKey, cacheDir };
+  }
+
+  return { hit: true, snapshot, cacheKey, cacheDir };
+}
+
+export function writeBaselineSnapshotCacheEntry({
+  rootDir,
+  identity,
+  snapshot
+}: {
+  identity: BaselineSnapshotCacheIdentity;
+  rootDir: string;
+  snapshot: BaselineSnapshot;
+}): { cacheDir: string; cacheKey: string } {
+  const cacheKey = buildBaselineSnapshotCacheKey(identity);
+  const cacheDir = getBaselineSnapshotCacheDir(rootDir, cacheKey);
+  const snapshotPath = join(cacheDir, "snapshot.json");
+  const manifestPath = join(cacheDir, "manifest.json");
+  const manifest: BaselineSnapshotCacheManifest = {
+    scanCacheVersion: SCAN_CACHE_VERSION,
+    cacheKey,
+    identity,
+    snapshotHash: hashBaselineSnapshot(snapshot),
+    createdAt: new Date().toISOString()
+  };
+
+  writeJsonFile(snapshotPath, snapshot);
+  writeJsonFile(manifestPath, manifest);
+  return { cacheKey, cacheDir };
+}
+
+export function hashBaselineSnapshot(snapshot: BaselineSnapshot): string {
+  return `sha256:${createHash("sha256").update(stableStringify(snapshot)).digest("hex")}`;
 }

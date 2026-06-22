@@ -13,6 +13,6 @@ export {
   resolveHostTarget,
   resolveWorkspaceVersion,
 } from "./environment.ts";
-export { runNodeScript } from "./io.ts";
+export { runScript } from "./io.ts";
 export { validateReleasePackage } from "./validation.ts";
 export { buildReleasePackage } from "./build.ts";

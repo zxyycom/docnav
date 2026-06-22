@@ -82,7 +82,7 @@ describe("quality report", () => {
         totalFileDecisionTokens: 40
       },
       byCodeArea: [
-        codeAreaAggregate("node-production-scripts", { decisionTokens: 30, lines: 300 }),
+        codeAreaAggregate("typescript-production-scripts", { decisionTokens: 30, lines: 300 }),
         codeAreaAggregate("rust-production", { decisionTokens: 10, lines: 100 })
       ]
     };
@@ -91,7 +91,7 @@ describe("quality report", () => {
 
     assert.match(section, /Decision Tokens/);
     assert.match(section, /file-decision-tokens \/ total-file-decision-tokens/);
-    assert.match(section, /node-production-scripts/);
+    assert.match(section, /typescript-production-scripts/);
     assert.match(section, /\|\s*30\s*\|\s*75\.0%\s*\|/);
     assert.match(section, /\|\s*10\s*\|\s*25\.0%\s*\|/);
   });
@@ -118,7 +118,7 @@ function qualityFile(
   return {
     path,
     language: "TypeScript",
-    codeArea: "node-production-scripts",
+    codeArea: "typescript-production-scripts",
     lines: options.lines,
     codeLines: options.codeLines ?? options.lines,
     decisionTokens: { value: options.decisionTokens, source: "scc" },
@@ -134,7 +134,7 @@ function qualityFunction(
   return {
     name,
     file,
-    codeArea: "node-production-scripts",
+    codeArea: "typescript-production-scripts",
     startLine: 1,
     endLine: options.lines,
     lines: options.lines,
@@ -166,7 +166,7 @@ function warning(path: string, ruleId: string, value: number): WarningRecord {
     sourceTool: "scc",
     path,
     line: null,
-    codeArea: "node-production-scripts",
+    codeArea: "typescript-production-scripts",
     metric: "code-lines",
     value,
     comparisonBasis: "changed-scope",

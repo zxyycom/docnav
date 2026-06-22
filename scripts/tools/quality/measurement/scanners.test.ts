@@ -25,7 +25,7 @@ describe("quality scanner output parsing", () => {
     const csv = [
       SCC_BY_FILE_CSV_HEADER,
       "Rust,crates/docnav/src/lib.rs,lib.rs,120,90,20,10,17,4096,70",
-      "JavaScript,scripts/quality/scan.ts,scan.ts,60,50,5,5,8,2048,45"
+      "TypeScript,scripts/quality/scan.ts,scan.ts,60,50,5,5,8,2048,45"
     ].join("\n");
 
     const result = parseSccCSV(csv, "/repo");
@@ -83,7 +83,7 @@ describe("quality scanner output parsing", () => {
 
     const result = parsePmdCpdXml(xml, "/repo");
 
-    assert.equal(getPmdCpdLanguageForCodeArea("node-production-scripts"), "typescript");
+    assert.equal(getPmdCpdLanguageForCodeArea("typescript-production-scripts"), "typescript");
     assert.equal(parsePmdVersionOutput(output), "7.25.0");
     assert.equal(result.ok, true);
     assert.equal(result.fragments[0]!.tokenCount, 50);
@@ -102,7 +102,7 @@ describe("quality scanner output parsing", () => {
         cwd: REPO_ROOT,
         toolConfig,
         minimumTokens: 75,
-        codeArea: "node-production-scripts",
+        codeArea: "typescript-production-scripts",
         skipIfUnavailable: true
       });
 

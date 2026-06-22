@@ -14,20 +14,20 @@
 
 | 维度 | 最低覆盖要求 | 主要测试层 |
 | --- | --- | --- |
-| 输出层 | `readable-view`、`readable-json` 和 `protocol-json` 至少各有代表性外部入口断言；schema/readable 映射由验证脚本覆盖。 | JavaScript smoke、schema/docs validators、Rust renderer tests |
-| 命令族 | 每个正式命令族至少覆盖一个成功路径、一个代表性失败或 help 边界；不为参数组合建立笛卡尔积。 | JavaScript smoke、Rust parser/config tests |
-| 文档能力 | `outline`、`read`、`find`、`info` 覆盖 core CLI、直接 adapter CLI 和 invoke 链路中的代表路径。 | JavaScript smoke、Rust adapter/protocol tests |
-| adapter 机器能力 | `manifest`、`probe` 和 `invoke` 覆盖 schema-valid stdout、stdin decode failure 和语义失败阶段。 | JavaScript smoke、schema/docs validators、Rust protocol/SDK tests |
+| 输出层 | `readable-view`、`readable-json` 和 `protocol-json` 至少各有代表性外部入口断言；schema/readable 映射由验证脚本覆盖。 | CLI smoke、schema/docs validators、Rust renderer tests |
+| 命令族 | 每个正式命令族至少覆盖一个成功路径、一个代表性失败或 help 边界；不为参数组合建立笛卡尔积。 | CLI smoke、Rust parser/config tests |
+| 文档能力 | `outline`、`read`、`find`、`info` 覆盖 core CLI、直接 adapter CLI 和 invoke 链路中的代表路径。 | CLI smoke、Rust adapter/protocol tests |
+| adapter 机器能力 | `manifest`、`probe` 和 `invoke` 覆盖 schema-valid stdout、stdin decode failure 和语义失败阶段。 | CLI smoke、schema/docs validators、Rust protocol/SDK tests |
 | adapter 管理 | `adapter list/install/update/remove` 覆盖正式流程、manifest 校验、fingerprint 边界和错误映射。 | Core CLI smoke、Rust core tests |
-| ref 与分页 | 至少覆盖 `outline -> ref -> read`、`find -> ref -> read`、invalid/not-found ref、分页继续和终止。 | JavaScript smoke、Rust adapter tests |
-| 错误与 warning 阶段 | 覆盖 CLI 输入错误、adapter selection warning、candidate failure、selected invoke failure、ref error 和 warning placement 的代表样本。 | JavaScript smoke、Rust diagnostics/output tests |
+| ref 与分页 | 至少覆盖 `outline -> ref -> read`、`find -> ref -> read`、invalid/not-found ref、分页继续和终止。 | CLI smoke、Rust adapter tests |
+| 错误与 warning 阶段 | 覆盖 CLI 输入错误、adapter selection warning、candidate failure、selected invoke failure、ref error 和 warning placement 的代表样本。 | CLI smoke、Rust diagnostics/output tests |
 | 配置与 path context | 覆盖 user/project/default 优先级、`--path` context、非法配置值和配置不改变协议字段的边界。 | Core CLI smoke、Rust config tests |
 | MCP bridge | 覆盖 tool call 到 `docnav` CLI 的映射、TextContent/structuredContent 分层和 readable schema 校验。 | MCP bridge tests、schema/docs validators |
 | release package | 覆盖 manifest、文件集合、校验和、host/target 选择和 package 内二进制 smoke。 | release package scripts、package smoke |
 
 ## 层级选择
 
-- JavaScript smoke：证明真实进程入口、跨二进制链路、stdout/stderr、exit code、warning placement 和 package 可执行性。
+- CLI smoke：证明真实进程入口、跨二进制链路、stdout/stderr、exit code、warning placement 和 package 可执行性。
 - Rust tests：证明 parser、ref、分页、decode stage、helper、renderer 和内部状态转换等自定义逻辑不变量。
 - schema/docs validators：证明字段形状、示例链路、schema 映射和文档化 fixture 与当前 owner 文档一致。
 - 测试用例维护：定义测试函数变更时的 case 归属、账本更新和 `@case` 标记维护流程。

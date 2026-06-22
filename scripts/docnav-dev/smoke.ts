@@ -1,24 +1,24 @@
 import path from "node:path";
 
-import { root, runNodeScript } from "../tools/release-package/index.ts";
+import { root, runScript } from "../tools/release-package/index.ts";
 
 const withCargoBins = path.join(root, "scripts", "cargo", "with-bins.ts");
 
 try {
-  runNodeScript(withCargoBins, [
+  runScript(withCargoBins, [
     "--bin",
     "docnav-markdown:docnav-markdown:DOCNAV_MARKDOWN_BIN",
     "--",
-    "node",
+    "bun",
     "test/docnav-markdown-smoke.ts",
   ]);
-  runNodeScript(withCargoBins, [
+  runScript(withCargoBins, [
     "--bin",
     "docnav:docnav:DOCNAV_BIN",
     "--bin",
     "docnav-markdown:docnav-markdown:DOCNAV_MARKDOWN_BIN",
     "--",
-    "node",
+    "bun",
     "test/docnav-core-smoke.ts",
   ]);
 } catch (error) {

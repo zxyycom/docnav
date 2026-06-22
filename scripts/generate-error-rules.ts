@@ -253,7 +253,7 @@ function writeOrCheck(relPath: string, content: string, options: Options): void 
   }
 
   if (options.checkOnly) {
-    throw new Error(`${relPath} is out of date; run pnpm run generate:error-rules`);
+    throw new Error(`${relPath} is out of date; run bun run generate:error-rules`);
   }
 
   writeTextFile(absPath, content);

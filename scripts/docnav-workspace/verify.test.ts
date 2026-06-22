@@ -21,16 +21,19 @@ import { executeCheck } from "./verify/execution.ts";
 
 // @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {
-  it("filters successful node test runner output from release package script tests", () => {
+  it("filters successful test runner output from release package script tests", () => {
     const check = checkByLabel("release package script tests");
     const output = [
-      "  \u2714 package selection defaults to the current host package (1.6661ms)",
-      "  \u2714 package selection accepts a target (0.2197ms)",
-      "  \u2139 tests 5",
-      "  \u2139 suites 0",
-      "  \u2139 pass 5",
-      "  \u2139 fail 0",
-      "  \u2139 duration_ms 113.1451"
+      "bun test v1.3.14 (0d9b296a)",
+      "",
+      "scripts\\tools\\release-package\\args.test.ts:",
+      "(pass) package selection defaults to the current host package [0.27ms]",
+      "(pass) package selection accepts a target [0.23ms]",
+      "(pass) package build target accepts one target option [1.14s]",
+      "",
+      "  3 pass",
+      "  0 fail",
+      "Ran 3 tests across 1 file. [1.61s]"
     ].join("\n");
 
     assert.deepEqual(visibleOutputLines(check, output), []);
@@ -39,7 +42,7 @@ describe("workspace verifier configuration", () => {
   it("keeps actionable output after filtering known success noise", () => {
     const check = checkByLabel("release package script tests");
     const output = [
-      "  \u2714 package selection accepts a target (0.2197ms)",
+      "(pass) package selection accepts a target [0.23ms]",
       "unexpected diagnostic"
     ].join("\n");
 
@@ -49,7 +52,7 @@ describe("workspace verifier configuration", () => {
   it("filters package manager echoes from successful script checks", () => {
     const check = checkByLabel("TypeScript script typecheck");
 
-    assert.deepEqual(visibleOutputLines(check, "$ tsc -p tsconfig.json"), []);
+    assert.deepEqual(visibleOutputLines(check, "$ tsgo -p tsconfig.json"), []);
   });
 
   it("carries visible child output into report completions", () => {
@@ -113,13 +116,13 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("smoke harness tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
     assert.ok(!requiredLabels.includes("cargo test"));
-    assert.ok(!requiredLabels.includes("quality internal node tests"));
+    assert.ok(!requiredLabels.includes("quality internal script tests"));
     assert.ok(!requiredLabels.includes("docnav core development smoke"));
 
     assert.ok(fullLabels.includes("cargo fmt"));
-    assert.ok(fullLabels.includes("quality quick check"));
+    assert.ok(!fullLabels.includes("quality quick check"));
     assert.ok(fullLabels.includes("quality full check"));
-    assert.ok(fullLabels.includes("quality internal node tests"));
+    assert.ok(fullLabels.includes("quality internal script tests"));
     assert.ok(!fullLabels.includes("quality report tests"));
     assert.ok(fullLabels.includes("cargo test"));
     assert.ok(fullLabels.includes("docnav development binaries"));
@@ -139,7 +142,7 @@ describe("workspace verifier configuration", () => {
 
     assert.equal(checkByLabel("cargo test").type, PROFILE_FULL);
     assert.equal(checkByLabel("quality quick check").type, PROFILE_REQUIRED);
-    assert.equal(checkByLabel("quality quick check").command, "node");
+    assert.equal(checkByLabel("quality quick check").command, "bun");
     assert.deepEqual(checkByLabel("quality quick check").args, [
       "scripts/quality/scan.ts",
       "--profile",
@@ -149,7 +152,7 @@ describe("workspace verifier configuration", () => {
     ]);
     assert.deepEqual(checkByLabel("quality quick check").warningOutput, [/^Quality check status: warning$/m]);
     assert.equal(checkByLabel("quality full check").type, PROFILE_FULL);
-    assert.equal(checkByLabel("quality full check").command, "node");
+    assert.equal(checkByLabel("quality full check").command, "bun");
     assert.deepEqual(checkByLabel("quality full check").args, [
       "scripts/quality/scan.ts",
       "--profile",
@@ -230,7 +233,7 @@ describe("workspace verifier configuration", () => {
       id: "quality-warning-marker-test",
       label: "quality warning marker test",
       type: PROFILE_REQUIRED,
-      command: process.execPath,
+      command: "bun",
       args: ["-e", "console.log('Quality check status: warning')"],
       dependsOn: [],
       mutex: [],

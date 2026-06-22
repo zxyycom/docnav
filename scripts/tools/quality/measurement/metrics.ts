@@ -60,7 +60,7 @@ function sortFunctionMetrics(functions: FunctionMetric[]): FunctionMetric[] {
 }
 
 function isLizardTarget(filePath: string): boolean {
-  return filePath.endsWith(".rs") || filePath.endsWith(".ts") || filePath.endsWith(".js");
+  return filePath.endsWith(".rs") || filePath.endsWith(".ts");
 }
 
 function isInChangedScope(filePath: string, changedFiles: readonly string[] = []): boolean {

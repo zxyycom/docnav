@@ -57,7 +57,7 @@ export function printSummary({
 }
 
 export function printUsage(writeLine: (line: string) => void): void {
-  writeLine("Usage: node scripts/docnav-workspace/verify.ts [--profile required|full] [--concurrency <n>]");
+  writeLine("Usage: bun scripts/docnav-workspace/verify.ts [--profile required|full] [--concurrency <n>]");
   writeLine("");
   writeLine("Profiles:");
   for (const [name, profile] of Object.entries(profiles)) {

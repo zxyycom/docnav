@@ -46,7 +46,7 @@ function parseArgs(args: string[]): ParsedScriptArgs {
 function usage(message: string): never {
   console.error(message);
   console.error(
-    "usage: node scripts/cargo/with-bins.ts [--quiet] --bin <cargo-package>:<bin-name>:<ENV_NAME> [--bin ...] -- <command> [args...]"
+    "usage: bun scripts/cargo/with-bins.ts [--quiet] --bin <cargo-package>:<bin-name>:<ENV_NAME> [--bin ...] -- <command> [args...]"
   );
   process.exit(2);
 }

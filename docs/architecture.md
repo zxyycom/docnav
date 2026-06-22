@@ -61,7 +61,7 @@ Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-jso
 
 目标职责：
 
-- 由 Node.js / JavaScript package 实现，并提供 npm bin、tool 声明和 bridge wiring。
+- 由 Node.js package 提供；源码使用 TypeScript，发布 bridge 打包为单文件 JavaScript，并提供 npm bin、tool 声明和 bridge wiring。
 - 通过 stdio 提供 MCP transport。
 - 暴露 `document_outline`、`document_read`、`document_find`、`document_info`。
 - 将 MCP tool call 映射为核心 `docnav` CLI 调用。
@@ -70,7 +70,7 @@ Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-jso
 - 依赖系统中可调用的 `docnav` 核心 CLI。
 - 不直接调用 adapter，不绕过 `docnav` 的格式识别、配置解析、adapter 选择和错误映射。
 
-本架构文档只定义 MCP ownership 摘要；完整 handoff 边界见 [MCP Handoff](mcp.md)。JavaScript renderer、TextContent bridge wiring、tool declaration packaging、MCP error mapping 和 MCP 接入层配置键由 MCP Handoff owner 定义和验收。
+本架构文档只定义 MCP ownership 摘要；完整 handoff 边界见 [MCP Handoff](mcp.md)。MCP bridge 源码、单文件 JavaScript 制品、TextContent bridge wiring、tool declaration packaging、MCP error mapping 和 MCP 接入层配置键由 MCP Handoff owner 定义和验收。
 
 ### 格式 Adapter
 

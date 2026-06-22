@@ -12,8 +12,26 @@ describe("quality code area classification", () => {
   });
 
   it("keeps smoke harness infrastructure in the validation/smoke area", () => {
-    assert.equal(classifyQualityFile("test/tools/smoke-harness.ts"), "node-validation-smoke");
-    assert.equal(classifyQualityFile("scripts/tools/validators/schema/index.ts"), "node-validation-smoke");
+    assert.equal(classifyQualityFile("test/tools/smoke-harness.ts"), "typescript-validation-smoke");
+    assert.equal(classifyQualityFile("scripts/tools/validators/schema/index.ts"), "typescript-validation-smoke");
+  });
+
+  it("keeps source scan globs on TypeScript script sources", () => {
+    assert.deepEqual(DEFAULT_CONFIG.include, [
+      "crates/**/*.rs",
+      "scripts/**/*.ts",
+      "test/**/*.ts"
+    ]);
+    assert.deepEqual(DEFAULT_CONFIG.codeAreas["typescript-production-scripts"].globs, [
+      "scripts/**/*.ts"
+    ]);
+    assert.deepEqual(DEFAULT_CONFIG.codeAreas["typescript-validation-smoke"].globs, [
+      "scripts/tools/validators/**/*.ts",
+      "scripts/**/*.test.ts",
+      "test/smoke/**/*.ts",
+      "test/tools/**/*.ts",
+      "test/**/*.ts"
+    ]);
   });
 });
 

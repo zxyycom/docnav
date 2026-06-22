@@ -40,7 +40,7 @@ function qualityFile(
   return {
     path,
     language: "TypeScript",
-    codeArea: "node-production-scripts",
+    codeArea: "typescript-production-scripts",
     lines: options.lines,
     codeLines: options.codeLines,
     decisionTokens: { value: 1, source: "scc" },

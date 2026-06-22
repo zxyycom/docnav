@@ -1,8 +1,14 @@
 import { isNonArrayRecord } from "../../../type-guards.ts";
-import type { DuplicateCodeFragment, DuplicateCodeLocation } from "../../model/schema.ts";
+import type {
+  BaselineSnapshot,
+  DuplicateCodeFragment,
+  DuplicateCodeLocation
+} from "../../model/schema.ts";
 import { stableStringify } from "./key.ts";
 import {
   SCAN_CACHE_VERSION,
+  type BaselineSnapshotCacheIdentity,
+  type BaselineSnapshotCacheManifest,
   type CpdCacheIdentity,
   type ScanCachePayload
 } from "./types.ts";
@@ -30,6 +36,34 @@ export function stripDuplicateChangedScope(metrics: DuplicateCodeFragment[]): Du
     hitsChangedScope: false,
     locations: fragment.locations.map((location) => ({ ...location }))
   }));
+}
+
+export function isMatchingBaselineSnapshotManifest(
+  manifest: unknown,
+  identity: BaselineSnapshotCacheIdentity,
+  cacheKey: string
+): manifest is BaselineSnapshotCacheManifest {
+  if (!isNonArrayRecord(manifest)) return false;
+
+  return manifest.scanCacheVersion === SCAN_CACHE_VERSION &&
+    manifest.cacheKey === cacheKey &&
+    typeof manifest.createdAt === "string" &&
+    typeof manifest.snapshotHash === "string" &&
+    stableStringify(manifest.identity) === stableStringify(identity);
+}
+
+export function isBaselineSnapshot(value: unknown): value is BaselineSnapshot {
+  if (!isNonArrayRecord(value)) return false;
+  const aggregates = value.aggregates;
+
+  return isNonArrayRecord(value.fingerprints) &&
+    Array.isArray(value.fileMetrics) &&
+    Array.isArray(value.functionMetrics) &&
+    Array.isArray(value.duplicateCode) &&
+    isNonArrayRecord(aggregates) &&
+    Array.isArray(aggregates.byCodeArea) &&
+    Array.isArray(aggregates.byLanguage) &&
+    isNonArrayRecord(aggregates.overall);
 }
 
 function cacheIdentityFieldsMatch(

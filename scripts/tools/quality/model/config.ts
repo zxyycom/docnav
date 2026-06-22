@@ -35,14 +35,12 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.4.3",
+  version: "0.5.0",
 
   include: [
     "crates/**/*.rs",
     "scripts/**/*.ts",
-    "scripts/**/*.js",
-    "test/**/*.ts",
-    "test/**/*.js"
+    "test/**/*.ts"
   ],
 
   excludeDirs: [
@@ -87,30 +85,26 @@ export const DEFAULT_CONFIG = Object.freeze({
       excludeGlobs: ["**/fixtures/**", "**/generated/**"],
       warningPolicy: "relaxed"
     },
-    "node-production-scripts": {
-      description: "Node.js production scripts",
-      globs: ["scripts/**/*.ts", "scripts/**/*.js"],
+    "typescript-production-scripts": {
+      description: "TypeScript production scripts",
+      globs: ["scripts/**/*.ts"],
       excludeGlobs: [
         "scripts/tools/validators/**",
         "scripts/**/*.test.ts",
-        "scripts/**/*.test.js",
         "test/**",
         "**/fixtures/**",
         "**/generated/**"
       ],
       warningPolicy: "moderate"
     },
-    "node-validation-smoke": {
-      description: "Node.js validation and smoke test scripts",
+    "typescript-validation-smoke": {
+      description: "TypeScript validation and smoke test scripts",
       globs: [
         "scripts/tools/validators/**/*.ts",
-        "scripts/tools/validators/**/*.js",
         "scripts/**/*.test.ts",
-        "scripts/**/*.test.js",
         "test/smoke/**/*.ts",
         "test/tools/**/*.ts",
-        "test/**/*.ts",
-        "test/**/*.js"
+        "test/**/*.ts"
       ],
       excludeGlobs: [
         "test/**/cases/**",
@@ -172,8 +166,8 @@ export const DEFAULT_CONFIG = Object.freeze({
     minimumTokens: Object.freeze({
       "rust-production": 75,
       "rust-tests": 100,
-      "node-production-scripts": 75,
-      "node-validation-smoke": 100,
+      "typescript-production-scripts": 75,
+      "typescript-validation-smoke": 100,
       "fixtures-examples": 150,
       "generated": 200
     }),

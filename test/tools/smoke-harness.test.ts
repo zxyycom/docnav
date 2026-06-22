@@ -11,7 +11,6 @@ describe("smoke harness task scheduling", () => {
     const events: string[] = [];
     const harness = createHarness(state, events);
 
-    const startedAtMs = Date.now();
     const results = await harness.runSmokeTasks([
       {
         id: "slow",
@@ -34,8 +33,8 @@ describe("smoke harness task scheduling", () => {
       }
     ], { concurrency: 2 });
 
-    assert.ok(Date.now() - startedAtMs < 80);
     assert.ok(events.indexOf("start:fast") < events.indexOf("end:slow"));
+    assert.ok(events.indexOf("start:fast") < events.indexOf("command:slow"));
     assert.deepEqual(results.map((result) => result.ok), [true, true]);
     assert.deepEqual(
       state.testResults.map((result) => [result.label, result.commandCount]),
