@@ -44,7 +44,7 @@ export function getBaselineSnapshotCacheDir(rootDir: string, cacheKey: string): 
 }
 
 function getQualityCacheRoot(rootDir: string): string {
-  return join(rootDir, ".log", "docnav-quality-cache", SCAN_CACHE_VERSION);
+  return join(rootDir, ".cache", "docnav", "quality", SCAN_CACHE_VERSION);
 }
 
 function hashStable(value: unknown): string {

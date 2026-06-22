@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 export const fixturesDir = path.join(root, "crates", "docnav-markdown", "tests", "fixtures", "cli-smoke");
-export const logDir = path.join(root, ".log", "docnav-markdown-cli-smoke");
+export const logDir = path.join(root, ".log", "smoke", "markdown");
 export const timestamp = new Date().toISOString().replace(/[:]/g, "-");
 export const logPaths = [
   path.join(logDir, "latest.log"),

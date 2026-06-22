@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 import {
   buildBaselineSnapshotCacheKey,
@@ -112,6 +112,10 @@ describe("quality measurement cache", () => {
       const hit = loadScanCacheEntry({ rootDir: tempDir, identity });
       assert.equal(hit.hit, true);
       assert.equal(hit.hit ? hit.metrics[0]!.hitsChangedScope : true, false);
+      assert.equal(
+        hit.hit ? relative(tempDir, hit.cachePath).split("\\").join("/") : "",
+        `.cache/docnav/quality/quality-scan-cache-v1/${baseKey}.json`
+      );
 
       const mismatched = loadScanCacheEntry({
         rootDir: tempDir,

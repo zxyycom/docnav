@@ -11,7 +11,9 @@ export default tseslint.config(
   {
     ignores: [
       ".git/**",
+      ".cache/**",
       ".log/**",
+      ".tmp/**",
       "build/**",
       "dist/**",
       "node_modules/**",

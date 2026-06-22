@@ -166,7 +166,7 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(checkByLabel("docnav core development smoke").mutex, []);
     assert.deepEqual(checkByLabel("docnav-markdown development smoke").dependsOn, ["docnav-development-binaries"]);
     assert.deepEqual(checkByLabel("docnav core development smoke").dependsOn, ["docnav-development-binaries"]);
-    assert.equal(checkByLabel("docnav-markdown development smoke").envFile, ".log/verify-docnav-workspace/dev-bins.json");
+    assert.equal(checkByLabel("docnav-markdown development smoke").envFile, ".cache/docnav/verify/dev-bins.json");
     assert.deepEqual(checkByLabel("docs case catalog validator").dependsOn, []);
     assert.deepEqual(checkByLabel("docs schema validator").dependsOn, []);
     assert.deepEqual(checkByLabel("case catalog validator tests").dependsOn, []);

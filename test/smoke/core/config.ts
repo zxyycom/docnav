@@ -2,9 +2,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-export const logDir = path.join(root, ".log", "docnav-core-cli-smoke");
+export const logDir = path.join(root, ".log", "smoke", "core");
 export const timestamp = new Date().toISOString().replace(/[:]/g, "-");
-export const tempRoot = path.join(logDir, "tmp", timestamp);
+export const tempRoot = path.join(root, ".tmp", "docnav", "smoke", "core", timestamp);
 export const logPaths = [
   path.join(logDir, "latest.log"),
   path.join(logDir, `${timestamp}.log`)

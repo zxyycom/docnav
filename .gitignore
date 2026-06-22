@@ -1,6 +1,8 @@
 /target/
 /artifacts/
+/.cache/
 /.log/
+/.tmp/
 /dist/
 /build/
 /node_modules/

@@ -2,7 +2,7 @@ import { defineChecks } from "./normalization.ts";
 import { PROFILE_FULL, PROFILE_REQUIRED } from "./model.ts";
 import type { CheckDefinition } from "./model.ts";
 
-const DEV_BIN_ENV_FILE = ".log/verify-docnav-workspace/dev-bins.json";
+const DEV_BIN_ENV_FILE = ".cache/docnav/verify/dev-bins.json";
 
 const testRunnerSuccessOutput = [
   /^bun test v\d+\.\d+\.\d+ \([0-9a-f]+\)$/,
@@ -172,7 +172,7 @@ export const checks = defineChecks([
                 command: "bun",
                 args: ["test/docnav-markdown-smoke.ts"],
                 ignoreOutput: [
-                  ...smokeSuccessOutput("Docnav Markdown Development Smoke", ".log/docnav-markdown-cli-smoke/latest.log")
+                  ...smokeSuccessOutput("Docnav Markdown Development Smoke", ".log/smoke/markdown/latest.log")
                 ]
               },
               {
@@ -181,7 +181,7 @@ export const checks = defineChecks([
                 command: "bun",
                 args: ["test/docnav-core-smoke.ts"],
                 ignoreOutput: [
-                  ...smokeSuccessOutput("Docnav Core Development Smoke", ".log/docnav-core-cli-smoke/latest.log")
+                  ...smokeSuccessOutput("Docnav Core Development Smoke", ".log/smoke/core/latest.log")
                 ]
               }
             ]

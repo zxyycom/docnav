@@ -54,6 +54,8 @@ export const DEFAULT_CONFIG = Object.freeze({
     "build",
     "__pycache__",
     ".pnpm-store",
+    ".cache",
+    ".tmp",
     ".log"
   ],
 

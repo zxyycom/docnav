@@ -692,6 +692,7 @@ Code: `scripts/tools/quality/measurement/cache.test.ts`
 
 Proves:
 - duplicate-code cache key 由 scan identity、tool args、config、code area 和 input fingerprint 决定。
+- duplicate-code cache entry 使用 `.cache/docnav/quality/<scan_cache_version>/` 作为 owner 目录。
 - cache hit 返回不带 changed-scope annotation 的 metric，保持复用扫描与当前 diff 语义分离。
 - baseline snapshot cache key 由 baseline commit、scan config 和工具版本决定，命中时通过 snapshot hash 防止错读缓存内容。
 
