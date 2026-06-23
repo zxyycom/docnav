@@ -18,7 +18,9 @@ probe
 
 普通 CLI、readable JSON 和 schema-valid `invoke` request 在传输层解析成功后进入 canonical document operation input 或等价 semantic request，并复用业务逻辑；它们不复用输出包装或展示形态。`readable-view`（默认）和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
 文档操作的直接 CLI 支持 `readable-view`（默认）、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
-适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、`<path>`、`--page`、`--limit-chars`、`--ref`、`--query`、`--output` 解析、protocol request 构造、输出分流和稳定错误映射。SDK 直接 CLI 使用 `clap` 或 `clap` builder API 承载命令、固定参数、默认值、枚举和 help；SDK 在确定 operation 后只校验当前 operation 实际使用的参数。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和 readable payload 字段语义。
+适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、document operation 标准参数解析、adapter 配置来源合并、protocol request 构造、输出分流和稳定错误映射。SDK 直接 CLI 使用 `clap` 或 `clap` builder API 承载命令、固定参数、默认值、枚举和 help；SDK 在确定 operation 后只校验当前 operation 实际使用的参数。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和 readable payload 字段语义。
+
+SDK direct CLI config helper 的交接对象是标准 direct CLI 参数来源对象，至少承载 `path`、`ref`、`query`、`page`、`limit_chars`、`output`、native options 和 warning 列表。本段只约束 SDK 与 adapter 参数处理链路的交接边界：配置 helper 负责 adapter id、默认项目级/用户级配置路径、覆盖路径、JSON 读取、固定字段投影、来源优先级和配置源 warning；类型、范围、output 枚举、native option 注册和 operation 适用性仍由后续 direct CLI 参数处理链路负责。完整 argv、配置路径和用户可见优先级规则由 [CLI](cli.md#adapter-直接-cli) 拥有。
 
 适配器直接 CLI argv 必须复用 [CLI](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
 
@@ -91,6 +93,9 @@ SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、ty
 ## 默认值所有权
 
 - 适配器直接 CLI 默认值属于适配器配置域。
+- SDK direct CLI config helper 调用方必须提供 adapter id、内置默认值、native option specs 和可选默认用户配置目录；未提供默认用户配置目录时，SDK 按 CLI 规则使用启动 cwd。
+- SDK document operation help 必须展示配置路径覆盖参数，但 help 不读取 adapter direct CLI 配置。
+- SDK document operation 必须把可用配置源合并为标准 direct CLI 参数来源对象；不可用配置源产生 `adapter_config_source_skipped` warning，并继续按其余来源合并。
 - manifest 只声明 adapter 能力，不提供默认参数。
 - `docnav` 按自身配置域决定 path、ref、query、page、limit_chars、output 和 adapter 等 core 通用参数。
 - 格式原生 `options` 对 `docnav` 和接入层保持 opaque。

@@ -5,6 +5,7 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 export const fixturesDir = path.join(root, "crates", "docnav-markdown", "tests", "fixtures", "cli-smoke");
 export const logDir = path.join(root, ".log", "smoke", "markdown");
 export const timestamp = new Date().toISOString().replace(/[:]/g, "-");
+export const tempRoot = path.join(root, ".tmp", "docnav", "smoke", "markdown", timestamp);
 export const logPaths = [
   path.join(logDir, "latest.log"),
   path.join(logDir, `${timestamp}.log`)

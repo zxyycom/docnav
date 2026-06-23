@@ -7,6 +7,8 @@ use serde_json::{Map, Value};
 pub const CLI_ARGV_IGNORED: WarningId = WarningId::from_static("cli_argv_ignored");
 pub const ADAPTER_CANDIDATE_FAILURE: WarningId =
     WarningId::from_static("adapter_candidate_failure");
+pub const ADAPTER_CONFIG_SOURCE_SKIPPED: WarningId =
+    WarningId::from_static("adapter_config_source_skipped");
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct WarningId(WarningIdRepr);
@@ -28,6 +30,10 @@ impl WarningId {
 
     pub const fn adapter_candidate_failure() -> Self {
         ADAPTER_CANDIDATE_FAILURE
+    }
+
+    pub const fn adapter_config_source_skipped() -> Self {
+        ADAPTER_CONFIG_SOURCE_SKIPPED
     }
 
     pub fn as_str(&self) -> &str {
@@ -109,6 +115,12 @@ pub enum WarningDetails {
         #[serde(skip_serializing_if = "Option::is_none")]
         preselected: Option<bool>,
     },
+    AdapterConfigSource {
+        source_level: String,
+        path_origin: String,
+        path: String,
+        reason_code: String,
+    },
     Other(Map<String, Value>),
 }
 
@@ -189,6 +201,25 @@ impl Warning {
         }
     }
 
+    pub fn adapter_config_source_skipped(
+        source_level: &str,
+        path_origin: &str,
+        path: &str,
+        reason_code: &str,
+    ) -> Self {
+        Self {
+            id: WarningId::adapter_config_source_skipped(),
+            reason: "adapter config source skipped".to_owned(),
+            effect: WarningEffect::OperationContinued,
+            details: WarningDetails::AdapterConfigSource {
+                source_level: source_level.to_owned(),
+                path_origin: path_origin.to_owned(),
+                path: path.to_owned(),
+                reason_code: reason_code.to_owned(),
+            },
+        }
+    }
+
     pub fn cli_argv_ignored(tokens: Vec<String>, reason: impl Into<String>) -> Self {
         Self {
             id: WarningId::cli_argv_ignored(),
@@ -253,80 +284,4 @@ pub fn write_warning_text_lines<W: Write>(warnings: &[Warning], writer: &mut W) 
 }
 
 #[cfg(test)]
-mod tests {
-    // @case WB-DIAG-WARN-001
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn warning_ids_serialize_as_stable_strings() {
-        assert_eq!(CLI_ARGV_IGNORED.as_str(), "cli_argv_ignored");
-        assert_eq!(
-            ADAPTER_CANDIDATE_FAILURE.as_str(),
-            "adapter_candidate_failure"
-        );
-        assert_eq!(
-            serde_json::to_value(WarningId::new("adapter_owned").unwrap()).unwrap(),
-            json!("adapter_owned")
-        );
-        assert!(WarningId::new("AdapterOwned").is_err());
-    }
-
-    #[test]
-    fn argv_warning_constructors_keep_existing_shape() {
-        let warning = Warning::unused_operation_flag("--page", Some("nope"), "info");
-        assert_eq!(warning.id, CLI_ARGV_IGNORED);
-        assert_eq!(warning.effect, WarningEffect::OperationContinued);
-        assert_eq!(warning.reason, "flag is not used by info command");
-        assert_eq!(
-            serde_json::to_value(warning.details).unwrap(),
-            json!({"tokens": ["--page", "nope"]})
-        );
-    }
-
-    #[test]
-    fn adapter_candidate_warning_keeps_existing_shape() {
-        let warning = Warning::adapter_candidate_failure(
-            "markdown",
-            "probe",
-            "UNSUPPORTED",
-            "no match",
-            true,
-        );
-        assert_eq!(warning.id, ADAPTER_CANDIDATE_FAILURE);
-        assert_eq!(warning.effect, WarningEffect::CandidateSkipped);
-        assert_eq!(
-            serde_json::to_value(warning.details).unwrap(),
-            json!({
-                "adapter_id": "markdown",
-                "stage": "probe",
-                "code": "UNSUPPORTED",
-                "preselected": true
-            })
-        );
-    }
-
-    #[test]
-    fn warning_text_line_matches_stderr_contract() {
-        let warning =
-            Warning::cli_argv_ignored(vec!["--future".to_owned()], "unknown\nCLI flag ignored");
-
-        assert_eq!(
-            warning_text_line(&warning).unwrap(),
-            "warning: id=cli_argv_ignored, effect=operation_continued, reason=unknown CLI flag ignored, details={\"tokens\":[\"--future\"]}"
-        );
-    }
-
-    #[test]
-    fn attach_warnings_keeps_json_payload_shape() {
-        let warning = Warning::cli_argv_ignored(vec!["--future".to_owned()], "test warning");
-
-        let object = attach_warnings_to_value(json!({"ok": true}), std::slice::from_ref(&warning));
-        assert_eq!(object["ok"], json!(true));
-        assert_eq!(object["warnings"][0]["id"], "cli_argv_ignored");
-
-        let scalar = attach_warnings_to_value(json!("ok"), &[warning]);
-        assert_eq!(scalar["value"], json!("ok"));
-        assert_eq!(scalar["warnings"][0]["id"], "cli_argv_ignored");
-    }
-}
+mod tests;

@@ -1,21 +1,22 @@
 use docnav_protocol::{positive_result, Operation, Options, PositiveInteger};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
-use super::native_options::{NativeOptionDefault, NativeOptionSpec};
+use super::cli::DirectCliConfig;
+use super::native_options::NativeOptionSpec;
 use super::output::DirectOutputMode;
 use super::warnings::DirectCliWarning;
 
 mod diagnostics;
 mod loose;
+mod sources;
 mod spec;
 
 use diagnostics::{operation_parse_error, probe_parse_error, protocol_only_parse_error};
-use loose::{collect_operation_args, collect_probe_args, collect_protocol_only_args, LooseArgs};
-use spec::{
-    arg_ids, command_labels, flags, operation_about, operation_command, parse_output,
-    probe_command, protocol_only_command,
-};
+use loose::{collect_probe_args, collect_protocol_only_args, LooseArgs};
+use sources::direct_cli_parameter_sources;
+use spec::{arg_ids, command_labels, flags, parse_output, probe_command, protocol_only_command};
 
+use sources::DirectCliParameterSources;
 pub(super) use spec::{command_names, direct_cli_command};
 
 #[derive(Clone, Debug)]
@@ -78,146 +79,22 @@ pub(super) fn parse_probe(
 pub(super) fn parse_operation_options(
     operation: Operation,
     args: &[String],
-    default_limit_chars: u32,
-    native_options: &[NativeOptionSpec],
+    config: &DirectCliConfig<'_>,
 ) -> Result<DirectOperationOptions, String> {
-    let LooseArgs {
-        clap_args,
-        warnings,
-    } = collect_operation_args(operation, args, native_options)?;
-    let matches = operation_command(
-        operation,
-        operation_about(operation),
-        native_options,
-        default_limit_chars,
-    )
-    .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
-    .map_err(|_| operation_parse_error(operation, args, native_options))?;
-
-    let common = parse_common_operation_options(operation, &matches, default_limit_chars)?;
-    let specific = parse_specific_operation_fields(operation, &matches)?;
-    let native_options = parsed_native_options(operation, &matches, native_options)?;
-
-    Ok(DirectOperationOptions {
-        path: common.path,
-        page: common.page,
-        limit_chars: common.limit_chars,
-        output: common.output,
-        ref_id: specific.ref_id,
-        query: specific.query,
-        warnings,
-        native_options,
-    })
-}
-
-struct CommonOperationOptions {
-    path: String,
-    page: PositiveInteger,
-    limit_chars: PositiveInteger,
-    output: DirectOutputMode,
-}
-
-struct SpecificOperationFields {
-    ref_id: Option<String>,
-    query: Option<String>,
-}
-
-fn default_native_options(operation: Operation, specs: &[NativeOptionSpec]) -> Options {
-    let mut options = Options::new();
-    for spec in specs.iter().filter(|spec| spec.supports(operation)) {
-        let Some(default) = spec.default else {
-            continue;
-        };
-        let value = match default {
-            NativeOptionDefault::Integer(value) => Value::from(value),
-        };
-        options.insert(spec.option_key.to_owned(), value);
-    }
-    options
+    let sources = direct_cli_parameter_sources(operation, args, config)?;
+    operation_options_from_sources(operation, sources, config.native_options)
 }
 
 fn positive_from_u32(value: u32, flag: &str) -> Result<PositiveInteger, String> {
     positive_result(value).map_err(|_| format!("{flag} must be a positive integer"))
 }
 
-fn parse_common_operation_options(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-    default_limit_chars: u32,
-) -> Result<CommonOperationOptions, String> {
-    let path = required_string(
-        matches,
-        arg_ids::PATH,
-        &format!("{operation} requires <path>"),
-    )?;
-    let page = parse_operation_page(operation, matches)?;
-    let limit_chars = parse_operation_limit_chars(operation, matches, default_limit_chars)?;
-    let output = parse_output(&required_string(
-        matches,
-        arg_ids::OUTPUT,
-        "missing output mode",
-    )?)?;
-
-    Ok(CommonOperationOptions {
-        path,
-        page,
-        limit_chars,
-        output,
-    })
-}
-
-fn parse_operation_page(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-) -> Result<PositiveInteger, String> {
-    if operation == Operation::Info {
-        return Ok(positive_result(1).expect("static positive integer"));
-    }
-
-    let raw = matches.get_one::<u32>(arg_ids::PAGE).copied().unwrap_or(1);
-    positive_from_u32(raw, flags::PAGE)
-}
-
-fn parse_operation_limit_chars(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-    default_limit_chars: u32,
-) -> Result<PositiveInteger, String> {
-    if operation == Operation::Info {
-        return Ok(positive_result(default_limit_chars).expect("static positive integer"));
-    }
-
-    let raw = matches
-        .get_one::<u32>(arg_ids::LIMIT_CHARS)
-        .copied()
-        .unwrap_or(default_limit_chars);
+fn parse_operation_limit_chars(value: &Value) -> Result<PositiveInteger, String> {
+    let raw = value
+        .as_u64()
+        .and_then(|value| u32::try_from(value).ok())
+        .ok_or_else(|| format!("{} must be a positive integer", flags::LIMIT_CHARS))?;
     positive_from_u32(raw, flags::LIMIT_CHARS)
-}
-
-fn parse_specific_operation_fields(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-) -> Result<SpecificOperationFields, String> {
-    let ref_id = if operation == Operation::Read {
-        Some(required_string(
-            matches,
-            arg_ids::REF,
-            "read requires --ref <ref>",
-        )?)
-    } else {
-        None
-    };
-    let query = if operation == Operation::Find {
-        Some(required_string(
-            matches,
-            arg_ids::QUERY,
-            "find requires --query <text>",
-        )?)
-    } else {
-        None
-    };
-
-    Ok(SpecificOperationFields { ref_id, query })
 }
 
 fn clap_argv(command: &str, args: Vec<String>) -> Vec<String> {
@@ -240,16 +117,46 @@ fn required_string(
 
 fn parsed_native_options(
     operation: Operation,
-    matches: &clap::parser::ArgMatches,
+    raw_options: &Map<String, Value>,
     specs: &[NativeOptionSpec],
 ) -> Result<Options, String> {
-    let mut options = default_native_options(operation, specs);
-    for spec in specs.iter().filter(|spec| spec.supports(operation)) {
-        if let Some(value) = matches.get_one::<String>(spec.option_key) {
-            options.insert(spec.option_key.to_owned(), spec.parse_value(value)?);
+    let mut options = Options::new();
+    for (key, value) in raw_options {
+        let Some(spec) = specs.iter().find(|spec| spec.option_key == key) else {
+            return Err(format!("unknown native option {key:?}"));
+        };
+        if !spec.supports(operation) {
+            continue;
         }
+        options.insert(key.clone(), spec.parse_value(value)?);
     }
     Ok(options)
+}
+
+fn operation_options_from_sources(
+    operation: Operation,
+    sources: DirectCliParameterSources,
+    native_specs: &[NativeOptionSpec],
+) -> Result<DirectOperationOptions, String> {
+    let limit_chars = parse_operation_limit_chars(&sources.limit_chars)?;
+    let output = parse_output(
+        sources
+            .output
+            .as_str()
+            .ok_or_else(|| format!("invalid {} {:?}", flags::OUTPUT, sources.output))?,
+    )?;
+    let native_options = parsed_native_options(operation, &sources.native_options, native_specs)?;
+
+    Ok(DirectOperationOptions {
+        path: sources.path,
+        page: sources.page,
+        limit_chars,
+        output,
+        ref_id: sources.ref_id,
+        query: sources.query,
+        warnings: sources.warnings,
+        native_options,
+    })
 }
 
 #[cfg(test)]

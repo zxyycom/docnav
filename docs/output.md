@@ -85,6 +85,17 @@ Some install text.
 
 成功结果存在 adapter 选择候选 warning 时，`readable-json` 同样必须在顶层 `warnings` 数组中保留。adapter candidate warning 使用 `id: "adapter_candidate_failure"`，`effect: "candidate_skipped"`，并在 `details` 中保留 `adapter_id`、`stage`、`code` 和可选 `preselected`。没有 warning 时省略该字段。
 
+Adapter direct CLI document operation 跳过不可用配置源时，阅读输出必须保留配置源 warning。该 warning 使用 `id: "adapter_config_source_skipped"`，`effect: "operation_continued"`，并在 `details` 中保留：
+
+| 字段 | 值 |
+| --- | --- |
+| `source_level` | `project` 或 `user` |
+| `path_origin` | `default` 或 `override` |
+| `path` | 本次尝试读取的解析后路径 |
+| `reason_code` | `missing_override`、`not_file`、`unreadable`、`invalid_json` 或 `non_object` |
+
+该 warning 表示不可用配置源未参与本次合并，operation 继续使用其它来源。触发条件由 [CLI](cli.md#adapter-直接-cli) 拥有：显式覆盖路径缺失、配置路径存在但不是可读取文件、JSON 语法无效或顶层不是 object 产生该 warning；未覆盖的默认配置路径缺失不产生 warning。
+
 readable read 保留 adapter 返回的 `content_type`。当 [架构](architecture.md#adapter-选择) 定义的 adapter 选择流程产生可恢复候选失败时，阅读输出将其承载为 `adapter_candidate_failure` warning；MCP adapter 参数映射到 core CLI 后按同一规则处理。
 
 阅读错误保留 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。需要机器可靠错误契约时使用完整协议输出。
@@ -101,5 +112,6 @@ readable read 保留 adapter 返回的 `content_type`。当 [架构](architectur
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断写 stderr。
 - adapter 选择候选 warning 在 `readable-view`、`readable-json` 和 MCP 中跟随最终阅读结果输出；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
+- adapter direct CLI 配置源跳过 warning 在 `readable-view` 和 `readable-json` 中跟随最终阅读结果输出；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
 - 直接 CLI argv 的兼容和 warning 归属见 [直接 CLI 兼容参数规则](cli.md#直接-cli-兼容参数规则)；通道承载必须与该规则一致。
 - 非 document machine output 若复用低层 JSON writer，仍由各自 owner 决定 schema、plain text/stderr 边界和 exit behavior。

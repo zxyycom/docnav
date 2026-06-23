@@ -136,6 +136,8 @@ AI Client
 | 其他 adapter | 对应格式的解析设置、导航默认参数和直接 CLI 原生参数默认值；readable-view 渲染路径由共享 `docnav-readable` 和 `docnav-adapter-sdk` 承担 |
 | `docnav-mcp` | MCP package 配置键由 MCP bridge owner 定义；core CLI 不拥有 MCP package 配置键 |
 
+本节只定义配置所有权和跨制品边界，不展开 CLI 参数、配置文件字段或 warning details；这些规则由 [CLI](cli.md#配置域) 和 [输出模式](output.md#readable-json) 承接。
+
 每个 CLI 固定使用：
 
 ```text
@@ -146,6 +148,8 @@ AI Client
 ```
 
 配置只在所属 CLI 域内生效。调用方在启动 `invoke` 前必须完成默认参数解析，并在请求中显式传入最终有限参数。格式原生 options 只由 adapter 直接 CLI 或调用方显式参数提供；`docnav` 不从 manifest、配置或隐式默认值合成格式专属 options。
+
+Adapter direct CLI 配置由 adapter SDK direct CLI 层和具体 adapter 共同拥有，不属于 `docnav` core 配置域。SDK 负责配置路径、配置源读取、固定字段投影、优先级合并和配置源 warning；格式 adapter 负责声明本格式 native option specs、内置默认值和 option 业务语义。Adapter direct CLI 配置只影响直接执行的 document operation，不影响 `manifest`、`probe`、help 或 `invoke`；完整参数规则见 [CLI](cli.md#adapter-直接-cli)，SDK 交接边界见 [适配器契约](adapter-contract.md#命令)。
 
 配置只控制所属 CLI 明确声明的行为默认值。阅读文案配置如需扩展，只能影响提示文案、guidance、usage 或包装文案；稳定协议字段、readable JSON 字段、MCP structuredContent 字段和错误 code 保持不变。`readable-view` renderer config 只拥有 block 字段声明和 framing 规则，不受用户配置控制。
 
@@ -173,9 +177,12 @@ AI Client
 
 adapter 子进程 cwd 必须设置为项目根；没有可发现项目根时使用启动 cwd。`docnav` 接受项目根内外的可访问文件路径。相对 path 基于启动 cwd 解析；`document.path` 必须使用 `/`，项目根内路径可以传项目相对路径，项目根外路径传规范化绝对路径。路径不存在、不可读或无法规范化时返回文档路径错误，不能启动 adapter。
 
+Adapter direct CLI 自行执行时，不复用 core `--project` 参数，也不使用 document path 发现配置项目根。它只从启动 cwd 向上查找最近 `.docnav/`；找到时以该目录的父目录作为 adapter direct CLI 配置项目根，未找到时使用启动 cwd。这里定义项目根与路径来源；默认配置文件名、覆盖参数和配置源失败规则见 [CLI](cli.md#adapter-直接-cli)。
+
 ## 进程边界
 
 - adapter `invoke` 只通过 stdin、stdout 和 stderr 通信。
+- adapter `invoke` 不读取 adapter direct CLI 配置；core 或其它接入层必须在启动 `invoke` 前把最终有限参数显式写入 request。
 - `docnav-mcp` bridge 只通过 stdio 提供 MCP transport。
 - adapter stdout 只输出该入口的协议或结果。
 - 诊断写 stderr。

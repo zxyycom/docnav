@@ -137,6 +137,16 @@ Proves:
 - document help、`readable-json` warning placement、unused native flag warning 和 `protocol-json` stderr warning 保持区分。
 - compatibility warning 不会静默改变命令成功/失败语义。
 
+### BB-MD-CONFIG-001 Markdown 直接 CLI 配置可观察
+Status: implemented
+Existing smoke task: `MD-CONFIG-001`
+Code: `test/smoke/markdown/cases/config.ts`
+
+Proves:
+- `docnav-markdown` direct CLI 按显式 argv、项目级配置、用户级配置和内置默认值合并 `defaults.limit_chars`、`defaults.output` 与 `options.max_heading_level`。
+- 配置路径覆盖替代默认路径，配置源不可用时继续合并其它来源并输出 `adapter_config_source_skipped` warning details。
+- document operation help 展示配置路径参数但不读取配置；`manifest`、`probe` 和 `invoke` 不读取 adapter direct CLI document operation 配置。
+
 ### BB-MD-ERROR-001 Markdown ref 错误跨输出模式一致映射
 Status: implemented
 Existing smoke task: `MD-ERROR-001`
@@ -249,11 +259,11 @@ Proves:
 
 ### WB-DIAG-WARN-001 Diagnostics warning 形状稳定
 Status: implemented
-Code: `crates/docnav-diagnostics/src/lib.rs`
+Code: `crates/docnav-diagnostics/src/tests.rs`
 
 Proves:
 - warning id、effect、details 和 stderr text line 保持稳定。
-- CLI argv warning 和 adapter candidate warning 的结构化 payload 保持当前 documented shape。
+- CLI argv warning、adapter candidate warning 和 adapter config source warning 的结构化 payload 保持当前 documented shape。
 
 ### WB-CLIARGS-COMPAT-001 Loose CLI 参数扫描保持兼容边界
 Status: implemented
@@ -392,13 +402,14 @@ Proves:
 - direct adapter argv compatibility 保持 operation argument ownership。
 - unused 或 future flag 可以产生 warning，但不能静默改变 operation 的 required arguments。
 
-### WB-SDK-DIRECT-WARN-001 Direct adapter warning 形状稳定
+### WB-SDK-DIRECT-CONFIG-001 Direct adapter config helper 保持参数来源边界
 Status: implemented
-Code: `crates/docnav-adapter-sdk/src/direct/warnings.rs`
+Code: `crates/docnav-adapter-sdk/src/direct/config/tests.rs`
 
 Proves:
-- direct CLI warning id 和 constructor 保持 serialized shape。
-- warning tokens 和 reasons 不丢失。
+- SDK direct CLI config helper 从启动 cwd 解析项目级和用户级配置路径，支持覆盖路径，并在默认用户配置目录缺失时回退到启动 cwd。
+- 配置源读取只投影 `defaults.limit_chars`、`defaults.output` 和 `options` object；默认缺失源不 warning，不可用源产生 `adapter_config_source_skipped` 并继续合并其它来源。
+- direct CLI 参数来源按显式 argv、项目级配置、用户级配置和内置默认值合并，并把不适用于当前 operation 的 config native option 留给后续参数处理链路处理。
 
 ### WB-SDK-DIRECT-OUTPUT-001 Direct adapter document output 复用共享输出
 Status: implemented

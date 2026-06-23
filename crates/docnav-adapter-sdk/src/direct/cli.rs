@@ -1,4 +1,5 @@
 use std::io::{Read, Write};
+use std::path::Path;
 
 mod commands;
 mod help;
@@ -11,10 +12,12 @@ use commands::run_direct_command;
 use help::{help_text, is_known_command};
 
 pub struct DirectCliConfig<'a> {
+    pub adapter_id: &'static str,
     pub program_name: &'static str,
     pub usage: &'a str,
     pub request_id: &'a str,
     pub default_limit_chars: u32,
+    pub default_user_config_dir: Option<&'a Path>,
     pub native_options: &'a [NativeOptionSpec],
 }
 

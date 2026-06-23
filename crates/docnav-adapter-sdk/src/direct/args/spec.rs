@@ -10,8 +10,10 @@ pub(in crate::direct::args) mod flags {
     pub(in crate::direct::args) const LIMIT_CHARS: &str = "--limit-chars";
     pub(in crate::direct::args) const OUTPUT: &str = "--output";
     pub(in crate::direct::args) const PAGE: &str = "--page";
+    pub(in crate::direct::args) const PROJECT_CONFIG_PATH: &str = "--project-config-path";
     pub(in crate::direct::args) const QUERY: &str = "--query";
     pub(in crate::direct::args) const REF: &str = "--ref";
+    pub(in crate::direct::args) const USER_CONFIG_PATH: &str = "--user-config-path";
 }
 
 pub(in crate::direct::args) mod arg_ids {
@@ -19,8 +21,10 @@ pub(in crate::direct::args) mod arg_ids {
     pub(in crate::direct::args) const OUTPUT: &str = "output";
     pub(in crate::direct::args) const PAGE: &str = "page";
     pub(in crate::direct::args) const PATH: &str = "path";
+    pub(in crate::direct::args) const PROJECT_CONFIG_PATH: &str = "project_config_path";
     pub(in crate::direct::args) const QUERY: &str = "query";
     pub(in crate::direct::args) const REF: &str = "ref";
+    pub(in crate::direct::args) const USER_CONFIG_PATH: &str = "user_config_path";
 }
 
 pub(in crate::direct) mod command_names {
@@ -129,7 +133,9 @@ pub(in crate::direct::args) fn operation_command(
     let mut command = Command::new(operation_name(operation))
         .about(about)
         .arg(path_arg())
-        .arg(output_arg());
+        .arg(output_arg())
+        .arg(project_config_path_arg())
+        .arg(user_config_path_arg());
 
     if operation != Operation::Info {
         command = command
@@ -194,6 +200,32 @@ fn output_arg() -> Arg {
             output_values::READABLE_JSON,
             output_values::PROTOCOL_JSON,
         ])
+}
+
+fn project_config_path_arg() -> Arg {
+    config_path_arg(
+        arg_ids::PROJECT_CONFIG_PATH,
+        "project-config-path",
+        "adapter project config path override",
+    )
+}
+
+fn user_config_path_arg() -> Arg {
+    config_path_arg(
+        arg_ids::USER_CONFIG_PATH,
+        "user-config-path",
+        "adapter user config path override",
+    )
+}
+
+fn config_path_arg(id: &'static str, long: &'static str, help: &'static str) -> Arg {
+    Arg::new(id)
+        .long(long)
+        .value_name("path")
+        .num_args(1)
+        .allow_hyphen_values(true)
+        .help(help)
+        .value_parser(NonEmptyStringValueParser::new())
 }
 
 fn protocol_output_arg() -> Arg {
@@ -293,4 +325,8 @@ pub(in crate::direct::args) fn parse_output(value: &str) -> Result<DirectOutputM
         output_values::PROTOCOL_JSON => Ok(DirectOutputMode::ProtocolJson),
         _ => Err(format!("invalid {} {value:?}", flags::OUTPUT)),
     }
+}
+
+pub(in crate::direct::args) fn default_output_value() -> &'static str {
+    defaults::OUTPUT
 }

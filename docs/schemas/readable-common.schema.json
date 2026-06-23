@@ -47,7 +47,8 @@
         "id": {
           "enum": [
             "cli_argv_ignored",
-            "adapter_candidate_failure"
+            "adapter_candidate_failure",
+            "adapter_config_source_skipped"
           ]
         },
         "reason": {
@@ -145,6 +146,62 @@
                   },
                   "preselected": {
                     "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "adapter_config_source_skipped"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "const": "operation_continued"
+              },
+              "details": {
+                "type": "object",
+                "required": [
+                  "source_level",
+                  "path_origin",
+                  "path",
+                  "reason_code"
+                ],
+                "properties": {
+                  "source_level": {
+                    "enum": [
+                      "project",
+                      "user"
+                    ]
+                  },
+                  "path_origin": {
+                    "enum": [
+                      "default",
+                      "override"
+                    ]
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason_code": {
+                    "enum": [
+                      "missing_override",
+                      "not_file",
+                      "unreadable",
+                      "invalid_json",
+                      "non_object"
+                    ]
                   }
                 },
                 "additionalProperties": false

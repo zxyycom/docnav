@@ -1,5 +1,6 @@
 mod args;
 mod cli;
+mod config;
 mod native_options;
 mod output;
 mod warnings;

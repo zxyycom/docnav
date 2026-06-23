@@ -148,11 +148,20 @@ Find display 保留匹配位置附近的非空文本片段，并可补充对应 
 | 参数 | 默认值 | 适用 operation |
 | --- | --- | --- |
 | `limit_chars` | `6000` | outline、read、find |
+| `output` | `readable-view` | outline、read、find、info |
 | `max_heading_level` | `3` | outline、find |
 
 invoke 请求必须显式携带最终有限参数。分页操作的 page 省略时固定从 `1` 开始。
 
-配置文件形状见 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json) 和 [docnav-markdown-config.json](../examples/json/docnav-markdown-config.json)。这些文件只描述可写字段和示例值；配置发现、来源优先级和失败处理由 CLI 与 adapter 契约定义。
+`docnav-markdown` JSON 配置文件首期支持以下字段：
+
+| 配置字段 | 参数来源 | Markdown 语义 |
+| --- | --- | --- |
+| `defaults.limit_chars` | 通用 `limit_chars` | outline、read 和 find 的默认字符预算 |
+| `defaults.output` | 通用 `output` | document operation 默认输出模式 |
+| `options.max_heading_level` | Markdown native option | outline 和 find 的可见 heading 粒度 |
+
+配置文件形状见 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json) 和 [docnav-markdown-config.json](../examples/json/docnav-markdown-config.json)。这些文件只作为配置填写提示、示例校验和 adapter package 打包参考；配置发现、来源优先级、失败处理和 runtime 参数校验由 [CLI](../cli.md#adapter-直接-cli) 与 [适配器契约](../adapter-contract.md) 定义，runtime 不要求先加载该 schema。
 
 ## 保证范围
 
@@ -175,6 +184,7 @@ Markdown adapter 测试必须覆盖本页拥有的行为语义：
 - heading 识别、section 范围、frontmatter 和代码围栏排除。
 - outline/find/read 的 ref 生成、原样读取、display 职责和截断边界。
 - 默认 `limit_chars`、`max_heading_level` 和 page 从 `1` 开始的分页规则。
+- `docnav-markdown` direct CLI 配置优先级、路径覆盖、配置源跳过 warning、`defaults.output` 和 `options.max_heading_level` 对 outline/find 的可观察行为。
 - Unicode 字符预算、超长 display 截断、ref 完整保留和分页前进。
 - 重复 heading、重复路径、`doc:full`、`REF_INVALID` 和 `REF_NOT_FOUND` 边界。
 

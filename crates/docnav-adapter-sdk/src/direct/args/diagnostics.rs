@@ -1,4 +1,5 @@
 use docnav_protocol::Operation;
+use serde_json::Value;
 
 use super::super::native_options::NativeOptionSpec;
 use super::loose::{is_flag, known_value_flag, operation_uses_flag, split_equals, KnownValueFlag};
@@ -148,7 +149,7 @@ fn direct_value_flag_error(occurrence: DirectValueFlagOccurrence<'_>) -> Option<
         (KnownValueFlag::Output, Some(value)) => output_flag_error(value),
         (KnownValueFlag::Ref, Some("")) => Some(format!("{} must not be empty", flags::REF)),
         (KnownValueFlag::Query, Some("")) => Some(format!("{} must not be empty", flags::QUERY)),
-        (KnownValueFlag::Native(spec), Some(value)) => spec.parse_value(value).err(),
+        (KnownValueFlag::Native(spec), Some(value)) => spec.parse_value(&Value::from(value)).err(),
         _ => None,
     }
 }

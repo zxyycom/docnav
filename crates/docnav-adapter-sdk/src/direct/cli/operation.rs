@@ -44,12 +44,7 @@ fn operation_invocation(
     args: &[String],
     config: &DirectCliConfig<'_>,
 ) -> Result<DirectOperationInvocation, String> {
-    let mut options = parse_operation_options(
-        operation,
-        args,
-        config.default_limit_chars,
-        config.native_options,
-    )?;
+    let mut options = parse_operation_options(operation, args, config)?;
     let output = options.output;
     let warnings = std::mem::take(&mut options.warnings);
     let request = operation_request(operation, options, config.request_id)?;

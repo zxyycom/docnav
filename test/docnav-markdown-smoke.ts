@@ -14,6 +14,7 @@ import {
 import { createDocumentLinkTasks, createDocumentOutputBoundaryTasks } from "./smoke/markdown/cases/outputs.ts";
 import { createMachineProtocolTasks } from "./smoke/markdown/cases/machine-commands.ts";
 import { createProcessBoundaryCorpusTasks } from "./smoke/markdown/cases/corpus.ts";
+import { createMarkdownConfigTasks } from "./smoke/markdown/cases/config.ts";
 import {
   createCliArgumentCompatibilityWarningTasks,
   createCliArgumentFailureTasks
@@ -36,6 +37,7 @@ try {
     { id: "document-output-boundary", label: "Markdown document output boundary", tasks: createDocumentOutputBoundaryTasks() },
     { id: "machine-protocol", label: "manifest probe and invoke protocol", tasks: createMachineProtocolTasks() },
     { id: "process-boundary-corpus", label: "Markdown process boundary corpus representative", tasks: createProcessBoundaryCorpusTasks() },
+    { id: "direct-cli-config", label: "Markdown direct CLI config precedence and boundaries", tasks: createMarkdownConfigTasks() },
     { id: "cli-argument-failure", label: "CLI argument validation representative", tasks: createCliArgumentFailureTasks() },
     {
       id: "cli-argument-compatibility",

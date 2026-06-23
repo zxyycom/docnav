@@ -44,9 +44,11 @@ impl LooseArgContext<'_> {
 pub(super) enum KnownValueFlag<'a> {
     Page,
     LimitChars,
+    ProjectConfigPath,
     Ref,
     Query,
     Output,
+    UserConfigPath,
     Native(&'a NativeOptionSpec),
 }
 
@@ -58,9 +60,11 @@ pub(super) fn known_value_flag<'a>(
     match flag {
         flags::PAGE => Some(KnownValueFlag::Page),
         flags::LIMIT_CHARS => Some(KnownValueFlag::LimitChars),
+        flags::PROJECT_CONFIG_PATH => Some(KnownValueFlag::ProjectConfigPath),
         flags::REF => Some(KnownValueFlag::Ref),
         flags::QUERY => Some(KnownValueFlag::Query),
         flags::OUTPUT => Some(KnownValueFlag::Output),
+        flags::USER_CONFIG_PATH => Some(KnownValueFlag::UserConfigPath),
         _ => native_options
             .iter()
             .find(|spec| spec.flag == token)
@@ -71,6 +75,7 @@ pub(super) fn known_value_flag<'a>(
 pub(super) fn operation_uses_flag(operation: Operation, flag: KnownValueFlag<'_>) -> bool {
     match flag {
         KnownValueFlag::Page | KnownValueFlag::LimitChars => operation != Operation::Info,
+        KnownValueFlag::ProjectConfigPath | KnownValueFlag::UserConfigPath => true,
         KnownValueFlag::Ref => operation == Operation::Read,
         KnownValueFlag::Query => operation == Operation::Find,
         KnownValueFlag::Output => true,
@@ -152,6 +157,10 @@ fn loose_known_value_flags<'a>(
             used: context.uses_flag(KnownValueFlag::LimitChars),
         },
         LooseKnownValueFlag {
+            flag: flags::PROJECT_CONFIG_PATH,
+            used: context.uses_flag(KnownValueFlag::ProjectConfigPath),
+        },
+        LooseKnownValueFlag {
             flag: flags::REF,
             used: context.uses_flag(KnownValueFlag::Ref),
         },
@@ -162,6 +171,10 @@ fn loose_known_value_flags<'a>(
         LooseKnownValueFlag {
             flag: flags::OUTPUT,
             used: context.uses_flag(KnownValueFlag::Output),
+        },
+        LooseKnownValueFlag {
+            flag: flags::USER_CONFIG_PATH,
+            used: context.uses_flag(KnownValueFlag::UserConfigPath),
         },
     ];
     flags.extend(native_options.iter().map(|spec| LooseKnownValueFlag {
