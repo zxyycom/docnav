@@ -1,23 +1,23 @@
-本 change 目标是将分页默认值统一收敛到 `defaults.pagination`，并让 core `docnav` 通过标准参数定义映射配置和 CLI flag，在进入 adapter invoke 前初始化最终 `limit_chars`；本文档只是 `openspec/changes/configure-pagination-defaults/` 下的未审核临时 core-cli delta，不影响现有其它文档或主规范。
+本 change 目标是将分页默认值统一收敛到 `defaults.pagination`，并让 core `docnav` 在进入 adapter invoke 前初始化最终 `limit_chars`；本文档只是 `openspec/changes/configure-pagination-defaults/` 下的未审核临时 core-cli delta，不影响现有其它文档或主规范。
 
 ## MODIFIED Requirements
 
 ### Requirement: 核心 CLI 必须实现文档操作命令
 `docnav` MUST 实现 `outline`、`read`、`find` 和 `info`，并 MUST 支持各命令对应的 `--adapter`、`--page`、`--pagination enabled|disabled`、`--limit-chars` 和 `--output` 参数约束。`info` invoke 请求 MUST 只包含 info operation 需要的 core 参数。
 
-Core document command 中可由配置文件和 CLI flag 共同提供的标准参数 MUST 由 core 标准参数定义声明。每个定义 MUST 包含 canonical path、value kind/validation、argv flag/parser、config projection、operation applicability、default source、source priority、help/context 元数据和 finalization rule。CLI argv 和配置文件 MUST 只作为同一标准参数的不同来源进入统一归一流程；parser、config projection、help、supported key listing 和 context 输出 MUST 消费同一个 core 标准参数定义。
+Core document command 中的 pagination 参数 MUST 使用 `defaults.pagination.enabled` 和 `defaults.pagination.limit_chars` 作为 canonical key。CLI argv 和配置文件 MUST 只作为同一 pagination 参数的不同来源进入统一归一流程；parser、config projection、help、supported key listing 和 context 输出 MUST 使用同一组 core pagination 参数规则。
 
-`--pagination enabled|disabled` MUST 只适用于分页操作。`--pagination` MUST 映射为标准参数 `defaults.pagination.enabled` 的显式来源；`--limit-chars` MUST 映射为标准参数 `defaults.pagination.limit_chars` 的显式来源。`--pagination enabled` MUST 使本次调用使用解析后的 pagination limit。`--pagination disabled` MUST 使本次调用不启用分页，并在进入 invoke 前把最终 `limit_chars` 初始化为协议 `PositiveInteger` 可表示的最大值。`--pagination disabled` 与同一次调用中的 `--limit-chars` MUST 被接受，并 MUST 按“配置提供 `enabled: false` 和 `limit_chars`”相同的标准参数归一规则处理。
+`--pagination enabled|disabled` MUST 只适用于分页操作。`--pagination` MUST 映射为 `defaults.pagination.enabled` 的显式来源；`--limit-chars` MUST 映射为 `defaults.pagination.limit_chars` 的显式来源。`--pagination enabled` MUST 使本次调用使用解析后的 pagination limit。`--pagination disabled` MUST 使本次调用不启用分页，并在进入 invoke 前把最终 `limit_chars` 初始化为协议 `PositiveInteger` 可表示的最大值。`--pagination disabled` 与同一次调用中的 `--limit-chars` MUST 被接受，并 MUST 按“配置提供 `enabled: false` 和 `limit_chars`”相同的 pagination 参数归一规则处理。
 
 #### Scenario: 执行 outline 命令
 - **WHEN** 调用方执行 `docnav outline docs/guide.md`
 - **THEN** `docnav` 解析最终 page、pagination enabled 状态和 limit_chars
 - **THEN** `docnav` 启动选中 adapter 的 invoke
 
-#### Scenario: 标准参数定义驱动 flag 和配置映射
-- **WHEN** core 注册 `defaults.pagination.enabled` 标准参数定义
-- **THEN** `--pagination enabled|disabled`、配置 key `defaults.pagination.enabled`、help 文案、supported key listing 和 document context 输出都引用该定义
-- **THEN** `docnav` 通过同一个 core 标准参数定义驱动该参数的 CLI/config/help/context 映射
+#### Scenario: pagination canonical key 驱动 flag 和配置映射
+- **WHEN** core 支持 `defaults.pagination.enabled`
+- **THEN** `--pagination enabled|disabled`、配置 key `defaults.pagination.enabled`、help 文案、supported key listing 和 document context 输出都使用同一语义
+- **THEN** `docnav` 通过同一个 core pagination 参数规则驱动该参数的 CLI/config/help/context 映射
 
 #### Scenario: 执行 pagination disabled 命令
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --pagination disabled`
@@ -43,7 +43,7 @@ Core document command 中可由配置文件和 CLI flag 共同提供的标准参
 ### Requirement: 核心配置 MVP 必须有限且可审计
 `docnav` MUST 在本 change 中支持 `defaults.adapter`、`defaults.pagination.enabled`、`defaults.pagination.limit_chars` 和 `defaults.output` 四类核心配置 key，并 MUST 按显式参数、项目配置、用户配置、内置默认值的优先级解析最终 core 参数值。Core 参数的默认值来源 MUST 限定为 CLI、配置和内置默认值；adapter manifest 只参与 adapter 识别和当前契约校验。
 
-Core supported config keys MUST 由 core 标准参数定义提供。`config get/set/unset/list`、document context 输出和 help/default 文案 MUST 消费同一组定义，以保持新增标准参数时的配置路径、CLI flag、验证规则和展示行为一致。
+Core supported config keys 中的 pagination key MUST 使用 core pagination 参数规则。`config get/set/unset/list`、document context 输出和 help/default 文案 MUST 使用同一组 pagination 规则，以保持 `defaults.pagination.enabled` 与 `defaults.pagination.limit_chars` 的配置路径、CLI flag、验证规则和展示行为一致。
 
 `defaults.pagination.enabled` MUST 默认为 `true`。`defaults.pagination.limit_chars` MUST 是正整数，默认值 MUST 为 `6000`。当最终 `defaults.pagination.enabled` 为 `false` 时，`docnav` MUST 在进入 invoke 前将最终 adapter request 的 `limit_chars` 初始化为协议 `PositiveInteger` 可表示的最大值，并 MUST 对外表达为本次不启用分页；该规则不受 `defaults.pagination.limit_chars` 来源影响。`page` MUST NOT 成为配置默认值；省略 `--page` 时仍固定为 `1`。
 

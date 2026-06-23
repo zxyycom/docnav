@@ -1,15 +1,15 @@
-本 change 目标是将分页默认值统一收敛到 `defaults.pagination`，让 `docnav-markdown` direct CLI 通过 SDK 标准参数定义消费统一分页配置；本文档只是 `openspec/changes/configure-pagination-defaults/` 下的未审核临时 markdown-navigation delta，不影响现有其它文档或主规范。
+本 change 目标是将分页默认值统一收敛到 `defaults.pagination`，让 `docnav-markdown` direct CLI 通过 SDK direct CLI pagination 参数处理消费统一分页配置；本文档只是 `openspec/changes/configure-pagination-defaults/` 下的未审核临时 markdown-navigation delta，不影响现有其它文档或主规范。
 
 ## MODIFIED Requirements
 
 ### Requirement: docnav-markdown direct CLI 支持 JSON 配置文件
 `docnav-markdown` direct CLI MUST 读取项目级 `.docnav/docnav-markdown.json` 和默认用户配置目录下的 `docnav-markdown.json` 配置，并 MUST 支持 SDK-owned `--project-config-path <path>` 和 `--user-config-path <path>` 覆盖这两个配置文件路径；默认用户配置目录未提供时使用当前调用位置（启动 cwd）。首期配置 MUST 支持 `defaults.pagination.enabled`、`defaults.pagination.limit_chars`、`defaults.output` 和 `options.max_heading_level`。Document operation help MUST 展示两个配置路径参数和 `--pagination enabled|disabled`。导致配置源被跳过的读取失败 MUST 产生 direct CLI warning，同时 operation MUST 使用其余来源继续执行。
 
-`docnav-markdown` direct CLI MUST 消费 SDK direct CLI 标准参数定义中的 `defaults.pagination.enabled`、`defaults.pagination.limit_chars` 和 `defaults.output`。`options.max_heading_level` 仍是 adapter-owned `options` object 下的 Markdown native option，并 MUST 继续使用 native option registration 和 operation applicability handling。
+`docnav-markdown` direct CLI MUST 消费 SDK direct CLI pagination 参数规则中的 `defaults.pagination.enabled`、`defaults.pagination.limit_chars`，并继续通过现有 output 处理规则消费 `defaults.output`。`options.max_heading_level` 仍是 adapter-owned `options` object 下的 Markdown native option，并 MUST 继续使用 native option registration 和 operation applicability handling。
 
-#### Scenario: Markdown direct CLI 通过 SDK 标准参数定义消费 pagination
-- **WHEN** SDK 暴露 `defaults.pagination.enabled` 和 `defaults.pagination.limit_chars` 标准参数定义
-- **THEN** `docnav-markdown` help、argv parsing 和 config projection 使用这些定义处理 `--pagination enabled|disabled` 和 `--limit-chars`
+#### Scenario: Markdown direct CLI 通过 SDK pagination 参数规则消费 pagination
+- **WHEN** SDK 支持 `defaults.pagination.enabled` 和 `defaults.pagination.limit_chars`
+- **THEN** `docnav-markdown` help、argv parsing 和 config projection 使用这些规则处理 `--pagination enabled|disabled` 和 `--limit-chars`
 - **THEN** Markdown-specific code 只把 `options.max_heading_level` 作为 native option 处理
 
 #### Scenario: pagination limit_chars 来自配置
@@ -112,13 +112,13 @@
 #### Scenario: 矩阵覆盖配置源不可用
 - **WHEN** smoke 或矩阵 fixture 提供语法无效的 JSON 配置源
 - **AND** 其它配置来源或内置默认值可用
-- **THEN** `docnav-markdown` 继续按其余来源合并标准参数来源对象
+- **THEN** `docnav-markdown` 继续按其余来源合并 direct CLI 参数来源对象
 - **THEN** 测试证明配置源跳过 warning 出现在当前输出模式允许的 warning 通道
 
 #### Scenario: 矩阵覆盖显式配置路径不可用
 - **WHEN** smoke 或矩阵 fixture 显式传入不存在或不可读的 `--project-config-path`
 - **THEN** 覆盖后的项目级配置源不参与本次合并
-- **THEN** 用户级配置和内置默认值仍可参与标准参数来源对象合并
+- **THEN** 用户级配置和内置默认值仍可参与 direct CLI 参数来源对象合并
 - **THEN** 测试证明配置源跳过 warning 出现在当前输出模式允许的 warning 通道
 
 #### Scenario: Invoke 不受配置影响
@@ -142,4 +142,4 @@
 #### Scenario: schema 不改变 direct CLI runtime 行为
 - **WHEN** adapter direct CLI 读取 `docnav-markdown.json`
 - **THEN** runtime 不要求加载 `docs/schemas/docnav-markdown-config.schema.json`
-- **THEN** 配置读取和标准参数处理链路仍由 adapter direct CLI 实现负责
+- **THEN** 配置读取和 direct CLI 参数处理链路仍由 adapter direct CLI 实现负责
