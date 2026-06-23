@@ -123,6 +123,10 @@ export function validateSchemas() {
   const ajv = createSchemaAjv();
   const cases = [
     {
+      schema: SCHEMAS.docnavMarkdownConfig,
+      data: [EXAMPLES.docnavMarkdownConfig]
+    },
+    {
       schema: SCHEMAS.protocolRequest,
       data: listExampleJson(/^protocol-.*-request\.json$/)
     },

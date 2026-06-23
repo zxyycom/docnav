@@ -30,6 +30,14 @@ operation readable schema 和 MCP structuredContent outputSchema 包含可省略
 
 `readable-common.schema.json` 提供 readable/MCP 复用的 `capability`、`entry`、`page`、`warning` 和 `warnings` 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义；发布 MCP tool `outputSchema` 时仍必须内联或随工具声明打包，不能要求 client 远程解析 schema URL。
 
+## 配置参考层
+
+| Schema | 用途 |
+| --- | --- |
+| [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | `docnav-markdown` JSON 配置文件字段形状和示例校验 |
+
+配置 schema 只描述文档化的 JSON 文件形状，可用于示例校验和编辑器提示。配置文件发现、来源优先级、错误归属和 adapter-specific 字段语义由 [CLI](../cli.md)、[适配器契约](../adapter-contract.md) 和对应 adapter 文档拥有。
+
 本仓库的 docs validator 和 Markdown smoke 会先预加载 `docs/schemas/` 下的 schema，再按 `$id` 编译入口 schema；新增跨文件 `$ref` 时，应保持同目录相对引用，并为被引用 schema 设置稳定 `$id`。示例语义一致性由文档验证脚本检查，检查项必须能追溯到对应 owner 文档。
 
 文件系统边界、ref 唯一性、真实分页一致性和配置优先级不属于 JSON Schema 校验范围，应由对应 owner 文档下的实现级业务测试覆盖。

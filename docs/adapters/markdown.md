@@ -152,6 +152,8 @@ Find display 保留匹配位置附近的非空文本片段，并可补充对应 
 
 invoke 请求必须显式携带最终有限参数。分页操作的 page 省略时固定从 `1` 开始。
 
+配置文件形状见 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json) 和 [docnav-markdown-config.json](../examples/json/docnav-markdown-config.json)。这些文件只描述可写字段和示例值；配置发现、来源优先级和失败处理由 CLI 与 adapter 契约定义。
+
 ## 保证范围
 
 Markdown adapter 保证：

@@ -1,0 +1,9 @@
+{
+  "defaults": {
+    "limit_chars": 6000,
+    "output": "readable-view"
+  },
+  "options": {
+    "max_heading_level": 3
+  }
+}

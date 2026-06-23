@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/docnav-markdown-config.schema.json",
+  "$comment": "Reference schema for docnav-markdown JSON config examples and editor tooling.",
+  "type": "object",
+  "properties": {
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "limit_chars": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default positive character budget for document operations."
+        },
+        "output": {
+          "enum": [
+            "readable-view",
+            "readable-json",
+            "protocol-json"
+          ],
+          "description": "Default direct CLI output mode for document operations."
+        }
+      },
+      "additionalProperties": false
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "max_heading_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "description": "Maximum Markdown heading level visible to outline and find operations."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -27,6 +27,7 @@ export const SCHEMAS = {
   probeResult: "docs/schemas/probe-result.schema.json",
   protocolRequest: "docs/schemas/protocol-request.schema.json",
   protocolResponse: "docs/schemas/protocol-response.schema.json",
+  docnavMarkdownConfig: "docs/schemas/docnav-markdown-config.schema.json",
   readableError: "docs/schemas/readable-error.schema.json",
   readableFind: "docs/schemas/readable-find.schema.json",
   readableInfo: "docs/schemas/readable-info.schema.json",
@@ -36,6 +37,7 @@ export const SCHEMAS = {
 };
 
 export const EXAMPLES = {
+  docnavMarkdownConfig: "docs/examples/json/docnav-markdown-config.json",
   manifest: "docs/examples/json/manifest.json",
   probeResult: "docs/examples/json/probe-result.json",
   protocolReadResponse: "docs/examples/json/protocol-read-response.json",
