@@ -1,9 +1,9 @@
-本 delta 定义 `docnav-markdown` 作为首个 adapter direct CLI 配置使用者的配置键和验证边界；除本 change 明确新增的配置 schema/example 参考材料外，它只在 `openspec/changes/implement-adapter-direct-cli-config/` 下形成未审核临时文档，不改变现有主规范或实现语义。
+本 delta 是该 change 的正式 OpenSpec delta，定义 `docnav-markdown` 作为首个 adapter direct CLI 配置使用者的配置键和验证边界；实现阶段按 tasks 同步 owner 主规范、代码、schema/example 和测试。
 
 ## ADDED Requirements
 
 ### Requirement: docnav-markdown direct CLI 支持 JSON 配置文件
-`docnav-markdown` direct CLI MUST 读取项目级 `.docnav/docnav-markdown.json` 和用户级 `docnav-markdown.json` 配置，并 MUST 支持 SDK-owned `--project-config-path <path>` 和 `--user-config-path <path>` 覆盖这两个配置文件路径。首期配置 MUST 支持 `defaults.limit_chars`、`defaults.output` 和 `options.max_heading_level`。Document operation help MUST 展示两个配置路径参数。导致配置源被跳过的读取失败 MUST 产生 direct CLI warning，同时 operation MUST 使用其余来源继续执行。
+`docnav-markdown` direct CLI MUST 读取项目级 `.docnav/docnav-markdown.json` 和默认用户配置目录下的 `docnav-markdown.json` 配置，并 MUST 支持 SDK-owned `--project-config-path <path>` 和 `--user-config-path <path>` 覆盖这两个配置文件路径；默认用户配置目录未提供时使用当前调用位置（启动 cwd）。首期配置 MUST 支持 `defaults.limit_chars`、`defaults.output` 和 `options.max_heading_level`。Document operation help MUST 展示两个配置路径参数。导致配置源被跳过的读取失败 MUST 产生 direct CLI warning，同时 operation MUST 使用其余来源继续执行。
 
 #### Scenario: max_heading_level 来自配置
 - **WHEN** `.docnav/docnav-markdown.json` 包含 `options.max_heading_level: 2`
@@ -45,7 +45,7 @@
 `docnav-markdown` black-box CLI smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置源不可用时继续合并并输出 warning、help 参数展示和 invoke 不读配置的边界。
 
 #### Scenario: Smoke 覆盖配置优先级
-- **WHEN** smoke suite 使用项目级和用户级 `docnav-markdown.json`
+- **WHEN** smoke suite 使用项目级配置和默认用户配置目录下的 `docnav-markdown.json`
 - **THEN** 测试证明显式 argv 覆盖项目级配置
 - **THEN** 项目级配置覆盖用户级配置
 - **THEN** 用户级配置覆盖内置默认值
