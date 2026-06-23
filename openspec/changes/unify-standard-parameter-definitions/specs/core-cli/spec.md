@@ -1,4 +1,4 @@
-本 change 目标是让 core `docnav` 消费共享 args/config 参数能力；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的未审核临时 core-cli delta，主规范同步由 tasks 中的文档任务承接。
+本 change 目标是让 core `docnav` 消费共享 args/config 参数能力；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local core-cli delta，主规范同步由 tasks 中的文档任务承接。
 
 ## ADDED Requirements
 

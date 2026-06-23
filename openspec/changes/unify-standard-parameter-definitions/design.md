@@ -1,4 +1,4 @@
-本 change 目标是统一 core `docnav`、`docnav-adapter-sdk` direct CLI、adapter `invoke` 和 MCP tool mapping 的 args/config 标准参数基础层。本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的未审核临时 design；主规范同步由 tasks 中的文档任务承接。
+本 change 目标是统一 core `docnav`、`docnav-adapter-sdk` direct CLI、adapter `invoke` 和 MCP tool mapping 的 args/config 标准参数基础层。本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local design；主规范同步由 tasks 中的文档任务承接。
 
 ## Context
 

@@ -1,9 +1,9 @@
-本 change 目标是交付共享 args/config 标准参数基础层；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的未审核临时 tasks，主规范同步由第 2 节承接。
+本 change 目标是交付共享 args/config 标准参数基础层；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local tasks，主规范同步由第 2 节承接。
 
 ## 1. 审计门禁
 
-- [ ] 1.1 审计 proposal、design、specs 和 tasks，确认本 change 只围绕 `args-config-parameters` 共享 capability，以及 `core-cli`、`adapter-protocol`、`docnav-contracts` 消费它；确认没有引入具体业务参数变更或主规范修改。
-- [ ] 1.2 审计 `design.md#key-decision-log` 的 D1-D7，确认 proposal、spec delta、tasks 和后续主规范同步保持同一决策；如发现偏离，先更新 decision log 和受影响 artifacts，再继续实现。
+- [x] 1.1 审计 proposal、design、specs 和 tasks，确认本 change 只围绕 `args-config-parameters` 共享 capability，以及 `core-cli`、`adapter-protocol`、`docnav-contracts` 消费它；确认没有引入具体业务参数变更或主规范修改。
+- [x] 1.2 审计 `design.md#key-decision-log` 的 D1-D7，确认 proposal、spec delta、tasks 和后续主规范同步保持同一决策；如发现偏离，先更新 decision log 和受影响 artifacts，再继续实现。
 
 ## 2. 主规范和验证材料
 
