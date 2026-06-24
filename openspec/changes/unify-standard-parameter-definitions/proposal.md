@@ -1,7 +1,10 @@
+本 change 目标是统一 core `docnav`、`docnav-adapter-sdk` direct CLI 和 adapter `invoke` 使用的标准参数共享基础层。本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local proposal；主规范同步由 tasks 中的文档任务承接。标准参数机制由新增的 `docs/standard-parameters.md` 完整承接，入口主规范只保留消费边界摘要和引用。
 
 ## Why
 
+Core CLI、adapter SDK direct CLI 和 adapter `invoke` 现在各自维护输入映射、配置读取、来源合并、argv/help、protocol argument binding 和类型校验链路。`defaults.output`、`defaults.limit_chars` 这类跨入口复用的标准参数容易在 key、flag、config path、schema、来源和展示行为上漂移。
 
+需要把这些机械参数能力收敛到共享实现，并把长期规则集中到 `docs/standard-parameters.md`。CLI argv、invoke request arguments、项目配置、用户配置和默认值先归一为标准参数来源，再按固定优先级合并和校验。未映射输入由入口策略决定：core 作为转发和路由层可以保留下游字段，adapter 层作为最终消费者可以丢弃未映射 native 输入或执行 adapter-owned validation。`invoke` 不再把 protocol request `arguments` 视为调用方已经完成配置/default 解析的最终参数，而是把显式 request arguments 作为 adapter `invoke` 的输入来源。具体业务参数 change 只声明自己的参数行为，并引用 `docs/standard-parameters.md` 的共享规则。
 
 ## What Changes
 
@@ -20,6 +23,7 @@
 
 ### New Capabilities
 
+- `args-config-parameters`：新增共享标准参数能力，拥有 base definition model、registration set、类型化配置路径、配置读取、来源合并、透传策略、source tracking、default facet、flag argv facet、schema-backed validation、operation argument binding、类型化结果和 schema metadata 输出；归档后由 `docs/standard-parameters.md` 承接主规范。
 
 ### Modified Capabilities
 
