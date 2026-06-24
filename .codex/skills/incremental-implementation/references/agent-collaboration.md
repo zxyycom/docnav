@@ -32,7 +32,7 @@ Stop and report if:
 - **Goal**：当前 slice 的唯一结果。
 - **Changed files**：实际编辑文件。
 - **Evidence**：通过的 tests、CLI/API replay、schema checks 或 screenshots。
-- **Contracts touched**：machine/readable output、schema、CLI/API surface、subprocess/bridge mapping。
+- **Contracts touched**：machine/readable output、schema、CLI/API surface、subprocess/protocol mapping。
 - **Known limits**：本 slice 有意没覆盖的路径。
 - **Next slice**：最小后续动作。
 

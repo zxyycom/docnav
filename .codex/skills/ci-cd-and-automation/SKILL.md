@@ -3,7 +3,7 @@ name: ci-cd-and-automation
 description: >-
   设计、修改或调试 contract validation automation、CI validation、workflow automation、
   job ordering、matrix strategy、dependency automation 和 CI failure triage。用于本地工具、
-  CLI/API、adapter/service、bridge、schema/example、docs 和 Docnav Rust+Node workspace 的验证自动化。
+  CLI/API、adapter/service、schema/example、docs 和 Docnav workspace 的验证自动化。
 ---
 
 # CI/CD 与自动化
@@ -21,7 +21,7 @@ Web deployment、browser E2E、database migration、CDN rollout 或 frontend rel
 ## 工作流
 
 1. 识别 changed contract。
-   - 命名受影响 surface：CLI/API、adapter/service、bridge/tool mapping、schema/example、docs、release/package、dependency 或 workflow behavior。
+   - 命名受影响 surface：CLI/API、adapter/service、schema/example、docs、release/package、dependency 或 workflow behavior。
    - 区分 correctness validation、compatibility validation、security validation、performance budget 和 packaging validation。
 
 2. 选择最小 validation/check set。
@@ -41,7 +41,7 @@ Web deployment、browser E2E、database migration、CDN rollout 或 frontend rel
 
 5. 调试 CI failure。
    - 先在本地重跑完全相同的 command。
-   - 将 failure 分类为 setup/environment、compile/type/lint、unit/integration、smoke、schema/docs、bridge/tool mapping、packaging 或 dependency。
+   - 将 failure 分类为 setup/environment、compile/type/lint、unit/integration、smoke、schema/docs、packaging 或 dependency。
    - 缩小到仍会失败的最小 fixture、request、ref、page、test name 或 generated artifact。
    - 修复底层 contract；如果 required check 已不符合当前 repository policy，再更新 automation。
 

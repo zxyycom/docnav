@@ -21,7 +21,7 @@ Slice 4: Delete task, including confirmation + removal path
 Slice 1: Parser 识别一种 source edge case，并用 unit test 证明。
 Slice 2: Public listing/search 输出包含该 region，并检查 machine-readable output。
 Slice 3: Read/detail path 可使用生成 identifier 读取该 region。
-Slice 4: CLI/API 和 bridge smoke 覆盖同一路径。
+Slice 4: CLI/API 和 subprocess smoke 覆盖同一路径。
 ```
 
 每片都应该能用一个命令或一个 replay path 证明。
@@ -33,7 +33,7 @@ Slice 4: CLI/API 和 bridge smoke 覆盖同一路径。
 ```text
 Slice 0: 更新 contract/schema/types 和最小 example。
 Slice 1a: Owning implementation 按 contract 实现。
-Slice 1b: Bridge layer 按 contract 映射 tool args/result。
+Slice 1b: Wrapper layer 按 contract 映射 args/result。
 Slice 2: 运行 schema、smoke 和 workspace verification 做集成。
 ```
 

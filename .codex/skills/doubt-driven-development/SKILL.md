@@ -2,7 +2,7 @@
 name: doubt-driven-development
 description: >-
   对高风险工程决策进行 bounded adversarial check。用于 protocol/schema/serialized output、
-  ref/identifier stability、adapter/service contract、CLI/tool output、irreversible migration、
+  ref/identifier stability、adapter/service contract、CLI/readable output、irreversible migration、
   security-sensitive logic、compatibility claims 或 tests 只能部分证明的 correctness claims。
 ---
 
@@ -21,7 +21,7 @@ description: >-
 - protocol、schema、serialized output 或 example meaning 变化。
 - ref/identifier generation、parsing、stability、compatibility、pagination 或 continuation 变化。
 - adapter/service contract 变化，包括 behavior、ordering、limits 和 paging semantics。
-- CLI/tool output behavior、error mapping 或 user-visible compatibility。
+- CLI/readable output behavior、error mapping 或 user-visible compatibility。
 - irreversible migration、persisted data 影响或 downgrade/rollback 风险。
 - security-sensitive input、path handling、external command execution 或 untrusted document behavior。
 - compiler/tests 只能部分证明的 claims，例如 compatibility、idempotence、ordering 或 "不会破坏现有 consumers"。

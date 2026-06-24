@@ -28,7 +28,7 @@ description: >-
 
 1. 确认 intent、changed surfaces、预期行为、governing spec 或 user request。
 2. 检查 touched surface 的验证证据：tests、fixture、schema/example validation、docs sync、smoke command、reproduction note 或其他 owner-declared evidence。只有新增或改变 stable public contract、自定义 invariant、equivalence class，或当前 owner 明确承诺的 observable semantics 时，证据缺口才作为 finding。
-3. 沿 ownership boundary 追踪实现：core、adapter/service、bridge/tool、schema/example、docs、tests 或 generated artifacts。
+3. 沿 ownership boundary 追踪实现：core、adapter/service、schema/example、docs、tests 或 generated artifacts。
 4. 优先检查 correctness、user-visible behavior、data loss/security、compatibility 和验证证据缺口，再处理 maintainability/style。
 5. 检查 verification。优先要求能证明 touched surface 的最小命令；跨边界行为需要更宽验证。
 6. 如果 diff 过宽导致无法可靠 review，要求拆分或提供 focused context。

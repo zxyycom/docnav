@@ -4,7 +4,7 @@
 
 ## 核心定位
 
-Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责识别、路由、分发、管理、配置和项目初始化。Skill、AGENTS.md / system prompt 是接入方式，它们共享 `docnav` 契约，不复制解析逻辑。
+Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责识别、路由、分发、管理、配置和项目初始化。Skill 与 AGENTS.md / system prompt 是面向 agent 的使用指引，它们共享 `docnav` 契约，不复制解析逻辑。
 
 核心流程：
 
@@ -39,7 +39,7 @@ Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-jso
 2. Skill：通过 skill 指导 agent 使用 `docnav` CLI。
 3. AGENTS.md / system prompt：通过项目规则提示 agent 调用 `docnav` CLI。
 
-接入层的职责是收集调用者意图、映射参数和展示阅读结果。格式识别、adapter 路由和项目初始化属于 `docnav`；标准参数映射、配置读取、默认值和来源合并规则见 [标准参数](standard-parameters.md)。
+接入层的职责是收集调用者意图、传递参数并展示阅读结果。格式识别、adapter 路由和项目初始化属于 `docnav`；标准参数映射、配置读取、默认值和来源合并规则见 [标准参数](standard-parameters.md)。
 
 ## 制品职责
 

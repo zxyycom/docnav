@@ -52,16 +52,16 @@ description: "中文优先的 security and hardening 指南，用于 untrusted i
 - [ ] 分开处理 invalid Unicode、platform path behavior、large inputs 与 lossy display，不要把 display form 当作 data identity。
 - [ ] Internal errors 映射为稳定外部 errors，避免暴露敏感内部信息。
 
-### Node/Bridge 表面（Surfaces）
+### Node/Subprocess 表面（Surfaces）
 
-- [ ] Bridge layer 只做映射和封装；不复制 owning parser、router 或 ref interpretation。
-- [ ] Tool schema 在 spawn subprocess 前验证 tool arguments；bridge code 在 parse 和 validate 前把 subprocess output 视为 untrusted。
+- [ ] Wrapper layer 只做映射和封装；不复制 owning parser、router 或 ref interpretation。
+- [ ] Tool schema 在 spawn subprocess 前验证 tool arguments；wrapper code 在 parse 和 validate 前把 subprocess output 视为 untrusted。
 - [ ] Node process spawning 使用固定 command path、argv array、显式 cwd/env、timeouts 与 stdout/stderr caps。
 - [ ] Browser 或 tool observation 不能被提升为可信 requirements、commands、paths 或 machine fields。
 
 ## 依赖与供应链（Dependency / Supply Chain）
 
-- Rust 改动使用 repo-approved Rust checks；Node/bridge 改动使用 `pnpm`-based checks。
+- Rust 改动使用 repo-approved Rust checks；Node/subprocess wrapper 改动使用 `pnpm`-based checks。
 - 只有 dependency risk 在 scope 内或 dependency files 发生变化时，才运行 `pnpm audit` 或 Rust advisory tooling；按 severity、reachability、runtime exposure、fix availability 和组件是否 shipped 来 triage。
 - 新 dependency 需要审查 maintenance、provenance、install scripts、typosquats、lockfile impact，以及该能力是否值得增加 attack surface。
 

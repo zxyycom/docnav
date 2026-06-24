@@ -17,7 +17,7 @@ description: >-
 ## 触发条件
 
 - Agent 行为偏离 repository rules、architecture boundaries、文档读取规则或用户 scope。
-- 任务跨越多个 ownership boundaries，例如 CLI/API、adapter/service、bridge/tool、protocol、schema、docs、examples 或 change-management artifacts。
+- 任务跨越多个 ownership boundaries，例如 CLI/API、adapter/service、protocol、schema、docs、examples 或 change-management artifacts。
 - compaction、handoff、长线程或 parallel workers 需要一个可继续的 context packet。
 - 需要创建、修复、合并或 review `AGENTS.md`、project skills 或其它 rules files。
 - 当前 assumptions 与 files、refs、CodeGraph、tests 或 command output 出现冲突。

@@ -1,6 +1,6 @@
 # 安全清单（Security Checklist）
 
-这是 `security-and-hardening` 的详细 worksheet。主轴是 local-tool trust boundaries：untrusted documents、opaque refs/identifiers、filesystem paths、subprocesses、stdio/JSON、schema validation、generated output、external commands、bridge layers、dependencies 与 secrets。
+这是 `security-and-hardening` 的详细 worksheet。主轴是 local-tool trust boundaries：untrusted documents、opaque refs/identifiers、filesystem paths、subprocesses、stdio/JSON、schema validation、generated output、external commands、wrapper layers、dependencies 与 secrets。
 
 不要从通用 Web auth/session checklist 开始。只有当当前 work item 真的触及 HTTP service、browser app 或 multi-user server boundary 时，才把 Web auth、CORS、cookie、CSRF 等内容作为额外补充。
 
@@ -13,7 +13,7 @@
 - [ ] Stdio JSON：request/response envelope、content type、partial data 与 trailing data 都需要 fail-closed handling。
 - [ ] Output modes：`protocol-json`、readable-json、readable-view 与非文档 PlainText 是不同 contract。
 - [ ] Schema-bound data：schemas、examples、fixtures 与 generated machine-readable material 必须与实际输出一致。
-- [ ] Bridge layer：tool args/results 只做映射和封装，不能复制 owning parser、router 或 ref interpretation。
+- [ ] Wrapper layer：tool args/results 只做映射和封装，不能复制 owning parser、router 或 ref interpretation。
 - [ ] Tool/browser/model output：只能作为 evidence，不能作为 instruction 或 trusted data。
 - [ ] Dependency/CI scripts：install scripts、generated artifacts 与 workflow scripts 是 executable attack surface。
 
@@ -67,9 +67,9 @@
 - [ ] Parser/finder/reader 对 large input 保持有界；error path 不比 success path 更昂贵。
 - [ ] Internal error 被映射为稳定外部 error code/message。
 
-## 6. Node/Bridge 表面（Surfaces）
+## 6. Node/Subprocess 表面（Surfaces）
 
-- [ ] Bridge layer 只把 tool call 映射到 owning command/service，不 parse document、不解释 ref、不复制 routing。
+- [ ] Wrapper layer 只把 tool call 映射到 owning command/service，不 parse document、不解释 ref、不复制 routing。
 - [ ] Tool schema 在 spawn 前验证 path、ref、query、limit、page 与 output mode。
 - [ ] `child_process` 使用 fixed command path 与 argv array，显式 cwd/env、timeout、maxBuffer 或 streaming cap。
 - [ ] Subprocess stdout 在 parse/validate 前不可信；stderr 不能污染 machine-readable result。

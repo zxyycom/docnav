@@ -12,7 +12,7 @@
 - **THEN** build/register 阶段生成不可变 base definition
 
 #### Scenario: Registration set 显式暴露入口字段映射
-- **WHEN** 调用方需要把标准参数暴露到某个 CLI、SDK 或 protocol operation 入口
+- **WHEN** 调用方需要把标准参数暴露到 CLI command、SDK operation 或 protocol operation
 - **THEN** 调用方从 base definition 派生 registration
 
 #### Scenario: 跨 consumer 参数复用 base definition
@@ -40,7 +40,7 @@
 
 ### Requirement: 共享标准参数层必须生成类型化运行值
 
-共享 Rust 标准参数层 MUST 从标准参数来源解析出类型化运行值。CLI argv、adapter `invoke` request arguments 或等价入口显式输入 MUST 作为 direct input；项目级配置、用户级配置或其它入口声明的配置来源 MUST 作为对应 config source；默认值 MUST 作为 default source。每个入口 MUST 声明入口策略，列出它拥有的 direct input mapping、配置 source provider、默认 provider 和透传策略；入口策略不声明独立优先级。
+共享 Rust 标准参数层 MUST 从标准参数来源解析出类型化运行值。CLI argv、adapter `invoke` request arguments 或等价入口显式输入 MUST 作为 direct input；项目级配置、用户级配置或调用方声明的配置来源 MUST 作为对应 config source；默认值 MUST 作为 default source。每个入口 MUST 声明入口策略，列出它拥有的 direct input mapping、配置 source provider、默认 provider 和透传策略；入口策略不声明独立优先级。
 
 #### Scenario: 调用方按 ParamKey 取得 typed value
 - **WHEN** 共享层解析出 `defaults.limit_chars`
@@ -98,7 +98,6 @@
 - **WHEN** 一个标准参数的 CLI flag spelling 发生显式覆盖或兼容 alias 变更
 - **THEN** protocol request argument path 仍由 operation argument binding 的 typed path 决定
 
-
 ### Requirement: 共享标准参数层必须读取配置并映射已注册字段
 共享 Rust 标准参数层 MUST 按调用方提供的配置来源描述读取标准配置源，校验顶层 JSON object，并按 registration 的 typed config path 映射已注册字段。Project/user 配置与 direct/default 一样，都是独立来源，再在最终 typed value resolution 中按固定合并顺序合并已映射标准参数。该顺序固定为 direct input、project config、user config、default；调用方入口只声明可用 source provider、配置来源、transport metadata 和透传策略，base definition 只声明参数语义。
 
@@ -132,7 +131,7 @@
 - **THEN** protocol request schema view 只校验 envelope、operation、document path、raw `arguments` object 和已出现已注册字段的基础 JSON 类型
 - **THEN** 该字段是否缺失、默认值如何补全、range/enum 是否有效由共享解析器返回 typed value 或标准参数 validation error
 
-#### Scenario: Schema metadata 可生成配置和 schema 参考材料
+#### Scenario: Schema metadata 可生成配置与 schema 参考材料
 - **WHEN** 标准参数 registration 声明 typed config path、schema facet、default facet 和 operation argument binding
 - **THEN** 生成后的 schema/example 作为验证材料、编辑器提示或打包参考使用
 

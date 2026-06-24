@@ -47,7 +47,7 @@ description: "以小步增量交付变更；适用于 multi-file change、vertic
 - **Owned files**：本 slice 会编辑的文件或目录。
 - **Read-only context**：只读取以理解行为的文件。
 - **Out of scope**：观察到但本轮不处理的改进点。
-- **Shared contracts**：machine/readable output、schema/example、CLI/API surface、subprocess/bridge mapping 等需要同步验证的边界。
+- **Shared contracts**：machine/readable output、schema/example、CLI/API surface、subprocess/protocol mapping 等需要同步验证的边界。
 
 当遇到不相关问题时，把它放入最终总结或 handoff note。只有它阻塞当前 slice 时，才把它升级为新的 slice。
 
@@ -58,14 +58,14 @@ description: "以小步增量交付变更；适用于 multi-file change、vertic
 - **Parser/domain layer**：先证明单个 observable behavior。
 - **CLI/API layer**：聚焦 routing、defaults、output/error mapping 和 user-visible behavior。
 - **Contract/schema/examples**：先改 owning contract，再同步 fixture、example 和 validation。
-- **Bridge/subprocess layer**：只映射 owning implementation，验证 stdio/JSON tool args 与 result wrapping。
+- **Subprocess/protocol layer**：只映射 owning implementation，验证 stdio/JSON args 与 result wrapping。
 - **Platform path layer**：保留 drive letter、backslash、spaces、quotes 和 cwd-relative form 作为测试输入。
 
 跨语言/runtime、schema、docs 或 generated fixtures 时，把每个边界做成独立 slice，并在集成 slice 里跑仓库约定的 workspace verification。
 
 ## Verification
 
-按 touched boundary 选择最窄验证。普通局部 slice 用相关 unit/integration test；触碰 CLI/API、schema/example、bridge/subprocess、generated fixture 或跨层 contract 时，再扩展到 smoke 或 workspace verification。
+按 touched boundary 选择最窄验证。普通局部 slice 用相关 unit/integration test；触碰 CLI/API、schema/example、subprocess/protocol、generated fixture 或跨层 contract 时，再扩展到 smoke 或 workspace verification。
 
 Navigation 或 selection 行为要手动 replay 关键 user-visible path。涉及 machine/readable output 时，分别检查 readable-view、readable-json 和 protocol-json；涉及 stdin/tool envelope 时，保存并重放最小 JSON。
 

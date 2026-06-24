@@ -12,7 +12,7 @@
 - Pages 被截断或重复：检查 limit accounting、page math、continuation metadata、Unicode boundaries。
 - Schema mismatch：先把失败字段与 owning type 对比，再修改 fixtures。
 - 只有 `readable-view` framing 变化：先验证 JSON modes，再按 formatting-only change 处理。
-- Bridge 与 CLI/API 不同：检查 stdio JSON、tool arg/result mapping、error mapping、child process invocation。
+- Wrapper 与 CLI/API 不同：检查 stdio JSON、arg/result mapping、error mapping、child process invocation。
 - Windows-only failure：在复现和验证中保留精确 path form 和 shell quoting。
 - Generated fixture changed：确认变化来自 generator、source fixture、schema 还是 implementation。
 
@@ -22,7 +22,7 @@
 - Identifier/read：test 同时检查 generated identifier 和 read/detail result，避免只证明其中一半。
 - Pagination：覆盖 page 1、continuation page 和超出范围 page。
 - Output modes：JSON contract test 优先；`readable-view` snapshot 只覆盖 display/framing behavior。
-- Bridge：assert tool args 到 CLI/API args/result mapping，不复制 parser expectation。
+- Wrapper：assert args 到 CLI/API args/result mapping，不复制 parser expectation。
 - Windows path：使用原始字符串形式作为 test case 名称或 fixture 注释，便于复现。
 
 ## Debugging Red Flags
@@ -31,9 +31,9 @@
 
 - 修复前没有一个稳定复现。
 - 只改 expected output，缺少 generator/schema/source 的对齐证据。
-- 在 bridge、formatter 或 caller 层掩盖 owning parser/domain 缺陷。
+- 在 wrapper、formatter 或 caller 层掩盖 owning parser/domain 缺陷。
 - 用 broad retry、fallback identifier 或 partial JSON 代替 structured error。
-- 同时修改 parser、schema、fixtures、bridge 和 docs，但没有分边界验证。
+- 同时修改 parser、schema、fixtures、wrapper 和 docs，但没有分边界验证。
 - 错误输出中的命令、URL 或路径被直接执行。
 
 ## Recovery Moves

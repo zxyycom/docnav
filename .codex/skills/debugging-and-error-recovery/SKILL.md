@@ -2,7 +2,7 @@
 name: debugging-and-error-recovery
 description: >-
   用系统化 root-cause debugging 处理失败。用于 tests fail、builds break、observable behavior failures、
-  CLI/API issues、schema/output-mode mismatches、bridge/stdio JSON failures、path handling bugs、
+  CLI/API issues、schema/output-mode mismatches、subprocess/stdio JSON failures、path handling bugs、
   generated fixture mismatch 或 workspace verification failures。
 ---
 
@@ -14,7 +14,7 @@ description: >-
 
 默认只读本文件。按问题类型加载一层 reference：
 
-1. 只有失败明确落在本仓库专项 contract、CLI/subprocess/bridge、schema/output 或 workspace verification 时，读 [docnav-debug-playbook.md](references/docnav-debug-playbook.md)。
+1. 只有失败明确落在本仓库专项 contract、CLI/subprocess/protocol、schema/output 或 workspace verification 时，读 [docnav-debug-playbook.md](references/docnav-debug-playbook.md)。
 2. 需要按症状定位边界、选择验证证据或识别 red flags 时，读 [triage-cues.md](references/triage-cues.md)。
 
 ## Stop The Line
@@ -46,7 +46,7 @@ description: >-
 
 - **Parser/domain logic**：input decoding、syntax edge cases、selection/slicing、matching, ordering and boundary conditions。
 - **CLI/API surface**：argument parsing、config/defaults、routing、process spawning、output/error mapping。
-- **Subprocess/bridge layer**：stdio framing、JSON serialization、tool arg/result mapping、child process errors。
+- **Subprocess/protocol layer**：stdio framing、JSON serialization、arg/result mapping、child process errors。
 - **Identifier/read path**：generated identifiers、lookup/parsing、selected region、body boundaries。
 - **Pagination/limits**：page/limit arguments、continuation metadata、truncation、repeated content、multibyte boundaries。
 - **Schema/examples/generated fixtures**：field names、versions、warnings、errors、schema validation and generated material。
@@ -56,9 +56,9 @@ description: >-
 ## Debugging Flow
 
 1. **Reproduce**：找到仍会失败的最小命令或 test，保留触发失败的关键属性。
-2. **Localize**：比较相邻层，例如 direct implementation vs CLI/API wrapper、core vs bridge、`readable-view` vs `readable-json` vs `protocol-json`。
+2. **Localize**：比较相邻层，例如 direct implementation vs CLI/API wrapper、core vs adapter、`readable-view` vs `readable-json` vs `protocol-json`。
 3. **Isolate input**：缩小 source input、identifier/ref、page、limit、request JSON、path form 或 fixture，直到 bug 边界清楚。
-4. **Fix root cause**：在拥有缺陷的层修复；bridge 只映射 owning implementation，formatting 不掩盖 parser/domain 缺陷。
+4. **Fix root cause**：在拥有缺陷的层修复；外层 wrapper 只调用 owning implementation，formatting 不掩盖 parser/domain 缺陷。
 5. **Choose validation evidence**：用离 bug 最近的验证表达当前缺口；已有验证足够时复用并重放，manual replay 足够时记录 replay path，新增自动化测试只用于稳定 contract、自定义不变量、等价类或当前 owner 明确承诺的可观察语义。
 6. **Verify affected behavior**：运行原始复现、选定验证证据，以及受影响 output modes。
 
@@ -68,9 +68,8 @@ description: >-
 
 - Parser/slicing bug：最小 source document 的 unit/integration test。
 - CLI bug：精确 operation、arguments 和 output mode 的 CLI integration test。
-- Subprocess/bridge bug：保存并重放 stdin JSON envelope 或 tool args/result。
+- Subprocess/protocol bug：保存并重放 stdin JSON envelope 或 CLI/API args/result。
 - Schema/fixture bug：schema validation 或 generator check 证明 source of truth。
-- Bridge bug：tool mapping test 或 smoke scenario 对比 owning CLI/API 行为。
 - Platform path bug：保留原始 path form 和 shell quoting。
 
 更新 expectations 前，先证明 implementation、generator、schema contract 和 source document 已对齐。
@@ -78,9 +77,9 @@ description: >-
 
 ## Verification
 
-按 touched boundary 运行最小相关验证。只有当失败跨越公开契约、输出层、schema/example、bridge/subprocess 或 workspace-level contract 时，才扩大到仓库约定的 smoke/workspace verification。
+按 touched boundary 运行最小相关验证。只有当失败跨越公开契约、输出层、schema/example、subprocess 或 workspace-level contract 时，才扩大到仓库约定的 smoke/workspace verification。
 
-对 navigation、selection 或 identifier 行为偏移，要重放原始 user-visible path，并按风险检查 readable-view、readable-json 和 protocol-json；非文档 help/version 可单独检查 PlainText。跨语言/runtime、CLI/API behavior、contract、schemas、examples、generated fixtures、docs、bridge mapping 或 smoke coverage 时，优先运行仓库约定的 workspace verification。
+对 navigation、selection 或 identifier 行为偏移，要重放原始 user-visible path，并按风险检查 readable-view、readable-json 和 protocol-json；非文档 help/version 可单独检查 PlainText。跨语言/runtime、CLI/API behavior、contract、schemas、examples、generated fixtures、docs 或 smoke coverage 时，优先运行仓库约定的 workspace verification。
 
 ## 完成标准
 
@@ -88,4 +87,4 @@ description: >-
 - 修复位置与 owning boundary 一致。
 - 最小验证证据已完成；若新增自动化测试，其理由来自稳定 contract、自定义不变量、等价类或当前 owner 明确承诺的可观察语义。
 - 原始失败命令或 workflow 已通过。
-- 受影响 output modes、schema、generated fixtures、bridge contracts 或 workspace checks 已按范围验证。
+- 受影响 output modes、schema、generated fixtures、subprocess contracts 或 workspace checks 已按范围验证。

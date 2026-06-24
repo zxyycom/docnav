@@ -38,7 +38,7 @@ description: 简化代码以提升 clarity/readability。Use when refactoring co
 
 在项目内简化代码时，先按任务范围判断是否触碰公开契约或跨层边界。普通局部清理只需要遵循相邻代码和已有测试；只有触碰这些边界时，才读取仓库规则、对应 owner docs 或主规范：
 
-- public CLI/API、machine/readable output、schema/example、subprocess/bridge boundary、routing、ref/identifier、pagination/continuation 或 error mapping。
+- public CLI/API、machine/readable output、schema/example、subprocess/protocol boundary、routing、ref/identifier、pagination/continuation 或 error mapping。
 - 稳定字段、稳定错误、用户可见命令、跨 crate/package contract 或生成材料。
 - 任何“简化”会改变 owner boundary、transport wrapper、validation shape 或 compatibility promise 的位置。
 
@@ -80,4 +80,4 @@ description: 简化代码以提升 clarity/readability。Use when refactoring co
 - formatter / linter 通过。
 - diff 只包含目标范围。
 - 错误处理、边界条件、副作用顺序未被削弱。
-- 触碰公开契约、输出层、schema/example、subprocess/bridge 或跨层边界时，按仓库规则运行对应验证；普通局部清理用最小相关测试即可。
+- 触碰公开契约、输出层、schema/example、subprocess/protocol 或跨层边界时，按仓库规则运行对应验证；普通局部清理用最小相关测试即可。
