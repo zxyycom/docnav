@@ -35,7 +35,7 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.6.0",
+  version: "0.7.0",
 
   include: [
     "crates/**/*.rs",
@@ -144,9 +144,14 @@ export const DEFAULT_CONFIG = Object.freeze({
       /** 仅 changed function 且 delta > 此值时触发 warning */
       changedDelta: 5
     },
-    functionCodeLines: {
+    functionCodeDensity: {
       absoluteFloor: 50,
-      changedDelta: 20
+      changedDelta: 20,
+      lowComplexityAllowance: {
+        /** 简单函数以低圈复杂度为准；低于该值时允许更长的线性流程。 */
+        maxCyclomaticComplexityExclusive: 5,
+        codeLineFloor: 150
+      }
     },
     parameterCount: {
       absoluteFloor: 5,

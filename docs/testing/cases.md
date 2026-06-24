@@ -758,6 +758,8 @@ Proves:
 - 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。
 - 文件大小 warning 根据 scc decision-token count 选择 code-line floor，低 decision-token 文件可使用更高行数阈值。
 - warning record 的 rule id、metric、message 和 suggestion 反映代码行数语义，且 suggestion 不直接把行数信号转成拆分建议。
+- 函数 warning 使用复杂度感知的代码密度阈值：普通复杂度函数超过 50 行触发，CC < 5 的简单函数超过 150 行才触发。
+- 函数代码密度 warning record 的 rule id、metric 和 message 反映组合阈值语义，不再输出单纯函数代码行数规则。
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented

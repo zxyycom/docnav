@@ -65,7 +65,7 @@ export interface QualityConfig {
   include: string[];
   lizard: {
     cyclomaticComplexity: QualityThreshold;
-    functionCodeLines: QualityThreshold;
+    functionCodeDensity: FunctionCodeDensityThreshold;
     parameterCount: QualityThreshold;
   };
   pmdCpd: {
@@ -99,6 +99,13 @@ export interface QualityConfig {
 export interface QualityThreshold {
   absoluteFloor: number;
   changedDelta: number;
+}
+
+export interface FunctionCodeDensityThreshold extends QualityThreshold {
+  lowComplexityAllowance: {
+    codeLineFloor: number;
+    maxCyclomaticComplexityExclusive: number;
+  };
 }
 
 export interface ScanMetadata {

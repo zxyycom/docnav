@@ -15,7 +15,7 @@ type FunctionWarningBuilder = (input: FunctionWarningInput) => WarningCandidate 
 
 const FUNCTION_WARNING_BUILDERS: FunctionWarningBuilder[] = [
   buildFunctionComplexityWarning,
-  buildFunctionLineWarning,
+  buildFunctionCodeDensityWarning,
   buildFunctionParameterWarning
 ];
 
@@ -64,12 +64,14 @@ function buildFunctionComplexityWarning(input: FunctionWarningInput): WarningCan
   });
 }
 
-function buildFunctionLineWarning(input: FunctionWarningInput): WarningCandidate | null {
+function buildFunctionCodeDensityWarning(input: FunctionWarningInput): WarningCandidate | null {
   const { areaPolicy, baselineFunc, context, func } = input;
-  const lineFloor = context.config.lizard?.functionCodeLines?.absoluteFloor ?? 50;
-  const lineDeltaCfg = context.config.lizard?.functionCodeLines?.changedDelta ?? 20;
+  const densityConfig = context.config.lizard?.functionCodeDensity;
+  const lineFloor = functionCodeDensityFloor(func, context);
+  const lineDeltaCfg = densityConfig?.changedDelta ?? 20;
   const baselineFunctionLines = baselineFunc?.lines ?? (context.hasBaselineFunctions ? 0 : null);
   const functionLineDelta = deltaFrom(func.lines, baselineFunctionLines);
+  const complexity = func.cyclomaticComplexity.value;
 
   return buildMetricWarning({
     areaPolicy,
@@ -80,14 +82,48 @@ function buildFunctionLineWarning(input: FunctionWarningInput): WarningCandidate
     floor: lineFloor,
     isChanged: func.isChanged,
     line: func.startLine,
-    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} code lines (Lizard NLOC; threshold: ${lineFloor} code lines)`,
-    metric: "function-code-lines",
+    message: `Function "${func.name}" in ${func.file}:${func.startLine} has ${func.lines} code lines at cyclomatic complexity ${complexity ?? "n/a"} (Lizard NLOC; threshold: ${functionCodeDensityThresholdLabel(func, context)})`,
+    metric: "function-code-density",
     path: func.file,
-    ruleId: "lizard-function-code-lines",
+    ruleId: "lizard-function-code-density",
     sourceTool: "lizard",
-    suggestion: "Consider extracting parts of this function into separate functions",
+    suggestion: "Consider reducing branching or splitting the function when line count and complexity make it hard to review",
     value: func.lines
   });
+}
+
+function functionCodeDensityFloor(func: FunctionMetric, context: WarningContext): number {
+  const densityConfig = context.config.lizard?.functionCodeDensity;
+  const baseFloor = densityConfig?.absoluteFloor ?? 50;
+  const allowance = densityConfig?.lowComplexityAllowance;
+  const complexity = func.cyclomaticComplexity.value;
+
+  if (
+    allowance &&
+    complexity !== null &&
+    complexity < allowance.maxCyclomaticComplexityExclusive
+  ) {
+    return allowance.codeLineFloor;
+  }
+
+  return baseFloor;
+}
+
+function functionCodeDensityThresholdLabel(func: FunctionMetric, context: WarningContext): string {
+  const densityConfig = context.config.lizard?.functionCodeDensity;
+  const allowance = densityConfig?.lowComplexityAllowance;
+  const floor = functionCodeDensityFloor(func, context);
+  const complexity = func.cyclomaticComplexity.value;
+
+  if (
+    allowance &&
+    complexity !== null &&
+    complexity < allowance.maxCyclomaticComplexityExclusive
+  ) {
+    return `${floor} code lines for CC < ${allowance.maxCyclomaticComplexityExclusive}`;
+  }
+
+  return `${floor} code lines`;
 }
 
 function buildFunctionParameterWarning(input: FunctionWarningInput): WarningCandidate | null {
