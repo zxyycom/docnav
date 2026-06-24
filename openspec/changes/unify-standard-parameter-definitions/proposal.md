@@ -1,14 +1,15 @@
-本 change 目标是统一 core `docnav`、`docnav-adapter-sdk` direct CLI、adapter `invoke` 和 MCP tool mapping 使用的 args/config 标准参数基础层。本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local proposal；主规范同步由 tasks 中的文档任务承接。
+本 change 目标是统一 core `docnav`、`docnav-adapter-sdk` direct CLI、adapter `invoke` 和 MCP tool mapping 使用的 args/config 标准参数基础层。本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local proposal；主规范同步由 tasks 中的文档任务承接。标准参数机制由新增的 `docs/standard-parameters.md` 完整承接，入口主规范只保留消费边界摘要和引用。
 
 ## Why
 
 Core CLI、adapter SDK direct CLI、adapter `invoke` 和 MCP tool mapping 现在各自维护直接输入映射、配置读取与投影、来源对象合并、argv、help、tool input schema、protocol argument binding 和类型校验链路。`defaults.output`、`defaults.limit_chars` 这类跨入口复用的标准参数容易在 key、flag、config path、schema、来源和展示行为上漂移。
 
-需要把这些机械参数能力收敛到一个共享 owner：CLI argv、MCP tool input、invoke request arguments、项目配置、用户配置和默认值先分别映射为标准参数对象；最后由同一 resolver 按统一全局来源优先级合并这些对象、校验并交给正常调用逻辑。该优先级固定为直接输入值（CLI argv、MCP tool input 或 invoke request arguments）、项目配置、用户配置、默认值。`invoke` 不再把 protocol request `arguments` 视为调用方已经完成配置/default 解析的最终参数，而是和 CLI/MCP 一样把显式 request arguments 作为 direct input standard parameter object 进入标准参数解析。具体业务参数 change 只声明自己的参数行为，并引用共享 base definition、registration set、标准参数对象投影和来源合并规则。
+需要把这些机械参数能力收敛到共享实现，并把长期规则集中到 `docs/standard-parameters.md`：CLI argv、MCP tool input、invoke request arguments、项目配置、用户配置和默认值先分别映射为标准参数对象；最后由同一 resolver 按统一全局来源优先级合并这些对象、校验并交给正常调用逻辑。该优先级固定为直接输入值（CLI argv、MCP tool input 或 invoke request arguments）、项目配置、用户配置、默认值。`invoke` 不再把 protocol request `arguments` 视为调用方已经完成配置/default 解析的最终参数，而是和 CLI/MCP 一样把显式 request arguments 作为 direct input standard parameter object 进入标准参数解析。具体业务参数 change 只声明自己的参数行为，并引用 `docs/standard-parameters.md` 定义的共享 base definition、registration set、标准参数对象投影和来源合并规则。
 
 ## What Changes
 
-- 新增共享 Rust args/config 参数 owner，拥有标准参数 base definition registry、standard parameter object projection、typed config path builder、配置读取与投影、标准参数对象合并、来源追踪、schema-backed validation、operation argument binding、MCP tool input mapping、typed runtime values 和 schema metadata。
+- 新增 `docs/standard-parameters.md`，完整承接标准参数机制规则，并在 `docs/navigation.md` 规则所有权表中登记；`docs/architecture.md`、`docs/cli.md`、`docs/adapter-contract.md`、`docs/mcp.md` 和 `docs/protocol.md` 只记录各自入口如何消费该机制。
+- 新增或扩展共享 Rust args/config 参数实现，承接标准参数 base definition registry、standard parameter object projection、typed config path builder、配置读取与投影、标准参数对象合并、来源追踪、schema-backed validation、operation argument binding、MCP tool input mapping、typed runtime values 和 schema metadata。
 - 标准参数 base definition 使用 builder-style API 声明 `ParamKey<T>`、canonical key、value type、default facet、必选 schema facet、基础 validator 和 schema metadata。
 - Consumer、CLI command、operation 和 MCP tool 不从 base definition 隐式继承全局 `.applies_to`；它们通过 registration set 或 tool mapping 明确声明自己暴露的 config path、CLI surface、operation argument binding 或 MCP tool input surface。
 - `standard_params` 或等价 resolver 先把 CLI argv、MCP tool input、invoke request arguments、项目配置、用户配置和默认值分别投影为标准参数对象，再按统一全局来源优先级合并并生成 `ResolvedStandardParams` / typed runtime object。调用方可通过 `ParamKey<T>` 取得已校验的 `T` 值，并复用同一 typed object 做 request construction、context 输出和测试断言。
@@ -22,6 +23,7 @@ Core CLI、adapter SDK direct CLI、adapter `invoke` 和 MCP tool mapping 现在
 ## Scope Boundaries
 
 - 具体业务配置 key 由对应业务参数 change 声明。
+- `docs/standard-parameters.md` 只承接标准参数机制、共享注册/投影/resolver/schema metadata 规则；core CLI、adapter SDK、MCP bridge、protocol envelope 和测试验证边界仍由对应主规范承接。
 - Protocol request/result envelope、readable output、MCP structuredContent、ref 和 MCP transport shape 保持当前契约；protocol request `arguments` 的标准参数语义会从“最终显式参数”调整为“resolver 的直接输入来源”，对应 schema/examples 必须同步。
 - 配置域路径发现、配置管理命令、warning 承载、request construction、operation build 和 exit behavior 仍由对应入口 owner 承接。
 - Schema generation 可以分阶段交付；本 change 要求 definition 携带可生成 schema、可供 runtime 校验复用的结构化 metadata。
@@ -30,7 +32,7 @@ Core CLI、adapter SDK direct CLI、adapter `invoke` 和 MCP tool mapping 现在
 
 ### New Capabilities
 
-- `args-config-parameters`：新增共享 args/config 参数能力，拥有标准参数 base definition model、registration set、standard parameter object projection、typed config path builder、配置读取与投影、标准参数对象合并、source tracking、default facet、flag argv facet、schema-backed validation、operation argument binding、MCP tool input mapping、typed runtime values、MCP metadata 输出和 schema metadata 输出。
+- `args-config-parameters`：新增共享 args/config 参数能力，拥有标准参数 base definition model、registration set、standard parameter object projection、typed config path builder、配置读取与投影、标准参数对象合并、source tracking、default facet、flag argv facet、schema-backed validation、operation argument binding、MCP tool input mapping、typed runtime values、MCP metadata 输出和 schema metadata 输出；归档后由 `docs/standard-parameters.md` 承接主规范。
 
 ### Modified Capabilities
 
@@ -40,8 +42,9 @@ Core CLI、adapter SDK direct CLI、adapter `invoke` 和 MCP tool mapping 现在
 
 ## Impact
 
+- 新增 `docs/standard-parameters.md` 并更新 `docs/navigation.md` 规则所有权，使标准参数机制只有一个主规范归属；入口主规范同步为消费方说明，避免把共享规则分散在 architecture/CLI/adapter/MCP/protocol 文档中。
 - 影响 `crates/docnav` 中 core 标准参数注册、配置 key 管理、配置源读取与标准参数对象投影、document argv、help/default 文案、`config get/set/unset/list`、document context 输出和 invoke request argument projection。
 - 影响 `crates/docnav-adapter-sdk` 中 direct CLI 和 adapter `invoke` 的标准参数注册、source profile、配置读取与标准参数对象投影、argv/request arguments、help/default 文案、schema-backed validation、warning、invoke request argument projection 和 operation 参数生成。
 - 影响 `docnav-mcp` 的目标 tool input 映射来源：tool inputs 应从 tool -> operation 映射、operation registration set 和 MCP/CLI surface registration 生成或同步，并作为直接输入标准化参数来源；现阶段可继续映射到 core `docnav` CLI argv 作为传输路径。
 - 影响 `docs/protocol.md`、protocol request schema 和 examples 中 request `arguments` 的标准参数语义：envelope 保持稳定，标准参数字段表达 resolver direct input source；protocol request schema 使用较窄 schema view，完整标准参数 required/default/range/enum 校验由 resolver 承接。
-- 可能扩展 `docnav-cli-args` 或新增共享 Rust 模块/crate 作为 args/config 参数 owner。
+- 可能扩展 `docnav-cli-args` 或新增共享 Rust 模块/crate 作为 args/config 参数实现位置。

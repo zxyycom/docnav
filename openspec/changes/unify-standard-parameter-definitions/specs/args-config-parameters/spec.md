@@ -1,4 +1,4 @@
-本 change 新增共享 args/config 参数能力；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local args-config-parameters delta，主规范同步由 tasks 中的文档任务承接。
+本 change 新增共享 args/config 参数能力；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local args-config-parameters delta。归档后，`docs/standard-parameters.md` 完整承接该能力的主规范；入口主规范只同步各自消费边界并链接该文档。
 
 ## ADDED Requirements
 
@@ -86,7 +86,7 @@
 - **THEN** MCP tool input path 仍由 MCP tool mapping metadata 决定
 
 ### Requirement: 共享 args/config 参数层必须生成 MCP tool metadata
-共享 Rust args/config 参数层 MUST 能基于 MCP tool -> operation 映射、operation registration set 和 MCP/CLI surface registration 生成 MCP tool metadata。该 metadata MUST 能表达 tool input path、stable serialized param identity、canonical key、value kind、direct standard param source projection、CLI argv spelling 或其它 transport projection metadata、schema facet metadata、default metadata 和 operation registration membership；CLI argv spelling 只作为当前 transport projection metadata，不是 MCP 标准参数语义的 owner。Rust consumer MAY 将 stable serialized param identity 解析回 `ParamKey<T>`。MCP bridge MUST 使用该 metadata 暴露 tool input schema，并将 tool input 映射为 direct standard param source；当前 transport MAY 继续把该 source 投影为 core `docnav` CLI argv。MCP bridge 在本 change 中 MUST NOT 成为 adapter invoke request construction owner。JS 获取该 metadata 的推荐形态是 Rust 生成 JSON artifact；runtime metadata export 或人工同步的等价方案也可接受，但人工同步 MUST 有映射测试或 artifact/schema diff 证明未漂移。
+共享 Rust args/config 参数层 MUST 能基于 MCP tool -> operation 映射、operation registration set 和 MCP/CLI surface registration 生成 MCP tool metadata。该 metadata MUST 能表达 tool input path、stable serialized param identity、canonical key、value kind、direct standard param source projection、CLI argv spelling 或其它 transport projection metadata、schema facet metadata、default metadata 和 operation registration membership；CLI argv spelling 只作为当前 transport projection metadata，不是 MCP 标准参数语义来源。Rust consumer MAY 将 stable serialized param identity 解析回 `ParamKey<T>`。MCP bridge MUST 使用该 metadata 暴露 tool input schema，并将 tool input 映射为 direct standard param source；当前 transport MAY 继续把该 source 投影为 core `docnav` CLI argv。MCP bridge 在本 change 中 MUST NOT 承接 adapter invoke request construction。JS 获取该 metadata 的推荐形态是 Rust 生成 JSON artifact；runtime metadata export 或人工同步的等价方案也可接受，但人工同步 MUST 有映射测试或 artifact/schema diff 证明未漂移。
 
 #### Scenario: MCP tool input 从 operation registration 生成
 - **WHEN** MCP tool 声明 `document_read` 对应 read operation

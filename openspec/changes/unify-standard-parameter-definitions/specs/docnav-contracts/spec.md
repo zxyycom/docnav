@@ -1,4 +1,4 @@
-本 change 目标是让 CLI argv、invoke request arguments 和 MCP tool input 都投影为共享标准化参数来源；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local docnav-contracts delta，主规范同步由 tasks 中的文档任务承接。
+本 change 目标是让 CLI argv、invoke request arguments 和 MCP tool input 都投影为共享标准化参数来源；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local docnav-contracts delta。共享标准参数机制由 `docs/standard-parameters.md` 完整承接；跨入口契约文档只同步消费边界和稳定映射关系。
 
 ## ADDED Requirements
 

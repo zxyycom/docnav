@@ -1,4 +1,4 @@
-本 change 目标是交付共享 args/config 标准参数基础层；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local tasks，主规范同步由第 2 节承接。
+本 change 目标是交付共享 args/config 标准参数基础层；本文档是 `openspec/changes/unify-standard-parameter-definitions/` 下的 change-local tasks，主规范同步由第 2 节承接。标准参数机制由新增的 `docs/standard-parameters.md` 完整承接。
 
 ## 1. 审计门禁
 
@@ -7,13 +7,14 @@
 
 ## 2. 主规范和验证材料
 
-- [ ] 2.1 更新 `docs/architecture.md`，说明共享 args/config 参数 owner 的职责：标准参数 base definition、registration set、source-to-standard-parameter-object projection、配置读取与投影、标准参数对象合并、来源追踪、schema-backed validation、operation argument binding、typed runtime values 和 schema metadata。
-- [ ] 2.2 更新 `docs/cli.md`，说明 core CLI 标准参数、配置命令支持 key、document argv、help/default 文案、context 输出和 invoke request direct-source serialization 消费共享 registration、source tracking 与 typed standard params。
-- [ ] 2.3 更新 `docs/adapter-contract.md`，说明 SDK direct CLI 标准参数、adapter `invoke` request arguments、配置读取与标准参数对象投影、argv/help/schema validation 和 request direct-source serialization 都消费共享 registration、source profile、source tracking 与 typed standard params。
-- [ ] 2.4 更新 `docs/mcp.md`，说明 MCP tool input schema 和 tool input -> direct standard param source 映射从 tool -> operation 映射、operation registration set 和 MCP/CLI surface metadata 生成或同步；当前 transport 可继续映射到 core CLI argv。
-- [ ] 2.5 更新 `docs/protocol.md`，说明 protocol request/result envelope 不变，但 request `arguments` 的标准参数字段从调用方最终 resolved params 调整为 resolver direct input source；同步 operation argument requiredness、schema view owner、examples 和错误分类边界。
-- [ ] 2.6 更新 `docs/schemas/`、`docs/examples/` 或相邻验证材料，使 protocol request schema/example、MCP tool schema metadata 和配置 schema/example 与标准参数 source projection 语义一致；protocol request schema 必须使用较窄 schema view，只校验 envelope、operation、document path、raw arguments object、已出现字段基础 JSON 类型和字段可识别性。
-- [ ] 2.7 更新测试说明，记录 definition-driven surface 的唯一来源、core/SDK 同名 key 复用共享 base definition、typed standard params 复用，以及 MCP metadata、invoke operation binding 与 operation/CLI registration 一致。
+- [ ] 2.1 新增 `docs/standard-parameters.md`，完整承接标准参数机制：标准参数 base definition、registration set、source-to-standard-parameter-object projection、配置读取与投影、标准参数对象合并、来源追踪、schema-backed validation、operation argument binding、MCP metadata、typed runtime values 和 schema metadata；同步更新 `docs/navigation.md` 规则所有权表，明确入口主规范只引用该文档。
+- [ ] 2.2 更新 `docs/architecture.md`，只摘要共享 args/config 参数实现的制品职责和跨制品边界，并链接 `docs/standard-parameters.md`；不得在 architecture 中重新定义 resolver 优先级、registration 规则或 schema view。
+- [ ] 2.3 更新 `docs/cli.md`，说明 core CLI 标准参数、配置命令支持 key、document argv、help/default 文案、context 输出和 invoke request direct-source serialization 消费 `docs/standard-parameters.md` 定义的共享 registration、source tracking 与 typed standard params。
+- [ ] 2.4 更新 `docs/adapter-contract.md`，说明 SDK direct CLI 标准参数、adapter `invoke` request arguments、配置读取与标准参数对象投影、argv/help/schema validation 和 request direct-source serialization 都消费 `docs/standard-parameters.md` 定义的共享 registration、source profile、source tracking 与 typed standard params。
+- [ ] 2.5 更新 `docs/mcp.md`，说明 MCP tool input schema 和 tool input -> direct standard param source 映射从 tool -> operation 映射、operation registration set 和 MCP/CLI surface metadata 生成或同步，并链接 `docs/standard-parameters.md`；当前 transport 可继续映射到 core CLI argv。
+- [ ] 2.6 更新 `docs/protocol.md`，说明 protocol request/result envelope 不变，但 request `arguments` 的标准参数字段从调用方最终 resolved params 调整为 resolver direct input source；同步 operation argument requiredness、schema view 归属、examples 和错误分类边界，并链接 `docs/standard-parameters.md`。
+- [ ] 2.7 更新 `docs/schemas/`、`docs/examples/` 或相邻验证材料，使 protocol request schema/example、MCP tool schema metadata 和配置 schema/example 与标准参数 source projection 语义一致；protocol request schema 必须使用较窄 schema view，只校验 envelope、operation、document path、raw arguments object、已出现字段基础 JSON 类型和字段可识别性。
+- [ ] 2.8 更新测试说明，记录 definition-driven surface 的唯一来源、core/SDK 同名 key 复用共享 base definition、typed standard params 复用，以及 MCP metadata、invoke operation binding 与 operation/CLI registration 一致。
 
 ## 3. 共享 args/config 参数层
 
