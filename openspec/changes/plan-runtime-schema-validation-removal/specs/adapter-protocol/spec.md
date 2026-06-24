@@ -9,7 +9,6 @@ Future removal of a generic JSON Schema validator from release runtime MUST pres
 #### Scenario: Current behavior remains unchanged while this change is only a plan
 
 - **WHEN** this change exists only under `openspec/changes/plan-runtime-schema-validation-removal/`
-- **THEN** current protocol, manifest, probe, schema, example, CLI, adapter, and MCP requirements remain unchanged
 - **THEN** existing runtime JSON Schema validation behavior remains the active implementation contract
 
 #### Scenario: Future migration proves schema keyword coverage before dependency removal

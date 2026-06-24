@@ -2,7 +2,7 @@
 name: doubt-driven-development
 description: >-
   对高风险工程决策进行 bounded adversarial check。用于 protocol/schema/serialized output、
-  ref/identifier stability、adapter/service contract、CLI/MCP/tool output、irreversible migration、
+  ref/identifier stability、adapter/service contract、CLI/tool output、irreversible migration、
   security-sensitive logic、compatibility claims 或 tests 只能部分证明的 correctness claims。
 ---
 
@@ -21,7 +21,7 @@ description: >-
 - protocol、schema、serialized output 或 example meaning 变化。
 - ref/identifier generation、parsing、stability、compatibility、pagination 或 continuation 变化。
 - adapter/service contract 变化，包括 behavior、ordering、limits 和 paging semantics。
-- CLI/MCP/tool output behavior、error mapping 或 user-visible compatibility。
+- CLI/tool output behavior、error mapping 或 user-visible compatibility。
 - irreversible migration、persisted data 影响或 downgrade/rollback 风险。
 - security-sensitive input、path handling、external command execution 或 untrusted document behavior。
 - compiler/tests 只能部分证明的 claims，例如 compatibility、idempotence、ordering 或 "不会破坏现有 consumers"。
@@ -32,7 +32,7 @@ Mechanical edits、formatting、直接的 documentation cleanup、明确的 Open
 
 1. **Claim**: 用一到两句话写出必须为真的 decision，以及它为什么重要。
 2. **Contract**: 列出可观察 requirements、compatibility promises、security/migration constraints、edge cases 和 out-of-scope。
-3. **Artifact**: 锁定最小 diff、design note、schema fragment、CLI/MCP output sample 或 behavior description。
+3. **Artifact**: 锁定最小 diff、design note、schema fragment、CLI output sample 或 behavior description。
 4. **Evidence gate**: 从 governing spec、owner docs、schema、CodeGraph、tests 或 command output 取得 contract evidence。
 5. **Bounded challenge**: 用 [doubt-cycle.md](references/doubt-cycle.md) 的 checklist 尝试证明 artifact 不满足 contract。
 6. **Reconcile**: 将每个 finding 分类为 contract gap、valid issue、accepted trade-off 或 noise，并更新 artifact、contract 或 validation。
@@ -41,7 +41,7 @@ Mechanical edits、formatting、直接的 documentation cleanup、明确的 Open
 ## Reference 读取
 
 1. 需要 claim/contract/artifact 模板、adversarial checklist、finding taxonomy 或 stop condition：读 [doubt-cycle.md](references/doubt-cycle.md)。
-2. Docnav protocol、schema、ref、adapter contract、CLI/MCP output、security 或 migration 风险：按 [risk-map.md](references/risk-map.md) 选择最小 surface。
+2. Docnav protocol、schema、ref、adapter contract、CLI output、security 或 migration 风险：按 [risk-map.md](references/risk-map.md) 选择最小 surface。
 3. 用户授权独立 reviewer、worker 或 external CLI 检查 artifact：读 [reviewer-prompts.md](references/reviewer-prompts.md)。
 
 ## Fresh-Context Reviewer

@@ -10,8 +10,7 @@
 | --- | --- |
 | protocol 字段、错误、pagination、continuation | `docs/protocol.md`、相关 schema、examples、tests |
 | CLI readable/raw output | `docs/cli.md`、examples、CLI tests |
-| adapter behavior、probe、outline、read、find、ref | `docs/adapter-contract.md`、`docs/refs.md`、format-specific docs、adapter tests |
-| MCP tool mapping | `docs/cli.md`、`docs/protocol.md`、MCP bridge tests |
+| adapter behavior、probe、outline、read、find、ref | `docs/adapter-contract.md`、`docs/ref-contract.md`、format-specific docs、adapter tests |
 | schema field 或 validation | `docs/schemas/`、`docs/examples/`、schema validation tests |
 | user-facing setup 或 commands | `README.md`、`docs/navigation.md`、relevant scripts or CI docs |
 | architecture rationale | 长期架构决策写 ADR；change-local rationale 写 OpenSpec design；当前 contract 写主规范 |

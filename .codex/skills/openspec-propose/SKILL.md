@@ -52,8 +52,8 @@ metadata:
 
 OpenSpec change name 和 capability ID 是不同概念：
 
-1. Change name 表达本次要完成的变化，可以是动词短语，例如 `implement-docnav-mcp-bridge`。
-2. Capability ID 表达长期主 spec 所有权，必须是稳定名词短语，例如 `mcp-bridge`。
+1. Change name 表达本次要完成的变化，可以是动词短语，例如 `implement-docnav-adapter-management`。
+2. Capability ID 表达长期主 spec 所有权，必须是稳定名词短语，例如 `adapter-management`。
 3. Delta spec 的目录名就是归档目标：`openspec/changes/<change>/specs/<capability>/spec.md` 会合并到 `openspec/specs/<capability>/spec.md`。
 
 写 proposal 的 Capabilities 前必须选择 capability ID：
@@ -68,16 +68,15 @@ OpenSpec change name 和 capability ID 是不同概念：
 
 1. 使用 kebab-case，小写英文、数字和连字符。
 2. 使用名词或名词短语，表达长期能力或稳定责任边界。
-3. 优先按产品/接口/制品所有权命名，例如 `core-cli`、`adapter-routing`、`readable-output`、`mcp-bridge`、`adapter-management`、`markdown-navigation`。
+3. 优先按产品/接口/制品所有权命名，例如 `core-cli`、`adapter-routing`、`readable-output`、`adapter-management`、`markdown-navigation`。
 4. 不默认复用 change name。
 5. 不包含 `implement`、`implementation`、`change`、`task`、日期或一次性迁移阶段。
 6. 不用 `v0`、`v1` 等版本阶段表达长期能力；版本范围写入 requirement、design 或 tasks。
 
 示例：
 
-1. `implement-docnav-mcp-bridge` -> capability `mcp-bridge`。
+1. `replace-text-with-readable-view` -> capability `readable-output`。
 2. `implement-docnav-adapter-management` -> capability `adapter-management`。
-3. `replace-text-with-readable-view` -> capability `readable-output`，并按影响面修改 `core-cli`、`adapter-sdk` 或 `mcp-bridge`。
 
 ## 工作流程
 

@@ -22,7 +22,6 @@ Docnav 的基础链路是 `outline -> ref -> read`。这个链路稳定、清楚
   - 在搜索结果明确时减少 find 后的手动 read。
   - 围绕某个 ref 获取相邻上下文。
 - 当前 change 不选择主方案、不承诺命令名、不固定输入字段、不定义最终 schema。
-- 当前 change 只保留架构边界：composition 优先归属 core/SDK；adapter 继续拥有格式解析、ref 生成/解析和单次 operation 语义；MCP 作为 bridge 映射到 `docnav`，不复制组合逻辑。
 - 后续进入实现前，需要创建或更新更具体的 implementation change，届时再决定是扩展现有命令、增加 option、提供 SDK helper，还是新增极少数专用入口。后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 声明 content pointer 和 renderer config。
 
 ## Capabilities
@@ -38,5 +37,3 @@ Docnav 的基础链路是 `outline -> ref -> read`。这个链路稳定、清楚
 ## Impact
 
 - 当前影响范围：OpenSpec 探索材料。
-- 当前不影响代码、CLI、MCP tool、adapter protocol、schema、examples 或 docs 主规范。
-- 后续实现可能影响 `core-cli`、`docnav-contracts`、`adapter-sdk`、MCP mapping、readable output schema 和示例，但需要在后续具体 change 中重新定稿。后续 change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 和 renderer config 声明 content pointer 和三种 document output mode。

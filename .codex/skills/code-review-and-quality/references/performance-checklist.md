@@ -1,6 +1,6 @@
 # 性能清单（Performance Checklist）
 
-这是 code review 时使用的 Docnav performance quick reference。只有当改动触及 hot path、large document behavior、pagination、adapter invocation、serialization、MCP bridge 或可能改变可观察性能成本时才加载。
+这是 code review 时使用的 Docnav performance quick reference。只有当改动触及 hot path、large document behavior、pagination、adapter invocation、serialization 或可能改变可观察性能成本时才加载。
 
 性能判断必须以 measurement 或明确复杂度变化为依据。不要把主观“看起来更快/更慢”当作 finding。
 
@@ -9,7 +9,6 @@
 - [ ] 改动是否影响 `outline -> ref -> read` 的常用路径。
 - [ ] 是否改变 Markdown parsing、heading scan、frontmatter handling、ref lookup、pagination 或 continuation。
 - [ ] 是否引入 full-document load、重复 parse、N+1 traversal、unbounded recursion 或大对象 clone。
-- [ ] 是否改变 adapter process startup、stdio JSON envelope、output serialization 或 MCP bridge spawning。
 - [ ] 是否影响 Windows path handling、large file streaming、stdout/stderr capture 或 timeout behavior。
 
 ## 先度量（Measurement First）
@@ -35,12 +34,11 @@
 - [ ] Adapter-owned ref lookup 不引入跨文档全局搜索或不受控缓存。
 - [ ] Error path 与 empty result path 同样有界，不能因为没有命中而扫描额外无关资源。
 
-## CLI、Adapter 与 MCP Bridge（桥接）
+## CLI、Adapter 与输出边界
 
 - [ ] Core `docnav` 没有复制 adapter parsing/routing 逻辑；重复实现通常也会重复成本。
 - [ ] Adapter process invocation 有 timeout 与 output-size caps；失败路径不会等待额外 stderr/stdout。
 - [ ] JSON serialization/deserialization 不重复转换 raw/readable/protocol wrappers。
-- [ ] MCP bridge 保持 thin，不在 Node 层重新 parse 文档或重建 pagination。
 - [ ] stdout/stderr logging 不输出大块 document body，也不在 hot path 做昂贵 formatting。
 
 ## 依赖与构建成本（Dependency / Build Cost）
@@ -64,7 +62,7 @@ Markdown adapter behavior:
 Core CLI / adapter routing:
   <core-smoke-script>
 
-Cross-boundary protocol/schema/MCP behavior:
+Cross-boundary contract changes:
   <repository-workspace-verifier>
 ```
 

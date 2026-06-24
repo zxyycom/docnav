@@ -12,7 +12,6 @@
 - **BREAKING (opt-in)**: 对命中非结构化配置的文档，`outline` 不再返回当前固定的 `entries[]` 与 `page` 字段；未命中配置的文档保持既有结构化 outline 契约。
 - Docnav 在 `outline` 入口消费生效配置中的非结构化文档策略，命中后短路为原文全文读取，而不是构造 `doc:full` 或其它 adapter ref；具体配置文件、格式和合并方式不由本 change 定义。
 - Markdown adapter/direct CLI 对等支持非结构化 outline 行为，确保各入口在同一生效配置语义下输出一致 readable/protocol 结果。
-- readable-view/readable-json/protocol-json schema、示例和 MCP structuredContent 映射同步支持非结构化 outline 结果。
 - 非目标：不改变普通结构化文档的 `outline -> ref -> read` 主流程；不把 `ignore` 语义解释为跳过文件；不要求其它 adapter 复用 Markdown 的 `doc:full` 或 ref grammar；不为非结构化全文读取引入分页。
 
 ## Capabilities
@@ -25,13 +24,10 @@
 
 - `core-cli`: 增加 core CLI 对生效非结构化 outline 配置的消费方式和输出映射。
 - `adapter-protocol`: 扩展共享 outline success result，使其支持结构化 entries 与非结构化全文内容两个形态。
-- `docnav-contracts`: 更新 Docnav 共享阅读路径、outline 语义、schema/example 和 MCP 映射约束。
 - `markdown-navigation`: 增加 Markdown adapter/direct CLI 的非结构化 outline 行为、配置语义和测试边界。
 - `readable-view-output`: 让 outline readable-view 在非结构化结果形态下可以使用 `/content` block，并保持结构化 outline 无 block 的既有行为。
 
 ## Impact
 
-- 受影响 public surface：`docnav outline`、`docnav-markdown outline`、adapter invoke outline result、readable-json outline schema、readable-view outline header/block、MCP `document_outline` structuredContent 和示例。
 - 受影响代码：outline execution pipeline、生效配置策略判断、shared protocol/result types、readable payload/output renderer 配置、Markdown direct CLI 和 Markdown adapter operation handler。
-- 受影响文档与验证材料：`docs/cli.md`、`docs/protocol.md`、`docs/output.md`、`docs/mcp.md`、`docs/adapters/markdown.md`、`docs/schemas/**`、`docs/examples/**`、测试策略和 OpenSpec delta spec。
 - 不受影响范围：普通结构化 outline 默认行为、read/find/info 语义、ref opaque pass-through 契约、Markdown heading ref grammar 和其它 adapter 的私有导航策略。

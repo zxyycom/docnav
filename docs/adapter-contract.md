@@ -86,7 +86,7 @@ SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、ty
 - stdout 只返回原始协议 envelope。
 - 为分页操作返回下一页页码，结束时返回 null。
 - 按 `limit_chars` 字符预算分页；display 可压缩，ref 不得截断。
-- 不输出 CLI 阅读文本或 MCP 结构。
+- 不输出 CLI 阅读文本。
 
 ## 标准参数消费边界
 

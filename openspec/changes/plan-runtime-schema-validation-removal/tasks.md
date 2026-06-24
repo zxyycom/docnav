@@ -20,7 +20,6 @@
 - [ ] 3.1 为 protocol request/response、manifest 和 probe 补齐或确认 Rust 类型层面的字段、枚举、版本常量和范围约束。
 - [ ] 3.2 为 operation/result 绑定、分页语义、manifest/probe 语义和错误映射补齐显式 semantic validation。
 - [ ] 3.3 将 release runtime 对通用 JSON Schema validator 的依赖迁移到 dev/test/CI 边界，或替换为等价外部校验流程。
-- [ ] 3.4 确认 `docnav-mcp` 仍只映射 MCP tool call 到 `docnav`，不复制 schema 或 adapter 路由逻辑。
 
 ## 4. 未来验证与验收
 

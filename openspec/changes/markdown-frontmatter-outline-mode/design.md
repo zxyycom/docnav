@@ -17,13 +17,11 @@ Markdown frontmatter 当前不会进入 outline，这符合 heading model；但 
 - `ref` 模式在 outline entries 中增加 adapter-owned `FM:frontmatter` ref；读取该 ref 时以 `application/yaml` primary content 返回 YAML 原文。
 - `hidden` 模式不在 outline 输出中暴露 frontmatter。
 - readable-view renderer 支持 optional block pointer：字段不存在时不输出 block、不失败；字段存在且为字符串时正常外置。
-- MCP、core 和 shared output 层只承载 adapter 返回的 frontmatter，不解析 YAML。
 
 **Non-Goals:**
 
 - 不定义 YAML schema、字段语义、排序或规范化。
 - 不把 frontmatter 中的文本纳入 heading model、heading index 或正文 heading ref grammar。
-- 不让 core `docnav` 或 `docnav-mcp` 读取 `docnav-markdown` adapter config。
 - 普通 heading/section read 保持 primary content 契约；frontmatter 只通过 outline inline 字段或 `FM:frontmatter` ref 暴露。
 
 ## Decisions
@@ -56,7 +54,6 @@ Markdown frontmatter 当前不会进入 outline，这符合 heading model；但 
 
 6. **Markdown adapter 负责 frontmatter 识别和原文保留。**
 
-   Markdown parser 只识别文档开头的 YAML frontmatter delimiter block，保留 delimiter 内部原文 payload，不把 YAML 解析成业务字段。共享 protocol、core CLI、MCP 和 output renderer 都不理解 YAML 语义。
 
 ## Risks / Trade-offs
 
@@ -79,7 +76,6 @@ Markdown frontmatter 当前不会进入 outline，这符合 heading model；但 
 
 1. 更新 protocol/readable outline schema、Markdown config schema、readable-view renderer config 和 conformance vectors。
 2. 更新 Markdown adapter frontmatter extraction、outline inline/ref/hidden result construction、`FM:frontmatter` read handling 和 `frontmatter_outline_mode` option 接入。
-3. 更新 Markdown direct CLI smoke、readable-json/protocol-json/MCP 示例和 docs。
 4. 运行 schema/example validation、Markdown adapter tests 和 workspace verifier。
 
 默认 `inline` 会改变有 frontmatter 文档的 outline 输出；这是本 change 的目标行为。配置为 `hidden` 时，outline 可恢复为不暴露 frontmatter 的形状。

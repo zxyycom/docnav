@@ -98,6 +98,5 @@ Docnav 协议与 adapter SDK MUST 使用当前 protocol、manifest 和 probe sch
 ## REMOVED Requirements
 
 ### Requirement: Adapter invoke 不读取 direct CLI 配置
-**Reason**: 本 change 将 CLI argv、MCP tool input 和 adapter `invoke` request arguments 统一为标准参数 direct input；adapter `invoke` 入口也通过声明的配置来源和默认值来源进入同一解析流程。若继续让 `invoke` 使用独立来源规则，标准参数解析、默认值、合并顺序和校验会在入口之间漂移。
 
 **Migration**: Adapter `invoke` 改为声明 adapter invoke 入口策略，使用共享标准参数层处理 request arguments、项目/用户配置和默认值，并按固定合并顺序生成类型化标准参数。若某个 adapter-owned native option 仍要求只接受显式 request value，必须在对应 registration 或入口策略中表达，而不是通过 `invoke` 全局排除配置/default。

@@ -177,11 +177,9 @@ Key files: validation.ts, errors.ts, db.ts
 
 Load only the relevant section when working on a specific area.
 
-## MCP Integrations
 
 For richer context, use Model Context Protocol servers:
 
-| MCP Server | What It Provides |
 |-----------|-----------------|
 | **Context7** | Auto-fetches relevant documentation for libraries |
 | **Chrome DevTools** | Live browser state, DOM, console, network |

@@ -2,7 +2,7 @@
 //!
 //! Conformance vectors are committed JSON fixtures that describe input
 //! payloads, view kinds, renderer config overrides, and order-independent
-//! assertions.  Implementations (Rust, JavaScript MCP bridge, future ports)
+//! assertions.  Implementations (Rust or future ports)
 //! consume the same vector files and verify the same semantic assertions.
 //!
 //! # Stable assertion scope

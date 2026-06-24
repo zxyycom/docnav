@@ -19,7 +19,6 @@
 - [ ] 现有 patterns 与 ownership boundaries 保持不变。
 - [ ] Adapter-owned refs 没有在 adapter 外被解析或重写。
 - [ ] Raw protocol 与 readable output contracts 保持分离。
-- [ ] MCP 仍是 `docnav` 之上的 thin mapping layer。
 
 ## Security and Performance（安全与性能）
 - [ ] 没有 secret 泄露、injection path、unchecked untrusted data 或 trust boundary 混淆。
@@ -43,7 +42,6 @@
 ```text
 请审查这个 change 的 correctness、security、performance、maintainability
 以及 Docnav contract adherence。检查 `outline -> ref -> read` flow、
-adapter-owned refs、raw protocol vs readable output separation、CLI/MCP
 mapping、schema/example/spec sync、适用时的 OpenSpec consistency，
 以及 required verification。
 

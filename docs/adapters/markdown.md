@@ -2,7 +2,7 @@
 
 本文是 `docnav-markdown` 当前实现的导航行为和私有契约主文档。它覆盖 Markdown adapter 的 outline、read、find、ref grammar、结构快照语义、`doc:full`、错误分类、保证范围和验证入口，是 Markdown 实现与审计的长期规范来源。
 
-共享协议、`docnav` core 和 MCP 按共享 ref 契约原样传递 ref；Markdown heading ref 的解析归 Markdown adapter 拥有。共享 ref 最小契约见 [Ref](../ref-contract.md)。
+共享协议和 `docnav` core 按共享 ref 契约原样传递 ref；Markdown heading ref 的解析归 Markdown adapter 拥有。共享 ref 最小契约见 [Ref](../ref-contract.md)。
 
 ## Heading 识别与 Section 范围
 

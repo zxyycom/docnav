@@ -9,13 +9,10 @@
 ## 1. 探索边界
 
 - [ ] 1.1 审计 proposal、design、spec 和 tasks，确认它们只表达 brainstorming / future plan，不包含实现承诺。
-- [ ] 1.2 梳理 core、SDK、adapter、MCP 在 operation composition 中的默认归属。
-- [ ] 1.3 记录必须保留的边界：adapter-owned ref、adapter invoke operation 简洁、MCP 不复制 core routing、基础 `outline -> ref -> read` 链路不被替代。
 
 ## 2. 候选模式
 
 - [ ] 2.1 收集候选组合场景，例如小文档入口、多 ref 读取、find 后 read、ref 周边上下文读取。
-- [ ] 2.2 对每个候选记录触发场景、可能复用的现有 operation、可能的 CLI/MCP 表达方式和主要风险。
 - [ ] 2.3 补充候选池，至少覆盖多输入读取、明确结果自动展开、上下文扩展、continuation recipe、composition explain、批量搜索、outline preview、预算感知自动停止、输入归一化和 dry-run。
 - [ ] 2.4 不为候选排序，不选择主方案；只记录足够后续比较的信息。
 
@@ -27,7 +24,6 @@
 
 ## 4. 后续决策问题
 
-- [ ] 4.1 定义后续 implementation change 必须回答的问题：public surface、protocol-json 边界、按 `replace-text-with-readable-view` 最终 typed readable shape 声明 content pointer 和 renderer config、continuation、partial success、MCP 映射和验证材料。
 - [ ] 4.2 判断哪些问题必须在实现前定稿，哪些可以通过 spike 或小范围实验确认。
 - [ ] 4.3 明确后续实现不得直接复用本 change 的探索文本作为最终 contract；后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 和 renderer config 定稿 public contract。
 

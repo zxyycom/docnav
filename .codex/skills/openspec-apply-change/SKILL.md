@@ -58,7 +58,6 @@ metadata:
    - OpenSpec change 自身先运行 change 验证。
    - 涉及主 specs 时运行 specs 验证。
    - 涉及代码时运行相应格式化、静态检查、单元或集成测试。
-   - 跨协议、schema、示例、CLI、adapter 或 MCP 输出时优先运行仓库约定的 Docnav 工作区验证。
 9. 收尾时输出 change、schema、完成任务、总进度、验证结果、剩余项和阻塞点。
 
 ## 边界

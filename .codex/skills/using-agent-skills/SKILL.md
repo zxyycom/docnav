@@ -38,7 +38,7 @@ description: >-
 | 需求、成功标准或约束不清 | `interview-me` |
 | context drift、误读 docs、规则冲突 | `context-engineering` |
 | multi-file change、分片交付、实现推进 | `incremental-implementation` |
-| protocol、schema、ref、CLI/MCP contract | `api-and-interface-design` |
+| protocol、schema、ref、CLI contract | `api-and-interface-design` |
 | 需要 official docs 或 authoritative source | `source-driven-development` |
 | 高风险 protocol/ref/schema 决策 | `doubt-driven-development` |
 | 新增或改变 behavior 需要可执行证明 | `test-driven-development` |

@@ -71,6 +71,5 @@
 ## REMOVED Requirements
 
 ### Requirement: invoke 请求必须包含最终显式参数
-**Reason**: 本 change 将 protocol request `arguments` 中的标准参数字段定义为 adapter `invoke` 的显式输入来源。继续要求 invoke request 包含所有最终 resolved 参数，会让 `invoke` 无法和 CLI/MCP 一样复用标准参数来源合并、default 和 validation pipeline。
 
 **Migration**: Core `docnav` 继续先完整运行共享解析，完成 core-owned 类型化标准参数和正常数据处理；随后使用 operation argument binding 与来源追踪序列化需要跨 protocol 传递的显式字段和 core 入口策略明确保留的透传字段。Adapter `invoke` 再把这些 fields、项目/用户配置和默认值按固定合并顺序合并。Core 配置或默认值不得仅因已被 core 解析过就变成 adapter `invoke` direct source。

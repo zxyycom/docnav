@@ -243,9 +243,6 @@ function docsValidatorChecks(): CheckDefinition[] {
       /^protocol response operation\/result binding ok$/,
       /^protocol response error details requirements ok$/
     ]),
-    docsValidatorCheck("docs-mcp-validator", "docs mcp validator", "mcp", [
-      /^mcp structuredContent ok:/
-    ]),
     docsValidatorCheck(
       "docs-example-consistency-validator",
       "docs example consistency validator",

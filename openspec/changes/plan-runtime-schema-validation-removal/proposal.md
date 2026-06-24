@@ -25,4 +25,3 @@
 ## Impact
 
 - 受影响范围：未来可能涉及 `docnav-protocol`、`docnav-adapter-sdk`、`docnav` adapter 输出校验、schema/example 验证脚本和 release binary 体积。
-- 当前影响：仅新增本 change 目录下的计划性 OpenSpec 文档；不影响当前 CLI、adapter、MCP、schema、examples、主 spec 或 release 流程。

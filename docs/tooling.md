@@ -13,7 +13,7 @@
 
 ## TypeScript 脚本
 
-`scripts/` 和 `test/` 下的手写脚本以 TypeScript 源码为目标形态。脚本源码负责表达模块 contract、输入输出边界和共享状态类型；生成产物、分发产物或外部工具兼容层不拥有这些类型。`docnav-mcp` 的发布制品形状由 [MCP Handoff](mcp.md) 定义；其中的单文件 `.js` 是发布制品，不是手写源码或兼容源码形态。
+`scripts/` 和 `test/` 下的手写脚本以 TypeScript 源码为目标形态。脚本源码负责表达模块 contract、输入输出边界和共享状态类型；生成产物、分发产物或外部工具兼容层不拥有这些类型。
 
 运行时目标：
 

@@ -4,7 +4,6 @@
 
 Docnav 当前通过 `jsonschema` 在运行时校验 protocol request/response、manifest 和 probe 等 JSON payload。该做法直接复用 JSON Schema 契约，正确性边界清晰，但 release binary 会携带完整 JSON Schema Draft 2020-12 引擎及其 URI、IDNA、regex、numeric 和引用解析依赖。
 
-当前讨论只面向未来体积优化。现行规范仍要求当前 schema、字段和语义校验通过；本 change 不授权现在删除运行时校验，也不改变 adapter、CLI 或 MCP 的对外行为。
 
 ## Goals / Non-Goals
 
@@ -19,7 +18,6 @@ Docnav 当前通过 `jsonschema` 在运行时校验 protocol request/response、
 
 - 不在当前 change 中移除 `jsonschema` 依赖。
 - 不改变 JSON Schema 文件的方言、字段集合或公共契约。
-- 不把 schema 校验下放给 `docnav-mcp`，MCP bridge 仍保持格式无关和协议转发边界。
 - 不接受“少校验换体积”的实现；未来迁移必须提供等价覆盖证明。
 
 ## Decisions

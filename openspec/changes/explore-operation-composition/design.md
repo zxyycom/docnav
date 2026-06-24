@@ -8,7 +8,6 @@ operation composition 是一个未来方向：用 core/SDK 编排现有 document
 
 ## Context
 
-Docnav 已经有稳定的单步 operations：`outline`、`read`、`find` 和 `info`。这些 operation 的所有权边界清楚：core 负责路由、配置、输出和错误映射；adapter 负责格式解析、ref 和分页；MCP 负责把 tool call 映射到 core CLI。
 
 很多体验优化并不要求 adapter 增加能力，而是把已有 operation 按固定模式串起来。例如先 outline 再 read、先 find 再 read、对一组 ref 重复 read。这类逻辑更像接入层编排或 SDK helper，而不是格式语义。
 
@@ -23,7 +22,6 @@ Goals:
 
 Non-Goals:
 
-- 不确定命令名、flag、MCP tool、schema 字段或 output shape。
 - 不新增 adapter invoke operation。
 - 不修改现有 `outline/read/find/info` 行为。
 - 不把候选体验排序成 roadmap 优先级。
@@ -36,7 +34,6 @@ Non-Goals:
 
 2. 优先复用现有 public surface。
 
-   后续实现时先评估是否能通过现有命令的多输入、option、默认模式或 SDK helper 表达。只有当复用会让语义含混、输出不可解释或兼容性变差时，才考虑新增专用命令或 MCP tool。
 
 3. 保持 raw protocol 简洁。
 
@@ -48,7 +45,6 @@ Non-Goals:
 
 5. 后续实现 change 必须重新定稿 public contract。
 
-   进入实现前需要重新回答：复用哪个现有 command、是否需要新 option、是否支持 protocol-json、MCP 如何映射、readable JSON 如何表达 continuation、partial success 如何处理。后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 声明 content pointer 和 renderer config，确保 composition 结果的 readable-view/readable-json/protocol-json 输出与单次 operation 一致。
 
 ## Candidate Patterns
 
@@ -72,7 +68,6 @@ Non-Goals:
 1. 是否主要由现有 `outline`、`read`、`find` 或 `info` 编排完成。
 2. 是否能默认放在 core/SDK 层，而不要求格式 adapter 增加新语义。
 3. 是否减少调用方的重复往返、状态记忆或参数拼接。
-4. 是否保持 adapter-owned ref 不被 core、MCP 或调用方解析。
 5. 是否能用 readable output 清楚表达结果、未完成项和 continuation。
 6. 是否能复用现有 command、option、输入归一化或 SDK helper；只有复用会造成歧义时才考虑新入口。
 7. 是否避免污染 raw adapter protocol；需要 protocol 扩展时必须先证明它是长期跨 adapter 语义。
@@ -88,7 +83,6 @@ Non-Goals:
 ## Follow-Up Plan
 
 1. 收集真实使用流程中重复出现的 operation 序列。
-2. 为每个候选流程记录：触发场景、可复用现有 command 的方式、输出和 continuation 风险、是否需要 MCP 暴露。
 3. 选择一个足够小的候选做后续 implementation change。后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 声明 content pointer、renderer config 和三种 document output mode（readable-view、readable-json、protocol-json）。
 4. 在后续 change 中再更新主规范、schema、examples 和测试。
 
@@ -97,4 +91,3 @@ Non-Goals:
 - 哪些组合属于“使用体验 convenience”，哪些应成为长期 public contract？
 - SDK helper 应支持哪些组合，哪些只属于 core CLI？
 - composition 的 continuation 是统一模型，还是每个候选单独设计？
-- MCP 应优先扩展现有 tools，还是在少数场景提供专用 tools？

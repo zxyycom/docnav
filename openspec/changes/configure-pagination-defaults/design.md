@@ -22,7 +22,6 @@
 - 不把 adapter native options 提升为 core pagination 配置；native option 仍由 adapter/SDK 的 options 注册与适用性处理拥有。
 - 不改变 adapter `invoke` stdin JSON strict validation；invoke 不读取配置、不补默认值。
 - 不改变 `ReadResult`、`OutlineResult`、`FindResult` 的 `page` 字段语义。
-- 不把分页逻辑移动到 readable renderer 或 MCP bridge。
 
 ## Decisions
 

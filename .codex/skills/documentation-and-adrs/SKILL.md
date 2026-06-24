@@ -17,7 +17,6 @@ description: >-
 1. 定位文档职责：
    - 长期架构方向、跨多个 change 的选择、回滚或迁移成本高、未来会反复争论的 tradeoff：写 ADR。
    - 单个 change 的方案依据、task breakdown、spec delta 或 acceptance：留在 OpenSpec design、tasks 或相关主规范。
-   - public API、protocol、schema、examples、CLI output、adapter behavior 或 MCP mapping：同步主规范和验证材料。
    - 使用、运行、贡献或发布信息：更新 README、CHANGELOG 或相邻说明。
    - 只解释局部非显而易见约束：写 inline documentation。
 

@@ -3,7 +3,7 @@ schema: spec-driven
 context: |
   Docnav is a Rust project for navigating large structured documents through
   outline -> ref -> read.
-  It uses a stdio MCP gateway and independently installable format adapters.
+  It uses independently installable format adapters.
   Shared protocol schemas must remain stable and format-specific parsing must
   remain inside the corresponding adapter.
 
@@ -13,6 +13,5 @@ rules:
     - Include explicit non-goals when the change could expand across adapters.
   design:
     - Describe protocol compatibility and process-boundary effects.
-    - Keep docnav-mcp format-agnostic.
   tasks:
     - Include automated verification for changed protocol and invocation behavior.

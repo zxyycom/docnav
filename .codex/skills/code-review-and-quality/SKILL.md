@@ -4,7 +4,7 @@ description: >-
   Findings-first code review for PRs、local diffs、agent handoffs
   and approval reviews. Use to verify touched surfaces have enough verification evidence
   for correctness、observable behavior、security/performance risks、maintainability, and Docnav contract issues
-  involving CLI、adapter、ref、pagination、raw/readable output、schema、MCP 或 OpenSpec artifacts.
+  involving CLI、adapter、ref、pagination、raw/readable output、schema 或 OpenSpec artifacts.
 ---
 
 # 代码审查与质量（Code Review and Quality）
@@ -20,7 +20,7 @@ description: >-
 默认只读本文件。按风险加载一层 reference：
 
 1. 需要正式 worksheet、second-pass prompt 或可复用审查清单：读 [review-checklist.md](references/review-checklist.md)。
-2. Docnav contract、CLI/adapter/ref/pagination/raw-readable/schema/MCP/OpenSpec 相关 diff：读 [docnav-review-cues.md](references/docnav-review-cues.md)。
+2. Docnav contract、CLI/adapter/ref/pagination/raw-readable/schema/OpenSpec 相关 diff：读 [docnav-review-cues.md](references/docnav-review-cues.md)。
 3. Security-sensitive changes：读 [security-checklist.md](references/security-checklist.md)。
 4. Hot path、large input、unbounded work 或已有 performance budget/report 指向的风险：读 [performance-checklist.md](references/performance-checklist.md)。
 

@@ -4,7 +4,6 @@ export const TASK_NAMES = {
   cases: "cases",
   json: "json",
   schema: "schema",
-  mcp: "mcp",
   examples: "examples",
   links: "links"
 };
@@ -110,11 +109,7 @@ export const READABLE_EXAMPLE_FILE = {
   result: (operation: string) => `docs/examples/json/readable-${operation}.json`
 };
 
-export const MCP_EXAMPLE_FILE = {
-  response: (operation: string) => `docs/examples/json/mcp-${operation}-response.json`
-};
-
-// 协议与 readable/MCP 示例中反复出现的字段名，集中后避免局部拼写漂移。
+// 协议与 readable 示例中反复出现的字段名，集中后避免局部拼写漂移。
 export const FIELDS = {
   adapter: "adapter",
   arguments: "arguments",
@@ -140,16 +135,8 @@ export const FIELDS = {
   protocolVersion: "protocol_version",
   ref: "ref",
   requestId: "request_id",
-  result: "result",
-  structuredContent: "structuredContent"
+  result: "result"
 };
-
-export const MCP_STRUCTURED_CONTENT_FORBIDDEN_FIELDS = [
-  FIELDS.protocolVersion,
-  FIELDS.requestId,
-  FIELDS.operation,
-  FIELDS.ok
-];
 
 // 稳定错误语义由 docs/protocol.md 拥有；这里复用 error-rules.json 生成的 required details 常量。
 export { REQUIRED_ERROR_DETAILS_BY_CODE } from "./generated/error/rules.ts";

@@ -3,7 +3,8 @@
 ## ADDED Requirements
 
 ### Requirement: OutlineResult 支持可选 adapter-owned metadata
-`docnav-protocol` MUST 允许 outline success result 携带可选 adapter-owned metadata。Metadata MUST 是可省略字段；存在时 MUST 保持格式专属语义由 adapter 拥有，共享协议、core CLI 和 MCP 不解析 metadata 内容。Markdown frontmatter inline metadata 的可观察字段名 MUST 为 `frontmatter`。
+
+`docnav-protocol` MUST allow outline success result to carry optional adapter-owned metadata. Metadata MUST be optional; when present, format-specific semantics remain owned by the adapter. Markdown frontmatter inline metadata MUST use the observable field name `frontmatter`.
 
 #### Scenario: OutlineResult 携带 Markdown frontmatter inline metadata
 - **WHEN** Markdown adapter outline 使用 `frontmatter_outline_mode: "inline"` 返回 YAML frontmatter metadata

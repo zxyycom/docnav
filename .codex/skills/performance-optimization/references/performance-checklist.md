@@ -52,7 +52,6 @@ Measure-Command { <core-cli> outline <large-fixture.md> | Out-Null }
 | Ref lookup | `read --ref` 随 heading 数增长变慢 | ref parsing、heading lookup、section range lookup、duplicate heading handling |
 | Find | broad query 或 repeated search 慢 | search scope、normalization、allocation churn、result limit |
 | Pagination | later pages 昂贵或不稳定 | page slicing、result counting、continuation state、重复 rendering |
-| MCP bridge | MCP tool call 慢于等价 CLI | Node bridge、process spawn、stdio JSON、repeated adapter calls |
 | Memory | working set 随文档或重复调用增长 | unbounded buffers、cloned text、cached parse tree、limit 前收集全部结果 |
 
 如果 adapter 快而 `docnav` 慢，先看 core routing 和 process boundary。如果两者都慢，优先看 adapter parsing、lookup 或 output。
@@ -123,7 +122,6 @@ Budget 必须写明 command、fixture、output mode、page/limit、build profile
 ## Fix Checklist
 
 - [ ] 改动只命中已测出的 bottleneck。
-- [ ] Adapter-owned `ref` 在 core CLI、MCP 和其它接入层保持 opaque。
 - [ ] Output schema、ordering、pagination、continuation 和 error behavior 保持稳定。
 - [ ] 协议允许时，先应用 limit，再做昂贵 formatting。
 - [ ] Result payload 使用可复用 slice、borrowed data 或 bounded copy；只有测量证明必要时才复制 full document text。
@@ -134,7 +132,6 @@ Budget 必须写明 command、fixture、output mode、page/limit、build profile
 
 | 场景 | 当前做法 |
 |---|---|
-| 慢点归因不清 | 比较 adapter CLI、core CLI 和 MCP path。 |
 | Output 或 pagination 可能主导成本 | 测量 pagination、limit 和 output construction。 |
 | Cache 看起来可用 | 先确认 lifecycle、invalidation、memory bound 和 workload 匹配。 |
 | Ref lookup 成本高 | `ref` 仍是 adapter-owned protocol value；优化 lookup 而保持 opacity 和兼容性。 |
@@ -145,7 +142,6 @@ Budget 必须写明 command、fixture、output mode、page/limit、build profile
 - before/after 使用同一 command、fixture、output mode、build profile 和机器条件。
 - Large-document navigation 用真实规模和结构证明。
 - Output shape、ordering、`ref`、pagination 和 error mapping 保持稳定。
-- Core CLI、MCP 和其它接入层继续把 adapter-owned `ref` 当作 opaque value。
 - Result collection 在协议允许的位置 bound、stream 或 limit。
 - Cache 有明确 lifecycle、invalidation、memory bound 和 cross-call 行为。
 
@@ -160,7 +156,6 @@ Budget 必须写明 command、fixture、output mode、page/limit、build profile
 <core-smoke-script>
 ```
 
-跨 Rust crates、schema/examples、adapter output、CLI behavior、MCP mapping 或 docs 边界时，优先运行 repository workspace verifier：
 
 ```powershell
 <repository-workspace-verifier>

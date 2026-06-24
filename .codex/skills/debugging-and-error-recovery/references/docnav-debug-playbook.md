@@ -23,12 +23,10 @@ Markdown adapter 行为直接重放 operation：
 <stdin-json> | <adapter-cli> invoke
 ```
 
-MCP 失败时保存 tool args，把 MCP result 与等价 `docnav` 或 adapter CLI replay 对比，再改 bridge code。
 
 ## Adjacent-Layer Comparisons
 
 - Direct adapter 通过、core CLI 失败：检查 routing、config、adapter discovery、process invocation、path resolution、output mapping。
-- Core CLI 通过、MCP 失败：检查 stdio framing、JSON serialization、tool names、argument names、result wrapping、error mapping。
 - `text` 不同但 JSON modes 一致：按 display formatting 处理。
 - `readable-json` 与 `protocol-json` 不同：检查 envelope/wrapper、schema fields、warnings、errors、page metadata。
 - `outline` 正确但 `read` 错误：检查 ref generation、ref parsing、region lookup、slicing、pagination。
@@ -58,7 +56,6 @@ MCP 失败时保存 tool args，把 MCP result 与等价 `docnav` 或 adapter CL
 <adapter-or-core-cli> read path/to/file.md --ref "<ref-from-outline>" --output readable-view
 ```
 
-当 raw protocol 字段变化时，把 schema、examples、generated fixtures 和 MCP mapping 纳入同一验证计划。
 
 ## Workspace Verification Triggers
 
@@ -68,4 +65,3 @@ MCP 失败时保存 tool args，把 MCP result 与等价 `docnav` 或 adapter CL
 - CLI behavior 或 adapter contract。
 - schemas、examples、generated fixtures。
 - docs 中公开的 protocol、output mode 或 command behavior。
-- MCP tool mapping、stdio/JSON behavior 或 smoke coverage。

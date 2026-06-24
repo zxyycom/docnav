@@ -48,7 +48,6 @@ Validation:
 
 ## Assumption Ledger
 
-Use the ledger when a task spans protocol, schema, ref, adapter contract, CLI/MCP output, or handoff boundaries.
 
 ```text
 ASSUMPTION LEDGER

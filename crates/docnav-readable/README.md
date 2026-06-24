@@ -32,7 +32,7 @@ When the renderer config declares no block fields, output is only the pretty JSO
 
 ### Cross-implementation goal: semantic consistency
 
-Conformance vectors define a **semantic contract** for the readable-view format. Any implementation (Rust, JavaScript MCP bridge, future ports) that consumes the same vector files and passes the same assertions produces **semantically equivalent** output.
+Conformance vectors define a **semantic contract** for the readable-view format. Any implementation (Rust or future ports) that consumes the same vector files and passes the same assertions produces **semantically equivalent** output.
 
 Rust unit tests in `src/renderer.rs` continue to cover fine-grained internal edge cases. The conformance set stays compact so non-Rust implementations can adopt it without inheriting duplicate CLI-display coverage.
 
@@ -100,7 +100,7 @@ The following are **NOT** part of the stable semantic contract and MUST NOT be a
 
 ## Architecture boundary
 
-This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, warning placement, adapter routing, document parsing, or CLI/MCP wiring. Those responsibilities stay with their existing crates.
+This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, warning placement, adapter routing, document parsing, or CLI wiring. Those responsibilities stay with their existing crates.
 
 ## Testing
 

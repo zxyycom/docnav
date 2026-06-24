@@ -6,14 +6,12 @@
 Docnav 共享契约 MUST 保留普通文档的 `outline -> ref -> read` 主流程，同时 MUST 允许显式配置触发的非结构化文档在 `outline` 时直接返回全文内容。该非结构化结果 MUST 是可观察的 outline success shape，并 MUST 清楚标记其来源为配置触发的自动全文读取。
 
 #### Scenario: Agent 第一次 outline 即获得非结构化全文
-- **WHEN** agent 调用 `docnav outline` 或 MCP `document_outline`
 - **AND** 目标 path 命中非结构化文档配置
 - **THEN** 调用结果直接包含全文 content
 - **THEN** 调用结果不要求 agent 再提交 ref 给 read
 - **THEN** 调用结果不包含 page 或 continuation
 
 #### Scenario: 普通文档仍使用 ref 流程
-- **WHEN** agent 调用 `docnav outline` 或 MCP `document_outline`
 - **AND** 目标 path 未命中非结构化文档配置
 - **THEN** 调用结果仍返回 outline entries
 - **THEN** agent 继续将 entry ref 原样传入 read

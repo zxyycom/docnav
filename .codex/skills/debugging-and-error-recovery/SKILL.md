@@ -75,7 +75,6 @@ description: >-
 
 更新 expectations 前，先证明 implementation、generator、schema contract 和 source document 已对齐。
 
-提出验证时写成当前事实：`<owner boundary> 证明 <修正后的 observable behavior>`。测试名或验证标题使用修正后的当前行为，例如 `MCP bridge readable-error mapping` 或 `Markdown empty-document outline`。一次失败只作为 evidence；可沉淀的内容是稳定 contract、自定义不变量、等价类或当前 owner 明确承诺的可观察语义。
 
 ## Verification
 

@@ -90,7 +90,6 @@ await expect(asyncFn()).rejects.toThrow(Error);
 - 每个测试聚焦一个 behavior concept。多个 assertions 可以存在，只要它们证明的是同一概念。
 - 新增 automated test 时，先写一句测试意图：`<owner surface> proves <current contract / invariant / observable path>`；写不清时用现有验证、手动复现或不新增 automated test。
 - 让 automated test 证明当前稳定 contract、自定义不变量、等价类或当前 owner 明确承诺的可观察语义。
-- 用 expected current behavior 和 condition 命名测试；小标题使用 owner surface 和当前行为，例如 `MCP bridge readable-error detail preservation`。
 - 保持测试 deterministic：隔离状态、控制时间、避免顺序依赖，并始终 `await` async work。
 
 ## Mock 模式（Mocking Patterns）

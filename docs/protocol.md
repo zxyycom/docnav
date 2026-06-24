@@ -1,6 +1,6 @@
 # 原始协议
 
-本文是 adapter invoke 原始协议的主规范。该协议服务于 `docnav`、脚本、调试和兼容性校验，是 Docnav v0 的机器稳定接口层；它不是 CLI 或 MCP 的阅读输出 schema。
+本文是 adapter invoke 原始协议的主规范。该协议服务于 `docnav`、脚本、调试和兼容性校验，是 Docnav v0 的机器稳定接口层；它不是 CLI 阅读输出 schema。
 
 ## 协议字段与生命周期
 
@@ -75,7 +75,7 @@ error.guidance?
 
 失败响应的 `operation` 在请求 operation 可确定时必须与请求一致；请求无法解析到 operation 时使用 `null`。
 
-envelope 仅存在于原始协议层。CLI `readable-view` header、`readable-json` 和 MCP structuredContent 不得包含 `protocol_version`、`request_id`、`operation` 或 `ok`，也不替代完整协议接口。
+envelope 仅存在于原始协议层。CLI `readable-view` header 和 `readable-json` 不得包含 `protocol_version`、`request_id`、`operation` 或 `ok`，也不替代完整协议接口。
 
 ## 紧凑语义结果
 

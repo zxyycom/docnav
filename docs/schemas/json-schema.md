@@ -15,20 +15,20 @@
 
 | Schema | 用途 |
 | --- | --- |
-| [readable-outline.schema.json](readable-outline.schema.json) | CLI `readable-json`、MCP outline structuredContent |
-| [readable-read.schema.json](readable-read.schema.json) | CLI `readable-json`、MCP read structuredContent |
-| [readable-find.schema.json](readable-find.schema.json) | CLI `readable-json`、MCP find structuredContent |
-| [readable-info.schema.json](readable-info.schema.json) | CLI `readable-json`、MCP info structuredContent |
-| [readable-error.schema.json](readable-error.schema.json) | CLI/MCP 精简错误 |
-| [readable-common.schema.json](readable-common.schema.json) | readable/MCP schema 共享 `$defs` |
+| [readable-outline.schema.json](readable-outline.schema.json) | CLI `readable-json` outline |
+| [readable-read.schema.json](readable-read.schema.json) | CLI `readable-json` read |
+| [readable-find.schema.json](readable-find.schema.json) | CLI `readable-json` find |
+| [readable-info.schema.json](readable-info.schema.json) | CLI `readable-json` info |
+| [readable-error.schema.json](readable-error.schema.json) | CLI 精简错误 |
+| [readable-common.schema.json](readable-common.schema.json) | readable schema 共享 `$defs` |
 
-`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 只校验 CLI `readable-json` 和 MCP structuredContent。`readable-view` 不使用 readable JSON schema 校验；framing、header block refs 和 payload 还原的验收边界见 [输出模式](../output.md) 和 readable-view conformance vectors。protocol schema 保持独立。
+`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 只校验 CLI `readable-json`。`readable-view` 不使用 readable JSON schema 校验；framing、header block refs 和 payload 还原的验收边界见 [输出模式](../output.md) 和 readable-view conformance vectors。protocol schema 保持独立。
 
-原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例、MCP tool 声明和实现自测，不表示 readable 输出是长期机器解析协议。
+原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例和实现自测，不表示 readable 输出是长期机器解析协议。
 
-operation readable schema 和 MCP structuredContent outputSchema 包含可省略的顶层 `warnings` 数组。warning 的来源、承载位置和稳定字段由 [输出模式](../output.md) 与 [MCP Handoff](../mcp.md) 定义；本文件只维护 schema `$defs` 与示例校验入口。
+operation readable schema 包含可省略的顶层 `warnings` 数组。warning 的来源、承载位置和稳定字段由 [输出模式](../output.md) 定义；本文件只维护 schema `$defs` 与示例校验入口。
 
-`readable-common.schema.json` 提供 readable/MCP 复用的 `capability`、`entry`、`page`、`warning` 和 `warnings` 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义；发布 MCP tool `outputSchema` 时仍必须内联或随工具声明打包，不能要求 client 远程解析 schema URL。
+`readable-common.schema.json` 提供 readable 复用的 `capability`、`entry`、`page`、`warning` 和 `warnings` 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义。
 
 ## 配置参考层
 
@@ -44,4 +44,4 @@ operation readable schema 和 MCP structuredContent outputSchema 包含可省略
 
 `docnav-json-io` 拥有低层 serialization、newline writing 和 write failure plumbing。protocol request/response、manifest、probe 和 readable schema 的字段 shape 仍由本目录维护；语义校验、错误归属和通道承载由对应 owner 文档与实现测试验收。
 
-`$id` 中的 URL 是 schema 标识，不要求运行时联网访问。MCP tool 声明中的 `outputSchema` 必须内联或随工具声明打包，不依赖远程 schema URL，避免 client 无法解析外部 schema。
+`$id` 中的 URL 是 schema 标识，不要求运行时联网访问。

@@ -15,11 +15,7 @@
 | `interview-me` | 需求缺少 who、why、success、constraint，或用户要求 interview/grill/stress-test | 之后接 `context-engineering` 或 `incremental-implementation` |
 | `context-engineering` | agent drift、docs 入口不清、任务切换后上下文风险高 | 之后接具体实现、验证或文档 skill |
 | `incremental-implementation` | multi-file change、vertical slice、分阶段验证 | 常接 `api-and-interface-design`；新增或改变 behavior 时接验证 skill |
-| `api-and-interface-design` | raw protocol、readable CLI output、adapter contract、ref、pagination、schema、MCP tool mapping | 常接 `doubt-driven-development`，并按 changed surface 选择验证证据 |
 | `source-driven-development` | framework/library/API/correctness-sensitive implementation 需要官方资料 | 常接实现或验证 skill |
-| `doubt-driven-development` | protocol、schema、ref、adapter contract、CLI/MCP output 等高风险决策需要 bounded challenge | 常接 API 设计和 changed-surface 验证 |
-| `test-driven-development` | 新增或改变 behavior、schema/example、adapter protocol、CLI raw/readable、MCP mapping 需要可执行证明 | 常接 debug、implementation、review |
-| `debugging-and-error-recovery` | tests fail、build break、可复现异常行为、adapter/CLI/MCP failure 需要 root cause 修复 | 需要新的可执行证明时接 TDD |
 | `code-review-and-quality` | PR/local diff/handoff review，关注 correctness、risk 和验证充分性 | 可接 `code-simplification` 或 security/performance |
 | `code-simplification` | 在不改行为的前提下降低复杂度、重复或不必要抽象 | 常在 review 后或小重构中使用 |
 | `security-and-hardening` | untrusted documents、refs、paths、adapter processes、stdio/JSON、secrets、dependencies | 常接 API 设计和 changed-surface 验证 |

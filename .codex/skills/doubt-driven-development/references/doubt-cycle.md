@@ -37,7 +37,6 @@ If the claim cannot be written in one or two sentences, narrow the decision befo
 Use observable statements:
 
 - Stable inputs and outputs that must not change.
-- CLI, MCP, schema, adapter, ref, or downstream consumer compatibility promises.
 - Error behavior, edge cases, malformed input, and hostile paths.
 - Security, migration, downgrade, or rollback constraints.
 - Explicit out-of-scope behavior.
@@ -50,10 +49,7 @@ Apply only the questions relevant to the contract surface:
 
 - Which existing Docnav contract could this violate?
 - Does the artifact change raw protocol shape, readable output, schema meaning, or example compatibility?
-- Could old refs, configs, examples, saved outputs, or MCP callers fail?
-- Did adapter-owned responsibility leak into `docnav` core or `docnav-mcp`?
 - Are continuation, pagination, ordering, limits, or page boundaries ambiguous?
-- Does error mapping remain stable across CLI, adapter direct CLI, and MCP?
 - Can malformed input, hostile paths, untrusted documents, or external content cause unsafe behavior?
 - Is the claim only partially covered by compiler feedback, tests, docs, or examples?
 - If the assumption is wrong, what would downstream users observe?

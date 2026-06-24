@@ -1,7 +1,6 @@
 import { assertDeepEqual } from "../../assertions.ts";
 import {
   FIELDS,
-  MCP_EXAMPLE_FILE,
   OPERATIONS,
   READABLE_EXAMPLE_FILE,
 } from "../../config.ts";
@@ -25,14 +24,6 @@ export function validateProtocolReadableMappings() {
       readable,
       toReadablePayload(operation, response[FIELDS.result]),
       `${operation} readable JSON must preserve protocol result semantics`,
-    );
-
-    const mcp = jsonObject(readJson(MCP_EXAMPLE_FILE.response(operation)), `${operation} MCP response`);
-    const mcpResult = jsonObject(mcp[FIELDS.result], `${operation} MCP result`);
-    assertDeepEqual(
-      mcpResult[FIELDS.structuredContent],
-      readable,
-      `${operation} MCP structuredContent must match readable JSON example`,
     );
   }
 

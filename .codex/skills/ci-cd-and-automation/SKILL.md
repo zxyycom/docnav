@@ -14,7 +14,7 @@ description: >-
 
 ## 读取策略
 
-默认只读本文件。Docnav CLI、Rust adapter、Node MCP bridge、schema/example/docs、OpenSpec 或 workspace verifier 相关细节，读 [docnav-contract-validation-automation.md](references/docnav-contract-validation-automation.md)。
+默认只读本文件。Docnav CLI、Rust adapter、schema/example/docs、OpenSpec 或 workspace verifier 相关细节，读 [docnav-contract-validation-automation.md](references/docnav-contract-validation-automation.md)。
 
 Web deployment、browser E2E、database migration、CDN rollout 或 frontend release policy 只有在当前 work item 明确触及这些 surfaces 时才纳入。
 

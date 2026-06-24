@@ -6,6 +6,6 @@
     "reason": "unrecognized ref grammar"
   },
   "guidance": [
-    "重新调用 document_outline 获取有效 ref。"
+    "重新调用 docnav outline 获取有效 ref。"
   ]
 }

@@ -16,7 +16,6 @@
 - 显式 argv `--limit-chars` 映射为 `defaults.pagination.limit_chars` 的显式来源；它与 `--pagination` 共同进入 pagination 参数归一流程。
 - Core `docnav` 和 adapter SDK direct CLI 必须对同名 pagination canonical key 使用一致的 config path、flag semantics、source priority、validation semantics 和 disabled finalization 规则。
 - Adapter `invoke` stdin JSON 仍保持严格协议输入，不读取 direct CLI 配置，也不新增 protocol 字段。
-- 非目标：本 change 不改变 ref 语义、page 响应字段、readable/protocol 输出 shape、adapter routing、MCP bridge 映射或 Markdown 私有 ref 规则。
 
 ## Capabilities
 

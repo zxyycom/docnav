@@ -10,7 +10,6 @@ Run a drift recovery pass when one of these signals appears:
 - Loaded context includes broad docs, generated files, schemas, examples, or OpenSpec changes that do not serve the current task.
 - A claim conflicts with file paths, refs, CodeGraph results, command output, or tests.
 - The agent is about to edit outside the stated ownership scope.
-- MCP bridge work starts duplicating adapter parsing, routing, or ref logic.
 - Markdown or large docs were read without the repository-declared bounded navigation path when one is available.
 
 ## Evidence Gate
@@ -28,7 +27,6 @@ Treat each important assumption as valid only when it has one of these sources:
 ## Recovery Flow
 
 1. Restate the conflict using paths, refs, symbols, commands, or failing lines.
-2. Identify the owning contract layer: CLI/core, adapter, MCP bridge, protocol, schema, examples, docs, or OpenSpec.
 3. Reload only the authoritative source for that layer.
 4. Update the assumption ledger with `known`, `inferred`, and `open` entries.
 5. Resume with the smallest context packet that explains the current decision.
@@ -45,7 +43,6 @@ When creating or reviewing `AGENTS.md`, project skills, or other rules files, ch
 - Markdown read path through the repository-declared navigation command; avoid hardcoding build output paths.
 - OpenSpec reads gated by OpenSpec work, audit, validation, or explicit user request.
 - Schema/example reads gated by contract validation or tests.
-- Docnav architecture boundaries: core, MCP bridge, adapters, shared protocol, adapter-owned refs.
 - Positive checkpoints such as context packet, assumption ledger, evidence gate, and bounded verification.
 - Direct links to references for long templates or checklists.
 
@@ -53,5 +50,4 @@ When creating or reviewing `AGENTS.md`, project skills, or other rules files, ch
 
 - Replace broad "read all docs" instructions with role-based routing through `docs/navigation.md`.
 - Replace repeated "do not drift" reminders with a context packet plus assumption ledger.
-- Replace vague "be careful with protocol" rules with an evidence gate tied to protocol, schema, ref, adapter contract, and CLI/MCP output.
 - Move long examples, review prompts, and failure mode lists from `SKILL.md` into `references/*.md`.

@@ -22,7 +22,7 @@
 2. `WB`: 白盒测试，从 owner 边界、函数、fixture 或 conformance 入口证明内部语义。
 3. `AUX`: 辅助脚本语义 case，证明测试、验证、质量观测、打包或调度链路的当前工具链 contract。
 
-责任域当前使用 `CORE`、`MD`、`PROTO`、`READABLE`、`SDK`、`DIAG`、`CLIARGS`、`JSONIO`、`OUTPUT`、`MCP`、`WORKSPACE`、`SMOKE`、`PARALLEL`、`QUALITY`、`RELEASE`、`CASE`。新增责任域时，先在本文登记责任域，再同步账本条目和源码 `@case` 标记。
+责任域当前使用 `CORE`、`MD`、`PROTO`、`READABLE`、`SDK`、`DIAG`、`CLIARGS`、`JSONIO`、`OUTPUT`、`WORKSPACE`、`SMOKE`、`PARALLEL`、`QUALITY`、`RELEASE`、`CASE`。新增责任域时，先在本文登记责任域，再同步账本条目和源码 `@case` 标记。
 
 ## 测试变更流程
 

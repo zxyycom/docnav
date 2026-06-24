@@ -172,14 +172,6 @@ Proves:
 - `adapter list/install/update/remove` 覆盖正式流程、manifest 校验、fingerprint 边界和错误映射。
 - 实现触发条件：adapter management 命令具备可执行测试入口后，将本 case 改为 `implemented` 并补 `Code:`/`@case`。
 
-### BB-MCP-BRIDGE-001 MCP bridge 映射保持 thin layer
-Status: planned
-
-Proves:
-- MCP tool call 映射到 `docnav` CLI，不复制 adapter 解析、路由或 ref 逻辑。
-- TextContent、structuredContent 和 readable schema 校验保持分层。
-- 实现触发条件：`docnav-mcp` bridge 具备可执行 tool-call 测试入口后，将本 case 改为 `implemented` 并补 `Code:`/`@case`。
-
 ### BB-RELEASE-PACKAGE-001 发布包二进制 smoke
 Status: planned
 

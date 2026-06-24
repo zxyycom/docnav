@@ -1,6 +1,6 @@
 # Web 接口模式（Web Interface Patterns）
 
-只有当用户明确要求通用 REST、GraphQL 或 TypeScript interface design 时，才读取本 reference。处理 Docnav protocol、adapter、CLI、schema 或 MCP contract 时，使用 `../SKILL.md` 并按需读取 `docnav-contract-scope.md`。
+只有当用户明确要求通用 REST、GraphQL 或 TypeScript interface design 时，才读取本 reference。处理 Docnav protocol、adapter、CLI、schema contract 时，使用 `../SKILL.md` 并按需读取 `docnav-contract-scope.md`。
 
 ## REST 模式（Patterns）
 

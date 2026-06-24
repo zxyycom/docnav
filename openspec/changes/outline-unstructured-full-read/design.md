@@ -11,7 +11,6 @@
 **Goals:**
 
 - 让 `docnav outline <path>` 在非结构化配置命中时一次性返回完整原文内容。
-- 在 readable/protocol/MCP 输出中明确标记结果为非结构化自动全文读取。
 - 保证该路径不返回 ref、不返回 page、不提供 continuation。
 - 保持未命中配置的普通文档继续使用既有结构化 `outline -> ref -> read` 流程。
 - 让 Markdown adapter direct CLI 与 core CLI 对同一生效配置语义保持一致。
@@ -47,14 +46,11 @@
 
    普通 outline 仍是无 block header；非结构化 outline 使用 content block，避免把完整原文塞进 JSON header。renderer config 仍是仓库内代码契约，不由用户配置动态控制。
 
-5. **MCP 保持 thin mapping。**
 
-   `docnav-mcp` 不重新判断 path 是否非结构化，也不读取文件；它只把 `document_outline` 映射到 `docnav outline`，并把 readable result 中的 structured/unstructured branch 转为 TextContent 与 structuredContent。
 
 ## Risks / Trade-offs
 
 - [Risk] `outline` 不再总是 entries/page，现有消费者若假设固定 shape 会失败。  
-  Mitigation: 该结果只在显式配置命中时出现；schema、examples、MCP outputSchema 和 docs 必须显示 union discriminator。
 
 - [Risk] 全文读取可能输出很大内容。  
   Mitigation: 这是配置显式选择的行为；实现和 docs 必须说明该路径不使用 `limit_chars` 分页，配置应只用于用户确认适合全文阅读的文档。
@@ -70,7 +66,6 @@
 1. 先更新主规范、schema、examples 和 OpenSpec delta 中的 union shape。
 2. 再实现 shared protocol/readable result 类型和 readable-view config。
 3. 接着在 core outline 入口和 Markdown direct CLI 接入生效非结构化策略。
-4. 最后更新 MCP outputSchema、CLI smoke、schema/example 验证和 workspace verifier。
 
 未配置非结构化规则的项目无需迁移。
 
