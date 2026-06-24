@@ -1,6 +1,6 @@
 # 输出模式
 
-本文是 `docnav` 文档操作输出模式、readable rendering、warning 承载、阅读文案配置和输出通道的主规范。CLI 命令面和 argv 兼容规则见 [CLI](cli.md)；原始协议 envelope 见 [原始协议](protocol.md)；MCP tool handoff 见 [MCP Handoff](mcp.md)。
+本文是 `docnav` 文档操作输出模式、readable rendering、warning 承载、阅读文案配置和输出通道的主规范。CLI 命令面见 [CLI](cli.md)；直接 CLI argv 映射和标准参数机制见 [标准参数](standard-parameters.md)；原始协议 envelope 见 [原始协议](protocol.md)；MCP tool handoff 见 [MCP Handoff](mcp.md)。
 
 ## 输出层边界
 
@@ -25,7 +25,7 @@ adapter outline docs/guide.md --output protocol-json
 
 文档操作输出完整原始协议 envelope。`manifest` 和 `probe` 输出其专属协议 schema。
 
-`docnav --output protocol-json` 由核心 CLI 生成非空 request id，按 protocol schema 和字段 shape 解析最终有限参数，再调用 adapter `invoke`。
+`docnav --output protocol-json` 由核心 CLI 生成非空 request id，使用标准参数机制和 operation binding 构造 adapter invoke request；写入 `arguments` 的字段是 adapter `invoke` 的显式输入，再调用 adapter `invoke`。
 
 `protocol-json` stdout 不承载直接 CLI 兼容性 warning 或 adapter 选择候选 warning。若直接 CLI argv 中存在被兼容忽略的 token，或 adapter 选择过程中跳过了不可用、契约不匹配、probe 不支持的候选，warning 写入 stderr，stdout 仍只输出一个符合 protocol response schema 的 JSON envelope。若参数解析失败但 argv 已能确定 `--output protocol-json`，stdout 仍输出 protocol failure envelope，而不是退回文本错误。
 
@@ -94,7 +94,7 @@ Adapter direct CLI document operation 跳过不可用配置源时，阅读输出
 | `path` | 本次尝试读取的解析后路径 |
 | `reason_code` | `missing_override`、`not_file`、`unreadable`、`invalid_json` 或 `non_object` |
 
-该 warning 表示不可用配置源未参与本次合并，operation 继续使用其它来源。触发条件由 [CLI](cli.md#adapter-直接-cli) 拥有：显式覆盖路径缺失、配置路径存在但不是可读取文件、JSON 语法无效或顶层不是 object 产生该 warning；未覆盖的默认配置路径缺失不产生 warning。
+该 warning 表示不可用配置源未参与本次合并，operation 继续使用其它来源。触发条件由 [标准参数](standard-parameters.md#错误出口) 拥有：显式覆盖路径缺失、配置路径存在但不是可读取文件、JSON 语法无效或顶层不是 object 产生该 warning；未覆盖的默认配置路径缺失不产生 warning。
 
 readable read 保留 adapter 返回的 `content_type`。当 [架构](architecture.md#adapter-选择) 定义的 adapter 选择流程产生可恢复候选失败时，阅读输出将其承载为 `adapter_candidate_failure` warning；MCP adapter 参数映射到 core CLI 后按同一规则处理。
 
@@ -113,5 +113,5 @@ readable read 保留 adapter 返回的 `content_type`。当 [架构](architectur
 - 诊断写 stderr。
 - adapter 选择候选 warning 在 `readable-view`、`readable-json` 和 MCP 中跟随最终阅读结果输出；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
 - adapter direct CLI 配置源跳过 warning 在 `readable-view` 和 `readable-json` 中跟随最终阅读结果输出；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
-- 直接 CLI argv 的兼容和 warning 归属见 [直接 CLI 兼容参数规则](cli.md#直接-cli-兼容参数规则)；通道承载必须与该规则一致。
+- 直接 CLI argv 的兼容分类和 warning metadata 见 [标准参数](standard-parameters.md#错误出口)；通道承载必须与该规则一致。
 - 非 document machine output 若复用低层 JSON writer，仍由各自 owner 决定 schema、plain text/stderr 边界和 exit behavior。

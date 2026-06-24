@@ -1,6 +1,6 @@
 # CLI
 
-本文是 `docnav` 命令、配置域、adapter 管理、adapter 直接 CLI、argv 兼容规则、退出码和分页入口的主规范。输出模式的序列化、warning 承载和 readable rendering 见 [输出模式](output.md)；MCP tool handoff 见 [MCP Handoff](mcp.md)。
+本文是 `docnav` 命令、`config` 命令入口、adapter 管理、adapter 直接 CLI、退出码和分页入口的主规范。输出模式的序列化、warning 承载和 readable rendering 见 [输出模式](output.md)；直接 CLI argv 映射、配置映射和标准参数机制见 [标准参数](standard-parameters.md)；MCP tool handoff 见 [MCP Handoff](mcp.md)。
 
 ## `docnav` 核心 CLI
 
@@ -26,41 +26,24 @@ docnav version
 1. 项目根解析。
 2. path 规范化和可访问性检查。
 3. adapter 选择：`--adapter` 或 core 简易推断确定一个预选 adapter；预选 probe 失败后逐个 probe 已注册 adapter，并返回第一个成功项。
-4. 显式参数、项目配置、用户配置和 core 内置默认值合并。
-5. page 与 limit_chars 显式化。
+4. 使用 core 标准参数 registration 解析显式 argv、项目配置、用户配置和 core 内置默认值。
+5. page、limit_chars、output 和其它 core-owned 标准参数解析。
 6. 输出模式和错误映射选择。
 
-Rust CLI argv 结构解析以 `clap` 或 `clap` builder API 为基础。`clap` 承载命令、子命令、固定参数、默认值、枚举值和 help；Docnav 在 command/operation 确定后只对当前 operation 实际使用的参数做类型、范围和枚举校验。成功解析的 document CLI argv 先进入 canonical document operation input 或等价 semantic request，再进入 adapter routing、invoke request 构造和 output dispatch。该内部语义输入不是 protocol envelope、schema 稳定类型或 MCP 传输模型。
+Rust CLI argv 结构解析以 `clap` 或 `clap` builder API 为基础。`clap` 承载命令、子命令、固定参数、默认值、枚举值和 help；core 标准参数 registration 承接 flag 映射、校验、help/default 文案和 operation argument binding。Docnav 在 command/operation 确定后只校验当前 operation 实际使用的参数。成功解析的 document CLI argv 进入标准参数机制，与配置和默认值一起产出 core 参数结果；随后进入 adapter routing、invoke request 构造和 output dispatch。该内部语义输入不是 protocol envelope、schema 稳定类型或 MCP 传输模型。
 
 未知 argv、多余 positional 和当前 operation 不使用的已知参数不阻断有效文档操作；它们只生成 warning metadata。当前 operation 实际使用的参数仍严格校验：缺少必需 path/ref/query、非法 page、非法 limit_chars、非法 output 或非法 native option 必须返回输入错误。当前 operation 不使用的 known 参数即使值不符合其它 operation 的类型、范围或枚举规则，也不得触发 eager typed failure。
 
-## 配置域
+## 配置命令边界
 
-每个可执行 CLI 只读取自己的配置：
+`docnav config get|set|unset|list` 是 core CLI 命令族。配置字段映射、supported key、配置验证、来源合并和 `config list --path <path> [--operation outline|read|find|info]` 的来源展示由 [标准参数](standard-parameters.md#输入与配置映射) 定义。
 
-| CLI | 项目级配置 | 用户级配置 |
-| --- | --- | --- |
-| `docnav` | `.docnav/docnav.*` | 用户配置目录中的 `docnav.*` |
-| `docnav-markdown` | `.docnav/docnav-markdown.json` | 默认用户配置目录中的 `docnav-markdown.json` |
-| 其他 adapter | `.docnav/<adapter-id>.json` | 默认用户配置目录中的 `<adapter-id>.json` |
-| `docnav-mcp` | `.docnav/docnav-mcp.*` | 用户配置目录中的 `docnav-mcp.*` |
+CLI 本节只定义命令入口和退出边界：
 
-本节只回答“哪个可执行 CLI 读取哪个配置域”和跨 CLI 的通用优先级。Adapter direct CLI 的配置路径、字段投影、配置源 warning 和入口边界由 [Adapter 直接 CLI](#adapter-直接-cli) 承接。
-
-所有 CLI 固定优先级：
-
-```text
-显式命令参数
-> 项目级 CLI 配置
-> 用户级 CLI 配置
-> 内置默认值
-```
-
-`docnav` core 配置域拥有 `defaults.adapter`、`defaults.limit_chars` 和 `defaults.output`。adapter 配置域拥有格式解析参数、格式默认值和 adapter 直接 CLI 文案；MCP package 配置键由 MCP bridge owner 定义，core CLI 不拥有这些键。
-
-配置只能控制所属 CLI 明确声明的行为默认值。配置不得改变 protocol-json 字段；readable-json 和 MCP structuredContent 的字段形状用于阅读输出和工具声明校验，不作为完整机器协议。阅读文案、MCP TextContent 包装文本或 tool 暴露策略如需配置，必须由对应 owner 文档定义键名、优先级和验证规则。
-
-`docnav config set` 和 `unset` 默认写项目配置；传入 `--user` 时写用户配置。`config list` 不带 path 时列出 core 配置域的当前生效值；`config list --path <path> [--operation outline|read|find|info]` 解析文档上下文，展示该 path 触发的 adapter、core 参数来源和最终默认参数。
+- `docnav config set` 和 `unset` 默认写项目配置；传入 `--user` 时写用户配置。
+- `config get` 的 key 不存在时返回 `INVALID_REQUEST`。
+- `config list --path <path> [--operation outline|read|find|info]` 可以解析文档上下文；触发的 adapter、标准参数来源和最终值由标准参数机制提供。
+- `config` 命令不产生 document protocol response。
 
 ## Adapter 管理
 
@@ -88,46 +71,17 @@ docnav-markdown probe <path> [--output protocol-json]
 docnav-markdown invoke
 ```
 
-Adapter 直接 CLI 默认值由各 adapter 配置域拥有。`docnav-<adapter-id>` document operation 在构造 request 前，把显式 argv、adapter 配置和内置默认值归一化为标准 direct CLI 参数来源；进入 `invoke` 前，request 必须已经携带最终有限参数。`docnav-markdown` 默认值见 [Markdown Adapter](adapters/markdown.md#默认值)。
+Adapter 直接 CLI 默认值来自对应标准参数 definition 和 registration。`docnav-<adapter-id>` document operation 在构造 request 前，按标准参数机制解析显式 argv、adapter 配置和内置默认值；request construction 只序列化 protocol 需要的显式字段，以及当前入口明确保留的透传字段。Adapter `invoke` 作为独立 protocol 入口重新处理 request。`docnav-markdown` 默认值见 [Markdown Adapter](adapters/markdown.md#默认值)。
 
-配置路径规则：
+Adapter direct CLI 配置路径发现、字段映射、来源合并和配置源失败规则由 [标准参数](standard-parameters.md#输入与配置映射) 定义。被跳过的配置源 warning 使用稳定 warning envelope，承载位置见 [输出模式](output.md#readable-json)。
 
-1. 项目级 JSON 配置默认路径为 adapter direct CLI 配置项目根下的 `.docnav/<adapter-id>.json`。
-2. Adapter direct CLI 配置项目根从启动 cwd 向上查找最近 `.docnav/`；找到时使用其父目录，未找到时使用启动 cwd。Document path 不参与本次项目根发现。
-3. 用户级 JSON 配置默认路径为默认用户配置目录下的 `<adapter-id>.json`；SDK config helper 调用方未提供默认用户配置目录时使用启动 cwd。
-4. `--project-config-path <path>` 和 `--user-config-path <path>` 只覆盖本次读取的对应配置路径；相对覆盖路径按启动 cwd 解析，被覆盖层的默认路径不参与本次合并。
-
-Document operation 的参数来源优先级固定为：
-
-```text
-显式 argv > 项目级 adapter 配置 > 用户级 adapter 配置 > 内置默认值
-```
-
-配置字段投影规则：
-
-1. JSON 配置读取层只投影 `defaults.limit_chars`、`defaults.output` 和完整 `options` object。
-2. `path`、`ref` 和 `query` 只能来自入口 argv；`page` 来自入口 argv 或入口固定默认 `1`，配置不能改变初始页。
-3. `options` object 内的 key/value 作为 native options 参数来源交给后续 adapter direct CLI 参数处理链路。
-4. 配置读取层不判断 native option key 是否已注册、不校验 value 类型或范围，也不判断该 option 是否适用于当前 operation。
-5. 未知顶层字段和未知 `defaults` 字段不产生配置读取 warning。
-
-配置源失败规则：
-
-1. 未覆盖的默认配置路径缺失表示没有该层配置源，不产生 warning。
-2. 显式覆盖路径缺失、配置路径存在但不是可读取文件、JSON 语法无效或顶层不是 object 时，该配置源不参与本次合并，其它来源继续按优先级合并。
-3. 被跳过的配置源必须产生 `adapter_config_source_skipped` warning。该 warning 的 `effect` 为 `operation_continued`，details 固定包含 `source_level`、`path_origin`、`path` 和 `reason_code`；warning envelope 与承载位置见 [输出模式](output.md#readable-json)。
-
-`manifest`、`probe`、`invoke` 和 help 不读取 adapter direct CLI document operation 配置。Document operation help 必须展示 `--project-config-path <path>` 和 `--user-config-path <path>`；help 只输出参数说明，不执行配置读取或文档导航。`invoke` 只消费 stdin 中已显式携带的 protocol request，不补全缺失字段，也不读取 adapter direct CLI 配置。
+`manifest`、`probe` 和 help 不读取 adapter direct CLI document operation 配置。Document operation help 必须展示 `--project-config-path <path>` 和 `--user-config-path <path>`；help 只输出参数说明，不执行配置读取或文档导航。`invoke` 只消费 stdin 中的 protocol request，不执行 adapter direct CLI argv parsing 或 help；request `arguments` 是 `invoke` 的 direct input，后续映射、配置定位和 request construction 交接见 [标准参数](standard-parameters.md#metadata-与交接边界)。
 
 分页操作省略 page 时固定读取第一页，并输出下一页 page 或 null。adapter 文档操作默认使用 `readable-view`；`protocol-json` 使用原始协议 envelope；`manifest` 和 `probe` 使用各自专属 schema。输出共享库的所有权见 [架构](architecture.md#共享库) 和 [输出模式](output.md#输出层边界)；CLI 本节只定义入口、参数和命令族边界。
 
-## 直接 CLI 兼容参数规则
+## 直接 CLI argv 边界
 
-所有 Docnav 直接 CLI argv 使用同一兼容规则：`clap` 或 `clap` builder API 承载固定命令、已知参数、默认值、枚举值和 help；Docnav 或 SDK 在确定 command/operation 后只校验当前 operation 实际使用的参数。未知 flag、多余 positional、当前 operation 不使用的已知 flag 写 warning 后忽略；warning 使用稳定 envelope，并将相关原始 token 放入 `details.tokens`。`--unknown=value` 可作为一个未知 flag token 记录；`--unknown value` 的具体 token 分组和消费顺序不是稳定契约。当前 operation 不使用的已知有值 flag 只按 flag 形状消费并写 warning，不校验该 value 的业务合法性。已知必需参数缺失、当前 operation 实际使用的已知 flag 缺少值或值非法必须失败。
-
-兼容规则只适用于直接 CLI argv，不适用于 adapter `invoke` stdin JSON。`invoke` 请求仍按 protocol request schema 严格校验，未知字段或参数类型错误不得被兼容忽略。
-
-`docnav-cli-args` 拥有 loose token classification。core CLI 和 adapter SDK 仍分别拥有当前 operation 的 typed argument validation、默认值合并、业务 request 构造和最终 exit behavior；warning 的承载位置仍按本节和 [输出模式](output.md) 决定。
+直接 CLI argv 的 loose classification、known value flag metadata、operation membership、未使用条目 warning 和 typed validation 由 [标准参数](standard-parameters.md#输入与配置映射) 定义。CLI 本节只约束入口边界：core CLI 和 adapter SDK 提供 command context 与 registration metadata，消费标准参数结果，并负责各自的 request construction、operation build、warning output dispatch 和最终 exit behavior。
 
 ## 命令族矩阵
 
@@ -147,7 +101,7 @@ Document operation 的参数来源优先级固定为：
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断写 stderr。
 - adapter 选择候选 warning 在 `readable-view`、`readable-json` 和 MCP 中跟随最终阅读结果输出；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
-- 直接 CLI argv 的兼容和 warning 归属见 [直接 CLI 兼容参数规则](#直接-cli-兼容参数规则)；通道承载必须与该规则一致。
+- 直接 CLI argv 的兼容分类和 warning metadata 见 [标准参数](standard-parameters.md#错误出口)；通道承载必须与该规则一致。
 - `config get` 的 key 不存在时必须返回 `INVALID_REQUEST`。
 - 成功退出 `0`；输入错误 `2`；文档/ref/格式错误 `3`；协议或 adapter 进程错误 `4`；内部错误 `1`。
 

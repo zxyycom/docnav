@@ -26,25 +26,25 @@ document.path
 arguments
 ```
 
-`arguments` 必须是调用方完成配置解析后的最终显式参数。invoke 不根据调用来源选择隐式默认值。
+`arguments` 是 adapter `invoke` 的显式 operation 输入。缺失的已注册标准参数可以由 adapter `invoke` 入口的配置或默认值补足。Protocol schema 只校验 envelope、operation、document path、raw `arguments` object 和已出现已注册字段的基础 JSON 类型；未映射 `arguments` 字段按 [标准参数](standard-parameters.md#合并透传与校验) 中的入口策略保留、丢弃或交给 adapter-owned 语义校验。
 
 v0 operation 参数：
 
-| operation | 必需参数 | 可选参数 |
+| operation | 请求必需参数 | 可选参数 |
 | --- | --- | --- |
-| `outline` | `limit_chars`、`page` | `options` |
-| `read` | `ref`、`limit_chars`、`page` | `options` |
-| `find` | `query`、`limit_chars`、`page` | `options` |
+| `outline` | 无 | `limit_chars`、`page`、`options` |
+| `read` | `ref` | `limit_chars`、`page`、`options` |
+| `find` | `query` | `limit_chars`、`page`、`options` |
 | `info` | 无 | `options` |
 
-- `limit_chars` 和 `page` 必须是正整数，第一页固定为 `1`。
+- 最终 `limit_chars` 和 `page` 必须是正整数，第一页固定为 `1`。
 - `limit_chars` 是语义结果的字符预算，用于分页；它按 UTF-8 解码后的 Unicode 字符计数，不按行数，也不按 protocol envelope 字节数。
 - 字符预算只约束阅读负载字段：outline/find 按 `ref + display` 计入预算，read 按 `content` 计入预算；`protocol_version`、`request_id`、`operation`、`ok`、JSON 字段名和固定包装不计入预算。
 - outline/find 遇到下一条 entry 或 match 会超过预算时，应在当前页停止并返回下一页 page。若单条记录本身超过预算，适配器必须保留完整 ref，并压缩或截断 display，使该页仍能前进；若完整 ref 本身已超过 `limit_chars`，该单条记录可超出预算，但 display 仍应压缩到最小可读文本。
 - read 按字符预算切分 content，不能切断 Unicode 字符；若当前位置后仍有内容，返回下一页 page。
-- `options` 是调用方显式传入或由 adapter 直接 CLI 在自身配置域内生成的格式原生参数对象；`docnav` 和接入层原样传递其内容，不从 manifest、配置或隐式默认值合成格式专属 options。
-- 继续读取时，调用方保持 path、ref、query、limit_chars 和 options 不变，只使用响应返回的 page。
-- page 是调用位置，不是配置默认参数；`docnav` CLI、adapter 直接 CLI 或 MCP 省略 page 时，必须在进入 invoke 前显式转换为 `page: 1`。
+- `options` 是 adapter-owned 格式原生参数对象。只有在对应 registration 声明时，`options` 或其中 native option 才参与标准参数解析；`docnav` 和接入层不从 manifest、core 配置或隐式默认值合成格式专属 options。
+- 继续读取时，调用方保持 path、ref、query 和其它显式参数稳定，只使用响应返回的 page。
+- page 是调用位置，不是配置默认参数；入口省略 page 时固定从 `1` 开始。
 
 ## 响应 Envelope
 
@@ -177,4 +177,4 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 
 CLI argv 兼容 warning 和 adapter candidate warning 只属于阅读输出层或 stderr 诊断。protocol response、manifest 和 probe schema 不增加 `warnings` 字段；`docnav --output protocol-json` 和 adapter direct `protocol-json` stdout 仍只输出对应 protocol-shaped payload。
 
-`docnav-protocol` decode pipeline 的可复用范围是 `serde_json::Value -> schema validate -> typed deserialize -> semantic validate`。pipeline 先按 owning schema 校验，再反序列化为 typed contract data，最后执行语义校验；调用方继续拥有 stable error category、field path、diagnostic text、request id fallback、stdout/stderr placement 和 exit behavior。readable wrapper、warning envelope、manifest/probe policy 和直接 CLI argv 兼容规则由各自 owner 文档定义。
+`docnav-protocol` decode pipeline 的可复用范围是 `serde_json::Value -> schema validate -> typed deserialize -> semantic validate`。pipeline 先按 owning schema 校验，再反序列化为 typed contract data，最后执行语义校验；调用方继续拥有 stable error category、field path、diagnostic text、request id fallback、stdout/stderr placement 和 exit behavior。readable wrapper、warning envelope、manifest/probe policy 由各自 owner 文档定义；直接 CLI argv 映射与兼容边界见 [标准参数](standard-parameters.md#输入与配置映射)。

@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/protocol-request.schema.json",
+  "$comment": "Protocol request arguments are adapter invoke explicit input. This schema validates the envelope and registered argument field shapes; unmapped argument fields follow the adapter entry policy.",
   "oneOf": [
     {
       "$ref": "#/$defs/outline"
@@ -78,10 +79,6 @@
             },
             "arguments": {
               "type": "object",
-              "required": [
-                "limit_chars",
-                "page"
-              ],
               "properties": {
                 "limit_chars": {
                   "type": "integer",
@@ -94,8 +91,7 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              },
-              "additionalProperties": false
+              }
             }
           }
         }
@@ -115,9 +111,7 @@
             "arguments": {
               "type": "object",
               "required": [
-                "ref",
-                "limit_chars",
-                "page"
+                "ref"
               ],
               "properties": {
                 "ref": {
@@ -135,8 +129,7 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              },
-              "additionalProperties": false
+              }
             }
           }
         }
@@ -156,9 +149,7 @@
             "arguments": {
               "type": "object",
               "required": [
-                "query",
-                "limit_chars",
-                "page"
+                "query"
               ],
               "properties": {
                 "query": {
@@ -176,8 +167,7 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              },
-              "additionalProperties": false
+              }
             }
           }
         }
@@ -200,8 +190,7 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              },
-              "additionalProperties": false
+              }
             }
           }
         }

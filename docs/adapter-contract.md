@@ -1,6 +1,6 @@
 # 适配器契约
 
-本文是格式适配器命令、默认值所有权、invoke、manifest 和 probe 的主规范。
+本文是格式适配器命令、标准参数消费边界、invoke、manifest 和 probe 的主规范。
 
 ## 命令
 
@@ -18,11 +18,9 @@ probe
 
 普通 CLI、readable JSON 和 schema-valid `invoke` request 在传输层解析成功后进入 canonical document operation input 或等价 semantic request，并复用业务逻辑；它们不复用输出包装或展示形态。`readable-view`（默认）和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
 文档操作的直接 CLI 支持 `readable-view`（默认）、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
-适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、document operation 标准参数解析、adapter 配置来源合并、protocol request 构造、输出分流和稳定错误映射。SDK 直接 CLI 使用 `clap` 或 `clap` builder API 承载命令、固定参数、默认值、枚举和 help；SDK 在确定 operation 后只校验当前 operation 实际使用的参数。格式 adapter 只声明格式原生 CLI flag 到 protocol `options` 的映射，并保留这些 options 的业务语义、ref 策略和 readable payload 字段语义。
+适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、标准参数消费、adapter 配置读取、protocol request 构造、输出分流和稳定错误映射。SDK direct CLI 的 argv 映射、配置字段映射、来源合并、校验和 metadata 由 [标准参数](standard-parameters.md) 定义；SDK 继续拥有命令分发、warning output dispatch、operation build 和最终 exit behavior。格式 adapter 只声明格式原生 CLI flag、native option registration、operation binding 和业务语义，并保留这些 options 的 ref 策略和 readable payload 字段语义。
 
-SDK direct CLI config helper 的交接对象是标准 direct CLI 参数来源对象，至少承载 `path`、`ref`、`query`、`page`、`limit_chars`、`output`、native options 和 warning 列表。本段只约束 SDK 与 adapter 参数处理链路的交接边界：配置 helper 负责 adapter id、默认项目级/用户级配置路径、覆盖路径、JSON 读取、固定字段投影、来源优先级和配置源 warning；类型、范围、output 枚举、native option 注册和 operation 适用性仍由后续 direct CLI 参数处理链路负责。完整 argv、配置路径和用户可见优先级规则由 [CLI](cli.md#adapter-直接-cli) 拥有。
-
-适配器直接 CLI argv 必须复用 [CLI](cli.md#直接-cli-兼容参数规则) 定义的直接 CLI 兼容参数规则。
+适配器直接 CLI argv 必须复用 [标准参数](standard-parameters.md#输入与配置映射) 定义的 direct input 映射与兼容规则。
 
 `manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在 CLI warning 时按直接 CLI 规则写 stderr。`--help` 和子命令 help 只输出可纠错参数说明，不执行文档导航业务。共享 helper 的复用验收标准是保持这些 schema、plain text、stderr boundary 和 exit behavior 不变；document output owner 见 [输出模式](output.md#输出层边界)。
 
@@ -54,7 +52,7 @@ capabilities[]
 
 manifest 只接受 adapter 身份、支持格式、扩展名、content type 和 capabilities 字段，不声明协议范围或格式默认参数。manifest 字段扩展必须先由本文件和 manifest schema 定义。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
 
-Markdown v0 adapter 的直接 CLI 默认值属于 `docnav-markdown` 配置域：默认 `limit_chars: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；直接 CLI 在进入 invoke 前把最终值显式写入 request，并允许项目级和用户级 adapter 配置覆盖。
+Markdown v0 adapter 的默认参数和 native option registration 属于 `docnav-markdown` 标准参数声明：默认 `limit_chars: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；direct CLI 和 `invoke` 分别按 [标准参数](standard-parameters.md) 定义的入口规则解析配置、默认值和 request `arguments`。
 Markdown find 返回的 match ref 可按共享调用流程原样传给 read；没有局部导航区域时，可以返回 adapter 定义的全文 ref。find 的 ref 归属策略和 read 对该 ref 的接受与解释行为，由 [Markdown Adapter](adapters/markdown.md) 定义。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度。
 
 ## Probe
@@ -75,9 +73,9 @@ reasons[]
 
 ## Invoke
 
-`invoke` 不读取适配器直接 CLI 配置，也不选择隐式默认参数。请求必须已包含调用方最终解析的有限参数。
+`invoke` 是独立的 protocol stdin/stdout 入口。SDK 在识别 request envelope、operation 和 raw `arguments` 后，按标准参数 operation binding 解析显式参数；缺失的已注册参数可由 adapter invoke 入口的配置或默认值补足。未映射字段按 adapter 入口策略保留、丢弃或交给 adapter-owned 语义校验。
 
-直接 CLI 兼容参数规则不适用于 `invoke` stdin JSON。`invoke` 必须在进入 canonical document operation input 或等价 semantic request 前按 protocol request schema 严格校验请求；malformed JSON、未知字段、缺少必需字段或参数类型错误不得被 warning 后忽略。schema-valid `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
+直接 CLI argv 兼容规则不适用于 `invoke` stdin JSON。`invoke` 必须在进入 canonical document operation input 或等价 semantic request 前按 protocol request schema 和标准参数规则校验请求；malformed JSON、缺少 envelope 必需字段、已出现已注册参数类型错误不得被 warning 后忽略。未映射 `arguments` 字段不由标准参数层校验；adapter 层作为最终消费者，可以丢弃这些字段，或在 adapter-owned native option 语义中返回协议错误。schema-valid `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
 
 SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、typed deserialization 和 semantic validation；failure surface 仍必须是 protocol-shaped failure response。`invoke` stdin JSON 不是直接 CLI argv，按 [原始协议](protocol.md#schema-所有权) 的 decode 边界验收。
 
@@ -90,16 +88,16 @@ SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、ty
 - 按 `limit_chars` 字符预算分页；display 可压缩，ref 不得截断。
 - 不输出 CLI 阅读文本或 MCP 结构。
 
-## 默认值所有权
+## 标准参数消费边界
 
-- 适配器直接 CLI 默认值属于适配器配置域。
-- SDK direct CLI config helper 调用方必须提供 adapter id、内置默认值、native option specs 和可选默认用户配置目录；未提供默认用户配置目录时，SDK 按 CLI 规则使用启动 cwd。
+- Adapter direct CLI 和 adapter `invoke` 的配置字段映射、来源标记、合并顺序、默认值和 schema metadata 由 [标准参数](standard-parameters.md) 定义。
+- SDK 调用方必须提供 adapter id、registration、入口策略、内置默认值、native option specs 和可选默认用户配置目录；未提供默认用户配置目录时，SDK 按标准参数配置映射规则使用启动 cwd。
 - SDK document operation help 必须展示配置路径覆盖参数，但 help 不读取 adapter direct CLI 配置。
-- SDK document operation 必须把可用配置源合并为标准 direct CLI 参数来源对象；不可用配置源产生 `adapter_config_source_skipped` warning，并继续按其余来源合并。
+- SDK document operation 必须按标准参数机制处理显式 argv、配置源和默认值；不可用配置源产生 `adapter_config_source_skipped` warning，并继续按其余来源合并。
 - manifest 只声明 adapter 能力，不提供默认参数。
-- `docnav` 按自身配置域决定 path、ref、query、page、limit_chars、output 和 adapter 等 core 通用参数。
+- `docnav` 按自身标准参数 registration 和入口策略解析 core 通用参数。
 - 格式原生 `options` 对 `docnav` 和接入层保持 opaque。
-- adapter 直接 CLI 可以由 adapter 自有 flag 或配置生成 `arguments.options`，并在进入 invoke 前显式写入请求。
+- Adapter native options 只有在对应 registration 声明时才参与标准参数解析；否则按 adapter-owned policy 消费、丢弃或报错。
 - page 不属于配置默认值；入口省略 page 时固定从 `1` 开始。
 
 ## 协议字段对齐
