@@ -15,7 +15,7 @@ Typed field definitions MUST use a structured field validation object to group v
 
 #### Scenario: Field validation is structured metadata
 - **WHEN** a consumer defines validation for a typed field
-- **THEN** value kind, Rust value type, and constraints such as requiredness, enum, numeric range, string regex, string/array length, and nullability are registered through one field validation object
+- **THEN** value kind, Rust value type, and constraints such as enum, numeric range, string regex, and string/array length are registered through one field validation object
 - **AND** value kind constructors such as int, string, or num declare the value kind and Rust value type without requiring a separate value kind declaration
 - **AND** string enum validation can be declared from a real Rust enum metadata source while exposing JSON enum values in field metadata
 - **AND** declared enum constraints fail during definition build when the effective allowed value set is empty
@@ -46,7 +46,7 @@ Typed field definitions MUST expose schema metadata facts for downstream tooling
 
 #### Scenario: Schema tooling consumes field facts without taking ownership
 - **WHEN** schema, docs, or fixture tooling reads typed field metadata
-- **THEN** it can obtain field-level facts such as type, requiredness, default metadata, enum values, numeric range constraints, regex constraints, length constraints, and path metadata
+- **THEN** it can obtain field-level facts such as type, requiredness, null-as-absent policy, default metadata, enum values, numeric range constraints, regex constraints, length constraints, and path metadata
 - **AND** static default metadata is typed consistently with field validation
 - **AND** runtime default sources are not part of the typed field definition API
 - **AND** existing schema and surface owners remain responsible for complete public schema files, `$ref` layout, schema `$id` values, protocol envelopes, readable output schemas, and example validation policy
@@ -82,19 +82,21 @@ Typed field definitions MUST support building a set of field definitions that va
 - **AND** nested typed values object shape is expressed through Rust struct fields marked with `#[field(group)]`
 - **AND** each leaf Rust field explicitly declares presence policy and Rust value type through `T` or `Option<T>`
 - **AND** generated code checks each leaf `#[field(...)]` expression against the matching `FieldDefBuilder<T>` type
-- **AND** definition set build rejects a leaf whose declared `T`/`Option<T>` presence policy does not match the leaf field metadata
+- **AND** definition set build projects the declared `T`/`Option<T>` presence policy into leaf field metadata
 - **AND** typed values object field access is expressed through generated Rust fields rather than runtime identity-string lookup
 - **AND** dynamic identity-string field lookup is not part of the definition set API
 - **AND** extract and validate failures use the same field validation error type
 - **AND** the definition object is not itself the business parameter object
 - **AND** typed values objects expose the Rust value type carried by the leaf field validation, such as `Option<i64>` for an optional integer field or `String` for a required string field
+- **AND** a required `T` leaf fails when the input path is missing or the input value is JSON null
+- **AND** an optional `Option<T>` leaf extracts missing input paths and JSON null values as `None`
 - **AND** `extract_without_default` does not apply static defaults
 - **AND** `extract_with_static_defaults` applies static defaults only when the input omits a field
 - **AND** `extract_with_static_defaults` returns the same typed values object shape as `extract_without_default`
 - **AND** the typed default values object follows the derive struct shape rather than the input JSON path
 - **AND** default leaves without a static default are represented as typed `None`
 - **AND** each leaf `FieldDef` builder supplies canonical field identity, structured field path, validation, and default metadata
-- **AND** leaf field builders are not built during declaration; set build performs field build validation, declaration shape consistency validation, and default metadata validation
+- **AND** leaf field builders are not built during declaration; set build performs field build validation, declaration presence metadata projection, and default metadata validation
 - **AND** field build failures from derive declarations preserve the struct field declaration path for attribution
 - **AND** missing leaf field validation fails through the generated `FieldDefBuilder<T>` type check
 - **AND** missing leaf field paths fail during set build

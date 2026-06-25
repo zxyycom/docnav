@@ -226,7 +226,7 @@ fn extract_with_static_defaults_keeps_required_failures_without_default() {
         #[field(
             FieldDef::builder("docnav.defaults.output")
                 .path(["defaults", "output"])
-                .validation(FieldValidation::string().required())
+                .validation(FieldValidation::string())
         )]
         output: String,
     }

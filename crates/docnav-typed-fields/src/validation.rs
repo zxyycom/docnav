@@ -151,20 +151,6 @@ impl<T> FieldValidation<T> {
         }
     }
 
-    pub fn required(mut self) -> Self {
-        self.constraints.required = true;
-        self
-    }
-
-    pub fn nullable(mut self) -> FieldValidation<Option<T>> {
-        self.constraints.nullable = true;
-        FieldValidation {
-            value_kind: self.value_kind,
-            constraints: self.constraints,
-            typed: PhantomData,
-        }
-    }
-
     pub(crate) fn into_parts(self) -> (ValueKind, FieldConstraints) {
         (self.value_kind, self.constraints)
     }

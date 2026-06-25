@@ -356,13 +356,13 @@ Proves:
 
 ### WB-TYPED-FIELDS-001 Typed field definition core 保持字段级不变量
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests.rs`
+Code: `crates/docnav-typed-fields/src/tests/field_model.rs`
 
 Proves:
 - Builder 生成 field identity、structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view。
 - Field decode/validation 对合法值返回 typed value，对 missing optional、missing required、wrong type、enum violation、range violation、regex mismatch、length violation 和 invalid default 产生带 field identity/path/reason 的结果；string enum 字段可由真实 Rust enum metadata 驱动并返回 enum typed value，空 enum metadata 在 build 阶段失败，重复 enum string alias 会在有效 metadata 中去重，手写 string enum value builder 不属于 API。
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 floating bound 且拒绝非 finite bound；open/closed empty range 在 build 阶段失败。
-- FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象，并通过 `T`/`Option<T>` 显式声明 presence policy 和 leaf Rust value type；derive 生成代码通过 `FieldDefBuilder<T>` 编译期校验叶子表达式类型，叶子 FieldDef builder 定义 identity/structured JSON path/typed validation/static default，集合 build 统一执行字段 build/path/default/declaration presence/range/regex/length/duplicate identity 校验并把 build failure 归属到 struct field declaration path，同时产出 typed `extract_without_default` function、`extract_with_static_defaults` function、`validate_without_default` function、`validate_with_static_defaults` function、same-shaped typed values object、value kind view、typed default values object 和 schema metadata view；`extract_with_static_defaults` 与 `extract_without_default` 返回同形 typed values object，默认值合并不改变字段类型；`default_values()` 与提取结果使用同一 struct shape，缺少 static default 的 default leaf 为 `None`；built definition set 可通过 typed `to_builder()` 复制回 builder，静态覆盖 leaf field builder 并重新 build，动态 identity-string field lookup 不属于 API。
+- FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象，并通过 `T`/`Option<T>` 显式声明 presence policy 和 leaf Rust value type；`T` leaf 对 missing/null 失败，`Option<T>` leaf 对 missing/null 提取为 `None`，合法值提取为 `Some(T)`；derive 生成代码通过 `FieldDefBuilder<T>` 编译期校验叶子表达式类型，叶子 FieldDef builder 定义 identity/structured JSON path/typed validation/static default，集合 build 统一执行字段 build/path/default/declaration presence metadata projection/range/regex/length/duplicate identity 校验并把 build failure 归属到 struct field declaration path，同时产出 typed `extract_without_default` function、`extract_with_static_defaults` function、`validate_without_default` function、`validate_with_static_defaults` function、same-shaped typed values object、value kind view、typed default values object 和 schema metadata view；`extract_with_static_defaults` 与 `extract_without_default` 返回同形 typed values object，默认值合并不改变字段类型；`default_values()` 与提取结果使用同一 struct shape，缺少 static default 的 default leaf 为 `None`；built definition set 可通过 typed `to_builder()` 复制回 builder，静态覆盖 leaf field builder 并重新 build，动态 identity-string field lookup 不属于 API。
 
 ### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数
 Status: implemented

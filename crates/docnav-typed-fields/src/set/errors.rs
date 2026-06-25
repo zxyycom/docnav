@@ -29,7 +29,6 @@ impl std::error::Error for FieldDefBuildFailure {}
 pub enum FieldDefSetBuildError {
     Field(FieldDefBuildFailure),
     DuplicateIdentity(FieldDuplicateIdentityError),
-    DeclarationShape(FieldDeclarationShapeError),
 }
 
 impl From<FieldDuplicateIdentityError> for FieldDefSetBuildError {
@@ -54,42 +53,8 @@ impl fmt::Display for FieldDefSetBuildError {
             Self::DuplicateIdentity(error) => {
                 write!(formatter, "field def identity is duplicated: {error}")
             }
-            Self::DeclarationShape(error) => {
-                write!(
-                    formatter,
-                    "field declaration presence does not match field metadata: {error}"
-                )
-            }
         }
     }
 }
 
 impl std::error::Error for FieldDefSetBuildError {}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FieldDeclarationShapeError {
-    pub declaration_path: Option<Vec<String>>,
-    pub expected: ExpectedFieldShape,
-    pub actual: ExpectedFieldShape,
-}
-
-impl fmt::Display for FieldDeclarationShapeError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.declaration_path {
-            Some(path) => write!(
-                formatter,
-                "{} expected {:?}, actual {:?}",
-                path.join("."),
-                self.expected,
-                self.actual
-            ),
-            None => write!(
-                formatter,
-                "expected {:?}, actual {:?}",
-                self.expected, self.actual
-            ),
-        }
-    }
-}
-
-impl std::error::Error for FieldDeclarationShapeError {}

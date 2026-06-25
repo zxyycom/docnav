@@ -19,8 +19,8 @@ pub use range::{
 };
 pub use serde_json::Value as JsonValue;
 pub use set::{
-    ExpectedFieldShape, FieldDeclarationShapeError, FieldDefBuildFailure, FieldDefSet,
-    FieldDefSetBuildError, FieldValidationErrors,
+    ExpectedFieldShape, FieldDefBuildFailure, FieldDefSet, FieldDefSetBuildError,
+    FieldValidationErrors,
 };
 pub use validation::FieldValidation;
 pub use value::{FieldStringEnum, FieldValue, FieldValueError};

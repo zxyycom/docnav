@@ -56,6 +56,9 @@ impl FieldDef {
                 Ok(None)
             };
         };
+        if value.is_null() && !self.constraints.required {
+            return Ok(None);
+        }
         self.validate_present_value(value).map(Some)
     }
 
@@ -72,6 +75,9 @@ impl FieldDef {
                 Ok(None)
             };
         };
+        if value.is_null() && !self.constraints.required {
+            return Ok(None);
+        }
         self.validate_present_value(value).map(Some)
     }
 
@@ -85,8 +91,9 @@ impl FieldDef {
         )
     }
 
-    pub(crate) fn is_required(&self) -> bool {
-        self.constraints.required
+    pub(crate) fn apply_declaration_presence(&mut self, required: bool) {
+        self.constraints.required = required;
+        self.constraints.nullable = !required;
     }
 
     fn validate_present_value(&self, value: &Value) -> Result<TypedValue, ValidationFailure> {
@@ -266,7 +273,8 @@ impl<T> FieldDefBuilder<T> {
         let identity = FieldIdentity::new(self.identity)?;
         let path = FieldPath::new(self.path.ok_or(BuildError::MissingPath)?)?;
         let validation = self.validation.ok_or(BuildError::MissingValidation)?;
-        let (value_kind, constraints) = validation.into_parts();
+        let (value_kind, mut constraints) = validation.into_parts();
+        constraints.nullable = !constraints.required;
         validate_numeric_range(&constraints)?;
         validate_length_range(&constraints)?;
         let regex = compile_regex_pattern(&constraints)?;

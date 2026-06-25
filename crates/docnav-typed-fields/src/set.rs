@@ -12,9 +12,7 @@ use crate::value::FieldValue;
 
 mod errors;
 
-pub use errors::{
-    ExpectedFieldShape, FieldDeclarationShapeError, FieldDefBuildFailure, FieldDefSetBuildError,
-};
+pub use errors::{ExpectedFieldShape, FieldDefBuildFailure, FieldDefSetBuildError};
 
 #[derive(Debug)]
 pub struct FieldDefSet {
@@ -167,13 +165,13 @@ impl FieldDefSetBuilder {
                 expected,
                 builder,
             } = entry;
-            let definition = builder.build().map_err(|error| {
+            let mut definition = builder.build().map_err(|error| {
                 FieldDefSetBuildError::Field(FieldDefBuildFailure {
                     declaration_path: declaration_path.clone(),
                     error,
                 })
             })?;
-            validate_declared_shape(&declaration_path, expected, &definition)?;
+            definition.apply_declaration_presence(expected.required);
             if !identities.insert(definition.identity().clone()) {
                 return Err(FieldDuplicateIdentityError {
                     field: definition.identity.clone(),
@@ -185,26 +183,6 @@ impl FieldDefSetBuilder {
         }
         Ok(FieldDefSet { fields })
     }
-}
-
-fn validate_declared_shape(
-    declaration_path: &Option<Vec<String>>,
-    expected: ExpectedFieldShape,
-    definition: &FieldDef,
-) -> Result<(), FieldDefSetBuildError> {
-    let actual = ExpectedFieldShape {
-        required: definition.is_required(),
-    };
-    if expected == actual {
-        return Ok(());
-    }
-    Err(FieldDefSetBuildError::DeclarationShape(
-        FieldDeclarationShapeError {
-            declaration_path: declaration_path.clone(),
-            expected,
-            actual,
-        },
-    ))
 }
 
 #[derive(Clone, Debug, PartialEq)]
