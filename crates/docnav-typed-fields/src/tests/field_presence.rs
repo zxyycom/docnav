@@ -99,7 +99,7 @@ fn set_build_rejects_duplicate_identity() {
 
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .path(["defaults", "limit_chars"])
+                .path(["defaults", "max_chars"])
                 .validation(FieldValidation::int())
         )]
         max_chars: Option<i64>,
@@ -111,6 +111,16 @@ fn set_build_rejects_duplicate_identity() {
         panic!("expected duplicate identity error");
     };
     assert_eq!(error.field.as_str(), "docnav.defaults.limit_chars");
+    assert_eq!(
+        error.previous_declaration_path,
+        Some(vec!["defaults".to_string(), "limit_chars".to_string()])
+    );
+    assert_eq!(
+        error.declaration_path,
+        Some(vec!["defaults".to_string(), "max_chars".to_string()])
+    );
+    assert_eq!(error.previous_path.segments(), ["defaults", "limit_chars"]);
+    assert_eq!(error.path.segments(), ["defaults", "max_chars"]);
 }
 
 #[test]

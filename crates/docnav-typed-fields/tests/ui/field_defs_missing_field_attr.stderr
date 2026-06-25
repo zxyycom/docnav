@@ -1,0 +1,5 @@
+error: `FieldDefs` fields must have a `#[field(...)]` attribute
+ --> tests/ui/field_defs_missing_field_attr.rs:5:5
+  |
+5 |     limit_chars: i64,
+  |     ^^^^^^^^^^^^^^^^

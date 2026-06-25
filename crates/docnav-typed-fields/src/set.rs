@@ -1,12 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
 
 use serde_json::Value;
 
 use crate::field::{FieldDef, FieldDefBuilder};
 use crate::metadata::{
-    BuildError, FieldDuplicateIdentityError, SchemaMetadataView, TypedValue, ValidationFailure,
-    ValueKind,
+    BuildError, FieldDuplicateIdentityError, FieldPath, SchemaMetadataView, TypedValue,
+    ValidationFailure, ValueKind,
 };
 use crate::value::FieldValue;
 
@@ -110,6 +110,11 @@ struct FieldDefSetBuilderEntry {
     builder: Box<dyn ErasedFieldDefBuilder>,
 }
 
+struct FieldIdentityLocation {
+    declaration_path: Option<Vec<String>>,
+    path: FieldPath,
+}
+
 impl fmt::Debug for FieldDefSetBuilder {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
@@ -157,7 +162,7 @@ impl FieldDefSetBuilder {
     }
 
     pub fn build(self) -> Result<FieldDefSet, FieldDefSetBuildError> {
-        let mut identities = BTreeSet::new();
+        let mut identities = BTreeMap::new();
         let mut fields = Vec::new();
         for entry in self.entries {
             let FieldDefSetBuilderEntry {
@@ -172,10 +177,19 @@ impl FieldDefSetBuilder {
                 })
             })?;
             definition.apply_declaration_presence(expected.required);
-            if !identities.insert(definition.identity().clone()) {
+            if let Some(previous) = identities.insert(
+                definition.identity().clone(),
+                FieldIdentityLocation {
+                    declaration_path: declaration_path.clone(),
+                    path: definition.path.clone(),
+                },
+            ) {
                 return Err(FieldDuplicateIdentityError {
                     field: definition.identity.clone(),
                     path: definition.path.clone(),
+                    declaration_path,
+                    previous_path: previous.path,
+                    previous_declaration_path: previous.declaration_path,
                 }
                 .into());
             }

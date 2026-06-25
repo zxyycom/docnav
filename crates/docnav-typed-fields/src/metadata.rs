@@ -196,16 +196,28 @@ pub enum ValidationReason {
 pub struct FieldDuplicateIdentityError {
     pub field: FieldIdentity,
     pub path: FieldPath,
+    pub declaration_path: Option<Vec<String>>,
+    pub previous_path: FieldPath,
+    pub previous_declaration_path: Option<Vec<String>>,
 }
 
 impl fmt::Display for FieldDuplicateIdentityError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "field {} is declared more than once",
-            self.field.as_str()
+            "field {} is declared more than once at {} (previous declaration at {})",
+            self.field.as_str(),
+            display_optional_path(&self.declaration_path, &self.path),
+            display_optional_path(&self.previous_declaration_path, &self.previous_path),
         )
     }
 }
 
 impl std::error::Error for FieldDuplicateIdentityError {}
+
+fn display_optional_path(declaration_path: &Option<Vec<String>>, field_path: &FieldPath) -> String {
+    declaration_path
+        .as_ref()
+        .map(|path| path.join("."))
+        .unwrap_or_else(|| field_path.raw_segments().join("."))
+}
