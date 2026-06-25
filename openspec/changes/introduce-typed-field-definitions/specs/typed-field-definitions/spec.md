@@ -48,6 +48,7 @@ Typed field definitions MUST expose schema metadata facts for downstream tooling
 - **WHEN** schema, docs, or fixture tooling reads typed field metadata
 - **THEN** it can obtain field-level facts such as type, requiredness, null-as-absent policy, default metadata, enum values, numeric range constraints, regex constraints, length constraints, and path metadata
 - **AND** static default metadata is typed consistently with field validation
+- **AND** non-finite floating number static defaults fail during definition set build with a reason that explains Rust `f64` can represent non-finite values but JSON numbers cannot
 - **AND** runtime default sources are not part of the typed field definition API
 - **AND** existing schema and surface owners remain responsible for complete public schema files, `$ref` layout, schema `$id` values, protocol envelopes, readable output schemas, and example validation policy
 
@@ -101,5 +102,6 @@ Typed field definitions MUST support building a set of field definitions that va
 - **AND** missing leaf field validation fails through the generated `FieldDefBuilder<T>` type check
 - **AND** missing leaf field paths fail during set build
 - **AND** non-finite floating number range bounds and empty open/closed ranges fail during set build
+- **AND** non-finite floating number static defaults fail during set build with a reason that explains Rust `f64` can represent non-finite values but JSON numbers cannot
 - **AND** built definition sets expose a typed `to_builder()` copy path that can statically override leaf field builders and rebuild a new read-only definition set
 - **AND** the set does not perform standard parameter source merge, CLI argv parsing, operation binding, manifest/probe policy, or complete schema document generation

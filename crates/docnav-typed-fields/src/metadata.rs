@@ -107,7 +107,7 @@ pub struct SchemaMetadataView {
     pub default: DefaultMetadata,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildError {
     EmptyIdentity,
     MissingPath,
@@ -116,6 +116,7 @@ pub enum BuildError {
     MissingValidation,
     EmptyEnumValues,
     NonFiniteRangeBound,
+    NonFiniteDefaultValue,
     InvalidRange,
     InvalidRegexPattern { pattern: String, error: String },
     InvalidEnumValue(ValidationFailure),
@@ -132,6 +133,13 @@ impl fmt::Display for BuildError {
             Self::MissingValidation => write!(formatter, "field validation is missing"),
             Self::EmptyEnumValues => write!(formatter, "enum constraint has no allowed values"),
             Self::NonFiniteRangeBound => write!(formatter, "numeric range bound is not finite"),
+            Self::NonFiniteDefaultValue => {
+                write!(
+                    formatter,
+                    "static default number value is not finite: Rust f64 can represent \
+                     non-finite values, but JSON numbers cannot encode NaN or infinity"
+                )
+            }
             Self::InvalidRange => write!(formatter, "minimum range bound excludes all values"),
             Self::InvalidRegexPattern { pattern, error } => {
                 write!(formatter, "regex pattern {pattern:?} is invalid: {error}")

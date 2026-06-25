@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::metadata::{ActualValueKind, TypedValue, ValueKind};
+use crate::metadata::{ActualValueKind, BuildError, TypedValue, ValueKind};
 
 pub trait FieldStringEnum: Clone + Sized + 'static {
     fn variants() -> &'static [Self];
@@ -10,6 +10,9 @@ pub trait FieldStringEnum: Clone + Sized + 'static {
 pub trait FieldValue: Sized {
     fn value_kind() -> ValueKind;
     fn into_json_value(self) -> Value;
+    fn try_into_json_value(self) -> Result<Value, BuildError> {
+        Ok(self.into_json_value())
+    }
     fn from_typed_value(value: TypedValue) -> Result<Self, FieldValueError>;
 }
 
@@ -66,6 +69,14 @@ impl FieldValue for f64 {
 
     fn into_json_value(self) -> Value {
         Value::from(self)
+    }
+
+    fn try_into_json_value(self) -> Result<Value, BuildError> {
+        if self.is_finite() {
+            Ok(Value::from(self))
+        } else {
+            Err(BuildError::NonFiniteDefaultValue)
+        }
     }
 
     fn from_typed_value(value: TypedValue) -> Result<Self, FieldValueError> {
@@ -173,6 +184,10 @@ impl<T: FieldValue> FieldValue for Option<T> {
 
     fn into_json_value(self) -> Value {
         self.map_or(Value::Null, T::into_json_value)
+    }
+
+    fn try_into_json_value(self) -> Result<Value, BuildError> {
+        self.map_or(Ok(Value::Null), T::try_into_json_value)
     }
 
     fn from_typed_value(value: TypedValue) -> Result<Self, FieldValueError> {

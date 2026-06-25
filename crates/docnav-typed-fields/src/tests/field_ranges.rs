@@ -44,6 +44,41 @@ fn set_build_rejects_invalid_default_metadata() {
 }
 
 #[test]
+fn set_build_rejects_non_finite_number_default_metadata() {
+    #[derive(Debug, FieldDefs)]
+    struct Params {
+        #[field(group)]
+        defaults: NonFiniteDefaultDefaults,
+    }
+
+    #[derive(Debug, FieldDefs)]
+    struct NonFiniteDefaultDefaults {
+        #[field(
+            FieldDef::builder("docnav.defaults.ratio")
+                .path(["defaults", "ratio"])
+                .validation(FieldValidation::num())
+                .default_static(f64::INFINITY)
+        )]
+        ratio: Option<f64>,
+    }
+
+    let error = Params::field_defs().expect_err("non-finite static default fails");
+
+    assert!(error
+        .to_string()
+        .contains("Rust f64 can represent non-finite values, but JSON numbers cannot"));
+
+    let FieldDefSetBuildError::Field(error) = error else {
+        panic!("expected field build error");
+    };
+    assert_eq!(
+        error.declaration_path,
+        Some(vec!["defaults".to_string(), "ratio".to_string()])
+    );
+    assert_eq!(error.error, BuildError::NonFiniteDefaultValue);
+}
+
+#[test]
 fn single_sided_and_open_numeric_bounds_validate_values() {
     #[derive(Debug, FieldDefs)]
     struct Params {

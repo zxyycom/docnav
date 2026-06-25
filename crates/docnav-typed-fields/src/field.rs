@@ -225,7 +225,7 @@ pub struct FieldDefBuilder<T = ()> {
     identity: String,
     path: Option<Vec<String>>,
     validation: Option<FieldValidation<T>>,
-    default: DefaultMetadata,
+    default: Result<DefaultMetadata, BuildError>,
     typed: PhantomData<T>,
 }
 
@@ -235,7 +235,7 @@ impl FieldDefBuilder<()> {
             identity: identity.into(),
             path: None,
             validation: None,
-            default: DefaultMetadata::None,
+            default: Ok(DefaultMetadata::None),
             typed: PhantomData,
         }
     }
@@ -265,11 +265,19 @@ impl<T> FieldDefBuilder<T> {
     where
         T: FieldValue,
     {
-        self.default = DefaultMetadata::Static(value.into().into_json_value());
+        let value = value.into();
+        self.default = value.try_into_json_value().map(DefaultMetadata::Static);
         self
     }
 
     pub(crate) fn build(self) -> Result<FieldDef, BuildError> {
+        let definition = self.into_definition()?;
+        definition.validate_enum_metadata()?;
+        definition.validate_default_metadata()?;
+        Ok(definition)
+    }
+
+    fn into_definition(self) -> Result<FieldDef, BuildError> {
         let identity = FieldIdentity::new(self.identity)?;
         let path = FieldPath::new(self.path.ok_or(BuildError::MissingPath)?)?;
         let validation = self.validation.ok_or(BuildError::MissingValidation)?;
@@ -278,19 +286,16 @@ impl<T> FieldDefBuilder<T> {
         validate_numeric_range(&constraints)?;
         validate_length_range(&constraints)?;
         let regex = compile_regex_pattern(&constraints)?;
+        let default = self.default?;
 
-        let definition = FieldDef {
+        Ok(FieldDef {
             identity,
             path,
             value_kind,
             constraints,
-            default: self.default,
+            default,
             regex,
-        };
-
-        definition.validate_enum_metadata()?;
-        definition.validate_default_metadata()?;
-        Ok(definition)
+        })
     }
 }
 
