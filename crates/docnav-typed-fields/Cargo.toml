@@ -1,0 +1,10 @@
+[package]
+name = "docnav-typed-fields"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+docnav-typed-fields-macros.workspace = true
+regex.workspace = true
+serde_json.workspace = true

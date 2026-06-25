@@ -1,3 +1,3 @@
 # introduce-typed-field-definitions
 
-Introduce a lightweight typed field definition foundation that records validation metadata without owning full schema generation.
+Define the typed field definition core: reusable field/path/value metadata, field-level decode/validation, error attribution, schema metadata view, and duplicate identity checks while consumer owners keep schema files and surface behavior.
