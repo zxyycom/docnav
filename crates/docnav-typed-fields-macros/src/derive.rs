@@ -100,28 +100,56 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 self.__builder.clone()
             }
 
+            #[doc(hidden)]
             pub fn extract(
                 &self,
-                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
+                processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError> {
-                let values = self.__field_def_set.__extract_json_strategy_values(
-                    strategy_id.into(),
+                let values = self.__field_def_set.__extract_json_values(
+                    processing_id.into(),
                     root,
                 )?;
                 Ok(<#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0))
             }
 
+            #[doc(hidden)]
             pub fn extract_with_static_defaults(
                 &self,
-                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
+                processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError> {
-                let values = self.__field_def_set.__extract_json_strategy_values_with_static_defaults(
-                    strategy_id.into(),
+                let values = self.__field_def_set.__extract_json_values_with_static_defaults(
+                    processing_id.into(),
                     root,
                 )?;
                 Ok(<#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0))
+            }
+
+            pub fn process<O>(
+                &self,
+                processing: &::docnav_typed_fields::ProcessingBuild<'_, ::docnav_typed_fields::__private::JsonValue, O>,
+                root: &::docnav_typed_fields::__private::JsonValue,
+            ) -> ::docnav_typed_fields::ProcessedExtraction<::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError>, O> {
+                let processed = self.__field_def_set.__process_json_values(processing, root);
+                let (values, processing) = processed.into_parts();
+                let extraction = values.map(|values| {
+                    <#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0)
+                });
+                ::docnav_typed_fields::ProcessedExtraction::new(extraction, processing)
+            }
+
+            pub fn process_with_static_defaults<O>(
+                &self,
+                processing: &::docnav_typed_fields::ProcessingBuild<'_, ::docnav_typed_fields::__private::JsonValue, O>,
+                root: &::docnav_typed_fields::__private::JsonValue,
+            ) -> ::docnav_typed_fields::ProcessedExtraction<::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError>, O> {
+                let processed = self.__field_def_set.__process_json_values_with_static_defaults(processing, root);
+                let (values, processing) = processed.into_parts();
+                let extraction = values.map(|values| {
+                    <#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0)
+                });
+                ::docnav_typed_fields::ProcessedExtraction::new(extraction, processing)
             }
 
             pub fn default_values(&self) -> #default_values_name {
@@ -131,19 +159,19 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
 
             pub fn validate(
                 &self,
-                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
+                processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldExtractionError> {
-                self.__field_def_set.__extract_json_strategy_values(strategy_id.into(), root).map(|_| ())
+                self.__field_def_set.__extract_json_values(processing_id.into(), root).map(|_| ())
             }
 
             pub fn validate_with_static_defaults(
                 &self,
-                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
+                processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldExtractionError> {
                 self.__field_def_set
-                    .__extract_json_strategy_values_with_static_defaults(strategy_id.into(), root)
+                    .__extract_json_values_with_static_defaults(processing_id.into(), root)
                     .map(|_| ())
             }
 
@@ -151,11 +179,11 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 self.__field_def_set.schema_metadata()
             }
 
-            pub fn strategy_metadata(
+            pub fn processing_metadata(
                 &self,
-                strategy_id: &::docnav_typed_fields::ExtractionStrategyId,
-            ) -> ::std::vec::Vec<::docnav_typed_fields::StrategyMetadataView> {
-                self.__field_def_set.strategy_metadata(strategy_id)
+                processing_id: &::docnav_typed_fields::ProcessingId,
+            ) -> ::std::vec::Vec<::docnav_typed_fields::ProcessingMetadataView> {
+                self.__field_def_set.processing_metadata(processing_id)
             }
 
             pub fn value_kinds(&self) -> ::std::collections::BTreeMap<::std::string::String, ::docnav_typed_fields::ValueKind> {

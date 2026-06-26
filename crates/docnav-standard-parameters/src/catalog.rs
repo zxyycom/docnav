@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use docnav_typed_fields::{
-    ExtractionInputKind, ExtractionStrategyId, FieldDefSet, FieldIdentity, SchemaMetadataView,
-    StrategyMetadataView,
+    FieldDefSet, FieldIdentity, ProcessingId, ProcessingInputKind, ProcessingMetadataView,
+    SchemaMetadataView,
 };
 
 use crate::pipeline::StandardParameterPipelineSourceRole;
@@ -77,19 +77,19 @@ impl StandardParameterCatalog {
 
 pub(crate) fn derive_standard_parameter_catalog<D>(
     fields: &D,
-    direct_strategy: &ExtractionStrategyId,
-    config_strategy: &ExtractionStrategyId,
+    direct_processing: &ProcessingId,
+    config_processing: &ProcessingId,
 ) -> Result<StandardParameterCatalog, StandardParameterCatalogError>
 where
     D: AsRef<FieldDefSet> + ?Sized,
 {
     let fields = fields.as_ref();
-    let direct_paths = strategy_paths(
-        fields.strategy_metadata(direct_strategy),
+    let direct_paths = processing_paths(
+        fields.processing_metadata(direct_processing),
         StandardParameterPipelineSourceRole::DirectInput,
     )?;
-    let config_paths = strategy_paths(
-        fields.strategy_metadata(config_strategy),
+    let config_paths = processing_paths(
+        fields.processing_metadata(config_processing),
         StandardParameterPipelineSourceRole::Config,
     )?;
 
@@ -115,11 +115,11 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StandardParameterCatalogError {
-    StrategyInputKindMismatch {
+    ProcessingInputKindMismatch {
         role: StandardParameterPipelineSourceRole,
-        strategy_id: ExtractionStrategyId,
+        processing_id: ProcessingId,
         identity: FieldIdentity,
-        input_kind: ExtractionInputKind,
+        input_kind: ProcessingInputKind,
     },
     Conflict {
         kind: StandardParameterCatalogConflictKind,
@@ -139,16 +139,16 @@ pub enum StandardParameterCatalogConflictKind {
 impl fmt::Display for StandardParameterCatalogError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::StrategyInputKindMismatch {
+            Self::ProcessingInputKindMismatch {
                 role,
-                strategy_id,
+                processing_id,
                 identity,
                 input_kind,
             } => write!(
                 formatter,
-                "{} strategy {} for {} uses {:?}, but pipeline sources require JSON input",
+                "{} processing {} for {} uses {:?}, but pipeline sources require JSON input",
                 role.as_str(),
-                strategy_id,
+                processing_id,
                 identity.as_str(),
                 input_kind
             ),
@@ -181,22 +181,22 @@ impl fmt::Display for StandardParameterCatalogError {
 
 impl std::error::Error for StandardParameterCatalogError {}
 
-fn strategy_paths(
-    metadata: Vec<StrategyMetadataView>,
+fn processing_paths(
+    metadata: Vec<ProcessingMetadataView>,
     role: StandardParameterPipelineSourceRole,
 ) -> Result<BTreeMap<FieldIdentity, StandardParameterPath>, StandardParameterCatalogError> {
     let mut paths = BTreeMap::new();
     for metadata in metadata {
-        if metadata.input_kind != ExtractionInputKind::JsonValue {
-            return Err(StandardParameterCatalogError::StrategyInputKindMismatch {
+        if metadata.input_kind != ProcessingInputKind::JsonValue {
+            return Err(StandardParameterCatalogError::ProcessingInputKindMismatch {
                 role,
-                strategy_id: metadata.strategy_id,
+                processing_id: metadata.processing_id,
                 identity: metadata.identity,
                 input_kind: metadata.input_kind,
             });
         }
         let path = StandardParameterPath::new(metadata.path.segments())
-            .expect("typed-field strategy path is validated before metadata projection");
+            .expect("typed-field processing path is validated before metadata projection");
         paths.insert(metadata.identity, path);
     }
     Ok(paths)

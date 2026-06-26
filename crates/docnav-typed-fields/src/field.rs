@@ -5,13 +5,14 @@ use serde_json::Value;
 
 pub(crate) mod constraints;
 
-use crate::extraction::{
-    BuiltExtractStrategy, ExtractStrategy, ExtractionInputKind, ExtractionStrategyId,
-};
 use crate::metadata::{
-    BuildError, DefaultMetadata, FieldConstraints, FieldIdentity, FieldPath, SchemaMetadataView,
-    StrategyMetadataView, TypedValue, ValidationFailure, ValueKind,
+    BuildError, DefaultMetadata, FieldConstraints, FieldIdentity, FieldPath,
+    ProcessingMetadataView, SchemaMetadataView, TypedValue, ValidationFailure, ValueKind,
 };
+use crate::process_strategy::{
+    validate_processing_id, BuiltProcessStrategy, ProcessStrategy, ProcessingInputKind,
+};
+use crate::processing::ProcessingId;
 use crate::validation::FieldValidation;
 use crate::value::FieldValue;
 use constraints::{
@@ -25,7 +26,7 @@ pub struct FieldDef {
     value_kind: ValueKind,
     constraints: FieldConstraints,
     default: DefaultMetadata,
-    extractions: BTreeMap<ExtractionStrategyId, BuiltExtractStrategy>,
+    processes: BTreeMap<ProcessingId, BuiltProcessStrategy>,
 }
 
 impl FieldDef {
@@ -41,20 +42,20 @@ impl FieldDef {
         self.schema_metadata_with_path(self.path.clone())
     }
 
-    pub(crate) fn strategy_metadata(
+    pub(crate) fn processing_metadata(
         &self,
-        strategy_id: &ExtractionStrategyId,
-    ) -> Option<StrategyMetadataView> {
-        let strategy = self.extractions.get(strategy_id)?;
-        let path = strategy
+        processing_id: &ProcessingId,
+    ) -> Option<ProcessingMetadataView> {
+        let process = self.processes.get(processing_id)?;
+        let path = process
             .json_path()
             .cloned()
             .unwrap_or_else(|| identity_path(&self.identity));
-        Some(StrategyMetadataView {
+        Some(ProcessingMetadataView {
             identity: self.identity.clone(),
-            strategy_id: strategy_id.clone(),
+            processing_id: processing_id.clone(),
             path,
-            input_kind: strategy.input_kind(),
+            input_kind: process.input_kind(),
             value_kind: self.value_kind,
             constraints: self.constraints.clone(),
             default: self.default.clone(),
@@ -86,45 +87,45 @@ impl FieldDef {
         self.schema_metadata().validate_value(value)
     }
 
-    pub(crate) fn extraction_input_kinds(
+    pub(crate) fn processing_input_kinds(
         &self,
-    ) -> impl Iterator<Item = (&ExtractionStrategyId, ExtractionInputKind)> {
-        self.extractions
+    ) -> impl Iterator<Item = (&ProcessingId, ProcessingInputKind)> {
+        self.processes
             .iter()
-            .map(|(strategy_id, strategy)| (strategy_id, strategy.input_kind()))
+            .map(|(processing_id, process)| (processing_id, process.input_kind()))
     }
 
-    pub(crate) fn decode_strategy(
+    pub(crate) fn decode_process(
         &self,
-        strategy_id: &ExtractionStrategyId,
+        processing_id: &ProcessingId,
         root: &Value,
     ) -> Result<Option<TypedValue>, ValidationFailure> {
-        let Some(strategy) = self.extractions.get(strategy_id) else {
+        let Some(process) = self.processes.get(processing_id) else {
             return self.schema_metadata().validate_optional_value(None);
         };
-        self.validate_strategy_value(strategy, root, false)
+        self.validate_process_value(process, root, false)
     }
 
-    pub(crate) fn decode_strategy_with_static_default(
+    pub(crate) fn decode_process_with_static_default(
         &self,
-        strategy_id: &ExtractionStrategyId,
+        processing_id: &ProcessingId,
         root: &Value,
     ) -> Result<Option<TypedValue>, ValidationFailure> {
-        let Some(strategy) = self.extractions.get(strategy_id) else {
+        let Some(process) = self.processes.get(processing_id) else {
             return self
                 .schema_metadata()
                 .validate_optional_value_with_static_default(None);
         };
-        self.validate_strategy_value(strategy, root, true)
+        self.validate_process_value(process, root, true)
     }
 
-    fn validate_strategy_value(
+    fn validate_process_value(
         &self,
-        strategy: &BuiltExtractStrategy,
+        process: &BuiltProcessStrategy,
         root: &Value,
         use_static_default: bool,
     ) -> Result<Option<TypedValue>, ValidationFailure> {
-        let Some(path) = strategy.json_path() else {
+        let Some(path) = process.json_path() else {
             return self.schema_metadata().validate_optional_value(None);
         };
         let metadata = self.schema_metadata_with_path(path.clone());
@@ -139,7 +140,7 @@ impl FieldDef {
 #[derive(Clone, Debug)]
 pub struct FieldDefBuilder<T = ()> {
     identity: String,
-    extractions: Vec<(String, ExtractStrategy)>,
+    processes: Vec<(String, ProcessStrategy)>,
     validation: Option<FieldValidation<T>>,
     default: Result<DefaultMetadata, BuildError>,
     typed: PhantomData<T>,
@@ -149,7 +150,7 @@ impl FieldDefBuilder<()> {
     fn new(identity: impl Into<String>) -> Self {
         Self {
             identity: identity.into(),
-            extractions: Vec::new(),
+            processes: Vec::new(),
             validation: None,
             default: Ok(DefaultMetadata::None),
             typed: PhantomData,
@@ -158,16 +159,16 @@ impl FieldDefBuilder<()> {
 }
 
 impl<T> FieldDefBuilder<T> {
-    pub fn extract(mut self, strategy_id: impl Into<String>, strategy: ExtractStrategy) -> Self {
-        let strategy_id = strategy_id.into();
+    pub fn process(mut self, processing_id: impl Into<String>, process: ProcessStrategy) -> Self {
+        let processing_id = processing_id.into();
         if let Some((_, existing)) = self
-            .extractions
+            .processes
             .iter_mut()
-            .find(|(existing_id, _)| existing_id == &strategy_id)
+            .find(|(existing_id, _)| existing_id == &processing_id)
         {
-            *existing = strategy;
+            *existing = process;
         } else {
-            self.extractions.push((strategy_id, strategy));
+            self.processes.push((processing_id, process));
         }
         self
     }
@@ -175,7 +176,7 @@ impl<T> FieldDefBuilder<T> {
     pub fn validation<U>(self, validation: FieldValidation<U>) -> FieldDefBuilder<U> {
         FieldDefBuilder {
             identity: self.identity,
-            extractions: self.extractions,
+            processes: self.processes,
             validation: Some(validation),
             default: self.default,
             typed: PhantomData,
@@ -200,8 +201,8 @@ impl<T> FieldDefBuilder<T> {
 
     fn into_definition(self) -> Result<FieldDef, BuildError> {
         let identity = FieldIdentity::new(self.identity)?;
-        let extractions = build_extractions(self.extractions)?;
-        let path = metadata_path(&identity, &extractions)?;
+        let processes = build_processes(self.processes)?;
+        let path = metadata_path(&identity, &processes)?;
         let validation = self.validation.ok_or(BuildError::MissingValidation)?;
         let (value_kind, mut constraints) = validation.into_parts();
         constraints.nullable = !constraints.required;
@@ -216,36 +217,31 @@ impl<T> FieldDefBuilder<T> {
             value_kind,
             constraints,
             default,
-            extractions,
+            processes,
         })
     }
 }
 
-fn build_extractions(
-    extractions: Vec<(String, ExtractStrategy)>,
-) -> Result<BTreeMap<ExtractionStrategyId, BuiltExtractStrategy>, BuildError> {
-    if extractions.is_empty() {
-        return Err(BuildError::MissingExtractionStrategy);
+fn build_processes(
+    processes: Vec<(String, ProcessStrategy)>,
+) -> Result<BTreeMap<ProcessingId, BuiltProcessStrategy>, BuildError> {
+    if processes.is_empty() {
+        return Err(BuildError::MissingProcessingStrategy);
     }
     let mut built = BTreeMap::new();
-    for (strategy_id, strategy) in extractions {
-        let strategy_id = ExtractionStrategyId::from(strategy_id)
-            .validate()
-            .map_err(|_| BuildError::EmptyExtractionStrategyId)?;
-        let strategy = strategy.build()?;
-        built.insert(strategy_id, strategy);
+    for (processing_id, process) in processes {
+        let processing_id = validate_processing_id(ProcessingId::from(processing_id))?;
+        let process = process.build()?;
+        built.insert(processing_id, process);
     }
     Ok(built)
 }
 
 fn metadata_path(
     identity: &FieldIdentity,
-    extractions: &BTreeMap<ExtractionStrategyId, BuiltExtractStrategy>,
+    processes: &BTreeMap<ProcessingId, BuiltProcessStrategy>,
 ) -> Result<FieldPath, BuildError> {
-    if let Some(path) = extractions
-        .values()
-        .find_map(BuiltExtractStrategy::json_path)
-    {
+    if let Some(path) = processes.values().find_map(BuiltProcessStrategy::json_path) {
         return Ok(path.clone());
     }
     FieldPath::new(identity.as_str().split('.'))

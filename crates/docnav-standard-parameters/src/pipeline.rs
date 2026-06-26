@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
-use docnav_typed_fields::{
-    ExtractionStrategyId, FieldDefSet, FieldIdentity, JsonValue, ProcessingBuild,
-};
+use docnav_typed_fields::{FieldDefSet, FieldIdentity, JsonValue, ProcessingBuild, ProcessingId};
 
 use crate::{
     construct_config_source_with_passthrough, construct_default_source,
@@ -18,8 +16,8 @@ use crate::{
 #[derive(Clone)]
 pub struct StandardParameterPipeline<'a> {
     fields: &'a FieldDefSet,
-    direct_input_strategy: Option<ExtractionStrategyId>,
-    config_strategy: Option<ExtractionStrategyId>,
+    direct_input_processing_id: Option<ProcessingId>,
+    config_processing_id: Option<ProcessingId>,
     project_config: Option<PipelineConfigSource>,
     user_config: Option<PipelineConfigSource>,
     dynamic_defaults: BTreeMap<FieldIdentity, JsonValue>,
@@ -35,8 +33,8 @@ impl<'a> StandardParameterPipeline<'a> {
     {
         Self {
             fields: fields.as_ref(),
-            direct_input_strategy: None,
-            config_strategy: None,
+            direct_input_processing_id: None,
+            config_processing_id: None,
             project_config: None,
             user_config: None,
             dynamic_defaults: BTreeMap::new(),
@@ -46,16 +44,16 @@ impl<'a> StandardParameterPipeline<'a> {
         }
     }
 
-    pub fn with_direct_input_strategy(
+    pub fn with_direct_input_processing_id(
         mut self,
-        strategy_id: impl Into<ExtractionStrategyId>,
+        processing_id: impl Into<ProcessingId>,
     ) -> Self {
-        self.direct_input_strategy = Some(strategy_id.into());
+        self.direct_input_processing_id = Some(processing_id.into());
         self
     }
 
-    pub fn with_config_strategy(mut self, strategy_id: impl Into<ExtractionStrategyId>) -> Self {
-        self.config_strategy = Some(strategy_id.into());
+    pub fn with_config_processing_id(mut self, processing_id: impl Into<ProcessingId>) -> Self {
+        self.config_processing_id = Some(processing_id.into());
         self
     }
 
@@ -131,6 +129,7 @@ impl<'a> StandardParameterPipeline<'a> {
         mut self,
         processing: ProcessingBuild<'a, JsonValue, JsonValue>,
     ) -> Self {
+        self.direct_input_processing_id = Some(processing.id().clone());
         self.direct_input_passthrough_processing = Some(processing);
         self
     }
@@ -139,6 +138,7 @@ impl<'a> StandardParameterPipeline<'a> {
         mut self,
         processing: ProcessingBuild<'a, JsonValue, JsonValue>,
     ) -> Self {
+        self.config_processing_id = Some(processing.id().clone());
         self.config_passthrough_processing = Some(processing);
         self
     }
@@ -154,14 +154,17 @@ impl<'a> StandardParameterPipeline<'a> {
         let (user_config, user_diagnostics) = config_source_parts(self.user_config);
         diagnostics.extend(user_diagnostics);
         let direct_passthrough = process_passthrough(
+            self.fields,
             direct_input.as_ref(),
             self.direct_input_passthrough_processing.as_ref(),
         );
         let project_passthrough = process_passthrough(
+            self.fields,
             project_config.as_ref(),
             self.config_passthrough_processing.as_ref(),
         );
         let user_passthrough = process_passthrough(
+            self.fields,
             user_config.as_ref(),
             self.config_passthrough_processing.as_ref(),
         );
@@ -190,21 +193,21 @@ impl<'a> StandardParameterPipeline<'a> {
     }
 
     fn catalog(&self) -> Result<crate::StandardParameterCatalog, StandardParameterPipelineError> {
-        let direct_strategy = self.direct_input_strategy.as_ref().ok_or(
-            StandardParameterPipelineError::MissingStrategyRole(
+        let direct_processing = self.direct_input_processing_id.as_ref().ok_or(
+            StandardParameterPipelineError::MissingProcessingRole(
                 StandardParameterPipelineSourceRole::DirectInput,
             ),
         )?;
-        let config_strategy = self.config_strategy.as_ref().ok_or(
-            StandardParameterPipelineError::MissingStrategyRole(
+        let config_processing = self.config_processing_id.as_ref().ok_or(
+            StandardParameterPipelineError::MissingProcessingRole(
                 StandardParameterPipelineSourceRole::Config,
             ),
         )?;
 
         Ok(derive_standard_parameter_catalog(
             self.fields,
-            direct_strategy,
-            config_strategy,
+            direct_processing,
+            config_processing,
         )?)
     }
 }
@@ -232,17 +235,17 @@ impl StandardParameterPipelineSourceRole {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StandardParameterPipelineError {
-    MissingStrategyRole(StandardParameterPipelineSourceRole),
+    MissingProcessingRole(StandardParameterPipelineSourceRole),
     Catalog(StandardParameterCatalogError),
 }
 
 impl fmt::Display for StandardParameterPipelineError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MissingStrategyRole(role) => {
+            Self::MissingProcessingRole(role) => {
                 write!(
                     formatter,
-                    "{} strategy role is not configured",
+                    "{} processing role is not configured",
                     role.as_str()
                 )
             }
@@ -260,12 +263,17 @@ impl From<StandardParameterCatalogError> for StandardParameterPipelineError {
 }
 
 fn process_passthrough(
+    fields: &FieldDefSet,
     input: Option<&JsonValue>,
     processing: Option<&ProcessingBuild<'_, JsonValue, JsonValue>>,
 ) -> Option<JsonValue> {
     let input = input?;
     Some(match processing {
-        Some(processing) => processing.process(input.clone()).into_value(),
+        Some(processing) => {
+            let (_extraction, processing_result) =
+                fields.__process_json_values(processing, input).into_parts();
+            processing_result.into_value()
+        }
         None => input.clone(),
     })
 }

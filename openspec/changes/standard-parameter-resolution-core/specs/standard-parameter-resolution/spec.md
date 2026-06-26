@@ -1,18 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Pipeline 以 typed field definitions 为入口
-标准参数 pipeline MUST 接受 caller-defined typed field definitions 作为普通入口，从 typed-field metadata 和 direct/config strategy 构建内部 catalog/index，并保持 field identity、type、requiredness、defaults、constraints 和 extraction paths 由 `docnav-typed-fields` 拥有。
+标准参数 pipeline MUST 接受 caller-defined typed field definitions 作为普通入口，从 typed-field metadata 和 direct/config processing id 构建内部 catalog/index，并保持 field identity、type、requiredness、defaults、constraints 和 processing paths 由 `docnav-typed-fields` 拥有。
 
 #### Scenario: Caller-defined FieldDefSet 是字段事实源
-- **WHEN** caller 从 `docnav-typed-fields` definitions 构建 `FieldDefSet`，并向标准参数 pipeline 提供 direct/config strategy ids
-- **THEN** pipeline 从 `schema_metadata()`、`strategy_metadata("direct")` 和 `strategy_metadata("config")` 派生 standard parameter identities、typed validation metadata 和 source paths
+- **WHEN** caller 从 `docnav-typed-fields` definitions 构建 `FieldDefSet`，并向标准参数 pipeline 提供 direct/config processing ids
+- **THEN** pipeline 从 `schema_metadata()`、`processing_metadata("direct")` 和 `processing_metadata("config")` 派生 standard parameter identities、typed validation metadata 和 source paths
 - **THEN** 普通路径不要求 caller 手工构造 catalog/index entry
 
-#### Scenario: Direct/config role 映射到 typed-field strategies
-- **WHEN** caller 将 direct role 绑定到 direct strategy id，并将 config role 绑定到 config strategy id
-- **THEN** direct input 通过 direct strategy paths 读取
-- **THEN** project/user config input 通过 config strategy paths 读取
-- **THEN** default candidates 来自 typed-field defaults 和 caller-provided dynamic defaults，而不是第三个 extraction strategy role
+#### Scenario: Direct/config role 映射到 typed-field processing ids
+- **WHEN** caller 将 direct role 绑定到 direct processing id，并将 config role 绑定到 config processing id
+- **THEN** direct input 通过 direct processing paths 读取
+- **THEN** project/user config input 通过 config processing paths 读取
+- **THEN** default candidates 来自 typed-field defaults 和 caller-provided dynamic defaults，而不是第三个 processing role
 - **THEN** field validation 继续使用同一份 typed-field metadata
 
 #### Scenario: Catalog/index 是内部编译产物
@@ -51,14 +51,14 @@
 - **THEN** source construction 将该值映射到 catalog/index 中的 standard parameter identity
 - **THEN** source 记录 project config 或 user config 作为 source kind
 
-#### Scenario: Unmapped config field 保持 passthrough
+#### Scenario: Config passthrough processing result 保持 source scope
 - **WHEN** config JSON object 包含未映射到任何 derived standard parameter entry 的字段
 - **THEN** source construction 不把该字段作为 standard parameter validation
-- **THEN** source construction 接受 caller passthrough processing result 并原样交接
-- **THEN** caller 可以用 raw-minus-mapped 处理函数删除已消费 mapped paths，并让剩余 JSON 子树按原结构和 entry passthrough policy 被 retained、discarded 或 delegated
+- **THEN** source construction 接受 caller passthrough processing result 并按 source scope 原样交接
+- **THEN** caller 可以让 processing result 表达 raw-minus-mapped、locator、剩余 JSON 子树或其它 owner-specific 处理结果
 
 #### Scenario: Direct input 通过 derived direct binding 映射
-- **WHEN** direct CLI input 或 adapter invoke arguments 包含 direct input strategy 映射到的值
+- **WHEN** direct CLI input 或 adapter invoke arguments 包含 direct input processing path 映射到的值
 - **THEN** source construction 将该值映射到 derived catalog/index 中的 standard parameter identity 并标记为 direct input
 - **THEN** unmapped direct input 保持在 standard parameter validation 之外
 
@@ -92,13 +92,13 @@
 - **THEN** post-load source construction 和 diagnostic handoff semantics 与 path-based pipeline path 保持一致
 
 ### Requirement: Standard parameter passthrough 保持 owner-scoped
-标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 passthrough，使 owning CLI、adapter、protocol 或 config layer 可以 retain、discard、warn 或 validate。
+标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 source-scoped passthrough processing results，使 owning CLI、adapter、protocol 或 config layer 可以 retain、discard、warn 或 validate。
 
 #### Scenario: Unmapped input 不参与标准参数 validation
 - **WHEN** input field 未映射到 standard parameter identity
 - **THEN** standard parameter resolver 不把它作为 standard parameter validation
 - **THEN** resolver 通过 entry policy 返回 caller passthrough processing result
-- **THEN** raw-minus-mapped passthrough 由 caller processing function 产生，并保留未映射 JSON 子树结构
+- **THEN** raw-minus-mapped passthrough、locator 或剩余 JSON 子树结构由 caller processing function 产生并由入口 owner 解释
 
 #### Scenario: Adapter native option 保持 delegated
 - **WHEN** adapter direct CLI 或 invoke argument 包含没有 standard parameter mapping 的 native option

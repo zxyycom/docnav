@@ -1,4 +1,4 @@
-use std::collections::{btree_map::Entry, BTreeMap};
+use std::collections::BTreeMap;
 
 use docnav_diagnostics::Warning;
 use docnav_typed_fields::{
@@ -238,7 +238,7 @@ fn resolve_passthrough(
     sources: &StandardParameterSources,
     policy: EntryPassthroughPolicy,
 ) -> Vec<PassthroughValue> {
-    let mut passthrough = BTreeMap::new();
+    let mut passthrough = Vec::new();
     collect_passthrough(
         &mut passthrough,
         StandardParameterSourceKind::DirectInput,
@@ -257,32 +257,20 @@ fn resolve_passthrough(
         &sources.user_config,
         policy,
     );
-    collect_passthrough(
-        &mut passthrough,
-        StandardParameterSourceKind::Default,
-        &sources.default,
-        policy,
-    );
-    passthrough.into_values().collect()
+    passthrough
 }
 
 fn collect_passthrough(
-    passthrough: &mut BTreeMap<Vec<String>, PassthroughValue>,
+    passthrough: &mut Vec<PassthroughValue>,
     source_kind: StandardParameterSourceKind,
     source: &StandardParameterSource,
     policy: EntryPassthroughPolicy,
 ) {
-    for input in source.passthrough() {
-        match passthrough.entry(input.path.key()) {
-            Entry::Vacant(entry) => {
-                entry.insert(PassthroughValue {
-                    source: StandardParameterSourceInfo::new(source_kind),
-                    path: input.path.clone(),
-                    value: input.value.clone(),
-                    disposition: policy.disposition(),
-                });
-            }
-            Entry::Occupied(_) => {}
-        }
+    if let Some(value) = source.processing_result() {
+        passthrough.push(PassthroughValue {
+            source: StandardParameterSourceInfo::new(source_kind),
+            value: value.clone(),
+            disposition: policy.disposition(),
+        });
     }
 }

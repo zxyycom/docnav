@@ -13,7 +13,7 @@ fn set_build_rejects_invalid_default_metadata() {
     struct InvalidDefaultDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
                 .validation(
                     FieldValidation::int()
                         .between(FieldBound::closed(1), FieldBound::closed(100_000)),
@@ -55,7 +55,7 @@ fn set_build_rejects_non_finite_number_default_metadata() {
     struct NonFiniteDefaultDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.ratio")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "ratio"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "ratio"]))
                 .validation(FieldValidation::num())
                 .default_static(f64::INFINITY)
         )]
@@ -90,7 +90,7 @@ fn single_sided_and_open_numeric_bounds_validate_values() {
     struct OpenBoundDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
                 .validation(FieldValidation::int().min(FieldBound::open(1)))
         )]
         limit_chars: Option<i64>,
@@ -99,7 +99,7 @@ fn single_sided_and_open_numeric_bounds_validate_values() {
     let fields = Params::field_defs().expect("single-sided minimum builds");
 
     let error = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"limit_chars": 1}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"limit_chars": 1}}))
         .expect_err("open minimum excludes the endpoint");
     assert_eq!(
         validation_failures(&error)[0].reason,
@@ -109,7 +109,7 @@ fn single_sided_and_open_numeric_bounds_validate_values() {
     );
 
     fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"limit_chars": 2}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"limit_chars": 2}}))
         .expect("single-sided open minimum accepts larger values");
 }
 
@@ -127,7 +127,7 @@ fn integer_range_does_not_use_float_precision() {
     struct LargeIntegerDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
                 .validation(FieldValidation::int().max(FieldBound::closed(MAXIMUM)))
         )]
         limit_chars: Option<i64>,
@@ -137,7 +137,7 @@ fn integer_range_does_not_use_float_precision() {
 
     let error = fields
         .extract(
-            CONFIG_STRATEGY,
+            CONFIG_PROCESSING,
             &json!({"defaults": {"limit_chars": MAXIMUM + 1}}),
         )
         .expect_err("integer comparison keeps exact precision");
@@ -161,7 +161,7 @@ fn set_build_rejects_non_finite_or_empty_range_metadata() {
     struct NonFiniteDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
                 .validation(
                     FieldValidation::num()
                         .between(FieldBound::closed(1.0), FieldBound::closed(f64::INFINITY)),
@@ -190,7 +190,7 @@ fn set_build_rejects_non_finite_or_empty_range_metadata() {
     struct EmptyRangeDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
                 .validation(
                     FieldValidation::int()
                         .between(FieldBound::open(1), FieldBound::closed(1)),
@@ -211,26 +211,26 @@ fn set_build_rejects_non_finite_or_empty_range_metadata() {
 }
 
 #[test]
-fn set_build_rejects_missing_extraction_strategy() {
+fn set_build_rejects_missing_processing_strategy() {
     #[derive(Debug, FieldDefs)]
     struct Params {
         #[field(group)]
-        defaults: MissingExtractionDefaults,
+        defaults: MissingProcessingDefaults,
     }
 
     #[derive(Debug, FieldDefs)]
-    struct MissingExtractionDefaults {
+    struct MissingProcessingDefaults {
         #[field(FieldDef::builder("docnav.defaults.limit_chars").validation(FieldValidation::int()))]
         limit_chars: Option<i64>,
     }
 
-    let error = Params::field_defs().expect_err("missing extraction strategy fails at set build");
+    let error = Params::field_defs().expect_err("missing processing definition fails at set build");
 
     assert_eq!(
         error,
         FieldDefSetBuildError::Field(FieldDefBuildFailure {
             declaration_path: Some(vec!["defaults".to_string(), "limit_chars".to_string()]),
-            error: BuildError::MissingExtractionStrategy,
+            error: BuildError::MissingProcessingStrategy,
         })
     );
 }

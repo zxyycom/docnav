@@ -79,14 +79,14 @@ fn output_mode_validation() -> FieldValidation<OutputMode> {
     FieldValidation::string_enum::<OutputMode>()
 }
 
-const CONFIG_STRATEGY: &str = "config";
+const CONFIG_PROCESSING: &str = "config";
 
-fn config_json_path<I, S>(segments: I) -> ExtractStrategy
+fn config_json_path<I, S>(segments: I) -> ProcessStrategy
 where
     I: IntoIterator<Item = S>,
     S: Into<String>,
 {
-    ExtractStrategy::json_path(segments)
+    ProcessStrategy::json_path(segments)
 }
 
 fn validation_failures(error: &FieldExtractionError) -> &[ValidationFailure] {
@@ -106,7 +106,7 @@ pub(crate) struct DocnavParams {
 pub(crate) struct DefaultsParams {
     #[field(
         FieldDef::builder("docnav.defaults.limit_chars")
-            .extract(CONFIG_STRATEGY, config_json_path(["a", "b"]))
+            .process(CONFIG_PROCESSING, config_json_path(["a", "b"]))
             .validation(limit_chars_validation())
             .default_static(20_000)
     )]
@@ -114,7 +114,7 @@ pub(crate) struct DefaultsParams {
 
     #[field(
         FieldDef::builder("docnav.defaults.output")
-            .extract(CONFIG_STRATEGY, config_json_path(["defaults", "output"]))
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
             .validation(output_mode_validation())
             .default_static(OutputMode::ReadableView)
     )]

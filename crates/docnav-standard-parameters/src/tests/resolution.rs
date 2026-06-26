@@ -157,10 +157,9 @@ fn dynamic_default_source_is_validated_like_other_mapped_values() {
 fn passthrough_remains_outside_standard_parameter_validation() {
     let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
     let mut sources = StandardParameterSources::default();
-    sources.direct_input.push_passthrough(
-        path(["native_options", "future_flag"]),
-        json!({"adapter": "owned"}),
-    );
+    sources
+        .direct_input
+        .set_processing_result(json!({"native_options": {"future_flag": {"adapter": "owned"}}}));
 
     let resolution =
         resolve_standard_parameters(&entries, sources, EntryPassthroughPolicy::Delegate);

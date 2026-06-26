@@ -3,24 +3,26 @@ use std::fmt;
 
 use serde_json::Value;
 
-use crate::extraction::{ExtractionInputKind, ExtractionStrategyId};
 use crate::field::{FieldDef, FieldDefBuilder};
 use crate::metadata::{
-    BuildError, FieldDuplicateIdentityError, FieldPath, SchemaMetadataView, StrategyMetadataView,
-    TypedValue, ValidationFailure, ValueKind,
+    BuildError, FieldDuplicateIdentityError, FieldPath, ProcessingMetadataView, SchemaMetadataView,
+    ValueKind,
 };
-use crate::value::FieldValue;
+use crate::process_strategy::ProcessingInputKind;
+use crate::processing::{ProcessedExtraction, ProcessingBuild, ProcessingId};
 
 mod errors;
+mod values;
 
 pub use errors::{
     ExpectedFieldShape, FieldDefBuildFailure, FieldDefSetBuildError, FieldExtractionError,
 };
+pub use values::{FieldValidationErrors, FieldValues};
 
 #[derive(Debug)]
 pub struct FieldDefSet {
     fields: Vec<FieldDef>,
-    extraction_input_kinds: BTreeMap<ExtractionStrategyId, ExtractionInputKind>,
+    processing_input_kinds: BTreeMap<ProcessingId, ProcessingInputKind>,
 }
 
 impl FieldDefSet {
@@ -33,13 +35,10 @@ impl FieldDefSet {
         self.fields.iter().map(FieldDef::schema_metadata).collect()
     }
 
-    pub fn strategy_metadata(
-        &self,
-        strategy_id: &ExtractionStrategyId,
-    ) -> Vec<StrategyMetadataView> {
+    pub fn processing_metadata(&self, processing_id: &ProcessingId) -> Vec<ProcessingMetadataView> {
         self.fields
             .iter()
-            .filter_map(|field| field.strategy_metadata(strategy_id))
+            .filter_map(|field| field.processing_metadata(processing_id))
             .collect()
     }
 
@@ -61,48 +60,78 @@ impl FieldDefSet {
     }
 
     #[doc(hidden)]
-    pub fn __extract_json_strategy_values(
+    pub fn __extract_json_values(
         &self,
-        strategy_id: ExtractionStrategyId,
+        processing_id: ProcessingId,
         root: &Value,
     ) -> Result<FieldValues, FieldExtractionError> {
-        self.require_json_strategy(&strategy_id)?;
-        self.extract_json_strategy_values(&strategy_id, root, JsonExtractionDefaults::Absent)
+        self.require_json_processing(&processing_id)?;
+        self.extract_json_processing_values(&processing_id, root, JsonExtractionDefaults::Absent)
     }
 
     #[doc(hidden)]
-    pub fn __extract_json_strategy_values_with_static_defaults(
+    pub fn __extract_json_values_with_static_defaults(
         &self,
-        strategy_id: ExtractionStrategyId,
+        processing_id: ProcessingId,
         root: &Value,
     ) -> Result<FieldValues, FieldExtractionError> {
-        self.require_json_strategy(&strategy_id)?;
-        self.extract_json_strategy_values(&strategy_id, root, JsonExtractionDefaults::Static)
+        self.require_json_processing(&processing_id)?;
+        self.extract_json_processing_values(&processing_id, root, JsonExtractionDefaults::Static)
     }
 
-    fn require_json_strategy(
+    #[doc(hidden)]
+    pub fn __process_json_values<O>(
         &self,
-        strategy_id: &ExtractionStrategyId,
+        processing: &ProcessingBuild<'_, Value, O>,
+        root: &Value,
+    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
+        self.process_json_values(processing, root, JsonExtractionDefaults::Absent)
+    }
+
+    #[doc(hidden)]
+    pub fn __process_json_values_with_static_defaults<O>(
+        &self,
+        processing: &ProcessingBuild<'_, Value, O>,
+        root: &Value,
+    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
+        self.process_json_values(processing, root, JsonExtractionDefaults::Static)
+    }
+
+    fn process_json_values<O>(
+        &self,
+        processing: &ProcessingBuild<'_, Value, O>,
+        root: &Value,
+        defaults: JsonExtractionDefaults,
+    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
+        let values = self
+            .require_json_processing(processing.id())
+            .and_then(|()| self.extract_json_processing_values(processing.id(), root, defaults));
+        ProcessedExtraction::new(values, processing.process(root.clone()))
+    }
+
+    fn require_json_processing(
+        &self,
+        processing_id: &ProcessingId,
     ) -> Result<(), FieldExtractionError> {
-        let Some(expected) = self.extraction_input_kinds.get(strategy_id) else {
-            return Err(FieldExtractionError::UnknownStrategy {
-                strategy_id: strategy_id.clone(),
+        let Some(expected) = self.processing_input_kinds.get(processing_id) else {
+            return Err(FieldExtractionError::UnknownProcessing {
+                processing_id: processing_id.clone(),
             });
         };
-        if *expected == ExtractionInputKind::JsonValue {
+        if *expected == ProcessingInputKind::JsonValue {
             Ok(())
         } else {
             Err(FieldExtractionError::InputKindMismatch {
-                strategy_id: strategy_id.clone(),
+                processing_id: processing_id.clone(),
                 expected: *expected,
-                actual: ExtractionInputKind::JsonValue,
+                actual: ProcessingInputKind::JsonValue,
             })
         }
     }
 
-    fn extract_json_strategy_values(
+    fn extract_json_processing_values(
         &self,
-        strategy_id: &ExtractionStrategyId,
+        processing_id: &ProcessingId,
         root: &Value,
         defaults: JsonExtractionDefaults,
     ) -> Result<FieldValues, FieldExtractionError> {
@@ -110,9 +139,9 @@ impl FieldDefSet {
         let mut errors = Vec::new();
         for definition in &self.fields {
             let decoded = match defaults {
-                JsonExtractionDefaults::Absent => definition.decode_strategy(strategy_id, root),
+                JsonExtractionDefaults::Absent => definition.decode_process(processing_id, root),
                 JsonExtractionDefaults::Static => {
-                    definition.decode_strategy_with_static_default(strategy_id, root)
+                    definition.decode_process_with_static_default(processing_id, root)
                 }
             };
             match decoded {
@@ -238,24 +267,24 @@ impl FieldDefSetBuilder {
             }
             fields.push(definition);
         }
-        let extraction_input_kinds = extraction_input_kinds(&fields)?;
+        let processing_input_kinds = processing_input_kinds(&fields)?;
         Ok(FieldDefSet {
             fields,
-            extraction_input_kinds,
+            processing_input_kinds,
         })
     }
 }
 
-fn extraction_input_kinds(
+fn processing_input_kinds(
     fields: &[FieldDef],
-) -> Result<BTreeMap<ExtractionStrategyId, ExtractionInputKind>, FieldDefSetBuildError> {
+) -> Result<BTreeMap<ProcessingId, ProcessingInputKind>, FieldDefSetBuildError> {
     let mut input_kinds = BTreeMap::new();
     for field in fields {
-        for (strategy_id, input_kind) in field.extraction_input_kinds() {
-            if let Some(previous) = input_kinds.insert(strategy_id.clone(), input_kind) {
+        for (processing_id, input_kind) in field.processing_input_kinds() {
+            if let Some(previous) = input_kinds.insert(processing_id.clone(), input_kind) {
                 if previous != input_kind {
-                    return Err(FieldDefSetBuildError::ExtractionInputKindConflict {
-                        strategy_id: strategy_id.clone(),
+                    return Err(FieldDefSetBuildError::ProcessingInputKindConflict {
+                        processing_id: processing_id.clone(),
                         previous,
                         current: input_kind,
                     });
@@ -264,60 +293,4 @@ fn extraction_input_kinds(
         }
     }
     Ok(input_kinds)
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct FieldValidationErrors {
-    failures: Vec<ValidationFailure>,
-}
-
-impl FieldValidationErrors {
-    pub fn new(failures: Vec<ValidationFailure>) -> Self {
-        Self { failures }
-    }
-
-    pub fn failures(&self) -> &[ValidationFailure] {
-        &self.failures
-    }
-
-    pub fn into_failures(self) -> Vec<ValidationFailure> {
-        self.failures
-    }
-}
-
-impl fmt::Display for FieldValidationErrors {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            formatter,
-            "{} field validation error(s)",
-            self.failures.len()
-        )
-    }
-}
-
-impl std::error::Error for FieldValidationErrors {}
-
-#[derive(Debug, PartialEq)]
-#[doc(hidden)]
-pub struct FieldValues {
-    values: Vec<Option<TypedValue>>,
-}
-
-impl FieldValues {
-    #[doc(hidden)]
-    pub fn __typed_optional_slot<T: FieldValue>(&self, slot: usize) -> Option<T> {
-        let value = self
-            .values
-            .get(slot)
-            .expect("generated field definition slot is present");
-        value.clone().map(|value| {
-            T::from_typed_value(value).expect("generated field definition type is consistent")
-        })
-    }
-
-    #[doc(hidden)]
-    pub fn __typed_required_slot<T: FieldValue>(&self, slot: usize) -> T {
-        self.__typed_optional_slot(slot)
-            .expect("required field was extracted during validation")
-    }
 }

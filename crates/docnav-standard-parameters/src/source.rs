@@ -2,8 +2,6 @@ use std::collections::BTreeMap;
 
 use docnav_typed_fields::{FieldIdentity, JsonValue};
 
-use crate::StandardParameterPath;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StandardParameterSourceKind {
     DirectInput,
@@ -26,7 +24,7 @@ impl StandardParameterSourceInfo {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct StandardParameterSource {
     values: BTreeMap<FieldIdentity, JsonValue>,
-    passthrough: Vec<PassthroughInput>,
+    processing_result: Option<JsonValue>,
 }
 
 impl StandardParameterSource {
@@ -40,16 +38,16 @@ impl StandardParameterSource {
         self
     }
 
-    pub(crate) fn push_passthrough(&mut self, path: StandardParameterPath, value: JsonValue) {
-        self.passthrough.push(PassthroughInput { path, value });
+    pub(crate) fn set_processing_result(&mut self, value: JsonValue) {
+        self.processing_result = Some(value);
     }
 
     pub(crate) fn value(&self, identity: &FieldIdentity) -> Option<&JsonValue> {
         self.values.get(identity)
     }
 
-    pub(crate) fn passthrough(&self) -> &[PassthroughInput] {
-        &self.passthrough
+    pub(crate) fn processing_result(&self) -> Option<&JsonValue> {
+        self.processing_result.as_ref()
     }
 }
 
@@ -86,15 +84,8 @@ pub enum PassthroughDisposition {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct PassthroughInput {
-    pub(crate) path: StandardParameterPath,
-    pub(crate) value: JsonValue,
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct PassthroughValue {
     pub source: StandardParameterSourceInfo,
-    pub path: StandardParameterPath,
     pub value: JsonValue,
     pub disposition: PassthroughDisposition,
 }

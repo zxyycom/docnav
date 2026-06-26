@@ -26,7 +26,7 @@ document.path
 arguments
 ```
 
-`arguments` 是 adapter `invoke` 的显式 operation 输入。缺失的已注册标准参数可以由 adapter `invoke` 入口的配置或默认值补足。Protocol schema 只校验 envelope、operation、document path、raw `arguments` object 和已出现已注册字段的基础 JSON 类型；未映射 `arguments` 字段按 [标准参数](standard-parameters.md#合并透传与校验) 中的入口策略保留、丢弃或交给 adapter-owned 语义校验。
+`arguments` 是 adapter `invoke` 的显式 operation 输入。缺失的已注册标准参数可以由 adapter `invoke` 入口的配置或默认值补足。Protocol schema 只校验 envelope、operation、document path、raw `arguments` object 和已出现已注册字段的基础 JSON 类型；未映射 `arguments` 字段不由标准参数层解释，adapter 入口可按 [标准参数](standard-parameters.md#合并透传与校验) 中的透传处理结果和入口策略保留、丢弃或交给 adapter-owned 语义校验。
 
 v0 operation 参数：
 

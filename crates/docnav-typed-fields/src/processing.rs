@@ -10,7 +10,7 @@ impl ProcessingId {
         Self(value.into()).validate()
     }
 
-    fn validate(self) -> Result<Self, InvalidProcessingId> {
+    pub(crate) fn validate(self) -> Result<Self, InvalidProcessingId> {
         if self.0.trim().is_empty() {
             Err(InvalidProcessingId)
         } else {
@@ -109,5 +109,32 @@ impl<T> ProcessedValue<T> {
 
     pub fn into_value(self) -> T {
         self.value
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProcessedExtraction<E, O> {
+    extraction: E,
+    processing: ProcessedValue<O>,
+}
+
+impl<E, O> ProcessedExtraction<E, O> {
+    pub fn new(extraction: E, processing: ProcessedValue<O>) -> Self {
+        Self {
+            extraction,
+            processing,
+        }
+    }
+
+    pub fn extraction(&self) -> &E {
+        &self.extraction
+    }
+
+    pub fn processing(&self) -> &ProcessedValue<O> {
+        &self.processing
+    }
+
+    pub fn into_parts(self) -> (E, ProcessedValue<O>) {
+        (self.extraction, self.processing)
     }
 }

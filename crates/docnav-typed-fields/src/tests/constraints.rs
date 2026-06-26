@@ -13,7 +13,7 @@ fn string_regex_and_length_constraints_validate_present_values() {
     struct Defaults {
         #[field(
             FieldDef::builder("docnav.defaults.slug")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "slug"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "slug"]))
                 .validation(
                     FieldValidation::string()
                         .regex(r"^[a-z][a-z0-9-]*$")
@@ -26,11 +26,11 @@ fn string_regex_and_length_constraints_validate_present_values() {
     let fields = Params::field_defs().expect("string regex and length constraints build");
 
     fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"slug": "doc-1"}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"slug": "doc-1"}}))
         .expect("valid slug passes");
 
     let error = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"slug": "Doc"}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"slug": "Doc"}}))
         .expect_err("regex mismatch fails");
     assert_eq!(
         validation_failures(&error)[0].reason,
@@ -40,7 +40,7 @@ fn string_regex_and_length_constraints_validate_present_values() {
     );
 
     let error = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"slug": "do"}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"slug": "do"}}))
         .expect_err("short string fails");
     assert_eq!(
         validation_failures(&error)[0].reason,
@@ -50,7 +50,10 @@ fn string_regex_and_length_constraints_validate_present_values() {
     );
 
     let error = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"slug": "docnav-x"}}))
+        .extract(
+            CONFIG_PROCESSING,
+            &json!({"defaults": {"slug": "docnav-x"}}),
+        )
         .expect_err("open upper length bound excludes endpoint");
     assert_eq!(
         validation_failures(&error)[0].reason,
@@ -72,7 +75,7 @@ fn array_length_constraints_validate_present_values() {
     struct Defaults {
         #[field(
             FieldDef::builder("docnav.defaults.items")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "items"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "items"]))
                 .validation(
                     FieldValidation::array()
                         .length(FieldLength::max(FieldBound::closed(2))),
@@ -84,11 +87,14 @@ fn array_length_constraints_validate_present_values() {
     let fields = Params::field_defs().expect("array length constraints build");
 
     fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"items": [1, 2]}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"items": [1, 2]}}))
         .expect("array at the maximum length passes");
 
     let error = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"items": [1, 2, 3]}}))
+        .extract(
+            CONFIG_PROCESSING,
+            &json!({"defaults": {"items": [1, 2, 3]}}),
+        )
         .expect_err("array above maximum length fails");
     assert_eq!(
         validation_failures(&error)[0].reason,
@@ -110,7 +116,7 @@ fn set_build_rejects_invalid_regex_metadata() {
     struct Defaults {
         #[field(
             FieldDef::builder("docnav.defaults.slug")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "slug"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "slug"]))
                 .validation(FieldValidation::string().regex("["))
         )]
         slug: Option<String>,

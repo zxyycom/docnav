@@ -9,8 +9,8 @@ fn pipeline_derives_catalog_from_field_defs_without_manual_catalog_assembly() {
     let fields = Params::field_defs().unwrap();
 
     let resolution = StandardParameterPipeline::new(&fields)
-        .with_direct_input_strategy(DIRECT_STRATEGY)
-        .with_config_strategy(CONFIG_STRATEGY)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
         .resolve(json!({"output": "readable-json"}))
         .unwrap();
 
@@ -46,8 +46,8 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
     );
 
     let resolution = StandardParameterPipeline::new(&fields)
-        .with_direct_input_strategy(DIRECT_STRATEGY)
-        .with_config_strategy(CONFIG_STRATEGY)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
         .with_config_source_descriptor(StandardParameterConfigSourceDescriptor::new(
             ConfigSourceLevel::Project,
             ConfigPathOrigin::Override,
@@ -87,8 +87,8 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
         "missing_override",
     );
 
-    let passthrough = passthrough_at(&resolution, path(["native"]));
-    assert_eq!(passthrough.value, json!({"shared": "direct"}));
+    let passthrough = passthrough_from(&resolution, StandardParameterSourceKind::DirectInput);
+    assert_eq!(passthrough.value, json!({"native": {"shared": "direct"}}));
     assert_eq!(
         passthrough.source,
         StandardParameterSourceInfo::new(StandardParameterSourceKind::DirectInput)
@@ -100,14 +100,14 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
 fn pipeline_uses_direct_input_passthrough_processing_result_as_is() {
     let fields = Params::field_defs().unwrap();
     let passthrough_processing = ProcessingBuild::new(
-        "raw-minus-mapped-direct",
+        DIRECT_PROCESSING,
         |raw: JsonValue| json!({"native": raw.get("native").cloned().unwrap()}),
     )
     .unwrap();
 
     let resolution = StandardParameterPipeline::new(&fields)
-        .with_direct_input_strategy(DIRECT_STRATEGY)
-        .with_config_strategy(CONFIG_STRATEGY)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
         .with_direct_input_passthrough_processing(passthrough_processing)
         .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
         .resolve(json!({"output": "readable-view", "native": {}}))
@@ -117,8 +117,8 @@ fn pipeline_uses_direct_input_passthrough_processing_result_as_is() {
         .value(&identity("docnav.defaults.output"))
         .unwrap();
     assert_eq!(output.value, TypedValue::String("readable-view".to_owned()));
-    let passthrough = passthrough_at(&resolution, path(["native"]));
-    assert_eq!(passthrough.value, json!({}));
+    let passthrough = passthrough_from(&resolution, StandardParameterSourceKind::DirectInput);
+    assert_eq!(passthrough.value, json!({"native": {}}));
     assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
 }
 
@@ -135,14 +135,14 @@ fn pipeline_uses_config_passthrough_processing_result_as_is() {
         }
     });
     let passthrough_processing = ProcessingBuild::new(
-        "raw-minus-mapped-config",
+        CONFIG_PROCESSING,
         |raw: JsonValue| json!({"defaults": {"native": raw["defaults"]["native"].clone()}}),
     )
     .unwrap();
 
     let resolution = StandardParameterPipeline::new(&fields)
-        .with_direct_input_strategy(DIRECT_STRATEGY)
-        .with_config_strategy(CONFIG_STRATEGY)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
         .with_loaded_project_config(LoadedStandardParameterConfigSource::from_value(
             project_config,
         ))
@@ -155,10 +155,10 @@ fn pipeline_uses_config_passthrough_processing_result_as_is() {
         .value(&identity("docnav.defaults.output"))
         .unwrap();
     assert_eq!(output.value, TypedValue::String("readable-view".to_owned()));
-    let passthrough = passthrough_at(&resolution, path(["defaults"]));
+    let passthrough = passthrough_from(&resolution, StandardParameterSourceKind::ProjectConfig);
     assert_eq!(
         passthrough.value,
-        json!({"native": {"theme": "dark", "strict": true}})
+        json!({"defaults": {"native": {"theme": "dark", "strict": true}}})
     );
     assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
 }
@@ -189,8 +189,8 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
     assert!(loaded_user.value().is_some());
 
     let resolution = StandardParameterPipeline::new(&fields)
-        .with_direct_input_strategy(DIRECT_STRATEGY)
-        .with_config_strategy(CONFIG_STRATEGY)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
         .with_loaded_project_config(loaded_project)
         .with_loaded_user_config(loaded_user)
         .resolve(None::<JsonValue>)

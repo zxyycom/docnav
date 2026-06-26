@@ -2,7 +2,8 @@ use std::fmt;
 
 use serde_json::Value;
 
-use crate::extraction::{ExtractionInputKind, ExtractionStrategyId};
+use crate::process_strategy::ProcessingInputKind;
+use crate::processing::ProcessingId;
 use crate::range::{FieldBound, FieldLength, FieldNumericBound, FieldNumericRange};
 
 mod validation;
@@ -111,11 +112,11 @@ pub struct SchemaMetadataView {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StrategyMetadataView {
+pub struct ProcessingMetadataView {
     pub identity: FieldIdentity,
-    pub strategy_id: ExtractionStrategyId,
+    pub processing_id: ProcessingId,
     pub path: FieldPath,
-    pub input_kind: ExtractionInputKind,
+    pub input_kind: ProcessingInputKind,
     pub value_kind: ValueKind,
     pub constraints: FieldConstraints,
     pub default: DefaultMetadata,
@@ -124,11 +125,11 @@ pub struct StrategyMetadataView {
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildError {
     EmptyIdentity,
-    MissingExtractionStrategy,
+    MissingProcessingStrategy,
     EmptyPath,
     EmptyPathSegment,
     MissingValidation,
-    EmptyExtractionStrategyId,
+    EmptyProcessingId,
     EmptyEnumValues,
     NonFiniteRangeBound,
     NonFiniteDefaultValue,
@@ -142,13 +143,13 @@ impl fmt::Display for BuildError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyIdentity => write!(formatter, "field identity is empty"),
-            Self::MissingExtractionStrategy => {
-                write!(formatter, "field extraction strategy is missing")
+            Self::MissingProcessingStrategy => {
+                write!(formatter, "field processing strategy is missing")
             }
             Self::EmptyPath => write!(formatter, "field path is empty"),
             Self::EmptyPathSegment => write!(formatter, "field path contains an empty segment"),
             Self::MissingValidation => write!(formatter, "field validation is missing"),
-            Self::EmptyExtractionStrategyId => write!(formatter, "extraction strategy id is empty"),
+            Self::EmptyProcessingId => write!(formatter, "processing id is empty"),
             Self::EmptyEnumValues => write!(formatter, "enum constraint has no allowed values"),
             Self::NonFiniteRangeBound => write!(formatter, "numeric range bound is not finite"),
             Self::NonFiniteDefaultValue => {

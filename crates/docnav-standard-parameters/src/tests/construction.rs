@@ -2,23 +2,22 @@ use std::collections::BTreeMap;
 
 use docnav_diagnostics::{WarningDetails, WarningEffect};
 use docnav_typed_fields::{
-    DefaultMetadata, ExtractionStrategyId, FieldNumericRange, TypedValue, ValidationReason,
-    ValueKind,
+    DefaultMetadata, FieldNumericRange, ProcessingId, TypedValue, ValidationReason, ValueKind,
 };
 use serde_json::json;
 
 use super::*;
 
 #[test]
-fn strategy_metadata_projection_includes_strategy_path_and_schema_facts() {
+fn processing_metadata_projection_includes_processing_path_and_schema_facts() {
     let definitions = Params::field_defs().unwrap();
-    let metadata = definitions.strategy_metadata(&ExtractionStrategyId::from(CONFIG_STRATEGY));
+    let metadata = definitions.processing_metadata(&ProcessingId::from(CONFIG_PROCESSING));
     let limit = metadata
         .iter()
         .find(|metadata| metadata.identity.as_str() == "docnav.defaults.limit_chars")
         .unwrap();
 
-    assert_eq!(limit.strategy_id.as_str(), CONFIG_STRATEGY);
+    assert_eq!(limit.processing_id.as_str(), CONFIG_PROCESSING);
     assert_eq!(limit.path.segments(), vec!["defaults", "limit_chars"]);
     assert_eq!(limit.value_kind, ValueKind::Integer);
     let FieldNumericRange::Integer(range) = limit.constraints.numeric_range else {
@@ -72,8 +71,8 @@ fn source_construction_maps_direct_config_and_default_values() {
 struct ConflictingConfigPathParams {
     #[field(
         FieldDef::builder("docnav.defaults.left")
-            .extract(DIRECT_STRATEGY, config_json_path(["left"]))
-            .extract(CONFIG_STRATEGY, config_json_path(["defaults", "shared"]))
+            .process(DIRECT_PROCESSING, config_json_path(["left"]))
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "shared"]))
             .validation(FieldValidation::int().between(
                 FieldBound::closed(1),
                 FieldBound::closed(100_000),
@@ -83,8 +82,8 @@ struct ConflictingConfigPathParams {
 
     #[field(
         FieldDef::builder("docnav.defaults.right")
-            .extract(DIRECT_STRATEGY, config_json_path(["right"]))
-            .extract(CONFIG_STRATEGY, config_json_path(["defaults", "shared"]))
+            .process(DIRECT_PROCESSING, config_json_path(["right"]))
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "shared"]))
             .validation(FieldValidation::int().between(
                 FieldBound::closed(1),
                 FieldBound::closed(100_000),
@@ -99,8 +98,8 @@ fn catalog_derivation_rejects_conflicting_config_paths() {
 
     let error = derive_standard_parameter_catalog(
         &definitions,
-        &ExtractionStrategyId::from(DIRECT_STRATEGY),
-        &ExtractionStrategyId::from(CONFIG_STRATEGY),
+        &ProcessingId::from(DIRECT_PROCESSING),
+        &ProcessingId::from(CONFIG_PROCESSING),
     )
     .unwrap_err();
 
@@ -182,8 +181,8 @@ fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() 
     );
 
     let resolution = StandardParameterPipeline::new(&fields)
-        .with_direct_input_strategy(DIRECT_STRATEGY)
-        .with_config_strategy(CONFIG_STRATEGY)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
         .with_loaded_project_config(loaded_project)
         .with_loaded_user_config(loaded_user)
         .resolve(None::<JsonValue>)
@@ -260,7 +259,7 @@ fn unreadable_config_source_is_skipped_with_warning_event() {
 }
 
 #[test]
-fn constructed_passthrough_values_merge_by_source_priority_without_validation() {
+fn constructed_passthrough_values_keep_source_processing_results_without_validation() {
     let catalog = parameter_catalog();
     let entries = catalog.entries();
     let direct_input = json!({"native": {"shared": 1}, "limit_chars": 100});
@@ -296,17 +295,18 @@ fn constructed_passthrough_values_merge_by_source_priority_without_validation() 
     );
 
     assert!(resolution.diagnostics().is_empty());
-    let native = resolution
-        .passthrough()
-        .iter()
-        .find(|value| value.path == path(["native"]))
-        .unwrap();
-    assert_eq!(native.value, json!({"shared": 1}));
+    assert_eq!(resolution.passthrough().len(), 3);
+    let native = passthrough_from(&resolution, StandardParameterSourceKind::DirectInput);
+    assert_eq!(native.value, direct_passthrough);
     assert_eq!(
         native.source,
         StandardParameterSourceInfo::new(StandardParameterSourceKind::DirectInput)
     );
     assert_eq!(native.disposition, PassthroughDisposition::Delegated);
+    let project = passthrough_from(&resolution, StandardParameterSourceKind::ProjectConfig);
+    assert_eq!(project.value, project_passthrough);
+    let user = passthrough_from(&resolution, StandardParameterSourceKind::UserConfig);
+    assert_eq!(user.value, user_config);
 }
 
 #[test]
@@ -332,8 +332,7 @@ fn empty_object_passthrough_is_preserved_for_entry_owner() {
     assert!(resolution.diagnostics().is_empty());
     assert_eq!(resolution.passthrough().len(), 1);
     let passthrough = &resolution.passthrough()[0];
-    assert_eq!(passthrough.path, path(["native"]));
-    assert_eq!(passthrough.value, json!({}));
+    assert_eq!(passthrough.value, direct_passthrough);
     assert_eq!(
         passthrough.source,
         StandardParameterSourceInfo::new(StandardParameterSourceKind::DirectInput)
@@ -381,11 +380,8 @@ fn nested_processed_passthrough_preserves_raw_structure() {
         .value(&identity("docnav.defaults.output"))
         .unwrap();
     assert_eq!(output.value, TypedValue::String("readable-view".to_owned()));
-    let passthrough = passthrough_at(&resolution, path(["defaults"]));
-    assert_eq!(
-        passthrough.value,
-        json!({"native": {"theme": "dark", "strict": true}})
-    );
+    let passthrough = passthrough_from(&resolution, StandardParameterSourceKind::ProjectConfig);
+    assert_eq!(passthrough.value, project_passthrough);
     assert_eq!(
         passthrough.source,
         StandardParameterSourceInfo::new(StandardParameterSourceKind::ProjectConfig)

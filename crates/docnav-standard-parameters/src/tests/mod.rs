@@ -5,8 +5,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use docnav_typed_fields::{
-    ExtractStrategy, ExtractionStrategyId, FieldBound, FieldDef, FieldDefs, FieldIdentity,
-    FieldValidation, JsonValue,
+    FieldBound, FieldDef, FieldDefs, FieldIdentity, FieldValidation, JsonValue, ProcessStrategy,
+    ProcessingId,
 };
 
 use super::*;
@@ -34,23 +34,23 @@ impl docnav_typed_fields::FieldStringEnum for OutputMode {
     }
 }
 
-const CONFIG_STRATEGY: &str = "config";
-const DIRECT_STRATEGY: &str = "direct";
+const CONFIG_PROCESSING: &str = "config";
+const DIRECT_PROCESSING: &str = "direct";
 
-fn config_json_path<I, S>(segments: I) -> ExtractStrategy
+fn config_json_path<I, S>(segments: I) -> ProcessStrategy
 where
     I: IntoIterator<Item = S>,
     S: Into<String>,
 {
-    ExtractStrategy::json_path(segments)
+    ProcessStrategy::json_path(segments)
 }
 
 #[derive(Debug, FieldDefs)]
 struct Params {
     #[field(
         FieldDef::builder("docnav.defaults.limit_chars")
-            .extract(DIRECT_STRATEGY, config_json_path(["limit_chars"]))
-            .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
+            .process(DIRECT_PROCESSING, config_json_path(["limit_chars"]))
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
             .validation(FieldValidation::int().between(
                 FieldBound::closed(1),
                 FieldBound::closed(100_000),
@@ -61,8 +61,8 @@ struct Params {
 
     #[field(
         FieldDef::builder("docnav.defaults.output")
-            .extract(DIRECT_STRATEGY, config_json_path(["output"]))
-            .extract(CONFIG_STRATEGY, config_json_path(["defaults", "output"]))
+            .process(DIRECT_PROCESSING, config_json_path(["output"]))
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
             .validation(FieldValidation::string_enum::<OutputMode>())
     )]
     output: OutputMode,
@@ -82,8 +82,8 @@ fn parameter_catalog() -> StandardParameterCatalog {
     let definitions = Params::field_defs().unwrap();
     derive_standard_parameter_catalog(
         &definitions,
-        &ExtractionStrategyId::from(DIRECT_STRATEGY),
-        &ExtractionStrategyId::from(CONFIG_STRATEGY),
+        &ProcessingId::from(DIRECT_PROCESSING),
+        &ProcessingId::from(CONFIG_PROCESSING),
     )
     .unwrap()
 }
@@ -100,14 +100,14 @@ fn path<const N: usize>(segments: [&str; N]) -> StandardParameterPath {
     StandardParameterPath::new(segments).unwrap()
 }
 
-fn passthrough_at(
+fn passthrough_from(
     resolution: &StandardParameterResolution,
-    path: StandardParameterPath,
+    source: StandardParameterSourceKind,
 ) -> &PassthroughValue {
     resolution
         .passthrough()
         .iter()
-        .find(|value| value.path == path)
+        .find(|value| value.source == StandardParameterSourceInfo::new(source))
         .unwrap()
 }
 

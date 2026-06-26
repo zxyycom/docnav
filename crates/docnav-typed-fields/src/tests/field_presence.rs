@@ -13,14 +13,14 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
     struct PresenceDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.title")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "title"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "title"]))
                 .validation(FieldValidation::string())
         )]
         title: String,
 
         #[field(
             FieldDef::builder("docnav.defaults.subtitle")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "subtitle"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "subtitle"]))
                 .validation(FieldValidation::string())
         )]
         subtitle: Option<String>,
@@ -44,7 +44,7 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
 
     let missing_required = fields
         .extract(
-            CONFIG_STRATEGY,
+            CONFIG_PROCESSING,
             &json!({"defaults": {"subtitle": "optional"}}),
         )
         .expect_err("required field must be present");
@@ -54,7 +54,7 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
     );
 
     let null_required = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"title": null}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"title": null}}))
         .expect_err("required field rejects null");
     assert_eq!(
         validation_failures(&null_required)[0].reason,
@@ -65,13 +65,16 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
     );
 
     let missing_optional = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"title": "required"}}))
+        .extract(
+            CONFIG_PROCESSING,
+            &json!({"defaults": {"title": "required"}}),
+        )
         .expect("missing optional field extracts");
     assert_eq!(missing_optional.defaults.subtitle, None);
 
     let null_optional = fields
         .extract(
-            CONFIG_STRATEGY,
+            CONFIG_PROCESSING,
             &json!({"defaults": {"title": "required", "subtitle": null}}),
         )
         .expect("optional null field extracts as None");
@@ -79,7 +82,7 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
 
     let present_optional = fields
         .extract(
-            CONFIG_STRATEGY,
+            CONFIG_PROCESSING,
             &json!({"defaults": {"title": "required", "subtitle": "value"}}),
         )
         .expect("present optional field extracts");
@@ -101,14 +104,14 @@ fn set_build_rejects_duplicate_identity() {
     struct DuplicateDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
                 .validation(FieldValidation::int())
         )]
         limit_chars: Option<i64>,
 
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "max_chars"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "max_chars"]))
                 .validation(FieldValidation::int())
         )]
         max_chars: Option<i64>,
@@ -144,7 +147,7 @@ fn string_enum_metadata_deduplicates_allowed_values() {
     struct DuplicateEnumDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.output")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "output"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
                 .validation(FieldValidation::string_enum::<DuplicateMode>())
         )]
         output: Option<DuplicateMode>,
@@ -179,7 +182,7 @@ fn string_enum_metadata_must_have_allowed_values() {
     struct EmptyEnumDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.output")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "output"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
                 .validation(FieldValidation::string_enum::<EmptyMode>())
         )]
         output: Option<EmptyMode>,

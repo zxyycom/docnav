@@ -359,15 +359,16 @@ Status: implemented
 Code: `crates/docnav-typed-fields/src/tests.rs`
 
 Proves:
-- Builder 生成 field identity、extraction strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON 字段解码为 typed value。
-- Processing build 接受 processing id 和 caller-provided function，可以用非 JSON typed raw input 返回 caller 处理值；typed-fields 不解释处理函数内部副作用。
+- Builder 生成 field identity、processing strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON 字段解码为 typed value。
+- Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
+- FieldDefSet 的 `process` 入口在同一 processing id 下返回 extraction result 和 processing result；即使 extraction result 为 validation error，processing result 仍可交给 caller。
 - Field decode/validation 区分 missing optional、missing required/null、wrong type、enum/range/regex/length/default 违规，并保留 field identity、field path 和 machine-readable reason。
 - String enum metadata 由真实 Rust enum metadata 驱动：空 enum metadata 在 build 阶段失败，重复 enum string alias 在有效 metadata 中去重，typed extraction 返回 enum value。
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
 - FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象，`T`/`Option<T>` 分别证明 required 和 null-as-absent presence policy。
-- Definition set build 执行 field build、extraction strategy、default、declaration presence metadata projection、range、regex、length 和 duplicate identity 校验，并把 build failure 归属到 struct field declaration path。
-- 提取和投影 API 产出同形 typed values object、value kind view、typed default values object 和 schema metadata view；`extract_with_static_defaults(strategy_id, json)` 只用 static default 填补缺失输入，`default_values()` 对缺少 static default 的 leaf 返回 `None`，`to_builder()` 支持静态覆盖 leaf builder 后重新 build，动态 identity-string field lookup 不属于 API。
-- Field builder 可以按 extraction strategy id 声明抽取策略且不再支持 `.path(...)` 兼容入口；同一 definition set 内相同 strategy id 必须使用相同 input kind，JSON path strategy 可以通过 `extract(strategy_id, json)` 产出同形 typed values object。
+- Definition set build 执行 field build、processing strategy、default、declaration presence metadata projection、range、regex、length 和 duplicate identity 校验，并把 build failure 归属到 struct field declaration path。
+- 处理入口和投影 API 产出同形 typed values object、value kind view、typed default values object 和 schema metadata view；`process_with_static_defaults(processing, json)` 只用 static default 填补缺失输入，`default_values()` 对缺少 static default 的 leaf 返回 `None`，`to_builder()` 支持静态覆盖 leaf builder 后重新 build，动态 identity-string field lookup 不属于 API。
+- Field builder 可以按 processing id 声明处理策略且不再支持 `.path(...)` 兼容入口；同一 definition set 内相同 processing id 必须使用相同 input kind，JSON path processing strategy 可以产出同形 typed values object。
 
 ### WB-TYPED-FIELDS-COMPILE-001 FieldDefs derive 拒绝非法声明
 Status: implemented
@@ -383,10 +384,10 @@ Code: `crates/docnav-standard-parameters/src/tests/mod.rs`
 
 Proves:
 - Standard parameter resolver consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
-- Strategy-specific metadata projection and standard parameter registration bindings construct direct input, project config, user config and default sources before resolution.
+- Processing-specific metadata projection and standard parameter registration bindings construct direct input, project config, user config and default sources before resolution.
 - Missing required values, invalid mapped values, optional mapped JSON null, static defaults and dynamic default source values all pass through typed-field validation and do not expose unsafe typed values.
 - Explicit skipped config sources return recoverable warning events while default missing config sources remain absent without diagnostics.
-- Unmapped passthrough inputs use caller processing results: default handoff can preserve raw input, raw-minus-mapped can be produced by caller processing functions, remaining JSON subtrees keep their structure, and the result is returned with the entry passthrough disposition for the owning entrypoint.
+- Passthrough handoff uses source-scoped caller passthrough processing results: direct input、project config 和 user config 的 processing result 原样返回并携带 entry passthrough disposition；raw-minus-mapped 或 locator 语义由入口 owner 自行解释，default 不产生 passthrough processing result。
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
 ### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数

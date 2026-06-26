@@ -2,8 +2,8 @@ use super::*;
 use serde_json::json;
 fn limit_chars_field() -> FieldDef {
     FieldDef::builder("docnav.defaults.limit_chars")
-        .extract(
-            CONFIG_STRATEGY,
+        .process(
+            CONFIG_PROCESSING,
             config_json_path(["defaults", "limit_chars"]),
         )
         .validation(
@@ -32,8 +32,8 @@ fn builder_exposes_schema_metadata_and_validates_values() {
     );
 
     let value = field
-        .decode_strategy(
-            &ExtractionStrategyId::from(CONFIG_STRATEGY),
+        .decode_process(
+            &ProcessingId::from(CONFIG_PROCESSING),
             &json!({"defaults": {"limit_chars": 4000}}),
         )
         .expect("valid value decodes");
@@ -45,16 +45,16 @@ fn validation_failures_keep_field_attribution() {
     let field = limit_chars_field();
 
     let missing = field
-        .decode_strategy(
-            &ExtractionStrategyId::from(CONFIG_STRATEGY),
+        .decode_process(
+            &ProcessingId::from(CONFIG_PROCESSING),
             &json!({"defaults": {}}),
         )
         .unwrap();
     assert_eq!(missing, None);
 
     let error = field
-        .decode_strategy(
-            &ExtractionStrategyId::from(CONFIG_STRATEGY),
+        .decode_process(
+            &ProcessingId::from(CONFIG_PROCESSING),
             &json!({"defaults": {"limit_chars": "4000"}}),
         )
         .expect_err("wrong type fails");
@@ -69,8 +69,8 @@ fn validation_failures_keep_field_attribution() {
     );
 
     let error = field
-        .decode_strategy(
-            &ExtractionStrategyId::from(CONFIG_STRATEGY),
+        .decode_process(
+            &ProcessingId::from(CONFIG_PROCESSING),
             &json!({"defaults": {"limit_chars": 0}}),
         )
         .expect_err("range violation fails");
@@ -94,7 +94,7 @@ fn required_and_enum_constraints_are_driven_by_field_declarations() {
     struct RequiredEnumDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.output")
-                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "output"]))
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
                 .validation(FieldValidation::string_enum::<OutputMode>())
         )]
         output: OutputMode,
@@ -103,7 +103,7 @@ fn required_and_enum_constraints_are_driven_by_field_declarations() {
     let fields = Params::field_defs().expect("required enum field builds");
 
     let error = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {}}))
         .expect_err("missing required field fails");
     assert_eq!(
         validation_failures(&error)[0].reason,
@@ -112,14 +112,14 @@ fn required_and_enum_constraints_are_driven_by_field_declarations() {
 
     let params = fields
         .extract(
-            CONFIG_STRATEGY,
+            CONFIG_PROCESSING,
             &json!({"defaults": {"output": "readable-json"}}),
         )
         .expect("allowed enum value passes");
     assert_eq!(params.defaults.output, OutputMode::ReadableJson);
 
     let error = fields
-        .extract(CONFIG_STRATEGY, &json!({"defaults": {"output": "xml"}}))
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"output": "xml"}}))
         .expect_err("disallowed enum value fails");
     assert!(matches!(
         validation_failures(&error)[0].reason,

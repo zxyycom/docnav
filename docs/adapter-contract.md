@@ -73,9 +73,9 @@ reasons[]
 
 ## Invoke
 
-`invoke` 是独立的 protocol stdin/stdout 入口。SDK 在识别 request envelope、operation 和 raw `arguments` 后，按标准参数 operation binding 解析显式参数；缺失的已注册参数可由 adapter invoke 入口的配置或默认值补足。未映射字段按 adapter 入口策略保留、丢弃或交给 adapter-owned 语义校验。
+`invoke` 是独立的 protocol stdin/stdout 入口。SDK 在识别 request envelope、operation 和 raw `arguments` 后，按标准参数 operation binding 解析显式参数；缺失的已注册参数可由 adapter invoke 入口的配置或默认值补足。未映射字段不由标准参数层解释；adapter 入口可通过标准参数返回的透传处理结果按自身策略保留、丢弃或交给 adapter-owned 语义校验。
 
-直接 CLI argv 兼容规则不适用于 `invoke` stdin JSON。`invoke` 必须在进入 canonical document operation input 或等价 semantic request 前按 protocol request schema 和标准参数规则校验请求；malformed JSON、缺少 envelope 必需字段、已出现已注册参数类型错误不得被 warning 后忽略。未映射 `arguments` 字段不由标准参数层校验；adapter 层作为最终消费者，可以丢弃这些字段，或在 adapter-owned native option 语义中返回协议错误。schema-valid `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
+直接 CLI argv 兼容规则不适用于 `invoke` stdin JSON。`invoke` 必须在进入 canonical document operation input 或等价 semantic request 前按 protocol request schema 和标准参数规则校验请求；malformed JSON、缺少 envelope 必需字段、已出现已注册参数类型错误不得被 warning 后忽略。未映射 `arguments` 字段不由标准参数层校验；adapter 层作为最终消费者，可以通过透传处理结果丢弃这些字段，或在 adapter-owned native option 语义中返回协议错误。schema-valid `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
 
 SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、typed deserialization 和 semantic validation；failure surface 仍必须是 protocol-shaped failure response。`invoke` stdin JSON 不是直接 CLI argv，按 [原始协议](protocol.md#schema-所有权) 的 decode 边界验收。
 

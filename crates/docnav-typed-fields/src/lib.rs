@@ -1,8 +1,8 @@
 extern crate self as docnav_typed_fields;
 
-mod extraction;
 mod field;
 mod metadata;
+mod process_strategy;
 mod processing;
 mod range;
 mod set;
@@ -10,16 +10,16 @@ mod validation;
 mod value;
 
 pub use docnav_typed_fields_macros::FieldDefs;
-pub use extraction::{
-    ExtractStrategy, ExtractionInputKind, ExtractionStrategyId, InvalidExtractionStrategyId,
-};
 pub use field::{FieldDef, FieldDefBuilder};
 pub use metadata::{
     ActualValueKind, BuildError, DefaultMetadata, FieldConstraints, FieldDuplicateIdentityError,
-    FieldIdentity, FieldPath, SchemaMetadataView, StrategyMetadataView, TypedValue,
+    FieldIdentity, FieldPath, ProcessingMetadataView, SchemaMetadataView, TypedValue,
     ValidationFailure, ValidationReason, ValueKind,
 };
-pub use processing::{InvalidProcessingId, ProcessedValue, ProcessingBuild, ProcessingId};
+pub use process_strategy::{ProcessStrategy, ProcessingInputKind};
+pub use processing::{
+    InvalidProcessingId, ProcessedExtraction, ProcessedValue, ProcessingBuild, ProcessingId,
+};
 pub use range::{
     FieldBound, FieldBoundKind, FieldLength, FieldNumericBound, FieldNumericRange, FieldRange,
 };

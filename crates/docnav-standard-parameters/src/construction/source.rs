@@ -15,9 +15,9 @@ pub(crate) fn construct_direct_input_source(
 pub(crate) fn construct_direct_input_source_with_passthrough(
     entries: &[StandardParameterCatalogEntry],
     input: Option<&JsonValue>,
-    passthrough_input: Option<&JsonValue>,
+    processing_result: Option<&JsonValue>,
 ) -> StandardParameterSource {
-    construct_source(input, passthrough_input, entries, |entry| {
+    construct_source(input, processing_result, entries, |entry| {
         entry.direct_input_path.as_ref()
     })
 }
@@ -33,9 +33,9 @@ pub(crate) fn construct_config_source(
 pub(crate) fn construct_config_source_with_passthrough(
     entries: &[StandardParameterCatalogEntry],
     input: Option<&JsonValue>,
-    passthrough_input: Option<&JsonValue>,
+    processing_result: Option<&JsonValue>,
 ) -> StandardParameterSource {
-    construct_source(input, passthrough_input, entries, |entry| {
+    construct_source(input, processing_result, entries, |entry| {
         entry.config_path.as_ref()
     })
 }
@@ -59,7 +59,7 @@ pub(crate) fn construct_default_source(
 
 fn construct_source(
     input: Option<&JsonValue>,
-    passthrough_input: Option<&JsonValue>,
+    processing_result: Option<&JsonValue>,
     entries: &[StandardParameterCatalogEntry],
     path_for: impl Fn(&StandardParameterCatalogEntry) -> Option<&StandardParameterPath>,
 ) -> StandardParameterSource {
@@ -77,8 +77,8 @@ fn construct_source(
         }
     }
 
-    if let Some(passthrough_input) = passthrough_input {
-        collect_passthrough(passthrough_input, &mut source);
+    if let Some(processing_result) = processing_result {
+        source.set_processing_result(processing_result.clone());
     }
     source
 }
@@ -89,15 +89,4 @@ fn value_at_path<'a>(root: &'a JsonValue, path: &StandardParameterPath) -> Optio
         current = current.as_object()?.get(segment)?;
     }
     Some(current)
-}
-
-fn collect_passthrough(value: &JsonValue, source: &mut StandardParameterSource) {
-    let JsonValue::Object(object) = value else {
-        return;
-    };
-    for (key, value) in object.clone() {
-        let path = StandardParameterPath::new([key])
-            .expect("passthrough path is built from non-empty JSON object keys");
-        source.push_passthrough(path, value);
-    }
 }

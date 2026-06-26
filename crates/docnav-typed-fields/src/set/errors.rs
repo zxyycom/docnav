@@ -1,7 +1,7 @@
 use std::fmt;
 
-use crate::extraction::{ExtractionInputKind, ExtractionStrategyId};
 use crate::metadata::{BuildError, FieldDuplicateIdentityError};
+use crate::{ProcessingId, ProcessingInputKind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[doc(hidden)]
@@ -30,10 +30,10 @@ impl std::error::Error for FieldDefBuildFailure {}
 pub enum FieldDefSetBuildError {
     Field(FieldDefBuildFailure),
     DuplicateIdentity(FieldDuplicateIdentityError),
-    ExtractionInputKindConflict {
-        strategy_id: ExtractionStrategyId,
-        previous: ExtractionInputKind,
-        current: ExtractionInputKind,
+    ProcessingInputKindConflict {
+        processing_id: ProcessingId,
+        previous: ProcessingInputKind,
+        current: ProcessingInputKind,
     },
 }
 
@@ -59,13 +59,13 @@ impl fmt::Display for FieldDefSetBuildError {
             Self::DuplicateIdentity(error) => {
                 write!(formatter, "field def identity is duplicated: {error}")
             }
-            Self::ExtractionInputKindConflict {
-                strategy_id,
+            Self::ProcessingInputKindConflict {
+                processing_id,
                 previous,
                 current,
             } => write!(
                 formatter,
-                "extraction strategy {strategy_id} has conflicting input kinds: {previous:?} and {current:?}"
+                "processing {processing_id} has conflicting input kinds: {previous:?} and {current:?}"
             ),
         }
     }
@@ -75,13 +75,13 @@ impl std::error::Error for FieldDefSetBuildError {}
 
 #[derive(Debug, PartialEq)]
 pub enum FieldExtractionError {
-    UnknownStrategy {
-        strategy_id: ExtractionStrategyId,
+    UnknownProcessing {
+        processing_id: ProcessingId,
     },
     InputKindMismatch {
-        strategy_id: ExtractionStrategyId,
-        expected: ExtractionInputKind,
-        actual: ExtractionInputKind,
+        processing_id: ProcessingId,
+        expected: ProcessingInputKind,
+        actual: ProcessingInputKind,
     },
     Validation(super::FieldValidationErrors),
 }
@@ -89,19 +89,16 @@ pub enum FieldExtractionError {
 impl fmt::Display for FieldExtractionError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownStrategy { strategy_id } => {
-                write!(
-                    formatter,
-                    "extraction strategy {strategy_id} is not registered"
-                )
+            Self::UnknownProcessing { processing_id } => {
+                write!(formatter, "processing {processing_id} is not registered")
             }
             Self::InputKindMismatch {
-                strategy_id,
+                processing_id,
                 expected,
                 actual,
             } => write!(
                 formatter,
-                "extraction strategy {strategy_id} expects {expected:?} input, got {actual:?}"
+                "processing {processing_id} expects {expected:?} input, got {actual:?}"
             ),
             Self::Validation(error) => write!(formatter, "{error}"),
         }
