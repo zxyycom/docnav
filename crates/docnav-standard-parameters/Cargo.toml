@@ -1,0 +1,9 @@
+[package]
+name = "docnav-standard-parameters"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+docnav-typed-fields.workspace = true
+serde_json.workspace = true

@@ -376,6 +376,16 @@ Proves:
 - `FieldDefs` derive 在编译期拒绝 leaf Rust field 类型与 `FieldDefBuilder<T>` 类型不一致的声明。
 - 缺少 field validation 或缺少 `#[field(...)]` attribute 的声明无法通过 trybuild compile-fail fixtures。
 
+### WB-STDPARAMS-RESOLVE-001 Standard parameter resolver 保持来源解析边界
+Status: implemented
+Code: `crates/docnav-standard-parameters/src/tests.rs`
+
+Proves:
+- Standard parameter resolver consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
+- Missing required values, invalid mapped values, static defaults and dynamic default source values all pass through typed-field validation and return diagnostics instead of unsafe typed values.
+- Unmapped passthrough inputs stay outside standard parameter validation and are returned with the entry passthrough disposition for the owning entrypoint.
+- Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
+
 ### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数
 Status: implemented
 Code: `crates/docnav-adapter-sdk/src/paging.rs`

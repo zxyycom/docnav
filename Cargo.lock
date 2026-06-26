@@ -218,6 +218,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "docnav-standard-parameters"
+version = "0.1.0"
+dependencies = [
+ "docnav-typed-fields",
+ "serde_json",
+]
+
+[[package]]
 name = "docnav-typed-fields"
 version = "0.1.0"
 dependencies = [

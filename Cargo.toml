@@ -9,6 +9,7 @@ members = [
   "crates/docnav-markdown",
   "crates/docnav-protocol",
   "crates/docnav-readable",
+  "crates/docnav-standard-parameters",
   "crates/docnav-typed-fields",
   "crates/docnav-typed-fields-macros"
 ]
@@ -27,6 +28,7 @@ docnav-diagnostics = { path = "crates/docnav-diagnostics" }
 docnav-json-io = { path = "crates/docnav-json-io" }
 docnav-output = { path = "crates/docnav-output" }
 docnav-readable = { path = "crates/docnav-readable" }
+docnav-standard-parameters = { path = "crates/docnav-standard-parameters" }
 docnav-typed-fields = { path = "crates/docnav-typed-fields" }
 docnav-typed-fields-macros = { path = "crates/docnav-typed-fields-macros" }
 jsonschema = { version = "0.46.5", default-features = false }
