@@ -7,6 +7,7 @@ struct NativeRawInput {
     text: String,
 }
 
+// @case WB-TYPED-FIELDS-PROCESSING-001
 #[test]
 fn processing_build_returns_caller_processed_value_for_typed_raw_input() {
     let calls = Cell::new(0);

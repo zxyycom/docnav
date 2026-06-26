@@ -1,16 +1,22 @@
 use super::*;
 use serde_json::json;
 
-#[test]
-fn derived_field_defs_extract_json_into_typed_params_object() {
-    fn consume_params(params: DocnavParams) -> (Option<i64>, OutputMode) {
-        (params.defaults.limit_chars, params.defaults.output)
-    }
-    fn consume_defaults(params: DocnavParamsDefaultValues) -> (Option<i64>, Option<OutputMode>) {
-        (params.defaults.limit_chars, params.defaults.output)
-    }
+// @case WB-TYPED-FIELDS-PROJECTION-001
+fn docnav_fields() -> <DocnavParams as FieldDefs>::DefinitionSet {
+    DocnavParams::field_defs().expect("definition set builds")
+}
 
-    let fields = DocnavParams::field_defs().expect("definition set builds");
+fn consume_params(params: DocnavParams) -> (Option<i64>, OutputMode) {
+    (params.defaults.limit_chars, params.defaults.output)
+}
+
+fn consume_defaults(params: DocnavParamsDefaultValues) -> (Option<i64>, Option<OutputMode>) {
+    (params.defaults.limit_chars, params.defaults.output)
+}
+
+#[test]
+fn derived_field_defs_project_metadata_and_defaults() {
+    let fields = docnav_fields();
 
     assert_eq!(
         fields.value_kinds().get("docnav.defaults.limit_chars"),
@@ -34,6 +40,11 @@ fn derived_field_defs_extract_json_into_typed_params_object() {
             json!("protocol-json")
         ])
     );
+}
+
+#[test]
+fn derived_field_defs_extract_valid_json_into_typed_params_object() {
+    let fields = docnav_fields();
 
     let input = json!({"a": {"b": 4000}, "defaults": {"output": "readable-json"}});
     let params = fields
@@ -43,6 +54,11 @@ fn derived_field_defs_extract_json_into_typed_params_object() {
         consume_params(params),
         (Some(4000), OutputMode::ReadableJson)
     );
+}
+
+#[test]
+fn derived_field_defs_extract_missing_optional_without_static_default() {
+    let fields = docnav_fields();
 
     let input = json!({"defaults": {"output": "protocol-json"}});
     let params = fields
@@ -50,6 +66,11 @@ fn derived_field_defs_extract_json_into_typed_params_object() {
         .expect("missing optional field extracts");
     assert_eq!(params.defaults.limit_chars, None);
     assert_eq!(params.defaults.output, OutputMode::ProtocolJson);
+}
+
+#[test]
+fn derived_field_defs_static_defaults_fill_missing_inputs() {
+    let fields = docnav_fields();
 
     let input = json!({"defaults": {"output": "protocol-json"}});
     let params = fields

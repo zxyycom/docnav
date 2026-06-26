@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-// @case WB-TYPED-FIELDS-001
 use super::*;
 
 mod constraints;

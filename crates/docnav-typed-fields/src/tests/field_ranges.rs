@@ -1,6 +1,7 @@
 use super::*;
 use serde_json::json;
 
+// @case WB-TYPED-FIELDS-RANGES-001
 #[test]
 fn set_build_rejects_invalid_default_metadata() {
     #[derive(Debug, FieldDefs)]

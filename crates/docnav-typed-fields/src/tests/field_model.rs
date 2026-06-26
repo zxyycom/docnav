@@ -1,5 +1,7 @@
 use super::*;
 use serde_json::json;
+
+// @case WB-TYPED-FIELDS-001
 fn limit_chars_field() -> FieldDef {
     FieldDef::builder("docnav.defaults.limit_chars")
         .process(

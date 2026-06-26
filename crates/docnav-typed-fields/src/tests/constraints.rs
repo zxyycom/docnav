@@ -1,33 +1,43 @@
 use super::*;
 use serde_json::json;
 
+// @case WB-TYPED-FIELDS-CONSTRAINTS-001
+#[derive(Debug, FieldDefs)]
+struct StringConstraintParams {
+    #[field(group)]
+    defaults: StringConstraintDefaults,
+}
+
+#[derive(Debug, FieldDefs)]
+struct StringConstraintDefaults {
+    #[field(
+        FieldDef::builder("docnav.defaults.slug")
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "slug"]))
+            .validation(
+                FieldValidation::string()
+                    .regex(r"^[a-z][a-z0-9-]*$")
+                    .length(FieldLength::between(FieldBound::closed(3), FieldBound::open(8))),
+            )
+    )]
+    slug: Option<String>,
+}
+
+fn string_constraint_fields() -> <StringConstraintParams as FieldDefs>::DefinitionSet {
+    StringConstraintParams::field_defs().expect("string regex and length constraints build")
+}
+
 #[test]
-fn string_regex_and_length_constraints_validate_present_values() {
-    #[derive(Debug, FieldDefs)]
-    struct Params {
-        #[field(group)]
-        defaults: Defaults,
-    }
-
-    #[derive(Debug, FieldDefs)]
-    struct Defaults {
-        #[field(
-            FieldDef::builder("docnav.defaults.slug")
-                .process(CONFIG_PROCESSING, config_json_path(["defaults", "slug"]))
-                .validation(
-                    FieldValidation::string()
-                        .regex(r"^[a-z][a-z0-9-]*$")
-                        .length(FieldLength::between(FieldBound::closed(3), FieldBound::open(8))),
-                )
-        )]
-        slug: Option<String>,
-    }
-
-    let fields = Params::field_defs().expect("string regex and length constraints build");
+fn string_constraints_accept_valid_value() {
+    let fields = string_constraint_fields();
 
     fields
         .extract(CONFIG_PROCESSING, &json!({"defaults": {"slug": "doc-1"}}))
         .expect("valid slug passes");
+}
+
+#[test]
+fn string_regex_constraint_reports_mismatch() {
+    let fields = string_constraint_fields();
 
     let error = fields
         .extract(CONFIG_PROCESSING, &json!({"defaults": {"slug": "Doc"}}))
@@ -38,6 +48,11 @@ fn string_regex_and_length_constraints_validate_present_values() {
             pattern: r"^[a-z][a-z0-9-]*$".to_string(),
         }
     );
+}
+
+#[test]
+fn string_length_constraint_reports_below_minimum() {
+    let fields = string_constraint_fields();
 
     let error = fields
         .extract(CONFIG_PROCESSING, &json!({"defaults": {"slug": "do"}}))
@@ -48,6 +63,11 @@ fn string_regex_and_length_constraints_validate_present_values() {
             minimum: FieldBound::closed(3)
         }
     );
+}
+
+#[test]
+fn string_length_constraint_reports_open_maximum() {
+    let fields = string_constraint_fields();
 
     let error = fields
         .extract(

@@ -356,17 +356,62 @@ Proves:
 
 ### WB-TYPED-FIELDS-001 Typed field definition core 保持字段级不变量
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests.rs`
+Code: `crates/docnav-typed-fields/src/tests/field_model.rs`
 
 Proves:
 - Builder 生成 field identity、processing strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON 字段解码为 typed value。
-- Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
-- FieldDefSet 的 `process` 入口在同一 processing id 下返回 extraction result 和 processing result；即使 extraction result 为 validation error，processing result 仍可交给 caller。
-- Field decode/validation 区分 missing optional、missing required/null、wrong type、enum/range/regex/length/default 违规，并保留 field identity、field path 和 machine-readable reason。
+- Field decode/validation 区分 missing optional、wrong type 和 range violation，并保留 field identity、field path 和 machine-readable reason。
+- Required enum field declaration 使用 Rust enum metadata 校验 allowed value，missing required 和 disallowed enum value 返回可诊断 validation failure。
+
+### WB-TYPED-FIELDS-PRESENCE-001 Typed field declaration presence policy 稳定
+Status: implemented
+Code: `crates/docnav-typed-fields/src/tests/field_presence.rs`
+
+Proves:
+- `T` / `Option<T>` field declaration 分别投影为 required/non-nullable 和 optional/nullable schema metadata。
+- missing required 和 null required 分别返回 `MissingRequired` 与 typed wrong-null failure。
+- optional field 在 missing、null 和 present 三种输入下分别产生 `None`、`None` 和 typed value。
+
+### WB-TYPED-FIELDS-METADATA-001 Typed field metadata build invariants 稳定
+Status: implemented
+Code: `crates/docnav-typed-fields/src/tests/field_presence.rs`
+
+Proves:
+- duplicate field identity 在 definition set build 阶段失败，并保留 previous/current declaration path 和 processing path。
 - String enum metadata 由真实 Rust enum metadata 驱动：空 enum metadata 在 build 阶段失败，重复 enum string alias 在有效 metadata 中去重，typed extraction 返回 enum value。
+
+### WB-TYPED-FIELDS-CONSTRAINTS-001 Typed field string/array constraints 稳定
+Status: implemented
+Code: `crates/docnav-typed-fields/src/tests/constraints.rs`
+
+Proves:
+- String regex、closed minimum length 和 open maximum length 对 present value 产生稳定 validation failure reason。
+- Array length constraints 对 present value 生效。
+- Invalid regex metadata 在 definition set build 阶段失败。
+
+### WB-TYPED-FIELDS-RANGES-001 Typed field numeric ranges and defaults 稳定
+Status: implemented
+Code: `crates/docnav-typed-fields/src/tests/field_ranges.rs`
+
+Proves:
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
-- FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象，`T`/`Option<T>` 分别证明 required 和 null-as-absent presence policy。
-- Definition set build 执行 field build、processing strategy、default、declaration presence metadata projection、range、regex、length 和 duplicate identity 校验，并把 build failure 归属到 struct field declaration path。
+- Static default metadata 通过 field validation；invalid default、non-finite default、non-finite range、empty range 和 missing processing strategy 在 build 阶段失败。
+
+### WB-TYPED-FIELDS-PROCESSING-001 Typed field processing build 稳定
+Status: implemented
+Code: `crates/docnav-typed-fields/src/tests/processing.rs`
+
+Proves:
+- Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
+- Empty processing id 在 build 阶段失败。
+
+### WB-TYPED-FIELDS-PROJECTION-001 Typed field definition set projection 稳定
+Status: implemented
+Code: `crates/docnav-typed-fields/src/tests/set_projection.rs`
+
+Proves:
+- FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象。
+- FieldDefSet 的 `process` 入口在同一 processing id 下返回 extraction result 和 processing result；即使 extraction result 为 validation error，processing result 仍可交给 caller。
 - 处理入口和投影 API 产出同形 typed values object、value kind view、typed default values object 和 schema metadata view；`process_with_static_defaults(processing, json)` 只用 static default 填补缺失输入，`default_values()` 对缺少 static default 的 leaf 返回 `None`，`to_builder()` 支持静态覆盖 leaf builder 后重新 build，动态 identity-string field lookup 不属于 API。
 - Field builder 可以按 processing id 声明处理策略且不再支持 `.path(...)` 兼容入口；同一 definition set 内相同 processing id 必须使用相同 input kind，JSON path processing strategy 可以产出同形 typed values object。
 

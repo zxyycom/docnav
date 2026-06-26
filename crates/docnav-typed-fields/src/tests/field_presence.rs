@@ -1,32 +1,37 @@
 use super::*;
 use serde_json::json;
 
+// @case WB-TYPED-FIELDS-PRESENCE-001
+#[derive(Debug, FieldDefs)]
+struct PresenceParams {
+    #[field(group)]
+    defaults: PresenceDefaults,
+}
+
+#[derive(Debug, FieldDefs)]
+struct PresenceDefaults {
+    #[field(
+        FieldDef::builder("docnav.defaults.title")
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "title"]))
+            .validation(FieldValidation::string())
+    )]
+    title: String,
+
+    #[field(
+        FieldDef::builder("docnav.defaults.subtitle")
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "subtitle"]))
+            .validation(FieldValidation::string())
+    )]
+    subtitle: Option<String>,
+}
+
+fn presence_fields() -> <PresenceParams as FieldDefs>::DefinitionSet {
+    PresenceParams::field_defs().expect("presence defaults build")
+}
+
 #[test]
-fn field_declaration_type_controls_requiredness_and_optional_nulls() {
-    #[derive(Debug, FieldDefs)]
-    struct Params {
-        #[field(group)]
-        defaults: PresenceDefaults,
-    }
-
-    #[derive(Debug, FieldDefs)]
-    struct PresenceDefaults {
-        #[field(
-            FieldDef::builder("docnav.defaults.title")
-                .process(CONFIG_PROCESSING, config_json_path(["defaults", "title"]))
-                .validation(FieldValidation::string())
-        )]
-        title: String,
-
-        #[field(
-            FieldDef::builder("docnav.defaults.subtitle")
-                .process(CONFIG_PROCESSING, config_json_path(["defaults", "subtitle"]))
-                .validation(FieldValidation::string())
-        )]
-        subtitle: Option<String>,
-    }
-
-    let fields = Params::field_defs().expect("presence defaults build");
+fn declaration_type_projects_required_and_nullable_metadata() {
+    let fields = presence_fields();
     let schema = fields.schema_metadata();
     let title_schema = schema
         .iter()
@@ -41,7 +46,11 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
         .expect("subtitle schema exists");
     assert!(!subtitle_schema.constraints.required);
     assert!(subtitle_schema.constraints.nullable);
+}
 
+#[test]
+fn required_declaration_reports_missing_and_null_failures() {
+    let fields = presence_fields();
     let missing_required = fields
         .extract(
             CONFIG_PROCESSING,
@@ -63,7 +72,11 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
             actual: ActualValueKind::Null,
         }
     );
+}
 
+#[test]
+fn optional_declaration_extracts_absent_null_and_present_values() {
+    let fields = presence_fields();
     let missing_optional = fields
         .extract(
             CONFIG_PROCESSING,
@@ -92,6 +105,7 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
     );
 }
 
+// @case WB-TYPED-FIELDS-METADATA-001
 #[test]
 fn set_build_rejects_duplicate_identity() {
     #[derive(Debug, FieldDefs)]
