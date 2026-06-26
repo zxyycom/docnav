@@ -1,37 +1,42 @@
-本 change 定义标准参数来源解析核心的实现边界和验收入口。
+本 change 定义标准参数来源解析核心的实现边界、推荐入口和验收条件。
 
-## Why
+## 为什么
 
-标准参数需要从 direct input、项目配置、用户配置和默认值中形成 typed runtime values。来源构造和来源合并应作为独立实现 slice，消费 typed field metadata，并为后续 core/SDK 迁移提供稳定边界。
+标准参数需要从 direct input、project config、user config 和 default 中形成 typed runtime values。字段事实由 `docnav-typed-fields` 表达；来源读取、来源构造、来源优先级、diagnostic handoff 和 passthrough handoff 由 `docnav-standard-parameters` 统一实现。
 
-基础审计确认：`docs/standard-parameters.md` 拥有长期行为模型，`docnav-typed-fields` 拥有字段 identity、extraction strategy、schema metadata、默认值和 typed value 校验能力。`docnav-standard-parameters` 已实现手工 sources 的 resolver 后半段；本 change 继续补齐 source construction、配置 source 读取和按 registration/extraction strategy 构造 direct/project/user/default sources 的 API。
+完成状态以 `FieldDefSet` pipeline 为准：普通 caller 提供 typed-field 定义、direct/config strategy id、直接输入和 config 路径，标准参数层内部形成 catalog/index 并返回 `StandardParameterResolution`。
 
-## What Changes
+## 变化
 
-- `docnav-standard-parameters` 消费 typed field definition，使用字段 identity、extraction strategy、schema metadata、默认值和 typed value 校验能力。
-- Source construction 将 direct input、project config、user config 和 default 映射为标准参数 sources，并保留未映射字段 passthrough。
-- Resolver 按固定顺序合并 sources：direct input、project config、user config、default；输出 typed values、source info 和 passthrough handoff；validation error 和 recoverable warning 交给现有 diagnostics handoff。
-- Config source loading 读取 caller 提供的 project/user config source path，校验 JSON 顶层 object，跳过不可用 source，并把 source-skipped 作为 recoverable diagnostic event 交给现有 diagnostics handoff。
+- `docnav-typed-fields` 继续拥有字段定义：identity、类型、required/default、range、enum、regex 和每个 extraction strategy 的 path。
+- `docnav-standard-parameters` 提供普通 pipeline 入口：caller 提供 `FieldDefSet`、direct/config strategy id、direct input、project/user config path 或 descriptor、dynamic defaults 和 passthrough policy。
+- Pipeline 内部按固定顺序读取 `schema_metadata()`、`strategy_metadata("direct")` 和 `strategy_metadata("config")`，形成 catalog/index，并复用 identity/path conflict 检查。
+- 普通 config 入口是 path/descriptor，由标准参数层负责 JSON loading、顶层 object 校验和 skipped-source diagnostic handoff。
+- Loaded config 入口只复用同一标准参数 loader 已经加载过的 source，不作为 caller 自行实现 JSON loading 的普通路径。
+- Source construction 将 direct input、project config、user config 和 default 映射为标准参数 sources，并把未映射字段作为 passthrough handoff 返回。
+- Resolver 按固定顺序合并 sources：direct input、project config、user config、default；输出 typed values、source info、diagnostic events 和 passthrough handoff。
 - Operation argument binding 只记录标准参数 identity 到 protocol request `arguments` path 的映射；request construction 由后续 owner 处理。
+- Catalog/index 是 pipeline 内部编译产物，只承接 typed-field metadata 到 source construction 的映射。
 
-## Capabilities
+## 能力
 
-### New Capabilities
+### 新增能力
 
-- `standard-parameter-resolution`: 标准参数 source construction、配置 source loading、来源合并、typed runtime values、diagnostic handoff、passthrough 和 operation argument binding。
+- `standard-parameter-resolution`: 标准参数 pipeline facade、direct/config strategy binding、catalog/index 派生、source construction、config source loading、来源合并、typed runtime values、diagnostic handoff、passthrough 和 operation argument binding。
 
-### Modified Capabilities
+### 修改能力
 
 本 change 新增 `standard-parameter-resolution` capability delta，不直接修改已归档主 spec requirement。
 
-## Baseline Audit
+## 基线审计
 
-- `typed-field-definitions` 仍是字段 metadata owner；本 change 以其 value kind、enum、range、requiredness 和 default 规则作为单一事实源。
-- Loose CLI argv tokenization、unused flag warning、native option semantic validation、diagnostic formatting、output channel 和 exit behavior 由入口 owner 处理；标准参数层只提交 diagnostic events，不决定最终输出。
+- `typed-field-definitions` 是字段事实 owner；标准参数层以其 metadata 和 validation 作为单一事实源。
+- Catalog/index 是标准参数层从 `FieldDefSet`、`schema_metadata()`、direct strategy metadata 和 config strategy metadata 派生的内部产物，只服务 pipeline source construction。
+- Loose CLI argv tokenization、unused flag warning、native option semantic validation、diagnostic formatting、output channel 和 exit behavior 由入口 owner 处理；标准参数层只提交 diagnostic events。
 - `docnav` 和 `docnav-adapter-sdk` 尚未消费 `docnav-standard-parameters`；consumer migration 不属于本 change 的完成条件。
 
-## Impact
+## 影响
 
-- 后续会影响 core CLI、adapter direct CLI、adapter invoke 和 config handling 的参数解析方式。
+- 后续会影响 core CLI、adapter direct CLI、adapter invoke 和 config handling 的参数解析接入方式。
 - 当前 change 只定义标准参数来源核心，不改变 observable CLI output、protocol-json 或配置文件行为。
-- 后续 consumer 迁移必须在独立 change 中更新 docs、examples、tests 和 output expectations。
+- 后续 consumer migration 必须在独立 change 中更新 docs、examples、tests 和 output expectations。

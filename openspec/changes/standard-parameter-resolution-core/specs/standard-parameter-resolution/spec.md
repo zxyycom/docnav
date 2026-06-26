@@ -1,87 +1,117 @@
 ## ADDED Requirements
 
-### Requirement: Standard parameter resolution produces typed values from constructed sources
-The standard parameter resolver MUST combine constructed direct input, project config, user config, and default sources into typed runtime values using typed-field metadata, while preserving source information and handing off validation failures as diagnostic events.
+### Requirement: Pipeline 以 typed field definitions 为入口
+标准参数 pipeline MUST 接受 caller-defined typed field definitions 作为普通入口，从 typed-field metadata 和 direct/config strategy 构建内部 catalog/index，并保持 field identity、type、requiredness、defaults、constraints 和 extraction paths 由 `docnav-typed-fields` 拥有。
 
-#### Scenario: Direct input overrides lower-priority sources
-- **WHEN** the same standard parameter identity is present in direct input, project config, user config, and default sources
-- **THEN** the resolver returns the direct input value as the final typed value
-- **THEN** the resolver records direct input as the source info for that final value
+#### Scenario: Caller-defined FieldDefSet 是字段事实源
+- **WHEN** caller 从 `docnav-typed-fields` definitions 构建 `FieldDefSet`，并向标准参数 pipeline 提供 direct/config strategy ids
+- **THEN** pipeline 从 `schema_metadata()`、`strategy_metadata("direct")` 和 `strategy_metadata("config")` 派生 standard parameter identities、typed validation metadata 和 source paths
+- **THEN** 普通路径不要求 caller 手工构造 `StandardParameterRegistration`
 
-#### Scenario: Config sources override user config and default
-- **WHEN** a standard parameter identity is absent from direct input and present in both project config and user config
-- **THEN** the resolver returns the project config value as the final typed value
-- **THEN** the resolver records project config as the source info for that final value
+#### Scenario: Direct/config role 映射到 typed-field strategies
+- **WHEN** caller 将 direct role 绑定到 direct strategy id，并将 config role 绑定到 config strategy id
+- **THEN** direct input 通过 direct strategy paths 读取
+- **THEN** project/user config input 通过 config strategy paths 读取
+- **THEN** default candidates 来自 typed-field defaults 和 caller-provided dynamic defaults，而不是第三个 extraction strategy role
+- **THEN** field validation 继续使用同一份 typed-field metadata
 
-#### Scenario: Default source fills absent declared values
-- **WHEN** a standard parameter identity has no mapped direct input, project config, or user config value
-- **THEN** the resolver uses the declared static or dynamic default when one exists
-- **THEN** the default result is validated through the same typed-field metadata as other mapped values
+#### Scenario: Catalog/index 是内部编译产物
+- **WHEN** pipeline 已经从 typed-field metadata 派生出 catalog/index
+- **THEN** source construction 使用该 catalog/index
+- **THEN** 普通 caller 不需要手工构造中间 catalog/index
 
-#### Scenario: Mapped invalid value fails standard parameter validation
-- **WHEN** a mapped source value violates the declared typed-field kind, enum, range, requiredness, or default constraint
-- **THEN** the resolver hands off a diagnostic event for that identity, source, and validation failure
-- **THEN** the invalid mapped value is not exposed as a safe typed runtime value
+### Requirement: 标准参数解析从 constructed sources 产生 typed values
+标准参数 resolver MUST 用 typed-field metadata 合并 constructed direct input、project config、user config 和 default sources，生成 typed runtime values，并保留 source information 与 validation diagnostic events。
 
-### Requirement: Source construction maps registered inputs
-The standard parameter source layer MUST construct direct input, project config, user config, and default sources from standard parameter registration and typed-field extraction metadata before resolution.
+#### Scenario: Direct input 覆盖低优先级 sources
+- **WHEN** 同一 standard parameter identity 同时存在于 direct input、project config、user config 和 default sources
+- **THEN** resolver 返回 direct input value 作为最终 typed value
+- **THEN** resolver 记录 direct input 作为该最终值的 source info
 
-#### Scenario: Config JSON maps through registered config binding
-- **WHEN** a project or user config JSON object contains a value at a registered config path
-- **THEN** source construction maps that value to the registered standard parameter identity
-- **THEN** the source records project config or user config as its source kind
+#### Scenario: Project config 覆盖 user config 和 default
+- **WHEN** standard parameter identity 不在 direct input 中，但同时存在于 project config 和 user config
+- **THEN** resolver 返回 project config value 作为最终 typed value
+- **THEN** resolver 记录 project config 作为该最终值的 source info
 
-#### Scenario: Unregistered config field remains passthrough
-- **WHEN** a config JSON object contains a field that is not mapped by any standard parameter registration
-- **THEN** source construction does not validate it as a standard parameter
-- **THEN** the field is retained, discarded, or delegated according to the entry passthrough policy
+#### Scenario: Default 补齐缺失声明值
+- **WHEN** standard parameter identity 没有 mapped direct input、project config 或 user config value
+- **THEN** resolver 在存在 declared static 或 dynamic default 时使用 default
+- **THEN** default result 通过与其它 mapped values 相同的 typed-field metadata validation
 
-#### Scenario: Direct input maps through entry binding
-- **WHEN** direct CLI input or adapter invoke arguments include a value mapped by the entry registration
-- **THEN** source construction maps that value to the registered standard parameter identity as direct input
-- **THEN** unmapped direct input remains outside standard parameter validation
+#### Scenario: Invalid mapped value 产生 validation diagnostic
+- **WHEN** mapped source value 违反 declared typed-field kind、enum、range、requiredness 或 default constraint
+- **THEN** resolver 为该 identity、source 和 validation failure 交接 diagnostic event
+- **THEN** invalid mapped value 不暴露为 safe typed runtime value
 
-#### Scenario: Default source includes static and dynamic defaults
-- **WHEN** a registration has a static default or caller-provided dynamic default
-- **THEN** source construction places that default into the default source
-- **THEN** the default is validated through the same typed-field metadata as other mapped source values
+### Requirement: Source construction 使用 pipeline-derived catalog/index
+标准参数 source layer MUST 从 pipeline-derived catalog/index 构造 direct input、project config、user config 和 default sources，然后进入 resolution。
 
-### Requirement: Config source loading reports skipped sources without owning output
-The standard parameter source layer MUST load configured project and user config sources, skip unavailable or invalid sources according to standard parameter rules, and hand off diagnostic events while leaving diagnostic formatting, output channels, and exit behavior to the entry owner.
+#### Scenario: Config JSON 通过 derived config path 映射
+- **WHEN** project 或 user config JSON object 在 derived config path 上包含值
+- **THEN** source construction 将该值映射到 catalog/index 中的 standard parameter identity
+- **THEN** source 记录 project config 或 user config 作为 source kind
 
-#### Scenario: Missing default config source is absent
-- **WHEN** the default project or user config path does not exist
-- **THEN** the config source is treated as absent
-- **THEN** no skipped-source diagnostic event is returned for that missing default source
+#### Scenario: Unmapped config field 保持 passthrough
+- **WHEN** config JSON object 包含未映射到任何 derived standard parameter entry 的字段
+- **THEN** source construction 不把该字段作为 standard parameter validation
+- **THEN** 该字段按 entry passthrough policy 被 retained、discarded 或 delegated
 
-#### Scenario: Invalid explicit config source is skipped
-- **WHEN** an explicit project or user config override is missing, unreadable, invalid JSON, or not a JSON object
-- **THEN** the config source is skipped
-- **THEN** the diagnostic handoff includes structured source-skipped warning data with source level, path origin, path, reason code, and operation-continued semantics
-- **THEN** remaining available sources continue into standard parameter resolution
+#### Scenario: Direct input 通过 derived direct binding 映射
+- **WHEN** direct CLI input 或 adapter invoke arguments 包含 direct input strategy 映射到的值
+- **THEN** source construction 将该值映射到 registered standard parameter identity 并标记为 direct input
+- **THEN** unmapped direct input 保持在 standard parameter validation 之外
 
-### Requirement: Standard parameter passthrough remains owner-scoped
-The standard parameter resolver MUST leave unmapped input outside standard parameter validation and return passthrough according to the entry policy so that the owning CLI, adapter, protocol, or config layer can retain, discard, warn about, or validate it.
+#### Scenario: Defaults 进入标准参数解析
+- **WHEN** 字段存在 static default 或 caller-provided dynamic default
+- **THEN** default handling 将该值作为 default source candidate
+- **THEN** default 通过与其它 mapped source values 相同的 typed-field metadata validation
 
-#### Scenario: Unmapped input remains outside standard parameter validation
-- **WHEN** an input field is not mapped to a standard parameter identity
-- **THEN** the standard parameter resolver does not validate it as a standard parameter
-- **THEN** the resolver returns it through the entry policy as retained, discarded, or delegated passthrough
+### Requirement: Config source loading 交接 skipped sources 且不拥有输出
+标准参数 source layer MUST 加载 configured project/user config sources，按标准参数规则跳过 unavailable 或 invalid sources，并交接 diagnostic events；diagnostic formatting、output channel 和 exit behavior 仍由 entry owner 处理。
 
-#### Scenario: Adapter native option remains delegated
-- **WHEN** an adapter direct CLI or invoke argument includes a native option that has no standard parameter mapping
-- **THEN** the resolver keeps that option outside typed-field standard parameter validation
-- **THEN** the entry owner remains responsible for any native option validation or ignored-argument warning
+#### Scenario: Pipeline 拥有普通 config loading
+- **WHEN** pipeline 收到 project/user config paths 或 source descriptors
+- **THEN** 标准参数层读取 JSON，校验顶层 value 是 object，并构造 config source
+- **THEN** caller 不需要为普通路径提供 separately loaded JSON
 
-### Requirement: Operation argument binding preserves source semantics
-The standard parameter resolver MUST model operation argument binding as a mapping from standard parameter identity to protocol request `arguments` path while preserving the source info produced by resolution.
+#### Scenario: Missing default config source 视为 absent
+- **WHEN** default project 或 user config path 不存在
+- **THEN** config source 被视为 absent
+- **THEN** 该 missing default source 不返回 skipped-source diagnostic event
 
-#### Scenario: Bound direct argument can be serialized to protocol arguments
-- **WHEN** a direct input value is mapped to a standard parameter identity that has an operation argument binding
-- **THEN** the binding identifies the protocol request `arguments` path for that direct value
-- **THEN** the resolver preserves the direct source info for that value
+#### Scenario: Invalid explicit config source 被 skipped
+- **WHEN** explicit project 或 user config override 缺失、不可读、invalid JSON 或不是 JSON object
+- **THEN** config source 被 skipped
+- **THEN** diagnostic handoff 包含 source level、path origin、path、reason code 和 operation-continued semantics
+- **THEN** 其它可用 sources 继续进入 standard parameter resolution
 
-#### Scenario: Config and default values preserve resolved source info
-- **WHEN** a final standard parameter value comes from project config, user config, or default
-- **THEN** operation argument binding preserves the resolved source info for that value
-- **THEN** any decision to serialize or omit that value from a protocol request remains owned by the later request construction layer
+#### Scenario: Loaded config 只复用标准参数 loading 结果
+- **WHEN** caller 已经持有由 standard parameter config loader 产生的 loaded config source
+- **THEN** pipeline 可以复用该 loaded source 而不重复读取同一文件
+- **THEN** post-load source construction 和 diagnostic handoff semantics 与 path-based pipeline path 保持一致
+
+### Requirement: Standard parameter passthrough 保持 owner-scoped
+标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 passthrough，使 owning CLI、adapter、protocol 或 config layer 可以 retain、discard、warn 或 validate。
+
+#### Scenario: Unmapped input 不参与标准参数 validation
+- **WHEN** input field 未映射到 standard parameter identity
+- **THEN** standard parameter resolver 不把它作为 standard parameter validation
+- **THEN** resolver 通过 entry policy 返回 retained、discarded 或 delegated passthrough
+
+#### Scenario: Adapter native option 保持 delegated
+- **WHEN** adapter direct CLI 或 invoke argument 包含没有 standard parameter mapping 的 native option
+- **THEN** resolver 让该 option 保持在 typed-field standard parameter validation 之外
+- **THEN** entry owner 仍负责 native option validation 或 ignored-argument warning
+
+### Requirement: Operation argument binding 保留 source semantics
+标准参数 resolver MUST 把 operation argument binding 建模为 standard parameter identity 到 protocol request `arguments` path 的映射，并保留 resolution 产生的 source info。
+
+#### Scenario: Bound direct argument 可序列化到 protocol arguments
+- **WHEN** direct input value 映射到带有 operation argument binding 的 standard parameter identity
+- **THEN** binding 标识该 direct value 对应的 protocol request `arguments` path
+- **THEN** resolver 保留该 value 的 direct source info
+
+#### Scenario: Config 和 default values 保留 resolved source info
+- **WHEN** final standard parameter value 来自 project config、user config 或 default
+- **THEN** operation argument binding 保留 resolved source info
+- **THEN** 是否将该 value 序列化或省略到 protocol request 仍由后续 request construction layer 拥有

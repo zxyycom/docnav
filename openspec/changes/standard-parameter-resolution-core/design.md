@@ -1,79 +1,110 @@
 本 design 记录标准参数来源解析核心的设计取向。
 
-## Context
+## 上下文
 
-标准参数和 typed-field 的边界需要拆开。Typed fields 描述字段、extraction strategy 与基础校验；standard parameter resolution 描述 source construction、配置 source loading、合并顺序、operation binding、typed runtime values、diagnostic handoff 和 passthrough handoff。
+标准参数和 typed-field 的边界需要清晰分离：
 
-`docs/standard-parameters.md` 是长期行为 owner：标准参数层在返回 typed values、source info 和 passthrough，并把 validation error 或 recoverable warning 交给现有 diagnostics handoff 后结束。Core CLI、adapter SDK、protocol request construction 和 readable output 只消费结果和 diagnostics，不接管标准参数来源规则。
+- `docnav-typed-fields` 描述字段 identity、extraction strategy、schema metadata、默认值和 typed value validation。
+- `docnav-standard-parameters` 描述 direct/config source role、config source loading、source construction、来源优先级、operation binding、typed runtime values、diagnostic handoff 和 passthrough handoff。
 
-代码侧当前状态：
+`docs/standard-parameters.md` 是长期行为 owner。标准参数层在返回 typed values、source info、diagnostic events 和 passthrough 后结束；Core CLI、adapter SDK、protocol request construction 和 readable/raw output 只消费结果，不重新实现标准参数来源规则。
 
-- `docnav-typed-fields` 已表达字段 identity、extraction strategy、schema metadata、默认值和 typed value validation。
-- `docnav-standard-parameters` 已覆盖手工 sources 合并；diagnostic handoff 仍需收敛到后续 consumer 只需处理的一条项目诊断路径。
-- 本 change 仍需补齐按 strategy/registration 生成 sources、配置 source loading 和 diagnostic handoff。
+## 目标流程
 
-## Goals / Non-Goals
+```text
+用户定义 FieldDefSet
+    -> 标准参数层读取 schema_metadata()
+    -> 标准参数层读取 strategy_metadata("direct")
+    -> 标准参数层读取 strategy_metadata("config")
+    -> 标准参数层内部形成 catalog/index
+    -> resolve(直接输入, config 路径/descriptor 或复用的 loaded config)
+    -> 返回 StandardParameterResolution
+```
 
-**Goals:**
+目标 API 形态：
+
+```rust
+let fields = Params::field_defs()?;
+
+let resolution = StandardParameterPipeline::new(&fields)
+    .with_direct_input_strategy("direct")
+    .with_config_strategy("config")
+    .with_project_config_path(project_config_path)
+    .with_user_config_path(user_config_path)
+    .resolve(direct_input)?;
+```
+
+`Params` 仍由 caller 通过 typed-fields 定义。Pipeline 只消费 metadata，不替 caller 定义参数。
+
+普通 config 输入是 path/descriptor。Pipeline 负责 JSON loading、顶层 object 校验、skipped-source diagnostics 和 config source conversion。Loaded config 只用于复用 `LoadedStandardParameterConfigSource`，且该 loaded source 必须由标准参数 loader 产生；它不是 caller 自行实现 JSON loading 的扩展点。
+
+## 目标 / 非目标
+
+**目标：**
 
 - 建立标准参数来源模型：direct input、project config、user config 和 default。
-- 建立 source construction API：按 registration 和 typed-field extraction strategy 把 direct input、project config、user config 和 default 映射为标准参数 sources。
-- 建立 config source loading API：由调用方提供配置路径和入口上下文，标准参数层完成 JSON 读取、顶层 object 校验、source object 构造，并交接 source-skipped diagnostic event。
-- 按 `direct input > project config > user config > default` 形成最终 typed values，并保留每个最终值的 source info。
-- 让解析结果包含 typed values、source info 和 passthrough handoff；error/warning 通过现有 diagnostics handoff 交接。
-- 让 operation argument binding 成为标准参数 identity 到 protocol arguments path 的映射。
-- 为后续 core/SDK 迁移提供小而稳定的实现目标。
+- 提供以 caller-defined `FieldDefSet` 为入口的 pipeline facade。
+- 通过 `schema_metadata()`、`strategy_metadata("direct")` 和 `strategy_metadata("config")` 在 `docnav-standard-parameters` 内部形成 catalog/index。
+- 从 catalog/index 和 caller 输入构造 direct/config/default sources。
+- 从 path/descriptor 读取 project/user config sources，并交接 source-skipped diagnostic events。
+- 支持复用标准参数 loader 产生的 loaded config source，并保持与 path-based pipeline 相同的 post-load source construction 语义。
+- 按 `direct input > project config > user config > default` 合并 sources。
+- 对所有 mapped values 和 defaults 复用 typed-field validation。
+- 返回 typed values、source info、diagnostic events 和 passthrough handoff。
+- 让 operation argument binding 仅作为 identity-to-protocol-arguments-path metadata。
 
-**Non-Goals:**
+**非目标：**
 
 - Consumer migration：core CLI、adapter SDK direct CLI、adapter `invoke` 和现有 config command behavior 留给后续 change。
 - CLI frontend：本 change 不选择或替换 CLI parser。
+- Field declaration helpers：标准参数层不定义 caller fields、types、validation constraints 或 extraction paths。
 - Non-standard-parameter JSON：manifest、probe、protocol response 等 JSON contract 留给各自 owner。
-- Observable contract：public schema、examples、readable/raw output、diagnostic 文案、stable warning/error id、stable error code 和 protocol envelope 保持当前 owner。
-- Entry-specific policy：unknown argv tokenization、ignored-argv warning 承载、native option semantic validation、exit code 和 stderr/stdout placement 留给入口 owner。
+- Observable contract：public schema、examples、readable/raw output、diagnostic text、stable warning/error id、stable error code 和 protocol envelope 保持当前 owner。
+- Entry-specific policy：unknown argv tokenization、ignored-argv warning ownership、native option semantic validation、exit code 和 stdout/stderr placement 留给入口 owner。
 
-## Decisions
+## 决策
 
-1. Standard parameter resolution 只消费 typed-field facts，不重新定义字段事实。
-   - Rationale: 字段约束由 typed-field 拥有，来源合并由标准参数拥有。
-   - Alternative: 在标准参数里重复定义字段约束。暂不采用，因为会形成两套事实源。
+1. Typed fields 是字段事实源。
+   - Decision: Field identity、type、required/default、range、enum、regex 和 extraction strategy paths 都通过 `docnav-typed-fields` 声明。
+   - Rationale: 标准参数层只消费字段 metadata 并拥有来源解析；重复字段事实会形成两套事实源。
 
-2. typed-field builder 拥有 extraction strategy declaration。
-   - Decision: `FieldDefBuilder` 只通过 `extract(strategy_id, strategy)` 注册 extraction strategy；不保留旧 `.path(...)` 兼容入口。同一 `FieldDefSet` 内相同 strategy id 必须对应同一种 input kind。JSON path 是一种 strategy，Rust field projection 作为独立 input kind 建模。
-   - Rationale: config path、invoke arguments path 和 direct-input projection 都属于同一个字段事实源，不能散落到标准参数 consumer 或入口 glue。
-   - Alternative: 由标准参数或各入口在调用点 bind source projection。暂不采用，因为会让配置路径和输入映射重复声明。
+2. Pipeline 固定读取 direct/config strategy metadata。
+   - Decision: Pipeline 读取 `schema_metadata()`、direct strategy metadata 和 config strategy metadata 来形成 catalog/index。
+   - Rationale: Direct input path 和 config path 是字段 extraction facts。Default 不作为第三个 extraction strategy role；它来自 typed-field defaults 和 caller-provided dynamic defaults。
 
-3. Resolver 的最小输入/输出边界以 source construction 和 merge 为中心。
-   - Decision: 输入是已注册的标准参数 metadata、source construction inputs、配置 source descriptors、default source provider、caller-provided diagnostics sink 和 entry passthrough policy；中间产物是 source objects；输出是 typed values、source info 和 passthrough handoff。Validation error、source-skipped warning 和 ignored/passthrough warning handoff 交给 caller-provided diagnostics sink 或等价 event collection。
-   - Rationale: 这样后续 consumer 可以分批接入同一个 resolver，同时避免 consumer 继续手写配置字段投影和来源合并。
-   - Alternative: 直接把 resolver 做成 core CLI 参数解析器。暂不采用，因为会把 consumer migration 和解析核心绑死。
+3. Pipeline facade 是普通 caller 边界。
+   - Decision: 普通 caller 传入 `FieldDefSet`、direct/config strategy ids、direct input、config source descriptors 或 paths、dynamic defaults 和 passthrough policy。Pipeline 返回 `StandardParameterResolution`。
+   - Rationale: 这样可以去掉重复 caller glue，同时保持字段定义 ownership 在 typed-fields。
 
-4. 来源优先级固定为 direct input、project config、user config、default。
-   - Rationale: 该顺序已由主规范声明，resolver core 需要把它变成单一实现规则。
-   - Alternative: 让每个入口自定义优先级。暂不采用，因为会让同一标准参数在不同入口中语义漂移。
+4. Catalog/index 是内部编译层。
+   - Decision: Pipeline 内部构建 catalog/index，用于表达 per-field source binding、operation argument binding 和 conflict checking。
+   - Rationale: 这些信息是 source construction 的内部索引，不是 caller 的装配模型。
 
-5. 未映射输入按入口策略保留、丢弃或交给 owner validation。
-   - Rationale: 标准参数层只校验已映射字段，避免把 adapter native option 或未来扩展字段提前判死。
-   - Alternative: 统一拒绝所有未知字段。暂不采用，因为会破坏现有 loose CLI 兼容策略。
+5. Config loading 属于标准参数层。
+   - Decision: 普通 config 输入是 path/descriptor。Pipeline 读取 JSON、校验顶层 object，并产生 source-skipped diagnostic events。Already loaded config 只接受由同一标准参数 loader 产生的 `LoadedStandardParameterConfigSource`。
+   - Rationale: 如果普通路径允许 caller 自行加载任意 JSON，会在 shared post-load source construction 之前产生多套 load/error/diagnostic 行为。
 
-6. operation argument binding 只描述 identity 到 protocol arguments path 的映射。
-   - Rationale: 跨 protocol 序列化发生在入口完成解析之后，配置值和默认值不能仅因为 request construction 被重新分类为 adapter direct input。
-   - Alternative: 把所有最终标准参数值都写入 request arguments。暂不采用，因为会改变 adapter invoke 的来源语义，并扩大 observable behavior。
+6. 来源优先级固定。
+   - Decision: Resolution order 是 direct input、project config、user config、default。
+   - Rationale: 标准参数行为不应随 entrypoint 漂移。
 
-7. Diagnostics handoff 只交接事件，不拥有输出策略。
-   - Decision: 标准参数层提供 source identity、source info、validation failure、path origin、reason code 等 event metadata，并把事件交给 caller-provided diagnostics sink 或等价 event collection。格式化、stderr/stdout placement、raw/readable 包装和 exit behavior 由入口 owner 统一处理。
-   - Rationale: 标准参数层拥有“source 是否可参与合并”和“已映射字段是否通过校验”的机械判断；输出和错误映射仍由现有 diagnostics/output owner 处理。
-   - Alternative: 让每个 consumer 读取标准参数私有 diagnostic 并自行转换。暂不采用，因为会让 consumer 重复维护映射 glue。
+7. Passthrough 不参与标准参数 validation。
+   - Decision: Unmapped input 按 entry passthrough policy 返回，不作为标准参数校验。
+   - Rationale: Adapter native options 和未来扩展字段仍由对应 entry 或 adapter owner 处理。
 
-## Risks / Trade-offs
+8. Operation argument binding 保留来源语义。
+   - Decision: Operation binding 记录 identity-to-arguments-path metadata，并携带 resolved source info。
+   - Rationale: Request construction 发生在标准参数解析之后，不能把 config/default values 重新分类为 direct input。
 
-- [Risk] implementation scope 扩张到 consumer migration → Mitigation: tasks 先决定 resolver crate/module 和最小可见性，request construction、CLI frontend 和 output behavior 保持在后续 owner。
-- [Risk] 只实现 source merge，consumer 仍手写 source construction → Mitigation: 本 change 把 source construction、配置读取和 unmapped passthrough collection 纳入未完成 tasks。
-- [Risk] passthrough policy 与 owner validation 边界不清 → Mitigation: spec 只规定交接，不规定各 owner 的 native semantics。
-- [Risk] diagnostic handoff 被做成新的输出 surface → Mitigation: spec 只要求交接 event，输出格式、通道和 exit behavior 保持在入口 owner。
-- [Risk] source info 未来可能进入 debug 或 context output → Mitigation: 本 change 只保留内部 attribution；任何可观察输出必须由后续独立 change 同步 docs、examples 和 tests。
+9. Diagnostics handoff 只交接事件。
+   - Decision: Standard parameter validation failures 和 recoverable config-source skipped warnings 通过 shared diagnostics path 返回。Formatting、channel placement 和 exit behavior 留给 entry owners。
+   - Rationale: 标准参数层拥有机械的 source/validation facts；输出策略仍由统一 owner 处理。
 
-## Open Questions
+## 风险 / 取舍
 
-- source info 是否进入后续 context/debug surface；当前 change 不产生可观察输出。
-- `FieldDefSet` 是否需要暴露 strategy-specific metadata projection，还是由 `docnav-standard-parameters` 组合现有 schema metadata 与 extraction strategy data。
+- Implementation scope 可能扩张到 consumer migration。Mitigation: 本 change 停在 reusable pipeline，core/SDK migration 留给后续 change。
+- 实现验收可能停留在中间产物测试。Mitigation: 验证必须覆盖 `FieldDefSet` pipeline 的普通调用路径。
+- Config loading 可能在 source construction 前分裂。Mitigation: config path/descriptor 是普通入口；loaded config 只复用标准参数 loader 的结果。
+- Config source warning handling 可能形成第二条 diagnostics 通道。Mitigation: source-skipped warnings 使用 shared diagnostic event metadata，输出策略留给 entry owners。
+- Passthrough policy 可能误校验 native options。Mitigation: 标准参数 validation 只运行在 mapped identities 上。
+- Source info 未来可能进入 observable output。Mitigation: 本 change 只保留内部 attribution；任何 output surface 需要独立更新 docs/examples/tests。
