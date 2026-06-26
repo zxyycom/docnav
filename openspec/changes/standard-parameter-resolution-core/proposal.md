@@ -10,15 +10,15 @@
 
 - `docnav-standard-parameters` 消费 typed field definition，使用字段 identity、extraction strategy、schema metadata、默认值和 typed value 校验能力。
 - Source construction 将 direct input、project config、user config 和 default 映射为标准参数 sources，并保留未映射字段 passthrough。
-- Resolver 按固定顺序合并 sources：direct input、project config、user config、default；输出 typed values、source info、diagnostics 和 passthrough handoff。
-- Config source loading 读取 caller 提供的 project/user config source path，校验 JSON 顶层 object，跳过不可用 source，并返回 structured source-skipped diagnostic data。
+- Resolver 按固定顺序合并 sources：direct input、project config、user config、default；输出 typed values、source info 和 passthrough handoff；validation error 和 recoverable warning 交给现有 diagnostics handoff。
+- Config source loading 读取 caller 提供的 project/user config source path，校验 JSON 顶层 object，跳过不可用 source，并把 source-skipped 作为 recoverable diagnostic event 交给现有 diagnostics handoff。
 - Operation argument binding 只记录标准参数 identity 到 protocol request `arguments` path 的映射；request construction 由后续 owner 处理。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `standard-parameter-resolution`: 标准参数 source construction、配置 source loading、来源合并、typed runtime values、diagnostics、passthrough 和 operation argument binding。
+- `standard-parameter-resolution`: 标准参数 source construction、配置 source loading、来源合并、typed runtime values、diagnostic handoff、passthrough 和 operation argument binding。
 
 ### Modified Capabilities
 
@@ -27,7 +27,7 @@
 ## Baseline Audit
 
 - `typed-field-definitions` 仍是字段 metadata owner；本 change 以其 value kind、enum、range、requiredness 和 default 规则作为单一事实源。
-- Loose CLI argv tokenization、unused flag warning、native option semantic validation、warning formatting、output channel 和 exit behavior 由入口 owner 处理。
+- Loose CLI argv tokenization、unused flag warning、native option semantic validation、diagnostic formatting、output channel 和 exit behavior 由入口 owner 处理；标准参数层只提交 diagnostic events，不决定最终输出。
 - `docnav` 和 `docnav-adapter-sdk` 尚未消费 `docnav-standard-parameters`；consumer migration 不属于本 change 的完成条件。
 
 ## Impact

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Standard parameter resolution produces typed values from constructed sources
-The standard parameter resolver MUST combine constructed direct input, project config, user config, and default sources into typed runtime values using typed-field metadata, while preserving source information and diagnostics for the final standard parameter result.
+The standard parameter resolver MUST combine constructed direct input, project config, user config, and default sources into typed runtime values using typed-field metadata, while preserving source information and handing off validation failures as diagnostic events.
 
 #### Scenario: Direct input overrides lower-priority sources
 - **WHEN** the same standard parameter identity is present in direct input, project config, user config, and default sources
@@ -20,7 +20,7 @@ The standard parameter resolver MUST combine constructed direct input, project c
 
 #### Scenario: Mapped invalid value fails standard parameter validation
 - **WHEN** a mapped source value violates the declared typed-field kind, enum, range, requiredness, or default constraint
-- **THEN** the resolver returns a standard parameter validation diagnostic for that identity
+- **THEN** the resolver hands off a diagnostic event for that identity, source, and validation failure
 - **THEN** the invalid mapped value is not exposed as a safe typed runtime value
 
 ### Requirement: Source construction maps registered inputs
@@ -47,17 +47,17 @@ The standard parameter source layer MUST construct direct input, project config,
 - **THEN** the default is validated through the same typed-field metadata as other mapped source values
 
 ### Requirement: Config source loading reports skipped sources without owning output
-The standard parameter source layer MUST load configured project and user config sources, skip unavailable or invalid sources according to standard parameter rules, and return structured diagnostic data while leaving warning formatting, output channels, and exit behavior to the entry owner.
+The standard parameter source layer MUST load configured project and user config sources, skip unavailable or invalid sources according to standard parameter rules, and hand off diagnostic events while leaving diagnostic formatting, output channels, and exit behavior to the entry owner.
 
 #### Scenario: Missing default config source is absent
 - **WHEN** the default project or user config path does not exist
 - **THEN** the config source is treated as absent
-- **THEN** no skipped-source diagnostic is returned for that missing default source
+- **THEN** no skipped-source diagnostic event is returned for that missing default source
 
 #### Scenario: Invalid explicit config source is skipped
 - **WHEN** an explicit project or user config override is missing, unreadable, invalid JSON, or not a JSON object
 - **THEN** the config source is skipped
-- **THEN** the result includes structured source-skipped diagnostic data with source level, path origin, path, and reason code
+- **THEN** the diagnostic handoff includes structured source-skipped warning data with source level, path origin, path, reason code, and operation-continued semantics
 - **THEN** remaining available sources continue into standard parameter resolution
 
 ### Requirement: Standard parameter passthrough remains owner-scoped
