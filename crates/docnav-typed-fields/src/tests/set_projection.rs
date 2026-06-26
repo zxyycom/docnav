@@ -1,9 +1,49 @@
 use super::*;
 use serde_json::json;
 
+#[derive(Debug, FieldDefs)]
+struct DocnavParams {
+    #[field(group)]
+    defaults: DefaultsParams,
+}
+
+#[derive(Debug, FieldDefs)]
+struct DefaultsParams {
+    #[field(
+        FieldDef::builder("docnav.defaults.limit_chars")
+            .process(CONFIG_PROCESSING, config_json_path(["a", "b"]))
+            .validation(limit_chars_validation())
+            .default_static(20_000)
+    )]
+    limit_chars: Option<i64>,
+
+    #[field(
+        FieldDef::builder("docnav.defaults.output")
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
+            .validation(output_mode_validation())
+            .default_static(OutputMode::ReadableView)
+    )]
+    output: OutputMode,
+}
+
 // @case WB-TYPED-FIELDS-PROJECTION-001
+fn limit_chars_validation() -> FieldValidation<i64> {
+    FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(100_000))
+}
+
+fn output_mode_validation() -> FieldValidation<OutputMode> {
+    FieldValidation::string_enum::<OutputMode>()
+}
+
 fn docnav_fields() -> <DocnavParams as FieldDefs>::DefinitionSet {
     DocnavParams::field_defs().expect("definition set builds")
+}
+
+fn native_processing() -> ProcessingBuild<'static, JsonValue, JsonValue> {
+    ProcessingBuild::new(CONFIG_PROCESSING, |raw: JsonValue| {
+        raw.get("native").cloned().unwrap_or_else(|| json!({}))
+    })
+    .expect("processing id is valid")
 }
 
 fn consume_params(params: DocnavParams) -> (Option<i64>, OutputMode) {
@@ -88,11 +128,8 @@ fn derived_field_defs_static_defaults_fill_missing_inputs() {
 
 #[test]
 fn derived_field_defs_process_returns_extraction_and_processing_result() {
-    let fields = DocnavParams::field_defs().expect("definition set builds");
-    let processing = ProcessingBuild::new(CONFIG_PROCESSING, |raw: JsonValue| {
-        raw.get("native").cloned().unwrap_or_else(|| json!({}))
-    })
-    .expect("processing id is valid");
+    let fields = docnav_fields();
+    let processing = native_processing();
 
     let processed = fields.process(
         &processing,
@@ -118,11 +155,8 @@ fn derived_field_defs_process_returns_extraction_and_processing_result() {
 
 #[test]
 fn derived_field_defs_process_keeps_processing_result_when_extraction_fails() {
-    let fields = DocnavParams::field_defs().expect("definition set builds");
-    let processing = ProcessingBuild::new(CONFIG_PROCESSING, |raw: JsonValue| {
-        raw.get("native").cloned().unwrap_or_else(|| json!({}))
-    })
-    .expect("processing id is valid");
+    let fields = docnav_fields();
+    let processing = native_processing();
 
     let processed = fields.process(
         &processing,
@@ -139,7 +173,7 @@ fn derived_field_defs_process_keeps_processing_result_when_extraction_fails() {
 
 #[test]
 fn built_field_defs_can_return_typed_builder_for_static_reuse() {
-    let fields = DocnavParams::field_defs().expect("definition set builds");
+    let fields = docnav_fields();
 
     let mut fields2 = fields.to_builder();
     fields2.defaults.limit_chars = fields2.defaults.limit_chars.process(
@@ -267,7 +301,7 @@ fn single_derive_extracts_typed_params_object_without_default() {
 
 #[test]
 fn extract_and_validate_share_validation_errors() {
-    let fields = DocnavParams::field_defs().expect("definition set builds");
+    let fields = docnav_fields();
     let input = json!({"a": {"b": "4000"}, "defaults": {"output": "xml"}});
 
     let extract_error = fields

@@ -184,7 +184,7 @@ Proves:
 
 ### WB-CORE-OUTPUT-001 Core 输出编排保持通道边界
 Status: implemented
-Code: `crates/docnav/src/output.rs`
+Code: `crates/docnav/src/output/tests.rs`
 
 Proves:
 - Core output assembly 分离 protocol JSON、readable JSON、readable view、stdout、stderr 和 exit code 职责。
@@ -235,7 +235,7 @@ Proves:
 
 ### WB-CORE-PREFLIGHT-001 Core preflight 检测 protocol-json intent
 Status: implemented
-Code: `crates/docnav/src/cli/preflight.rs`
+Code: `crates/docnav/src/cli/preflight/tests.rs`
 
 Proves:
 - Core preflight 可以在解析失败前识别空格分隔和等号形式的 `--output protocol-json`。
@@ -259,7 +259,7 @@ Proves:
 
 ### WB-CLIARGS-COMPAT-001 Loose CLI 参数扫描保持兼容边界
 Status: implemented
-Code: `crates/docnav-cli-args/src/lib.rs`
+Code: `crates/docnav-cli-args/src/tests.rs`
 
 Proves:
 - unknown flag 不消费后续 positional，used value flag 保留值，unused value flag 只记录事实。
@@ -267,7 +267,7 @@ Proves:
 
 ### WB-JSONIO-WRITE-001 JSON writer 保持格式和错误分类
 Status: implemented
-Code: `crates/docnav-json-io/src/lib.rs`
+Code: `crates/docnav-json-io/src/tests.rs`
 
 Proves:
 - compact/pretty JSON 都以换行结束。
@@ -374,7 +374,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-METADATA-001 Typed field metadata build invariants 稳定
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/field_presence.rs`
+Code: `crates/docnav-typed-fields/src/tests/field_metadata.rs`
 
 Proves:
 - duplicate field identity 在 definition set build 阶段失败，并保留 previous/current declaration path 和 processing path。
@@ -437,7 +437,7 @@ Proves:
 
 ### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数
 Status: implemented
-Code: `crates/docnav-adapter-sdk/src/paging.rs`
+Code: `crates/docnav-adapter-sdk/src/paging/tests.rs`
 
 Proves:
 - SDK paging helper 使用 character count，不使用 byte slice 截断。
@@ -486,7 +486,7 @@ Proves:
 
 ### WB-SDK-DIRECT-OUTPUT-001 Direct adapter document output 复用共享输出
 Status: implemented
-Code: `crates/docnav-adapter-sdk/src/direct/output.rs`
+Code: `crates/docnav-adapter-sdk/src/direct/output/tests.rs`
 
 Proves:
 - direct adapter readable-view 写失败映射为 IO error diagnostic。
@@ -526,7 +526,7 @@ Proves:
 
 ### WB-MD-CLI-WRITE-001 Markdown direct CLI 写失败诊断稳定
 Status: implemented
-Code: `crates/docnav-markdown/src/cli.rs`
+Code: `crates/docnav-markdown/src/cli/tests.rs`
 
 Proves:
 - readable-view output write failure 返回稳定 diagnostic。
@@ -534,7 +534,7 @@ Proves:
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/refs.rs`
+Code: `crates/docnav-markdown/src/markdown/refs/tests.rs`
 
 Proves:
 - canonical heading ref 由 line 和 level 结构字段构成。
@@ -543,7 +543,7 @@ Proves:
 
 ### WB-MD-REF-MATCH-001 Markdown parsed ref 精确匹配 heading 坐标
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/refs.rs`
+Code: `crates/docnav-markdown/src/markdown/refs/tests.rs`
 
 Proves:
 - parsed heading ref 在 line 和 level 同时匹配时命中目标 heading。
@@ -551,7 +551,7 @@ Proves:
 
 ### WB-MD-PARSE-001 Markdown parser 忽略非 heading 结构
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown.rs`
+Code: `crates/docnav-markdown/src/markdown/tests.rs`
 
 Proves:
 - code fence pseudo heading、invalid heading 和 frontmatter 不进入 heading model。
@@ -559,7 +559,7 @@ Proves:
 
 ### WB-MD-OUTLINE-001 Markdown outline ref 和 display 语义稳定
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown.rs`
+Code: `crates/docnav-markdown/src/markdown/tests.rs`
 
 Proves:
 - outline 生成 canonical ref，重复 title/path 不影响 ref，max heading level 只影响可见性。
@@ -576,7 +576,7 @@ Proves:
 
 ### WB-MD-READ-001 Markdown read resolve 和 doc:full ref 稳定
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown.rs`
+Code: `crates/docnav-markdown/src/markdown/tests.rs`
 
 Proves:
 - canonical ref 可解析到 heading，`doc:full` 可解析完整文档。
@@ -585,7 +585,7 @@ Proves:
 
 ### WB-MD-LINK-001 Markdown outline/find ref 可通过 read roundtrip
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown.rs`
+Code: `crates/docnav-markdown/src/markdown/tests.rs`
 
 Proves:
 - Markdown navigation 生成的 outline entry ref 可以直接传给 read。
@@ -626,7 +626,7 @@ Proves:
 
 ### WB-MD-PAGING-DISPLAY-001 Markdown paging helper 保留 ref 并截断 display
 Status: implemented
-Code: `crates/docnav-markdown/src/paging.rs`
+Code: `crates/docnav-markdown/src/paging/tests.rs`
 
 Proves:
 - Markdown paging helper 对 Unicode 计数一致。
