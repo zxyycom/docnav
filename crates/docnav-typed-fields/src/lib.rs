@@ -3,6 +3,7 @@ extern crate self as docnav_typed_fields;
 mod extraction;
 mod field;
 mod metadata;
+mod processing;
 mod range;
 mod set;
 mod validation;
@@ -18,6 +19,7 @@ pub use metadata::{
     FieldIdentity, FieldPath, SchemaMetadataView, StrategyMetadataView, TypedValue,
     ValidationFailure, ValidationReason, ValueKind,
 };
+pub use processing::{InvalidProcessingId, ProcessedValue, ProcessingBuild, ProcessingId};
 pub use range::{
     FieldBound, FieldBoundKind, FieldLength, FieldNumericBound, FieldNumericRange, FieldRange,
 };

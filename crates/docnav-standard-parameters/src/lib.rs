@@ -10,8 +10,11 @@ pub(crate) use catalog::{
     StandardParameterCatalogEntry,
 };
 pub use catalog::{StandardParameterCatalogConflictKind, StandardParameterCatalogError};
+#[cfg(test)]
+pub(crate) use construction::{construct_config_source, construct_direct_input_source};
 pub(crate) use construction::{
-    construct_config_source, construct_default_source, construct_direct_input_source,
+    construct_config_source_with_passthrough, construct_default_source,
+    construct_direct_input_source_with_passthrough,
 };
 pub use construction::{
     load_standard_parameter_config_source, ConfigPathOrigin, ConfigSourceLevel,

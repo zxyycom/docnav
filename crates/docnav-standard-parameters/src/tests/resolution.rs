@@ -90,6 +90,24 @@ fn invalid_mapped_value_reports_diagnostic_without_safe_value() {
 }
 
 #[test]
+fn optional_mapped_null_is_absent_without_safe_null_value() {
+    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
+    let identity = identity("docnav.defaults.limit_chars");
+    let resolution = resolve_standard_parameters(
+        &entries,
+        StandardParameterSources {
+            direct_input: source_with_value(&identity, json!(null)),
+            project_config: source_with_value(&identity, json!(200)),
+            ..StandardParameterSources::default()
+        },
+        EntryPassthroughPolicy::Retain,
+    );
+
+    assert!(resolution.value(&identity).is_none());
+    assert!(resolution.diagnostics().is_empty());
+}
+
+#[test]
 fn required_missing_value_reports_standard_parameter_diagnostic() {
     let entries = vec![catalog_entry("docnav.defaults.output")];
     let identity = identity("docnav.defaults.output");

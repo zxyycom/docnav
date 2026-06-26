@@ -55,6 +55,20 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, "$ tsgo -p tsconfig.json"), []);
   });
 
+  it("filters cargo trybuild success noise from successful cargo test output", () => {
+    const check = checkByLabel("cargo test");
+    const output = [
+      "running 1 test",
+      "test \u001b[0m\u001b[1mtests/ui/field_defs_type_mismatch.rs\u001b[0m ... \u001b[0m\u001b[32mok",
+      "\u001b[0mtest \u001b[0m\u001b[1mtests/ui/field_defs_missing_validation.rs\u001b[0m ... \u001b[0m\u001b[32mok",
+      "\u001b[0m",
+      "   Blocking waiting for file lock on package cache",
+      "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.33s"
+    ].join("\n");
+
+    assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
+  });
+
   it("carries visible child output into report completions", () => {
     const catalogCheck = checkByLabel("docs case catalog validator");
     const schemaCheck = checkByLabel("docs schema validator");

@@ -13,7 +13,11 @@ const testRunnerSuccessOutput = [
   /^Ran \d+ tests? across \d+ files?\. \[[\d.]+(?:ms|s)\]$/
 ];
 
-const cargoProgressOutput = [/^\s*(Checking|Compiling) .*$/, /^\s*Finished `.*` profile .*$/];
+const cargoProgressOutput = [
+  /^\s*(Checking|Compiling) .*$/,
+  /^\s*Blocking waiting for file lock on .+$/,
+  /^\s*Finished `.*` profile .*$/
+];
 
 const qualityWarningOutput = [
   /^Quality check status: warning$/,
@@ -209,7 +213,7 @@ export const checks = defineChecks([
           /^\s*Running unittests .*$/,
           /^\s*Running tests[\\/].*$/,
           /^\s*Doc-tests .*$/,
-          /^running \d+ tests$/,
+          /^running \d+ tests?$/,
           /^test .* \.\.\. ok$/,
           /^test result: ok\..*$/
         ]

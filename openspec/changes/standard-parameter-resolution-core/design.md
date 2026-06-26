@@ -65,8 +65,8 @@ let resolution = StandardParameterPipeline::new(&fields)
 ## 决策
 
 1. Typed fields 是字段事实源。
-   - Decision: Field identity、type、required/default、range、enum、regex 和 extraction strategy paths 都通过 `docnav-typed-fields` 声明。
-   - Rationale: 标准参数层只消费字段 metadata 并拥有来源解析；重复字段事实会形成两套事实源。
+   - Decision: Field identity、type、required/default、range、enum、regex、mapped value extraction strategy paths 和 processing build 都通过 `docnav-typed-fields` 声明或承载。
+   - Rationale: 标准参数层只消费字段 metadata 和 caller processing result，并拥有来源解析；重复字段事实或在标准参数层重建处理语义会形成两套事实源。
 
 2. Pipeline 固定读取 direct/config strategy metadata。
    - Decision: Pipeline 读取 `schema_metadata()`、direct strategy metadata 和 config strategy metadata 来形成 catalog/index。
@@ -89,8 +89,8 @@ let resolution = StandardParameterPipeline::new(&fields)
    - Rationale: 标准参数行为不应随 entrypoint 漂移。
 
 7. Passthrough 不参与标准参数 validation。
-   - Decision: Unmapped input 按 entry passthrough policy 返回，不作为标准参数校验。
-   - Rationale: Adapter native options 和未来扩展字段仍由对应 entry 或 adapter owner 处理。
+   - Decision: Unmapped input 按 caller passthrough processing result 和 entry passthrough policy 返回，不作为标准参数校验。
+   - Rationale: Adapter native options、raw-minus-mapped 删除逻辑和未来扩展字段仍由对应 entry 或 adapter owner 处理；标准参数层只交接处理结果。
 
 8. Operation argument binding 保留来源语义。
    - Decision: Operation binding 记录 identity-to-arguments-path metadata，并携带 resolved source info。

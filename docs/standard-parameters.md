@@ -108,7 +108,7 @@ Adapter direct CLI 配置项目根从启动 cwd 向上查找最近 `.docnav/`；
 
 未映射字段不等同于标准参数错误。未知顶层配置字段、未知 `defaults` 字段、未注册 native option key 或未映射 direct input 字段是否保留，由入口策略决定：可以保留给后续流程，也可以丢弃或交给 owner-specific validation。
 
-共享层只对已映射标准参数执行 schema-backed validation。Passthrough 字段集合可以按同一合并顺序合并 raw path/key；同一 passthrough path 在较靠前来源出现时覆盖较靠后来源，但不参与 typed value validation。
+共享层只对已映射标准参数执行 schema-backed validation。Passthrough handoff 来自入口提供的处理结果：默认处理可以原样返回 raw input；需要 raw-minus-mapped 时，入口用处理函数从原始输入中删除已消费的 mapped paths，并返回剩余 JSON 子树。标准参数 pipeline 不重新定位或修改这些节点，只按处理结果把同一 top-level passthrough path 中较靠前来源覆盖较靠后来源，且不参与 typed value validation。
 
 解析器完成后，标准参数层的工作结束。后续模块消费 typed values、source info、diagnostics 和 passthrough；标准参数层不再参与后续执行。
 

@@ -360,6 +360,7 @@ Code: `crates/docnav-typed-fields/src/tests.rs`
 
 Proves:
 - Builder 生成 field identity、extraction strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON 字段解码为 typed value。
+- Processing build 接受 processing id 和 caller-provided function，可以用非 JSON typed raw input 返回 caller 处理值；typed-fields 不解释处理函数内部副作用。
 - Field decode/validation 区分 missing optional、missing required/null、wrong type、enum/range/regex/length/default 违规，并保留 field identity、field path 和 machine-readable reason。
 - String enum metadata 由真实 Rust enum metadata 驱动：空 enum metadata 在 build 阶段失败，重复 enum string alias 在有效 metadata 中去重，typed extraction 返回 enum value。
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
@@ -383,9 +384,9 @@ Code: `crates/docnav-standard-parameters/src/tests/mod.rs`
 Proves:
 - Standard parameter resolver consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
 - Strategy-specific metadata projection and standard parameter registration bindings construct direct input, project config, user config and default sources before resolution.
-- Missing required values, invalid mapped values, static defaults and dynamic default source values all pass through typed-field validation and return diagnostics instead of unsafe typed values.
+- Missing required values, invalid mapped values, optional mapped JSON null, static defaults and dynamic default source values all pass through typed-field validation and do not expose unsafe typed values.
 - Explicit skipped config sources return recoverable warning events while default missing config sources remain absent without diagnostics.
-- Unmapped passthrough inputs stay outside standard parameter validation and are returned with the entry passthrough disposition for the owning entrypoint.
+- Unmapped passthrough inputs use caller processing results: default handoff can preserve raw input, raw-minus-mapped can be produced by caller processing functions, remaining JSON subtrees keep their structure, and the result is returned with the entry passthrough disposition for the owning entrypoint.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
 ### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数

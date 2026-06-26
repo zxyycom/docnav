@@ -190,13 +190,14 @@ fn resolve_raw_value(
     resolution: &mut StandardParameterResolution,
 ) {
     let source = StandardParameterSourceInfo::new(source_kind);
-    match entry.metadata.validate_value(value) {
-        Ok(value) => resolution.insert_value(
+    match entry.metadata.validate_optional_value(Some(value)) {
+        Ok(Some(value)) => resolution.insert_value(
             entry.identity().clone(),
             value,
             source,
             entry.operation_argument.clone(),
         ),
+        Ok(None) => {}
         Err(failure) => resolution.push_diagnostic(entry.identity().clone(), Some(source), failure),
     }
 }

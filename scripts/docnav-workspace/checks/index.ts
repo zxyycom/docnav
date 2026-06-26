@@ -3,6 +3,8 @@ import { PROFILE_FULL, PROFILE_REQUIRED, profiles } from "./model.ts";
 import type { CheckStatus, CheckTask, Profile } from "./model.ts";
 
 const QUICK_QUALITY_CHECK_ID = "quality-quick-check";
+const ANSI_ESCAPE = String.fromCharCode(0x1b);
+const ANSI_ESCAPE_PATTERN = new RegExp(`${ANSI_ESCAPE}\\[[0-?]*[ -/]*[@-~]`, "g");
 
 export { asCheckTask } from "./normalization.ts";
 export { checks } from "./definitions.ts";
@@ -49,16 +51,22 @@ export function visibleOutputLines(check: CheckTask, output: string, status: Che
 }
 
 export function isAllowedOutput(check: Pick<CheckTask, "allowOutput">, line: string, status: CheckStatus): boolean {
+  const normalizedLine = normalizeOutputLine(line);
   if (status === "failed" || !check.allowOutput || check.allowOutput.length === 0) {
     return true;
   }
-  return check.allowOutput.some((pattern) => pattern.test(line));
+  return check.allowOutput.some((pattern) => pattern.test(normalizedLine));
 }
 
 export function isIgnoredOutput(check: Pick<CheckTask, "ignoreOutput">, line: string): boolean {
-  return (check.ignoreOutput ?? []).some((pattern) => pattern.test(line));
+  const normalizedLine = normalizeOutputLine(line);
+  return normalizedLine.length === 0 || (check.ignoreOutput ?? []).some((pattern) => pattern.test(normalizedLine));
 }
 
 function lines(output: string): string[] {
   return output.split(/\r?\n/).filter((line) => line.length > 0);
+}
+
+function normalizeOutputLine(line: string): string {
+  return line.replace(ANSI_ESCAPE_PATTERN, "");
 }

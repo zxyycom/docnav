@@ -4,18 +4,40 @@ use docnav_typed_fields::{DefaultMetadata, FieldIdentity, JsonValue};
 
 use crate::{StandardParameterCatalogEntry, StandardParameterPath, StandardParameterSource};
 
+#[cfg(test)]
 pub(crate) fn construct_direct_input_source(
     entries: &[StandardParameterCatalogEntry],
     input: Option<&JsonValue>,
 ) -> StandardParameterSource {
-    construct_source(input, entries, |entry| entry.direct_input_path.as_ref())
+    construct_direct_input_source_with_passthrough(entries, input, input)
 }
 
+pub(crate) fn construct_direct_input_source_with_passthrough(
+    entries: &[StandardParameterCatalogEntry],
+    input: Option<&JsonValue>,
+    passthrough_input: Option<&JsonValue>,
+) -> StandardParameterSource {
+    construct_source(input, passthrough_input, entries, |entry| {
+        entry.direct_input_path.as_ref()
+    })
+}
+
+#[cfg(test)]
 pub(crate) fn construct_config_source(
     entries: &[StandardParameterCatalogEntry],
     input: Option<&JsonValue>,
 ) -> StandardParameterSource {
-    construct_source(input, entries, |entry| entry.config_path.as_ref())
+    construct_config_source_with_passthrough(entries, input, input)
+}
+
+pub(crate) fn construct_config_source_with_passthrough(
+    entries: &[StandardParameterCatalogEntry],
+    input: Option<&JsonValue>,
+    passthrough_input: Option<&JsonValue>,
+) -> StandardParameterSource {
+    construct_source(input, passthrough_input, entries, |entry| {
+        entry.config_path.as_ref()
+    })
 }
 
 pub(crate) fn construct_default_source(
@@ -37,6 +59,7 @@ pub(crate) fn construct_default_source(
 
 fn construct_source(
     input: Option<&JsonValue>,
+    passthrough_input: Option<&JsonValue>,
     entries: &[StandardParameterCatalogEntry],
     path_for: impl Fn(&StandardParameterCatalogEntry) -> Option<&StandardParameterPath>,
 ) -> StandardParameterSource {
@@ -44,19 +67,19 @@ fn construct_source(
         return StandardParameterSource::default();
     };
     let mut source = StandardParameterSource::default();
-    let mut mapped_paths = Vec::new();
 
     for entry in entries {
         let Some(path) = path_for(entry) else {
             continue;
         };
-        mapped_paths.push(path.key());
         if let Some(value) = value_at_path(input, path) {
             source.insert_value(entry.identity().clone(), value.clone());
         }
     }
 
-    collect_passthrough(input, &mut Vec::new(), &mapped_paths, &mut source);
+    if let Some(passthrough_input) = passthrough_input {
+        collect_passthrough(passthrough_input, &mut source);
+    }
     source
 }
 
@@ -68,29 +91,13 @@ fn value_at_path<'a>(root: &'a JsonValue, path: &StandardParameterPath) -> Optio
     Some(current)
 }
 
-fn collect_passthrough(
-    value: &JsonValue,
-    prefix: &mut Vec<String>,
-    mapped_paths: &[Vec<String>],
-    source: &mut StandardParameterSource,
-) {
-    if mapped_paths.iter().any(|path| path == prefix) {
+fn collect_passthrough(value: &JsonValue, source: &mut StandardParameterSource) {
+    let JsonValue::Object(object) = value else {
         return;
+    };
+    for (key, value) in object.clone() {
+        let path = StandardParameterPath::new([key])
+            .expect("passthrough path is built from non-empty JSON object keys");
+        source.push_passthrough(path, value);
     }
-
-    if let JsonValue::Object(object) = value {
-        for (key, value) in object {
-            prefix.push(key.clone());
-            collect_passthrough(value, prefix, mapped_paths, source);
-            prefix.pop();
-        }
-        return;
-    }
-
-    if prefix.is_empty() {
-        return;
-    }
-    let path = StandardParameterPath::new(prefix.clone())
-        .expect("passthrough path is built from non-empty JSON object keys");
-    source.push_passthrough(path, value.clone());
 }

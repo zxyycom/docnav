@@ -100,6 +100,17 @@ fn path<const N: usize>(segments: [&str; N]) -> StandardParameterPath {
     StandardParameterPath::new(segments).unwrap()
 }
 
+fn passthrough_at(
+    resolution: &StandardParameterResolution,
+    path: StandardParameterPath,
+) -> &PassthroughValue {
+    resolution
+        .passthrough()
+        .iter()
+        .find(|value| value.path == path)
+        .unwrap()
+}
+
 fn temp_path(file_name: &str) -> PathBuf {
     let mut path = std::env::temp_dir();
     path.push(format!(

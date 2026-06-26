@@ -54,7 +54,8 @@
 #### Scenario: Unmapped config field 保持 passthrough
 - **WHEN** config JSON object 包含未映射到任何 derived standard parameter entry 的字段
 - **THEN** source construction 不把该字段作为 standard parameter validation
-- **THEN** 该字段按 entry passthrough policy 被 retained、discarded 或 delegated
+- **THEN** source construction 接受 caller passthrough processing result 并原样交接
+- **THEN** caller 可以用 raw-minus-mapped 处理函数删除已消费 mapped paths，并让剩余 JSON 子树按原结构和 entry passthrough policy 被 retained、discarded 或 delegated
 
 #### Scenario: Direct input 通过 derived direct binding 映射
 - **WHEN** direct CLI input 或 adapter invoke arguments 包含 direct input strategy 映射到的值
@@ -96,7 +97,8 @@
 #### Scenario: Unmapped input 不参与标准参数 validation
 - **WHEN** input field 未映射到 standard parameter identity
 - **THEN** standard parameter resolver 不把它作为 standard parameter validation
-- **THEN** resolver 通过 entry policy 返回 retained、discarded 或 delegated passthrough
+- **THEN** resolver 通过 entry policy 返回 caller passthrough processing result
+- **THEN** raw-minus-mapped passthrough 由 caller processing function 产生，并保留未映射 JSON 子树结构
 
 #### Scenario: Adapter native option 保持 delegated
 - **WHEN** adapter direct CLI 或 invoke argument 包含没有 standard parameter mapping 的 native option

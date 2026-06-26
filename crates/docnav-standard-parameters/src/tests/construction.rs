@@ -264,8 +264,12 @@ fn constructed_passthrough_values_merge_by_source_priority_without_validation() 
     let catalog = parameter_catalog();
     let entries = catalog.entries();
     let direct_input = json!({"native": {"shared": 1}, "limit_chars": 100});
+    let direct_passthrough = json!({"native": {"shared": 1}});
     let project_config = json!({
         "defaults": {"output": "readable-view"},
+        "native": {"shared": 2, "project": true}
+    });
+    let project_passthrough = json!({
         "native": {"shared": 2, "project": true}
     });
     let user_config = json!({
@@ -275,8 +279,16 @@ fn constructed_passthrough_values_merge_by_source_priority_without_validation() 
     let resolution = resolve_standard_parameters(
         entries,
         StandardParameterSources {
-            direct_input: construct_direct_input_source(entries, Some(&direct_input)),
-            project_config: construct_config_source(entries, Some(&project_config)),
+            direct_input: construct_direct_input_source_with_passthrough(
+                entries,
+                Some(&direct_input),
+                Some(&direct_passthrough),
+            ),
+            project_config: construct_config_source_with_passthrough(
+                entries,
+                Some(&project_config),
+                Some(&project_passthrough),
+            ),
             user_config: construct_config_source(entries, Some(&user_config)),
             ..StandardParameterSources::default()
         },
@@ -284,17 +296,101 @@ fn constructed_passthrough_values_merge_by_source_priority_without_validation() 
     );
 
     assert!(resolution.diagnostics().is_empty());
-    let shared = resolution
+    let native = resolution
         .passthrough()
         .iter()
-        .find(|value| value.path == path(["native", "shared"]))
+        .find(|value| value.path == path(["native"]))
         .unwrap();
-    assert_eq!(shared.value, json!(1));
+    assert_eq!(native.value, json!({"shared": 1}));
     assert_eq!(
-        shared.source,
+        native.source,
         StandardParameterSourceInfo::new(StandardParameterSourceKind::DirectInput)
     );
-    assert_eq!(shared.disposition, PassthroughDisposition::Delegated);
+    assert_eq!(native.disposition, PassthroughDisposition::Delegated);
+}
+
+#[test]
+fn empty_object_passthrough_is_preserved_for_entry_owner() {
+    let catalog = parameter_catalog();
+    let entries = catalog.entries();
+    let direct_input = json!({"output": "readable-view", "native": {}});
+    let direct_passthrough = json!({"native": {}});
+
+    let resolution = resolve_standard_parameters(
+        entries,
+        StandardParameterSources {
+            direct_input: construct_direct_input_source_with_passthrough(
+                entries,
+                Some(&direct_input),
+                Some(&direct_passthrough),
+            ),
+            ..StandardParameterSources::default()
+        },
+        EntryPassthroughPolicy::Delegate,
+    );
+
+    assert!(resolution.diagnostics().is_empty());
+    assert_eq!(resolution.passthrough().len(), 1);
+    let passthrough = &resolution.passthrough()[0];
+    assert_eq!(passthrough.path, path(["native"]));
+    assert_eq!(passthrough.value, json!({}));
+    assert_eq!(
+        passthrough.source,
+        StandardParameterSourceInfo::new(StandardParameterSourceKind::DirectInput)
+    );
+    assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
+}
+
+#[test]
+fn nested_processed_passthrough_preserves_raw_structure() {
+    let catalog = parameter_catalog();
+    let entries = catalog.entries();
+    let project_config = json!({
+        "defaults": {
+            "output": "readable-view",
+            "native": {
+                "theme": "dark",
+                "strict": true
+            }
+        }
+    });
+    let project_passthrough = json!({
+        "defaults": {
+            "native": {
+                "theme": "dark",
+                "strict": true
+            }
+        }
+    });
+
+    let resolution = resolve_standard_parameters(
+        entries,
+        StandardParameterSources {
+            project_config: construct_config_source_with_passthrough(
+                entries,
+                Some(&project_config),
+                Some(&project_passthrough),
+            ),
+            ..StandardParameterSources::default()
+        },
+        EntryPassthroughPolicy::Delegate,
+    );
+
+    assert!(resolution.diagnostics().is_empty());
+    let output = resolution
+        .value(&identity("docnav.defaults.output"))
+        .unwrap();
+    assert_eq!(output.value, TypedValue::String("readable-view".to_owned()));
+    let passthrough = passthrough_at(&resolution, path(["defaults"]));
+    assert_eq!(
+        passthrough.value,
+        json!({"native": {"theme": "dark", "strict": true}})
+    );
+    assert_eq!(
+        passthrough.source,
+        StandardParameterSourceInfo::new(StandardParameterSourceKind::ProjectConfig)
+    );
+    assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
 }
 
 fn assert_warning_reason(loaded: &LoadedStandardParameterConfigSource, reason_code: &str) {

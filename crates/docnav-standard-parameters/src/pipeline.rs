@@ -2,15 +2,17 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
-use docnav_typed_fields::{ExtractionStrategyId, FieldDefSet, FieldIdentity, JsonValue};
+use docnav_typed_fields::{
+    ExtractionStrategyId, FieldDefSet, FieldIdentity, JsonValue, ProcessingBuild,
+};
 
 use crate::{
-    construct_config_source, construct_default_source, construct_direct_input_source,
-    derive_standard_parameter_catalog, load_standard_parameter_config_source,
-    resolve_standard_parameters, ConfigPathOrigin, ConfigSourceLevel, EntryPassthroughPolicy,
-    LoadedStandardParameterConfigSource, StandardParameterCatalogError,
-    StandardParameterConfigSourceDescriptor, StandardParameterDiagnostic,
-    StandardParameterResolution, StandardParameterSources,
+    construct_config_source_with_passthrough, construct_default_source,
+    construct_direct_input_source_with_passthrough, derive_standard_parameter_catalog,
+    load_standard_parameter_config_source, resolve_standard_parameters, ConfigPathOrigin,
+    ConfigSourceLevel, EntryPassthroughPolicy, LoadedStandardParameterConfigSource,
+    StandardParameterCatalogError, StandardParameterConfigSourceDescriptor,
+    StandardParameterDiagnostic, StandardParameterResolution, StandardParameterSources,
 };
 
 #[derive(Clone)]
@@ -22,6 +24,8 @@ pub struct StandardParameterPipeline<'a> {
     user_config: Option<PipelineConfigSource>,
     dynamic_defaults: BTreeMap<FieldIdentity, JsonValue>,
     passthrough_policy: EntryPassthroughPolicy,
+    direct_input_passthrough_processing: Option<ProcessingBuild<'a, JsonValue, JsonValue>>,
+    config_passthrough_processing: Option<ProcessingBuild<'a, JsonValue, JsonValue>>,
 }
 
 impl<'a> StandardParameterPipeline<'a> {
@@ -37,6 +41,8 @@ impl<'a> StandardParameterPipeline<'a> {
             user_config: None,
             dynamic_defaults: BTreeMap::new(),
             passthrough_policy: EntryPassthroughPolicy::Retain,
+            direct_input_passthrough_processing: None,
+            config_passthrough_processing: None,
         }
     }
 
@@ -121,6 +127,22 @@ impl<'a> StandardParameterPipeline<'a> {
         self
     }
 
+    pub fn with_direct_input_passthrough_processing(
+        mut self,
+        processing: ProcessingBuild<'a, JsonValue, JsonValue>,
+    ) -> Self {
+        self.direct_input_passthrough_processing = Some(processing);
+        self
+    }
+
+    pub fn with_config_passthrough_processing(
+        mut self,
+        processing: ProcessingBuild<'a, JsonValue, JsonValue>,
+    ) -> Self {
+        self.config_passthrough_processing = Some(processing);
+        self
+    }
+
     pub fn resolve(
         self,
         direct_input: impl Into<Option<JsonValue>>,
@@ -131,11 +153,35 @@ impl<'a> StandardParameterPipeline<'a> {
         let (project_config, mut diagnostics) = config_source_parts(self.project_config);
         let (user_config, user_diagnostics) = config_source_parts(self.user_config);
         diagnostics.extend(user_diagnostics);
+        let direct_passthrough = process_passthrough(
+            direct_input.as_ref(),
+            self.direct_input_passthrough_processing.as_ref(),
+        );
+        let project_passthrough = process_passthrough(
+            project_config.as_ref(),
+            self.config_passthrough_processing.as_ref(),
+        );
+        let user_passthrough = process_passthrough(
+            user_config.as_ref(),
+            self.config_passthrough_processing.as_ref(),
+        );
 
         let sources = StandardParameterSources {
-            direct_input: construct_direct_input_source(entries, direct_input.as_ref()),
-            project_config: construct_config_source(entries, project_config.as_ref()),
-            user_config: construct_config_source(entries, user_config.as_ref()),
+            direct_input: construct_direct_input_source_with_passthrough(
+                entries,
+                direct_input.as_ref(),
+                direct_passthrough.as_ref(),
+            ),
+            project_config: construct_config_source_with_passthrough(
+                entries,
+                project_config.as_ref(),
+                project_passthrough.as_ref(),
+            ),
+            user_config: construct_config_source_with_passthrough(
+                entries,
+                user_config.as_ref(),
+                user_passthrough.as_ref(),
+            ),
             default: construct_default_source(entries, &self.dynamic_defaults),
         };
         let mut resolution = resolve_standard_parameters(entries, sources, self.passthrough_policy);
@@ -211,6 +257,17 @@ impl From<StandardParameterCatalogError> for StandardParameterPipelineError {
     fn from(error: StandardParameterCatalogError) -> Self {
         Self::Catalog(error)
     }
+}
+
+fn process_passthrough(
+    input: Option<&JsonValue>,
+    processing: Option<&ProcessingBuild<'_, JsonValue, JsonValue>>,
+) -> Option<JsonValue> {
+    let input = input?;
+    Some(match processing {
+        Some(processing) => processing.process(input.clone()).into_value(),
+        None => input.clone(),
+    })
 }
 
 fn config_source_parts(

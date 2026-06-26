@@ -1,5 +1,5 @@
 use docnav_diagnostics::WarningDetails;
-use docnav_typed_fields::TypedValue;
+use docnav_typed_fields::{ProcessingBuild, TypedValue};
 use serde_json::json;
 
 use super::*;
@@ -87,15 +87,78 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
         "missing_override",
     );
 
-    let passthrough = resolution
-        .passthrough()
-        .iter()
-        .find(|value| value.path == path(["native", "shared"]))
-        .unwrap();
-    assert_eq!(passthrough.value, json!("direct"));
+    let passthrough = passthrough_at(&resolution, path(["native"]));
+    assert_eq!(passthrough.value, json!({"shared": "direct"}));
     assert_eq!(
         passthrough.source,
         StandardParameterSourceInfo::new(StandardParameterSourceKind::DirectInput)
+    );
+    assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
+}
+
+#[test]
+fn pipeline_uses_direct_input_passthrough_processing_result_as_is() {
+    let fields = Params::field_defs().unwrap();
+    let passthrough_processing = ProcessingBuild::new(
+        "raw-minus-mapped-direct",
+        |raw: JsonValue| json!({"native": raw.get("native").cloned().unwrap()}),
+    )
+    .unwrap();
+
+    let resolution = StandardParameterPipeline::new(&fields)
+        .with_direct_input_strategy(DIRECT_STRATEGY)
+        .with_config_strategy(CONFIG_STRATEGY)
+        .with_direct_input_passthrough_processing(passthrough_processing)
+        .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
+        .resolve(json!({"output": "readable-view", "native": {}}))
+        .unwrap();
+
+    let output = resolution
+        .value(&identity("docnav.defaults.output"))
+        .unwrap();
+    assert_eq!(output.value, TypedValue::String("readable-view".to_owned()));
+    let passthrough = passthrough_at(&resolution, path(["native"]));
+    assert_eq!(passthrough.value, json!({}));
+    assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
+}
+
+#[test]
+fn pipeline_uses_config_passthrough_processing_result_as_is() {
+    let fields = Params::field_defs().unwrap();
+    let project_config = json!({
+        "defaults": {
+            "output": "readable-view",
+            "native": {
+                "theme": "dark",
+                "strict": true
+            }
+        }
+    });
+    let passthrough_processing = ProcessingBuild::new(
+        "raw-minus-mapped-config",
+        |raw: JsonValue| json!({"defaults": {"native": raw["defaults"]["native"].clone()}}),
+    )
+    .unwrap();
+
+    let resolution = StandardParameterPipeline::new(&fields)
+        .with_direct_input_strategy(DIRECT_STRATEGY)
+        .with_config_strategy(CONFIG_STRATEGY)
+        .with_loaded_project_config(LoadedStandardParameterConfigSource::from_value(
+            project_config,
+        ))
+        .with_config_passthrough_processing(passthrough_processing)
+        .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
+        .resolve(None::<JsonValue>)
+        .unwrap();
+
+    let output = resolution
+        .value(&identity("docnav.defaults.output"))
+        .unwrap();
+    assert_eq!(output.value, TypedValue::String("readable-view".to_owned()));
+    let passthrough = passthrough_at(&resolution, path(["defaults"]));
+    assert_eq!(
+        passthrough.value,
+        json!({"native": {"theme": "dark", "strict": true}})
     );
     assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
 }
