@@ -13,14 +13,14 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
     struct PresenceDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.title")
-                .path(["defaults", "title"])
+                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "title"]))
                 .validation(FieldValidation::string())
         )]
         title: String,
 
         #[field(
             FieldDef::builder("docnav.defaults.subtitle")
-                .path(["defaults", "subtitle"])
+                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "subtitle"]))
                 .validation(FieldValidation::string())
         )]
         subtitle: Option<String>,
@@ -43,18 +43,21 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
     assert!(subtitle_schema.constraints.nullable);
 
     let missing_required = fields
-        .extract_without_default(&json!({"defaults": {"subtitle": "optional"}}))
+        .extract(
+            CONFIG_STRATEGY,
+            &json!({"defaults": {"subtitle": "optional"}}),
+        )
         .expect_err("required field must be present");
     assert_eq!(
-        missing_required.failures()[0].reason,
+        validation_failures(&missing_required)[0].reason,
         ValidationReason::MissingRequired
     );
 
     let null_required = fields
-        .extract_without_default(&json!({"defaults": {"title": null}}))
+        .extract(CONFIG_STRATEGY, &json!({"defaults": {"title": null}}))
         .expect_err("required field rejects null");
     assert_eq!(
-        null_required.failures()[0].reason,
+        validation_failures(&null_required)[0].reason,
         ValidationReason::WrongType {
             expected: ValueKind::String,
             actual: ActualValueKind::Null,
@@ -62,17 +65,23 @@ fn field_declaration_type_controls_requiredness_and_optional_nulls() {
     );
 
     let missing_optional = fields
-        .extract_without_default(&json!({"defaults": {"title": "required"}}))
+        .extract(CONFIG_STRATEGY, &json!({"defaults": {"title": "required"}}))
         .expect("missing optional field extracts");
     assert_eq!(missing_optional.defaults.subtitle, None);
 
     let null_optional = fields
-        .extract_without_default(&json!({"defaults": {"title": "required", "subtitle": null}}))
+        .extract(
+            CONFIG_STRATEGY,
+            &json!({"defaults": {"title": "required", "subtitle": null}}),
+        )
         .expect("optional null field extracts as None");
     assert_eq!(null_optional.defaults.subtitle, None);
 
     let present_optional = fields
-        .extract_without_default(&json!({"defaults": {"title": "required", "subtitle": "value"}}))
+        .extract(
+            CONFIG_STRATEGY,
+            &json!({"defaults": {"title": "required", "subtitle": "value"}}),
+        )
         .expect("present optional field extracts");
     assert_eq!(
         present_optional.defaults.subtitle,
@@ -92,14 +101,14 @@ fn set_build_rejects_duplicate_identity() {
     struct DuplicateDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .path(["defaults", "limit_chars"])
+                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "limit_chars"]))
                 .validation(FieldValidation::int())
         )]
         limit_chars: Option<i64>,
 
         #[field(
             FieldDef::builder("docnav.defaults.limit_chars")
-                .path(["defaults", "max_chars"])
+                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "max_chars"]))
                 .validation(FieldValidation::int())
         )]
         max_chars: Option<i64>,
@@ -135,7 +144,7 @@ fn string_enum_metadata_deduplicates_allowed_values() {
     struct DuplicateEnumDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.output")
-                .path(["defaults", "output"])
+                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "output"]))
                 .validation(FieldValidation::string_enum::<DuplicateMode>())
         )]
         output: Option<DuplicateMode>,
@@ -170,7 +179,7 @@ fn string_enum_metadata_must_have_allowed_values() {
     struct EmptyEnumDefaults {
         #[field(
             FieldDef::builder("docnav.defaults.output")
-                .path(["defaults", "output"])
+                .extract(CONFIG_STRATEGY, config_json_path(["defaults", "output"]))
                 .validation(FieldValidation::string_enum::<EmptyMode>())
         )]
         output: Option<EmptyMode>,

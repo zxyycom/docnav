@@ -54,21 +54,19 @@ where
     Ok(())
 }
 
-pub(super) fn compile_regex_pattern(
-    constraints: &FieldConstraints,
-) -> Result<Option<regex::Regex>, BuildError> {
+pub(super) fn validate_regex_pattern(constraints: &FieldConstraints) -> Result<(), BuildError> {
     let Some(pattern) = &constraints.regex else {
-        return Ok(None);
+        return Ok(());
     };
     regex::Regex::new(pattern)
-        .map(Some)
+        .map(|_| ())
         .map_err(|error| BuildError::InvalidRegexPattern {
             pattern: pattern.clone(),
             error: error.to_string(),
         })
 }
 
-pub(super) fn actual_value_kind(value: &Value) -> ActualValueKind {
+pub(crate) fn actual_value_kind(value: &Value) -> ActualValueKind {
     match value {
         Value::String(_) => ActualValueKind::String,
         Value::Number(number) if number.as_i64().is_some() => ActualValueKind::Integer,
@@ -80,12 +78,12 @@ pub(super) fn actual_value_kind(value: &Value) -> ActualValueKind {
     }
 }
 
-pub(super) enum NumericRangeViolation {
+pub(crate) enum NumericRangeViolation {
     Below(FieldNumericBound),
     Above(FieldNumericBound),
 }
 
-pub(super) fn numeric_range_violation(
+pub(crate) fn numeric_range_violation(
     constraints: &FieldConstraints,
     value: &TypedValue,
 ) -> Option<NumericRangeViolation> {
@@ -122,7 +120,7 @@ where
     None
 }
 
-pub(super) fn value_length(value: &TypedValue) -> Option<u64> {
+pub(crate) fn value_length(value: &TypedValue) -> Option<u64> {
     match value {
         TypedValue::String(value) => Some(value.chars().count() as u64),
         TypedValue::Array(value) => Some(value.len() as u64),
@@ -130,14 +128,14 @@ pub(super) fn value_length(value: &TypedValue) -> Option<u64> {
     }
 }
 
-pub(super) fn below_minimum<T>(value: T, minimum: FieldBound<T>) -> bool
+pub(crate) fn below_minimum<T>(value: T, minimum: FieldBound<T>) -> bool
 where
     T: PartialOrd + PartialEq,
 {
     value < minimum.value || (value == minimum.value && minimum.kind == FieldBoundKind::Open)
 }
 
-pub(super) fn above_maximum<T>(value: T, maximum: FieldBound<T>) -> bool
+pub(crate) fn above_maximum<T>(value: T, maximum: FieldBound<T>) -> bool
 where
     T: PartialOrd + PartialEq,
 {

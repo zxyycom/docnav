@@ -1,5 +1,6 @@
 extern crate self as docnav_typed_fields;
 
+mod extraction;
 mod field;
 mod metadata;
 mod range;
@@ -8,6 +9,9 @@ mod validation;
 mod value;
 
 pub use docnav_typed_fields_macros::FieldDefs;
+pub use extraction::{
+    ExtractStrategy, ExtractionInputKind, ExtractionStrategyId, InvalidExtractionStrategyId,
+};
 pub use field::{FieldDef, FieldDefBuilder};
 pub use metadata::{
     ActualValueKind, BuildError, DefaultMetadata, FieldConstraints, FieldDuplicateIdentityError,
@@ -20,7 +24,7 @@ pub use range::{
 pub use serde_json::Value as JsonValue;
 pub use set::{
     ExpectedFieldShape, FieldDefBuildFailure, FieldDefSet, FieldDefSetBuildError,
-    FieldValidationErrors,
+    FieldExtractionError, FieldValidationErrors,
 };
 pub use validation::FieldValidation;
 pub use value::{FieldStringEnum, FieldValue, FieldValueError};

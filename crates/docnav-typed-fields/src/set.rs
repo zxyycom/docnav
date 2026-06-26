@@ -3,6 +3,7 @@ use std::fmt;
 
 use serde_json::Value;
 
+use crate::extraction::{ExtractionInputKind, ExtractionStrategyId};
 use crate::field::{FieldDef, FieldDefBuilder};
 use crate::metadata::{
     BuildError, FieldDuplicateIdentityError, FieldPath, SchemaMetadataView, TypedValue,
@@ -12,11 +13,14 @@ use crate::value::FieldValue;
 
 mod errors;
 
-pub use errors::{ExpectedFieldShape, FieldDefBuildFailure, FieldDefSetBuildError};
+pub use errors::{
+    ExpectedFieldShape, FieldDefBuildFailure, FieldDefSetBuildError, FieldExtractionError,
+};
 
 #[derive(Debug)]
 pub struct FieldDefSet {
     fields: Vec<FieldDef>,
+    extraction_input_kinds: BTreeMap<ExtractionStrategyId, ExtractionInputKind>,
 }
 
 impl FieldDefSet {
@@ -37,22 +41,6 @@ impl FieldDefSet {
     }
 
     #[doc(hidden)]
-    pub fn __validate_values_without_default(
-        &self,
-        root: &Value,
-    ) -> Result<(), FieldValidationErrors> {
-        self.__extract_values_without_default(root).map(|_| ())
-    }
-
-    #[doc(hidden)]
-    pub fn __validate_values_with_static_defaults(
-        &self,
-        root: &Value,
-    ) -> Result<(), FieldValidationErrors> {
-        self.__extract_values_with_static_defaults(root).map(|_| ())
-    }
-
-    #[doc(hidden)]
     pub fn __static_default_values(&self) -> FieldValues {
         let values = self
             .fields
@@ -63,30 +51,61 @@ impl FieldDefSet {
     }
 
     #[doc(hidden)]
-    pub fn __extract_values_without_default(
+    pub fn __extract_json_strategy_values(
         &self,
+        strategy_id: ExtractionStrategyId,
         root: &Value,
-    ) -> Result<FieldValues, FieldValidationErrors> {
-        self.extract_values_by(root, FieldDef::decode_without_default)
+    ) -> Result<FieldValues, FieldExtractionError> {
+        self.require_json_strategy(&strategy_id)?;
+        self.extract_json_strategy_values(&strategy_id, root, JsonExtractionDefaults::Absent)
     }
 
     #[doc(hidden)]
-    pub fn __extract_values_with_static_defaults(
+    pub fn __extract_json_strategy_values_with_static_defaults(
         &self,
+        strategy_id: ExtractionStrategyId,
         root: &Value,
-    ) -> Result<FieldValues, FieldValidationErrors> {
-        self.extract_values_by(root, FieldDef::decode_with_static_default)
+    ) -> Result<FieldValues, FieldExtractionError> {
+        self.require_json_strategy(&strategy_id)?;
+        self.extract_json_strategy_values(&strategy_id, root, JsonExtractionDefaults::Static)
     }
 
-    fn extract_values_by(
+    fn require_json_strategy(
         &self,
+        strategy_id: &ExtractionStrategyId,
+    ) -> Result<(), FieldExtractionError> {
+        let Some(expected) = self.extraction_input_kinds.get(strategy_id) else {
+            return Err(FieldExtractionError::UnknownStrategy {
+                strategy_id: strategy_id.clone(),
+            });
+        };
+        if *expected == ExtractionInputKind::JsonValue {
+            Ok(())
+        } else {
+            Err(FieldExtractionError::InputKindMismatch {
+                strategy_id: strategy_id.clone(),
+                expected: *expected,
+                actual: ExtractionInputKind::JsonValue,
+            })
+        }
+    }
+
+    fn extract_json_strategy_values(
+        &self,
+        strategy_id: &ExtractionStrategyId,
         root: &Value,
-        decode: fn(&FieldDef, &Value) -> Result<Option<TypedValue>, ValidationFailure>,
-    ) -> Result<FieldValues, FieldValidationErrors> {
+        defaults: JsonExtractionDefaults,
+    ) -> Result<FieldValues, FieldExtractionError> {
         let mut values = Vec::with_capacity(self.fields.len());
         let mut errors = Vec::new();
         for definition in &self.fields {
-            match decode(definition, root) {
+            let decoded = match defaults {
+                JsonExtractionDefaults::Absent => definition.decode_strategy(strategy_id, root),
+                JsonExtractionDefaults::Static => {
+                    definition.decode_strategy_with_static_default(strategy_id, root)
+                }
+            };
+            match decoded {
                 Ok(value) => values.push(value),
                 Err(error) => errors.push(error),
             }
@@ -94,9 +113,17 @@ impl FieldDefSet {
         if errors.is_empty() {
             Ok(FieldValues { values })
         } else {
-            Err(FieldValidationErrors::new(errors))
+            Err(FieldExtractionError::Validation(
+                FieldValidationErrors::new(errors),
+            ))
         }
     }
+}
+
+#[derive(Clone, Copy)]
+enum JsonExtractionDefaults {
+    Absent,
+    Static,
 }
 
 #[doc(hidden)]
@@ -195,8 +222,32 @@ impl FieldDefSetBuilder {
             }
             fields.push(definition);
         }
-        Ok(FieldDefSet { fields })
+        let extraction_input_kinds = extraction_input_kinds(&fields)?;
+        Ok(FieldDefSet {
+            fields,
+            extraction_input_kinds,
+        })
     }
+}
+
+fn extraction_input_kinds(
+    fields: &[FieldDef],
+) -> Result<BTreeMap<ExtractionStrategyId, ExtractionInputKind>, FieldDefSetBuildError> {
+    let mut input_kinds = BTreeMap::new();
+    for field in fields {
+        for (strategy_id, input_kind) in field.extraction_input_kinds() {
+            if let Some(previous) = input_kinds.insert(strategy_id.clone(), input_kind) {
+                if previous != input_kind {
+                    return Err(FieldDefSetBuildError::ExtractionInputKindConflict {
+                        strategy_id: strategy_id.clone(),
+                        previous,
+                        current: input_kind,
+                    });
+                }
+            }
+        }
+    }
+    Ok(input_kinds)
 }
 
 #[derive(Clone, Debug, PartialEq)]

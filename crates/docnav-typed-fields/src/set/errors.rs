@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::extraction::{ExtractionInputKind, ExtractionStrategyId};
 use crate::metadata::{BuildError, FieldDuplicateIdentityError};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -29,6 +30,11 @@ impl std::error::Error for FieldDefBuildFailure {}
 pub enum FieldDefSetBuildError {
     Field(FieldDefBuildFailure),
     DuplicateIdentity(FieldDuplicateIdentityError),
+    ExtractionInputKindConflict {
+        strategy_id: ExtractionStrategyId,
+        previous: ExtractionInputKind,
+        current: ExtractionInputKind,
+    },
 }
 
 impl From<FieldDuplicateIdentityError> for FieldDefSetBuildError {
@@ -53,8 +59,53 @@ impl fmt::Display for FieldDefSetBuildError {
             Self::DuplicateIdentity(error) => {
                 write!(formatter, "field def identity is duplicated: {error}")
             }
+            Self::ExtractionInputKindConflict {
+                strategy_id,
+                previous,
+                current,
+            } => write!(
+                formatter,
+                "extraction strategy {strategy_id} has conflicting input kinds: {previous:?} and {current:?}"
+            ),
         }
     }
 }
 
 impl std::error::Error for FieldDefSetBuildError {}
+
+#[derive(Debug, PartialEq)]
+pub enum FieldExtractionError {
+    UnknownStrategy {
+        strategy_id: ExtractionStrategyId,
+    },
+    InputKindMismatch {
+        strategy_id: ExtractionStrategyId,
+        expected: ExtractionInputKind,
+        actual: ExtractionInputKind,
+    },
+    Validation(super::FieldValidationErrors),
+}
+
+impl fmt::Display for FieldExtractionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnknownStrategy { strategy_id } => {
+                write!(
+                    formatter,
+                    "extraction strategy {strategy_id} is not registered"
+                )
+            }
+            Self::InputKindMismatch {
+                strategy_id,
+                expected,
+                actual,
+            } => write!(
+                formatter,
+                "extraction strategy {strategy_id} expects {expected:?} input, got {actual:?}"
+            ),
+            Self::Validation(error) => write!(formatter, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for FieldExtractionError {}

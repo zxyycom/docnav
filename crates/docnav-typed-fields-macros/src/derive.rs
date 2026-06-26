@@ -100,19 +100,27 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 self.__builder.clone()
             }
 
-            pub fn extract_without_default(
+            pub fn extract(
                 &self,
+                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
-            ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldValidationErrors> {
-                let values = self.__field_def_set.__extract_values_without_default(root)?;
+            ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError> {
+                let values = self.__field_def_set.__extract_json_strategy_values(
+                    strategy_id.into(),
+                    root,
+                )?;
                 Ok(<#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0))
             }
 
             pub fn extract_with_static_defaults(
                 &self,
+                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
-            ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldValidationErrors> {
-                let values = self.__field_def_set.__extract_values_with_static_defaults(root)?;
+            ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError> {
+                let values = self.__field_def_set.__extract_json_strategy_values_with_static_defaults(
+                    strategy_id.into(),
+                    root,
+                )?;
                 Ok(<#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0))
             }
 
@@ -121,18 +129,22 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 <#struct_name as ::docnav_typed_fields::FieldDefs>::__default_values_from_slots(&values, 0)
             }
 
-            pub fn validate_without_default(
+            pub fn validate(
                 &self,
+                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
-            ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldValidationErrors> {
-                self.__field_def_set.__validate_values_without_default(root)
+            ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldExtractionError> {
+                self.__field_def_set.__extract_json_strategy_values(strategy_id.into(), root).map(|_| ())
             }
 
             pub fn validate_with_static_defaults(
                 &self,
+                strategy_id: impl ::std::convert::Into<::docnav_typed_fields::ExtractionStrategyId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
-            ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldValidationErrors> {
-                self.__field_def_set.__validate_values_with_static_defaults(root)
+            ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldExtractionError> {
+                self.__field_def_set
+                    .__extract_json_strategy_values_with_static_defaults(strategy_id.into(), root)
+                    .map(|_| ())
             }
 
             pub fn schema_metadata(&self) -> ::std::vec::Vec<::docnav_typed_fields::SchemaMetadataView> {

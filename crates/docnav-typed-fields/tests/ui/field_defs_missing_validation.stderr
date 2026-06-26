@@ -1,11 +1,12 @@
 error[E0308]: mismatched types
- --> tests/ui/field_defs_missing_validation.rs:5:13
+ --> tests/ui/field_defs_missing_validation.rs:6:9
   |
-3 | #[derive(FieldDefs)]
-  |          --------- expected due to this
-4 | struct Params {
-5 |     #[field(FieldDef::builder("docnav.defaults.limit_chars").path(["defaults", "limit_chars"]))]
-  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `FieldDefBuilder<i64>`, found `FieldDefBuilder`
+3 |   #[derive(FieldDefs)]
+  |            --------- expected due to this
+...
+6 | /         FieldDef::builder("docnav.defaults.limit_chars")
+7 | |             .extract("config", ExtractStrategy::json_path(["defaults", "limit_chars"]))
+  | |_______________________________________________________________________________________^ expected `FieldDefBuilder<i64>`, found `FieldDefBuilder`
   |
   = note: expected struct `FieldDefBuilder<i64>`
              found struct `FieldDefBuilder<()>`

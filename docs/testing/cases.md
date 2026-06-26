@@ -359,13 +359,14 @@ Status: implemented
 Code: `crates/docnav-typed-fields/src/tests.rs`
 
 Proves:
-- Builder 生成 field identity、structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON 字段解码为 typed value。
+- Builder 生成 field identity、extraction strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON 字段解码为 typed value。
 - Field decode/validation 区分 missing optional、missing required/null、wrong type、enum/range/regex/length/default 违规，并保留 field identity、field path 和 machine-readable reason。
 - String enum metadata 由真实 Rust enum metadata 驱动：空 enum metadata 在 build 阶段失败，重复 enum string alias 在有效 metadata 中去重，typed extraction 返回 enum value。
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
 - FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象，`T`/`Option<T>` 分别证明 required 和 null-as-absent presence policy。
-- Definition set build 执行 field build、path、default、declaration presence metadata projection、range、regex、length 和 duplicate identity 校验，并把 build failure 归属到 struct field declaration path。
-- 提取和投影 API 产出同形 typed values object、value kind view、typed default values object 和 schema metadata view；`extract_with_static_defaults` 只用 static default 填补缺失输入，`default_values()` 对缺少 static default 的 leaf 返回 `None`，`to_builder()` 支持静态覆盖 leaf builder 后重新 build，动态 identity-string field lookup 不属于 API。
+- Definition set build 执行 field build、extraction strategy、default、declaration presence metadata projection、range、regex、length 和 duplicate identity 校验，并把 build failure 归属到 struct field declaration path。
+- 提取和投影 API 产出同形 typed values object、value kind view、typed default values object 和 schema metadata view；`extract_with_static_defaults(strategy_id, json)` 只用 static default 填补缺失输入，`default_values()` 对缺少 static default 的 leaf 返回 `None`，`to_builder()` 支持静态覆盖 leaf builder 后重新 build，动态 identity-string field lookup 不属于 API。
+- Field builder 可以按 extraction strategy id 声明抽取策略且不再支持 `.path(...)` 兼容入口；同一 definition set 内相同 strategy id 必须使用相同 input kind，JSON path strategy 可以通过 `extract(strategy_id, json)` 产出同形 typed values object。
 
 ### WB-TYPED-FIELDS-COMPILE-001 FieldDefs derive 拒绝非法声明
 Status: implemented

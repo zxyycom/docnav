@@ -4,6 +4,8 @@ use serde_json::Value;
 
 use crate::range::{FieldBound, FieldLength, FieldNumericBound, FieldNumericRange};
 
+mod validation;
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FieldIdentity(String);
 
@@ -110,10 +112,11 @@ pub struct SchemaMetadataView {
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuildError {
     EmptyIdentity,
-    MissingPath,
+    MissingExtractionStrategy,
     EmptyPath,
     EmptyPathSegment,
     MissingValidation,
+    EmptyExtractionStrategyId,
     EmptyEnumValues,
     NonFiniteRangeBound,
     NonFiniteDefaultValue,
@@ -127,10 +130,13 @@ impl fmt::Display for BuildError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptyIdentity => write!(formatter, "field identity is empty"),
-            Self::MissingPath => write!(formatter, "field path is missing"),
+            Self::MissingExtractionStrategy => {
+                write!(formatter, "field extraction strategy is missing")
+            }
             Self::EmptyPath => write!(formatter, "field path is empty"),
             Self::EmptyPathSegment => write!(formatter, "field path contains an empty segment"),
             Self::MissingValidation => write!(formatter, "field validation is missing"),
+            Self::EmptyExtractionStrategyId => write!(formatter, "extraction strategy id is empty"),
             Self::EmptyEnumValues => write!(formatter, "enum constraint has no allowed values"),
             Self::NonFiniteRangeBound => write!(formatter, "numeric range bound is not finite"),
             Self::NonFiniteDefaultValue => {
