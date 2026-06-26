@@ -15,8 +15,8 @@ pub use extraction::{
 pub use field::{FieldDef, FieldDefBuilder};
 pub use metadata::{
     ActualValueKind, BuildError, DefaultMetadata, FieldConstraints, FieldDuplicateIdentityError,
-    FieldIdentity, FieldPath, SchemaMetadataView, TypedValue, ValidationFailure, ValidationReason,
-    ValueKind,
+    FieldIdentity, FieldPath, SchemaMetadataView, StrategyMetadataView, TypedValue,
+    ValidationFailure, ValidationReason, ValueKind,
 };
 pub use range::{
     FieldBound, FieldBoundKind, FieldLength, FieldNumericBound, FieldNumericRange, FieldRange,

@@ -378,11 +378,13 @@ Proves:
 
 ### WB-STDPARAMS-RESOLVE-001 Standard parameter resolver 保持来源解析边界
 Status: implemented
-Code: `crates/docnav-standard-parameters/src/tests.rs`
+Code: `crates/docnav-standard-parameters/src/tests/mod.rs`
 
 Proves:
 - Standard parameter resolver consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
+- Strategy-specific metadata projection and standard parameter registration bindings construct direct input, project config, user config and default sources before resolution.
 - Missing required values, invalid mapped values, static defaults and dynamic default source values all pass through typed-field validation and return diagnostics instead of unsafe typed values.
+- Explicit skipped config sources return recoverable warning events while default missing config sources remain absent without diagnostics.
 - Unmapped passthrough inputs stay outside standard parameter validation and are returned with the entry passthrough disposition for the owning entrypoint.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 

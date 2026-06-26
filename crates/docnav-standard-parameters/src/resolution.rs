@@ -1,5 +1,6 @@
 use std::collections::{btree_map::Entry, BTreeMap};
 
+use docnav_diagnostics::Warning;
 use docnav_typed_fields::{
     FieldIdentity, JsonValue, SchemaMetadataView, TypedValue, ValidationFailure,
 };
@@ -11,10 +12,48 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StandardParameterDiagnostic {
+pub struct StandardParameterValidationDiagnostic {
     pub identity: FieldIdentity,
     pub source: Option<StandardParameterSourceInfo>,
     pub failure: ValidationFailure,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StandardParameterDiagnostic {
+    Validation(StandardParameterValidationDiagnostic),
+    Warning(Warning),
+}
+
+impl StandardParameterDiagnostic {
+    pub fn validation(
+        identity: FieldIdentity,
+        source: Option<StandardParameterSourceInfo>,
+        failure: ValidationFailure,
+    ) -> Self {
+        Self::Validation(StandardParameterValidationDiagnostic {
+            identity,
+            source,
+            failure,
+        })
+    }
+
+    pub fn warning(warning: Warning) -> Self {
+        Self::Warning(warning)
+    }
+
+    pub fn as_validation(&self) -> Option<&StandardParameterValidationDiagnostic> {
+        match self {
+            Self::Validation(diagnostic) => Some(diagnostic),
+            Self::Warning(_) => None,
+        }
+    }
+
+    pub fn as_warning(&self) -> Option<&Warning> {
+        match self {
+            Self::Validation(_) => None,
+            Self::Warning(warning) => Some(warning),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -82,11 +121,17 @@ impl StandardParameterResolution {
         source: Option<StandardParameterSourceInfo>,
         failure: ValidationFailure,
     ) {
-        self.diagnostics.push(StandardParameterDiagnostic {
-            identity,
-            source,
-            failure,
-        });
+        self.diagnostics
+            .push(StandardParameterDiagnostic::validation(
+                identity, source, failure,
+            ));
+    }
+
+    pub(crate) fn extend_diagnostics(
+        &mut self,
+        diagnostics: impl IntoIterator<Item = StandardParameterDiagnostic>,
+    ) {
+        self.diagnostics.extend(diagnostics);
     }
 }
 

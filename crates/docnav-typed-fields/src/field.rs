@@ -10,7 +10,7 @@ use crate::extraction::{
 };
 use crate::metadata::{
     BuildError, DefaultMetadata, FieldConstraints, FieldIdentity, FieldPath, SchemaMetadataView,
-    TypedValue, ValidationFailure, ValueKind,
+    StrategyMetadataView, TypedValue, ValidationFailure, ValueKind,
 };
 use crate::validation::FieldValidation;
 use crate::value::FieldValue;
@@ -39,6 +39,26 @@ impl FieldDef {
 
     pub(crate) fn schema_metadata(&self) -> SchemaMetadataView {
         self.schema_metadata_with_path(self.path.clone())
+    }
+
+    pub(crate) fn strategy_metadata(
+        &self,
+        strategy_id: &ExtractionStrategyId,
+    ) -> Option<StrategyMetadataView> {
+        let strategy = self.extractions.get(strategy_id)?;
+        let path = strategy
+            .json_path()
+            .cloned()
+            .unwrap_or_else(|| identity_path(&self.identity));
+        Some(StrategyMetadataView {
+            identity: self.identity.clone(),
+            strategy_id: strategy_id.clone(),
+            path,
+            input_kind: strategy.input_kind(),
+            value_kind: self.value_kind,
+            constraints: self.constraints.clone(),
+            default: self.default.clone(),
+        })
     }
 
     fn schema_metadata_with_path(&self, path: FieldPath) -> SchemaMetadataView {
@@ -229,6 +249,11 @@ fn metadata_path(
         return Ok(path.clone());
     }
     FieldPath::new(identity.as_str().split('.'))
+}
+
+fn identity_path(identity: &FieldIdentity) -> FieldPath {
+    FieldPath::new(identity.as_str().split('.'))
+        .expect("field identity is non-empty and split produces non-empty path segments")
 }
 
 impl FieldDef {

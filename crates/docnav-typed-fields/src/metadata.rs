@@ -2,6 +2,7 @@ use std::fmt;
 
 use serde_json::Value;
 
+use crate::extraction::{ExtractionInputKind, ExtractionStrategyId};
 use crate::range::{FieldBound, FieldLength, FieldNumericBound, FieldNumericRange};
 
 mod validation;
@@ -104,6 +105,17 @@ pub struct FieldConstraints {
 pub struct SchemaMetadataView {
     pub identity: FieldIdentity,
     pub path: FieldPath,
+    pub value_kind: ValueKind,
+    pub constraints: FieldConstraints,
+    pub default: DefaultMetadata,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StrategyMetadataView {
+    pub identity: FieldIdentity,
+    pub strategy_id: ExtractionStrategyId,
+    pub path: FieldPath,
+    pub input_kind: ExtractionInputKind,
     pub value_kind: ValueKind,
     pub constraints: FieldConstraints,
     pub default: DefaultMetadata,

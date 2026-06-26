@@ -6,8 +6,8 @@ use serde_json::Value;
 use crate::extraction::{ExtractionInputKind, ExtractionStrategyId};
 use crate::field::{FieldDef, FieldDefBuilder};
 use crate::metadata::{
-    BuildError, FieldDuplicateIdentityError, FieldPath, SchemaMetadataView, TypedValue,
-    ValidationFailure, ValueKind,
+    BuildError, FieldDuplicateIdentityError, FieldPath, SchemaMetadataView, StrategyMetadataView,
+    TypedValue, ValidationFailure, ValueKind,
 };
 use crate::value::FieldValue;
 
@@ -31,6 +31,16 @@ impl FieldDefSet {
 
     pub fn schema_metadata(&self) -> Vec<SchemaMetadataView> {
         self.fields.iter().map(FieldDef::schema_metadata).collect()
+    }
+
+    pub fn strategy_metadata(
+        &self,
+        strategy_id: &ExtractionStrategyId,
+    ) -> Vec<StrategyMetadataView> {
+        self.fields
+            .iter()
+            .filter_map(|field| field.strategy_metadata(strategy_id))
+            .collect()
     }
 
     pub fn value_kinds(&self) -> BTreeMap<String, ValueKind> {

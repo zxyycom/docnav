@@ -151,6 +151,13 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 self.__field_def_set.schema_metadata()
             }
 
+            pub fn strategy_metadata(
+                &self,
+                strategy_id: &::docnav_typed_fields::ExtractionStrategyId,
+            ) -> ::std::vec::Vec<::docnav_typed_fields::StrategyMetadataView> {
+                self.__field_def_set.strategy_metadata(strategy_id)
+            }
+
             pub fn value_kinds(&self) -> ::std::collections::BTreeMap<::std::string::String, ::docnav_typed_fields::ValueKind> {
                 self.__field_def_set.value_kinds()
             }
