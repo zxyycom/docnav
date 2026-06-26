@@ -46,7 +46,12 @@
 3. Definition set build 使用 canonical identity 检查重复定义；同一 set 内重复 identity 必须失败，即使两处声明的字段语义完全一致。
 4. Decoder 按 field path 读取 JSON value，并按 validation 中的 value kind 转换为 typed value。
 5. Validator 执行字段级 constraints，并返回 typed value 或 attributed validation failure。
-6. Consumer 先 build 字段定义对象，再用 `extract_without_default` 对输入 JSON 做整体字段校验和提取；只有提取函数返回的 derive struct values object 才作为业务参数对象使用，例如 `params.defaults.limit_chars: Option<i64>`。`T` leaf 表示必须取到值，path missing 和 JSON null 都失败；`Option<T>` leaf 表示不保证取到值，path missing 和 JSON null 都提取为 `None`，合法值提取为 `Some(T)`。`extract_without_default` 不套用 static defaults；`extract_with_static_defaults` 以字段为单位用 static default 填补缺失输入，但返回与 `extract_without_default` 相同的 typed values object shape；`default_values()` 返回同一 struct shape 的 typed default values object，缺少 static default 的 leaf 为 `None`。Definition set build 将字段类型中的 `T`/`Option<T>` presence policy 写入字段 metadata；static default 只作为字段 metadata 校验，不改变声明类型。Built definition set 只读；需要复用或静态覆盖字段定义时，consumer 可用 `to_builder()` 取回 typed builder 副本，按 Rust 字段路径替换 leaf builder 后重新 `build()`。需要只检查输入时使用 `validate_without_default` 或 `validate_with_static_defaults`，并与对应提取函数共享同一个 field validation error type。Consumer 也可以读取 value kind/default/schema projections，并映射到自身拥有的 schema 文件、operation envelope、配置来源和 stable diagnostics。
+6. Consumer 先 build 字段定义对象，再用 `extract_without_default` 对输入 JSON 做整体字段校验和提取；只有提取函数返回的 derive struct values object 才作为业务参数对象使用，例如 `params.defaults.limit_chars: Option<i64>`。
+7. `T` leaf 表示必须取到值，path missing 和 JSON null 都失败；`Option<T>` leaf 表示不保证取到值，path missing 和 JSON null 都提取为 `None`，合法值提取为 `Some(T)`。
+8. `extract_without_default` 不套用 static defaults；`extract_with_static_defaults` 以字段为单位用 static default 填补缺失输入，但返回与 `extract_without_default` 相同的 typed values object shape；`default_values()` 返回同一 struct shape 的 typed default values object，缺少 static default 的 leaf 为 `None`。
+9. Definition set build 将字段类型中的 `T`/`Option<T>` presence policy 写入字段 metadata；static default 只作为字段 metadata 校验，不改变声明类型。
+10. Built definition set 只读；需要复用或静态覆盖字段定义时，consumer 可用 `to_builder()` 取回 typed builder 副本，按 Rust 字段路径替换 leaf builder 后重新 `build()`。
+11. 需要只检查输入时使用 `validate_without_default` 或 `validate_with_static_defaults`，并与对应提取函数共享同一个 field validation error type。Consumer 也可以读取 value kind/default/schema projections，并映射到自身拥有的 schema 文件、operation envelope、配置来源和 stable diagnostics。
 
 ## Decisions
 

@@ -1,3 +1,4 @@
+// @case WB-TYPED-FIELDS-COMPILE-001
 #[test]
 fn field_defs_reject_invalid_declarations_at_compile_time() {
     let tests = trybuild::TestCases::new();
