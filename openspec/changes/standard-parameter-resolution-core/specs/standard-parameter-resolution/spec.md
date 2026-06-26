@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: Standard parameter resolution produces typed values from declared sources
-The standard parameter resolver MUST combine declared direct input, project config, user config, and default sources into typed runtime values using typed-field metadata, while preserving source information and diagnostics for the final standard parameter result.
+### Requirement: Standard parameter resolution produces typed values from constructed sources
+The standard parameter resolver MUST combine constructed direct input, project config, user config, and default sources into typed runtime values using typed-field metadata, while preserving source information and diagnostics for the final standard parameter result.
 
 #### Scenario: Direct input overrides lower-priority sources
 - **WHEN** the same standard parameter identity is present in direct input, project config, user config, and default sources
@@ -22,6 +22,43 @@ The standard parameter resolver MUST combine declared direct input, project conf
 - **WHEN** a mapped source value violates the declared typed-field kind, enum, range, requiredness, or default constraint
 - **THEN** the resolver returns a standard parameter validation diagnostic for that identity
 - **THEN** the invalid mapped value is not exposed as a safe typed runtime value
+
+### Requirement: Source construction maps registered inputs
+The standard parameter source layer MUST construct direct input, project config, user config, and default sources from standard parameter registration and typed-field extraction metadata before resolution.
+
+#### Scenario: Config JSON maps through registered config binding
+- **WHEN** a project or user config JSON object contains a value at a registered config path
+- **THEN** source construction maps that value to the registered standard parameter identity
+- **THEN** the source records project config or user config as its source kind
+
+#### Scenario: Unregistered config field remains passthrough
+- **WHEN** a config JSON object contains a field that is not mapped by any standard parameter registration
+- **THEN** source construction does not validate it as a standard parameter
+- **THEN** the field is retained, discarded, or delegated according to the entry passthrough policy
+
+#### Scenario: Direct input maps through entry binding
+- **WHEN** direct CLI input or adapter invoke arguments include a value mapped by the entry registration
+- **THEN** source construction maps that value to the registered standard parameter identity as direct input
+- **THEN** unmapped direct input remains outside standard parameter validation
+
+#### Scenario: Default source includes static and dynamic defaults
+- **WHEN** a registration has a static default or caller-provided dynamic default
+- **THEN** source construction places that default into the default source
+- **THEN** the default is validated through the same typed-field metadata as other mapped source values
+
+### Requirement: Config source loading reports skipped sources without owning output
+The standard parameter source layer MUST load configured project and user config sources, skip unavailable or invalid sources according to standard parameter rules, and return structured diagnostic data while leaving warning formatting, output channels, and exit behavior to the entry owner.
+
+#### Scenario: Missing default config source is absent
+- **WHEN** the default project or user config path does not exist
+- **THEN** the config source is treated as absent
+- **THEN** no skipped-source diagnostic is returned for that missing default source
+
+#### Scenario: Invalid explicit config source is skipped
+- **WHEN** an explicit project or user config override is missing, unreadable, invalid JSON, or not a JSON object
+- **THEN** the config source is skipped
+- **THEN** the result includes structured source-skipped diagnostic data with source level, path origin, path, and reason code
+- **THEN** remaining available sources continue into standard parameter resolution
 
 ### Requirement: Standard parameter passthrough remains owner-scoped
 The standard parameter resolver MUST leave unmapped input outside standard parameter validation and return passthrough according to the entry policy so that the owning CLI, adapter, protocol, or config layer can retain, discard, warn about, or validate it.
