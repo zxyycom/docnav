@@ -29,21 +29,21 @@
 ## 2B. Source Construction 与 Config Loading
 
 - [x] 2B.1 定义 strategy-specific metadata projection，包含 standard parameter identity、strategy id、path segments、value kind、constraints 和 default metadata。
-- [x] 2B.2 扩展标准参数 catalog/index 中间产物，声明 direct input binding、config binding、operation argument binding 和 no-config/no-direct 策略，并在 build 阶段校验 identity/path 冲突。
+- [x] 2B.2 扩展标准参数 catalog/index 中间产物，声明 direct input path、config path、operation argument binding 和 no-config/no-direct 策略，并在 catalog 派生阶段校验同一 source role 内的 path 冲突。
 - [x] 2B.3 实现 direct input source construction：调用方提供已结构化的 CLI/invoke input，标准参数层按 catalog/index 映射 `source=direct`，未映射字段进入 passthrough。
 - [x] 2B.4 实现 config source descriptor 和 load result：调用方提供 project/user config path、path origin 和 source level，标准参数层读取 JSON、校验顶层 object，并返回 loaded source；显式 source 被跳过时追加 source-skipped recoverable diagnostic event。
-- [x] 2B.5 实现 project/user config source construction：按 registered config path 抽取标准参数值，未知配置字段按 entry passthrough policy 处理。
+- [x] 2B.5 实现 project/user config source construction：按 derived config path 抽取标准参数值，未知配置字段按 entry passthrough policy 处理。
 - [x] 2B.6 实现 default handling：static default 来自 typed-field metadata，dynamic default 由调用方 provider 提供，default 结果进入同一 validation 与 source attribution。
-- [x] 2B.7 提供 source construction 输入形态的 resolver facade，作为后续 pipeline 内部复用的实现基础。
+- [x] 2B.7 提供 source construction primitives，作为 pipeline 内部复用的实现基础，不把手工 source facade 作为普通入口。
 - [x] 2B.8 测试 source-skipped diagnostic handoff：标准参数层交接 source-skipped event，不决定 warning 文案、stdout/stderr 或 exit code。
 
 ## 2C. FieldDefSet Pipeline Facade
 
-- [ ] 2C.1 定义普通调用入口 `StandardParameterPipeline`，接受调用方定义好的 `FieldDefSet`。
-- [ ] 2C.2 在 pipeline 中建模 direct/config 两个 source role 到 typed-field strategy id 的绑定；default 来自 typed-field default 和 dynamic defaults，不作为 extraction strategy role。
-- [ ] 2C.3 从 `FieldDefSet::schema_metadata()`、`FieldDefSet::strategy_metadata("direct")` 和 `FieldDefSet::strategy_metadata("config")` 内部形成 catalog/index，复用 identity/path conflict 检查。
-- [ ] 2C.4 让 pipeline 的普通 config 输入是 project/user config source descriptor 或 path，并由标准参数层内部调用已有 config loading、source construction、source merge 与 diagnostic handoff。
-- [ ] 2C.5 支持 loaded config 作为复用入口：只复用由标准参数 config loader 产生的 loaded source，避免 caller 在普通路径自行实现 JSON loading。
+- [x] 2C.1 定义普通调用入口 `StandardParameterPipeline`，接受调用方定义好的 `FieldDefSet`。
+- [x] 2C.2 在 pipeline 中建模 direct/config 两个 source role 到 typed-field strategy id 的绑定；default 来自 typed-field default 和 dynamic defaults，不作为 extraction strategy role。
+- [x] 2C.3 从 `FieldDefSet::schema_metadata()`、`FieldDefSet::strategy_metadata("direct")` 和 `FieldDefSet::strategy_metadata("config")` 内部形成 catalog/index，复用 source path conflict 检查。
+- [x] 2C.4 让 pipeline 的普通 config 输入是 project/user config source descriptor 或 path，并由标准参数层内部调用已有 config loading、source construction、source merge 与 diagnostic handoff。
+- [x] 2C.5 支持 loaded config 作为复用入口：只复用由标准参数 config loader 产生的 loaded source，避免 caller 在普通路径自行实现 JSON loading。
 
 ## 3. 验证
 
@@ -58,7 +58,7 @@
 - [x] 3.9 若实现触及多个 crate 或 observable contract surface，运行 `bun run verify:docnav-workspace`；否则记录 targeted Rust tests 和跳过 wider verification 的原因。
 - [x] 3A.1 添加 typed-field fixture，证明同一 strategy id 的 JSON path strategy 可抽取 typed object。
 - [x] 3A.2 添加 typed-field fixture，证明同一 strategy id 混用 JSON input kind 和 Rust field input kind 时 build 失败。
-- [ ] 3.10 添加 pipeline fixture，证明普通调用者只提供 `FieldDefSet`、direct/config strategy id 和输入 sources，不需要手工构造中间 catalog/index。
-- [ ] 3.11 添加 pipeline fixture，证明 direct input、project config path、user config path、static/dynamic default、diagnostic handoff 和 passthrough 都通过同一个 facade 进入解析。
-- [ ] 3.12 添加 loaded config reuse fixture，证明已由标准参数 config loader 产生的 loaded source 可复用，且 JSON loading 与 source-skipped diagnostic 语义不被 caller 重写。
-- [ ] 3.13 更新相关 OpenSpec validation 和 targeted Rust tests；若 pipeline facade 触及 public crate API，运行 `bun run verify:docnav-workspace`。
+- [x] 3.10 添加 pipeline fixture，证明普通调用者只提供 `FieldDefSet`、direct/config strategy id 和输入 sources，不需要手工构造中间 catalog/index。
+- [x] 3.11 添加 pipeline fixture，证明 direct input、project config path、user config path、static/dynamic default、diagnostic handoff 和 passthrough 都通过同一个 facade 进入解析。
+- [x] 3.12 添加 loaded config reuse fixture，证明已由标准参数 config loader 产生的 loaded source 可复用，且 JSON loading 与 source-skipped diagnostic 语义不被 caller 重写。
+- [x] 3.13 更新相关 OpenSpec validation 和 targeted Rust tests；若 pipeline facade 触及 public crate API，运行 `bun run verify:docnav-workspace`。

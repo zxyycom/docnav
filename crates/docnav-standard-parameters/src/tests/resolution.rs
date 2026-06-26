@@ -5,7 +5,7 @@ use super::*;
 
 #[test]
 fn direct_project_user_default_priority_preserves_source_info() {
-    let registrations = vec![registration("docnav.defaults.limit_chars")];
+    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
     let identity = identity("docnav.defaults.limit_chars");
     let sources = StandardParameterSources {
         direct_input: source_with_value(&identity, json!(100)),
@@ -14,8 +14,7 @@ fn direct_project_user_default_priority_preserves_source_info() {
         default: source_with_value(&identity, json!(400)),
     };
 
-    let resolution =
-        resolve_standard_parameters(&registrations, sources, EntryPassthroughPolicy::Retain);
+    let resolution = resolve_standard_parameters(&entries, sources, EntryPassthroughPolicy::Retain);
 
     let resolved = resolution.value(&identity).unwrap();
     assert_eq!(resolved.value, TypedValue::Integer(100));
@@ -28,10 +27,10 @@ fn direct_project_user_default_priority_preserves_source_info() {
 
 #[test]
 fn project_config_overrides_user_config_and_static_default_fills_absent_value() {
-    let registrations = vec![registration("docnav.defaults.limit_chars")];
+    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
     let identity = identity("docnav.defaults.limit_chars");
     let project_resolution = resolve_standard_parameters(
-        &registrations,
+        &entries,
         StandardParameterSources {
             project_config: source_with_value(&identity, json!(200)),
             user_config: source_with_value(&identity, json!(300)),
@@ -48,7 +47,7 @@ fn project_config_overrides_user_config_and_static_default_fills_absent_value() 
     );
 
     let default_resolution = resolve_standard_parameters(
-        &registrations,
+        &entries,
         StandardParameterSources::default(),
         EntryPassthroughPolicy::Retain,
     );
@@ -63,10 +62,10 @@ fn project_config_overrides_user_config_and_static_default_fills_absent_value() 
 
 #[test]
 fn invalid_mapped_value_reports_diagnostic_without_safe_value() {
-    let registrations = vec![registration("docnav.defaults.limit_chars")];
+    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
     let identity = identity("docnav.defaults.limit_chars");
     let resolution = resolve_standard_parameters(
-        &registrations,
+        &entries,
         StandardParameterSources {
             direct_input: source_with_value(&identity, json!(0)),
             project_config: source_with_value(&identity, json!(200)),
@@ -92,11 +91,11 @@ fn invalid_mapped_value_reports_diagnostic_without_safe_value() {
 
 #[test]
 fn required_missing_value_reports_standard_parameter_diagnostic() {
-    let registrations = vec![registration("docnav.defaults.output")];
+    let entries = vec![catalog_entry("docnav.defaults.output")];
     let identity = identity("docnav.defaults.output");
 
     let resolution = resolve_standard_parameters(
-        &registrations,
+        &entries,
         StandardParameterSources::default(),
         EntryPassthroughPolicy::Retain,
     );
@@ -110,10 +109,10 @@ fn required_missing_value_reports_standard_parameter_diagnostic() {
 
 #[test]
 fn dynamic_default_source_is_validated_like_other_mapped_values() {
-    let registrations = vec![registration("docnav.defaults.limit_chars")];
+    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
     let identity = identity("docnav.defaults.limit_chars");
     let resolution = resolve_standard_parameters(
-        &registrations,
+        &entries,
         StandardParameterSources {
             default: source_with_value(&identity, json!(0)),
             ..StandardParameterSources::default()
@@ -138,7 +137,7 @@ fn dynamic_default_source_is_validated_like_other_mapped_values() {
 
 #[test]
 fn passthrough_remains_outside_standard_parameter_validation() {
-    let registrations = vec![registration("docnav.defaults.limit_chars")];
+    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
     let mut sources = StandardParameterSources::default();
     sources.direct_input.push_passthrough(
         path(["native_options", "future_flag"]),
@@ -146,7 +145,7 @@ fn passthrough_remains_outside_standard_parameter_validation() {
     );
 
     let resolution =
-        resolve_standard_parameters(&registrations, sources, EntryPassthroughPolicy::Delegate);
+        resolve_standard_parameters(&entries, sources, EntryPassthroughPolicy::Delegate);
 
     assert!(resolution.diagnostics().is_empty());
     assert_eq!(resolution.passthrough().len(), 1);
@@ -199,10 +198,9 @@ fn assert_operation_binding_source(
     expected_source: StandardParameterSourceKind,
 ) {
     let identity = identity("docnav.defaults.limit_chars");
-    let registration = registration("docnav.defaults.limit_chars")
+    let entry = catalog_entry("docnav.defaults.limit_chars")
         .with_operation_argument(OperationArgumentBinding::new(path(["limit_chars"])));
-    let resolution =
-        resolve_standard_parameters(&[registration], sources, EntryPassthroughPolicy::Retain);
+    let resolution = resolve_standard_parameters(&[entry], sources, EntryPassthroughPolicy::Retain);
 
     let resolved = resolution.value(&identity).unwrap();
     let binding = resolved.operation_argument.as_ref().unwrap();

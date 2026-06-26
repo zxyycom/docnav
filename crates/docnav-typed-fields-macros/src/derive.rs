@@ -163,6 +163,12 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
             }
         }
 
+        impl ::std::convert::AsRef<::docnav_typed_fields::FieldDefSet> for #definition_set_name {
+            fn as_ref(&self) -> &::docnav_typed_fields::FieldDefSet {
+                self.__field_def_set.as_ref()
+            }
+        }
+
         #[derive(Clone, Debug)]
         #visibility struct #default_values_name {
             #(#default_value_fields,)*

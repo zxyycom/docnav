@@ -83,7 +83,7 @@ pub struct LoadedStandardParameterConfigSource {
 }
 
 impl LoadedStandardParameterConfigSource {
-    pub fn from_value(value: JsonValue) -> Self {
+    pub(crate) fn from_value(value: JsonValue) -> Self {
         Self {
             value: Some(value),
             diagnostics: Vec::new(),
@@ -96,6 +96,10 @@ impl LoadedStandardParameterConfigSource {
 
     pub fn diagnostics(&self) -> &[StandardParameterDiagnostic] {
         &self.diagnostics
+    }
+
+    pub(crate) fn into_parts(self) -> (Option<JsonValue>, Vec<StandardParameterDiagnostic>) {
+        (self.value, self.diagnostics)
     }
 }
 

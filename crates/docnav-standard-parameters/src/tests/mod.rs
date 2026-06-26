@@ -12,6 +12,7 @@ use docnav_typed_fields::{
 use super::*;
 
 mod construction;
+mod pipeline;
 mod resolution;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -67,49 +68,24 @@ struct Params {
     output: OutputMode,
 }
 
-fn registration(identity: &str) -> StandardParameterRegistration {
+fn catalog_entry(identity: &str) -> StandardParameterCatalogEntry {
     let metadata = Params::field_defs()
         .unwrap()
         .schema_metadata()
         .into_iter()
         .find(|metadata| metadata.identity.as_str() == identity)
         .unwrap();
-    StandardParameterRegistration::new(metadata)
+    StandardParameterCatalogEntry::new(metadata)
 }
 
-fn registration_set() -> StandardParameterRegistrationSet {
+fn parameter_catalog() -> StandardParameterCatalog {
     let definitions = Params::field_defs().unwrap();
-    let direct = definitions.strategy_metadata(&ExtractionStrategyId::from(DIRECT_STRATEGY));
-    let config = definitions.strategy_metadata(&ExtractionStrategyId::from(CONFIG_STRATEGY));
-    let mut registrations = definitions
-        .schema_metadata()
-        .into_iter()
-        .map(StandardParameterRegistration::new)
-        .collect::<Vec<_>>();
-    for registration in &mut registrations {
-        if let Some(binding) = binding_for(&direct, registration.identity()) {
-            *registration = registration.clone().with_direct_input_binding(binding);
-        }
-        if let Some(binding) = binding_for(&config, registration.identity()) {
-            *registration = registration.clone().with_config_binding(binding);
-        }
-    }
-    StandardParameterRegistrationSet::new(registrations).unwrap()
-}
-
-fn binding_for(
-    metadata: &[docnav_typed_fields::StrategyMetadataView],
-    identity: &FieldIdentity,
-) -> Option<StandardParameterBinding> {
-    metadata
-        .iter()
-        .find(|metadata| &metadata.identity == identity)
-        .map(|metadata| {
-            StandardParameterBinding::new(
-                metadata.strategy_id.clone(),
-                StandardParameterPath::new(metadata.path.segments()).unwrap(),
-            )
-        })
+    derive_standard_parameter_catalog(
+        &definitions,
+        &ExtractionStrategyId::from(DIRECT_STRATEGY),
+        &ExtractionStrategyId::from(CONFIG_STRATEGY),
+    )
+    .unwrap()
 }
 
 fn source_with_value(identity: &FieldIdentity, value: JsonValue) -> StandardParameterSource {

@@ -10,7 +10,7 @@
 
 - `docnav-typed-fields` 继续拥有字段定义：identity、类型、required/default、range、enum、regex 和每个 extraction strategy 的 path。
 - `docnav-standard-parameters` 提供普通 pipeline 入口：caller 提供 `FieldDefSet`、direct/config strategy id、direct input、project/user config path 或 descriptor、dynamic defaults 和 passthrough policy。
-- Pipeline 内部按固定顺序读取 `schema_metadata()`、`strategy_metadata("direct")` 和 `strategy_metadata("config")`，形成 catalog/index，并复用 identity/path conflict 检查。
+- Pipeline 内部按固定顺序读取 `schema_metadata()`、`strategy_metadata("direct")` 和 `strategy_metadata("config")`，形成 catalog/index，并校验同一 source role 内的 path conflict。
 - 普通 config 入口是 path/descriptor，由标准参数层负责 JSON loading、顶层 object 校验和 skipped-source diagnostic handoff。
 - Loaded config 入口只复用同一标准参数 loader 已经加载过的 source，不作为 caller 自行实现 JSON loading 的普通路径。
 - Source construction 将 direct input、project config、user config 和 default 映射为标准参数 sources，并把未映射字段作为 passthrough handoff 返回。

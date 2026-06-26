@@ -1,31 +1,37 @@
+mod catalog;
 mod construction;
 mod path;
-mod registration;
+mod pipeline;
 mod resolution;
 mod source;
 
-pub use construction::{
+pub(crate) use catalog::{
+    derive_standard_parameter_catalog, OperationArgumentBinding, StandardParameterCatalog,
+    StandardParameterCatalogEntry,
+};
+pub use catalog::{StandardParameterCatalogConflictKind, StandardParameterCatalogError};
+pub(crate) use construction::{
     construct_config_source, construct_default_source, construct_direct_input_source,
-    load_standard_parameter_config_source, resolve_standard_parameter_inputs, ConfigPathOrigin,
-    ConfigSourceLevel, ConfigSourceSkipReason, LoadedStandardParameterConfigSource,
-    StandardParameterConfigSourceDescriptor, StandardParameterResolutionInputs,
+};
+pub use construction::{
+    load_standard_parameter_config_source, ConfigPathOrigin, ConfigSourceLevel,
+    ConfigSourceSkipReason, LoadedStandardParameterConfigSource,
+    StandardParameterConfigSourceDescriptor,
 };
 pub use path::{InvalidStandardParameterPath, StandardParameterPath};
-pub use registration::{
-    OperationArgumentBinding, StandardParameterBinding, StandardParameterRegistration,
-    StandardParameterRegistrationConflictKind, StandardParameterRegistrationSet,
-    StandardParameterRegistrationSetError,
+pub use pipeline::{
+    StandardParameterPipeline, StandardParameterPipelineError, StandardParameterPipelineSourceRole,
 };
+pub(crate) use resolution::resolve_standard_parameters;
 pub use resolution::{
-    resolve_standard_parameters, ResolvedOperationArgumentBinding, ResolvedStandardParameter,
-    StandardParameterDiagnostic, StandardParameterResolution,
-    StandardParameterValidationDiagnostic,
+    ResolvedOperationArgumentBinding, ResolvedStandardParameter, StandardParameterDiagnostic,
+    StandardParameterResolution, StandardParameterValidationDiagnostic,
 };
 pub use source::{
-    EntryPassthroughPolicy, PassthroughDisposition, PassthroughInput, PassthroughValue,
-    StandardParameterSource, StandardParameterSourceInfo, StandardParameterSourceKind,
-    StandardParameterSources,
+    EntryPassthroughPolicy, PassthroughDisposition, PassthroughValue, StandardParameterSourceInfo,
+    StandardParameterSourceKind,
 };
+pub(crate) use source::{StandardParameterSource, StandardParameterSources};
 
 #[cfg(test)]
 mod tests;

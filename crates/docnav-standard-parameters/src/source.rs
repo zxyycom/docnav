@@ -24,28 +24,24 @@ impl StandardParameterSourceInfo {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct StandardParameterSource {
+pub(crate) struct StandardParameterSource {
     values: BTreeMap<FieldIdentity, JsonValue>,
     passthrough: Vec<PassthroughInput>,
 }
 
 impl StandardParameterSource {
-    pub fn insert_value(&mut self, identity: FieldIdentity, value: JsonValue) {
+    pub(crate) fn insert_value(&mut self, identity: FieldIdentity, value: JsonValue) {
         self.values.insert(identity, value);
     }
 
-    pub fn with_value(mut self, identity: FieldIdentity, value: JsonValue) -> Self {
+    #[cfg(test)]
+    pub(crate) fn with_value(mut self, identity: FieldIdentity, value: JsonValue) -> Self {
         self.insert_value(identity, value);
         self
     }
 
-    pub fn push_passthrough(&mut self, path: StandardParameterPath, value: JsonValue) {
+    pub(crate) fn push_passthrough(&mut self, path: StandardParameterPath, value: JsonValue) {
         self.passthrough.push(PassthroughInput { path, value });
-    }
-
-    pub fn with_passthrough(mut self, path: StandardParameterPath, value: JsonValue) -> Self {
-        self.push_passthrough(path, value);
-        self
     }
 
     pub(crate) fn value(&self, identity: &FieldIdentity) -> Option<&JsonValue> {
@@ -58,11 +54,11 @@ impl StandardParameterSource {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct StandardParameterSources {
-    pub direct_input: StandardParameterSource,
-    pub project_config: StandardParameterSource,
-    pub user_config: StandardParameterSource,
-    pub default: StandardParameterSource,
+pub(crate) struct StandardParameterSources {
+    pub(crate) direct_input: StandardParameterSource,
+    pub(crate) project_config: StandardParameterSource,
+    pub(crate) user_config: StandardParameterSource,
+    pub(crate) default: StandardParameterSource,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -90,9 +86,9 @@ pub enum PassthroughDisposition {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct PassthroughInput {
-    pub path: StandardParameterPath,
-    pub value: JsonValue,
+pub(crate) struct PassthroughInput {
+    pub(crate) path: StandardParameterPath,
+    pub(crate) value: JsonValue,
 }
 
 #[derive(Clone, Debug, PartialEq)]

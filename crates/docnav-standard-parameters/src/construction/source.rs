@@ -2,41 +2,34 @@ use std::collections::BTreeMap;
 
 use docnav_typed_fields::{DefaultMetadata, FieldIdentity, JsonValue};
 
-use crate::{StandardParameterPath, StandardParameterRegistration, StandardParameterSource};
+use crate::{StandardParameterCatalogEntry, StandardParameterPath, StandardParameterSource};
 
-pub fn construct_direct_input_source(
-    registrations: &[StandardParameterRegistration],
+pub(crate) fn construct_direct_input_source(
+    entries: &[StandardParameterCatalogEntry],
     input: Option<&JsonValue>,
 ) -> StandardParameterSource {
-    construct_source(input, registrations, |registration| {
-        registration
-            .direct_input
-            .as_ref()
-            .map(|binding| &binding.path)
-    })
+    construct_source(input, entries, |entry| entry.direct_input_path.as_ref())
 }
 
-pub fn construct_config_source(
-    registrations: &[StandardParameterRegistration],
+pub(crate) fn construct_config_source(
+    entries: &[StandardParameterCatalogEntry],
     input: Option<&JsonValue>,
 ) -> StandardParameterSource {
-    construct_source(input, registrations, |registration| {
-        registration.config.as_ref().map(|binding| &binding.path)
-    })
+    construct_source(input, entries, |entry| entry.config_path.as_ref())
 }
 
-pub fn construct_default_source(
-    registrations: &[StandardParameterRegistration],
+pub(crate) fn construct_default_source(
+    entries: &[StandardParameterCatalogEntry],
     dynamic_defaults: &BTreeMap<FieldIdentity, JsonValue>,
 ) -> StandardParameterSource {
     let mut source = StandardParameterSource::default();
-    for registration in registrations {
-        if let Some(value) = dynamic_defaults.get(registration.identity()) {
-            source.insert_value(registration.identity().clone(), value.clone());
+    for entry in entries {
+        if let Some(value) = dynamic_defaults.get(entry.identity()) {
+            source.insert_value(entry.identity().clone(), value.clone());
             continue;
         }
-        if let DefaultMetadata::Static(value) = &registration.metadata.default {
-            source.insert_value(registration.identity().clone(), value.clone());
+        if let DefaultMetadata::Static(value) = &entry.metadata.default {
+            source.insert_value(entry.identity().clone(), value.clone());
         }
     }
     source
@@ -44,8 +37,8 @@ pub fn construct_default_source(
 
 fn construct_source(
     input: Option<&JsonValue>,
-    registrations: &[StandardParameterRegistration],
-    path_for: impl Fn(&StandardParameterRegistration) -> Option<&StandardParameterPath>,
+    entries: &[StandardParameterCatalogEntry],
+    path_for: impl Fn(&StandardParameterCatalogEntry) -> Option<&StandardParameterPath>,
 ) -> StandardParameterSource {
     let Some(input) = input else {
         return StandardParameterSource::default();
@@ -53,13 +46,13 @@ fn construct_source(
     let mut source = StandardParameterSource::default();
     let mut mapped_paths = Vec::new();
 
-    for registration in registrations {
-        let Some(path) = path_for(registration) else {
+    for entry in entries {
+        let Some(path) = path_for(entry) else {
             continue;
         };
         mapped_paths.push(path.key());
         if let Some(value) = value_at_path(input, path) {
-            source.insert_value(registration.identity().clone(), value.clone());
+            source.insert_value(entry.identity().clone(), value.clone());
         }
     }
 

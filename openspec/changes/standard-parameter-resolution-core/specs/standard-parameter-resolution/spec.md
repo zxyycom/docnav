@@ -6,7 +6,7 @@
 #### Scenario: Caller-defined FieldDefSet 是字段事实源
 - **WHEN** caller 从 `docnav-typed-fields` definitions 构建 `FieldDefSet`，并向标准参数 pipeline 提供 direct/config strategy ids
 - **THEN** pipeline 从 `schema_metadata()`、`strategy_metadata("direct")` 和 `strategy_metadata("config")` 派生 standard parameter identities、typed validation metadata 和 source paths
-- **THEN** 普通路径不要求 caller 手工构造 `StandardParameterRegistration`
+- **THEN** 普通路径不要求 caller 手工构造 catalog/index entry
 
 #### Scenario: Direct/config role 映射到 typed-field strategies
 - **WHEN** caller 将 direct role 绑定到 direct strategy id，并将 config role 绑定到 config strategy id
@@ -58,7 +58,7 @@
 
 #### Scenario: Direct input 通过 derived direct binding 映射
 - **WHEN** direct CLI input 或 adapter invoke arguments 包含 direct input strategy 映射到的值
-- **THEN** source construction 将该值映射到 registered standard parameter identity 并标记为 direct input
+- **THEN** source construction 将该值映射到 derived catalog/index 中的 standard parameter identity 并标记为 direct input
 - **THEN** unmapped direct input 保持在 standard parameter validation 之外
 
 #### Scenario: Defaults 进入标准参数解析

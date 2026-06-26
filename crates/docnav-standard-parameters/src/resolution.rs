@@ -6,9 +6,9 @@ use docnav_typed_fields::{
 };
 
 use crate::{
-    EntryPassthroughPolicy, OperationArgumentBinding, PassthroughValue, StandardParameterPath,
-    StandardParameterRegistration, StandardParameterSource, StandardParameterSourceInfo,
-    StandardParameterSourceKind, StandardParameterSources,
+    EntryPassthroughPolicy, OperationArgumentBinding, PassthroughValue,
+    StandardParameterCatalogEntry, StandardParameterPath, StandardParameterSource,
+    StandardParameterSourceInfo, StandardParameterSourceKind, StandardParameterSources,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -135,46 +135,46 @@ impl StandardParameterResolution {
     }
 }
 
-pub fn resolve_standard_parameters(
-    registrations: &[StandardParameterRegistration],
+pub(crate) fn resolve_standard_parameters(
+    entries: &[StandardParameterCatalogEntry],
     sources: StandardParameterSources,
     passthrough_policy: EntryPassthroughPolicy,
 ) -> StandardParameterResolution {
     let mut resolution = StandardParameterResolution::default();
 
-    for registration in registrations {
-        resolve_registration(registration, &sources, &mut resolution);
+    for entry in entries {
+        resolve_entry(entry, &sources, &mut resolution);
     }
 
     resolution.passthrough = resolve_passthrough(&sources, passthrough_policy);
     resolution
 }
 
-fn resolve_registration(
-    registration: &StandardParameterRegistration,
+fn resolve_entry(
+    entry: &StandardParameterCatalogEntry,
     sources: &StandardParameterSources,
     resolution: &mut StandardParameterResolution,
 ) {
-    if let Some((value, source)) = first_source_value(registration.identity(), sources) {
-        resolve_raw_value(registration, value, source, resolution);
+    if let Some((value, source)) = first_source_value(entry.identity(), sources) {
+        resolve_raw_value(entry, value, source, resolution);
         return;
     }
 
-    match registration.metadata.static_default_value() {
+    match entry.metadata.static_default_value() {
         Ok(Some(value)) => resolution.insert_value(
-            registration.identity().clone(),
+            entry.identity().clone(),
             value,
             StandardParameterSourceInfo::new(StandardParameterSourceKind::Default),
-            registration.operation_argument.clone(),
+            entry.operation_argument.clone(),
         ),
-        Ok(None) if registration.metadata.is_required() => resolution.push_diagnostic(
-            registration.identity().clone(),
+        Ok(None) if entry.metadata.is_required() => resolution.push_diagnostic(
+            entry.identity().clone(),
             None,
-            missing_required_failure(&registration.metadata),
+            missing_required_failure(&entry.metadata),
         ),
         Ok(None) => {}
         Err(failure) => resolution.push_diagnostic(
-            registration.identity().clone(),
+            entry.identity().clone(),
             Some(StandardParameterSourceInfo::new(
                 StandardParameterSourceKind::Default,
             )),
@@ -184,22 +184,20 @@ fn resolve_registration(
 }
 
 fn resolve_raw_value(
-    registration: &StandardParameterRegistration,
+    entry: &StandardParameterCatalogEntry,
     value: &JsonValue,
     source_kind: StandardParameterSourceKind,
     resolution: &mut StandardParameterResolution,
 ) {
     let source = StandardParameterSourceInfo::new(source_kind);
-    match registration.metadata.validate_value(value) {
+    match entry.metadata.validate_value(value) {
         Ok(value) => resolution.insert_value(
-            registration.identity().clone(),
+            entry.identity().clone(),
             value,
             source,
-            registration.operation_argument.clone(),
+            entry.operation_argument.clone(),
         ),
-        Err(failure) => {
-            resolution.push_diagnostic(registration.identity().clone(), Some(source), failure)
-        }
+        Err(failure) => resolution.push_diagnostic(entry.identity().clone(), Some(source), failure),
     }
 }
 

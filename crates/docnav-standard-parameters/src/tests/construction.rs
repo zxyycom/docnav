@@ -29,28 +29,34 @@ fn strategy_metadata_projection_includes_strategy_path_and_schema_facts() {
 }
 
 #[test]
-fn facade_constructs_direct_config_and_default_sources_from_registration_bindings() {
-    let registrations = registration_set();
+fn source_construction_maps_direct_config_and_default_values() {
+    let catalog = parameter_catalog();
+    let entries = catalog.entries();
     let identity = identity("docnav.defaults.limit_chars");
     let mut dynamic_defaults = BTreeMap::new();
     dynamic_defaults.insert(identity.clone(), json!(400));
+    let direct_input = json!({
+        "limit_chars": 100,
+        "output": "readable-json",
+        "native_options": {"theme": "direct"}
+    });
+    let project_config = json!({
+        "defaults": {"limit_chars": 200, "output": "readable-view"},
+        "native_options": {"theme": "project"}
+    });
+    let user_config = json!({
+        "defaults": {"limit_chars": 300, "output": "readable-view"}
+    });
 
-    let resolution = resolve_standard_parameter_inputs(
-        StandardParameterResolutionInputs::new(registrations.as_slice())
-            .with_direct_input(json!({
-                "limit_chars": 100,
-                "output": "readable-json",
-                "native_options": {"theme": "direct"}
-            }))
-            .with_project_config(json!({
-                "defaults": {"limit_chars": 200, "output": "readable-view"},
-                "native_options": {"theme": "project"}
-            }))
-            .with_user_config(json!({
-                "defaults": {"limit_chars": 300, "output": "readable-view"}
-            }))
-            .with_dynamic_defaults(dynamic_defaults)
-            .with_passthrough_policy(EntryPassthroughPolicy::Retain),
+    let resolution = resolve_standard_parameters(
+        entries,
+        StandardParameterSources {
+            direct_input: construct_direct_input_source(entries, Some(&direct_input)),
+            project_config: construct_config_source(entries, Some(&project_config)),
+            user_config: construct_config_source(entries, Some(&user_config)),
+            default: construct_default_source(entries, &dynamic_defaults),
+        },
+        EntryPassthroughPolicy::Retain,
     );
 
     let resolved = resolution.value(&identity).unwrap();
@@ -62,45 +68,68 @@ fn facade_constructs_direct_config_and_default_sources_from_registration_binding
     assert!(resolution.diagnostics().is_empty());
 }
 
-#[test]
-fn registration_set_rejects_conflicting_config_paths() {
-    let definitions = Params::field_defs().unwrap();
-    let mut registrations = definitions
-        .schema_metadata()
-        .into_iter()
-        .map(StandardParameterRegistration::new)
-        .collect::<Vec<_>>();
-    registrations[0] = registrations[0]
-        .clone()
-        .with_config_binding(StandardParameterBinding::new(
-            CONFIG_STRATEGY,
-            path(["defaults", "shared"]),
-        ));
-    registrations[1] = registrations[1]
-        .clone()
-        .with_config_binding(StandardParameterBinding::new(
-            CONFIG_STRATEGY,
-            path(["defaults", "shared"]),
-        ));
+#[derive(Debug, FieldDefs)]
+struct ConflictingConfigPathParams {
+    #[field(
+        FieldDef::builder("docnav.defaults.left")
+            .extract(DIRECT_STRATEGY, config_json_path(["left"]))
+            .extract(CONFIG_STRATEGY, config_json_path(["defaults", "shared"]))
+            .validation(FieldValidation::int().between(
+                FieldBound::closed(1),
+                FieldBound::closed(100_000),
+            ))
+    )]
+    left: Option<i64>,
 
-    let error = StandardParameterRegistrationSet::new(registrations).unwrap_err();
-
-    assert_eq!(
-        error.kind,
-        StandardParameterRegistrationConflictKind::ConfigPath
-    );
-    assert_eq!(error.path.unwrap(), path(["defaults", "shared"]));
+    #[field(
+        FieldDef::builder("docnav.defaults.right")
+            .extract(DIRECT_STRATEGY, config_json_path(["right"]))
+            .extract(CONFIG_STRATEGY, config_json_path(["defaults", "shared"]))
+            .validation(FieldValidation::int().between(
+                FieldBound::closed(1),
+                FieldBound::closed(100_000),
+            ))
+    )]
+    right: Option<i64>,
 }
 
 #[test]
-fn facade_reports_validation_failures_through_diagnostic_handoff() {
-    let registrations = registration_set();
-    let identity = identity("docnav.defaults.limit_chars");
+fn catalog_derivation_rejects_conflicting_config_paths() {
+    let definitions = ConflictingConfigPathParams::field_defs().unwrap();
 
-    let resolution = resolve_standard_parameter_inputs(
-        StandardParameterResolutionInputs::new(registrations.as_slice())
-            .with_direct_input(json!({"limit_chars": 0}))
-            .with_project_config(json!({"defaults": {"limit_chars": 200}})),
+    let error = derive_standard_parameter_catalog(
+        &definitions,
+        &ExtractionStrategyId::from(DIRECT_STRATEGY),
+        &ExtractionStrategyId::from(CONFIG_STRATEGY),
+    )
+    .unwrap_err();
+
+    assert!(matches!(
+        error,
+        StandardParameterCatalogError::Conflict {
+            kind: StandardParameterCatalogConflictKind::ConfigPath,
+            path: ref conflict_path,
+            ..
+        } if conflict_path.as_ref() == Some(&path(["defaults", "shared"]))
+    ));
+}
+
+#[test]
+fn constructed_sources_report_validation_failures_through_diagnostic_handoff() {
+    let catalog = parameter_catalog();
+    let entries = catalog.entries();
+    let identity = identity("docnav.defaults.limit_chars");
+    let direct_input = json!({"limit_chars": 0});
+    let project_config = json!({"defaults": {"limit_chars": 200}});
+
+    let resolution = resolve_standard_parameters(
+        entries,
+        StandardParameterSources {
+            direct_input: construct_direct_input_source(entries, Some(&direct_input)),
+            project_config: construct_config_source(entries, Some(&project_config)),
+            ..StandardParameterSources::default()
+        },
+        EntryPassthroughPolicy::Retain,
     );
 
     assert!(resolution.value(&identity).is_none());
@@ -120,17 +149,24 @@ fn facade_reports_validation_failures_through_diagnostic_handoff() {
 
 #[test]
 fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() {
-    let registrations = registration_set();
+    let fields = Params::field_defs().unwrap();
     let missing = temp_path("missing-project-config.json");
+    let user_config = temp_file(
+        "source-skip-user-config.json",
+        r#"{"defaults": {"limit_chars": 300, "output": "readable-view"}}"#,
+    );
     let loaded_project =
         load_standard_parameter_config_source(&StandardParameterConfigSourceDescriptor::new(
             ConfigSourceLevel::Project,
             ConfigPathOrigin::Override,
             missing.clone(),
         ));
-    let loaded_user = LoadedStandardParameterConfigSource::from_value(json!({
-        "defaults": {"limit_chars": 300, "output": "readable-view"}
-    }));
+    let loaded_user =
+        load_standard_parameter_config_source(&StandardParameterConfigSourceDescriptor::new(
+            ConfigSourceLevel::User,
+            ConfigPathOrigin::Override,
+            user_config,
+        ));
 
     assert_eq!(loaded_project.diagnostics().len(), 1);
     let warning = loaded_project.diagnostics()[0].as_warning().unwrap();
@@ -145,11 +181,13 @@ fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() 
         }
     );
 
-    let resolution = resolve_standard_parameter_inputs(
-        StandardParameterResolutionInputs::new(registrations.as_slice())
-            .with_loaded_project_config(loaded_project)
-            .with_loaded_user_config(loaded_user),
-    );
+    let resolution = StandardParameterPipeline::new(&fields)
+        .with_direct_input_strategy(DIRECT_STRATEGY)
+        .with_config_strategy(CONFIG_STRATEGY)
+        .with_loaded_project_config(loaded_project)
+        .with_loaded_user_config(loaded_user)
+        .resolve(None::<JsonValue>)
+        .unwrap();
 
     assert_eq!(
         resolution
@@ -223,19 +261,26 @@ fn unreadable_config_source_is_skipped_with_warning_event() {
 
 #[test]
 fn constructed_passthrough_values_merge_by_source_priority_without_validation() {
-    let registrations = registration_set();
+    let catalog = parameter_catalog();
+    let entries = catalog.entries();
+    let direct_input = json!({"native": {"shared": 1}, "limit_chars": 100});
+    let project_config = json!({
+        "defaults": {"output": "readable-view"},
+        "native": {"shared": 2, "project": true}
+    });
+    let user_config = json!({
+        "native": {"shared": 3, "user": true}
+    });
 
-    let resolution = resolve_standard_parameter_inputs(
-        StandardParameterResolutionInputs::new(registrations.as_slice())
-            .with_direct_input(json!({"native": {"shared": 1}, "limit_chars": 100}))
-            .with_project_config(json!({
-                "defaults": {"output": "readable-view"},
-                "native": {"shared": 2, "project": true}
-            }))
-            .with_user_config(json!({
-                "native": {"shared": 3, "user": true}
-            }))
-            .with_passthrough_policy(EntryPassthroughPolicy::Delegate),
+    let resolution = resolve_standard_parameters(
+        entries,
+        StandardParameterSources {
+            direct_input: construct_direct_input_source(entries, Some(&direct_input)),
+            project_config: construct_config_source(entries, Some(&project_config)),
+            user_config: construct_config_source(entries, Some(&user_config)),
+            ..StandardParameterSources::default()
+        },
+        EntryPassthroughPolicy::Delegate,
     );
 
     assert!(resolution.diagnostics().is_empty());

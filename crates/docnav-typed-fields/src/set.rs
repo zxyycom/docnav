@@ -130,6 +130,12 @@ impl FieldDefSet {
     }
 }
 
+impl AsRef<FieldDefSet> for FieldDefSet {
+    fn as_ref(&self) -> &FieldDefSet {
+        self
+    }
+}
+
 #[derive(Clone, Copy)]
 enum JsonExtractionDefaults {
     Absent,
