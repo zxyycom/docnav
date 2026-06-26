@@ -182,8 +182,12 @@ fn unreadable_file(file_name: &str) -> Option<(PathBuf, UnreadableFileGuard)> {
     let path = temp_file(file_name, "{}");
     let permissions = fs::metadata(&path).ok()?.permissions();
     let mut unreadable = permissions.clone();
-    unreadable.set_mode(0);
+    unreadable.set_mode(0o0);
     fs::set_permissions(&path, unreadable).ok()?;
+    if fs::read_to_string(&path).is_ok() {
+        fs::set_permissions(&path, permissions).ok()?;
+        return None;
+    }
     Some((path.clone(), UnreadableFileGuard { path, permissions }))
 }
 
