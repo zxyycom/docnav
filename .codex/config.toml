@@ -14,3 +14,5 @@ enabled_tools = [
     "codegraph_status",
     "codegraph_trace",
 ]
+[mcp_servers.codegraph.env]
+CODEGRAPH_MCP_TOOLS = "node,callers,callees,impact,files,status"
