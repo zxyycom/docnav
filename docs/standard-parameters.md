@@ -8,7 +8,7 @@
 
 标准参数机制说明一个参数如何在 CLI、配置文件和 adapter `invoke` arguments 中保持同一语义。它定义参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、透传规则和标准参数校验。
 
-使用方通过 registration 或 metadata 把本入口的输入字段映射到标准参数，得到 typed values、source info、可进入错误通道的 diagnostic handoff，以及按来源携带的透传处理结果（passthrough processing results）。标准参数机制在返回这些结果后结束；后续流程如何把 handoff 压入错误通道、继续、失败或投影输出，由对应 owner 文档说明。
+使用方通过 registration 或 metadata 把本入口的输入字段映射到标准参数，得到 typed values、source info、可进入错误通道的诊断交接数据，以及按来源携带的透传处理结果（passthrough processing results）。标准参数机制在返回这些结果后结束；后续流程如何把交接数据压入错误通道、继续、失败或投影输出，由对应 owner 文档说明。
 
 本文只解释标准参数行为。入口生命周期、transport 包装、输出格式、request envelope 和 operation handler 不在本文内重新定义。
 
@@ -21,7 +21,7 @@
 1. 参数身份：这个值代表什么语义。身份包括 stable identity、canonical key、value kind、schema、默认值和基础校验。
 2. 入口字段映射：这个值在不同入口上如何被命名。CLI flag、配置路径和 `invoke` argument path 可以不同，但必须映射回同一个参数身份。
 3. 来源标记：映射后的来源对象带有 `direct`、`project_config`、`user_config` 或 `default` 标记。标准参数机制不提供单独的来源开关；某参数不应从某来源取值时，移除该来源对应的映射路径即可。
-4. 解析结果：合并校验后的 typed value、每个最终值的 source info、diagnostic handoff，以及 direct input、project config、user config 各自的透传处理结果。
+4. 解析结果：合并校验后的 typed value、每个最终值的 source info、诊断交接数据，以及 direct input、project config、user config 各自的透传处理结果。
 
 定义新参数时，先确定参数身份，再声明它在哪些入口暴露、各入口字段如何映射，以及未映射字段是否保留。这样新增入口只需要新增入口字段映射，修改校验只需要改参数身份本身。
 
@@ -56,9 +56,9 @@ flowchart TD
   M --> P["后续流程消费<br/>typed values / source info / passthrough processing results"]
 
   A -. "注册冲突或默认值非法" .-> X1["build/register failure"]
-  G -. "显式配置路径不可用或 JSON 非 object" .-> X2["source skipped diagnostic<br/>继续合并其它来源"]
-  C -. "当前 operation 不使用的 CLI argv" .-> X3["ignored argv diagnostic<br/>继续执行"]
-  L -. "已映射值非法或必需值缺失" .-> X4["standard parameter validation diagnostic<br/>入口决定 input error / INVALID_REQUEST"]
+  G -. "显式配置路径不可用或 JSON 非 object" .-> X2["source skipped 诊断<br/>继续合并其它来源"]
+  C -. "当前 operation 不使用的 CLI argv" .-> X3["ignored argv 诊断<br/>继续执行"]
+  L -. "已映射值非法或必需值缺失" .-> X4["standard parameter validation 诊断<br/>入口决定 input error / INVALID_REQUEST"]
 ```
 
 ### 错误出口
@@ -68,10 +68,10 @@ flowchart TD
 | 位置 | 结果 |
 | --- | --- |
 | Build/register | Canonical key 指向不同 base identity、静态默认值不满足 schema、registration 缺失或冲突时，注册失败，不进入单次文档操作。 |
-| Config source | 默认配置路径缺失表示来源不存在；显式配置路径缺失、不可读、JSON 无效或顶层不是 object 时，跳过该来源并产生 recoverable diagnostic handoff，其它来源继续合并。 |
+| Config source | 默认配置路径缺失表示来源不存在；显式配置路径缺失、不可读、JSON 无效或顶层不是 object 时，跳过该来源并产生可恢复诊断交接数据，其它来源继续合并。 |
 | Direct input shape | `invoke` malformed JSON、request envelope 缺字段或 protocol schema 失败由 protocol owner 返回 failure，不作为标准参数合并错误。 |
-| Direct CLI compatibility | 未知 argv、多余 positional、当前 operation 不使用的已知 flag 或 native option 生成 ignored argv diagnostic handoff；实际消费的参数继续进入校验。 |
-| Standard validation | 类型、范围、枚举、requiredness 或 default 结果不满足 schema facet 时返回 validation diagnostic handoff；CLI 映射为输入错误，`invoke` 映射为 `INVALID_REQUEST`。 |
+| Direct CLI compatibility | 未知 argv、多余 positional、当前 operation 不使用的已知 flag 或 native option 生成 ignored argv 诊断交接数据；实际消费的参数继续进入校验。 |
+| Standard validation | 类型、范围、枚举、requiredness 或 default 结果不满足 schema facet 时返回 validation 诊断交接数据；CLI 映射为输入错误，`invoke` 映射为 `INVALID_REQUEST`。 |
 
 ## 输入与配置映射
 
@@ -82,7 +82,7 @@ Direct input 是一次调用显式给出的输入，包括 CLI argv 和 adapter 
 | CLI argv | CLI registration 把 flag 映射到标准参数 identity。 | `source=direct` |
 | Adapter `invoke` arguments | Operation argument binding 把 argument path 映射到标准参数 identity。 | `source=direct` |
 
-没有映射到标准参数 identity 的条目不进入标准参数校验。它们是否进入后续 owner 语义，由该来源的透传处理结果和入口策略决定；标准参数层只原样交接处理结果，不重新组织未映射字段。直接 CLI 需要 ignored argv diagnostic 时，也从入口 owner 保留的 raw input 或透传处理结果中判断并形成可入栈 handoff；具体 warning/stderr 承载仍由输出 owner 定义。
+没有映射到标准参数 identity 的条目不进入标准参数校验。它们是否进入后续 owner 语义，由该来源的透传处理结果和入口策略决定；标准参数层只原样交接处理结果，不重新组织未映射字段。直接 CLI 需要 ignored argv 诊断时，也从入口 owner 保留的 raw input 或透传处理结果中判断并形成可入栈交接数据；具体 warning/stderr 承载仍由输出 owner 定义。
 
 配置是显式输入之外的来源。入口先用 direct input 中的 `project_config_path`、`user_config_path` 和 `cwd` 定位配置；未显式提供 project path 时从 `cwd` 推导，未显式提供 user path 时使用默认用户配置路径。
 
@@ -116,7 +116,7 @@ Adapter direct CLI 配置项目根从启动 cwd 向上查找最近 `.docnav/`；
 
 标准参数 pipeline 不解释处理结果的语义，不重新定位、删除、合并或重组其中的节点。默认处理可以返回 raw input；需要 raw-minus-mapped 时，入口处理函数可以返回定位器、变更描述或已经组织好的剩余 JSON 子树。default 没有原始输入对象，因此没有透传处理结果。
 
-解析器完成后，标准参数层的工作结束。后续模块消费 typed values、source info、diagnostic handoff 和透传处理结果；标准参数层不再参与后续执行，也不决定最终输出通道、exit code 或 protocol/readable projection。
+解析器完成后，标准参数层的工作结束。后续模块消费 typed values、source info、诊断交接数据和透传处理结果；标准参数层不再参与后续执行，也不决定最终输出通道、exit code 或 protocol/readable 投影。
 
 ## Metadata 与交接边界
 

@@ -72,23 +72,21 @@ impl DetailFieldRule {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DiagnosticDetailsRule {
     fields: &'static [DetailFieldRule],
-    allow_extra_fields: bool,
 }
 
 impl DiagnosticDetailsRule {
     pub const fn exact(fields: &'static [DetailFieldRule]) -> Self {
-        Self {
-            fields,
-            allow_extra_fields: false,
-        }
+        Self { fields }
     }
 
     pub const fn fields(self) -> &'static [DetailFieldRule] {
         self.fields
     }
 
-    pub const fn allows_extra_fields(self) -> bool {
-        self.allow_extra_fields
+    pub fn required_field_names(self) -> impl Iterator<Item = &'static str> {
+        self.fields
+            .iter()
+            .filter_map(|field| field.required.then_some(field.name))
     }
 
     pub fn validate_value(self, details: &Value) -> Result<(), DiagnosticDetailsError> {
@@ -112,13 +110,11 @@ impl DiagnosticDetailsRule {
             }
         }
 
-        if !self.allow_extra_fields {
-            for field in object.keys() {
-                if !self.fields.iter().any(|rule| rule.name == field) {
-                    return Err(DiagnosticDetailsError::ExtraField {
-                        field: field.clone(),
-                    });
-                }
+        for field in object.keys() {
+            if !self.fields.iter().any(|rule| rule.name == field) {
+                return Err(DiagnosticDetailsError::ExtraField {
+                    field: field.clone(),
+                });
             }
         }
 

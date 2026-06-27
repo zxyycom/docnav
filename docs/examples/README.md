@@ -53,7 +53,7 @@ read 使用 `page: 1` 和 `limit_chars: 64`，因此结果返回 `page: 2`；结
 - [error-format-ambiguous.json](json/error-format-ambiguous.json)
 - [error-invalid-request.json](json/error-invalid-request.json)
 
-错误示例只展示 protocol/readable surface projection。错误 code、canonical details 规则和 warning/error 机械身份来自 [错误通道](../diagnostics.md)；本目录不作为 code/details 规则来源。
+错误示例只展示 protocol/readable surface 投影。错误 code、canonical details 规则和 warning/error 机械身份来自 [错误通道](../diagnostics.md)；本目录不作为 code/details 规则来源。
 
 `find` 与 `info` 能力示例：
 
@@ -70,4 +70,4 @@ read 使用 `page: 1` 和 `limit_chars: 64`，因此结果返回 `page: 2`；结
 
 原始协议和阅读输出由不同 schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。
 
-示例只证明 protocol/readable、manifest、probe 和配置文件示例的 documented shape 与 projection。direct CLI warning placement、protocol-json stdout purity、adapter machine command 边界、配置读取行为、diagnostic stack semantics 和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。
+示例只证明 protocol/readable、manifest、probe 和配置文件示例的 documented shape 与投影结果。direct CLI warning placement、protocol-json stdout purity、adapter machine command 边界、配置读取行为、diagnostic stack semantics 和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。

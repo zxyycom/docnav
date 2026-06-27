@@ -10,6 +10,55 @@ use docnav_diagnostics::{
 use crate::constants::{error_detail_fields as details_fields, stable_error_messages};
 use crate::{ErrorDetails, Operation};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StableErrorCodeRule {
+    code: StableErrorCode,
+    diagnostic_code: ProtocolDiagnosticCode,
+    default_message: &'static str,
+}
+
+const fn stable_error_code_rule(
+    code: StableErrorCode,
+    diagnostic_code: ProtocolDiagnosticCode,
+    default_message: &'static str,
+) -> StableErrorCodeRule {
+    StableErrorCodeRule {
+        code,
+        diagnostic_code,
+        default_message,
+    }
+}
+
+macro_rules! stable_error_code_rules {
+    ($($code:ident => ($diagnostic_code:ident, $message:ident)),+ $(,)?) => {
+        [
+            $(
+                stable_error_code_rule(
+                    StableErrorCode::$code,
+                    ProtocolDiagnosticCode::$diagnostic_code,
+                    stable_error_messages::$message,
+                ),
+            )+
+        ]
+    };
+}
+
+const STABLE_ERROR_CODE_RULES: [StableErrorCodeRule; 13] = stable_error_code_rules![
+    InvalidRequest => (InvalidRequest, INVALID_PROTOCOL_REQUEST),
+    DocumentNotFound => (DocumentNotFound, DOCUMENT_NOT_FOUND),
+    DocumentPathInvalid => (DocumentPathInvalid, DOCUMENT_PATH_INVALID),
+    DocumentEncodingUnsupported => (DocumentEncodingUnsupported, DOCUMENT_ENCODING_UNSUPPORTED),
+    FormatUnknown => (FormatUnknown, DOCUMENT_FORMAT_UNKNOWN),
+    FormatAmbiguous => (FormatAmbiguous, DOCUMENT_FORMAT_AMBIGUOUS),
+    CapabilityUnsupported => (CapabilityUnsupported, CAPABILITY_UNSUPPORTED),
+    RefNotFound => (RefNotFound, REF_NOT_FOUND),
+    RefAmbiguous => (RefAmbiguous, REF_AMBIGUOUS),
+    RefInvalid => (RefInvalid, REF_INVALID),
+    AdapterUnavailable => (AdapterUnavailable, ADAPTER_UNAVAILABLE),
+    AdapterInvokeFailed => (AdapterInvokeFailed, ADAPTER_INVOKE_FAILED),
+    InternalError => (InternalError, INTERNAL_ERROR),
+];
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StableError {
@@ -35,10 +84,13 @@ impl StableError {
         self
     }
 
+    fn with_default_message(code: StableErrorCode, details: ErrorDetails) -> Self {
+        Self::new(code, code.default_message(), details)
+    }
+
     pub fn invalid_request(field: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::InvalidRequest,
-            stable_error_messages::INVALID_PROTOCOL_REQUEST,
             details([
                 (details_fields::FIELD, field.into()),
                 (details_fields::REASON, reason.into()),
@@ -47,17 +99,15 @@ impl StableError {
     }
 
     pub fn document_not_found(path: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::DocumentNotFound,
-            stable_error_messages::DOCUMENT_NOT_FOUND,
             details([(details_fields::PATH, path.into())]),
         )
     }
 
     pub fn document_path_invalid(path: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::DocumentPathInvalid,
-            stable_error_messages::DOCUMENT_PATH_INVALID,
             details([
                 (details_fields::PATH, path.into()),
                 (details_fields::REASON, reason.into()),
@@ -69,9 +119,8 @@ impl StableError {
         path: impl Into<String>,
         encoding: impl Into<String>,
     ) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::DocumentEncodingUnsupported,
-            stable_error_messages::DOCUMENT_ENCODING_UNSUPPORTED,
             details([
                 (details_fields::PATH, path.into()),
                 (details_fields::ENCODING, encoding.into()),
@@ -89,27 +138,18 @@ impl StableError {
             (details_fields::REASON, reason.into()),
         ]);
         details.insert(details_fields::CANDIDATES.to_owned(), candidates);
-        Self::new(
-            StableErrorCode::FormatUnknown,
-            stable_error_messages::DOCUMENT_FORMAT_UNKNOWN,
-            details,
-        )
+        Self::with_default_message(StableErrorCode::FormatUnknown, details)
     }
 
     pub fn format_ambiguous(path: impl Into<String>, candidates: Value) -> Self {
         let mut details = details([(details_fields::PATH, path.into())]);
         details.insert(details_fields::CANDIDATES.to_owned(), candidates);
-        Self::new(
-            StableErrorCode::FormatAmbiguous,
-            stable_error_messages::DOCUMENT_FORMAT_AMBIGUOUS,
-            details,
-        )
+        Self::with_default_message(StableErrorCode::FormatAmbiguous, details)
     }
 
     pub fn capability_unsupported(capability: Operation, adapter_id: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::CapabilityUnsupported,
-            stable_error_messages::CAPABILITY_UNSUPPORTED,
             details([
                 (details_fields::CAPABILITY, capability.to_string()),
                 (details_fields::ADAPTER_ID, adapter_id.into()),
@@ -118,9 +158,8 @@ impl StableError {
     }
 
     pub fn ref_not_found(ref_id: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::RefNotFound,
-            stable_error_messages::REF_NOT_FOUND,
             details([(details_fields::REF, ref_id.into())]),
         )
     }
@@ -131,17 +170,12 @@ impl StableError {
             details_fields::CANDIDATE_COUNT.to_owned(),
             Value::from(candidate_count),
         );
-        Self::new(
-            StableErrorCode::RefAmbiguous,
-            stable_error_messages::REF_AMBIGUOUS,
-            details,
-        )
+        Self::with_default_message(StableErrorCode::RefAmbiguous, details)
     }
 
     pub fn ref_invalid(ref_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::RefInvalid,
-            stable_error_messages::REF_INVALID,
             details([
                 (details_fields::REF, ref_id.into()),
                 (details_fields::REASON, reason.into()),
@@ -150,9 +184,8 @@ impl StableError {
     }
 
     pub fn adapter_unavailable(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::AdapterUnavailable,
-            stable_error_messages::ADAPTER_UNAVAILABLE,
             details([
                 (details_fields::ADAPTER_ID, adapter_id.into()),
                 (details_fields::REASON, reason.into()),
@@ -161,9 +194,8 @@ impl StableError {
     }
 
     pub fn adapter_invoke_failed(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::AdapterInvokeFailed,
-            stable_error_messages::ADAPTER_INVOKE_FAILED,
             details([
                 (details_fields::ADAPTER_ID, adapter_id.into()),
                 (details_fields::REASON, reason.into()),
@@ -172,15 +204,14 @@ impl StableError {
     }
 
     pub fn internal_error(error_id: impl Into<String>) -> Self {
-        Self::new(
+        Self::with_default_message(
             StableErrorCode::InternalError,
-            stable_error_messages::INTERNAL_ERROR,
             details([(details_fields::ERROR_ID, error_id.into())]),
         )
     }
 
     pub fn validate_required_details(&self) -> Result<(), MissingErrorDetail> {
-        for &field in self.code.required_details() {
+        for field in self.code.required_details() {
             if !self.details.contains_key(field) {
                 return Err(MissingErrorDetail {
                     code: self.code,
@@ -251,31 +282,23 @@ pub enum StableErrorCode {
 }
 
 impl StableErrorCode {
+    const fn rule(self) -> StableErrorCodeRule {
+        STABLE_ERROR_CODE_RULES[self as usize]
+    }
+
+    pub const fn default_message(self) -> &'static str {
+        self.rule().default_message
+    }
+
     pub const fn diagnostic_code(self) -> ProtocolDiagnosticCode {
-        match self {
-            Self::InvalidRequest => ProtocolDiagnosticCode::InvalidRequest,
-            Self::DocumentNotFound => ProtocolDiagnosticCode::DocumentNotFound,
-            Self::DocumentPathInvalid => ProtocolDiagnosticCode::DocumentPathInvalid,
-            Self::DocumentEncodingUnsupported => {
-                ProtocolDiagnosticCode::DocumentEncodingUnsupported
-            }
-            Self::FormatUnknown => ProtocolDiagnosticCode::FormatUnknown,
-            Self::FormatAmbiguous => ProtocolDiagnosticCode::FormatAmbiguous,
-            Self::CapabilityUnsupported => ProtocolDiagnosticCode::CapabilityUnsupported,
-            Self::RefNotFound => ProtocolDiagnosticCode::RefNotFound,
-            Self::RefAmbiguous => ProtocolDiagnosticCode::RefAmbiguous,
-            Self::RefInvalid => ProtocolDiagnosticCode::RefInvalid,
-            Self::AdapterUnavailable => ProtocolDiagnosticCode::AdapterUnavailable,
-            Self::AdapterInvokeFailed => ProtocolDiagnosticCode::AdapterInvokeFailed,
-            Self::InternalError => ProtocolDiagnosticCode::InternalError,
-        }
+        self.rule().diagnostic_code
     }
 
     pub const fn diagnostic(self) -> DiagnosticCode {
         DiagnosticCode::Protocol(self.diagnostic_code())
     }
 
-    pub const fn required_details(self) -> &'static [&'static str] {
+    pub fn required_details(self) -> impl Iterator<Item = &'static str> {
         self.diagnostic_code().required_detail_names()
     }
 
@@ -293,23 +316,7 @@ impl StableErrorCode {
 
 impl From<ProtocolDiagnosticCode> for StableErrorCode {
     fn from(code: ProtocolDiagnosticCode) -> Self {
-        match code {
-            ProtocolDiagnosticCode::InvalidRequest => Self::InvalidRequest,
-            ProtocolDiagnosticCode::DocumentNotFound => Self::DocumentNotFound,
-            ProtocolDiagnosticCode::DocumentPathInvalid => Self::DocumentPathInvalid,
-            ProtocolDiagnosticCode::DocumentEncodingUnsupported => {
-                Self::DocumentEncodingUnsupported
-            }
-            ProtocolDiagnosticCode::FormatUnknown => Self::FormatUnknown,
-            ProtocolDiagnosticCode::FormatAmbiguous => Self::FormatAmbiguous,
-            ProtocolDiagnosticCode::CapabilityUnsupported => Self::CapabilityUnsupported,
-            ProtocolDiagnosticCode::RefNotFound => Self::RefNotFound,
-            ProtocolDiagnosticCode::RefAmbiguous => Self::RefAmbiguous,
-            ProtocolDiagnosticCode::RefInvalid => Self::RefInvalid,
-            ProtocolDiagnosticCode::AdapterUnavailable => Self::AdapterUnavailable,
-            ProtocolDiagnosticCode::AdapterInvokeFailed => Self::AdapterInvokeFailed,
-            ProtocolDiagnosticCode::InternalError => Self::InternalError,
-        }
+        STABLE_ERROR_CODE_RULES[code as usize].code
     }
 }
 
@@ -338,3 +345,20 @@ impl fmt::Display for MissingErrorDetail {
 }
 
 impl std::error::Error for MissingErrorDetail {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stable_error_code_rules_follow_enum_order() {
+        assert_eq!(
+            STABLE_ERROR_CODE_RULES.len(),
+            StableErrorCode::InternalError as usize + 1
+        );
+        for (index, rule) in STABLE_ERROR_CODE_RULES.iter().enumerate() {
+            assert_eq!(rule.code as usize, index, "{:?}", rule.code);
+            assert_eq!(rule.diagnostic_code as usize, index, "{:?}", rule.code);
+        }
+    }
+}

@@ -58,9 +58,7 @@ impl DiagnosticStack {
 
     pub fn drain_after(&mut self, mark: DiagnosticMark) -> Vec<DiagnosticRecord> {
         let start = mark.index.min(self.records.len());
-        let mut records = self.records.split_off(start);
-        records.reverse();
-        records
+        newest_first(self.records.split_off(start))
     }
 
     pub fn drain_after_event(
@@ -76,15 +74,11 @@ impl DiagnosticStack {
         } else {
             anchor_index + 1
         };
-        let mut records = self.records.split_off(start);
-        records.reverse();
-        records
+        newest_first(self.records.split_off(start))
     }
 
     pub fn snapshot(&self) -> Vec<DiagnosticRecord> {
-        let mut records = self.records.clone();
-        records.reverse();
-        records
+        newest_first(self.records.clone())
     }
 
     pub fn len(&self) -> usize {
@@ -94,4 +88,9 @@ impl DiagnosticStack {
     pub fn is_empty(&self) -> bool {
         self.records.is_empty()
     }
+}
+
+fn newest_first(mut records: Vec<DiagnosticRecord>) -> Vec<DiagnosticRecord> {
+    records.reverse();
+    records
 }

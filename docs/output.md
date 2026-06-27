@@ -81,11 +81,11 @@ Some install text.
 
 阅读输出 schema 按 operation 独立定义，见 [JSON Schema 索引](schemas/json-schema.md)。
 
-成功结果存在可投影为直接 CLI 兼容性 warning 的错误通道记录时，`readable-json` 必须在顶层输出 `warnings` 数组；没有 warning projection 时省略该字段。每个 warning item 必须使用稳定 warning envelope：`id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 使用 `id: "cli_argv_ignored"`，相关 argv token 只能作为 `details.tokens` 等 family-specific detail 表达。CLI argv warning 的 exact token 分组、`reason` 文案和 token 消费顺序不作为稳定契约。
+成功结果存在可投影为直接 CLI 兼容性 warning 的错误通道记录时，`readable-json` 必须在顶层输出 `warnings` 数组；没有 warning 投影时省略该字段。每个 warning item 必须使用稳定 warning envelope：`id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 使用 `id: "cli_argv_ignored"`，相关 argv token 只能作为 `details.tokens` 等 family-specific detail 表达。CLI argv warning 的 exact token 分组、`reason` 文案和 token 消费顺序不作为稳定契约。
 
-成功结果存在可投影为 adapter 选择候选 warning 的错误通道记录时，`readable-json` 同样必须在顶层 `warnings` 数组中保留。adapter candidate warning 使用 `id: "adapter_candidate_failure"`，`effect: "candidate_skipped"`，并在 `details` 中保留 `adapter_id`、`stage`、`code` 和可选 `preselected`。没有 warning projection 时省略该字段。
+成功结果存在可投影为 adapter 选择候选 warning 的错误通道记录时，`readable-json` 同样必须在顶层 `warnings` 数组中保留。adapter candidate warning 使用 `id: "adapter_candidate_failure"`，`effect: "candidate_skipped"`，并在 `details` 中保留 `adapter_id`、`stage`、`code` 和可选 `preselected`。没有 warning 投影时省略该字段。
 
-Adapter direct CLI document operation 跳过不可用配置源时，阅读输出必须保留配置源 warning projection。该 warning 使用 `id: "adapter_config_source_skipped"`，`effect: "operation_continued"`，并在 `details` 中保留：
+Adapter direct CLI document operation 跳过不可用配置源时，阅读输出必须保留配置源 warning 投影。该 warning 使用 `id: "adapter_config_source_skipped"`，`effect: "operation_continued"`，并在 `details` 中保留：
 
 | 字段 | 值 |
 | --- | --- |
@@ -94,11 +94,11 @@ Adapter direct CLI document operation 跳过不可用配置源时，阅读输出
 | `path` | 本次尝试读取的解析后路径 |
 | `reason_code` | `missing_override`、`not_file`、`unreadable`、`invalid_json` 或 `non_object` |
 
-该 warning projection 表示不可用配置源未参与本次合并，operation 继续使用其它来源。触发条件由 [标准参数](standard-parameters.md#错误出口) 拥有：显式覆盖路径缺失、配置路径存在但不是可读取文件、JSON 语法无效或顶层不是 object 产生 recoverable diagnostic；未覆盖的默认配置路径缺失不产生 diagnostic。
+该 warning 投影表示不可用配置源未参与本次合并，operation 继续使用其它来源。触发条件由 [标准参数](standard-parameters.md#错误出口) 拥有：显式覆盖路径缺失、配置路径存在但不是可读取文件、JSON 语法无效或顶层不是 object 产生可恢复诊断；未覆盖的默认配置路径缺失不产生诊断。
 
 readable read 保留 adapter 返回的 `content_type`。当 [架构](architecture.md#adapter-选择) 定义的 adapter 选择流程产生可恢复候选失败时，阅读输出将对应错误通道记录投影为 `adapter_candidate_failure` warning。
 
-阅读错误保留 protocol/readable projection 的 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。需要机器可靠错误契约时使用完整协议输出。
+阅读错误保留 protocol/readable 投影的 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。需要机器可靠错误契约时使用完整协议输出。
 
 ## 阅读文案配置
 
@@ -113,5 +113,5 @@ readable read 保留 adapter 返回的 `content_type`。当 [架构](architectur
 - 诊断记录可投影到 stderr。
 - adapter 选择候选记录在 `readable-view` 和 `readable-json` 中跟随最终阅读结果投影为 warning；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
 - adapter direct CLI 配置源跳过记录在 `readable-view` 和 `readable-json` 中跟随最终阅读结果投影为 warning；在 `protocol-json` 中写 stderr，不能污染 stdout envelope。
-- 直接 CLI argv 的兼容分类和 diagnostic handoff 见 [标准参数](standard-parameters.md#错误出口)；通道承载必须与该规则一致。
+- 直接 CLI argv 的兼容分类和诊断交接数据见 [标准参数](standard-parameters.md#错误出口)；通道承载必须与该规则一致。
 - 非 document machine output 若复用低层 JSON writer，仍由各自 owner 决定 schema、plain text/stderr 边界和 exit behavior。

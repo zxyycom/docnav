@@ -65,10 +65,6 @@ impl DiagnosticRecordDraft {
         let code = code.into();
         let severity = code.default_severity();
         let effect = code.default_effect();
-        let recoverable = matches!(
-            effect,
-            DiagnosticEffect::OperationContinued | DiagnosticEffect::CandidateSkipped
-        );
         Self {
             summary: summary.into(),
             severity,
@@ -77,7 +73,7 @@ impl DiagnosticRecordDraft {
             details,
             guidance: None,
             source,
-            recoverable,
+            recoverable: is_recoverable_effect(effect),
         }
     }
 
@@ -88,10 +84,7 @@ impl DiagnosticRecordDraft {
 
     pub fn with_effect(mut self, effect: DiagnosticEffect) -> Self {
         self.effect = effect;
-        self.recoverable = matches!(
-            effect,
-            DiagnosticEffect::OperationContinued | DiagnosticEffect::CandidateSkipped
-        );
+        self.recoverable = is_recoverable_effect(effect);
         self
     }
 
@@ -146,3 +139,10 @@ impl fmt::Display for DiagnosticRecordError {
 }
 
 impl std::error::Error for DiagnosticRecordError {}
+
+const fn is_recoverable_effect(effect: DiagnosticEffect) -> bool {
+    matches!(
+        effect,
+        DiagnosticEffect::OperationContinued | DiagnosticEffect::CandidateSkipped
+    )
+}

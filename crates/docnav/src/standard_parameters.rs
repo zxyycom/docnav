@@ -126,22 +126,7 @@ fn first_validation_error(resolution: &StandardParameterResolution) -> AppResult
 }
 
 fn validation_error(diagnostic: &StandardParameterValidationDiagnostic) -> AppError {
-    let identity = diagnostic.identity.as_str();
-    let mut diagnostics = DiagnosticStack::new();
-    let id = diagnostics
-        .push(invalid_request_record(
-            field_label(identity),
-            validation_reason(identity),
-            DiagnosticSource::with_stage("docnav", "standard-parameters"),
-        ))
-        .expect("standard parameter validation details are valid");
-    let record = diagnostics
-        .get(id)
-        .expect("pushed diagnostic record exists");
-    AppError::new(
-        docnav_protocol::StableError::from_diagnostic_record(record)
-            .expect("invalid request diagnostic projects to stable error"),
-    )
+    validation_error_for_identity(diagnostic.identity.as_str())
 }
 
 fn field_label(identity: &str) -> &'static str {

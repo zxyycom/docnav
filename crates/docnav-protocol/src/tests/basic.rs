@@ -129,12 +129,20 @@ fn stable_error_codes_have_shared_categories() {
 #[test]
 fn stable_error_required_details_come_from_diagnostic_rules() {
     assert_eq!(
-        StableErrorCode::InvalidRequest.required_details(),
-        docnav_diagnostics::ProtocolDiagnosticCode::InvalidRequest.required_detail_names()
+        StableErrorCode::InvalidRequest
+            .required_details()
+            .collect::<Vec<_>>(),
+        docnav_diagnostics::ProtocolDiagnosticCode::InvalidRequest
+            .required_detail_names()
+            .collect::<Vec<_>>()
     );
     assert_eq!(
-        StableErrorCode::AdapterInvokeFailed.required_details(),
-        docnav_diagnostics::ProtocolDiagnosticCode::AdapterInvokeFailed.required_detail_names()
+        StableErrorCode::AdapterInvokeFailed
+            .required_details()
+            .collect::<Vec<_>>(),
+        docnav_diagnostics::ProtocolDiagnosticCode::AdapterInvokeFailed
+            .required_detail_names()
+            .collect::<Vec<_>>()
     );
 }
 
@@ -181,7 +189,11 @@ fn protocol_response_schema_error_projection_matches_diagnostic_rules() {
         let actual = schema_rules
             .remove(code.protocol_code())
             .unwrap_or_else(|| panic!("missing schema projection for {}", code.protocol_code()));
-        assert_eq!(actual, code.required_detail_names(), "{code:?}");
+        assert_eq!(
+            actual,
+            code.required_detail_names().collect::<Vec<_>>(),
+            "{code:?}"
+        );
     }
     assert!(
         schema_rules.is_empty(),

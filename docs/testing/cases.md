@@ -258,7 +258,7 @@ Proves:
 
 ### WB-DIAG-WARN-001 Diagnostics warning 形状稳定
 Status: implemented
-Code: `crates/docnav-diagnostics/src/tests.rs`
+Code: `crates/docnav-diagnostics/src/tests/warning.rs`
 
 Proves:
 - warning id、effect、details 和 stderr text line 保持稳定。
