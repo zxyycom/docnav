@@ -233,6 +233,13 @@ Proves:
 - operation-owned 参数保持严格校验，例如 `outline --page 0` 会暴露 page 边界错误。
 - 未被当前 operation 使用的 known argument 不会被抢先 typed 解析，但会以 warning 保留 token evidence。
 
+### WB-CORE-STDPARAMS-001 Core standard parameter adoption 保持 request construction 来源
+Status: implemented
+Code: `crates/docnav/src/standard_parameters/tests.rs`
+
+Proves:
+- Core document operation request construction consumes standard parameter resolution output, preserving source labels for direct input, project config and built-in defaults.
+
 ### WB-CORE-PREFLIGHT-001 Core preflight 检测 protocol-json intent
 Status: implemented
 Code: `crates/docnav/src/cli/preflight/tests.rs`
@@ -474,6 +481,7 @@ Code: `crates/docnav-adapter-sdk/src/direct/args/tests.rs`
 Proves:
 - direct adapter argv compatibility 保持 operation argument ownership。
 - unused 或 future flag 可以产生 warning，但不能静默改变 operation 的 required arguments。
+- Direct adapter document operations consume standard parameter resolution output for path/ref/query/page/limit_chars/output, while native options remain adapter-owned passthrough.
 
 ### WB-SDK-DIRECT-CONFIG-001 Direct adapter config sources 保持参数来源边界
 Status: implemented
@@ -507,6 +515,7 @@ Code: `crates/docnav-adapter-sdk/src/tests/invoke.rs`
 Proves:
 - SDK invoke 从 stdin 读取 protocol request，并在 invoke path 返回 protocol response。
 - request decode failure、manifest failure 和 handler error failure 不落入 direct readable CLI output。
+- Standard parameter normalization runs after protocol request decode and preserves `arguments.options` passthrough before adapter handler dispatch.
 
 ### WB-MD-CLI-001 Markdown direct CLI 与 invoke 结果一致
 Status: implemented

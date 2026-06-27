@@ -1,8 +1,9 @@
 use super::common::{ManifestShapeErrorAdapter, MissingDetailsErrorAdapter, StubAdapter};
-use crate::{invoke_once, AdapterExitCode};
+use crate::{invoke_once, Adapter, AdapterExitCode, AdapterResult};
 use docnav_protocol::{
-    FailureResponse, Operation, ProtocolResponse, StableErrorCode, PROTOCOL_VERSION,
-    UNKNOWN_REQUEST_ID,
+    AdapterIdentity, Entry, FailureResponse, FormatDescriptor, Manifest, Operation,
+    OutlineArguments, OutlineResult, ProbeResult, ProtocolResponse, RequestEnvelope, StableError,
+    StableErrorCode, MANIFEST_VERSION, PROBE_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 
 // @case WB-SDK-INVOKE-001
@@ -29,6 +30,36 @@ fn invoke_reads_one_request_and_writes_one_protocol_response() {
     assert_eq!(value["operation"], "outline");
     assert_eq!(value["ok"], true);
     assert_eq!(value["result"]["entries"][0]["ref"], "L1:Stub");
+}
+
+#[test]
+fn invoke_standard_parameter_normalization_preserves_options_passthrough() {
+    let input = br#"{
+          "protocol_version": "0.1",
+          "request_id": "req-opts",
+          "operation": "outline",
+          "document": { "path": "sample.stub" },
+          "arguments": {
+            "limit_chars": 80,
+            "page": 1,
+            "options": { "required_by_test": true }
+          }
+        }"#;
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let exit = invoke_once(
+        &OptionsRequiredAdapter,
+        &input[..],
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, AdapterExitCode::Success.code());
+    assert!(stderr.is_empty());
+    let response: ProtocolResponse =
+        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
+    response.validate().expect("response validates");
 }
 
 #[test]
@@ -174,5 +205,72 @@ fn failure_response_from_stdout(stdout: &[u8]) -> FailureResponse {
     match response {
         ProtocolResponse::Failure(response) => response,
         ProtocolResponse::Success(_) => panic!("expected failure response"),
+    }
+}
+
+struct OptionsRequiredAdapter;
+
+impl Adapter for OptionsRequiredAdapter {
+    fn adapter_id(&self) -> &str {
+        "options-required"
+    }
+
+    fn manifest(&self) -> Manifest {
+        Manifest {
+            manifest_version: MANIFEST_VERSION.to_owned(),
+            adapter: AdapterIdentity {
+                id: "options-required".to_owned(),
+                name: "Options Required".to_owned(),
+                version: "0.1.0".to_owned(),
+            },
+            formats: vec![FormatDescriptor {
+                id: "stub".to_owned(),
+                extensions: vec![".stub".to_owned()],
+                content_types: vec!["text/stub".to_owned()],
+            }],
+            capabilities: vec![Operation::Outline],
+        }
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        ProbeResult {
+            probe_version: PROBE_VERSION.to_owned(),
+            adapter_id: "options-required".to_owned(),
+            path: path.to_owned(),
+            supported: true,
+            format: Some("stub".to_owned()),
+            confidence: 1.0,
+            reasons: Vec::new(),
+        }
+    }
+
+    fn outline(
+        &self,
+        _request: &RequestEnvelope,
+        arguments: &OutlineArguments,
+    ) -> AdapterResult<OutlineResult> {
+        let Some(options) = &arguments.options else {
+            return Err(
+                StableError::invalid_request("arguments.options", "missing options").into(),
+            );
+        };
+        if options
+            .get("required_by_test")
+            .and_then(serde_json::Value::as_bool)
+            != Some(true)
+        {
+            return Err(StableError::invalid_request(
+                "arguments.options.required_by_test",
+                "missing required_by_test option",
+            )
+            .into());
+        }
+        Ok(OutlineResult {
+            entries: vec![Entry {
+                ref_id: "L1:Options".to_owned(),
+                display: "options preserved".to_owned(),
+            }],
+            page: None,
+        })
     }
 }

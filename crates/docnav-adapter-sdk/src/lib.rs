@@ -7,6 +7,7 @@ mod error;
 mod invoke;
 mod output;
 pub mod paging;
+mod standard_parameters;
 
 pub use adapter::{Adapter, AdapterResult};
 pub use command::{run_command, SdkCommand};

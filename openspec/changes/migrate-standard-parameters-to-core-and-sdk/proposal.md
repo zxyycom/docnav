@@ -6,9 +6,9 @@
 
 ## What Changes
 
-- 起草 core CLI 和 adapter SDK 消费 standard parameter resolver 的迁移计划。
+- 迁移 core CLI 和 adapter SDK，使 document operation 参数消费 standard parameter resolver 的 registration 与 typed runtime values。
 - 保留现有 observable behavior：unknown argv、extra positional、unused operation flag 继续 warning，当前 operation 实际消费字段严格校验。
-- 记录 help/default 文案应来自标准参数 metadata 的方向。
+- 将 help/default 文案读取路径切到标准参数 metadata，避免手写漂移。
 - 保留 adapter invoke 是独立入口的边界。
 - 不替换 CLI frontend；`lexopt` 在独立 change 处理。
 
@@ -24,6 +24,6 @@
 
 ## Impact
 
-- 未来会影响 `docnav` document operations、adapter direct CLI、adapter invoke request handling、help/default 文案和 tests。
+- 影响 `docnav` document operations、adapter direct CLI、adapter invoke request handling、help/default 文案和 tests。
 - 当前 change 不改变现有 CLI parsing crate、协议 schema、输出模式或 adapter handler。
 - 后续实现必须用局部 smoke/integration tests 证明行为保持或有意变化。

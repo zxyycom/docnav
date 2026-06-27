@@ -32,9 +32,10 @@ pub(in crate::cli) mod arg_ids {
 }
 
 pub(in crate::cli) mod defaults {
-    pub(in crate::cli) const LIMIT_CHARS: &str = "6000";
-    pub(in crate::cli) const OUTPUT: &str = super::output_values::READABLE_VIEW;
-    pub(in crate::cli) const PAGE: &str = "1";
+    pub(in crate::cli) const LIMIT_CHARS: &str =
+        crate::standard_parameters::DEFAULT_LIMIT_CHARS_TEXT;
+    pub(in crate::cli) const OUTPUT: &str = crate::standard_parameters::DEFAULT_OUTPUT_TEXT;
+    pub(in crate::cli) const PAGE: &str = crate::standard_parameters::DEFAULT_PAGE_TEXT;
 }
 
 pub(in crate::cli) mod output_values {

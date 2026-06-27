@@ -9,6 +9,7 @@ use std::io::{Read, Write};
 use crate::boundary::validated_manifest;
 use crate::constants::{diagnostics, fields};
 use crate::output::{emit_diagnostic, write_adapter_boundary_error, write_protocol_response};
+use crate::standard_parameters::standardize_invoke_request;
 use crate::{Adapter, AdapterExitCode, AdapterResult};
 
 struct InvokeFailure {
@@ -38,6 +39,20 @@ where
     let request = match read_and_decode_request(&mut stdin) {
         Ok(request) => request,
         Err(failure) => return write_invoke_failure(*failure, &mut stdout, &mut stderr),
+    };
+    let request = match standardize_invoke_request(&request) {
+        Ok(request) => request,
+        Err(error) => {
+            return write_invoke_failure(
+                InvokeFailure {
+                    response: ProtocolResponse::failure_for_request(&request, error),
+                    diagnostic: None,
+                    exit_code: AdapterExitCode::ProtocolError,
+                },
+                &mut stdout,
+                &mut stderr,
+            )
+        }
     };
 
     let response = execute_request(adapter, &request);

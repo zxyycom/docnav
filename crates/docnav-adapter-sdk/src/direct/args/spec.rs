@@ -38,11 +38,11 @@ pub(in crate::direct) mod command_names {
 }
 
 mod defaults {
-    pub(super) const LIMIT_CHARS: &str = "6000";
+    pub(super) const LIMIT_CHARS: &str = super::super::standard::DEFAULT_LIMIT_CHARS_TEXT;
     pub(super) const LIMIT_CHARS_VALUE: u32 = 6000;
-    pub(super) const OUTPUT: &str = super::output_values::READABLE_VIEW;
-    pub(super) const PAGE: &str = "1";
-    pub(super) const PROTOCOL_OUTPUT: &str = super::output_values::PROTOCOL_JSON;
+    pub(super) const OUTPUT: &str = super::super::standard::DEFAULT_OUTPUT_TEXT;
+    pub(super) const PAGE: &str = super::super::standard::DEFAULT_PAGE_TEXT;
+    pub(super) const PROTOCOL_OUTPUT: &str = super::super::standard::DEFAULT_PROTOCOL_OUTPUT_TEXT;
 }
 
 // 直接 CLI 输出模式字符串来自 CLI 主规范；protocol 层不复用这些阅读输出标签。
@@ -325,8 +325,4 @@ pub(in crate::direct::args) fn parse_output(value: &str) -> Result<DirectOutputM
         output_values::PROTOCOL_JSON => Ok(DirectOutputMode::ProtocolJson),
         _ => Err(format!("invalid {} {value:?}", flags::OUTPUT)),
     }
-}
-
-pub(in crate::direct::args) fn default_output_value() -> &'static str {
-    defaults::OUTPUT
 }

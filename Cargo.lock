@@ -140,6 +140,8 @@ dependencies = [
  "docnav-json-io",
  "docnav-output",
  "docnav-protocol",
+ "docnav-standard-parameters",
+ "docnav-typed-fields",
  "serde",
  "serde_json",
 ]
@@ -153,6 +155,8 @@ dependencies = [
  "docnav-diagnostics",
  "docnav-output",
  "docnav-protocol",
+ "docnav-standard-parameters",
+ "docnav-typed-fields",
  "serde",
  "serde_json",
 ]

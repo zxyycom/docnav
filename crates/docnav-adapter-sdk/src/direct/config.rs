@@ -1,31 +1,21 @@
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
-use serde_json::{Map, Value};
-
-use super::warnings::DirectCliWarning;
+use docnav_standard_parameters::{
+    ConfigPathOrigin as StandardConfigPathOrigin, ConfigSourceLevel as StandardConfigSourceLevel,
+    StandardParameterConfigSourceDescriptor,
+};
 
 const DOCNAV_DIR: &str = ".docnav";
-
-#[derive(Debug, Default, PartialEq)]
-pub(super) struct AdapterDirectCliConfig {
-    pub(super) limit_chars: Option<Value>,
-    pub(super) output: Option<Value>,
-    pub(super) native_options: Map<String, Value>,
-}
-
-#[derive(Default)]
-pub(super) struct LoadedAdapterDirectCliConfig {
-    pub(super) project: AdapterDirectCliConfig,
-    pub(super) user: AdapterDirectCliConfig,
-    pub(super) warnings: Vec<DirectCliWarning>,
-}
 
 #[derive(Default)]
 pub(super) struct ConfigPathOverrides {
     pub(super) project: Option<PathBuf>,
     pub(super) user: Option<PathBuf>,
+}
+
+pub(super) struct AdapterDirectCliConfigSourceDescriptors {
+    pub(super) project: StandardParameterConfigSourceDescriptor,
+    pub(super) user: StandardParameterConfigSourceDescriptor,
 }
 
 struct DirectCliConfigSourcePath {
@@ -40,69 +30,23 @@ enum ConfigSourceLevel {
     User,
 }
 
-impl ConfigSourceLevel {
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::Project => "project",
-            Self::User => "user",
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum ConfigPathOrigin {
     Default,
     Override,
 }
 
-impl ConfigPathOrigin {
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::Default => "default",
-            Self::Override => "override",
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-enum ConfigSourceSkipReason {
-    MissingOverride,
-    NotFile,
-    Unreadable,
-    InvalidJson,
-    NonObject,
-}
-
-impl ConfigSourceSkipReason {
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::MissingOverride => "missing_override",
-            Self::NotFile => "not_file",
-            Self::Unreadable => "unreadable",
-            Self::InvalidJson => "invalid_json",
-            Self::NonObject => "non_object",
-        }
-    }
-}
-
-pub(super) fn load_adapter_direct_cli_config(
+pub(super) fn adapter_direct_cli_config_source_descriptors(
     adapter_id: &str,
     default_user_config_dir: Option<&Path>,
     startup_cwd: &Path,
     overrides: ConfigPathOverrides,
-) -> LoadedAdapterDirectCliConfig {
-    let (project_path, user_path) =
+) -> AdapterDirectCliConfigSourceDescriptors {
+    let (project, user) =
         resolve_config_paths(adapter_id, default_user_config_dir, startup_cwd, overrides);
-    let project = load_config_source(&project_path);
-    let user = load_config_source(&user_path);
-
-    LoadedAdapterDirectCliConfig {
-        project: project.config,
-        user: user.config,
-        warnings: [project.warning, user.warning]
-            .into_iter()
-            .flatten()
-            .collect(),
+    AdapterDirectCliConfigSourceDescriptors {
+        project: standard_descriptor(project),
+        user: standard_descriptor(user),
     }
 }
 
@@ -132,76 +76,6 @@ fn resolve_config_paths(
             default_user_path,
         ),
     )
-}
-
-#[derive(Default)]
-struct LoadedConfigSource {
-    config: AdapterDirectCliConfig,
-    warning: Option<DirectCliWarning>,
-}
-
-fn load_config_source(source: &DirectCliConfigSourcePath) -> LoadedConfigSource {
-    match fs::metadata(&source.path) {
-        Ok(metadata) if !metadata.is_file() => skipped(source, ConfigSourceSkipReason::NotFile),
-        Ok(_) => read_config_source(source),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => missing_source(source),
-        Err(_) => skipped(source, ConfigSourceSkipReason::Unreadable),
-    }
-}
-
-fn read_config_source(source: &DirectCliConfigSourcePath) -> LoadedConfigSource {
-    let content = match fs::read_to_string(&source.path) {
-        Ok(content) => content,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return missing_source(source),
-        Err(_) => return skipped(source, ConfigSourceSkipReason::Unreadable),
-    };
-    let value = match serde_json::from_str::<Value>(&content) {
-        Ok(value) => value,
-        Err(_) => return skipped(source, ConfigSourceSkipReason::InvalidJson),
-    };
-    let Value::Object(object) = value else {
-        return skipped(source, ConfigSourceSkipReason::NonObject);
-    };
-
-    LoadedConfigSource {
-        config: adapter_config_values(&object),
-        warning: None,
-    }
-}
-
-fn missing_source(source: &DirectCliConfigSourcePath) -> LoadedConfigSource {
-    match source.origin {
-        ConfigPathOrigin::Default => LoadedConfigSource::default(),
-        ConfigPathOrigin::Override => skipped(source, ConfigSourceSkipReason::MissingOverride),
-    }
-}
-
-fn skipped(
-    source: &DirectCliConfigSourcePath,
-    reason: ConfigSourceSkipReason,
-) -> LoadedConfigSource {
-    LoadedConfigSource {
-        config: AdapterDirectCliConfig::default(),
-        warning: Some(DirectCliWarning::adapter_config_source_skipped(
-            source.level.as_str(),
-            source.origin.as_str(),
-            &source.path.display().to_string(),
-            reason.as_str(),
-        )),
-    }
-}
-
-fn adapter_config_values(object: &Map<String, Value>) -> AdapterDirectCliConfig {
-    let defaults = object.get("defaults").and_then(Value::as_object);
-    AdapterDirectCliConfig {
-        limit_chars: defaults.and_then(|value| value.get("limit_chars")).cloned(),
-        output: defaults.and_then(|value| value.get("output")).cloned(),
-        native_options: object
-            .get("options")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_default(),
-    }
 }
 
 fn find_project_root(startup_cwd: &Path) -> PathBuf {
@@ -235,6 +109,30 @@ fn absolutize(startup_cwd: &Path, path: PathBuf) -> PathBuf {
         path
     } else {
         startup_cwd.join(path)
+    }
+}
+
+fn standard_descriptor(
+    source: DirectCliConfigSourcePath,
+) -> StandardParameterConfigSourceDescriptor {
+    StandardParameterConfigSourceDescriptor::new(
+        standard_level(source.level),
+        standard_origin(source.origin),
+        source.path,
+    )
+}
+
+fn standard_level(level: ConfigSourceLevel) -> StandardConfigSourceLevel {
+    match level {
+        ConfigSourceLevel::Project => StandardConfigSourceLevel::Project,
+        ConfigSourceLevel::User => StandardConfigSourceLevel::User,
+    }
+}
+
+fn standard_origin(origin: ConfigPathOrigin) -> StandardConfigPathOrigin {
+    match origin {
+        ConfigPathOrigin::Default => StandardConfigPathOrigin::Default,
+        ConfigPathOrigin::Override => StandardConfigPathOrigin::Override,
     }
 }
 

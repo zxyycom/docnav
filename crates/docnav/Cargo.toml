@@ -15,5 +15,7 @@ docnav-diagnostics.workspace = true
 docnav-json-io.workspace = true
 docnav-output.workspace = true
 docnav-protocol.workspace = true
+docnav-standard-parameters.workspace = true
+docnav-typed-fields.workspace = true
 serde.workspace = true
 serde_json.workspace = true

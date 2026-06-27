@@ -1,5 +1,6 @@
 mod catalog;
 mod construction;
+mod field_helpers;
 mod path;
 mod pipeline;
 mod resolution;
@@ -20,6 +21,10 @@ pub use construction::{
     load_standard_parameter_config_source, ConfigPathOrigin, ConfigSourceLevel,
     ConfigSourceSkipReason, LoadedStandardParameterConfigSource,
     StandardParameterConfigSourceDescriptor,
+};
+pub use field_helpers::{
+    adapter_selection_field, configurable_limit_chars_field, configurable_output_field,
+    document_path_field, find_query_field, ids, limit_chars_field, page_field, read_ref_field,
 };
 pub use path::{InvalidStandardParameterPath, StandardParameterPath};
 pub use pipeline::{

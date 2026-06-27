@@ -8,8 +8,10 @@ use super::warnings::DirectCliWarning;
 
 mod diagnostics;
 mod loose;
+mod resolved;
 mod sources;
 mod spec;
+mod standard;
 
 use diagnostics::{operation_parse_error, probe_parse_error, protocol_only_parse_error};
 use loose::{collect_probe_args, collect_protocol_only_args, LooseArgs};

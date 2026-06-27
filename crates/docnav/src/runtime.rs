@@ -1,9 +1,9 @@
 use docnav_protocol::{Operation, PositiveInteger};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::cli::{CliWarning, DocumentCommand, OutputMode};
-use crate::config::{self, ConfigContext, ResolvedValue};
+use crate::config::{ConfigContext, ResolvedValue};
 use crate::error::AppResult;
 use crate::invoke::invoke_adapter;
 use crate::output::{outcome_for_response, CommandOutcome};
@@ -11,6 +11,7 @@ use crate::project_context::ProjectContext;
 use crate::project_paths::normalize_document_path;
 use crate::registry::AdapterRegistry;
 use crate::routing::{select_adapter, AdapterSelectionRequest, AdapterSelectionWarning};
+use crate::standard_parameters::resolve_core_document_parameters;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DocumentRequest {
@@ -129,33 +130,19 @@ impl DocnavRuntime for AdapterRuntime {
 
 impl DocumentRequest {
     pub fn from_command(command: DocumentCommand, context: &ConfigContext) -> AppResult<Self> {
-        let defaults = resolve_document_defaults(&command, context)?;
-        let output = defaults
-            .output
-            .value
-            .as_str()
-            .and_then(|value| value.parse::<OutputMode>().ok())
-            .unwrap_or(OutputMode::ReadableView);
-        let adapter = defaults.adapter.value.as_str().map(str::to_owned);
+        let resolved = resolve_core_document_parameters(&command, context)?;
 
         Ok(Self {
             project: context.project.clone(),
             operation: command.operation,
-            path: command.path,
-            ref_id: command.ref_id,
-            query: command.query,
-            page: command.page.or_else(|| positive(1)),
-            limit_chars: command.limit_chars.or_else(|| {
-                defaults
-                    .limit_chars
-                    .as_ref()
-                    .and_then(|value| value.value.as_u64())
-                    .and_then(|value| u32::try_from(value).ok())
-                    .and_then(std::num::NonZeroU32::new)
-            }),
-            output,
-            adapter,
-            defaults,
+            path: resolved.path,
+            ref_id: resolved.ref_id,
+            query: resolved.query,
+            page: resolved.page,
+            limit_chars: resolved.limit_chars,
+            output: resolved.output,
+            adapter: resolved.adapter,
+            defaults: resolved.defaults,
         })
     }
 }
@@ -175,7 +162,7 @@ pub fn resolve_context_defaults(
         output: None,
         adapter: None,
     };
-    let defaults = resolve_document_defaults(&command, context)?;
+    let defaults = resolve_core_document_parameters(&command, context)?.defaults;
     Ok((path, operation, defaults))
 }
 
@@ -205,36 +192,4 @@ fn cli_warnings(warnings: Vec<AdapterSelectionWarning>) -> Vec<CliWarning> {
             )
         })
         .collect()
-}
-
-fn resolve_document_defaults(
-    command: &DocumentCommand,
-    context: &ConfigContext,
-) -> AppResult<ResolvedDocumentDefaults> {
-    let adapter = config::resolve_adapter(command.adapter.as_deref(), context);
-    let output = config::resolve_output(command.output, context)?;
-    let limit_chars = if command.operation == Operation::Info {
-        None
-    } else {
-        Some(config::resolve_limit_chars(command.limit_chars, context)?)
-    };
-    let page = if command.operation == Operation::Info {
-        None
-    } else {
-        Some(match command.page {
-            Some(page) => ResolvedValue::explicit(json!(page.get())),
-            None => ResolvedValue::built_in(json!(1)),
-        })
-    };
-
-    Ok(ResolvedDocumentDefaults {
-        adapter,
-        limit_chars,
-        output,
-        page,
-    })
-}
-
-fn positive(value: u32) -> Option<PositiveInteger> {
-    std::num::NonZeroU32::new(value)
 }

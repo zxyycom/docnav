@@ -10,6 +10,7 @@ mod project_paths;
 mod registry;
 mod routing;
 mod runtime;
+mod standard_parameters;
 
 use std::io::{Read, Write};
 

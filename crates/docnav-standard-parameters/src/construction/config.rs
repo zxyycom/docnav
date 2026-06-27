@@ -83,7 +83,7 @@ pub struct LoadedStandardParameterConfigSource {
 }
 
 impl LoadedStandardParameterConfigSource {
-    pub(crate) fn from_value(value: JsonValue) -> Self {
+    pub fn from_value(value: JsonValue) -> Self {
         Self {
             value: Some(value),
             diagnostics: Vec::new(),
