@@ -1,5 +1,5 @@
 use docnav_diagnostics::{
-    BoundaryDiagnosticCode, DiagnosticDetails, DiagnosticRecordDraft, DiagnosticSource,
+    typed_codes, BoundaryDetails, BoundaryDiagnosticCode, DiagnosticRecordDraft, DiagnosticSource,
     DiagnosticStack,
 };
 use docnav_protocol::{
@@ -168,7 +168,7 @@ where
     exit_code.code()
 }
 
-pub fn emit_diagnostic<W: Write>(stderr: &mut W, message: &str) -> std::io::Result<()> {
+fn write_record_summary_to_stderr<W: Write>(stderr: &mut W, message: &str) -> std::io::Result<()> {
     writeln!(stderr, "{message}")
 }
 
@@ -180,20 +180,97 @@ pub(crate) fn emit_boundary_diagnostic<W: Write>(
     let message = message.into();
     let mut diagnostics = DiagnosticStack::new();
     let id = diagnostics
-        .push(DiagnosticRecordDraft::new(
+        .push(boundary_diagnostic_record_draft(
             code,
             message.clone(),
-            DiagnosticDetails::Boundary {
-                reason: message,
-                label: None,
-            },
             DiagnosticSource::with_stage("docnav-adapter-sdk", "stderr"),
         ))
         .map_err(std::io::Error::other)?;
-    let record = diagnostics
-        .get(id)
-        .expect("pushed diagnostic record exists");
-    emit_diagnostic(stderr, &record.summary)
+    let Some(record) = diagnostics.get(id) else {
+        return Err(std::io::Error::other(
+            "pushed adapter boundary diagnostic record not found",
+        ));
+    };
+    write_record_summary_to_stderr(stderr, record.summary())
+}
+
+fn boundary_diagnostic_record_draft(
+    code: BoundaryDiagnosticCode,
+    message: String,
+    source: DiagnosticSource,
+) -> DiagnosticRecordDraft {
+    let details = BoundaryDetails::new(message.clone());
+    match code {
+        BoundaryDiagnosticCode::AdapterErrorExitCodeCannotBe => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::AdapterErrorExitCodeCannotBe,
+        >(message, details, source),
+        BoundaryDiagnosticCode::FailedToReadRequest => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::FailedToReadRequest,
+        >(message, details, source),
+        BoundaryDiagnosticCode::FailedToSerialize => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::FailedToSerialize,
+        >(message, details, source),
+        BoundaryDiagnosticCode::FailedToWriteCliWarning => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::FailedToWriteCliWarning,
+        >(message, details, source),
+        BoundaryDiagnosticCode::FailedToWriteJson => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::FailedToWriteJson,
+        >(message, details, source),
+        BoundaryDiagnosticCode::FailedToWriteProtocolResponse => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::FailedToWriteProtocolResponse,
+        >(message, details, source),
+        BoundaryDiagnosticCode::FailedToWriteReadableView => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::FailedToWriteReadableView,
+        >(message, details, source),
+        BoundaryDiagnosticCode::InvalidRequestJson => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::InvalidRequestJson,
+        >(message, details, source),
+        BoundaryDiagnosticCode::ManifestAdapterIdMismatch => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::ManifestAdapterIdMismatch,
+        >(message, details, source),
+        BoundaryDiagnosticCode::ManifestSchemaValidationFailed => {
+            DiagnosticRecordDraft::new::<typed_codes::boundary::ManifestSchemaValidationFailed>(
+                message, details, source,
+            )
+        }
+        BoundaryDiagnosticCode::ManifestSemanticValidationFailed => {
+            DiagnosticRecordDraft::new::<typed_codes::boundary::ManifestSemanticValidationFailed>(
+                message, details, source,
+            )
+        }
+        BoundaryDiagnosticCode::ProbeResultAdapterIdMismatch => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::ProbeResultAdapterIdMismatch,
+        >(message, details, source),
+        BoundaryDiagnosticCode::ProbeResultSchemaValidationFailed => {
+            DiagnosticRecordDraft::new::<typed_codes::boundary::ProbeResultSchemaValidationFailed>(
+                message, details, source,
+            )
+        }
+        BoundaryDiagnosticCode::ProbeResultSemanticValidationFailed => {
+            DiagnosticRecordDraft::new::<typed_codes::boundary::ProbeResultSemanticValidationFailed>(
+                message, details, source,
+            )
+        }
+        BoundaryDiagnosticCode::ProtocolResponseSchemaValidationFailed => {
+            DiagnosticRecordDraft::new::<
+                typed_codes::boundary::ProtocolResponseSchemaValidationFailed,
+            >(message, details, source)
+        }
+        BoundaryDiagnosticCode::ProtocolResponseSemanticValidationFailed => {
+            DiagnosticRecordDraft::new::<
+                typed_codes::boundary::ProtocolResponseSemanticValidationFailed,
+            >(message, details, source)
+        }
+        BoundaryDiagnosticCode::ReadableViewRenderFailed => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::ReadableViewRenderFailed,
+        >(message, details, source),
+        BoundaryDiagnosticCode::RequestDeserializationFailed => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::RequestDeserializationFailed,
+        >(message, details, source),
+        BoundaryDiagnosticCode::RequestSchemaValidationFailed => DiagnosticRecordDraft::new::<
+            typed_codes::boundary::RequestSchemaValidationFailed,
+        >(message, details, source),
+    }
 }
 
 pub(crate) fn write_adapter_boundary_error<E: Write>(

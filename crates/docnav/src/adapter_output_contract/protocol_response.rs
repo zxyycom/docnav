@@ -1,10 +1,11 @@
 use docnav_protocol::{
     decode_protocol_response_value, DecodePipelineError, FailureResponse, Operation,
-    ProtocolResponse, StableError, SuccessResponse, PROTOCOL_VERSION,
+    ProtocolResponse, SuccessResponse, PROTOCOL_VERSION,
 };
 use serde_json::Value;
 
 use crate::adapter_process::{parse_single_json, AdapterProcessOutput};
+use crate::error::{AppError, AppResult};
 
 use super::adapter_invoke_failed;
 
@@ -13,7 +14,7 @@ pub fn protocol_response_from_output(
     request_id: &str,
     operation: Operation,
     output: AdapterProcessOutput,
-) -> Result<ProtocolResponse, StableError> {
+) -> AppResult<ProtocolResponse> {
     let context = ProtocolResponseContext::new(adapter_id, request_id, operation, &output);
     let value = parse_protocol_response_json(&context, &output.stdout)?;
     let response = decode_protocol_response(&context, value)?;
@@ -46,7 +47,7 @@ impl<'a> ProtocolResponseContext<'a> {
         }
     }
 
-    fn adapter_invoke_failed(&self, reason: impl Into<String>) -> StableError {
+    fn adapter_invoke_failed(&self, reason: impl Into<String>) -> AppError {
         adapter_invoke_failed(
             self.adapter_id,
             reason,
@@ -59,14 +60,14 @@ impl<'a> ProtocolResponseContext<'a> {
 fn parse_protocol_response_json(
     context: &ProtocolResponseContext<'_>,
     stdout: &str,
-) -> Result<Value, StableError> {
+) -> AppResult<Value> {
     parse_single_json(stdout).map_err(|reason| context.adapter_invoke_failed(reason))
 }
 
 fn decode_protocol_response(
     context: &ProtocolResponseContext<'_>,
     value: Value,
-) -> Result<ProtocolResponse, StableError> {
+) -> AppResult<ProtocolResponse> {
     decode_protocol_response_value(value)
         .map_err(|error| context.adapter_invoke_failed(protocol_decode_failure_reason(error)))
 }
@@ -91,7 +92,7 @@ where
 fn validate_protocol_response_semantics(
     context: &ProtocolResponseContext<'_>,
     response: &ProtocolResponse,
-) -> Result<(), StableError> {
+) -> AppResult<()> {
     match response {
         ProtocolResponse::Success(success) => validate_success_response(context, success),
         ProtocolResponse::Failure(failure) => validate_failure_response(context, failure),
@@ -101,7 +102,7 @@ fn validate_protocol_response_semantics(
 fn validate_success_response(
     context: &ProtocolResponseContext<'_>,
     success: &SuccessResponse,
-) -> Result<(), StableError> {
+) -> AppResult<()> {
     validate_common_response_fields(context, &success.protocol_version, &success.request_id)?;
     if success.operation != context.operation {
         return Err(
@@ -118,16 +119,16 @@ fn validate_success_response(
 fn validate_failure_response(
     context: &ProtocolResponseContext<'_>,
     failure: &FailureResponse,
-) -> Result<(), StableError> {
+) -> AppResult<()> {
     validate_common_response_fields(context, &failure.protocol_version, &failure.request_id)?;
     if failure.operation != Some(context.operation) {
         return Err(context
             .adapter_invoke_failed("failure response operation does not match invoke request"));
     }
-    failure.error.validate_required_details().map_err(|error| {
+    failure.error.validate_details().map_err(|error| {
         context.adapter_invoke_failed(format!(
-            "stable error is missing required detail {} for {:?}",
-            error.field, error.code
+            "protocol error has invalid details for {:?}: {}",
+            error.code, error.reason
         ))
     })
 }
@@ -136,7 +137,7 @@ fn validate_common_response_fields(
     context: &ProtocolResponseContext<'_>,
     protocol_version: &str,
     request_id: &str,
-) -> Result<(), StableError> {
+) -> AppResult<()> {
     if protocol_version != PROTOCOL_VERSION {
         return Err(
             context.adapter_invoke_failed("protocol version does not match current contract")

@@ -2,9 +2,8 @@ use crate::{Adapter, AdapterError, AdapterResult};
 use docnav_protocol::{
     try_positive, AdapterIdentity, Entry, FormatDescriptor, InfoArguments, InfoResult, Manifest,
     Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode, ProbeResult,
-    ReadArguments, ReadResult, RequestEnvelope, StableError, StableErrorCode, PROBE_VERSION,
+    ReadArguments, ReadResult, RequestEnvelope, PROBE_VERSION,
 };
-use std::collections::BTreeMap;
 
 pub(super) fn positive(value: u32) -> docnav_protocol::PositiveInteger {
     try_positive(value).expect("test positive integer")
@@ -183,9 +182,9 @@ impl Adapter for ProbeAdapterIdDriftAdapter {
     }
 }
 
-pub(super) struct MissingDetailsErrorAdapter;
+pub(super) struct HandlerErrorAdapter;
 
-impl Adapter for MissingDetailsErrorAdapter {
+impl Adapter for HandlerErrorAdapter {
     fn adapter_id(&self) -> &str {
         "stub"
     }
@@ -203,10 +202,6 @@ impl Adapter for MissingDetailsErrorAdapter {
         _request: &RequestEnvelope,
         _arguments: &ReadArguments,
     ) -> AdapterResult<ReadResult> {
-        Err(AdapterError::new(StableError::new(
-            StableErrorCode::RefNotFound,
-            "Missing required details.",
-            BTreeMap::new(),
-        )))
+        Err(AdapterError::ref_not_found("L1:Stub"))
     }
 }

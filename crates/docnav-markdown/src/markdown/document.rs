@@ -1,7 +1,7 @@
 use std::fs;
 
 use docnav_adapter_sdk::{AdapterError, AdapterResult};
-use docnav_protocol::{Entry, StableError};
+use docnav_protocol::Entry;
 
 use super::parse::parse_headings;
 use super::refs::{heading_ref, ParsedRef, FULL_DOCUMENT_REF};
@@ -36,12 +36,8 @@ impl MarkdownDocument {
         let bytes = bytes
             .strip_prefix(&[0xEF, 0xBB, 0xBF])
             .unwrap_or(bytes.as_slice());
-        let source = String::from_utf8(bytes.to_vec()).map_err(|_| {
-            AdapterError::from(StableError::document_encoding_unsupported(
-                path,
-                "non-utf-8",
-            ))
-        })?;
+        let source = String::from_utf8(bytes.to_vec())
+            .map_err(|_| AdapterError::document_encoding_unsupported(path, "non-utf-8"))?;
 
         Ok(Self::parse(source))
     }
@@ -123,16 +119,15 @@ impl MarkdownDocument {
         }
 
         let Some(parsed) = ParsedRef::parse(ref_id) else {
-            return Err(StableError::ref_invalid(
+            return Err(AdapterError::ref_invalid(
                 ref_id,
                 "expected H:L{line}:H{level} or doc:full",
-            )
-            .into());
+            ));
         };
 
         match self.headings.iter().find(|h| parsed.matches(h)) {
             Some(heading) => Ok(ResolvedRef::Heading(heading)),
-            None => Err(StableError::ref_not_found(ref_id).into()),
+            None => Err(AdapterError::ref_not_found(ref_id)),
         }
     }
 
@@ -162,8 +157,8 @@ fn containing_heading<'a>(headings: &[&'a Heading], offset: usize) -> Option<&'a
 
 fn read_error(path: &str, error: std::io::Error) -> AdapterError {
     if error.kind() == std::io::ErrorKind::NotFound {
-        StableError::document_not_found(path).into()
+        AdapterError::document_not_found(path)
     } else {
-        StableError::document_path_invalid(path, error.to_string()).into()
+        AdapterError::document_path_invalid(path, error.to_string())
     }
 }

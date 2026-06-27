@@ -1,9 +1,9 @@
-use super::common::{ManifestShapeErrorAdapter, MissingDetailsErrorAdapter, StubAdapter};
+use super::common::{HandlerErrorAdapter, ManifestShapeErrorAdapter, StubAdapter};
 use crate::{invoke_once, Adapter, AdapterExitCode, AdapterResult};
 use docnav_protocol::{
     AdapterIdentity, Entry, FailureResponse, FormatDescriptor, Manifest, Operation,
-    OutlineArguments, OutlineResult, ProbeResult, ProtocolResponse, RequestEnvelope, StableError,
-    StableErrorCode, MANIFEST_VERSION, PROBE_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
+    OutlineArguments, OutlineResult, ProbeResult, ProtocolDiagnosticCode, ProtocolResponse,
+    RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 
 // @case WB-SDK-INVOKE-001
@@ -80,7 +80,10 @@ fn invalid_request_outputs_structured_failure_on_stdout() {
     assert_eq!(response.protocol_version, PROTOCOL_VERSION);
     assert_eq!(response.request_id, UNKNOWN_REQUEST_ID);
     assert_eq!(response.operation, None);
-    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
+    assert_eq!(
+        response.error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
 }
 
 #[test]
@@ -101,7 +104,10 @@ fn unsupported_protocol_version_is_invalid_request_schema_failure() {
     assert!(!stderr.is_empty());
     let response = failure_response_from_stdout(&stdout);
     assert_eq!(response.protocol_version, PROTOCOL_VERSION);
-    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
+    assert_eq!(
+        response.error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
     assert_eq!(response.operation, Some(Operation::Outline));
     assert_eq!(response.request_id, "req-1");
 }
@@ -125,7 +131,10 @@ fn request_schema_failure_without_version_uses_current_protocol_version() {
     assert_eq!(response.protocol_version, PROTOCOL_VERSION);
     assert_eq!(response.operation, Some(Operation::Outline));
     assert_eq!(response.request_id, "req-1");
-    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
+    assert_eq!(
+        response.error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
 }
 
 #[test]
@@ -172,11 +181,14 @@ fn request_schema_rejections_are_structured_invalid_request_failures() {
     let response = failure_response_from_stdout(&stdout);
     assert_eq!(response.request_id, UNKNOWN_REQUEST_ID);
     assert_eq!(response.operation, Some(Operation::Read));
-    assert_eq!(response.error.code, StableErrorCode::InvalidRequest);
+    assert_eq!(
+        response.error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
 }
 
 #[test]
-fn handler_error_missing_required_details_is_not_written_to_stdout() {
+fn handler_error_projects_diagnostic_failure_to_protocol_stdout() {
     let input = br#"{
           "protocol_version": "0.1",
           "request_id": "req-1",
@@ -187,16 +199,13 @@ fn handler_error_missing_required_details_is_not_written_to_stdout() {
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
 
-    let exit = invoke_once(
-        &MissingDetailsErrorAdapter,
-        &input[..],
-        &mut stdout,
-        &mut stderr,
-    );
+    let exit = invoke_once(&HandlerErrorAdapter, &input[..], &mut stdout, &mut stderr);
 
-    assert_eq!(exit, AdapterExitCode::ProtocolError.code());
-    assert!(stdout.is_empty());
-    assert!(!stderr.is_empty());
+    assert_eq!(exit, AdapterExitCode::HandlerError.code());
+    assert!(stderr.is_empty());
+    let response = failure_response_from_stdout(&stdout);
+    assert_eq!(response.error.code(), ProtocolDiagnosticCode::RefNotFound);
+    assert_eq!(response.error.details()["ref"], "L1:Stub");
 }
 
 fn failure_response_from_stdout(stdout: &[u8]) -> FailureResponse {
@@ -250,20 +259,20 @@ impl Adapter for OptionsRequiredAdapter {
         arguments: &OutlineArguments,
     ) -> AdapterResult<OutlineResult> {
         let Some(options) = &arguments.options else {
-            return Err(
-                StableError::invalid_request("arguments.options", "missing options").into(),
-            );
+            return Err(crate::AdapterError::invalid_request(
+                "arguments.options",
+                "missing options",
+            ));
         };
         if options
             .get("required_by_test")
             .and_then(serde_json::Value::as_bool)
             != Some(true)
         {
-            return Err(StableError::invalid_request(
+            return Err(crate::AdapterError::invalid_request(
                 "arguments.options.required_by_test",
                 "missing required_by_test option",
-            )
-            .into());
+            ));
         }
         Ok(OutlineResult {
             entries: vec![Entry {

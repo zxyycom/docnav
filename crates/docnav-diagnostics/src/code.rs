@@ -9,6 +9,12 @@ use self::rules::{
 
 mod details;
 mod rules;
+mod typed;
+
+pub use typed::{
+    typed_codes, BoundaryDiagnosticMarker, DiagnosticCodeMarker, ProtocolDiagnosticMarker,
+    ReadableWarningDiagnosticMarker,
+};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -111,6 +117,12 @@ impl ProtocolDiagnosticCode {
 
     pub const fn protocol_code(self) -> &'static str {
         self.rule().protocol_code
+    }
+
+    pub fn from_protocol_code(value: &str) -> Option<Self> {
+        PROTOCOL_RULES
+            .iter()
+            .find_map(|rule| (rule.protocol_code == value).then_some(rule.code))
     }
 
     pub const fn category(self) -> DiagnosticCategory {

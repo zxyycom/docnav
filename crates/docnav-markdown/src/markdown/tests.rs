@@ -164,15 +164,15 @@ fn read_canonical_ref_returns_ref_not_found_for_no_match() {
         .resolve_ref("H:L99:H1")
         .expect_err("no such heading");
     assert_eq!(
-        error.error().code,
-        docnav_protocol::StableErrorCode::RefNotFound
+        error.protocol_error().code(),
+        docnav_protocol::ProtocolDiagnosticCode::RefNotFound
     );
 
     // Canonical grammar but wrong level
     let error = document.resolve_ref("H:L1:H2").expect_err("wrong level");
     assert_eq!(
-        error.error().code,
-        docnav_protocol::StableErrorCode::RefNotFound
+        error.protocol_error().code(),
+        docnav_protocol::ProtocolDiagnosticCode::RefNotFound
     );
 }
 
@@ -199,21 +199,21 @@ fn read_returns_ref_invalid_for_grammar_outside_input() {
         let error = document
             .resolve_ref(ref_id)
             .expect_err(&format!("should be REF_INVALID: {ref_id}"));
+        let stable = error.protocol_error();
         assert_eq!(
-            error.error().code,
-            docnav_protocol::StableErrorCode::RefInvalid,
+            stable.code(),
+            docnav_protocol::ProtocolDiagnosticCode::RefInvalid,
             "{ref_id}"
         );
         // details 包含 ref
         assert_eq!(
-            error.error().details.get("ref").and_then(|v| v.as_str()),
+            stable.details().get("ref").and_then(|v| v.as_str()),
             Some(ref_id),
             "{ref_id}"
         );
         // details 包含非空 reason
-        let reason = error
-            .error()
-            .details
+        let reason = stable
+            .details()
             .get("reason")
             .and_then(|v| v.as_str())
             .expect("reason field");
@@ -228,8 +228,8 @@ fn read_ref_not_found_vs_ref_invalid_boundary() {
     // 合法 canonical ref，但 heading 不存在 -> REF_NOT_FOUND
     let error = document.resolve_ref("H:L5:H2").expect_err("not found");
     assert_eq!(
-        error.error().code,
-        docnav_protocol::StableErrorCode::RefNotFound
+        error.protocol_error().code(),
+        docnav_protocol::ProtocolDiagnosticCode::RefNotFound
     );
 
     // 当前 grammar 外输入 -> REF_INVALID。
@@ -237,11 +237,15 @@ fn read_ref_not_found_vs_ref_invalid_boundary() {
         .resolve_ref("H:L1:H1:extra")
         .expect_err("grammar outside");
     assert_eq!(
-        error.error().code,
-        docnav_protocol::StableErrorCode::RefInvalid
+        error.protocol_error().code(),
+        docnav_protocol::ProtocolDiagnosticCode::RefInvalid
     );
     assert_eq!(
-        error.error().details.get("ref").and_then(|v| v.as_str()),
+        error
+            .protocol_error()
+            .details()
+            .get("ref")
+            .and_then(|v| v.as_str()),
         Some("H:L1:H1:extra")
     );
 }

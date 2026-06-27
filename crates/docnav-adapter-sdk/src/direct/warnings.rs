@@ -1,4 +1,4 @@
-pub(super) use docnav_diagnostics::Warning as DirectCliWarning;
+pub(super) use docnav_diagnostics::WarningProjection as DirectCliWarning;
 
 #[cfg(test)]
-pub(super) use docnav_diagnostics::{WarningEffect as DirectCliWarningEffect, CLI_ARGV_IGNORED};
+pub(super) use docnav_diagnostics::CLI_ARGV_IGNORED;

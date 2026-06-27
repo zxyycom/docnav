@@ -1,13 +1,12 @@
 use std::num::NonZeroU32;
 
 use docnav_diagnostics::{
-    DiagnosticDetails, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
-    ProtocolDiagnosticCode,
+    typed_codes, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails,
 };
 use docnav_protocol::{Operation, PositiveInteger};
 use docnav_standard_parameters::{
-    ids, StandardParameterDiagnostic, StandardParameterResolution, StandardParameterSourceKind,
-    StandardParameterValidationDiagnostic,
+    ids, StandardParameterHandoff, StandardParameterResolution, StandardParameterSourceKind,
+    StandardParameterValidationIssue,
 };
 use docnav_typed_fields::{FieldIdentity, TypedValue};
 use serde_json::{json, Value};
@@ -118,14 +117,14 @@ fn first_validation_error(resolution: &StandardParameterResolution) -> AppResult
     if let Some(diagnostic) = resolution
         .diagnostics()
         .iter()
-        .find_map(StandardParameterDiagnostic::as_validation)
+        .find_map(StandardParameterHandoff::as_validation)
     {
         return Err(validation_error(diagnostic));
     }
     Ok(())
 }
 
-fn validation_error(diagnostic: &StandardParameterValidationDiagnostic) -> AppError {
+fn validation_error(diagnostic: &StandardParameterValidationIssue) -> AppError {
     validation_error_for_identity(diagnostic.identity.as_str())
 }
 
@@ -250,21 +249,11 @@ fn identity_key(identity: &str) -> AppResult<FieldIdentity> {
 }
 
 fn validation_error_for_identity(identity: &str) -> AppError {
-    let mut diagnostics = DiagnosticStack::new();
-    let id = diagnostics
-        .push(invalid_request_record(
-            field_label(identity),
-            validation_reason(identity),
-            DiagnosticSource::with_stage("docnav", "standard-parameters"),
-        ))
-        .expect("standard parameter validation details are valid");
-    let record = diagnostics
-        .get(id)
-        .expect("pushed diagnostic record exists");
-    AppError::new(
-        docnav_protocol::StableError::from_diagnostic_record(record)
-            .expect("invalid request diagnostic projects to stable error"),
-    )
+    AppError::new(invalid_request_record(
+        field_label(identity),
+        validation_reason(identity),
+        DiagnosticSource::with_stage("docnav", "standard-parameters"),
+    ))
 }
 
 fn invalid_request_record(
@@ -272,13 +261,9 @@ fn invalid_request_record(
     reason: String,
     source: DiagnosticSource,
 ) -> DiagnosticRecordDraft {
-    DiagnosticRecordDraft::new(
-        ProtocolDiagnosticCode::InvalidRequest,
+    DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
         reason.clone(),
-        DiagnosticDetails::FieldReason {
-            field: field.to_owned(),
-            reason,
-        },
+        FieldReasonDetails::new(field, reason),
         source,
     )
 }

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use docnav_diagnostics::{
-    DiagnosticDetails, DiagnosticRecordDraft, DiagnosticSource, ProtocolDiagnosticCode, Warning,
+    typed_codes, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails, WarningProjection,
 };
 use docnav_typed_fields::{
     FieldIdentity, JsonValue, SchemaMetadataView, TypedValue, ValidationFailure,
@@ -14,69 +14,65 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct StandardParameterValidationDiagnostic {
+pub struct StandardParameterValidationIssue {
     pub identity: FieldIdentity,
     pub source: Option<StandardParameterSourceInfo>,
     pub failure: ValidationFailure,
 }
 
-impl StandardParameterValidationDiagnostic {
+impl StandardParameterValidationIssue {
     pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
-        DiagnosticRecordDraft::new(
-            ProtocolDiagnosticCode::InvalidRequest,
+        DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
             format!(
                 "standard parameter {} failed validation",
                 self.identity.as_str()
             ),
-            DiagnosticDetails::FieldReason {
-                field: self.identity.as_str().to_owned(),
-                reason: self.failure.to_string(),
-            },
+            FieldReasonDetails::new(self.identity.as_str(), self.failure.to_string()),
             source,
         )
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum StandardParameterDiagnostic {
-    Validation(StandardParameterValidationDiagnostic),
-    Warning(Warning),
+pub enum StandardParameterHandoff {
+    Validation(StandardParameterValidationIssue),
+    Warning(WarningProjection),
 }
 
-impl StandardParameterDiagnostic {
+impl StandardParameterHandoff {
     pub fn validation(
         identity: FieldIdentity,
         source: Option<StandardParameterSourceInfo>,
         failure: ValidationFailure,
     ) -> Self {
-        Self::Validation(StandardParameterValidationDiagnostic {
+        Self::Validation(StandardParameterValidationIssue {
             identity,
             source,
             failure,
         })
     }
 
-    pub fn warning(warning: Warning) -> Self {
+    pub fn warning(warning: WarningProjection) -> Self {
         Self::Warning(warning)
     }
 
-    pub fn as_validation(&self) -> Option<&StandardParameterValidationDiagnostic> {
+    pub fn as_validation(&self) -> Option<&StandardParameterValidationIssue> {
         match self {
             Self::Validation(diagnostic) => Some(diagnostic),
             Self::Warning(_) => None,
         }
     }
 
-    pub fn as_warning(&self) -> Option<&Warning> {
+    pub fn as_warning(&self) -> Option<&WarningProjection> {
         match self {
             Self::Validation(_) => None,
             Self::Warning(warning) => Some(warning),
         }
     }
 
-    pub fn to_record_draft(&self, source: DiagnosticSource) -> Option<DiagnosticRecordDraft> {
+    pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
         match self {
-            Self::Validation(diagnostic) => Some(diagnostic.to_record_draft(source)),
+            Self::Validation(diagnostic) => diagnostic.to_record_draft(source),
             Self::Warning(warning) => warning.to_record_draft(source),
         }
     }
@@ -98,7 +94,7 @@ pub struct ResolvedStandardParameter {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct StandardParameterResolution {
     values: BTreeMap<FieldIdentity, ResolvedStandardParameter>,
-    diagnostics: Vec<StandardParameterDiagnostic>,
+    diagnostics: Vec<StandardParameterHandoff>,
     passthrough: Vec<PassthroughValue>,
 }
 
@@ -111,7 +107,7 @@ impl StandardParameterResolution {
         &self.values
     }
 
-    pub fn diagnostics(&self) -> &[StandardParameterDiagnostic] {
+    pub fn diagnostics(&self) -> &[StandardParameterHandoff] {
         &self.diagnostics
     }
 
@@ -147,15 +143,14 @@ impl StandardParameterResolution {
         source: Option<StandardParameterSourceInfo>,
         failure: ValidationFailure,
     ) {
-        self.diagnostics
-            .push(StandardParameterDiagnostic::validation(
-                identity, source, failure,
-            ));
+        self.diagnostics.push(StandardParameterHandoff::validation(
+            identity, source, failure,
+        ));
     }
 
     pub(crate) fn extend_diagnostics(
         &mut self,
-        diagnostics: impl IntoIterator<Item = StandardParameterDiagnostic>,
+        diagnostics: impl IntoIterator<Item = StandardParameterHandoff>,
     ) {
         self.diagnostics.extend(diagnostics);
     }

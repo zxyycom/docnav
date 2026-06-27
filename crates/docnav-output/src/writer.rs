@@ -3,13 +3,13 @@ use std::io::Write;
 use docnav_diagnostics::{write_warning_text_lines, DiagnosticRecord};
 use docnav_json_io::write_json_value_pretty;
 use docnav_protocol::{
-    FailureResponse, OperationResult, ProtocolResponse, StableError, SuccessResponse,
+    FailureResponse, OperationResult, ProtocolError, ProtocolResponse, SuccessResponse,
     PROTOCOL_VERSION,
 };
 use docnav_readable::ReadableViewKind;
 
 use crate::readable::{
-    add_warnings, readable_payload, stable_error_readable, view_kind_for_result,
+    add_warnings, protocol_error_readable, readable_payload, view_kind_for_result,
     write_readable_view_value,
 };
 use crate::{
@@ -152,7 +152,7 @@ where
 }
 
 pub fn write_document_error<W, E>(
-    error: &StableError,
+    error: &ProtocolError,
     protocol: ProtocolOutputContext<'_>,
     output: DocumentOutputOptions<'_>,
     stdout: &mut W,
@@ -176,13 +176,13 @@ where
     W: Write,
     E: Write,
 {
-    let stable = StableError::from_diagnostic_record(error)
+    let stable = ProtocolError::from_diagnostic_record(error)
         .ok_or(DocumentOutputError::DiagnosticProjection)?;
     write_document_failure(&stable, protocol, output, stdout, stderr)
 }
 
 fn write_document_failure<W, E>(
-    error: &StableError,
+    error: &ProtocolError,
     protocol: ProtocolOutputContext<'_>,
     output: DocumentOutputOptions<'_>,
     stdout: &mut W,
@@ -196,7 +196,7 @@ where
         DocumentOutputMode::ReadableView => {
             let warnings = output.warning_projections();
             write_readable_view_value(
-                stable_error_readable(error),
+                protocol_error_readable(error),
                 ReadableViewKind::Error,
                 &warnings,
                 stdout,
@@ -204,7 +204,7 @@ where
         }
         DocumentOutputMode::ReadableJson => {
             let warnings = output.warning_projections();
-            let value = add_warnings(stable_error_readable(error), &warnings);
+            let value = add_warnings(protocol_error_readable(error), &warnings);
             write_json_value_pretty(&value, stdout).map_err(DocumentOutputError::StdoutJson)
         }
         DocumentOutputMode::ProtocolJson => {

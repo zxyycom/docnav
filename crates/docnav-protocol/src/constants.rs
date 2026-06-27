@@ -13,20 +13,6 @@ pub(crate) mod fields {
     pub const ARGUMENTS: &str = "arguments";
 }
 
-// 稳定错误 details 的字段名，必须与 docs/protocol.md 和示例保持一致。
-pub(crate) mod error_detail_fields {
-    pub const ADAPTER_ID: &str = "adapter_id";
-    pub const CANDIDATE_COUNT: &str = "candidate_count";
-    pub const CANDIDATES: &str = "candidates";
-    pub const CAPABILITY: &str = "capability";
-    pub const ENCODING: &str = "encoding";
-    pub const ERROR_ID: &str = "error_id";
-    pub const FIELD: &str = "field";
-    pub const PATH: &str = "path";
-    pub const REASON: &str = "reason";
-    pub const REF: &str = "ref";
-}
-
 // operation 的 wire 字符串，集中后避免 Display、FromStr 和脚本示例漂移。
 pub(crate) mod operation_names {
     pub const FIND: &str = "find";
@@ -43,8 +29,8 @@ pub(crate) mod schema_names {
     pub const PROTOCOL_RESPONSE: &str = "protocol-response.schema.json";
 }
 
-// 稳定错误 message 的默认文案集中在这里；调用方只解析 code 和 details。
-pub(crate) mod stable_error_messages {
+// Protocol error message 默认文案集中在这里；调用方只解析 code 和 details。
+pub(crate) mod protocol_error_messages {
     pub const ADAPTER_INVOKE_FAILED: &str = "Adapter invoke failed.";
     pub const ADAPTER_UNAVAILABLE: &str = "Adapter is unavailable.";
     pub const CAPABILITY_UNSUPPORTED: &str = "Adapter does not support the requested capability.";

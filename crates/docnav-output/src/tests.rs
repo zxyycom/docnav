@@ -1,28 +1,23 @@
 // @case WB-OUTPUT-DOCUMENT-001
 use super::*;
 use docnav_diagnostics::{
-    DiagnosticDetails, DiagnosticRecord, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
-    ProtocolDiagnosticCode, Warning, CLI_ARGV_IGNORED,
+    typed_codes, DiagnosticRecord, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
+    RefDetails, WarningProjection, CLI_ARGV_IGNORED,
 };
 use docnav_protocol::{
     Entry, Operation, OperationResult, OutlineResult, ProtocolResponse, ReadResult,
-    StableErrorCode, PROTOCOL_VERSION,
+    PROTOCOL_VERSION,
 };
-use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use serde_json::Value;
 
-fn warning() -> Warning {
-    Warning::cli_argv_ignored(vec!["--future".to_owned()], "unknown CLI flag ignored")
+fn warning() -> WarningProjection {
+    WarningProjection::cli_argv_ignored(vec!["--future".to_owned()], "unknown CLI flag ignored")
 }
 
 fn warning_records() -> Vec<DiagnosticRecord> {
     let mut diagnostics = DiagnosticStack::new();
     diagnostics
-        .push(
-            warning()
-                .to_record_draft(DiagnosticSource::with_stage("test", "output"))
-                .unwrap(),
-        )
+        .push(warning().to_record_draft(DiagnosticSource::with_stage("test", "output")))
         .unwrap();
     let mut records = diagnostics.snapshot();
     records.reverse();
@@ -33,12 +28,9 @@ fn ref_not_found_record() -> DiagnosticRecord {
     let mut diagnostics = DiagnosticStack::new();
     let id = diagnostics
         .push(
-            DiagnosticRecordDraft::new(
-                ProtocolDiagnosticCode::RefNotFound,
+            DiagnosticRecordDraft::new::<typed_codes::protocol::RefNotFound>(
                 "No content found for ref `R99`",
-                DiagnosticDetails::Ref {
-                    ref_id: "R99".to_owned(),
-                },
+                RefDetails::new("R99"),
                 DiagnosticSource::with_stage("test", "output"),
             )
             .with_guidance(["Run outline first."]),
@@ -82,7 +74,7 @@ fn readable_json_success_embeds_warnings_without_protocol_envelope() {
     assert!(stderr.is_empty());
     let value: Value = serde_json::from_slice(&stdout).unwrap();
     assert_eq!(value["entries"][0]["ref"], "R1");
-    assert_eq!(value["warnings"][0]["id"], CLI_ARGV_IGNORED.as_str());
+    assert_eq!(value["warnings"][0]["id"], CLI_ARGV_IGNORED.warning_id());
     assert_ne!(value["warnings"][0]["effect"], "diagnostic_only");
     assert!(value.get("protocol_version").is_none());
 }
@@ -153,13 +145,12 @@ fn readable_view_projects_record_warnings_without_diagnostic_only_effect() {
 
 #[test]
 fn readable_error_keeps_code_details_and_guidance() {
-    let error = StableError {
-        code: StableErrorCode::RefNotFound,
-        message: "not found".into(),
-        details: BTreeMap::from([("ref".to_owned(), json!("R99"))]),
-        guidance: Some(vec!["Run outline first.".into()]),
-    };
-    let value = stable_error_readable(&error);
+    let error = ProtocolError::new::<typed_codes::protocol::RefNotFound>(
+        "not found",
+        RefDetails::new("R99"),
+    )
+    .with_guidance(["Run outline first."]);
+    let value = protocol_error_readable(&error);
     assert_eq!(value["code"], "REF_NOT_FOUND");
     assert_eq!(value["details"]["ref"], "R99");
     assert_eq!(value["guidance"][0], "Run outline first.");
@@ -207,7 +198,7 @@ fn diagnostic_record_error_projects_readable_and_protocol_surfaces() {
 
 #[test]
 fn response_failure_returns_failure_status() {
-    let error = StableError::ref_not_found("R99");
+    let error = ProtocolError::ref_not_found("R99");
     let response =
         ProtocolResponse::failure(PROTOCOL_VERSION, "request-1", Some(Operation::Read), error);
     let mut stdout = Vec::new();

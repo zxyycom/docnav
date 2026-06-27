@@ -15,9 +15,7 @@ pub use direct::{
     run_direct_cli, DirectCliConfig, DirectCliInvocation, DirectOutputMode, NativeOptionDefault,
     NativeOptionSpec, NativeOptionValueSpec,
 };
-pub use error::{exit_code_for_error, AdapterError, AdapterExitCode, AdapterExitCodeError};
+pub use error::{exit_code_for_diagnostic, AdapterError, AdapterExitCode, AdapterExitCodeError};
 pub use invoke::{execute_operation, invoke_once};
-pub use output::emit_diagnostic;
-
 #[cfg(test)]
 mod tests;

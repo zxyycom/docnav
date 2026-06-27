@@ -1,7 +1,7 @@
 use docnav_protocol::{positive_result, Operation, PositiveInteger};
 use docnav_standard_parameters::{
-    PassthroughValue, StandardParameterDiagnostic, StandardParameterResolution,
-    StandardParameterSourceKind, StandardParameterValidationDiagnostic,
+    PassthroughValue, StandardParameterHandoff, StandardParameterResolution,
+    StandardParameterSourceKind, StandardParameterValidationIssue,
 };
 use docnav_typed_fields::{FieldIdentity, TypedValue};
 use serde_json::{json, Map, Value};
@@ -68,10 +68,10 @@ pub(super) fn collect_diagnostics(
 ) -> Result<(), String> {
     for diagnostic in resolution.diagnostics() {
         match diagnostic {
-            StandardParameterDiagnostic::Validation(diagnostic) => {
+            StandardParameterHandoff::Validation(diagnostic) => {
                 return Err(validation_message(diagnostic));
             }
-            StandardParameterDiagnostic::Warning(warning) => warnings.push(warning.clone()),
+            StandardParameterHandoff::Warning(warning) => warnings.push(warning.clone()),
         }
     }
     Ok(())
@@ -150,7 +150,7 @@ fn passthrough_from_source(
         .find(|value| value.source.kind == source)
 }
 
-fn validation_message(diagnostic: &StandardParameterValidationDiagnostic) -> String {
+fn validation_message(diagnostic: &StandardParameterValidationIssue) -> String {
     match diagnostic.identity.as_str() {
         ID_LIMIT_CHARS => format!("{} must be a positive integer", flags::LIMIT_CHARS),
         ID_OUTPUT => format!("invalid {}", flags::OUTPUT),

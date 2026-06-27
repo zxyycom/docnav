@@ -2,7 +2,7 @@ use std::io::{self, Write};
 
 use docnav_diagnostics::{
     attach_warnings_to_value, write_warning_text_lines, DiagnosticRecord, DiagnosticSource,
-    DiagnosticStack, Warning,
+    DiagnosticStack, WarningProjection,
 };
 use docnav_json_io::write_json_value_pretty;
 use docnav_output::{
@@ -13,7 +13,7 @@ use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, PROTOCOL
 use serde_json::Value;
 
 use crate::cli::{CliWarning, OutputMode};
-use crate::error::{exit_code_for_error, AppError, AppResult, DocnavExitCode};
+use crate::error::{exit_code_for_diagnostic, AppError, AppResult, DocnavExitCode};
 
 pub struct CommandOutcome {
     output: CommandOutput,
@@ -58,7 +58,7 @@ impl CommandOutcome {
     fn document_response(response: ProtocolResponse, mode: OutputMode) -> Self {
         let exit_code = match &response {
             ProtocolResponse::Success(_) => DocnavExitCode::Success,
-            ProtocolResponse::Failure(failure) => exit_code_for_error(failure.error.code),
+            ProtocolResponse::Failure(failure) => exit_code_for_diagnostic(failure.error.code()),
         };
         Self {
             output: CommandOutput::DocumentResponse {
@@ -125,17 +125,16 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
         stdout,
         stderr,
     } = request;
-    let error_id = diagnostics
-        .push(
-            error
-                .error()
-                .to_record_draft(DiagnosticSource::with_stage("docnav", "error")),
-        )
-        .expect("stable errors must satisfy diagnostic details rules");
-    let error_record = diagnostics
-        .get(error_id)
-        .expect("pushed diagnostic record exists")
-        .clone();
+    let error_id = match diagnostics.push(error.diagnostic().clone()) {
+        Ok(id) => id,
+        Err(error) => return write_io_error(io::Error::other(error), stderr),
+    };
+    let Some(error_record) = diagnostics.get(error_id).cloned() else {
+        return write_io_error(
+            io::Error::other("pushed diagnostic record not found"),
+            stderr,
+        );
+    };
     let diagnostic_records = diagnostic_records_for_projection(&diagnostics);
     let request_id = generate_request_id();
     let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, &request_id, operation);
@@ -194,9 +193,7 @@ fn push_warning_diagnostics(
     source: DiagnosticSource,
 ) {
     for warning in warnings {
-        if let Some(draft) = warning.to_record_draft(source.clone()) {
-            let _ = stack.push(draft);
-        }
+        let _ = stack.push(warning.to_record_draft(source.clone()));
     }
 }
 
@@ -207,7 +204,10 @@ fn diagnostic_records_for_projection(stack: &DiagnosticStack) -> Vec<DiagnosticR
 }
 
 fn warning_projections(records: &[DiagnosticRecord]) -> Vec<CliWarning> {
-    records.iter().filter_map(Warning::from_record).collect()
+    records
+        .iter()
+        .filter_map(WarningProjection::from_record)
+        .collect()
 }
 
 fn write_io_error<E: Write>(error: io::Error, stderr: &mut E) -> i32 {

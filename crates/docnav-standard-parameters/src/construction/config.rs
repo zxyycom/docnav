@@ -2,11 +2,11 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-use docnav_diagnostics::Warning;
+use docnav_diagnostics::WarningProjection;
 use docnav_typed_fields::JsonValue;
 use serde_json::Value;
 
-use crate::StandardParameterDiagnostic;
+use crate::StandardParameterHandoff;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ConfigSourceLevel {
@@ -79,7 +79,7 @@ impl StandardParameterConfigSourceDescriptor {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LoadedStandardParameterConfigSource {
     pub(super) value: Option<JsonValue>,
-    pub(super) diagnostics: Vec<StandardParameterDiagnostic>,
+    pub(super) diagnostics: Vec<StandardParameterHandoff>,
 }
 
 impl LoadedStandardParameterConfigSource {
@@ -94,11 +94,11 @@ impl LoadedStandardParameterConfigSource {
         self.value.as_ref()
     }
 
-    pub fn diagnostics(&self) -> &[StandardParameterDiagnostic] {
+    pub fn diagnostics(&self) -> &[StandardParameterHandoff] {
         &self.diagnostics
     }
 
-    pub(crate) fn into_parts(self) -> (Option<JsonValue>, Vec<StandardParameterDiagnostic>) {
+    pub(crate) fn into_parts(self) -> (Option<JsonValue>, Vec<StandardParameterHandoff>) {
         (self.value, self.diagnostics)
     }
 }
@@ -145,7 +145,7 @@ fn skipped(
     descriptor: &StandardParameterConfigSourceDescriptor,
     reason: ConfigSourceSkipReason,
 ) -> LoadedStandardParameterConfigSource {
-    let warning = Warning::adapter_config_source_skipped(
+    let warning = WarningProjection::adapter_config_source_skipped(
         descriptor.level.as_str(),
         descriptor.origin.as_str(),
         &descriptor.path.display().to_string(),
@@ -153,6 +153,6 @@ fn skipped(
     );
     LoadedStandardParameterConfigSource {
         value: None,
-        diagnostics: vec![StandardParameterDiagnostic::warning(warning)],
+        diagnostics: vec![StandardParameterHandoff::warning(warning)],
     }
 }

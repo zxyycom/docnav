@@ -1,27 +1,21 @@
 // @case WB-CORE-OUTPUT-001
 use super::*;
-use crate::cli::warning::{CliWarningDetails, CliWarningEffect, CLI_ARGV_IGNORED};
-use docnav_diagnostics::{DiagnosticCode, ReadableWarningDiagnosticCode};
+use docnav_diagnostics::{
+    typed_codes, CliArgvDetails, DiagnosticCode, DiagnosticRecordDraft,
+    ReadableWarningDiagnosticCode, RefDetails,
+};
 use docnav_protocol::{
-    Entry, OperationResult, OutlineResult, ProtocolResponse, ReadResult, StableError,
-    StableErrorCode,
+    protocol_error_record_draft_with_summary, Entry, OperationResult, OutlineResult,
+    ProtocolResponse, ReadResult,
 };
 use serde_json::json;
-use std::collections::BTreeMap;
 
 fn cli_argv_warning(tokens: &[&str]) -> CliWarning {
-    CliWarning {
-        id: CLI_ARGV_IGNORED,
-        reason: "test warning".into(),
-        effect: CliWarningEffect::OperationContinued,
-        details: CliWarningDetails::CliArgv {
-            tokens: tokens.iter().map(|s| s.to_string()).collect(),
-        },
-    }
-}
-
-fn error_details(map: &[(&str, &str)]) -> BTreeMap<String, Value> {
-    map.iter().map(|(k, v)| (k.to_string(), json!(v))).collect()
+    CliWarning::new::<typed_codes::readable_warning::CliArgvIgnored>(
+        "test warning",
+        CliArgvDetails::new(tokens.iter().map(|s| s.to_string()).collect::<Vec<_>>()),
+    )
+    .expect("test warning reason is non-empty")
 }
 
 fn write_success(outcome: CommandOutcome, warnings: &[CliWarning]) -> (Vec<u8>, Vec<u8>) {
@@ -81,7 +75,7 @@ fn runtime_and_cli_warnings_share_diagnostic_stack_projection() {
     let warning = cli_argv_warning(&["--extra"]);
     let runtime_record = outcome.diagnostics.snapshot()[0].clone();
     assert_eq!(
-        runtime_record.code,
+        runtime_record.code(),
         DiagnosticCode::from(ReadableWarningDiagnosticCode::AdapterCandidateFailure)
     );
 
@@ -92,12 +86,12 @@ fn runtime_and_cli_warnings_share_diagnostic_stack_projection() {
     );
     let snapshot = outcome.diagnostics.snapshot();
     assert_eq!(
-        snapshot[0].code,
+        snapshot[0].code(),
         DiagnosticCode::from(ReadableWarningDiagnosticCode::CliArgvIgnored)
     );
     assert_eq!(
-        outcome.diagnostics.get(runtime_record.id).unwrap().code,
-        runtime_record.code
+        outcome.diagnostics.get(runtime_record.id()).unwrap().code(),
+        runtime_record.code()
     );
 
     let (stdout, stderr) = write_success(outcome, &[]);
@@ -175,12 +169,14 @@ fn document_protocol_json_warnings_go_to_stderr() {
 
 #[test]
 fn readable_error_uses_document_facade_and_exit_policy_stays_local() {
-    let error = AppError::new(StableError {
-        code: StableErrorCode::RefNotFound,
-        message: "No content found for ref `L99`".into(),
-        details: error_details(&[("ref", "L99")]),
-        guidance: Some(vec!["Check available entries.".into()]),
-    });
+    let error = AppError::new(
+        protocol_error_record_draft_with_summary::<typed_codes::protocol::RefNotFound>(
+            "No content found for ref `L99`",
+            RefDetails::new("L99"),
+            DiagnosticSource::with_stage("test", "output"),
+        )
+        .with_guidance(["Check available entries."]),
+    );
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
     let exit = write_error(ErrorOutput {
@@ -196,6 +192,36 @@ fn readable_error_uses_document_facade_and_exit_policy_stays_local() {
     assert!(output.contains("[block /error bytes="));
     assert!(output.contains("\"code\": \"REF_NOT_FOUND\""));
     assert!(output.contains("Check available entries."));
+}
+
+#[test]
+fn app_error_normalizes_non_protocol_diagnostic_before_document_output() {
+    let error = AppError::new(DiagnosticRecordDraft::new::<
+        typed_codes::readable_warning::CliArgvIgnored,
+    >(
+        "ignored argv is not a fatal protocol error",
+        CliArgvDetails::new(vec!["--unused".into()]),
+        DiagnosticSource::with_stage("test", "output"),
+    ));
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit = write_error(ErrorOutput {
+        error: &error,
+        output_mode: OutputMode::ProtocolJson,
+        operation: None,
+        diagnostics: DiagnosticStack::new(),
+        stdout: &mut stdout,
+        stderr: &mut stderr,
+    });
+
+    assert_eq!(exit, DocnavExitCode::InternalError.code());
+    assert!(stderr.is_empty());
+    let output: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(output["error"]["code"], "INTERNAL_ERROR");
+    assert_eq!(
+        output["error"]["details"]["error_id"],
+        "app-error-diagnostic-not-protocol"
+    );
 }
 
 #[test]

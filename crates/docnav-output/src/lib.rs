@@ -1,15 +1,15 @@
 use std::fmt;
 use std::io;
 
-use docnav_diagnostics::{DiagnosticRecord, Warning};
+use docnav_diagnostics::{DiagnosticRecord, WarningProjection};
 use docnav_json_io::JsonIoError;
-use docnav_protocol::{Operation, StableError};
+use docnav_protocol::{Operation, ProtocolError};
 use docnav_readable::RenderError;
 
 mod readable;
 mod writer;
 
-pub use readable::{add_warnings, readable_payload, stable_error_readable, view_kind_for_result};
+pub use readable::{add_warnings, protocol_error_readable, readable_payload, view_kind_for_result};
 pub use writer::{
     write_document_diagnostic_error, write_document_error, write_document_response,
     write_document_result,
@@ -25,7 +25,7 @@ pub enum DocumentOutputMode {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DocumentOutputStatus {
     Success,
-    Failure(StableError),
+    Failure(ProtocolError),
 }
 
 #[derive(Debug)]
@@ -97,10 +97,10 @@ impl<'a> DocumentOutputOptions<'a> {
         Self { mode, diagnostics }
     }
 
-    pub(crate) fn warning_projections(self) -> Vec<Warning> {
+    pub(crate) fn warning_projections(self) -> Vec<WarningProjection> {
         self.diagnostics
             .iter()
-            .filter_map(Warning::from_record)
+            .filter_map(WarningProjection::from_record)
             .collect()
     }
 }

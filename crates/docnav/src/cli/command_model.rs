@@ -63,11 +63,8 @@ impl ParsedCli {
     pub fn new(command: CliCommand, warnings: Vec<CliWarning>) -> Self {
         let mut diagnostics = DiagnosticStack::new();
         for warning in &warnings {
-            if let Some(draft) =
-                warning.to_record_draft(DiagnosticSource::with_stage("docnav", "cli"))
-            {
-                let _ = diagnostics.push(draft);
-            }
+            let _ = diagnostics
+                .push(warning.to_record_draft(DiagnosticSource::with_stage("docnav", "cli")));
         }
         Self {
             command,

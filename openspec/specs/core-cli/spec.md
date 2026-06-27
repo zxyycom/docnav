@@ -298,8 +298,8 @@ Core CLI 容错规则如下：
 - **WHEN** adapter read 返回 `content_type: "text/markdown"`
 - **THEN** `docnav` readable-json read 输出包含相同 content_type
 
-### Requirement: 核心 CLI 必须实现稳定错误和退出码映射
-`docnav` MUST 将输入错误、文档/ref/格式错误、协议或 adapter 进程错误、内部错误映射到主规范定义的退出码，并 MUST 保持错误 code 稳定。
+### Requirement: 核心 CLI 必须实现 diagnostic code 和退出码映射
+`docnav` MUST 将输入错误、文档/ref/格式错误、协议或 adapter 进程错误、内部错误映射到主规范定义的退出码，并 MUST 保持 `DiagnosticCode` 对应的可见错误 code 稳定。
 
 #### Scenario: ref 不存在
 - **WHEN** adapter 返回 `REF_NOT_FOUND`
@@ -343,7 +343,7 @@ Core CLI 容错规则如下：
 
 #### Scenario: Core document output 使用共享输出编排
 
-- **WHEN** core CLI 得到 document operation success 或 stable error outcome
+- **WHEN** core CLI 得到 document operation success 或 diagnostic failure outcome
 - **THEN** 它将 outcome、operation、request id、output mode 和 collected warnings 传给 `docnav-output` 的 document-only facade
 - **THEN** `readable-json` 和 `readable-view` 从同一个 readable payload 派生
 - **THEN** `protocol-json` 向 stdout 写出一个 protocol response envelope
@@ -351,7 +351,6 @@ Core CLI 容错规则如下：
 
 #### Scenario: Core exit code enum 仍由 core 拥有
 
-- **WHEN** core CLI 将 `StableErrorCode` 映射为 process exit code
+- **WHEN** core CLI 将 `DiagnosticCode` 对应的共享分类映射为 process exit code
 - **THEN** 它可以使用共享 classification helper
 - **THEN** concrete core exit code enum 和最终 process exit decision 仍由 `docnav` core 拥有
-

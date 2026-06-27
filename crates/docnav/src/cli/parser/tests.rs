@@ -1,8 +1,10 @@
-use super::super::warning::{CliWarningDetails, CliWarningEffect, CLI_ARGV_IGNORED};
+use super::super::warning::CLI_ARGV_IGNORED;
 use super::*;
 use crate::cli::{CliCommand, OutputMode};
-use crate::error::exit_code_for_error;
-use docnav_diagnostics::{DiagnosticCode, ReadableWarningDiagnosticCode};
+use crate::error::DocnavExitCode;
+use docnav_diagnostics::{
+    DiagnosticCode, DiagnosticDetails, DiagnosticEffect, ReadableWarningDiagnosticCode,
+};
 
 // @case WB-CORE-HELP-001
 #[test]
@@ -142,13 +144,9 @@ fn invalid_output_value_returns_error() {
     let error =
         parse(["outline", "doc.md", "--output", "text"]).expect_err("text should be rejected");
 
-    assert_eq!(
-        error.exit_code().code(),
-        exit_code_for_error(docnav_protocol::StableErrorCode::InvalidRequest).code()
-    );
-    let reason = error
-        .error()
-        .details
+    assert_eq!(error.exit_code().code(), DocnavExitCode::InputError.code());
+    let details = error.diagnostic().details().to_value();
+    let reason = details
         .get("reason")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("");
@@ -173,9 +171,8 @@ fn bogus_output_value_returns_error() {
     let error = parse(["outline", "doc.md", "--output", "bogus"])
         .expect_err("bogus output should be rejected");
 
-    let reason = error
-        .error()
-        .details
+    let details = error.diagnostic().details().to_value();
+    let reason = details
         .get("reason")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("");
@@ -189,18 +186,13 @@ fn bogus_output_value_returns_error() {
 #[test]
 fn used_known_argument_stays_strict() {
     let error = parse(["outline", "doc.md", "--page", "0"]).expect_err("page is invalid");
+    let details = error.diagnostic().details().to_value();
 
     assert_eq!(
-        error
-            .error()
-            .details
-            .get("field")
-            .and_then(serde_json::Value::as_str),
+        details.get("field").and_then(serde_json::Value::as_str),
         Some("--page")
     );
-    assert!(error
-        .error()
-        .details
+    assert!(details
         .get("reason")
         .and_then(serde_json::Value::as_str)
         .is_some_and(|reason| reason.contains("positive integer")));
@@ -230,14 +222,14 @@ fn unused_known_argument_value_is_not_eagerly_typed() {
     assert_eq!(parsed.warnings.len(), 1);
     assert_eq!(parsed.diagnostics.len(), 1);
     assert_eq!(
-        parsed.diagnostics.snapshot()[0].code,
+        parsed.diagnostics.snapshot()[0].code(),
         DiagnosticCode::from(ReadableWarningDiagnosticCode::CliArgvIgnored)
     );
     let warning = &parsed.warnings[0];
-    assert_eq!(warning.id, CLI_ARGV_IGNORED);
-    assert_eq!(warning.effect, CliWarningEffect::OperationContinued);
-    match &warning.details {
-        CliWarningDetails::CliArgv { tokens } => {
+    assert_eq!(warning.code(), CLI_ARGV_IGNORED);
+    assert_eq!(warning.effect(), DiagnosticEffect::OperationContinued);
+    match warning.details() {
+        DiagnosticDetails::CliArgv { tokens } => {
             assert!(tokens.contains(&"--page".to_owned()));
             assert!(tokens.contains(&"nope".to_owned()));
         }

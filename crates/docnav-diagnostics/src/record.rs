@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde::Serialize;
 
-use crate::code::{DiagnosticCode, DiagnosticEffect, DiagnosticSeverity};
+use crate::code::{DiagnosticCode, DiagnosticCodeMarker, DiagnosticEffect, DiagnosticSeverity};
 use crate::details::{DiagnosticDetails, DiagnosticDetailsError};
 use crate::stack::DiagnosticId;
 
@@ -31,38 +31,88 @@ impl DiagnosticSource {
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct DiagnosticRecord {
-    pub id: DiagnosticId,
-    pub summary: String,
-    pub severity: DiagnosticSeverity,
-    pub code: DiagnosticCode,
-    pub effect: DiagnosticEffect,
-    pub details: DiagnosticDetails,
+    id: DiagnosticId,
+    summary: String,
+    severity: DiagnosticSeverity,
+    code: DiagnosticCode,
+    effect: DiagnosticEffect,
+    details: DiagnosticDetails,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub guidance: Option<Vec<String>>,
-    pub source: DiagnosticSource,
-    pub recoverable: bool,
+    guidance: Option<Vec<String>>,
+    source: DiagnosticSource,
+    recoverable: bool,
+}
+
+macro_rules! diagnostic_record_accessors {
+    () => {
+        pub fn summary(&self) -> &str {
+            &self.summary
+        }
+
+        pub const fn severity(&self) -> DiagnosticSeverity {
+            self.severity
+        }
+
+        pub const fn code(&self) -> DiagnosticCode {
+            self.code
+        }
+
+        pub const fn effect(&self) -> DiagnosticEffect {
+            self.effect
+        }
+
+        pub const fn details(&self) -> &DiagnosticDetails {
+            &self.details
+        }
+
+        pub fn guidance(&self) -> Option<&[String]> {
+            self.guidance.as_deref()
+        }
+
+        pub const fn source(&self) -> &DiagnosticSource {
+            &self.source
+        }
+    };
+}
+
+impl DiagnosticRecord {
+    pub const fn id(&self) -> DiagnosticId {
+        self.id
+    }
+
+    diagnostic_record_accessors!();
+
+    pub const fn recoverable(&self) -> bool {
+        self.recoverable
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DiagnosticRecordDraft {
-    pub summary: String,
-    pub severity: DiagnosticSeverity,
-    pub code: DiagnosticCode,
-    pub effect: DiagnosticEffect,
-    pub details: DiagnosticDetails,
-    pub guidance: Option<Vec<String>>,
-    pub source: DiagnosticSource,
-    pub recoverable: bool,
+    summary: String,
+    severity: DiagnosticSeverity,
+    code: DiagnosticCode,
+    effect: DiagnosticEffect,
+    details: DiagnosticDetails,
+    guidance: Option<Vec<String>>,
+    source: DiagnosticSource,
+    recoverable: bool,
 }
 
 impl DiagnosticRecordDraft {
-    pub fn new(
-        code: impl Into<DiagnosticCode>,
+    pub fn new<C>(summary: impl Into<String>, details: C::Details, source: DiagnosticSource) -> Self
+    where
+        C: DiagnosticCodeMarker,
+    {
+        Self::from_typed_parts(C::CODE, summary, details.into(), source)
+    }
+
+    fn from_typed_parts(
+        code: DiagnosticCode,
         summary: impl Into<String>,
         details: DiagnosticDetails,
         source: DiagnosticSource,
     ) -> Self {
-        let code = code.into();
         let severity = code.default_severity();
         let effect = code.default_effect();
         Self {
@@ -75,6 +125,22 @@ impl DiagnosticRecordDraft {
             source,
             recoverable: is_recoverable_effect(effect),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_erased_for_test(
+        code: impl Into<DiagnosticCode>,
+        summary: impl Into<String>,
+        details: DiagnosticDetails,
+        source: DiagnosticSource,
+    ) -> Self {
+        Self::from_typed_parts(code.into(), summary, details, source)
+    }
+
+    diagnostic_record_accessors!();
+
+    pub const fn recoverable_status(&self) -> bool {
+        self.recoverable
     }
 
     pub fn with_severity(mut self, severity: DiagnosticSeverity) -> Self {

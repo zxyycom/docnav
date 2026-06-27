@@ -1,5 +1,4 @@
 use docnav_adapter_sdk::{AdapterError, AdapterResult};
-use docnav_protocol::StableError;
 
 use crate::adapter::{DEFAULT_MAX_HEADING_LEVEL, MAX_HEADING_LEVEL_OPTION};
 
@@ -22,9 +21,8 @@ pub fn max_heading_level_from_options(
 }
 
 fn invalid_max_heading_level() -> AdapterError {
-    StableError::invalid_request(
+    AdapterError::invalid_request(
         format!("arguments.options.{MAX_HEADING_LEVEL_OPTION}"),
         "must be an integer from 1 to 6",
     )
-    .into()
 }

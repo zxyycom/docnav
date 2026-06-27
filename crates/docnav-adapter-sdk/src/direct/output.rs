@@ -2,7 +2,7 @@ use std::io::{self, Write};
 
 use docnav_diagnostics::{
     write_warning_text_lines, BoundaryDiagnosticCode, DiagnosticRecord, DiagnosticSource,
-    DiagnosticStack, Warning,
+    DiagnosticStack, WarningProjection,
 };
 use docnav_output::{
     write_document_diagnostic_error, write_document_result, DocumentOutputError,
@@ -60,8 +60,10 @@ pub(super) fn handler_error<W: Write, E: Write>(
     stderr: &mut E,
 ) -> i32 {
     let exit_code = error.exit_code();
-    let stable = error.error();
-    let (error_record, diagnostics) = diagnostic_error_records(stable, warnings);
+    let (error_record, diagnostics) = match diagnostic_error_records(error.diagnostic(), warnings) {
+        Ok(records) => records,
+        Err(error) => return document_output_error(error, stderr),
+    };
     let write_exit = match output {
         DirectOutputMode::ReadableView | DirectOutputMode::ReadableJson => {
             let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, "adapter-direct", None);
@@ -171,7 +173,7 @@ fn write_diagnostic_warnings<W: Write>(
 ) -> io::Result<()> {
     let warnings = diagnostics
         .iter()
-        .filter_map(Warning::from_record)
+        .filter_map(WarningProjection::from_record)
         .collect::<Vec<_>>();
     write_warning_text_lines(&warnings, writer)
 }
@@ -185,30 +187,27 @@ fn diagnostic_records_for_warnings(warnings: &[DirectCliWarning]) -> Vec<Diagnos
 }
 
 fn diagnostic_error_records(
-    error: &docnav_protocol::StableError,
+    error: &docnav_diagnostics::DiagnosticRecordDraft,
     warnings: &[DirectCliWarning],
-) -> (DiagnosticRecord, Vec<DiagnosticRecord>) {
+) -> Result<(DiagnosticRecord, Vec<DiagnosticRecord>), DocumentOutputError> {
     let mut diagnostics = DiagnosticStack::new();
     push_warning_diagnostics(&mut diagnostics, warnings);
     let error_id = diagnostics
-        .push(error.to_record_draft(DiagnosticSource::with_stage("adapter-direct", "error")))
-        .expect("stable errors must satisfy diagnostic details rules");
+        .push(error.clone())
+        .map_err(|_| DocumentOutputError::DiagnosticProjection)?;
     let error_record = diagnostics
         .get(error_id)
-        .expect("pushed diagnostic record exists")
+        .ok_or(DocumentOutputError::DiagnosticProjection)?
         .clone();
     let mut records = diagnostics.snapshot();
     records.reverse();
-    (error_record, records)
+    Ok((error_record, records))
 }
 
 fn push_warning_diagnostics(diagnostics: &mut DiagnosticStack, warnings: &[DirectCliWarning]) {
     for warning in warnings {
-        if let Some(draft) =
-            warning.to_record_draft(DiagnosticSource::with_stage("adapter-direct", "cli"))
-        {
-            let _ = diagnostics.push(draft);
-        }
+        let _ = diagnostics
+            .push(warning.to_record_draft(DiagnosticSource::with_stage("adapter-direct", "cli")));
     }
 }
 

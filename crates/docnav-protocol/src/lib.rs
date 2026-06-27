@@ -2,6 +2,8 @@ pub type PositiveInteger = std::num::NonZeroU32;
 pub type Options = serde_json::Map<String, serde_json::Value>;
 pub type ErrorDetails = std::collections::BTreeMap<String, serde_json::Value>;
 
+pub use docnav_diagnostics::ProtocolDiagnosticCode;
+
 mod constants;
 mod decode;
 mod envelope;
@@ -25,7 +27,11 @@ pub use envelope::{
     Document, FailureResponse, FindArguments, InfoArguments, OperationArguments, OutlineArguments,
     ProtocolResponse, ProtocolValidationError, ReadArguments, RequestEnvelope, SuccessResponse,
 };
-pub use error::{MissingErrorDetail, StableError, StableErrorCategory, StableErrorCode};
+pub use error::{
+    protocol_error_category, protocol_error_default_message, protocol_error_record_draft,
+    protocol_error_record_draft_with_summary, InvalidErrorDetail, ProtocolError,
+    ProtocolErrorCategory,
+};
 pub use manifest::{AdapterIdentity, FormatDescriptor, Manifest, ManifestValidationError};
 pub use operation::{Operation, OperationParseError, PagedOperation};
 pub use operation_result::{

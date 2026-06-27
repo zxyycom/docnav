@@ -49,13 +49,16 @@ fn check_config_file(name: &str, path: &std::path::Path) -> Value {
             "path": path_string(path),
             "message": "config file is absent; built-in defaults apply"
         }),
-        Err(error) => json!({
-            "name": name,
-            "status": "fail",
-            "path": path_string(path),
-            "message": error.error().message,
-            "details": error.error().details,
-        }),
+        Err(error) => {
+            let diagnostic = error.diagnostic();
+            json!({
+                "name": name,
+                "status": "fail",
+                "path": path_string(path),
+                "message": diagnostic.summary(),
+                "details": diagnostic.details().to_value(),
+            })
+        }
     }
 }
 

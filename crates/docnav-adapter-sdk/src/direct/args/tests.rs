@@ -1,6 +1,7 @@
-use super::super::warnings::{DirectCliWarning, DirectCliWarningEffect, CLI_ARGV_IGNORED};
+use super::super::warnings::{DirectCliWarning, CLI_ARGV_IGNORED};
 use super::super::{NativeOptionDefault, NativeOptionValueSpec};
 use super::*;
+use docnav_diagnostics::DiagnosticEffect;
 use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -35,10 +36,10 @@ fn unknown_flag_with_equals_is_one_ignored_token() {
         .expect("parse options");
 
     assert_eq!(options.warnings.len(), 1);
-    assert_eq!(options.warnings[0].id, CLI_ARGV_IGNORED);
+    assert_eq!(options.warnings[0].code(), CLI_ARGV_IGNORED);
     assert_eq!(
-        options.warnings[0].effect,
-        DirectCliWarningEffect::OperationContinued
+        options.warnings[0].effect(),
+        DiagnosticEffect::OperationContinued
     );
     assert_eq!(warning_tokens(&options.warnings[0]), ["--future=value"]);
 }
@@ -50,7 +51,7 @@ fn extra_positional_warns_after_path_slot_is_filled() {
 
     assert_eq!(options.path, "doc.md");
     assert_eq!(options.warnings.len(), 1);
-    assert_eq!(options.warnings[0].id, CLI_ARGV_IGNORED);
+    assert_eq!(options.warnings[0].code(), CLI_ARGV_IGNORED);
     assert_eq!(warning_tokens(&options.warnings[0]), ["extra"]);
 }
 
@@ -271,13 +272,10 @@ fn unsupported_config_native_option_does_not_enter_operation_request() {
 }
 
 fn warning_tokens(warning: &DirectCliWarning) -> Vec<&str> {
-    warning
-        .details
-        .cli_argv_tokens()
-        .expect("CLI argv warning details")
-        .iter()
-        .map(String::as_str)
-        .collect()
+    let docnav_diagnostics::DiagnosticDetails::CliArgv { tokens } = warning.details() else {
+        panic!("expected CLI argv warning details");
+    };
+    tokens.iter().map(String::as_str).collect()
 }
 
 fn args(values: &[&str]) -> Vec<String> {

@@ -4,89 +4,73 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::code::{DiagnosticCode, ReadableWarningDiagnosticCode};
-use crate::details::DiagnosticDetails;
+use crate::code::{
+    typed_codes, DiagnosticCode, DiagnosticEffect, ReadableWarningDiagnosticCode,
+    ReadableWarningDiagnosticMarker,
+};
+use crate::details::{
+    AdapterCandidateDetails, AdapterConfigSourceDetails, CliArgvDetails, DiagnosticDetails,
+};
 use crate::record::{DiagnosticRecord, DiagnosticRecordDraft, DiagnosticSource};
 
-mod id;
+pub const CLI_ARGV_IGNORED: ReadableWarningDiagnosticCode =
+    ReadableWarningDiagnosticCode::CliArgvIgnored;
+pub const ADAPTER_CANDIDATE_FAILURE: ReadableWarningDiagnosticCode =
+    ReadableWarningDiagnosticCode::AdapterCandidateFailure;
+pub const ADAPTER_CONFIG_SOURCE_SKIPPED: ReadableWarningDiagnosticCode =
+    ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped;
 
-pub use id::{
-    InvalidWarningId, WarningId, ADAPTER_CANDIDATE_FAILURE, ADAPTER_CONFIG_SOURCE_SKIPPED,
-    CLI_ARGV_IGNORED,
-};
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum WarningEffect {
-    OperationContinued,
-    CandidateSkipped,
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct WarningProjection {
+    #[serde(rename = "id")]
+    code: ReadableWarningDiagnosticCode,
+    reason: String,
+    effect: DiagnosticEffect,
+    details: DiagnosticDetails,
 }
 
-impl WarningEffect {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::OperationContinued => "operation_continued",
-            Self::CandidateSkipped => "candidate_skipped",
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(untagged)]
-pub enum WarningDetails {
-    CliArgv {
-        tokens: Vec<String>,
-    },
-    AdapterCandidate {
-        adapter_id: String,
-        stage: String,
-        code: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        preselected: Option<bool>,
-    },
-    AdapterConfigSource {
-        source_level: String,
-        path_origin: String,
-        path: String,
-        reason_code: String,
-    },
-    Other(Map<String, Value>),
-}
-
-impl WarningDetails {
-    pub fn cli_argv_tokens(&self) -> Option<&[String]> {
-        match self {
-            Self::CliArgv { tokens } => Some(tokens),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct Warning {
-    pub id: WarningId,
-    pub reason: String,
-    pub effect: WarningEffect,
-    pub details: WarningDetails,
-}
-
-impl Warning {
-    pub fn new(
-        id: WarningId,
+impl WarningProjection {
+    pub fn new<C>(
         reason: impl Into<String>,
-        effect: WarningEffect,
-        details: WarningDetails,
-    ) -> Result<Self, EmptyWarningReason> {
+        details: C::Details,
+    ) -> Result<Self, EmptyWarningReason>
+    where
+        C: ReadableWarningDiagnosticMarker,
+    {
         let reason = reason.into();
         if reason.is_empty() {
             return Err(EmptyWarningReason);
         }
-        Ok(Self {
-            id,
+        Ok(Self::from_typed_parts::<C>(reason, details))
+    }
+
+    fn from_typed_parts<C>(reason: String, details: C::Details) -> Self
+    where
+        C: ReadableWarningDiagnosticMarker,
+    {
+        let code = C::WARNING_CODE;
+        Self {
+            code,
             reason,
-            effect,
-            details,
-        })
+            effect: DiagnosticCode::from(code).default_effect(),
+            details: details.into(),
+        }
+    }
+
+    pub const fn code(&self) -> ReadableWarningDiagnosticCode {
+        self.code
+    }
+
+    pub fn reason(&self) -> &str {
+        &self.reason
+    }
+
+    pub const fn effect(&self) -> DiagnosticEffect {
+        self.effect
+    }
+
+    pub const fn details(&self) -> &DiagnosticDetails {
+        &self.details
     }
 
     pub fn unknown_flag(token: &str) -> Self {
@@ -117,17 +101,15 @@ impl Warning {
         } else {
             format!("adapter candidate was not used: {reason}")
         };
-        Self {
-            id: WarningId::adapter_candidate_failure(),
+        Self::from_typed_parts::<typed_codes::readable_warning::AdapterCandidateFailure>(
             reason,
-            effect: WarningEffect::CandidateSkipped,
-            details: WarningDetails::AdapterCandidate {
-                adapter_id: adapter_id.to_owned(),
-                stage: stage.to_owned(),
-                code: code.to_owned(),
-                preselected: if preselected { Some(true) } else { None },
-            },
-        }
+            AdapterCandidateDetails::new(
+                adapter_id,
+                stage,
+                code,
+                if preselected { Some(true) } else { None },
+            ),
+        )
     }
 
     pub fn adapter_config_source_skipped(
@@ -136,124 +118,96 @@ impl Warning {
         path: &str,
         reason_code: &str,
     ) -> Self {
-        Self {
-            id: WarningId::adapter_config_source_skipped(),
-            reason: "adapter config source skipped".to_owned(),
-            effect: WarningEffect::OperationContinued,
-            details: WarningDetails::AdapterConfigSource {
-                source_level: source_level.to_owned(),
-                path_origin: path_origin.to_owned(),
-                path: path.to_owned(),
-                reason_code: reason_code.to_owned(),
-            },
-        }
+        Self::from_typed_parts::<typed_codes::readable_warning::AdapterConfigSourceSkipped>(
+            "adapter config source skipped".to_owned(),
+            AdapterConfigSourceDetails::new(source_level, path_origin, path, reason_code),
+        )
     }
 
     pub fn cli_argv_ignored(tokens: Vec<String>, reason: impl Into<String>) -> Self {
-        Self {
-            id: WarningId::cli_argv_ignored(),
-            reason: reason.into(),
-            effect: WarningEffect::OperationContinued,
-            details: WarningDetails::CliArgv { tokens },
-        }
+        Self::from_typed_parts::<typed_codes::readable_warning::CliArgvIgnored>(
+            reason.into(),
+            CliArgvDetails::new(tokens),
+        )
     }
 
-    pub fn diagnostic_code(&self) -> Option<ReadableWarningDiagnosticCode> {
-        ReadableWarningDiagnosticCode::from_warning_id(self.id.as_str())
-    }
-
-    pub fn to_record_draft(&self, source: DiagnosticSource) -> Option<DiagnosticRecordDraft> {
-        let code = self.diagnostic_code()?;
-        let details = match &self.details {
-            WarningDetails::CliArgv { tokens } => DiagnosticDetails::CliArgv {
-                tokens: tokens.clone(),
-            },
-            WarningDetails::AdapterCandidate {
-                adapter_id,
-                stage,
-                code,
-                preselected,
-            } => DiagnosticDetails::AdapterCandidate {
-                adapter_id: adapter_id.clone(),
-                stage: stage.clone(),
-                code: code.clone(),
-                preselected: *preselected,
-            },
-            WarningDetails::AdapterConfigSource {
-                source_level,
-                path_origin,
-                path,
-                reason_code,
-            } => DiagnosticDetails::AdapterConfigSource {
-                source_level: source_level.clone(),
-                path_origin: path_origin.clone(),
-                path: path.clone(),
-                reason_code: reason_code.clone(),
-            },
-            WarningDetails::Other(_) => return None,
-        };
-        Some(DiagnosticRecordDraft::new(
-            code,
-            self.reason.clone(),
-            details,
-            source,
-        ))
-    }
-
-    pub fn from_record(record: &DiagnosticRecord) -> Option<Self> {
-        match (record.code, &record.details) {
-            (
-                DiagnosticCode::ReadableWarning(ReadableWarningDiagnosticCode::CliArgvIgnored),
-                DiagnosticDetails::CliArgv { tokens },
-            ) => Some(Self::cli_argv_ignored(
-                tokens.clone(),
-                record.summary.clone(),
-            )),
-            (
-                DiagnosticCode::ReadableWarning(
-                    ReadableWarningDiagnosticCode::AdapterCandidateFailure,
-                ),
-                DiagnosticDetails::AdapterCandidate {
+    pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
+        match self.code {
+            ReadableWarningDiagnosticCode::CliArgvIgnored => {
+                let DiagnosticDetails::CliArgv { tokens } = self.details.clone() else {
+                    unreachable_warning_projection(self.code);
+                };
+                DiagnosticRecordDraft::new::<typed_codes::readable_warning::CliArgvIgnored>(
+                    self.reason.clone(),
+                    CliArgvDetails::new(tokens),
+                    source,
+                )
+            }
+            ReadableWarningDiagnosticCode::AdapterCandidateFailure => {
+                let DiagnosticDetails::AdapterCandidate {
                     adapter_id,
                     stage,
                     code,
                     preselected,
-                },
-            ) => Some(Self {
-                id: WarningId::adapter_candidate_failure(),
-                reason: record.summary.clone(),
-                effect: WarningEffect::CandidateSkipped,
-                details: WarningDetails::AdapterCandidate {
-                    adapter_id: adapter_id.clone(),
-                    stage: stage.clone(),
-                    code: code.clone(),
-                    preselected: *preselected,
-                },
-            }),
-            (
-                DiagnosticCode::ReadableWarning(
-                    ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped,
-                ),
-                DiagnosticDetails::AdapterConfigSource {
+                } = self.details.clone()
+                else {
+                    unreachable_warning_projection(self.code);
+                };
+                DiagnosticRecordDraft::new::<typed_codes::readable_warning::AdapterCandidateFailure>(
+                    self.reason.clone(),
+                    AdapterCandidateDetails::new(adapter_id, stage, code, preselected),
+                    source,
+                )
+            }
+            ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped => {
+                let DiagnosticDetails::AdapterConfigSource {
                     source_level,
                     path_origin,
                     path,
                     reason_code,
-                },
-            ) => Some(Self {
-                id: WarningId::adapter_config_source_skipped(),
-                reason: record.summary.clone(),
-                effect: WarningEffect::OperationContinued,
-                details: WarningDetails::AdapterConfigSource {
-                    source_level: source_level.clone(),
-                    path_origin: path_origin.clone(),
-                    path: path.clone(),
-                    reason_code: reason_code.clone(),
-                },
-            }),
-            _ => None,
+                } = self.details.clone()
+                else {
+                    unreachable_warning_projection(self.code);
+                };
+                DiagnosticRecordDraft::new::<
+                    typed_codes::readable_warning::AdapterConfigSourceSkipped,
+                >(
+                    self.reason.clone(),
+                    AdapterConfigSourceDetails::new(source_level, path_origin, path, reason_code),
+                    source,
+                )
+            }
         }
     }
+
+    pub fn from_record(record: &DiagnosticRecord) -> Option<Self> {
+        let DiagnosticCode::ReadableWarning(code) = record.code() else {
+            return None;
+        };
+        match code {
+            ReadableWarningDiagnosticCode::CliArgvIgnored => {
+                Self::from_record_typed::<typed_codes::readable_warning::CliArgvIgnored>(record)
+            }
+            ReadableWarningDiagnosticCode::AdapterCandidateFailure => Self::from_record_typed::<
+                typed_codes::readable_warning::AdapterCandidateFailure,
+            >(record),
+            ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped => Self::from_record_typed::<
+                typed_codes::readable_warning::AdapterConfigSourceSkipped,
+            >(record),
+        }
+    }
+
+    fn from_record_typed<C>(record: &DiagnosticRecord) -> Option<Self>
+    where
+        C: ReadableWarningDiagnosticMarker,
+    {
+        let details = serde_json::from_value::<C::Details>(record.details().to_value()).ok()?;
+        Self::new::<C>(record.summary(), details).ok()
+    }
+}
+
+fn unreachable_warning_projection(code: ReadableWarningDiagnosticCode) -> ! {
+    unreachable!("warning projection details are constructed by typed marker for {code:?}")
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -267,12 +221,12 @@ impl fmt::Display for EmptyWarningReason {
 
 impl std::error::Error for EmptyWarningReason {}
 
-pub fn warning_text_line(warning: &Warning) -> Result<String, serde_json::Error> {
+pub fn warning_text_line(warning: &WarningProjection) -> Result<String, serde_json::Error> {
     let details = serde_json::to_string(&warning.details)?;
     Ok(format!(
         "warning: id={}, effect={}, reason={}, details={}",
-        warning.id.as_str(),
-        warning.effect.as_str(),
+        warning.code.warning_id(),
+        diagnostic_effect_as_str(warning.effect),
         warning.reason.replace(['\r', '\n'], " "),
         details
     ))
@@ -298,7 +252,10 @@ pub fn attach_warnings_to_value<T: Serialize>(mut value: Value, warnings: &[T]) 
     }
 }
 
-pub fn write_warning_text_lines<W: Write>(warnings: &[Warning], writer: &mut W) -> io::Result<()> {
+pub fn write_warning_text_lines<W: Write>(
+    warnings: &[WarningProjection],
+    writer: &mut W,
+) -> io::Result<()> {
     for warning in warnings {
         writeln!(
             writer,
@@ -307,4 +264,15 @@ pub fn write_warning_text_lines<W: Write>(warnings: &[Warning], writer: &mut W) 
         )?;
     }
     Ok(())
+}
+
+fn diagnostic_effect_as_str(effect: DiagnosticEffect) -> &'static str {
+    match effect {
+        DiagnosticEffect::OperationContinued => "operation_continued",
+        DiagnosticEffect::CandidateSkipped => "candidate_skipped",
+        DiagnosticEffect::InputRejected => "input_rejected",
+        DiagnosticEffect::DocumentFailed => "document_failed",
+        DiagnosticEffect::AdapterBoundaryFailed => "adapter_boundary_failed",
+        DiagnosticEffect::InternalFailure => "internal_failure",
+    }
 }

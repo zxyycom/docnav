@@ -10,7 +10,7 @@ use crate::{
     load_standard_parameter_config_source, resolve_standard_parameters, ConfigPathOrigin,
     ConfigSourceLevel, EntryPassthroughPolicy, LoadedStandardParameterConfigSource,
     StandardParameterCatalogError, StandardParameterConfigSourceDescriptor,
-    StandardParameterDiagnostic, StandardParameterResolution, StandardParameterSources,
+    StandardParameterHandoff, StandardParameterResolution, StandardParameterSources,
 };
 
 #[derive(Clone)]
@@ -280,7 +280,7 @@ fn process_passthrough(
 
 fn config_source_parts(
     config: Option<PipelineConfigSource>,
-) -> (Option<JsonValue>, Vec<StandardParameterDiagnostic>) {
+) -> (Option<JsonValue>, Vec<StandardParameterHandoff>) {
     match config {
         Some(PipelineConfigSource::Descriptor(descriptor)) => {
             load_standard_parameter_config_source(&descriptor).into_parts()

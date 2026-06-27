@@ -343,7 +343,7 @@ Code: `crates/docnav-protocol/src/tests/basic.rs`
 
 Proves:
 - positive integer、generated request id、success response 和 failure operation preservation 保持协议基础不变量。
-- stable error code category 映射保持共享分类稳定。
+- protocol diagnostic code category 映射保持共享分类稳定。
 
 ### WB-PROTO-DECODE-001 Protocol request decode 按阶段失败
 Status: implemented
@@ -463,7 +463,7 @@ Status: implemented
 Code: `crates/docnav-adapter-sdk/src/tests/error.rs`
 
 Proves:
-- stable error code 到 adapter exit code 的映射保持稳定。
+- diagnostic code 到 adapter exit code 的映射保持稳定。
 - adapter error 不能使用 success exit code。
 
 ### WB-SDK-BOUNDARY-001 SDK manifest/probe boundary 不污染 stdout

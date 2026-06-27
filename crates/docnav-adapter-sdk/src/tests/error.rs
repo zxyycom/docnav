@@ -1,80 +1,110 @@
-use crate::{exit_code_for_error, AdapterError, AdapterExitCode};
-use docnav_protocol::{StableError, StableErrorCode};
+use crate::{exit_code_for_diagnostic, AdapterError, AdapterExitCode};
+use docnav_diagnostics::{
+    typed_codes, CliArgvDetails, DiagnosticRecordDraft, DiagnosticSource, ProtocolDiagnosticCode,
+};
 
 // @case WB-SDK-ERROR-001
 #[test]
 fn internal_error_maps_to_internal_exit_code() {
     assert_eq!(AdapterExitCode::InternalError.code(), 1);
     assert_eq!(
-        exit_code_for_error(StableErrorCode::InternalError),
+        exit_code_for_diagnostic(ProtocolDiagnosticCode::InternalError),
         AdapterExitCode::InternalError
     );
     assert_eq!(
-        AdapterError::new(StableError::internal_error("test")).exit_code(),
+        AdapterError::internal("test").exit_code(),
         AdapterExitCode::InternalError
     );
 }
 
 #[test]
-fn stable_error_codes_map_to_adapter_exit_codes() {
+fn diagnostic_codes_map_to_adapter_exit_codes() {
     let cases = [
         (
-            StableErrorCode::InvalidRequest,
+            ProtocolDiagnosticCode::InvalidRequest,
             AdapterExitCode::ProtocolError,
         ),
         (
-            StableErrorCode::DocumentNotFound,
+            ProtocolDiagnosticCode::DocumentNotFound,
             AdapterExitCode::HandlerError,
         ),
         (
-            StableErrorCode::DocumentPathInvalid,
+            ProtocolDiagnosticCode::DocumentPathInvalid,
             AdapterExitCode::HandlerError,
         ),
         (
-            StableErrorCode::DocumentEncodingUnsupported,
+            ProtocolDiagnosticCode::DocumentEncodingUnsupported,
             AdapterExitCode::HandlerError,
         ),
         (
-            StableErrorCode::FormatUnknown,
+            ProtocolDiagnosticCode::FormatUnknown,
             AdapterExitCode::HandlerError,
         ),
         (
-            StableErrorCode::FormatAmbiguous,
+            ProtocolDiagnosticCode::FormatAmbiguous,
             AdapterExitCode::HandlerError,
         ),
         (
-            StableErrorCode::CapabilityUnsupported,
+            ProtocolDiagnosticCode::CapabilityUnsupported,
             AdapterExitCode::ProtocolError,
         ),
-        (StableErrorCode::RefNotFound, AdapterExitCode::HandlerError),
-        (StableErrorCode::RefAmbiguous, AdapterExitCode::HandlerError),
-        (StableErrorCode::RefInvalid, AdapterExitCode::HandlerError),
         (
-            StableErrorCode::AdapterUnavailable,
+            ProtocolDiagnosticCode::RefNotFound,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            ProtocolDiagnosticCode::RefAmbiguous,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            ProtocolDiagnosticCode::RefInvalid,
+            AdapterExitCode::HandlerError,
+        ),
+        (
+            ProtocolDiagnosticCode::AdapterUnavailable,
             AdapterExitCode::IoError,
         ),
         (
-            StableErrorCode::AdapterInvokeFailed,
+            ProtocolDiagnosticCode::AdapterInvokeFailed,
             AdapterExitCode::IoError,
         ),
         (
-            StableErrorCode::InternalError,
+            ProtocolDiagnosticCode::InternalError,
             AdapterExitCode::InternalError,
         ),
     ];
 
     for (code, expected) in cases {
-        assert_eq!(exit_code_for_error(code), expected, "{code:?}");
+        assert_eq!(exit_code_for_diagnostic(code), expected, "{code:?}");
     }
 }
 
 #[test]
 fn adapter_error_rejects_success_exit_code() {
     let error = AdapterError::with_exit_code(
-        StableError::ref_not_found("missing"),
+        AdapterError::ref_not_found("missing").diagnostic().clone(),
         AdapterExitCode::Success,
     )
     .expect_err("failure cannot use success exit code");
 
     assert_eq!(error.exit_code(), AdapterExitCode::Success);
+}
+
+#[test]
+fn adapter_error_normalizes_non_protocol_diagnostic_for_protocol_projection() {
+    let warning_draft = DiagnosticRecordDraft::new::<typed_codes::readable_warning::CliArgvIgnored>(
+        "ignored adapter argv",
+        CliArgvDetails::new(vec!["--unused".into()]),
+        DiagnosticSource::with_stage("test", "adapter"),
+    );
+
+    let error = AdapterError::new(warning_draft);
+    let protocol_error = error.protocol_error();
+
+    assert_eq!(error.exit_code(), AdapterExitCode::InternalError);
+    assert_eq!(protocol_error.code(), ProtocolDiagnosticCode::InternalError);
+    assert_eq!(
+        protocol_error.details()["error_id"].as_str(),
+        Some("adapter-error-diagnostic-not-protocol")
+    );
 }

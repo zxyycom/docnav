@@ -1,5 +1,7 @@
 use super::*;
-use docnav_diagnostics::{DiagnosticSource, DiagnosticStack, ProtocolDiagnosticCode};
+use docnav_diagnostics::{
+    DiagnosticCode, DiagnosticSource, DiagnosticStack, ProtocolDiagnosticCode,
+};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -52,7 +54,7 @@ fn failure_response_rules_preserve_or_null_operation() {
     let request: RequestEnvelope =
         serde_json::from_str(&read_fixture("protocol-read-request.json")).expect("request parses");
     let request_failure =
-        ProtocolResponse::failure_for_request(&request, StableError::ref_not_found("missing"));
+        ProtocolResponse::failure_for_request(&request, ProtocolError::ref_not_found("missing"));
 
     match request_failure {
         ProtocolResponse::Failure(response) => {
@@ -62,83 +64,92 @@ fn failure_response_rules_preserve_or_null_operation() {
         ProtocolResponse::Success(_) => panic!("expected failure"),
     }
 
-    let unparsed = FailureResponse::unparsed(StableError::invalid_request("request", "not json"));
+    let unparsed = FailureResponse::unparsed(ProtocolError::invalid_request("request", "not json"));
     assert_eq!(unparsed.protocol_version, PROTOCOL_VERSION);
     assert_eq!(unparsed.operation, None);
     unparsed.validate().expect("unparsed failure validates");
 }
 
 #[test]
-fn stable_error_codes_have_shared_categories() {
+fn protocol_error_codes_use_diagnostic_categories() {
     let cases = [
         (
-            StableErrorCode::InvalidRequest,
-            StableErrorCategory::Request,
+            ProtocolDiagnosticCode::InvalidRequest,
+            ProtocolErrorCategory::Request,
         ),
         (
-            StableErrorCode::CapabilityUnsupported,
-            StableErrorCategory::Request,
+            ProtocolDiagnosticCode::CapabilityUnsupported,
+            ProtocolErrorCategory::Request,
         ),
         (
-            StableErrorCode::DocumentNotFound,
-            StableErrorCategory::Document,
+            ProtocolDiagnosticCode::DocumentNotFound,
+            ProtocolErrorCategory::Document,
         ),
         (
-            StableErrorCode::DocumentPathInvalid,
-            StableErrorCategory::Document,
+            ProtocolDiagnosticCode::DocumentPathInvalid,
+            ProtocolErrorCategory::Document,
         ),
         (
-            StableErrorCode::DocumentEncodingUnsupported,
-            StableErrorCategory::Document,
+            ProtocolDiagnosticCode::DocumentEncodingUnsupported,
+            ProtocolErrorCategory::Document,
         ),
         (
-            StableErrorCode::FormatUnknown,
-            StableErrorCategory::Document,
+            ProtocolDiagnosticCode::FormatUnknown,
+            ProtocolErrorCategory::Document,
         ),
         (
-            StableErrorCode::FormatAmbiguous,
-            StableErrorCategory::Document,
-        ),
-        (StableErrorCode::RefNotFound, StableErrorCategory::Document),
-        (StableErrorCode::RefAmbiguous, StableErrorCategory::Document),
-        (StableErrorCode::RefInvalid, StableErrorCategory::Document),
-        (
-            StableErrorCode::AdapterUnavailable,
-            StableErrorCategory::AdapterBoundary,
+            ProtocolDiagnosticCode::FormatAmbiguous,
+            ProtocolErrorCategory::Document,
         ),
         (
-            StableErrorCode::AdapterInvokeFailed,
-            StableErrorCategory::AdapterBoundary,
+            ProtocolDiagnosticCode::RefNotFound,
+            ProtocolErrorCategory::Document,
         ),
         (
-            StableErrorCode::InternalError,
-            StableErrorCategory::Internal,
+            ProtocolDiagnosticCode::RefAmbiguous,
+            ProtocolErrorCategory::Document,
+        ),
+        (
+            ProtocolDiagnosticCode::RefInvalid,
+            ProtocolErrorCategory::Document,
+        ),
+        (
+            ProtocolDiagnosticCode::AdapterUnavailable,
+            ProtocolErrorCategory::AdapterBoundary,
+        ),
+        (
+            ProtocolDiagnosticCode::AdapterInvokeFailed,
+            ProtocolErrorCategory::AdapterBoundary,
+        ),
+        (
+            ProtocolDiagnosticCode::InternalError,
+            ProtocolErrorCategory::Internal,
         ),
     ];
 
     for (code, expected) in cases {
-        assert_eq!(code.category(), expected, "{code:?}");
+        assert_eq!(protocol_error_category(code), expected, "{code:?}");
         assert_eq!(
-            code.diagnostic().projection_rule().protocol_code,
-            Some(code.diagnostic_code().protocol_code()),
+            DiagnosticCode::from(code).projection_rule().protocol_code,
+            Some(code.protocol_code()),
             "{code:?}"
         );
     }
 }
 
 #[test]
-fn stable_error_required_details_come_from_diagnostic_rules() {
+fn protocol_error_required_details_come_from_diagnostic_rules() {
     assert_eq!(
-        StableErrorCode::InvalidRequest
-            .required_details()
+        ProtocolDiagnosticCode::InvalidRequest
+            .required_detail_names()
             .collect::<Vec<_>>(),
         docnav_diagnostics::ProtocolDiagnosticCode::InvalidRequest
             .required_detail_names()
             .collect::<Vec<_>>()
     );
     assert_eq!(
-        StableErrorCode::AdapterInvokeFailed
-            .required_details()
+        ProtocolDiagnosticCode::AdapterInvokeFailed
+            .required_detail_names()
             .collect::<Vec<_>>(),
         docnav_diagnostics::ProtocolDiagnosticCode::AdapterInvokeFailed
             .required_detail_names()
@@ -147,19 +158,23 @@ fn stable_error_required_details_come_from_diagnostic_rules() {
 }
 
 #[test]
-fn stable_error_roundtrips_through_diagnostic_record_projection() {
-    let error = StableError::ref_not_found("R99").with_guidance(["Run outline first."]);
+fn protocol_error_roundtrips_through_diagnostic_record_projection() {
+    let error = ProtocolError::ref_not_found("R99").with_guidance(["Run outline first."]);
     let mut diagnostics = DiagnosticStack::new();
     let id = diagnostics
-        .push(error.to_record_draft(DiagnosticSource::with_stage("docnav-protocol", "test")))
+        .push(
+            error
+                .to_record_draft(DiagnosticSource::with_stage("docnav-protocol", "test"))
+                .expect("typed protocol error details convert to diagnostic record"),
+        )
         .unwrap();
     let record = diagnostics.get(id).unwrap();
 
     assert_eq!(
-        record.guidance.as_deref(),
+        record.guidance(),
         Some(&["Run outline first.".to_owned()][..])
     );
-    assert_eq!(StableError::from_diagnostic_record(record), Some(error));
+    assert_eq!(ProtocolError::from_diagnostic_record(record), Some(error));
 }
 
 #[test]

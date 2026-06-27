@@ -1,7 +1,7 @@
 use std::io::Write;
 
-use docnav_diagnostics::{attach_warnings_to_value, Warning};
-use docnav_protocol::{OperationResult, StableError};
+use docnav_diagnostics::{attach_warnings_to_value, WarningProjection};
+use docnav_protocol::{OperationResult, ProtocolError};
 use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind};
 use serde_json::{json, Value};
 
@@ -20,23 +20,23 @@ pub fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
     }
 }
 
-pub fn stable_error_readable(error: &StableError) -> Value {
+pub fn protocol_error_readable(error: &ProtocolError) -> Value {
     json!({
-        "code": error.code,
-        "error": error.message,
-        "details": error.details,
-        "guidance": error.guidance.clone().unwrap_or_default(),
+        "code": error.code().protocol_code(),
+        "error": error.message(),
+        "details": error.details(),
+        "guidance": error.guidance().unwrap_or_default(),
     })
 }
 
-pub fn add_warnings(value: Value, warnings: &[Warning]) -> Value {
+pub fn add_warnings(value: Value, warnings: &[WarningProjection]) -> Value {
     attach_warnings_to_value(value, warnings)
 }
 
 pub(crate) fn write_readable_view_value<W: Write>(
     value: Value,
     kind: ReadableViewKind,
-    warnings: &[Warning],
+    warnings: &[WarningProjection],
     stdout: &mut W,
 ) -> Result<(), DocumentOutputError> {
     let value = add_warnings(value, warnings);

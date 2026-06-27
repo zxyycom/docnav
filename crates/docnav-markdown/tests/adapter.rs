@@ -6,8 +6,8 @@ use docnav_adapter_sdk::{invoke_once, Adapter, AdapterExitCode};
 use docnav_markdown::MarkdownAdapter;
 use docnav_protocol::{
     positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
-    OperationArguments, Options, OutlineArguments, OutlineResult, ProtocolResponse, ReadArguments,
-    RequestEnvelope, StableError, StableErrorCode, PROTOCOL_VERSION,
+    OperationArguments, Options, OutlineArguments, OutlineResult, ProtocolDiagnosticCode,
+    ProtocolError, ProtocolResponse, ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -128,7 +128,7 @@ fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {
         .unwrap_or_else(|_| panic!("read ref: {ref_id}"))
 }
 
-fn read_ref_error(path: &Path, ref_id: &str) -> StableError {
+fn read_ref_error(path: &Path, ref_id: &str) -> ProtocolError {
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
         limit_chars: positive(6000),
@@ -143,36 +143,42 @@ fn read_ref_error(path: &Path, ref_id: &str) -> StableError {
     MarkdownAdapter
         .read(&request, &arguments)
         .unwrap_err()
-        .into_error()
+        .protocol_error()
 }
 
-fn assert_ref_not_found(error: &StableError, ref_id: &str) {
+fn assert_ref_not_found(error: &ProtocolError, ref_id: &str) {
     assert_eq!(
-        error.code,
-        StableErrorCode::RefNotFound,
+        error.code(),
+        ProtocolDiagnosticCode::RefNotFound,
         "expected REF_NOT_FOUND for {ref_id}, got {:?}",
-        error.code
+        error.code()
     );
     assert_eq!(
-        error.details.get("ref").and_then(serde_json::Value::as_str),
+        error
+            .details()
+            .get("ref")
+            .and_then(serde_json::Value::as_str),
         Some(ref_id)
     );
 }
 
-fn assert_ref_invalid(error: &StableError, ref_id: &str) {
+fn assert_ref_invalid(error: &ProtocolError, ref_id: &str) {
     assert_eq!(
-        error.code,
-        StableErrorCode::RefInvalid,
+        error.code(),
+        ProtocolDiagnosticCode::RefInvalid,
         "expected REF_INVALID for {ref_id}, got {:?}",
-        error.code
+        error.code()
     );
     assert_eq!(
-        error.details.get("ref").and_then(serde_json::Value::as_str),
+        error
+            .details()
+            .get("ref")
+            .and_then(serde_json::Value::as_str),
         Some(ref_id)
     );
     // reason 必须非空
     let reason = error
-        .details
+        .details()
         .get("reason")
         .and_then(serde_json::Value::as_str)
         .expect("reason field");

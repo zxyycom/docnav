@@ -1,14 +1,18 @@
-use docnav_diagnostics::BoundaryDiagnosticCode;
+use docnav_diagnostics::{
+    typed_codes, BoundaryDiagnosticCode, DiagnosticSource, FieldReasonDetails,
+};
 use docnav_protocol::{
-    decode_protocol_request_value, extract_request_context_from_value, DecodePipelineError,
-    FailureResponse, Operation, OperationArguments, OperationResult, ProtocolResponse,
-    RequestEnvelope, StableError, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
+    decode_protocol_request_value, extract_request_context_from_value,
+    protocol_error_record_draft_with_summary, DecodePipelineError, FailureResponse, Operation,
+    OperationArguments, OperationResult, ProtocolError, ProtocolResponse, RequestEnvelope,
+    PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 use serde_json::Value;
 use std::io::{Read, Write};
 
 use crate::boundary::validated_manifest;
 use crate::constants::{diagnostics, fields};
+use crate::error::protocol_error_from_diagnostic;
 use crate::output::{
     emit_boundary_diagnostic, write_adapter_boundary_error, write_protocol_response,
 };
@@ -48,7 +52,10 @@ where
         Err(error) => {
             return write_invoke_failure(
                 InvokeFailure {
-                    response: ProtocolResponse::failure_for_request(&request, error),
+                    response: ProtocolResponse::failure_for_request(
+                        &request,
+                        protocol_error_from_diagnostic(error.into_diagnostic()),
+                    ),
                     diagnostic: None,
                     exit_code: AdapterExitCode::ProtocolError,
                 },
@@ -102,7 +109,11 @@ fn read_request_failure(error: std::io::Error) -> InvokeFailure {
     let reason = error.to_string();
     InvokeFailure {
         response: ProtocolResponse::Failure(FailureResponse::unparsed(
-            StableError::invalid_request(fields::REQUEST, reason),
+            invalid_request_protocol_error(
+                fields::REQUEST,
+                reason,
+                DiagnosticSource::with_stage("docnav-adapter-sdk", "request-read"),
+            ),
         )),
         diagnostic: Some((
             BoundaryDiagnosticCode::FailedToReadRequest,
@@ -120,7 +131,11 @@ fn parse_request_json(input: &str) -> InvokeResult<Value> {
                 PROTOCOL_VERSION,
                 UNKNOWN_REQUEST_ID,
                 None,
-                StableError::invalid_request(fields::REQUEST, reason),
+                invalid_request_protocol_error(
+                    fields::REQUEST,
+                    reason,
+                    DiagnosticSource::with_stage("docnav-adapter-sdk", "request-parse"),
+                ),
             ),
             diagnostic: Some((
                 BoundaryDiagnosticCode::InvalidRequestJson,
@@ -147,7 +162,11 @@ fn decode_request_value(request_value: Value) -> InvokeResult<RequestEnvelope> {
                     PROTOCOL_VERSION,
                     request_id.clone(),
                     context.operation,
-                    StableError::invalid_request(fields::REQUEST, reason),
+                    invalid_request_protocol_error(
+                        fields::REQUEST,
+                        reason,
+                        DiagnosticSource::with_stage("docnav-adapter-sdk", "request-schema"),
+                    ),
                 ),
                 diagnostic: Some((
                     BoundaryDiagnosticCode::RequestSchemaValidationFailed,
@@ -163,7 +182,11 @@ fn decode_request_value(request_value: Value) -> InvokeResult<RequestEnvelope> {
                     PROTOCOL_VERSION,
                     request_id,
                     context.operation,
-                    StableError::invalid_request(fields::REQUEST, reason),
+                    invalid_request_protocol_error(
+                        fields::REQUEST,
+                        reason,
+                        DiagnosticSource::with_stage("docnav-adapter-sdk", "request-decode"),
+                    ),
                 ),
                 diagnostic: Some((
                     BoundaryDiagnosticCode::RequestDeserializationFailed,
@@ -201,13 +224,31 @@ where
         }
         Err(error) => {
             let exit_code = error.exit_code();
-            let response = ProtocolResponse::failure_for_request(request, error.into_error());
+            let response = ProtocolResponse::failure_for_request(
+                request,
+                protocol_error_from_diagnostic(error.into_diagnostic()),
+            );
             InvokeResponse {
                 response,
                 exit_code,
             }
         }
     }
+}
+
+fn invalid_request_protocol_error(
+    field: impl Into<String>,
+    reason: impl Into<String>,
+    source: DiagnosticSource,
+) -> ProtocolError {
+    let reason = reason.into();
+    protocol_error_from_diagnostic(protocol_error_record_draft_with_summary::<
+        typed_codes::protocol::InvalidRequest,
+    >(
+        reason.clone(),
+        FieldReasonDetails::new(field, reason),
+        source,
+    ))
 }
 
 fn write_invoke_failure<W, E>(failure: InvokeFailure, stdout: &mut W, stderr: &mut E) -> i32
@@ -238,10 +279,9 @@ pub fn execute_operation<A: Adapter>(
         (Operation::Info, OperationArguments::Info(arguments)) => {
             adapter.info(request, arguments).map(OperationResult::Info)
         }
-        _ => Err(StableError::invalid_request(
+        _ => Err(crate::AdapterError::invalid_request(
             fields::ARGUMENTS,
             format!("arguments do not match operation {}", request.operation),
-        )
-        .into()),
+        )),
     }
 }

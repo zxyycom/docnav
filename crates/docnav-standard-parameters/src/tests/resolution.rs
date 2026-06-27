@@ -89,24 +89,19 @@ fn invalid_mapped_value_reports_diagnostic_without_safe_value() {
     ));
     let mut stack = docnav_diagnostics::DiagnosticStack::new();
     let id = stack
-        .push(
-            resolution.diagnostics()[0]
-                .to_record_draft(docnav_diagnostics::DiagnosticSource::with_stage(
-                    "docnav-standard-parameters",
-                    "test",
-                ))
-                .unwrap(),
-        )
+        .push(resolution.diagnostics()[0].to_record_draft(
+            docnav_diagnostics::DiagnosticSource::with_stage("docnav-standard-parameters", "test"),
+        ))
         .unwrap();
     let record = stack.get(id).unwrap();
     assert_eq!(
-        record.code,
+        record.code(),
         docnav_diagnostics::DiagnosticCode::from(
             docnav_diagnostics::ProtocolDiagnosticCode::InvalidRequest
         )
     );
     assert_eq!(
-        record.details.to_value()["field"],
+        record.details().to_value()["field"],
         "docnav.defaults.limit_chars"
     );
 }

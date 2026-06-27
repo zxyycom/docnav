@@ -133,12 +133,15 @@ pub fn registry_check(path: &Path, result: &AppResult<AdapterRegistry>) -> serde
             "message": "registry file is absent; no adapters are registered",
             "adapter_count": 0,
         }),
-        Err(error) => serde_json::json!({
-            "name": "temporary_adapter_registry",
-            "status": "fail",
-            "path": path_to_slash(path),
-            "message": error.error().message,
-            "details": error.error().details,
-        }),
+        Err(error) => {
+            let diagnostic = error.diagnostic();
+            serde_json::json!({
+                "name": "temporary_adapter_registry",
+                "status": "fail",
+                "path": path_to_slash(path),
+                "message": diagnostic.summary(),
+                "details": diagnostic.details().to_value(),
+            })
+        }
     }
 }

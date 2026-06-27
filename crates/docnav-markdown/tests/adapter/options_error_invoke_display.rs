@@ -54,8 +54,8 @@ fn non_utf8_document_returns_stable_encoding_error() {
         .expect_err("non UTF-8 fails");
 
     assert_eq!(
-        error.error().code,
-        StableErrorCode::DocumentEncodingUnsupported
+        error.protocol_error().code(),
+        ProtocolDiagnosticCode::DocumentEncodingUnsupported
     );
 }
 

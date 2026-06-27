@@ -1,9 +1,8 @@
-use docnav_adapter_sdk::{Adapter, AdapterResult};
+use docnav_adapter_sdk::{Adapter, AdapterError, AdapterResult};
 use docnav_protocol::{
     AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoArguments, InfoResult,
     Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode,
-    ProbeResult, ReadArguments, ReadResult, RequestEnvelope, StableError, MANIFEST_VERSION,
-    PROBE_VERSION,
+    ProbeResult, ReadArguments, ReadResult, RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION,
 };
 
 use crate::markdown::{
@@ -134,9 +133,10 @@ impl Adapter for MarkdownAdapter {
         arguments: &FindArguments,
     ) -> AdapterResult<FindResult> {
         if arguments.query.is_empty() {
-            return Err(
-                StableError::invalid_request("arguments.query", "query must not be empty").into(),
-            );
+            return Err(AdapterError::invalid_request(
+                "arguments.query",
+                "query must not be empty",
+            ));
         }
 
         let document = MarkdownDocument::load(&request.document.path)?;

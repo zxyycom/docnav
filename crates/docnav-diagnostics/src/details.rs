@@ -1,7 +1,17 @@
 use std::fmt;
 
 use serde::Serialize;
-use serde_json::{Map, Value};
+use serde_json::Value;
+
+mod conversion;
+mod payload;
+
+pub use payload::{
+    AdapterCandidateDetails, AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails,
+    CapabilityAdapterDetails, CliArgvDetails, DiagnosticDetailsPayload, FieldReasonDetails,
+    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
+    PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DetailFieldType {
@@ -164,6 +174,12 @@ pub enum DiagnosticDetails {
     FieldReason {
         field: String,
         reason: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        path: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        received: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        accepted: Option<Vec<String>>,
     },
     Path {
         path: String,
@@ -235,11 +251,10 @@ pub enum DiagnosticDetails {
         #[serde(skip_serializing_if = "Option::is_none")]
         label: Option<String>,
     },
-    Object(Map<String, Value>),
 }
 
 impl DiagnosticDetails {
     pub fn to_value(&self) -> Value {
-        serde_json::to_value(self).unwrap_or_else(|_| Value::Object(Map::new()))
+        serde_json::to_value(self).expect("diagnostic details variants serialize to JSON values")
     }
 }

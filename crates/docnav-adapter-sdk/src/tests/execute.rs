@@ -1,8 +1,8 @@
 use super::common::{positive, StubAdapter};
 use crate::execute_operation;
 use docnav_protocol::{
-    Document, Operation, OperationArguments, OperationResult, OutlineArguments, RequestEnvelope,
-    StableErrorCode, PROTOCOL_VERSION,
+    Document, Operation, OperationArguments, OperationResult, OutlineArguments,
+    ProtocolDiagnosticCode, RequestEnvelope, PROTOCOL_VERSION,
 };
 
 // @case WB-SDK-EXECUTE-001
@@ -50,11 +50,12 @@ fn execute_operation_rejects_mismatched_operation_arguments() {
     };
 
     let error = execute_operation(&StubAdapter, &request).expect_err("mismatch fails");
+    let stable = error.protocol_error();
 
-    assert_eq!(error.error().code, StableErrorCode::InvalidRequest);
-    assert_eq!(error.error().details["field"], "arguments");
+    assert_eq!(stable.code(), ProtocolDiagnosticCode::InvalidRequest);
+    assert_eq!(stable.details()["field"], "arguments");
     assert_eq!(
-        error.error().details["reason"],
+        stable.details()["reason"],
         "arguments do not match operation read"
     );
 }

@@ -1,6 +1,6 @@
 //! Renderer error types for `docnav-readable`.
 //!
-//! All renderer failures use a single stable error id
+//! All renderer failures use a single stable renderer error id
 //! `readable_view_render_failed` and carry a diagnostic message.
 
 use std::fmt;
@@ -19,7 +19,7 @@ impl RenderError {
     /// The stable renderer error id used by all readable-view failures.
     pub const ERROR_ID: &'static str = "readable_view_render_failed";
 
-    /// Create a render error with the stable error id and a diagnostic message.
+    /// Create a render error with the stable renderer error id and a diagnostic message.
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             id: Self::ERROR_ID.to_owned(),

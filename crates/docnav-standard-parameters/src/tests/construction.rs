@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use docnav_diagnostics::{WarningDetails, WarningEffect};
+use docnav_diagnostics::{DiagnosticDetails, DiagnosticEffect};
 use docnav_typed_fields::{
     DefaultMetadata, FieldNumericRange, ProcessingId, TypedValue, ValidationReason, ValueKind,
 };
@@ -169,10 +169,10 @@ fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() 
 
     assert_eq!(loaded_project.diagnostics().len(), 1);
     let warning = loaded_project.diagnostics()[0].as_warning().unwrap();
-    assert_eq!(warning.effect, WarningEffect::OperationContinued);
+    assert_eq!(warning.effect(), DiagnosticEffect::OperationContinued);
     assert_eq!(
-        warning.details,
-        WarningDetails::AdapterConfigSource {
+        warning.details(),
+        &DiagnosticDetails::AdapterConfigSource {
             source_level: "project".to_owned(),
             path_origin: "override".to_owned(),
             path: missing.display().to_string(),
@@ -391,10 +391,10 @@ fn nested_processed_passthrough_preserves_raw_structure() {
 
 fn assert_warning_reason(loaded: &LoadedStandardParameterConfigSource, reason_code: &str) {
     let warning = loaded.diagnostics()[0].as_warning().unwrap();
-    let WarningDetails::AdapterConfigSource {
+    let DiagnosticDetails::AdapterConfigSource {
         reason_code: actual,
         ..
-    } = &warning.details
+    } = warning.details()
     else {
         panic!("expected adapter config source warning details");
     };

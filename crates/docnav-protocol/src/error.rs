@@ -1,80 +1,63 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use std::fmt;
 
 use docnav_diagnostics::{
-    DiagnosticCategory, DiagnosticCode, DiagnosticDetails, DiagnosticRecord, DiagnosticRecordDraft,
-    DiagnosticSource, ProtocolDiagnosticCode,
+    typed_codes, AdapterReasonDetails, CapabilityAdapterDetails, DiagnosticCategory,
+    DiagnosticCode, DiagnosticDetailsPayload, DiagnosticRecord, DiagnosticRecordDraft,
+    DiagnosticSource, FieldReasonDetails, FormatAmbiguousDetails, FormatUnknownDetails,
+    InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails, ProtocolDiagnosticCode,
+    ProtocolDiagnosticMarker, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
-use crate::constants::{error_detail_fields as details_fields, stable_error_messages};
+use crate::constants::protocol_error_messages;
 use crate::{ErrorDetails, Operation};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct StableErrorCodeRule {
-    code: StableErrorCode,
-    diagnostic_code: ProtocolDiagnosticCode,
-    default_message: &'static str,
+pub fn protocol_error_record_draft<C>(
+    details: C::Details,
+    source: DiagnosticSource,
+) -> DiagnosticRecordDraft
+where
+    C: ProtocolDiagnosticMarker,
+{
+    protocol_error_record_draft_with_summary::<C>(
+        protocol_error_default_message(C::PROTOCOL_CODE),
+        details,
+        source,
+    )
 }
 
-const fn stable_error_code_rule(
-    code: StableErrorCode,
-    diagnostic_code: ProtocolDiagnosticCode,
-    default_message: &'static str,
-) -> StableErrorCodeRule {
-    StableErrorCodeRule {
-        code,
-        diagnostic_code,
-        default_message,
-    }
+pub fn protocol_error_record_draft_with_summary<C>(
+    summary: impl Into<String>,
+    details: C::Details,
+    source: DiagnosticSource,
+) -> DiagnosticRecordDraft
+where
+    C: ProtocolDiagnosticMarker,
+{
+    DiagnosticRecordDraft::new::<C>(summary, details, source)
 }
-
-macro_rules! stable_error_code_rules {
-    ($($code:ident => ($diagnostic_code:ident, $message:ident)),+ $(,)?) => {
-        [
-            $(
-                stable_error_code_rule(
-                    StableErrorCode::$code,
-                    ProtocolDiagnosticCode::$diagnostic_code,
-                    stable_error_messages::$message,
-                ),
-            )+
-        ]
-    };
-}
-
-const STABLE_ERROR_CODE_RULES: [StableErrorCodeRule; 13] = stable_error_code_rules![
-    InvalidRequest => (InvalidRequest, INVALID_PROTOCOL_REQUEST),
-    DocumentNotFound => (DocumentNotFound, DOCUMENT_NOT_FOUND),
-    DocumentPathInvalid => (DocumentPathInvalid, DOCUMENT_PATH_INVALID),
-    DocumentEncodingUnsupported => (DocumentEncodingUnsupported, DOCUMENT_ENCODING_UNSUPPORTED),
-    FormatUnknown => (FormatUnknown, DOCUMENT_FORMAT_UNKNOWN),
-    FormatAmbiguous => (FormatAmbiguous, DOCUMENT_FORMAT_AMBIGUOUS),
-    CapabilityUnsupported => (CapabilityUnsupported, CAPABILITY_UNSUPPORTED),
-    RefNotFound => (RefNotFound, REF_NOT_FOUND),
-    RefAmbiguous => (RefAmbiguous, REF_AMBIGUOUS),
-    RefInvalid => (RefInvalid, REF_INVALID),
-    AdapterUnavailable => (AdapterUnavailable, ADAPTER_UNAVAILABLE),
-    AdapterInvokeFailed => (AdapterInvokeFailed, ADAPTER_INVOKE_FAILED),
-    InternalError => (InternalError, INTERNAL_ERROR),
-];
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StableError {
-    pub code: StableErrorCode,
-    pub message: String,
-    pub details: ErrorDetails,
+pub struct ProtocolError {
+    #[serde(with = "protocol_diagnostic_code_serde")]
+    code: ProtocolDiagnosticCode,
+    message: String,
+    details: ErrorDetails,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub guidance: Option<Vec<String>>,
+    guidance: Option<Vec<String>>,
 }
 
-impl StableError {
-    pub fn new(code: StableErrorCode, message: impl Into<String>, details: ErrorDetails) -> Self {
+impl ProtocolError {
+    pub fn new<C>(message: impl Into<String>, details: C::Details) -> Self
+    where
+        C: ProtocolDiagnosticMarker,
+    {
         Self {
-            code,
+            code: C::PROTOCOL_CODE,
             message: message.into(),
-            details,
+            details: error_details_from_payload(&details),
             guidance: None,
         }
     }
@@ -84,34 +67,44 @@ impl StableError {
         self
     }
 
-    fn with_default_message(code: StableErrorCode, details: ErrorDetails) -> Self {
-        Self::new(code, code.default_message(), details)
+    pub const fn code(&self) -> ProtocolDiagnosticCode {
+        self.code
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub const fn details(&self) -> &ErrorDetails {
+        &self.details
+    }
+
+    pub fn guidance(&self) -> Option<&[String]> {
+        self.guidance.as_deref()
+    }
+
+    fn with_default_message<C>(details: C::Details) -> Self
+    where
+        C: ProtocolDiagnosticMarker,
+    {
+        Self::new::<C>(protocol_error_default_message(C::PROTOCOL_CODE), details)
     }
 
     pub fn invalid_request(field: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::InvalidRequest,
-            details([
-                (details_fields::FIELD, field.into()),
-                (details_fields::REASON, reason.into()),
-            ]),
+        Self::with_default_message::<typed_codes::protocol::InvalidRequest>(
+            FieldReasonDetails::new(field, reason),
         )
     }
 
     pub fn document_not_found(path: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::DocumentNotFound,
-            details([(details_fields::PATH, path.into())]),
-        )
+        Self::with_default_message::<typed_codes::protocol::DocumentNotFound>(PathDetails::new(
+            path,
+        ))
     }
 
     pub fn document_path_invalid(path: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::DocumentPathInvalid,
-            details([
-                (details_fields::PATH, path.into()),
-                (details_fields::REASON, reason.into()),
-            ]),
+        Self::with_default_message::<typed_codes::protocol::DocumentPathInvalid>(
+            PathReasonDetails::new(path, reason),
         )
     }
 
@@ -119,12 +112,8 @@ impl StableError {
         path: impl Into<String>,
         encoding: impl Into<String>,
     ) -> Self {
-        Self::with_default_message(
-            StableErrorCode::DocumentEncodingUnsupported,
-            details([
-                (details_fields::PATH, path.into()),
-                (details_fields::ENCODING, encoding.into()),
-            ]),
+        Self::with_default_message::<typed_codes::protocol::DocumentEncodingUnsupported>(
+            PathEncodingDetails::new(path, encoding),
         )
     }
 
@@ -133,232 +122,254 @@ impl StableError {
         reason: impl Into<String>,
         candidates: Value,
     ) -> Self {
-        let mut details = details([
-            (details_fields::PATH, path.into()),
-            (details_fields::REASON, reason.into()),
-        ]);
-        details.insert(details_fields::CANDIDATES.to_owned(), candidates);
-        Self::with_default_message(StableErrorCode::FormatUnknown, details)
+        Self::with_default_message::<typed_codes::protocol::FormatUnknown>(
+            FormatUnknownDetails::new(path, reason, candidates),
+        )
     }
 
     pub fn format_ambiguous(path: impl Into<String>, candidates: Value) -> Self {
-        let mut details = details([(details_fields::PATH, path.into())]);
-        details.insert(details_fields::CANDIDATES.to_owned(), candidates);
-        Self::with_default_message(StableErrorCode::FormatAmbiguous, details)
+        Self::with_default_message::<typed_codes::protocol::FormatAmbiguous>(
+            FormatAmbiguousDetails::new(path, candidates),
+        )
     }
 
     pub fn capability_unsupported(capability: Operation, adapter_id: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::CapabilityUnsupported,
-            details([
-                (details_fields::CAPABILITY, capability.to_string()),
-                (details_fields::ADAPTER_ID, adapter_id.into()),
-            ]),
+        Self::with_default_message::<typed_codes::protocol::CapabilityUnsupported>(
+            CapabilityAdapterDetails::new(capability.to_string(), adapter_id),
         )
     }
 
     pub fn ref_not_found(ref_id: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::RefNotFound,
-            details([(details_fields::REF, ref_id.into())]),
-        )
+        Self::with_default_message::<typed_codes::protocol::RefNotFound>(RefDetails::new(ref_id))
     }
 
     pub fn ref_ambiguous(ref_id: impl Into<String>, candidate_count: u32) -> Self {
-        let mut details = details([(details_fields::REF, ref_id.into())]);
-        details.insert(
-            details_fields::CANDIDATE_COUNT.to_owned(),
-            Value::from(candidate_count),
-        );
-        Self::with_default_message(StableErrorCode::RefAmbiguous, details)
-    }
-
-    pub fn ref_invalid(ref_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::RefInvalid,
-            details([
-                (details_fields::REF, ref_id.into()),
-                (details_fields::REASON, reason.into()),
-            ]),
+        Self::with_default_message::<typed_codes::protocol::RefAmbiguous>(
+            RefCandidateCountDetails::new(ref_id, candidate_count),
         )
     }
 
+    pub fn ref_invalid(ref_id: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::with_default_message::<typed_codes::protocol::RefInvalid>(RefReasonDetails::new(
+            ref_id, reason,
+        ))
+    }
+
     pub fn adapter_unavailable(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::AdapterUnavailable,
-            details([
-                (details_fields::ADAPTER_ID, adapter_id.into()),
-                (details_fields::REASON, reason.into()),
-            ]),
+        Self::with_default_message::<typed_codes::protocol::AdapterUnavailable>(
+            AdapterReasonDetails::new(adapter_id, reason),
         )
     }
 
     pub fn adapter_invoke_failed(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::AdapterInvokeFailed,
-            details([
-                (details_fields::ADAPTER_ID, adapter_id.into()),
-                (details_fields::REASON, reason.into()),
-            ]),
+        Self::with_default_message::<typed_codes::protocol::AdapterInvokeFailed>(
+            AdapterReasonDetails::new(adapter_id, reason),
         )
     }
 
     pub fn internal_error(error_id: impl Into<String>) -> Self {
-        Self::with_default_message(
-            StableErrorCode::InternalError,
-            details([(details_fields::ERROR_ID, error_id.into())]),
-        )
+        Self::with_default_message::<typed_codes::protocol::InternalError>(InternalDetails::new(
+            error_id,
+        ))
     }
 
-    pub fn validate_required_details(&self) -> Result<(), MissingErrorDetail> {
-        for field in self.code.required_details() {
-            if !self.details.contains_key(field) {
-                return Err(MissingErrorDetail {
-                    code: self.code,
-                    field,
-                });
+    pub fn validate_details(&self) -> Result<(), InvalidErrorDetail> {
+        self.code
+            .details_rule()
+            .validate_value(&Value::Object(self.details.clone().into_iter().collect()))
+            .map_err(|source| InvalidErrorDetail {
+                code: self.code,
+                reason: source.to_string(),
+            })
+    }
+
+    pub fn to_record_draft(
+        &self,
+        source: DiagnosticSource,
+    ) -> Result<DiagnosticRecordDraft, InvalidErrorDetail> {
+        match self.code {
+            ProtocolDiagnosticCode::InvalidRequest => {
+                self.record_draft::<typed_codes::protocol::InvalidRequest>(source)
+            }
+            ProtocolDiagnosticCode::DocumentNotFound => {
+                self.record_draft::<typed_codes::protocol::DocumentNotFound>(source)
+            }
+            ProtocolDiagnosticCode::DocumentPathInvalid => {
+                self.record_draft::<typed_codes::protocol::DocumentPathInvalid>(source)
+            }
+            ProtocolDiagnosticCode::DocumentEncodingUnsupported => {
+                self.record_draft::<typed_codes::protocol::DocumentEncodingUnsupported>(source)
+            }
+            ProtocolDiagnosticCode::FormatUnknown => {
+                self.record_draft::<typed_codes::protocol::FormatUnknown>(source)
+            }
+            ProtocolDiagnosticCode::FormatAmbiguous => {
+                self.record_draft::<typed_codes::protocol::FormatAmbiguous>(source)
+            }
+            ProtocolDiagnosticCode::CapabilityUnsupported => {
+                self.record_draft::<typed_codes::protocol::CapabilityUnsupported>(source)
+            }
+            ProtocolDiagnosticCode::RefNotFound => {
+                self.record_draft::<typed_codes::protocol::RefNotFound>(source)
+            }
+            ProtocolDiagnosticCode::RefAmbiguous => {
+                self.record_draft::<typed_codes::protocol::RefAmbiguous>(source)
+            }
+            ProtocolDiagnosticCode::RefInvalid => {
+                self.record_draft::<typed_codes::protocol::RefInvalid>(source)
+            }
+            ProtocolDiagnosticCode::AdapterUnavailable => {
+                self.record_draft::<typed_codes::protocol::AdapterUnavailable>(source)
+            }
+            ProtocolDiagnosticCode::AdapterInvokeFailed => {
+                self.record_draft::<typed_codes::protocol::AdapterInvokeFailed>(source)
+            }
+            ProtocolDiagnosticCode::InternalError => {
+                self.record_draft::<typed_codes::protocol::InternalError>(source)
             }
         }
-        Ok(())
     }
 
-    pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
-        let details = self
-            .details
-            .clone()
-            .into_iter()
-            .collect::<serde_json::Map<String, Value>>();
-        let draft = DiagnosticRecordDraft::new(
-            self.code.diagnostic_code(),
-            self.message.clone(),
-            DiagnosticDetails::Object(details),
-            source,
-        );
-        match &self.guidance {
+    fn record_draft<C>(
+        &self,
+        source: DiagnosticSource,
+    ) -> Result<DiagnosticRecordDraft, InvalidErrorDetail>
+    where
+        C: ProtocolDiagnosticMarker,
+    {
+        let details = payload_from_error_details::<C::Details>(self.code, &self.details)?;
+        let draft = DiagnosticRecordDraft::new::<C>(self.message.clone(), details, source);
+        Ok(match &self.guidance {
             Some(guidance) => draft.with_guidance(guidance.clone()),
             None => draft,
-        }
+        })
     }
 
     pub fn from_diagnostic_record(record: &DiagnosticRecord) -> Option<Self> {
-        let DiagnosticCode::Protocol(code) = record.code else {
+        let DiagnosticCode::Protocol(code) = record.code() else {
             return None;
         };
-        let Value::Object(details) = record.details.to_value() else {
+        let Value::Object(details) = record.details().to_value() else {
             return None;
         };
         Some(Self {
-            code: code.into(),
-            message: record.summary.clone(),
+            code,
+            message: record.summary().to_owned(),
             details: details.into_iter().collect(),
-            guidance: record.guidance.clone(),
+            guidance: record.guidance().map(|guidance| guidance.to_vec()),
         })
     }
 }
 
-fn details(fields: impl IntoIterator<Item = (&'static str, String)>) -> ErrorDetails {
-    fields
-        .into_iter()
-        .map(|(key, value)| (key.to_owned(), Value::String(value)))
-        .collect()
+fn error_details_from_payload<T>(details: &T) -> ErrorDetails
+where
+    T: DiagnosticDetailsPayload,
+{
+    let Value::Object(object) =
+        serde_json::to_value(details).expect("diagnostic details payloads serialize to objects")
+    else {
+        unreachable!("diagnostic details payloads serialize to objects");
+    };
+    object.into_iter().collect()
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum StableErrorCode {
-    InvalidRequest,
-    DocumentNotFound,
-    DocumentPathInvalid,
-    DocumentEncodingUnsupported,
-    FormatUnknown,
-    FormatAmbiguous,
-    CapabilityUnsupported,
-    RefNotFound,
-    RefAmbiguous,
-    RefInvalid,
-    AdapterUnavailable,
-    AdapterInvokeFailed,
-    InternalError,
-}
-
-impl StableErrorCode {
-    const fn rule(self) -> StableErrorCodeRule {
-        STABLE_ERROR_CODE_RULES[self as usize]
-    }
-
-    pub const fn default_message(self) -> &'static str {
-        self.rule().default_message
-    }
-
-    pub const fn diagnostic_code(self) -> ProtocolDiagnosticCode {
-        self.rule().diagnostic_code
-    }
-
-    pub const fn diagnostic(self) -> DiagnosticCode {
-        DiagnosticCode::Protocol(self.diagnostic_code())
-    }
-
-    pub fn required_details(self) -> impl Iterator<Item = &'static str> {
-        self.diagnostic_code().required_detail_names()
-    }
-
-    pub const fn category(self) -> StableErrorCategory {
-        match self.diagnostic().category() {
-            DiagnosticCategory::Request => StableErrorCategory::Request,
-            DiagnosticCategory::Document => StableErrorCategory::Document,
-            DiagnosticCategory::AdapterBoundary => StableErrorCategory::AdapterBoundary,
-            DiagnosticCategory::Internal | DiagnosticCategory::Compatibility => {
-                StableErrorCategory::Internal
-            }
+fn payload_from_error_details<T>(
+    code: ProtocolDiagnosticCode,
+    details: &ErrorDetails,
+) -> Result<T, InvalidErrorDetail>
+where
+    T: DiagnosticDetailsPayload,
+{
+    serde_json::from_value(Value::Object(details.clone().into_iter().collect())).map_err(|error| {
+        InvalidErrorDetail {
+            code,
+            reason: error.to_string(),
         }
-    }
-}
-
-impl From<ProtocolDiagnosticCode> for StableErrorCode {
-    fn from(code: ProtocolDiagnosticCode) -> Self {
-        STABLE_ERROR_CODE_RULES[code as usize].code
-    }
+    })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum StableErrorCategory {
+pub enum ProtocolErrorCategory {
     Request,
     Document,
     AdapterBoundary,
     Internal,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct MissingErrorDetail {
-    pub code: StableErrorCode,
-    pub field: &'static str,
+pub const fn protocol_error_default_message(code: ProtocolDiagnosticCode) -> &'static str {
+    match code {
+        ProtocolDiagnosticCode::InvalidRequest => protocol_error_messages::INVALID_PROTOCOL_REQUEST,
+        ProtocolDiagnosticCode::DocumentNotFound => protocol_error_messages::DOCUMENT_NOT_FOUND,
+        ProtocolDiagnosticCode::DocumentPathInvalid => {
+            protocol_error_messages::DOCUMENT_PATH_INVALID
+        }
+        ProtocolDiagnosticCode::DocumentEncodingUnsupported => {
+            protocol_error_messages::DOCUMENT_ENCODING_UNSUPPORTED
+        }
+        ProtocolDiagnosticCode::FormatUnknown => protocol_error_messages::DOCUMENT_FORMAT_UNKNOWN,
+        ProtocolDiagnosticCode::FormatAmbiguous => {
+            protocol_error_messages::DOCUMENT_FORMAT_AMBIGUOUS
+        }
+        ProtocolDiagnosticCode::CapabilityUnsupported => {
+            protocol_error_messages::CAPABILITY_UNSUPPORTED
+        }
+        ProtocolDiagnosticCode::RefNotFound => protocol_error_messages::REF_NOT_FOUND,
+        ProtocolDiagnosticCode::RefAmbiguous => protocol_error_messages::REF_AMBIGUOUS,
+        ProtocolDiagnosticCode::RefInvalid => protocol_error_messages::REF_INVALID,
+        ProtocolDiagnosticCode::AdapterUnavailable => protocol_error_messages::ADAPTER_UNAVAILABLE,
+        ProtocolDiagnosticCode::AdapterInvokeFailed => {
+            protocol_error_messages::ADAPTER_INVOKE_FAILED
+        }
+        ProtocolDiagnosticCode::InternalError => protocol_error_messages::INTERNAL_ERROR,
+    }
 }
 
-impl fmt::Display for MissingErrorDetail {
+pub const fn protocol_error_category(code: ProtocolDiagnosticCode) -> ProtocolErrorCategory {
+    match DiagnosticCode::Protocol(code).category() {
+        DiagnosticCategory::Request => ProtocolErrorCategory::Request,
+        DiagnosticCategory::Document => ProtocolErrorCategory::Document,
+        DiagnosticCategory::AdapterBoundary => ProtocolErrorCategory::AdapterBoundary,
+        DiagnosticCategory::Internal | DiagnosticCategory::Compatibility => {
+            ProtocolErrorCategory::Internal
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InvalidErrorDetail {
+    pub code: ProtocolDiagnosticCode,
+    pub reason: String,
+}
+
+impl fmt::Display for InvalidErrorDetail {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "error {:?} is missing required details.{}",
-            self.code, self.field
+            "error {:?} has invalid details: {}",
+            self.code, self.reason
         )
     }
 }
 
-impl std::error::Error for MissingErrorDetail {}
+impl std::error::Error for InvalidErrorDetail {}
 
-#[cfg(test)]
-mod tests {
+mod protocol_diagnostic_code_serde {
     use super::*;
 
-    #[test]
-    fn stable_error_code_rules_follow_enum_order() {
-        assert_eq!(
-            STABLE_ERROR_CODE_RULES.len(),
-            StableErrorCode::InternalError as usize + 1
-        );
-        for (index, rule) in STABLE_ERROR_CODE_RULES.iter().enumerate() {
-            assert_eq!(rule.code as usize, index, "{:?}", rule.code);
-            assert_eq!(rule.diagnostic_code as usize, index, "{:?}", rule.code);
-        }
+    pub fn serialize<S>(code: &ProtocolDiagnosticCode, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(code.protocol_code())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ProtocolDiagnosticCode, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        ProtocolDiagnosticCode::from_protocol_code(&value).ok_or_else(|| {
+            serde::de::Error::custom(format!("unknown protocol error code {value:?}"))
+        })
     }
 }

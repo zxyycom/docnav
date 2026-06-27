@@ -4,7 +4,7 @@
 定义 Docnav v0 原始协议共享类型、协议兼容判断、adapter SDK invoke 生命周期，以及 schema 和示例验证的实现要求。
 ## Requirements
 ### Requirement: 共享协议类型完整覆盖 v0 原始协议
-`docnav-protocol` MUST 定义 v0 request envelope、response envelope、operation、operation arguments、operation result、page、stable error、manifest 和 probe 的共享类型，并 MUST 不包含格式专属解析字段。
+`docnav-protocol` MUST 定义 v0 request envelope、response envelope、operation、operation arguments、operation result、page、protocol error、manifest 和 probe 的共享类型，并 MUST 不包含格式专属解析字段。
 
 #### Scenario: 构造 outline 成功响应
 - **WHEN** 调用方使用共享协议类型构造 `outline` 成功响应
@@ -217,7 +217,7 @@ Adapter SDK 入口必须保持以下分层：
 - **WHEN** 共享代码 decode protocol request、protocol response、manifest 或 probe JSON value
 - **THEN** decode pipeline 在把 JSON value 当作 typed contract data 前，先按 owning schema 校验
 - **THEN** typed deserialization 和 semantic validation 在 schema validation 之后执行
-- **THEN** 调用方 surface 保持既有 stable error category、field path、diagnostic text 和 exit behavior
+- **THEN** 调用方 surface 保持既有 protocol diagnostic category、field path、diagnostic text 和 exit behavior
 
 #### Scenario: Adapter invoke 保持严格 protocol decoding
 
@@ -228,7 +228,7 @@ Adapter SDK 入口必须保持以下分层：
 
 #### Scenario: Adapter direct CLI document command 复用共享 helper
 
-- **WHEN** adapter direct CLI document operation 成功或返回 stable error
+- **WHEN** adapter direct CLI document operation 成功或返回 diagnostic failure outcome
 - **THEN** SDK 可以使用共享 diagnostics 表达 warning envelope 和 stderr warning text
 - **THEN** SDK 可以使用 `docnav-output` 执行 document output mode dispatch
 - **THEN** manifest、probe 和 help output 保持既有 adapter contract 或 plain text boundary
@@ -385,4 +385,3 @@ Adapter `invoke` stdin JSON MUST 保持严格 protocol input。SDK MUST NOT 在 
 - **AND** 项目级 adapter 配置设置了 `options.max_heading_level`
 - **THEN** SDK 不把该配置注入 request
 - **THEN** adapter handler 只看到 request 中显式携带的 arguments
-

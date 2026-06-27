@@ -1,6 +1,6 @@
 use docnav_protocol::{
     FindArguments, FindResult, InfoArguments, InfoResult, Manifest, Operation, OutlineArguments,
-    OutlineResult, ProbeResult, ReadArguments, ReadResult, RequestEnvelope, StableError,
+    OutlineResult, ProbeResult, ReadArguments, ReadResult, RequestEnvelope,
 };
 
 use crate::AdapterError;
@@ -47,6 +47,6 @@ pub trait Adapter {
     }
 
     fn unsupported(&self, operation: Operation) -> AdapterError {
-        StableError::capability_unsupported(operation, self.adapter_id()).into()
+        AdapterError::capability_unsupported(operation, self.adapter_id())
     }
 }

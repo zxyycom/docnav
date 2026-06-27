@@ -32,8 +32,8 @@ pub use pipeline::{
 };
 pub(crate) use resolution::resolve_standard_parameters;
 pub use resolution::{
-    ResolvedOperationArgumentBinding, ResolvedStandardParameter, StandardParameterDiagnostic,
-    StandardParameterResolution, StandardParameterValidationDiagnostic,
+    ResolvedOperationArgumentBinding, ResolvedStandardParameter, StandardParameterHandoff,
+    StandardParameterResolution, StandardParameterValidationIssue,
 };
 pub use source::{
     EntryPassthroughPolicy, PassthroughDisposition, PassthroughValue, StandardParameterSourceInfo,

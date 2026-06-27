@@ -75,7 +75,7 @@ Consumers of typed field definitions MUST reuse field metadata without inheritin
 
 #### Scenario: JSON contract validation consumes field metadata
 - **WHEN** manifest, probe, or protocol JSON validation consumes typed field metadata
-- **THEN** JSON contract ownership, schema parity, semantic validation, stable error mapping, and envelope behavior remain with the relevant adapter/protocol owner
+- **THEN** JSON contract ownership, schema parity, semantic validation, diagnostic/protocol error mapping, and envelope behavior remain with the relevant adapter/protocol owner
 
 ### Requirement: Definition sets provide typed-field projections
 Typed field definitions MUST support building a set of field definitions that validates field consistency and exposes typed-field projections without performing consumer-owned resolution.

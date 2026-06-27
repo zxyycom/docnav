@@ -82,5 +82,5 @@ pub fn select_adapter(request: AdapterSelectionRequest<'_>) -> AppResult<Adapter
         }
     }
 
-    Err(state.format_unknown(document).into())
+    Err(state.format_unknown(document))
 }

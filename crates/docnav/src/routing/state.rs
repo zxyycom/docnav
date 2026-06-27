@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
-use docnav_protocol::StableError;
 use serde_json::Value;
 
 use super::candidate::SelectedCandidate;
 use super::{AdapterSelection, AdapterSelectionWarning, CandidateEvidence};
+use crate::error::AppError;
 use crate::project_paths::NormalizedDocumentPath;
 
 #[derive(Default)]
@@ -55,8 +55,8 @@ impl SelectionState {
         }
     }
 
-    pub(super) fn format_unknown(self, document: &NormalizedDocumentPath) -> StableError {
-        StableError::format_unknown(
+    pub(super) fn format_unknown(self, document: &NormalizedDocumentPath) -> AppError {
+        AppError::format_unknown(
             document.adapter_path.clone(),
             "no registered adapter supports the document and operation",
             serde_json::to_value(&self.evidence).unwrap_or_else(|_| Value::Array(Vec::new())),

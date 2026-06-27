@@ -85,7 +85,7 @@ pub struct ConfigOverride {
 /// Describes an expected renderer failure.
 #[derive(Clone, Debug, Deserialize)]
 pub struct ExpectedFailure {
-    /// The stable error id, e.g. `"readable_view_render_failed"`.
+    /// The stable renderer error id, e.g. `"readable_view_render_failed"`.
     pub error_id: String,
     /// An optional substring that must appear in the error message.
     #[serde(default)]

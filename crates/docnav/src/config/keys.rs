@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use docnav_protocol::{StableError, StableErrorCode};
+use docnav_diagnostics::{typed_codes, DiagnosticSource, FieldReasonDetails};
+use docnav_protocol::protocol_error_record_draft_with_summary;
 use serde_json::{json, Value};
 
 use crate::cli::OutputMode;
@@ -219,21 +220,26 @@ fn parse_output(field: &str, value: &str, path: &Path) -> AppResult<OutputMode> 
     value.parse::<OutputMode>().map_err(|reason: String| {
         let path = path_to_slash(path);
         let accepted = OutputMode::ACCEPTED_VALUES.join(", ");
-        let mut details = docnav_protocol::ErrorDetails::new();
-        details.insert("field".to_owned(), json!(field));
-        details.insert(
-            "reason".to_owned(),
-            json!(format!(
+        let details = FieldReasonDetails {
+            field: field.to_owned(),
+            reason: format!(
                 "{path} contains invalid {field}: received {value:?}; accepted values: {accepted}; {reason}"
-            )),
-        );
-        details.insert("path".to_owned(), json!(path));
-        details.insert("received".to_owned(), json!(value));
-        details.insert("accepted".to_owned(), json!(OutputMode::ACCEPTED_VALUES));
-        AppError::new(StableError::new(
-            StableErrorCode::InvalidRequest,
+            ),
+            path: Some(path),
+            received: Some(value.to_owned()),
+            accepted: Some(
+                OutputMode::ACCEPTED_VALUES
+                    .iter()
+                    .map(|value| (*value).to_owned())
+                    .collect(),
+            ),
+        };
+        AppError::new(protocol_error_record_draft_with_summary::<
+            typed_codes::protocol::InvalidRequest,
+        >(
             "Invalid protocol request.",
             details,
+            DiagnosticSource::with_stage("docnav", "config"),
         ))
     })
 }

@@ -5,8 +5,8 @@ use std::fmt;
 use crate::{
     validate_manifest_value, validate_probe_result_value, validate_protocol_request_value,
     validate_protocol_response_value, Manifest, ManifestValidationError, ProbeResult,
-    ProbeValidationError, ProtocolResponse, ProtocolValidationError, RequestEnvelope,
-    SchemaValidationError, StableError,
+    ProbeValidationError, ProtocolError, ProtocolResponse, ProtocolValidationError,
+    RequestEnvelope, SchemaValidationError,
 };
 
 pub fn decode_value<T, E>(
@@ -30,8 +30,8 @@ where
 
 pub fn decode_protocol_request_value(
     value: Value,
-) -> Result<RequestEnvelope, DecodePipelineError<RequestEnvelope, StableError>> {
-    decode_value::<RequestEnvelope, StableError>(
+) -> Result<RequestEnvelope, DecodePipelineError<RequestEnvelope, ProtocolError>> {
+    decode_value::<RequestEnvelope, ProtocolError>(
         value,
         validate_protocol_request_value,
         |request| request.operation_arguments().map(|_| ()),

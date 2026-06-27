@@ -1,0 +1,282 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use super::DiagnosticDetails;
+
+pub trait DiagnosticDetailsPayload:
+    Clone + Serialize + serde::de::DeserializeOwned + Into<DiagnosticDetails>
+{
+}
+
+impl<T> DiagnosticDetailsPayload for T where
+    T: Clone + Serialize + serde::de::DeserializeOwned + Into<DiagnosticDetails>
+{
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldReasonDetails {
+    pub field: String,
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub received: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accepted: Option<Vec<String>>,
+}
+
+impl FieldReasonDetails {
+    pub fn new(field: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self {
+            field: field.into(),
+            reason: reason.into(),
+            path: None,
+            received: None,
+            accepted: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PathDetails {
+    pub path: String,
+}
+
+impl PathDetails {
+    pub fn new(path: impl Into<String>) -> Self {
+        Self { path: path.into() }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PathReasonDetails {
+    pub path: String,
+    pub reason: String,
+}
+
+impl PathReasonDetails {
+    pub fn new(path: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            reason: reason.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PathEncodingDetails {
+    pub path: String,
+    pub encoding: String,
+}
+
+impl PathEncodingDetails {
+    pub fn new(path: impl Into<String>, encoding: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            encoding: encoding.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FormatUnknownDetails {
+    pub path: String,
+    pub reason: String,
+    pub candidates: Value,
+}
+
+impl FormatUnknownDetails {
+    pub fn new(path: impl Into<String>, reason: impl Into<String>, candidates: Value) -> Self {
+        Self {
+            path: path.into(),
+            reason: reason.into(),
+            candidates,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FormatAmbiguousDetails {
+    pub path: String,
+    pub candidates: Value,
+}
+
+impl FormatAmbiguousDetails {
+    pub fn new(path: impl Into<String>, candidates: Value) -> Self {
+        Self {
+            path: path.into(),
+            candidates,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CapabilityAdapterDetails {
+    pub capability: String,
+    pub adapter_id: String,
+}
+
+impl CapabilityAdapterDetails {
+    pub fn new(capability: impl Into<String>, adapter_id: impl Into<String>) -> Self {
+        Self {
+            capability: capability.into(),
+            adapter_id: adapter_id.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RefDetails {
+    #[serde(rename = "ref")]
+    pub ref_id: String,
+}
+
+impl RefDetails {
+    pub fn new(ref_id: impl Into<String>) -> Self {
+        Self {
+            ref_id: ref_id.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RefCandidateCountDetails {
+    #[serde(rename = "ref")]
+    pub ref_id: String,
+    pub candidate_count: u32,
+}
+
+impl RefCandidateCountDetails {
+    pub fn new(ref_id: impl Into<String>, candidate_count: u32) -> Self {
+        Self {
+            ref_id: ref_id.into(),
+            candidate_count,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RefReasonDetails {
+    #[serde(rename = "ref")]
+    pub ref_id: String,
+    pub reason: String,
+}
+
+impl RefReasonDetails {
+    pub fn new(ref_id: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self {
+            ref_id: ref_id.into(),
+            reason: reason.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AdapterReasonDetails {
+    pub adapter_id: String,
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exit_code: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stderr: Option<String>,
+}
+
+impl AdapterReasonDetails {
+    pub fn new(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self {
+            adapter_id: adapter_id.into(),
+            reason: reason.into(),
+            exit_code: None,
+            stderr: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct InternalDetails {
+    pub error_id: String,
+}
+
+impl InternalDetails {
+    pub fn new(error_id: impl Into<String>) -> Self {
+        Self {
+            error_id: error_id.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CliArgvDetails {
+    pub tokens: Vec<String>,
+}
+
+impl CliArgvDetails {
+    pub fn new(tokens: Vec<String>) -> Self {
+        Self { tokens }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AdapterCandidateDetails {
+    pub adapter_id: String,
+    pub stage: String,
+    pub code: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preselected: Option<bool>,
+}
+
+impl AdapterCandidateDetails {
+    pub fn new(
+        adapter_id: impl Into<String>,
+        stage: impl Into<String>,
+        code: impl Into<String>,
+        preselected: Option<bool>,
+    ) -> Self {
+        Self {
+            adapter_id: adapter_id.into(),
+            stage: stage.into(),
+            code: code.into(),
+            preselected,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AdapterConfigSourceDetails {
+    pub source_level: String,
+    pub path_origin: String,
+    pub path: String,
+    pub reason_code: String,
+}
+
+impl AdapterConfigSourceDetails {
+    pub fn new(
+        source_level: impl Into<String>,
+        path_origin: impl Into<String>,
+        path: impl Into<String>,
+        reason_code: impl Into<String>,
+    ) -> Self {
+        Self {
+            source_level: source_level.into(),
+            path_origin: path_origin.into(),
+            path: path.into(),
+            reason_code: reason_code.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BoundaryDetails {
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+}
+
+impl BoundaryDetails {
+    pub fn new(reason: impl Into<String>) -> Self {
+        Self {
+            reason: reason.into(),
+            label: None,
+        }
+    }
+}

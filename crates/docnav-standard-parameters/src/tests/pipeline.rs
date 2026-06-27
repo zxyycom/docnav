@@ -1,4 +1,4 @@
-use docnav_diagnostics::WarningDetails;
+use docnav_diagnostics::{DiagnosticDetails, WarningProjection};
 use docnav_typed_fields::{ProcessingBuild, TypedValue};
 use serde_json::json;
 
@@ -217,18 +217,18 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
 }
 
 fn assert_config_warning(
-    warning: &docnav_diagnostics::Warning,
+    warning: &WarningProjection,
     source_level: &str,
     path_origin: &str,
     path: &std::path::Path,
     reason_code: &str,
 ) {
-    let WarningDetails::AdapterConfigSource {
+    let DiagnosticDetails::AdapterConfigSource {
         source_level: actual_source_level,
         path_origin: actual_path_origin,
         path: actual_path,
         reason_code: actual_reason_code,
-    } = &warning.details
+    } = warning.details()
     else {
         panic!("expected adapter config source warning details");
     };

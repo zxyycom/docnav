@@ -39,7 +39,7 @@ impl DiagnosticStack {
     }
 
     pub fn get(&self, id: DiagnosticId) -> Option<&DiagnosticRecord> {
-        self.records.iter().find(|record| record.id == id)
+        self.records.iter().find(|record| record.id() == id)
     }
 
     pub fn mark(&self) -> DiagnosticMark {
@@ -66,7 +66,7 @@ impl DiagnosticStack {
         id: DiagnosticId,
         include_anchor: bool,
     ) -> Vec<DiagnosticRecord> {
-        let Some(anchor_index) = self.records.iter().position(|record| record.id == id) else {
+        let Some(anchor_index) = self.records.iter().position(|record| record.id() == id) else {
             return Vec::new();
         };
         let start = if include_anchor {

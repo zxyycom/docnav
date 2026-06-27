@@ -1,9 +1,7 @@
 use std::fs::{self, File};
 use std::path::{Component, Path, PathBuf};
 
-use docnav_protocol::StableError;
-
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::project_context::ProjectContext;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,27 +23,23 @@ pub fn normalize_document_path(
 
     let metadata = fs::metadata(&resolved).map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {
-            StableError::document_not_found(normalize_path_for_error(&resolved))
+            AppError::document_not_found(normalize_path_for_error(&resolved))
         } else {
-            StableError::document_path_invalid(
-                normalize_path_for_error(&resolved),
-                error.to_string(),
-            )
+            AppError::document_path_invalid(normalize_path_for_error(&resolved), error.to_string())
         }
     })?;
     if !metadata.is_file() {
-        return Err(StableError::document_path_invalid(
+        return Err(AppError::document_path_invalid(
             normalize_path_for_error(&resolved),
             "path is not a file",
-        )
-        .into());
+        ));
     }
     File::open(&resolved).map_err(|error| {
-        StableError::document_path_invalid(normalize_path_for_error(&resolved), error.to_string())
+        AppError::document_path_invalid(normalize_path_for_error(&resolved), error.to_string())
     })?;
 
     let absolute_path = fs::canonicalize(&resolved).map_err(|error| {
-        StableError::document_path_invalid(normalize_path_for_error(&resolved), error.to_string())
+        AppError::document_path_invalid(normalize_path_for_error(&resolved), error.to_string())
     })?;
     let project_root =
         fs::canonicalize(&project.project_root).unwrap_or_else(|_| project.project_root.clone());

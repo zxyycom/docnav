@@ -1,8 +1,9 @@
 // @case WB-CORE-ADAPTER-001
 use super::*;
 use crate::adapter_process::AdapterProcessOutput;
-use docnav_protocol::{Operation, StableError, StableErrorCode};
-use serde_json::Value;
+use crate::error::AppError;
+use docnav_diagnostics::{DiagnosticCode, DiagnosticDetails, ProtocolDiagnosticCode};
+use docnav_protocol::Operation;
 
 fn adapter_output(stdout: impl Into<String>) -> AdapterProcessOutput {
     AdapterProcessOutput {
@@ -12,12 +13,11 @@ fn adapter_output(stdout: impl Into<String>) -> AdapterProcessOutput {
     }
 }
 
-fn error_reason(error: &StableError) -> &str {
-    error
-        .details
-        .get("reason")
-        .and_then(Value::as_str)
-        .expect("adapter invoke failure reason")
+fn error_reason(error: &AppError) -> &str {
+    let DiagnosticDetails::AdapterReason { reason, .. } = error.diagnostic().details() else {
+        panic!("expected adapter invoke failure details");
+    };
+    reason
 }
 
 #[test]
@@ -35,7 +35,10 @@ fn protocol_response_schema_invalid_maps_to_adapter_invoke_failed() {
     let error = protocol_response_from_output("stub", "req-1", Operation::Outline, output)
         .expect_err("schema-invalid response should fail");
 
-    assert_eq!(error.code, StableErrorCode::AdapterInvokeFailed);
+    assert_eq!(
+        error.diagnostic().code(),
+        DiagnosticCode::from(ProtocolDiagnosticCode::AdapterInvokeFailed)
+    );
     assert!(error_reason(&error).contains("protocol response schema validation failed"));
 }
 
@@ -54,7 +57,10 @@ fn protocol_response_semantic_invalid_maps_to_adapter_invoke_failed() {
     let error = protocol_response_from_output("stub", "req-1", Operation::Outline, output)
         .expect_err("request id drift should fail after schema and typed decode");
 
-    assert_eq!(error.code, StableErrorCode::AdapterInvokeFailed);
+    assert_eq!(
+        error.diagnostic().code(),
+        DiagnosticCode::from(ProtocolDiagnosticCode::AdapterInvokeFailed)
+    );
     assert!(error_reason(&error).contains("response request_id does not match invoke request"));
 }
 

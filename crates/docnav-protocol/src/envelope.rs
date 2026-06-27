@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::constants::fields;
 use crate::{
-    MissingErrorDetail, Operation, OperationResult, Options, PositiveInteger, StableError,
+    InvalidErrorDetail, Operation, OperationResult, Options, PositiveInteger, ProtocolError,
     PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 
@@ -24,11 +24,11 @@ pub struct RequestEnvelope {
 }
 
 impl RequestEnvelope {
-    pub fn operation_arguments(&self) -> Result<&OperationArguments, StableError> {
+    pub fn operation_arguments(&self) -> Result<&OperationArguments, ProtocolError> {
         if self.arguments.operation() == self.operation {
             Ok(&self.arguments)
         } else {
-            Err(StableError::invalid_request(
+            Err(ProtocolError::invalid_request(
                 fields::ARGUMENTS,
                 format!("arguments do not match operation {}", self.operation),
             ))
@@ -113,7 +113,7 @@ impl ProtocolResponse {
         protocol_version: impl Into<String>,
         request_id: impl Into<String>,
         operation: Option<Operation>,
-        error: StableError,
+        error: ProtocolError,
     ) -> Self {
         Self::Failure(FailureResponse::new(
             protocol_version,
@@ -123,7 +123,7 @@ impl ProtocolResponse {
         ))
     }
 
-    pub fn failure_for_request(request: &RequestEnvelope, error: StableError) -> Self {
+    pub fn failure_for_request(request: &RequestEnvelope, error: ProtocolError) -> Self {
         Self::failure(
             request.protocol_version.clone(),
             request.request_id.clone(),
@@ -186,7 +186,7 @@ pub struct FailureResponse {
     pub request_id: String,
     pub operation: Option<Operation>,
     pub ok: bool,
-    pub error: StableError,
+    pub error: ProtocolError,
 }
 
 impl FailureResponse {
@@ -194,7 +194,7 @@ impl FailureResponse {
         protocol_version: impl Into<String>,
         request_id: impl Into<String>,
         operation: Option<Operation>,
-        error: StableError,
+        error: ProtocolError,
     ) -> Self {
         Self {
             protocol_version: protocol_version.into(),
@@ -205,7 +205,7 @@ impl FailureResponse {
         }
     }
 
-    pub fn unparsed(error: StableError) -> Self {
+    pub fn unparsed(error: ProtocolError) -> Self {
         Self::new(PROTOCOL_VERSION, UNKNOWN_REQUEST_ID, None, error)
     }
 
@@ -214,8 +214,8 @@ impl FailureResponse {
             return Err(ProtocolValidationError::InvalidOkFlag);
         }
         self.error
-            .validate_required_details()
-            .map_err(ProtocolValidationError::MissingErrorDetail)
+            .validate_details()
+            .map_err(ProtocolValidationError::InvalidErrorDetail)
     }
 }
 
@@ -226,7 +226,7 @@ pub enum ProtocolValidationError {
         operation: Operation,
         result_operation: Operation,
     },
-    MissingErrorDetail(MissingErrorDetail),
+    InvalidErrorDetail(InvalidErrorDetail),
 }
 
 impl fmt::Display for ProtocolValidationError {
@@ -240,7 +240,7 @@ impl fmt::Display for ProtocolValidationError {
                 formatter,
                 "success response operation {operation} does not match result {result_operation}"
             ),
-            Self::MissingErrorDetail(error) => error.fmt(formatter),
+            Self::InvalidErrorDetail(error) => error.fmt(formatter),
         }
     }
 }
