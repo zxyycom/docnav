@@ -147,9 +147,11 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 
 所有格式适配器的 v0 契约只支持 UTF-8，可接受 UTF-8 BOM。无法解码时返回 `DOCUMENT_ENCODING_UNSUPPORTED`。
 
-## 稳定错误
+## 错误投影
 
-| 错误码 | 稳定 details |
+本节定义错误在 protocol surface 上的投影：`code`、`details`、`message` 和 `guidance`。错误机械 id 和 required details 规则由 [错误通道](diagnostics.md) 的 `DiagnosticCode` 提供；protocol 调用方只依赖本节列出的 code 和 details。
+
+| 协议 `code` | 必需 `details` |
 | --- | --- |
 | `INVALID_REQUEST` | `field`、`reason` |
 | `DOCUMENT_NOT_FOUND` | `path` |
@@ -169,7 +171,7 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 
 错误 message 和 guidance 是可定制文案；调用方只解析 code 和 details。
 
-本节是稳定错误语义的 owner；[error-rules.json](protocol/error-rules.json) 是 required details 的机器维护入口，用于统一 Rust 校验、文档验证常量和 `protocol-response.schema.json` 的错误 details 校验块。修改错误码或 required details 后运行 `bun run generate:error-rules`。
+Protocol schema 和生成常量消费错误通道导出的错误规则投影，用于校验 protocol-visible code 和 required details。修改错误 code 或 details 规则时，先更新错误通道的 `DiagnosticCode` 规则集合，再同步 protocol 投影、schema、examples 和 consumer tests。
 
 ## Schema 所有权
 

@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | 实现 `docnav` 核心 CLI | [架构](architecture.md)、[CLI](cli.md)、[标准参数](standard-parameters.md)、[输出模式](output.md) | [原始协议](protocol.md)、[测试策略](testing.md) |
 | 实现协议或 SDK | [原始协议](protocol.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
+| 实现错误通道 | [错误通道](diagnostics.md)、[架构](architecture.md) | [CLI](cli.md)、[输出模式](output.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md) |
 | 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | 对应实现面的主规范 |
 | 写测试或验证脚本 | [测试策略](testing.md)、[测试用例维护](testing/case-maintenance.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |
 | 审计历史或变更依据 | `../openspec/changes/` | 按 change 目录读取对应 proposal、design、specs、tasks |
@@ -62,7 +63,8 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | `docnav` 命令、`config` 命令入口、adapter 管理命令、adapter 直接 CLI 入口和退出码 | [CLI](cli.md) |
 | 标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、透传规则、validation 和 operation binding | [标准参数](standard-parameters.md) |
 | 输出模式、readable-view framing、readable-json warning、阅读文案配置、输出通道 | [输出模式](output.md) |
-| invoke envelope、operation、紧凑结果、page、稳定错误 | [原始协议](protocol.md) |
+| invoke envelope、operation、紧凑结果、page、protocol 错误投影 | [原始协议](protocol.md) |
+| 错误通道、DiagnosticStack、DiagnosticCode、错误规则、警告规则、DiagnosticId、mark 生命周期和 LIFO/drain 语义 | [错误通道](diagnostics.md) |
 | adapter 命令、manifest、probe、格式默认值、invoke 行为 | [适配器契约](adapter-contract.md) |
 | ref 的共享调用流程、非空 opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |

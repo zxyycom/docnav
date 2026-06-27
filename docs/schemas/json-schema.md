@@ -24,7 +24,7 @@
 
 `readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 只校验 CLI `readable-json`。`readable-view` 不使用 readable JSON schema 校验；framing、header block refs 和 payload 还原的验收边界见 [输出模式](../output.md) 和 readable-view conformance vectors。protocol schema 保持独立。
 
-原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并从 [error-rules.json](../protocol/error-rules.json) 生成稳定错误 required details 校验块；稳定错误语义仍由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例和实现自测，不表示 readable 输出是长期机器解析协议。
+原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并消费 [错误通道](../diagnostics.md) 中 `DiagnosticCode` 错误规则的 protocol 投影生成错误 details 校验块；protocol envelope 和投影字段由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验；阅读输出 schema 用于文档示例和实现自测，不表示 readable 输出是长期机器解析协议。
 
 operation readable schema 包含可省略的顶层 `warnings` 数组。warning 的来源、承载位置和稳定字段由 [输出模式](../output.md) 定义；本文件只维护 schema `$defs` 与示例校验入口。
 
