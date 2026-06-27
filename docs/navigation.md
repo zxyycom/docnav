@@ -37,7 +37,7 @@ bun run verify:docnav-workspace
 | 测试资料 | [测试用例维护](testing/case-maintenance.md)、[测试用例编号账本](testing/cases.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、case 条目、覆盖目标或 release 验证 |
 | Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | 修改字段形状、示例链路或输出映射 |
-| 工程规范 | [编码规范](CODING_STYLE.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
+| 工程规范 | [编码规范](coding-style.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
 | 变更工作流 | `../openspec/changes/`、`../openspec/specs/` | 规划较大 PR、审计 change 设计、验收、归档或历史决策 |
 
 Schema、示例和机器规则文件是验证材料，不在这些文件重新定义产品语义。与主规范不一致时默认修正验证材料；若验证材料代表有意契约变更，必须同步更新 owner 主规范。
