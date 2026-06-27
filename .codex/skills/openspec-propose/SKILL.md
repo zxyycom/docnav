@@ -78,6 +78,16 @@ OpenSpec change name 和 capability ID 是不同概念：
 1. `replace-text-with-readable-view` -> capability `readable-output`。
 2. `implement-docnav-adapter-management` -> capability `adapter-management`。
 
+## 决策记录
+
+创建和更新 change 时，把用户已确认的范围、方案、边界、依赖、验证和兼容性取舍记录到 `## Decisions`。
+
+1. 使用连续编号：`### Decision 1: <short title>`、`### Decision 2: <short title>`；已有编号不重排，新增决策追加。
+2. 决策正文只写决定和影响，避免重复解释理由。
+3. 用户回答 `## Open Questions` 后，先把答案落到持久 owner：新增 Decision、更新已有 Decision，或修正 artifact 正文。
+4. 已进入新增或已有 Decision 的问题，从 `## Open Questions` 删除；仅由措辞或误解引起的问题，改为 `已收敛：<位置> 已调整，无待确认项`。
+5. 未回答问题保留在 `## Open Questions`；没有未回答问题且已收敛条目无歧义时，写明“无未回答开放问题，可以进入实现前审计”。
+
 ## 工作流程
 
 1. 确定 change 名称、schema 和目标
@@ -144,8 +154,9 @@ OpenSpec change name 和 capability ID 是不同概念：
    - 依赖 artifact 正文优先通过 instructions 返回的 `dependencies` 和 `outputPath` 定位；CLI 未提供正文时再读取对应文件。
    - 涉及已有主 spec 或 change delta 时，使用 CLI 使用策略中的 `openspec show` 命令获取结构化内容。
    - artifact 内容应服务于用户需求和 change 目标，避免把平台说明、内部流程、上下文块或规则块写成正文。
+   - 生成或更新 design 时，按“决策记录”维护 `## Decisions` 和 `## Open Questions`。
    - 生成 tasks artifact 时，必须在实现任务前加入阻塞级审计任务，写清“审计未完成前不得执行任何实现任务”。
-   - 阻塞级审计任务必须检查：proposal、design、specs 和 tasks 是否围绕开头核心句；capability ID 是否符合命名规则；当前 change 是否只包含未审核临时 artifacts；是否没有修改或影响现有其它文档。
+   - 阻塞级审计任务必须检查：proposal、design、specs 和 tasks 是否围绕开头核心句；capability ID 是否符合命名规则；当前 change 是否只包含未审核临时 artifacts；是否没有修改或影响现有其它文档；`## Open Questions` 是否没有未回答问题或已收敛歧义。
    - 如果某个 artifact 的关键决策无法从用户需求、依赖 artifact 或 instructions 中确定，直接向用户提一个具体问题；得到答案后继续生成。
 
 5. 每个 artifact 写完后验证
@@ -210,4 +221,4 @@ OpenSpec change name 和 capability ID 是不同概念：
 2. Artifacts：列出创建或更新的 artifact 文件及作用。
 3. 状态：说明是否已满足 apply-ready；如未满足，列出阻塞原因和需要用户补充的问题。
 4. 审计门禁：说明阻塞级审计任务是否已完成；未完成时明确不能进入实现执行。
-5. 下一步：审计未完成时提示先完成审计；审计完成后再提示可以进入实现流程，或直接要求继续实现 tasks。
+5. 下一步：审计未完成、存在未回答问题或已收敛歧义时先完成确认；确认完成后再进入实现流程。

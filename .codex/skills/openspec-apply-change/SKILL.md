@@ -38,6 +38,15 @@ metadata:
    - CLI 不可用、命令失败或 JSON 中缺少完成任务所需正文时，再读取 `contextFiles` 指向的文件。
    - 需要参考改写前行为时，只读同目录 `reference-original.md`。
 
+## 执行前开放问题门禁
+
+执行任何实现任务前必须确认 change 没有未回答开放问题：
+
+1. 按 `contextFiles` 读取包含 `## Open Questions` 的 artifact。
+2. 发现未回答问题时立即暂停，不改代码、不勾选任务、不把问题当作实现假设。
+3. 对 `已收敛` 条目检查是否仍有待选择、待确认或影响实现的歧义；存在歧义时暂停。
+4. 用户回答后，先更新 artifact，并按归宿删除开放问题或标记为 `已收敛`，再重新进入 apply 流程。
+
 ## 流程
 
 1. 运行 `openspec list --json`，确认 active changes 并锁定目标 change。
@@ -49,16 +58,17 @@ metadata:
    - 其他可执行状态：继续处理未完成任务。
 5. 运行 `openspec show "<name>" --type change --json --no-interactive`，用结构化 delta 理解 capability、operation 和 requirement 变化；只需要 delta 时加 `--deltas-only`。
 6. 对 CLI 未覆盖的 proposal、design、tasks 原文细节，按 `contextFiles` 精确读取对应文件。
-7. 逐项实施未完成任务：
+7. 按“执行前开放问题门禁”检查 `## Open Questions`；存在未回答问题或已收敛歧义时停止在询问阶段。
+8. 逐项实施未完成任务：
    - 说明当前任务。
    - 做与任务直接相关的最小必要改动。
    - 完成后立刻在 tasks 文件中把对应 checkbox 标为完成。
    - 长任务分段推进时持续报告当前任务编号和进度。
-8. 运行与改动范围匹配的验证：
+9. 运行与改动范围匹配的验证：
    - OpenSpec change 自身先运行 change 验证。
    - 涉及主 specs 时运行 specs 验证。
    - 涉及代码时运行相应格式化、静态检查、单元或集成测试。
-9. 收尾时输出 change、schema、完成任务、总进度、验证结果、剩余项和阻塞点。
+10. 收尾时输出 change、schema、完成任务、总进度、验证结果、剩余项和阻塞点。
 
 ## 边界
 
@@ -73,4 +83,4 @@ metadata:
 
 1. 本轮可处理任务已完成，checkbox 已同步，验证已运行或原因已说明。
 2. 所有任务已完成，并提示可进入 archive。
-3. 存在必须由用户确认的歧义、设计取舍或环境阻塞，且已给出具体下一步。
+3. 存在开放问题、必须由用户确认的歧义、设计取舍或环境阻塞，且已暂停并给出具体下一步。
