@@ -1,20 +1,22 @@
-本 change 定义强制迁移到统一内部 `DiagnosticStack` 的目标方向：Docnav runtime 和 public surface 上的错误与诊断都先把 warning、跳过原因和 fatal context 压入 `docnav-diagnostics` 提供的可按 id 查找的 LIFO 诊断栈，再由调用方或 surface owner 自行决定继续、失败和输出。当前内容只是 `openspec/changes/unify-diagnostic-channel-direction/` 下的未审核临时文档；实施本 change 时必须同步更新主规范、schema、示例、测试和实现。
+本 change 根据 `docs/diagnostics.md` 的目标形态记录错误通道迁移方向：运行时问题进入请求内诊断栈，`docnav-diagnostics::DiagnosticCode` 成为唯一机械身份来源，边界 surface 读取记录并投影输出。当前内容只是 `openspec/changes/unify-diagnostic-channel-direction/` 下的未审核临时文档，本次更新只修改该 change 目录内 artifact。
 
 ## Why
 
-当前项目已经有 `StableError`、稳定 warning envelope、standard parameter diagnostics 和若干直接 stderr 诊断，但它们不是同一个可收集、可传递、可延迟输出的通道。结果是可恢复点可以继续执行，但错误信息可能被拆到 readable payload、protocol stderr 或纯文本 stderr，执行链中也不能在任意时刻统一取出完整诊断集合。
+Docnav 当前同时存在 `StableError`、warning envelope、standard parameter diagnostics、adapter candidate/config source warning、直接 stderr 诊断和 `docs/protocol/error-rules.json` 生成链路。这些入口分别承接错误身份、details 规则和输出映射，导致同一个问题事实在多个 owner 中重复建模。
 
-这个 change 用于记录方向：统一内部诊断栈和跨层 handoff；调用点默认记录诊断并在输入仍有效时继续，通道本身不判断“错不错”。最终由输出层、adapter machine command、protocol surface owner 或其它调用方按新的 DiagnosticStack contract 组织输出。既有 `protocol-json`、manifest、probe、readable output、`StableError`、warning envelope 和直接 stderr 行为需要强制切换，而不是作为兼容边界保留。
+目标形态需要一个统一事实源：发现问题的模块只把记录压入请求内栈；是否继续、失败、退出或输出，由读取栈的边界层决定。实施本 change 时执行 full migration，旧错误和 warning 事实源必须被删除或替换为 `DiagnosticCode` projection。
 
 ## What Changes
 
-- 引入目标性要求：文档操作、adapter direct CLI、adapter invoke、标准参数解析和输出编排必须迁移到统一 `DiagnosticStack` 模型，warning、skipped diagnostic 和 fatal context 都先作为结构化事件压入同一内部栈。
-- 明确内部栈语义：push 时由 stack 生成并返回可保存的 `DiagnosticId`，调用方可用 id 查找事件；调用方也可创建 `DiagnosticMark`，之后按 mark 或 event id 批量弹出后续事件。
-- 明确强制迁移路径：不保留第一阶段外部兼容承诺；涉及的主规范、protocol/readable/manifest/probe schema、示例、fixtures 和 consumer tests 必须随实现一起切换到新的 diagnostic 输出策略。
-- 明确 surface policy：输出层仍按调用者选择的 surface 决定事件呈现位置，但事件事实源必须来自 `DiagnosticStack`；分组、反转、过滤和格式化由使用者自行处理，不由通道负责。
-- 收口直接 stderr 旁路：SDK direct CLI、adapter boundary、invoke decode、JSON/schema/write failure 等路径迁移时必须先把 diagnostic event 压入 stack，再由 surface owner flush 到 stderr 或投影为目标 surface error。
-- 反转错误归属：`DiagnosticEvent.code` 是错误和 warning 的机械 id 事实源；`StableError` 如继续存在，应成为 fatal diagnostic code 的 protocol/readable 投影，而不是被 stack 持有的内部对象。
-- 延后 `diagnostic_only`：当前迁移不补齐该 effect；只有出现明确行为需求时再新增 enum/schema/tests。
+- 错误通道语义：每个 top-level `docnav` command、adapter direct command 或 adapter `invoke` request 都有自己的请求内栈；栈不跨进程、不跨独立请求。
+- 记录语义：warning、error、fatal、跳过原因、候选失败和无法继续的上下文都进入同一通道；记录问题不等于立即失败。
+- 身份语义：push 时由栈分配 `DiagnosticId`；记录的机械身份来自 `DiagnosticCode`；错误规则和警告规则从 `DiagnosticCode` 规则集合派生。
+- Code 结构：`docnav-diagnostics` 按用途或 family 手动维护小 enum，并由顶层 `DiagnosticCode` 聚合为唯一机械身份域。
+- Details 结构：每个 `DiagnosticCode` 拥有唯一 canonical details object；调用方按该结构构造记录，输出者把该结构映射为 protocol details、readable warning details、stderr 文案或 exit behavior。
+- 依赖方向：`docnav-protocol`、`docnav-output`、`docnav-adapter-sdk`、core 和 `docnav-standard-parameters` 直接依赖 `docnav-diagnostics` 使用 code、details 和 projection 规则。
+- Surface 分工：CLI、protocol surface、readable output、adapter direct CLI 和 adapter `invoke` handler 在边界读取错误通道记录，并按各自 owner 文档投影。
+- Validation source：删除 `docs/protocol/error-rules.json` 及其生成源路径；protocol/readable schema、examples、fixtures、validator 和 tests 消费 diagnostics-owned projection，不再拥有 code/details 规则。
+- Full migration：现有 `StableError`、`StableErrorCode`、独立 warning identity、standard parameter diagnostics 和直接 stderr 事实源全部迁移到错误通道记录。
 
 ## Capabilities
 
@@ -24,10 +26,11 @@
 
 ### Modified Capabilities
 
-- `docnav-contracts`: 记录统一 `DiagnosticStack` 的目标边界、breaking migration 和跨 surface 输出策略。
+- `docnav-contracts`: 记录统一错误通道、`DiagnosticCode` 事实源、canonical details 和跨 surface 投影策略。
 
 ## Impact
 
-- 影响面包括 `docnav-diagnostics`、`docnav-output`、`docnav` core output/runtime、`docnav-adapter-sdk` direct CLI/invoke/output、`docnav-standard-parameters` diagnostics handoff、非 document command 错误路径，以及相关 smoke/assertion。
-- 本 change 是 breaking contract migration；实现时必须同步更新 docs、schema、examples、fixtures 和 consumer tests，不再把既有 stdout/stderr shape 作为兼容目标。
-- 本 change 只保存方向和任务入口；实现前必须完成阻塞级审计，确认所有现有错误、warning、diagnostic 和直接 stderr 路径的强制切换范围。
+- 代码影响：`docnav-diagnostics`、`docnav-protocol`、`docnav-output`、`docnav` core runtime/output、`docnav-adapter-sdk`、`docnav-standard-parameters` 和非 document command 错误路径。
+- 生成链路影响：`scripts/generate-error-rules.ts`、`crates/docnav-protocol/src/generated/error_rules.rs`、validator generated rules 和 `protocol-response.schema.json` 的 error details 校验必须改为从 diagnostics-owned rules 产生或校验。
+- 验证材料影响：相关主规范、schema、examples、fixtures 和 consumer tests 必须与 surface projection 一起更新。
+- 实现前置：先完成 tasks 中的阻塞级审计，确认本 change 的 proposal、design、specs 和 tasks 都围绕 `docs/diagnostics.md` 的目标语义展开。

@@ -1,131 +1,186 @@
-本 spec delta 记录强制迁移到统一 `DiagnosticStack` 的目标 contract；当前内容只是 `openspec/changes/unify-diagnostic-channel-direction/` 下的 change-local docnav-contracts delta，本文件本身不立即修改主规范、schema、示例或实现行为。
+本 spec delta 根据 `docs/diagnostics.md` 的目标形态记录错误通道 contract：运行时问题进入请求内栈，`DiagnosticCode` 是唯一机械身份来源，每个 code 拥有 canonical details，边界 surface 读取记录并投影；当前内容只是 `openspec/changes/unify-diagnostic-channel-direction/` 下的 change-local docnav-contracts delta，本文件本身不立即修改主规范、schema、示例或实现行为。
 
 ## ADDED Requirements
 
-### Requirement: Diagnostic handoff uses a unified internal stack
+### Requirement: Runtime problems flow through a request-local diagnostic stack
 
-Docnav document execution, adapter direct document execution, adapter invoke request handling, standard parameter resolution, non-document commands, and document output orchestration MUST hand off recoverable diagnostics and fatal errors through a unified internal `DiagnosticStack` before surface-specific output is written.
+Docnav runtime and public surface code MUST record runtime problems in a request-local diagnostic stack before the owning boundary decides whether to continue, fail, exit, or write surface-specific output.
 
-#### Scenario: Recoverable diagnostic continues operation
+#### Scenario: Recoverable problem is recorded before continuation
 
-- **WHEN** an operation encounters a recoverable condition such as ignored CLI argv, skipped adapter candidate, or skipped config source
-- **THEN** the condition is pushed as a diagnostic event before the caller decides how to proceed
+- **WHEN** an operation encounters a recoverable condition such as ignored CLI argv, skipped adapter candidate, skipped config source, or recoverable adapter evidence
+- **THEN** the condition is pushed as a diagnostic record before the caller decides how to proceed
 - **THEN** execution continues when the remaining operation input is valid
-- **THEN** the recoverable diagnostic remains available in the internal diagnostic stack until the output owner renders or flushes it
+- **THEN** the record remains available until the boundary owner reads, renders, or flushes it
 
-#### Scenario: Fatal diagnostic preserves mechanical diagnostic code
+#### Scenario: Fatal problem records context before failure surface
 
 - **WHEN** an operation encounters a fatal request, document, adapter boundary, or internal failure
-- **THEN** the internal diagnostic stack can retain diagnostic context for that failure before the fatal outcome is returned
-- **THEN** the event carries a diagnostic code that can be projected to the target surface error code, message, details, guidance, and exit-code category
+- **THEN** the diagnostic stack records the fatal context before the fatal outcome is returned or propagated
+- **THEN** the record carries a diagnostic code that can be projected to the target surface error code, message, details, guidance, and exit-code category
 
-#### Scenario: Caller can inspect accumulated diagnostics before output
+#### Scenario: Diagnostic stack stores facts only
 
-- **WHEN** execution crosses a core, SDK, adapter, or output boundary before final stdout or stderr is written
-- **THEN** the caller can inspect the diagnostics accumulated so far
-- **THEN** inspecting diagnostics does not consume or drop them before final output policy runs
+- **WHEN** a diagnostic record is pushed
+- **THEN** the stack stores the record without deciding whether the operation succeeds or fails
+- **THEN** the caller or surface owner decides continuation, failure, output format, output channel, and exit behavior
 
-### Requirement: Diagnostic stack entries have internal identities and checkpoints
+### Requirement: DiagnosticCode owns identity and canonical details
 
-The internal diagnostic stack MUST provide scoped identities and checkpoints so callers can inspect specific pushed events and drain or flush diagnostics created after a known point without exposing stack implementation details as public output contract.
+`docnav-diagnostics` MUST own `DiagnosticCode`, grouped code families, each code's canonical details object, and projection metadata. Other Docnav crates MUST use those diagnostics-owned identities and MUST NOT redefine protocol, readable, adapter, or standard-parameter diagnostic code identities.
 
-#### Scenario: Pushed diagnostic can be retrieved by id
+#### Scenario: Diagnostic code aggregates grouped enums
 
-- **WHEN** a caller pushes a diagnostic event onto the stack
+- **WHEN** implementation groups diagnostic codes by purpose, producer, or projection family
+- **THEN** each group can use its own manually maintained enum
+- **THEN** the top-level `DiagnosticCode` aggregates those group enums into one mechanical identity domain
+- **THEN** callers outside `docnav-diagnostics` use the top-level `DiagnosticCode` or its explicit family conversions
+
+#### Scenario: Diagnostic code owns warning and error identity
+
+- **WHEN** a diagnostic record is rendered as a warning, fatal error, readable warning id, protocol error code, stderr line, or other surface field
+- **THEN** the mechanical identity is derived from the record's `DiagnosticCode`
+- **THEN** the surface field does not become the source of identity for the internal channel
+
+#### Scenario: Diagnostic code owns canonical details
+
+- **WHEN** a caller creates a diagnostic record for a specific `DiagnosticCode`
+- **THEN** the record details conform to the canonical details object structure for that code
+- **THEN** missing required fields, wrong field types, or disallowed extra fields are rejected by the diagnostics-owned constructor or checker
+- **THEN** surface projection maps from that canonical details object
+
+#### Scenario: Diagnostic code carries projection rules
+
+- **WHEN** implementation defines whether a diagnostic can project to an error surface, warning surface, stderr line, or exit behavior
+- **THEN** the rule is derived from the `DiagnosticCode` rule set
+- **THEN** protocol schema, readable schema, examples, and fixtures consume the projection but do not own the rule source
+
+### Requirement: Diagnostic stack provides scoped checkpoints and LIFO retrieval
+
+The diagnostic stack MUST provide request-scoped ids, checkpoints, and default LIFO retrieval so callers can inspect or drain diagnostics created after a known point without exposing stack implementation details as public output contract.
+
+#### Scenario: Pushed record can be retrieved by id
+
+- **WHEN** a caller pushes a diagnostic record onto the stack
 - **THEN** the stack returns an opaque `DiagnosticId` scoped to that stack lifetime
-- **THEN** a caller holding that id can retrieve the same event without popping or consuming it
+- **THEN** a caller holding that id can retrieve the same record without popping or consuming it
 - **THEN** callers cannot provide their own `DiagnosticId` value when pushing
 
-#### Scenario: Caller drains diagnostics after a checkpoint
+#### Scenario: Caller drains records after a checkpoint
 
-- **WHEN** a caller creates a `DiagnosticMark` before trying a candidate path
-- **AND** that candidate path pushes one or more diagnostics
-- **THEN** the caller can drain diagnostics pushed after the mark as a batch
-- **THEN** diagnostics that existed before the mark remain in the stack
+- **WHEN** a caller creates a mark before trying a candidate path
+- **AND** that candidate path pushes one or more diagnostic records
+- **THEN** the caller can drain records pushed after the mark as a batch
+- **THEN** records that existed before the mark remain in the stack
 
-#### Scenario: Caller drains diagnostics after an event id
+#### Scenario: Caller drains records after a record id
 
-- **WHEN** a caller holds the `DiagnosticId` for an earlier stack event
-- **THEN** the caller can choose whether draining starts strictly after that event id or includes the event referenced by that id
-- **THEN** the event referenced by the id remains available unless the caller explicitly removes it
+- **WHEN** a caller holds the `DiagnosticId` for an earlier stack record
+- **THEN** the caller can choose whether draining starts strictly after that record id or includes the record referenced by that id
+- **THEN** the record referenced by the id remains available unless the caller explicitly removes it
 
 #### Scenario: Stack retrieval is LIFO by default
 
-- **WHEN** a caller pops, drains, snapshots, renders, or flushes stack entries without requesting another order
-- **THEN** the stack returns entries in last-in-first-out order
-- **THEN** a caller that needs insertion order or grouped output must explicitly reverse or regroup the returned entries outside the stack
+- **WHEN** a caller pops, drains, snapshots, renders, or flushes stack records without requesting another order
+- **THEN** the stack returns records in last-in-first-out order
+- **THEN** a caller that needs insertion order or grouped output explicitly reverses or regroups the returned records outside the stack
 
 #### Scenario: Stack lifetime does not cross process boundary
 
-- **WHEN** a top-level command, adapter direct command, or invoke request creates a diagnostic stack
+- **WHEN** a top-level `docnav` command, adapter direct command, or adapter `invoke` request creates a diagnostic stack
 - **THEN** stack ids and marks are valid only for that in-process stack lifetime
 - **THEN** serialized protocol/readable output does not expose stack ids, marks, or indexes as durable refs
 
-### Requirement: Diagnostic code owns stable error identity
+### Requirement: Boundary surfaces project diagnostic records
 
-Diagnostic events MUST carry the mechanical code used for both warning and failure identity. Legacy stable error objects MUST NOT be embedded in the diagnostic stack or remain the owning model for error identity.
+Modules that discover problems MUST push diagnostic records into the channel. Boundary surfaces MUST read those records and project them according to their owner contract.
 
-#### Scenario: Fatal surface error is projected from diagnostic code
+#### Scenario: Runtime module writes but does not format final output
 
-- **WHEN** a surface owner renders or serializes a fatal diagnostic event
-- **THEN** the target surface error code is derived from the diagnostic event code
-- **THEN** the surface owner projects that code into the target surface without requiring `StableError` as an intermediate owner
+- **WHEN** core runtime, adapter routing, standard parameter resolution, adapter direct CLI, or adapter `invoke` handling discovers a problem
+- **THEN** that module records what happened, its impact, canonical details, and source in the diagnostic stack
+- **THEN** that module does not own final user-visible formatting unless it is also the boundary surface owner
 
-#### Scenario: Warning surface output is projected from diagnostic code
+#### Scenario: Boundary surface projects records to its own contract
 
-- **WHEN** a surface owner renders or serializes a recoverable diagnostic event as a warning
-- **THEN** the warning id is derived from the diagnostic event code
-- **THEN** the warning projection uses event effect and details from the diagnostic stack
+- **WHEN** CLI, protocol surface, readable output, adapter direct CLI, or adapter `invoke` handler reaches an output boundary
+- **THEN** the boundary reads the diagnostic stack records relevant to that output
+- **THEN** the boundary projects records according to `docs/cli.md`, `docs/protocol.md`, `docs/output.md`, or `docs/adapter-contract.md`
 
-### Requirement: Surface output policy migrates to DiagnosticStack
+#### Scenario: Surface docs do not redefine internal channel semantics
 
-The unified internal diagnostic stack is a breaking migration target. Each observable surface MUST switch to a DiagnosticStack-based output policy, and affected docs, schemas, examples, fixtures, and consumer tests MUST be updated in the same implementation work.
+- **WHEN** protocol, readable, CLI, adapter, schema, or example docs describe diagnostic output
+- **THEN** they define display, filtering, mapping, stdout/stderr placement, envelope shape, or exit behavior for their surface
+- **THEN** they do not redefine `DiagnosticCode`, canonical details, `DiagnosticId`, mark lifetime, or default LIFO semantics
 
-#### Scenario: Protocol JSON uses updated diagnostic projection
+### Requirement: Legacy diagnostic sources are fully migrated
+
+Existing error and warning fact sources MUST fully migrate to diagnostic channel records and diagnostics-owned projections. The completed implementation MUST NOT retain a legacy compatibility layer as a parallel diagnostic fact source.
+
+#### Scenario: Stable error projection uses diagnostic code
+
+- **WHEN** a fatal diagnostic is rendered or serialized as a stable surface error
+- **THEN** the target surface error code is derived from `DiagnosticCode`
+- **THEN** no legacy stable error object remains as an owning fact model after migration completes
+
+#### Scenario: Warning projection uses diagnostic code and details
+
+- **WHEN** a recoverable diagnostic is rendered as a warning
+- **THEN** the warning id is derived from `DiagnosticCode`
+- **THEN** the warning effect and family-specific details are derived from the diagnostic record
+- **THEN** no independent warning id registry remains as the warning identity source
+
+#### Scenario: Direct stderr path records before flushing
+
+- **WHEN** a Rust entry point rejects command shape, fails manifest/probe/invoke decode, fails schema validation, or hits output write failure before normal document output
+- **THEN** the entry point records diagnostic context in the channel before writing stderr or protocol/readable failure output
+- **THEN** the observable output follows the owning surface projection policy
+
+### Requirement: Protocol error rules JSON is removed
+
+`docs/protocol/error-rules.json` MUST be deleted as a rule source. Protocol error code and details validation MUST consume `DiagnosticCode` protocol projections from `docnav-diagnostics`, while protocol docs, schema, examples, and tests remain validation and presentation materials.
+
+#### Scenario: Protocol crate uses diagnostics code directly
+
+- **WHEN** `docnav-protocol` needs to render, validate, or categorize a protocol-visible diagnostic
+- **THEN** it depends on `docnav-diagnostics` and uses `DiagnosticCode` or an explicit diagnostics-owned protocol projection
+- **THEN** it does not maintain a separate `StableErrorCode` or protocol-local required-details rule source
+
+#### Scenario: Protocol schema consumes projection
+
+- **WHEN** `protocol-response.schema.json` validates an error response
+- **THEN** its code enum and details constraints match the diagnostics-owned protocol projection
+- **THEN** the schema does not define new diagnostic code or details rules that are absent from `DiagnosticCode`
+
+#### Scenario: Error rules generator no longer reads protocol JSON
+
+- **WHEN** repository validation checks generated error rules
+- **THEN** no script reads `docs/protocol/error-rules.json`
+- **THEN** generated Rust or TypeScript constants, if any remain, are derived from diagnostics-owned rules or are replaced by direct `docnav-diagnostics` usage
+
+### Requirement: Diagnostic channel changes update validation materials
+
+Changes to diagnostic channel semantics or surface projection MUST update the relevant owner docs, JSON Schema, examples, fixtures, and tests in the same implementation work.
+
+#### Scenario: Protocol JSON projection is validated
 
 - **WHEN** a document operation is rendered as `protocol-json`
-- **THEN** stdout follows the updated protocol response schema for the DiagnosticStack migration
-- **THEN** any protocol-visible diagnostic fields or errors are derived from stack entries
+- **THEN** stdout follows the protocol response schema owned by the protocol docs
+- **THEN** any protocol-visible diagnostic fields or errors are derived from diagnostic channel records
 
-#### Scenario: Readable output derives diagnostics from stack entries
+#### Scenario: Readable output projection is validated
 
 - **WHEN** a document operation is rendered as `readable-view` or `readable-json`
-- **THEN** recoverable diagnostics that have a readable warning projection are rendered from stack entries
-- **THEN** the readable output wrapper remains separate from the protocol response envelope
+- **THEN** recoverable diagnostics that have a readable warning projection are rendered from diagnostic channel records
+- **THEN** readable output remains separate from the protocol response envelope
 
-#### Scenario: Adapter machine command output uses updated schema
+#### Scenario: Adapter machine command projection is validated
 
 - **WHEN** an adapter direct `manifest`, `probe`, or `invoke` command writes machine output
-- **THEN** stdout follows the updated owning manifest, probe, or protocol response schema
-- **THEN** diagnostic output is derived from stack entries according to that updated surface policy
+- **THEN** stdout follows the owning manifest, probe, or protocol response schema
+- **THEN** diagnostic output is derived from diagnostic channel records according to that surface policy
 
-### Requirement: Direct stderr diagnostics are replaced by stack events
+#### Scenario: Diagnostic-only effect requires its own behavior owner
 
-Rust entry points that currently write direct diagnostic text to stderr MUST migrate to creating diagnostic events first and flushing them through the owning output policy when this change enters implementation.
-
-#### Scenario: Direct CLI input error records diagnostic before stderr
-
-- **WHEN** adapter direct CLI rejects command shape before a document operation can run
-- **THEN** the entry point records a diagnostic event with the rejected field or command context
-- **THEN** the direct CLI stderr output can be produced from that event according to the new DiagnosticStack-based surface policy
-
-#### Scenario: Process-boundary decode failure records diagnostic context
-
-- **WHEN** adapter invoke request reading, JSON parsing, schema validation, typed deserialization, or semantic validation fails
-- **THEN** the failure records diagnostic context before output is written
-- **THEN** the observable response follows the updated DiagnosticStack-based protocol failure policy
-
-### Requirement: Diagnostic-only warning effect is deferred
-
-The unified diagnostic channel migration MUST NOT add `diagnostic_only` unless a concrete behavior requires it.
-
-#### Scenario: Diagnostic-only effect is not required
-
-- **WHEN** no current behavior requires `diagnostic_only`
-- **THEN** Rust warning or diagnostic event enums omit that effect
-- **THEN** readable schema and examples remove or avoid that effect
-
-#### Scenario: Diagnostic-only effect is added later
-
-- **WHEN** a later behavior requires `diagnostic_only`
-- **THEN** that work adds enum, schema, examples, formatter tests, and smoke assertions together
+- **WHEN** implementation updates warning effects while applying this change
+- **THEN** it adds only effects required by a concrete behavior owner and matching validation material
