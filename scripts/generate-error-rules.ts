@@ -10,7 +10,7 @@ import { readTextFile, writeTextFile } from "./tools/fs.ts";
 
 const paths = {
   source: "docs/protocol/error-rules.json",
-  rustMod: "crates/docnav-protocol/src/generated/mod.rs",
+  rustMod: "crates/docnav-protocol/src/generated.rs",
   rustRules: "crates/docnav-protocol/src/generated/error_rules.rs",
   jsRules: "scripts/tools/validators/generated/error/rules.ts",
   protocolResponseSchema: "docs/schemas/protocol-response.schema.json"

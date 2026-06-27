@@ -432,7 +432,7 @@ Proves:
 
 ### WB-STDPARAMS-RESOLVE-001 Standard parameter resolver 保持来源解析边界
 Status: implemented
-Code: `crates/docnav-standard-parameters/src/tests/mod.rs`
+Code: `crates/docnav-standard-parameters/src/tests.rs`
 
 Proves:
 - Standard parameter resolver consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.

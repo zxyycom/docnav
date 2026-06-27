@@ -17,7 +17,7 @@
 
 use docnav_readable::conformance::ConformanceVector;
 
-#[path = "conformance_support/mod.rs"]
+#[path = "conformance_support/harness.rs"]
 mod conformance_support;
 
 use conformance_support::run_vector;
