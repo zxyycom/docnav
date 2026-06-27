@@ -1,13 +1,10 @@
-本 tasks 根据 `docs/diagnostics.md` 的目标形态记录错误通道迁移路径。实现前先确认所有 artifact 都围绕请求内错误通道栈、`DiagnosticCode` 身份、canonical details、writer/reader 分工和 surface projection 展开；当前内容只是 `openspec/changes/unify-diagnostic-channel-direction/` 下的未审核临时文档，本文件本身不立即修改主规范、schema、示例或实现行为。
+本 tasks 根据 `docs/diagnostics.md` 的目标形态拆分错误通道迁移路径。主规范、schema、示例和实现行为在对应实施任务中同步更新。
 
-## 1. 审计门禁
+## 1. 实施准备
 
-- [ ] 1.1 阻塞级审计：确认 proposal、design、specs 和 tasks 都围绕“错误通道是请求内栈，`DiagnosticCode` 是唯一机械身份，边界层读取并投影”这一核心句展开；审计未完成前不得执行任何实现任务。
-- [ ] 1.2 确认本 change 只修改 `openspec/changes/unify-diagnostic-channel-direction/` 下的未审核临时 artifacts；任何主规范、schema、示例或代码改动必须进入后续实现任务。
-- [ ] 1.3 确认 `docnav-contracts` 是本 change 的正确 capability ID，且没有创建与 `core-cli`、`adapter-protocol`、`readable-view-output` 重复的总括 capability。
-- [ ] 1.4 审计当前事实源：列出 `StableError`、`StableErrorCode`、`Warning`、`WarningId`、`StandardParameterDiagnostic`、adapter candidate/config source warning、`docs/protocol/error-rules.json` 和直接 stderr 诊断的 owner、输出通道和测试覆盖。
-- [ ] 1.5 审计 full migration surface：记录 `protocol-json`、manifest、probe、readable output、stderr、exit behavior、schema、examples、fixtures、consumer tests、generator scripts 和 generated files 的切换范围；projection/details 映射作为内部实现处理，只在 observable field、通道或验证材料变化时同步对应 owner。
-- [ ] 1.6 确认完成标准：最终状态删除或替换旧 error/warning 事实源，不保留 `docs/protocol/error-rules.json` 或旧 generated required-details 规则作为并行入口。
+- [ ] 1.1 盘点当前事实源：列出 `StableError`、`StableErrorCode`、`Warning`、`WarningId`、`StandardParameterDiagnostic`、adapter candidate/config source warning、`docs/protocol/error-rules.json` 和直接 stderr 诊断的 owner、输出通道和测试覆盖。
+- [ ] 1.2 盘点 full migration surface：记录 `protocol-json`、manifest、probe、readable output、stderr、exit behavior、schema、examples、fixtures、consumer tests、generator scripts 和 generated files 的切换范围；projection/details 映射作为内部实现处理，只在 observable field、通道或验证材料变化时同步对应 owner。
+- [ ] 1.3 确认完成标准：最终状态删除或替换旧 error/warning 事实源，不保留 `docs/protocol/error-rules.json` 或旧 generated required-details 规则作为并行入口。
 
 ## 2. 契约同步
 

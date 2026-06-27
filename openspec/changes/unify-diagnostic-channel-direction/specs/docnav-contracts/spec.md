@@ -1,4 +1,4 @@
-本 spec delta 根据 `docs/diagnostics.md` 的目标形态记录错误通道 contract：运行时问题进入请求内栈，`DiagnosticCode` 是唯一机械身份来源，每个 code 拥有 canonical details，边界 surface 读取记录并投影；当前内容只是 `openspec/changes/unify-diagnostic-channel-direction/` 下的 change-local docnav-contracts delta，本文件本身不立即修改主规范、schema、示例或实现行为。
+本 spec delta 根据 `docs/diagnostics.md` 的目标形态记录错误通道 contract：运行时问题进入请求内栈，`DiagnosticCode` 是唯一机械身份来源，每个 code 拥有 canonical details，边界 surface 读取记录并投影。该 delta 归属 `docnav-contracts`，随 change 应用后进入主 spec。
 
 ## ADDED Requirements
 

@@ -1,4 +1,4 @@
-本 change 根据 `docs/diagnostics.md` 的目标形态记录错误通道迁移方向：运行时问题进入请求内诊断栈，`docnav-diagnostics::DiagnosticCode` 成为唯一机械身份来源，边界 surface 读取记录并投影输出。当前内容只是 `openspec/changes/unify-diagnostic-channel-direction/` 下的未审核临时文档，本次更新只修改该 change 目录内 artifact。
+本 change 根据 `docs/diagnostics.md` 的目标形态记录错误通道迁移方向：运行时问题进入请求内诊断栈，`docnav-diagnostics::DiagnosticCode` 成为唯一机械身份来源，边界 surface 读取记录并投影输出。主规范、schema、示例和实现行为在实施任务中同步更新。
 
 ## Why
 
@@ -33,4 +33,4 @@ Docnav 当前同时存在 `StableError`、warning envelope、standard parameter 
 - 代码影响：`docnav-diagnostics`、`docnav-protocol`、`docnav-output`、`docnav` core runtime/output、`docnav-adapter-sdk`、`docnav-standard-parameters` 和非 document command 错误路径。
 - 生成链路影响：`scripts/generate-error-rules.ts`、`crates/docnav-protocol/src/generated/error_rules.rs`、validator generated rules 和 `protocol-response.schema.json` 的 error details 校验必须改为从 diagnostics-owned rules 产生或校验。
 - 验证材料影响：相关主规范、schema、examples、fixtures 和 consumer tests 必须与 surface projection 一起更新。
-- 实现前置：先完成 tasks 中的阻塞级审计，确认本 change 的 proposal、design、specs 和 tasks 都围绕 `docs/diagnostics.md` 的目标语义展开。
+- 实施起点：从当前事实源和 full migration surface 盘点开始，随后按 tasks 推进契约同步、模型实现、调用方迁移和验证。
