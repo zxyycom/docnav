@@ -1,10 +1,13 @@
 use std::io::{self, Write};
 
-use docnav_diagnostics::{attach_warnings_to_value, write_warning_text_lines};
+use docnav_diagnostics::{
+    attach_warnings_to_value, write_warning_text_lines, DiagnosticRecord, DiagnosticSource,
+    DiagnosticStack, Warning,
+};
 use docnav_json_io::write_json_value_pretty;
 use docnav_output::{
-    write_document_error, write_document_response, DocumentOutputMode, DocumentOutputOptions,
-    ProtocolOutputContext,
+    write_document_diagnostic_error, write_document_response, DocumentOutputMode,
+    DocumentOutputOptions, ProtocolOutputContext,
 };
 use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, PROTOCOL_VERSION};
 use serde_json::Value;
@@ -15,7 +18,7 @@ use crate::error::{exit_code_for_error, AppError, AppResult, DocnavExitCode};
 pub struct CommandOutcome {
     output: CommandOutput,
     exit_code: DocnavExitCode,
-    warnings: Vec<CliWarning>,
+    diagnostics: DiagnosticStack,
 }
 
 enum CommandOutput {
@@ -32,7 +35,7 @@ impl CommandOutcome {
         Self {
             output: CommandOutput::PlainText(text.into()),
             exit_code: DocnavExitCode::Success,
-            warnings: Vec::new(),
+            diagnostics: DiagnosticStack::new(),
         }
     }
 
@@ -40,7 +43,7 @@ impl CommandOutcome {
         Self {
             output: CommandOutput::Json(value),
             exit_code: DocnavExitCode::Success,
-            warnings: Vec::new(),
+            diagnostics: DiagnosticStack::new(),
         }
     }
 
@@ -48,7 +51,7 @@ impl CommandOutcome {
         Self {
             output: CommandOutput::Json(value),
             exit_code,
-            warnings: Vec::new(),
+            diagnostics: DiagnosticStack::new(),
         }
     }
 
@@ -63,12 +66,16 @@ impl CommandOutcome {
                 mode: document_output_mode(mode),
             },
             exit_code,
-            warnings: Vec::new(),
+            diagnostics: DiagnosticStack::new(),
         }
     }
 
     pub fn with_warnings(mut self, warnings: Vec<CliWarning>) -> Self {
-        self.warnings = warnings;
+        push_warning_diagnostics(
+            &mut self.diagnostics,
+            &warnings,
+            DiagnosticSource::with_stage("docnav", "runtime"),
+        );
         self
     }
 }
@@ -82,12 +89,13 @@ pub fn outcome_for_response(
 
 pub fn write_outcome<W: Write, E: Write>(
     outcome: CommandOutcome,
-    warnings: &[CliWarning],
+    diagnostics: DiagnosticStack,
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32 {
-    let mut combined_warnings = warnings.to_vec();
-    combined_warnings.extend(outcome.warnings);
+    let mut diagnostic_records = diagnostic_records_for_projection(&diagnostics);
+    diagnostic_records.extend(diagnostic_records_for_projection(&outcome.diagnostics));
+    let combined_warnings = warning_projections(&diagnostic_records);
 
     let result = match outcome.output {
         CommandOutput::PlainText(text) => write_plain_text(&text, &combined_warnings, stdout),
@@ -96,7 +104,7 @@ pub fn write_outcome<W: Write, E: Write>(
                 .map_err(io::Error::other)
         }
         CommandOutput::DocumentResponse { response, mode } => {
-            write_document_response(&response, mode, &combined_warnings, stdout, stderr)
+            write_document_response(&response, mode, &diagnostic_records, stdout, stderr)
                 .map(|_| ())
                 .map_err(io::Error::other)
         }
@@ -113,16 +121,28 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
         error,
         output_mode,
         operation,
-        warnings,
+        mut diagnostics,
         stdout,
         stderr,
     } = request;
+    let error_id = diagnostics
+        .push(
+            error
+                .error()
+                .to_record_draft(DiagnosticSource::with_stage("docnav", "error")),
+        )
+        .expect("stable errors must satisfy diagnostic details rules");
+    let error_record = diagnostics
+        .get(error_id)
+        .expect("pushed diagnostic record exists")
+        .clone();
+    let diagnostic_records = diagnostic_records_for_projection(&diagnostics);
     let request_id = generate_request_id();
     let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, &request_id, operation);
-    let result = write_document_error(
-        error.error(),
+    let result = write_document_diagnostic_error(
+        &error_record,
         protocol,
-        DocumentOutputOptions::new(document_output_mode(output_mode), warnings),
+        DocumentOutputOptions::new(document_output_mode(output_mode), &diagnostic_records),
         stdout,
         stderr,
     )
@@ -138,7 +158,7 @@ pub struct ErrorOutput<'a, W: Write, E: Write> {
     pub error: &'a AppError,
     pub output_mode: OutputMode,
     pub operation: Option<Operation>,
-    pub warnings: &'a [CliWarning],
+    pub diagnostics: DiagnosticStack,
     pub stdout: &'a mut W,
     pub stderr: &'a mut E,
 }
@@ -166,6 +186,28 @@ fn write_json<W: Write>(value: Value, writer: &mut W) -> Result<(), docnav_json_
 
 fn write_cli_warnings<W: Write>(warnings: &[CliWarning], writer: &mut W) -> io::Result<()> {
     write_warning_text_lines(warnings, writer)
+}
+
+fn push_warning_diagnostics(
+    stack: &mut DiagnosticStack,
+    warnings: &[CliWarning],
+    source: DiagnosticSource,
+) {
+    for warning in warnings {
+        if let Some(draft) = warning.to_record_draft(source.clone()) {
+            let _ = stack.push(draft);
+        }
+    }
+}
+
+fn diagnostic_records_for_projection(stack: &DiagnosticStack) -> Vec<DiagnosticRecord> {
+    let mut records = stack.snapshot();
+    records.reverse();
+    records
+}
+
+fn warning_projections(records: &[DiagnosticRecord]) -> Vec<CliWarning> {
+    records.iter().filter_map(Warning::from_record).collect()
 }
 
 fn write_io_error<E: Write>(error: io::Error, stderr: &mut E) -> i32 {

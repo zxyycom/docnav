@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use docnav_diagnostics::Warning;
+use docnav_diagnostics::{
+    DiagnosticDetails, DiagnosticRecordDraft, DiagnosticSource, ProtocolDiagnosticCode, Warning,
+};
 use docnav_typed_fields::{
     FieldIdentity, JsonValue, SchemaMetadataView, TypedValue, ValidationFailure,
 };
@@ -16,6 +18,23 @@ pub struct StandardParameterValidationDiagnostic {
     pub identity: FieldIdentity,
     pub source: Option<StandardParameterSourceInfo>,
     pub failure: ValidationFailure,
+}
+
+impl StandardParameterValidationDiagnostic {
+    pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
+        DiagnosticRecordDraft::new(
+            ProtocolDiagnosticCode::InvalidRequest,
+            format!(
+                "standard parameter {} failed validation",
+                self.identity.as_str()
+            ),
+            DiagnosticDetails::FieldReason {
+                field: self.identity.as_str().to_owned(),
+                reason: self.failure.to_string(),
+            },
+            source,
+        )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -52,6 +71,13 @@ impl StandardParameterDiagnostic {
         match self {
             Self::Validation(_) => None,
             Self::Warning(warning) => Some(warning),
+        }
+    }
+
+    pub fn to_record_draft(&self, source: DiagnosticSource) -> Option<DiagnosticRecordDraft> {
+        match self {
+            Self::Validation(diagnostic) => Some(diagnostic.to_record_draft(source)),
+            Self::Warning(warning) => warning.to_record_draft(source),
         }
     }
 }

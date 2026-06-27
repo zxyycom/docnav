@@ -24,10 +24,10 @@ pub(super) fn parse_document_command(
         .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
         .map_err(|_| document_parse_error(operation, args))?;
 
-    Ok(ParsedCli {
-        command: CliCommand::Document(document_command_from_matches(operation, &matches)?),
+    Ok(ParsedCli::new(
+        CliCommand::Document(document_command_from_matches(operation, &matches)?),
         warnings,
-    })
+    ))
 }
 
 struct LooseDocumentArgs {

@@ -78,12 +78,12 @@ export const checks = defineChecks([
         ]
       },
       {
-        id: "generated-error-rules",
-        label: "generated error rules",
+        id: "diagnostic-projection-rules",
+        label: "diagnostic projection rules",
         command: "bun",
-        args: ["scripts/generate-error-rules.ts", "--check"],
+        args: ["scripts/check-diagnostic-projections.ts"],
         ignoreOutput: [
-          /^generated error rules ok$/
+          /^diagnostic projection checks ok$/
         ]
       },
       {

@@ -24,10 +24,7 @@ where
 {
     let args: Vec<String> = args.into_iter().map(Into::into).collect();
     if let Some(help) = help_text(&args) {
-        return Ok(ParsedCli {
-            command: CliCommand::Help(help),
-            warnings: Vec::new(),
-        });
+        return Ok(ParsedCli::new(CliCommand::Help(help), Vec::new()));
     }
 
     let Some((command, rest)) = args.split_first() else {

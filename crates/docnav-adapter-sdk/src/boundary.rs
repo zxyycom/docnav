@@ -1,3 +1,4 @@
+use docnav_diagnostics::BoundaryDiagnosticCode;
 use docnav_protocol::{validate_manifest_value, Manifest, ProbeResult};
 use std::fmt;
 
@@ -28,6 +29,20 @@ impl AdapterBoundaryError {
             Self::ManifestAdapterIdMismatch { .. } => diagnostics::MANIFEST_ADAPTER_ID_MISMATCH,
             Self::ProbeSemantic(_) => diagnostics::PROBE_RESULT_SEMANTIC_VALIDATION_FAILED,
             Self::ProbeAdapterIdMismatch { .. } => diagnostics::PROBE_RESULT_ADAPTER_ID_MISMATCH,
+        }
+    }
+
+    pub(crate) const fn diagnostic_code(&self) -> BoundaryDiagnosticCode {
+        match self {
+            Self::ManifestSchema(_) => BoundaryDiagnosticCode::ManifestSchemaValidationFailed,
+            Self::ManifestSemantic(_) => BoundaryDiagnosticCode::ManifestSemanticValidationFailed,
+            Self::ManifestAdapterIdMismatch { .. } => {
+                BoundaryDiagnosticCode::ManifestAdapterIdMismatch
+            }
+            Self::ProbeSemantic(_) => BoundaryDiagnosticCode::ProbeResultSemanticValidationFailed,
+            Self::ProbeAdapterIdMismatch { .. } => {
+                BoundaryDiagnosticCode::ProbeResultAdapterIdMismatch
+            }
         }
     }
 }

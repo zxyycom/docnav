@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io;
 
-use docnav_diagnostics::Warning;
+use docnav_diagnostics::{DiagnosticRecord, Warning};
 use docnav_json_io::JsonIoError;
 use docnav_protocol::{Operation, StableError};
 use docnav_readable::RenderError;
@@ -10,7 +10,10 @@ mod readable;
 mod writer;
 
 pub use readable::{add_warnings, readable_payload, stable_error_readable, view_kind_for_result};
-pub use writer::{write_document_error, write_document_response, write_document_result};
+pub use writer::{
+    write_document_diagnostic_error, write_document_error, write_document_response,
+    write_document_result,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DocumentOutputMode {
@@ -27,6 +30,7 @@ pub enum DocumentOutputStatus {
 
 #[derive(Debug)]
 pub enum DocumentOutputError {
+    DiagnosticProjection,
     ReadablePayload(RenderError),
     ReadableViewRender(RenderError),
     StdoutJson(JsonIoError),
@@ -37,6 +41,9 @@ pub enum DocumentOutputError {
 impl fmt::Display for DocumentOutputError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::DiagnosticProjection => {
+                formatter.write_str("failed to project diagnostic output")
+            }
             Self::ReadablePayload(error) => write!(formatter, "readable payload failed: {error}"),
             Self::ReadableViewRender(error) => {
                 write!(formatter, "readable_view_render_failed: {error}")
@@ -51,6 +58,7 @@ impl fmt::Display for DocumentOutputError {
 impl std::error::Error for DocumentOutputError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::DiagnosticProjection => None,
             Self::ReadablePayload(error) | Self::ReadableViewRender(error) => Some(error),
             Self::StdoutJson(error) => Some(error),
             Self::StdoutWrite(error) | Self::StderrWarning(error) => Some(error),
@@ -81,12 +89,19 @@ impl<'a> ProtocolOutputContext<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct DocumentOutputOptions<'a> {
     mode: DocumentOutputMode,
-    warnings: &'a [Warning],
+    diagnostics: &'a [DiagnosticRecord],
 }
 
 impl<'a> DocumentOutputOptions<'a> {
-    pub const fn new(mode: DocumentOutputMode, warnings: &'a [Warning]) -> Self {
-        Self { mode, warnings }
+    pub const fn new(mode: DocumentOutputMode, diagnostics: &'a [DiagnosticRecord]) -> Self {
+        Self { mode, diagnostics }
+    }
+
+    pub(crate) fn warning_projections(self) -> Vec<Warning> {
+        self.diagnostics
+            .iter()
+            .filter_map(Warning::from_record)
+            .collect()
     }
 }
 

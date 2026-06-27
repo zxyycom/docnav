@@ -1,3 +1,4 @@
+use docnav_diagnostics::BoundaryDiagnosticCode;
 use docnav_protocol::{
     decode_protocol_request_value, extract_request_context_from_value, DecodePipelineError,
     FailureResponse, Operation, OperationArguments, OperationResult, ProtocolResponse,
@@ -8,13 +9,15 @@ use std::io::{Read, Write};
 
 use crate::boundary::validated_manifest;
 use crate::constants::{diagnostics, fields};
-use crate::output::{emit_diagnostic, write_adapter_boundary_error, write_protocol_response};
+use crate::output::{
+    emit_boundary_diagnostic, write_adapter_boundary_error, write_protocol_response,
+};
 use crate::standard_parameters::standardize_invoke_request;
 use crate::{Adapter, AdapterExitCode, AdapterResult};
 
 struct InvokeFailure {
     response: ProtocolResponse,
-    diagnostic: Option<String>,
+    diagnostic: Option<(BoundaryDiagnosticCode, String)>,
     exit_code: AdapterExitCode,
 }
 
@@ -101,7 +104,10 @@ fn read_request_failure(error: std::io::Error) -> InvokeFailure {
         response: ProtocolResponse::Failure(FailureResponse::unparsed(
             StableError::invalid_request(fields::REQUEST, reason),
         )),
-        diagnostic: Some(format!("{}: {error}", diagnostics::FAILED_TO_READ_REQUEST)),
+        diagnostic: Some((
+            BoundaryDiagnosticCode::FailedToReadRequest,
+            format!("{}: {error}", diagnostics::FAILED_TO_READ_REQUEST),
+        )),
         exit_code: AdapterExitCode::IoError,
     }
 }
@@ -116,7 +122,10 @@ fn parse_request_json(input: &str) -> InvokeResult<Value> {
                 None,
                 StableError::invalid_request(fields::REQUEST, reason),
             ),
-            diagnostic: Some(format!("{}: {error}", diagnostics::INVALID_REQUEST_JSON)),
+            diagnostic: Some((
+                BoundaryDiagnosticCode::InvalidRequestJson,
+                format!("{}: {error}", diagnostics::INVALID_REQUEST_JSON),
+            )),
             exit_code: AdapterExitCode::ProtocolError,
         })
     })
@@ -140,9 +149,9 @@ fn decode_request_value(request_value: Value) -> InvokeResult<RequestEnvelope> {
                     context.operation,
                     StableError::invalid_request(fields::REQUEST, reason),
                 ),
-                diagnostic: Some(format!(
-                    "{}: {error}",
-                    diagnostics::REQUEST_SCHEMA_VALIDATION_FAILED
+                diagnostic: Some((
+                    BoundaryDiagnosticCode::RequestSchemaValidationFailed,
+                    format!("{}: {error}", diagnostics::REQUEST_SCHEMA_VALIDATION_FAILED),
                 )),
                 exit_code: AdapterExitCode::ProtocolError,
             }));
@@ -156,9 +165,9 @@ fn decode_request_value(request_value: Value) -> InvokeResult<RequestEnvelope> {
                     context.operation,
                     StableError::invalid_request(fields::REQUEST, reason),
                 ),
-                diagnostic: Some(format!(
-                    "{}: {error}",
-                    diagnostics::REQUEST_DESERIALIZATION_FAILED
+                diagnostic: Some((
+                    BoundaryDiagnosticCode::RequestDeserializationFailed,
+                    format!("{}: {error}", diagnostics::REQUEST_DESERIALIZATION_FAILED),
                 )),
                 exit_code: AdapterExitCode::ProtocolError,
             }));
@@ -206,8 +215,8 @@ where
     W: Write,
     E: Write,
 {
-    if let Some(diagnostic) = failure.diagnostic {
-        let _ = emit_diagnostic(stderr, &diagnostic);
+    if let Some((code, diagnostic)) = failure.diagnostic {
+        let _ = emit_boundary_diagnostic(stderr, code, diagnostic);
     }
     write_protocol_response(&failure.response, stdout, stderr, failure.exit_code)
 }

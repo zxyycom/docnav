@@ -4,11 +4,31 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-pub const CLI_ARGV_IGNORED: WarningId = WarningId::from_static("cli_argv_ignored");
+mod code;
+mod details;
+mod record;
+mod stack;
+
+pub use code::{
+    BoundaryDiagnosticCode, DiagnosticCategory, DiagnosticCode, DiagnosticEffect,
+    DiagnosticProjectionRule, DiagnosticSeverity, ProtocolDiagnosticCode,
+    ReadableWarningDiagnosticCode,
+};
+pub use details::{
+    DetailFieldRule, DetailFieldType, DiagnosticDetails, DiagnosticDetailsError,
+    DiagnosticDetailsRule,
+};
+pub use record::{
+    DiagnosticRecord, DiagnosticRecordDraft, DiagnosticRecordError, DiagnosticSource,
+};
+pub use stack::{DiagnosticId, DiagnosticMark, DiagnosticStack};
+
+pub const CLI_ARGV_IGNORED: WarningId =
+    WarningId::from_static(ReadableWarningDiagnosticCode::CliArgvIgnored.warning_id());
 pub const ADAPTER_CANDIDATE_FAILURE: WarningId =
-    WarningId::from_static("adapter_candidate_failure");
+    WarningId::from_static(ReadableWarningDiagnosticCode::AdapterCandidateFailure.warning_id());
 pub const ADAPTER_CONFIG_SOURCE_SKIPPED: WarningId =
-    WarningId::from_static("adapter_config_source_skipped");
+    WarningId::from_static(ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped.warning_id());
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct WarningId(WarningIdRepr);
@@ -226,6 +246,114 @@ impl Warning {
             reason: reason.into(),
             effect: WarningEffect::OperationContinued,
             details: WarningDetails::CliArgv { tokens },
+        }
+    }
+
+    pub fn diagnostic_code(&self) -> Option<ReadableWarningDiagnosticCode> {
+        match self.id.as_str() {
+            id if id == ReadableWarningDiagnosticCode::CliArgvIgnored.warning_id() => {
+                Some(ReadableWarningDiagnosticCode::CliArgvIgnored)
+            }
+            id if id == ReadableWarningDiagnosticCode::AdapterCandidateFailure.warning_id() => {
+                Some(ReadableWarningDiagnosticCode::AdapterCandidateFailure)
+            }
+            id if id == ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped.warning_id() => {
+                Some(ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn to_record_draft(&self, source: DiagnosticSource) -> Option<DiagnosticRecordDraft> {
+        let code = self.diagnostic_code()?;
+        let details = match &self.details {
+            WarningDetails::CliArgv { tokens } => DiagnosticDetails::CliArgv {
+                tokens: tokens.clone(),
+            },
+            WarningDetails::AdapterCandidate {
+                adapter_id,
+                stage,
+                code,
+                preselected,
+            } => DiagnosticDetails::AdapterCandidate {
+                adapter_id: adapter_id.clone(),
+                stage: stage.clone(),
+                code: code.clone(),
+                preselected: *preselected,
+            },
+            WarningDetails::AdapterConfigSource {
+                source_level,
+                path_origin,
+                path,
+                reason_code,
+            } => DiagnosticDetails::AdapterConfigSource {
+                source_level: source_level.clone(),
+                path_origin: path_origin.clone(),
+                path: path.clone(),
+                reason_code: reason_code.clone(),
+            },
+            WarningDetails::Other(_) => return None,
+        };
+        Some(DiagnosticRecordDraft::new(
+            code,
+            self.reason.clone(),
+            details,
+            source,
+        ))
+    }
+
+    pub fn from_record(record: &DiagnosticRecord) -> Option<Self> {
+        match (record.code, &record.details) {
+            (
+                DiagnosticCode::ReadableWarning(ReadableWarningDiagnosticCode::CliArgvIgnored),
+                DiagnosticDetails::CliArgv { tokens },
+            ) => Some(Self::cli_argv_ignored(
+                tokens.clone(),
+                record.summary.clone(),
+            )),
+            (
+                DiagnosticCode::ReadableWarning(
+                    ReadableWarningDiagnosticCode::AdapterCandidateFailure,
+                ),
+                DiagnosticDetails::AdapterCandidate {
+                    adapter_id,
+                    stage,
+                    code,
+                    preselected,
+                },
+            ) => Some(Self {
+                id: WarningId::adapter_candidate_failure(),
+                reason: record.summary.clone(),
+                effect: WarningEffect::CandidateSkipped,
+                details: WarningDetails::AdapterCandidate {
+                    adapter_id: adapter_id.clone(),
+                    stage: stage.clone(),
+                    code: code.clone(),
+                    preselected: *preselected,
+                },
+            }),
+            (
+                DiagnosticCode::ReadableWarning(
+                    ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped,
+                ),
+                DiagnosticDetails::AdapterConfigSource {
+                    source_level,
+                    path_origin,
+                    path,
+                    reason_code,
+                },
+            ) => Some(Self {
+                id: WarningId::adapter_config_source_skipped(),
+                reason: record.summary.clone(),
+                effect: WarningEffect::OperationContinued,
+                details: WarningDetails::AdapterConfigSource {
+                    source_level: source_level.clone(),
+                    path_origin: path_origin.clone(),
+                    path: path.clone(),
+                    reason_code: reason_code.clone(),
+                },
+            }),
+            _ => None,
         }
     }
 }

@@ -58,8 +58,7 @@
         "effect": {
           "enum": [
             "operation_continued",
-            "candidate_skipped",
-            "diagnostic_only"
+            "candidate_skipped"
           ]
         },
         "details": {
@@ -81,10 +80,7 @@
           "then": {
             "properties": {
               "effect": {
-                "enum": [
-                  "operation_continued",
-                  "diagnostic_only"
-                ]
+                "const": "operation_continued"
               },
               "details": {
                 "type": "object",

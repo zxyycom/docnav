@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use docnav_diagnostics::BoundaryDiagnosticCode;
 use docnav_protocol::{
     Document, FindArguments, InfoArguments, Operation, OperationArguments, OutlineArguments,
     ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
@@ -11,7 +12,7 @@ use super::super::output::{
 };
 use super::super::warnings::DirectCliWarning;
 use super::{input_error, DirectCliConfig, DirectCliContext};
-use crate::{emit_diagnostic, execute_operation, invoke_once, Adapter};
+use crate::{execute_operation, invoke_once, output::emit_boundary_diagnostic, Adapter};
 
 struct DirectOperationInvocation {
     request: RequestEnvelope,
@@ -152,7 +153,11 @@ where
     let input = match serde_json::to_vec(request) {
         Ok(input) => input,
         Err(error) => {
-            let _ = emit_diagnostic(stderr, &format!("failed to serialize request: {error}"));
+            let _ = emit_boundary_diagnostic(
+                stderr,
+                BoundaryDiagnosticCode::FailedToSerialize,
+                format!("failed to serialize request: {error}"),
+            );
             return crate::AdapterExitCode::InternalError.code();
         }
     };

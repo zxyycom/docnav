@@ -42,13 +42,13 @@ fn parse_config_get(args: &[String]) -> AppResult<ParsedCli> {
         .try_get_matches_from(clap_argv(command_names::CONFIG_GET, parsed.clap_args))
         .map_err(|_| config_get_error(args))?;
     let key = required_string(&matches, arg_ids::KEY, "key")?;
-    Ok(ParsedCli {
-        command: CliCommand::Config(ConfigCommand::Get(ConfigGet {
+    Ok(ParsedCli::new(
+        CliCommand::Config(ConfigCommand::Get(ConfigGet {
             key,
             user: matches.get_flag(arg_ids::USER),
         })),
-        warnings: parsed.warnings,
-    })
+        parsed.warnings,
+    ))
 }
 
 fn parse_config_set(args: &[String]) -> AppResult<ParsedCli> {
@@ -58,14 +58,14 @@ fn parse_config_set(args: &[String]) -> AppResult<ParsedCli> {
         .map_err(|_| config_set_error(args))?;
     let key = required_string(&matches, arg_ids::KEY, "key")?;
     let value = required_string(&matches, arg_ids::VALUE, "value")?;
-    Ok(ParsedCli {
-        command: CliCommand::Config(ConfigCommand::Set(ConfigSet {
+    Ok(ParsedCli::new(
+        CliCommand::Config(ConfigCommand::Set(ConfigSet {
             key,
             value,
             user: matches.get_flag(arg_ids::USER),
         })),
-        warnings: parsed.warnings,
-    })
+        parsed.warnings,
+    ))
 }
 
 fn parse_config_unset(args: &[String]) -> AppResult<ParsedCli> {
@@ -74,13 +74,13 @@ fn parse_config_unset(args: &[String]) -> AppResult<ParsedCli> {
         .try_get_matches_from(clap_argv(command_names::CONFIG_UNSET, parsed.clap_args))
         .map_err(|_| config_unset_error(args))?;
     let key = required_string(&matches, arg_ids::KEY, "key")?;
-    Ok(ParsedCli {
-        command: CliCommand::Config(ConfigCommand::Unset(ConfigUnset {
+    Ok(ParsedCli::new(
+        CliCommand::Config(ConfigCommand::Unset(ConfigUnset {
             key,
             user: matches.get_flag(arg_ids::USER),
         })),
-        warnings: parsed.warnings,
-    })
+        parsed.warnings,
+    ))
 }
 
 fn parse_config_list(args: &[String]) -> AppResult<ParsedCli> {
@@ -93,14 +93,14 @@ fn parse_config_list(args: &[String]) -> AppResult<ParsedCli> {
         .map(|raw| parse_operation(&raw))
         .transpose()?;
 
-    Ok(ParsedCli {
-        command: CliCommand::Config(ConfigCommand::List(ConfigList {
+    Ok(ParsedCli::new(
+        CliCommand::Config(ConfigCommand::List(ConfigList {
             user: matches.get_flag(arg_ids::USER),
             path,
             operation,
         })),
-        warnings: parsed.warnings,
-    })
+        parsed.warnings,
+    ))
 }
 
 #[derive(Clone, Copy)]

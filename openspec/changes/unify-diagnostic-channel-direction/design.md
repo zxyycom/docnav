@@ -94,3 +94,37 @@ Protocol schema、readable schema、examples 和 fixtures 是 projection 校验�
 6. 同步更新 owner docs、schema、examples、fixtures 和 consumer tests，明确 protocol/readable/manifest/probe/stderr/exit behavior 如何消费错误通道记录。
 7. 删除旧 error/warning 事实源和直接 stderr diagnostic 入口，更新 tests 证明不再依赖 legacy compatibility。
 8. 验证 id lookup、mark/event-id drain、LIFO 返回顺序、canonical details 校验、可恢复问题保留和 fatal diagnostic code projection。
+
+## Implementation Audit
+
+This audit records the starting surface for the migration. It is not a replacement for owner docs; later implementation tasks update the owning docs, schema, examples, fixtures and tests when observable fields, channels or validation materials change.
+
+### Existing fact sources
+
+| Fact source | Current owner | Current channels / consumers | Current coverage |
+| --- | --- | --- | --- |
+| `StableError` / `StableErrorCode` | `crates/docnav-protocol/src/error.rs` owns the protocol-visible error object, code enum, category and required-details hook. Core, SDK, output and adapters construct or consume it directly. | Protocol failure envelope via `ProtocolResponse::Failure`; readable error projection through `docnav-output`; process exit mapping through `crates/docnav/src/error.rs` and `crates/docnav-adapter-sdk/src/error.rs`; adapter output contract validation uses `validate_required_details`. | `crates/docnav-protocol/src/tests/basic.rs`, `crates/docnav-output/src/tests.rs`, `crates/docnav-adapter-sdk/src/tests/error.rs`, adapter/core smoke and schema/example validators. |
+| `Warning` / `WarningId` | `crates/docnav-diagnostics/src/lib.rs` owns standalone warning id constants, warning details enum, warning text formatting and JSON attachment helpers. | Readable output `warnings` array; readable-view header warning payload; `protocol-json` warning lines on stderr; direct adapter machine-mode warnings on stderr. | `crates/docnav-diagnostics/src/tests.rs`, `crates/docnav-output/src/tests.rs`, `crates/docnav-adapter-sdk/src/direct/args/tests.rs`, core and markdown smoke warning assertions. |
+| `StandardParameterDiagnostic` | `crates/docnav-standard-parameters/src/resolution.rs` owns a separate validation-or-warning diagnostic enum. | Core and SDK consumers convert validation diagnostics to `StableError::invalid_request`; config-source diagnostics carry standalone `Warning` values into direct CLI output. | `crates/docnav-standard-parameters/src/tests/*`, `crates/docnav-adapter-sdk/src/direct/args/tests.rs`, markdown config smoke. |
+| Adapter candidate warning | Core routing owns `AdapterSelectionWarning`; `crates/docnav/src/runtime.rs` converts it to `Warning::adapter_candidate_failure`. | Readable output warning array/header, or stderr when the selected surface keeps protocol-shaped stdout pure. | Core adapter-selection smoke and warning assertion helpers; `docnav-diagnostics` constructor shape test. |
+| Adapter config source warning | `crates/docnav-standard-parameters/src/construction/config.rs` constructs `Warning::adapter_config_source_skipped` from config-source read failures. | Adapter direct readable output warning array/header; direct machine output stderr where applicable. | Standard-parameter construction/pipeline tests, adapter direct args tests and markdown config smoke. |
+| `docs/protocol/error-rules.json` | `docs/protocol/error-rules.json` plus `scripts/generate-error-rules.ts` currently own required protocol error details as a machine-readable source. | Generates `crates/docnav-protocol/src/generated/error_rules.rs`, `scripts/tools/validators/generated/error/rules.ts` and protocol schema error detail branches; validators import generated required-details constants. | `scripts/generate-error-rules.ts --check` through workspace checks, protocol schema validation and protocol example error-details checks. |
+| Direct stderr diagnostics | SDK/core boundary code owns direct lines through `emit_diagnostic`, `write_io_error`, direct CLI input errors and output write failure handlers. | stderr for manifest/probe schema or semantic failures, invoke decode/read failures, adapter boundary failures, direct CLI usage errors and output write failures. | Adapter SDK invoke/error/output tests, markdown invoke-error smoke, core CLI smoke stderr assertions and workspace smoke harness checks. |
+
+### Full migration surface
+
+| Surface | Switching scope |
+| --- | --- |
+| `protocol-json` | Replace `StableError` as the owning fact with diagnostic records plus protocol projection. `docnav-protocol` still owns the response envelope, request id behavior and schema validation helpers, but consumes diagnostics-owned code/details projection. |
+| Manifest / probe | Keep manifest and probe stdout schemas owned by protocol/adapter contract. Move manifest/probe schema, semantic, serialization and write failure diagnostics from direct stderr construction into diagnostic records that the adapter boundary flushes or projects. |
+| Readable output | Replace direct `Warning` input and `StableError` readable mapping with diagnostic-stack projection into readable warning/error payloads. Preserve current observable warning ids/effects/details unless the owner docs and validation material change in the same task. |
+| stderr | Replace direct warning text and `emit_diagnostic` fact construction with stack flush/projection at CLI, adapter direct CLI and adapter `invoke` boundaries. Test harness and one-off development script stderr remain out of scope. |
+| Exit behavior | Move mappings currently keyed by `StableErrorCode` category to diagnostics-owned projection/category metadata; `docnav` and adapter SDK still own their concrete process exit code enums. |
+| Schema | Keep JSON Schema as validation material. `protocol-response.schema.json` and readable schemas must validate the projected surface shape and must not define independent diagnostic code or details rules. |
+| Examples / fixtures | Update protocol error examples, readable examples, manifest/probe examples and smoke fixtures only where observable fields or channels change. They remain examples and fixtures, not rule sources. |
+| Consumer tests | Migrate unit and smoke tests from asserting legacy constructors/enums as fact sources to asserting diagnostic records, stack semantics and surface projection. Preserve black-box stdout/stderr/exit behavior assertions. |
+| Generator scripts / generated files | Delete `docs/protocol/error-rules.json` and the generated required-details chain as rule source. Any remaining generated artifact must be derived from `docnav-diagnostics` projection metadata or become a check-only validation material. |
+
+### Completion standard
+
+The completed implementation must not retain a parallel legacy fact source for Docnav diagnostics. `StableError`, `StableErrorCode`, standalone `Warning`, `WarningId`, `StandardParameterDiagnostic`, direct stderr diagnostic constructors and `docs/protocol/error-rules.json` must either be deleted or renamed/reworked into projection helpers that consume `DiagnosticStack` records and `DiagnosticCode` metadata. Generated Rust/TypeScript required-details constants must not be sourced from the deleted JSON file. Tests must prove the diagnostics-owned stack, code/details rules and projections cover the previous protocol, readable, stderr, exit, schema and example surfaces.

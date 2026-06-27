@@ -2,6 +2,7 @@ use super::super::warning::{CliWarningDetails, CliWarningEffect, CLI_ARGV_IGNORE
 use super::*;
 use crate::cli::{CliCommand, OutputMode};
 use crate::error::exit_code_for_error;
+use docnav_diagnostics::{DiagnosticCode, ReadableWarningDiagnosticCode};
 
 // @case WB-CORE-HELP-001
 #[test]
@@ -9,6 +10,7 @@ fn help_returns_typed_help_command() {
     let parsed = parse(["outline", "--help"]).expect("parse help");
 
     assert!(parsed.warnings.is_empty());
+    assert!(parsed.diagnostics.is_empty());
     match parsed.command {
         CliCommand::Help(text) => {
             assert!(text.contains("Usage:"));
@@ -226,6 +228,11 @@ fn unused_known_argument_value_is_not_eagerly_typed() {
         command => panic!("expected document command, got {command:?}"),
     }
     assert_eq!(parsed.warnings.len(), 1);
+    assert_eq!(parsed.diagnostics.len(), 1);
+    assert_eq!(
+        parsed.diagnostics.snapshot()[0].code,
+        DiagnosticCode::from(ReadableWarningDiagnosticCode::CliArgvIgnored)
+    );
     let warning = &parsed.warnings[0];
     assert_eq!(warning.id, CLI_ARGV_IGNORED);
     assert_eq!(warning.effect, CliWarningEffect::OperationContinued);

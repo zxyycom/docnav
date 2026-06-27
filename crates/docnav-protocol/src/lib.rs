@@ -6,7 +6,6 @@ mod constants;
 mod decode;
 mod envelope;
 mod error;
-mod generated;
 mod manifest;
 mod operation;
 mod operation_result;

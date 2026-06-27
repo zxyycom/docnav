@@ -73,3 +73,17 @@ fn readable_json_success_uses_shared_document_output() {
     assert_eq!(value["ref"], "ok");
     assert!(value.get("protocol_version").is_none());
 }
+
+#[test]
+fn direct_cli_warning_flush_projects_diagnostic_records_to_stderr() {
+    let mut stderr = Vec::new();
+    let warning = DirectCliWarning::unknown_flag("--future");
+
+    let exit =
+        append_cli_warnings_to_stderr(AdapterExitCode::Success.code(), &[warning], &mut stderr);
+
+    assert_eq!(exit, AdapterExitCode::Success.code());
+    let stderr = String::from_utf8(stderr).expect("stderr utf8");
+    assert!(stderr.contains("cli_argv_ignored"));
+    assert!(stderr.contains("--future"));
+}

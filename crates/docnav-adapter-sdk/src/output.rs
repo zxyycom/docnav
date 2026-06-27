@@ -1,3 +1,7 @@
+use docnav_diagnostics::{
+    BoundaryDiagnosticCode, DiagnosticDetails, DiagnosticRecordDraft, DiagnosticSource,
+    DiagnosticStack,
+};
 use docnav_protocol::{
     validate_manifest_value, validate_probe_result_value, validate_protocol_response_value,
     Manifest, ProbeResult, ProtocolResponse,
@@ -20,9 +24,10 @@ where
         Err(exit_code) => return exit_code.code(),
     };
     if let Err(error) = validate_manifest_value(&value) {
-        let _ = emit_diagnostic(
+        let _ = emit_boundary_diagnostic(
             &mut stderr,
-            &format!(
+            BoundaryDiagnosticCode::ManifestSchemaValidationFailed,
+            format!(
                 "{}: {error}",
                 diagnostics::MANIFEST_SCHEMA_VALIDATION_FAILED
             ),
@@ -30,9 +35,10 @@ where
         return AdapterExitCode::ProtocolError.code();
     }
     if let Err(error) = manifest.validate_semantics() {
-        let _ = emit_diagnostic(
+        let _ = emit_boundary_diagnostic(
             &mut stderr,
-            &format!(
+            BoundaryDiagnosticCode::ManifestSemanticValidationFailed,
+            format!(
                 "{}: {error}",
                 diagnostics::MANIFEST_SEMANTIC_VALIDATION_FAILED
             ),
@@ -52,9 +58,10 @@ where
         Err(exit_code) => return exit_code.code(),
     };
     if let Err(error) = validate_probe_result_value(&value) {
-        let _ = emit_diagnostic(
+        let _ = emit_boundary_diagnostic(
             &mut stderr,
-            &format!(
+            BoundaryDiagnosticCode::ProbeResultSchemaValidationFailed,
+            format!(
                 "{}: {error}",
                 diagnostics::PROBE_RESULT_SCHEMA_VALIDATION_FAILED
             ),
@@ -62,9 +69,10 @@ where
         return AdapterExitCode::ProtocolError.code();
     }
     if let Err(error) = probe.validate_semantics() {
-        let _ = emit_diagnostic(
+        let _ = emit_boundary_diagnostic(
             &mut stderr,
-            &format!(
+            BoundaryDiagnosticCode::ProbeResultSemanticValidationFailed,
+            format!(
                 "{}: {error}",
                 diagnostics::PROBE_RESULT_SEMANTIC_VALIDATION_FAILED
             ),
@@ -82,9 +90,10 @@ where
     match serde_json::to_value(value) {
         Ok(value) => Ok(value),
         Err(error) => {
-            let _ = emit_diagnostic(
+            let _ = emit_boundary_diagnostic(
                 &mut *stderr,
-                &format!("{} {label}: {error}", diagnostics::FAILED_TO_SERIALIZE),
+                BoundaryDiagnosticCode::FailedToSerialize,
+                format!("{} {label}: {error}", diagnostics::FAILED_TO_SERIALIZE),
             );
             Err(AdapterExitCode::IoError)
         }
@@ -99,9 +108,10 @@ where
     match serde_json::to_writer(&mut stdout, value) {
         Ok(()) => AdapterExitCode::Success.code(),
         Err(error) => {
-            let _ = emit_diagnostic(
+            let _ = emit_boundary_diagnostic(
                 &mut stderr,
-                &format!("{}: {error}", diagnostics::FAILED_TO_WRITE_JSON),
+                BoundaryDiagnosticCode::FailedToWriteJson,
+                format!("{}: {error}", diagnostics::FAILED_TO_WRITE_JSON),
             );
             AdapterExitCode::IoError.code()
         }
@@ -119,9 +129,10 @@ where
     E: Write,
 {
     if let Err(error) = response.validate() {
-        let _ = emit_diagnostic(
+        let _ = emit_boundary_diagnostic(
             stderr,
-            &format!(
+            BoundaryDiagnosticCode::ProtocolResponseSemanticValidationFailed,
+            format!(
                 "{}: {error}",
                 diagnostics::PROTOCOL_RESPONSE_SEMANTIC_VALIDATION_FAILED
             ),
@@ -133,9 +144,10 @@ where
         Err(exit_code) => return exit_code.code(),
     };
     if let Err(error) = validate_protocol_response_value(&value) {
-        let _ = emit_diagnostic(
+        let _ = emit_boundary_diagnostic(
             stderr,
-            &format!(
+            BoundaryDiagnosticCode::ProtocolResponseSchemaValidationFailed,
+            format!(
                 "{}: {error}",
                 diagnostics::PROTOCOL_RESPONSE_SCHEMA_VALIDATION_FAILED
             ),
@@ -143,9 +155,10 @@ where
         return AdapterExitCode::ProtocolError.code();
     }
     if let Err(error) = serde_json::to_writer(stdout, &value) {
-        let _ = emit_diagnostic(
+        let _ = emit_boundary_diagnostic(
             stderr,
-            &format!(
+            BoundaryDiagnosticCode::FailedToWriteProtocolResponse,
+            format!(
                 "{}: {error}",
                 diagnostics::FAILED_TO_WRITE_PROTOCOL_RESPONSE
             ),
@@ -159,10 +172,38 @@ pub fn emit_diagnostic<W: Write>(stderr: &mut W, message: &str) -> std::io::Resu
     writeln!(stderr, "{message}")
 }
 
+pub(crate) fn emit_boundary_diagnostic<W: Write>(
+    stderr: &mut W,
+    code: BoundaryDiagnosticCode,
+    message: impl Into<String>,
+) -> std::io::Result<()> {
+    let message = message.into();
+    let mut diagnostics = DiagnosticStack::new();
+    let id = diagnostics
+        .push(DiagnosticRecordDraft::new(
+            code,
+            message.clone(),
+            DiagnosticDetails::Boundary {
+                reason: message,
+                label: None,
+            },
+            DiagnosticSource::with_stage("docnav-adapter-sdk", "stderr"),
+        ))
+        .map_err(std::io::Error::other)?;
+    let record = diagnostics
+        .get(id)
+        .expect("pushed diagnostic record exists");
+    emit_diagnostic(stderr, &record.summary)
+}
+
 pub(crate) fn write_adapter_boundary_error<E: Write>(
     error: &AdapterBoundaryError,
     stderr: &mut E,
 ) -> i32 {
-    let _ = emit_diagnostic(stderr, &format!("{}: {error}", error.diagnostic()));
+    let _ = emit_boundary_diagnostic(
+        stderr,
+        error.diagnostic_code(),
+        format!("{}: {error}", error.diagnostic()),
+    );
     AdapterExitCode::ProtocolError.code()
 }

@@ -1,5 +1,9 @@
 use std::num::NonZeroU32;
 
+use docnav_diagnostics::{
+    DiagnosticDetails, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
+    ProtocolDiagnosticCode,
+};
 use docnav_protocol::{Operation, PositiveInteger};
 use docnav_standard_parameters::{
     ids, StandardParameterDiagnostic, StandardParameterResolution, StandardParameterSourceKind,
@@ -123,7 +127,21 @@ fn first_validation_error(resolution: &StandardParameterResolution) -> AppResult
 
 fn validation_error(diagnostic: &StandardParameterValidationDiagnostic) -> AppError {
     let identity = diagnostic.identity.as_str();
-    AppError::invalid_request(field_label(identity), validation_reason(identity))
+    let mut diagnostics = DiagnosticStack::new();
+    let id = diagnostics
+        .push(invalid_request_record(
+            field_label(identity),
+            validation_reason(identity),
+            DiagnosticSource::with_stage("docnav", "standard-parameters"),
+        ))
+        .expect("standard parameter validation details are valid");
+    let record = diagnostics
+        .get(id)
+        .expect("pushed diagnostic record exists");
+    AppError::new(
+        docnav_protocol::StableError::from_diagnostic_record(record)
+            .expect("invalid request diagnostic projects to stable error"),
+    )
 }
 
 fn field_label(identity: &str) -> &'static str {
@@ -247,5 +265,35 @@ fn identity_key(identity: &str) -> AppResult<FieldIdentity> {
 }
 
 fn validation_error_for_identity(identity: &str) -> AppError {
-    AppError::invalid_request(field_label(identity), validation_reason(identity))
+    let mut diagnostics = DiagnosticStack::new();
+    let id = diagnostics
+        .push(invalid_request_record(
+            field_label(identity),
+            validation_reason(identity),
+            DiagnosticSource::with_stage("docnav", "standard-parameters"),
+        ))
+        .expect("standard parameter validation details are valid");
+    let record = diagnostics
+        .get(id)
+        .expect("pushed diagnostic record exists");
+    AppError::new(
+        docnav_protocol::StableError::from_diagnostic_record(record)
+            .expect("invalid request diagnostic projects to stable error"),
+    )
+}
+
+fn invalid_request_record(
+    field: &str,
+    reason: String,
+    source: DiagnosticSource,
+) -> DiagnosticRecordDraft {
+    DiagnosticRecordDraft::new(
+        ProtocolDiagnosticCode::InvalidRequest,
+        reason.clone(),
+        DiagnosticDetails::FieldReason {
+            field: field.to_owned(),
+            reason,
+        },
+        source,
+    )
 }

@@ -32,5 +32,5 @@ pub(super) fn parse_utility_command(
         .try_get_matches_from(clap_argv(label, Vec::new()))
         .map_err(|_| AppError::invalid_request(label, "invalid command line arguments"))?;
 
-    Ok(ParsedCli { command, warnings })
+    Ok(ParsedCli::new(command, warnings))
 }

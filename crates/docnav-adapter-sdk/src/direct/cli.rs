@@ -1,12 +1,14 @@
 use std::io::{Read, Write};
 use std::path::Path;
 
+use docnav_diagnostics::BoundaryDiagnosticCode;
+
 mod commands;
 mod help;
 mod operation;
 
 use super::native_options::NativeOptionSpec;
-use crate::{emit_diagnostic, Adapter};
+use crate::{output::emit_boundary_diagnostic, Adapter};
 
 use commands::run_direct_command;
 use help::{help_text, is_known_command};
@@ -94,13 +96,21 @@ fn write_help<W: Write, E: Write>(help: &str, stdout: &mut W, stderr: &mut E) ->
     match writeln!(stdout, "{help}") {
         Ok(()) => crate::AdapterExitCode::Success.code(),
         Err(error) => {
-            let _ = emit_diagnostic(stderr, &format!("failed to write help output: {error}"));
+            let _ = emit_boundary_diagnostic(
+                stderr,
+                BoundaryDiagnosticCode::FailedToWriteReadableView,
+                format!("failed to write help output: {error}"),
+            );
             crate::AdapterExitCode::IoError.code()
         }
     }
 }
 
 pub(super) fn input_error<E: Write>(stderr: &mut E, message: &str) -> i32 {
-    let _ = emit_diagnostic(stderr, message);
+    let _ = emit_boundary_diagnostic(
+        stderr,
+        BoundaryDiagnosticCode::InvalidRequestJson,
+        message.to_owned(),
+    );
     crate::AdapterExitCode::ProtocolError.code()
 }

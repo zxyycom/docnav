@@ -2,8 +2,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
 
+use docnav_diagnostics::{
+    DiagnosticCategory, DiagnosticCode, DiagnosticDetails, DiagnosticRecord, DiagnosticRecordDraft,
+    DiagnosticSource, ProtocolDiagnosticCode,
+};
+
 use crate::constants::{error_detail_fields as details_fields, stable_error_messages};
-use crate::generated::error_rules;
 use crate::{ErrorDetails, Operation};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -186,6 +190,39 @@ impl StableError {
         }
         Ok(())
     }
+
+    pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
+        let details = self
+            .details
+            .clone()
+            .into_iter()
+            .collect::<serde_json::Map<String, Value>>();
+        let draft = DiagnosticRecordDraft::new(
+            self.code.diagnostic_code(),
+            self.message.clone(),
+            DiagnosticDetails::Object(details),
+            source,
+        );
+        match &self.guidance {
+            Some(guidance) => draft.with_guidance(guidance.clone()),
+            None => draft,
+        }
+    }
+
+    pub fn from_diagnostic_record(record: &DiagnosticRecord) -> Option<Self> {
+        let DiagnosticCode::Protocol(code) = record.code else {
+            return None;
+        };
+        let Value::Object(details) = record.details.to_value() else {
+            return None;
+        };
+        Some(Self {
+            code: code.into(),
+            message: record.summary.clone(),
+            details: details.into_iter().collect(),
+            guidance: record.guidance.clone(),
+        })
+    }
 }
 
 fn details(fields: impl IntoIterator<Item = (&'static str, String)>) -> ErrorDetails {
@@ -214,27 +251,64 @@ pub enum StableErrorCode {
 }
 
 impl StableErrorCode {
+    pub const fn diagnostic_code(self) -> ProtocolDiagnosticCode {
+        match self {
+            Self::InvalidRequest => ProtocolDiagnosticCode::InvalidRequest,
+            Self::DocumentNotFound => ProtocolDiagnosticCode::DocumentNotFound,
+            Self::DocumentPathInvalid => ProtocolDiagnosticCode::DocumentPathInvalid,
+            Self::DocumentEncodingUnsupported => {
+                ProtocolDiagnosticCode::DocumentEncodingUnsupported
+            }
+            Self::FormatUnknown => ProtocolDiagnosticCode::FormatUnknown,
+            Self::FormatAmbiguous => ProtocolDiagnosticCode::FormatAmbiguous,
+            Self::CapabilityUnsupported => ProtocolDiagnosticCode::CapabilityUnsupported,
+            Self::RefNotFound => ProtocolDiagnosticCode::RefNotFound,
+            Self::RefAmbiguous => ProtocolDiagnosticCode::RefAmbiguous,
+            Self::RefInvalid => ProtocolDiagnosticCode::RefInvalid,
+            Self::AdapterUnavailable => ProtocolDiagnosticCode::AdapterUnavailable,
+            Self::AdapterInvokeFailed => ProtocolDiagnosticCode::AdapterInvokeFailed,
+            Self::InternalError => ProtocolDiagnosticCode::InternalError,
+        }
+    }
+
+    pub const fn diagnostic(self) -> DiagnosticCode {
+        DiagnosticCode::Protocol(self.diagnostic_code())
+    }
+
     pub const fn required_details(self) -> &'static [&'static str] {
-        error_rules::required_details(self)
+        self.diagnostic_code().required_detail_names()
     }
 
     pub const fn category(self) -> StableErrorCategory {
-        match self {
-            StableErrorCode::InvalidRequest | StableErrorCode::CapabilityUnsupported => {
-                StableErrorCategory::Request
+        match self.diagnostic().category() {
+            DiagnosticCategory::Request => StableErrorCategory::Request,
+            DiagnosticCategory::Document => StableErrorCategory::Document,
+            DiagnosticCategory::AdapterBoundary => StableErrorCategory::AdapterBoundary,
+            DiagnosticCategory::Internal | DiagnosticCategory::Compatibility => {
+                StableErrorCategory::Internal
             }
-            StableErrorCode::DocumentNotFound
-            | StableErrorCode::DocumentPathInvalid
-            | StableErrorCode::DocumentEncodingUnsupported
-            | StableErrorCode::FormatUnknown
-            | StableErrorCode::FormatAmbiguous
-            | StableErrorCode::RefNotFound
-            | StableErrorCode::RefAmbiguous
-            | StableErrorCode::RefInvalid => StableErrorCategory::Document,
-            StableErrorCode::AdapterUnavailable | StableErrorCode::AdapterInvokeFailed => {
-                StableErrorCategory::AdapterBoundary
+        }
+    }
+}
+
+impl From<ProtocolDiagnosticCode> for StableErrorCode {
+    fn from(code: ProtocolDiagnosticCode) -> Self {
+        match code {
+            ProtocolDiagnosticCode::InvalidRequest => Self::InvalidRequest,
+            ProtocolDiagnosticCode::DocumentNotFound => Self::DocumentNotFound,
+            ProtocolDiagnosticCode::DocumentPathInvalid => Self::DocumentPathInvalid,
+            ProtocolDiagnosticCode::DocumentEncodingUnsupported => {
+                Self::DocumentEncodingUnsupported
             }
-            StableErrorCode::InternalError => StableErrorCategory::Internal,
+            ProtocolDiagnosticCode::FormatUnknown => Self::FormatUnknown,
+            ProtocolDiagnosticCode::FormatAmbiguous => Self::FormatAmbiguous,
+            ProtocolDiagnosticCode::CapabilityUnsupported => Self::CapabilityUnsupported,
+            ProtocolDiagnosticCode::RefNotFound => Self::RefNotFound,
+            ProtocolDiagnosticCode::RefAmbiguous => Self::RefAmbiguous,
+            ProtocolDiagnosticCode::RefInvalid => Self::RefInvalid,
+            ProtocolDiagnosticCode::AdapterUnavailable => Self::AdapterUnavailable,
+            ProtocolDiagnosticCode::AdapterInvokeFailed => Self::AdapterInvokeFailed,
+            ProtocolDiagnosticCode::InternalError => Self::InternalError,
         }
     }
 }

@@ -1,5 +1,9 @@
 #![allow(dead_code)]
 
+use docnav_diagnostics::{
+    DiagnosticDetails, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
+    ProtocolDiagnosticCode,
+};
 use docnav_protocol::{
     FindArguments, Operation, OperationArguments, OutlineArguments, PositiveInteger, ReadArguments,
     RequestEnvelope, StableError,
@@ -174,7 +178,7 @@ fn first_validation_error(resolution: &StandardParameterResolution) -> Result<()
 }
 
 fn validation_error(diagnostic: &StandardParameterValidationDiagnostic) -> StableError {
-    StableError::invalid_request(
+    invalid_request_error(
         argument_field(diagnostic.identity.as_str()),
         validation_reason(diagnostic.identity.as_str()),
     )
@@ -256,7 +260,40 @@ fn identity_key(identity: &str) -> Result<FieldIdentity, StableError> {
 }
 
 fn validation_error_for_identity(identity: &str) -> StableError {
-    StableError::invalid_request(argument_field(identity), validation_reason(identity))
+    invalid_request_error(argument_field(identity), validation_reason(identity))
+}
+
+fn invalid_request_error(field: &str, reason: &str) -> StableError {
+    let mut diagnostics = DiagnosticStack::new();
+    let id = diagnostics
+        .push(invalid_request_record(
+            field,
+            reason,
+            DiagnosticSource::with_stage("docnav-adapter-sdk", "standard-parameters"),
+        ))
+        .expect("standard parameter validation details are valid");
+    StableError::from_diagnostic_record(
+        diagnostics
+            .get(id)
+            .expect("pushed diagnostic record exists"),
+    )
+    .expect("invalid request diagnostic projects to stable error")
+}
+
+fn invalid_request_record(
+    field: &str,
+    reason: &str,
+    source: DiagnosticSource,
+) -> DiagnosticRecordDraft {
+    DiagnosticRecordDraft::new(
+        ProtocolDiagnosticCode::InvalidRequest,
+        reason,
+        DiagnosticDetails::FieldReason {
+            field: field.to_owned(),
+            reason: reason.to_owned(),
+        },
+        source,
+    )
 }
 
 fn serialize_error(error: serde_json::Error) -> StableError {

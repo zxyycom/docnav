@@ -11,9 +11,9 @@ import {
   FIELDS,
   FILE_SYSTEM,
   OPERATION_NAMES,
-  REQUIRED_ERROR_DETAILS_BY_CODE,
   SCHEMAS
 } from "../config.ts";
+import { loadProtocolErrorDetailsRequirements } from "../protocol/error-detail-rules.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,
@@ -70,8 +70,9 @@ function validateProtocolResponseBindingSchema() {
 function validateProtocolResponseErrorDetailsSchema() {
   const ajv = createSchemaAjv();
   const validate = compileRegisteredSchema(ajv, SCHEMAS.protocolResponse);
+  const requiredErrorDetailsByCode = loadProtocolErrorDetailsRequirements();
 
-  for (const [code, requiredDetails] of Object.entries(REQUIRED_ERROR_DETAILS_BY_CODE)) {
+  for (const [code, requiredDetails] of Object.entries(requiredErrorDetailsByCode)) {
     const validResponse = protocolErrorResponse(
       code,
       Object.fromEntries(requiredDetails.map((field) => [field, "test"]))

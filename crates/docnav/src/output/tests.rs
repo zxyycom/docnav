@@ -1,6 +1,7 @@
 // @case WB-CORE-OUTPUT-001
 use super::*;
 use crate::cli::warning::{CliWarningDetails, CliWarningEffect, CLI_ARGV_IGNORED};
+use docnav_diagnostics::{DiagnosticCode, ReadableWarningDiagnosticCode};
 use docnav_protocol::{
     Entry, OperationResult, OutlineResult, ProtocolResponse, ReadResult, StableError,
     StableErrorCode,
@@ -26,9 +27,24 @@ fn error_details(map: &[(&str, &str)]) -> BTreeMap<String, Value> {
 fn write_success(outcome: CommandOutcome, warnings: &[CliWarning]) -> (Vec<u8>, Vec<u8>) {
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
-    let exit = write_outcome(outcome, warnings, &mut stdout, &mut stderr);
+    let exit = write_outcome(
+        outcome,
+        diagnostics_for_warnings(warnings),
+        &mut stdout,
+        &mut stderr,
+    );
     assert_eq!(exit, 0);
     (stdout, stderr)
+}
+
+fn diagnostics_for_warnings(warnings: &[CliWarning]) -> DiagnosticStack {
+    let mut diagnostics = DiagnosticStack::new();
+    push_warning_diagnostics(
+        &mut diagnostics,
+        warnings,
+        DiagnosticSource::with_stage("docnav", "cli"),
+    );
+    diagnostics
 }
 
 #[test]
@@ -49,6 +65,49 @@ fn non_document_json_warnings_stay_in_json_payload() {
     let value: Value = serde_json::from_slice(&stdout).unwrap();
     assert_eq!(value["config"], "ok");
     assert_eq!(value["warnings"][0]["id"], "cli_argv_ignored");
+}
+
+#[test]
+fn runtime_and_cli_warnings_share_diagnostic_stack_projection() {
+    let mut outcome = CommandOutcome::json(json!({"config": "ok"})).with_warnings(vec![
+        CliWarning::adapter_candidate_failure(
+            "markdown",
+            "probe",
+            "UNSUPPORTED",
+            "no match",
+            false,
+        ),
+    ]);
+    let warning = cli_argv_warning(&["--extra"]);
+    let runtime_record = outcome.diagnostics.snapshot()[0].clone();
+    assert_eq!(
+        runtime_record.code,
+        DiagnosticCode::from(ReadableWarningDiagnosticCode::AdapterCandidateFailure)
+    );
+
+    push_warning_diagnostics(
+        &mut outcome.diagnostics,
+        std::slice::from_ref(&warning),
+        DiagnosticSource::with_stage("docnav", "cli"),
+    );
+    let snapshot = outcome.diagnostics.snapshot();
+    assert_eq!(
+        snapshot[0].code,
+        DiagnosticCode::from(ReadableWarningDiagnosticCode::CliArgvIgnored)
+    );
+    assert_eq!(
+        outcome.diagnostics.get(runtime_record.id).unwrap().code,
+        runtime_record.code
+    );
+
+    let (stdout, stderr) = write_success(outcome, &[]);
+
+    assert!(stderr.is_empty());
+    let value: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(value["warnings"][0]["id"], "adapter_candidate_failure");
+    assert_eq!(value["warnings"][0]["details"]["adapter_id"], "markdown");
+    assert_eq!(value["warnings"][1]["id"], "cli_argv_ignored");
+    assert_eq!(value["warnings"][1]["details"]["tokens"][0], "--extra");
 }
 
 #[test]
@@ -128,7 +187,7 @@ fn readable_error_uses_document_facade_and_exit_policy_stays_local() {
         error: &error,
         output_mode: OutputMode::ReadableView,
         operation: Some(Operation::Read),
-        warnings: &[],
+        diagnostics: DiagnosticStack::new(),
         stdout: &mut stdout,
         stderr: &mut stderr,
     });
@@ -136,6 +195,7 @@ fn readable_error_uses_document_facade_and_exit_policy_stays_local() {
     let output = String::from_utf8(stdout).unwrap();
     assert!(output.contains("[block /error bytes="));
     assert!(output.contains("\"code\": \"REF_NOT_FOUND\""));
+    assert!(output.contains("Check available entries."));
 }
 
 #[test]
