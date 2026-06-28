@@ -1,3 +1,3 @@
 # typed-json-contract-validation
 
-Apply typed field validation to manifest, probe, and protocol JSON contracts while keeping schema files as contract materials.
+Converge manifest, probe, and protocol runtime field validation onto `docnav-typed-fields`; keep JSON Schema files as public contract and verification material.
