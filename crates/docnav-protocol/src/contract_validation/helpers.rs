@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
 
-use docnav_typed_fields::{FieldDefSet, FieldDefSetBuildError};
+use docnav_typed_fields::{FieldDefSet, FieldDefSetBuildError, JsonFieldSet};
 
 use crate::SchemaValidationError;
 
@@ -33,7 +33,8 @@ pub(super) fn validate_field_set(
 ) {
     match build() {
         Ok(fields) => {
-            if let Err(error) = fields.validate_json(JSON_CONTRACT_PROCESSING, value) {
+            if let Err(error) = JsonFieldSet::new(&fields).validate(JSON_CONTRACT_PROCESSING, value)
+            {
                 push_field_extraction_errors(errors, prefix, error);
             }
         }
@@ -111,7 +112,8 @@ fn validate_field_set_with_owned_prefix(
 ) {
     match build() {
         Ok(fields) => {
-            if let Err(error) = fields.validate_json(JSON_CONTRACT_PROCESSING, value) {
+            if let Err(error) = JsonFieldSet::new(&fields).validate(JSON_CONTRACT_PROCESSING, value)
+            {
                 push_owned_field_extraction_errors(errors, prefix, error);
             }
         }
@@ -130,7 +132,8 @@ fn validate_wrapped_value_field(
 ) {
     match build() {
         Ok(fields) => {
-            if let Err(error) = fields.validate_json(JSON_CONTRACT_PROCESSING, value) {
+            if let Err(error) = JsonFieldSet::new(&fields).validate(JSON_CONTRACT_PROCESSING, value)
+            {
                 push_wrapped_value_errors(errors, prefix, error);
             }
         }
@@ -170,7 +173,7 @@ struct StrictObjectCheck<'a> {
 fn reject_unknown_fields_with_owned_prefix(check: StrictObjectCheck<'_>, errors: &mut Vec<String>) {
     match (check.build)() {
         Ok(fields) => {
-            match fields.unused_json_fields(
+            match JsonFieldSet::new(&fields).unused_fields(
                 JSON_CONTRACT_PROCESSING,
                 check.value,
                 check.path.iter().copied(),

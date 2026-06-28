@@ -91,7 +91,7 @@ impl DerivedField {
                 quote! {
                     let mut field_path = declaration_path.clone();
                     field_path.push(::std::string::String::from(#path_segment));
-                    let builder = builder.__field_with_declaration_path(
+                    let builder = builder.field_with_declaration_path(
                         field_path,
                         self.#ident,
                         ::docnav_typed_fields::__private::ExpectedFieldShape {

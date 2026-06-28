@@ -33,11 +33,8 @@ fn builder_exposes_schema_metadata_and_validates_values() {
         ))
     );
 
-    let value = field
-        .decode_process(
-            &ProcessingId::from(CONFIG_PROCESSING),
-            &json!({"defaults": {"limit_chars": 4000}}),
-        )
+    let value = schema
+        .validate_optional_value(Some(&json!(4000)))
         .expect("valid value decodes");
     assert_eq!(value, Some(TypedValue::Integer(4000)));
 }
@@ -46,19 +43,12 @@ fn builder_exposes_schema_metadata_and_validates_values() {
 fn validation_failures_keep_field_attribution() {
     let field = limit_chars_field();
 
-    let missing = field
-        .decode_process(
-            &ProcessingId::from(CONFIG_PROCESSING),
-            &json!({"defaults": {}}),
-        )
-        .unwrap();
+    let schema = field.schema_metadata();
+    let missing = schema.validate_optional_value(None).unwrap();
     assert_eq!(missing, None);
 
-    let error = field
-        .decode_process(
-            &ProcessingId::from(CONFIG_PROCESSING),
-            &json!({"defaults": {"limit_chars": "4000"}}),
-        )
+    let error = schema
+        .validate_optional_value(Some(&json!("4000")))
         .expect_err("wrong type fails");
     assert_eq!(error.field.as_str(), "docnav.defaults.limit_chars");
     assert_eq!(error.path.segments(), ["defaults", "limit_chars"]);
@@ -70,11 +60,8 @@ fn validation_failures_keep_field_attribution() {
         }
     );
 
-    let error = field
-        .decode_process(
-            &ProcessingId::from(CONFIG_PROCESSING),
-            &json!({"defaults": {"limit_chars": 0}}),
-        )
+    let error = schema
+        .validate_optional_value(Some(&json!(0)))
         .expect_err("range violation fails");
     assert_eq!(
         error.reason,

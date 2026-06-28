@@ -95,7 +95,7 @@ impl FieldDef {
             .map(|(processing_id, process)| (processing_id, process.input_kind()))
     }
 
-    pub(crate) fn decode_process(
+    pub(crate) fn decode_json_process(
         &self,
         processing_id: &ProcessingId,
         root: &Value,
@@ -103,10 +103,10 @@ impl FieldDef {
         let Some(process) = self.processes.get(processing_id) else {
             return self.schema_metadata().validate_optional_value(None);
         };
-        self.validate_process_value(process, root, false)
+        self.validate_json_process_value(process, root, false)
     }
 
-    pub(crate) fn decode_process_with_static_default(
+    pub(crate) fn decode_json_process_with_static_default(
         &self,
         processing_id: &ProcessingId,
         root: &Value,
@@ -116,10 +116,10 @@ impl FieldDef {
                 .schema_metadata()
                 .validate_optional_value_with_static_default(None);
         };
-        self.validate_process_value(process, root, true)
+        self.validate_json_process_value(process, root, true)
     }
 
-    fn validate_process_value(
+    fn validate_json_process_value(
         &self,
         process: &BuiltProcessStrategy,
         root: &Value,

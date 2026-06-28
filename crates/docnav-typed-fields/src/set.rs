@@ -1,18 +1,15 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use serde_json::Value;
-
 use crate::field::{FieldDef, FieldDefBuilder};
 use crate::metadata::{
     BuildError, FieldDuplicateIdentityError, FieldPath, ProcessingMetadataView, SchemaMetadataView,
     ValueKind,
 };
 use crate::process_strategy::ProcessingInputKind;
-use crate::processing::{ProcessedExtraction, ProcessingBuild, ProcessingId};
+use crate::processing::ProcessingId;
 
 mod errors;
-mod json;
 mod values;
 
 pub use errors::{
@@ -27,7 +24,6 @@ pub struct FieldDefSet {
 }
 
 impl FieldDefSet {
-    #[doc(hidden)]
     pub fn builder() -> FieldDefSetBuilder {
         FieldDefSetBuilder::new()
     }
@@ -50,17 +46,11 @@ impl FieldDefSet {
             .collect()
     }
 
-    pub fn validate_json(
-        &self,
-        processing_id: impl Into<ProcessingId>,
-        root: &Value,
-    ) -> Result<(), FieldExtractionError> {
-        self.__extract_json_values(processing_id.into(), root)
-            .map(|_| ())
+    pub(crate) fn fields(&self) -> &[FieldDef] {
+        &self.fields
     }
 
-    #[doc(hidden)]
-    pub fn __static_default_values(&self) -> FieldValues {
+    pub(crate) fn static_default_values(&self) -> FieldValues {
         let values = self
             .fields
             .iter()
@@ -69,102 +59,24 @@ impl FieldDefSet {
         FieldValues { values }
     }
 
-    #[doc(hidden)]
-    pub fn __extract_json_values(
-        &self,
-        processing_id: ProcessingId,
-        root: &Value,
-    ) -> Result<FieldValues, FieldExtractionError> {
-        self.require_json_processing(&processing_id)?;
-        self.extract_json_processing_values(&processing_id, root, JsonExtractionDefaults::Absent)
-    }
-
-    #[doc(hidden)]
-    pub fn __extract_json_values_with_static_defaults(
-        &self,
-        processing_id: ProcessingId,
-        root: &Value,
-    ) -> Result<FieldValues, FieldExtractionError> {
-        self.require_json_processing(&processing_id)?;
-        self.extract_json_processing_values(&processing_id, root, JsonExtractionDefaults::Static)
-    }
-
-    #[doc(hidden)]
-    pub fn __process_json_values<O>(
-        &self,
-        processing: &ProcessingBuild<'_, Value, O>,
-        root: &Value,
-    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-        self.process_json_values(processing, root, JsonExtractionDefaults::Absent)
-    }
-
-    #[doc(hidden)]
-    pub fn __process_json_values_with_static_defaults<O>(
-        &self,
-        processing: &ProcessingBuild<'_, Value, O>,
-        root: &Value,
-    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-        self.process_json_values(processing, root, JsonExtractionDefaults::Static)
-    }
-
-    fn process_json_values<O>(
-        &self,
-        processing: &ProcessingBuild<'_, Value, O>,
-        root: &Value,
-        defaults: JsonExtractionDefaults,
-    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-        let values = self
-            .require_json_processing(processing.id())
-            .and_then(|()| self.extract_json_processing_values(processing.id(), root, defaults));
-        ProcessedExtraction::new(values, processing.process(root.clone()))
-    }
-
-    fn require_json_processing(
+    pub(crate) fn require_processing_input_kind(
         &self,
         processing_id: &ProcessingId,
+        actual: ProcessingInputKind,
     ) -> Result<(), FieldExtractionError> {
         let Some(expected) = self.processing_input_kinds.get(processing_id) else {
             return Err(FieldExtractionError::UnknownProcessing {
                 processing_id: processing_id.clone(),
             });
         };
-        if *expected == ProcessingInputKind::JsonValue {
+        if *expected == actual {
             Ok(())
         } else {
             Err(FieldExtractionError::InputKindMismatch {
                 processing_id: processing_id.clone(),
                 expected: *expected,
-                actual: ProcessingInputKind::JsonValue,
+                actual,
             })
-        }
-    }
-
-    fn extract_json_processing_values(
-        &self,
-        processing_id: &ProcessingId,
-        root: &Value,
-        defaults: JsonExtractionDefaults,
-    ) -> Result<FieldValues, FieldExtractionError> {
-        let mut values = Vec::with_capacity(self.fields.len());
-        let mut errors = Vec::new();
-        for definition in &self.fields {
-            let decoded = match defaults {
-                JsonExtractionDefaults::Absent => definition.decode_process(processing_id, root),
-                JsonExtractionDefaults::Static => {
-                    definition.decode_process_with_static_default(processing_id, root)
-                }
-            };
-            match decoded {
-                Ok(value) => values.push(value),
-                Err(error) => errors.push(error),
-            }
-        }
-        if errors.is_empty() {
-            Ok(FieldValues { values })
-        } else {
-            Err(FieldExtractionError::Validation(
-                FieldValidationErrors::new(errors),
-            ))
         }
     }
 }
@@ -175,13 +87,6 @@ impl AsRef<FieldDefSet> for FieldDefSet {
     }
 }
 
-#[derive(Clone, Copy)]
-enum JsonExtractionDefaults {
-    Absent,
-    Static,
-}
-
-#[doc(hidden)]
 pub struct FieldDefSetBuilder {
     entries: Vec<FieldDefSetBuilderEntry>,
 }
@@ -223,8 +128,7 @@ impl FieldDefSetBuilder {
         }
     }
 
-    #[doc(hidden)]
-    pub fn __field_with_declaration_path<T, I, S>(
+    pub fn field_with_declaration_path<T, I, S>(
         mut self,
         declaration_path: I,
         builder: FieldDefBuilder<T>,

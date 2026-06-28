@@ -88,7 +88,7 @@ pub(crate) fn validate_manifest_contract_value(value: &Value) -> Result<(), Sche
 
 fn manifest_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["manifest_version"],
             string_enum_field::<super::enums::ContractVersion>(
                 "manifest_version",
@@ -96,32 +96,32 @@ fn manifest_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
             ),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["adapter"],
             object_field("adapter", ["adapter"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["adapter", "id"],
             non_empty_string_field("adapter.id", ["adapter", "id"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["adapter", "name"],
             non_empty_string_field("adapter.name", ["adapter", "name"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["adapter", "version"],
             non_empty_string_field("adapter.version", ["adapter", "version"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["formats"],
             non_empty_array_field("formats", ["formats"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["capabilities"],
             FieldDef::builder("capabilities")
                 .process(super::JSON_CONTRACT_PROCESSING, json_path(["capabilities"]))
@@ -133,17 +133,17 @@ fn manifest_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
 
 fn manifest_format_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["id"],
             non_empty_string_field("formats[].id", ["id"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["extensions"],
             non_empty_array_field("formats[].extensions", ["extensions"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["content_types"],
             non_empty_array_field("formats[].content_types", ["content_types"]),
             ExpectedFieldShape::required(),

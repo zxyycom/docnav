@@ -204,32 +204,30 @@ fn derived_field_defs_extract_with_passthrough_returns_processing_result() {
 }
 
 #[test]
-fn field_def_set_unused_json_fields_reports_direct_unconsumed_keys() {
+fn json_field_set_unused_fields_reports_direct_unconsumed_keys() {
     let fields = docnav_fields();
     let input = json!({
         "a": {"b": 4000, "extra": true},
         "defaults": {"output": "readable-json", "theme": "dark"},
         "native": {"theme": "dark"}
     });
+    let json_fields = JsonFieldSet::new(fields.as_ref());
 
     assert_eq!(
-        fields
-            .as_ref()
-            .unused_json_fields(CONFIG_PROCESSING, &input, std::iter::empty::<&str>())
+        json_fields
+            .unused_fields(CONFIG_PROCESSING, &input, std::iter::empty::<&str>())
             .expect("unused root keys are computed"),
         json!({"native": {"theme": "dark"}})
     );
     assert_eq!(
-        fields
-            .as_ref()
-            .unused_json_fields(CONFIG_PROCESSING, &input, ["a"])
+        json_fields
+            .unused_fields(CONFIG_PROCESSING, &input, ["a"])
             .expect("unused nested keys are computed"),
         json!({"extra": true})
     );
     assert_eq!(
-        fields
-            .as_ref()
-            .unused_json_fields(CONFIG_PROCESSING, &input, ["defaults"])
+        json_fields
+            .unused_fields(CONFIG_PROCESSING, &input, ["defaults"])
             .expect("unused sibling keys are computed"),
         json!({"theme": "dark"})
     );

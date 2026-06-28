@@ -4,7 +4,6 @@ use crate::metadata::{BuildError, FieldDuplicateIdentityError};
 use crate::{ProcessingId, ProcessingInputKind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[doc(hidden)]
 pub struct ExpectedFieldShape {
     pub required: bool,
     pub nullable: bool,

@@ -1,6 +1,8 @@
 use serde_json::Value;
 
-use docnav_typed_fields::{ExpectedFieldShape, FieldDefSet, FieldDefSetBuildError};
+use docnav_typed_fields::{
+    ExpectedFieldShape, FieldDefSet, FieldDefSetBuildError, FieldDefSetBuilder,
+};
 
 use crate::constants::schema_names;
 use crate::SchemaValidationError;
@@ -79,17 +81,17 @@ fn request_base_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
         )),
         ExpectedFieldShape::required(),
     )
-    .__field_with_declaration_path(
+    .field_with_declaration_path(
         ["document"],
         object_field("document", ["document"]),
         ExpectedFieldShape::required(),
     )
-    .__field_with_declaration_path(
+    .field_with_declaration_path(
         ["document", "path"],
         non_empty_string_field("document.path", ["document", "path"]),
         ExpectedFieldShape::required(),
     )
-    .__field_with_declaration_path(
+    .field_with_declaration_path(
         ["arguments"],
         object_field("arguments", ["arguments"]),
         ExpectedFieldShape::required(),
@@ -103,7 +105,7 @@ fn request_outline_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildErro
 
 fn request_read_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     add_common_argument_fields(FieldDefSet::builder())
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["arguments", "ref"],
             non_empty_string_field("arguments.ref", ["arguments", "ref"]),
             ExpectedFieldShape::required(),
@@ -113,7 +115,7 @@ fn request_read_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildError> 
 
 fn request_find_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     add_common_argument_fields(FieldDefSet::builder())
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["arguments", "query"],
             non_empty_string_field("arguments.query", ["arguments", "query"]),
             ExpectedFieldShape::required(),
@@ -123,7 +125,7 @@ fn request_find_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildError> 
 
 fn request_info_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["arguments", "options"],
             object_field("arguments.options", ["arguments", "options"]),
             ExpectedFieldShape::optional(),
@@ -131,21 +133,19 @@ fn request_info_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildError> 
         .build()
 }
 
-fn add_common_argument_fields(
-    builder: docnav_typed_fields::__private::FieldDefSetBuilder,
-) -> docnav_typed_fields::__private::FieldDefSetBuilder {
+fn add_common_argument_fields(builder: FieldDefSetBuilder) -> FieldDefSetBuilder {
     builder
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["arguments", "limit_chars"],
             positive_int_field("arguments.limit_chars", ["arguments", "limit_chars"]),
             ExpectedFieldShape::optional(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["arguments", "page"],
             positive_int_field("arguments.page", ["arguments", "page"]),
             ExpectedFieldShape::optional(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["arguments", "options"],
             object_field("arguments.options", ["arguments", "options"]),
             ExpectedFieldShape::optional(),

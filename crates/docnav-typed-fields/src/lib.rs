@@ -1,6 +1,7 @@
 extern crate self as docnav_typed_fields;
 
 mod field;
+pub mod json;
 mod metadata;
 mod process_strategy;
 mod processing;
@@ -11,6 +12,7 @@ mod value;
 
 pub use docnav_typed_fields_macros::FieldDefs;
 pub use field::{FieldDef, FieldDefBuilder};
+pub use json::JsonFieldSet;
 pub use metadata::{
     ActualValueKind, BuildError, DefaultMetadata, FieldConstraints, FieldDuplicateIdentityError,
     FieldIdentity, FieldPath, ProcessingMetadataView, SchemaMetadataView, TypedValue,
@@ -26,7 +28,7 @@ pub use range::{
 pub use serde_json::Value as JsonValue;
 pub use set::{
     ExpectedFieldShape, FieldDefBuildFailure, FieldDefSet, FieldDefSetBuildError,
-    FieldExtractionError, FieldValidationErrors,
+    FieldDefSetBuilder, FieldExtractionError, FieldValidationErrors,
 };
 pub use validation::FieldValidation;
 pub use value::{FieldStringEnum, FieldValue, FieldValueError};
@@ -72,8 +74,13 @@ pub trait FieldDefsBuilder: Sized + Clone {
 
 #[doc(hidden)]
 pub mod __private {
+    pub use crate::json::__private as json;
     pub use crate::set::{ExpectedFieldShape, FieldDefSetBuilder, FieldValues};
     pub use crate::JsonValue;
+
+    pub fn static_default_values(fields: &crate::FieldDefSet) -> FieldValues {
+        fields.static_default_values()
+    }
 }
 
 #[cfg(test)]

@@ -108,7 +108,7 @@ Adapter direct CLI 配置项目根从启动 cwd 向上查找最近 `.docnav/`；
 
 未映射字段不等同于标准参数错误。未知顶层配置字段、未知 `defaults` 字段、未注册 native option key 或未映射 direct input 字段是否保留，由入口处理函数和入口策略决定：可以保留给后续流程，也可以丢弃或交给 owner-specific validation。
 
-共享层只对已映射标准参数执行 schema-backed validation。透传处理结果来自 typed-fields 在同一 processing id 下返回的 caller processing result。标准参数 pipeline 对它只做三件事：
+共享层只对已映射标准参数执行 schema-backed validation。透传处理结果由入口配置的 typed-fields `ProcessingBuild` 产出；未配置处理函数时保留原始来源输入。标准参数 pipeline 对它只做三件事：
 
 1. 原样接收 direct input、project config 和 user config 各自的处理结果。
 2. 应用 entry passthrough policy，把结果标记为 retained、discarded 或 delegated。

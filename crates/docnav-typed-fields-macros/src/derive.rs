@@ -106,7 +106,8 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError> {
-                let values = self.__field_def_set.__extract_json_values(
+                let values = ::docnav_typed_fields::__private::json::extract_values(
+                    self.__field_def_set.as_ref(),
                     processing_id.into(),
                     root,
                 )?;
@@ -119,7 +120,8 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError> {
-                let values = self.__field_def_set.__extract_json_values_with_static_defaults(
+                let values = ::docnav_typed_fields::__private::json::extract_values_with_static_defaults(
+                    self.__field_def_set.as_ref(),
                     processing_id.into(),
                     root,
                 )?;
@@ -131,7 +133,11 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 processing: &::docnav_typed_fields::ProcessingBuild<'_, ::docnav_typed_fields::__private::JsonValue, O>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::docnav_typed_fields::ProcessedExtraction<::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError>, O> {
-                let processed = self.__field_def_set.__process_json_values(processing, root);
+                let processed = ::docnav_typed_fields::__private::json::process_values(
+                    self.__field_def_set.as_ref(),
+                    processing,
+                    root,
+                );
                 let (values, processing) = processed.into_parts();
                 let extraction = values.map(|values| {
                     <#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0)
@@ -145,7 +151,8 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 root: &::docnav_typed_fields::__private::JsonValue,
                 passthrough_processing: ::std::option::Option<&::docnav_typed_fields::JsonPassthroughProcessing<'_>>,
             ) -> ::docnav_typed_fields::ProcessedExtraction<::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError>, ::docnav_typed_fields::__private::JsonValue> {
-                let processed = self.__field_def_set.__extract_json_values_with_passthrough(
+                let processed = ::docnav_typed_fields::__private::json::extract_values_with_passthrough(
+                    self.__field_def_set.as_ref(),
                     processing_id,
                     root,
                     passthrough_processing,
@@ -162,7 +169,11 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 processing: &::docnav_typed_fields::ProcessingBuild<'_, ::docnav_typed_fields::__private::JsonValue, O>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::docnav_typed_fields::ProcessedExtraction<::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError>, O> {
-                let processed = self.__field_def_set.__process_json_values_with_static_defaults(processing, root);
+                let processed = ::docnav_typed_fields::__private::json::process_values_with_static_defaults(
+                    self.__field_def_set.as_ref(),
+                    processing,
+                    root,
+                );
                 let (values, processing) = processed.into_parts();
                 let extraction = values.map(|values| {
                     <#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0)
@@ -171,7 +182,9 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
             }
 
             pub fn default_values(&self) -> #default_values_name {
-                let values = self.__field_def_set.__static_default_values();
+                let values = ::docnav_typed_fields::__private::static_default_values(
+                    self.__field_def_set.as_ref(),
+                );
                 <#struct_name as ::docnav_typed_fields::FieldDefs>::__default_values_from_slots(&values, 0)
             }
 
@@ -180,7 +193,11 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldExtractionError> {
-                self.__field_def_set.__extract_json_values(processing_id.into(), root).map(|_| ())
+                ::docnav_typed_fields::__private::json::extract_values(
+                    self.__field_def_set.as_ref(),
+                    processing_id.into(),
+                    root,
+                ).map(|_| ())
             }
 
             pub fn validate_with_static_defaults(
@@ -188,8 +205,11 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
                 root: &::docnav_typed_fields::__private::JsonValue,
             ) -> ::std::result::Result<(), ::docnav_typed_fields::FieldExtractionError> {
-                self.__field_def_set
-                    .__extract_json_values_with_static_defaults(processing_id.into(), root)
+                ::docnav_typed_fields::__private::json::extract_values_with_static_defaults(
+                    self.__field_def_set.as_ref(),
+                    processing_id.into(),
+                    root,
+                )
                     .map(|_| ())
             }
 

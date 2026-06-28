@@ -48,32 +48,32 @@ pub(crate) fn validate_probe_result_contract_value(
 
 fn probe_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["probe_version"],
             string_enum_field::<super::enums::ContractVersion>("probe_version", ["probe_version"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["adapter_id"],
             string_field("adapter_id", ["adapter_id"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["path"],
             string_field("path", ["path"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["supported"],
             bool_field("supported", ["supported"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["format"],
             string_field("format", ["format"]),
             ExpectedFieldShape::required_nullable(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["confidence"],
             FieldDef::builder("confidence")
                 .process(super::JSON_CONTRACT_PROCESSING, json_path(["confidence"]))
@@ -83,7 +83,7 @@ fn probe_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
                 ),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["reasons"],
             non_empty_array_field("reasons", ["reasons"]),
             ExpectedFieldShape::required(),
@@ -93,12 +93,12 @@ fn probe_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
 
 fn probe_reason_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["code"],
             string_enum_field::<ProbeReasonCode>("reasons[].code", ["code"]),
             ExpectedFieldShape::required(),
         )
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             ["detail"],
             string_field("reasons[].detail", ["detail"]),
             ExpectedFieldShape::required(),

@@ -1,8 +1,8 @@
 use serde_json::{Map, Value};
 
 use docnav_typed_fields::{
-    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldDefSetBuildError, FieldLength,
-    FieldStringEnum, FieldValidation, ProcessStrategy,
+    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldDefSetBuildError,
+    FieldDefSetBuilder, FieldLength, FieldStringEnum, FieldValidation, ProcessStrategy,
 };
 
 use crate::Operation;
@@ -10,20 +10,18 @@ use crate::Operation;
 use super::{JSON_CONTRACT_PROCESSING, VALUE_FIELD};
 
 pub(super) fn add_protocol_version(
-    builder: docnav_typed_fields::__private::FieldDefSetBuilder,
+    builder: FieldDefSetBuilder,
     identity: &'static str,
-) -> docnav_typed_fields::__private::FieldDefSetBuilder {
-    builder.__field_with_declaration_path(
+) -> FieldDefSetBuilder {
+    builder.field_with_declaration_path(
         [identity],
         string_enum_field::<super::enums::ContractVersion>(identity, [identity]),
         ExpectedFieldShape::required(),
     )
 }
 
-pub(super) fn add_request_id(
-    builder: docnav_typed_fields::__private::FieldDefSetBuilder,
-) -> docnav_typed_fields::__private::FieldDefSetBuilder {
-    builder.__field_with_declaration_path(
+pub(super) fn add_request_id(builder: FieldDefSetBuilder) -> FieldDefSetBuilder {
+    builder.field_with_declaration_path(
         ["request_id"],
         non_empty_string_field("request_id", ["request_id"]),
         ExpectedFieldShape::required(),
@@ -31,10 +29,10 @@ pub(super) fn add_request_id(
 }
 
 pub(super) fn add_operation(
-    builder: docnav_typed_fields::__private::FieldDefSetBuilder,
+    builder: FieldDefSetBuilder,
     shape: ExpectedFieldShape,
-) -> docnav_typed_fields::__private::FieldDefSetBuilder {
-    builder.__field_with_declaration_path(
+) -> FieldDefSetBuilder {
+    builder.field_with_declaration_path(
         ["operation"],
         string_enum_field::<Operation>("operation", ["operation"]),
         shape,
@@ -54,7 +52,7 @@ pub(super) fn value_field_set<T: 'static>(
     validation: FieldValidation<T>,
 ) -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
-        .__field_with_declaration_path(
+        .field_with_declaration_path(
             [VALUE_FIELD],
             FieldDef::builder(identity)
                 .process(JSON_CONTRACT_PROCESSING, json_path([VALUE_FIELD]))
