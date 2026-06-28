@@ -100,6 +100,7 @@ pub struct FieldConstraints {
     pub numeric_range: FieldNumericRange,
     pub length_range: Option<FieldLength>,
     pub regex: Option<String>,
+    pub unique_items: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -216,6 +217,10 @@ pub enum ValidationReason {
     },
     RegexMismatch {
         pattern: String,
+    },
+    DuplicateArrayItem {
+        first_index: usize,
+        duplicate_index: usize,
     },
 }
 

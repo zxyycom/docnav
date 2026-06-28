@@ -350,16 +350,17 @@ Status: implemented
 Code: `crates/docnav-protocol/src/tests/decode.rs`
 
 Proves:
-- Protocol request decoding 先运行 schema validation，再进入 typed deserialization。
-- schema-invalid、typed-invalid 和 semantic-invalid request/probe 保持可区分。
+- Protocol request decoding 先运行 typed-field contract validation，再进入 typed deserialization。
+- field-contract-invalid、typed-invalid 和 semantic-invalid request/probe/response 保持可区分。
+- request operation/arguments pairing 和 response operation/result pairing 保留在 semantic validation 阶段。
 
 ### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema constraints 被实现测试消费
 Status: implemented
 Code: `crates/docnav-protocol/src/tests/schema.rs`
 
 Proves:
-- 已文档化的 protocol fixtures 仍能 deserialize 为共享 protocol types。
-- protocol request、manifest 和 probe schema 的 removed-field / required-field constraints 被实现测试消费。
+- 已文档化的 protocol fixtures 仍能通过 public JSON Schema、runtime typed contract validation，并 deserialize 为共享 protocol types。
+- protocol request、protocol response、manifest 和 probe 的 unknown fields、missing required fields、wrong types、version constants、field constraints 和 semantic boundary 被实现测试消费。
 
 ### WB-TYPED-FIELDS-001 Typed field definition core 保持字段级不变量
 Status: implemented
@@ -378,6 +379,7 @@ Proves:
 - `T` / `Option<T>` field declaration 分别投影为 required/non-nullable 和 optional/nullable schema metadata。
 - missing required 和 null required 分别返回 `MissingRequired` 与 typed wrong-null failure。
 - optional field 在 missing、null 和 present 三种输入下分别产生 `None`、`None` 和 typed value。
+- 手动 field shape 可表达 required-but-nullable contract field，missing 仍失败，present null 可通过。
 
 ### WB-TYPED-FIELDS-METADATA-001 Typed field metadata build invariants 稳定
 Status: implemented
@@ -393,7 +395,7 @@ Code: `crates/docnav-typed-fields/src/tests/constraints.rs`
 
 Proves:
 - String regex、closed minimum length 和 open maximum length 对 present value 产生稳定 validation failure reason。
-- Array length constraints 对 present value 生效。
+- Array length 和 unique-items constraints 对 present value 生效。
 - Invalid regex metadata 在 definition set build 阶段失败。
 
 ### WB-TYPED-FIELDS-RANGES-001 Typed field numeric ranges and defaults 稳定

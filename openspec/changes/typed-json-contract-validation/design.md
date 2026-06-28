@@ -39,6 +39,35 @@
 5. 输入类型证明责任转移到项目测试。
    - Impact: typed-field core 和 `docnav-protocol` surface tests 必须覆盖代表性 schema-backed failures，不能仅依赖合法 fixtures 或 serde decode 成功证明。
 
+## Parity Matrix
+
+Runtime schema-backed keywords covered before migration:
+
+- manifest: `required`、`type`、`const`、`enum`、`minLength`、`minItems`、`pattern`、`additionalProperties`、`items`、`uniqueItems`。
+- probe: `required`、`type`、`const`、`enum`、`minimum`、`maximum`、`minItems`、`additionalProperties`、`items`。
+- protocol request: `required`、`type`、`const`、`enum`、`minimum`、`minLength`、`additionalProperties`、`oneOf`、`allOf`、`$ref`。
+- protocol response: `required`、`type`、`const`、`enum`、`minimum`、`minLength`、`additionalProperties`、`items`、`uniqueItems`、`oneOf`、`allOf`、`$ref`、error details conditional requirements。
+
+Rule ownership after migration:
+
+- typed-field runtime validation: field path/presence/type, string enum and version constants, numeric range, string/array length, regex pattern, array unique-items, required nullable fields, and item-level field definitions for manifest/probe/result arrays.
+- contract-owned runtime helpers around typed-fields: object unknown-field checks and array item iteration, so typed-field remains a field definition/validation core rather than a full JSON Schema engine.
+- semantic validation: protocol operation/arguments pairing, operation/result pairing, probe supported/format and reason semantics, protocol error details rules, and other cross-field owner rules.
+- CI-only schema material: public JSON Schema files, examples, fixtures, and drift/tooling validation.
+
+Parity to preserve before removing runtime `jsonschema`:
+
+- field-contract failures still surface as `DecodePipelineStage::Schema` and keep schema filename identifiers for existing caller mappings.
+- request/response protocol failures keep protocol envelope behavior; malformed request field failures still map to `INVALID_REQUEST` through adapter/core owners.
+- boundary diagnostics and stdout/stderr placement keep existing owner behavior; adapter output writers still use `validate_*_value` but that runtime path no longer invokes a generic JSON Schema validator.
+- project-owned tests cover typed-field equivalence classes and manifest/probe/protocol request/response surface failures; public JSON Schema remains explicitly exercised in fixture/schema tests.
+
+Typed-field core gaps found and resolved:
+
+- required-but-nullable fields were needed for probe `format`, response `page`, and failure `operation`; this is now expressible through `ExpectedFieldShape::required_nullable()`.
+- array `uniqueItems` was needed for manifest and info capabilities; this is now an opt-in array constraint.
+- array item rules are handled by item-level typed-field definition sets plus contract-owned iteration, avoiding a general JSON Schema engine.
+
 ## Risks / Trade-offs
 
 - [Risk] 字段规则迁移不完整 → Mitigation: 每个 runtime surface 先列出 schema-backed keywords，并归属到 typed-field validation、semantic validation 或 CI-only schema material。

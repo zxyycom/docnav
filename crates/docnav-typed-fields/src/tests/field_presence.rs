@@ -104,3 +104,38 @@ fn optional_declaration_extracts_absent_null_and_present_values() {
         Some("value".to_string())
     );
 }
+
+#[test]
+fn manual_shape_can_require_presence_while_allowing_null() {
+    let fields = FieldDefSet::builder()
+        .__field_with_declaration_path(
+            ["defaults", "subtitle"],
+            FieldDef::builder("docnav.defaults.subtitle")
+                .process(
+                    CONFIG_PROCESSING,
+                    config_json_path(["defaults", "subtitle"]),
+                )
+                .validation(FieldValidation::string()),
+            ExpectedFieldShape::required_nullable(),
+        )
+        .build()
+        .expect("required-nullable field shape builds");
+
+    fields
+        .validate_json(
+            CONFIG_PROCESSING,
+            &json!({"defaults": {"subtitle": "value"}}),
+        )
+        .expect("present string value passes");
+    fields
+        .validate_json(CONFIG_PROCESSING, &json!({"defaults": {"subtitle": null}}))
+        .expect("present null value passes");
+
+    let error = fields
+        .validate_json(CONFIG_PROCESSING, &json!({"defaults": {}}))
+        .expect_err("missing required-nullable field fails");
+    assert_eq!(
+        validation_failures(&error)[0].reason,
+        ValidationReason::MissingRequired
+    );
+}

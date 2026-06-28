@@ -53,6 +53,7 @@ impl SchemaMetadataView {
         self.validate_regex(value)?;
         self.validate_numeric_constraints(&typed)?;
         self.validate_length_constraints(&typed)?;
+        self.validate_unique_items(&typed)?;
         Ok(typed)
     }
 
@@ -159,6 +160,27 @@ impl SchemaMetadataView {
         if let Some(maximum) = length_range.maximum {
             if above_maximum(length, maximum) {
                 return Err(self.failure(ValidationReason::AboveMaximumLength { maximum }));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_unique_items(&self, value: &TypedValue) -> Result<(), ValidationFailure> {
+        if !self.constraints.unique_items {
+            return Ok(());
+        }
+        let TypedValue::Array(items) = value else {
+            return Ok(());
+        };
+        for (duplicate_index, item) in items.iter().enumerate() {
+            if let Some(first_index) = items[..duplicate_index]
+                .iter()
+                .position(|previous| previous == item)
+            {
+                return Err(self.failure(ValidationReason::DuplicateArrayItem {
+                    first_index,
+                    duplicate_index,
+                }));
             }
         }
         Ok(())

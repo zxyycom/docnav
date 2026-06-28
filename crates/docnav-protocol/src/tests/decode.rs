@@ -60,3 +60,57 @@ fn decode_probe_result_returns_semantic_error_with_typed_value() {
         _ => panic!("expected semantic error"),
     }
 }
+
+#[test]
+fn decode_protocol_request_keeps_operation_argument_pairing_semantic() {
+    let semantic_invalid = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "outline",
+        "document": { "path": "doc.md" },
+        "arguments": { "ref": "H:L1:H1", "limit_chars": 80, "page": 1 }
+    });
+
+    let error = decode_protocol_request_value(semantic_invalid)
+        .expect_err("operation and arguments mismatch should fail semantics");
+    assert_eq!(error.stage(), DecodePipelineStage::Semantic);
+    match error {
+        DecodePipelineError::Semantic { error, .. } => {
+            assert_eq!(
+                error.details().get("field"),
+                Some(&serde_json::json!("arguments"))
+            );
+        }
+        _ => panic!("expected semantic error"),
+    }
+}
+
+#[test]
+fn decode_protocol_response_keeps_operation_result_pairing_semantic() {
+    let semantic_invalid = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "read",
+        "ok": true,
+        "result": {
+            "entries": [],
+            "page": null
+        }
+    });
+
+    let error = decode_protocol_response_value(semantic_invalid)
+        .expect_err("operation and result mismatch should fail semantics");
+    assert_eq!(error.stage(), DecodePipelineStage::Semantic);
+    match error {
+        DecodePipelineError::Semantic { error, .. } => {
+            assert!(matches!(
+                error,
+                ProtocolValidationError::ResultOperationMismatch {
+                    operation: Operation::Read,
+                    result_operation: Operation::Outline
+                }
+            ));
+        }
+        _ => panic!("expected semantic error"),
+    }
+}

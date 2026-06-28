@@ -78,9 +78,9 @@ impl FieldDef {
             .expect("static default metadata is validated during field build")
     }
 
-    pub(crate) fn apply_declaration_presence(&mut self, required: bool) {
+    pub(crate) fn apply_declaration_presence(&mut self, required: bool, nullable: bool) {
         self.constraints.required = required;
-        self.constraints.nullable = !required;
+        self.constraints.nullable = nullable;
     }
 
     fn validate_present_value(&self, value: &Value) -> Result<TypedValue, ValidationFailure> {

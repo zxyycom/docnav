@@ -134,6 +134,11 @@ impl FieldValidation<Vec<Value>> {
         self.constraints.length_range = Some(length);
         self
     }
+
+    pub fn unique_items(mut self) -> Self {
+        self.constraints.unique_items = true;
+        self
+    }
 }
 
 impl FieldValidation<serde_json::Map<String, Value>> {

@@ -5,6 +5,7 @@ pub type ErrorDetails = std::collections::BTreeMap<String, serde_json::Value>;
 pub use docnav_diagnostics::ProtocolDiagnosticCode;
 
 mod constants;
+mod contract_validation;
 mod decode;
 mod envelope;
 mod error;

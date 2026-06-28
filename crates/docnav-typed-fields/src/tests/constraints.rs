@@ -125,6 +125,48 @@ fn array_length_constraints_validate_present_values() {
 }
 
 #[test]
+fn array_unique_items_constraint_reports_duplicate_items() {
+    #[derive(Debug, FieldDefs)]
+    struct Params {
+        #[field(group)]
+        defaults: Defaults,
+    }
+
+    #[derive(Debug, FieldDefs)]
+    struct Defaults {
+        #[field(
+            FieldDef::builder("docnav.defaults.items")
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "items"]))
+                .validation(FieldValidation::array().unique_items())
+        )]
+        items: Option<Vec<JsonValue>>,
+    }
+
+    let fields = Params::field_defs().expect("array unique-items constraints build");
+
+    fields
+        .extract(
+            CONFIG_PROCESSING,
+            &json!({"defaults": {"items": ["a", "b"]}}),
+        )
+        .expect("unique array items pass");
+
+    let error = fields
+        .extract(
+            CONFIG_PROCESSING,
+            &json!({"defaults": {"items": ["a", "b", "a"]}}),
+        )
+        .expect_err("duplicate array item fails");
+    assert_eq!(
+        validation_failures(&error)[0].reason,
+        ValidationReason::DuplicateArrayItem {
+            first_index: 0,
+            duplicate_index: 2
+        }
+    );
+}
+
+#[test]
 fn set_build_rejects_invalid_regex_metadata() {
     #[derive(Debug, FieldDefs)]
     struct Params {

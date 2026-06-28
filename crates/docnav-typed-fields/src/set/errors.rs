@@ -7,6 +7,30 @@ use crate::{ProcessingId, ProcessingInputKind};
 #[doc(hidden)]
 pub struct ExpectedFieldShape {
     pub required: bool,
+    pub nullable: bool,
+}
+
+impl ExpectedFieldShape {
+    pub const fn required() -> Self {
+        Self {
+            required: true,
+            nullable: false,
+        }
+    }
+
+    pub const fn optional() -> Self {
+        Self {
+            required: false,
+            nullable: true,
+        }
+    }
+
+    pub const fn required_nullable() -> Self {
+        Self {
+            required: true,
+            nullable: true,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]

@@ -96,6 +96,7 @@ impl DerivedField {
                         self.#ident,
                         ::docnav_typed_fields::__private::ExpectedFieldShape {
                             required: #required,
+                            nullable: !#required,
                         },
                     );
                 }

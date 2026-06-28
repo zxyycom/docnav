@@ -209,6 +209,7 @@ name = "docnav-protocol"
 version = "0.1.0"
 dependencies = [
  "docnav-diagnostics",
+ "docnav-typed-fields",
  "jsonschema",
  "serde",
  "serde_json",

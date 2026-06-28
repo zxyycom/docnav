@@ -49,6 +49,15 @@ impl FieldDefSet {
             .collect()
     }
 
+    pub fn validate_json(
+        &self,
+        processing_id: impl Into<ProcessingId>,
+        root: &Value,
+    ) -> Result<(), FieldExtractionError> {
+        self.__extract_json_values(processing_id.into(), root)
+            .map(|_| ())
+    }
+
     #[doc(hidden)]
     pub fn __static_default_values(&self) -> FieldValues {
         let values = self
@@ -248,7 +257,7 @@ impl FieldDefSetBuilder {
                     error,
                 })
             })?;
-            definition.apply_declaration_presence(expected.required);
+            definition.apply_declaration_presence(expected.required, expected.nullable);
             if let Some(previous) = identities.insert(
                 definition.identity().clone(),
                 FieldIdentityLocation {
