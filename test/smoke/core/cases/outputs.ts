@@ -38,19 +38,33 @@ async function testDocumentOutputBoundary() {
   const markdown = createRealMarkdownAdapter(project);
   writeRegistry(project, [markdown]);
 
-  const readable = await readDocumentReadableJson(project);
+  const readable = await readDocumentReadableJson(project, await readFirstOutlineRef(project));
   await assertReadableViewDocumentOutput(project, readable);
   await assertDefaultDocumentOutput(project, readable.ref);
   await assertProtocolJsonMatchesReadableOutput(project, readable);
   await assertReadableViewWarningOnStdout(project);
 }
 
-async function readDocumentReadableJson(project: SmokeProject): Promise<ReadableDocumentOutput> {
+async function readFirstOutlineRef(project: SmokeProject): Promise<string> {
+  const { record, json } = await runReadableJsonCase(project, "CORE-OUTPUT-001 outline readable-json ref source", [
+    "outline",
+    project.normalRelPath,
+    "--output",
+    "readable-json"
+  ], "readableOutline");
+  const entries = expectObjectArray(record, json.entries, "outline entries are objects");
+  expect(record, entries.length > 0, "outline returns entries");
+  const ref = expectString(record, entries[0]?.ref, "outline exposes a ref");
+  expect(record, ref.length > 0, "outline exposes a nonempty ref");
+  return ref;
+}
+
+async function readDocumentReadableJson(project: SmokeProject, outlineRef: string): Promise<ReadableDocumentOutput> {
   const { record, json } = await runReadableJsonCase(project, "CORE-OUTPUT-001 read readable-json output", [
     "read",
     project.normalRelPath,
     "--ref",
-    "H:L1:H1",
+    outlineRef,
     "--output",
     "readable-json"
   ], "readableRead");

@@ -70,7 +70,7 @@ pub(super) fn parse_probe(
         clap_args,
         warnings,
     } = collect_probe_args(args, native_options)?;
-    let matches = probe_command(native_options)
+    let matches = probe_command()
         .try_get_matches_from(clap_argv(command_names::PROBE, clap_args))
         .map_err(|_| probe_parse_error(args))?;
     let path = required_string(&matches, arg_ids::PATH, "probe requires <path>")?;

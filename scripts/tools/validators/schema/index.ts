@@ -13,7 +13,7 @@ import {
   OPERATION_NAMES,
   SCHEMAS
 } from "../config.ts";
-import { loadProtocolErrorDetailsRequirements } from "../protocol/error-detail-rules.ts";
+import { loadProtocolResponseSchemaErrorDetailsRequirements } from "../protocol/error-detail-rules.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,
@@ -70,7 +70,7 @@ function validateProtocolResponseBindingSchema() {
 function validateProtocolResponseErrorDetailsSchema() {
   const ajv = createSchemaAjv();
   const validate = compileRegisteredSchema(ajv, SCHEMAS.protocolResponse);
-  const requiredErrorDetailsByCode = loadProtocolErrorDetailsRequirements();
+  const requiredErrorDetailsByCode = loadProtocolResponseSchemaErrorDetailsRequirements();
 
   for (const [code, requiredDetails] of Object.entries(requiredErrorDetailsByCode)) {
     const validResponse = protocolErrorResponse(

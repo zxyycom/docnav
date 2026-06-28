@@ -34,7 +34,7 @@ Markdown adapter 内置 `max_heading_level: 3`（可由 `docnav-markdown` 配置
 
 ## Find
 
-Markdown find 搜索全文，但 match ref 指向当前 outline 参数下离命中位置最近的 heading entry。最近 heading 按源码位置判断：命中位于两个 outline entry 之间时选择距离更近的一项，距离相同则选择前一项。若当前 outline 参数没有任何 entry，find 使用 `doc:full`。
+Markdown find 搜索全文，但 match ref 指向当前 outline 参数下包含命中位置的可见 heading section。若多个可见 heading section 包含同一命中，选择源码位置最接近命中的可见 heading entry；命中位于首个可见 heading 之前，或当前 outline 参数没有任何可见 heading 时，find 使用 `doc:full`。
 
 每个 find match 的 display 保留匹配位置附近的非空文本片段，并可补充对应 heading 的 title 或 breadcrumb。ref 由独立字段完整承载 line 和 level 结构坐标。
 

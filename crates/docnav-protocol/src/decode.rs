@@ -1,13 +1,16 @@
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use std::convert::Infallible;
 use std::fmt;
 
 use crate::{
     validate_manifest_value, validate_probe_result_value, validate_protocol_request_value,
     validate_protocol_response_value, Manifest, ManifestValidationError, ProbeResult,
-    ProbeValidationError, ProtocolError, ProtocolResponse, ProtocolValidationError,
-    RequestEnvelope, SchemaValidationError,
+    ProbeValidationError, ProtocolResponse, ProtocolValidationError, RawRequestEnvelope,
+    SchemaValidationError,
 };
+
+pub type ProtocolRequestDecodeError = DecodePipelineError<RawRequestEnvelope, Infallible>;
 
 pub fn decode_value<T, E>(
     value: Value,
@@ -30,12 +33,9 @@ where
 
 pub fn decode_protocol_request_value(
     value: Value,
-) -> Result<RequestEnvelope, DecodePipelineError<RequestEnvelope, ProtocolError>> {
-    decode_value::<RequestEnvelope, ProtocolError>(
-        value,
-        validate_protocol_request_value,
-        |request| request.operation_arguments().map(|_| ()),
-    )
+) -> Result<RawRequestEnvelope, ProtocolRequestDecodeError> {
+    validate_protocol_request_value(&value).map_err(DecodePipelineError::Schema)?;
+    serde_json::from_value(value).map_err(DecodePipelineError::Deserialize)
 }
 
 pub fn decode_protocol_response_value(

@@ -37,6 +37,16 @@ impl RequestEnvelope {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawRequestEnvelope {
+    pub protocol_version: String,
+    pub request_id: String,
+    pub operation: Operation,
+    pub document: Document,
+    pub arguments: serde_json::Value,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OperationArguments {
     Outline(OutlineArguments),

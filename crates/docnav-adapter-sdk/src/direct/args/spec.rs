@@ -76,7 +76,7 @@ pub(in crate::direct) fn direct_cli_command(
             command_names::MANIFEST,
             "Emit adapter manifest",
         ))
-        .subcommand(probe_command(native_options))
+        .subcommand(probe_command())
         .subcommand(
             Command::new(command_names::INVOKE).about("Read one protocol request from stdin"),
         )
@@ -113,15 +113,11 @@ pub(in crate::direct::args) fn protocol_only_command(
     Command::new(name).about(about).arg(protocol_output_arg())
 }
 
-pub(in crate::direct::args) fn probe_command(native_options: &[NativeOptionSpec]) -> Command {
-    let mut command = Command::new(command_names::PROBE)
+pub(in crate::direct::args) fn probe_command() -> Command {
+    Command::new(command_names::PROBE)
         .about("Probe document format support")
         .arg(path_arg())
-        .arg(protocol_output_arg());
-    for spec in native_options {
-        command = command.arg(native_arg(spec));
-    }
-    command
+        .arg(protocol_output_arg())
 }
 
 pub(in crate::direct::args) fn operation_command(

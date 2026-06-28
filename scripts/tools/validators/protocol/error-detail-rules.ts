@@ -3,17 +3,17 @@ import { SCHEMAS } from "../config.ts";
 import { readJson } from "../json/files.ts";
 import { isRecord, isStringArray } from "../../type-guards.ts";
 
-export type RequiredErrorDetailsByCode = Readonly<Record<string, readonly string[]>>;
+export type RequiredErrorDetailsBySchemaCode = Readonly<Record<string, readonly string[]>>;
 
-export function loadProtocolErrorDetailsRequirements(): RequiredErrorDetailsByCode {
+export function loadProtocolResponseSchemaErrorDetailsRequirements(): RequiredErrorDetailsBySchemaCode {
   const schema = readJson(SCHEMAS.protocolResponse);
-  return protocolErrorDetailsRequirements(schema, SCHEMAS.protocolResponse);
+  return protocolResponseSchemaErrorDetailsRequirements(schema, SCHEMAS.protocolResponse);
 }
 
-function protocolErrorDetailsRequirements(
+function protocolResponseSchemaErrorDetailsRequirements(
   schema: unknown,
   label: string
-): RequiredErrorDetailsByCode {
+): RequiredErrorDetailsBySchemaCode {
   const root = jsonObject(schema, label);
   const defs = jsonObject(root.$defs, `${label} $defs`);
   const errorSchema = protocolErrorSchema(defs, label);

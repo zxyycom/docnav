@@ -137,6 +137,18 @@ fn probe_path_can_follow_unknown_flag() {
 }
 
 #[test]
+fn probe_help_does_not_advertise_native_options() {
+    let mut root = direct_cli_command("docnav-test", &[MAX_HEADING_LEVEL], 6000);
+    let probe = root
+        .find_subcommand_mut(command_names::PROBE)
+        .expect("probe command registered");
+    let help = probe.render_long_help().to_string();
+
+    assert!(help.contains("--output"));
+    assert!(!help.contains("--max-heading-level"));
+}
+
+#[test]
 fn config_sources_merge_before_typed_operation_options() {
     let dir = temp_dir("merge-precedence");
     let project_config = dir.join("project.json");

@@ -67,8 +67,11 @@ export function getChangedFileList(opts: ChangedFilesOptions, rootDir: string): 
         .split(/\r?\n/)
         .filter(Boolean)
         .map(toSlashPath);
-    } catch {
-      return [];
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`failed to read --changed-files ${opts.changedFiles}: ${reason}`, {
+        cause: error
+      });
     }
   }
 

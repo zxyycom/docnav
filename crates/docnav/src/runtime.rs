@@ -1,3 +1,4 @@
+use docnav_diagnostics::{DiagnosticRecordDraft, DiagnosticSource};
 use docnav_protocol::{Operation, PositiveInteger};
 use serde::Serialize;
 use serde_json::Value;
@@ -78,12 +79,16 @@ impl DocnavRuntime for AdapterRuntime {
             preselected_adapter_id: request.adapter.as_deref(),
             preselected_source: &request.defaults.adapter.source,
         })?;
-        let invoke = invoke_adapter(
+        let warnings = cli_warnings(selection.warnings.clone());
+        let invoke = match invoke_adapter(
             &request.project.project_root,
             &selection.record,
             &document,
             &request,
-        )?;
+        ) {
+            Ok(invoke) => invoke,
+            Err(error) => return Err(error.with_related_diagnostics(cli_warning_drafts(&warnings))),
+        };
 
         let _ = (
             &selection.manifest,
@@ -91,8 +96,7 @@ impl DocnavRuntime for AdapterRuntime {
             &selection.evidence,
             &invoke.request,
         );
-        Ok(outcome_for_response(invoke.response, request.output)?
-            .with_warnings(cli_warnings(selection.warnings)))
+        Ok(outcome_for_response(invoke.response, request.output)?.with_warnings(warnings))
     }
 
     fn describe_document_context(
@@ -191,5 +195,12 @@ fn cli_warnings(warnings: Vec<AdapterSelectionWarning>) -> Vec<CliWarning> {
                 warning.preselected,
             )
         })
+        .collect()
+}
+
+fn cli_warning_drafts(warnings: &[CliWarning]) -> Vec<DiagnosticRecordDraft> {
+    warnings
+        .iter()
+        .map(|warning| warning.to_record_draft(DiagnosticSource::with_stage("docnav", "runtime")))
         .collect()
 }

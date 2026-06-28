@@ -1,8 +1,7 @@
 use super::*;
 
-// @case WB-PROTO-DECODE-001
 #[test]
-fn decode_protocol_request_runs_schema_before_deserialize() {
+fn decode_protocol_request_runs_contract_before_raw_decode() {
     let schema_invalid = serde_json::json!({
         "protocol_version": "0.1",
         "request_id": "req-1",
@@ -21,18 +20,22 @@ fn decode_protocol_request_runs_schema_before_deserialize() {
         }
         _ => panic!("expected schema error"),
     }
+}
 
-    let deserialize_invalid = serde_json::json!({
+// @case WB-PROTO-DECODE-001
+#[test]
+fn decode_protocol_request_preserves_defaultable_and_unmapped_arguments() {
+    let request = serde_json::json!({
         "protocol_version": "0.1",
         "request_id": "req-1",
         "operation": "outline",
         "document": { "path": "doc.md" },
-        "arguments": { "limit_chars": 4_294_967_296u64, "page": 1 }
+        "arguments": { "future": true }
     });
 
-    let error = decode_protocol_request_value(deserialize_invalid)
-        .expect_err("u64 larger than NonZeroU32 should fail typed decode");
-    assert_eq!(error.stage(), DecodePipelineStage::Deserialize);
+    let decoded = decode_protocol_request_value(request).expect("raw request decodes");
+    assert_eq!(decoded.operation, Operation::Outline);
+    assert_eq!(decoded.arguments["future"], true);
 }
 
 #[test]
@@ -56,30 +59,6 @@ fn decode_probe_result_returns_semantic_error_with_typed_value() {
         DecodePipelineError::Semantic { value, error } => {
             assert!(value.supported);
             assert_eq!(error, ProbeValidationError::SupportedWithoutFormat);
-        }
-        _ => panic!("expected semantic error"),
-    }
-}
-
-#[test]
-fn decode_protocol_request_keeps_operation_argument_pairing_semantic() {
-    let semantic_invalid = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-1",
-        "operation": "outline",
-        "document": { "path": "doc.md" },
-        "arguments": { "ref": "H:L1:H1", "limit_chars": 80, "page": 1 }
-    });
-
-    let error = decode_protocol_request_value(semantic_invalid)
-        .expect_err("operation and arguments mismatch should fail semantics");
-    assert_eq!(error.stage(), DecodePipelineStage::Semantic);
-    match error {
-        DecodePipelineError::Semantic { error, .. } => {
-            assert_eq!(
-                error.details().get("field"),
-                Some(&serde_json::json!("arguments"))
-            );
         }
         _ => panic!("expected semantic error"),
     }

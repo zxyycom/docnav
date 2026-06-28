@@ -125,6 +125,11 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
         stdout,
         stderr,
     } = request;
+    for diagnostic in error.related_diagnostics() {
+        if let Err(error) = diagnostics.push(diagnostic.clone()) {
+            return write_io_error(io::Error::other(error), stderr);
+        }
+    }
     let error_id = match diagnostics.push(error.diagnostic().clone()) {
         Ok(id) => id,
         Err(error) => return write_io_error(io::Error::other(error), stderr),

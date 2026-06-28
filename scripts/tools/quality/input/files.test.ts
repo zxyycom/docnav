@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { buildFingerprints } from "./files.ts";
+import { buildFingerprints, getChangedFileList } from "./files.ts";
 import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 
 // @case AUX-QUALITY-FINGERPRINT-001
@@ -38,6 +38,15 @@ describe("quality input git pathspecs", () => {
     assert.deepEqual(gitGlobPathspecArgs(["scripts/**/*.ts"]), ["--", ":(glob)scripts/**/*.ts"]);
     assert.deepEqual(gitGlobPathspecArgs([]), ["--"]);
     assert.deepEqual(gitGlobPathspecArgs([], { omitWhenEmpty: true }), []);
+  });
+});
+
+describe("quality changed file input", () => {
+  it("fails fast when an explicit changed-files list cannot be read", () => {
+    assert.throws(
+      () => getChangedFileList({ changedFiles: "missing-changed-files.txt" }, process.cwd()),
+      /failed to read --changed-files missing-changed-files\.txt/
+    );
   });
 });
 

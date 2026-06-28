@@ -3,8 +3,8 @@
 use docnav_diagnostics::{typed_codes, DiagnosticSource, FieldReasonDetails};
 use docnav_protocol::protocol_error_record_draft_with_summary;
 use docnav_protocol::{
-    FindArguments, Operation, OperationArguments, OutlineArguments, PositiveInteger, ReadArguments,
-    RequestEnvelope,
+    FindArguments, Operation, OperationArguments, OutlineArguments, PositiveInteger,
+    RawRequestEnvelope, ReadArguments, RequestEnvelope,
 };
 use docnav_standard_parameters::{
     find_query_field, ids, limit_chars_field as standard_limit_chars_field,
@@ -13,15 +13,20 @@ use docnav_standard_parameters::{
     StandardParameterSourceKind, StandardParameterValidationIssue,
 };
 use docnav_typed_fields::{FieldDefs, FieldIdentity, JsonValue, ProcessingBuild, TypedValue};
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 
-use crate::constants::fields;
 use crate::AdapterError;
 
 const DIRECT_PROCESSING: &str = "direct";
 const CONFIG_PROCESSING: &str = "config";
+const DEFAULT_PAGE: i64 = 1;
 
 use ids::{LIMIT_CHARS as ID_LIMIT_CHARS, PAGE as ID_PAGE, QUERY as ID_QUERY, REF as ID_REF};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct InvokeStandardParameterConfig {
+    pub(crate) default_limit_chars: u32,
+}
 
 #[derive(Debug, FieldDefs)]
 struct InvokeOutlineStandardArguments {
@@ -47,34 +52,38 @@ struct InvokeFindStandardArguments {
 
 #[derive(Debug, FieldDefs)]
 struct InvokeContentWindowArguments {
-    #[field(standard_page_field(DIRECT_PROCESSING))]
+    #[field(invoke_page_field())]
     page: i64,
-    #[field(standard_limit_chars_field(DIRECT_PROCESSING))]
+    #[field(invoke_limit_chars_field())]
     limit_chars: i64,
 }
 
+fn invoke_page_field() -> docnav_typed_fields::FieldDefBuilder<i64> {
+    standard_page_field(DIRECT_PROCESSING).default_static(DEFAULT_PAGE)
+}
+
+fn invoke_limit_chars_field() -> docnav_typed_fields::FieldDefBuilder<i64> {
+    standard_limit_chars_field(DIRECT_PROCESSING)
+}
+
 pub(crate) fn standardize_invoke_request(
-    request: &RequestEnvelope,
+    request: &RawRequestEnvelope,
+    config: InvokeStandardParameterConfig,
 ) -> Result<RequestEnvelope, AdapterError> {
-    let arguments = match (&request.operation, &request.arguments) {
-        (Operation::Outline, OperationArguments::Outline(arguments)) => {
-            OperationArguments::Outline(standardize_outline(arguments)?)
-        }
-        (Operation::Read, OperationArguments::Read(arguments)) => {
-            OperationArguments::Read(standardize_read(arguments)?)
-        }
-        (Operation::Find, OperationArguments::Find(arguments)) => {
-            OperationArguments::Find(standardize_find(arguments)?)
-        }
-        (Operation::Info, OperationArguments::Info(arguments)) => {
-            OperationArguments::Info(arguments.clone())
-        }
-        _ => {
-            return Err(AdapterError::invalid_request(
-                fields::ARGUMENTS,
-                format!("arguments do not match operation {}", request.operation),
-            ))
-        }
+    let arguments = match request.operation {
+        Operation::Outline => OperationArguments::Outline(standardize_outline(
+            &request.arguments,
+            config.default_limit_chars,
+        )?),
+        Operation::Read => OperationArguments::Read(standardize_read(
+            &request.arguments,
+            config.default_limit_chars,
+        )?),
+        Operation::Find => OperationArguments::Find(standardize_find(
+            &request.arguments,
+            config.default_limit_chars,
+        )?),
+        Operation::Info => OperationArguments::Info(standardize_info(&request.arguments)?),
     };
 
     Ok(RequestEnvelope {
@@ -86,9 +95,14 @@ pub(crate) fn standardize_invoke_request(
     })
 }
 
-fn standardize_outline(arguments: &OutlineArguments) -> Result<OutlineArguments, AdapterError> {
-    let resolution =
-        resolve_invoke_standard_arguments::<InvokeOutlineStandardArguments, _>(arguments)?;
+fn standardize_outline(
+    arguments: &JsonValue,
+    default_limit_chars: u32,
+) -> Result<OutlineArguments, AdapterError> {
+    let resolution = resolve_invoke_standard_arguments::<InvokeOutlineStandardArguments>(
+        arguments,
+        default_limit_chars,
+    )?;
 
     Ok(OutlineArguments {
         limit_chars: required_positive_value(&resolution, ID_LIMIT_CHARS)?,
@@ -97,9 +111,14 @@ fn standardize_outline(arguments: &OutlineArguments) -> Result<OutlineArguments,
     })
 }
 
-fn standardize_read(arguments: &ReadArguments) -> Result<ReadArguments, AdapterError> {
-    let resolution =
-        resolve_invoke_standard_arguments::<InvokeReadStandardArguments, _>(arguments)?;
+fn standardize_read(
+    arguments: &JsonValue,
+    default_limit_chars: u32,
+) -> Result<ReadArguments, AdapterError> {
+    let resolution = resolve_invoke_standard_arguments::<InvokeReadStandardArguments>(
+        arguments,
+        default_limit_chars,
+    )?;
 
     Ok(ReadArguments {
         ref_id: required_string_value(&resolution, ID_REF)?,
@@ -109,9 +128,14 @@ fn standardize_read(arguments: &ReadArguments) -> Result<ReadArguments, AdapterE
     })
 }
 
-fn standardize_find(arguments: &FindArguments) -> Result<FindArguments, AdapterError> {
-    let resolution =
-        resolve_invoke_standard_arguments::<InvokeFindStandardArguments, _>(arguments)?;
+fn standardize_find(
+    arguments: &JsonValue,
+    default_limit_chars: u32,
+) -> Result<FindArguments, AdapterError> {
+    let resolution = resolve_invoke_standard_arguments::<InvokeFindStandardArguments>(
+        arguments,
+        default_limit_chars,
+    )?;
 
     Ok(FindArguments {
         query: required_string_value(&resolution, ID_QUERY)?,
@@ -121,17 +145,22 @@ fn standardize_find(arguments: &FindArguments) -> Result<FindArguments, AdapterE
     })
 }
 
-fn resolve_invoke_standard_arguments<P, A>(
-    arguments: &A,
+fn standardize_info(arguments: &JsonValue) -> Result<docnav_protocol::InfoArguments, AdapterError> {
+    Ok(docnav_protocol::InfoArguments {
+        options: raw_options(arguments),
+    })
+}
+
+fn resolve_invoke_standard_arguments<P>(
+    arguments: &JsonValue,
+    default_limit_chars: u32,
 ) -> Result<StandardParameterResolution, AdapterError>
 where
     P: FieldDefs,
     P::DefinitionSet: AsRef<docnav_typed_fields::FieldDefSet>,
-    A: serde::Serialize,
 {
-    let direct_input = serde_json::to_value(arguments).map_err(serialize_error)?;
     let fields = P::field_defs().map_err(field_defs_error)?;
-    let resolution = resolve_with_fields(&fields, direct_input)?;
+    let resolution = resolve_with_fields(&fields, arguments.clone(), default_limit_chars)?;
     first_validation_error(&resolution)?;
     Ok(resolution)
 }
@@ -139,6 +168,7 @@ where
 fn resolve_with_fields<D>(
     fields: &D,
     direct_input: JsonValue,
+    default_limit_chars: u32,
 ) -> Result<StandardParameterResolution, AdapterError>
 where
     D: AsRef<docnav_typed_fields::FieldDefSet> + ?Sized,
@@ -146,6 +176,7 @@ where
     StandardParameterPipeline::new(fields)
         .with_direct_input_processing_id(DIRECT_PROCESSING)
         .with_config_processing_id(CONFIG_PROCESSING)
+        .with_dynamic_default(identity_key(ID_LIMIT_CHARS)?, json!(default_limit_chars))
         .with_direct_input_passthrough_processing(native_options_processing()?)
         .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
         .resolve(direct_input)
@@ -159,11 +190,13 @@ fn native_options_processing(
 }
 
 pub(crate) fn native_options_passthrough(raw: JsonValue) -> JsonValue {
-    raw.get("options")
-        .and_then(Value::as_object)
-        .cloned()
+    raw_options(&raw)
         .map(Value::Object)
         .unwrap_or_else(|| Value::Object(Map::new()))
+}
+
+fn raw_options(raw: &JsonValue) -> Option<Map<String, Value>> {
+    raw.get("options").and_then(Value::as_object).cloned()
 }
 
 fn first_validation_error(resolution: &StandardParameterResolution) -> Result<(), AdapterError> {
@@ -271,10 +304,6 @@ fn invalid_request_error(field: &str, reason: &str) -> AdapterError {
         FieldReasonDetails::new(field, reason),
         DiagnosticSource::with_stage("docnav-adapter-sdk", "standard-parameters"),
     ))
-}
-
-fn serialize_error(error: serde_json::Error) -> AdapterError {
-    AdapterError::internal(format!("serialize-invoke-arguments:{error}"))
 }
 
 fn field_defs_error(error: docnav_typed_fields::FieldDefSetBuildError) -> AdapterError {

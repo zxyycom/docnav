@@ -25,7 +25,7 @@ Docnav 分为两个语义层：
 
 两层复用相同业务语义，例如 ref、display、内容、成本和 page，但使用不同的传输包装和展示形态。
 普通 CLI 输出优先服务阅读体验；需要机器稳定解析、兼容校验或自动化断言时，调用完整协议接口。
-Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-json` 三种输出模式；help、version 和其它非文档纯文本诊断使用独立 PlainText 通道，不参与 document output mode。
+所有命令先产出成功结果或诊断错误记录，再由输出层统一投影。Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-json` 三种稳定文档输出模式；help、version 和其它非文档命令的成功输出可以保持 PlainText 或命令自有 JSON，但致命诊断仍按当前 output context 走统一错误投影，除非对应 owner 文档明确规定更窄通道。
 
 `docnav` 对文档操作使用单一执行管线：参数归一化、adapter 选择、配置解析、probe、invoke 和结果判断不按输出模式分叉。管线产出业务结果、错误通道记录和候选证据；输出层负责按模式序列化、包装并写入 stdout/stderr。
 
@@ -77,7 +77,7 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 - `docnav-readable`：提供 readable payload/value helper、仓库内 renderer config、`ReadableViewKind`、readable-view block 渲染器和 conformance vector 类型。readable-view block framing 由本库拥有。
 - `docnav-adapter-sdk`：提供 invoke I/O、协议校验、adapter 直接 CLI 的通用参数解析、命令分发、输出分流、错误输出投影和通用进程行为；可承接 format-neutral paging helper。格式 adapter 仍拥有 parser、ref、display semantics 和格式原生 options。
 - `docnav-json-io`：低层 JSON IO helper，位于 document output 编排下层，只负责 JSON value serialization、newline writing 和 serialization/write failure plumbing；不拥有 schema、protocol/readable wrapper、warning、output mode 或 exit code policy。
-- `docnav-output`：document operation 输出编排 owner，位于 `docnav-readable` 和 `docnav-json-io` 之上、`docnav` core 和 `docnav-adapter-sdk` 之下；只编排 `readable-view`、`readable-json` 和 `protocol-json`，不编排 help、version、manifest 或 probe。
+- `docnav-output`：document operation 输出编排和致命诊断投影 owner，位于 `docnav-readable` 和 `docnav-json-io` 之上、`docnav` core 和 `docnav-adapter-sdk` 之下；只承诺 `readable-view`、`readable-json` 和 `protocol-json` 的文档输出形状，help、version、manifest 或 probe 的成功输出仍由各命令 owner 定义。
 - `docnav-diagnostics`：错误通道 owner，定义 `DiagnosticStack`、`DiagnosticCode`、错误规则、警告规则、`DiagnosticId`、mark 生命周期和 LIFO/drain 语义；详细规则见 [错误通道](diagnostics.md)。本 crate 保存问题记录、机械身份和 code 规则集合，不拥有 surface output format 或 exit code enum。
 - `docnav-cli-args`：直接 CLI loose argv token scanning owner；输入由调用方提供 command context 和 known value flag metadata。业务参数解析、默认值合并、request 构造和最终 exit behavior 仍由调用方负责；该 crate 不适用于 adapter `invoke` stdin JSON。
 - `docnav-typed-fields`：字段级事实源 owner，承接 field identity、processing strategy declaration、processing input kind guard、processing build、value kind、字段级 constraints、static default metadata、validation attribution、schema metadata view 和 duplicate identity guard。`FieldDefSet` 聚合通用 typed field definitions，并提供 metadata 与 input-kind guard；input-specific helper 负责把具体输入格式映射到 `FieldDefSet` 的 metadata/validation。当前 JSON helper 承接 JSON path structured path、`serde_json::Value` extraction、unknown-field detection 和 JSON passthrough。同一 processing id 的 input-specific helper 返回 typed extraction result 和 caller processing result，供标准参数、JSON contract validation 或 schema tooling 消费。来源合并、CLI argv parsing、operation binding、manifest/probe policy、protocol envelope、readable output 和完整 JSON Schema document generation 仍由对应 consumer owner 定义。

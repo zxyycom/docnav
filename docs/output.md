@@ -4,9 +4,9 @@
 
 ## 输出层边界
 
-`--output` 只选择输出层的序列化、错误包装和通道承载方式，不改变 `docnav` 的 adapter 选择、配置合并、参数显式化、probe、invoke 或业务结果判断。Document operation 只接受 `readable-view`、`readable-json` 和 `protocol-json`。实现应先产出统一 outcome，再按输出模式渲染为 readable-view、readable JSON 或 protocol envelope。
+`--output` 只选择输出层的序列化、错误包装和通道承载方式，不改变 `docnav` 的 adapter 选择、配置合并、参数显式化、probe、invoke 或业务结果判断。Document operation 只接受 `readable-view`、`readable-json` 和 `protocol-json`。实现应先产出成功结果或诊断错误记录，再按输出 context 渲染为 readable-view、readable JSON、protocol envelope、命令自有 JSON 或 PlainText。
 
-`docnav-output` 是 document operation 输出编排 owner：调用方传入 operation、request id、output mode、document outcome 和错误通道记录或其投影，由该层决定 `readable-view`、`readable-json` 或 `protocol-json` 的包装、warning/error 投影和 stdout/stderr 分流。共享 crate 边界见 [架构](architecture.md#共享库)；本文件只定义文档输出模式和通道契约。help、version、manifest、probe 和其它非 document output 不进入 document output mode。
+`docnav-output` 是 document operation 输出编排和致命诊断投影 owner：调用方传入 operation、request id、output mode、document outcome 和错误通道记录或其投影，由该层决定 `readable-view`、`readable-json` 或 `protocol-json` 的包装、warning/error 投影和 stdout/stderr 分流。共享 crate 边界见 [架构](architecture.md#共享库)；本文件定义文档输出模式、统一错误投影和通道契约。help、version、manifest、probe 和其它非 document 成功输出不承诺 document result shape，但致命诊断不应绕过统一错误投影。
 
 机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；错误发生在 CLI 参数解析、adapter 选择、adapter invoke 或输出转换阶段时，只要输出模式可以从 argv 或请求中确定，也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
 

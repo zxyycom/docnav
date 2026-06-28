@@ -57,12 +57,7 @@ fn validate_protocol_request(request: &RequestEnvelope) -> AppResult<()> {
         Err(DecodePipelineError::Deserialize(error)) => Err(AppError::internal(format!(
             "decode-protocol-request:{error}"
         ))),
-        Err(DecodePipelineError::Semantic { error, .. }) => {
-            let draft = error
-                .to_record_draft(DiagnosticSource::with_stage("docnav", "invoke-validation"))
-                .map_err(|error| AppError::internal(format!("protocol-error-details:{error}")))?;
-            Err(AppError::new(draft))
-        }
+        Err(DecodePipelineError::Semantic { error, .. }) => match error {},
     }
 }
 

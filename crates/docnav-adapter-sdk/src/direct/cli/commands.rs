@@ -6,7 +6,7 @@ use super::super::args::{command_names, parse_probe, parse_protocol_only_options
 use super::super::output::append_cli_warnings_to_stderr;
 use super::operation::run_operation;
 use super::{input_error, DirectCliContext, DirectCommandInvocation};
-use crate::{run_command, Adapter, SdkCommand};
+use crate::{invoke::invoke_once_with_default_limit_chars, run_command, Adapter, SdkCommand};
 
 pub(super) fn run_direct_command<A, R, W, E>(
     context: &DirectCliContext<'_, A>,
@@ -109,5 +109,11 @@ where
     if !args.is_empty() {
         return input_error(stderr, "invoke does not accept positional arguments");
     }
-    run_command(context.adapter, SdkCommand::Invoke, stdin, stdout, stderr)
+    invoke_once_with_default_limit_chars(
+        context.adapter,
+        context.config.default_limit_chars,
+        stdin,
+        stdout,
+        stderr,
+    )
 }

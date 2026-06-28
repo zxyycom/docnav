@@ -1,9 +1,9 @@
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 
 import { errorMessage } from "./tools/errors.ts";
 import { assert } from "./tools/validators/assertions.ts";
-import { loadProtocolErrorDetailsRequirements } from "./tools/validators/protocol/error-detail-rules.ts";
-import { toAbs } from "./tools/validators/repo/paths.ts";
+import { root, toAbs } from "./tools/validators/repo/paths.ts";
 
 const removedErrorRuleSources = [
   "docs/protocol/error-rules.json",
@@ -18,10 +18,19 @@ function main(): void {
     assert(!fs.existsSync(toAbs(relPath)), `${relPath} must not exist`);
   }
 
-  const protocolRequirements = loadProtocolErrorDetailsRequirements();
+  const protocolRequirements = spawnSync(
+    "cargo",
+    [
+      "test",
+      "-p",
+      "docnav-protocol",
+      "protocol_response_schema_error_projection_matches_diagnostic_rules"
+    ],
+    { cwd: root, encoding: "utf8" }
+  );
   assert(
-    Object.keys(protocolRequirements).length > 0,
-    "protocol response schema must declare projected error detail rules"
+    protocolRequirements.status === 0,
+    `diagnostic owner/schema projection test failed\n${protocolRequirements.stdout}${protocolRequirements.stderr}`
   );
   console.log("diagnostic projection checks ok");
 }

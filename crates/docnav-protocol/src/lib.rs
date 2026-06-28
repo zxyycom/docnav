@@ -23,10 +23,12 @@ pub use constants::{MANIFEST_VERSION, PROBE_VERSION, PROTOCOL_VERSION, UNKNOWN_R
 pub use decode::{
     decode_manifest_value, decode_probe_result_value, decode_protocol_request_value,
     decode_protocol_response_value, decode_value, DecodePipelineError, DecodePipelineStage,
+    ProtocolRequestDecodeError,
 };
 pub use envelope::{
     Document, FailureResponse, FindArguments, InfoArguments, OperationArguments, OutlineArguments,
-    ProtocolResponse, ProtocolValidationError, ReadArguments, RequestEnvelope, SuccessResponse,
+    ProtocolResponse, ProtocolValidationError, RawRequestEnvelope, ReadArguments, RequestEnvelope,
+    SuccessResponse,
 };
 pub use error::{
     protocol_error_category, protocol_error_default_message, protocol_error_record_draft,

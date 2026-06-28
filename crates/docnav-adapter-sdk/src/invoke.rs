@@ -4,8 +4,8 @@ use docnav_diagnostics::{
 use docnav_protocol::{
     decode_protocol_request_value, extract_request_context_from_value,
     protocol_error_record_draft_with_summary, DecodePipelineError, FailureResponse, Operation,
-    OperationArguments, OperationResult, ProtocolError, ProtocolResponse, RequestEnvelope,
-    PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
+    OperationArguments, OperationResult, ProtocolError, ProtocolResponse, RawRequestEnvelope,
+    RequestEnvelope, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
 use serde_json::Value;
 use std::io::{Read, Write};
@@ -16,8 +16,10 @@ use crate::error::protocol_error_from_diagnostic;
 use crate::output::{
     emit_boundary_diagnostic, write_adapter_boundary_error, write_protocol_response,
 };
-use crate::standard_parameters::standardize_invoke_request;
+use crate::standard_parameters::{standardize_invoke_request, InvokeStandardParameterConfig};
 use crate::{Adapter, AdapterExitCode, AdapterResult};
+
+const DEFAULT_INVOKE_LIMIT_CHARS: u32 = 6000;
 
 struct InvokeFailure {
     response: ProtocolResponse,
@@ -39,6 +41,28 @@ where
     W: Write,
     E: Write,
 {
+    invoke_once_with_default_limit_chars(
+        adapter,
+        DEFAULT_INVOKE_LIMIT_CHARS,
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    )
+}
+
+pub(crate) fn invoke_once_with_default_limit_chars<A, R, W, E>(
+    adapter: &A,
+    default_limit_chars: u32,
+    mut stdin: R,
+    mut stdout: W,
+    mut stderr: E,
+) -> i32
+where
+    A: Adapter,
+    R: Read,
+    W: Write,
+    E: Write,
+{
     if let Err(exit_code) = validate_manifest_for_invoke(adapter, &mut stderr) {
         return exit_code;
     }
@@ -47,22 +71,9 @@ where
         Ok(request) => request,
         Err(failure) => return write_invoke_failure(*failure, &mut stdout, &mut stderr),
     };
-    let request = match standardize_invoke_request(&request) {
+    let request = match standardize_decoded_request(&request, default_limit_chars) {
         Ok(request) => request,
-        Err(error) => {
-            return write_invoke_failure(
-                InvokeFailure {
-                    response: ProtocolResponse::failure_for_request(
-                        &request,
-                        protocol_error_from_diagnostic(error.into_diagnostic()),
-                    ),
-                    diagnostic: None,
-                    exit_code: AdapterExitCode::ProtocolError,
-                },
-                &mut stdout,
-                &mut stderr,
-            )
-        }
+        Err(failure) => return write_invoke_failure(*failure, &mut stdout, &mut stderr),
     };
 
     let response = execute_request(adapter, &request);
@@ -84,7 +95,31 @@ where
         .map_err(|error| write_adapter_boundary_error(&error, stderr))
 }
 
-fn read_and_decode_request<R>(stdin: &mut R) -> InvokeResult<RequestEnvelope>
+fn standardize_decoded_request(
+    request: &RawRequestEnvelope,
+    default_limit_chars: u32,
+) -> InvokeResult<RequestEnvelope> {
+    standardize_invoke_request(
+        request,
+        InvokeStandardParameterConfig {
+            default_limit_chars,
+        },
+    )
+    .map_err(|error| {
+        Box::new(InvokeFailure {
+            response: ProtocolResponse::failure(
+                request.protocol_version.clone(),
+                request.request_id.clone(),
+                Some(request.operation),
+                protocol_error_from_diagnostic(error.into_diagnostic()),
+            ),
+            diagnostic: None,
+            exit_code: AdapterExitCode::ProtocolError,
+        })
+    })
+}
+
+fn read_and_decode_request<R>(stdin: &mut R) -> InvokeResult<RawRequestEnvelope>
 where
     R: Read,
 {
@@ -146,7 +181,7 @@ fn parse_request_json(input: &str) -> InvokeResult<Value> {
     })
 }
 
-fn decode_request_value(request_value: Value) -> InvokeResult<RequestEnvelope> {
+fn decode_request_value(request_value: Value) -> InvokeResult<RawRequestEnvelope> {
     let context = extract_request_context_from_value(&request_value);
     let request_id = context
         .request_id
@@ -195,13 +230,7 @@ fn decode_request_value(request_value: Value) -> InvokeResult<RequestEnvelope> {
                 exit_code: AdapterExitCode::ProtocolError,
             }));
         }
-        Err(DecodePipelineError::Semantic { value, error }) => {
-            return Err(Box::new(InvokeFailure {
-                response: ProtocolResponse::failure_for_request(&value, error),
-                diagnostic: None,
-                exit_code: AdapterExitCode::ProtocolError,
-            }));
-        }
+        Err(DecodePipelineError::Semantic { error, .. }) => match error {},
     };
     Ok(request)
 }

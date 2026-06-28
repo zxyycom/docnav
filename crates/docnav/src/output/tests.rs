@@ -195,6 +195,44 @@ fn readable_error_uses_document_facade_and_exit_policy_stays_local() {
 }
 
 #[test]
+fn related_warning_diagnostics_are_preserved_on_error_output() {
+    let warning = CliWarning::adapter_candidate_failure(
+        "markdown",
+        "probe",
+        "UNSUPPORTED",
+        "no match",
+        false,
+    );
+    let error = AppError::new(protocol_error_record_draft_with_summary::<
+        typed_codes::protocol::RefNotFound,
+    >(
+        "No content found for ref `L99`",
+        RefDetails::new("L99"),
+        DiagnosticSource::with_stage("test", "output"),
+    ))
+    .with_related_diagnostics([
+        warning.to_record_draft(DiagnosticSource::with_stage("docnav", "runtime"))
+    ]);
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit = write_error(ErrorOutput {
+        error: &error,
+        output_mode: OutputMode::ReadableJson,
+        operation: Some(Operation::Read),
+        diagnostics: DiagnosticStack::new(),
+        stdout: &mut stdout,
+        stderr: &mut stderr,
+    });
+
+    assert_eq!(exit, DocnavExitCode::DocumentError.code());
+    assert!(stderr.is_empty());
+    let output: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(output["code"], "REF_NOT_FOUND");
+    assert_eq!(output["warnings"][0]["id"], "adapter_candidate_failure");
+    assert_eq!(output["warnings"][0]["details"]["adapter_id"], "markdown");
+}
+
+#[test]
 fn app_error_normalizes_non_protocol_diagnostic_before_document_output() {
     let error = AppError::new(DiagnosticRecordDraft::new::<
         typed_codes::readable_warning::CliArgvIgnored,
