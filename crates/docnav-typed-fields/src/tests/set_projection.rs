@@ -46,12 +46,37 @@ fn native_processing() -> ProcessingBuild<'static, JsonValue, JsonValue> {
     .expect("processing id is valid")
 }
 
+fn valid_input_with_native() -> JsonValue {
+    json!({
+        "a": {"b": 4000},
+        "defaults": {"output": "readable-json"},
+        "native": {"theme": "dark"}
+    })
+}
+
 fn consume_params(params: DocnavParams) -> (Option<i64>, OutputMode) {
     (params.defaults.limit_chars, params.defaults.output)
 }
 
 fn consume_defaults(params: DocnavParamsDefaultValues) -> (Option<i64>, Option<OutputMode>) {
     (params.defaults.limit_chars, params.defaults.output)
+}
+
+fn assert_valid_params_and_processing_result(
+    processed: &ProcessedExtraction<Result<DocnavParams, FieldExtractionError>, JsonValue>,
+    expected_processing: &JsonValue,
+) {
+    let params = processed
+        .extraction()
+        .as_ref()
+        .expect("valid field extraction succeeds");
+    assert_eq!(params.defaults.limit_chars, Some(4000));
+    assert_eq!(params.defaults.output, OutputMode::ReadableJson);
+    assert_eq!(
+        processed.processing().processing_id().as_str(),
+        CONFIG_PROCESSING
+    );
+    assert_eq!(processed.processing().value(), expected_processing);
 }
 
 #[test]
@@ -131,26 +156,9 @@ fn derived_field_defs_process_returns_extraction_and_processing_result() {
     let fields = docnav_fields();
     let processing = native_processing();
 
-    let processed = fields.process(
-        &processing,
-        &json!({
-            "a": {"b": 4000},
-            "defaults": {"output": "readable-json"},
-            "native": {"theme": "dark"}
-        }),
-    );
+    let processed = fields.process(&processing, &valid_input_with_native());
 
-    let params = processed
-        .extraction()
-        .as_ref()
-        .expect("valid field extraction succeeds");
-    assert_eq!(params.defaults.limit_chars, Some(4000));
-    assert_eq!(params.defaults.output, OutputMode::ReadableJson);
-    assert_eq!(
-        processed.processing().processing_id().as_str(),
-        CONFIG_PROCESSING
-    );
-    assert_eq!(processed.processing().value(), &json!({"theme": "dark"}));
+    assert_valid_params_and_processing_result(&processed, &json!({"theme": "dark"}));
 }
 
 #[test]
@@ -169,6 +177,62 @@ fn derived_field_defs_process_keeps_processing_result_when_extraction_fails() {
 
     assert!(processed.extraction().is_err());
     assert_eq!(processed.processing().value(), &json!({"theme": "dark"}));
+}
+
+#[test]
+fn derived_field_defs_extract_with_passthrough_keeps_original_json_by_default() {
+    let fields = docnav_fields();
+    let input = valid_input_with_native();
+
+    let processed = fields.extract_with_passthrough(CONFIG_PROCESSING, &input, None);
+
+    assert_valid_params_and_processing_result(&processed, &input);
+}
+
+#[test]
+fn derived_field_defs_extract_with_passthrough_returns_processing_result() {
+    let fields = docnav_fields();
+    let processing = native_processing();
+
+    let processed = fields.extract_with_passthrough(
+        CONFIG_PROCESSING,
+        &valid_input_with_native(),
+        Some(&processing),
+    );
+
+    assert_valid_params_and_processing_result(&processed, &json!({"theme": "dark"}));
+}
+
+#[test]
+fn field_def_set_unused_json_fields_reports_direct_unconsumed_keys() {
+    let fields = docnav_fields();
+    let input = json!({
+        "a": {"b": 4000, "extra": true},
+        "defaults": {"output": "readable-json", "theme": "dark"},
+        "native": {"theme": "dark"}
+    });
+
+    assert_eq!(
+        fields
+            .as_ref()
+            .unused_json_fields(CONFIG_PROCESSING, &input, std::iter::empty::<&str>())
+            .expect("unused root keys are computed"),
+        json!({"native": {"theme": "dark"}})
+    );
+    assert_eq!(
+        fields
+            .as_ref()
+            .unused_json_fields(CONFIG_PROCESSING, &input, ["a"])
+            .expect("unused nested keys are computed"),
+        json!({"extra": true})
+    );
+    assert_eq!(
+        fields
+            .as_ref()
+            .unused_json_fields(CONFIG_PROCESSING, &input, ["defaults"])
+            .expect("unused sibling keys are computed"),
+        json!({"theme": "dark"})
+    );
 }
 
 #[test]

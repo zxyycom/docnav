@@ -56,9 +56,10 @@ fn validate_outline_result(value: &Value, errors: &mut Vec<String>) {
         errors,
     );
     reject_unknown_fields(
-        value_at(value, &["result"]),
+        schema_names::PROTOCOL_RESPONSE,
+        response_outline_result_fields,
+        value,
         &["result"],
-        &["entries", "page"],
         errors,
     );
     validate_entry_array(value, &["result", "entries"], errors);
@@ -73,9 +74,10 @@ fn validate_read_result(value: &Value, errors: &mut Vec<String>) {
         errors,
     );
     reject_unknown_fields(
-        value_at(value, &["result"]),
+        schema_names::PROTOCOL_RESPONSE,
+        response_read_result_fields,
+        value,
         &["result"],
-        &["ref", "content", "content_type", "cost", "page"],
         errors,
     );
 }
@@ -89,9 +91,10 @@ fn validate_find_result(value: &Value, errors: &mut Vec<String>) {
         errors,
     );
     reject_unknown_fields(
-        value_at(value, &["result"]),
+        schema_names::PROTOCOL_RESPONSE,
+        response_find_result_fields,
+        value,
         &["result"],
-        &["matches", "page"],
         errors,
     );
     validate_entry_array(value, &["result", "matches"], errors);
@@ -106,9 +109,10 @@ fn validate_info_result(value: &Value, errors: &mut Vec<String>) {
         errors,
     );
     reject_unknown_fields(
-        value_at(value, &["result"]),
+        schema_names::PROTOCOL_RESPONSE,
+        response_info_result_fields,
+        value,
         &["result"],
-        &["display", "capabilities"],
         errors,
     );
     validate_value_array_items(
@@ -130,7 +134,6 @@ fn validate_entry_array(value: &Value, path: &[&str], errors: &mut Vec<String>) 
         ObjectArraySpec {
             schema: schema_names::PROTOCOL_RESPONSE,
             build: response_entry_fields,
-            allowed_fields: &["ref", "display"],
         },
         |_, _, _| {},
         errors,

@@ -27,17 +27,10 @@ pub(crate) fn validate_probe_result_contract_value(
         &mut errors,
     );
     reject_unknown_fields(
-        Some(value),
+        schema_names::PROBE_RESULT,
+        probe_fields,
+        value,
         &[],
-        &[
-            "probe_version",
-            "adapter_id",
-            "path",
-            "supported",
-            "format",
-            "confidence",
-            "reasons",
-        ],
         &mut errors,
     );
     validate_object_array_items(
@@ -46,7 +39,6 @@ pub(crate) fn validate_probe_result_contract_value(
         ObjectArraySpec {
             schema: schema_names::PROBE_RESULT,
             build: probe_reason_fields,
-            allowed_fields: &["code", "detail"],
         },
         |_, _, _| {},
         &mut errors,

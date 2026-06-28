@@ -12,6 +12,7 @@ use crate::process_strategy::ProcessingInputKind;
 use crate::processing::{ProcessedExtraction, ProcessingBuild, ProcessingId};
 
 mod errors;
+mod json;
 mod values;
 
 pub use errors::{

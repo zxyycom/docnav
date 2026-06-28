@@ -70,6 +70,21 @@ pub(super) fn response_failure_fields() -> Result<FieldDefSet, FieldDefSetBuildE
     .build()
 }
 
+pub(super) fn response_unknown_shape_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    add_operation(response_common_builder(), ExpectedFieldShape::optional())
+        .__field_with_declaration_path(
+            ["result"],
+            object_field("result", ["result"]),
+            ExpectedFieldShape::optional(),
+        )
+        .__field_with_declaration_path(
+            ["error"],
+            object_field("error", ["error"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
 fn response_common_builder() -> docnav_typed_fields::__private::FieldDefSetBuilder {
     add_request_id(add_protocol_version(
         FieldDefSet::builder(),

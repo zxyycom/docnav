@@ -10,6 +10,7 @@ use super::helpers::{
 };
 use super::response_fields::{
     response_common_fields, response_failure_fields, response_success_fields,
+    response_unknown_shape_fields,
 };
 use super::response_results::validate_success_result_shape;
 
@@ -27,16 +28,10 @@ pub(crate) fn validate_protocol_response_contract_value(
 
 fn validate_unknown_response_shape(value: &Value, errors: &mut Vec<String>) {
     reject_unknown_fields(
-        Some(value),
+        schema_names::PROTOCOL_RESPONSE,
+        response_unknown_shape_fields,
+        value,
         &[],
-        &[
-            "protocol_version",
-            "request_id",
-            "operation",
-            "ok",
-            "result",
-            "error",
-        ],
         errors,
     );
     validate_field_set(
@@ -50,15 +45,10 @@ fn validate_unknown_response_shape(value: &Value, errors: &mut Vec<String>) {
 
 fn validate_success_response(value: &Value, errors: &mut Vec<String>) {
     reject_unknown_fields(
-        Some(value),
+        schema_names::PROTOCOL_RESPONSE,
+        response_success_fields,
+        value,
         &[],
-        &[
-            "protocol_version",
-            "request_id",
-            "operation",
-            "ok",
-            "result",
-        ],
         errors,
     );
     validate_field_set(
@@ -74,9 +64,10 @@ fn validate_success_response(value: &Value, errors: &mut Vec<String>) {
 
 fn validate_failure_response(value: &Value, errors: &mut Vec<String>) {
     reject_unknown_fields(
-        Some(value),
+        schema_names::PROTOCOL_RESPONSE,
+        response_failure_fields,
+        value,
         &[],
-        &["protocol_version", "request_id", "operation", "ok", "error"],
         errors,
     );
     validate_field_set(
@@ -88,9 +79,10 @@ fn validate_failure_response(value: &Value, errors: &mut Vec<String>) {
     );
     expect_bool_value(value, &["ok"], false, errors);
     reject_unknown_fields(
-        value_at(value, &["error"]),
+        schema_names::PROTOCOL_RESPONSE,
+        response_failure_fields,
+        value,
         &["error"],
-        &["code", "message", "details", "guidance"],
         errors,
     );
     if let Some(error) = value_at(value, &["error"]) {

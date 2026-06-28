@@ -16,7 +16,6 @@ pub(super) type FieldSetBuilder = fn() -> Result<FieldDefSet, FieldDefSetBuildEr
 pub(super) struct ObjectArraySpec {
     pub schema: &'static str,
     pub build: FieldSetBuilder,
-    pub allowed_fields: &'static [&'static str],
 }
 
 #[derive(Clone, Copy)]
@@ -57,7 +56,16 @@ pub(super) fn validate_object_array_items(
     for (index, item) in items.iter().enumerate() {
         let item_path = indexed_path(path, index);
         validate_field_set_with_owned_prefix(spec.schema, spec.build, item, &item_path, errors);
-        reject_unknown_fields_owned(Some(item), &item_path, spec.allowed_fields, errors);
+        reject_unknown_fields_with_owned_prefix(
+            StrictObjectCheck {
+                schema: spec.schema,
+                build: spec.build,
+                value: item,
+                path: &[],
+                prefix: &item_path,
+            },
+            errors,
+        );
         validate_nested(item, &item_path, errors);
     }
 }
@@ -133,39 +141,62 @@ fn validate_wrapped_value_field(
 }
 
 pub(super) fn reject_unknown_fields(
-    value: Option<&Value>,
+    schema: &'static str,
+    build: FieldSetBuilder,
+    value: &Value,
     path: &[&str],
-    allowed: &[&str],
     errors: &mut Vec<String>,
 ) {
-    let prefix = path
-        .iter()
-        .map(|segment| (*segment).to_string())
-        .collect::<Vec<_>>();
-    reject_unknown_fields_owned(value, &prefix, allowed, errors);
+    reject_unknown_fields_with_owned_prefix(
+        StrictObjectCheck {
+            schema,
+            build,
+            value,
+            path,
+            prefix: &[],
+        },
+        errors,
+    );
 }
 
-pub(super) fn reject_unknown_fields_owned(
-    value: Option<&Value>,
-    path: &[String],
-    allowed: &[&str],
-    errors: &mut Vec<String>,
-) {
-    let Some(Value::Object(object)) = value else {
-        return;
-    };
-    for key in object.keys() {
-        if !allowed.contains(&key.as_str()) {
-            let mut unknown_path = path.to_vec();
-            unknown_path.push(key.clone());
-            errors.push(format!(
-                "{}: additional property is not allowed",
-                json_pointer(&unknown_path)
-            ));
+struct StrictObjectCheck<'a> {
+    schema: &'static str,
+    build: FieldSetBuilder,
+    value: &'a Value,
+    path: &'a [&'a str],
+    prefix: &'a [String],
+}
+
+fn reject_unknown_fields_with_owned_prefix(check: StrictObjectCheck<'_>, errors: &mut Vec<String>) {
+    match (check.build)() {
+        Ok(fields) => {
+            match fields.unused_json_fields(
+                JSON_CONTRACT_PROCESSING,
+                check.value,
+                check.path.iter().copied(),
+            ) {
+                Ok(Value::Object(unused)) => {
+                    for key in unused.keys() {
+                        let mut unknown_path = check.prefix.to_vec();
+                        unknown_path
+                            .extend(check.path.iter().map(|segment| (*segment).to_string()));
+                        unknown_path.push(key.clone());
+                        errors.push(format!(
+                            "{}: additional property is not allowed",
+                            json_pointer(&unknown_path)
+                        ));
+                    }
+                }
+                Ok(_) => {}
+                Err(error) => errors.push(error.to_string()),
+            }
         }
+        Err(error) => errors.push(format!(
+            "{} contract field definitions failed: {error}",
+            check.schema
+        )),
     }
 }
-
 pub(super) fn expect_bool_value(
     value: &Value,
     path: &[&str],

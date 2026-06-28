@@ -9,9 +9,7 @@ use super::field_builders::{
     add_operation, add_protocol_version, add_request_id, non_empty_string_field, object_field,
     positive_int_field,
 };
-use super::helpers::{
-    operation_name, reject_unknown_fields, schema_result, validate_field_set, value_at,
-};
+use super::helpers::{operation_name, reject_unknown_fields, schema_result, validate_field_set};
 
 pub(crate) fn validate_protocol_request_contract_value(
     value: &Value,
@@ -25,21 +23,17 @@ pub(crate) fn validate_protocol_request_contract_value(
         &mut errors,
     );
     reject_unknown_fields(
-        Some(value),
+        schema_names::PROTOCOL_REQUEST,
+        request_base_fields,
+        value,
         &[],
-        &[
-            "protocol_version",
-            "request_id",
-            "operation",
-            "document",
-            "arguments",
-        ],
         &mut errors,
     );
     reject_unknown_fields(
-        value_at(value, &["document"]),
+        schema_names::PROTOCOL_REQUEST,
+        request_base_fields,
+        value,
         &["document"],
-        &["path"],
         &mut errors,
     );
 

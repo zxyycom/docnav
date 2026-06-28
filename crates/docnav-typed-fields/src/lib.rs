@@ -31,6 +31,8 @@ pub use set::{
 pub use validation::FieldValidation;
 pub use value::{FieldStringEnum, FieldValue, FieldValueError};
 
+pub type JsonPassthroughProcessing<'a> = ProcessingBuild<'a, JsonValue, JsonValue>;
+
 pub trait FieldDefs: Sized {
     type DefinitionSet;
     type Builder: FieldDefsBuilder<DefinitionSet = Self::DefinitionSet>;

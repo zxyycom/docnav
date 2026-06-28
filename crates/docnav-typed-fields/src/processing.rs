@@ -76,10 +76,7 @@ impl<'a, I, O> ProcessingBuild<'a, I, O> {
     }
 
     pub fn process(&self, raw_input: I) -> ProcessedValue<O> {
-        ProcessedValue {
-            processing_id: self.id.clone(),
-            value: (self.process)(raw_input),
-        }
+        ProcessedValue::new(self.id.clone(), (self.process)(raw_input))
     }
 }
 
@@ -99,6 +96,13 @@ pub struct ProcessedValue<T> {
 }
 
 impl<T> ProcessedValue<T> {
+    pub(crate) fn new(processing_id: ProcessingId, value: T) -> Self {
+        Self {
+            processing_id,
+            value,
+        }
+    }
+
     pub fn processing_id(&self) -> &ProcessingId {
         &self.processing_id
     }

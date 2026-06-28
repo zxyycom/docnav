@@ -28,15 +28,17 @@ pub(crate) fn validate_manifest_contract_value(value: &Value) -> Result<(), Sche
         &mut errors,
     );
     reject_unknown_fields(
-        Some(value),
+        schema_names::MANIFEST,
+        manifest_fields,
+        value,
         &[],
-        &["manifest_version", "adapter", "formats", "capabilities"],
         &mut errors,
     );
     reject_unknown_fields(
-        super::helpers::value_at(value, &["adapter"]),
+        schema_names::MANIFEST,
+        manifest_fields,
+        value,
         &["adapter"],
-        &["id", "name", "version"],
         &mut errors,
     );
 
@@ -46,7 +48,6 @@ pub(crate) fn validate_manifest_contract_value(value: &Value) -> Result<(), Sche
         ObjectArraySpec {
             schema: schema_names::MANIFEST,
             build: manifest_format_fields,
-            allowed_fields: &["id", "extensions", "content_types"],
         },
         |format, path, errors| {
             validate_value_array_items_with_owned_prefix(

@@ -147,7 +147,7 @@ impl<'a> StandardParameterPipeline<'a> {
         self,
         direct_input: impl Into<Option<JsonValue>>,
     ) -> Result<StandardParameterResolution, StandardParameterPipelineError> {
-        let catalog = self.catalog()?;
+        let (catalog, direct_processing_id, config_processing_id) = self.catalog()?;
         let entries = catalog.entries();
         let direct_input = direct_input.into();
         let (project_config, mut diagnostics) = config_source_parts(self.project_config);
@@ -155,16 +155,19 @@ impl<'a> StandardParameterPipeline<'a> {
         diagnostics.extend(user_diagnostics);
         let direct_passthrough = process_passthrough(
             self.fields,
+            &direct_processing_id,
             direct_input.as_ref(),
             self.direct_input_passthrough_processing.as_ref(),
         );
         let project_passthrough = process_passthrough(
             self.fields,
+            &config_processing_id,
             project_config.as_ref(),
             self.config_passthrough_processing.as_ref(),
         );
         let user_passthrough = process_passthrough(
             self.fields,
+            &config_processing_id,
             user_config.as_ref(),
             self.config_passthrough_processing.as_ref(),
         );
@@ -192,7 +195,12 @@ impl<'a> StandardParameterPipeline<'a> {
         Ok(resolution)
     }
 
-    fn catalog(&self) -> Result<crate::StandardParameterCatalog, StandardParameterPipelineError> {
+    fn catalog(
+        &self,
+    ) -> Result<
+        (crate::StandardParameterCatalog, ProcessingId, ProcessingId),
+        StandardParameterPipelineError,
+    > {
         let direct_processing = self.direct_input_processing_id.as_ref().ok_or(
             StandardParameterPipelineError::MissingProcessingRole(
                 StandardParameterPipelineSourceRole::DirectInput,
@@ -204,11 +212,13 @@ impl<'a> StandardParameterPipeline<'a> {
             ),
         )?;
 
-        Ok(derive_standard_parameter_catalog(
-            self.fields,
-            direct_processing,
-            config_processing,
-        )?)
+        let catalog =
+            derive_standard_parameter_catalog(self.fields, direct_processing, config_processing)?;
+        Ok((
+            catalog,
+            direct_processing.clone(),
+            config_processing.clone(),
+        ))
     }
 }
 
@@ -264,18 +274,15 @@ impl From<StandardParameterCatalogError> for StandardParameterPipelineError {
 
 fn process_passthrough(
     fields: &FieldDefSet,
+    processing_id: &ProcessingId,
     input: Option<&JsonValue>,
     processing: Option<&ProcessingBuild<'_, JsonValue, JsonValue>>,
 ) -> Option<JsonValue> {
     let input = input?;
-    Some(match processing {
-        Some(processing) => {
-            let (_extraction, processing_result) =
-                fields.__process_json_values(processing, input).into_parts();
-            processing_result.into_value()
-        }
-        None => input.clone(),
-    })
+    let (_extraction, processing_result) = fields
+        .validate_json_with_passthrough(processing_id.clone(), input, processing)
+        .into_parts();
+    Some(processing_result.into_value())
 }
 
 fn config_source_parts(
