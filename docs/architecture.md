@@ -73,9 +73,9 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 
 共享库只抽取稳定契约、机械流程和跨制品重复实现。共享 crate owner：
 
-- `docnav-protocol`：定义原始 invoke 协议、page、错误投影和稳定字段；可提供 protocol request/response、manifest 和 probe 的 schema 校验后 decode helper 与 request id helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
+- `docnav-protocol`：定义原始 invoke 协议、page、错误投影和稳定字段；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest/probe typed contract helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
 - `docnav-readable`：提供 readable payload/value helper、仓库内 renderer config、`ReadableViewKind`、readable-view block 渲染器和 conformance vector 类型。readable-view block framing 由本库拥有。
-- `docnav-adapter-sdk`：提供 invoke I/O、协议校验、adapter 直接 CLI 的通用参数解析、命令分发、输出分流、错误输出投影和通用进程行为；可承接 format-neutral paging helper。格式 adapter 仍拥有 parser、ref、display semantics 和格式原生 options。
+- `docnav-adapter-sdk`：提供 invoke I/O、adapter 直接 CLI 的通用参数解析、标准参数/typed-field processing、命令分发、输出分流、错误输出投影和通用进程行为；可承接 format-neutral paging helper。格式 adapter 仍拥有 parser、ref、display semantics 和格式原生 options。
 - `docnav-json-io`：低层 JSON IO helper，位于 document output 编排下层，只负责 JSON value serialization、newline writing 和 serialization/write failure plumbing；不拥有 schema、protocol/readable wrapper、warning、output mode 或 exit code policy。
 - `docnav-output`：document operation 输出编排和致命诊断投影 owner，位于 `docnav-readable` 和 `docnav-json-io` 之上、`docnav` core 和 `docnav-adapter-sdk` 之下；只承诺 `readable-view`、`readable-json` 和 `protocol-json` 的文档输出形状，help、version、manifest 或 probe 的成功输出仍由各命令 owner 定义。
 - `docnav-diagnostics`：错误通道 owner，定义 `DiagnosticStack`、`DiagnosticCode`、错误规则、警告规则、`DiagnosticId`、mark 生命周期和 LIFO/drain 语义；详细规则见 [错误通道](diagnostics.md)。本 crate 保存问题记录、机械身份和 code 规则集合，不拥有 surface output format 或 exit code enum。

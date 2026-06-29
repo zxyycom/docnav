@@ -21,7 +21,7 @@
 | adapter 管理 | `adapter list/install/update/remove` 覆盖正式流程、manifest 校验、fingerprint 边界和错误映射。 | Core CLI smoke、Rust core tests |
 | ref 与分页 | 至少覆盖 `outline -> ref -> read`、`find -> ref -> read`、invalid/not-found ref、分页继续和终止。 | CLI smoke、Rust adapter tests |
 | 错误通道与投影阶段 | 覆盖 CLI 输入错误、adapter selection warning、candidate failure、selected invoke failure、ref error、warning placement、fatal protocol/readable 投影、canonical details 和 stack id/mark/LIFO 语义的代表样本。 | CLI smoke、schema/docs validators、Rust diagnostics/output tests |
-| 配置与 path context | 覆盖 user/project/default 合并、`--path` context、adapter direct CLI 配置路径覆盖、adapter `invoke` request arguments 到标准参数的映射、配置源跳过 warning、非法配置值、help 不读取配置和配置不改变协议字段的边界。 | Core/Markdown CLI smoke、Rust config tests |
+| 配置与 path context | 覆盖 user/project/default 合并、`--path` context、adapter direct CLI 配置路径覆盖、adapter `invoke` request arguments 到标准参数的映射、invoke 配置/default 补足、配置源跳过 warning、非法配置值、help 不读取配置和配置不回写原始 protocol JSON 的边界。 | Core/Markdown CLI smoke、Rust config tests |
 | release package | 覆盖 manifest、文件集合、校验和、host/target 选择和 package 内二进制 smoke。 | release package scripts、package smoke |
 
 ## 层级选择

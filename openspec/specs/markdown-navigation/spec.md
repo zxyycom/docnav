@@ -221,7 +221,7 @@ Smoke suite 必须覆盖：
 - 宽松 argv：unknown flag、多余 positional、当前 operation 不使用的参数，包括值非法但未被当前 operation 使用的 known 参数。
 - 实际使用参数失败：`page` 或 `limit_chars` 为 0、`page` 或 `limit_chars` 非数字、`output` 非法、`max_heading_level` 越界。
 - 业务和输入错误：missing file、invalid ref、non-UTF-8 document。
-- Invoke 传输错误：malformed invoke JSON、缺少必需字段或参数类型错误等 schema-valid JSON shape 错误。
+- Invoke 输入错误：malformed invoke JSON 作为 transport decode failure；缺少必需字段或参数类型错误由标准参数/typed-field processing 产生 protocol-shaped failure。
 - Warning 断言：稳定 warning envelope 和输出通道边界；不断言 exact token 分组、`reason` 文案或 token 消费顺序。
 
 #### Scenario: 参数校验失败保持 CLI 诊断
@@ -282,6 +282,7 @@ Smoke suite 必须覆盖：
 - **WHEN** 负向矩阵向 `docnav-markdown invoke` 写入 JSON 语法合法但缺少必需字段或参数类型错误的请求
 - **THEN** stdout 包含 `INVALID_REQUEST` protocol failure envelope
 - **THEN** failure envelope 的 operation 在可解析时保留对应 operation，否则为 null
+- **THEN** 失败来自标准参数/typed-field processing
 - **THEN** 进程非零退出
 
 ### Requirement: 保留成熟 parser 行为基线
@@ -463,7 +464,7 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 - **THEN** help 不读取 `.docnav/docnav-markdown.json`
 
 ### Requirement: docnav-markdown 配置必须由 smoke 和矩阵测试覆盖
-`docnav-markdown` black-box CLI smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置源不可用时继续合并并输出 warning、help 参数展示和 invoke 不读配置的边界。
+`docnav-markdown` black-box CLI smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置源不可用时继续合并并输出 warning、help 参数展示，以及 `invoke` request `arguments` 与配置/default sources 进入同一标准参数解析的边界。
 
 #### Scenario: Smoke 覆盖配置优先级
 - **WHEN** smoke suite 使用项目级配置和默认用户配置目录下的 `docnav-markdown.json`
@@ -489,11 +490,12 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 - **THEN** 用户级配置和内置默认值仍可参与标准参数来源对象合并
 - **THEN** 测试证明配置源跳过 warning 出现在当前输出模式允许的 warning 通道
 
-#### Scenario: Invoke 不受配置影响
+#### Scenario: Invoke 使用配置补足 registered option
 - **WHEN** 项目级 `docnav-markdown.json` 设置 `options.max_heading_level`
 - **AND** smoke suite 通过 `docnav-markdown invoke` 提交未携带 options 的 outline request
-- **THEN** invoke path 不读取该配置
-- **THEN** 行为只由 stdin request 中显式携带的参数和 adapter document operation 线路决定
+- **THEN** SDK 将 stdin request `arguments` 映射为 direct input
+- **THEN** SDK 将项目级配置中的 `options.max_heading_level` 映射为 project config source
+- **THEN** outline 行为与 request 显式携带相同 `max_heading_level` 的行为一致
 
 ### Requirement: docnav-markdown 配置提供 schema 和示例参考
 `docs/schemas/docnav-markdown-config.schema.json` MUST 描述 `docnav-markdown` JSON 配置文件的参考 shape，包含 `defaults.limit_chars`、`defaults.output` 和 `options.max_heading_level`。`docs/examples/json/docnav-markdown-config.json` MUST 提供符合该 schema 的配置示例。该 schema/example MUST 用于文档校验、编辑器提示或 adapter package 打包参考，MUST NOT 改变 adapter direct CLI runtime 是否读取或校验配置文件。
@@ -507,4 +509,3 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 - **WHEN** adapter direct CLI 读取 `docnav-markdown.json`
 - **THEN** runtime 不要求加载 `docs/schemas/docnav-markdown-config.schema.json`
 - **THEN** 配置读取和标准参数处理链路仍由 adapter direct CLI 实现负责
-

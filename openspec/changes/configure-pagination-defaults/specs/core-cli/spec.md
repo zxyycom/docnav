@@ -1,14 +1,17 @@
-本 delta spec 记录 core CLI 使用通用 pagination limit 默认值的目标；当前只在 `openspec/changes/configure-pagination-defaults/` 下形成未审核临时文档，不影响现有其它文档或主规范。
-
 ## MODIFIED Requirements
 
 ### Requirement: Core CLI resolves pagination defaults before adapter invoke
-`docnav` document commands MUST resolve pagination defaults into an explicit positive integer `limit` and page before invoking an adapter. Core MUST treat `limit` as an adapter-owned numeric budget and MUST NOT interpret its unit.
+`docnav` document commands MUST resolve `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>` into an explicit positive integer `limit` and page before invoking an adapter. Core MUST treat `limit` as an adapter-owned numeric budget and MUST NOT interpret its unit.
+
+#### Scenario: Core resolves pagination sources
+- **WHEN** a caller runs a document operation
+- **THEN** core maps pagination argv, project config, user config, and built-in defaults to the same standard parameter identities
+- **THEN** direct input overrides project config, project config overrides user config, and user config overrides built-in defaults
 
 #### Scenario: Core passes resolved limit to adapter
-- **WHEN** a caller runs a document operation
-- **THEN** core resolves pagination enabled state, limit, and page before adapter invoke
+- **WHEN** core has resolved effective pagination enabled state, limit, and page
 - **THEN** the selected adapter receives explicit operation arguments
+- **THEN** the outgoing request contains `limit` and `page` rather than a protocol `pagination` field
 
 #### Scenario: Core disables pagination through limit finalization
 - **WHEN** effective pagination is disabled

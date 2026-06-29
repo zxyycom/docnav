@@ -1,5 +1,3 @@
-本 delta spec 记录 Markdown direct CLI 跟随 SDK pagination limit 规则的目标；当前只在 `openspec/changes/configure-pagination-defaults/` 下形成未审核临时文档，不影响现有其它文档或主规范。
-
 ## MODIFIED Requirements
 
 ### Requirement: docnav-markdown direct CLI consumes SDK pagination limit defaults
@@ -12,5 +10,6 @@
 
 #### Scenario: Markdown config example uses pagination limit
 - **WHEN** Markdown config schema or example documents pagination defaults
+- **THEN** it uses `defaults.pagination.enabled` for the default pagination state
 - **THEN** it uses `defaults.pagination.limit` for the numeric budget default
 - **THEN** it does not assign a cross-adapter unit to that limit

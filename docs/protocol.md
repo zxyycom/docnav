@@ -4,7 +4,7 @@
 
 ## 协议字段与生命周期
 
-v0 协议字段按 `0.1` schema 校验。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 adapter 路由、安装、更新或 invoke 的版本区间协商；`docnav` 通过该 schema、必需字段、字段类型、operation/result 绑定和语义校验判断 adapter 输出是否可用。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法解析请求或无法提取版本字段时，错误响应使用协议常量 `protocol_version` 和 `operation: null`，请求 operation 可确定时在错误响应中保留该 operation。
+v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 adapter 路由、安装、更新或 invoke 的版本区间协商；runtime 对 direct input 的字段 presence、type、operation/result 绑定和语义约束由 typed-field/标准参数处理链路产出诊断，public schema 用于示例、fixture 和 drift check。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法解析请求或无法提取版本字段时，错误响应使用协议常量 `protocol_version` 和 `operation: null`，请求 operation 可确定时在错误响应中保留该 operation。
 
 `invoke`：
 
@@ -26,7 +26,7 @@ document.path
 arguments
 ```
 
-`arguments` 是 adapter `invoke` 的显式 operation 输入。缺失的已注册标准参数可以由 adapter `invoke` 入口的配置或默认值补足。Protocol schema 只校验 envelope、operation、document path、raw `arguments` object 和已出现已注册字段的基础 JSON 类型；未映射 `arguments` 字段不由标准参数层解释，adapter 入口可按 [标准参数](standard-parameters.md#合并透传与校验) 中的透传处理结果和入口策略保留、丢弃或交给 adapter-owned 语义校验。
+`arguments` 是 adapter `invoke` 的显式 operation 输入。缺失的已注册标准参数可以由 adapter `invoke` 入口的配置或默认值补足。已解码的 protocol request 将 envelope、operation、document path、raw `arguments` object 和已注册字段作为 direct input 交给 [标准参数](standard-parameters.md#输入与配置映射) 与 typed-field processing。未映射 `arguments` 字段不由标准参数层解释，adapter 入口可按 [标准参数](standard-parameters.md#合并透传与校验) 中的透传处理结果和入口策略保留、丢弃或交给 adapter-owned 语义校验。
 
 v0 operation 参数：
 
@@ -213,7 +213,7 @@ Protocol response schema 是本节的验证材料，用于校验 protocol-visibl
 
 CLI argv 兼容 warning 和 adapter candidate warning 只属于阅读输出层或 stderr 诊断。protocol response、manifest 和 probe schema 不增加 `warnings` 字段；`docnav --output protocol-json` 和 adapter direct `protocol-json` stdout 仍只输出对应 protocol-shaped payload。
 
-`docnav-protocol` request decode pipeline 的可复用范围是 `serde_json::Value -> typed-field contract validate -> raw protocol envelope`。pipeline 先用 `docnav-typed-fields` metadata 校验 runtime 字段级 path、presence、type、enum、range、length 和 pattern 规则，再保留 raw `arguments` 交给入口标准参数 mapper。
+`docnav-protocol` request input pipeline 的可复用范围是 `serde_json::Value -> standard-parameter/typed-field processing -> raw protocol envelope facts + operation values`。pipeline 使用 `docnav-typed-fields` metadata 和标准参数 mapping 校验 runtime 字段级 path、presence、type、enum、range、length 和 pattern 规则，并把 raw `arguments` 作为 direct input 的一部分交给入口 mapper。
 
 Operation-specific typed request 由 [标准参数](standard-parameters.md#输入与配置映射) 从 `serde_json::Value`、argv tokens 和 config values 映射、校验并归一化后产出。response、manifest 和 probe 等已归一化 payload 可以继续使用 typed deserialize + semantic validate。
 

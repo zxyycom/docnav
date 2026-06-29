@@ -16,7 +16,7 @@ manifest
 probe
 ```
 
-普通 CLI、readable JSON 和 schema-valid `invoke` request 在传输层解析成功后进入 canonical document operation input 或等价 semantic request，并复用业务逻辑；它们不复用输出包装或展示形态。`readable-view`（默认）和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
+普通 CLI、readable JSON 和 `invoke` request 在各自输入解码后进入 canonical document operation input 或等价 semantic request，并复用业务逻辑；它们不复用输出包装或展示形态。`readable-view`（默认）和 `readable-json` 以阅读为主；`invoke` 和 `protocol-json` 属于完整协议接口，不以可读性为目标。
 文档操作的直接 CLI 支持 `readable-view`（默认）、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
 适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、标准参数消费、adapter 配置读取、protocol request 构造、输出分流和错误通道投影。SDK direct CLI 的 argv 映射、配置字段映射、来源合并、校验和 metadata 由 [标准参数](standard-parameters.md) 定义；SDK 继续拥有命令分发、诊断投影与刷新、operation build 和最终 exit behavior。格式 adapter 只声明格式原生 CLI flag、native option registration、operation binding 和业务语义，并保留这些 options 的 ref 策略和 readable payload 字段语义。
 
@@ -73,11 +73,11 @@ reasons[]
 
 ## Invoke
 
-`invoke` 是独立的 protocol stdin/stdout 入口。SDK 在识别 request envelope、operation 和 raw `arguments` 后，按标准参数 operation binding 解析显式参数；缺失的已注册参数可由 adapter invoke 入口的配置或默认值补足。未映射字段不由标准参数层解释；adapter 入口可通过标准参数返回的透传处理结果按自身策略保留、丢弃或交给 adapter-owned 语义校验。
+`invoke` 是独立的 protocol stdin/stdout 入口。SDK 将解码后的 stdin JSON value 作为 direct input 交给标准参数/typed-field processing；request envelope、operation、document path 和 raw `arguments` 都从该 direct input 中映射、校验并产出诊断交接数据。缺失的已注册参数可由 adapter invoke 入口的配置或默认值补足。未映射字段不由标准参数层解释；adapter 入口可通过标准参数返回的透传处理结果按自身策略保留、丢弃或交给 adapter-owned 语义校验。
 
-直接 CLI argv 兼容规则不适用于 `invoke` stdin JSON。`invoke` 必须在进入 canonical document operation input 或等价 semantic request 前按 protocol request schema 和标准参数规则校验请求；malformed JSON、缺少 envelope 必需字段、已出现已注册参数类型错误不得被 warning 后忽略。未映射 `arguments` 字段不由标准参数层校验；adapter 层作为最终消费者，可以通过透传处理结果丢弃这些字段，或在 adapter-owned native option 语义中返回协议错误。schema-valid `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
+`invoke` stdin JSON 使用 direct input validation，而不是 CLI argv 的 ignored-token warning 规则。Malformed JSON 属于 stdin transport decode failure；已解码 JSON value 直接进入标准参数/typed-field processing。缺少 envelope 必需字段、已出现已注册参数类型错误或其它 direct input validation failure 不得被 warning 后忽略，也不得暴露为 safe operation values。未映射 `arguments` 字段不由标准参数层解释；adapter 层作为最终消费者，可以通过透传处理结果丢弃这些字段，或在 adapter-owned native option 语义中返回协议错误。通过标准参数解析的 `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
 
-SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、typed deserialization 和 semantic validation；failure surface 仍必须是由错误通道记录投影出的 protocol-shaped failure response。`invoke` stdin JSON 不是直接 CLI argv，按 [原始协议](protocol.md#schema-所有权) 的 decode 边界验收。
+SDK 可以复用 `docnav-protocol` 的 JSON decode、typed-field metadata 和标准参数 processing helper；failure surface 仍必须是由错误通道记录投影出的 protocol-shaped failure response。`invoke` stdin JSON 不是直接 CLI argv，按 [原始协议](protocol.md#schema-所有权) 的 direct input 边界验收。
 
 适配器必须：
 

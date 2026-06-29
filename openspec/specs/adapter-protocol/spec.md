@@ -106,13 +106,13 @@ Protocol request argument types MUST keep optional `options` as an opaque adapte
 Adapter SDK 入口必须保持以下分层：
 
 - Direct CLI 文档操作通过 `clap` 承载已知命令、已知参数声明、默认值、枚举和 help；SDK 在确定 operation 后只对当前 operation 实际使用的参数做类型、范围和枚举校验，并受控收集 unknown、extra positional 和 unused known 参数的原始 token。
-- Adapter `invoke` 通过严格 protocol/schema 校验解析 stdin JSON。
-- 传输层解析成功后，direct CLI 文档操作和有效 invoke request 必须映射到 canonical document operation input 或等价 semantic request。
+- Adapter `invoke` 先把 stdin bytes 解码为 JSON value；已解码 value 作为 direct input 进入标准参数/typed-field processing。
+- Direct CLI 文档操作和 `invoke` direct input 经标准参数解析后必须映射到 canonical document operation input 或等价 semantic request。
 - 共享语义归一和统一 operation handler 必须负责默认值、native options、必需参数校验和 request 构造。
 - 宽松 argv 收集层只生成 warning metadata；业务参数解释、默认值归一和 request 构造逻辑由共享语义归一与 operation handler 承担。
 - 当前 operation 的必需语义存在且实际使用参数有效时，未知 flag、多余 positional 和当前 operation 不使用的参数进入 warning metadata，direct CLI 继续成功路径。
 - 当前 operation 实际使用的参数必须保持严格。
-- Malformed invoke JSON、未知字段、缺失字段或类型错误必须在进入 canonical document operation input 或等价 semantic request 前失败。
+- Malformed invoke JSON 属于 transport decode failure；未知字段、缺失字段或类型错误必须由标准参数/typed-field processing 产生诊断，且不得暴露为 safe operation values。
 - 每个被忽略的 argv family 必须形成阅读层 warning 或 stderr 诊断；输出通道按当前输出模式决定。
 - Readable warning item 必须使用稳定 warning envelope：稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 必须使用 `id: "cli_argv_ignored"`，并可在 `details.tokens` 中列出相关 argv token。
 - Adapter `invoke`、CLI `protocol-json`、manifest 和 probe stdout 保持各自 schema；CLI warning 在这些通道中通过 stderr 或诊断表达。
@@ -129,8 +129,8 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** 测试断言 stable warning envelope、`cli_argv_ignored` id 和诊断存在性
 
 #### Scenario: direct CLI 和 invoke 共享文档操作语义归一
-- **WHEN** adapter direct CLI input 与 adapter `invoke` schema-valid JSON 表达同一个 outline/read/find/info 操作
-- **THEN** 两者在传输解析后进入 canonical document operation input 或等价 semantic request
+- **WHEN** adapter direct CLI input 与 adapter `invoke` direct input 经标准参数解析后表达同一个 outline/read/find/info 操作
+- **THEN** 两者进入 canonical document operation input 或等价 semantic request
 - **THEN** 默认值、native options、必需参数校验和 operation handler 不因入口不同分叉
 - **THEN** 测试可通过等价 request、等价结果或共享 helper 覆盖该约束
 
@@ -202,27 +202,28 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** 该输出不需要使用 readable-view
 - **THEN** document operation help 仍只列出 readable-view、readable-json 和 protocol-json
 
-#### Scenario: invoke stdin 仍严格校验
+#### Scenario: invoke stdin direct input 仍严格
 - **WHEN** adapter `invoke` 从 stdin 收到包含未知字段或参数类型错误的 JSON request
 - **THEN** SDK 返回结构化 protocol failure
-- **THEN** 该请求不进入 canonical document operation input 或等价 semantic request
+- **THEN** 该请求进入标准参数/typed-field processing 并产生 validation diagnostic
+- **THEN** 该请求不产出 canonical document operation input 或等价 semantic request
 - **THEN** SDK 不按 direct CLI argv 容错策略忽略该字段
 
 ### Requirement: Protocol 和 adapter SDK helper 必须保持进程边界契约
 
-`docnav-protocol`、`docnav-json-io` 和 `docnav-adapter-sdk` MUST 只在不破坏当前 protocol、direct CLI 和 adapter process boundary 的位置暴露共享 helper。Adapter `invoke` stdin JSON MUST 保持严格 protocol input；adapter direct CLI document command MAY 复用 direct CLI loose argv 和 document output helper。
+`docnav-protocol`、`docnav-json-io` 和 `docnav-adapter-sdk` MUST 只在不破坏当前 protocol、direct CLI 和 adapter process boundary 的位置暴露共享 helper。Adapter `invoke` stdin JSON MUST 保持严格 protocol direct input；adapter direct CLI document command MAY 复用 direct CLI loose argv 和 document output helper。
 
-#### Scenario: Protocol decode helper 保持严格 schema 和 semantic validation
+#### Scenario: Protocol input helper 使用 typed-field 和标准参数校验
 
 - **WHEN** 共享代码 decode protocol request、protocol response、manifest 或 probe JSON value
-- **THEN** decode pipeline 在把 JSON value 当作 typed contract data 前，先按 owning schema 校验
-- **THEN** typed deserialization 和 semantic validation 在 schema validation 之后执行
+- **THEN** request direct input 进入标准参数/typed-field processing
+- **THEN** typed-field metadata、标准参数 mapping 和 owner semantic rules 产出 validation diagnostics
 - **THEN** 调用方 surface 保持既有 protocol diagnostic category、field path、diagnostic text 和 exit behavior
 
-#### Scenario: Adapter invoke 保持严格 protocol decoding
+#### Scenario: Adapter invoke 保持严格 direct input 处理
 
 - **WHEN** adapter `invoke` 收到包含 unknown fields、missing required fields 或 wrong argument types 的 stdin JSON
-- **THEN** SDK strict protocol decoding 按 invoke contract 拒绝该请求
+- **THEN** SDK 通过标准参数/typed-field processing 按 invoke contract 拒绝该请求
 - **THEN** 不应用 `docnav-cli-args` loose argv rule
 - **THEN** failure 仍是 protocol-shaped failure response
 
@@ -286,7 +287,7 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** help 不读取项目级或用户级 adapter 配置
 
 ### Requirement: Adapter document operation 使用唯一内部执行线路
-`docnav-adapter-sdk` MUST 将 direct CLI argv/config 和 `invoke` stdin JSON 视为同一 adapter document operation 逻辑的不同参数来源。Document operation CLI MUST 在 request construction 前把 argv 和 adapter direct CLI config 解析为标准 direct CLI 参数来源对象，并由后续参数处理链路生成最终 operation 参数。`invoke` MUST 在进入同一 operation handler 前把 stdin JSON 校验为显式 operation 参数。SDK 和 adapter MUST NOT 为 argv/config 与 `invoke` 维护两套业务参数解释规则；入口只决定本次调用提供哪些参数。
+`docnav-adapter-sdk` MUST 将 direct CLI argv、adapter 配置和 `invoke` stdin JSON 视为同一 adapter document operation 逻辑的不同输入来源。Document operation CLI MUST 在 request construction 前把 argv 和 adapter 配置解析为标准参数来源对象，并由后续参数处理链路生成最终 operation 参数。`invoke` MUST 将已解码 stdin JSON 直接映射为 direct input，并与该入口注册的配置来源和默认值进入同一标准参数解析。SDK 和 adapter MUST NOT 为 argv/config 与 `invoke` 维护两套业务参数解释规则；入口只决定本次调用提供哪些 direct input 和配置定位信息。
 
 #### Scenario: Direct CLI 参数进入同一 operation 线路
 - **WHEN** 调用方执行 `docnav-markdown outline docs/guide.md`
@@ -295,8 +296,9 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** adapter 业务逻辑不根据参数来源分叉
 
 #### Scenario: Invoke 显式参数进入同一 operation 线路
-- **WHEN** adapter `invoke` 从 stdin 收到 schema-valid outline request
-- **THEN** SDK 从 request 中读取已经显式携带的 operation 参数
+- **WHEN** adapter `invoke` 从 stdin 收到 outline request JSON
+- **THEN** SDK 将 request `arguments` 中已映射字段标记为 direct input
+- **THEN** SDK 按标准参数来源优先级合并 direct input、project config、user config 和 default
 - **THEN** SDK 使用同一 operation handler 执行业务逻辑
 - **THEN** SDK 不为 `invoke` 维护第二套默认值、native option 或配置解释规则
 
@@ -371,17 +373,24 @@ Adapter direct CLI config MUST 支持通用 `defaults.limit_chars`、`defaults.o
 - **THEN** SDK 将该值合并为 `output` 参数来源
 - **THEN** direct CLI 复用既有 output typed validation 返回输入错误
 
-### Requirement: Adapter invoke 不读取 direct CLI 配置
-Adapter `invoke` stdin JSON MUST 保持严格 protocol input。SDK MUST NOT 在 `invoke` 路径读取项目级或用户级 adapter direct CLI 配置，也 MUST NOT 用 direct CLI 配置补全缺失的 protocol request arguments 或 adapter-owned options。schema-valid `invoke` request MUST enter the same adapter document operation handler as direct CLI document operations after request validation.
+### Requirement: Adapter invoke 使用标准参数来源解析
+Adapter `invoke` stdin JSON MUST 保持严格 protocol direct input：SDK MUST 将已解码 JSON value 的 envelope、operation、document path 和 raw `arguments` shape 交给标准参数/typed-field processing。SDK MUST 将 request `arguments` 作为 direct input 映射到标准参数 identity，并按标准参数规则加载项目级配置、用户级配置和默认值，最终产出 typed operation values。配置和默认值 MAY 补足 request `arguments` 中缺失的已注册标准参数；direct input 仍按来源优先级覆盖配置和默认值。SDK MUST NOT 回写或改造原始 stdin request JSON，也 MUST NOT 为 `invoke` 维护独立于标准参数机制的配置解释规则。
 
-#### Scenario: Invoke 缺少参数仍按协议失败
-- **WHEN** adapter `invoke` 从 stdin 收到缺少必需 `limit_chars` 的 outline request
+#### Scenario: Invoke 缺少可补足参数时使用配置
+- **WHEN** adapter `invoke` 从 stdin 收到未携带 `limit_chars` 的 outline request
 - **AND** 项目级 adapter 配置设置了 `defaults.limit_chars`
-- **THEN** SDK 按 protocol request validation 返回 `INVALID_REQUEST`
-- **THEN** SDK 不从 adapter 配置补全 `limit_chars`
+- **THEN** SDK 将 request `arguments` 映射为 direct input
+- **THEN** SDK 将项目级配置中的 `defaults.limit_chars` 映射为 project config source
+- **THEN** standard parameter resolution 使用项目级配置补足最终 `limit_chars`
 
-#### Scenario: Invoke 不读取 native option 配置
+#### Scenario: Invoke direct input 覆盖配置
+- **WHEN** adapter `invoke` request `arguments` 显式携带 `limit_chars`
+- **AND** 项目级 adapter 配置也设置了 `defaults.limit_chars`
+- **THEN** standard parameter resolution 使用 request `arguments` 中的 direct input 值
+- **THEN** 项目级配置值不覆盖 direct input
+
+#### Scenario: Invoke 使用 native option 配置补足已注册参数
 - **WHEN** adapter `invoke` 从 stdin 收到没有 `arguments.options` 的 outline request
 - **AND** 项目级 adapter 配置设置了 `options.max_heading_level`
-- **THEN** SDK 不把该配置注入 request
-- **THEN** adapter handler 只看到 request 中显式携带的 arguments
+- **THEN** SDK 将该配置映射为已注册 native option 的 project config source
+- **THEN** adapter handler 接收标准参数解析后的最终 `max_heading_level`

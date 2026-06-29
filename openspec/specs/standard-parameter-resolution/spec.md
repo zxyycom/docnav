@@ -49,6 +49,12 @@
 ### Requirement: Source construction 使用 pipeline-derived catalog/index
 标准参数 source layer MUST 从 pipeline-derived catalog/index 构造 direct input、project config、user config 和 default sources，然后进入 resolution。
 
+#### Scenario: Direct input 直接进入 source construction
+- **WHEN** caller receives CLI argv tokens or a decoded adapter `invoke` JSON value
+- **THEN** caller passes that direct input directly to standard parameter source construction
+- **THEN** direct processing paths and typed-field metadata produce mapped values, passthrough processing results, and validation diagnostic events
+- **THEN** entry owners map those diagnostics to their surface-specific input error or `INVALID_REQUEST`
+
 #### Scenario: Config JSON 通过 derived config path 映射
 - **WHEN** project 或 user config JSON object 在 derived config path 上包含值
 - **THEN** source construction 将该值映射到 catalog/index 中的 standard parameter identity

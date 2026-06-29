@@ -209,12 +209,12 @@ Rust CLI 参数解析文档 MUST 将 `clap` 定义为本 change 覆盖的核心 
 
 文档必须描述以下稳定规则：
 
-- 核心 `docnav` document CLI argv、adapter direct CLI document argv 和 adapter `invoke` JSON 在各自传输层解析成功后映射为 canonical document operation input 或等价 semantic request。
+- 核心 `docnav` document CLI argv、adapter direct CLI document argv 和已解码的 adapter `invoke` JSON 都作为 direct input 进入标准参数/typed-field processing，再映射为 canonical document operation input 或等价 semantic request。
 - canonical document operation input 或等价 semantic request 是 Rust 边界后的内部语义输入模型，不是 protocol envelope 或 schema 稳定类型；实现可以使用等价内部类型，不要求共享同一个 Rust 类型。
 - 传输层解析成功后，文档操作行为由共享语义归一、容错校验和 operation 执行负责。
 - 当前 operation 的必需语义输入存在且实际使用参数有效时，即使 argv 包含未知 flag、多余 positional 或当前 operation 不使用的参数，CLI argv 也应继续成功执行。
 - 当前 operation 实际使用的参数保持严格。
-- Adapter `invoke` 在进入 canonical document operation input 或等价 semantic request 前拒绝 malformed JSON、未知字段、缺失字段和类型错误。
+- Adapter `invoke` 只把 malformed JSON 作为 transport decode failure；未知字段、缺失字段和类型错误由标准参数/typed-field processing 产生诊断，且不得产出 canonical document operation input 或等价 semantic request。
 - `clap` 是 CLI argv 结构解析基础；Docnav 在确定 command/operation 后只对当前 operation 实际使用的参数做类型、范围和枚举校验，并受控收集 unknown、extra positional 和 unused known 参数的原始 token 生成 warning metadata，但不在收集层复制业务参数解释、默认值归一或 request 构造逻辑。
 - `clap` 和受控宽松收集不改变 protocol 字段、ref ownership 或 adapter 格式解析 ownership。
 - Readable warning 使用稳定 warning envelope：稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。
@@ -269,12 +269,12 @@ Rust CLI 参数解析文档 MUST 将 `clap` 定义为本 change 覆盖的核心 
 
 #### Scenario: Invoke 入口仍严格校验
 - **WHEN** adapter `invoke` 从 stdin 收到包含未知字段、缺少必需字段或参数类型错误的 JSON request
-- **THEN** invoke 按 protocol schema 返回结构化失败
-- **THEN** 该请求不进入 canonical document operation input 或等价 semantic request
+- **THEN** invoke 通过标准参数/typed-field processing 返回结构化失败
+- **THEN** 该请求不产出 canonical document operation input 或等价 semantic request
 - **THEN** CLI argv 容错规则不用于忽略该 JSON request 的错误字段
 
 #### Scenario: 有效 invoke 请求共享 operation 处理
-- **WHEN** adapter `invoke` 从 stdin 收到 schema-valid 的 outline/read/find/info request
+- **WHEN** adapter `invoke` 从 stdin 收到可映射为 outline/read/find/info 的 request
 - **THEN** request 被映射为 canonical document operation input 或等价 semantic request
 - **THEN** 共享语义归一和统一 operation handler 负责后续处理
 - **THEN** 不使用独立于 direct CLI 的业务参数解释规则
@@ -282,7 +282,7 @@ Rust CLI 参数解析文档 MUST 将 `clap` 定义为本 change 覆盖的核心 
 #### Scenario: 文档 owner 同步 CLI 解析规则
 - **WHEN** 实现者更新 CLI argv parsing、warning behavior 或 `clap` dependency
 - **THEN** `docs/cli.md` 描述用户可见 CLI 行为、stable warning envelope、当前 operation 使用参数严格性、宽松 argv 边界和 help 验收
-- **THEN** `docs/adapter-contract.md` 描述 adapter direct CLI、invoke strict transport validation 和 canonical document operation input 或等价 semantic request 共享边界
+- **THEN** `docs/adapter-contract.md` 描述 adapter direct CLI、invoke direct input 处理和 canonical document operation input 或等价 semantic request 共享边界
 - **THEN** `docs/testing.md` 描述命令族矩阵、成功路径、必要失败、help 可用、共享语义归一、stable warning envelope 和 schema 边界验证
 - **THEN** `docs/schemas/readable-common.schema.json` 和 readable 示例描述 stable warning envelope、当前 warning family marker、稳定 effect 和 family-specific details
 - **THEN** `docs/protocol.md` 如涉及 warning 或 protocol-shaped stdout 边界，只说明 protocol response、manifest 和 probe 不承载 CLI warning fields
