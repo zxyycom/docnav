@@ -27,4 +27,4 @@
 
 - 受影响代码：`docnav-adapter-sdk` cost helper、`docnav-markdown` cost 计算与展示、相关测试和 fixture。
 - 受影响文档：adapter SDK 边界、Markdown adapter cost 说明，以及后续协议结构化 change 确认后的 schema/example。
-- 依赖关系：协议字段 shape 由 `explore-structured-protocol-fields` 先探索确认，本 change 不单独决定 raw protocol `cost` 字段结构。
+- 依赖关系：协议字段 shape 由 `structure-protocol-fields-and-readable-output` 定义，本 change 不单独决定 raw protocol `cost` 字段结构。

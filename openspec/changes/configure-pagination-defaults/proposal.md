@@ -30,4 +30,4 @@
 - 影响 core config、document command parser、help/default 文案和相关测试。
 - 影响 adapter SDK direct CLI config projection、argv parser、参数来源合并和测试。
 - 影响 Markdown adapter config schema/example、smoke/matrix 测试和文档说明。
-- 依赖 `explore-structured-protocol-fields` 确认 protocol request 中 `limit` 的最终字段迁移方式。
+- 依赖 `structure-protocol-fields-and-readable-output` 定义 protocol request 中 `limit` 的最终字段迁移方式。

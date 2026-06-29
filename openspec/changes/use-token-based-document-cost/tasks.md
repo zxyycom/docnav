@@ -3,7 +3,7 @@
 ## 1. 阻塞级审计
 
 - [ ] 1.1 审计 proposal、design、specs 和 tasks 是否都围绕“SDK 提供 cost/budget 机制，Markdown adapter 自行决定 token-informed cost 展示”这一核心目标；审计未完成前不得执行实现任务。
-- [ ] 1.2 审计本 change 是否依赖 `explore-structured-protocol-fields` 确认 raw protocol `cost` shape，且没有在本 change 中提前固定协议字段结构。
+- [ ] 1.2 审计本 change 是否依赖 `structure-protocol-fields-and-readable-output` 确认 raw protocol `cost` shape，且没有在本 change 中另行固定协议字段结构。
 - [ ] 1.3 审计 capability ID 是否只复用现有 `adapter-protocol` 和 `markdown-navigation`。
 - [ ] 1.4 审计当前 change 是否只包含 `openspec/changes/use-token-based-document-cost/` 下的未审核临时 artifacts。
 
