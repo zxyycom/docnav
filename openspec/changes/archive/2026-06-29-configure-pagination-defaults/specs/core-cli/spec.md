@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Core CLI resolves pagination defaults before adapter invoke
 `docnav` document commands MUST resolve `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>` into an explicit positive integer `limit` and `page` before invoking an adapter. Core MUST treat `limit` as an adapter-owned numeric budget and MUST NOT interpret its unit.

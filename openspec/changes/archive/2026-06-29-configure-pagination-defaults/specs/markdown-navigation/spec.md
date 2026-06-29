@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: docnav-markdown direct CLI consumes SDK pagination limit defaults
 `docnav-markdown` direct CLI MUST consume SDK-owned pagination config and argv handling for `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>`. Markdown-specific code MUST keep ownership of Markdown native options and Markdown's adapter-specific interpretation of `limit`.
