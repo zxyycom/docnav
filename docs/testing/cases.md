@@ -702,6 +702,7 @@ Proves:
 - profile membership、check label、arguments、dependencies、mutex 和 report counting 由 verifier tests 明确证明。
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
+- full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
 - completion line 和 summary 可区分 passed、warning 和 failed。
 - 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
 
@@ -833,6 +834,7 @@ Proves:
 - rankings 排序不修改 scanner output 原始顺序。
 - scc `Complexity` 文件列在人类报告中展示为 decision-token count，并补充 `file-decision-tokens / total-file-decision-tokens` 热点占比。
 - Code Area 汇总表展示 decision-token count 和总量占比，用于定位热点区域。
+- 带 `acceptedReason` 的 warning 在报告中贴近对应 warning 展示原因，不从单独质量扫描中消失。
 
 ### AUX-QUALITY-WARNINGS-001 Quality warning 阈值语义稳定
 Status: implemented
@@ -844,6 +846,8 @@ Proves:
 - warning record 的 rule id、metric、message 和 suggestion 反映代码行数语义，且 suggestion 不直接把行数信号转成拆分建议。
 - 函数 warning 使用复杂度感知的代码密度阈值：普通复杂度函数超过 50 行触发，CC < 5 的简单函数超过 150 行才触发。
 - 函数代码密度 warning record 的 rule id、metric 和 message 反映组合阈值语义，不再输出单纯函数代码行数规则。
+- 已知可接受 warning 保留在 all/changed/regression warning records 中，并通过 `acceptedReason` 字段携带原因。
+- accepted warning 匹配不依赖重复片段行号；匹配不到任何 generated warning 的 accepted rule 会生成 `quality-accepted-warning-unmatched` warning。
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented
@@ -852,6 +856,7 @@ Code: `scripts/tools/quality/scan-command/index.test.ts`
 Proves:
 - quality scan 默认跳过 baseline，baseline generation 保持 opt-in。
 - quality scan profile 默认为 full；quick profile 固定跳过 baseline，并拒绝 baseline 参数。
+- quality scan 的 verifier 输出模式保持 opt-in，用于按未带 `acceptedReason` 的 warning 判定 workspace verifier 状态。
 - changed file collection 在 CLI defaults 下仍能解析当前 changed scope。
 
 ### AUX-RELEASE-ARGS-001 Release package 参数解析保持边界

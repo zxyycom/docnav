@@ -35,7 +35,7 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.7.0",
+  version: "0.8.0",
 
   include: [
     "crates/**/*.rs",
@@ -189,6 +189,22 @@ export const DEFAULT_CONFIG = Object.freeze({
       changedDelta: 0
     }
   },
+
+  acceptedWarnings: Object.freeze([
+    {
+      ruleId: "pmd-cpd-duplicate-code",
+      sourceTool: "pmd-cpd",
+      codeArea: "rust-production",
+      metric: "duplicate-tokens",
+      value: 86,
+      suggestionIncludes: [
+        "crates/docnav-protocol/src/envelope.rs",
+        "crates/docnav-protocol/src/operation_result.rs"
+      ],
+      reason:
+        "OperationArguments::operation and OperationResult::operation map the same Operation enum variants at separate protocol request and result boundaries. Keeping the mappings separate preserves boundary ownership; extracting shared code would couple request-argument decoding to result-envelope projection for little maintenance gain."
+    }
+  ]),
 
   report: {
     topN: 10,

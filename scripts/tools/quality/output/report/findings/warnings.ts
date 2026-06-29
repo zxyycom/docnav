@@ -69,6 +69,11 @@ function appendChangedWarningsSection(lines: string[], changedWarnings: WarningR
 function appendWarningsByLevel(lines: string[], warnings: WarningRecord[], title: string): void {
   lines.push(`### ${title}`);
   lines.push("");
+  if (warnings.length === 0) {
+    lines.push("*(no warnings)*");
+    lines.push("");
+    return;
+  }
 
   for (const section of WARNING_LEVEL_SECTIONS) {
     const levelWarnings = warnings.filter((warning) => warning.level === section.level);
@@ -85,6 +90,9 @@ function appendWarningsByLevel(lines: string[], warnings: WarningRecord[], title
 function appendWarningList(lines: string[], warnings: WarningRecord[]): void {
   for (const warning of warnings) {
     lines.push(`- **[${warning.sourceTool}] ${warning.metric}**: ${warning.message}`);
+    if (warning.acceptedReason) {
+      lines.push(`  → Accepted reason: ${warning.acceptedReason}`);
+    }
     if (warning.suggestion) {
       lines.push(`  → ${warning.suggestion}`);
     }

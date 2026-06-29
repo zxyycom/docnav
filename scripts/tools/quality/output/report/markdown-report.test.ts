@@ -1,8 +1,12 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { createEmptyMetrics, type QualityMetrics, type WarningRecord } from "../../model/schema.ts";
-import { changedFilesSection } from "./findings.ts";
+import {
+  createEmptyMetrics,
+  type QualityMetrics,
+  type WarningRecord
+} from "../../model/schema.ts";
+import { changedFilesSection, warningsSection } from "./findings.ts";
 import { fileDecisionTokenRankings, fileRankings, functionSizeRankings } from "./rankings.ts";
 import { repositorySize } from "./summary.ts";
 
@@ -94,6 +98,23 @@ describe("quality report", () => {
     assert.match(section, /typescript-production-scripts/);
     assert.match(section, /\|\s*30\s*\|\s*75\.0%\s*\|/);
     assert.match(section, /\|\s*10\s*\|\s*25\.0%\s*\|/);
+  });
+
+  it("shows accepted reasons next to warning records", () => {
+    const metrics = qualityMetrics();
+    const acceptedWarning = warning("crates/docnav-protocol/src/envelope.rs", "pmd-cpd-duplicate-code", 86);
+    acceptedWarning.acceptedReason =
+      "OperationArguments::operation and OperationResult::operation live at separate protocol request and result boundaries.";
+    metrics.warnings = {
+      all: [acceptedWarning],
+      changed: [],
+      regressions: []
+    };
+
+    const section = warningsSection(metrics);
+
+    assert.match(section, /\*\*\[scc\] code-lines\*\*: test warning/);
+    assert.match(section, /Accepted reason: OperationArguments::operation/);
   });
 });
 

@@ -9,6 +9,7 @@ export type QualityScanOptions = {
   scanProfile: QualityScanProfile;
   skipBaseline: boolean;
   topN: number;
+  verificationOutput: boolean;
 };
 
 export type ChangeScope = {

@@ -175,9 +175,10 @@ describe("workspace verifier configuration", () => {
       "scripts/quality/scan.ts",
       "--profile",
       "full",
-      "--with-baseline"
+      "--with-baseline",
+      "--verification-output"
     ]);
-    assert.deepEqual(checkByLabel("quality full check").warningOutput, [/^Quality check status: warning$/m]);
+    assert.deepEqual(checkByLabel("quality full check").warningOutput, [/^Quality verification status: warning$/m]);
     assert.deepEqual(checkByLabel("cargo test").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav development binaries").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav development binaries").args, [
@@ -301,6 +302,23 @@ describe("workspace verifier configuration", () => {
       mutex: [],
       ignoreOutput: [],
       warningOutput: [/^Quality check status: warning$/m]
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.status, "warning");
+  });
+
+  it("maps quality verification markers to warning check status", async () => {
+    const result = await executeCheck({
+      id: "quality-verification-marker-test",
+      label: "quality verification marker test",
+      type: PROFILE_FULL,
+      command: "bun",
+      args: ["-e", "console.log('Quality verification status: warning')"],
+      dependsOn: [],
+      mutex: [],
+      ignoreOutput: [],
+      warningOutput: [/^Quality verification status: warning$/m]
     });
 
     assert.equal(result.ok, true);

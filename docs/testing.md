@@ -93,7 +93,7 @@ bun run verify:docnav-workspace:required
 
 required profile 是快速、确定性的必需验证集合，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。它包含 quick quality check；该检查跳过 baseline comparison 和 PMD CPD duplicate detection，因此出现 warning 时会提示当前不是全量质检。full profile 复用 required profile 中的非质量必需检查，使用 full quality check 替代 quick quality check，并追加质量观测内部测试、CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。
 
-full profile 会验证质量观测链路本身：工具封装测试、扫描执行、配置读取和输出结构必须通过。Lizard、scc 和 PMD CPD 的观测结果进入快照、报告和 warning records；存在 warning records 时 workspace verifier 状态为 `warning`，但不等同于 hard failure。
+full profile 会验证质量观测链路本身：工具封装测试、扫描执行、配置读取和输出结构必须通过。Lizard、scc 和 PMD CPD 的观测结果进入快照、报告和 warning records；单独质量扫描存在 warning records 时继续显示 `warning`。workspace verifier 的 full profile 使用 verifier 输出：只有未带 `acceptedReason` 的 warning records 会把 workspace verifier 状态标记为 `warning`，带 `acceptedReason` 的 warning 仍写入质量 artifact 和报告，并在对应 warning 旁展示原因。
 
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check，分别验证 `.ts` 脚本类型 contract、静态质量规则和轻量质量观测状态。
 

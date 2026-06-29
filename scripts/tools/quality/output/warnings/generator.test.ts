@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import { DEFAULT_CONFIG } from "../../model/config.ts";
-import type { FileMetric, FunctionMetric } from "../../model/schema.ts";
+import type { AcceptedWarningConfig, DuplicateCodeFragment, FileMetric, FunctionMetric, QualityConfig } from "../../model/schema.ts";
 import { generateWarningChannels } from "./generator.ts";
 
 // @case AUX-QUALITY-WARNINGS-001
@@ -69,6 +69,50 @@ describe("quality warning generation", () => {
     assert.match(warnings.all[0]!.message, /threshold: 150 code lines for CC < 5/);
     assert.match(warnings.all[1]!.message, /threshold: 50 code lines/);
   });
+
+  it("adds accepted reasons without relying on duplicate line numbers", () => {
+    const warnings = generateWarningChannels({
+      baseline: null,
+      comparisonStatus: "baseline-unavailable",
+      config: DEFAULT_CONFIG,
+      duplicates: [acceptedProtocolOperationDuplicate({ startLineOffset: 20 })],
+      files: [],
+      functions: [],
+      scope: { changed: false, changedFiles: [] }
+    });
+
+    assert.equal(warnings.all.length, 1);
+    assert.match(warnings.all[0]!.acceptedReason ?? "", /separate protocol request and result boundaries/);
+    assert.deepEqual(warnings.changed, []);
+    assert.deepEqual(warnings.regressions, []);
+  });
+
+  it("warns when an accepted warning rule no longer matches any generated warning", () => {
+    const warnings = generateWarningChannels({
+      baseline: null,
+      comparisonStatus: "baseline-unavailable",
+      config: configWithAcceptedWarnings([
+        {
+          ruleId: "pmd-cpd-duplicate-code",
+          sourceTool: "pmd-cpd",
+          metric: "duplicate-tokens",
+          value: 999,
+          reason: "stale acceptance for test"
+        }
+      ]),
+      duplicates: [acceptedProtocolOperationDuplicate()],
+      files: [],
+      functions: [],
+      scope: { changed: false, changedFiles: [] },
+      validateAcceptedWarnings: true
+    });
+
+    const unmatched = warnings.all.find((warning) => warning.ruleId === "quality-accepted-warning-unmatched");
+
+    assert.ok(unmatched);
+    assert.match(unmatched.message, /value=999/);
+    assert.equal(unmatched.acceptedReason, undefined);
+  });
 });
 
 function qualityFile(
@@ -100,5 +144,40 @@ function qualityFunction(
     parameterCount: 1,
     cyclomaticComplexity: { value: options.complexity, source: "lizard" },
     isChanged: false
+  };
+}
+
+function acceptedProtocolOperationDuplicate({
+  startLineOffset = 0
+}: {
+  startLineOffset?: number;
+} = {}): DuplicateCodeFragment {
+  return {
+    id: 1,
+    tokenCount: 86,
+    lineCount: 14,
+    hitsChangedScope: false,
+    codeAreas: ["rust-production"],
+    locations: [
+      {
+        path: "crates/docnav-protocol/src/envelope.rs",
+        startLine: 62 + startLineOffset,
+        endLine: 75 + startLineOffset,
+        codeArea: "rust-production"
+      },
+      {
+        path: "crates/docnav-protocol/src/operation_result.rs",
+        startLine: 14 + startLineOffset,
+        endLine: 27 + startLineOffset,
+        codeArea: "rust-production"
+      }
+    ]
+  };
+}
+
+function configWithAcceptedWarnings(acceptedWarnings: AcceptedWarningConfig[]): QualityConfig {
+  return {
+    ...DEFAULT_CONFIG,
+    acceptedWarnings
   };
 }

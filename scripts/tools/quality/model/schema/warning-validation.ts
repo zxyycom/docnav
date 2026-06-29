@@ -32,6 +32,9 @@ function validateWarningRecord(warning: unknown, prefix: string, errors: string[
   validateWarningLevel(warning.level, `${prefix}.level`, errors);
   requireTruthyField(warning.ruleId, `${prefix}.ruleId`, errors);
   requireTruthyField(warning.message, `${prefix}.message`, errors);
+  if (warning.acceptedReason !== undefined && typeof warning.acceptedReason !== "string") {
+    errors.push(`${prefix}.acceptedReason must be a string when present`);
+  }
 }
 
 function validateWarningLevel(value: unknown, fieldName: string, errors: string[]): void {

@@ -96,19 +96,30 @@ export function qualityCheckStatus(metrics: QualityMetrics): QualityCheckStatus 
   return metrics.warnings.all.length > 0 ? "warning" : "passed";
 }
 
+export function qualityVerificationStatus(metrics: QualityMetrics): QualityCheckStatus {
+  return warningsWithoutAcceptedReason(metrics.warnings.all).length > 0 ? "warning" : "passed";
+}
+
 export function printWarningStatus({
   artifactDir,
   metrics,
-  scanProfile
+  scanProfile,
+  verificationOutput
 }: {
   artifactDir: string;
   metrics: QualityMetrics;
   scanProfile: QualityScanProfile;
+  verificationOutput: boolean;
 }): void {
   const warnings = metrics.warnings.all;
   const status = qualityCheckStatus(metrics);
 
   console.log("");
+  if (verificationOutput) {
+    printVerificationWarningStatus({ artifactDir, metrics });
+    return;
+  }
+
   console.log(`Quality check status: ${status}`);
 
   if (warnings.length === 0) {
@@ -122,20 +133,57 @@ export function printWarningStatus({
   if (scanProfile === "quick") {
     console.log("This is a quick quality check, not a full quality scan.");
   }
-  console.log(`Showing first ${Math.min(WARNING_PREVIEW_LIMIT, warnings.length)} warnings:`);
-  for (const [index, warning] of warnings.slice(0, WARNING_PREVIEW_LIMIT).entries()) {
-    console.log(`  ${index + 1}. ${formatWarningPreview(warning)}`);
-  }
-  if (warnings.length > WARNING_PREVIEW_LIMIT) {
-    console.log(`  ... and ${warnings.length - WARNING_PREVIEW_LIMIT} more warnings`);
-  }
+  printWarningPreviewList(warnings, "warnings");
   console.log(`Detailed report: ${join(artifactDir, "report.md")}`);
   console.log(`Warning records: ${join(artifactDir, "warnings-all.ndjson")}`);
+}
+
+function printVerificationWarningStatus({
+  artifactDir,
+  metrics
+}: {
+  artifactDir: string;
+  metrics: QualityMetrics;
+}): void {
+  const status = qualityVerificationStatus(metrics);
+
+  console.log(`Quality verification status: ${status}`);
+  if (status === "passed") {
+    return;
+  }
+
+  const warnings = warningsWithoutAcceptedReason(metrics.warnings.all);
+  const changedWarnings = warningsWithoutAcceptedReason(metrics.warnings.changed);
+  const regressionWarnings = warningsWithoutAcceptedReason(metrics.warnings.regressions);
+  console.log(
+    `Warnings without accepted reason: ${warnings.length} total ` +
+    `(${changedWarnings.length} changed, ${regressionWarnings.length} regressions)`
+  );
+  printWarningPreviewList(warnings, "warnings without accepted reason");
+  console.log(`Detailed report: ${join(artifactDir, "report.md")}`);
+  console.log(`Warning records: ${join(artifactDir, "warnings-all.ndjson")}`);
+}
+
+function printWarningPreviewList(warnings: readonly WarningRecord[], label: string): void {
+  console.log(`Showing first ${Math.min(WARNING_PREVIEW_LIMIT, warnings.length)} ${label}:`);
+  for (const [index, warning] of warnings.slice(0, WARNING_PREVIEW_LIMIT).entries()) {
+    console.log(`  ${index + 1}. ${formatWarningPreview(warning)}`);
+    if (warning.acceptedReason) {
+      console.log(`     Accepted reason: ${warning.acceptedReason}`);
+    }
+  }
+  if (warnings.length > WARNING_PREVIEW_LIMIT) {
+    console.log(`  ... and ${warnings.length - WARNING_PREVIEW_LIMIT} more ${label}`);
+  }
 }
 
 function formatWarningPreview(warning: WarningRecord): string {
   const location = warning.line === null ? warning.path : `${warning.path}:${warning.line}`;
   return `[${warning.level}/${warning.ruleId}] ${location} - ${warning.message}`;
+}
+
+function warningsWithoutAcceptedReason(warnings: readonly WarningRecord[]): WarningRecord[] {
+  return warnings.filter((warning) => !warning.acceptedReason);
 }
 
 export function validateOutput(metrics: QualityMetrics) {

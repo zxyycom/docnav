@@ -1,4 +1,4 @@
-export const METRICS_SCHEMA_VERSION = "0.3.0";
+export const METRICS_SCHEMA_VERSION = "0.4.0";
 
 export const BASELINE_STATUSES = Object.freeze([
   "generated",
@@ -58,6 +58,7 @@ export interface CodeAreaDefinition {
 }
 
 export interface QualityConfig {
+  acceptedWarnings: readonly AcceptedWarningConfig[];
   artifactDir: string;
   codeAreas: Record<string, CodeAreaDefinition>;
   excludeDirs: string[];
@@ -94,6 +95,18 @@ export interface QualityConfig {
     scc: ToolConfig;
   };
   version: string;
+}
+
+export interface AcceptedWarningConfig {
+  codeArea?: string;
+  messageIncludes?: readonly string[];
+  metric?: string;
+  path?: string;
+  reason: string;
+  ruleId: string;
+  sourceTool?: string;
+  suggestionIncludes?: readonly string[];
+  value?: number;
 }
 
 export interface QualityThreshold {
@@ -236,6 +249,7 @@ export interface TrendDelta {
 }
 
 export interface WarningRecord {
+  acceptedReason?: string;
   baselineValue: number | null;
   codeArea: string;
   comparisonBasis: string;

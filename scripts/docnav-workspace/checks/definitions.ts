@@ -26,7 +26,18 @@ const qualityWarningOutput = [
   /^This is a quick quality check, not a full quality scan\.$/,
   /^Showing first \d+ warnings:$/,
   /^\s*\d+\. \[.+\] .+$/,
+  /^\s*Accepted reason: .+$/,
   /^\s*\.\.\. and \d+ more warnings$/,
+  /^Detailed report: .+$/,
+  /^Warning records: .+$/
+];
+
+const qualityVerificationWarningOutput = [
+  /^Quality verification status: warning$/,
+  /^Warnings without accepted reason: \d+ total \(\d+ changed, \d+ regressions\)$/,
+  /^Showing first \d+ warnings without accepted reason:$/,
+  /^\s*\d+\. \[.+\] .+$/,
+  /^\s*\.\.\. and \d+ more warnings without accepted reason$/,
   /^Detailed report: .+$/,
   /^Warning records: .+$/
 ];
@@ -134,13 +145,19 @@ export const checks = defineChecks([
         id: "quality-full-check",
         label: "quality full check",
         command: "bun",
-        args: ["scripts/quality/scan.ts", "--profile", "full", "--with-baseline"],
+        args: [
+          "scripts/quality/scan.ts",
+          "--profile",
+          "full",
+          "--with-baseline",
+          "--verification-output"
+        ],
         dependsOn: ["quality-internal-tests"],
         allowOutput: [
-          ...qualityWarningOutput
+          ...qualityVerificationWarningOutput
         ],
         warningOutput: [
-          /^Quality check status: warning$/m
+          /^Quality verification status: warning$/m
         ]
       },
       {

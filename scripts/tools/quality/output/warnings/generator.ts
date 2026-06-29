@@ -17,6 +17,7 @@ import {
   suppressesChangedWarnings
 } from "./channels.ts";
 import type { GenerateWarningsParams } from "./warning-model.ts";
+import { applyAcceptedWarningReasons } from "./accepted-warnings.ts";
 import { generateDuplicateWarnings } from "./duplicate-warnings.ts";
 import { generateFileWarnings } from "./file-warnings.ts";
 import { generateFunctionWarnings } from "./function-warnings.ts";
@@ -38,13 +39,13 @@ export function generateWarningChannels(params: GenerateWarningsParams): Warning
     ? []
     : candidates.filter(shouldEmitChangedWarning);
 
-  return {
+  return applyAcceptedWarningReasons({
     all,
     changed: changedCandidates.map((candidate) => candidate.record),
     regressions: changedCandidates
       .filter((candidate) => candidate.record.deltaValue !== null && candidate.record.deltaValue > candidate.deltaFloor)
       .map((candidate) => candidate.record)
-  };
+  }, config.acceptedWarnings ?? [], { warnOnUnmatched: params.validateAcceptedWarnings ?? false });
 }
 
 export function generateWarnings(params: GenerateWarningsParams): WarningRecord[] {

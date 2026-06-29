@@ -16,7 +16,8 @@ describe("quality scan CLI args", () => {
       changedFiles: null,
       scanProfile: "full",
       skipBaseline: true,
-      topN: DEFAULT_CONFIG.report.topN
+      topN: DEFAULT_CONFIG.report.topN,
+      verificationOutput: false
     });
     assert.equal(parseArgs(["--with-baseline"]).skipBaseline, false);
     assert.deepEqual(parseArgs(["--baseline", "abc123"]), {
@@ -25,8 +26,10 @@ describe("quality scan CLI args", () => {
       changedFiles: null,
       scanProfile: "full",
       skipBaseline: false,
-      topN: DEFAULT_CONFIG.report.topN
+      topN: DEFAULT_CONFIG.report.topN,
+      verificationOutput: false
     });
+    assert.equal(parseArgs(["--verification-output"]).verificationOutput, true);
     const changedFiles = resolveChangedFilesForScan({
       opts: defaults,
       root: "/repo",
@@ -44,7 +47,8 @@ describe("quality scan CLI args", () => {
       changedFiles: null,
       scanProfile: "quick",
       skipBaseline: true,
-      topN: DEFAULT_CONFIG.report.topN
+      topN: DEFAULT_CONFIG.report.topN,
+      verificationOutput: false
     });
     assert.equal(parseArgs(["--profile", "full", "--with-baseline"]).skipBaseline, false);
     assert.throws(

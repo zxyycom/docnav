@@ -22,6 +22,7 @@ export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
       "artifact-dir": { type: "string" },
       profile: { type: "string" },
       "skip-baseline": { type: "boolean" },
+      "verification-output": { type: "boolean" },
       "with-baseline": { type: "boolean" },
       help: { type: "boolean" }
     }
@@ -44,7 +45,8 @@ export function parseArgs(argv = process.argv.slice(2)): QualityScanOptions {
     changedFiles: stringOption(parsed.values, "changed-files") ?? null,
     scanProfile,
     skipBaseline: scanProfile === "quick" ? true : resolveSkipBaseline(parsed.tokens, baseline === null),
-    topN: parsePositiveInteger(stringOption(parsed.values, "top-n") ?? String(DEFAULT_CONFIG.report.topN), "--top-n")
+    topN: parsePositiveInteger(stringOption(parsed.values, "top-n") ?? String(DEFAULT_CONFIG.report.topN), "--top-n"),
+    verificationOutput: booleanOption(parsed.values, "verification-output")
   };
 }
 
@@ -85,6 +87,7 @@ Options:
   --top-n <n>             Top N for rankings (default: ${DEFAULT_CONFIG.report.topN})
   --artifact-dir <dir>    Artifact output directory (default: ${DEFAULT_CONFIG.artifactDir})
   --skip-baseline         Skip baseline commit detection and scan (default)
+  --verification-output   Print workspace-verifier status based on warnings without acceptedReason
   --help                  Show this help
 
 Output:
@@ -101,6 +104,8 @@ Profiles:
 Warning status:
   Warning records do not cause command failure, but the command prints
   "Quality check status: warning" with a short warning preview and report path.
+  Warnings with acceptedReason stay visible in standalone quality output, but
+  --verification-output reports passed when every warning carries acceptedReason.
   Clippy remains the Rust blocking lint gate.
 `);
 }

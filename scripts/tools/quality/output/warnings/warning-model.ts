@@ -20,6 +20,7 @@ export type GenerateWarningsParams = {
   files: FileMetric[];
   functions: FunctionMetric[];
   scope: { changed: boolean; changedFiles: string[] };
+  validateAcceptedWarnings?: boolean;
 };
 
 export type AreaWarningPolicy = {

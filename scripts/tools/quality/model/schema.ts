@@ -6,6 +6,7 @@ export {
   WARNING_POLICIES
 } from "./schema/types.ts";
 export type {
+  AcceptedWarningConfig,
   AggregateMetrics,
   BaselineMetadata,
   BaselineSnapshot,

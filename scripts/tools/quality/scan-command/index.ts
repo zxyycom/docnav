@@ -10,6 +10,7 @@ export {
   printWarningStatus,
   printSummary,
   qualityCheckStatus,
+  qualityVerificationStatus,
   validateOutput,
   writeArtifacts,
   writeBaselineRawOutputs

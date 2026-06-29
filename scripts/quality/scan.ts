@@ -103,7 +103,7 @@ async function main() {
   const baselineSnapshot = await timings.measureAsync("baseline snapshot", () =>
     maybeScanBaselineRevision({ config: DEFAULT_CONFIG, root, runtime })
   );
-  generateWarnings(runtime.metrics, changedInput.inputScope, baselineSnapshot, timings);
+  generateWarnings(runtime.metrics, changedInput.inputScope, baselineSnapshot, opts.scanProfile, timings);
   finishScan({ artifactDir, runtime, timings });
 }
 
@@ -215,6 +215,7 @@ function generateWarnings(
   metrics: QualityMetrics,
   scope: ChangeScope,
   baselineSnapshot: BaselineSnapshot | null,
+  scanProfile: QualityScanOptions["scanProfile"],
   timings: Timings
 ): void {
   console.log("Generating warnings...");
@@ -231,13 +232,16 @@ function generateWarnings(
           duplicates: baselineSnapshot.duplicateCode
         }
       : null,
-    comparisonStatus: metrics.comparisonStatus
+    comparisonStatus: metrics.comparisonStatus,
+    validateAcceptedWarnings: scanProfile === "full"
   }));
-  console.log(
-    `  Warnings: ${metrics.warnings.all.length} all, ` +
-    `${metrics.warnings.changed.length} changed, ` +
-    `${metrics.warnings.regressions.length} regressions generated`
-  );
+  const warningCounts = [
+    `all=${metrics.warnings.all.length}`,
+    `changed=${metrics.warnings.changed.length}`,
+    `regressions=${metrics.warnings.regressions.length}`,
+    `withAcceptedReason=${metrics.warnings.all.filter((warning) => warning.acceptedReason).length}`
+  ].join(", ");
+  console.log(`  Warning records generated: ${warningCounts}`);
 }
 
 function finishScan({
@@ -262,7 +266,12 @@ function finishScan({
   }
 
   timings.measure("print warning status", () =>
-    printWarningStatus({ artifactDir, metrics, scanProfile: opts.scanProfile })
+    printWarningStatus({
+      artifactDir,
+      metrics,
+      scanProfile: opts.scanProfile,
+      verificationOutput: opts.verificationOutput
+    })
   );
   printSuccessfulScanCompletion(qualityCheckStatus(metrics), artifactDir);
 
