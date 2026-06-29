@@ -199,6 +199,8 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 | `ADAPTER_INVOKE_FAILED` | `adapter_id`、`reason`；`exit_code`、`stderr` 可选 |
 | `INTERNAL_ERROR` | `error_id` |
 
+`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`MANIFEST_INVALID`、`ADAPTER_UNAVAILABLE`、`CAPABILITY_UNSUPPORTED`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload、stderr、exit code 和人类说明文案按 warning、stderr 诊断或内部错误通道各自契约承载。
+
 本地可执行文件 adapter 的 hash 校验失败时，`docnav` 使用 `ADAPTER_UNAVAILABLE`，并将 `details.reason` 设置为可机器识别的 `hash_mismatch`。
 
 错误 message 和 guidance 是可定制文案；调用方只解析 code 和 details。`INVALID_REQUEST` 可以在 details 中附带 `path`、`received` 或 `accepted` 等定位和校正信息；`accepted` 是字符串数组。这些补充字段不得替代必需的 `field` 和 `reason`。

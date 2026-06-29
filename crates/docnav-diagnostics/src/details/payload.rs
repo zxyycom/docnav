@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use super::DiagnosticDetails;
 
@@ -82,11 +81,15 @@ impl PathEncodingDetails {
 pub struct FormatUnknownDetails {
     pub path: String,
     pub reason: String,
-    pub candidates: Value,
+    pub candidates: Vec<FormatCandidateDetails>,
 }
 
 impl FormatUnknownDetails {
-    pub fn new(path: impl Into<String>, reason: impl Into<String>, candidates: Value) -> Self {
+    pub fn new(
+        path: impl Into<String>,
+        reason: impl Into<String>,
+        candidates: Vec<FormatCandidateDetails>,
+    ) -> Self {
         Self {
             path: path.into(),
             reason: reason.into(),
@@ -98,14 +101,35 @@ impl FormatUnknownDetails {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FormatAmbiguousDetails {
     pub path: String,
-    pub candidates: Value,
+    pub candidates: Vec<FormatCandidateDetails>,
 }
 
 impl FormatAmbiguousDetails {
-    pub fn new(path: impl Into<String>, candidates: Value) -> Self {
+    pub fn new(path: impl Into<String>, candidates: Vec<FormatCandidateDetails>) -> Self {
         Self {
             path: path.into(),
             candidates,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct FormatCandidateDetails {
+    pub adapter_id: String,
+    pub stage: String,
+    pub reason: String,
+}
+
+impl FormatCandidateDetails {
+    pub fn new(
+        adapter_id: impl Into<String>,
+        stage: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Self {
+        Self {
+            adapter_id: adapter_id.into(),
+            stage: stage.into(),
+            reason: reason.into(),
         }
     }
 }

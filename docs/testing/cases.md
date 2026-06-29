@@ -56,13 +56,13 @@ Proves:
 - 显式选择的 adapter 失败时不会隐藏 registry fallback。
 - `readable-json` 结果携带被拒绝 adapter 的 candidate warning evidence。
 
-### BB-CORE-FAIL-001 Candidate 进程失败保留为发现阶段证据
+### BB-CORE-FAIL-001 Candidate 进程失败投影为格式候选摘要
 Status: implemented
 Existing smoke task: `CORE-FAIL-001`
 Code: `test/smoke/core/cases/failures.ts`
 
 Proves:
-- candidate discovery 阶段的进程失败被报告为 `FORMAT_UNKNOWN` evidence。
+- candidate discovery 阶段的进程失败被报告为 `FORMAT_UNKNOWN` candidate summary。
 - candidate failure 不会被折叠成 selected adapter invoke failure。
 
 ### BB-CORE-INVOKE-001 已选 adapter 进程失败映射为 invoke failure

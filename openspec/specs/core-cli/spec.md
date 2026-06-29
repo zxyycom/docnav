@@ -199,9 +199,9 @@ Core CLI 容错规则如下：
 #### Scenario: 所有阶段失败
 - **WHEN** 没有 adapter 能校验目标文档
 - **THEN** `docnav` 返回 `FORMAT_UNKNOWN`
-- **THEN** 错误 details 包含候选证据
-- **THEN** 候选证据是 JSON 数组
-- **THEN** 每条候选证据包含 adapter_id、stage、code、reason 和 details
+- **THEN** 错误 details 包含候选摘要
+- **THEN** 候选摘要是 JSON 数组
+- **THEN** 每条候选摘要只包含 adapter_id、stage 和 reason
 
 ### Requirement: 临时 adapter 记录必须足以启动 adapter
 `docnav` MUST 在本 change 中支持项目级临时 adapter registry，文件 MUST 位于 `<project-root>/.docnav/adapters.json`，记录 MUST 至少包含 adapter id 和相对项目根的命令路径。正式黑白名单、版本选择和安装记录 MUST 由 adapter 管理 change 交付。

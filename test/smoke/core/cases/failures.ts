@@ -7,7 +7,7 @@ import {
 import { runCli, validateSchema } from "../harness.ts";
 import {
   expect,
-  expectCandidateEvidence,
+  expectFormatCandidate,
   expectExit,
   expectJsonObject,
   expectObjectArray,
@@ -22,8 +22,8 @@ export function createRegistryAndContractFailureTasks() {
     // @case BB-CORE-FAIL-001
     {
       id: "CORE-FAIL-001",
-      label: "CORE-FAIL-001 adapter candidate failure evidence",
-      run: testCandidateFailureEvidence
+      label: "CORE-FAIL-001 adapter candidate failure summary",
+      run: testCandidateFailureSummary
     },
     // @case BB-CORE-INVOKE-001
     {
@@ -34,13 +34,13 @@ export function createRegistryAndContractFailureTasks() {
   ];
 }
 
-async function testCandidateFailureEvidence() {
+async function testCandidateFailureSummary() {
   const project = createProject("failure-candidate-evidence");
   const docPath = copyNormalDocument(project, "docs/noextension");
   const failed = createFakeAdapter(project, { id: "fake-manifest-exit", mode: "manifest-exit" });
   writeRegistry(project, [failed]);
 
-  const record = await runCli("CORE-FAIL-001 manifest process failure records candidate evidence", [
+  const record = await runCli("CORE-FAIL-001 manifest process failure records candidate summary", [
     "outline",
     docPath,
     "--output",
@@ -52,17 +52,14 @@ async function testCandidateFailureEvidence() {
   expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
   const error = expectJsonObject(record, json.error, "protocol error is an object");
   const details = expectJsonObject(record, error.details, "protocol error details is an object");
+  expect(record, details.reason === "NO_SUPPORTED_ADAPTER", "FORMAT_UNKNOWN reason identifies unsupported adapter set");
   const candidates = expectObjectArray(record, details.candidates, "FORMAT_UNKNOWN candidates are objects");
   const candidate = candidates[0];
-  expectCandidateEvidence(record, candidate, {
+  expectFormatCandidate(record, candidate, {
     adapter_id: failed.id,
     stage: "resolve",
-    code: "ADAPTER_UNAVAILABLE"
+    reason: "ADAPTER_UNAVAILABLE"
   });
-  const candidateDetails = expectJsonObject(record, candidate?.details, "candidate evidence details is an object");
-  const stderr = expectString(record, candidateDetails.stderr, "candidate evidence stderr is a string");
-  expect(record, candidateDetails.exit_code === 7, "candidate evidence includes exit_code");
-  expect(record, stderr.includes("manifest failed intentionally"), "candidate evidence includes stderr");
 }
 
 async function testInvokeProcessFailure() {

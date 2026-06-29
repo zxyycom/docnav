@@ -27,11 +27,11 @@ pub(super) const PATH_ENCODING_FIELDS: &[DetailFieldRule] = &[
 pub(super) const FORMAT_UNKNOWN_FIELDS: &[DetailFieldRule] = &[
     required("path", DetailKind::String),
     required("reason", DetailKind::String),
-    required("candidates", DetailKind::Any),
+    required("candidates", DetailKind::ObjectArray),
 ];
 pub(super) const FORMAT_AMBIGUOUS_FIELDS: &[DetailFieldRule] = &[
     required("path", DetailKind::String),
-    required("candidates", DetailKind::Any),
+    required("candidates", DetailKind::ObjectArray),
 ];
 pub(super) const CAPABILITY_ADAPTER_FIELDS: &[DetailFieldRule] = &[
     required("capability", DetailKind::String),

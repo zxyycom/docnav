@@ -1,6 +1,8 @@
 use serde::Serialize;
 use serde_json::Value;
 
+use docnav_diagnostics::FormatCandidateDetails;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdapterSelectionWarning {
     pub adapter_id: String,
@@ -55,6 +57,10 @@ impl CandidateEvidence {
             reason: reason.into(),
             details,
         }
+    }
+
+    pub(super) fn into_format_candidate_details(self) -> FormatCandidateDetails {
+        FormatCandidateDetails::new(self.adapter_id, self.stage.as_str(), self.code)
     }
 }
 

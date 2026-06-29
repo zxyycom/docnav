@@ -729,6 +729,38 @@
       },
       "additionalProperties": false
     },
+    "protocolFormatCandidate": {
+      "type": "object",
+      "required": [
+        "adapter_id",
+        "stage",
+        "reason"
+      ],
+      "properties": {
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": [
+            "resolve",
+            "probe"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "ADAPTER_NOT_FOUND",
+            "MANIFEST_INVALID",
+            "ADAPTER_UNAVAILABLE",
+            "CAPABILITY_UNSUPPORTED",
+            "PROBE_INVALID",
+            "PROBE_UNSUPPORTED",
+            "CONTENT_MATCH"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "protocolErrorDetailsFormatUnknown": {
       "type": "object",
       "required": [
@@ -741,9 +773,14 @@
           "type": "string"
         },
         "reason": {
-          "type": "string"
+          "const": "NO_SUPPORTED_ADAPTER"
         },
-        "candidates": {}
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/protocolFormatCandidate"
+          }
+        }
       },
       "additionalProperties": false
     },
@@ -757,7 +794,12 @@
         "path": {
           "type": "string"
         },
-        "candidates": {}
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/protocolFormatCandidate"
+          }
+        }
       },
       "additionalProperties": false
     },

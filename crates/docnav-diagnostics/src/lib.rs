@@ -14,8 +14,9 @@ pub use details::{
     AdapterCandidateDetails, AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails,
     CapabilityAdapterDetails, CliArgvDetails, DetailFieldRule, DetailFieldType, DiagnosticDetails,
     DiagnosticDetailsError, DiagnosticDetailsPayload, DiagnosticDetailsRule, FieldReasonDetails,
-    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
-    PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    FormatAmbiguousDetails, FormatCandidateDetails, FormatUnknownDetails, InternalDetails,
+    PathDetails, PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails,
+    RefReasonDetails,
 };
 pub use record::{
     DiagnosticRecord, DiagnosticRecordDraft, DiagnosticRecordError, DiagnosticSource,

@@ -8,15 +8,12 @@
     "message": "无法识别文档格式。",
     "details": {
       "path": "docs/unknown.data",
-      "reason": "NO_SUPPORTED_CANDIDATE",
+      "reason": "NO_SUPPORTED_ADAPTER",
       "candidates": [
         {
           "adapter_id": "docnav-markdown",
-          "supported": false,
-          "confidence": 0.0,
-          "reason_codes": [
-            "CONTENT_CONFLICT"
-          ]
+          "stage": "probe",
+          "reason": "PROBE_UNSUPPORTED"
         }
       ]
     },

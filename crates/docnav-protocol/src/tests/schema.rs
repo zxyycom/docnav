@@ -320,6 +320,29 @@ fn protocol_response_contract_rejects_schema_backed_field_failures() {
     }
 }
 
+#[test]
+fn protocol_response_public_schema_rejects_loose_format_candidates() {
+    let cases = [
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["reason"] = serde_json::json!("NO_SUPPORTED_CANDIDATE")
+        }),
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["candidates"][0]["code"] =
+                serde_json::json!("ADAPTER_UNAVAILABLE")
+        }),
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["candidates"][0]["details"] = serde_json::json!({})
+        }),
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["candidates"][0]["stage"] = serde_json::json!("invoke")
+        }),
+    ];
+
+    for value in cases {
+        assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
+    }
+}
+
 fn manifest_with(update: impl FnOnce(&mut Value)) -> Value {
     let mut manifest = minimal_manifest();
     update(&mut manifest);
@@ -353,6 +376,32 @@ fn protocol_outline_response_with(update: impl FnOnce(&mut Value)) -> Value {
                 { "ref": "H:L1:H1", "label": "Heading" }
             ],
             "page": null
+        }
+    });
+    update(&mut response);
+    response
+}
+
+fn protocol_format_unknown_error_with(update: impl FnOnce(&mut Value)) -> Value {
+    let mut response = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "outline",
+        "ok": false,
+        "error": {
+            "code": "FORMAT_UNKNOWN",
+            "message": "Document format is unknown.",
+            "details": {
+                "path": "docs/file.data",
+                "reason": "NO_SUPPORTED_ADAPTER",
+                "candidates": [
+                    {
+                        "adapter_id": "docnav-markdown",
+                        "stage": "probe",
+                        "reason": "PROBE_UNSUPPORTED"
+                    }
+                ]
+            }
         }
     });
     update(&mut response);

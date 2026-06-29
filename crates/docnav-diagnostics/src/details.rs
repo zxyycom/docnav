@@ -9,14 +9,16 @@ mod payload;
 pub use payload::{
     AdapterCandidateDetails, AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails,
     CapabilityAdapterDetails, CliArgvDetails, DiagnosticDetailsPayload, FieldReasonDetails,
-    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
-    PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    FormatAmbiguousDetails, FormatCandidateDetails, FormatUnknownDetails, InternalDetails,
+    PathDetails, PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails,
+    RefReasonDetails,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DetailFieldType {
     String,
     StringArray,
+    ObjectArray,
     Boolean,
     U32,
     I32,
@@ -29,6 +31,7 @@ impl DetailFieldType {
         match self {
             Self::String => "string",
             Self::StringArray => "array<string>",
+            Self::ObjectArray => "array<object>",
             Self::Boolean => "boolean",
             Self::U32 => "u32",
             Self::I32 => "i32",
@@ -43,6 +46,9 @@ impl DetailFieldType {
             Self::StringArray => value
                 .as_array()
                 .is_some_and(|items| items.iter().all(Value::is_string)),
+            Self::ObjectArray => value
+                .as_array()
+                .is_some_and(|items| items.iter().all(Value::is_object)),
             Self::Boolean => value.is_boolean(),
             Self::U32 => value.as_u64().is_some_and(|value| value <= u32::MAX as u64),
             Self::I32 => value
@@ -195,11 +201,11 @@ pub enum DiagnosticDetails {
     FormatUnknown {
         path: String,
         reason: String,
-        candidates: Value,
+        candidates: Vec<FormatCandidateDetails>,
     },
     FormatAmbiguous {
         path: String,
-        candidates: Value,
+        candidates: Vec<FormatCandidateDetails>,
     },
     CapabilityAdapter {
         capability: String,

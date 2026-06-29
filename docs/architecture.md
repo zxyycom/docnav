@@ -121,7 +121,7 @@ user / agent / skill / prompt
 
 所有选择都以 adapter probe 结果为准，不能只凭 `--adapter` 或扩展名静默选中。候选 adapter 的 manifest 或 probe 契约失败属于可恢复的选择失败：`docnav` 记录候选失败证据并继续遍历，不因单个候选字段缺失、类型不符、schema 不匹配、语义校验失败或进程不可用而直接停止选择流程。`supported: false` 也是普通候选失败证据。
 
-若后续候选成功，选择结果必须携带前面累积的候选证据，输出层按 [输出模式](output.md) 的规则呈现为 warning。全部候选失败时返回 `FORMAT_UNKNOWN` 和候选证据。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
+若后续候选成功，选择结果必须携带前面累积的候选证据，输出层按 [输出模式](output.md) 的规则呈现为 warning。全部候选失败时返回 `FORMAT_UNKNOWN`，protocol error details 使用候选摘要表达 adapter、阶段和稳定原因码；候选排障细节由 warning、stderr 诊断或内部错误通道按各自契约承载。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
 
 ## 项目根与路径
 

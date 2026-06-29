@@ -1,10 +1,9 @@
 use docnav_diagnostics::{
     typed_codes, AdapterReasonDetails, DiagnosticCategory, DiagnosticCode, DiagnosticRecordDraft,
-    DiagnosticSource, FieldReasonDetails, FormatUnknownDetails, InternalDetails, PathDetails,
-    PathReasonDetails,
+    DiagnosticSource, FieldReasonDetails, FormatCandidateDetails, FormatUnknownDetails,
+    InternalDetails, PathDetails, PathReasonDetails,
 };
 use docnav_protocol::{protocol_error_record_draft, protocol_error_record_draft_with_summary};
-use serde_json::Value;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DocnavExitCode {
@@ -101,13 +100,11 @@ impl AppError {
     pub fn format_unknown(
         path: impl Into<String>,
         reason: impl Into<String>,
-        candidates: Value,
+        candidates: Vec<FormatCandidateDetails>,
     ) -> Self {
-        let reason = reason.into();
-        Self::new(protocol_error_record_draft_with_summary::<
+        Self::new(protocol_error_record_draft::<
             typed_codes::protocol::FormatUnknown,
         >(
-            reason.clone(),
             FormatUnknownDetails::new(path, reason, candidates),
             DiagnosticSource::with_stage("docnav", "routing"),
         ))

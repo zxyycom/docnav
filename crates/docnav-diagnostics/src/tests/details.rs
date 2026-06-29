@@ -92,6 +92,7 @@ fn value_for(kind: DetailFieldType) -> Value {
     match kind {
         DetailFieldType::String => json!("value"),
         DetailFieldType::StringArray => json!(["value"]),
+        DetailFieldType::ObjectArray => json!([{}]),
         DetailFieldType::Boolean => json!(true),
         DetailFieldType::U32 => json!(1),
         DetailFieldType::I32 => json!(-1),
@@ -104,6 +105,7 @@ fn wrong_value_for(kind: DetailFieldType) -> Value {
     match kind {
         DetailFieldType::String => json!(1),
         DetailFieldType::StringArray => json!("value"),
+        DetailFieldType::ObjectArray => json!("value"),
         DetailFieldType::Boolean => json!("true"),
         DetailFieldType::U32 => json!(-1),
         DetailFieldType::I32 => json!("1"),

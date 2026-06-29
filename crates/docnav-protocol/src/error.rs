@@ -5,9 +5,10 @@ use std::fmt;
 use docnav_diagnostics::{
     typed_codes, AdapterReasonDetails, CapabilityAdapterDetails, DiagnosticCategory,
     DiagnosticCode, DiagnosticDetailsPayload, DiagnosticRecord, DiagnosticRecordDraft,
-    DiagnosticSource, FieldReasonDetails, FormatAmbiguousDetails, FormatUnknownDetails,
-    InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails, ProtocolDiagnosticCode,
-    ProtocolDiagnosticMarker, RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    DiagnosticSource, FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails,
+    FormatUnknownDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
+    ProtocolDiagnosticCode, ProtocolDiagnosticMarker, RefCandidateCountDetails, RefDetails,
+    RefReasonDetails,
 };
 
 use crate::constants::protocol_error_messages;
@@ -120,14 +121,17 @@ impl ProtocolError {
     pub fn format_unknown(
         path: impl Into<String>,
         reason: impl Into<String>,
-        candidates: Value,
+        candidates: Vec<FormatCandidateDetails>,
     ) -> Self {
         Self::with_default_message::<typed_codes::protocol::FormatUnknown>(
             FormatUnknownDetails::new(path, reason, candidates),
         )
     }
 
-    pub fn format_ambiguous(path: impl Into<String>, candidates: Value) -> Self {
+    pub fn format_ambiguous(
+        path: impl Into<String>,
+        candidates: Vec<FormatCandidateDetails>,
+    ) -> Self {
         Self::with_default_message::<typed_codes::protocol::FormatAmbiguous>(
             FormatAmbiguousDetails::new(path, candidates),
         )
