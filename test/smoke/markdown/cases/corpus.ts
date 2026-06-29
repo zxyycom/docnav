@@ -61,7 +61,7 @@ async function testUnicodePagination() {
 async function readAllPages(
   documentPath: string,
   ref: string,
-  limitChars: number,
+  limit: number,
   label: string
 ): Promise<{ content: string; lastRecord: CommandRecord }> {
   let page = 1;
@@ -72,8 +72,8 @@ async function readAllPages(
       documentPath,
       "--ref",
       ref,
-      "--limit-chars",
-      String(limitChars),
+      "--limit",
+      String(limit),
       "--page",
       String(page),
       "--output",

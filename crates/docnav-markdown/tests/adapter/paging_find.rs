@@ -7,7 +7,7 @@ fn read_paginates_unicode_without_splitting_characters() {
     let ref_id = "H:L1:H1";
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
-        limit_chars: positive(5),
+        limit: positive(5),
         page: positive(1),
         options: None,
     };
@@ -55,7 +55,7 @@ fn find_ref_targets_current_visible_region_and_read_contains_match() {
     // 最近 visible heading 是 "Current" (line 1, H1)
     assert_eq!(result.matches[0].ref_id, "H:L1:H1");
     assert_canonical_ref(&result.matches[0].ref_id);
-    assert!(result.matches[0].display.contains("target"));
+    assert!(result.matches[0].label.contains("target"));
 
     let read = read_ref(&path, &result.matches[0].ref_id);
     assert!(read.content.contains("target"));

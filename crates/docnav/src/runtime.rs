@@ -22,7 +22,7 @@ pub struct DocumentRequest {
     pub ref_id: Option<String>,
     pub query: Option<String>,
     pub page: Option<PositiveInteger>,
-    pub limit_chars: Option<PositiveInteger>,
+    pub limit: Option<PositiveInteger>,
     pub output: OutputMode,
     pub adapter: Option<String>,
     pub defaults: ResolvedDocumentDefaults,
@@ -31,7 +31,7 @@ pub struct DocumentRequest {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ResolvedDocumentDefaults {
     pub adapter: ResolvedValue,
-    pub limit_chars: Option<ResolvedValue>,
+    pub limit: Option<ResolvedValue>,
     pub output: ResolvedValue,
     pub page: Option<ResolvedValue>,
 }
@@ -143,7 +143,7 @@ impl DocumentRequest {
             ref_id: resolved.ref_id,
             query: resolved.query,
             page: resolved.page,
-            limit_chars: resolved.limit_chars,
+            limit: resolved.limit,
             output: resolved.output,
             adapter: resolved.adapter,
             defaults: resolved.defaults,
@@ -162,7 +162,7 @@ pub fn resolve_context_defaults(
         ref_id: None,
         query: None,
         page: None,
-        limit_chars: None,
+        limit: None,
         output: None,
         adapter: None,
     };

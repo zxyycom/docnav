@@ -1,6 +1,6 @@
 use docnav_protocol::Operation;
 use docnav_standard_parameters::{
-    adapter_selection_field, configurable_limit_chars_field, configurable_output_field,
+    adapter_selection_field, configurable_limit_field, configurable_output_field,
     document_path_field, find_query_field, page_field as standard_page_field, read_ref_field,
     EntryPassthroughPolicy, LoadedStandardParameterConfigSource, StandardParameterPipeline,
     StandardParameterResolution,
@@ -15,7 +15,7 @@ use crate::error::{AppError, AppResult};
 const DIRECT_PROCESSING: &str = "direct";
 const CONFIG_PROCESSING: &str = "config";
 
-const DEFAULT_LIMIT_CHARS: i64 = 6000;
+const DEFAULT_LIMIT: i64 = 6000;
 const DEFAULT_PAGE: i64 = 1;
 
 // FieldDefs consumes these fields as metadata; runtime code uses the generated definition set.
@@ -78,17 +78,16 @@ struct CoreInfoStandardParameters {
 struct CoreContentWindowParameters {
     #[field(core_page_field())]
     page: i64,
-    #[field(core_limit_chars_field())]
-    limit_chars: i64,
+    #[field(core_limit_field())]
+    limit: i64,
 }
 
 fn core_page_field() -> FieldDefBuilder<i64> {
     standard_page_field(DIRECT_PROCESSING).default_static(DEFAULT_PAGE)
 }
 
-fn core_limit_chars_field() -> FieldDefBuilder<i64> {
-    configurable_limit_chars_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
-        .default_static(DEFAULT_LIMIT_CHARS)
+fn core_limit_field() -> FieldDefBuilder<i64> {
+    configurable_limit_field(DIRECT_PROCESSING, CONFIG_PROCESSING).default_static(DEFAULT_LIMIT)
 }
 
 fn core_output_field() -> FieldDefBuilder<OutputMode> {
@@ -165,8 +164,8 @@ fn direct_input(command: &DocumentCommand) -> JsonValue {
     if let Some(page) = command.page {
         input.insert("page".to_owned(), json!(page.get()));
     }
-    if let Some(limit_chars) = command.limit_chars {
-        input.insert("limit_chars".to_owned(), json!(limit_chars.get()));
+    if let Some(limit) = command.limit {
+        input.insert("limit".to_owned(), json!(limit.get()));
     }
     if let Some(output) = command.output {
         input.insert("output".to_owned(), json!(output.as_str()));

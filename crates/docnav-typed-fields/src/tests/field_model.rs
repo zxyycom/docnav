@@ -2,27 +2,24 @@ use super::*;
 use serde_json::json;
 
 // @case WB-TYPED-FIELDS-001
-fn limit_chars_field() -> FieldDef {
-    FieldDef::builder("docnav.defaults.limit_chars")
-        .process(
-            CONFIG_PROCESSING,
-            config_json_path(["defaults", "limit_chars"]),
-        )
+fn limit_field() -> FieldDef {
+    FieldDef::builder("docnav.defaults.limit")
+        .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]))
         .validation(
             FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(100_000)),
         )
         .default_static(20_000)
         .build()
-        .expect("limit_chars field builds")
+        .expect("limit field builds")
 }
 
 #[test]
 fn builder_exposes_schema_metadata_and_validates_values() {
-    let field = limit_chars_field();
+    let field = limit_field();
 
     let schema = field.schema_metadata();
-    assert_eq!(schema.identity.as_str(), "docnav.defaults.limit_chars");
-    assert_eq!(schema.path.segments(), ["defaults", "limit_chars"]);
+    assert_eq!(schema.identity.as_str(), "docnav.defaults.limit");
+    assert_eq!(schema.path.segments(), ["defaults", "limit"]);
     assert_eq!(schema.value_kind, ValueKind::Integer);
     assert_eq!(schema.default, DefaultMetadata::Static(json!(20_000)));
     assert_eq!(
@@ -41,7 +38,7 @@ fn builder_exposes_schema_metadata_and_validates_values() {
 
 #[test]
 fn validation_failures_keep_field_attribution() {
-    let field = limit_chars_field();
+    let field = limit_field();
 
     let schema = field.schema_metadata();
     let missing = schema.validate_optional_value(None).unwrap();
@@ -50,8 +47,8 @@ fn validation_failures_keep_field_attribution() {
     let error = schema
         .validate_optional_value(Some(&json!("4000")))
         .expect_err("wrong type fails");
-    assert_eq!(error.field.as_str(), "docnav.defaults.limit_chars");
-    assert_eq!(error.path.segments(), ["defaults", "limit_chars"]);
+    assert_eq!(error.field.as_str(), "docnav.defaults.limit");
+    assert_eq!(error.path.segments(), ["defaults", "limit"]);
     assert_eq!(
         error.reason,
         ValidationReason::WrongType {

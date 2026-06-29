@@ -1,19 +1,31 @@
-pub fn cost_for(content: &str) -> String {
-    let lines = line_count(content);
-    let line_label = if lines == 1 { "line" } else { "lines" };
-    format!(
-        "{} {} | {:.1} KB",
-        lines,
-        line_label,
-        content.len() as f64 / 1024.0
-    )
+use docnav_protocol::{Cost, Measurement};
+
+pub fn cost_for(content: &str) -> Cost {
+    scoped_cost_for(content, "selection")
 }
 
-pub(super) fn match_display(source: &str, line_starts: &[usize], offset: usize) -> String {
+pub fn scoped_cost_for(content: &str, scope: &str) -> Cost {
+    Cost {
+        measurements: vec![
+            Measurement {
+                unit: "lines".to_owned(),
+                value: line_count(content) as u64,
+                scope: Some(scope.to_owned()),
+            },
+            Measurement {
+                unit: "bytes".to_owned(),
+                value: content.len() as u64,
+                scope: Some(scope.to_owned()),
+            },
+        ],
+    }
+}
+
+pub(super) fn match_facts(source: &str, line_starts: &[usize], offset: usize) -> (usize, String) {
     let line = line_for_byte(line_starts, offset);
     let (start, end) = line_bounds(line_starts, source.len(), line);
     let snippet = compact_text(&source[start..end]);
-    format!("L{}: {}", line, snippet)
+    (line, snippet)
 }
 
 pub(super) fn line_starts(source: &str) -> Vec<usize> {

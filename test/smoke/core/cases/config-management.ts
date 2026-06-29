@@ -60,10 +60,10 @@ async function testConfigPrecedenceAndPathContext() {
 }
 
 async function assertUserLimitConfigSet(project: SmokeProject) {
-  const setUser = await runCli("CORE-CONFIG-001 config set user defaults.limit_chars", [
+  const setUser = await runCli("CORE-CONFIG-001 config set user defaults.limit", [
     "config",
     "set",
-    "defaults.limit_chars",
+    "defaults.limit",
     "321",
     "--user"
   ], { project });
@@ -112,13 +112,13 @@ async function assertConfigListPathContext(project: SmokeProject, adapterId: str
   expectStderrEmpty(list);
   const listJson = parseJson(list);
   expect(list, valueFor(list, listJson, "defaults.output").value === "readable-json", "config list shows project output value");
-  expect(list, valueFor(list, listJson, "defaults.limit_chars").value === 321, "config list shows user limit value");
+  expect(list, valueFor(list, listJson, "defaults.limit").value === 321, "config list shows user limit value");
   const pathContext = expectJsonObject(list, listJson.path_context, "config list path_context is an object");
   const adapter = expectJsonObject(list, pathContext.adapter, "config list path_context.adapter is an object");
   const defaults = expectJsonObject(list, pathContext.defaults, "config list path_context.defaults is an object");
-  const limitChars = expectJsonObject(list, defaults.limit_chars, "config list limit_chars context is an object");
+  const limit = expectJsonObject(list, defaults.limit, "config list limit context is an object");
   expect(list, adapter.selected === adapterId, "config list --path reports selected adapter");
-  expect(list, limitChars.value === 321, "config list --path reports final limit");
+  expect(list, limit.value === 321, "config list --path reports final limit");
 }
 
 async function testInitVersionDoctorAndHelp() {
@@ -138,7 +138,7 @@ async function testInitVersionDoctorAndHelp() {
   expectExit(help, 0);
   expectStderrEmpty(help);
   expectStdoutIncludes(help, "--output");
-  expectStdoutIncludes(help, "--limit-chars");
+  expectStdoutIncludes(help, "--limit");
   expectStdoutIncludes(help, "readable-view");
   expectStdoutIncludes(help, "readable-json");
   expectStdoutIncludes(help, "protocol-json");

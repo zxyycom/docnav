@@ -54,7 +54,7 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
 
         let read_arguments = ReadArguments {
             ref_id: outline.entries[0].ref_id.clone(),
-            limit_chars: positive(6000),
+            limit: positive(6000),
             page: positive(1),
             options: None,
         };

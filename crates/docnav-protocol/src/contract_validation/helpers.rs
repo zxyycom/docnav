@@ -56,18 +56,57 @@ pub(super) fn validate_object_array_items(
     };
     for (index, item) in items.iter().enumerate() {
         let item_path = indexed_path(path, index);
-        validate_field_set_with_owned_prefix(spec.schema, spec.build, item, &item_path, errors);
-        reject_unknown_fields_with_owned_prefix(
-            StrictObjectCheck {
-                schema: spec.schema,
-                build: spec.build,
-                value: item,
-                path: &[],
-                prefix: &item_path,
-            },
-            errors,
-        );
+        validate_strict_object(item, &item_path, spec, errors);
         validate_nested(item, &item_path, errors);
+    }
+}
+
+pub(super) fn validate_object_at(
+    value: &Value,
+    path: &[&str],
+    spec: ObjectArraySpec,
+    validate_nested: impl Fn(&Value, &[String], &mut Vec<String>),
+    errors: &mut Vec<String>,
+) {
+    let Some(object) = value_at(value, path) else {
+        return;
+    };
+    let prefix = path
+        .iter()
+        .map(|segment| (*segment).to_string())
+        .collect::<Vec<_>>();
+    validate_strict_object(object, &prefix, spec, errors);
+    validate_nested(object, &prefix, errors);
+}
+
+pub(super) fn validate_object_at_with_owned_prefix(
+    value: &Value,
+    path: &[&str],
+    prefix: &[String],
+    spec: ObjectArraySpec,
+    errors: &mut Vec<String>,
+) {
+    let Some(object) = value_at(value, path) else {
+        return;
+    };
+    let object_path = extend_owned_path(prefix, path);
+    validate_strict_object(object, &object_path, spec, errors);
+}
+
+pub(super) fn validate_object_array_items_with_owned_prefix(
+    value: &Value,
+    path: &[&str],
+    prefix: &[String],
+    spec: ObjectArraySpec,
+    errors: &mut Vec<String>,
+) {
+    let Some(Value::Array(items)) = value_at(value, path) else {
+        return;
+    };
+    for (index, item) in items.iter().enumerate() {
+        let mut item_path = extend_owned_path(prefix, path);
+        item_path.push(index.to_string());
+        validate_strict_object(item, &item_path, spec, errors);
     }
 }
 
@@ -121,6 +160,25 @@ fn validate_field_set_with_owned_prefix(
             "{schema} contract field definitions failed: {error}"
         )),
     }
+}
+
+fn validate_strict_object(
+    object: &Value,
+    object_path: &[String],
+    spec: ObjectArraySpec,
+    errors: &mut Vec<String>,
+) {
+    validate_field_set_with_owned_prefix(spec.schema, spec.build, object, object_path, errors);
+    reject_unknown_fields_with_owned_prefix(
+        StrictObjectCheck {
+            schema: spec.schema,
+            build: spec.build,
+            value: object,
+            path: &[],
+            prefix: object_path,
+        },
+        errors,
+    );
 }
 
 fn validate_wrapped_value_field(
@@ -237,6 +295,12 @@ fn indexed_path(path: &[&str], index: usize) -> Vec<String> {
         .collect::<Vec<_>>();
     item_path.push(index.to_string());
     item_path
+}
+
+pub(super) fn extend_owned_path(prefix: &[String], path: &[&str]) -> Vec<String> {
+    let mut extended = prefix.to_vec();
+    extended.extend(path.iter().map(|segment| (*segment).to_string()));
+    extended
 }
 
 pub(super) fn schema_result(

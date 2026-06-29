@@ -48,16 +48,16 @@ where
 #[derive(Debug, FieldDefs)]
 struct Params {
     #[field(
-        FieldDef::builder("docnav.defaults.limit_chars")
-            .process(DIRECT_PROCESSING, config_json_path(["limit_chars"]))
-            .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
+        FieldDef::builder("docnav.defaults.limit")
+            .process(DIRECT_PROCESSING, config_json_path(["limit"]))
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]))
             .validation(FieldValidation::int().between(
                 FieldBound::closed(1),
                 FieldBound::closed(100_000),
             ))
             .default_static(20_000)
     )]
-    limit_chars: Option<i64>,
+    limit: Option<i64>,
 
     #[field(
         FieldDef::builder("docnav.defaults.output")

@@ -7,7 +7,7 @@
   },
   "arguments": {
     "page": 1,
-    "limit_chars": 80,
+    "limit": 80,
     "options": {
       "max_heading_level": 3
     }

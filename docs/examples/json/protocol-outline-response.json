@@ -7,11 +7,53 @@
     "entries": [
       {
         "ref": "H:L1:H1",
-        "display": "H1 Guide | 10 lines | 0.1 KB"
+        "label": "Guide",
+        "kind": "heading",
+        "location": {
+          "line_start": 1
+        },
+        "cost": {
+          "measurements": [
+            {
+              "unit": "lines",
+              "value": 10,
+              "scope": "entry"
+            },
+            {
+              "unit": "bytes",
+              "value": 100,
+              "scope": "entry"
+            }
+          ]
+        },
+        "metadata": {
+          "heading_level": 1
+        }
       },
       {
         "ref": "H:L4:H2",
-        "display": "H2 Install | 7 lines | 0.1 KB"
+        "label": "Install",
+        "kind": "heading",
+        "location": {
+          "line_start": 4
+        },
+        "cost": {
+          "measurements": [
+            {
+              "unit": "lines",
+              "value": 7,
+              "scope": "entry"
+            },
+            {
+              "unit": "bytes",
+              "value": 100,
+              "scope": "entry"
+            }
+          ]
+        },
+        "metadata": {
+          "heading_level": 2
+        }
       }
     ],
     "page": 2

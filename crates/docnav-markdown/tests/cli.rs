@@ -52,7 +52,7 @@ fn path_arg(path: &Path) -> String {
 
 // @case WB-MD-CLI-001
 #[test]
-fn direct_cli_and_invoke_share_outline_execution_result() {
+fn direct_cli_readable_outline_projects_invoke_facts() {
     let path = write_doc("shared-outline.md", "# Top\nintro\n\n## Section\ntext\n");
     let path = path_arg(&path);
 
@@ -67,7 +67,7 @@ fn direct_cli_and_invoke_share_outline_execution_result() {
         "operation": "outline",
         "document": { "path": path },
         "arguments": {
-            "limit_chars": 6000,
+            "limit": 6000,
             "page": 1
         }
     });
@@ -78,11 +78,26 @@ fn direct_cli_and_invoke_share_outline_execution_result() {
 
     assert_eq!(protocol_json["operation"], "outline");
     assert_eq!(protocol_json["ok"], true);
-    assert_eq!(direct_json, protocol_json["result"]);
+    let direct_entries = direct_json["entries"].as_array().expect("direct entries");
+    let protocol_entries = protocol_json["result"]["entries"]
+        .as_array()
+        .expect("protocol entries");
+    assert_eq!(direct_json["page"], protocol_json["result"]["page"]);
+    assert_eq!(direct_entries.len(), protocol_entries.len());
+    for (direct_entry, protocol_entry) in direct_entries.iter().zip(protocol_entries) {
+        assert_eq!(direct_entry["ref"], protocol_entry["ref"]);
+        assert_eq!(protocol_entry["kind"], "heading");
+        assert!(direct_entry["display"]
+            .as_str()
+            .expect("display")
+            .contains(protocol_entry["label"].as_str().expect("label")));
+        assert!(protocol_entry["cost"]["measurements"].is_array());
+        assert!(protocol_entry["metadata"]["heading_level"].is_number());
+    }
 }
 
 #[test]
-fn direct_cli_and_invoke_share_info_execution_result() {
+fn direct_cli_readable_info_projects_invoke_facts() {
     let path = write_doc("shared-info.md", "# Top\nintro\n");
     let path = path_arg(&path);
 
@@ -109,11 +124,23 @@ fn direct_cli_and_invoke_share_info_execution_result() {
 
     assert_eq!(protocol_json["operation"], "info");
     assert_eq!(protocol_json["ok"], true);
-    assert_eq!(direct_json, protocol_json["result"]);
+    assert_eq!(
+        direct_json["capabilities"],
+        protocol_json["result"]["capabilities"]
+    );
+    assert_eq!(protocol_json["result"]["adapter"]["format"], "markdown");
+    assert_eq!(
+        protocol_json["result"]["document"]["content_type"],
+        "text/markdown"
+    );
+    let display = direct_json["display"].as_str().expect("display");
+    assert!(display.contains("Markdown"));
+    assert!(display.contains("text/markdown"));
+    assert!(display.contains("heading"));
 }
 
 #[test]
-fn direct_cli_and_invoke_share_find_execution_result() {
+fn direct_cli_readable_find_projects_invoke_facts() {
     let path = write_doc(
         "shared-find.md",
         "# Top\nintro\n\n#### Hidden\ntarget\n\n# Next\ntarget\n",
@@ -127,7 +154,7 @@ fn direct_cli_and_invoke_share_find_execution_result() {
         "target",
         "--max-heading-level",
         "3",
-        "--limit-chars",
+        "--limit",
         "6000",
         "--output",
         "readable-json",
@@ -143,7 +170,7 @@ fn direct_cli_and_invoke_share_find_execution_result() {
         "document": { "path": path },
         "arguments": {
             "query": "target",
-            "limit_chars": 6000,
+            "limit": 6000,
             "page": 1,
             "options": { "max_heading_level": 3 }
         }
@@ -155,7 +182,21 @@ fn direct_cli_and_invoke_share_find_execution_result() {
 
     assert_eq!(protocol_json["operation"], "find");
     assert_eq!(protocol_json["ok"], true);
-    assert_eq!(direct_json, protocol_json["result"]);
+    let direct_matches = direct_json["matches"].as_array().expect("direct matches");
+    let protocol_matches = protocol_json["result"]["matches"]
+        .as_array()
+        .expect("protocol matches");
+    assert_eq!(direct_json["page"], protocol_json["result"]["page"]);
+    assert_eq!(direct_matches.len(), protocol_matches.len());
+    for (direct_match, protocol_match) in direct_matches.iter().zip(protocol_matches) {
+        assert_eq!(direct_match["ref"], protocol_match["ref"]);
+        assert_eq!(protocol_match["kind"], "match");
+        let line = protocol_match["location"]["line_start"]
+            .as_u64()
+            .expect("line");
+        let label = protocol_match["label"].as_str().expect("label");
+        assert_eq!(direct_match["display"], format!("L{line}: {label}"));
+    }
 }
 
 // @case WB-MD-CLI-ERROR-001

@@ -6,9 +6,9 @@ const MIN_DISPLAY: &str = ".";
 pub trait PageableEntry: Clone {
     fn ref_id(&self) -> &str;
 
-    fn display(&self) -> &str;
+    fn budget_text(&self) -> String;
 
-    fn with_display(&self, display: String) -> Self;
+    fn with_budget_text(&self, text: String) -> Self;
 }
 
 impl PageableEntry for Entry {
@@ -16,25 +16,34 @@ impl PageableEntry for Entry {
         &self.ref_id
     }
 
-    fn display(&self) -> &str {
-        &self.display
+    fn budget_text(&self) -> String {
+        let mut parts = vec![self.label.as_str()];
+        if let Some(summary) = self.summary.as_deref() {
+            parts.push(summary);
+        }
+        if let Some(excerpt) = self.excerpt.as_deref() {
+            parts.push(excerpt);
+        }
+        parts.join(" | ")
     }
 
-    fn with_display(&self, display: String) -> Self {
-        Self {
-            ref_id: self.ref_id.clone(),
-            display,
-        }
+    fn with_budget_text(&self, text: String) -> Self {
+        let mut entry = self.clone();
+        entry.label = text;
+        entry.summary = None;
+        entry.excerpt = None;
+        entry.cost = None;
+        entry
     }
 }
 
 pub fn paginate_text(
     content: &str,
     page: PositiveInteger,
-    limit_chars: PositiveInteger,
+    limit: PositiveInteger,
 ) -> (String, Option<PositiveInteger>) {
     let page_number = page.get() as usize;
-    let limit = limit_chars.get() as usize;
+    let limit = limit.get() as usize;
     let total = content.chars().count();
     let start = page_number.saturating_sub(1).saturating_mul(limit);
 
@@ -52,10 +61,10 @@ pub fn paginate_text(
 pub fn paginate_entries<T: PageableEntry>(
     entries: &[T],
     page: PositiveInteger,
-    limit_chars: PositiveInteger,
+    limit: PositiveInteger,
 ) -> (Vec<T>, Option<PositiveInteger>) {
     let target_page = page.get();
-    let limit = limit_chars.get() as usize;
+    let limit = limit.get() as usize;
     let mut index = 0;
     let mut current_page = 1;
 
@@ -113,14 +122,15 @@ fn entries_page<T: PageableEntry>(entries: &[T], start: usize, limit: usize) -> 
 
 fn fit_entry<T: PageableEntry>(entry: &T, limit: usize) -> T {
     let ref_len = char_count(entry.ref_id());
-    let display_len = char_count(entry.display());
+    let budget_text = entry.budget_text();
+    let display_len = char_count(&budget_text);
 
     if ref_len.saturating_add(display_len) <= limit {
         return entry.clone();
     }
 
     if ref_len >= limit {
-        return entry.with_display(MIN_DISPLAY.to_owned());
+        return entry.with_budget_text(MIN_DISPLAY.to_owned());
     }
 
     let display_budget = limit - ref_len;
@@ -128,15 +138,15 @@ fn fit_entry<T: PageableEntry>(entry: &T, limit: usize) -> T {
 
     if display_budget > marker_len && display_len > display_budget {
         let content_budget = display_budget - marker_len;
-        let clipped = take_chars(entry.display(), content_budget);
-        entry.with_display(format!("{clipped}{TRUNCATION_MARKER}"))
+        let clipped = take_chars(&budget_text, content_budget);
+        entry.with_budget_text(format!("{clipped}{TRUNCATION_MARKER}"))
     } else {
-        entry.with_display(take_chars(entry.display(), display_budget.max(1)))
+        entry.with_budget_text(take_chars(&budget_text, display_budget.max(1)))
     }
 }
 
 fn entry_cost<T: PageableEntry>(entry: &T) -> usize {
-    char_count(entry.ref_id()) + char_count(entry.display())
+    char_count(entry.ref_id()) + char_count(&entry.budget_text())
 }
 
 fn char_count(value: &str) -> usize {

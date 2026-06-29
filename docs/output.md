@@ -29,13 +29,15 @@ adapter outline docs/guide.md --output protocol-json
 
 `protocol-json` stdout 不承载直接 CLI 兼容性 warning 或 adapter 选择候选 warning。若直接 CLI argv 中存在被兼容忽略的 token，或 adapter 选择过程中跳过了不可用、契约不匹配、probe 不支持的候选，相关错误通道记录投影到 stderr，stdout 仍只输出一个符合 protocol response schema 的 JSON envelope。若参数解析失败但 argv 已能确定 `--output protocol-json`，stdout 仍输出 protocol failure envelope，而不是退回文本错误。
 
+原始协议成功结果保留 adapter 返回的结构化事实，例如 outline/find item 的 `label`、`kind`、`location`、`summary`、`excerpt`、`cost`、`metadata`，read 的 `cost.measurements[]`，以及 info 的 `document`、`adapter`、`metadata`。这些字段是 `protocol-json` 的事实来源；`display` 和人类可读成本摘要属于阅读输出层。
+
 `docnav-json-io` 拥有低层 JSON serialization、newline writing 和 write failure plumbing；protocol envelope、诊断投影、错误归属和 exit code policy 仍由 document output 编排和调用方 surface 决定。
 
 ## `readable-view`
 
 用途：文档操作的默认输出模式。人类和 AI 直接阅读，信息密度高，开箱即可定位内容。输出由一个 pretty JSON header 和零个或多个 length-delimited block section 组成。调用方和测试通过字段名和值、block pointer 和 UTF-8 byte length 判断语义；JSON header object key 顺序和多个 block section 的输出顺序不作为稳定契约。
 
-header 始终包含操作语义字段（ref、display、content_type、cost、page、capabilities 等）和可选 `warnings` 数组。renderer config 声明为 block 的字符串字段（例如 read 的 `/content`、readable error 的 `/error`）在 header 中以 `{"$block": "<pointer>", "bytes": <utf8-byte-length>}` 引用替代；实际字符串内容写入 `[block <pointer> bytes=<n>]` ... `[endblock <pointer>]` section。
+header 始终包含阅读层操作字段（ref、display、content_type、cost、page、capabilities 等）和可选 `warnings` 数组。outline/find 的 `display` 由 raw item facts 派生；read 的 `cost` 是由 `cost.measurements[]` 派生的人类可读摘要。renderer config 声明为 block 的字符串字段（例如 read 的 `/content`、readable error 的 `/error`）在 header 中以 `{"$block": "<pointer>", "bytes": <utf8-byte-length>}` 引用替代；实际字符串内容写入 `[block <pointer> bytes=<n>]` ... `[endblock <pointer>]` section。
 
 renderer config 是仓库内提交的代码契约，不通过用户配置、项目配置、环境变量或 CLI flag 控制。声明：
 
@@ -77,7 +79,7 @@ Some install text.
 
 用途：需要结构化阅读结果但不需要协议 envelope 的 AI 和人类辅助流程。输出不包含 `protocol_version`、`request_id`、`operation`、`ok` 或原始进程错误字段。
 
-`readable-json` 仍属于阅读输出层中的结构化机器友好形态。它必须保持 documented shape，便于 AI、工具和轻量自动化解析阅读结果；但它不包含完整协议 envelope，也不替代 `protocol-json` 或 `adapter invoke` 的完整机器兼容接口。脚本若需要跨版本稳定错误 envelope、request id 或协议兼容校验，应使用 `protocol-json` 或 `adapter invoke`。
+`readable-json` 仍属于阅读输出层中的结构化机器友好形态。它必须保持 documented shape，便于 AI、工具和轻量自动化解析阅读结果；但它不包含完整协议 envelope，也不替代 `protocol-json` 或 `adapter invoke` 的完整机器兼容接口。脚本若需要跨版本稳定错误 envelope、request id、raw item facts、结构化成本或协议兼容校验，应使用 `protocol-json` 或 `adapter invoke`。
 
 阅读输出 schema 按 operation 独立定义，见 [JSON Schema 索引](schemas/json-schema.md)。
 
@@ -96,9 +98,9 @@ Adapter direct CLI document operation 跳过不可用配置源时，阅读输出
 
 该 warning 投影表示不可用配置源未参与本次合并，operation 继续使用其它来源。触发条件由 [标准参数](standard-parameters.md#错误出口) 拥有：显式覆盖路径缺失、配置路径存在但不是可读取文件、JSON 语法无效或顶层不是 object 产生可恢复诊断；未覆盖的默认配置路径缺失不产生诊断。
 
-readable read 保留 adapter 返回的 `content_type`。当 [架构](architecture.md#adapter-选择) 定义的 adapter 选择流程产生可恢复候选失败时，阅读输出将对应错误通道记录投影为 `adapter_candidate_failure` warning。
+readable read 保留 adapter 返回的 `content_type`，并把 adapter 返回的 `cost.measurements[]` 压缩为 `cost` 摘要字符串。outline/find 只保留 `ref` 和派生 `display`；需要 raw `kind`、`location`、`summary`、`excerpt`、`rank`、`cost` 或 `metadata` 的调用方使用 `protocol-json`。当 [架构](architecture.md#adapter-选择) 定义的 adapter 选择流程产生可恢复候选失败时，阅读输出将对应错误通道记录投影为 `adapter_candidate_failure` warning。
 
-阅读错误保留 protocol/readable 投影的 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。需要机器可靠错误契约时使用完整协议输出。
+阅读错误保留 protocol/readable 投影的 `code` 和必要 `details` 以便保持阅读语义清晰，同时使用精简、可配置的 error 与 guidance 文本。warning item 保留 readable warning 投影的 `id`、`effect`、`reason` 和 `details`。需要机器可靠错误契约时使用完整协议输出。
 
 ## 阅读文案配置
 

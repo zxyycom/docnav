@@ -5,8 +5,8 @@ use docnav_diagnostics::{
     RefDetails, WarningProjection, CLI_ARGV_IGNORED,
 };
 use docnav_protocol::{
-    Entry, Operation, OperationResult, OutlineResult, ProtocolResponse, ReadResult,
-    PROTOCOL_VERSION,
+    Cost, Entry, Measurement, Operation, OperationResult, OutlineResult, ProtocolResponse,
+    ReadResult, PROTOCOL_VERSION,
 };
 use serde_json::Value;
 
@@ -44,9 +44,26 @@ fn read_result() -> OperationResult {
         ref_id: "R1".into(),
         content: "body".into(),
         content_type: "text/plain".into(),
-        cost: "1 lines | 4 bytes".into(),
+        cost: test_cost(),
         page: None,
     })
+}
+
+fn test_cost() -> Cost {
+    Cost {
+        measurements: vec![
+            Measurement {
+                unit: "lines".to_owned(),
+                value: 1,
+                scope: Some("selection".to_owned()),
+            },
+            Measurement {
+                unit: "bytes".to_owned(),
+                value: 4,
+                scope: Some("selection".to_owned()),
+            },
+        ],
+    }
 }
 
 #[test]
@@ -54,7 +71,14 @@ fn readable_json_success_embeds_warnings_without_protocol_envelope() {
     let result = OperationResult::Outline(OutlineResult {
         entries: vec![Entry {
             ref_id: "R1".into(),
-            display: "Intro".into(),
+            label: "Intro".into(),
+            kind: None,
+            location: None,
+            summary: None,
+            excerpt: None,
+            rank: None,
+            cost: None,
+            metadata: None,
         }],
         page: None,
     });

@@ -56,7 +56,14 @@ impl Adapter for StubAdapter {
         Ok(OutlineResult {
             entries: vec![Entry {
                 ref_id: "L1:Stub".to_owned(),
-                display: "1 line | 0.1 KB".to_owned(),
+                label: "Stub".to_owned(),
+                kind: None,
+                location: None,
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: None,
+                metadata: None,
             }],
             page: None,
         })
@@ -68,8 +75,10 @@ impl Adapter for StubAdapter {
         _arguments: &InfoArguments,
     ) -> AdapterResult<InfoResult> {
         Ok(InfoResult {
-            display: "Stub".to_owned(),
             capabilities: vec![Operation::Outline, Operation::Info],
+            document: None,
+            adapter: None,
+            metadata: None,
         })
     }
 }

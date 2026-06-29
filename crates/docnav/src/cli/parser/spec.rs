@@ -20,7 +20,7 @@ pub(in crate::cli) mod command_names {
 pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
     pub(in crate::cli) const KEY: &str = "key";
-    pub(in crate::cli) const LIMIT_CHARS: &str = "limit_chars";
+    pub(in crate::cli) const LIMIT: &str = "limit";
     pub(in crate::cli) const OPERATION: &str = "operation";
     pub(in crate::cli) const OUTPUT: &str = "output";
     pub(in crate::cli) const PAGE: &str = "page";
@@ -32,8 +32,7 @@ pub(in crate::cli) mod arg_ids {
 }
 
 pub(in crate::cli) mod defaults {
-    pub(in crate::cli) const LIMIT_CHARS: &str =
-        crate::standard_parameters::DEFAULT_LIMIT_CHARS_TEXT;
+    pub(in crate::cli) const LIMIT: &str = crate::standard_parameters::DEFAULT_LIMIT_TEXT;
     pub(in crate::cli) const OUTPUT: &str = crate::standard_parameters::DEFAULT_OUTPUT_TEXT;
     pub(in crate::cli) const PAGE: &str = crate::standard_parameters::DEFAULT_PAGE_TEXT;
 }
@@ -107,7 +106,7 @@ fn document_command(name: &'static str, about: &'static str) -> Command {
 fn paged_document_command(name: &'static str, about: &'static str) -> Command {
     document_command(name, about)
         .arg(page_arg())
-        .arg(limit_chars_arg())
+        .arg(limit_arg())
 }
 
 fn config_command() -> Command {
@@ -174,9 +173,9 @@ fn page_arg() -> Arg {
         .value_parser(clap::value_parser!(u32))
 }
 
-fn limit_chars_arg() -> Arg {
-    value_arg(arg_ids::LIMIT_CHARS, "limit-chars", "positive integer")
-        .default_value(defaults::LIMIT_CHARS)
+fn limit_arg() -> Arg {
+    value_arg(arg_ids::LIMIT, "limit", "positive integer")
+        .default_value(defaults::LIMIT)
         .value_parser(clap::value_parser!(u32))
 }
 

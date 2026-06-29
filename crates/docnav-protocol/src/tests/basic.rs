@@ -22,7 +22,14 @@ fn constructs_outline_success_response() {
         OperationResult::Outline(OutlineResult {
             entries: vec![Entry {
                 ref_id: "L1:Guide".to_owned(),
-                display: "9 lines | 0.1 KB".to_owned(),
+                label: "Guide".to_owned(),
+                kind: None,
+                location: None,
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: None,
+                metadata: None,
             }],
             page: Some(positive(2)),
         }),
@@ -34,6 +41,7 @@ fn constructs_outline_success_response() {
     assert_eq!(value["operation"], "outline");
     assert_eq!(value["ok"], true);
     assert_eq!(value["result"]["entries"][0]["ref"], "L1:Guide");
+    assert_eq!(value["result"]["entries"][0]["label"], "Guide");
     assert_eq!(value["result"]["page"], 2);
     assert!(value["result"].get("markdown_heading_path").is_none());
 }

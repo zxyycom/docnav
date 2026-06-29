@@ -5,8 +5,8 @@ use docnav_diagnostics::{
     ReadableWarningDiagnosticCode, RefDetails,
 };
 use docnav_protocol::{
-    protocol_error_record_draft_with_summary, Entry, OperationResult, OutlineResult,
-    ProtocolResponse, ReadResult,
+    protocol_error_record_draft_with_summary, Cost, Entry, Measurement, OperationResult,
+    OutlineResult, ProtocolResponse, ReadResult,
 };
 use serde_json::json;
 
@@ -113,7 +113,7 @@ fn document_readable_view_uses_shared_output_facade() {
             ref_id: "R1".into(),
             content: "body".into(),
             content_type: "text/plain".into(),
-            cost: "1 lines | 4 bytes".into(),
+            cost: test_cost(),
             page: None,
         }),
     );
@@ -132,7 +132,14 @@ fn document_readable_json_embeds_warnings() {
         OperationResult::Outline(OutlineResult {
             entries: vec![Entry {
                 ref_id: "R1".into(),
-                display: "Test".into(),
+                label: "Test".into(),
+                kind: None,
+                location: None,
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: None,
+                metadata: None,
             }],
             page: None,
         }),
@@ -267,4 +274,21 @@ fn output_mode_values_remain_unchanged() {
     assert_eq!(OutputMode::ReadableView.as_str(), "readable-view");
     assert_eq!(OutputMode::ReadableJson.as_str(), "readable-json");
     assert_eq!(OutputMode::ProtocolJson.as_str(), "protocol-json");
+}
+
+fn test_cost() -> Cost {
+    Cost {
+        measurements: vec![
+            Measurement {
+                unit: "lines".to_owned(),
+                value: 1,
+                scope: Some("selection".to_owned()),
+            },
+            Measurement {
+                unit: "bytes".to_owned(),
+                value: 4,
+                scope: Some("selection".to_owned()),
+            },
+        ],
+    }
 }

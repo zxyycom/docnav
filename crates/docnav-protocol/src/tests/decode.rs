@@ -7,7 +7,7 @@ fn decode_protocol_request_runs_contract_before_raw_decode() {
         "request_id": "req-1",
         "operation": "outline",
         "document": { "path": "doc.md" },
-        "arguments": { "limit_chars": 80, "page": 1 },
+        "arguments": { "limit": 80, "page": 1 },
         "extra": true
     });
 

@@ -10,7 +10,9 @@ const operationResultBuilders: Partial<Record<string, OperationResultBuilder>> =
     entries: [
       {
         ref: "fake:root",
-        display: `${adapterId} outline for ${documentPath}`
+        label: `${adapterId} outline for ${documentPath}`,
+        kind: "document",
+        cost: cost("entry")
       }
     ],
     page: null
@@ -19,23 +21,39 @@ const operationResultBuilders: Partial<Record<string, OperationResultBuilder>> =
     ref: typeof args.ref === "string" ? args.ref : "fake:root",
     content: `# Fake ${adapterId}\n\nRead ${documentPath}`,
     content_type: "text/markdown",
-    cost: "0.1 KB",
+    cost: cost("selection"),
     page: null
   }),
   find: ({ adapterId, args }) => ({
     matches: [
       {
         ref: "fake:root",
-        display: `${adapterId} match for ${typeof args.query === "string" ? args.query : ""}`
+        label: `${adapterId} match for ${typeof args.query === "string" ? args.query : ""}`,
+        kind: "match"
       }
     ],
     page: null
   }),
   info: ({ adapterId }) => ({
-    display: `Fake ${adapterId} | text/markdown`,
-    capabilities: ["outline", "read", "find", "info"]
+    capabilities: ["outline", "read", "find", "info"],
+    document: {
+      content_type: "text/markdown"
+    },
+    adapter: {
+      id: adapterId,
+      format: "fake"
+    }
   })
 };
+
+function cost(scope: string) {
+  return {
+    measurements: [
+      { unit: "lines", value: 1, scope },
+      { unit: "bytes", value: 64, scope }
+    ]
+  };
+}
 
 export function resultFor(options: FakeAdapterOptions, value: AdapterRequest) {
   const document = isRecord(value.document) ? value.document : {};

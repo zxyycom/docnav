@@ -1,6 +1,6 @@
 {
   "defaults": {
-    "limit_chars": 6000,
+    "limit": 6000,
     "output": "readable-view"
   },
   "options": {

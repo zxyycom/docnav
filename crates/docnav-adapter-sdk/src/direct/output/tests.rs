@@ -1,6 +1,6 @@
 // @case WB-SDK-DIRECT-OUTPUT-001
 use super::*;
-use docnav_protocol::{OperationResult, ReadResult};
+use docnav_protocol::{Cost, Measurement, OperationResult, ReadResult};
 
 struct FailingStdout {
     attempted: bool,
@@ -26,7 +26,20 @@ fn read_result() -> OperationResult {
         ref_id: "ok".into(),
         content: "body".into(),
         content_type: "text/plain".into(),
-        cost: "1 lines | 4 bytes".into(),
+        cost: Cost {
+            measurements: vec![
+                Measurement {
+                    unit: "lines".to_owned(),
+                    value: 1,
+                    scope: Some("selection".to_owned()),
+                },
+                Measurement {
+                    unit: "bytes".to_owned(),
+                    value: 4,
+                    scope: Some("selection".to_owned()),
+                },
+            ],
+        },
         page: None,
     })
 }

@@ -1,7 +1,7 @@
 use docnav_protocol::Operation;
 use docnav_standard_parameters::{
-    configurable_limit_chars_field, configurable_output_field, document_path_field,
-    find_query_field, page_field as standard_page_field, read_ref_field, EntryPassthroughPolicy,
+    configurable_limit_field, configurable_output_field, document_path_field, find_query_field,
+    page_field as standard_page_field, read_ref_field, EntryPassthroughPolicy,
     StandardParameterConfigSourceDescriptor, StandardParameterPipeline,
     StandardParameterResolution,
 };
@@ -16,11 +16,11 @@ pub(super) const DIRECT_PROCESSING: &str = "direct";
 pub(super) const CONFIG_PROCESSING: &str = "config";
 
 pub(super) use docnav_standard_parameters::ids::{
-    LIMIT_CHARS as ID_LIMIT_CHARS, OUTPUT as ID_OUTPUT, PAGE as ID_PAGE, PATH as ID_PATH,
-    QUERY as ID_QUERY, REF as ID_REF,
+    LIMIT as ID_LIMIT, OUTPUT as ID_OUTPUT, PAGE as ID_PAGE, PATH as ID_PATH, QUERY as ID_QUERY,
+    REF as ID_REF,
 };
 
-pub(super) const DEFAULT_LIMIT_CHARS_TEXT: &str = "6000";
+pub(super) const DEFAULT_LIMIT_TEXT: &str = "6000";
 pub(super) const DEFAULT_OUTPUT_TEXT: &str = "readable-view";
 pub(super) const DEFAULT_PAGE_TEXT: &str = "1";
 pub(super) const DEFAULT_PROTOCOL_OUTPUT_TEXT: &str = "protocol-json";
@@ -93,16 +93,16 @@ struct DirectInfoStandardParameters {
 struct DirectContentWindowParameters {
     #[field(direct_cli_page_field())]
     page: i64,
-    #[field(direct_cli_limit_chars_field())]
-    limit_chars: i64,
+    #[field(direct_cli_limit_field())]
+    limit: i64,
 }
 
 fn direct_cli_page_field() -> FieldDefBuilder<i64> {
     standard_page_field(DIRECT_PROCESSING).default_static(DEFAULT_PAGE)
 }
 
-fn direct_cli_limit_chars_field() -> FieldDefBuilder<i64> {
-    configurable_limit_chars_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
+fn direct_cli_limit_field() -> FieldDefBuilder<i64> {
+    configurable_limit_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
 }
 
 fn direct_cli_output_field() -> FieldDefBuilder<DirectOutputMode> {
@@ -115,7 +115,7 @@ pub(super) fn resolve_operation_parameters(
     direct_input: JsonValue,
     project_config: StandardParameterConfigSourceDescriptor,
     user_config: StandardParameterConfigSourceDescriptor,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<StandardParameterResolution, String> {
     match operation {
         Operation::Outline => {
@@ -123,26 +123,26 @@ pub(super) fn resolve_operation_parameters(
                 direct_input,
                 project_config,
                 user_config,
-                default_limit_chars,
+                default_limit,
             )
         }
         Operation::Read => resolve_direct_standard_parameters::<DirectReadStandardParameters>(
             direct_input,
             project_config,
             user_config,
-            default_limit_chars,
+            default_limit,
         ),
         Operation::Find => resolve_direct_standard_parameters::<DirectFindStandardParameters>(
             direct_input,
             project_config,
             user_config,
-            default_limit_chars,
+            default_limit,
         ),
         Operation::Info => resolve_direct_standard_parameters::<DirectInfoStandardParameters>(
             direct_input,
             project_config,
             user_config,
-            default_limit_chars,
+            default_limit,
         ),
     }
 }
@@ -151,7 +151,7 @@ fn resolve_direct_standard_parameters<P>(
     direct_input: JsonValue,
     project_config: StandardParameterConfigSourceDescriptor,
     user_config: StandardParameterConfigSourceDescriptor,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<StandardParameterResolution, String>
 where
     P: FieldDefs,
@@ -163,7 +163,7 @@ where
         direct_input,
         project_config,
         user_config,
-        default_limit_chars,
+        default_limit,
     )
 }
 
@@ -172,7 +172,7 @@ fn resolve_with_fields<D>(
     direct_input: JsonValue,
     project_config: StandardParameterConfigSourceDescriptor,
     user_config: StandardParameterConfigSourceDescriptor,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<StandardParameterResolution, String>
 where
     D: AsRef<docnav_typed_fields::FieldDefSet> + ?Sized,
@@ -182,7 +182,7 @@ where
         .with_config_processing_id(CONFIG_PROCESSING)
         .with_config_source_descriptor(project_config)
         .with_config_source_descriptor(user_config)
-        .with_dynamic_default(identity(ID_LIMIT_CHARS)?, json!(default_limit_chars))
+        .with_dynamic_default(identity(ID_LIMIT)?, json!(default_limit))
         .with_direct_input_passthrough_processing(native_options_processing(DIRECT_PROCESSING)?)
         .with_config_passthrough_processing(native_options_processing(CONFIG_PROCESSING)?)
         .with_passthrough_policy(EntryPassthroughPolicy::Delegate)

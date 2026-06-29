@@ -3,13 +3,10 @@ use serde_json::Value;
 
 use crate::project_context::ProjectContext;
 
-pub(super) const DEFAULT_LIMIT_CHARS: u32 = 6000;
+pub(super) const DEFAULT_LIMIT: u32 = 6000;
 pub(super) const DEFAULT_OUTPUT: &str = "readable-view";
-pub(super) const SUPPORTED_KEYS: [&str; 3] = [
-    "defaults.adapter",
-    "defaults.limit_chars",
-    "defaults.output",
-];
+pub(super) const SUPPORTED_KEYS: [&str; 3] =
+    ["defaults.adapter", "defaults.limit", "defaults.output"];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConfigContext {
@@ -29,14 +26,14 @@ pub struct DefaultsConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub limit_chars: Option<u32>,
+    pub limit: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
 }
 
 impl DefaultsConfig {
     fn is_empty(&self) -> bool {
-        self.adapter.is_none() && self.limit_chars.is_none() && self.output.is_none()
+        self.adapter.is_none() && self.limit.is_none() && self.output.is_none()
     }
 }
 

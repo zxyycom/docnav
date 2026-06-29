@@ -33,7 +33,7 @@ probe
 - 按自身契约解析 ref 并读取，将非法 ref、无匹配 ref 等失败写入错误通道，并由边界层投影为对应 surface error。
 - 在 invoke 中返回紧凑原始协议结果。
 
-adapter 直接提供本格式的 ref、display、内容、成本和 page，供 `docnav` 原样映射到阅读输出。
+adapter 直接提供本格式的 ref、结构化 item facts、内容、结构化成本、info metadata 和 page，供 `docnav` 原样映射到原始协议，并由输出层派生阅读输出。
 
 ## Manifest
 
@@ -52,7 +52,7 @@ capabilities[]
 
 manifest 只接受 adapter 身份、支持格式、扩展名、content type 和 capabilities 字段，不声明协议范围或格式默认参数。manifest 字段扩展必须先由本文件和 manifest schema 定义。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
 
-Markdown v0 adapter 的默认参数和 native option registration 属于 `docnav-markdown` 标准参数声明：默认 `limit_chars: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；direct CLI 和 `invoke` 分别按 [标准参数](standard-parameters.md) 定义的入口规则解析配置、默认值和 request `arguments`。
+Markdown v0 adapter 的默认参数和 native option registration 属于 `docnav-markdown` 标准参数声明：默认 `limit: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；direct CLI 和 `invoke` 分别按 [标准参数](standard-parameters.md) 定义的入口规则解析配置、默认值和 request `arguments`。
 Markdown find 返回的 match ref 可按共享调用流程原样传给 read；没有局部导航区域时，可以返回 adapter 定义的全文 ref。find 的 ref 归属策略和 read 对该 ref 的接受与解释行为，由 [Markdown Adapter](adapters/markdown.md) 定义。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度。
 
 ## Probe
@@ -85,7 +85,7 @@ SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、ty
 - 只处理一个请求。
 - stdout 只返回原始协议 envelope。
 - 为分页操作返回下一页页码，结束时返回 null。
-- 按 `limit_chars` 字符预算分页；display 可压缩，ref 不得截断。
+- 按自身声明的 `limit` 预算分页；ref 不得截断。outline/find 单条记录超过预算时，可以压缩 adapter-owned `label`、`summary`、`excerpt`、`cost` 或 `metadata` 等补充事实，但必须保留最小非空 `label` 并让分页前进。
 - 不输出 CLI 阅读文本。
 
 ## 标准参数消费边界
@@ -105,6 +105,8 @@ SDK 可以复用 `docnav-protocol` 的 decode pipeline 执行 schema 校验、ty
 `docnav` 不在 adapter 选择阶段做协议版本协商。候选适配器的 manifest 和 probe 输出必须通过 schema、必需字段、字段类型和语义校验；字段缺失、字段类型不符、shape 不对齐、语义校验失败、进程不可用或 `supported: false` 时，`docnav` 必须能形成包含 adapter id、阶段和原因的候选失败证据。候选遍历策略由 [架构](architecture.md#adapter-选择) 定义；选择成功或全部候选失败后的输出映射由 `docnav` 输出层负责。
 
 选定 adapter 后的 `invoke` 响应不再属于候选选择阶段。`invoke` 响应必须通过 protocol response schema、必需字段、字段类型、operation/result shape 和语义校验；校验失败时返回 adapter/protocol 错误投影，不能把已经选定 adapter 的 invoke 失败当作普通候选失败继续静默切换。
+
+原始协议字段对齐要求 adapter 使用 [原始协议](protocol.md#紧凑语义结果) 定义的结构化 item、`cost.measurements[]` 和 info facts。`display`、成本摘要和 info 摘要由 [输出模式](output.md) 的 readable projection 派生；adapter 不在 protocol result 中返回这些 readable-only 字段。
 
 正式 schema：
 

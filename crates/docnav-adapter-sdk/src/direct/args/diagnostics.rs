@@ -145,7 +145,7 @@ fn direct_value_flag_error(occurrence: DirectValueFlagOccurrence<'_>) -> Option<
     match (occurrence.flag, occurrence.value) {
         (_, None) => Some(format!("{} requires a value", occurrence.flag_token)),
         (KnownValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
-        (KnownValueFlag::LimitChars, Some(value)) => positive_flag_error(flags::LIMIT_CHARS, value),
+        (KnownValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
         (KnownValueFlag::Output, Some(value)) => output_flag_error(value),
         (KnownValueFlag::Ref, Some("")) => Some(format!("{} must not be empty", flags::REF)),
         (KnownValueFlag::Query, Some("")) => Some(format!("{} must not be empty", flags::QUERY)),

@@ -80,7 +80,7 @@
             "arguments": {
               "type": "object",
               "properties": {
-                "limit_chars": {
+                "limit": {
                   "type": "integer",
                   "minimum": 1
                 },
@@ -118,7 +118,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "limit_chars": {
+                "limit": {
                   "type": "integer",
                   "minimum": 1
                 },
@@ -156,7 +156,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "limit_chars": {
+                "limit": {
                   "type": "integer",
                   "minimum": 1
                 },

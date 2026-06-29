@@ -1,5 +1,5 @@
 pub(super) const ADAPTER: &str = "--adapter";
-pub(super) const LIMIT_CHARS: &str = "--limit-chars";
+pub(super) const LIMIT: &str = "--limit";
 pub(super) const OPERATION: &str = "--operation";
 pub(super) const OUTPUT: &str = "--output";
 pub(super) const PAGE: &str = "--page";

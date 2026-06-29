@@ -14,7 +14,7 @@
 
 | 区域 | 原字段形态 | 目标归属与字段形状 |
 | --- | --- | --- |
-| 预算 | `limit_chars` positive integer。 | Protocol 硬切换为 `limit` positive integer。Core/SDK 负责来源合并；adapter 负责预算单位解释。 |
+| 预算 | `limit` positive integer。 | Protocol 硬切换为 `limit` positive integer。Core/SDK 负责来源合并；adapter 负责预算单位解释。 |
 | read 成本 | `cost` 展示字符串。 | Protocol 使用 `cost.measurements[]`；readable 拥有成本摘要文本。 |
 | outline 条目 | `ref` + `display`。 | Protocol 使用 `ref` + 条目事实字段；readable 拥有 display row。 |
 | find match | `ref` + `display`。 | Protocol 使用 `ref` + match 事实字段；readable 拥有 match row。 |

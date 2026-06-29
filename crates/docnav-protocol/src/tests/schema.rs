@@ -55,28 +55,28 @@ fn protocol_request_schema_rejects_empty_required_strings() {
             "request_id": "",
             "operation": "outline",
             "document": { "path": "doc.md" },
-            "arguments": { "limit_chars": 80, "page": 1 }
+            "arguments": { "limit": 80, "page": 1 }
         }),
         serde_json::json!({
             "protocol_version": "0.1",
             "request_id": "req-1",
             "operation": "outline",
             "document": { "path": "" },
-            "arguments": { "limit_chars": 80, "page": 1 }
+            "arguments": { "limit": 80, "page": 1 }
         }),
         serde_json::json!({
             "protocol_version": "0.1",
             "request_id": "req-1",
             "operation": "read",
             "document": { "path": "doc.md" },
-            "arguments": { "ref": "", "limit_chars": 80, "page": 1 }
+            "arguments": { "ref": "", "limit": 80, "page": 1 }
         }),
         serde_json::json!({
             "protocol_version": "0.1",
             "request_id": "req-1",
             "operation": "find",
             "document": { "path": "doc.md" },
-            "arguments": { "query": "", "limit_chars": 80, "page": 1 }
+            "arguments": { "query": "", "limit": 80, "page": 1 }
         }),
     ];
 
@@ -94,35 +94,35 @@ fn protocol_request_contract_rejects_schema_backed_field_failures() {
             "request_id": "req-1",
             "operation": "outline",
             "document": { "path": "doc.md" },
-            "arguments": { "limit_chars": 80, "page": 1 }
+            "arguments": { "limit": 80, "page": 1 }
         }),
         serde_json::json!({
             "protocol_version": "0.1",
             "request_id": "req-1",
             "operation": "outline",
             "document": { "path": 1 },
-            "arguments": { "limit_chars": 80, "page": 1 }
+            "arguments": { "limit": 80, "page": 1 }
         }),
         serde_json::json!({
             "protocol_version": "0.1",
             "request_id": "req-1",
             "operation": "outline",
             "document": { "path": "doc.md" },
-            "arguments": { "limit_chars": 0, "page": 1 }
+            "arguments": { "limit": 0, "page": 1 }
         }),
         serde_json::json!({
             "protocol_version": "0.1",
             "request_id": "req-1",
             "operation": "read",
             "document": { "path": "doc.md" },
-            "arguments": { "limit_chars": 80, "page": 1 }
+            "arguments": { "limit": 80, "page": 1 }
         }),
         serde_json::json!({
             "protocol_version": "0.1",
             "request_id": "req-1",
             "operation": "outline",
             "document": { "path": "doc.md", "extra": true },
-            "arguments": { "limit_chars": 80, "page": 1 }
+            "arguments": { "limit": 80, "page": 1 }
         }),
     ];
 
@@ -225,7 +225,7 @@ fn manifest_with_removed_recommended_parameters() -> Value {
         "capabilities": ["outline", "read", "find", "info"],
         "recommended_parameters": {
             "outline": {
-                "limit_chars": 80
+                "limit": 80
             }
         }
     })
@@ -310,7 +310,7 @@ fn protocol_response_contract_rejects_schema_backed_field_failures() {
             "request_id": "req-1",
             "operation": "info",
             "ok": true,
-            "result": { "display": "info", "capabilities": ["outline", "outline"] }
+            "result": { "capabilities": ["outline", "outline"] }
         }),
     ];
 
@@ -348,9 +348,9 @@ fn protocol_outline_response_with(update: impl FnOnce(&mut Value)) -> Value {
         "request_id": "req-1",
         "operation": "outline",
         "ok": true,
-        "result": {
+            "result": {
             "entries": [
-                { "ref": "H:L1:H1", "display": "1 lines | 0.1 KB" }
+                { "ref": "H:L1:H1", "label": "Heading" }
             ],
             "page": null
         }

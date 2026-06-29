@@ -21,8 +21,8 @@ const PROTOCOL_RESULT_CHECKS: Partial<Record<string, ProtocolResultCheck>> = {
     FIELDS.page in result &&
     !(FIELDS.entries in result),
   info: (result) =>
-    FIELDS.display in result &&
     Array.isArray(result[FIELDS.capabilities]) &&
+    !(FIELDS.display in result) &&
     !(FIELDS.page in result),
 };
 

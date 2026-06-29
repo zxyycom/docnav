@@ -25,7 +25,7 @@ pub(super) use spec::{command_names, direct_cli_command};
 pub(super) struct DirectOperationOptions {
     pub(super) path: String,
     pub(super) page: PositiveInteger,
-    pub(super) limit_chars: PositiveInteger,
+    pub(super) limit: PositiveInteger,
     pub(super) output: DirectOutputMode,
     pub(super) ref_id: Option<String>,
     pub(super) query: Option<String>,
@@ -91,12 +91,12 @@ fn positive_from_u32(value: u32, flag: &str) -> Result<PositiveInteger, String> 
     positive_result(value).map_err(|_| format!("{flag} must be a positive integer"))
 }
 
-fn parse_operation_limit_chars(value: &Value) -> Result<PositiveInteger, String> {
+fn parse_operation_limit(value: &Value) -> Result<PositiveInteger, String> {
     let raw = value
         .as_u64()
         .and_then(|value| u32::try_from(value).ok())
-        .ok_or_else(|| format!("{} must be a positive integer", flags::LIMIT_CHARS))?;
-    positive_from_u32(raw, flags::LIMIT_CHARS)
+        .ok_or_else(|| format!("{} must be a positive integer", flags::LIMIT))?;
+    positive_from_u32(raw, flags::LIMIT)
 }
 
 fn clap_argv(command: &str, args: Vec<String>) -> Vec<String> {
@@ -140,7 +140,7 @@ fn operation_options_from_sources(
     sources: DirectCliParameterSources,
     native_specs: &[NativeOptionSpec],
 ) -> Result<DirectOperationOptions, String> {
-    let limit_chars = parse_operation_limit_chars(&sources.limit_chars)?;
+    let limit = parse_operation_limit(&sources.limit)?;
     let output = parse_output(
         sources
             .output
@@ -152,7 +152,7 @@ fn operation_options_from_sources(
     Ok(DirectOperationOptions {
         path: sources.path,
         page: sources.page,
-        limit_chars,
+        limit,
         output,
         ref_id: sources.ref_id,
         query: sources.query,

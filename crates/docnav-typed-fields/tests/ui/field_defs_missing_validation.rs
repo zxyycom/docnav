@@ -3,10 +3,10 @@ use docnav_typed_fields::{ProcessStrategy, FieldDef, FieldDefs};
 #[derive(FieldDefs)]
 struct Params {
     #[field(
-        FieldDef::builder("docnav.defaults.limit_chars")
-            .process("config", ProcessStrategy::json_path(["defaults", "limit_chars"]))
+        FieldDef::builder("docnav.defaults.limit")
+            .process("config", ProcessStrategy::json_path(["defaults", "limit"]))
     )]
-    limit_chars: i64,
+    limit: i64,
 }
 
 fn main() {}

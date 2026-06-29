@@ -7,7 +7,7 @@
     "defaults": {
       "type": "object",
       "properties": {
-        "limit_chars": {
+        "limit": {
           "type": "integer",
           "minimum": 1,
           "description": "Default positive character budget for document operations."

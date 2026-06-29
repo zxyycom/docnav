@@ -26,6 +26,8 @@
 
 原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并消费 [错误通道](../diagnostics.md) 中 `DiagnosticCode` 错误规则的 protocol 投影生成错误 details 校验块；protocol envelope 和投影字段由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验材料，用于示例、fixture、CI drift check 和第三方对齐；production runtime decode path 的字段级校验由 `docnav-typed-fields` contract validation 承接。阅读输出 schema 用于文档示例和实现自测，不表示 readable 输出是长期机器解析协议。
 
+protocol response 示例应证明 outline/find item facts、read `cost.measurements[]` 和 info `document`/`adapter`/`metadata` 的 raw shape；readable 示例应证明由这些 facts 派生的 `display`、成本摘要和精简 info display。任一 schema 都不能接受对方层独有字段作为成功 result 的替代形态。
+
 operation readable schema 包含可省略的顶层 `warnings` 数组。warning 的来源、承载位置和稳定字段由 [输出模式](../output.md) 定义，机械身份和 details 规则来自 [错误通道](../diagnostics.md) 的投影规则；本文件只维护 schema `$defs` 与示例校验入口。
 
 `readable-common.schema.json` 提供 readable 复用的 `capability`、`entry`、`page`、`warning` 和 `warnings` 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义。

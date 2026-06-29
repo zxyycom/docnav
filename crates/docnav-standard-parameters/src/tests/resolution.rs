@@ -5,8 +5,8 @@ use super::*;
 
 #[test]
 fn direct_project_user_default_priority_preserves_source_info() {
-    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
-    let identity = identity("docnav.defaults.limit_chars");
+    let entries = vec![catalog_entry("docnav.defaults.limit")];
+    let identity = identity("docnav.defaults.limit");
     let sources = StandardParameterSources {
         direct_input: source_with_value(&identity, json!(100)),
         project_config: source_with_value(&identity, json!(200)),
@@ -27,8 +27,8 @@ fn direct_project_user_default_priority_preserves_source_info() {
 
 #[test]
 fn project_config_overrides_user_config_and_static_default_fills_absent_value() {
-    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
-    let identity = identity("docnav.defaults.limit_chars");
+    let entries = vec![catalog_entry("docnav.defaults.limit")];
+    let identity = identity("docnav.defaults.limit");
     let project_resolution = resolve_standard_parameters(
         &entries,
         StandardParameterSources {
@@ -62,8 +62,8 @@ fn project_config_overrides_user_config_and_static_default_fills_absent_value() 
 
 #[test]
 fn invalid_mapped_value_reports_diagnostic_without_safe_value() {
-    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
-    let identity = identity("docnav.defaults.limit_chars");
+    let entries = vec![catalog_entry("docnav.defaults.limit")];
+    let identity = identity("docnav.defaults.limit");
     let resolution = resolve_standard_parameters(
         &entries,
         StandardParameterSources {
@@ -102,14 +102,14 @@ fn invalid_mapped_value_reports_diagnostic_without_safe_value() {
     );
     assert_eq!(
         record.details().to_value()["field"],
-        "docnav.defaults.limit_chars"
+        "docnav.defaults.limit"
     );
 }
 
 #[test]
 fn optional_mapped_null_is_absent_without_safe_null_value() {
-    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
-    let identity = identity("docnav.defaults.limit_chars");
+    let entries = vec![catalog_entry("docnav.defaults.limit")];
+    let identity = identity("docnav.defaults.limit");
     let resolution = resolve_standard_parameters(
         &entries,
         StandardParameterSources {
@@ -144,8 +144,8 @@ fn required_missing_value_reports_standard_parameter_diagnostic() {
 
 #[test]
 fn dynamic_default_source_is_validated_like_other_mapped_values() {
-    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
-    let identity = identity("docnav.defaults.limit_chars");
+    let entries = vec![catalog_entry("docnav.defaults.limit")];
+    let identity = identity("docnav.defaults.limit");
     let resolution = resolve_standard_parameters(
         &entries,
         StandardParameterSources {
@@ -172,7 +172,7 @@ fn dynamic_default_source_is_validated_like_other_mapped_values() {
 
 #[test]
 fn passthrough_remains_outside_standard_parameter_validation() {
-    let entries = vec![catalog_entry("docnav.defaults.limit_chars")];
+    let entries = vec![catalog_entry("docnav.defaults.limit")];
     let mut sources = StandardParameterSources::default();
     sources
         .direct_input
@@ -195,7 +195,7 @@ fn passthrough_remains_outside_standard_parameter_validation() {
 
 #[test]
 fn operation_argument_binding_preserves_direct_config_and_default_source_info() {
-    let identity = identity("docnav.defaults.limit_chars");
+    let identity = identity("docnav.defaults.limit");
 
     assert_operation_binding_source(
         StandardParameterSources {
@@ -231,14 +231,14 @@ fn assert_operation_binding_source(
     sources: StandardParameterSources,
     expected_source: StandardParameterSourceKind,
 ) {
-    let identity = identity("docnav.defaults.limit_chars");
-    let entry = catalog_entry("docnav.defaults.limit_chars")
-        .with_operation_argument(OperationArgumentBinding::new(path(["limit_chars"])));
+    let identity = identity("docnav.defaults.limit");
+    let entry = catalog_entry("docnav.defaults.limit")
+        .with_operation_argument(OperationArgumentBinding::new(path(["limit"])));
     let resolution = resolve_standard_parameters(&[entry], sources, EntryPassthroughPolicy::Retain);
 
     let resolved = resolution.value(&identity).unwrap();
     let binding = resolved.operation_argument.as_ref().unwrap();
-    assert_eq!(binding.arguments_path, path(["limit_chars"]));
+    assert_eq!(binding.arguments_path, path(["limit"]));
     assert_eq!(
         binding.source,
         StandardParameterSourceInfo::new(expected_source)

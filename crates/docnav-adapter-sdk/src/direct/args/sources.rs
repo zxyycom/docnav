@@ -12,7 +12,7 @@ use super::super::warnings::DirectCliWarning;
 use super::loose::{collect_operation_args, LooseArgs};
 use super::resolved::{
     collect_diagnostics, merged_native_options, optional_string_value, required_json_value,
-    required_string_value, resolved_limit_chars, resolved_page,
+    required_string_value, resolved_limit, resolved_page,
 };
 use super::spec::{arg_ids, operation_about, operation_command};
 use super::standard::{resolve_operation_parameters, ID_OUTPUT, ID_PATH, ID_QUERY, ID_REF};
@@ -21,7 +21,7 @@ use super::{clap_argv, operation_parse_error, required_string};
 pub(super) struct DirectCliParameterSources {
     pub(super) path: String,
     pub(super) page: PositiveInteger,
-    pub(super) limit_chars: Value,
+    pub(super) limit: Value,
     pub(super) output: Value,
     pub(super) ref_id: Option<String>,
     pub(super) query: Option<String>,
@@ -56,7 +56,7 @@ fn resolve_direct_cli_parameters(
         direct_input,
         descriptors.project,
         descriptors.user,
-        config.default_limit_chars,
+        config.default_limit,
     )?;
     collect_diagnostics(&resolution, &mut warnings)?;
 
@@ -75,7 +75,7 @@ fn direct_cli_sources_from_resolution(
     Ok(DirectCliParameterSources {
         path: required_string_value(&resolution, ID_PATH)?,
         page: resolved_page(operation, &resolution)?,
-        limit_chars: resolved_limit_chars(operation, &resolution, config.default_limit_chars)?,
+        limit: resolved_limit(operation, &resolution, config.default_limit)?,
         output: required_json_value(&resolution, ID_OUTPUT)?,
         ref_id: optional_string_value(&resolution, ID_REF)?,
         query: optional_string_value(&resolution, ID_QUERY)?,
@@ -97,7 +97,7 @@ fn parse_operation_matches(
         operation,
         operation_about(operation),
         config.native_options,
-        config.default_limit_chars,
+        config.default_limit,
     )
     .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
     .map_err(|_| operation_parse_error(operation, args, config.native_options))?;
@@ -161,8 +161,8 @@ fn insert_window_input(
         if let Some(value) = command_line_u32_value(matches, arg_ids::PAGE) {
             input.insert("page".to_owned(), value);
         }
-        if let Some(value) = command_line_u32_value(matches, arg_ids::LIMIT_CHARS) {
-            input.insert("limit_chars".to_owned(), value);
+        if let Some(value) = command_line_u32_value(matches, arg_ids::LIMIT) {
+            input.insert("limit".to_owned(), value);
         }
     }
 }

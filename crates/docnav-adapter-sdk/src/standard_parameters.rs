@@ -5,10 +5,10 @@ use docnav_protocol::{
     RawRequestEnvelope, ReadArguments, RequestEnvelope,
 };
 use docnav_standard_parameters::{
-    find_query_field, ids, limit_chars_field as standard_limit_chars_field,
-    page_field as standard_page_field, read_ref_field, EntryPassthroughPolicy, PassthroughValue,
-    StandardParameterHandoff, StandardParameterPipeline, StandardParameterResolution,
-    StandardParameterSourceKind, StandardParameterValidationIssue,
+    find_query_field, ids, limit_field as standard_limit_field, page_field as standard_page_field,
+    read_ref_field, EntryPassthroughPolicy, PassthroughValue, StandardParameterHandoff,
+    StandardParameterPipeline, StandardParameterResolution, StandardParameterSourceKind,
+    StandardParameterValidationIssue,
 };
 use docnav_typed_fields::{FieldDefs, FieldIdentity, JsonValue, ProcessingBuild, TypedValue};
 use serde_json::{json, Map, Value};
@@ -19,11 +19,11 @@ const DIRECT_PROCESSING: &str = "direct";
 const CONFIG_PROCESSING: &str = "config";
 const DEFAULT_PAGE: i64 = 1;
 
-use ids::{LIMIT_CHARS as ID_LIMIT_CHARS, PAGE as ID_PAGE, QUERY as ID_QUERY, REF as ID_REF};
+use ids::{LIMIT as ID_LIMIT, PAGE as ID_PAGE, QUERY as ID_QUERY, REF as ID_REF};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct InvokeStandardParameterConfig {
-    pub(crate) default_limit_chars: u32,
+    pub(crate) default_limit: u32,
 }
 
 // FieldDefs consumes these fields as metadata; runtime code uses the generated definition set.
@@ -57,16 +57,16 @@ struct InvokeFindStandardArguments {
 struct InvokeContentWindowArguments {
     #[field(invoke_page_field())]
     page: i64,
-    #[field(invoke_limit_chars_field())]
-    limit_chars: i64,
+    #[field(invoke_limit_field())]
+    limit: i64,
 }
 
 fn invoke_page_field() -> docnav_typed_fields::FieldDefBuilder<i64> {
     standard_page_field(DIRECT_PROCESSING).default_static(DEFAULT_PAGE)
 }
 
-fn invoke_limit_chars_field() -> docnav_typed_fields::FieldDefBuilder<i64> {
-    standard_limit_chars_field(DIRECT_PROCESSING)
+fn invoke_limit_field() -> docnav_typed_fields::FieldDefBuilder<i64> {
+    standard_limit_field(DIRECT_PROCESSING)
 }
 
 pub(crate) fn standardize_invoke_request(
@@ -76,16 +76,14 @@ pub(crate) fn standardize_invoke_request(
     let arguments = match request.operation {
         Operation::Outline => OperationArguments::Outline(standardize_outline(
             &request.arguments,
-            config.default_limit_chars,
+            config.default_limit,
         )?),
-        Operation::Read => OperationArguments::Read(standardize_read(
-            &request.arguments,
-            config.default_limit_chars,
-        )?),
-        Operation::Find => OperationArguments::Find(standardize_find(
-            &request.arguments,
-            config.default_limit_chars,
-        )?),
+        Operation::Read => {
+            OperationArguments::Read(standardize_read(&request.arguments, config.default_limit)?)
+        }
+        Operation::Find => {
+            OperationArguments::Find(standardize_find(&request.arguments, config.default_limit)?)
+        }
         Operation::Info => OperationArguments::Info(standardize_info(&request.arguments)?),
     };
 
@@ -100,15 +98,15 @@ pub(crate) fn standardize_invoke_request(
 
 fn standardize_outline(
     arguments: &JsonValue,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<OutlineArguments, AdapterError> {
     let resolution = resolve_invoke_standard_arguments::<InvokeOutlineStandardArguments>(
         arguments,
-        default_limit_chars,
+        default_limit,
     )?;
 
     Ok(OutlineArguments {
-        limit_chars: required_positive_value(&resolution, ID_LIMIT_CHARS)?,
+        limit: required_positive_value(&resolution, ID_LIMIT)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
         options: options_from_resolution(&resolution),
     })
@@ -116,16 +114,14 @@ fn standardize_outline(
 
 fn standardize_read(
     arguments: &JsonValue,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<ReadArguments, AdapterError> {
-    let resolution = resolve_invoke_standard_arguments::<InvokeReadStandardArguments>(
-        arguments,
-        default_limit_chars,
-    )?;
+    let resolution =
+        resolve_invoke_standard_arguments::<InvokeReadStandardArguments>(arguments, default_limit)?;
 
     Ok(ReadArguments {
         ref_id: required_string_value(&resolution, ID_REF)?,
-        limit_chars: required_positive_value(&resolution, ID_LIMIT_CHARS)?,
+        limit: required_positive_value(&resolution, ID_LIMIT)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
         options: options_from_resolution(&resolution),
     })
@@ -133,16 +129,14 @@ fn standardize_read(
 
 fn standardize_find(
     arguments: &JsonValue,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<FindArguments, AdapterError> {
-    let resolution = resolve_invoke_standard_arguments::<InvokeFindStandardArguments>(
-        arguments,
-        default_limit_chars,
-    )?;
+    let resolution =
+        resolve_invoke_standard_arguments::<InvokeFindStandardArguments>(arguments, default_limit)?;
 
     Ok(FindArguments {
         query: required_string_value(&resolution, ID_QUERY)?,
-        limit_chars: required_positive_value(&resolution, ID_LIMIT_CHARS)?,
+        limit: required_positive_value(&resolution, ID_LIMIT)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
         options: options_from_resolution(&resolution),
     })
@@ -156,14 +150,14 @@ fn standardize_info(arguments: &JsonValue) -> Result<docnav_protocol::InfoArgume
 
 fn resolve_invoke_standard_arguments<P>(
     arguments: &JsonValue,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<StandardParameterResolution, AdapterError>
 where
     P: FieldDefs,
     P::DefinitionSet: AsRef<docnav_typed_fields::FieldDefSet>,
 {
     let fields = P::field_defs().map_err(field_defs_error)?;
-    let resolution = resolve_with_fields(&fields, arguments.clone(), default_limit_chars)?;
+    let resolution = resolve_with_fields(&fields, arguments.clone(), default_limit)?;
     first_validation_error(&resolution)?;
     Ok(resolution)
 }
@@ -171,7 +165,7 @@ where
 fn resolve_with_fields<D>(
     fields: &D,
     direct_input: JsonValue,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<StandardParameterResolution, AdapterError>
 where
     D: AsRef<docnav_typed_fields::FieldDefSet> + ?Sized,
@@ -179,7 +173,7 @@ where
     StandardParameterPipeline::new(fields)
         .with_direct_input_processing_id(DIRECT_PROCESSING)
         .with_config_processing_id(CONFIG_PROCESSING)
-        .with_dynamic_default(identity_key(ID_LIMIT_CHARS)?, json!(default_limit_chars))
+        .with_dynamic_default(identity_key(ID_LIMIT)?, json!(default_limit))
         .with_direct_input_passthrough_processing(native_options_processing()?)
         .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
         .resolve(direct_input)
@@ -222,7 +216,7 @@ fn validation_error(diagnostic: &StandardParameterValidationIssue) -> AdapterErr
 
 fn argument_field(identity: &str) -> &'static str {
     match identity {
-        ID_LIMIT_CHARS => "arguments.limit_chars",
+        ID_LIMIT => "arguments.limit",
         ID_PAGE => "arguments.page",
         ID_QUERY => "arguments.query",
         ID_REF => "arguments.ref",
@@ -232,7 +226,7 @@ fn argument_field(identity: &str) -> &'static str {
 
 fn validation_reason(identity: &str) -> &'static str {
     match identity {
-        ID_LIMIT_CHARS => "limit_chars must be a positive integer",
+        ID_LIMIT => "limit must be a positive integer",
         ID_PAGE => "page must be a positive integer",
         ID_QUERY => "query must not be empty",
         ID_REF => "ref must not be empty",

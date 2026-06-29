@@ -143,7 +143,7 @@ Existing smoke task: `MD-CONFIG-001`
 Code: `test/smoke/markdown/cases/config.ts`
 
 Proves:
-- `docnav-markdown` direct CLI 按显式 argv、项目级配置、用户级配置和内置默认值合并 `defaults.limit_chars`、`defaults.output` 与 `options.max_heading_level`。
+- `docnav-markdown` direct CLI 按显式 argv、项目级配置、用户级配置和内置默认值合并 `defaults.limit`、`defaults.output` 与 `options.max_heading_level`。
 - 配置路径覆盖替代默认路径，配置源不可用时继续合并其它来源并输出 `adapter_config_source_skipped` warning details。
 - document operation help 展示配置路径参数但不读取配置；`manifest` 和 `probe` 不执行 document operation 配置读取；`invoke` 不执行 adapter direct CLI argv parsing 或 help。
 
@@ -483,7 +483,7 @@ Code: `crates/docnav-adapter-sdk/src/direct/args/tests.rs`
 Proves:
 - direct adapter argv compatibility 保持 operation argument ownership。
 - unused 或 future flag 可以产生 warning，但不能静默改变 operation 的 required arguments。
-- Direct adapter document operations consume standard parameter resolution output for path/ref/query/page/limit_chars/output, while native options remain adapter-owned passthrough.
+- Direct adapter document operations consume standard parameter resolution output for path/ref/query/page/limit/output, while native options remain adapter-owned passthrough.
 
 ### WB-SDK-DIRECT-CONFIG-001 Direct adapter config sources 保持参数来源边界
 Status: implemented
@@ -491,7 +491,7 @@ Code: `crates/docnav-adapter-sdk/src/direct/config/tests.rs`
 
 Proves:
 - SDK direct CLI config source 规则从启动 cwd 解析项目级和用户级配置路径，支持覆盖路径，并在默认用户配置目录缺失时回退到启动 cwd。
-- 配置源读取只映射 `defaults.limit_chars`、`defaults.output` 和 `options` object；默认缺失源不 warning，不可用源产生 `adapter_config_source_skipped` 并继续合并其它来源。
+- 配置源读取只映射 `defaults.limit`、`defaults.output` 和 `options` object；默认缺失源不 warning，不可用源产生 `adapter_config_source_skipped` 并继续合并其它来源。
 - direct CLI 参数来源按显式 argv、项目级配置、用户级配置和内置默认值合并，并把不适用于当前 operation 的 config native option 保留为未映射配置条目供入口策略处理。
 
 ### WB-SDK-DIRECT-OUTPUT-001 Direct adapter document output 复用共享输出

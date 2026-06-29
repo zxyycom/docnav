@@ -4,17 +4,17 @@ use docnav_protocol::{Entry, PositiveInteger};
 pub fn paginate_text(
     content: &str,
     page: PositiveInteger,
-    limit_chars: PositiveInteger,
+    limit: PositiveInteger,
 ) -> (String, Option<PositiveInteger>) {
-    sdk_paging::paginate_text(content, page, limit_chars)
+    sdk_paging::paginate_text(content, page, limit)
 }
 
 pub fn paginate_entries(
     entries: &[Entry],
     page: PositiveInteger,
-    limit_chars: PositiveInteger,
+    limit: PositiveInteger,
 ) -> (Vec<Entry>, Option<PositiveInteger>) {
-    sdk_paging::paginate_entries(entries, page, limit_chars)
+    sdk_paging::paginate_entries(entries, page, limit)
 }
 
 #[cfg(test)]

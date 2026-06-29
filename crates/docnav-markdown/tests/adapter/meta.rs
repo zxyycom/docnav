@@ -58,7 +58,18 @@ fn info_returns_markdown_summary_and_capabilities() {
 
     let info = MarkdownAdapter.info(&request, &arguments).expect("info");
 
-    assert!(info.display.contains("text/markdown"));
+    assert_eq!(
+        info.document
+            .as_ref()
+            .and_then(|document| document.content_type.as_deref()),
+        Some("text/markdown")
+    );
+    assert_eq!(
+        info.adapter
+            .as_ref()
+            .and_then(|adapter| adapter.format.as_deref()),
+        Some("markdown")
+    );
     assert_eq!(
         info.capabilities,
         vec![

@@ -76,7 +76,7 @@ async function testMachineProtocolChain() {
     document: { path: normal },
     arguments: {
       ref,
-      limit_chars: 6000,
+      limit: 6000,
       page: 1
     }
   };

@@ -7,7 +7,7 @@ use docnav_adapter_sdk::{
 use docnav_protocol::Operation;
 
 use crate::adapter::{
-    MarkdownAdapter, DEFAULT_LIMIT_CHARS, DEFAULT_MAX_HEADING_LEVEL, MAX_HEADING_LEVEL_OPTION,
+    MarkdownAdapter, DEFAULT_LIMIT, DEFAULT_MAX_HEADING_LEVEL, MAX_HEADING_LEVEL_OPTION,
 };
 
 const REQUEST_ID: &str = "docnav-markdown-cli";
@@ -42,7 +42,7 @@ where
             program_name: "docnav-markdown",
             usage: USAGE,
             request_id: REQUEST_ID,
-            default_limit_chars: DEFAULT_LIMIT_CHARS,
+            default_limit: DEFAULT_LIMIT,
             default_user_config_dir: None,
             native_options: NATIVE_OPTIONS,
         },

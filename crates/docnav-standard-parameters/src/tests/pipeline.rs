@@ -24,7 +24,7 @@ fn pipeline_derives_catalog_from_field_defs_without_manual_catalog_assembly() {
     assert_eq!(output.value, TypedValue::String("readable-json".to_owned()));
 
     let limit = resolution
-        .value(&identity("docnav.defaults.limit_chars"))
+        .value(&identity("docnav.defaults.limit"))
         .unwrap();
     assert_eq!(
         limit.source,
@@ -54,13 +54,13 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
             missing_project.clone(),
         ))
         .with_user_config_path(user_config)
-        .with_dynamic_default(identity("docnav.defaults.limit_chars"), json!(500))
+        .with_dynamic_default(identity("docnav.defaults.limit"), json!(500))
         .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
         .resolve(json!({"native": {"shared": "direct"}}))
         .unwrap();
 
     let limit = resolution
-        .value(&identity("docnav.defaults.limit_chars"))
+        .value(&identity("docnav.defaults.limit"))
         .unwrap();
     assert_eq!(limit.value, TypedValue::Integer(500));
     assert_eq!(
@@ -169,7 +169,7 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
     let invalid_project = temp_file("pipeline-loaded-invalid-project.json", "{invalid");
     let user_config = temp_file(
         "pipeline-loaded-user.json",
-        r#"{"defaults": {"limit_chars": 700, "output": "readable-view"}}"#,
+        r#"{"defaults": {"limit": 700, "output": "readable-view"}}"#,
     );
     let loaded_project =
         load_standard_parameter_config_source(&StandardParameterConfigSourceDescriptor::new(
@@ -197,7 +197,7 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
         .unwrap();
 
     let limit = resolution
-        .value(&identity("docnav.defaults.limit_chars"))
+        .value(&identity("docnav.defaults.limit"))
         .unwrap();
     assert_eq!(limit.value, TypedValue::Integer(700));
     assert_eq!(

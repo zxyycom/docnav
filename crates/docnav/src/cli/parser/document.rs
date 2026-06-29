@@ -63,7 +63,7 @@ fn document_command_from_matches(
         ref_id: parse_ref_id(operation, matches),
         query: parse_query(operation, matches),
         page: parse_page(operation, matches)?,
-        limit_chars: parse_limit_chars(operation, matches)?,
+        limit: parse_limit(operation, matches)?,
         output: optional_explicit_output(matches)?,
         adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
     })
@@ -91,14 +91,14 @@ fn parse_page(
     optional_explicit_positive(matches, arg_ids::PAGE, flags::PAGE)
 }
 
-fn parse_limit_chars(
+fn parse_limit(
     operation: Operation,
     matches: &clap::parser::ArgMatches,
 ) -> AppResult<Option<docnav_protocol::PositiveInteger>> {
     if operation == Operation::Info {
         return Ok(None);
     }
-    optional_explicit_positive(matches, arg_ids::LIMIT_CHARS, flags::LIMIT_CHARS)
+    optional_explicit_positive(matches, arg_ids::LIMIT, flags::LIMIT)
 }
 
 fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
@@ -123,7 +123,7 @@ fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
 fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
     match flag {
         ValueFlag::Adapter | ValueFlag::Output => true,
-        ValueFlag::Page | ValueFlag::LimitChars => operation != Operation::Info,
+        ValueFlag::Page | ValueFlag::Limit => operation != Operation::Info,
         ValueFlag::Ref => operation == Operation::Read,
         ValueFlag::Query => operation == Operation::Find,
         ValueFlag::Operation | ValueFlag::Path => false,
@@ -199,7 +199,7 @@ fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
             "flag requires a value",
         )),
         (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
-        (ValueFlag::LimitChars, Some(value)) => positive_flag_error(flags::LIMIT_CHARS, value),
+        (ValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
         (ValueFlag::Output, Some(value)) => output_flag_error(value),
         (ValueFlag::Ref, Some("")) => Some(empty_value_error(flags::REF)),
         (ValueFlag::Query, Some("")) => Some(empty_value_error(flags::QUERY)),

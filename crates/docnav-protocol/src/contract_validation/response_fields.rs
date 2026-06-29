@@ -6,8 +6,8 @@ use docnav_typed_fields::{
 use super::enums::ProtocolErrorCode;
 use super::field_builders::{
     add_operation, add_protocol_version, add_request_id, bool_field, json_path,
-    non_empty_string_field, non_empty_unique_array, object_field, positive_int_field,
-    string_enum_field, string_field,
+    non_empty_string_field, non_empty_unique_array, non_negative_int_field, number_field,
+    object_field, positive_int_field, string_enum_field, string_field,
 };
 
 pub(super) fn response_common_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
@@ -137,7 +137,7 @@ pub(super) fn response_read_result_fields() -> Result<FieldDefSet, FieldDefSetBu
         )
         .field_with_declaration_path(
             ["result", "cost"],
-            non_empty_string_field("result.cost", ["result", "cost"]),
+            object_field("result.cost", ["result", "cost"]),
             ExpectedFieldShape::required(),
         )
         .field_with_declaration_path(
@@ -171,11 +171,6 @@ pub(super) fn response_find_result_fields() -> Result<FieldDefSet, FieldDefSetBu
 pub(super) fn response_info_result_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
         .field_with_declaration_path(
-            ["result", "display"],
-            non_empty_string_field("result.display", ["result", "display"]),
-            ExpectedFieldShape::required(),
-        )
-        .field_with_declaration_path(
             ["result", "capabilities"],
             FieldDef::builder("result.capabilities")
                 .process(
@@ -184,6 +179,21 @@ pub(super) fn response_info_result_fields() -> Result<FieldDefSet, FieldDefSetBu
                 )
                 .validation(non_empty_unique_array()),
             ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["result", "document"],
+            object_field("result.document", ["result", "document"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["result", "adapter"],
+            object_field("result.adapter", ["result", "adapter"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["result", "metadata"],
+            object_field("result.metadata", ["result", "metadata"]),
+            ExpectedFieldShape::optional(),
         )
         .build()
 }
@@ -196,9 +206,126 @@ pub(super) fn response_entry_fields() -> Result<FieldDefSet, FieldDefSetBuildErr
             ExpectedFieldShape::required(),
         )
         .field_with_declaration_path(
-            ["display"],
-            non_empty_string_field("entry.display", ["display"]),
+            ["label"],
+            non_empty_string_field("entry.label", ["label"]),
             ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["kind"],
+            non_empty_string_field("entry.kind", ["kind"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["location"],
+            object_field("entry.location", ["location"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["summary"],
+            string_field("entry.summary", ["summary"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["excerpt"],
+            string_field("entry.excerpt", ["excerpt"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["rank"],
+            number_field("entry.rank", ["rank"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["cost"],
+            object_field("entry.cost", ["cost"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["metadata"],
+            object_field("entry.metadata", ["metadata"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn response_location_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["line_start"],
+            positive_int_field("location.line_start", ["line_start"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["line_end"],
+            positive_int_field("location.line_end", ["line_end"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn response_cost_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["measurements"],
+            FieldDef::builder("cost.measurements")
+                .process(super::JSON_CONTRACT_PROCESSING, json_path(["measurements"]))
+                .validation(non_empty_unique_array()),
+            ExpectedFieldShape::required(),
+        )
+        .build()
+}
+
+pub(super) fn response_measurement_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["unit"],
+            non_empty_string_field("measurement.unit", ["unit"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["value"],
+            non_negative_int_field("measurement.value", ["value"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["scope"],
+            non_empty_string_field("measurement.scope", ["scope"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn response_info_document_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["content_type"],
+            non_empty_string_field("info.document.content_type", ["content_type"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["encoding"],
+            non_empty_string_field("info.document.encoding", ["encoding"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["size"],
+            object_field("info.document.size", ["size"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn response_info_adapter_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["id"],
+            non_empty_string_field("info.adapter.id", ["id"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["format"],
+            non_empty_string_field("info.adapter.format", ["format"]),
+            ExpectedFieldShape::optional(),
         )
         .build()
 }

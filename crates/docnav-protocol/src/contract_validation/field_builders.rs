@@ -119,6 +119,24 @@ pub(super) fn positive_int_field(
         .validation(FieldValidation::int().min(FieldBound::closed(1)))
 }
 
+pub(super) fn non_negative_int_field(
+    identity: &str,
+    path: impl IntoIterator<Item = &'static str>,
+) -> docnav_typed_fields::FieldDefBuilder<i64> {
+    FieldDef::builder(identity)
+        .process(JSON_CONTRACT_PROCESSING, json_path(path))
+        .validation(FieldValidation::int().min(FieldBound::closed(0)))
+}
+
+pub(super) fn number_field(
+    identity: &str,
+    path: impl IntoIterator<Item = &'static str>,
+) -> docnav_typed_fields::FieldDefBuilder<f64> {
+    FieldDef::builder(identity)
+        .process(JSON_CONTRACT_PROCESSING, json_path(path))
+        .validation(FieldValidation::num())
+}
+
 pub(super) fn non_empty_array_field(
     identity: &str,
     path: impl IntoIterator<Item = &'static str>,

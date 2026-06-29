@@ -136,8 +136,8 @@ fn request_info_argument_fields() -> Result<FieldDefSet, FieldDefSetBuildError> 
 fn add_common_argument_fields(builder: FieldDefSetBuilder) -> FieldDefSetBuilder {
     builder
         .field_with_declaration_path(
-            ["arguments", "limit_chars"],
-            positive_int_field("arguments.limit_chars", ["arguments", "limit_chars"]),
+            ["arguments", "limit"],
+            positive_int_field("arguments.limit", ["arguments", "limit"]),
             ExpectedFieldShape::optional(),
         )
         .field_with_declaration_path(

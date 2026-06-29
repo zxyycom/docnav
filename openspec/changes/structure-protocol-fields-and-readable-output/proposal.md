@@ -1,17 +1,17 @@
-本 change 定义 Docnav 协议字段结构化方案，并同步定义 readable 输出如何组织这些结构化事实。
-
-## 背景
+## Why
 
 当前 raw protocol 中仍有多类机器事实压缩在展示字符串里：
 
-- `limit_chars` 把分页预算命名为字符预算，无法承接 adapter-owned numeric budget。
+- `limit` 把分页预算命名为字符预算，无法承接 adapter-owned numeric budget。
 - `cost` 使用 `7 lines | 0.1 KB` 这类展示文本，调用方无法稳定读取 measurement。
 - outline/find/info 的 `display` 同时承载 label、location、summary、encoding、size 等事实。
 - protocol/readable error 和 warning 的 `details` 已有结构来源，但 schema 与文档对字段类型、必需/可选字段和投影归属约束不够集中。
 
 这些字段会直接影响 `configure-pagination-defaults` 和 `use-token-based-document-cost`，也会影响后续 adapter、schema、example 和 readable renderer 的稳定契约。
 
-## 变更内容
+## What Changes
+
+本 change 定义 Docnav 协议字段结构化方案，并同步定义 readable 输出如何组织这些结构化事实。
 
 - Protocol request 硬切换为 canonical `limit`；新 schema、examples、typed arguments 和 renderer input 都使用 `limit`。
 - Protocol result 使用结构化 `cost.measurements[]`，readable 输出负责生成成本摘要文本。
@@ -29,7 +29,7 @@
 
 - `docnav-contracts`: 定义 structured protocol fields、diagnostic projections 和 readable output organization 的跨层契约。
 
-## 影响范围
+## Impact
 
 - Protocol request/response schema、examples 和 `crates/docnav-protocol` 类型会发生可观察字段变化。
 - Diagnostics projection、protocol error schema、readable warning schema 和示例需要对齐 details shape。

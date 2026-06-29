@@ -4,12 +4,26 @@
   "operation": "info",
   "ok": true,
   "result": {
-    "display": "Markdown | UTF-8 | 188 B",
     "capabilities": [
       "outline",
       "read",
       "find",
       "info"
-    ]
+    ],
+    "document": {
+      "content_type": "text/markdown",
+      "encoding": "utf-8",
+      "size": {
+        "unit": "bytes",
+        "value": 188
+      }
+    },
+    "adapter": {
+      "id": "docnav-markdown",
+      "format": "markdown"
+    },
+    "metadata": {
+      "heading_count": 4
+    }
   }
 }

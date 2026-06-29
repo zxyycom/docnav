@@ -21,11 +21,11 @@ mod definitions;
 mod tests;
 
 use ids::{
-    ADAPTER as ID_ADAPTER, LIMIT_CHARS as ID_LIMIT_CHARS, OUTPUT as ID_OUTPUT, PAGE as ID_PAGE,
+    ADAPTER as ID_ADAPTER, LIMIT as ID_LIMIT, OUTPUT as ID_OUTPUT, PAGE as ID_PAGE,
     PATH as ID_PATH, QUERY as ID_QUERY, REF as ID_REF,
 };
 
-pub(crate) const DEFAULT_LIMIT_CHARS_TEXT: &str = "6000";
+pub(crate) const DEFAULT_LIMIT_TEXT: &str = "6000";
 pub(crate) const DEFAULT_OUTPUT_TEXT: &str = "readable-view";
 pub(crate) const DEFAULT_PAGE_TEXT: &str = "1";
 
@@ -44,7 +44,7 @@ pub(crate) struct ResolvedCoreDocumentParameters {
     pub(crate) ref_id: Option<String>,
     pub(crate) query: Option<String>,
     pub(crate) page: Option<PositiveInteger>,
-    pub(crate) limit_chars: Option<PositiveInteger>,
+    pub(crate) limit: Option<PositiveInteger>,
     pub(crate) output: OutputMode,
     pub(crate) adapter: Option<String>,
     pub(crate) defaults: ResolvedDocumentDefaults,
@@ -68,7 +68,7 @@ fn resolved_core_document_parameters_from_resolution(
         ref_id: optional_string_value(resolution, ID_REF)?,
         query: optional_string_value(resolution, ID_QUERY)?,
         page: optional_document_positive(operation, resolution, ID_PAGE)?,
-        limit_chars: optional_document_positive(operation, resolution, ID_LIMIT_CHARS)?,
+        limit: optional_document_positive(operation, resolution, ID_LIMIT)?,
         output: required_output_value(resolution)?,
         adapter: optional_string_value(resolution, ID_ADAPTER)?,
         defaults: resolved_document_defaults(operation, resolution)?,
@@ -92,7 +92,7 @@ fn resolved_document_defaults(
 ) -> AppResult<ResolvedDocumentDefaults> {
     Ok(ResolvedDocumentDefaults {
         adapter: resolved_value(resolution, ID_ADAPTER).unwrap_or_else(ResolvedValue::unset),
-        limit_chars: optional_document_resolved_value(operation, resolution, ID_LIMIT_CHARS)?,
+        limit: optional_document_resolved_value(operation, resolution, ID_LIMIT)?,
         output: required_resolved_value(resolution, ID_OUTPUT)?,
         page: optional_document_resolved_value(operation, resolution, ID_PAGE)?,
     })
@@ -131,7 +131,7 @@ fn validation_error(diagnostic: &StandardParameterValidationIssue) -> AppError {
 fn field_label(identity: &str) -> &'static str {
     match identity {
         ID_ADAPTER => "--adapter",
-        ID_LIMIT_CHARS => "--limit-chars",
+        ID_LIMIT => "--limit",
         ID_OUTPUT => "--output",
         ID_PAGE => "--page",
         ID_PATH => "path",
@@ -143,7 +143,7 @@ fn field_label(identity: &str) -> &'static str {
 
 fn validation_reason(identity: &str) -> String {
     match identity {
-        ID_LIMIT_CHARS => "--limit-chars must be a positive integer".to_owned(),
+        ID_LIMIT => "--limit must be a positive integer".to_owned(),
         ID_OUTPUT => format!(
             "invalid --output: accepted values: {}",
             OutputMode::ACCEPTED_VALUES.join(", ")

@@ -54,23 +54,18 @@ fn make_request(
     }
 }
 
-fn outline_args(limit_chars: u32, page: u32, max_heading_level: Option<u8>) -> OutlineArguments {
+fn outline_args(limit: u32, page: u32, max_heading_level: Option<u8>) -> OutlineArguments {
     OutlineArguments {
-        limit_chars: positive(limit_chars),
+        limit: positive(limit),
         page: positive(page),
         options: max_heading_level.map(max_heading_level_options),
     }
 }
 
-fn find_args(
-    query: &str,
-    limit_chars: u32,
-    page: u32,
-    max_heading_level: Option<u8>,
-) -> FindArguments {
+fn find_args(query: &str, limit: u32, page: u32, max_heading_level: Option<u8>) -> FindArguments {
     FindArguments {
         query: query.to_owned(),
-        limit_chars: positive(limit_chars),
+        limit: positive(limit),
         page: positive(page),
         options: max_heading_level.map(max_heading_level_options),
     }
@@ -114,7 +109,7 @@ fn entry_refs(entries: &[docnav_protocol::Entry]) -> Vec<&str> {
 fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
-        limit_chars: positive(6000),
+        limit: positive(6000),
         page: positive(1),
         options: None,
     };
@@ -131,7 +126,7 @@ fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {
 fn read_ref_error(path: &Path, ref_id: &str) -> ProtocolError {
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
-        limit_chars: positive(6000),
+        limit: positive(6000),
         page: positive(1),
         options: None,
     };

@@ -65,7 +65,7 @@ fn operation_request(
     let path = options.path.clone();
     let arguments = match operation {
         Operation::Outline => OperationArguments::Outline(OutlineArguments {
-            limit_chars: options.limit_chars,
+            limit: options.limit,
             page: options.page,
             options: options.protocol_options(),
         }),
@@ -75,7 +75,7 @@ fn operation_request(
             };
             OperationArguments::Read(ReadArguments {
                 ref_id,
-                limit_chars: options.limit_chars,
+                limit: options.limit,
                 page: options.page,
                 options: options.protocol_options(),
             })
@@ -86,7 +86,7 @@ fn operation_request(
             };
             OperationArguments::Find(FindArguments {
                 query,
-                limit_chars: options.limit_chars,
+                limit: options.limit,
                 page: options.page,
                 options: options.protocol_options(),
             })

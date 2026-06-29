@@ -107,7 +107,7 @@ pub struct DocumentCommand {
     pub ref_id: Option<String>,
     pub query: Option<String>,
     pub page: Option<PositiveInteger>,
-    pub limit_chars: Option<PositiveInteger>,
+    pub limit: Option<PositiveInteger>,
     pub output: Option<OutputMode>,
     pub adapter: Option<String>,
 }

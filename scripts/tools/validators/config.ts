@@ -117,7 +117,7 @@ export const FIELDS = {
   extensions: "extensions",
   formats: "formats",
   id: "id",
-  limitChars: "limit_chars",
+  limit: "limit",
   manifestVersion: "manifest_version",
   matches: "matches",
   ok: "ok",

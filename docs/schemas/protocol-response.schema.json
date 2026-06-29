@@ -22,16 +22,94 @@
       "type": "object",
       "required": [
         "ref",
-        "display"
+        "label"
       ],
       "properties": {
         "ref": {
           "type": "string",
           "minLength": 1
         },
-        "display": {
+        "label": {
           "type": "string",
           "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "rank": {
+          "type": "number"
+        },
+        "cost": {
+          "$ref": "#/$defs/cost"
+        },
+        "metadata": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "location": {
+      "type": "object",
+      "required": [
+        "line_start"
+      ],
+      "properties": {
+        "line_start": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "line_end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "measurement": {
+      "type": "object",
+      "required": [
+        "unit",
+        "value"
+      ],
+      "properties": {
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "cost": {
+      "type": "object",
+      "required": [
+        "measurements"
+      ],
+      "properties": {
+        "measurements": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/measurement"
+          }
         }
       },
       "additionalProperties": false
@@ -84,8 +162,7 @@
           "minLength": 1
         },
         "cost": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/cost"
         },
         "page": {
           "$ref": "#/$defs/page"
@@ -115,20 +192,50 @@
     "infoResult": {
       "type": "object",
       "required": [
-        "display",
         "capabilities"
       ],
       "properties": {
-        "display": {
-          "type": "string",
-          "minLength": 1
-        },
         "capabilities": {
           "type": "array",
+          "minItems": 1,
           "items": {
             "$ref": "#/$defs/operation"
           },
           "uniqueItems": true
+        },
+        "document": {
+          "type": "object",
+          "properties": {
+            "content_type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "encoding": {
+              "type": "string",
+              "minLength": 1
+            },
+            "size": {
+              "$ref": "#/$defs/measurement"
+            }
+          },
+          "additionalProperties": false
+        },
+        "adapter": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "format": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "metadata": {
+          "type": "object"
         }
       },
       "additionalProperties": false

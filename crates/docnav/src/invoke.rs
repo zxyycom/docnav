@@ -89,7 +89,7 @@ fn operation_arguments(request: &DocumentRequest) -> AppResult<OperationArgument
 
 fn outline_arguments(request: &DocumentRequest) -> AppResult<OutlineArguments> {
     Ok(OutlineArguments {
-        limit_chars: required_limit_chars(request, "outline")?,
+        limit: required_limit(request, "outline")?,
         page: required_page(request, "outline")?,
         options: None,
     })
@@ -98,7 +98,7 @@ fn outline_arguments(request: &DocumentRequest) -> AppResult<OutlineArguments> {
 fn read_arguments(request: &DocumentRequest) -> AppResult<ReadArguments> {
     Ok(ReadArguments {
         ref_id: required_ref_id(request)?,
-        limit_chars: required_limit_chars(request, "read")?,
+        limit: required_limit(request, "read")?,
         page: required_page(request, "read")?,
         options: None,
     })
@@ -107,7 +107,7 @@ fn read_arguments(request: &DocumentRequest) -> AppResult<ReadArguments> {
 fn find_arguments(request: &DocumentRequest) -> AppResult<FindArguments> {
     Ok(FindArguments {
         query: required_query(request)?,
-        limit_chars: required_limit_chars(request, "find")?,
+        limit: required_limit(request, "find")?,
         page: required_page(request, "find")?,
         options: None,
     })
@@ -117,10 +117,10 @@ fn info_arguments() -> InfoArguments {
     InfoArguments { options: None }
 }
 
-fn required_limit_chars(request: &DocumentRequest, operation: &str) -> AppResult<PositiveInteger> {
+fn required_limit(request: &DocumentRequest, operation: &str) -> AppResult<PositiveInteger> {
     request
-        .limit_chars
-        .ok_or_else(|| missing_argument("limit_chars", operation, "limit_chars"))
+        .limit
+        .ok_or_else(|| missing_argument("limit", operation, "limit"))
 }
 
 fn required_page(request: &DocumentRequest, operation: &str) -> AppResult<PositiveInteger> {

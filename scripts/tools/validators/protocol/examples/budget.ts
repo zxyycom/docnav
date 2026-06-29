@@ -8,7 +8,7 @@ export function validateExampleBudget(
   result: Record<string, unknown>,
 ): void {
   const requestArgs = jsonObject(request[FIELDS.arguments], `${operation} request arguments`);
-  const limit = requestArgs[FIELDS.limitChars];
+  const limit = requestArgs[FIELDS.limit];
   if (typeof limit !== "number") {
     return;
   }
@@ -18,7 +18,7 @@ export function validateExampleBudget(
     assert(typeof content === "string", `${operation} content must be a string`);
     assert(
       codePointLength(content) <= limit,
-      `${operation} content exceeds limit_chars in example`,
+      `${operation} content exceeds limit in example`,
     );
     return;
   }
@@ -30,16 +30,16 @@ export function validateExampleBudget(
   const recordSizes = records.map((record, index) => {
     const recordObject = jsonObject(record, `${operation} record ${index}`);
     const ref = recordObject[FIELDS.ref];
-    const display = recordObject[FIELDS.display];
+    const label = recordObject["label"];
     assert(typeof ref === "string", `${operation} record ${index} ref must be a string`);
-    assert(typeof display === "string", `${operation} record ${index} display must be a string`);
+    assert(typeof label === "string", `${operation} record ${index} label must be a string`);
     return {
       ref: codePointLength(ref),
-      display: codePointLength(display),
+      label: codePointLength(label),
     };
   });
   const totalChars = recordSizes.reduce(
-    (sum, record) => sum + record.ref + record.display,
+    (sum, record) => sum + record.ref + record.label,
     0,
   );
   if (totalChars <= limit) {
@@ -51,10 +51,10 @@ export function validateExampleBudget(
   );
   assert(
     records.length === 1 && oversizedRefRecords.length === 1,
-    `${operation} ref + display exceeds limit_chars in example without single oversized ref exception`,
+    `${operation} ref + label exceeds limit in example without single oversized ref exception`,
   );
   assert(
-    recordSizes[0].display > 0 && recordSizes[0].display <= limit,
-    `${operation} oversized ref example display must be readable and fit limit_chars`,
+    recordSizes[0].label > 0 && recordSizes[0].label <= limit,
+    `${operation} oversized ref example label must be readable and fit limit`,
   );
 }

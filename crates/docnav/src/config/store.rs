@@ -67,8 +67,8 @@ fn validate_config(config: &CoreConfig, path: &Path) -> AppResult<()> {
             ));
         }
     }
-    if let Some(limit_chars) = config.defaults.limit_chars {
-        validate_positive_key("defaults.limit_chars", limit_chars)?;
+    if let Some(limit) = config.defaults.limit {
+        validate_positive_key("defaults.limit", limit)?;
     }
     validate_output_key("defaults.output", &config.defaults.output, path)?;
     Ok(())

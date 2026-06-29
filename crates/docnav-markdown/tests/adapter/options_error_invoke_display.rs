@@ -5,7 +5,7 @@ use super::*;
 fn adapter_owned_options_shape_outline_and_find_granularity() {
     let path = write_doc("adapter-owned-options.md", "# Top\n\n#### Deep\nneedle\n");
     let default_outline = OutlineArguments {
-        limit_chars: positive(6000),
+        limit: positive(6000),
         page: positive(1),
         options: None,
     };
@@ -22,7 +22,7 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
 
     let default_find = FindArguments {
         query: "needle".to_owned(),
-        limit_chars: positive(6000),
+        limit: positive(6000),
         page: positive(1),
         options: None,
     };
@@ -88,21 +88,20 @@ fn invoke_writes_protocol_envelope() {
 
 // @case WB-MD-DISPLAY-001
 #[test]
-fn outline_display_includes_heading_title() {
+fn outline_entries_include_heading_title() {
     let path = write_doc("display.md", "# Installation Guide\n\n## Setup\nBody\n");
     let arguments = outline_args(6000, 1, None);
     let result = outline_result(&path, &arguments);
 
     assert_eq!(result.entries.len(), 2);
-    // display 包含 heading title
-    assert!(result.entries[0].display.contains("Installation Guide"));
-    assert!(result.entries[1].display.contains("Setup"));
+    assert_eq!(result.entries[0].label, "Installation Guide");
+    assert_eq!(result.entries[1].label, "Setup");
     // ref 不包含 title
     assert!(!result.entries[0].ref_id.contains("Installation"));
 }
 
 #[test]
-fn find_display_contains_match_snippet() {
+fn find_entry_contains_match_snippet() {
     let path = write_doc(
         "find-display.md",
         "# Top\nfind this needle here\n## Other\nmore text\n",
@@ -111,8 +110,7 @@ fn find_display_contains_match_snippet() {
     let result = find_result(&path, &arguments);
 
     assert_eq!(result.matches.len(), 1);
-    // find display 保留匹配片段
-    assert!(result.matches[0].display.contains("needle"));
-    // ref 不受 display 内容影响
+    assert!(result.matches[0].label.contains("needle"));
+    // ref 不受 label 内容影响
     assert_canonical_ref(&result.matches[0].ref_id);
 }

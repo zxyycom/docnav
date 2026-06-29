@@ -5,12 +5,12 @@ pub(super) fn help_text(
     args: &[String],
     program_name: &'static str,
     native_options: &[NativeOptionSpec],
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Option<String> {
     if !args.iter().any(|arg| arg == "--help" || arg == "-h") {
         return None;
     }
-    let mut root = direct_cli_command(program_name, native_options, default_limit_chars);
+    let mut root = direct_cli_command(program_name, native_options, default_limit);
     let Some(first) = args.first().map(String::as_str) else {
         return Some(root.render_long_help().to_string());
     };
@@ -26,9 +26,9 @@ pub(super) fn is_known_command(
     command: &str,
     program_name: &'static str,
     native_options: &[NativeOptionSpec],
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> bool {
-    direct_cli_command(program_name, native_options, default_limit_chars)
+    direct_cli_command(program_name, native_options, default_limit)
         .find_subcommand(command)
         .is_some()
 }

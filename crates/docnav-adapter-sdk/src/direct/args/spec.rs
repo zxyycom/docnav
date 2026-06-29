@@ -7,7 +7,7 @@ use super::super::output::DirectOutputMode;
 
 // 直接 CLI flag 来自 CLI/adapter-contract 主规范；只在 SDK direct CLI 边界解析使用。
 pub(in crate::direct::args) mod flags {
-    pub(in crate::direct::args) const LIMIT_CHARS: &str = "--limit-chars";
+    pub(in crate::direct::args) const LIMIT: &str = "--limit";
     pub(in crate::direct::args) const OUTPUT: &str = "--output";
     pub(in crate::direct::args) const PAGE: &str = "--page";
     pub(in crate::direct::args) const PROJECT_CONFIG_PATH: &str = "--project-config-path";
@@ -17,7 +17,7 @@ pub(in crate::direct::args) mod flags {
 }
 
 pub(in crate::direct::args) mod arg_ids {
-    pub(in crate::direct::args) const LIMIT_CHARS: &str = "limit_chars";
+    pub(in crate::direct::args) const LIMIT: &str = "limit";
     pub(in crate::direct::args) const OUTPUT: &str = "output";
     pub(in crate::direct::args) const PAGE: &str = "page";
     pub(in crate::direct::args) const PATH: &str = "path";
@@ -38,8 +38,8 @@ pub(in crate::direct) mod command_names {
 }
 
 mod defaults {
-    pub(super) const LIMIT_CHARS: &str = super::super::standard::DEFAULT_LIMIT_CHARS_TEXT;
-    pub(super) const LIMIT_CHARS_VALUE: u32 = 6000;
+    pub(super) const LIMIT: &str = super::super::standard::DEFAULT_LIMIT_TEXT;
+    pub(super) const LIMIT_VALUE: u32 = 6000;
     pub(super) const OUTPUT: &str = super::super::standard::DEFAULT_OUTPUT_TEXT;
     pub(super) const PAGE: &str = super::super::standard::DEFAULT_PAGE_TEXT;
     pub(super) const PROTOCOL_OUTPUT: &str = super::super::standard::DEFAULT_PROTOCOL_OUTPUT_TEXT;
@@ -67,7 +67,7 @@ pub(in crate::direct::args) mod input_errors {
 pub(in crate::direct) fn direct_cli_command(
     program_name: &'static str,
     native_options: &[NativeOptionSpec],
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Command {
     Command::new(program_name)
         .about("Docnav adapter direct CLI")
@@ -84,25 +84,25 @@ pub(in crate::direct) fn direct_cli_command(
             Operation::Outline,
             "Return compact document outline entries",
             native_options,
-            default_limit_chars,
+            default_limit,
         ))
         .subcommand(operation_command(
             Operation::Read,
             "Read a document region by adapter ref",
             native_options,
-            default_limit_chars,
+            default_limit,
         ))
         .subcommand(operation_command(
             Operation::Find,
             "Find matching document regions",
             native_options,
-            default_limit_chars,
+            default_limit,
         ))
         .subcommand(operation_command(
             Operation::Info,
             "Return adapter document summary",
             native_options,
-            default_limit_chars,
+            default_limit,
         ))
 }
 
@@ -124,7 +124,7 @@ pub(in crate::direct::args) fn operation_command(
     operation: Operation,
     about: &'static str,
     native_options: &[NativeOptionSpec],
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Command {
     let mut command = Command::new(operation_name(operation))
         .about(about)
@@ -134,9 +134,7 @@ pub(in crate::direct::args) fn operation_command(
         .arg(user_config_path_arg());
 
     if operation != Operation::Info {
-        command = command
-            .arg(page_arg())
-            .arg(limit_chars_arg(default_limit_chars));
+        command = command.arg(page_arg()).arg(limit_arg(default_limit));
     }
     if operation == Operation::Read {
         command = command.arg(ref_arg());
@@ -170,15 +168,15 @@ fn page_arg() -> Arg {
         .value_parser(clap::value_parser!(u32))
 }
 
-fn limit_chars_arg(default_limit_chars: u32) -> Arg {
-    let arg = Arg::new(arg_ids::LIMIT_CHARS)
-        .long("limit-chars")
+fn limit_arg(default_limit: u32) -> Arg {
+    let arg = Arg::new(arg_ids::LIMIT)
+        .long("limit")
         .value_name("positive integer")
         .num_args(1)
         .allow_hyphen_values(true)
         .value_parser(clap::value_parser!(u32));
-    if default_limit_chars == defaults::LIMIT_CHARS_VALUE {
-        arg.default_value(defaults::LIMIT_CHARS)
+    if default_limit == defaults::LIMIT_VALUE {
+        arg.default_value(defaults::LIMIT)
     } else {
         arg.help("positive integer; default: adapter configured value")
     }

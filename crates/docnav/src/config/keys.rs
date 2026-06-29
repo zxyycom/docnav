@@ -9,7 +9,7 @@ use crate::error::{AppError, AppResult};
 use crate::project_paths::path_to_slash;
 
 use super::model::{
-    ConfigContext, ConfigSource, CoreConfig, ResolvedValue, DEFAULT_LIMIT_CHARS, DEFAULT_OUTPUT,
+    ConfigContext, ConfigSource, CoreConfig, ResolvedValue, DEFAULT_LIMIT, DEFAULT_OUTPUT,
     SUPPORTED_KEYS,
 };
 
@@ -26,22 +26,22 @@ pub fn resolve_adapter(explicit: Option<&str>, context: &ConfigContext) -> Resol
     ResolvedValue::unset()
 }
 
-pub fn resolve_limit_chars(
+pub fn resolve_limit(
     explicit: Option<docnav_protocol::PositiveInteger>,
     context: &ConfigContext,
 ) -> AppResult<ResolvedValue> {
-    if let Some(limit_chars) = explicit {
-        return Ok(ResolvedValue::explicit(json!(limit_chars.get())));
+    if let Some(limit) = explicit {
+        return Ok(ResolvedValue::explicit(json!(limit.get())));
     }
-    if let Some(limit_chars) = context.project_config.defaults.limit_chars {
-        validate_positive_key("defaults.limit_chars", limit_chars)?;
-        return Ok(ResolvedValue::project(json!(limit_chars)));
+    if let Some(limit) = context.project_config.defaults.limit {
+        validate_positive_key("defaults.limit", limit)?;
+        return Ok(ResolvedValue::project(json!(limit)));
     }
-    if let Some(limit_chars) = context.user_config.defaults.limit_chars {
-        validate_positive_key("defaults.limit_chars", limit_chars)?;
-        return Ok(ResolvedValue::user(json!(limit_chars)));
+    if let Some(limit) = context.user_config.defaults.limit {
+        validate_positive_key("defaults.limit", limit)?;
+        return Ok(ResolvedValue::user(json!(limit)));
     }
-    Ok(ResolvedValue::built_in(json!(DEFAULT_LIMIT_CHARS)))
+    Ok(ResolvedValue::built_in(json!(DEFAULT_LIMIT)))
 }
 
 pub fn resolve_output(
@@ -102,7 +102,7 @@ pub(super) fn effective_values(context: &ConfigContext) -> AppResult<Vec<Value>>
 pub(super) fn effective_key_value(key: &str, context: &ConfigContext) -> AppResult<ResolvedValue> {
     match key {
         "defaults.adapter" => Ok(resolve_adapter(None, context)),
-        "defaults.limit_chars" => resolve_limit_chars(None, context),
+        "defaults.limit" => resolve_limit(None, context),
         "defaults.output" => resolve_output(None, context),
         _ => Err(unknown_key(key)),
     }
@@ -120,9 +120,9 @@ pub(super) fn scoped_key_value(
             .as_ref()
             .map(|value| ResolvedValue::new(json!(value), source.clone()))
             .unwrap_or_else(ResolvedValue::unset)),
-        "defaults.limit_chars" => Ok(config
+        "defaults.limit" => Ok(config
             .defaults
-            .limit_chars
+            .limit
             .map(|value| ResolvedValue::new(json!(value), source.clone()))
             .unwrap_or_else(ResolvedValue::unset)),
         "defaults.output" => Ok(config
@@ -151,12 +151,12 @@ pub(super) fn set_key(
             }
             config.defaults.adapter = Some(value.to_owned());
         }
-        "defaults.limit_chars" => {
-            let limit_chars = value.parse::<u32>().map_err(|_| {
-                AppError::invalid_request(key, "defaults.limit_chars must be a positive integer")
+        "defaults.limit" => {
+            let limit = value.parse::<u32>().map_err(|_| {
+                AppError::invalid_request(key, "defaults.limit must be a positive integer")
             })?;
-            validate_positive_key(key, limit_chars)?;
-            config.defaults.limit_chars = Some(limit_chars);
+            validate_positive_key(key, limit)?;
+            config.defaults.limit = Some(limit);
         }
         "defaults.output" => {
             let output = match config_path {
@@ -175,7 +175,7 @@ pub(super) fn set_key(
 pub(super) fn unset_key(config: &mut CoreConfig, key: &str) -> AppResult<()> {
     match key {
         "defaults.adapter" => config.defaults.adapter = None,
-        "defaults.limit_chars" => config.defaults.limit_chars = None,
+        "defaults.limit" => config.defaults.limit = None,
         "defaults.output" => config.defaults.output = None,
         _ => return Err(unknown_key(key)),
     }
@@ -190,9 +190,9 @@ pub(super) fn config_value_to_json(key: &str, config: &CoreConfig) -> AppResult<
             .as_ref()
             .map(|value| json!(value))
             .unwrap_or(Value::Null),
-        "defaults.limit_chars" => config
+        "defaults.limit" => config
             .defaults
-            .limit_chars
+            .limit
             .map(|value| json!(value))
             .unwrap_or(Value::Null),
         "defaults.output" => config

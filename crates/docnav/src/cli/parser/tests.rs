@@ -215,7 +215,7 @@ fn unused_known_argument_value_is_not_eagerly_typed() {
             assert_eq!(command.operation, Operation::Info);
             assert_eq!(command.output, Some(OutputMode::ReadableJson));
             assert!(command.page.is_none());
-            assert!(command.limit_chars.is_none());
+            assert!(command.limit.is_none());
         }
         command => panic!("expected document command, got {command:?}"),
     }

@@ -9,7 +9,7 @@ use serde_json::{json, Map, Value};
 use super::super::native_options::{NativeOptionDefault, NativeOptionSpec};
 use super::super::warnings::DirectCliWarning;
 use super::spec::flags;
-use super::standard::{ID_LIMIT_CHARS, ID_OUTPUT, ID_PAGE, ID_PATH, ID_QUERY, ID_REF};
+use super::standard::{ID_LIMIT, ID_OUTPUT, ID_PAGE, ID_PATH, ID_QUERY, ID_REF};
 
 pub(super) fn resolved_page(
     operation: Operation,
@@ -22,18 +22,18 @@ pub(super) fn resolved_page(
     required_positive_value(resolution, ID_PAGE, flags::PAGE)
 }
 
-pub(super) fn resolved_limit_chars(
+pub(super) fn resolved_limit(
     operation: Operation,
     resolution: &StandardParameterResolution,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> Result<Value, String> {
     if operation == Operation::Info {
-        return Ok(Value::from(default_limit_chars));
+        return Ok(Value::from(default_limit));
     }
     Ok(json!(required_positive_value(
         resolution,
-        ID_LIMIT_CHARS,
-        flags::LIMIT_CHARS
+        ID_LIMIT,
+        flags::LIMIT
     )?
     .get()))
 }
@@ -152,7 +152,7 @@ fn passthrough_from_source(
 
 fn validation_message(diagnostic: &StandardParameterValidationIssue) -> String {
     match diagnostic.identity.as_str() {
-        ID_LIMIT_CHARS => format!("{} must be a positive integer", flags::LIMIT_CHARS),
+        ID_LIMIT => format!("{} must be a positive integer", flags::LIMIT),
         ID_OUTPUT => format!("invalid {}", flags::OUTPUT),
         ID_PAGE => format!("{} must be a positive integer", flags::PAGE),
         ID_PATH => "path value must not be empty".to_owned(),

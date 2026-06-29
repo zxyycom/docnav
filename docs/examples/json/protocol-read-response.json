@@ -7,7 +7,20 @@
     "ref": "H:L4:H2",
     "content": "## Install\nPrimary installation instructions.\n\n### Windows\nRun s",
     "content_type": "text/markdown",
-    "cost": "7 lines | 0.1 KB",
+    "cost": {
+      "measurements": [
+        {
+          "unit": "lines",
+          "value": 7,
+          "scope": "selection"
+        },
+        {
+          "unit": "bytes",
+          "value": 100,
+          "scope": "selection"
+        }
+      ]
+    },
     "page": 2
   }
 }

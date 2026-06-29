@@ -43,7 +43,7 @@ impl LooseArgContext<'_> {
 #[derive(Clone, Copy)]
 pub(super) enum KnownValueFlag<'a> {
     Page,
-    LimitChars,
+    Limit,
     ProjectConfigPath,
     Ref,
     Query,
@@ -59,7 +59,7 @@ pub(super) fn known_value_flag<'a>(
     let (flag, _value) = split_equals(token);
     match flag {
         flags::PAGE => Some(KnownValueFlag::Page),
-        flags::LIMIT_CHARS => Some(KnownValueFlag::LimitChars),
+        flags::LIMIT => Some(KnownValueFlag::Limit),
         flags::PROJECT_CONFIG_PATH => Some(KnownValueFlag::ProjectConfigPath),
         flags::REF => Some(KnownValueFlag::Ref),
         flags::QUERY => Some(KnownValueFlag::Query),
@@ -74,7 +74,7 @@ pub(super) fn known_value_flag<'a>(
 
 pub(super) fn operation_uses_flag(operation: Operation, flag: KnownValueFlag<'_>) -> bool {
     match flag {
-        KnownValueFlag::Page | KnownValueFlag::LimitChars => operation != Operation::Info,
+        KnownValueFlag::Page | KnownValueFlag::Limit => operation != Operation::Info,
         KnownValueFlag::ProjectConfigPath | KnownValueFlag::UserConfigPath => true,
         KnownValueFlag::Ref => operation == Operation::Read,
         KnownValueFlag::Query => operation == Operation::Find,
@@ -153,8 +153,8 @@ fn loose_known_value_flags<'a>(
             used: context.uses_flag(KnownValueFlag::Page),
         },
         LooseKnownValueFlag {
-            flag: flags::LIMIT_CHARS,
-            used: context.uses_flag(KnownValueFlag::LimitChars),
+            flag: flags::LIMIT,
+            used: context.uses_flag(KnownValueFlag::Limit),
         },
         LooseKnownValueFlag {
             flag: flags::PROJECT_CONFIG_PATH,

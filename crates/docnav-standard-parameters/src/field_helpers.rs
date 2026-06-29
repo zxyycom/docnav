@@ -5,7 +5,7 @@ use docnav_typed_fields::{
 
 pub mod ids {
     pub const ADAPTER: &str = "docnav.defaults.adapter";
-    pub const LIMIT_CHARS: &str = "docnav.defaults.limit_chars";
+    pub const LIMIT: &str = "docnav.defaults.limit";
     pub const OUTPUT: &str = "docnav.defaults.output";
     pub const PAGE: &str = "docnav.document.page";
     pub const PATH: &str = "docnav.document.path";
@@ -45,22 +45,19 @@ pub fn page_field(processing_id: &'static str) -> FieldDefBuilder<i64> {
     direct_positive_u32_field(ids::PAGE, processing_id, ["page"])
 }
 
-pub fn limit_chars_field(processing_id: &'static str) -> FieldDefBuilder<i64> {
-    direct_positive_u32_field(ids::LIMIT_CHARS, processing_id, ["limit_chars"])
+pub fn limit_field(processing_id: &'static str) -> FieldDefBuilder<i64> {
+    direct_positive_u32_field(ids::LIMIT, processing_id, ["limit"])
 }
 
-pub fn configurable_limit_chars_field(
+pub fn configurable_limit_field(
     direct_processing_id: &'static str,
     config_processing_id: &'static str,
 ) -> FieldDefBuilder<i64> {
-    FieldDef::builder(ids::LIMIT_CHARS)
-        .process(
-            direct_processing_id,
-            ProcessStrategy::json_path(["limit_chars"]),
-        )
+    FieldDef::builder(ids::LIMIT)
+        .process(direct_processing_id, ProcessStrategy::json_path(["limit"]))
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["defaults", "limit_chars"]),
+            ProcessStrategy::json_path(["defaults", "limit"]),
         )
         .validation(positive_u32_int_validation())
 }

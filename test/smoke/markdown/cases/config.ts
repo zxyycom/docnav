@@ -37,7 +37,7 @@ async function testMarkdownDirectCliConfig() {
   const project = createProject("direct-config");
   writeProjectConfig(project, {
     defaults: {
-      limit_chars: 40,
+      limit: 40,
       output: "readable-json"
     },
     options: {
@@ -46,7 +46,7 @@ async function testMarkdownDirectCliConfig() {
   });
   writeUserConfig(project, {
     defaults: {
-      limit_chars: 20,
+      limit: 20,
       output: "protocol-json"
     },
     options: {
@@ -81,7 +81,7 @@ async function assertProjectConfigApplies(project: MarkdownConfigProject) {
       check: (record, json) => {
         expectNoProtocolEnvelope(record, json);
         const content = expectString(record, json.content, "read content is string");
-        expect(record, typeof json.page === "number", "project limit_chars produces continuation page");
+        expect(record, typeof json.page === "number", "project limit produces continuation page");
         expect(record, content.length < project.docText.length, "configured limit truncates read content");
       }
     }
@@ -114,7 +114,7 @@ async function assertExplicitArgvOverridesConfig(project: MarkdownConfigProject)
       project.docRelPath,
       "--max-heading-level",
       "3",
-      "--limit-chars",
+      "--limit",
       "6000",
       "--output",
       "readable-json"
@@ -124,7 +124,7 @@ async function assertExplicitArgvOverridesConfig(project: MarkdownConfigProject)
 
   await runSuccessfulJsonCase(
     "MD-CONFIG-001 explicit limit overrides config",
-    ["read", project.docRelPath, "--ref", "doc:full", "--limit-chars", "6000", "--output", "readable-json"],
+    ["read", project.docRelPath, "--ref", "doc:full", "--limit", "6000", "--output", "readable-json"],
     {
       commandOptions: cwd(project),
       schema: "readableRead",
@@ -162,7 +162,7 @@ async function assertProjectConfigPathOverrideReplacesDefault(project: MarkdownC
   const overridePath = path.join(project.fixturesDir, "project-override.json");
   writeJson(overridePath, {
     defaults: {
-      limit_chars: 6000,
+      limit: 6000,
       output: "readable-json"
     },
     options: {
@@ -218,7 +218,7 @@ async function assertInvokeIgnoresDirectCliConfig(project: MarkdownConfigProject
     operation: "outline",
     document: { path: project.docRelPath },
     arguments: {
-      limit_chars: 6000,
+      limit: 6000,
       page: 1
     }
   };

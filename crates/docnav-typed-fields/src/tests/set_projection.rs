@@ -10,12 +10,12 @@ struct DocnavParams {
 #[derive(Debug, FieldDefs)]
 struct DefaultsParams {
     #[field(
-        FieldDef::builder("docnav.defaults.limit_chars")
+        FieldDef::builder("docnav.defaults.limit")
             .process(CONFIG_PROCESSING, config_json_path(["a", "b"]))
-            .validation(limit_chars_validation())
+            .validation(limit_validation())
             .default_static(20_000)
     )]
-    limit_chars: Option<i64>,
+    limit: Option<i64>,
 
     #[field(
         FieldDef::builder("docnav.defaults.output")
@@ -27,7 +27,7 @@ struct DefaultsParams {
 }
 
 // @case WB-TYPED-FIELDS-PROJECTION-001
-fn limit_chars_validation() -> FieldValidation<i64> {
+fn limit_validation() -> FieldValidation<i64> {
     FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(100_000))
 }
 
@@ -55,11 +55,11 @@ fn valid_input_with_native() -> JsonValue {
 }
 
 fn consume_params(params: DocnavParams) -> (Option<i64>, OutputMode) {
-    (params.defaults.limit_chars, params.defaults.output)
+    (params.defaults.limit, params.defaults.output)
 }
 
 fn consume_defaults(params: DocnavParamsDefaultValues) -> (Option<i64>, Option<OutputMode>) {
-    (params.defaults.limit_chars, params.defaults.output)
+    (params.defaults.limit, params.defaults.output)
 }
 
 fn assert_valid_params_and_processing_result(
@@ -70,7 +70,7 @@ fn assert_valid_params_and_processing_result(
         .extraction()
         .as_ref()
         .expect("valid field extraction succeeds");
-    assert_eq!(params.defaults.limit_chars, Some(4000));
+    assert_eq!(params.defaults.limit, Some(4000));
     assert_eq!(params.defaults.output, OutputMode::ReadableJson);
     assert_eq!(
         processed.processing().processing_id().as_str(),
@@ -84,7 +84,7 @@ fn derived_field_defs_project_metadata_and_defaults() {
     let fields = docnav_fields();
 
     assert_eq!(
-        fields.value_kinds().get("docnav.defaults.limit_chars"),
+        fields.value_kinds().get("docnav.defaults.limit"),
         Some(&ValueKind::Integer)
     );
     assert_eq!(
@@ -129,7 +129,7 @@ fn derived_field_defs_extract_missing_optional_without_static_default() {
     let params = fields
         .extract(CONFIG_PROCESSING, &input)
         .expect("missing optional field extracts");
-    assert_eq!(params.defaults.limit_chars, None);
+    assert_eq!(params.defaults.limit, None);
     assert_eq!(params.defaults.output, OutputMode::ProtocolJson);
 }
 
@@ -264,10 +264,10 @@ fn built_field_defs_can_return_typed_builder_for_static_reuse() {
     let fields = docnav_fields();
 
     let mut fields2 = fields.to_builder();
-    fields2.defaults.limit_chars = fields2.defaults.limit_chars.process(
-        CONFIG_PROCESSING,
-        config_json_path(["defaults", "limit_chars"]),
-    );
+    fields2.defaults.limit = fields2
+        .defaults
+        .limit
+        .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]));
     let fields2 = fields2.build().expect("updated definition set builds");
 
     let original = fields
@@ -275,22 +275,22 @@ fn built_field_defs_can_return_typed_builder_for_static_reuse() {
             CONFIG_PROCESSING,
             &json!({
                 "a": {"b": 111},
-                "defaults": {"limit_chars": 222, "output": "readable-view"}
+                "defaults": {"limit": 222, "output": "readable-view"}
             }),
         )
         .expect("original fields still use original path");
-    assert_eq!(original.defaults.limit_chars, Some(111));
+    assert_eq!(original.defaults.limit, Some(111));
 
     let reused = fields2
         .extract(
             CONFIG_PROCESSING,
             &json!({
                 "a": {"b": 111},
-                "defaults": {"limit_chars": 222, "output": "readable-view"}
+                "defaults": {"limit": 222, "output": "readable-view"}
             }),
         )
         .expect("rebuilt fields use updated path");
-    assert_eq!(reused.defaults.limit_chars, Some(222));
+    assert_eq!(reused.defaults.limit, Some(222));
 }
 
 #[test]
@@ -298,23 +298,23 @@ fn builder_process_json_path_drives_named_field_processing() {
     #[derive(Debug, FieldDefs)]
     struct Params {
         #[field(
-            FieldDef::builder("docnav.defaults.limit_chars")
+            FieldDef::builder("docnav.defaults.limit")
                 .process(
                     "config",
-                    ProcessStrategy::json_path(["defaults", "limit_chars"])
+                    ProcessStrategy::json_path(["defaults", "limit"])
                 )
-                .validation(limit_chars_validation())
+                .validation(limit_validation())
         )]
-        limit_chars: Option<i64>,
+        limit: Option<i64>,
     }
 
     let fields = Params::field_defs().expect("definition set builds");
 
     let params = fields
-        .extract("config", &json!({"defaults": {"limit_chars": 4096}}))
+        .extract("config", &json!({"defaults": {"limit": 4096}}))
         .expect("field processing uses configured json path");
 
-    assert_eq!(params.limit_chars, Some(4096));
+    assert_eq!(params.limit, Some(4096));
 }
 
 #[test]
@@ -322,14 +322,14 @@ fn set_build_rejects_same_processing_id_with_different_input_kind() {
     #[derive(Debug, FieldDefs)]
     struct Params {
         #[field(
-            FieldDef::builder("docnav.defaults.limit_chars")
+            FieldDef::builder("docnav.defaults.limit")
                 .process(
                     "config",
-                    ProcessStrategy::json_path(["defaults", "limit_chars"])
+                    ProcessStrategy::json_path(["defaults", "limit"])
                 )
-                .validation(limit_chars_validation())
+                .validation(limit_validation())
         )]
-        limit_chars: Option<i64>,
+        limit: Option<i64>,
 
         #[field(
             FieldDef::builder("docnav.defaults.output")
@@ -359,32 +359,29 @@ fn single_derive_extracts_typed_params_object_without_default() {
     #[derive(Debug, FieldDefs)]
     struct Defaults {
         #[field(
-            FieldDef::builder("docnav.defaults.limit_chars")
-                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
+            FieldDef::builder("docnav.defaults.limit")
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]))
                 .validation(
                     FieldValidation::int()
                         .between(FieldBound::closed(1), FieldBound::closed(100_000)),
                 )
                 .default_static(20_000)
         )]
-        limit_chars: Option<i64>,
+        limit: Option<i64>,
     }
 
     let fields = Params::field_defs().expect("definition set builds");
 
-    assert_eq!(fields.default_values().defaults.limit_chars, Some(20_000));
+    assert_eq!(fields.default_values().defaults.limit, Some(20_000));
     let params = fields
-        .extract(
-            CONFIG_PROCESSING,
-            &json!({"defaults": {"limit_chars": 4000}}),
-        )
+        .extract(CONFIG_PROCESSING, &json!({"defaults": {"limit": 4000}}))
         .expect("valid input extracts params");
-    assert_eq!(params.defaults.limit_chars, Some(4000));
+    assert_eq!(params.defaults.limit, Some(4000));
 
     let params = fields
         .extract_with_static_defaults(CONFIG_PROCESSING, &json!({"defaults": {}}))
         .expect("missing input uses static default");
-    assert_eq!(params.defaults.limit_chars, Some(20_000));
+    assert_eq!(params.defaults.limit, Some(20_000));
 }
 
 #[test]
@@ -458,16 +455,16 @@ fn typed_default_values_use_none_for_fields_without_static_default() {
     #[derive(Debug, FieldDefs)]
     struct Defaults {
         #[field(
-            FieldDef::builder("docnav.defaults.limit_chars")
-                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
+            FieldDef::builder("docnav.defaults.limit")
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]))
                 .validation(FieldValidation::int())
         )]
-        limit_chars: Option<i64>,
+        limit: Option<i64>,
     }
 
     let fields = Params::field_defs().expect("definition set builds");
 
-    assert_eq!(fields.default_values().defaults.limit_chars, None);
+    assert_eq!(fields.default_values().defaults.limit, None);
 }
 
 #[test]

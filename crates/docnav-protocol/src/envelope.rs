@@ -73,7 +73,7 @@ impl OperationArguments {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OutlineArguments {
-    pub limit_chars: PositiveInteger,
+    pub limit: PositiveInteger,
     pub page: PositiveInteger,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub options: Option<Options>,
@@ -84,7 +84,7 @@ pub struct OutlineArguments {
 pub struct ReadArguments {
     #[serde(rename = "ref")]
     pub ref_id: String,
-    pub limit_chars: PositiveInteger,
+    pub limit: PositiveInteger,
     pub page: PositiveInteger,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub options: Option<Options>,
@@ -94,7 +94,7 @@ pub struct ReadArguments {
 #[serde(deny_unknown_fields)]
 pub struct FindArguments {
     pub query: String,
-    pub limit_chars: PositiveInteger,
+    pub limit: PositiveInteger,
     pub page: PositiveInteger,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub options: Option<Options>,

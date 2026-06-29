@@ -25,7 +25,7 @@ enum CommandOutput {
     PlainText(String),
     Json(Value),
     DocumentResponse {
-        response: ProtocolResponse,
+        response: Box<ProtocolResponse>,
         mode: DocumentOutputMode,
     },
 }
@@ -62,7 +62,7 @@ impl CommandOutcome {
         };
         Self {
             output: CommandOutput::DocumentResponse {
-                response,
+                response: Box::new(response),
                 mode: document_output_mode(mode),
             },
             exit_code,

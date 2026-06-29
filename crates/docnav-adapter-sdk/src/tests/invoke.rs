@@ -1,5 +1,5 @@
 use super::common::{positive, HandlerErrorAdapter, ManifestShapeErrorAdapter, StubAdapter};
-use crate::invoke::invoke_once_with_default_limit_chars;
+use crate::invoke::invoke_once_with_default_limit;
 use crate::{invoke_once, Adapter, AdapterExitCode, AdapterResult};
 use docnav_protocol::{
     AdapterIdentity, Entry, FailureResponse, FormatDescriptor, Manifest, Operation,
@@ -15,7 +15,7 @@ fn invoke_reads_one_request_and_writes_one_protocol_response() {
           "request_id": "req-1",
           "operation": "outline",
           "document": { "path": "sample.stub" },
-          "arguments": { "limit_chars": 80, "page": 1 }
+          "arguments": { "limit": 80, "page": 1 }
         }"#;
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -41,7 +41,7 @@ fn invoke_standard_parameter_normalization_preserves_options_passthrough() {
           "operation": "outline",
           "document": { "path": "sample.stub" },
           "arguments": {
-            "limit_chars": 80,
+            "limit": 80,
             "page": 1,
             "options": { "required_by_test": true }
           }
@@ -75,9 +75,9 @@ fn invoke_standard_parameter_normalization_supplies_default_window() {
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
 
-    let exit = invoke_once_with_default_limit_chars(
+    let exit = invoke_once_with_default_limit(
         &DefaultWindowRequiredAdapter {
-            expected_limit_chars: 123,
+            expected_limit: 123,
         },
         123,
         &input[..],
@@ -100,7 +100,7 @@ fn invoke_protocol_decode_accepts_unmapped_arguments_before_standardization() {
           "operation": "outline",
           "document": { "path": "sample.stub" },
           "arguments": {
-            "limit_chars": 80,
+            "limit": 80,
             "page": 1,
             "future_argument": true
           }
@@ -148,7 +148,7 @@ fn unsupported_protocol_version_is_invalid_request_schema_failure() {
           "request_id": "req-1",
           "operation": "outline",
           "document": { "path": "sample.stub" },
-          "arguments": { "limit_chars": 80, "page": 1 }
+          "arguments": { "limit": 80, "page": 1 }
         }"#;
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -173,7 +173,7 @@ fn request_schema_failure_without_version_uses_current_protocol_version() {
           "request_id": "req-1",
           "operation": "outline",
           "document": { "path": "sample.stub" },
-          "arguments": { "limit_chars": 80, "page": 1 }
+          "arguments": { "limit": 80, "page": 1 }
         }"#;
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -199,7 +199,7 @@ fn invoke_rejects_invalid_manifest_shape_without_protocol_envelope() {
           "request_id": "req-1",
           "operation": "outline",
           "document": { "path": "sample.stub" },
-          "arguments": { "limit_chars": 80, "page": 1 }
+          "arguments": { "limit": 80, "page": 1 }
         }"#;
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -224,7 +224,7 @@ fn request_schema_rejections_are_structured_invalid_request_failures() {
           "request_id": "",
           "operation": "read",
           "document": { "path": "sample.stub" },
-          "arguments": { "ref": "", "limit_chars": 80, "page": 1 }
+          "arguments": { "ref": "", "limit": 80, "page": 1 }
         }"#;
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -249,7 +249,7 @@ fn handler_error_projects_diagnostic_failure_to_protocol_stdout() {
           "request_id": "req-1",
           "operation": "read",
           "document": { "path": "sample.stub" },
-          "arguments": { "ref": "L1:Stub", "limit_chars": 80, "page": 1 }
+          "arguments": { "ref": "L1:Stub", "limit": 80, "page": 1 }
         }"#;
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -332,7 +332,14 @@ impl Adapter for OptionsRequiredAdapter {
         Ok(OutlineResult {
             entries: vec![Entry {
                 ref_id: "L1:Options".to_owned(),
-                display: "options preserved".to_owned(),
+                label: "options preserved".to_owned(),
+                kind: None,
+                location: None,
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: None,
+                metadata: None,
             }],
             page: None,
         })
@@ -340,7 +347,7 @@ impl Adapter for OptionsRequiredAdapter {
 }
 
 struct DefaultWindowRequiredAdapter {
-    expected_limit_chars: u32,
+    expected_limit: u32,
 }
 
 impl Adapter for DefaultWindowRequiredAdapter {
@@ -383,11 +390,18 @@ impl Adapter for DefaultWindowRequiredAdapter {
         arguments: &OutlineArguments,
     ) -> AdapterResult<OutlineResult> {
         assert_eq!(arguments.page, positive(1));
-        assert_eq!(arguments.limit_chars, positive(self.expected_limit_chars));
+        assert_eq!(arguments.limit, positive(self.expected_limit));
         Ok(OutlineResult {
             entries: vec![Entry {
                 ref_id: "L1:Defaults".to_owned(),
-                display: "defaults supplied".to_owned(),
+                label: "defaults supplied".to_owned(),
+                kind: None,
+                location: None,
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: None,
+                metadata: None,
             }],
             page: None,
         })

@@ -1,9 +1,11 @@
 use docnav_adapter_sdk::{Adapter, AdapterError, AdapterResult};
 use docnav_protocol::{
-    AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoArguments, InfoResult,
-    Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode,
-    ProbeResult, ReadArguments, ReadResult, RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION,
+    AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoAdapter, InfoArguments,
+    InfoDocument, InfoResult, Manifest, Measurement, Operation, OutlineArguments, OutlineResult,
+    ProbeReason, ProbeReasonCode, ProbeResult, ReadArguments, ReadResult, RequestEnvelope,
+    MANIFEST_VERSION, PROBE_VERSION,
 };
+use serde_json::json;
 
 use crate::markdown::{
     cost_for, is_markdown_extension, is_utf8_markdown_candidate, max_heading_level_from_options,
@@ -15,7 +17,7 @@ pub const ADAPTER_ID: &str = "docnav-markdown";
 pub const ADAPTER_NAME: &str = "Docnav Markdown Adapter";
 pub const FORMAT_ID_MARKDOWN: &str = "markdown";
 pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
-pub const DEFAULT_LIMIT_CHARS: u32 = 6000;
+pub const DEFAULT_LIMIT: u32 = 6000;
 pub const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
 // Markdown adapter 原生 option key，来自 adapter 契约；接入层只原样传递。
 pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
@@ -101,7 +103,7 @@ impl Adapter for MarkdownAdapter {
         let document = MarkdownDocument::load(&request.document.path)?;
         let max_heading_level = max_heading_level_from_options(arguments.options.as_ref())?;
         let entries = document.outline_entries(max_heading_level);
-        let (entries, page) = paginate_entries(&entries, arguments.page, arguments.limit_chars);
+        let (entries, page) = paginate_entries(&entries, arguments.page, arguments.limit);
         Ok(OutlineResult { entries, page })
     }
 
@@ -116,7 +118,7 @@ impl Adapter for MarkdownAdapter {
             ResolvedRef::FullDocument => document.source(),
             ResolvedRef::Heading(heading) => document.section_content(heading),
         };
-        let (content_page, page) = paginate_text(content, arguments.page, arguments.limit_chars);
+        let (content_page, page) = paginate_text(content, arguments.page, arguments.limit);
 
         Ok(ReadResult {
             ref_id: arguments.ref_id.clone(),
@@ -142,7 +144,7 @@ impl Adapter for MarkdownAdapter {
         let document = MarkdownDocument::load(&request.document.path)?;
         let max_heading_level = max_heading_level_from_options(arguments.options.as_ref())?;
         let matches = document.find_entries(&arguments.query, max_heading_level);
-        let (matches, page) = paginate_entries(&matches, arguments.page, arguments.limit_chars);
+        let (matches, page) = paginate_entries(&matches, arguments.page, arguments.limit);
 
         Ok(FindResult { matches, page })
     }
@@ -154,18 +156,29 @@ impl Adapter for MarkdownAdapter {
     ) -> AdapterResult<InfoResult> {
         let document = MarkdownDocument::load(&request.document.path)?;
         Ok(InfoResult {
-            display: format!(
-                "Markdown | {} | {} headings | {}",
-                CONTENT_TYPE_MARKDOWN,
-                document.headings().len(),
-                cost_for(document.source())
-            ),
             capabilities: vec![
                 Operation::Outline,
                 Operation::Read,
                 Operation::Find,
                 Operation::Info,
             ],
+            document: Some(InfoDocument {
+                content_type: Some(CONTENT_TYPE_MARKDOWN.to_owned()),
+                encoding: Some("utf-8".to_owned()),
+                size: Some(Measurement {
+                    unit: "bytes".to_owned(),
+                    value: document.source().len() as u64,
+                    scope: None,
+                }),
+            }),
+            adapter: Some(InfoAdapter {
+                id: Some(ADAPTER_ID.to_owned()),
+                format: Some(FORMAT_ID_MARKDOWN.to_owned()),
+            }),
+            metadata: Some(serde_json::Map::from_iter([(
+                "heading_count".to_owned(),
+                json!(document.headings().len()),
+            )])),
         })
     }
 }

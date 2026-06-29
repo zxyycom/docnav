@@ -7,7 +7,11 @@
     "matches": [
       {
         "ref": "H:L7:H3",
-        "display": "L7: ### Windows"
+        "label": "### Windows",
+        "kind": "match",
+        "location": {
+          "line_start": 7
+        }
       }
     ],
     "page": null

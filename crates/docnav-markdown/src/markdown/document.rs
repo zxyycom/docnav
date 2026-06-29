@@ -1,11 +1,12 @@
 use std::fs;
 
 use docnav_adapter_sdk::{AdapterError, AdapterResult};
-use docnav_protocol::Entry;
+use docnav_protocol::{positive_result, Entry, Location};
+use serde_json::json;
 
 use super::parse::parse_headings;
 use super::refs::{heading_ref, ParsedRef, FULL_DOCUMENT_REF};
-use super::text::{cost_for, line_starts, match_display};
+use super::text::{line_starts, match_facts, scoped_cost_for};
 
 #[derive(Clone, Debug)]
 pub struct MarkdownDocument {
@@ -64,7 +65,14 @@ impl MarkdownDocument {
     pub fn full_entry(&self) -> Entry {
         Entry {
             ref_id: FULL_DOCUMENT_REF.to_owned(),
-            display: format!("full document | {}", cost_for(self.source())),
+            label: "full document".to_owned(),
+            kind: Some("document".to_owned()),
+            location: None,
+            summary: None,
+            excerpt: None,
+            rank: None,
+            cost: Some(scoped_cost_for(self.source(), "entry")),
+            metadata: None,
         }
     }
 
@@ -75,7 +83,17 @@ impl MarkdownDocument {
             .filter(|heading| heading.level <= max_heading_level)
             .map(|heading| Entry {
                 ref_id: heading_ref(heading),
-                display: heading_display(self, heading),
+                label: heading.title.clone(),
+                kind: Some("heading".to_owned()),
+                location: Some(Location {
+                    line_start: positive_line(heading.line),
+                    line_end: None,
+                }),
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: Some(scoped_cost_for(self.section_content(heading), "entry")),
+                metadata: Some(heading_metadata(heading)),
             })
             .collect();
 
@@ -100,9 +118,20 @@ impl MarkdownDocument {
                 let ref_id = containing_heading(&visible_headings, offset)
                     .map(heading_ref)
                     .unwrap_or_else(|| fallback_ref.clone());
+                let (line, label) = match_facts(&self.source, &self.line_starts, offset);
                 Entry {
                     ref_id,
-                    display: match_display(&self.source, &self.line_starts, offset),
+                    label,
+                    kind: Some("match".to_owned()),
+                    location: Some(Location {
+                        line_start: positive_line(line),
+                        line_end: None,
+                    }),
+                    summary: None,
+                    excerpt: None,
+                    rank: None,
+                    cost: None,
+                    metadata: None,
                 }
             })
             .collect()
@@ -136,23 +165,23 @@ impl MarkdownDocument {
     }
 }
 
-/// Outline display 承载 heading title，并保留 level 和 section cost 摘要。
-/// display 不包含 ref；完整 ref 由独立字段承载。
-fn heading_display(document: &MarkdownDocument, heading: &Heading) -> String {
-    format!(
-        "H{} {} | {}",
-        heading.level,
-        heading.title,
-        cost_for(document.section_content(heading))
-    )
-}
-
 fn containing_heading<'a>(headings: &[&'a Heading], offset: usize) -> Option<&'a Heading> {
     headings
         .iter()
         .copied()
         .filter(|heading| heading.start <= offset && offset < heading.end)
         .max_by_key(|heading| (heading.start, heading.index))
+}
+
+fn heading_metadata(heading: &Heading) -> serde_json::Map<String, serde_json::Value> {
+    let mut metadata = serde_json::Map::new();
+    metadata.insert("heading_level".to_owned(), json!(heading.level));
+    metadata
+}
+
+fn positive_line(line: usize) -> docnav_protocol::PositiveInteger {
+    positive_result(u32::try_from(line).unwrap_or(u32::MAX))
+        .expect("markdown line numbers are positive")
 }
 
 fn read_error(path: &str, error: std::io::Error) -> AdapterError {

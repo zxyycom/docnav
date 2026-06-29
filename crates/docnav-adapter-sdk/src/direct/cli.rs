@@ -18,7 +18,7 @@ pub struct DirectCliConfig<'a> {
     pub program_name: &'static str,
     pub usage: &'a str,
     pub request_id: &'a str,
-    pub default_limit_chars: u32,
+    pub default_limit: u32,
     pub default_user_config_dir: Option<&'a Path>,
     pub native_options: &'a [NativeOptionSpec],
 }
@@ -53,7 +53,7 @@ where
         &args,
         config.program_name,
         config.native_options,
-        config.default_limit_chars,
+        config.default_limit,
     ) {
         return write_help(&help, &mut stdout, &mut stderr);
     }
@@ -65,7 +65,7 @@ where
         command,
         config.program_name,
         config.native_options,
-        config.default_limit_chars,
+        config.default_limit,
     ) {
         return usage(&mut stderr, config.usage);
     }

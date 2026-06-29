@@ -38,7 +38,8 @@ pub use error::{
 pub use manifest::{AdapterIdentity, FormatDescriptor, Manifest, ManifestValidationError};
 pub use operation::{Operation, OperationParseError, PagedOperation};
 pub use operation_result::{
-    Entry, FindResult, InfoResult, OperationResult, OutlineResult, ReadResult,
+    Cost, Entry, FindResult, InfoAdapter, InfoDocument, InfoResult, Location, Measurement,
+    OperationResult, OutlineResult, ReadResult,
 };
 pub use positive_integer::{positive_result, try_positive, PositiveIntegerError};
 pub use probe::{ProbeReason, ProbeReasonCode, ProbeResult, ProbeValidationError};

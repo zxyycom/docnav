@@ -8,7 +8,7 @@
   "arguments": {
     "query": "Windows",
     "page": 1,
-    "limit_chars": 80,
+    "limit": 80,
     "options": {}
   }
 }

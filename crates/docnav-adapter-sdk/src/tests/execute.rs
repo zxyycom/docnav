@@ -16,7 +16,7 @@ fn execute_operation_dispatches_typed_request() {
             path: "sample.stub".to_owned(),
         },
         arguments: OperationArguments::Outline(OutlineArguments {
-            limit_chars: positive(80),
+            limit: positive(80),
             page: positive(1),
             options: None,
         }),
@@ -43,7 +43,7 @@ fn execute_operation_rejects_mismatched_operation_arguments() {
             path: "sample.stub".to_owned(),
         },
         arguments: OperationArguments::Outline(OutlineArguments {
-            limit_chars: positive(80),
+            limit: positive(80),
             page: positive(1),
             options: None,
         }),

@@ -69,15 +69,10 @@ fn operation_only_validates_flags_it_uses() {
         ["--max-heading-level", "nope"]
     );
 
-    let info = parse_for_test(
-        Operation::Info,
-        &["doc.md", "--limit-chars", "nope"],
-        6000,
-        &[],
-    )
-    .expect("unused core value should be ignored");
-    assert_eq!(info.limit_chars.get(), 6000);
-    assert_eq!(warning_tokens(&info.warnings[0]), ["--limit-chars", "nope"]);
+    let info = parse_for_test(Operation::Info, &["doc.md", "--limit", "nope"], 6000, &[])
+        .expect("unused core value should be ignored");
+    assert_eq!(info.limit.get(), 6000);
+    assert_eq!(warning_tokens(&info.warnings[0]), ["--limit", "nope"]);
 }
 
 #[test]
@@ -165,7 +160,7 @@ fn config_sources_merge_before_typed_operation_options() {
             &project_config_arg,
             "--user-config-path",
             &user_config_arg,
-            "--limit-chars",
+            "--limit",
             "300",
             "--max-heading-level",
             "5",
@@ -175,7 +170,7 @@ fn config_sources_merge_before_typed_operation_options() {
     )
     .expect("parse merged config options");
 
-    assert_eq!(options.limit_chars.get(), 300);
+    assert_eq!(options.limit.get(), 300);
     assert_eq!(options.output, DirectOutputMode::ProtocolJson);
     assert_eq!(
         options.protocol_options().unwrap()["max_heading_level"],
@@ -188,14 +183,14 @@ fn write_merge_precedence_configs(project_config: &Path, user_config: &Path) {
     write_json(
         project_config,
         json!({
-            "defaults": {"limit_chars": 200, "output": "protocol-json"},
+            "defaults": {"limit": 200, "output": "protocol-json"},
             "options": {"max_heading_level": 2}
         }),
     );
     write_json(
         user_config,
         json!({
-            "defaults": {"limit_chars": 100, "output": "readable-json"},
+            "defaults": {"limit": 100, "output": "readable-json"},
             "options": {"max_heading_level": 4}
         }),
     );
@@ -297,15 +292,15 @@ fn args(values: &[&str]) -> Vec<String> {
 fn parse_for_test(
     operation: Operation,
     values: &[&str],
-    default_limit_chars: u32,
+    default_limit: u32,
     native_options: &[NativeOptionSpec],
 ) -> Result<DirectOperationOptions, String> {
-    let config = test_config(default_limit_chars, native_options);
+    let config = test_config(default_limit, native_options);
     parse_operation_options(operation, &args(values), &config)
 }
 
 fn test_config<'a>(
-    default_limit_chars: u32,
+    default_limit: u32,
     native_options: &'a [NativeOptionSpec],
 ) -> DirectCliConfig<'a> {
     DirectCliConfig {
@@ -313,7 +308,7 @@ fn test_config<'a>(
         program_name: "test-adapter",
         usage: "usage: test-adapter",
         request_id: "test-request",
-        default_limit_chars,
+        default_limit,
         default_user_config_dir: None,
         native_options,
     }

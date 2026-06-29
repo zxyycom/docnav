@@ -53,14 +53,14 @@ fn set_build_rejects_duplicate_identity() {
     #[derive(Debug, FieldDefs)]
     struct DuplicateDefaults {
         #[field(
-            FieldDef::builder("docnav.defaults.limit_chars")
-                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit_chars"]))
+            FieldDef::builder("docnav.defaults.limit")
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]))
                 .validation(FieldValidation::int())
         )]
-        limit_chars: Option<i64>,
+        limit: Option<i64>,
 
         #[field(
-            FieldDef::builder("docnav.defaults.limit_chars")
+            FieldDef::builder("docnav.defaults.limit")
                 .process(CONFIG_PROCESSING, config_json_path(["defaults", "max_chars"]))
                 .validation(FieldValidation::int())
         )]
@@ -72,16 +72,16 @@ fn set_build_rejects_duplicate_identity() {
     let FieldDefSetBuildError::DuplicateIdentity(error) = error else {
         panic!("expected duplicate identity error");
     };
-    assert_eq!(error.field.as_str(), "docnav.defaults.limit_chars");
+    assert_eq!(error.field.as_str(), "docnav.defaults.limit");
     assert_eq!(
         error.previous_declaration_path,
-        Some(vec!["defaults".to_string(), "limit_chars".to_string()])
+        Some(vec!["defaults".to_string(), "limit".to_string()])
     );
     assert_eq!(
         error.declaration_path,
         Some(vec!["defaults".to_string(), "max_chars".to_string()])
     );
-    assert_eq!(error.previous_path.segments(), ["defaults", "limit_chars"]);
+    assert_eq!(error.previous_path.segments(), ["defaults", "limit"]);
     assert_eq!(error.path.segments(), ["defaults", "max_chars"]);
 }
 

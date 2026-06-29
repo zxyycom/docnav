@@ -19,7 +19,7 @@ use crate::output::{
 use crate::standard_parameters::{standardize_invoke_request, InvokeStandardParameterConfig};
 use crate::{Adapter, AdapterExitCode, AdapterResult};
 
-const DEFAULT_INVOKE_LIMIT_CHARS: u32 = 6000;
+const DEFAULT_INVOKE_LIMIT: u32 = 6000;
 
 struct InvokeFailure {
     response: ProtocolResponse,
@@ -41,18 +41,18 @@ where
     W: Write,
     E: Write,
 {
-    invoke_once_with_default_limit_chars(
+    invoke_once_with_default_limit(
         adapter,
-        DEFAULT_INVOKE_LIMIT_CHARS,
+        DEFAULT_INVOKE_LIMIT,
         &mut stdin,
         &mut stdout,
         &mut stderr,
     )
 }
 
-pub(crate) fn invoke_once_with_default_limit_chars<A, R, W, E>(
+pub(crate) fn invoke_once_with_default_limit<A, R, W, E>(
     adapter: &A,
-    default_limit_chars: u32,
+    default_limit: u32,
     mut stdin: R,
     mut stdout: W,
     mut stderr: E,
@@ -71,7 +71,7 @@ where
         Ok(request) => request,
         Err(failure) => return write_invoke_failure(*failure, &mut stdout, &mut stderr),
     };
-    let request = match standardize_decoded_request(&request, default_limit_chars) {
+    let request = match standardize_decoded_request(&request, default_limit) {
         Ok(request) => request,
         Err(failure) => return write_invoke_failure(*failure, &mut stdout, &mut stderr),
     };
@@ -97,26 +97,22 @@ where
 
 fn standardize_decoded_request(
     request: &RawRequestEnvelope,
-    default_limit_chars: u32,
+    default_limit: u32,
 ) -> InvokeResult<RequestEnvelope> {
-    standardize_invoke_request(
-        request,
-        InvokeStandardParameterConfig {
-            default_limit_chars,
+    standardize_invoke_request(request, InvokeStandardParameterConfig { default_limit }).map_err(
+        |error| {
+            Box::new(InvokeFailure {
+                response: ProtocolResponse::failure(
+                    request.protocol_version.clone(),
+                    request.request_id.clone(),
+                    Some(request.operation),
+                    protocol_error_from_diagnostic(error.into_diagnostic()),
+                ),
+                diagnostic: None,
+                exit_code: AdapterExitCode::ProtocolError,
+            })
         },
     )
-    .map_err(|error| {
-        Box::new(InvokeFailure {
-            response: ProtocolResponse::failure(
-                request.protocol_version.clone(),
-                request.request_id.clone(),
-                Some(request.operation),
-                protocol_error_from_diagnostic(error.into_diagnostic()),
-            ),
-            diagnostic: None,
-            exit_code: AdapterExitCode::ProtocolError,
-        })
-    })
 }
 
 fn read_and_decode_request<R>(stdin: &mut R) -> InvokeResult<RawRequestEnvelope>
