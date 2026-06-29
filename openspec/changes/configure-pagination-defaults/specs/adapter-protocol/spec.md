@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Adapter SDK direct CLI supports generic pagination limit sources
-`docnav-adapter-sdk` direct CLI MUST support `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>` as generic pagination parameter sources. SDK MUST validate the limit as a positive integer and MUST leave unit interpretation to the adapter.
+`docnav-adapter-sdk` document entrances MUST support `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, `--limit <n>`, and invoke `arguments.limit` / `arguments.page` through the shared standard-parameter source model. SDK MUST validate `limit` and `page` as positive integers, MUST finalize disabled pagination before operation logic, and MUST leave `limit` unit interpretation to the adapter.
 
 #### Scenario: SDK maps config and argv to pagination sources
 - **WHEN** direct CLI config or argv provides pagination values
@@ -10,7 +10,7 @@
 
 #### Scenario: SDK finalizes disabled pagination
 - **WHEN** effective direct CLI pagination is disabled
-- **THEN** SDK finalizes the operation limit as the maximum representable positive protocol budget
+- **THEN** SDK finalizes the operation limit as the configured maximum positive protocol budget
 - **THEN** the adapter operation receives `limit` and `page` rather than a pagination enabled flag
 
 #### Scenario: SDK invoke path uses standard parameter resolution
@@ -18,3 +18,9 @@
 - **THEN** SDK maps the decoded request JSON and `arguments` as direct input
 - **THEN** SDK resolves pagination parameters through the same source priority, validation, and finalization rules as other document entrances
 - **THEN** SDK does not write resolved config/default values back into the raw stdin request JSON
+
+#### Scenario: SDK invoke keeps protocol shape stable
+- **WHEN** `invoke` receives a request that omits a registered pagination argument
+- **THEN** SDK may fill the missing safe operation value from registered config or defaults
+- **THEN** the operation handler receives `limit` and `page`
+- **THEN** the raw protocol request is not mutated with config/default values or a pagination enabled flag
