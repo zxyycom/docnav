@@ -2,6 +2,7 @@ import { defineChecks } from "./normalization.ts";
 import { PROFILE_FULL, PROFILE_REQUIRED } from "./model.ts";
 import type { CheckDefinition } from "./model.ts";
 
+const DEV_BIN_COPY_DIR = ".cache/docnav/verify/dev-bins";
 const DEV_BIN_ENV_FILE = ".cache/docnav/verify/dev-bins.json";
 
 const testRunnerSuccessOutput = [
@@ -150,7 +151,14 @@ export const checks = defineChecks([
             id: "docnav-development-binaries",
             label: "docnav development binaries",
             command: "bun",
-            args: ["scripts/docnav-dev/build-bins.ts", "--quiet", "--output-env-json", DEV_BIN_ENV_FILE],
+            args: [
+              "scripts/docnav-dev/build-bins.ts",
+              "--quiet",
+              "--output-env-json",
+              DEV_BIN_ENV_FILE,
+              "--copy-to",
+              DEV_BIN_COPY_DIR
+            ],
             mutex: ["cargo-build"],
             ignoreOutput: [
               /^dev binaries ok: DOCNAV_BIN, DOCNAV_MARKDOWN_BIN$/

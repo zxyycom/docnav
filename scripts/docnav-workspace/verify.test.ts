@@ -1,6 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
+import { prepareDevBinEnv, type DevBinarySpec } from "../docnav-dev/build-bins.ts";
 import {
   PROFILE_FULL,
   PROFILE_REQUIRED,
@@ -176,6 +180,14 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(checkByLabel("quality full check").warningOutput, [/^Quality check status: warning$/m]);
     assert.deepEqual(checkByLabel("cargo test").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav development binaries").mutex, ["cargo-build"]);
+    assert.deepEqual(checkByLabel("docnav development binaries").args, [
+      "scripts/docnav-dev/build-bins.ts",
+      "--quiet",
+      "--output-env-json",
+      ".cache/docnav/verify/dev-bins.json",
+      "--copy-to",
+      ".cache/docnav/verify/dev-bins"
+    ]);
     assert.deepEqual(checkByLabel("docnav-markdown development smoke").mutex, []);
     assert.deepEqual(checkByLabel("docnav core development smoke").mutex, []);
     assert.deepEqual(checkByLabel("docnav-markdown development smoke").dependsOn, ["docnav-development-binaries"]);
@@ -210,6 +222,42 @@ describe("workspace verifier configuration", () => {
     assert.equal(resolveVerificationConcurrency(""), undefined);
     assert.equal(resolveVerificationConcurrency("8"), 8);
     assert.throws(() => resolveVerificationConcurrency("abc"), /positive integer/);
+  });
+
+  it("prepares development binary env with isolated copied executables", () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-dev-bins-"));
+    try {
+      const sourceDir = path.join(tempRoot, "target-debug");
+      const copyRoot = path.join(tempRoot, "copies");
+      fs.mkdirSync(sourceDir, { recursive: true });
+
+      const docnavSource = path.join(sourceDir, executableName("docnav"));
+      const markdownSource = path.join(sourceDir, executableName("docnav-markdown"));
+      fs.writeFileSync(docnavSource, "docnav");
+      fs.writeFileSync(markdownSource, "docnav-markdown");
+
+      const specs: DevBinarySpec[] = [
+        { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" },
+        { packageName: "docnav-markdown", binName: "docnav-markdown", envName: "DOCNAV_MARKDOWN_BIN" }
+      ];
+      const env = prepareDevBinEnv({
+        binaries: specs,
+        copyTo: copyRoot,
+        executables: new Map([
+          ["docnav", docnavSource],
+          ["docnav-markdown", markdownSource]
+        ])
+      });
+
+      assert.notEqual(env.DOCNAV_BIN, docnavSource);
+      assert.notEqual(env.DOCNAV_MARKDOWN_BIN, markdownSource);
+      assert.equal(path.dirname(env.DOCNAV_BIN), path.dirname(env.DOCNAV_MARKDOWN_BIN));
+      assert.match(path.relative(copyRoot, env.DOCNAV_BIN), /^run-[^\\/]+[\\/]docnav(?:\.exe)?$/);
+      assert.equal(fs.readFileSync(env.DOCNAV_BIN, "utf8"), "docnav");
+      assert.equal(fs.readFileSync(env.DOCNAV_MARKDOWN_BIN, "utf8"), "docnav-markdown");
+    } finally {
+      fs.rmSync(tempRoot, { force: true, recursive: true });
+    }
   });
 
   it("formats completion lines and durations for streaming output", () => {
@@ -274,6 +322,10 @@ function checkByLabel(label: string) {
   const check = checks.find((candidate) => candidate.label === label);
   assert.ok(check, `expected check ${label}`);
   return check;
+}
+
+function executableName(binaryName: string): string {
+  return process.platform === "win32" ? `${binaryName}.exe` : binaryName;
 }
 
 type TestCheckTask = (typeof checks)[number];
