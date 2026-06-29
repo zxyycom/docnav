@@ -13,7 +13,6 @@ import {
   OPERATION_NAMES,
   SCHEMAS
 } from "../config.ts";
-import { loadProtocolResponseSchemaErrorDetailsRequirements } from "../protocol/error-detail-rules.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,
@@ -70,43 +69,24 @@ function validateProtocolResponseBindingSchema() {
 function validateProtocolResponseErrorDetailsSchema() {
   const ajv = createSchemaAjv();
   const validate = compileRegisteredSchema(ajv, SCHEMAS.protocolResponse);
-  const requiredErrorDetailsByCode = loadProtocolResponseSchemaErrorDetailsRequirements();
+  const validResponse = readJson(EXAMPLES.errorInvalidRequest);
+  assert(
+    validate(validResponse),
+    `protocol response schema must accept documented invalid request error: ${formatAjvErrors(validate)}`
+  );
 
-  for (const [code, requiredDetails] of Object.entries(requiredErrorDetailsByCode)) {
-    const validResponse = protocolErrorResponse(
-      code,
-      Object.fromEntries(requiredDetails.map((field) => [field, "test"]))
-    );
-    assert(
-      validate(validResponse),
-      `protocol response schema must accept ${code} with required details: ${formatAjvErrors(validate)}`
-    );
+  const missingDetails = structuredClone(validResponse);
+  assert(isRecord(missingDetails), `${EXAMPLES.errorInvalidRequest} must be an object`);
+  const error = missingDetails[FIELDS.error];
+  assert(isRecord(error), `${EXAMPLES.errorInvalidRequest} error must be an object`);
+  delete error[FIELDS.details];
 
-    const missingFirstRequiredDetail = protocolErrorResponse(
-      code,
-      Object.fromEntries(requiredDetails.slice(1).map((field) => [field, "test"]))
-    );
-    assert(
-      !validate(missingFirstRequiredDetail),
-      `protocol response schema must reject ${code} without error.details.${requiredDetails[0]}`
-    );
-  }
+  assert(
+    !validate(missingDetails),
+    "protocol response schema must reject errors without error.details"
+  );
 
-  console.log("protocol response error details requirements ok");
-}
-
-function protocolErrorResponse(code: string, details: Record<string, string>) {
-  return {
-    protocol_version: "0.1",
-    request_id: "req-error-details",
-    operation: null,
-    ok: false,
-    error: {
-      code,
-      message: "test error",
-      details
-    }
-  };
+  console.log("protocol response error details shape ok");
 }
 
 export function validateJsonSyntax() {

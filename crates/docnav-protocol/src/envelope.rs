@@ -13,6 +13,8 @@ pub struct Document {
     pub path: String,
 }
 
+/// Protocol request after an entry point has mapped raw `arguments` through
+/// standard-parameter defaults, validation, and passthrough policy.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RequestEnvelope {
@@ -36,6 +38,8 @@ impl RequestEnvelope {
     }
 }
 
+/// Schema-decoded protocol request that preserves raw `arguments` for the
+/// entry-point standard-parameter pipeline.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawRequestEnvelope {

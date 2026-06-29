@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use docnav_diagnostics::{typed_codes, DiagnosticSource, FieldReasonDetails};
 use docnav_protocol::protocol_error_record_draft_with_summary;
 use docnav_protocol::{
@@ -28,12 +26,15 @@ pub(crate) struct InvokeStandardParameterConfig {
     pub(crate) default_limit_chars: u32,
 }
 
+// FieldDefs consumes these fields as metadata; runtime code uses the generated definition set.
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct InvokeOutlineStandardArguments {
     #[field(group)]
     content_window: InvokeContentWindowArguments,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct InvokeReadStandardArguments {
     #[field(read_ref_field(DIRECT_PROCESSING))]
@@ -42,6 +43,7 @@ struct InvokeReadStandardArguments {
     content_window: InvokeContentWindowArguments,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct InvokeFindStandardArguments {
     #[field(find_query_field(DIRECT_PROCESSING))]
@@ -50,6 +52,7 @@ struct InvokeFindStandardArguments {
     content_window: InvokeContentWindowArguments,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct InvokeContentWindowArguments {
     #[field(invoke_page_field())]

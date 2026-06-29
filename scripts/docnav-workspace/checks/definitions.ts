@@ -245,7 +245,7 @@ function docsValidatorChecks(): CheckDefinition[] {
       /^schema strict compile ok:/,
       /^schema ok:/,
       /^protocol response operation\/result binding ok$/,
-      /^protocol response error details requirements ok$/
+      /^protocol response error details shape ok$/
     ]),
     docsValidatorCheck(
       "docs-example-consistency-validator",

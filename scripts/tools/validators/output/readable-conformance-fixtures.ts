@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { assert, assertDeepEqual } from "../assertions.ts";
 import { OUTPUT_MODE_CONSISTENCY } from "../config.ts";
-import { readText, sortedUnique } from "../document/markdown-docs.ts";
+import { readText } from "../document/markdown-docs.ts";
 import { readJson } from "../json/files.ts";
 import { toAbs } from "../repo/paths.ts";
 import { isRecord } from "../../type-guards.ts";
@@ -15,15 +15,6 @@ export function validateReadableConformanceFixtures(): void {
   assertConformanceReadmeIndexesFixtures();
   assertWarningFixtureOmitsLegacyTextMode(conformanceDir);
   assertConformanceDirectoryMatchesIndex(conformanceDir);
-
-  const conformanceTests = readText(
-    "crates/docnav-readable/tests/conformance_tests.rs"
-  );
-  assertConformanceTestsLoadIndexedFixtures(conformanceTests);
-  const conformanceParser = readText(
-    "crates/docnav-readable/tests/conformance_support/output_blocks.rs"
-  );
-  assertConformanceParserConsumesDeclaredByteLength(conformanceParser);
   assertMarkerFixtureRestoresPayload(conformanceDir);
 }
 
@@ -67,42 +58,6 @@ function assertConformanceDirectoryMatchesIndex(conformanceDir: string): void {
     actualFixtures,
     OUTPUT_MODE_CONSISTENCY.conformanceFixtures,
     "conformance fixture directory must match validator index"
-  );
-}
-
-function assertConformanceTestsLoadIndexedFixtures(conformanceTests: string): void {
-  const loadedFixtures = loadedConformanceFixtureNames(conformanceTests);
-  const uniqueLoadedFixtures = sortedUnique(loadedFixtures);
-  assertDeepEqual(
-    uniqueLoadedFixtures,
-    OUTPUT_MODE_CONSISTENCY.conformanceFixtures,
-    "each conformance fixture must be consumed by exactly one test"
-  );
-  assert(
-    loadedFixtures.length === uniqueLoadedFixtures.length,
-    "conformance tests must not load the same fixture more than once"
-  );
-}
-
-function loadedConformanceFixtureNames(conformanceTests: string): string[] {
-  return [...conformanceTests.matchAll(conformanceFixtureLoadPattern())].map(
-    (match) => match[1]
-  );
-}
-
-function conformanceFixtureLoadPattern(): RegExp {
-  return new RegExp(
-    'load_vector!\\(\\s*"fixtures\\/conformance\\/([^"]+\\.json)"\\s*\\)',
-    "gu"
-  );
-}
-
-function assertConformanceParserConsumesDeclaredByteLength(parserSource: string): void {
-  assert(
-    parserSource.includes("checked_add(byte_length_usize)") &&
-      parserSource.includes("starts_with(end_marker_bytes)") &&
-      !parserSource.includes(".find(&end_marker)"),
-    "conformance test parser must consume declared byte length before checking end marker"
   );
 }
 

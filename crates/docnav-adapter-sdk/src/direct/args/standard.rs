@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use docnav_protocol::Operation;
 use docnav_standard_parameters::{
     configurable_limit_chars_field, configurable_output_field, document_path_field,
@@ -43,6 +41,8 @@ impl docnav_typed_fields::FieldStringEnum for DirectOutputMode {
     }
 }
 
+// FieldDefs consumes these fields as metadata; runtime code uses the generated definition set.
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct DirectOutlineStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -53,6 +53,7 @@ struct DirectOutlineStandardParameters {
     output: DirectOutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct DirectReadStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -65,6 +66,7 @@ struct DirectReadStandardParameters {
     output: DirectOutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct DirectFindStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -77,6 +79,7 @@ struct DirectFindStandardParameters {
     output: DirectOutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct DirectInfoStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -85,6 +88,7 @@ struct DirectInfoStandardParameters {
     output: DirectOutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct DirectContentWindowParameters {
     #[field(direct_cli_page_field())]

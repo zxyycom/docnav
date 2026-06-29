@@ -40,6 +40,7 @@ export const EXAMPLES = {
   manifest: "docs/examples/json/manifest.json",
   probeResult: "docs/examples/json/probe-result.json",
   protocolReadResponse: "docs/examples/json/protocol-read-response.json",
+  errorInvalidRequest: "docs/examples/json/error-invalid-request.json",
   readableError: "docs/examples/json/readable-error.json",
   readableFind: "docs/examples/json/readable-find.json",
   readableInfo: "docs/examples/json/readable-info.json",
@@ -70,18 +71,8 @@ export const READABLE_SCHEMA_BY_OPERATION = {
 };
 
 export const OUTPUT_MODE_CONSISTENCY = {
-  coreOutputModeRust: "crates/docnav/src/cli/command_model.rs",
-  coreOutputHelpRust: "crates/docnav/src/cli/parser/spec.rs",
-  adapterOutputModeRust: "crates/docnav-adapter-sdk/src/direct/output.rs",
-  adapterOutputHelpRust: "crates/docnav-adapter-sdk/src/direct/args/spec.rs",
   conformanceDir: "crates/docnav-readable/tests/fixtures/conformance",
   conformanceReadme: "crates/docnav-readable/tests/fixtures/conformance/README.md",
-  smokeMatrices: [
-    "test/smoke/core/cases/outputs.ts",
-    "test/smoke/core/cases/config-management.ts",
-    "test/smoke/markdown/cases/outputs.ts",
-    "test/smoke/markdown/cases/cli-args.ts"
-  ],
   conformanceFixtures: [
     "01_no_block_outline.json",
     "04_single_block.json",

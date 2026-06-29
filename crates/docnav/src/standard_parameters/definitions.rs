@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use docnav_protocol::Operation;
 use docnav_standard_parameters::{
     adapter_selection_field, configurable_limit_chars_field, configurable_output_field,
@@ -20,6 +18,8 @@ const CONFIG_PROCESSING: &str = "config";
 const DEFAULT_LIMIT_CHARS: i64 = 6000;
 const DEFAULT_PAGE: i64 = 1;
 
+// FieldDefs consumes these fields as metadata; runtime code uses the generated definition set.
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct CoreOutlineStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -32,6 +32,7 @@ struct CoreOutlineStandardParameters {
     output: OutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct CoreReadStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -46,6 +47,7 @@ struct CoreReadStandardParameters {
     output: OutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct CoreFindStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -60,6 +62,7 @@ struct CoreFindStandardParameters {
     output: OutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct CoreInfoStandardParameters {
     #[field(document_path_field(DIRECT_PROCESSING))]
@@ -70,6 +73,7 @@ struct CoreInfoStandardParameters {
     output: OutputMode,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct CoreContentWindowParameters {
     #[field(core_page_field())]
