@@ -180,27 +180,53 @@ fn derived_field_defs_process_keeps_processing_result_when_extraction_fails() {
 }
 
 #[test]
-fn derived_field_defs_extract_with_passthrough_keeps_original_json_by_default() {
+fn derived_field_defs_process_can_return_original_json() {
     let fields = docnav_fields();
     let input = valid_input_with_native();
 
-    let processed = fields.extract_with_passthrough(CONFIG_PROCESSING, &input, None);
+    let processed = fields.process(&super::raw_json_processing(CONFIG_PROCESSING), &input);
 
     assert_valid_params_and_processing_result(&processed, &input);
 }
 
 #[test]
-fn derived_field_defs_extract_with_passthrough_returns_processing_result() {
+fn json_field_set_validate_with_passthrough_keeps_original_json_by_default() {
+    let fields = docnav_fields();
+    let input = valid_input_with_native();
+
+    let processed = JsonFieldSet::new(fields.as_ref()).validate_with_passthrough(
+        CONFIG_PROCESSING,
+        &input,
+        None,
+    );
+
+    processed
+        .extraction()
+        .as_ref()
+        .expect("valid field extraction succeeds");
+    assert_eq!(
+        processed.processing().processing_id().as_str(),
+        CONFIG_PROCESSING
+    );
+    assert_eq!(processed.processing().value(), &input);
+}
+
+#[test]
+fn json_field_set_validate_with_passthrough_returns_processing_result() {
     let fields = docnav_fields();
     let processing = native_processing();
 
-    let processed = fields.extract_with_passthrough(
+    let processed = JsonFieldSet::new(fields.as_ref()).validate_with_passthrough(
         CONFIG_PROCESSING,
         &valid_input_with_native(),
         Some(&processing),
     );
 
-    assert_valid_params_and_processing_result(&processed, &json!({"theme": "dark"}));
+    processed
+        .extraction()
+        .as_ref()
+        .expect("valid field extraction succeeds");
+    assert_eq!(processed.processing().value(), &json!({"theme": "dark"}));
 }
 
 #[test]

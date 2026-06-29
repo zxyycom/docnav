@@ -145,25 +145,6 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream2> {
                 ::docnav_typed_fields::ProcessedExtraction::new(extraction, processing)
             }
 
-            pub fn extract_with_passthrough(
-                &self,
-                processing_id: impl ::std::convert::Into<::docnav_typed_fields::ProcessingId>,
-                root: &::docnav_typed_fields::__private::JsonValue,
-                passthrough_processing: ::std::option::Option<&::docnav_typed_fields::JsonPassthroughProcessing<'_>>,
-            ) -> ::docnav_typed_fields::ProcessedExtraction<::std::result::Result<#struct_name, ::docnav_typed_fields::FieldExtractionError>, ::docnav_typed_fields::__private::JsonValue> {
-                let processed = ::docnav_typed_fields::__private::json::extract_values_with_passthrough(
-                    self.__field_def_set.as_ref(),
-                    processing_id,
-                    root,
-                    passthrough_processing,
-                );
-                let (values, processing) = processed.into_parts();
-                let extraction = values.map(|values| {
-                    <#struct_name as ::docnav_typed_fields::FieldDefs>::__values_from_slots(&values, 0)
-                });
-                ::docnav_typed_fields::ProcessedExtraction::new(extraction, processing)
-            }
-
             pub fn process_with_static_defaults<O>(
                 &self,
                 processing: &::docnav_typed_fields::ProcessingBuild<'_, ::docnav_typed_fields::__private::JsonValue, O>,

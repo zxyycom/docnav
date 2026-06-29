@@ -25,6 +25,22 @@ impl<'a> JsonFieldSet<'a> {
         extract_values(self.fields, processing_id.into(), root).map(|_| ())
     }
 
+    pub fn validate_with_passthrough(
+        &self,
+        processing_id: impl Into<ProcessingId>,
+        root: &Value,
+        passthrough_processing: Option<&JsonPassthroughProcessing<'_>>,
+    ) -> ProcessedExtraction<Result<(), FieldExtractionError>, Value> {
+        let processed = extract_values_with_passthrough(
+            self.fields,
+            processing_id,
+            root,
+            passthrough_processing,
+        );
+        let (values, processing) = processed.into_parts();
+        ProcessedExtraction::new(values.map(|_| ()), processing)
+    }
+
     pub fn unused_fields<I, S>(
         &self,
         processing_id: impl Into<ProcessingId>,

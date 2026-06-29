@@ -33,6 +33,12 @@ impl FieldStringEnum for OutputMode {
 
 const CONFIG_PROCESSING: &str = "config";
 
+fn raw_json_processing(
+    id: impl Into<ProcessingId>,
+) -> ProcessingBuild<'static, JsonValue, JsonValue> {
+    ProcessingBuild::new(id, |raw| raw).expect("processing id is valid")
+}
+
 fn config_json_path<I, S>(segments: I) -> ProcessStrategy
 where
     I: IntoIterator<Item = S>,
