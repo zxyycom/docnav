@@ -17,6 +17,7 @@ fn core_document_parameters_use_standard_resolution_sources() {
         ref_id: None,
         query: None,
         page: None,
+        pagination_enabled: None,
         limit: None,
         output: None,
         adapter: Some("direct-adapter".to_owned()),
@@ -26,14 +27,20 @@ fn core_document_parameters_use_standard_resolution_sources() {
         project_config: serde_json::from_value(json!({
             "defaults": {
                 "adapter": "project-adapter",
-                "limit": 321,
+                "pagination": {
+                    "enabled": true,
+                    "limit": 321
+                },
                 "output": "protocol-json"
             }
         }))
         .unwrap(),
         user_config: serde_json::from_value(json!({
             "defaults": {
-                "limit": 111,
+                "pagination": {
+                    "enabled": false,
+                    "limit": 111
+                },
                 "output": "readable-json"
             }
         }))
@@ -48,9 +55,38 @@ fn core_document_parameters_use_standard_resolution_sources() {
     assert_eq!(resolved.page.unwrap().get(), 1);
     assert_eq!(resolved.output, OutputMode::ProtocolJson);
     assert_eq!(resolved.defaults.adapter.source, "explicit");
-    assert_eq!(resolved.defaults.limit.unwrap().source, "project");
+    let pagination = resolved.defaults.pagination.unwrap();
+    assert_eq!(pagination.enabled.source, "project");
+    assert_eq!(pagination.limit.source, "project");
     assert_eq!(resolved.defaults.output.source, "project");
     assert_eq!(resolved.defaults.page.unwrap().source, "built_in");
+}
+
+#[test]
+fn core_pagination_disabled_finalizes_operation_limit() {
+    let command = DocumentCommand {
+        operation: Operation::Outline,
+        path: "doc.md".to_owned(),
+        ref_id: None,
+        query: None,
+        page: None,
+        pagination_enabled: Some(false),
+        limit: Some(docnav_protocol::try_positive(12).unwrap()),
+        output: None,
+        adapter: None,
+    };
+    let context = ConfigContext {
+        project: project_context(),
+        project_config: CoreConfig::default(),
+        user_config: CoreConfig::default(),
+    };
+
+    let resolved = resolve_core_document_parameters(&command, &context).unwrap();
+
+    assert_eq!(resolved.limit.unwrap().get(), u32::MAX);
+    let pagination = resolved.defaults.pagination.unwrap();
+    assert_eq!(pagination.enabled.source, "explicit");
+    assert_eq!(pagination.limit.source, "explicit");
 }
 
 fn project_context() -> ProjectContext {

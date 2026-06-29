@@ -14,11 +14,14 @@ fn processing_metadata_projection_includes_processing_path_and_schema_facts() {
     let metadata = definitions.processing_metadata(&ProcessingId::from(CONFIG_PROCESSING));
     let limit = metadata
         .iter()
-        .find(|metadata| metadata.identity.as_str() == "docnav.defaults.limit")
+        .find(|metadata| metadata.identity.as_str() == "docnav.defaults.pagination.limit")
         .unwrap();
 
     assert_eq!(limit.processing_id.as_str(), CONFIG_PROCESSING);
-    assert_eq!(limit.path.segments(), vec!["defaults", "limit"]);
+    assert_eq!(
+        limit.path.segments(),
+        vec!["defaults", "pagination", "limit"]
+    );
     assert_eq!(limit.value_kind, ValueKind::Integer);
     let FieldNumericRange::Integer(range) = limit.constraints.numeric_range else {
         panic!("expected integer range");
@@ -31,7 +34,7 @@ fn processing_metadata_projection_includes_processing_path_and_schema_facts() {
 fn source_construction_maps_direct_config_and_default_values() {
     let catalog = parameter_catalog();
     let entries = catalog.entries();
-    let identity = identity("docnav.defaults.limit");
+    let identity = identity("docnav.defaults.pagination.limit");
     let mut dynamic_defaults = BTreeMap::new();
     dynamic_defaults.insert(identity.clone(), json!(400));
     let direct_input = json!({
@@ -40,11 +43,11 @@ fn source_construction_maps_direct_config_and_default_values() {
         "native_options": {"theme": "direct"}
     });
     let project_config = json!({
-        "defaults": {"limit": 200, "output": "readable-view"},
+        "defaults": {"pagination": {"limit": 200}, "output": "readable-view"},
         "native_options": {"theme": "project"}
     });
     let user_config = json!({
-        "defaults": {"limit": 300, "output": "readable-view"}
+        "defaults": {"pagination": {"limit": 300}, "output": "readable-view"}
     });
 
     let resolution = resolve_standard_parameters(
@@ -117,9 +120,9 @@ fn catalog_derivation_rejects_conflicting_config_paths() {
 fn constructed_sources_report_validation_failures_through_diagnostic_handoff() {
     let catalog = parameter_catalog();
     let entries = catalog.entries();
-    let identity = identity("docnav.defaults.limit");
+    let identity = identity("docnav.defaults.pagination.limit");
     let direct_input = json!({"limit": 0});
-    let project_config = json!({"defaults": {"limit": 200}});
+    let project_config = json!({"defaults": {"pagination": {"limit": 200}}});
 
     let resolution = resolve_standard_parameters(
         entries,
@@ -152,7 +155,7 @@ fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() 
     let missing = temp_path("missing-project-config.json");
     let user_config = temp_file(
         "source-skip-user-config.json",
-        r#"{"defaults": {"limit": 300, "output": "readable-view"}}"#,
+        r#"{"defaults": {"pagination": {"limit": 300}, "output": "readable-view"}}"#,
     );
     let loaded_project =
         load_standard_parameter_config_source(&StandardParameterConfigSourceDescriptor::new(
@@ -190,7 +193,7 @@ fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() 
 
     assert_eq!(
         resolution
-            .value(&identity("docnav.defaults.limit"))
+            .value(&identity("docnav.defaults.pagination.limit"))
             .unwrap()
             .value,
         TypedValue::Integer(300)

@@ -91,6 +91,7 @@ fn parse_without_output_has_none() {
     match parsed.command {
         CliCommand::Document(command) => {
             assert_eq!(command.output, None);
+            assert_eq!(command.pagination_enabled, None);
         }
         command => panic!("expected document command, got {command:?}"),
     }
@@ -196,6 +197,35 @@ fn used_known_argument_stays_strict() {
         .get("reason")
         .and_then(serde_json::Value::as_str)
         .is_some_and(|reason| reason.contains("positive integer")));
+}
+
+#[test]
+fn explicit_pagination_value_is_parsed() {
+    let parsed = parse(["outline", "doc.md", "--pagination", "disabled"])
+        .expect("parse pagination disabled");
+
+    match parsed.command {
+        CliCommand::Document(command) => {
+            assert_eq!(command.pagination_enabled, Some(false));
+        }
+        command => panic!("expected document command, got {command:?}"),
+    }
+}
+
+#[test]
+fn invalid_pagination_value_returns_error() {
+    let error = parse(["outline", "doc.md", "--pagination", "off"])
+        .expect_err("invalid pagination value should be rejected");
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(
+        details.get("field").and_then(serde_json::Value::as_str),
+        Some("--pagination")
+    );
+    assert!(details
+        .get("reason")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|reason| reason.contains("enabled or disabled")));
 }
 
 #[test]

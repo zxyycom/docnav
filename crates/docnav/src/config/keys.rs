@@ -10,7 +10,7 @@ use crate::project_paths::path_to_slash;
 
 use super::model::{
     ConfigContext, ConfigSource, CoreConfig, ResolvedValue, DEFAULT_LIMIT, DEFAULT_OUTPUT,
-    SUPPORTED_KEYS,
+    DEFAULT_PAGINATION_ENABLED, SUPPORTED_KEYS,
 };
 
 pub fn resolve_adapter(explicit: Option<&str>, context: &ConfigContext) -> ResolvedValue {
@@ -26,6 +26,16 @@ pub fn resolve_adapter(explicit: Option<&str>, context: &ConfigContext) -> Resol
     ResolvedValue::unset()
 }
 
+pub fn resolve_pagination_enabled(context: &ConfigContext) -> AppResult<ResolvedValue> {
+    if let Some(enabled) = context.project_config.defaults.pagination.enabled {
+        return Ok(ResolvedValue::project(json!(enabled)));
+    }
+    if let Some(enabled) = context.user_config.defaults.pagination.enabled {
+        return Ok(ResolvedValue::user(json!(enabled)));
+    }
+    Ok(ResolvedValue::built_in(json!(DEFAULT_PAGINATION_ENABLED)))
+}
+
 pub fn resolve_limit(
     explicit: Option<docnav_protocol::PositiveInteger>,
     context: &ConfigContext,
@@ -33,12 +43,12 @@ pub fn resolve_limit(
     if let Some(limit) = explicit {
         return Ok(ResolvedValue::explicit(json!(limit.get())));
     }
-    if let Some(limit) = context.project_config.defaults.limit {
-        validate_positive_key("defaults.limit", limit)?;
+    if let Some(limit) = context.project_config.defaults.pagination.limit {
+        validate_positive_key("defaults.pagination.limit", limit)?;
         return Ok(ResolvedValue::project(json!(limit)));
     }
-    if let Some(limit) = context.user_config.defaults.limit {
-        validate_positive_key("defaults.limit", limit)?;
+    if let Some(limit) = context.user_config.defaults.pagination.limit {
+        validate_positive_key("defaults.pagination.limit", limit)?;
         return Ok(ResolvedValue::user(json!(limit)));
     }
     Ok(ResolvedValue::built_in(json!(DEFAULT_LIMIT)))
@@ -102,7 +112,8 @@ pub(super) fn effective_values(context: &ConfigContext) -> AppResult<Vec<Value>>
 pub(super) fn effective_key_value(key: &str, context: &ConfigContext) -> AppResult<ResolvedValue> {
     match key {
         "defaults.adapter" => Ok(resolve_adapter(None, context)),
-        "defaults.limit" => resolve_limit(None, context),
+        "defaults.pagination.enabled" => resolve_pagination_enabled(context),
+        "defaults.pagination.limit" => resolve_limit(None, context),
         "defaults.output" => resolve_output(None, context),
         _ => Err(unknown_key(key)),
     }
@@ -120,8 +131,15 @@ pub(super) fn scoped_key_value(
             .as_ref()
             .map(|value| ResolvedValue::new(json!(value), source.clone()))
             .unwrap_or_else(ResolvedValue::unset)),
-        "defaults.limit" => Ok(config
+        "defaults.pagination.enabled" => Ok(config
             .defaults
+            .pagination
+            .enabled
+            .map(|value| ResolvedValue::new(json!(value), source.clone()))
+            .unwrap_or_else(ResolvedValue::unset)),
+        "defaults.pagination.limit" => Ok(config
+            .defaults
+            .pagination
             .limit
             .map(|value| ResolvedValue::new(json!(value), source.clone()))
             .unwrap_or_else(ResolvedValue::unset)),
@@ -151,12 +169,18 @@ pub(super) fn set_key(
             }
             config.defaults.adapter = Some(value.to_owned());
         }
-        "defaults.limit" => {
+        "defaults.pagination.enabled" => {
+            config.defaults.pagination.enabled = Some(parse_pagination_enabled(key, value)?);
+        }
+        "defaults.pagination.limit" => {
             let limit = value.parse::<u32>().map_err(|_| {
-                AppError::invalid_request(key, "defaults.limit must be a positive integer")
+                AppError::invalid_request(
+                    key,
+                    "defaults.pagination.limit must be a positive integer",
+                )
             })?;
             validate_positive_key(key, limit)?;
-            config.defaults.limit = Some(limit);
+            config.defaults.pagination.limit = Some(limit);
         }
         "defaults.output" => {
             let output = match config_path {
@@ -175,7 +199,8 @@ pub(super) fn set_key(
 pub(super) fn unset_key(config: &mut CoreConfig, key: &str) -> AppResult<()> {
     match key {
         "defaults.adapter" => config.defaults.adapter = None,
-        "defaults.limit" => config.defaults.limit = None,
+        "defaults.pagination.enabled" => config.defaults.pagination.enabled = None,
+        "defaults.pagination.limit" => config.defaults.pagination.limit = None,
         "defaults.output" => config.defaults.output = None,
         _ => return Err(unknown_key(key)),
     }
@@ -190,8 +215,15 @@ pub(super) fn config_value_to_json(key: &str, config: &CoreConfig) -> AppResult<
             .as_ref()
             .map(|value| json!(value))
             .unwrap_or(Value::Null),
-        "defaults.limit" => config
+        "defaults.pagination.enabled" => config
             .defaults
+            .pagination
+            .enabled
+            .map(|value| json!(value))
+            .unwrap_or(Value::Null),
+        "defaults.pagination.limit" => config
+            .defaults
+            .pagination
             .limit
             .map(|value| json!(value))
             .unwrap_or(Value::Null),
@@ -254,6 +286,17 @@ pub(super) fn ensure_supported_key(key: &str) -> AppResult<()> {
 
 fn unknown_key(key: &str) -> AppError {
     AppError::invalid_request("key", format!("unsupported docnav config key {key:?}"))
+}
+
+fn parse_pagination_enabled(key: &str, value: &str) -> AppResult<bool> {
+    match value {
+        "true" | "enabled" => Ok(true),
+        "false" | "disabled" => Ok(false),
+        _ => Err(AppError::invalid_request(
+            key,
+            format!("{key} must be true, false, enabled, or disabled"),
+        )),
+    }
 }
 
 pub(super) fn validate_positive_key(key: &str, value: u32) -> AppResult<()> {

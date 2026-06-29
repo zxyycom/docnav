@@ -7,9 +7,9 @@
 `docnav` 提供所有接入方式共享的核心能力入口：
 
 ```text
-docnav outline <path> [--adapter <adapter-id>] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json]
-docnav read <path> --ref <ref> [--adapter <adapter-id>] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json]
-docnav find <path> --query <text> [--adapter <adapter-id>] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json]
+docnav outline <path> [--adapter <adapter-id>] [--pagination enabled|disabled] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json]
+docnav read <path> --ref <ref> [--adapter <adapter-id>] [--pagination enabled|disabled] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json]
+docnav find <path> --query <text> [--adapter <adapter-id>] [--pagination enabled|disabled] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json]
 docnav info <path> [--adapter <adapter-id>] [--output readable-view|readable-json|protocol-json]
 docnav init
 docnav doctor
@@ -27,7 +27,7 @@ docnav version
 2. path 规范化和可访问性检查。
 3. adapter 选择：`--adapter` 或 core 简易推断确定一个预选 adapter；预选 probe 失败后逐个 probe 已注册 adapter，并返回第一个成功项。
 4. 使用 core 标准参数 registration 解析显式 argv、项目配置、用户配置和 core 内置默认值。
-5. page、limit、output 和其它 core-owned 标准参数解析。
+5. pagination enabled 状态、page、limit、output 和其它 core-owned 标准参数解析。
 6. 输出模式和错误映射选择。
 
 Rust CLI argv 结构解析以 `clap` 或 `clap` builder API 为基础。`clap` 承载命令、子命令、固定参数、默认值、枚举值和 help；core 标准参数 registration 承接 flag 映射、校验、help/default 文案和 operation argument binding。Docnav 在 command/operation 确定后只校验当前 operation 实际使用的参数。成功解析的 document CLI argv 进入标准参数机制，与配置和默认值一起产出 core 参数结果；随后进入 adapter routing、invoke request 构造和 output dispatch。该内部语义输入不是 protocol envelope 或 schema 稳定类型。
@@ -62,9 +62,9 @@ CLI 本节只定义命令入口和退出边界：
 ## Adapter 直接 CLI
 
 ```text
-docnav-markdown outline <path> [--page 1] [--limit 6000] [--max-heading-level 3] [--output readable-view|readable-json|protocol-json] [--project-config-path <path>] [--user-config-path <path>]
-docnav-markdown read <path> --ref <ref> [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json] [--project-config-path <path>] [--user-config-path <path>]
-docnav-markdown find <path> --query <text> [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json] [--project-config-path <path>] [--user-config-path <path>]
+docnav-markdown outline <path> [--pagination enabled|disabled] [--page 1] [--limit 6000] [--max-heading-level 3] [--output readable-view|readable-json|protocol-json] [--project-config-path <path>] [--user-config-path <path>]
+docnav-markdown read <path> --ref <ref> [--pagination enabled|disabled] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json] [--project-config-path <path>] [--user-config-path <path>]
+docnav-markdown find <path> --query <text> [--pagination enabled|disabled] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json] [--project-config-path <path>] [--user-config-path <path>]
 docnav-markdown info <path> [--output readable-view|readable-json|protocol-json] [--project-config-path <path>] [--user-config-path <path>]
 docnav-markdown manifest [--output protocol-json]
 docnav-markdown probe <path> [--output protocol-json]

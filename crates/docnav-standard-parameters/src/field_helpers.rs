@@ -5,13 +5,16 @@ use docnav_typed_fields::{
 
 pub mod ids {
     pub const ADAPTER: &str = "docnav.defaults.adapter";
-    pub const LIMIT: &str = "docnav.defaults.limit";
+    pub const LIMIT: &str = "docnav.defaults.pagination.limit";
     pub const OUTPUT: &str = "docnav.defaults.output";
     pub const PAGE: &str = "docnav.document.page";
+    pub const PAGINATION_ENABLED: &str = "docnav.defaults.pagination.enabled";
     pub const PATH: &str = "docnav.document.path";
     pub const QUERY: &str = "docnav.document.query";
     pub const REF: &str = "docnav.document.ref";
 }
+
+pub const MAX_PAGINATION_LIMIT: u32 = u32::MAX;
 
 pub fn document_path_field(processing_id: &'static str) -> FieldDefBuilder<String> {
     direct_string_field(ids::PATH, processing_id, ["path"])
@@ -57,9 +60,36 @@ pub fn configurable_limit_field(
         .process(direct_processing_id, ProcessStrategy::json_path(["limit"]))
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["defaults", "limit"]),
+            ProcessStrategy::json_path(["defaults", "pagination", "limit"]),
         )
         .validation(positive_u32_int_validation())
+}
+
+pub fn pagination_enabled_field(
+    direct_processing_id: &'static str,
+    config_processing_id: &'static str,
+) -> FieldDefBuilder<bool> {
+    FieldDef::builder(ids::PAGINATION_ENABLED)
+        .process(
+            direct_processing_id,
+            ProcessStrategy::json_path(["pagination"]),
+        )
+        .process(
+            config_processing_id,
+            ProcessStrategy::json_path(["defaults", "pagination", "enabled"]),
+        )
+        .validation(FieldValidation::boolean())
+}
+
+pub fn config_pagination_enabled_field(
+    config_processing_id: &'static str,
+) -> FieldDefBuilder<bool> {
+    FieldDef::builder(ids::PAGINATION_ENABLED)
+        .process(
+            config_processing_id,
+            ProcessStrategy::json_path(["defaults", "pagination", "enabled"]),
+        )
+        .validation(FieldValidation::boolean())
 }
 
 pub fn configurable_output_field<T>(

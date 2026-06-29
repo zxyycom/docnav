@@ -44,6 +44,7 @@ impl LooseArgContext<'_> {
 pub(super) enum KnownValueFlag<'a> {
     Page,
     Limit,
+    Pagination,
     ProjectConfigPath,
     Ref,
     Query,
@@ -60,6 +61,7 @@ pub(super) fn known_value_flag<'a>(
     match flag {
         flags::PAGE => Some(KnownValueFlag::Page),
         flags::LIMIT => Some(KnownValueFlag::Limit),
+        flags::PAGINATION => Some(KnownValueFlag::Pagination),
         flags::PROJECT_CONFIG_PATH => Some(KnownValueFlag::ProjectConfigPath),
         flags::REF => Some(KnownValueFlag::Ref),
         flags::QUERY => Some(KnownValueFlag::Query),
@@ -74,7 +76,9 @@ pub(super) fn known_value_flag<'a>(
 
 pub(super) fn operation_uses_flag(operation: Operation, flag: KnownValueFlag<'_>) -> bool {
     match flag {
-        KnownValueFlag::Page | KnownValueFlag::Limit => operation != Operation::Info,
+        KnownValueFlag::Page | KnownValueFlag::Limit | KnownValueFlag::Pagination => {
+            operation != Operation::Info
+        }
         KnownValueFlag::ProjectConfigPath | KnownValueFlag::UserConfigPath => true,
         KnownValueFlag::Ref => operation == Operation::Read,
         KnownValueFlag::Query => operation == Operation::Find,
@@ -155,6 +159,10 @@ fn loose_known_value_flags<'a>(
         LooseKnownValueFlag {
             flag: flags::LIMIT,
             used: context.uses_flag(KnownValueFlag::Limit),
+        },
+        LooseKnownValueFlag {
+            flag: flags::PAGINATION,
+            used: context.uses_flag(KnownValueFlag::Pagination),
         },
         LooseKnownValueFlag {
             flag: flags::PROJECT_CONFIG_PATH,

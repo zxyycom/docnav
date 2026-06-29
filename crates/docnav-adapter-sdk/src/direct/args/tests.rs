@@ -179,18 +179,107 @@ fn config_sources_merge_before_typed_operation_options() {
     assert!(options.warnings.is_empty());
 }
 
+#[test]
+fn pagination_disabled_finalizes_limit_after_source_merge() {
+    let dir = temp_dir("pagination-disabled");
+    let project_config = dir.join("project.json");
+    write_json(
+        &project_config,
+        json!({
+            "defaults": {
+                "pagination": {
+                    "enabled": false,
+                    "limit": 20
+                }
+            }
+        }),
+    );
+    let project_config_arg = path_arg(&project_config);
+
+    let options = parse_for_test(
+        Operation::Outline,
+        &[
+            "doc.md",
+            "--project-config-path",
+            &project_config_arg,
+            "--limit",
+            "300",
+        ],
+        6000,
+        &[],
+    )
+    .expect("parse disabled pagination options");
+
+    assert_eq!(options.limit.get(), u32::MAX);
+    assert!(options.warnings.is_empty());
+}
+
+#[test]
+fn legacy_defaults_limit_config_path_is_rejected() {
+    let dir = temp_dir("legacy-limit");
+    let project_config = dir.join("project.json");
+    write_json(
+        &project_config,
+        json!({
+            "defaults": {
+                "limit": 200
+            }
+        }),
+    );
+    let project_config_arg = path_arg(&project_config);
+
+    let error = parse_for_test(
+        Operation::Outline,
+        &["doc.md", "--project-config-path", &project_config_arg],
+        6000,
+        &[],
+    )
+    .expect_err("legacy defaults.limit must fail");
+
+    assert!(error.contains("unsupported defaults.limit"));
+    assert!(error.contains("defaults.pagination.limit"));
+}
+
+#[test]
+fn invalid_pagination_enabled_config_is_typed_validation_error() {
+    let dir = temp_dir("invalid-pagination-enabled");
+    let project_config = dir.join("project.json");
+    write_json(
+        &project_config,
+        json!({
+            "defaults": {
+                "pagination": {
+                    "enabled": "disabled"
+                }
+            }
+        }),
+    );
+    let project_config_arg = path_arg(&project_config);
+
+    let error = parse_for_test(
+        Operation::Outline,
+        &["doc.md", "--project-config-path", &project_config_arg],
+        6000,
+        &[],
+    )
+    .expect_err("string pagination enabled must fail typed validation");
+
+    assert!(error.contains("--pagination"));
+    assert!(error.contains("enabled or disabled"));
+}
+
 fn write_merge_precedence_configs(project_config: &Path, user_config: &Path) {
     write_json(
         project_config,
         json!({
-            "defaults": {"limit": 200, "output": "protocol-json"},
+            "defaults": {"pagination": {"limit": 200}, "output": "protocol-json"},
             "options": {"max_heading_level": 2}
         }),
     );
     write_json(
         user_config,
         json!({
-            "defaults": {"limit": 100, "output": "readable-json"},
+            "defaults": {"pagination": {"limit": 100}, "output": "readable-json"},
             "options": {"max_heading_level": 4}
         }),
     );

@@ -52,7 +52,7 @@ capabilities[]
 
 manifest 只接受 adapter 身份、支持格式、扩展名、content type 和 capabilities 字段，不声明协议范围或格式默认参数。manifest 字段扩展必须先由本文件和 manifest schema 定义。Markdown v0 adapter 必须声明并实现 `outline`、`read`、`find` 和 `info` 全部能力。
 
-Markdown v0 adapter 的默认参数和 native option registration 属于 `docnav-markdown` 标准参数声明：默认 `limit: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；direct CLI 和 `invoke` 分别按 [标准参数](standard-parameters.md) 定义的入口规则解析配置、默认值和 request `arguments`。
+Markdown v0 adapter 的默认参数和 native option registration 属于 `docnav-markdown` 标准参数声明：默认 `pagination.enabled: true`、`limit: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；direct CLI 和 `invoke` 分别按 [标准参数](standard-parameters.md) 定义的入口规则解析配置、默认值和 request `arguments`。
 Markdown find 返回的 match ref 可按共享调用流程原样传给 read；没有局部导航区域时，可以返回 adapter 定义的全文 ref。find 的 ref 归属策略和 read 对该 ref 的接受与解释行为，由 [Markdown Adapter](adapters/markdown.md) 定义。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度。
 
 ## Probe

@@ -23,8 +23,9 @@ pub use construction::{
     StandardParameterConfigSourceDescriptor,
 };
 pub use field_helpers::{
-    adapter_selection_field, configurable_limit_field, configurable_output_field,
-    document_path_field, find_query_field, ids, limit_field, page_field, read_ref_field,
+    adapter_selection_field, config_pagination_enabled_field, configurable_limit_field,
+    configurable_output_field, document_path_field, find_query_field, ids, limit_field, page_field,
+    pagination_enabled_field, read_ref_field, MAX_PAGINATION_LIMIT,
 };
 pub use path::{InvalidStandardParameterPath, StandardParameterPath};
 pub use pipeline::{

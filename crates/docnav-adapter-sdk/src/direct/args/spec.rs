@@ -5,64 +5,14 @@ use docnav_protocol::Operation;
 use super::super::native_options::{NativeOptionDefault, NativeOptionSpec, NativeOptionValueSpec};
 use super::super::output::DirectOutputMode;
 
-// 直接 CLI flag 来自 CLI/adapter-contract 主规范；只在 SDK direct CLI 边界解析使用。
-pub(in crate::direct::args) mod flags {
-    pub(in crate::direct::args) const LIMIT: &str = "--limit";
-    pub(in crate::direct::args) const OUTPUT: &str = "--output";
-    pub(in crate::direct::args) const PAGE: &str = "--page";
-    pub(in crate::direct::args) const PROJECT_CONFIG_PATH: &str = "--project-config-path";
-    pub(in crate::direct::args) const QUERY: &str = "--query";
-    pub(in crate::direct::args) const REF: &str = "--ref";
-    pub(in crate::direct::args) const USER_CONFIG_PATH: &str = "--user-config-path";
-}
+mod constants;
 
-pub(in crate::direct::args) mod arg_ids {
-    pub(in crate::direct::args) const LIMIT: &str = "limit";
-    pub(in crate::direct::args) const OUTPUT: &str = "output";
-    pub(in crate::direct::args) const PAGE: &str = "page";
-    pub(in crate::direct::args) const PATH: &str = "path";
-    pub(in crate::direct::args) const PROJECT_CONFIG_PATH: &str = "project_config_path";
-    pub(in crate::direct::args) const QUERY: &str = "query";
-    pub(in crate::direct::args) const REF: &str = "ref";
-    pub(in crate::direct::args) const USER_CONFIG_PATH: &str = "user_config_path";
-}
+pub(in crate::direct) use constants::command_names;
+pub(in crate::direct::args) use constants::{
+    arg_ids, command_labels, flags, input_errors, pagination_values,
+};
 
-pub(in crate::direct) mod command_names {
-    pub(crate) const FIND: &str = "find";
-    pub(crate) const INFO: &str = "info";
-    pub(crate) const INVOKE: &str = "invoke";
-    pub(crate) const MANIFEST: &str = "manifest";
-    pub(crate) const OUTLINE: &str = "outline";
-    pub(crate) const PROBE: &str = "probe";
-    pub(crate) const READ: &str = "read";
-}
-
-mod defaults {
-    pub(super) const LIMIT: &str = super::super::standard::DEFAULT_LIMIT_TEXT;
-    pub(super) const LIMIT_VALUE: u32 = 6000;
-    pub(super) const OUTPUT: &str = super::super::standard::DEFAULT_OUTPUT_TEXT;
-    pub(super) const PAGE: &str = super::super::standard::DEFAULT_PAGE_TEXT;
-    pub(super) const PROTOCOL_OUTPUT: &str = super::super::standard::DEFAULT_PROTOCOL_OUTPUT_TEXT;
-}
-
-// 直接 CLI 输出模式字符串来自 CLI 主规范；protocol 层不复用这些阅读输出标签。
-mod output_values {
-    pub(super) const PROTOCOL_JSON: &str = "protocol-json";
-    pub(super) const READABLE_JSON: &str = "readable-json";
-    pub(super) const READABLE_VIEW: &str = "readable-view";
-}
-
-// 这些命令标签只用于直接 CLI warning reason，不参与 protocol operation 枚举。
-pub(in crate::direct::args) mod command_labels {
-    pub(in crate::direct::args) const MANIFEST: &str = "manifest";
-    pub(in crate::direct::args) const PROBE: &str = "probe";
-}
-
-// 输入错误文案属于直接 CLI 边界诊断，不进入 protocol schema。
-pub(in crate::direct::args) mod input_errors {
-    pub(in crate::direct::args) const PROTOCOL_OUTPUT_ONLY: &str =
-        "only --output protocol-json is supported for this command";
-}
+use constants::{defaults, output_values};
 
 pub(in crate::direct) fn direct_cli_command(
     program_name: &'static str,
@@ -134,7 +84,10 @@ pub(in crate::direct::args) fn operation_command(
         .arg(user_config_path_arg());
 
     if operation != Operation::Info {
-        command = command.arg(page_arg()).arg(limit_arg(default_limit));
+        command = command
+            .arg(pagination_arg())
+            .arg(page_arg())
+            .arg(limit_arg(default_limit));
     }
     if operation == Operation::Read {
         command = command.arg(ref_arg());
@@ -180,6 +133,16 @@ fn limit_arg(default_limit: u32) -> Arg {
     } else {
         arg.help("positive integer; default: adapter configured value")
     }
+}
+
+fn pagination_arg() -> Arg {
+    Arg::new(arg_ids::PAGINATION)
+        .long("pagination")
+        .value_name("enabled|disabled")
+        .num_args(1)
+        .allow_hyphen_values(true)
+        .default_value(defaults::PAGINATION)
+        .value_parser([pagination_values::ENABLED, pagination_values::DISABLED])
 }
 
 fn output_arg() -> Arg {

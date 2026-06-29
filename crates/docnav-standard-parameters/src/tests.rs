@@ -48,9 +48,12 @@ where
 #[derive(Debug, FieldDefs)]
 struct Params {
     #[field(
-        FieldDef::builder("docnav.defaults.limit")
+        FieldDef::builder("docnav.defaults.pagination.limit")
             .process(DIRECT_PROCESSING, config_json_path(["limit"]))
-            .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]))
+            .process(
+                CONFIG_PROCESSING,
+                config_json_path(["defaults", "pagination", "limit"]),
+            )
             .validation(FieldValidation::int().between(
                 FieldBound::closed(1),
                 FieldBound::closed(100_000),

@@ -67,8 +67,8 @@ fn validate_config(config: &CoreConfig, path: &Path) -> AppResult<()> {
             ));
         }
     }
-    if let Some(limit) = config.defaults.limit {
-        validate_positive_key("defaults.limit", limit)?;
+    if let Some(limit) = config.defaults.pagination.limit {
+        validate_positive_key("defaults.pagination.limit", limit)?;
     }
     validate_output_key("defaults.output", &config.defaults.output, path)?;
     Ok(())

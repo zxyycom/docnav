@@ -3,6 +3,7 @@ pub(super) const LIMIT: &str = "--limit";
 pub(super) const OPERATION: &str = "--operation";
 pub(super) const OUTPUT: &str = "--output";
 pub(super) const PAGE: &str = "--page";
+pub(super) const PAGINATION: &str = "--pagination";
 pub(super) const PATH: &str = "--path";
 pub(super) const QUERY: &str = "--query";
 pub(super) const REF: &str = "--ref";

@@ -158,6 +158,9 @@ fn insert_window_input(
     input: &mut Map<String, Value>,
 ) {
     if operation != Operation::Info {
+        if let Some(value) = command_line_string_value(matches, arg_ids::PAGINATION) {
+            input.insert("pagination".to_owned(), pagination_value(value));
+        }
         if let Some(value) = command_line_u32_value(matches, arg_ids::PAGE) {
             input.insert("page".to_owned(), value);
         }
@@ -165,6 +168,10 @@ fn insert_window_input(
             input.insert("limit".to_owned(), value);
         }
     }
+}
+
+fn pagination_value(value: Value) -> Value {
+    Value::Bool(value.as_str() == Some(super::spec::pagination_values::ENABLED))
 }
 
 fn insert_output_input(matches: &clap::parser::ArgMatches, input: &mut Map<String, Value>) {

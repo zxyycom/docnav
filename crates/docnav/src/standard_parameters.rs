@@ -6,7 +6,7 @@ use docnav_diagnostics::{
 use docnav_protocol::{Operation, PositiveInteger};
 use docnav_standard_parameters::{
     ids, StandardParameterHandoff, StandardParameterResolution, StandardParameterSourceKind,
-    StandardParameterValidationIssue,
+    StandardParameterValidationIssue, MAX_PAGINATION_LIMIT,
 };
 use docnav_typed_fields::{FieldIdentity, TypedValue};
 use serde_json::{json, Value};
@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::{ConfigContext, ResolvedValue};
 use crate::error::{AppError, AppResult};
-use crate::runtime::ResolvedDocumentDefaults;
+use crate::runtime::{ResolvedDocumentDefaults, ResolvedPaginationDefaults};
 
 mod definitions;
 #[cfg(test)]
@@ -22,7 +22,7 @@ mod tests;
 
 use ids::{
     ADAPTER as ID_ADAPTER, LIMIT as ID_LIMIT, OUTPUT as ID_OUTPUT, PAGE as ID_PAGE,
-    PATH as ID_PATH, QUERY as ID_QUERY, REF as ID_REF,
+    PAGINATION_ENABLED as ID_PAGINATION_ENABLED, PATH as ID_PATH, QUERY as ID_QUERY, REF as ID_REF,
 };
 
 pub(crate) const DEFAULT_LIMIT_TEXT: &str = "6000";
@@ -68,7 +68,7 @@ fn resolved_core_document_parameters_from_resolution(
         ref_id: optional_string_value(resolution, ID_REF)?,
         query: optional_string_value(resolution, ID_QUERY)?,
         page: optional_document_positive(operation, resolution, ID_PAGE)?,
-        limit: optional_document_positive(operation, resolution, ID_LIMIT)?,
+        limit: optional_document_limit(operation, resolution)?,
         output: required_output_value(resolution)?,
         adapter: optional_string_value(resolution, ID_ADAPTER)?,
         defaults: resolved_document_defaults(operation, resolution)?,
@@ -86,16 +86,45 @@ fn optional_document_positive(
     Ok(Some(required_positive_value(resolution, identity)?))
 }
 
+fn optional_document_limit(
+    operation: Operation,
+    resolution: &StandardParameterResolution,
+) -> AppResult<Option<PositiveInteger>> {
+    if !uses_document_window(operation) {
+        return Ok(None);
+    }
+    let enabled = required_bool_value(resolution, ID_PAGINATION_ENABLED)?;
+    let limit = required_positive_value(resolution, ID_LIMIT)?;
+    Ok(Some(if enabled {
+        limit
+    } else {
+        max_pagination_limit()
+    }))
+}
+
 fn resolved_document_defaults(
     operation: Operation,
     resolution: &StandardParameterResolution,
 ) -> AppResult<ResolvedDocumentDefaults> {
     Ok(ResolvedDocumentDefaults {
         adapter: resolved_value(resolution, ID_ADAPTER).unwrap_or_else(ResolvedValue::unset),
-        limit: optional_document_resolved_value(operation, resolution, ID_LIMIT)?,
+        pagination: optional_document_pagination_defaults(operation, resolution)?,
         output: required_resolved_value(resolution, ID_OUTPUT)?,
         page: optional_document_resolved_value(operation, resolution, ID_PAGE)?,
     })
+}
+
+fn optional_document_pagination_defaults(
+    operation: Operation,
+    resolution: &StandardParameterResolution,
+) -> AppResult<Option<ResolvedPaginationDefaults>> {
+    if !uses_document_window(operation) {
+        return Ok(None);
+    }
+    Ok(Some(ResolvedPaginationDefaults {
+        enabled: required_resolved_value(resolution, ID_PAGINATION_ENABLED)?,
+        limit: required_resolved_value(resolution, ID_LIMIT)?,
+    }))
 }
 
 fn optional_document_resolved_value(
@@ -134,6 +163,7 @@ fn field_label(identity: &str) -> &'static str {
         ID_LIMIT => "--limit",
         ID_OUTPUT => "--output",
         ID_PAGE => "--page",
+        ID_PAGINATION_ENABLED => "--pagination",
         ID_PATH => "path",
         ID_QUERY => "--query",
         ID_REF => "--ref",
@@ -149,6 +179,7 @@ fn validation_reason(identity: &str) -> String {
             OutputMode::ACCEPTED_VALUES.join(", ")
         ),
         ID_PAGE => "--page must be a positive integer".to_owned(),
+        ID_PAGINATION_ENABLED => "--pagination must be enabled or disabled".to_owned(),
         ID_PATH => "path value must not be empty".to_owned(),
         ID_QUERY => "--query value must not be empty".to_owned(),
         ID_REF => "--ref value must not be empty".to_owned(),
@@ -182,6 +213,21 @@ fn optional_string_value(
     }
 }
 
+fn required_bool_value(
+    resolution: &StandardParameterResolution,
+    identity: &str,
+) -> AppResult<bool> {
+    let value = resolution.value(&identity_key(identity)?).ok_or_else(|| {
+        AppError::internal(format!("missing-resolved-standard-parameter:{identity}"))
+    })?;
+    let TypedValue::Boolean(value) = value.value else {
+        return Err(AppError::internal(format!(
+            "unexpected-standard-parameter-type:{identity}"
+        )));
+    };
+    Ok(value)
+}
+
 fn required_positive_value(
     resolution: &StandardParameterResolution,
     identity: &str,
@@ -199,6 +245,10 @@ fn required_positive_value(
         .and_then(NonZeroU32::new)
         .ok_or_else(|| validation_error_for_identity(identity))?;
     Ok(value)
+}
+
+fn max_pagination_limit() -> PositiveInteger {
+    NonZeroU32::new(MAX_PAGINATION_LIMIT).expect("u32::MAX is a positive integer")
 }
 
 fn required_output_value(resolution: &StandardParameterResolution) -> AppResult<OutputMode> {

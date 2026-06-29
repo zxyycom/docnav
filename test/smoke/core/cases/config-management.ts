@@ -2,10 +2,11 @@ import {
   createFakeAdapter,
   createProject,
   readAdapterCalls,
+  writeJson,
   writeProjectConfig,
   writeRegistry
 } from "../fixtures.ts";
-import type { SmokeProject } from "../fixtures.ts";
+import type { FakeAdapter, SmokeProject } from "../fixtures.ts";
 import { runCli } from "../harness.ts";
 import {
   expect,
@@ -54,24 +55,38 @@ async function testConfigPrecedenceAndPathContext() {
   });
   writeRegistry(project, [fake]);
 
-  await assertUserLimitConfigSet(project);
+  await assertUserPaginationConfigSet(project);
   await assertRemovedTextOutputFails(project);
   await assertConfigListPathContext(project, fake.id);
+  await assertPaginationDisabledRequestFinalization(project, fake);
+  await assertLegacyDefaultsLimitConfigFails();
 }
 
-async function assertUserLimitConfigSet(project: SmokeProject) {
-  const setUser = await runCli("CORE-CONFIG-001 config set user defaults.limit", [
+async function assertUserPaginationConfigSet(project: SmokeProject) {
+  const setLimit = await runCli("CORE-CONFIG-001 config set user defaults.pagination.limit", [
     "config",
     "set",
-    "defaults.limit",
+    "defaults.pagination.limit",
     "321",
     "--user"
   ], { project });
-  expectExit(setUser, 0);
-  expectStderrEmpty(setUser);
-  const setUserJson = parseJson(setUser);
-  expect(setUser, setUserJson.scope === "user", "user config set writes user scope");
-  expect(setUser, setUserJson.value === 321, "user config set stores limit chars");
+  expectExit(setLimit, 0);
+  expectStderrEmpty(setLimit);
+  const setLimitJson = parseJson(setLimit);
+  expect(setLimit, setLimitJson.scope === "user", "user config set writes user scope");
+  expect(setLimit, setLimitJson.value === 321, "user config set stores pagination limit");
+
+  const setEnabled = await runCli("CORE-CONFIG-001 config set user defaults.pagination.enabled", [
+    "config",
+    "set",
+    "defaults.pagination.enabled",
+    "disabled",
+    "--user"
+  ], { project });
+  expectExit(setEnabled, 0);
+  expectStderrEmpty(setEnabled);
+  const setEnabledJson = parseJson(setEnabled);
+  expect(setEnabled, setEnabledJson.value === false, "user config set stores pagination enabled state");
 }
 
 async function assertRemovedTextOutputFails(project: SmokeProject) {
@@ -112,13 +127,60 @@ async function assertConfigListPathContext(project: SmokeProject, adapterId: str
   expectStderrEmpty(list);
   const listJson = parseJson(list);
   expect(list, valueFor(list, listJson, "defaults.output").value === "readable-json", "config list shows project output value");
-  expect(list, valueFor(list, listJson, "defaults.limit").value === 321, "config list shows user limit value");
+  expect(
+    list,
+    valueFor(list, listJson, "defaults.pagination.enabled").value === false,
+    "config list shows user pagination enabled value"
+  );
+  expect(
+    list,
+    valueFor(list, listJson, "defaults.pagination.limit").value === 321,
+    "config list shows user pagination limit value"
+  );
   const pathContext = expectJsonObject(list, listJson.path_context, "config list path_context is an object");
   const adapter = expectJsonObject(list, pathContext.adapter, "config list path_context.adapter is an object");
   const defaults = expectJsonObject(list, pathContext.defaults, "config list path_context.defaults is an object");
-  const limit = expectJsonObject(list, defaults.limit, "config list limit context is an object");
+  const pagination = expectJsonObject(list, defaults.pagination, "config list pagination context is an object");
+  const enabled = expectJsonObject(list, pagination.enabled, "config list pagination enabled context is an object");
+  const limit = expectJsonObject(list, pagination.limit, "config list pagination limit context is an object");
   expect(list, adapter.selected === adapterId, "config list --path reports selected adapter");
+  expect(list, enabled.value === false, "config list --path reports final pagination enabled state");
   expect(list, limit.value === 321, "config list --path reports final limit");
+}
+
+async function assertPaginationDisabledRequestFinalization(project: SmokeProject, adapter: FakeAdapter) {
+  const record = await runCli("CORE-CONFIG-001 config disabled pagination uses numeric limit only", [
+    "outline",
+    project.normalRelPath,
+    "--limit",
+    "12",
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const invokeCall = [...readAdapterCalls(adapter)].reverse().find((call) => call.command === "invoke");
+  const stdin = expectJsonObject(record, invokeCall?.stdin, "fake adapter invoke stdin is an object");
+  const argumentsJson = expectJsonObject(record, stdin.arguments, "fake adapter invoke arguments is an object");
+  expect(record, argumentsJson.limit === 4294967295, "disabled pagination finalizes limit to max positive integer");
+  expect(record, argumentsJson.page === 1, "disabled pagination still sends page");
+  expect(record, !Object.hasOwn(argumentsJson, "pagination"), "protocol request does not include pagination field");
+}
+
+async function assertLegacyDefaultsLimitConfigFails() {
+  const project = createProject("legacy-defaults-limit", { config: false });
+  writeJson(`${project.docnavDir}/docnav.json`, {
+    defaults: {
+      limit: 12
+    }
+  });
+
+  const record = await runCli("CORE-CONFIG-001 legacy defaults.limit config fails", ["config", "list"], { project });
+  expectExit(record, exitCodes.input);
+  expectStderrEmpty(record);
+  expectStdoutIncludes(record, "failed to parse");
+  expectStdoutIncludes(record, "unknown field");
+  expectStdoutIncludes(record, "limit");
 }
 
 async function testInitVersionDoctorAndHelp() {
@@ -138,6 +200,7 @@ async function testInitVersionDoctorAndHelp() {
   expectExit(help, 0);
   expectStderrEmpty(help);
   expectStdoutIncludes(help, "--output");
+  expectStdoutIncludes(help, "--pagination");
   expectStdoutIncludes(help, "--limit");
   expectStdoutIncludes(help, "readable-view");
   expectStdoutIncludes(help, "readable-json");

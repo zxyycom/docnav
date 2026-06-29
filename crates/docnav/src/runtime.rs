@@ -31,9 +31,15 @@ pub struct DocumentRequest {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ResolvedDocumentDefaults {
     pub adapter: ResolvedValue,
-    pub limit: Option<ResolvedValue>,
+    pub pagination: Option<ResolvedPaginationDefaults>,
     pub output: ResolvedValue,
     pub page: Option<ResolvedValue>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ResolvedPaginationDefaults {
+    pub enabled: ResolvedValue,
+    pub limit: ResolvedValue,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -162,6 +168,7 @@ pub fn resolve_context_defaults(
         ref_id: None,
         query: None,
         page: None,
+        pagination_enabled: None,
         limit: None,
         output: None,
         adapter: None,

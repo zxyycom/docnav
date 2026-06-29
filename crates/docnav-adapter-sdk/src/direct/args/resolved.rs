@@ -1,7 +1,7 @@
 use docnav_protocol::{positive_result, Operation, PositiveInteger};
 use docnav_standard_parameters::{
     PassthroughValue, StandardParameterHandoff, StandardParameterResolution,
-    StandardParameterSourceKind, StandardParameterValidationIssue,
+    StandardParameterSourceKind, StandardParameterValidationIssue, MAX_PAGINATION_LIMIT,
 };
 use docnav_typed_fields::{FieldIdentity, TypedValue};
 use serde_json::{json, Map, Value};
@@ -9,7 +9,9 @@ use serde_json::{json, Map, Value};
 use super::super::native_options::{NativeOptionDefault, NativeOptionSpec};
 use super::super::warnings::DirectCliWarning;
 use super::spec::flags;
-use super::standard::{ID_LIMIT, ID_OUTPUT, ID_PAGE, ID_PATH, ID_QUERY, ID_REF};
+use super::standard::{
+    ID_LIMIT, ID_OUTPUT, ID_PAGE, ID_PAGINATION_ENABLED, ID_PATH, ID_QUERY, ID_REF,
+};
 
 pub(super) fn resolved_page(
     operation: Operation,
@@ -30,12 +32,9 @@ pub(super) fn resolved_limit(
     if operation == Operation::Info {
         return Ok(Value::from(default_limit));
     }
-    Ok(json!(required_positive_value(
-        resolution,
-        ID_LIMIT,
-        flags::LIMIT
-    )?
-    .get()))
+    let enabled = required_bool_value(resolution, ID_PAGINATION_ENABLED, flags::PAGINATION)?;
+    let limit = required_positive_value(resolution, ID_LIMIT, flags::LIMIT)?.get();
+    Ok(json!(if enabled { limit } else { MAX_PAGINATION_LIMIT }))
 }
 
 pub(super) fn merged_native_options(
@@ -155,11 +154,26 @@ fn validation_message(diagnostic: &StandardParameterValidationIssue) -> String {
         ID_LIMIT => format!("{} must be a positive integer", flags::LIMIT),
         ID_OUTPUT => format!("invalid {}", flags::OUTPUT),
         ID_PAGE => format!("{} must be a positive integer", flags::PAGE),
+        ID_PAGINATION_ENABLED => format!("{} must be enabled or disabled", flags::PAGINATION),
         ID_PATH => "path value must not be empty".to_owned(),
         ID_QUERY => format!("{} value must not be empty", flags::QUERY),
         ID_REF => format!("{} value must not be empty", flags::REF),
         _ => "standard parameter validation failed".to_owned(),
     }
+}
+
+fn required_bool_value(
+    resolution: &StandardParameterResolution,
+    identity: &str,
+    flag: &str,
+) -> Result<bool, String> {
+    let value = resolution
+        .value(&identity_key(identity)?)
+        .ok_or_else(|| format!("missing resolved standard parameter {identity}"))?;
+    let TypedValue::Boolean(value) = value.value else {
+        return Err(format!("{flag} must be enabled or disabled"));
+    };
+    Ok(value)
 }
 
 fn required_positive_value(

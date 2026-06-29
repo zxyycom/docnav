@@ -36,29 +36,20 @@ export function createMarkdownConfigTasks() {
 async function testMarkdownDirectCliConfig() {
   const project = createProject("direct-config");
   writeProjectConfig(project, {
-    defaults: {
-      limit: 40,
-      output: "readable-json"
-    },
-    options: {
-      max_heading_level: 1
-    }
+    defaults: { pagination: { enabled: true, limit: 40 }, output: "readable-json" },
+    options: { max_heading_level: 1 }
   });
   writeUserConfig(project, {
-    defaults: {
-      limit: 20,
-      output: "protocol-json"
-    },
-    options: {
-      max_heading_level: 2
-    }
+    defaults: { pagination: { enabled: true, limit: 20 }, output: "protocol-json" },
+    options: { max_heading_level: 2 }
   });
 
   await assertProjectConfigApplies(project);
   await assertExplicitArgvOverridesConfig(project);
   await assertProjectConfigPathOverrideReplacesDefault(project);
+  await assertPaginationDisabledFinalizesLimit();
   await assertSkippedConfigSourceWarning(project);
-  await assertInvokeIgnoresDirectCliConfig(project);
+  await assertInvokeKeepsRequestOwnedNativeOptions(project);
   await assertHelpAndMachineCommandsDoNotReadConfig();
 }
 
@@ -161,13 +152,8 @@ async function assertExplicitArgvOverridesConfig(project: MarkdownConfigProject)
 async function assertProjectConfigPathOverrideReplacesDefault(project: MarkdownConfigProject) {
   const overridePath = path.join(project.fixturesDir, "project-override.json");
   writeJson(overridePath, {
-    defaults: {
-      limit: 6000,
-      output: "readable-json"
-    },
-    options: {
-      max_heading_level: 3
-    }
+    defaults: { pagination: { enabled: true, limit: 6000 }, output: "readable-json" },
+    options: { max_heading_level: 3 }
   });
 
   const { record, json } = await runReadableOutline(
@@ -177,6 +163,28 @@ async function assertProjectConfigPathOverrideReplacesDefault(project: MarkdownC
   );
 
   assertOutlineHasRefLevels(record, json, [1, 2, 3], "project override outline");
+}
+
+async function assertPaginationDisabledFinalizesLimit() {
+  const project = createProject("pagination-disabled");
+  writeProjectConfig(project, {
+    defaults: { pagination: { enabled: false, limit: 5 }, output: "readable-json" }
+  });
+
+  await runSuccessfulJsonCase(
+    "MD-CONFIG-001 disabled pagination finalizes limit before read",
+    ["read", project.docRelPath, "--ref", "doc:full"],
+    {
+      commandOptions: cwd(project),
+      schema: "readableRead",
+      check: (record, json) => {
+        expectNoProtocolEnvelope(record, json);
+        const content = expectString(record, json.content, "read content is string");
+        expect(record, json.page === null, "disabled pagination reads full document in one page");
+        expect(record, content === project.docText, "disabled pagination preserves full content");
+      }
+    }
+  );
 }
 
 async function assertSkippedConfigSourceWarning(project: MarkdownConfigProject) {
@@ -211,7 +219,7 @@ async function assertSkippedConfigSourceWarning(project: MarkdownConfigProject) 
   );
 }
 
-async function assertInvokeIgnoresDirectCliConfig(project: MarkdownConfigProject) {
+async function assertInvokeKeepsRequestOwnedNativeOptions(project: MarkdownConfigProject) {
   const request = {
     protocol_version: "0.1",
     request_id: "smoke-config-invoke",
@@ -223,7 +231,7 @@ async function assertInvokeIgnoresDirectCliConfig(project: MarkdownConfigProject
     }
   };
 
-  await runProtocolResponseCase("MD-CONFIG-001 invoke ignores direct CLI config", ["invoke"], {
+  await runProtocolResponseCase("MD-CONFIG-001 invoke keeps request-owned native options", ["invoke"], {
     commandOptions: {
       ...cwd(project),
       stdin: JSON.stringify(request),
@@ -233,7 +241,7 @@ async function assertInvokeIgnoresDirectCliConfig(project: MarkdownConfigProject
     check: (record, json) => {
       const result = expectJsonObject(record, json.result, "invoke outline result is object");
       const entries = expectObjectArray(record, result.entries, "invoke outline entries are objects");
-      expect(record, entries.length === 3, "invoke uses request/default options instead of direct CLI config");
+      expect(record, entries.length === 3, "invoke uses request/default native options");
       assertEntryLevels(record, entries, [1, 2, 3], "invoke outline");
     }
   });

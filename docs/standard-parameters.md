@@ -29,7 +29,9 @@
 
 下面以 `limit` 为例。流程图是本文的主线，只描述稳定契约，不规定具体实现函数或模块拆分。
 
-`limit` 的标准参数身份是 `LIMIT`，canonical key 为 `docnav.defaults.limit`。它在 CLI 和 adapter `invoke` 中暴露为 `limit`，在配置文件中映射为 `defaults.limit`，基础校验只要求正整数。标准参数层不定义预算单位，也不决定分页策略；预算如何计数、如何压缩单页结果，以及 read 是否按字符、token 或其它单位切分，由最终消费该值的 adapter owner 说明。
+`limit` 的标准参数身份是 `LIMIT`，canonical key 为 `docnav.defaults.pagination.limit`。它在 CLI 和 adapter `invoke` 中暴露为 `limit`，在配置文件中映射为 `defaults.pagination.limit`，基础校验只要求正整数。标准参数层不定义预算单位，也不决定分页策略；预算如何计数、如何压缩单页结果，以及 read 是否按字符、token 或其它单位切分，由最终消费该值的 adapter owner 说明。
+
+`pagination.enabled` 的标准参数身份是 `PAGINATION_ENABLED`，canonical key 为 `docnav.defaults.pagination.enabled`。Core 和 adapter direct CLI 在 argv 中把 `--pagination enabled|disabled` 映射为本 identity；配置文件使用 `defaults.pagination.enabled`。Adapter `invoke` 不从 request `arguments.pagination` 读取该值，只允许配置和 built-in default 参与该入口的 enabled 解析。来源合并完成后，入口在进入 adapter 前执行 disabled finalization：当最终 enabled 为 `false` 时，operation 入参中的 `limit` 使用标准参数运行时定义的最大正整数预算。
 
 ```mermaid
 flowchart TD
@@ -39,7 +41,7 @@ flowchart TD
   D --> E["解析配置位置<br/>显式 project_config_path / user_config_path 优先"]
   E --> F["缺省补全<br/>project_config_path from cwd<br/>user_config_path from default user path"]
   F --> G["读取配置文件<br/>project config + user config"]
-  G --> H["映射为 source object<br/>source=project_config / user_config<br/>defaults.limit -> LIMIT"]
+  G --> H["映射为 source object<br/>source=project_config / user_config<br/>defaults.pagination.limit -> LIMIT"]
 
   A --> I["映射为 source object<br/>source=default<br/>static default + dynamic default"]
 
@@ -98,7 +100,7 @@ Direct input 是一次调用显式给出的输入，包括 CLI argv 和 adapter 
 
 配置读取先校验 JSON 顶层 object，再按已注册的配置路径映射字段。Document identity 参数不从配置域读取：`path`、`ref` 和 `query` 只能来自显式输入；`page` 来自显式输入或入口固定默认 `1`，不使用 `defaults.page` 一类配置默认值。
 
-配置字段只有注册了 config path 才会形成标准参数值。取消某个参数的 config path，就等于该参数不能从配置文件取得；CLI flag 和 `invoke` argument path 也遵循同一规则。
+配置字段只有注册了 config path 才会形成标准参数值。取消某个参数的 config path，就等于该参数不能从配置文件取得；CLI flag 和 `invoke` argument path 也遵循同一规则。`defaults.pagination.limit` 是 `LIMIT` 的唯一配置路径，旧 `defaults.limit` 不形成标准参数来源。
 
 配置只控制所属入口明确声明的行为默认值。配置不得改变 protocol-json 字段、readable-json 字段或 `DiagnosticCode`。`docnav config set` 和 `unset` 默认写项目配置；传入 `--user` 时写用户配置。`config list` 不带 path 时列出 core 配置域当前生效值；`config list --path <path> [--operation outline|read|find|info]` 解析文档上下文，并展示该 path 触发的 adapter、core 标准参数来源和最终值。
 

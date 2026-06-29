@@ -1,11 +1,21 @@
 use super::common::{positive, HandlerErrorAdapter, ManifestShapeErrorAdapter, StubAdapter};
-use crate::invoke::invoke_once_with_default_limit;
+use crate::invoke::{invoke_once_with_default_limit, invoke_once_with_standard_parameter_config};
+use crate::standard_parameters::InvokeStandardParameterConfig;
 use crate::{invoke_once, Adapter, AdapterExitCode, AdapterResult};
 use docnav_protocol::{
     AdapterIdentity, Entry, FailureResponse, FormatDescriptor, Manifest, Operation,
     OutlineArguments, OutlineResult, ProbeResult, ProtocolDiagnosticCode, ProtocolResponse,
     RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
 };
+use docnav_standard_parameters::{
+    ConfigPathOrigin, ConfigSourceLevel, StandardParameterConfigSourceDescriptor,
+};
+use serde_json::json;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 // @case WB-SDK-INVOKE-001
 #[test]
@@ -93,6 +103,83 @@ fn invoke_standard_parameter_normalization_supplies_default_window() {
 }
 
 #[test]
+fn invoke_standard_parameter_normalization_uses_adapter_config_defaults() {
+    let project_config = temp_file(
+        "invoke-project-config.json",
+        json!({
+            "defaults": {
+                "pagination": {
+                    "limit": 77
+                }
+            }
+        }),
+    );
+    let input = br#"{
+          "protocol_version": "0.1",
+          "request_id": "req-config-defaults",
+          "operation": "outline",
+          "document": { "path": "sample.stub" },
+          "arguments": {}
+        }"#;
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let exit = invoke_once_with_standard_parameter_config(
+        &DefaultWindowRequiredAdapter { expected_limit: 77 },
+        invoke_config(6000, Some(project_config), None),
+        &input[..],
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, AdapterExitCode::Success.code());
+    assert!(stderr.is_empty());
+    let response: ProtocolResponse =
+        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
+    response.validate().expect("response validates");
+}
+
+#[test]
+fn invoke_pagination_disabled_finalizes_limit_without_protocol_pagination() {
+    let project_config = temp_file(
+        "invoke-disabled-config.json",
+        json!({
+            "defaults": {
+                "pagination": {
+                    "enabled": false,
+                    "limit": 77
+                }
+            }
+        }),
+    );
+    let input = br#"{
+          "protocol_version": "0.1",
+          "request_id": "req-disabled",
+          "operation": "outline",
+          "document": { "path": "sample.stub" },
+          "arguments": { "limit": 10, "page": 1 }
+        }"#;
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let exit = invoke_once_with_standard_parameter_config(
+        &DefaultWindowRequiredAdapter {
+            expected_limit: u32::MAX,
+        },
+        invoke_config(6000, Some(project_config), None),
+        &input[..],
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, AdapterExitCode::Success.code());
+    assert!(stderr.is_empty());
+    let response: ProtocolResponse =
+        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
+    response.validate().expect("response validates");
+}
+
+#[test]
 fn invoke_protocol_decode_accepts_unmapped_arguments_before_standardization() {
     let input = br#"{
           "protocol_version": "0.1",
@@ -115,6 +202,40 @@ fn invoke_protocol_decode_accepts_unmapped_arguments_before_standardization() {
     let response: ProtocolResponse =
         serde_json::from_slice(&stdout).expect("stdout is one JSON response");
     response.validate().expect("response validates");
+}
+
+fn invoke_config(
+    default_limit: u32,
+    project_config: Option<PathBuf>,
+    user_config: Option<PathBuf>,
+) -> InvokeStandardParameterConfig {
+    InvokeStandardParameterConfig {
+        default_limit,
+        project_config: project_config.map(|path| {
+            StandardParameterConfigSourceDescriptor::new(
+                ConfigSourceLevel::Project,
+                ConfigPathOrigin::Override,
+                path,
+            )
+        }),
+        user_config: user_config.map(|path| {
+            StandardParameterConfigSourceDescriptor::new(
+                ConfigSourceLevel::User,
+                ConfigPathOrigin::Override,
+                path,
+            )
+        }),
+    }
+}
+
+fn temp_file(name: &str, value: serde_json::Value) -> PathBuf {
+    let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!(
+        "docnav-adapter-sdk-invoke-test-{}-{id}-{name}",
+        std::process::id()
+    ));
+    fs::write(&path, serde_json::to_string_pretty(&value).unwrap()).unwrap();
+    path
 }
 
 #[test]

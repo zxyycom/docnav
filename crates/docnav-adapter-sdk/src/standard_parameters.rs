@@ -5,26 +5,33 @@ use docnav_protocol::{
     RawRequestEnvelope, ReadArguments, RequestEnvelope,
 };
 use docnav_standard_parameters::{
-    find_query_field, ids, limit_field as standard_limit_field, page_field as standard_page_field,
-    read_ref_field, EntryPassthroughPolicy, PassthroughValue, StandardParameterHandoff,
-    StandardParameterPipeline, StandardParameterResolution, StandardParameterSourceKind,
-    StandardParameterValidationIssue,
+    config_pagination_enabled_field, configurable_limit_field, find_query_field, ids,
+    page_field as standard_page_field, read_ref_field, EntryPassthroughPolicy,
+    StandardParameterHandoff, StandardParameterPipeline, StandardParameterResolution,
+    StandardParameterValidationIssue, MAX_PAGINATION_LIMIT,
 };
-use docnav_typed_fields::{FieldDefs, FieldIdentity, JsonValue, ProcessingBuild, TypedValue};
-use serde_json::{json, Map, Value};
+use docnav_typed_fields::{FieldDefs, FieldIdentity, JsonValue, TypedValue};
+use serde_json::json;
 
 use crate::AdapterError;
+
+mod config;
+mod passthrough;
+
+pub(crate) use config::InvokeStandardParameterConfig;
+pub(crate) use passthrough::native_options_passthrough;
+
+use config::loaded_config_source;
+use passthrough::{native_options_processing, options_from_resolution, raw_options};
 
 const DIRECT_PROCESSING: &str = "direct";
 const CONFIG_PROCESSING: &str = "config";
 const DEFAULT_PAGE: i64 = 1;
 
-use ids::{LIMIT as ID_LIMIT, PAGE as ID_PAGE, QUERY as ID_QUERY, REF as ID_REF};
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct InvokeStandardParameterConfig {
-    pub(crate) default_limit: u32,
-}
+use ids::{
+    LIMIT as ID_LIMIT, PAGE as ID_PAGE, PAGINATION_ENABLED as ID_PAGINATION_ENABLED,
+    QUERY as ID_QUERY, REF as ID_REF,
+};
 
 // FieldDefs consumes these fields as metadata; runtime code uses the generated definition set.
 #[allow(dead_code)]
@@ -55,6 +62,8 @@ struct InvokeFindStandardArguments {
 #[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct InvokeContentWindowArguments {
+    #[field(invoke_pagination_enabled_field())]
+    pagination_enabled: bool,
     #[field(invoke_page_field())]
     page: i64,
     #[field(invoke_limit_field())]
@@ -66,7 +75,11 @@ fn invoke_page_field() -> docnav_typed_fields::FieldDefBuilder<i64> {
 }
 
 fn invoke_limit_field() -> docnav_typed_fields::FieldDefBuilder<i64> {
-    standard_limit_field(DIRECT_PROCESSING)
+    configurable_limit_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
+}
+
+fn invoke_pagination_enabled_field() -> docnav_typed_fields::FieldDefBuilder<bool> {
+    config_pagination_enabled_field(CONFIG_PROCESSING).default_static(true)
 }
 
 pub(crate) fn standardize_invoke_request(
@@ -74,16 +87,11 @@ pub(crate) fn standardize_invoke_request(
     config: InvokeStandardParameterConfig,
 ) -> Result<RequestEnvelope, AdapterError> {
     let arguments = match request.operation {
-        Operation::Outline => OperationArguments::Outline(standardize_outline(
-            &request.arguments,
-            config.default_limit,
-        )?),
-        Operation::Read => {
-            OperationArguments::Read(standardize_read(&request.arguments, config.default_limit)?)
+        Operation::Outline => {
+            OperationArguments::Outline(standardize_outline(&request.arguments, &config)?)
         }
-        Operation::Find => {
-            OperationArguments::Find(standardize_find(&request.arguments, config.default_limit)?)
-        }
+        Operation::Read => OperationArguments::Read(standardize_read(&request.arguments, &config)?),
+        Operation::Find => OperationArguments::Find(standardize_find(&request.arguments, &config)?),
         Operation::Info => OperationArguments::Info(standardize_info(&request.arguments)?),
     };
 
@@ -98,15 +106,13 @@ pub(crate) fn standardize_invoke_request(
 
 fn standardize_outline(
     arguments: &JsonValue,
-    default_limit: u32,
+    config: &InvokeStandardParameterConfig,
 ) -> Result<OutlineArguments, AdapterError> {
-    let resolution = resolve_invoke_standard_arguments::<InvokeOutlineStandardArguments>(
-        arguments,
-        default_limit,
-    )?;
+    let resolution =
+        resolve_invoke_standard_arguments::<InvokeOutlineStandardArguments>(arguments, config)?;
 
     Ok(OutlineArguments {
-        limit: required_positive_value(&resolution, ID_LIMIT)?,
+        limit: finalized_limit(&resolution)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
         options: options_from_resolution(&resolution),
     })
@@ -114,14 +120,14 @@ fn standardize_outline(
 
 fn standardize_read(
     arguments: &JsonValue,
-    default_limit: u32,
+    config: &InvokeStandardParameterConfig,
 ) -> Result<ReadArguments, AdapterError> {
     let resolution =
-        resolve_invoke_standard_arguments::<InvokeReadStandardArguments>(arguments, default_limit)?;
+        resolve_invoke_standard_arguments::<InvokeReadStandardArguments>(arguments, config)?;
 
     Ok(ReadArguments {
         ref_id: required_string_value(&resolution, ID_REF)?,
-        limit: required_positive_value(&resolution, ID_LIMIT)?,
+        limit: finalized_limit(&resolution)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
         options: options_from_resolution(&resolution),
     })
@@ -129,14 +135,14 @@ fn standardize_read(
 
 fn standardize_find(
     arguments: &JsonValue,
-    default_limit: u32,
+    config: &InvokeStandardParameterConfig,
 ) -> Result<FindArguments, AdapterError> {
     let resolution =
-        resolve_invoke_standard_arguments::<InvokeFindStandardArguments>(arguments, default_limit)?;
+        resolve_invoke_standard_arguments::<InvokeFindStandardArguments>(arguments, config)?;
 
     Ok(FindArguments {
         query: required_string_value(&resolution, ID_QUERY)?,
-        limit: required_positive_value(&resolution, ID_LIMIT)?,
+        limit: finalized_limit(&resolution)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
         options: options_from_resolution(&resolution),
     })
@@ -150,14 +156,14 @@ fn standardize_info(arguments: &JsonValue) -> Result<docnav_protocol::InfoArgume
 
 fn resolve_invoke_standard_arguments<P>(
     arguments: &JsonValue,
-    default_limit: u32,
+    config: &InvokeStandardParameterConfig,
 ) -> Result<StandardParameterResolution, AdapterError>
 where
     P: FieldDefs,
     P::DefinitionSet: AsRef<docnav_typed_fields::FieldDefSet>,
 {
     let fields = P::field_defs().map_err(field_defs_error)?;
-    let resolution = resolve_with_fields(&fields, arguments.clone(), default_limit)?;
+    let resolution = resolve_with_fields(&fields, arguments.clone(), config)?;
     first_validation_error(&resolution)?;
     Ok(resolution)
 }
@@ -165,35 +171,26 @@ where
 fn resolve_with_fields<D>(
     fields: &D,
     direct_input: JsonValue,
-    default_limit: u32,
+    config: &InvokeStandardParameterConfig,
 ) -> Result<StandardParameterResolution, AdapterError>
 where
     D: AsRef<docnav_typed_fields::FieldDefSet> + ?Sized,
 {
-    StandardParameterPipeline::new(fields)
+    let mut pipeline = StandardParameterPipeline::new(fields)
         .with_direct_input_processing_id(DIRECT_PROCESSING)
         .with_config_processing_id(CONFIG_PROCESSING)
-        .with_dynamic_default(identity_key(ID_LIMIT)?, json!(default_limit))
+        .with_dynamic_default(identity_key(ID_LIMIT)?, json!(config.default_limit))
         .with_direct_input_passthrough_processing(native_options_processing()?)
-        .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
+        .with_passthrough_policy(EntryPassthroughPolicy::Delegate);
+    if let Some(descriptor) = &config.project_config {
+        pipeline = pipeline.with_loaded_project_config(loaded_config_source(descriptor)?);
+    }
+    if let Some(descriptor) = &config.user_config {
+        pipeline = pipeline.with_loaded_user_config(loaded_config_source(descriptor)?);
+    }
+    pipeline
         .resolve(direct_input)
         .map_err(|error| AdapterError::internal(format!("invoke-standard-parameters:{error}")))
-}
-
-fn native_options_processing(
-) -> Result<ProcessingBuild<'static, JsonValue, JsonValue>, AdapterError> {
-    ProcessingBuild::new(DIRECT_PROCESSING, native_options_passthrough)
-        .map_err(|error| AdapterError::internal(format!("invoke-passthrough-processing:{error}")))
-}
-
-pub(crate) fn native_options_passthrough(raw: JsonValue) -> JsonValue {
-    raw_options(&raw)
-        .map(Value::Object)
-        .unwrap_or_else(|| Value::Object(Map::new()))
-}
-
-fn raw_options(raw: &JsonValue) -> Option<Map<String, Value>> {
-    raw.get("options").and_then(Value::as_object).cloned()
 }
 
 fn first_validation_error(resolution: &StandardParameterResolution) -> Result<(), AdapterError> {
@@ -228,10 +225,35 @@ fn validation_reason(identity: &str) -> &'static str {
     match identity {
         ID_LIMIT => "limit must be a positive integer",
         ID_PAGE => "page must be a positive integer",
+        ID_PAGINATION_ENABLED => "pagination must be enabled or disabled",
         ID_QUERY => "query must not be empty",
         ID_REF => "ref must not be empty",
         _ => "standard parameter validation failed",
     }
+}
+
+fn finalized_limit(
+    resolution: &StandardParameterResolution,
+) -> Result<PositiveInteger, AdapterError> {
+    let enabled = required_bool_value(resolution, ID_PAGINATION_ENABLED)?;
+    if enabled {
+        return required_positive_value(resolution, ID_LIMIT);
+    }
+    std::num::NonZeroU32::new(MAX_PAGINATION_LIMIT)
+        .ok_or_else(|| validation_error_for_identity(ID_LIMIT))
+}
+
+fn required_bool_value(
+    resolution: &StandardParameterResolution,
+    identity: &str,
+) -> Result<bool, AdapterError> {
+    let value = resolution.value(&identity_key(identity)?).ok_or_else(|| {
+        AdapterError::internal(format!("missing-invoke-standard-parameter:{identity}"))
+    })?;
+    let TypedValue::Boolean(value) = value.value else {
+        return Err(validation_error_for_identity(identity));
+    };
+    Ok(value)
 }
 
 fn required_string_value(
@@ -263,22 +285,6 @@ fn required_positive_value(
         .ok()
         .and_then(std::num::NonZeroU32::new)
         .ok_or_else(|| validation_error_for_identity(identity))
-}
-
-fn options_from_resolution(
-    resolution: &StandardParameterResolution,
-) -> Option<serde_json::Map<String, Value>> {
-    let Value::Object(options) = passthrough_from_source(resolution)?.value.clone() else {
-        return None;
-    };
-    (!options.is_empty()).then_some(options)
-}
-
-fn passthrough_from_source(resolution: &StandardParameterResolution) -> Option<&PassthroughValue> {
-    resolution
-        .passthrough()
-        .iter()
-        .find(|value| value.source.kind == StandardParameterSourceKind::DirectInput)
 }
 
 fn identity_key(identity: &str) -> Result<FieldIdentity, AdapterError> {

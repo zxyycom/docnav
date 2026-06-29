@@ -3,10 +3,12 @@ use std::io::{Read, Write};
 use docnav_protocol::Operation;
 
 use super::super::args::{command_names, parse_probe, parse_protocol_only_options};
+use super::super::config::{adapter_direct_cli_config_source_descriptors, ConfigPathOverrides};
 use super::super::output::append_cli_warnings_to_stderr;
 use super::operation::run_operation;
 use super::{input_error, DirectCliContext, DirectCommandInvocation};
-use crate::{invoke::invoke_once_with_default_limit, run_command, Adapter, SdkCommand};
+use crate::standard_parameters::InvokeStandardParameterConfig;
+use crate::{invoke::invoke_once_with_standard_parameter_config, run_command, Adapter, SdkCommand};
 
 pub(super) fn run_direct_command<A, R, W, E>(
     context: &DirectCliContext<'_, A>,
@@ -109,11 +111,33 @@ where
     if !args.is_empty() {
         return input_error(stderr, "invoke does not accept positional arguments");
     }
-    invoke_once_with_default_limit(
+    let standard_parameters = match invoke_standard_parameter_config(&context.config) {
+        Ok(config) => config,
+        Err(message) => return input_error(stderr, &message),
+    };
+    invoke_once_with_standard_parameter_config(
         context.adapter,
-        context.config.default_limit,
+        standard_parameters,
         stdin,
         stdout,
         stderr,
     )
+}
+
+fn invoke_standard_parameter_config(
+    config: &super::DirectCliConfig<'_>,
+) -> Result<InvokeStandardParameterConfig, String> {
+    let cwd = std::env::current_dir()
+        .map_err(|error| format!("failed to read current directory: {error}"))?;
+    let descriptors = adapter_direct_cli_config_source_descriptors(
+        config.adapter_id,
+        config.default_user_config_dir,
+        &cwd,
+        ConfigPathOverrides::default(),
+    );
+    Ok(InvokeStandardParameterConfig {
+        default_limit: config.default_limit,
+        project_config: Some(descriptors.project),
+        user_config: Some(descriptors.user),
+    })
 }

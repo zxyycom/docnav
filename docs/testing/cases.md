@@ -44,8 +44,10 @@ Existing smoke task: `CORE-CONFIG-001`
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- 真实 CLI 边界按文档优先级解析 user、project 和 default config。
+- 真实 CLI 边界按文档优先级解析 user、project 和 default config，包括 `defaults.pagination.enabled` 与 `defaults.pagination.limit`。
 - `config list --path` 会报告被选中文档路径对应的 adapter 和 defaults context。
+- disabled pagination 在进入 adapter invoke request 前归一为最大 positive limit，request 只包含最终 `limit` 和 `page`。
+- `defaults.limit` 按 hard switch 被拒绝，不再形成 core `LIMIT` 参数来源。
 
 ### BB-CORE-SELECT-001 显式 adapter 失败后 fallback 并报告 warning
 Status: implemented
@@ -143,7 +145,8 @@ Existing smoke task: `MD-CONFIG-001`
 Code: `test/smoke/markdown/cases/config.ts`
 
 Proves:
-- `docnav-markdown` direct CLI 按显式 argv、项目级配置、用户级配置和内置默认值合并 `defaults.limit`、`defaults.output` 与 `options.max_heading_level`。
+- `docnav-markdown` direct CLI 按显式 argv、项目级配置、用户级配置和内置默认值合并 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 与 `options.max_heading_level`。
+- disabled pagination 在进入 Markdown operation 前归一为最大 positive limit，operation 只接收最终 `limit` 和 `page`。
 - 配置路径覆盖替代默认路径，配置源不可用时继续合并其它来源并输出 `adapter_config_source_skipped` warning details。
 - document operation help 展示配置路径参数但不读取配置；`manifest` 和 `probe` 不执行 document operation 配置读取；`invoke` 不执行 adapter direct CLI argv parsing 或 help。
 
@@ -491,7 +494,8 @@ Code: `crates/docnav-adapter-sdk/src/direct/config/tests.rs`
 
 Proves:
 - SDK direct CLI config source 规则从启动 cwd 解析项目级和用户级配置路径，支持覆盖路径，并在默认用户配置目录缺失时回退到启动 cwd。
-- 配置源读取只映射 `defaults.limit`、`defaults.output` 和 `options` object；默认缺失源不 warning，不可用源产生 `adapter_config_source_skipped` 并继续合并其它来源。
+- 配置源读取只映射 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 和 `options` object；默认缺失源不 warning，不可用源产生 `adapter_config_source_skipped` 并继续合并其它来源。
+- `defaults.limit` 按 hard switch 被拒绝，不再形成 `LIMIT` 参数来源。
 - direct CLI 参数来源按显式 argv、项目级配置、用户级配置和内置默认值合并，并把不适用于当前 operation 的 config native option 保留为未映射配置条目供入口策略处理。
 
 ### WB-SDK-DIRECT-OUTPUT-001 Direct adapter document output 复用共享输出
@@ -518,6 +522,8 @@ Proves:
 - SDK invoke 从 stdin 读取 protocol request，并在 invoke path 返回 protocol response。
 - request decode failure、manifest failure 和 handler error failure 不落入 direct readable CLI output。
 - Standard parameter normalization runs after protocol request decode and preserves `arguments.options` passthrough before adapter handler dispatch.
+- Adapter invoke 可用配置和内置默认值补足缺失的已注册 pagination 参数。
+- disabled pagination 在进入 adapter handler 前归一为最大 positive limit，且不会新增 protocol `pagination` 字段。
 
 ### WB-MD-CLI-001 Markdown direct CLI 与 invoke 结果一致
 Status: implemented

@@ -1,6 +1,9 @@
 {
   "defaults": {
-    "limit": 6000,
+    "pagination": {
+      "enabled": true,
+      "limit": 6000
+    },
     "output": "readable-view"
   },
   "options": {

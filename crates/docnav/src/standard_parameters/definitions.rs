@@ -1,9 +1,9 @@
 use docnav_protocol::Operation;
 use docnav_standard_parameters::{
     adapter_selection_field, configurable_limit_field, configurable_output_field,
-    document_path_field, find_query_field, page_field as standard_page_field, read_ref_field,
-    EntryPassthroughPolicy, LoadedStandardParameterConfigSource, StandardParameterPipeline,
-    StandardParameterResolution,
+    document_path_field, find_query_field, page_field as standard_page_field,
+    pagination_enabled_field, read_ref_field, EntryPassthroughPolicy,
+    LoadedStandardParameterConfigSource, StandardParameterPipeline, StandardParameterResolution,
 };
 use docnav_typed_fields::{FieldDefBuilder, FieldDefs, JsonValue};
 use serde_json::{json, Map, Value};
@@ -17,6 +17,7 @@ const CONFIG_PROCESSING: &str = "config";
 
 const DEFAULT_LIMIT: i64 = 6000;
 const DEFAULT_PAGE: i64 = 1;
+const DEFAULT_PAGINATION_ENABLED: bool = true;
 
 // FieldDefs consumes these fields as metadata; runtime code uses the generated definition set.
 #[allow(dead_code)]
@@ -76,6 +77,8 @@ struct CoreInfoStandardParameters {
 #[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct CoreContentWindowParameters {
+    #[field(core_pagination_enabled_field())]
+    pagination_enabled: bool,
     #[field(core_page_field())]
     page: i64,
     #[field(core_limit_field())]
@@ -88,6 +91,11 @@ fn core_page_field() -> FieldDefBuilder<i64> {
 
 fn core_limit_field() -> FieldDefBuilder<i64> {
     configurable_limit_field(DIRECT_PROCESSING, CONFIG_PROCESSING).default_static(DEFAULT_LIMIT)
+}
+
+fn core_pagination_enabled_field() -> FieldDefBuilder<bool> {
+    pagination_enabled_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
+        .default_static(DEFAULT_PAGINATION_ENABLED)
 }
 
 fn core_output_field() -> FieldDefBuilder<OutputMode> {
@@ -163,6 +171,9 @@ fn direct_input(command: &DocumentCommand) -> JsonValue {
     }
     if let Some(page) = command.page {
         input.insert("page".to_owned(), json!(page.get()));
+    }
+    if let Some(enabled) = command.pagination_enabled {
+        input.insert("pagination".to_owned(), json!(enabled));
     }
     if let Some(limit) = command.limit {
         input.insert("limit".to_owned(), json!(limit.get()));

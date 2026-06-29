@@ -5,8 +5,13 @@ use crate::project_context::ProjectContext;
 
 pub(super) const DEFAULT_LIMIT: u32 = 6000;
 pub(super) const DEFAULT_OUTPUT: &str = "readable-view";
-pub(super) const SUPPORTED_KEYS: [&str; 3] =
-    ["defaults.adapter", "defaults.limit", "defaults.output"];
+pub(super) const DEFAULT_PAGINATION_ENABLED: bool = true;
+pub(super) const SUPPORTED_KEYS: [&str; 4] = [
+    "defaults.adapter",
+    "defaults.pagination.enabled",
+    "defaults.pagination.limit",
+    "defaults.output",
+];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConfigContext {
@@ -16,24 +21,41 @@ pub struct ConfigContext {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CoreConfig {
     #[serde(default, skip_serializing_if = "DefaultsConfig::is_empty")]
     pub defaults: DefaultsConfig,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DefaultsConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub limit: Option<u32>,
+    #[serde(default, skip_serializing_if = "PaginationConfig::is_empty")]
+    pub pagination: PaginationConfig,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PaginationConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+}
+
 impl DefaultsConfig {
     fn is_empty(&self) -> bool {
-        self.adapter.is_none() && self.limit.is_none() && self.output.is_none()
+        self.adapter.is_none() && self.pagination.is_empty() && self.output.is_none()
+    }
+}
+
+impl PaginationConfig {
+    fn is_empty(&self) -> bool {
+        self.enabled.is_none() && self.limit.is_none()
     }
 }
 

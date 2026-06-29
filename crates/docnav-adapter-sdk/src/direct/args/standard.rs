@@ -1,9 +1,10 @@
 use docnav_protocol::Operation;
 use docnav_standard_parameters::{
     configurable_limit_field, configurable_output_field, document_path_field, find_query_field,
-    page_field as standard_page_field, read_ref_field, EntryPassthroughPolicy,
-    StandardParameterConfigSourceDescriptor, StandardParameterPipeline,
-    StandardParameterResolution,
+    load_standard_parameter_config_source, page_field as standard_page_field,
+    pagination_enabled_field, read_ref_field, EntryPassthroughPolicy,
+    LoadedStandardParameterConfigSource, StandardParameterConfigSourceDescriptor,
+    StandardParameterPipeline, StandardParameterResolution,
 };
 use docnav_typed_fields::{FieldDefBuilder, FieldDefs, FieldIdentity, JsonValue, ProcessingBuild};
 use serde_json::json;
@@ -16,8 +17,8 @@ pub(super) const DIRECT_PROCESSING: &str = "direct";
 pub(super) const CONFIG_PROCESSING: &str = "config";
 
 pub(super) use docnav_standard_parameters::ids::{
-    LIMIT as ID_LIMIT, OUTPUT as ID_OUTPUT, PAGE as ID_PAGE, PATH as ID_PATH, QUERY as ID_QUERY,
-    REF as ID_REF,
+    LIMIT as ID_LIMIT, OUTPUT as ID_OUTPUT, PAGE as ID_PAGE,
+    PAGINATION_ENABLED as ID_PAGINATION_ENABLED, PATH as ID_PATH, QUERY as ID_QUERY, REF as ID_REF,
 };
 
 pub(super) const DEFAULT_LIMIT_TEXT: &str = "6000";
@@ -26,6 +27,7 @@ pub(super) const DEFAULT_PAGE_TEXT: &str = "1";
 pub(super) const DEFAULT_PROTOCOL_OUTPUT_TEXT: &str = "protocol-json";
 
 const DEFAULT_PAGE: i64 = 1;
+const DEFAULT_PAGINATION_ENABLED: bool = true;
 
 impl docnav_typed_fields::FieldStringEnum for DirectOutputMode {
     fn variants() -> &'static [Self] {
@@ -91,6 +93,8 @@ struct DirectInfoStandardParameters {
 #[allow(dead_code)]
 #[derive(Debug, FieldDefs)]
 struct DirectContentWindowParameters {
+    #[field(direct_cli_pagination_enabled_field())]
+    pagination_enabled: bool,
     #[field(direct_cli_page_field())]
     page: i64,
     #[field(direct_cli_limit_field())]
@@ -103,6 +107,11 @@ fn direct_cli_page_field() -> FieldDefBuilder<i64> {
 
 fn direct_cli_limit_field() -> FieldDefBuilder<i64> {
     configurable_limit_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
+}
+
+fn direct_cli_pagination_enabled_field() -> FieldDefBuilder<bool> {
+    pagination_enabled_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
+        .default_static(DEFAULT_PAGINATION_ENABLED)
 }
 
 fn direct_cli_output_field() -> FieldDefBuilder<DirectOutputMode> {
@@ -180,14 +189,40 @@ where
     StandardParameterPipeline::new(fields)
         .with_direct_input_processing_id(DIRECT_PROCESSING)
         .with_config_processing_id(CONFIG_PROCESSING)
-        .with_config_source_descriptor(project_config)
-        .with_config_source_descriptor(user_config)
+        .with_loaded_project_config(loaded_config_source(project_config)?)
+        .with_loaded_user_config(loaded_config_source(user_config)?)
         .with_dynamic_default(identity(ID_LIMIT)?, json!(default_limit))
         .with_direct_input_passthrough_processing(native_options_processing(DIRECT_PROCESSING)?)
         .with_config_passthrough_processing(native_options_processing(CONFIG_PROCESSING)?)
         .with_passthrough_policy(EntryPassthroughPolicy::Delegate)
         .resolve(direct_input)
         .map_err(|error| format!("standard parameter resolution failed: {error}"))
+}
+
+fn loaded_config_source(
+    descriptor: StandardParameterConfigSourceDescriptor,
+) -> Result<LoadedStandardParameterConfigSource, String> {
+    let loaded = load_standard_parameter_config_source(&descriptor);
+    reject_legacy_limit_config(&descriptor, loaded.value())?;
+    Ok(loaded)
+}
+
+fn reject_legacy_limit_config(
+    descriptor: &StandardParameterConfigSourceDescriptor,
+    value: Option<&JsonValue>,
+) -> Result<(), String> {
+    let has_legacy_limit = value
+        .and_then(|value| value.get("defaults"))
+        .and_then(JsonValue::as_object)
+        .is_some_and(|defaults| defaults.contains_key("limit"));
+    if has_legacy_limit {
+        return Err(format!(
+            "{} config {} uses unsupported defaults.limit; use defaults.pagination.limit",
+            descriptor.level.as_str(),
+            descriptor.path.display()
+        ));
+    }
+    Ok(())
 }
 
 fn native_options_processing(

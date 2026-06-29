@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use super::super::native_options::NativeOptionSpec;
 use super::loose::{is_flag, known_value_flag, operation_uses_flag, split_equals, KnownValueFlag};
-use super::spec::{flags, input_errors, parse_output, parse_protocol_output};
+use super::spec::{flags, input_errors, pagination_values, parse_output, parse_protocol_output};
 
 pub(super) fn protocol_only_parse_error(args: &[String]) -> String {
     missing_value_error(args)
@@ -146,12 +146,23 @@ fn direct_value_flag_error(occurrence: DirectValueFlagOccurrence<'_>) -> Option<
         (_, None) => Some(format!("{} requires a value", occurrence.flag_token)),
         (KnownValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
         (KnownValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
+        (KnownValueFlag::Pagination, Some(value)) => pagination_flag_error(value),
         (KnownValueFlag::Output, Some(value)) => output_flag_error(value),
         (KnownValueFlag::Ref, Some("")) => Some(format!("{} must not be empty", flags::REF)),
         (KnownValueFlag::Query, Some("")) => Some(format!("{} must not be empty", flags::QUERY)),
         (KnownValueFlag::Native(spec), Some(value)) => spec.parse_value(&Value::from(value)).err(),
         _ => None,
     }
+}
+
+fn pagination_flag_error(value: &str) -> Option<String> {
+    if matches!(
+        value,
+        pagination_values::ENABLED | pagination_values::DISABLED
+    ) {
+        return None;
+    }
+    Some(format!("{} must be enabled or disabled", flags::PAGINATION))
 }
 
 fn positive_flag_error(flag: &str, value: &str) -> Option<String> {

@@ -7,10 +7,21 @@
     "defaults": {
       "type": "object",
       "properties": {
-        "limit": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Default positive character budget for document operations."
+        "pagination": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Default pagination state for document operations."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295,
+              "description": "Default positive Markdown character budget for paginated document operations."
+            }
+          },
+          "additionalProperties": false
         },
         "output": {
           "enum": [

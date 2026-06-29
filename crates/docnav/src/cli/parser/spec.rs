@@ -24,6 +24,7 @@ pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const OPERATION: &str = "operation";
     pub(in crate::cli) const OUTPUT: &str = "output";
     pub(in crate::cli) const PAGE: &str = "page";
+    pub(in crate::cli) const PAGINATION: &str = "pagination";
     pub(in crate::cli) const PATH: &str = "path";
     pub(in crate::cli) const QUERY: &str = "query";
     pub(in crate::cli) const REF: &str = "ref";
@@ -35,6 +36,7 @@ pub(in crate::cli) mod defaults {
     pub(in crate::cli) const LIMIT: &str = crate::standard_parameters::DEFAULT_LIMIT_TEXT;
     pub(in crate::cli) const OUTPUT: &str = crate::standard_parameters::DEFAULT_OUTPUT_TEXT;
     pub(in crate::cli) const PAGE: &str = crate::standard_parameters::DEFAULT_PAGE_TEXT;
+    pub(in crate::cli) const PAGINATION: &str = "enabled";
 }
 
 pub(in crate::cli) mod output_values {
@@ -48,6 +50,11 @@ pub(in crate::cli) mod operation_values {
     pub(in crate::cli) const INFO: &str = "info";
     pub(in crate::cli) const OUTLINE: &str = "outline";
     pub(in crate::cli) const READ: &str = "read";
+}
+
+pub(in crate::cli) mod pagination_values {
+    pub(in crate::cli) const DISABLED: &str = "disabled";
+    pub(in crate::cli) const ENABLED: &str = "enabled";
 }
 
 pub(in crate::cli) fn cli_command() -> Command {
@@ -105,6 +112,7 @@ fn document_command(name: &'static str, about: &'static str) -> Command {
 
 fn paged_document_command(name: &'static str, about: &'static str) -> Command {
     document_command(name, about)
+        .arg(pagination_arg())
         .arg(page_arg())
         .arg(limit_arg())
 }
@@ -177,6 +185,12 @@ fn limit_arg() -> Arg {
     value_arg(arg_ids::LIMIT, "limit", "positive integer")
         .default_value(defaults::LIMIT)
         .value_parser(clap::value_parser!(u32))
+}
+
+fn pagination_arg() -> Arg {
+    value_arg(arg_ids::PAGINATION, "pagination", "enabled|disabled")
+        .default_value(defaults::PAGINATION)
+        .value_parser([pagination_values::ENABLED, pagination_values::DISABLED])
 }
 
 fn output_arg() -> Arg {

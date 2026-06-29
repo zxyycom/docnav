@@ -107,6 +107,7 @@ pub struct DocumentCommand {
     pub ref_id: Option<String>,
     pub query: Option<String>,
     pub page: Option<PositiveInteger>,
+    pub pagination_enabled: Option<bool>,
     pub limit: Option<PositiveInteger>,
     pub output: Option<OutputMode>,
     pub adapter: Option<String>,

@@ -10,7 +10,7 @@ use super::argument_helpers::{
     optional_explicit_output, optional_explicit_positive, optional_explicit_string,
     required_string, split_equals, warning_from_ignored_arg, ValueFlag,
 };
-use super::{arg_ids, document_clap_command};
+use super::{arg_ids, document_clap_command, spec};
 
 pub(super) fn parse_document_command(
     operation: Operation,
@@ -63,6 +63,7 @@ fn document_command_from_matches(
         ref_id: parse_ref_id(operation, matches),
         query: parse_query(operation, matches),
         page: parse_page(operation, matches)?,
+        pagination_enabled: parse_pagination_enabled(operation, matches)?,
         limit: parse_limit(operation, matches)?,
         output: optional_explicit_output(matches)?,
         adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
@@ -101,6 +102,29 @@ fn parse_limit(
     optional_explicit_positive(matches, arg_ids::LIMIT, flags::LIMIT)
 }
 
+fn parse_pagination_enabled(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> AppResult<Option<bool>> {
+    if operation == Operation::Info {
+        return Ok(None);
+    }
+    optional_explicit_string(matches, arg_ids::PAGINATION)
+        .map(|value| pagination_enabled_from_cli(&value))
+        .transpose()
+}
+
+fn pagination_enabled_from_cli(value: &str) -> AppResult<bool> {
+    match value {
+        spec::pagination_values::ENABLED => Ok(true),
+        spec::pagination_values::DISABLED => Ok(false),
+        _ => Err(AppError::invalid_request(
+            flags::PAGINATION,
+            "expected enabled or disabled",
+        )),
+    }
+}
+
 fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
     if !has_path_candidate(args) {
         return AppError::invalid_request(
@@ -123,7 +147,7 @@ fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
 fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
     match flag {
         ValueFlag::Adapter | ValueFlag::Output => true,
-        ValueFlag::Page | ValueFlag::Limit => operation != Operation::Info,
+        ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
         ValueFlag::Ref => operation == Operation::Read,
         ValueFlag::Query => operation == Operation::Find,
         ValueFlag::Operation | ValueFlag::Path => false,
@@ -200,11 +224,25 @@ fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
         )),
         (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
         (ValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
+        (ValueFlag::Pagination, Some(value)) => pagination_flag_error(value),
         (ValueFlag::Output, Some(value)) => output_flag_error(value),
         (ValueFlag::Ref, Some("")) => Some(empty_value_error(flags::REF)),
         (ValueFlag::Query, Some("")) => Some(empty_value_error(flags::QUERY)),
         _ => None,
     }
+}
+
+fn pagination_flag_error(value: &str) -> Option<AppError> {
+    if matches!(
+        value,
+        spec::pagination_values::ENABLED | spec::pagination_values::DISABLED
+    ) {
+        return None;
+    }
+    Some(AppError::invalid_request(
+        flags::PAGINATION,
+        "expected enabled or disabled",
+    ))
 }
 
 fn positive_flag_error(flag: &str, value: &str) -> Option<AppError> {
