@@ -21,6 +21,12 @@ pub const DEFAULT_LIMIT: u32 = 6000;
 pub const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
 // Markdown adapter 原生 option key，来自 adapter 契约；接入层只原样传递。
 pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
+const MARKDOWN_CAPABILITIES: &[Operation] = &[
+    Operation::Outline,
+    Operation::Read,
+    Operation::Find,
+    Operation::Info,
+];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MarkdownAdapter;
@@ -43,12 +49,7 @@ impl Adapter for MarkdownAdapter {
                 extensions: vec![".md".to_owned(), ".markdown".to_owned()],
                 content_types: vec![CONTENT_TYPE_MARKDOWN.to_owned()],
             }],
-            capabilities: vec![
-                Operation::Outline,
-                Operation::Read,
-                Operation::Find,
-                Operation::Info,
-            ],
+            capabilities: MARKDOWN_CAPABILITIES.to_vec(),
         }
     }
 
@@ -156,12 +157,7 @@ impl Adapter for MarkdownAdapter {
     ) -> AdapterResult<InfoResult> {
         let document = MarkdownDocument::load(&request.document.path)?;
         Ok(InfoResult {
-            capabilities: vec![
-                Operation::Outline,
-                Operation::Read,
-                Operation::Find,
-                Operation::Info,
-            ],
+            capabilities: MARKDOWN_CAPABILITIES.to_vec(),
             document: Some(InfoDocument {
                 content_type: Some(CONTENT_TYPE_MARKDOWN.to_owned()),
                 encoding: Some("utf-8".to_owned()),

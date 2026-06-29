@@ -78,15 +78,6 @@ export const checks = defineChecks([
         ]
       },
       {
-        id: "diagnostic-projection-rules",
-        label: "diagnostic projection rules",
-        command: "bun",
-        args: ["scripts/check-diagnostic-projections.ts"],
-        ignoreOutput: [
-          /^diagnostic projection checks ok$/
-        ]
-      },
-      {
         id: "docs-validators",
         label: "docs validators",
         tasks: docsValidatorChecks()

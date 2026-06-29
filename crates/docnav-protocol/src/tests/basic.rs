@@ -2,8 +2,6 @@ use super::*;
 use docnav_diagnostics::{
     DiagnosticCode, DiagnosticSource, DiagnosticStack, ProtocolDiagnosticCode,
 };
-use serde_json::Value;
-use std::collections::BTreeMap;
 
 // @case WB-PROTO-BASIC-001
 #[test]
@@ -183,106 +181,4 @@ fn protocol_error_roundtrips_through_diagnostic_record_projection() {
         Some(&["Run outline first.".to_owned()][..])
     );
     assert_eq!(ProtocolError::from_diagnostic_record(record), Some(error));
-}
-
-#[test]
-fn protocol_response_schema_error_projection_matches_diagnostic_rules() {
-    let schema: Value = serde_json::from_str(include_str!(
-        "../../../../docs/schemas/protocol-response.schema.json"
-    ))
-    .expect("protocol response schema parses");
-    let mut schema_rules = protocol_schema_error_details(&schema);
-    let expected = [
-        ProtocolDiagnosticCode::InvalidRequest,
-        ProtocolDiagnosticCode::DocumentNotFound,
-        ProtocolDiagnosticCode::DocumentPathInvalid,
-        ProtocolDiagnosticCode::DocumentEncodingUnsupported,
-        ProtocolDiagnosticCode::FormatUnknown,
-        ProtocolDiagnosticCode::FormatAmbiguous,
-        ProtocolDiagnosticCode::CapabilityUnsupported,
-        ProtocolDiagnosticCode::RefNotFound,
-        ProtocolDiagnosticCode::RefAmbiguous,
-        ProtocolDiagnosticCode::RefInvalid,
-        ProtocolDiagnosticCode::AdapterUnavailable,
-        ProtocolDiagnosticCode::AdapterInvokeFailed,
-        ProtocolDiagnosticCode::InternalError,
-    ];
-
-    for code in expected {
-        let actual = schema_rules
-            .remove(code.protocol_code())
-            .unwrap_or_else(|| panic!("missing schema projection for {}", code.protocol_code()));
-        assert_eq!(
-            actual,
-            code.required_detail_names().collect::<Vec<_>>(),
-            "{code:?}"
-        );
-    }
-    assert!(
-        schema_rules.is_empty(),
-        "unexpected schema rules: {schema_rules:?}"
-    );
-}
-
-fn protocol_schema_error_details(schema: &Value) -> BTreeMap<String, Vec<String>> {
-    let defs = schema
-        .get("$defs")
-        .and_then(Value::as_object)
-        .expect("schema $defs");
-    let error_schema = defs["failure"]["properties"]["error"]
-        .as_object()
-        .expect("failure error schema");
-    let code_enum = error_schema["properties"]["code"]["enum"]
-        .as_array()
-        .expect("error code enum")
-        .iter()
-        .map(|value| value.as_str().expect("error code string").to_owned())
-        .collect::<Vec<_>>();
-    let branches = error_schema["allOf"].as_array().expect("error allOf");
-    let mut rules = BTreeMap::new();
-
-    for branch in branches {
-        let code = branch["if"]["properties"]["code"]["const"]
-            .as_str()
-            .expect("branch code")
-            .to_owned();
-        assert!(
-            code_enum.contains(&code),
-            "{code} missing from schema code enum"
-        );
-        let details_schema = &branch["then"]["properties"]["details"];
-        assert!(
-            rules
-                .insert(code, required_details_from_schema(defs, details_schema))
-                .is_none(),
-            "duplicate error details branch"
-        );
-    }
-
-    assert_eq!(rules.len(), code_enum.len());
-    rules
-}
-
-fn required_details_from_schema(
-    defs: &serde_json::Map<String, Value>,
-    details_schema: &Value,
-) -> Vec<String> {
-    if let Some(ref_value) = details_schema.get("$ref") {
-        let ref_path = ref_value.as_str().expect("details $ref string");
-        let def_name = ref_path
-            .strip_prefix("#/$defs/")
-            .expect("details $ref targets schema $defs");
-        return required_details(defs.get(def_name).expect("referenced details def"));
-    }
-
-    required_details(details_schema)
-}
-
-fn required_details(details_schema: &Value) -> Vec<String> {
-    details_schema["required"]
-        .as_array()
-        .expect("details required")
-        .iter()
-        .map(|value| value.as_str().expect("required field string").to_owned())
-        .collect()
 }

@@ -110,7 +110,7 @@ impl MarkdownDocument {
             .iter()
             .filter(|heading| heading.level <= max_heading_level)
             .collect();
-        let fallback_ref = self.full_entry().ref_id;
+        let fallback_ref = FULL_DOCUMENT_REF.to_owned();
 
         self.source
             .match_indices(query)

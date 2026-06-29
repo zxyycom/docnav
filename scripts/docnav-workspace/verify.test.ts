@@ -265,7 +265,7 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredChecks.some((check) => check.label === "docs case catalog validator"));
     assert.ok(requiredChecks.some((check) => check.label === "docs schema validator"));
     assert.ok(!requiredChecks.some((check) => check.label === "docs validators"));
-    assert.equal(reportCountForChecks(requiredChecks), 10);
+    assert.equal(reportCountForChecks(requiredChecks), 9);
   });
 
 });

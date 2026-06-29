@@ -407,15 +407,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "field",
-                      "reason"
-                    ],
-                    "properties": {
-                      "field": {},
-                      "reason": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsInvalidRequest"
                   }
                 }
               }
@@ -433,13 +425,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "path"
-                    ],
-                    "properties": {
-                      "path": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsPath"
                   }
                 }
               }
@@ -457,15 +443,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "path",
-                      "reason"
-                    ],
-                    "properties": {
-                      "path": {},
-                      "reason": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsPathReason"
                   }
                 }
               }
@@ -483,15 +461,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "path",
-                      "encoding"
-                    ],
-                    "properties": {
-                      "path": {},
-                      "encoding": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsPathEncoding"
                   }
                 }
               }
@@ -509,17 +479,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "path",
-                      "reason",
-                      "candidates"
-                    ],
-                    "properties": {
-                      "path": {},
-                      "reason": {},
-                      "candidates": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsFormatUnknown"
                   }
                 }
               }
@@ -537,15 +497,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "path",
-                      "candidates"
-                    ],
-                    "properties": {
-                      "path": {},
-                      "candidates": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsFormatAmbiguous"
                   }
                 }
               }
@@ -563,15 +515,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "capability",
-                      "adapter_id"
-                    ],
-                    "properties": {
-                      "capability": {},
-                      "adapter_id": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsCapabilityAdapter"
                   }
                 }
               }
@@ -589,13 +533,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "ref"
-                    ],
-                    "properties": {
-                      "ref": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsRef"
                   }
                 }
               }
@@ -613,15 +551,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "ref",
-                      "candidate_count"
-                    ],
-                    "properties": {
-                      "ref": {},
-                      "candidate_count": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsRefCandidate"
                   }
                 }
               }
@@ -639,15 +569,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "ref",
-                      "reason"
-                    ],
-                    "properties": {
-                      "ref": {},
-                      "reason": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsRefReason"
                   }
                 }
               }
@@ -701,13 +623,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "type": "object",
-                    "required": [
-                      "error_id"
-                    ],
-                    "properties": {
-                      "error_id": {}
-                    }
+                    "$ref": "#/$defs/protocolErrorDetailsInternal"
                   }
                 }
               }
@@ -724,9 +640,200 @@
         "reason"
       ],
       "properties": {
-        "adapter_id": {},
-        "reason": {}
-      }
+        "adapter_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "stderr": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsInvalidRequest": {
+      "type": "object",
+      "required": [
+        "field",
+        "reason"
+      ],
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "received": {
+          "type": "string"
+        },
+        "accepted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsPath": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsPathReason": {
+      "type": "object",
+      "required": [
+        "path",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsPathEncoding": {
+      "type": "object",
+      "required": [
+        "path",
+        "encoding"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsFormatUnknown": {
+      "type": "object",
+      "required": [
+        "path",
+        "reason",
+        "candidates"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "candidates": {}
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsFormatAmbiguous": {
+      "type": "object",
+      "required": [
+        "path",
+        "candidates"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "candidates": {}
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsCapabilityAdapter": {
+      "type": "object",
+      "required": [
+        "capability",
+        "adapter_id"
+      ],
+      "properties": {
+        "capability": {
+          "type": "string"
+        },
+        "adapter_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsRef": {
+      "type": "object",
+      "required": [
+        "ref"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsRefCandidate": {
+      "type": "object",
+      "required": [
+        "ref",
+        "candidate_count"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "candidate_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsRefReason": {
+      "type": "object",
+      "required": [
+        "ref",
+        "reason"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsInternal": {
+      "type": "object",
+      "required": [
+        "error_id"
+      ],
+      "properties": {
+        "error_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
