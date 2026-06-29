@@ -9,10 +9,10 @@
 
 ## 2. 方案细化
 
-- [ ] 2.1 确定 `defaults.limit` 到 `defaults.pagination.limit` 的迁移策略，并写清 hard switch、过渡 alias 或诊断提示的可观察行为。
+- [x] 2.1 确定 `defaults.limit` 到 `defaults.pagination.limit` 的迁移策略，并写清 hard switch、过渡 alias 或诊断提示的可观察行为。
 - [ ] 2.2 定义 core 与 SDK direct CLI 的 pagination 参数身份、CLI spelling、config path、invoke argument binding、来源优先级和 built-in defaults。
-- [ ] 2.3 定义 `enabled` 与 `limit` 来自不同优先级来源时的最终归一矩阵，特别覆盖显式 `--limit` 与低优先级 `enabled=false` 的组合。
-- [ ] 2.4 定义 `enabled=false` 时使用的最大正整数常量、schema facet 和 typed validation 行为，禁止入口各自硬编码不同 magic number。
+- [x] 2.3 定义 `enabled` 与 `limit` 来自不同优先级来源时的最终归一矩阵，特别覆盖显式 `--limit` 与低优先级 `enabled=false` 的组合。
+- [x] 2.4 定义 `enabled=false` 时使用的最大正整数常量、schema facet 和 typed validation 行为，禁止入口各自硬编码不同 magic number。
 - [ ] 2.5 确认 Markdown adapter 配置 schema/example、smoke 和矩阵测试如何表达 `defaults.pagination.enabled` 与 `defaults.pagination.limit`。
 - [ ] 2.6 确认 CLI/help、schema/example 和 readable 文案中哪些位置需要解释 adapter-owned `limit`，并避免把预算单位写成 core/SDK 语义。
 
