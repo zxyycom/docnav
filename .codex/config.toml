@@ -14,5 +14,6 @@ enabled_tools = [
     "codegraph_status",
     "codegraph_trace",
 ]
+default_tools_approval_mode = "approve"
 [mcp_servers.codegraph.env]
 CODEGRAPH_MCP_TOOLS = "search,node,callers,callees,impact,files,status,trace"
