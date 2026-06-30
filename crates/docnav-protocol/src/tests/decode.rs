@@ -24,7 +24,7 @@ fn decode_protocol_request_runs_contract_before_raw_decode() {
 
 // @case WB-PROTO-DECODE-001
 #[test]
-fn decode_protocol_request_preserves_defaultable_and_unmapped_arguments() {
+fn decode_protocol_request_rejects_unmapped_arguments() {
     let request = serde_json::json!({
         "protocol_version": "0.1",
         "request_id": "req-1",
@@ -33,9 +33,24 @@ fn decode_protocol_request_preserves_defaultable_and_unmapped_arguments() {
         "arguments": { "future": true }
     });
 
+    let error = decode_protocol_request_value(request)
+        .expect_err("unmapped arguments should fail schema first");
+    assert_eq!(error.stage(), DecodePipelineStage::Schema);
+}
+
+#[test]
+fn decode_protocol_request_preserves_defaultable_arguments() {
+    let request = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "outline",
+        "document": { "path": "doc.md" },
+        "arguments": {}
+    });
+
     let decoded = decode_protocol_request_value(request).expect("raw request decodes");
     assert_eq!(decoded.operation, Operation::Outline);
-    assert_eq!(decoded.arguments["future"], true);
+    assert_eq!(decoded.arguments, serde_json::json!({}));
 }
 
 #[test]

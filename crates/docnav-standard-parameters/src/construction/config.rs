@@ -2,11 +2,10 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-use docnav_diagnostics::WarningProjection;
 use docnav_typed_fields::JsonValue;
 use serde_json::Value;
 
-use crate::StandardParameterHandoff;
+use crate::{StandardParameterConfigSourceIssue, StandardParameterHandoff};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ConfigSourceLevel {
@@ -145,14 +144,14 @@ fn skipped(
     descriptor: &StandardParameterConfigSourceDescriptor,
     reason: ConfigSourceSkipReason,
 ) -> LoadedStandardParameterConfigSource {
-    let warning = WarningProjection::adapter_config_source_skipped(
+    let issue = StandardParameterConfigSourceIssue::new(
         descriptor.level.as_str(),
         descriptor.origin.as_str(),
-        &descriptor.path.display().to_string(),
+        descriptor.path.display().to_string(),
         reason.as_str(),
     );
     LoadedStandardParameterConfigSource {
         value: None,
-        diagnostics: vec![StandardParameterHandoff::warning(warning)],
+        diagnostics: vec![StandardParameterHandoff::config_source(issue)],
     }
 }

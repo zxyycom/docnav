@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/protocol-request.schema.json",
-  "$comment": "Protocol request arguments are adapter invoke explicit input. This schema validates the envelope and registered argument field shapes; unmapped argument fields follow the adapter entry policy.",
+  "$comment": "Protocol request arguments are adapter invoke explicit input. This schema validates the envelope and registered argument field shapes; unmapped public argument fields fail unless they are inside a declared adapter-owned options source.",
   "oneOf": [
     {
       "$ref": "#/$defs/outline"
@@ -91,7 +91,8 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           }
         }
@@ -129,7 +130,8 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           }
         }
@@ -167,7 +169,8 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           }
         }
@@ -190,7 +193,8 @@
                 "options": {
                   "$ref": "#/$defs/commonOptional/options"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           }
         }

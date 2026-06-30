@@ -1,4 +1,4 @@
-use docnav_cli_args::{scan_loose_args, LooseArgScan};
+use docnav_cli_args::{scan_arg_boundaries, ArgBoundaryScan};
 use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
@@ -6,9 +6,9 @@ use crate::error::{AppError, AppResult};
 use super::super::command_model::{CliCommand, DocumentCommand, ParsedCli};
 use super::super::flags;
 use super::argument_helpers::{
-    clap_argv, is_flag, known_value_flag, loose_value_flags, missing_value_error,
-    optional_explicit_output, optional_explicit_positive, optional_explicit_string,
-    required_string, split_equals, warning_from_ignored_arg, ValueFlag,
+    boundary_value_flags, clap_argv, error_from_rejected_arg, is_flag, known_value_flag,
+    missing_value_error, optional_explicit_output, optional_explicit_positive,
+    optional_explicit_string, required_string, split_equals, ValueFlag,
 };
 use super::{arg_ids, document_clap_command, spec};
 
@@ -16,40 +16,33 @@ pub(super) fn parse_document_command(
     operation: Operation,
     args: &[String],
 ) -> AppResult<ParsedCli> {
-    let LooseDocumentArgs {
-        clap_args,
-        warnings,
-    } = collect_document_args(operation, args)?;
+    let BoundaryDocumentArgs { clap_args } = collect_document_args(operation, args)?;
     let matches = document_clap_command(operation)
         .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
         .map_err(|_| document_parse_error(operation, args))?;
 
-    Ok(ParsedCli::new(
-        CliCommand::Document(document_command_from_matches(operation, &matches)?),
-        warnings,
-    ))
+    Ok(ParsedCli::new(CliCommand::Document(
+        document_command_from_matches(operation, &matches)?,
+    )))
 }
 
-struct LooseDocumentArgs {
+struct BoundaryDocumentArgs {
     clap_args: Vec<String>,
-    warnings: Vec<super::super::warning::CliWarning>,
 }
 
-fn collect_document_args(operation: Operation, args: &[String]) -> AppResult<LooseDocumentArgs> {
-    let known_value_flags = loose_value_flags(|flag| document_uses_flag(operation, flag));
-    let scan = scan_loose_args(
+fn collect_document_args(operation: Operation, args: &[String]) -> AppResult<BoundaryDocumentArgs> {
+    let known_value_flags = boundary_value_flags(|flag| document_uses_flag(operation, flag));
+    let scan = scan_arg_boundaries(
         args,
-        &LooseArgScan::new(operation.as_str(), 1, &known_value_flags),
+        &ArgBoundaryScan::new(operation.as_str(), 1, &known_value_flags),
     )
     .map_err(missing_value_error)?;
+    if let Some(rejected) = scan.rejected.into_iter().next() {
+        return Err(error_from_rejected_arg(rejected));
+    }
 
-    Ok(LooseDocumentArgs {
+    Ok(BoundaryDocumentArgs {
         clap_args: scan.retained_args,
-        warnings: scan
-            .ignored
-            .into_iter()
-            .map(warning_from_ignored_arg)
-            .collect(),
     })
 }
 

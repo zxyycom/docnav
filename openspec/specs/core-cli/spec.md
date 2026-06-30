@@ -24,20 +24,16 @@
 - **THEN** `docnav` 启动选中 adapter 的 invoke
 - **THEN** invoke 请求不包含 page 或 limit_chars
 
-### Requirement: 核心 CLI 必须兼容未知、多余和未使用参数
+### Requirement: 核心 CLI 必须严格拒绝未知、多余和未使用参数
 `docnav` core CLI MUST 使用 `clap` 或 `clap` builder API 作为命令、子命令、固定参数、默认值、枚举值和 help 的 argv 结构解析基础。Document operation argv 必须先映射为 canonical document operation input 或等价 semantic request，再进入 adapter routing、invoke request 构造和 output dispatch。
 
-Core CLI 容错规则如下：
+Core CLI strict input 规则如下：
 
-- 当前 operation 的必需语义存在且实际使用参数有效时，未知 flag、多余 positional 和当前 operation 不使用的参数不得阻断成功。
+- 未知 flag、多余 positional 和当前 operation 不使用的已知参数 MUST 在执行前返回 `INVALID_REQUEST`。
 - 当前 operation 实际使用的参数必须保持严格；缺值或值非法时必须返回 `INVALID_REQUEST`。
-- `clap` 负责已知命令、已知参数声明、默认值、枚举和 help；Docnav 在确定 command/operation 后只对当前 operation 实际使用的参数做类型、范围和枚举校验，并受控收集 unknown、extra positional 和 unused known 参数的原始 token 生成 warning metadata，不复制业务参数解释、默认值归一或 request 构造逻辑。
-- 每个被忽略的 argv family 必须形成阅读层 warning 或 stderr 诊断；输出通道按当前输出模式决定。
-- Readable warning item 必须使用稳定 warning envelope：稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。
-- CLI argv 兼容 warning 必须使用 `id: "cli_argv_ignored"`，并可在 `details.tokens` 中列出相关 argv token。
-- Adapter candidate warning 必须保留 `id: "adapter_candidate_failure"`，并在 `details` 中保留 `adapter_id`、`stage`、`code` 和可选 `preselected` 等 candidate 字段。
-- CLI argv warning 的 exact token 分组、`reason` 文案和 token 消费顺序不得作为稳定契约。
-- `protocol-json` stdout 不得给 protocol response envelope 增加 warning 字段。
+- `clap` 负责已知命令、已知参数声明、默认值、枚举和 help；Docnav 在确定 command/operation 后只允许当前 operation owning boundary 使用的参数进入 semantic request，不复制业务参数解释、默认值归一或 request 构造逻辑。
+- 每个 rejected argv family 必须形成 primary input diagnostic；输出通道按当前输出模式投影 failure。
+- `protocol-json` stdout 只输出 protocol response envelope；document success payload 不承载 caller input diagnostic。
 
 #### Scenario: 核心 CLI 进入共享 semantic request 管道
 - **WHEN** 调用方执行有效的 `docnav outline/read/find/info` CLI 命令
@@ -46,38 +42,32 @@ Core CLI 容错规则如下：
 - **THEN** adapter routing、invoke request 构造和 output mode 分流使用共享逻辑
 - **THEN** CLI 不创建独立业务参数解释路径
 
-#### Scenario: 未知 argv 不阻断有效文档操作
+#### Scenario: 未知 argv 阻断文档操作
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --future extra --output readable-json`
 - **AND** path 和 output 可被解析
-- **THEN** `docnav` 继续选择 adapter 并执行 outline
-- **THEN** stdout 包含 outline readable JSON
-- **THEN** stdout 包含 `warnings`
-- **THEN** 每个 warning item 通过 readable schema
-- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** 测试不要求 exact token 分组、`reason` 文案或 token 消费顺序
+- **THEN** `docnav` 返回 `INVALID_REQUEST`
+- **THEN** 不选择 adapter、不执行 outline
+- **THEN** failure projection 包含 primary input diagnostic
 
-#### Scenario: 未知 argv 不吞已知输出模式
+#### Scenario: 未知 argv 仍使用已知输出模式投影错误
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --future --output protocol-json`
-- **THEN** `docnav` 仍解析并使用 `protocol-json` 输出模式
-- **THEN** stdout 是通过 protocol response schema 的 envelope
-- **THEN** stdout 不包含 `warnings`
-- **THEN** warning 或诊断只写入 stderr
+- **THEN** `docnav` 使用 `protocol-json` 输出模式投影 failure envelope
+- **THEN** stdout 是通过 protocol response schema 的 failure envelope
+- **THEN** 不启动 adapter
 
 #### Scenario: 当前 operation 使用的已知参数仍严格
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --page 0`
 - **OR** 执行 `docnav outline docs/guide.md --limit-chars nope`
 - **OR** 执行 `docnav outline docs/guide.md --output nope`
 - **THEN** `docnav` 返回 `INVALID_REQUEST`
-- **THEN** CLI 不通过宽松 argv 策略忽略该参数并继续
+- **THEN** CLI 不通过 strict argv 策略忽略该参数并继续
 
-#### Scenario: 当前 operation 不使用的参数宽松
+#### Scenario: 当前 operation 不使用的参数严格失败
 - **WHEN** 调用方执行 `docnav info docs/guide.md --page nope --output readable-json`
 - **OR** 执行 `docnav info docs/guide.md --limit-chars nope --output readable-json`
-- **AND** info 所需 path 和 output 可被解析
-- **THEN** `docnav` 执行 info
-- **THEN** info invoke 请求不包含 page 或 limit_chars
-- **THEN** page 或 limit_chars 参数最多以原始 token 形成阅读层 warning 或 stderr 诊断
-- **THEN** CLI 不因该 unused known 参数无法通过其它 operation 的类型或范围校验而失败
+- **THEN** `docnav` 返回 `INVALID_REQUEST`
+- **THEN** info invoke 请求不构造
+- **THEN** failure projection 指出参数不适用于当前 operation
 
 #### Scenario: Help 不执行业务
 - **WHEN** 调用方执行 `docnav --help`
@@ -168,11 +158,10 @@ Core CLI 容错规则如下：
 ### Requirement: adapter 选择必须先校验一个预选 adapter
 `docnav` MUST 先确定一个预选 adapter id，并 MUST 使用统一的候选评估规则决定选中、继续遍历或直接失败。Adapter 评估 MUST 以 registry 记录解析、manifest 当前 schema、当前契约语义和 adapter probe 结果为准。
 
-#### Scenario: 显式 adapter 记录解析失败后继续
+#### Scenario: 显式 adapter 记录解析失败后返回诊断
 - **WHEN** 调用方传入 `--adapter docnav-markdown` 但 registry 中无法解析该 adapter 记录
-- **THEN** `docnav` 保留失败证据
-- **THEN** `docnav` 生成 warning
-- **THEN** `docnav` 调用 registry 遍历函数继续尝试其它 adapter
+- **THEN** `docnav` 返回 adapter selection diagnostic
+- **THEN** `docnav` 不把显式 adapter failure 转为 automatic discovery success path
 
 #### Scenario: probe 有效不支持后继续
 - **WHEN** 候选 adapter probe 返回符合当前 schema 和语义的 `supported: false`
@@ -194,7 +183,7 @@ Core CLI 容错规则如下：
 - **WHEN** registry 遍历中的候选 adapter manifest 或 probe 输出字段缺失、类型不符或语义校验失败
 - **THEN** `docnav` 保留候选证据
 - **THEN** `docnav` 继续 registry 遍历
-- **THEN** 若后续候选成功，输出层按模式呈现前序候选 warning
+- **THEN** 若后续候选成功，前序候选失败只保留为 internal discovery state，不进入 success output
 
 #### Scenario: 所有阶段失败
 - **WHEN** 没有 adapter 能校验目标文档
@@ -238,7 +227,7 @@ Core CLI 容错规则如下：
 - **THEN** `docnav` 不继续尝试其它 adapter
 
 ### Requirement: 输出模式必须按协议层和阅读层分离
-`docnav --output protocol-json` MUST 输出原始 protocol response envelope；CLI warning 在该模式下通过 stderr 诊断表达。默认 readable-view 和 readable-json 输出必须保持为阅读层结果，并必须从同一个完整 readable payload 派生。readable-view JSON header 和 readable-json 在存在 ignored argv 或 adapter candidate warning 时必须包含顶层 `warnings`。每个 warning item 必须使用稳定 warning envelope，包含 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 必须使用 `id: "cli_argv_ignored"`，相关 argv token 只能作为 `details.tokens` 等 family-specific detail 表达。CLI argv conformance 断言 stable warning envelope、`cli_argv_ignored` id 和诊断存在性。
+`docnav --output protocol-json` MUST 输出原始 protocol response envelope。默认 readable-view 和 readable-json 输出必须保持为阅读层结果，并必须从同一个完整 readable payload 派生。Document success output MUST 只包含成功业务 payload 和该输出模式拥有的结构；caller input diagnostics、config failures 和 automatic discovery candidate failures MUST NOT 进入 success payload。Public failure MUST project one primary `DiagnosticRecord` through the selected output mode.
 
 核心 CLI document output enum/help/config MUST expose only `readable-view`、`readable-json` 和 `protocol-json`。Help、version 和其它非文档纯文本输出 MUST 通过与 document output mode 分离的 `PlainText` 或等价明确命名通道承载。
 
@@ -250,27 +239,18 @@ Core CLI 容错规则如下：
 #### Scenario: 默认 readable-view outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md` 且未传入 `--output`
 - **THEN** 输出使用 readable-view pretty JSON header
-- **THEN** JSON header 包含 entries、page 和可选 warnings
+- **THEN** JSON header 包含 entries 和 page
 - **THEN** 输出不包含 protocol envelope 字段
 
-#### Scenario: readable-json warning envelope
-- **WHEN** 调用方执行带有未知参数但其它参数有效的 readable-json 命令
-- **THEN** 输出包含该 operation 的 readable 字段
-- **THEN** 输出包含 `warnings` 数组
-- **THEN** 每个 warning item 包含稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象
-- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** 测试断言 stable warning envelope、`cli_argv_ignored` id 和诊断存在性
+#### Scenario: readable-json input failure
+- **WHEN** 调用方执行带有未知参数的 readable-json 命令
+- **THEN** 输出包含 primary failure diagnostic 的 readable projection
+- **THEN** 输出不包含 success payload fields
 
-#### Scenario: readable-view warning envelope
-- **WHEN** 调用方执行带有未知参数但其它参数有效的默认或显式 readable-view 命令
-- **THEN** JSON header 包含该 operation 的 readable 字段和 `warnings` 数组
-- **THEN** warning 只由 JSON header 的 `warnings` 数组承载
-
-#### Scenario: protocol-json warning
-- **WHEN** 调用方执行带有未知参数但其它参数有效的 protocol-json 命令
-- **THEN** 输出包含完整 protocol response envelope
-- **THEN** 输出不包含 `warnings` 数组
-- **THEN** stderr 包含 warning 诊断
+#### Scenario: protocol-json input failure
+- **WHEN** 调用方执行带有未知参数的 protocol-json 命令
+- **THEN** stdout 包含完整 protocol failure envelope
+- **THEN** 不启动 adapter
 
 #### Scenario: document output 值按三种模式校验
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --output <invalid-output>`
@@ -317,22 +297,21 @@ Core CLI 容错规则如下：
 
 ### Requirement: Core CLI 必须复用共享 helper 且保留 core policy owner
 
-`docnav` core CLI MUST 在共享 helper 存在后复用 diagnostics、direct CLI argv compatibility、JSON IO 和 document output orchestration helper。Core CLI MUST 继续拥有 adapter routing、configuration、project root handling、adapter process startup、registry command resolution、non-document command behavior 和 concrete core exit code enum。
+`docnav` core CLI MUST 在共享 helper 存在后复用 diagnostics、direct CLI argv classifier、JSON IO 和 document output orchestration helper。Core CLI MUST 继续拥有 adapter routing、configuration、project root handling、adapter process startup、registry command resolution、non-document command behavior 和 concrete core exit code enum。
 
-#### Scenario: Core document argv compatibility 使用共享 scanner
+#### Scenario: Core document argv strict classification 使用共享 scanner
 
 - **WHEN** core document CLI 解析 unknown flags、extra positional values 或当前 operation 不使用的 known flags
-- **THEN** 它使用共享 direct CLI argv compatibility scanner 做 token classification
+- **THEN** 它使用共享 direct CLI argv scanner 做 token classification
 - **THEN** 当前 operation 实际使用参数的 typed parsing 仍由 core 拥有
-- **THEN** loose argv rule 不应用于 adapter `invoke` stdin JSON
+- **THEN** argv scanner 不应用于 adapter `invoke` stdin JSON
 
-#### Scenario: Core warning construction 使用共享 diagnostics
+#### Scenario: Core input failure 使用共享 diagnostics
 
-- **WHEN** core CLI 输出 ignored argv 或 adapter candidate warnings
-- **THEN** warning item 使用 `docnav-diagnostics` 提供的稳定 warning envelope
-- **THEN** CLI argv warning 保持 `id: "cli_argv_ignored"`
-- **THEN** adapter candidate warning 保持 `id: "adapter_candidate_failure"`
-- **THEN** protocol-json stdout 不包含 warning fields
+- **WHEN** core CLI 遇到 unknown flags、extra positional values 或当前 operation 不使用的 known flags
+- **THEN** 它使用 `docnav-diagnostics` 产生 primary input diagnostic
+- **THEN** selected output mode 投影 failure
+- **THEN** success output 不包含 caller input diagnostic fields
 
 #### Scenario: Core non-document JSON output 保持 core-owned
 
@@ -344,10 +323,10 @@ Core CLI 容错规则如下：
 #### Scenario: Core document output 使用共享输出编排
 
 - **WHEN** core CLI 得到 document operation success 或 diagnostic failure outcome
-- **THEN** 它将 outcome、operation、request id、output mode 和 collected warnings 传给 `docnav-output` 的 document-only facade
+- **THEN** 它将 outcome、operation、request id 和 output mode 传给 `docnav-output` 的 document-only facade
 - **THEN** `readable-json` 和 `readable-view` 从同一个 readable payload 派生
 - **THEN** `protocol-json` 向 stdout 写出一个 protocol response envelope
-- **THEN** diagnostics 和 protocol-json warning text 只写入 stderr
+- **THEN** diagnostic failures 通过 selected output mode 的 primary failure projection 输出
 
 #### Scenario: Core exit code enum 仍由 core 拥有
 

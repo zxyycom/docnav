@@ -32,7 +32,7 @@
 4. 判断本次变更是否仍属于现有 case 的同一责任边界或同一行为链路。
 5. 证明目标属于现有 case 时，在同一 patch 更新该 case 的 `Proves:` 或 Mermaid 叶子断言；嵌入已有 case 的新增断言必须共享该 case 的责任边界，并指向明文 owner 语义。
 6. 证明目标不同且需要独立的可执行证明时，新增或拆分 case，并添加源码 `@case` 标记。
-7. 新增、拆分或扩展测试断言前，先写出“owner 明确承诺的语义 -> 可观察结果”的证明目标；涉及错误通道时，证明目标必须区分 stack/code/details 规则、surface 投影、schema/example/fixture 校验和消费方行为。历史回归、默认不存在或“没有发生某事”只能作为输入选择或风险说明，不能替代证明目标，除非 owner 文档、schema、示例或覆盖矩阵明文要求校验该否定边界。
+7. 新增、拆分或扩展测试断言前，先写出“owner 明确承诺的语义 -> 可观察结果”的证明目标；涉及 strict public input、primary `DiagnosticRecord` 或 success payload shape 时，证明目标必须指向对应 input owner、diagnostics/output owner、schema/example 或覆盖矩阵。涉及错误通道时，证明目标必须区分 stack/code/details 规则、surface 投影、schema/example/fixture 校验和消费方行为。历史回归、默认不存在或“没有发生某事”只能作为输入选择或风险说明，不能替代证明目标，除非 owner 文档、schema、示例或覆盖矩阵明文要求校验该否定边界。
 8. 只提升重构信心的改动使用现有测试、局部验证命令或代码审查证明。
 
 ## Case 归属规则

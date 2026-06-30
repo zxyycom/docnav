@@ -25,11 +25,11 @@
 - **WHEN** a caller executes `docnav outline docs/guide.md --limit 120`
 - **THEN** core classifies the invocation as a document operation
 - **THEN** core maps argv into a direct input view
-- **THEN** core invokes entry parameter source resolution with direct input, configured sources, and defaults
+- **THEN** core invokes entry parameter source resolution with direct input, configured sources, explicit adapter native option source descriptors when an adapter owner has declared them, and defaults
 - **THEN** adapter routing and request construction consume derived typed runtime values rather than raw argv tokens
 
 ### Requirement: Core CLI keeps raw argv immutable during parameter resolution
-Core CLI parameter source resolution MUST NOT delete, rewrite, reorder, or supplement raw argv tokens. Ignored argv diagnostics, output intent preflight, and document request construction MUST use derived facts or typed runtime values while preserving the original argv as the raw invocation record.
+Core CLI parameter source resolution MUST NOT delete, rewrite, reorder, or supplement raw argv tokens. Input-boundary diagnostics, output intent preflight, and document request construction MUST use derived facts or typed runtime values while preserving the original argv as the raw invocation record.
 
 #### Scenario: Config defaults do not mutate argv
 - **WHEN** a caller executes `docnav outline docs/guide.md` without `--output`
@@ -38,8 +38,8 @@ Core CLI parameter source resolution MUST NOT delete, rewrite, reorder, or suppl
 - **THEN** the raw argv remains unchanged and still lacks `--output`
 - **THEN** request construction consumes the derived output value without classifying it as direct input
 
-#### Scenario: Ignored argv diagnostics use raw tokens without resolver mutation
+#### Scenario: Input-boundary diagnostics use raw tokens without resolver mutation
 - **WHEN** a caller executes `docnav info docs/guide.md --page nope --output readable-json`
-- **THEN** core may report `--page nope` as ignored argv for the selected operation
+- **THEN** core reports `--page nope` as operation-inapplicable input before request construction
 - **THEN** parameter source resolution does not coerce that raw token into a page value
-- **THEN** the info request remains free of page and limit arguments
+- **THEN** no info invoke request is constructed for that rejected invocation

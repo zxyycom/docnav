@@ -25,5 +25,6 @@ Markdown adapter smoke 和 fixture corpus MUST 覆盖至少一个配置命中的
 #### Scenario: Smoke 覆盖非结构化 outline shape
 - **WHEN** smoke suite 对配置命中的 Markdown fixture 执行 outline
 - **THEN** readable-json 和 protocol-json 结果不包含 entries、ref 或 page
+- **THEN** readable-json 使用 documented outline success payload 分支
 - **THEN** readable-view 使用 `/content` block 承载全文
 - **THEN** 三种输出都包含稳定原因字段或等价可读说明

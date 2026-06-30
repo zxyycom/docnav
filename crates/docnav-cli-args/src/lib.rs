@@ -15,14 +15,14 @@ impl<'a> KnownValueFlag<'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct LooseArgScan<'a> {
+pub struct ArgBoundaryScan<'a> {
     pub command: &'a str,
     pub positional_limit: usize,
     pub known_value_flags: &'a [KnownValueFlag<'a>],
     pub known_switch_flags: &'a [&'a str],
 }
 
-impl<'a> LooseArgScan<'a> {
+impl<'a> ArgBoundaryScan<'a> {
     pub const fn new(
         command: &'a str,
         positional_limit: usize,
@@ -43,13 +43,13 @@ impl<'a> LooseArgScan<'a> {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LooseArgScanResult {
+pub struct ArgBoundaryScanResult {
     pub retained_args: Vec<String>,
-    pub ignored: Vec<IgnoredArg>,
+    pub rejected: Vec<RejectedArg>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum IgnoredArg {
+pub enum RejectedArg {
     UnknownFlag {
         token: String,
     },
@@ -74,11 +74,11 @@ impl MissingValue {
     }
 }
 
-pub fn scan_loose_args(
+pub fn scan_arg_boundaries(
     args: &[String],
-    config: &LooseArgScan<'_>,
-) -> Result<LooseArgScanResult, MissingValue> {
-    let mut state = LooseArgScanState::default();
+    config: &ArgBoundaryScan<'_>,
+) -> Result<ArgBoundaryScanResult, MissingValue> {
+    let mut state = ArgBoundaryScanState::default();
     while state.has_next(args) {
         scan_next_arg(args, config, &mut state)?;
     }
@@ -86,30 +86,30 @@ pub fn scan_loose_args(
 }
 
 #[derive(Default)]
-struct LooseArgScanState {
+struct ArgBoundaryScanState {
     retained_args: Vec<String>,
-    ignored: Vec<IgnoredArg>,
+    rejected: Vec<RejectedArg>,
     positional_count: usize,
     index: usize,
 }
 
-impl LooseArgScanState {
+impl ArgBoundaryScanState {
     fn has_next(&self, args: &[String]) -> bool {
         self.index < args.len()
     }
 
-    fn finish(self) -> LooseArgScanResult {
-        LooseArgScanResult {
+    fn finish(self) -> ArgBoundaryScanResult {
+        ArgBoundaryScanResult {
             retained_args: self.retained_args,
-            ignored: self.ignored,
+            rejected: self.rejected,
         }
     }
 }
 
 fn scan_next_arg(
     args: &[String],
-    config: &LooseArgScan<'_>,
-    state: &mut LooseArgScanState,
+    config: &ArgBoundaryScan<'_>,
+    state: &mut ArgBoundaryScanState,
 ) -> Result<(), MissingValue> {
     let token = &args[state.index];
     let (flag_token, _inline_value) = split_equals(token);
@@ -120,7 +120,7 @@ fn scan_next_arg(
     } else if let Some(flag) = known_value_flag(config.known_value_flags, flag_token) {
         scan_value_flag_arg(args, config, state, flag, flag_token)?;
     } else if is_long_flag(token) {
-        state.ignored.push(IgnoredArg::UnknownFlag {
+        state.rejected.push(RejectedArg::UnknownFlag {
             token: token.clone(),
         });
         state.index += 1;
@@ -131,14 +131,14 @@ fn scan_next_arg(
     Ok(())
 }
 
-fn is_known_switch_flag(config: &LooseArgScan<'_>, token: &str) -> bool {
+fn is_known_switch_flag(config: &ArgBoundaryScan<'_>, token: &str) -> bool {
     config.known_switch_flags.contains(&token)
 }
 
 fn scan_value_flag_arg(
     args: &[String],
-    config: &LooseArgScan<'_>,
-    state: &mut LooseArgScanState,
+    config: &ArgBoundaryScan<'_>,
+    state: &mut ArgBoundaryScanState,
     flag: KnownValueFlag<'_>,
     flag_token: &str,
 ) -> Result<(), MissingValue> {
@@ -146,8 +146,8 @@ fn scan_value_flag_arg(
         push_retained_value_arg(&mut state.retained_args, args, &mut state.index, flag_token)
     } else {
         let token = args[state.index].clone();
-        let value = ignored_value(args, &mut state.index, flag_token)?;
-        state.ignored.push(IgnoredArg::UnusedValueFlag {
+        let value = rejected_value(args, &mut state.index, flag_token)?;
+        state.rejected.push(RejectedArg::UnusedValueFlag {
             flag: token,
             value,
             command: config.command.to_owned(),
@@ -156,12 +156,16 @@ fn scan_value_flag_arg(
     }
 }
 
-fn scan_positional_arg(args: &[String], config: &LooseArgScan<'_>, state: &mut LooseArgScanState) {
+fn scan_positional_arg(
+    args: &[String],
+    config: &ArgBoundaryScan<'_>,
+    state: &mut ArgBoundaryScanState,
+) {
     let token = &args[state.index];
     if state.positional_count < config.positional_limit {
         state.retained_args.push(token.clone());
     } else {
-        state.ignored.push(IgnoredArg::ExtraPositional {
+        state.rejected.push(RejectedArg::ExtraPositional {
             token: token.clone(),
         });
     }
@@ -199,7 +203,7 @@ fn push_retained_value_arg(
     Ok(())
 }
 
-fn ignored_value(
+fn rejected_value(
     args: &[String],
     index: &mut usize,
     flag: &str,

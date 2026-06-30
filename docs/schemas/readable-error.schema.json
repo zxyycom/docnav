@@ -5,6 +5,7 @@
   "required": [
     "code",
     "error",
+    "owner",
     "guidance"
   ],
   "properties": {
@@ -29,18 +30,20 @@
       "type": "string",
       "minLength": 1
     },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "location": {
+      "$ref": "readable-common.schema.json#/$defs/diagnosticLocation"
+    },
+    "received": {},
+    "expected": {},
     "details": {
-      "type": "object"
+      "$ref": "readable-common.schema.json#/$defs/diagnosticDetails"
     },
     "guidance": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "warnings": {
-      "$ref": "readable-common.schema.json#/$defs/warnings"
+      "$ref": "readable-common.schema.json#/$defs/guidance"
     }
   },
   "additionalProperties": false

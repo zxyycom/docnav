@@ -53,8 +53,8 @@ use serde_json::Value;
 pub struct ConformanceVector {
     /// Human-readable description of what this vector tests.
     pub description: String,
-    /// The readable view kind: `"outline"`, `"read"`, `"find"`, `"info"`,
-    /// `"error"`, or `"warning"`.
+    /// The readable view kind: `"outline"`, `"read"`, `"find"`, `"info"`, or
+    /// `"error"`.
     pub view_kind: String,
     /// Optional block-pointer override for the view kind.
     /// When present, replaces the default `ViewBlockConfig::blocks` for the

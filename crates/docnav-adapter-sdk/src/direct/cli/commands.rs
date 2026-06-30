@@ -4,7 +4,6 @@ use docnav_protocol::Operation;
 
 use super::super::args::{command_names, parse_probe, parse_protocol_only_options};
 use super::super::config::{adapter_direct_cli_config_source_descriptors, ConfigPathOverrides};
-use super::super::output::append_cli_warnings_to_stderr;
 use super::operation::run_operation;
 use super::{input_error, DirectCliContext, DirectCommandInvocation};
 use crate::standard_parameters::InvokeStandardParameterConfig;
@@ -55,16 +54,13 @@ where
     E: Write,
 {
     match parse_protocol_only_options(args, context.config.native_options) {
-        Ok(warnings) => {
-            let exit_code = run_command(
-                context.adapter,
-                SdkCommand::Manifest,
-                std::io::empty(),
-                &mut *stdout,
-                &mut *stderr,
-            );
-            append_cli_warnings_to_stderr(exit_code, &warnings, stderr)
-        }
+        Ok(()) => run_command(
+            context.adapter,
+            SdkCommand::Manifest,
+            std::io::empty(),
+            stdout,
+            stderr,
+        ),
         Err(message) => input_error(stderr, &message),
     }
 }
@@ -81,16 +77,13 @@ where
     E: Write,
 {
     match parse_probe(args, context.config.native_options) {
-        Ok(options) => {
-            let exit_code = run_command(
-                context.adapter,
-                SdkCommand::Probe { path: options.path },
-                std::io::empty(),
-                &mut *stdout,
-                &mut *stderr,
-            );
-            append_cli_warnings_to_stderr(exit_code, &options.warnings, stderr)
-        }
+        Ok(options) => run_command(
+            context.adapter,
+            SdkCommand::Probe { path: options.path },
+            std::io::empty(),
+            stdout,
+            stderr,
+        ),
         Err(message) => input_error(stderr, &message),
     }
 }

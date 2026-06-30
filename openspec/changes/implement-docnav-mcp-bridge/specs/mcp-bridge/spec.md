@@ -30,24 +30,20 @@ MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。Adapter 
 - **THEN** adapter 选择由 `docnav` 完成
 
 ### Requirement: structuredContent 必须使用 readable schema
-MCP structuredContent MUST 使用对应 operation 的 readable schema，并 MUST 从 `docnav --output readable-json` 的 stdout JSON 派生。structuredContent MUST 只包含 operation readable 字段、readable 错误字段和可选 `warnings`；read structuredContent MUST 保留 `content_type`。MCP TextContent 渲染 SHOULD 消费 `replace-text-with-readable-view` 的 readable-view contract 和仓库 renderer config；block pointer、byte length 和 block payload 语义 SHOULD 与 Rust renderer 一致。
+MCP structuredContent MUST 使用对应 operation 的 readable schema，并 MUST 从 `docnav --output readable-json` 的 stdout JSON 派生。successful structuredContent MUST 只包含 operation readable success payload 字段；failure structuredContent MUST map the primary `DiagnosticRecord` from readable error output；read structuredContent MUST 保留 `content_type`。MCP TextContent 渲染 SHOULD 消费 `replace-text-with-readable-view` 的 readable-view contract 和仓库 renderer config；block pointer、byte length 和 block payload 语义 SHOULD 与 Rust renderer 一致。
 
 #### Scenario: document_outline structuredContent
 - **WHEN** `document_outline` 返回结果
 - **THEN** structuredContent 只包含 entries 和 page
 - **THEN** structuredContent 不包含 `protocol_version`、`request_id`、`operation` 或 `ok`
+- **THEN** structuredContent 不包含 readable error 或 diagnostic wrapper
 
 #### Scenario: document_read structuredContent
 - **WHEN** `document_read` 返回结果
 - **THEN** structuredContent 包含 ref、content、content_type、cost 和 page
 
-#### Scenario: warning structuredContent
-- **WHEN** `docnav --output readable-json` 返回包含 `warnings` 的成功结果
-- **THEN** MCP structuredContent 保留 `warnings`
-- **THEN** MCP TextContent 在正常阅读文本后追加 warning 文本
-
-#### Scenario: 成功 stderr 不升级为错误
-- **WHEN** `docnav` 子进程成功退出并向 stderr 写入非致命诊断
+#### Scenario: 成功 stderr status 不升级为错误
+- **WHEN** `docnav` 子进程成功退出并向 stderr 写入 owner-scoped status
 - **THEN** `docnav-mcp` 返回成功的 MCP tool result
 - **THEN** 成功/失败判定以退出码和 stdout readable JSON payload 为准
 
@@ -60,9 +56,9 @@ MCP structuredContent MUST 使用对应 operation 的 readable schema，并 MUST
 - **THEN** schema 可在离线环境中使用
 
 ### Requirement: MCP 错误输出必须保持阅读层语义
-`docnav-mcp` MUST 将 `docnav` readable 错误转换为 MCP TextContent 和 structuredContent，并 MUST 保留必要 code/details。完整 protocol envelope MUST 由 `docnav --output protocol-json` 提供，而不是 MCP structuredContent 的输出形状。
+`docnav-mcp` MUST 将 `docnav` readable 错误中的 primary `DiagnosticRecord` 转换为 MCP TextContent 和 structuredContent，并 MUST 至少保留 code、message 和 owner，且在存在时保留 guidance/details。完整 protocol envelope MUST 由 `docnav --output protocol-json` 提供，而不是 MCP structuredContent 的输出形状。
 
 #### Scenario: docnav 返回 REF_NOT_FOUND
 - **WHEN** 核心 `docnav` 返回 `REF_NOT_FOUND`
-- **THEN** MCP structuredContent 保留错误 code
+- **THEN** MCP structuredContent 保留 primary `DiagnosticRecord` 的 code、message 和 owner
 - **THEN** 输出不包含 protocol envelope 字段

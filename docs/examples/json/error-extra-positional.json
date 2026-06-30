@@ -1,0 +1,29 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-cli-extra-positional",
+  "operation": "read",
+  "ok": false,
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "命令包含多余的位置参数。",
+    "owner": "core_cli",
+    "location": {
+      "argv_index": 5
+    },
+    "received": "extra.md",
+    "expected": "no positional value after read <path> --ref <ref>",
+    "details": {
+      "field": "argv[5]",
+      "reason": "extra_positional",
+      "field_issues": [
+        {
+          "field": "argv[5]",
+          "reason": "extra_positional"
+        }
+      ]
+    },
+    "guidance": [
+      "删除多余的位置参数，只保留 read 的 document path 和 --ref。"
+    ]
+  }
+}

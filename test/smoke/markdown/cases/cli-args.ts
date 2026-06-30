@@ -3,16 +3,16 @@ import { fixture, getNormalRef } from "../fixtures.ts";
 import { runCli } from "../harness.ts";
 import {
   expectExit,
-  expectStderrIncludes,
-  expectStdoutEmpty
+  expectStderrEmpty,
+  expectStdoutIncludes
 } from "../assertions.ts";
 import {
-  assertHelpOutputModeCompatibility,
-  assertProtocolJsonCompatibilityWarning,
-  assertReadableJsonCompatibilityWarnings
-} from "./cli-args-warnings.ts";
+  assertHelpOutputModeBoundary,
+  assertProtocolJsonStrictInputFailure,
+  assertReadableJsonStrictInputFailures
+} from "./cli-args-boundaries.ts";
 
-const HELP_OUTPUT_MODE_COMPATIBILITY = {
+const HELP_OUTPUT_MODE_BOUNDARY = {
   modes: ["readable-view", "readable-json", "protocol-json"],
   textModeAssertion: "outline help does not mention text output mode"
 } as const;
@@ -28,13 +28,13 @@ export function createCliArgumentFailureTasks() {
   ];
 }
 
-export function createCliArgumentCompatibilityWarningTasks() {
+export function createCliInputBoundaryTasks() {
   return [
-    // @case BB-MD-WARN-001
+    // @case BB-MD-BOUNDARY-001
     {
-      id: "MD-WARN-001",
-      label: "MD-WARN-001 CLI compatibility warnings and help",
-      run: testCliArgumentCompatibilityWarnings
+      id: "MD-BOUNDARY-001",
+      label: "MD-BOUNDARY-001 strict CLI input boundaries and help",
+      run: testStrictCliInputBoundaries
     }
   ];
 }
@@ -43,15 +43,16 @@ async function testStrictCliArgumentFailure() {
   const normal = fixture("normal.md");
   const record = await runCli("MD-ARGS-001 find missing required --query", ["find", normal]);
   expectExit(record, exitCodes.input);
-  expectStdoutEmpty(record);
-  expectStderrIncludes(record, "find requires --query <text>");
+  expectStderrEmpty(record);
+  expectStdoutIncludes(record, "\"code\": \"INVALID_REQUEST\"");
+  expectStdoutIncludes(record, "find requires --query <text>");
 }
 
-async function testCliArgumentCompatibilityWarnings() {
+async function testStrictCliInputBoundaries() {
   const normal = fixture("normal.md");
   const ref = await getNormalRef();
 
-  await assertHelpOutputModeCompatibility(HELP_OUTPUT_MODE_COMPATIBILITY);
-  await assertReadableJsonCompatibilityWarnings(normal, ref);
-  await assertProtocolJsonCompatibilityWarning(normal);
+  await assertHelpOutputModeBoundary(HELP_OUTPUT_MODE_BOUNDARY);
+  await assertReadableJsonStrictInputFailures(normal, ref);
+  await assertProtocolJsonStrictInputFailure(normal);
 }

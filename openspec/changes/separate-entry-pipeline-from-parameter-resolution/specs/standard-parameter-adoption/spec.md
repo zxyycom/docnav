@@ -5,18 +5,18 @@
 ### Requirement: Entrypoints consume parameter source resolution without surrendering owner policy
 Core CLI and adapter SDK entrypoints MUST consume entry parameter source registration and typed runtime values for shared document operation parameters while preserving each entrypoint's owner policy. Entrypoints MUST decide whether parameter source resolution applies only after entry classification, and MUST keep raw input immutable while consuming derived values.
 
-#### Scenario: Direct CLI migration keeps warning behavior
-- **WHEN** a migrated direct CLI invocation contains unknown argv, extra positional input, or a known flag unused by the selected operation
-- **THEN** the entrypoint preserves compatible warning behavior
+#### Scenario: Direct CLI migration keeps strict input boundary
+- **WHEN** a migrated direct CLI invocation contains unknown argv, extra positional input, or a known flag that is not applicable to the selected operation
+- **THEN** the entrypoint reports a blocking primary input diagnostic at the owner boundary
 - **THEN** parameters actually consumed by the selected operation are strictly validated through the parameter source resolution result
-- **THEN** ignored raw argv tokens are not rewritten into derived operation values
+- **THEN** rejected raw argv tokens are not rewritten into derived operation values
 
 #### Scenario: Invoke migration keeps strict protocol behavior
 - **WHEN** a migrated adapter invoke request omits a registered optional argument that config or defaults can supply
 - **THEN** the operation handler may receive a derived typed runtime value
 - **THEN** the raw stdin request is not modified
 - **WHEN** the migrated invoke request contains an invalid registered argument value
-- **THEN** the entrypoint returns protocol-shaped failure rather than applying direct CLI ignored-argv compatibility
+- **THEN** the entrypoint returns protocol-shaped failure using invoke-owned strict input semantics
 
 #### Scenario: Help and machine commands remain outside adoption path
 - **WHEN** a migrated entrypoint handles help, manifest, or probe

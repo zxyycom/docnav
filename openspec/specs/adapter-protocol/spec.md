@@ -100,33 +100,29 @@ Protocol request argument types MUST keep optional `options` as an opaque adapte
 - **THEN** manifest 不包含 `recommended_parameters`
 - **THEN** SDK 不从 manifest 合成 `arguments.options`
 
-### Requirement: SDK 直接 CLI 必须兼容 CLI 扩展参数
-`docnav-adapter-sdk` MUST 为 adapter direct CLI 提供 AI 友好的宽松 argv 解析。SDK 必须使用 `clap` 或 `clap` builder API 作为共享命令、子命令、固定参数、默认值、枚举值和 help 的 argv 结构解析基础。
+### Requirement: SDK 直接 CLI 必须严格校验 CLI 参数
+`docnav-adapter-sdk` MUST 为 adapter direct CLI 提供 strict argv 解析。SDK 必须使用 `clap` 或 `clap` builder API 作为共享命令、子命令、固定参数、默认值、枚举值和 help 的 argv 结构解析基础。
 
 Adapter SDK 入口必须保持以下分层：
 
-- Direct CLI 文档操作通过 `clap` 承载已知命令、已知参数声明、默认值、枚举和 help；SDK 在确定 operation 后只对当前 operation 实际使用的参数做类型、范围和枚举校验，并受控收集 unknown、extra positional 和 unused known 参数的原始 token。
+- Direct CLI 文档操作通过 `clap` 承载已知命令、已知参数声明、默认值、枚举和 help；SDK 在确定 operation 后只允许当前 operation owning boundary 使用的参数进入 semantic request。
 - Adapter `invoke` 先把 stdin bytes 解码为 JSON value；已解码 value 作为 direct input 进入标准参数/typed-field processing。
 - Direct CLI 文档操作和 `invoke` direct input 经标准参数解析后必须映射到 canonical document operation input 或等价 semantic request。
 - 共享语义归一和统一 operation handler 必须负责默认值、native options、必需参数校验和 request 构造。
-- 宽松 argv 收集层只生成 warning metadata；业务参数解释、默认值归一和 request 构造逻辑由共享语义归一与 operation handler 承担。
-- 当前 operation 的必需语义存在且实际使用参数有效时，未知 flag、多余 positional 和当前 operation 不使用的参数进入 warning metadata，direct CLI 继续成功路径。
+- argv 收集层只做 strict token classification；业务参数解释、默认值归一和 request 构造逻辑由共享语义归一与 operation handler 承担。
+- 未知 flag、多余 positional 和当前 operation 不使用的参数 MUST 在执行前返回 input diagnostic。
 - 当前 operation 实际使用的参数必须保持严格。
 - Malformed invoke JSON 属于 transport decode failure；未知字段、缺失字段或类型错误必须由标准参数/typed-field processing 产生诊断，且不得暴露为 safe operation values。
-- 每个被忽略的 argv family 必须形成阅读层 warning 或 stderr 诊断；输出通道按当前输出模式决定。
-- Readable warning item 必须使用稳定 warning envelope：稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象。CLI argv warning 必须使用 `id: "cli_argv_ignored"`，并可在 `details.tokens` 中列出相关 argv token。
-- Adapter `invoke`、CLI `protocol-json`、manifest 和 probe stdout 保持各自 schema；CLI warning 在这些通道中通过 stderr 或诊断表达。
+- 每个 rejected argv family 必须形成 primary input diagnostic；输出通道按当前输出模式决定。
+- Adapter `invoke`、CLI `protocol-json`、manifest 和 probe stdout 保持各自 schema；strict input failures 使用 failure projection 或 owning command stderr。
 - Direct CLI document operation 的阅读输出必须通过共享 readable payload 和 readable-view renderer 生成；SDK document output surface 只暴露 readable-view、readable-json 和 protocol-json。
 - Manifest、probe、help 和其它非 document operation 通道保持各自既有结构化或纯文本边界。
 
-#### Scenario: 未知 argv 不阻断有效操作
+#### Scenario: 未知 argv 阻断操作
 - **WHEN** adapter direct CLI 执行文档操作并收到未知 flag 或多余 positional
 - **AND** 当前 operation 的 path/ref/query 等必需语义参数可被解析
-- **THEN** SDK 继续构造 canonical document operation input 或等价 semantic request，并生成对应 operation request
-- **THEN** 命令结果由业务处理和输出模式决定
-- **THEN** SDK 输出阅读层 warning 或 stderr 诊断
-- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** 测试断言 stable warning envelope、`cli_argv_ignored` id 和诊断存在性
+- **THEN** SDK 返回 input diagnostic
+- **THEN** SDK 不构造 operation request
 
 #### Scenario: direct CLI 和 invoke 共享文档操作语义归一
 - **WHEN** adapter direct CLI input 与 adapter `invoke` direct input 经标准参数解析后表达同一个 outline/read/find/info 操作
@@ -137,29 +133,27 @@ Adapter SDK 入口必须保持以下分层：
 #### Scenario: 未知 argv 不阻断已知输出模式
 - **WHEN** adapter direct CLI 收到未知 argv 和可解析的 `--output protocol-json`
 - **AND** 当前 operation 的其它必需语义参数可被解析
-- **THEN** SDK 仍按 `protocol-json` 输出模式执行
-- **THEN** stdout 是该输出模式对应的 schema-valid payload
-- **THEN** warning 不写入 protocol-shaped stdout
+- **THEN** SDK 仍按 `protocol-json` 输出模式投影 failure
+- **THEN** stdout 是该输出模式对应的 schema-valid failure payload
 
-#### Scenario: 多余 positional 容错
+#### Scenario: 多余 positional 严格失败
 - **WHEN** adapter direct CLI 执行文档操作并收到多余 positional
 - **AND** 当前 operation 已能解析所需 path 和其它必需参数
-- **THEN** SDK 忽略该多余 positional，或将其记录为阅读层 warning / stderr 诊断
-- **THEN** SDK 不因该多余 positional 单独失败
+- **THEN** SDK 返回 input diagnostic
+- **THEN** SDK 不执行 document operation
 
-#### Scenario: 当前 operation 不使用的参数宽松
+#### Scenario: 当前 operation 不使用的参数严格失败
 - **WHEN** adapter direct CLI 收到当前 operation 不使用的已知参数
 - **AND** 该参数值无法通过其它 operation 的类型、枚举或范围校验
 - **AND** 当前 operation 的必需语义参数仍可被解析
-- **THEN** SDK 不因该参数单独失败
-- **THEN** SDK 将该参数记录为阅读层 warning 或 stderr 诊断
-- **THEN** SDK 以原始 token 保留该参数，并只校验当前 operation 实际使用的业务参数
+- **THEN** SDK 返回 input diagnostic
+- **THEN** SDK 不执行 document operation
 
 #### Scenario: 当前 operation 使用的已知参数仍严格
 - **WHEN** adapter direct CLI 收到当前 operation 实际使用的已知参数
 - **AND** 该参数缺少必需值或值无法通过类型、枚举或范围校验
 - **THEN** SDK 返回输入错误
-- **THEN** SDK 不通过宽松解析策略静默替换为默认值
+- **THEN** SDK 不通过 strict 解析策略静默替换为默认值
 
 #### Scenario: 必需语义缺失仍失败
 - **WHEN** adapter direct CLI 执行 `outline` 但缺少 path
@@ -174,21 +168,10 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** help 文本可作为 AI 纠正参数调用的主要入口
 - **THEN** help 不执行文档导航业务
 
-#### Scenario: warning 按阅读输出模式承载
-- **WHEN** adapter direct CLI 以 readable-view 输出模式成功并存在 warning
-- **THEN** stdout JSON header 包含正常 readable 字段和顶层 `warnings`
-- **THEN** stdout 的 warning 只由 JSON header 的 `warnings` 数组承载
-- **WHEN** adapter direct CLI 以 readable-json 输出模式成功并存在 warning
-- **THEN** stdout payload 必须包含顶层 `warnings` 数组
-- **THEN** warning item 包含稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象
-- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** stdout 仍是该输出模式下的合法 payload
-
-#### Scenario: protocol-shaped stdout 不承载 CLI warning
-- **WHEN** adapter direct CLI 以 protocol-json、manifest 或 probe 输出模式成功并存在 CLI warning
-- **THEN** stdout 不包含 `warnings` 字段
-- **THEN** stdout 仍通过该输出模式对应的 schema
-- **THEN** stderr 包含 warning 或诊断
+#### Scenario: success output 只承载业务 payload
+- **WHEN** adapter direct CLI document operation 成功
+- **THEN** stdout 只包含该输出模式拥有的 success payload
+- **THEN** caller input diagnostics 不进入 success payload
 
 #### Scenario: document direct output 值按三种模式校验
 - **WHEN** 调用方对 adapter document operation 传入无效 `--output` 值
@@ -211,7 +194,7 @@ Adapter SDK 入口必须保持以下分层：
 
 ### Requirement: Protocol 和 adapter SDK helper 必须保持进程边界契约
 
-`docnav-protocol`、`docnav-json-io` 和 `docnav-adapter-sdk` MUST 只在不破坏当前 protocol、direct CLI 和 adapter process boundary 的位置暴露共享 helper。Adapter `invoke` stdin JSON MUST 保持严格 protocol direct input；adapter direct CLI document command MAY 复用 direct CLI loose argv 和 document output helper。
+`docnav-protocol`、`docnav-json-io` 和 `docnav-adapter-sdk` MUST 只在不破坏当前 protocol、direct CLI 和 adapter process boundary 的位置暴露共享 helper。Adapter `invoke` stdin JSON MUST 保持严格 protocol direct input；adapter direct CLI document command MAY 复用 direct CLI strict argv classifier 和 document output helper。
 
 #### Scenario: Protocol input helper 使用 typed-field 和标准参数校验
 
@@ -224,13 +207,13 @@ Adapter SDK 入口必须保持以下分层：
 
 - **WHEN** adapter `invoke` 收到包含 unknown fields、missing required fields 或 wrong argument types 的 stdin JSON
 - **THEN** SDK 通过标准参数/typed-field processing 按 invoke contract 拒绝该请求
-- **THEN** 不应用 `docnav-cli-args` loose argv rule
+- **THEN** 不应用 `docnav-cli-args` argv classifier
 - **THEN** failure 仍是 protocol-shaped failure response
 
 #### Scenario: Adapter direct CLI document command 复用共享 helper
 
 - **WHEN** adapter direct CLI document operation 成功或返回 diagnostic failure outcome
-- **THEN** SDK 可以使用共享 diagnostics 表达 warning envelope 和 stderr warning text
+- **THEN** SDK 可以使用共享 diagnostics 表达 primary failure diagnostic
 - **THEN** SDK 可以使用 `docnav-output` 执行 document output mode dispatch
 - **THEN** manifest、probe 和 help output 保持既有 adapter contract 或 plain text boundary
 - **THEN** manifest 和 probe 的 machine-readable JSON 可以复用 `docnav-json-io`
@@ -261,7 +244,7 @@ Adapter SDK 入口必须保持以下分层：
 - **WHEN** adapter direct CLI 调用 SDK config helper 时没有提供默认用户配置目录
 - **AND** 调用方未传入 `--user-config-path`
 - **THEN** SDK 使用当前调用位置（启动 cwd）下的 `<adapter-id>.json` 作为默认用户级配置路径
-- **THEN** 该默认路径缺失不产生配置源 warning
+- **THEN** 该默认路径缺失视为 absent
 
 #### Scenario: 默认项目级配置路径基于启动 cwd 发现项目根
 - **WHEN** 调用方从项目子目录执行 `docnav-markdown outline docs/guide.md`
@@ -278,8 +261,8 @@ Adapter SDK 入口必须保持以下分层：
 #### Scenario: 覆盖配置路径不可用
 - **WHEN** 调用方执行 `docnav-markdown outline docs/guide.md --project-config-path missing.json`
 - **THEN** SDK 尝试读取覆盖后的项目级配置路径
-- **THEN** 该项目级配置源不参与本次配置合并
-- **THEN** direct CLI 产生配置源跳过 warning
+- **THEN** SDK 返回 blocking config diagnostic
+- **THEN** operation request 不构造
 
 #### Scenario: Help 展示配置路径参数
 - **WHEN** 调用方执行 `docnav-markdown outline --help`
@@ -330,7 +313,7 @@ Adapter SDK 入口必须保持以下分层：
 - **THEN** 配置文件中的字段不会生成或覆盖 `path`、`ref`、`query` 或 `page`
 
 ### Requirement: Adapter SDK direct CLI 配置只产出标准参数来源对象
-Adapter direct CLI config MUST 支持通用 `defaults.limit_chars`、`defaults.output` 和 `options` object。SDK MUST 按优先级把 argv、项目级配置、用户级配置和内置默认值合并为标准 direct CLI 参数来源对象。配置合并阶段 MUST 只处理配置源读取、固定字段投影、来源优先级和配置源跳过 warning；合并结果 MUST 表示为标准 direct CLI 参数来源对象和 direct CLI warning。配置源根值 MUST 是 JSON object。配置读取层 MUST 将 `defaults.limit_chars` 投影为 `limit_chars` 参数来源、将 `defaults.output` 投影为 `output` 参数来源、将 `options` object 原样投影为 native options 参数来源。生成后的参数来源对象 MUST 交给既有 direct CLI 参数处理链路完成类型、范围、枚举、native option 注册和 operation 适用性处理。
+Adapter direct CLI config MUST 支持通用 `defaults.limit_chars`、`defaults.output` 和 `options` object。SDK MUST 按优先级把 argv、项目级配置、用户级配置和内置默认值合并为标准 direct CLI 参数来源对象。配置合并阶段 MUST 只处理配置源读取、固定字段投影和来源优先级；默认缺失配置源表示 absent，显式覆盖缺失或 present invalid 配置源 MUST 返回 blocking config diagnostic。配置源根值 MUST 是 JSON object。配置读取层 MUST 将 `defaults.limit_chars` 投影为 `limit_chars` 参数来源、将 `defaults.output` 投影为 `output` 参数来源、将 `options` object 原样投影为 native options 参数来源。生成后的参数来源对象 MUST 交给既有 direct CLI 参数处理链路完成类型、范围、枚举、native option 注册和 operation 适用性处理。
 
 #### Scenario: defaults 字段投影为标准参数来源
 - **WHEN** 配置文件包含 `defaults.limit_chars: 6000`
@@ -345,7 +328,7 @@ Adapter direct CLI config MUST 支持通用 `defaults.limit_chars`、`defaults.o
 
 #### Scenario: 配置读取层不校验未知字段
 - **WHEN** 配置文件包含未知顶层字段或未知 `defaults` 字段
-- **THEN** 配置读取层不因该字段产生配置源 warning
+- **THEN** 配置读取层不因该字段产生配置源 diagnostic
 - **THEN** 该字段不参与标准 direct CLI 参数来源对象投影
 - **WHEN** 配置文件包含未知 `options` key
 - **THEN** 配置读取层将该 key/value 保留在 native options 参数来源中
@@ -357,11 +340,10 @@ Adapter direct CLI config MUST 支持通用 `defaults.limit_chars`、`defaults.o
 - **AND** 用户级配置包含 `defaults.output: "readable-view"`
 - **THEN** 合并后的标准参数来源对象使用项目级 `defaults.output: "readable-json"`
 
-#### Scenario: 配置源跳过原因作为 warning
+#### Scenario: 配置源失败作为 blocking diagnostic
 - **WHEN** adapter direct CLI 读取到不可读、JSON 语法无效或顶层不是 JSON object 的 adapter 配置源
-- **THEN** 该配置源不参与本次合并
-- **THEN** SDK 产生 id 为 `adapter_config_source_skipped` 且 effect 为 `operation_continued` 的 direct CLI warning
-- **THEN** warning details 包含 `source_level`、`path_origin`、`path` 和 `reason_code`
+- **THEN** SDK 返回 blocking config diagnostic
+- **THEN** diagnostic details 包含 `source_level`、`path_origin`、`path` 和 `reason_code`
 - **THEN** `source_level` 为 `project` 或 `user`
 - **THEN** `path_origin` 为 `default` 或 `override`
 - **THEN** `path` 为本次尝试读取的解析后路径

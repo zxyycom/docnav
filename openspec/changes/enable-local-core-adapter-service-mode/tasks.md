@@ -3,7 +3,7 @@
 ## 1. 审计门禁
 
 - [ ] 1.1 阻塞级审计：确认 service mode 必须同时覆盖 core service 和 adapter service，不接受 adapter-only 或 core-only 半套实现。
-- [ ] 1.2 阻塞级审计：确认默认启用、连接失败 fallback、mismatch hard fail 和 kill switch 的可观察行为。
+- [ ] 1.2 阻塞级审计：确认默认启用、连接失败 fallback、mismatch hard fail、kill switch 和 service diagnostics 的可观察行为，且 fallback/status 不污染 document success output。
 - [ ] 1.3 阻塞级审计：确认内部协议不进入 public `docnav-protocol` schema，且现有 `adapter invoke` contract 保留。
 - [ ] 1.4 阻塞级审计：确认首轮不引入 OS service install/start/stop 管理，除非另开 change。
 
@@ -16,6 +16,6 @@
 
 ## 3. 验证
 
-- [ ] 3.1 添加 service success、connection fallback、handshake mismatch hard fail 和 invoke fallback 保留的 integration tests。
+- [ ] 3.1 添加 service success、connection fallback、handshake mismatch hard fail 和 invoke fallback 保留的 integration tests，并证明 success stdout 仍只包含 documented payload。
 - [ ] 3.2 添加基础 benchmark 或 smoke，对比 spawn invoke 与 service path 的冷/热行为。
 - [ ] 3.3 运行 cross-boundary Docnav workspace 验证。

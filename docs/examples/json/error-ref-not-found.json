@@ -6,6 +6,12 @@
   "error": {
     "code": "REF_NOT_FOUND",
     "message": "ref 未定位到文档区域。",
+    "owner": "markdown_adapter",
+    "location": {
+      "argument": "ref"
+    },
+    "received": "H:L999:H1",
+    "expected": "a ref from the current outline result",
     "details": {
       "ref": "H:L999:H1"
     },

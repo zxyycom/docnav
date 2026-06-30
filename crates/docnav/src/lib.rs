@@ -14,8 +14,6 @@ mod standard_parameters;
 
 use std::io::{Read, Write};
 
-use docnav_diagnostics::DiagnosticStack;
-
 use cli::{CliCommand, OutputMode};
 use error::AppResult;
 use runtime::{AdapterRuntime, DocnavRuntime};
@@ -55,27 +53,21 @@ where
                 error: &error,
                 output_mode: output_context.output_mode,
                 operation: output_context.operation,
-                diagnostics: DiagnosticStack::new(),
                 stdout: &mut stdout,
                 stderr: &mut stderr,
             })
         }
     };
 
-    let cli::ParsedCli {
-        command,
-        warnings: _,
-        diagnostics,
-    } = parsed;
+    let cli::ParsedCli { command } = parsed;
     let output_mode = command.output_mode().unwrap_or(OutputMode::ReadableView);
     let operation = command.operation();
     match execute(command, runtime) {
-        Ok(outcome) => output::write_outcome(outcome, diagnostics, &mut stdout, &mut stderr),
+        Ok(outcome) => output::write_outcome(outcome, &mut stdout, &mut stderr),
         Err(error) => output::write_error(output::ErrorOutput {
             error: &error,
             output_mode,
             operation,
-            diagnostics,
             stdout: &mut stdout,
             stderr: &mut stderr,
         }),

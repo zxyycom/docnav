@@ -15,8 +15,6 @@ pub enum ReadableViewKind {
     Info,
     /// Represents a readable error payload.
     Error,
-    /// Represents a readable warning payload.
-    Warning,
 }
 
 impl ReadableViewKind {
@@ -28,7 +26,6 @@ impl ReadableViewKind {
             Self::Find => "find",
             Self::Info => "info",
             Self::Error => "error",
-            Self::Warning => "warning",
         }
     }
 }

@@ -359,6 +359,7 @@
           "required": [
             "code",
             "message",
+            "owner",
             "details"
           ],
           "properties": {
@@ -380,16 +381,29 @@
               ]
             },
             "message": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
+            },
+            "owner": {
+              "type": "string",
+              "minLength": 1
+            },
+            "location": {
+              "type": "object",
+              "minProperties": 1
+            },
+            "received": {},
+            "expected": {},
+            "guidance": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "details": {
               "type": "object"
-            },
-            "guidance": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             }
           },
           "additionalProperties": false,
@@ -681,6 +695,24 @@
           "items": {
             "type": "string"
           }
+        },
+        "field_issues": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "config_issues": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "typed_validation_failures": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "additionalProperties": false
@@ -780,6 +812,12 @@
           "items": {
             "$ref": "#/$defs/protocolFormatCandidate"
           }
+        },
+        "candidate_failures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/protocolFormatCandidate"
+          }
         }
       },
       "additionalProperties": false
@@ -795,6 +833,12 @@
           "type": "string"
         },
         "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/protocolFormatCandidate"
+          }
+        },
+        "candidate_failures": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/protocolFormatCandidate"

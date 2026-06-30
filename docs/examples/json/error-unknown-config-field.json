@@ -1,0 +1,31 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-config-field",
+  "operation": "outline",
+  "ok": false,
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "配置文件包含未知字段。",
+    "owner": "adapter_config",
+    "location": {
+      "config_path": ".docnav/docnav-markdown.json",
+      "field": "defaults.limit"
+    },
+    "received": "defaults.limit",
+    "expected": "defaults.pagination.limit",
+    "details": {
+      "field": "defaults.limit",
+      "reason": "unknown_config_field",
+      "config_issues": [
+        {
+          "path": ".docnav/docnav-markdown.json",
+          "field": "defaults.limit",
+          "reason_code": "unknown_config_field"
+        }
+      ]
+    },
+    "guidance": [
+      "把 defaults.limit 改为 defaults.pagination.limit。"
+    ]
+  }
+}

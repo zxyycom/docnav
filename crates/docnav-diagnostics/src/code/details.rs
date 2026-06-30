@@ -14,6 +14,9 @@ pub(super) const FIELD_REASON_FIELDS: &[DetailFieldRule] = &[
     optional("path", DetailKind::String),
     optional("received", DetailKind::String),
     optional("accepted", DetailKind::StringArray),
+    optional("field_issues", DetailKind::ObjectArray),
+    optional("config_issues", DetailKind::ObjectArray),
+    optional("typed_validation_failures", DetailKind::ObjectArray),
 ];
 pub(super) const PATH_FIELDS: &[DetailFieldRule] = &[required("path", DetailKind::String)];
 pub(super) const PATH_REASON_FIELDS: &[DetailFieldRule] = &[
@@ -53,20 +56,6 @@ pub(super) const ADAPTER_REASON_FIELDS: &[DetailFieldRule] = &[
     optional("stderr", DetailKind::String),
 ];
 pub(super) const INTERNAL_FIELDS: &[DetailFieldRule] = &[required("error_id", DetailKind::String)];
-pub(super) const CLI_ARGV_FIELDS: &[DetailFieldRule] =
-    &[required("tokens", DetailKind::StringArray)];
-pub(super) const ADAPTER_CANDIDATE_FIELDS: &[DetailFieldRule] = &[
-    required("adapter_id", DetailKind::String),
-    required("stage", DetailKind::String),
-    required("code", DetailKind::String),
-    optional("preselected", DetailKind::Boolean),
-];
-pub(super) const ADAPTER_CONFIG_FIELDS: &[DetailFieldRule] = &[
-    required("source_level", DetailKind::String),
-    required("path_origin", DetailKind::String),
-    required("path", DetailKind::String),
-    required("reason_code", DetailKind::String),
-];
 pub(super) const BOUNDARY_FIELDS: &[DetailFieldRule] = &[
     required("reason", DetailKind::String),
     optional("label", DetailKind::String),

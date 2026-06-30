@@ -1,10 +1,7 @@
 use std::str::FromStr;
 
-use docnav_diagnostics::{DiagnosticSource, DiagnosticStack};
 use docnav_protocol::{Operation, PositiveInteger};
 use serde::{Deserialize, Serialize};
-
-use crate::cli::CliWarning;
 
 /// Document output mode.
 ///
@@ -55,22 +52,11 @@ impl FromStr for OutputMode {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParsedCli {
     pub command: CliCommand,
-    pub warnings: Vec<CliWarning>,
-    pub diagnostics: DiagnosticStack,
 }
 
 impl ParsedCli {
-    pub fn new(command: CliCommand, warnings: Vec<CliWarning>) -> Self {
-        let mut diagnostics = DiagnosticStack::new();
-        for warning in &warnings {
-            let _ = diagnostics
-                .push(warning.to_record_draft(DiagnosticSource::with_stage("docnav", "cli")));
-        }
-        Self {
-            command,
-            warnings,
-            diagnostics,
-        }
+    pub const fn new(command: CliCommand) -> Self {
+        Self { command }
     }
 }
 

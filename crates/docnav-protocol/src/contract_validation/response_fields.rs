@@ -54,6 +54,16 @@ pub(super) fn response_failure_fields() -> Result<FieldDefSet, FieldDefSetBuildE
         ExpectedFieldShape::required(),
     )
     .field_with_declaration_path(
+        ["error", "owner"],
+        non_empty_string_field("error.owner", ["error", "owner"]),
+        ExpectedFieldShape::required(),
+    )
+    .field_with_declaration_path(
+        ["error", "location"],
+        object_field("error.location", ["error", "location"]),
+        ExpectedFieldShape::optional(),
+    )
+    .field_with_declaration_path(
         ["error", "details"],
         object_field("error.details", ["error", "details"]),
         ExpectedFieldShape::required(),

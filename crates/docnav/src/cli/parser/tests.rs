@@ -1,18 +1,12 @@
-use super::super::warning::CLI_ARGV_IGNORED;
 use super::*;
 use crate::cli::{CliCommand, OutputMode};
 use crate::error::DocnavExitCode;
-use docnav_diagnostics::{
-    DiagnosticCode, DiagnosticDetails, DiagnosticEffect, ReadableWarningDiagnosticCode,
-};
 
 // @case WB-CORE-HELP-001
 #[test]
 fn help_returns_typed_help_command() {
     let parsed = parse(["outline", "--help"]).expect("parse help");
 
-    assert!(parsed.warnings.is_empty());
-    assert!(parsed.diagnostics.is_empty());
     match parsed.command {
         CliCommand::Help(text) => {
             assert!(text.contains("Usage:"));
@@ -229,8 +223,8 @@ fn invalid_pagination_value_returns_error() {
 }
 
 #[test]
-fn unused_known_argument_value_is_not_eagerly_typed() {
-    let parsed = parse([
+fn unused_known_argument_value_is_rejected_before_execution() {
+    let error = parse([
         "info",
         "doc.md",
         "--page",
@@ -238,31 +232,48 @@ fn unused_known_argument_value_is_not_eagerly_typed() {
         "--output",
         "readable-json",
     ])
-    .expect("unused page should not fail info");
+    .expect_err("unused page should fail info");
 
-    match parsed.command {
-        CliCommand::Document(command) => {
-            assert_eq!(command.operation, Operation::Info);
-            assert_eq!(command.output, Some(OutputMode::ReadableJson));
-            assert!(command.page.is_none());
-            assert!(command.limit.is_none());
-        }
-        command => panic!("expected document command, got {command:?}"),
-    }
-    assert_eq!(parsed.warnings.len(), 1);
-    assert_eq!(parsed.diagnostics.len(), 1);
+    assert_eq!(error.exit_code().code(), DocnavExitCode::InputError.code());
+    let details = error.diagnostic().details().to_value();
     assert_eq!(
-        parsed.diagnostics.snapshot()[0].code(),
-        DiagnosticCode::from(ReadableWarningDiagnosticCode::CliArgvIgnored)
+        details.get("field").and_then(serde_json::Value::as_str),
+        Some("--page")
     );
-    let warning = &parsed.warnings[0];
-    assert_eq!(warning.code(), CLI_ARGV_IGNORED);
-    assert_eq!(warning.effect(), DiagnosticEffect::OperationContinued);
-    match warning.details() {
-        DiagnosticDetails::CliArgv { tokens } => {
-            assert!(tokens.contains(&"--page".to_owned()));
-            assert!(tokens.contains(&"nope".to_owned()));
-        }
-        details => panic!("expected CLI argv details, got {details:?}"),
-    }
+    assert!(details
+        .get("reason")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|reason| reason.contains("not used by info command")));
+}
+
+#[test]
+fn unknown_document_argument_is_rejected() {
+    let error = parse(["outline", "--future", "doc.md"]).expect_err("unknown argument should fail");
+
+    assert_eq!(error.exit_code().code(), DocnavExitCode::InputError.code());
+    let details = error.diagnostic().details().to_value();
+    assert_eq!(
+        details.get("field").and_then(serde_json::Value::as_str),
+        Some("argv")
+    );
+    assert!(details
+        .get("reason")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|reason| reason.contains("unknown argument --future")));
+}
+
+#[test]
+fn extra_document_positional_is_rejected() {
+    let error = parse(["outline", "doc.md", "extra.md"]).expect_err("extra positional should fail");
+
+    assert_eq!(error.exit_code().code(), DocnavExitCode::InputError.code());
+    let details = error.diagnostic().details().to_value();
+    assert_eq!(
+        details.get("field").and_then(serde_json::Value::as_str),
+        Some("argv")
+    );
+    assert!(details
+        .get("reason")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|reason| reason.contains("extra positional argument extra.md")));
 }

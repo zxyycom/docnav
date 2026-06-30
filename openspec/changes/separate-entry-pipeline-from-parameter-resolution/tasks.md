@@ -9,8 +9,8 @@
 
 - [ ] 2.1 更新 `docs/architecture.md`，明确标准入口管线、入口参数来源解析、配置来源合并通道、标准参数身份和 typed-field definitions 的 owner 边界。
 - [ ] 2.2 更新 `docs/cli.md`，把 core document operations、non-document commands、help 和 `config list --path` 的入口分类与配置读取边界写清楚。
-- [ ] 2.3 更新 `docs/standard-parameters.md` 或其重命名后继文档，将旧“标准参数流程”迁移为“入口参数来源解析”，并把“配置来源合并通道”限定为 project/user config source 子流程。
-- [ ] 2.4 更新 `docs/adapter-contract.md` 和 `docs/protocol.md`，明确 adapter direct CLI、manifest/probe/help 和 `invoke` 的标准入口管线边界，以及 `invoke` raw stdin request 不可变。
+- [ ] 2.3 更新 `docs/standard-parameters.md` 或其重命名后继文档，将旧“标准参数流程”迁移为“入口参数来源解析”，并把“配置来源合并通道”限定为 project/user config source 子流程，同时记录 explicit adapter native option sources 和 unmapped public input handoff。
+- [ ] 2.4 更新 `docs/adapter-contract.md` 和 `docs/protocol.md`，明确 adapter direct CLI、manifest/probe/help 和 `invoke` 的标准入口管线边界、explicit adapter native option source 声明，以及 `invoke` raw stdin request 不可变。
 - [ ] 2.5 更新 `docs/testing.md`、`docs/testing/cases.md` 和相关 coverage/case maintenance 文案，使测试目标使用新术语并覆盖不可变原始输入规则。
 
 ## 3. Implementation Naming and Entry Boundaries
@@ -26,7 +26,7 @@
 - [ ] 4.1 为 core CLI 增加或调整测试，证明 config/default 补足不会把缺失 argv 改写为 direct input，也不会修改 raw argv token 记录。
 - [ ] 4.2 为 adapter `invoke` 增加或调整测试，证明 config/default 补足只产出 derived operation values，不回写 raw decoded stdin request JSON。
 - [ ] 4.3 为 adapter direct CLI 增加或调整测试，证明 manifest/probe/help 不读取 document operation config，不进入 document parameter source resolution，也不使用 document output mode。
-- [ ] 4.4 为 passthrough 和 unmapped input 增加或调整测试，证明 resolver 不删除、不重组、不重写 caller-owned raw input。
+- [ ] 4.4 为 passthrough 和 unmapped input 增加或调整测试，证明 resolver 不删除、不重组、不重写 caller-owned raw input，并把未映射 public input 回交入口 owner 形成 blocking input diagnostic。
 
 ## 5. Validation and Cleanup
 

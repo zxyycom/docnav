@@ -16,7 +16,7 @@ import { createMachineProtocolTasks } from "./smoke/markdown/cases/machine-comma
 import { createProcessBoundaryCorpusTasks } from "./smoke/markdown/cases/corpus.ts";
 import { createMarkdownConfigTasks } from "./smoke/markdown/cases/config.ts";
 import {
-  createCliArgumentCompatibilityWarningTasks,
+  createCliInputBoundaryTasks,
   createCliArgumentFailureTasks
 } from "./smoke/markdown/cases/cli-args.ts";
 import { createOperationErrorTasks } from "./smoke/markdown/cases/operation-errors.ts";
@@ -40,9 +40,9 @@ try {
     { id: "direct-cli-config", label: "Markdown direct CLI config precedence and boundaries", tasks: createMarkdownConfigTasks() },
     { id: "cli-argument-failure", label: "CLI argument validation representative", tasks: createCliArgumentFailureTasks() },
     {
-      id: "cli-argument-compatibility",
-      label: "CLI argument compatibility warning representative",
-      tasks: createCliArgumentCompatibilityWarningTasks()
+      id: "cli-input-boundary",
+      label: "CLI input boundary representative",
+      tasks: createCliInputBoundaryTasks()
     },
     { id: "operation-errors", label: "operation error mapping representative", tasks: createOperationErrorTasks() },
     { id: "invoke-failure", label: "invoke invalid request representative", tasks: createInvokeFailureTasks() }

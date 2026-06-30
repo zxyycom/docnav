@@ -1,14 +1,13 @@
 use std::num::NonZeroU32;
 
 use clap::parser::{ArgMatches, ValueSource};
-use docnav_cli_args::{IgnoredArg, KnownValueFlag as LooseKnownValueFlag, MissingValue};
+use docnav_cli_args::{KnownValueFlag as BoundaryKnownValueFlag, MissingValue, RejectedArg};
 use docnav_protocol::{Operation, PositiveInteger};
 
 use crate::error::{AppError, AppResult};
 
 use super::super::command_model::OutputMode;
 use super::super::flags;
-use super::super::warning::CliWarning;
 use super::arg_ids;
 
 #[derive(Clone, Copy)]
@@ -36,12 +35,12 @@ const VALUE_FLAGS: &[(&str, ValueFlag)] = &[
     (flags::REF, ValueFlag::Ref),
 ];
 
-pub(super) fn loose_value_flags(
+pub(super) fn boundary_value_flags(
     uses_flag: impl Fn(ValueFlag) -> bool,
-) -> Vec<LooseKnownValueFlag<'static>> {
+) -> Vec<BoundaryKnownValueFlag<'static>> {
     VALUE_FLAGS
         .iter()
-        .map(|(flag, value_flag)| LooseKnownValueFlag {
+        .map(|(flag, value_flag)| BoundaryKnownValueFlag {
             flag,
             used: uses_flag(*value_flag),
         })
@@ -64,15 +63,23 @@ pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
     }
 }
 
-pub(super) fn warning_from_ignored_arg(ignored: IgnoredArg) -> CliWarning {
-    match ignored {
-        IgnoredArg::UnknownFlag { token } => CliWarning::unknown_flag(&token),
-        IgnoredArg::ExtraPositional { token } => CliWarning::extra_positional(&token),
-        IgnoredArg::UnusedValueFlag {
+pub(super) fn error_from_rejected_arg(rejected: RejectedArg) -> AppError {
+    match rejected {
+        RejectedArg::UnknownFlag { token } => {
+            AppError::invalid_request("argv", format!("unknown argument {token}"))
+        }
+        RejectedArg::ExtraPositional { token } => {
+            AppError::invalid_request("argv", format!("extra positional argument {token}"))
+        }
+        RejectedArg::UnusedValueFlag {
             flag,
             value,
             command,
-        } => CliWarning::unused_operation_flag(&flag, value.as_deref(), &command),
+        } => {
+            let value = value.map_or(String::new(), |value| format!(" {value}"));
+            let reason = format!("{flag}{value} is not used by {command} command");
+            AppError::invalid_request(flag, reason)
+        }
     }
 }
 

@@ -6,9 +6,17 @@
   "error": {
     "code": "INVALID_REQUEST",
     "message": "请求不是有效的原始协议 JSON。",
+    "owner": "protocol_input",
+    "location": {
+      "source": "stdin"
+    },
+    "expected": "JSON request envelope",
     "details": {
       "field": "request",
       "reason": "malformed_json"
-    }
+    },
+    "guidance": [
+      "发送一个包含 protocol_version、request_id、operation、document 和 arguments 的 JSON object。"
+    ]
   }
 }

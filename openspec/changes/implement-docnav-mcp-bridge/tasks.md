@@ -35,29 +35,25 @@
 ## 3. MCP 输出
 
 - [ ] 3.1 将 `docnav` readable JSON 成功结果转换为 MCP structuredContent。
-  验收：structuredContent 通过对应 readable outputSchema 校验，并保留 operation readable 字段。
+  验收：structuredContent 通过对应 readable outputSchema 校验，并只保留 operation readable success payload 字段。
 - [ ] 3.2 将 `docnav` readable JSON 成功结果渲染为 MCP TextContent。
   验收：TextContent 包含精简阅读文本，不依赖解析默认人类文本输出。TextContent 渲染消费 `replace-text-with-readable-view` 的 readable-view contract 和仓库 renderer config；block pointer、byte length 和 block payload 语义与 Rust renderer 一致。
 - [ ] 3.3 保持 structuredContent 的阅读层边界。
   验收：structuredContent 不包含 `protocol_version`、`request_id`、`operation` 或 `ok`；read structuredContent 保留 `content_type`。
-- [ ] 3.4 实现 warning 映射。
-  验收：当 readable JSON 包含 `warnings` 时，structuredContent 保留 `warnings` 字段，TextContent 在正常阅读文本后追加 warning 文本。
-- [ ] 3.5 处理成功退出的 stderr 诊断。
+- [ ] 3.4 处理成功退出的 stderr status。
   验收：`docnav` 子进程退出码为 0 时，stderr 非空不升级为 MCP 错误；成功/失败判定以退出码和 stdout readable JSON payload 为准。
-- [ ] 3.6 实现 readable 错误到 MCP 错误输出的映射。
-  验收：MCP TextContent 和 structuredContent 保留必要 code/details，不暴露完整 protocol envelope。
+- [ ] 3.5 实现 readable 错误到 MCP 错误输出的映射。
+  验收：MCP TextContent 和 structuredContent 映射 primary `DiagnosticRecord` 的 code/message/owner，并在存在时保留 guidance/details，不暴露完整 protocol envelope。
 
 ## 4. 验证与审计
 
 - [ ] 4.1 覆盖四个 MCP tools 的参数映射测试。
   验收：测试断言生成的 `docnav` argv 包含 operation 参数和 `--output readable-json`。
 - [ ] 4.2 覆盖 structuredContent、TextContent 和 outputSchema 测试。
-  验收：每个 operation 的 structuredContent 可按 readable schema 校验，TextContent 渲染不改变 structuredContent shape。
-- [ ] 4.3 覆盖 warning 输出测试。
-  验收：覆盖 adapter 继续遍历或未知参数导致的 warnings，断言 TextContent 追加 warning 且 structuredContent 保留 `warnings`。
-- [ ] 4.4 覆盖 stderr 成功诊断测试。
+  验收：每个 operation 的 successful structuredContent 可按 readable success schema 校验，TextContent 渲染不改变 structuredContent shape；failure case 覆盖 primary `DiagnosticRecord` mapping。
+- [ ] 4.3 覆盖 stderr 成功 status 测试。
   验收：核心 CLI 成功退出且 stderr 非空时，MCP bridge 返回成功结果。
-- [ ] 4.5 端到端验证 MCP 调用经由核心 `docnav` CLI。
+- [ ] 4.4 端到端验证 MCP 调用经由核心 `docnav` CLI。
   验收：测试确认 bridge 不直接调用 adapter，业务语义与 CLI readable-json 输出一致。
-- [ ] 4.6 完成局部审计。
+- [ ] 4.5 完成局部审计。
   验收：用局部 diff 确认实现只修改 MCP bridge、相关测试和必要 workspace 包装入口。

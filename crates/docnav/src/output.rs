@@ -1,24 +1,20 @@
 use std::io::{self, Write};
 
-use docnav_diagnostics::{
-    attach_warnings_to_value, write_warning_text_lines, DiagnosticRecord, DiagnosticSource,
-    DiagnosticStack, WarningProjection,
-};
+use docnav_diagnostics::DiagnosticStack;
 use docnav_json_io::write_json_value_pretty;
 use docnav_output::{
     write_document_diagnostic_error, write_document_response, DocumentOutputMode,
-    DocumentOutputOptions, ProtocolOutputContext,
+    ProtocolOutputContext,
 };
 use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, PROTOCOL_VERSION};
 use serde_json::Value;
 
-use crate::cli::{CliWarning, OutputMode};
+use crate::cli::OutputMode;
 use crate::error::{exit_code_for_diagnostic, AppError, AppResult, DocnavExitCode};
 
 pub struct CommandOutcome {
     output: CommandOutput,
     exit_code: DocnavExitCode,
-    diagnostics: DiagnosticStack,
 }
 
 enum CommandOutput {
@@ -35,7 +31,6 @@ impl CommandOutcome {
         Self {
             output: CommandOutput::PlainText(text.into()),
             exit_code: DocnavExitCode::Success,
-            diagnostics: DiagnosticStack::new(),
         }
     }
 
@@ -43,7 +38,6 @@ impl CommandOutcome {
         Self {
             output: CommandOutput::Json(value),
             exit_code: DocnavExitCode::Success,
-            diagnostics: DiagnosticStack::new(),
         }
     }
 
@@ -51,7 +45,6 @@ impl CommandOutcome {
         Self {
             output: CommandOutput::Json(value),
             exit_code,
-            diagnostics: DiagnosticStack::new(),
         }
     }
 
@@ -66,17 +59,7 @@ impl CommandOutcome {
                 mode: document_output_mode(mode),
             },
             exit_code,
-            diagnostics: DiagnosticStack::new(),
         }
-    }
-
-    pub fn with_warnings(mut self, warnings: Vec<CliWarning>) -> Self {
-        push_warning_diagnostics(
-            &mut self.diagnostics,
-            &warnings,
-            DiagnosticSource::with_stage("docnav", "runtime"),
-        );
-        self
     }
 }
 
@@ -89,22 +72,14 @@ pub fn outcome_for_response(
 
 pub fn write_outcome<W: Write, E: Write>(
     outcome: CommandOutcome,
-    diagnostics: DiagnosticStack,
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32 {
-    let mut diagnostic_records = diagnostic_records_for_projection(&diagnostics);
-    diagnostic_records.extend(diagnostic_records_for_projection(&outcome.diagnostics));
-    let combined_warnings = warning_projections(&diagnostic_records);
-
     let result = match outcome.output {
-        CommandOutput::PlainText(text) => write_plain_text(&text, &combined_warnings, stdout),
-        CommandOutput::Json(value) => {
-            write_json(attach_warnings_to_value(value, &combined_warnings), stdout)
-                .map_err(io::Error::other)
-        }
+        CommandOutput::PlainText(text) => write_plain_text(&text, stdout),
+        CommandOutput::Json(value) => write_json(value, stdout).map_err(io::Error::other),
         CommandOutput::DocumentResponse { response, mode } => {
-            write_document_response(&response, mode, &diagnostic_records, stdout, stderr)
+            write_document_response(&response, mode, stdout, stderr)
                 .map(|_| ())
                 .map_err(io::Error::other)
         }
@@ -121,15 +96,10 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
         error,
         output_mode,
         operation,
-        mut diagnostics,
         stdout,
         stderr,
     } = request;
-    for diagnostic in error.related_diagnostics() {
-        if let Err(error) = diagnostics.push(diagnostic.clone()) {
-            return write_io_error(io::Error::other(error), stderr);
-        }
-    }
+    let mut diagnostics = DiagnosticStack::new();
     let error_id = match diagnostics.push(error.diagnostic().clone()) {
         Ok(id) => id,
         Err(error) => return write_io_error(io::Error::other(error), stderr),
@@ -140,13 +110,12 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
             stderr,
         );
     };
-    let diagnostic_records = diagnostic_records_for_projection(&diagnostics);
     let request_id = generate_request_id();
     let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, &request_id, operation);
     let result = write_document_diagnostic_error(
         &error_record,
         protocol,
-        DocumentOutputOptions::new(document_output_mode(output_mode), &diagnostic_records),
+        document_output_mode(output_mode),
         stdout,
         stderr,
     )
@@ -162,7 +131,6 @@ pub struct ErrorOutput<'a, W: Write, E: Write> {
     pub error: &'a AppError,
     pub output_mode: OutputMode,
     pub operation: Option<Operation>,
-    pub diagnostics: DiagnosticStack,
     pub stdout: &'a mut W,
     pub stderr: &'a mut E,
 }
@@ -175,44 +143,12 @@ fn document_output_mode(mode: OutputMode) -> DocumentOutputMode {
     }
 }
 
-fn write_plain_text<W: Write>(
-    text: &str,
-    warnings: &[CliWarning],
-    stdout: &mut W,
-) -> io::Result<()> {
-    writeln!(stdout, "{text}")?;
-    write_cli_warnings(warnings, stdout)
+fn write_plain_text<W: Write>(text: &str, stdout: &mut W) -> io::Result<()> {
+    writeln!(stdout, "{text}")
 }
 
 fn write_json<W: Write>(value: Value, writer: &mut W) -> Result<(), docnav_json_io::JsonIoError> {
     write_json_value_pretty(&value, writer)
-}
-
-fn write_cli_warnings<W: Write>(warnings: &[CliWarning], writer: &mut W) -> io::Result<()> {
-    write_warning_text_lines(warnings, writer)
-}
-
-fn push_warning_diagnostics(
-    stack: &mut DiagnosticStack,
-    warnings: &[CliWarning],
-    source: DiagnosticSource,
-) {
-    for warning in warnings {
-        let _ = stack.push(warning.to_record_draft(source.clone()));
-    }
-}
-
-fn diagnostic_records_for_projection(stack: &DiagnosticStack) -> Vec<DiagnosticRecord> {
-    let mut records = stack.snapshot();
-    records.reverse();
-    records
-}
-
-fn warning_projections(records: &[DiagnosticRecord]) -> Vec<CliWarning> {
-    records
-        .iter()
-        .filter_map(WarningProjection::from_record)
-        .collect()
 }
 
 fn write_io_error<E: Write>(error: io::Error, stderr: &mut E) -> i32 {

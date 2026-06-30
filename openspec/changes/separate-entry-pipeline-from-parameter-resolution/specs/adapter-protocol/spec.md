@@ -21,8 +21,8 @@
 #### Scenario: Direct document operation invokes parameter source resolution
 - **WHEN** a caller executes `docnav-markdown outline docs/guide.md --limit 120`
 - **THEN** SDK classifies the invocation as a document operation
-- **THEN** SDK maps argv into a direct input view and config locators
-- **THEN** SDK invokes entry parameter source resolution with direct input, config sources, and defaults
+- **THEN** SDK maps argv into a direct input view, config locators, and explicit adapter native option source descriptors
+- **THEN** SDK invokes entry parameter source resolution with direct input, config sources, owner-declared native option sources, and defaults
 - **THEN** request construction consumes derived typed runtime values
 
 ### Requirement: Adapter invoke keeps stdin request immutable
@@ -40,4 +40,4 @@ Adapter `invoke` MUST treat decoded stdin JSON as immutable raw protocol input. 
 - **THEN** SDK reports a transport decode failure before entry parameter source resolution
 - **WHEN** adapter `invoke` receives decoded JSON with an invalid registered argument type
 - **THEN** entry parameter source resolution produces a validation diagnostic
-- **THEN** SDK does not ignore the invalid field using direct CLI argv compatibility rules
+- **THEN** SDK does not ignore the invalid field using direct CLI-specific rules

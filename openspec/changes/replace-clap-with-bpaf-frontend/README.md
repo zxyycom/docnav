@@ -1,3 +1,3 @@
 # replace-clap-with-bpaf-frontend
 
-Replace clap with a `bpaf` direct CLI argv frontend while preserving Docnav standard parameter semantics, loose warning behavior, and metadata-driven help.
+Retain the `clap` strict direct CLI parser/help surface while preserving Docnav standard parameter semantics, primary input diagnostics, and metadata-driven help.

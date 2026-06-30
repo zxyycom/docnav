@@ -7,11 +7,10 @@ mod conversion;
 mod payload;
 
 pub use payload::{
-    AdapterCandidateDetails, AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails,
-    CapabilityAdapterDetails, CliArgvDetails, DiagnosticDetailsPayload, FieldReasonDetails,
-    FormatAmbiguousDetails, FormatCandidateDetails, FormatUnknownDetails, InternalDetails,
-    PathDetails, PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails,
-    RefReasonDetails,
+    AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails, CapabilityAdapterDetails,
+    DiagnosticDetailsPayload, FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails,
+    FormatUnknownDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
+    RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -186,6 +185,12 @@ pub enum DiagnosticDetails {
         received: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         accepted: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        field_issues: Option<Vec<Value>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        config_issues: Option<Vec<AdapterConfigSourceDetails>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        typed_validation_failures: Option<Vec<Value>>,
     },
     Path {
         path: String,
@@ -235,22 +240,6 @@ pub enum DiagnosticDetails {
     },
     Internal {
         error_id: String,
-    },
-    CliArgv {
-        tokens: Vec<String>,
-    },
-    AdapterCandidate {
-        adapter_id: String,
-        stage: String,
-        code: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        preselected: Option<bool>,
-    },
-    AdapterConfigSource {
-        source_level: String,
-        path_origin: String,
-        path: String,
-        reason_code: String,
     },
     Boundary {
         reason: String,

@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use docnav_diagnostics::{
-    typed_codes, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails, WarningProjection,
+    typed_codes, AdapterConfigSourceDetails, DiagnosticRecordDraft, DiagnosticSource,
+    FieldReasonDetails,
 };
 use docnav_typed_fields::{
     FieldIdentity, JsonValue, SchemaMetadataView, TypedValue, ValidationFailure,
@@ -34,9 +35,57 @@ impl StandardParameterValidationIssue {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct StandardParameterConfigSourceIssue {
+    pub source_level: String,
+    pub path_origin: String,
+    pub path: String,
+    pub reason_code: String,
+}
+
+impl StandardParameterConfigSourceIssue {
+    pub fn new(
+        source_level: impl Into<String>,
+        path_origin: impl Into<String>,
+        path: impl Into<String>,
+        reason_code: impl Into<String>,
+    ) -> Self {
+        Self {
+            source_level: source_level.into(),
+            path_origin: path_origin.into(),
+            path: path.into(),
+            reason_code: reason_code.into(),
+        }
+    }
+
+    pub fn message(&self) -> String {
+        format!(
+            "adapter config source failed: {} {} {} ({})",
+            self.source_level, self.path_origin, self.path, self.reason_code
+        )
+    }
+
+    pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
+        let mut details = FieldReasonDetails::new("config", self.reason_code.clone());
+        details.path = Some(self.path.clone());
+        details.received = Some(self.path.clone());
+        details.config_issues = Some(vec![AdapterConfigSourceDetails::new(
+            &self.source_level,
+            &self.path_origin,
+            &self.path,
+            &self.reason_code,
+        )]);
+        DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
+            self.message(),
+            details,
+            source,
+        )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum StandardParameterHandoff {
     Validation(StandardParameterValidationIssue),
-    Warning(WarningProjection),
+    ConfigSource(StandardParameterConfigSourceIssue),
 }
 
 impl StandardParameterHandoff {
@@ -52,28 +101,28 @@ impl StandardParameterHandoff {
         })
     }
 
-    pub fn warning(warning: WarningProjection) -> Self {
-        Self::Warning(warning)
+    pub fn config_source(issue: StandardParameterConfigSourceIssue) -> Self {
+        Self::ConfigSource(issue)
     }
 
     pub fn as_validation(&self) -> Option<&StandardParameterValidationIssue> {
         match self {
             Self::Validation(diagnostic) => Some(diagnostic),
-            Self::Warning(_) => None,
+            Self::ConfigSource(_) => None,
         }
     }
 
-    pub fn as_warning(&self) -> Option<&WarningProjection> {
+    pub fn as_config_source(&self) -> Option<&StandardParameterConfigSourceIssue> {
         match self {
             Self::Validation(_) => None,
-            Self::Warning(warning) => Some(warning),
+            Self::ConfigSource(issue) => Some(issue),
         }
     }
 
     pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
         match self {
             Self::Validation(diagnostic) => diagnostic.to_record_draft(source),
-            Self::Warning(warning) => warning.to_record_draft(source),
+            Self::ConfigSource(issue) => issue.to_record_draft(source),
         }
     }
 }

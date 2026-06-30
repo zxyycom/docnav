@@ -321,7 +321,7 @@ fn protocol_response_contract_rejects_schema_backed_field_failures() {
 }
 
 #[test]
-fn protocol_response_public_schema_rejects_loose_format_candidates() {
+fn protocol_response_public_schema_rejects_undocumented_format_candidates() {
     let cases = [
         protocol_format_unknown_error_with(|response| {
             response["error"]["details"]["reason"] = serde_json::json!("NO_SUPPORTED_CANDIDATE")
@@ -391,6 +391,7 @@ fn protocol_format_unknown_error_with(update: impl FnOnce(&mut Value)) -> Value 
         "error": {
             "code": "FORMAT_UNKNOWN",
             "message": "Document format is unknown.",
+            "owner": "adapter_selection",
             "details": {
                 "path": "docs/file.data",
                 "reason": "NO_SUPPORTED_ADAPTER",

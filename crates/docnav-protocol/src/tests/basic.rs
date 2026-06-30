@@ -165,7 +165,9 @@ fn protocol_error_required_details_come_from_diagnostic_rules() {
 
 #[test]
 fn protocol_error_roundtrips_through_diagnostic_record_projection() {
-    let error = ProtocolError::ref_not_found("R99").with_guidance(["Run outline first."]);
+    let error = ProtocolError::ref_not_found("R99")
+        .with_owner("docnav_protocol_test")
+        .with_guidance(["Run outline first."]);
     let mut diagnostics = DiagnosticStack::new();
     let id = diagnostics
         .push(

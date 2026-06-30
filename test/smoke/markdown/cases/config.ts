@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { exitCodes } from "../config.ts";
 import { runCli, runProtocolResponseCase, runSuccessfulJsonCase, validateSchema } from "../harness.ts";
 import {
   expect,
@@ -8,6 +9,7 @@ import {
   expectJsonObject,
   expectNoProtocolEnvelope,
   expectObjectArray,
+  expectReadableFailure,
   expectStderrEmpty,
   expectStdoutIncludes,
   expectString,
@@ -48,7 +50,7 @@ async function testMarkdownDirectCliConfig() {
   await assertExplicitArgvOverridesConfig(project);
   await assertProjectConfigPathOverrideReplacesDefault(project);
   await assertPaginationDisabledFinalizesLimit();
-  await assertSkippedConfigSourceWarning(project);
+  await assertExplicitConfigSourceFailure(project);
   await assertInvokeKeepsRequestOwnedNativeOptions(project);
   await assertHelpAndMachineCommandsDoNotReadConfig();
 }
@@ -63,17 +65,18 @@ async function assertProjectConfigApplies(project: MarkdownConfigProject) {
   expect(outlineRecord, entries.length === 1, "project max_heading_level limits outline to one entry");
   expectRefLevel(outlineRecord, entries[0]?.ref, 1, "project config outline ref");
 
+  const readProject = createDefaultsOnlyProject("direct-config-read-defaults");
   const { record: readRecord, json: read } = await runSuccessfulJsonCase(
     "MD-CONFIG-001 read uses configured limit and output",
-    ["read", project.docRelPath, "--ref", "doc:full"],
+    ["read", readProject.docRelPath, "--ref", "doc:full"],
     {
-      commandOptions: cwd(project),
+      commandOptions: cwd(readProject),
       schema: "readableRead",
       check: (record, json) => {
         expectNoProtocolEnvelope(record, json);
         const content = expectString(record, json.content, "read content is string");
         expect(record, typeof json.page === "number", "project limit produces continuation page");
-        expect(record, content.length < project.docText.length, "configured limit truncates read content");
+        expect(record, content.length < readProject.docText.length, "configured limit truncates read content");
       }
     }
   );
@@ -113,11 +116,12 @@ async function assertExplicitArgvOverridesConfig(project: MarkdownConfigProject)
   );
   assertOutlineHasRefLevels(record, json, [1, 2, 3], "explicit max heading level outline");
 
+  const readProject = createDefaultsOnlyProject("direct-config-explicit-limit");
   await runSuccessfulJsonCase(
     "MD-CONFIG-001 explicit limit overrides config",
-    ["read", project.docRelPath, "--ref", "doc:full", "--limit", "6000", "--output", "readable-json"],
+    ["read", readProject.docRelPath, "--ref", "doc:full", "--limit", "6000", "--output", "readable-json"],
     {
-      commandOptions: cwd(project),
+      commandOptions: cwd(readProject),
       schema: "readableRead",
       check: (record, json) => {
         expectNoProtocolEnvelope(record, json);
@@ -187,9 +191,9 @@ async function assertPaginationDisabledFinalizesLimit() {
   );
 }
 
-async function assertSkippedConfigSourceWarning(project: MarkdownConfigProject) {
+async function assertExplicitConfigSourceFailure(project: MarkdownConfigProject) {
   const record = await runCli(
-    "MD-CONFIG-001 missing project override emits readable warning",
+    "MD-CONFIG-001 missing project override emits readable failure",
     [
       "outline",
       project.docRelPath,
@@ -200,22 +204,22 @@ async function assertSkippedConfigSourceWarning(project: MarkdownConfigProject) 
     ],
     cwd(project)
   );
-  expectExit(record, 0);
+  expectExit(record, exitCodes.input);
   expectStderrEmpty(record);
   const json = parseJson(record);
-  validateSchema(record, "readableOutline", json);
-  const warnings = expectObjectArray(record, json.warnings, "config warning array exists");
-  const warning = expectJsonObject(record, warnings[0], "config warning is object");
-  const details = expectJsonObject(record, warning.details, "config warning details is object");
-  expect(record, warning.id === "adapter_config_source_skipped", "config warning id matches");
-  expect(record, warning.effect === "operation_continued", "config warning effect matches");
-  expect(record, details.source_level === "project", "config warning source_level is project");
-  expect(record, details.path_origin === "override", "config warning path_origin is override");
-  expect(record, details.reason_code === "missing_override", "config warning reason_code is missing_override");
+  validateSchema(record, "readableError", json);
+  const error = expectReadableFailure(record, json, "INVALID_REQUEST");
+  const details = expectJsonObject(record, error.details, "config failure details is object");
+  expect(record, details.reason === "missing_override", "config failure reason is missing_override");
+  const issues = expectObjectArray(record, details.config_issues, "config failure issues are objects");
+  const issue = expectJsonObject(record, issues[0], "config failure issue is object");
+  expect(record, issue.source_level === "project", "config failure source_level is project");
+  expect(record, issue.path_origin === "override", "config failure path_origin is override");
+  expect(record, issue.reason_code === "missing_override", "config failure reason_code is missing_override");
   expect(
     record,
-    typeof details.path === "string" && details.path.includes("missing-project.json"),
-    "config warning path identifies attempted override"
+    typeof issue.path === "string" && issue.path.includes("missing-project.json"),
+    "config failure path identifies attempted override"
   );
 }
 
@@ -306,6 +310,17 @@ function assertEntryLevels(
 function expectRefLevel(record: CommandRecord, ref: unknown, level: number, label: string) {
   const value = expectString(record, ref, `${label} ref is string`);
   expect(record, value.endsWith(`:H${level}`), `${label} ref uses H${level}`);
+}
+
+function createDefaultsOnlyProject(name: string) {
+  const project = createProject(name);
+  writeProjectConfig(project, {
+    defaults: { pagination: { enabled: true, limit: 40 }, output: "readable-json" }
+  });
+  writeUserConfig(project, {
+    defaults: { pagination: { enabled: true, limit: 20 }, output: "protocol-json" }
+  });
+  return project;
 }
 
 function cwd(project: MarkdownConfigProject): SmokeCommandOptions {

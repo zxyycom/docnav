@@ -11,7 +11,6 @@ import {
   expectStderrEmpty,
   expectString,
   expectStdoutIncludes,
-  expectStructuredWarning,
   parseJson,
   parseReadableViewHeader
 } from "../assertions.ts";
@@ -42,7 +41,6 @@ async function testDocumentOutputBoundary() {
   await assertReadableViewDocumentOutput(project, readable);
   await assertDefaultDocumentOutput(project, readable.ref);
   await assertProtocolJsonMatchesReadableOutput(project, readable);
-  await assertReadableViewWarningOnStdout(project);
 }
 
 async function readFirstOutlineRef(project: SmokeProject): Promise<string> {
@@ -88,6 +86,7 @@ async function assertReadableViewDocumentOutput(project: SmokeProject, readable:
   expect(readableView, readableView.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
   expect(readableView, !readableView.stdout.includes("\"protocol_version\""), "readable-view omits protocol envelope");
   expectStdoutIncludes(readableView, "\"$block\": \"/content\"");
+  parseReadableViewHeader(readableView);
   expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", readable.content);
 }
 
@@ -102,6 +101,7 @@ async function assertDefaultDocumentOutput(project: SmokeProject, readableRef: s
   expectStderrEmpty(defaultOutput);
   expect(defaultOutput, defaultOutput.stdout.trimStart().startsWith("{"), "default output is readable-view JSON header");
   expectStdoutIncludes(defaultOutput, "[block /content bytes=");
+  parseReadableViewHeader(defaultOutput);
 }
 
 async function assertProtocolJsonMatchesReadableOutput(project: SmokeProject, readable: ReadableDocumentOutput) {
@@ -121,20 +121,4 @@ async function assertProtocolJsonMatchesReadableOutput(project: SmokeProject, re
   const protocolResult = expectJsonObject(protocol, protocolJson.result, "protocol result is an object");
   expect(protocol, protocolResult.ref === readable.ref, "protocol-json result preserves ref");
   expect(protocol, protocolResult.content === readable.content, "protocol-json result matches readable-json content");
-}
-
-async function assertReadableViewWarningOnStdout(project: SmokeProject) {
-  const warningRecord = await runCli("CORE-OUTPUT-001 readable-view warning stays on stdout", [
-    "outline",
-    project.normalRelPath,
-    "--future",
-    "--output",
-    "readable-view"
-  ], { project });
-  expectExit(warningRecord, 0);
-  expectStderrEmpty(warningRecord);
-  const warningHeader = parseReadableViewHeader(warningRecord);
-  validateSchema(warningRecord, "readableOutline", warningHeader);
-  const warnings = expectObjectArray(warningRecord, warningHeader.warnings, "readable-view warnings are objects");
-  expectStructuredWarning(warningRecord, warnings[0], ["--future"], "future flag");
 }

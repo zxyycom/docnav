@@ -6,10 +6,23 @@
   "error": {
     "code": "FORMAT_UNKNOWN",
     "message": "无法识别文档格式。",
+    "owner": "adapter_selection",
+    "location": {
+      "argument": "path"
+    },
+    "received": "docs/unknown.data",
+    "expected": "a document supported by an installed adapter",
     "details": {
       "path": "docs/unknown.data",
       "reason": "NO_SUPPORTED_ADAPTER",
       "candidates": [
+        {
+          "adapter_id": "docnav-markdown",
+          "stage": "probe",
+          "reason": "PROBE_UNSUPPORTED"
+        }
+      ],
+      "candidate_failures": [
         {
           "adapter_id": "docnav-markdown",
           "stage": "probe",

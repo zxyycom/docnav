@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::fmt;
 
 use docnav_diagnostics::{
@@ -45,7 +45,10 @@ pub struct ProtocolError {
     #[serde(with = "protocol_diagnostic_code_serde")]
     code: ProtocolDiagnosticCode,
     message: String,
-    details: ErrorDetails,
+    owner: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    location: Option<Value>,
+    details: Box<ErrorDetails>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     guidance: Option<Vec<String>>,
 }
@@ -55,16 +58,27 @@ impl ProtocolError {
     where
         C: ProtocolDiagnosticMarker,
     {
+        let details = error_details_from_payload(&details);
+        let location = location_from_details(&details);
         Self {
             code: C::PROTOCOL_CODE,
             message: message.into(),
-            details: error_details_from_payload(&details),
-            guidance: None,
+            owner: default_owner_for_code(C::PROTOCOL_CODE).to_owned(),
+            location,
+            details: Box::new(details),
+            guidance: Some(vec![
+                protocol_error_default_guidance(C::PROTOCOL_CODE).to_owned()
+            ]),
         }
     }
 
     pub fn with_guidance(mut self, guidance: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.guidance = Some(guidance.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_owner(mut self, owner: impl Into<String>) -> Self {
+        self.owner = owner.into();
         self
     }
 
@@ -76,8 +90,16 @@ impl ProtocolError {
         &self.message
     }
 
-    pub const fn details(&self) -> &ErrorDetails {
-        &self.details
+    pub fn owner(&self) -> &str {
+        &self.owner
+    }
+
+    pub fn location(&self) -> Option<&Value> {
+        self.location.as_ref()
+    }
+
+    pub fn details(&self) -> &ErrorDetails {
+        self.details.as_ref()
     }
 
     pub fn guidance(&self) -> Option<&[String]> {
@@ -180,7 +202,9 @@ impl ProtocolError {
     pub fn validate_details(&self) -> Result<(), InvalidErrorDetail> {
         self.code
             .details_rule()
-            .validate_value(&Value::Object(self.details.clone().into_iter().collect()))
+            .validate_value(&Value::Object(
+                self.details.as_ref().clone().into_iter().collect(),
+            ))
             .map_err(|source| InvalidErrorDetail {
                 code: self.code,
                 reason: source.to_string(),
@@ -241,7 +265,7 @@ impl ProtocolError {
     where
         C: ProtocolDiagnosticMarker,
     {
-        let details = payload_from_error_details::<C::Details>(self.code, &self.details)?;
+        let details = payload_from_error_details::<C::Details>(self.code, self.details.as_ref())?;
         let draft = DiagnosticRecordDraft::new::<C>(self.message.clone(), details, source);
         Ok(match &self.guidance {
             Some(guidance) => draft.with_guidance(guidance.clone()),
@@ -256,12 +280,112 @@ impl ProtocolError {
         let Value::Object(details) = record.details().to_value() else {
             return None;
         };
+        let details = details.into_iter().collect();
         Some(Self {
             code,
             message: record.summary().to_owned(),
-            details: details.into_iter().collect(),
-            guidance: record.guidance().map(|guidance| guidance.to_vec()),
+            owner: owner_from_source(record.source()),
+            location: location_from_details(&details),
+            details: Box::new(details),
+            guidance: Some(
+                record
+                    .guidance()
+                    .map(|guidance| guidance.to_vec())
+                    .unwrap_or_else(|| vec![protocol_error_default_guidance(code).to_owned()]),
+            ),
         })
+    }
+}
+
+fn default_owner_for_code(code: ProtocolDiagnosticCode) -> &'static str {
+    match code {
+        ProtocolDiagnosticCode::InvalidRequest => "protocol_input",
+        ProtocolDiagnosticCode::FormatUnknown | ProtocolDiagnosticCode::FormatAmbiguous => {
+            "adapter_selection"
+        }
+        ProtocolDiagnosticCode::AdapterUnavailable
+        | ProtocolDiagnosticCode::AdapterInvokeFailed
+        | ProtocolDiagnosticCode::InternalError => "adapter",
+        ProtocolDiagnosticCode::DocumentNotFound
+        | ProtocolDiagnosticCode::DocumentPathInvalid
+        | ProtocolDiagnosticCode::DocumentEncodingUnsupported
+        | ProtocolDiagnosticCode::CapabilityUnsupported
+        | ProtocolDiagnosticCode::RefNotFound
+        | ProtocolDiagnosticCode::RefAmbiguous
+        | ProtocolDiagnosticCode::RefInvalid => "adapter",
+    }
+}
+
+fn owner_from_source(source: &DiagnosticSource) -> String {
+    match (source.component.as_str(), source.stage.as_deref()) {
+        ("docnav", Some("core")) => "core_cli".to_owned(),
+        ("docnav", Some("standard-parameters")) => "standard_parameters".to_owned(),
+        ("docnav", Some("routing")) => "adapter_selection".to_owned(),
+        ("docnav", Some("runtime")) => "runtime".to_owned(),
+        ("docnav", Some("adapter-output")) => "adapter_boundary".to_owned(),
+        ("docnav-adapter-sdk", Some("adapter" | "adapter-error")) => "adapter".to_owned(),
+        (component, Some(stage)) => {
+            format!("{}_{}", owner_segment(component), owner_segment(stage))
+        }
+        (component, None) => owner_segment(component),
+    }
+}
+
+fn owner_segment(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| match character {
+            'A'..='Z' => character.to_ascii_lowercase(),
+            'a'..='z' | '0'..='9' => character,
+            _ => '_',
+        })
+        .collect::<String>()
+        .split('_')
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>()
+        .join("_")
+}
+
+fn location_from_details(details: &ErrorDetails) -> Option<Value> {
+    string_detail(details, "path")
+        .map(|path| json!({ "path": path }))
+        .or_else(|| string_detail(details, "field").map(|field| json!({ "field": field })))
+        .or_else(|| string_detail(details, "ref").map(|ref_id| json!({ "ref": ref_id })))
+        .or_else(|| {
+            string_detail(details, "adapter_id")
+                .map(|adapter_id| json!({ "adapter_id": adapter_id }))
+        })
+}
+
+fn string_detail(details: &ErrorDetails, key: &str) -> Option<String> {
+    details.get(key)?.as_str().map(ToOwned::to_owned)
+}
+
+pub const fn protocol_error_default_guidance(code: ProtocolDiagnosticCode) -> &'static str {
+    match code {
+        ProtocolDiagnosticCode::InvalidRequest => "Correct the request input and retry.",
+        ProtocolDiagnosticCode::DocumentNotFound => "Check the document path and retry.",
+        ProtocolDiagnosticCode::DocumentPathInvalid => "Use a valid document path.",
+        ProtocolDiagnosticCode::DocumentEncodingUnsupported => "Use a UTF-8 encoded document.",
+        ProtocolDiagnosticCode::FormatUnknown => {
+            "Use a supported document format or configure an adapter."
+        }
+        ProtocolDiagnosticCode::FormatAmbiguous => "Select an adapter explicitly.",
+        ProtocolDiagnosticCode::CapabilityUnsupported => {
+            "Use an operation supported by the selected adapter."
+        }
+        ProtocolDiagnosticCode::RefNotFound => "Run outline again and use a returned ref.",
+        ProtocolDiagnosticCode::RefAmbiguous => "Use a more specific ref from outline.",
+        ProtocolDiagnosticCode::RefInvalid => "Use a valid ref returned by outline.",
+        ProtocolDiagnosticCode::AdapterUnavailable => {
+            "Check the adapter installation and configuration."
+        }
+        ProtocolDiagnosticCode::AdapterInvokeFailed => {
+            "Inspect the adapter failure details and retry."
+        }
+        ProtocolDiagnosticCode::InternalError => {
+            "Retry the command or report the internal error id."
+        }
     }
 }
 
@@ -333,9 +457,7 @@ pub const fn protocol_error_category(code: ProtocolDiagnosticCode) -> ProtocolEr
         DiagnosticCategory::Request => ProtocolErrorCategory::Request,
         DiagnosticCategory::Document => ProtocolErrorCategory::Document,
         DiagnosticCategory::AdapterBoundary => ProtocolErrorCategory::AdapterBoundary,
-        DiagnosticCategory::Internal | DiagnosticCategory::Compatibility => {
-            ProtocolErrorCategory::Internal
-        }
+        DiagnosticCategory::Internal => ProtocolErrorCategory::Internal,
     }
 }
 

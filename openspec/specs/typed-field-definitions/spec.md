@@ -71,7 +71,7 @@ Consumers of typed field definitions MUST reuse field metadata without inheritin
 
 #### Scenario: Standard parameter resolution consumes field metadata
 - **WHEN** standard parameter resolution consumes typed field metadata
-- **THEN** source mapping, merge order, source info, passthrough, warning policy, and operation argument binding remain standard-parameter responsibilities
+- **THEN** source mapping, merge order, source info, passthrough policy, input-boundary policy, and operation argument binding remain standard-parameter responsibilities
 
 #### Scenario: JSON contract validation consumes field metadata
 - **WHEN** manifest, probe, or protocol JSON validation consumes typed field metadata

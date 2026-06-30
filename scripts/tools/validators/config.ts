@@ -80,7 +80,6 @@ export const OUTPUT_MODE_CONSISTENCY = {
     "10_crlf_payload.json",
     "11_no_trailing_newline.json",
     "12_block_marker_in_body.json",
-    "13_warning.json",
     "14_readable_error.json",
     "15_error_guidance_array.json",
     "16_undeclared_extension_fields.json",

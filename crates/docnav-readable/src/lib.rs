@@ -14,8 +14,8 @@
 //!
 //! This crate owns readable payload/value conversion, renderer config,
 //! `ReadableViewKind`, readable-view block framing, and conformance vectors.
-//! It does **not** own output mode dispatch, protocol envelopes, warning
-//! placement, adapter routing, document parsing, or CLI wiring.
+//! It does **not** own output mode dispatch, protocol envelopes, adapter
+//! routing, document parsing, or CLI wiring.
 
 pub mod conformance;
 pub mod error;

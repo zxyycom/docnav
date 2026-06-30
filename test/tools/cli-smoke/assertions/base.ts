@@ -9,8 +9,6 @@ import type { CommandRecord } from "../../smoke-harness.ts";
 
 export type JsonRecord = Record<string, unknown>;
 
-const cliArgvWarningFragments = ["id=cli_argv_ignored", "effect=operation_continued", "details="] as const;
-
 export function expectExit(record: CommandRecord, expected: number) {
   expect(record, record.exitCode === expected, `exit code is ${expected}`);
 }
@@ -29,14 +27,6 @@ export function expectStdoutIncludes(record: CommandRecord, value: string) {
 
 export function expectStderrIncludes(record: CommandRecord, value: string) {
   expectOutputIncludes(record, record.stderr, "stderr", value);
-}
-
-export function expectStdoutWarning(record: CommandRecord, expectedTokens: readonly string[]) {
-  expectCliArgvWarningText(record, expectedTokens, expectStdoutIncludes);
-}
-
-export function expectStderrWarning(record: CommandRecord, expectedTokens: readonly string[]) {
-  expectCliArgvWarningText(record, expectedTokens, expectStderrIncludes);
 }
 
 export function parseJson(record: CommandRecord): JsonRecord {
@@ -114,19 +104,6 @@ export function isJsonRecord(value: unknown): value is JsonRecord {
 
 function expectOutputIncludes(record: CommandRecord, output: string, outputName: "stdout" | "stderr", value: string) {
   expect(record, output.includes(value), `${outputName} includes ${JSON.stringify(value)}`);
-}
-
-function expectCliArgvWarningText(
-  record: CommandRecord,
-  expectedTokens: readonly string[],
-  expectIncludesText: (record: CommandRecord, value: string) => void
-) {
-  for (const fragment of cliArgvWarningFragments) {
-    expectIncludesText(record, fragment);
-  }
-  for (const token of expectedTokens) {
-    expectIncludesText(record, JSON.stringify(token));
-  }
 }
 
 function expectTypedValue<T>(

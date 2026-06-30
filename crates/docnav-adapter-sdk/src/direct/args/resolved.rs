@@ -7,11 +7,11 @@ use docnav_typed_fields::{FieldIdentity, TypedValue};
 use serde_json::{json, Map, Value};
 
 use super::super::native_options::{NativeOptionDefault, NativeOptionSpec};
-use super::super::warnings::DirectCliWarning;
 use super::spec::flags;
 use super::standard::{
     ID_LIMIT, ID_OUTPUT, ID_PAGE, ID_PAGINATION_ENABLED, ID_PATH, ID_QUERY, ID_REF,
 };
+use super::DirectCliInputError;
 
 pub(super) fn resolved_page(
     operation: Operation,
@@ -63,14 +63,15 @@ pub(super) fn merged_native_options(
 
 pub(super) fn collect_diagnostics(
     resolution: &StandardParameterResolution,
-    warnings: &mut Vec<DirectCliWarning>,
-) -> Result<(), String> {
-    for diagnostic in resolution.diagnostics() {
+) -> Result<(), DirectCliInputError> {
+    if let Some(diagnostic) = resolution.diagnostics().first() {
         match diagnostic {
             StandardParameterHandoff::Validation(diagnostic) => {
-                return Err(validation_message(diagnostic));
+                return Err(validation_message(diagnostic).into());
             }
-            StandardParameterHandoff::Warning(warning) => warnings.push(warning.clone()),
+            StandardParameterHandoff::ConfigSource(issue) => {
+                return Err(DirectCliInputError::ConfigSource(issue.clone()));
+            }
         }
     }
     Ok(())

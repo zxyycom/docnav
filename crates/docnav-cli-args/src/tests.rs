@@ -1,4 +1,4 @@
-// @case WB-CLIARGS-COMPAT-001
+// @case WB-CLIARGS-BOUNDARY-001
 use super::*;
 
 #[test]
@@ -7,8 +7,8 @@ fn unknown_flag_does_not_consume_following_positional() {
 
     assert_eq!(result.retained_args, ["doc.md"]);
     assert_eq!(
-        result.ignored,
-        [IgnoredArg::UnknownFlag {
+        result.rejected,
+        [RejectedArg::UnknownFlag {
             token: "--future".to_owned()
         }]
     );
@@ -20,7 +20,7 @@ fn used_value_flag_is_retained_and_consumes_value() {
     let result = scan(&["doc.md", "--ref", "--future-value"], 1, &flags).unwrap();
 
     assert_eq!(result.retained_args, ["doc.md", "--ref", "--future-value"]);
-    assert!(result.ignored.is_empty());
+    assert!(result.rejected.is_empty());
 }
 
 #[test]
@@ -30,8 +30,8 @@ fn unused_value_flag_records_fact_without_validating_value() {
 
     assert_eq!(result.retained_args, ["doc.md"]);
     assert_eq!(
-        result.ignored,
-        [IgnoredArg::UnusedValueFlag {
+        result.rejected,
+        [RejectedArg::UnusedValueFlag {
             flag: "--page".to_owned(),
             value: Some("nope".to_owned()),
             command: "info".to_owned()
@@ -49,20 +49,20 @@ fn unused_value_flag_requires_a_value() {
 
 #[test]
 fn switch_flags_are_retained_without_consuming_value() {
-    let config = LooseArgScan::new("config get", 1, &[]).with_known_switch_flags(&["--user"]);
-    let result = scan_loose_args(&args(&["--user", "key"]), &config).unwrap();
+    let config = ArgBoundaryScan::new("config get", 1, &[]).with_known_switch_flags(&["--user"]);
+    let result = scan_arg_boundaries(&args(&["--user", "key"]), &config).unwrap();
 
     assert_eq!(result.retained_args, ["--user", "key"]);
-    assert!(result.ignored.is_empty());
+    assert!(result.rejected.is_empty());
 }
 
 fn scan(
     values: &[&str],
     positional_limit: usize,
     known_value_flags: &[KnownValueFlag<'_>],
-) -> Result<LooseArgScanResult, MissingValue> {
-    let config = LooseArgScan::new("info", positional_limit, known_value_flags);
-    scan_loose_args(&args(values), &config)
+) -> Result<ArgBoundaryScanResult, MissingValue> {
+    let config = ArgBoundaryScan::new("info", positional_limit, known_value_flags);
+    scan_arg_boundaries(&args(values), &config)
 }
 
 fn args(values: &[&str]) -> Vec<String> {

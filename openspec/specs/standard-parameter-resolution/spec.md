@@ -76,8 +76,8 @@
 - **THEN** default handling 将该值作为 default source candidate
 - **THEN** default 通过与其它 mapped source values 相同的 typed-field metadata validation
 
-### Requirement: Config source loading 交接 skipped sources 且不拥有输出
-标准参数 source layer MUST 加载 configured project/user config sources，按标准参数规则跳过 unavailable 或 invalid sources，并交接 diagnostic events；diagnostic formatting、output channel 和 exit behavior 仍由 entry owner 处理。
+### Requirement: Config source loading 交接 source issues 且不拥有输出
+标准参数 source layer MUST 加载 configured project/user config sources，按标准参数规则把 missing default source 视为 absent，并把 explicit source failure 作为 source issue 交接；diagnostic formatting、output channel 和 exit behavior 仍由 entry owner 处理。
 
 #### Scenario: Pipeline 拥有普通 config loading
 - **WHEN** pipeline 收到 project/user config paths 或 source descriptors
@@ -89,11 +89,11 @@
 - **THEN** config source 被视为 absent
 - **THEN** 该 missing default source 不返回 skipped-source diagnostic event
 
-#### Scenario: Invalid explicit config source 被 skipped
+#### Scenario: Invalid explicit config source 产生 blocking source issue
 - **WHEN** explicit project 或 user config override 缺失、不可读、invalid JSON 或不是 JSON object
-- **THEN** config source 被 skipped
-- **THEN** diagnostic handoff 包含 source level、path origin、path、reason code 和 operation-continued semantics
-- **THEN** 其它可用 sources 继续进入 standard parameter resolution
+- **THEN** source construction 返回 source issue，且不继续进入 standard parameter resolution
+- **THEN** diagnostic handoff 包含 source level、path origin、path 和 reason code
+- **THEN** entry owner 将该 handoff 映射为 primary input/config diagnostic
 
 #### Scenario: Loaded config 只复用标准参数 loading 结果
 - **WHEN** caller 已经持有由 standard parameter config loader 产生的 loaded config source
@@ -101,7 +101,7 @@
 - **THEN** post-load source construction 和 diagnostic handoff semantics 与 path-based pipeline path 保持一致
 
 ### Requirement: Standard parameter passthrough 保持 owner-scoped
-标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 source-scoped passthrough processing results，使 owning CLI、adapter、protocol 或 config layer 可以 retain、discard、warn 或 validate。
+标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 source-scoped passthrough processing results，使 owning CLI、adapter、protocol 或 config layer 可以 retain、discard、reject 或 delegate。
 
 #### Scenario: Unmapped input 不参与标准参数 validation
 - **WHEN** input field 未映射到 standard parameter identity
@@ -112,7 +112,7 @@
 #### Scenario: Adapter native option 保持 delegated
 - **WHEN** adapter direct CLI 或 invoke argument 包含没有 standard parameter mapping 的 native option
 - **THEN** resolver 让该 option 保持在 typed-field standard parameter validation 之外
-- **THEN** entry owner 仍负责 native option validation 或 ignored-argument warning
+- **THEN** entry owner 仍负责 native option validation 或 strict input-boundary diagnostic
 
 ### Requirement: Operation argument binding 保留 source semantics
 标准参数 resolver MUST 把 operation argument binding 建模为 standard parameter identity 到 protocol request `arguments` path 的映射，并保留 resolution 产生的 source info。

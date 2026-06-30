@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use super::DiagnosticDetails;
 
@@ -22,6 +23,12 @@ pub struct FieldReasonDetails {
     pub received: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accepted: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub field_issues: Option<Vec<Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config_issues: Option<Vec<AdapterConfigSourceDetails>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub typed_validation_failures: Option<Vec<Value>>,
 }
 
 impl FieldReasonDetails {
@@ -32,6 +39,9 @@ impl FieldReasonDetails {
             path: None,
             received: None,
             accepted: None,
+            field_issues: None,
+            config_issues: None,
+            typed_validation_failures: None,
         }
     }
 }
@@ -225,42 +235,6 @@ impl InternalDetails {
     pub fn new(error_id: impl Into<String>) -> Self {
         Self {
             error_id: error_id.into(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct CliArgvDetails {
-    pub tokens: Vec<String>,
-}
-
-impl CliArgvDetails {
-    pub fn new(tokens: Vec<String>) -> Self {
-        Self { tokens }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AdapterCandidateDetails {
-    pub adapter_id: String,
-    pub stage: String,
-    pub code: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub preselected: Option<bool>,
-}
-
-impl AdapterCandidateDetails {
-    pub fn new(
-        adapter_id: impl Into<String>,
-        stage: impl Into<String>,
-        code: impl Into<String>,
-        preselected: Option<bool>,
-    ) -> Self {
-        Self {
-            adapter_id: adapter_id.into(),
-            stage: stage.into(),
-            code: code.into(),
-            preselected,
         }
     }
 }

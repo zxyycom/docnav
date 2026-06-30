@@ -22,9 +22,8 @@ assertion types, and the explicitly excluded stability surface.
 | `10_crlf_payload.json` | CRLF payload preservation |
 | `11_no_trailing_newline.json` | Framing LF for payload without trailing LF |
 | `12_block_marker_in_body.json` | Block marker text in payload body |
-| `13_warning.json` | Warning payload (no blocks) |
-| `14_readable_error.json` | Readable error |
-| `15_error_guidance_array.json` | Error guidance array in header |
+| `14_readable_error.json` | Readable error primary diagnostic fields |
+| `15_error_guidance_array.json` | Error guidance array and diagnostic context in header |
 | `16_undeclared_extension_fields.json` | Undeclared extension fields |
 | `17_order_independent_assertions.json` | Order-independent assertions |
 | `18_renderer_failure_missing_pointer.json` | Renderer failure — missing pointer |

@@ -1,9 +1,8 @@
-use docnav_diagnostics::{DiagnosticRecordDraft, DiagnosticSource};
 use docnav_protocol::{Operation, PositiveInteger};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::cli::{CliWarning, DocumentCommand, OutputMode};
+use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::{ConfigContext, ResolvedValue};
 use crate::error::AppResult;
 use crate::invoke::invoke_adapter;
@@ -11,7 +10,7 @@ use crate::output::{outcome_for_response, CommandOutcome};
 use crate::project_context::ProjectContext;
 use crate::project_paths::normalize_document_path;
 use crate::registry::AdapterRegistry;
-use crate::routing::{select_adapter, AdapterSelectionRequest, AdapterSelectionWarning};
+use crate::routing::{select_adapter, AdapterSelectionRequest};
 use crate::standard_parameters::resolve_core_document_parameters;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -83,18 +82,13 @@ impl DocnavRuntime for AdapterRuntime {
             document: &document,
             operation: request.operation,
             preselected_adapter_id: request.adapter.as_deref(),
-            preselected_source: &request.defaults.adapter.source,
         })?;
-        let warnings = cli_warnings(selection.warnings.clone());
-        let invoke = match invoke_adapter(
+        let invoke = invoke_adapter(
             &request.project.project_root,
             &selection.record,
             &document,
             &request,
-        ) {
-            Ok(invoke) => invoke,
-            Err(error) => return Err(error.with_related_diagnostics(cli_warning_drafts(&warnings))),
-        };
+        )?;
 
         let _ = (
             &selection.manifest,
@@ -102,7 +96,7 @@ impl DocnavRuntime for AdapterRuntime {
             &selection.evidence,
             &invoke.request,
         );
-        Ok(outcome_for_response(invoke.response, request.output)?.with_warnings(warnings))
+        outcome_for_response(invoke.response, request.output)
     }
 
     fn describe_document_context(
@@ -121,7 +115,6 @@ impl DocnavRuntime for AdapterRuntime {
             document: &document,
             operation: effective_operation,
             preselected_adapter_id: defaults.adapter.value.as_str(),
-            preselected_source: &defaults.adapter.source,
         })?;
 
         Ok(DocumentContextOutput {
@@ -188,26 +181,4 @@ fn adapter_source(
     } else {
         "registry".to_owned()
     }
-}
-
-fn cli_warnings(warnings: Vec<AdapterSelectionWarning>) -> Vec<CliWarning> {
-    warnings
-        .into_iter()
-        .map(|warning| {
-            CliWarning::adapter_candidate_failure(
-                &warning.adapter_id,
-                warning.stage.as_str(),
-                &warning.code,
-                &warning.reason,
-                warning.preselected,
-            )
-        })
-        .collect()
-}
-
-fn cli_warning_drafts(warnings: &[CliWarning]) -> Vec<DiagnosticRecordDraft> {
-    warnings
-        .iter()
-        .map(|warning| warning.to_record_draft(DiagnosticSource::with_stage("docnav", "runtime")))
-        .collect()
 }

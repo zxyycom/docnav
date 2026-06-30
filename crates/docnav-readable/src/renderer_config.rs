@@ -135,12 +135,6 @@ impl RendererConfig {
             },
         );
 
-        // warning – no blocks (all fields in JSON header)
-        views.insert(
-            ReadableViewKind::Warning,
-            ViewBlockConfig { blocks: vec![] },
-        );
-
         Self { views }
     }
 

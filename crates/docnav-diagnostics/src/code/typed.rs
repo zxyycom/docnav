@@ -1,13 +1,10 @@
 use crate::details::{
-    AdapterCandidateDetails, AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails,
-    CapabilityAdapterDetails, CliArgvDetails, DiagnosticDetailsPayload, FieldReasonDetails,
-    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
+    AdapterReasonDetails, BoundaryDetails, CapabilityAdapterDetails, DiagnosticDetailsPayload,
+    FieldReasonDetails, FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
     PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
-use super::{
-    BoundaryDiagnosticCode, DiagnosticCode, ProtocolDiagnosticCode, ReadableWarningDiagnosticCode,
-};
+use super::{BoundaryDiagnosticCode, DiagnosticCode, ProtocolDiagnosticCode};
 
 mod sealed {
     pub trait Sealed {}
@@ -21,10 +18,6 @@ pub trait DiagnosticCodeMarker: sealed::Sealed {
 
 pub trait ProtocolDiagnosticMarker: DiagnosticCodeMarker {
     const PROTOCOL_CODE: ProtocolDiagnosticCode;
-}
-
-pub trait ReadableWarningDiagnosticMarker: DiagnosticCodeMarker {
-    const WARNING_CODE: ReadableWarningDiagnosticCode;
 }
 
 pub trait BoundaryDiagnosticMarker: DiagnosticCodeMarker {
@@ -48,17 +41,10 @@ pub mod typed_codes {
         pub struct InternalError;
     }
 
-    pub mod readable_warning {
-        pub struct CliArgvIgnored;
-        pub struct AdapterCandidateFailure;
-        pub struct AdapterConfigSourceSkipped;
-    }
-
     pub mod boundary {
         pub struct AdapterErrorExitCodeCannotBe;
         pub struct FailedToReadRequest;
         pub struct FailedToSerialize;
-        pub struct FailedToWriteCliWarning;
         pub struct FailedToWriteJson;
         pub struct FailedToWriteProtocolResponse;
         pub struct FailedToWriteReadableView;
@@ -89,24 +75,6 @@ macro_rules! protocol_marker {
 
         impl ProtocolDiagnosticMarker for $marker {
             const PROTOCOL_CODE: ProtocolDiagnosticCode = ProtocolDiagnosticCode::$code;
-        }
-    };
-}
-
-macro_rules! readable_warning_marker {
-    ($marker:path, $code:ident, $details:ty) => {
-        impl sealed::Sealed for $marker {}
-
-        impl DiagnosticCodeMarker for $marker {
-            type Details = $details;
-
-            const CODE: DiagnosticCode =
-                DiagnosticCode::ReadableWarning(ReadableWarningDiagnosticCode::$code);
-        }
-
-        impl ReadableWarningDiagnosticMarker for $marker {
-            const WARNING_CODE: ReadableWarningDiagnosticCode =
-                ReadableWarningDiagnosticCode::$code;
         }
     };
 }
@@ -189,22 +157,6 @@ protocol_marker!(
     InternalDetails
 );
 
-readable_warning_marker!(
-    typed_codes::readable_warning::CliArgvIgnored,
-    CliArgvIgnored,
-    CliArgvDetails
-);
-readable_warning_marker!(
-    typed_codes::readable_warning::AdapterCandidateFailure,
-    AdapterCandidateFailure,
-    AdapterCandidateDetails
-);
-readable_warning_marker!(
-    typed_codes::readable_warning::AdapterConfigSourceSkipped,
-    AdapterConfigSourceSkipped,
-    AdapterConfigSourceDetails
-);
-
 boundary_marker!(
     typed_codes::boundary::AdapterErrorExitCodeCannotBe,
     AdapterErrorExitCodeCannotBe
@@ -214,10 +166,6 @@ boundary_marker!(
     FailedToReadRequest
 );
 boundary_marker!(typed_codes::boundary::FailedToSerialize, FailedToSerialize);
-boundary_marker!(
-    typed_codes::boundary::FailedToWriteCliWarning,
-    FailedToWriteCliWarning
-);
 boundary_marker!(typed_codes::boundary::FailedToWriteJson, FailedToWriteJson);
 boundary_marker!(
     typed_codes::boundary::FailedToWriteProtocolResponse,

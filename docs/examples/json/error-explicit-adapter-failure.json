@@ -1,0 +1,23 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-explicit-adapter",
+  "operation": "outline",
+  "ok": false,
+  "error": {
+    "code": "ADAPTER_UNAVAILABLE",
+    "message": "显式选择的 adapter 不可用。",
+    "owner": "adapter_selection",
+    "location": {
+      "argument": "adapter"
+    },
+    "received": "docnav-missing",
+    "expected": "an installed adapter id",
+    "details": {
+      "adapter_id": "docnav-missing",
+      "reason": "adapter not found in registry"
+    },
+    "guidance": [
+      "安装该 adapter，或删除 --adapter 让 docnav 自动发现可用 adapter。"
+    ]
+  }
+}

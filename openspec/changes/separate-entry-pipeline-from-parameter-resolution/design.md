@@ -8,6 +8,7 @@
 
 - 标准入口管线：入口生命周期 owner，负责 command/transport 分类、配置读取决策、handler dispatch 和 output/error projection。
 - 入口参数来源解析：参数来源 owner，负责 direct input view、project/user config source 和 defaults 的合并、校验与 handoff。
+- adapter native option sources：adapter owner 明确声明的 native option 输入源；未声明的 public input 不得被 resolver 当作隐式 passthrough 消化。
 - 配置来源合并通道：入口参数来源解析中的 config 子流程，只负责 project/user config source。
 - 标准参数身份：跨 CLI/config/invoke 复用的参数 identity，不代表入口生命周期。
 
@@ -54,12 +55,19 @@ Alternative considered: 在 resolver 内直接补全 request JSON 或删除 unkn
 
 Alternative considered: 一次性重命名所有 crate、module、types 和 docs。该方案风险较高，容易造成 OpenSpec、schema、test fixture 和 release artifact 同步失败。
 
+### Decision 5: adapter native options 必须显式来源化，unmapped public input 回到 owner 边界
+
+决定要求入口 owner 只把已注册标准参数、已注册 config path 和 adapter owner 明确声明的 native option source descriptors 提供给入口参数来源解析。未映射 public input 必须作为 owner-boundary handoff 返回，由 core CLI 或 adapter SDK 投影为 blocking input diagnostic；resolver 不删除、不重写，也不把它默认为 adapter passthrough。
+
+Alternative considered: 保留旧 passthrough 语义，把所有 unmapped input 交给后续 adapter。该方案会绕过 strict public input boundary，使 adapter native options 缺少可审计 owner。
+
 ## Risks / Trade-offs
 
 - [Risk] 新旧术语并存会短期增加阅读成本。→ Mitigation: 文档中建立术语映射表，并在 migration tasks 中逐项删除旧名误导用法。
 - [Risk] 只改名不改边界会留下误解。→ Mitigation: specs 明确标准入口管线和不可变输入规则，测试覆盖 help/manifest/probe/config 不进入 document parameter resolution。
 - [Risk] crate/module 重命名可能造成大范围 diff。→ Mitigation: 先以 module/type alias 或 wrapper 做行为迁移，再决定是否重命名 crate。
 - [Risk] “配置来源合并通道”被误认为完整 resolver。→ Mitigation: 只把它定义为 project/user config source 子流程，不用于 direct input/default/operation binding。
+- [Risk] unmapped public input 被误当作 adapter passthrough。→ Mitigation: specs 要求 adapter native option sources 显式声明，未映射 input 回到入口 owner 投影为 blocking input diagnostic。
 
 ## Migration Plan
 

@@ -69,7 +69,6 @@ fn parse_view_kind(s: &str) -> ReadableViewKind {
         "find" => ReadableViewKind::Find,
         "info" => ReadableViewKind::Info,
         "error" => ReadableViewKind::Error,
-        "warning" => ReadableViewKind::Warning,
         other => panic!("unknown view_kind in conformance vector: {other}"),
     }
 }

@@ -1,7 +1,6 @@
 use std::fmt;
 use std::io;
 
-use docnav_diagnostics::{DiagnosticRecord, WarningProjection};
 use docnav_json_io::JsonIoError;
 use docnav_protocol::{Operation, ProtocolError};
 use docnav_readable::RenderError;
@@ -9,7 +8,7 @@ use docnav_readable::RenderError;
 mod readable;
 mod writer;
 
-pub use readable::{add_warnings, protocol_error_readable, readable_payload, view_kind_for_result};
+pub use readable::{protocol_error_readable, readable_payload, view_kind_for_result};
 pub use writer::{
     write_document_diagnostic_error, write_document_error, write_document_response,
     write_document_result,
@@ -35,7 +34,6 @@ pub enum DocumentOutputError {
     ReadableViewRender(RenderError),
     StdoutJson(JsonIoError),
     StdoutWrite(io::Error),
-    StderrWarning(io::Error),
 }
 
 impl fmt::Display for DocumentOutputError {
@@ -50,7 +48,6 @@ impl fmt::Display for DocumentOutputError {
             }
             Self::StdoutJson(error) => write!(formatter, "failed to write JSON output: {error}"),
             Self::StdoutWrite(error) => write!(formatter, "failed to write output: {error}"),
-            Self::StderrWarning(error) => write!(formatter, "failed to write CLI warning: {error}"),
         }
     }
 }
@@ -61,7 +58,7 @@ impl std::error::Error for DocumentOutputError {
             Self::DiagnosticProjection => None,
             Self::ReadablePayload(error) | Self::ReadableViewRender(error) => Some(error),
             Self::StdoutJson(error) => Some(error),
-            Self::StdoutWrite(error) | Self::StderrWarning(error) => Some(error),
+            Self::StdoutWrite(error) => Some(error),
         }
     }
 }
@@ -83,25 +80,6 @@ impl<'a> ProtocolOutputContext<'a> {
             request_id,
             operation,
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct DocumentOutputOptions<'a> {
-    mode: DocumentOutputMode,
-    diagnostics: &'a [DiagnosticRecord],
-}
-
-impl<'a> DocumentOutputOptions<'a> {
-    pub const fn new(mode: DocumentOutputMode, diagnostics: &'a [DiagnosticRecord]) -> Self {
-        Self { mode, diagnostics }
-    }
-
-    pub(crate) fn warning_projections(self) -> Vec<WarningProjection> {
-        self.diagnostics
-            .iter()
-            .filter_map(WarningProjection::from_record)
-            .collect()
     }
 }
 

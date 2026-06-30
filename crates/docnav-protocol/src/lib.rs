@@ -31,9 +31,9 @@ pub use envelope::{
     SuccessResponse,
 };
 pub use error::{
-    protocol_error_category, protocol_error_default_message, protocol_error_record_draft,
-    protocol_error_record_draft_with_summary, InvalidErrorDetail, ProtocolError,
-    ProtocolErrorCategory,
+    protocol_error_category, protocol_error_default_guidance, protocol_error_default_message,
+    protocol_error_record_draft, protocol_error_record_draft_with_summary, InvalidErrorDetail,
+    ProtocolError, ProtocolErrorCategory,
 };
 pub use manifest::{AdapterIdentity, FormatDescriptor, Manifest, ManifestValidationError};
 pub use operation::{Operation, OperationParseError, PagedOperation};

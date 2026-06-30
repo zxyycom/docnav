@@ -5,8 +5,8 @@ use docnav_diagnostics::{
 };
 use docnav_protocol::{Operation, PositiveInteger};
 use docnav_standard_parameters::{
-    ids, StandardParameterHandoff, StandardParameterResolution, StandardParameterSourceKind,
-    StandardParameterValidationIssue, MAX_PAGINATION_LIMIT,
+    ids, StandardParameterConfigSourceIssue, StandardParameterHandoff, StandardParameterResolution,
+    StandardParameterSourceKind, StandardParameterValidationIssue, MAX_PAGINATION_LIMIT,
 };
 use docnav_typed_fields::{FieldIdentity, TypedValue};
 use serde_json::{json, Value};
@@ -143,18 +143,24 @@ fn uses_document_window(operation: Operation) -> bool {
 }
 
 fn first_validation_error(resolution: &StandardParameterResolution) -> AppResult<()> {
-    if let Some(diagnostic) = resolution
-        .diagnostics()
-        .iter()
-        .find_map(StandardParameterHandoff::as_validation)
-    {
-        return Err(validation_error(diagnostic));
+    if let Some(diagnostic) = resolution.diagnostics().first() {
+        return Err(match diagnostic {
+            StandardParameterHandoff::Validation(diagnostic) => validation_error(diagnostic),
+            StandardParameterHandoff::ConfigSource(issue) => config_source_error(issue),
+        });
     }
     Ok(())
 }
 
 fn validation_error(diagnostic: &StandardParameterValidationIssue) -> AppError {
     validation_error_for_identity(diagnostic.identity.as_str())
+}
+
+fn config_source_error(issue: &StandardParameterConfigSourceIssue) -> AppError {
+    AppError::new(issue.to_record_draft(DiagnosticSource::with_stage(
+        "docnav",
+        "standard-parameters",
+    )))
 }
 
 fn field_label(identity: &str) -> &'static str {

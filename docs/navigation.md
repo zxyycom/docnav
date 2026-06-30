@@ -59,16 +59,16 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 
 | 规则面 | Owner 文档 |
 | --- | --- |
-| 制品职责、调用链、adapter 选择、进程边界 | [架构](architecture.md) |
-| `docnav` 命令、`config` 命令入口、adapter 管理命令、adapter 直接 CLI 入口和退出码 | [CLI](cli.md) |
-| 标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、透传规则、validation 和 operation binding | [标准参数](standard-parameters.md) |
-| 输出模式、readable-view framing、readable-json warning、阅读文案配置、输出通道 | [输出模式](output.md) |
-| invoke envelope、operation、紧凑结果、page、protocol 错误投影 | [原始协议](protocol.md) |
-| 错误通道、DiagnosticStack、DiagnosticCode、错误规则、警告规则、DiagnosticId、mark 生命周期和 LIFO/drain 语义 | [错误通道](diagnostics.md) |
-| adapter 命令、manifest、probe、格式默认值、invoke 行为 | [适配器契约](adapter-contract.md) |
-| ref 的共享调用流程、非空 opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
+| 制品职责、调用链、adapter 选择、internal discovery failure list、进程边界 | [架构](architecture.md) |
+| `docnav` 命令、`config` 命令入口、adapter 管理命令、adapter 直接 CLI 入口、strict argv parser/help 和退出码 | [CLI](cli.md) |
+| 标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、strict unmapped input validation、owner-scoped native option source、validation 和 operation binding | [标准参数](standard-parameters.md) |
+| 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
+| invoke envelope、operation、紧凑结果、page、protocol failure envelope 和 primary diagnostic projection | [原始协议](protocol.md) |
+| 错误通道、DiagnosticStack、DiagnosticCode、primary DiagnosticRecord、错误规则、警告规则、DiagnosticId、mark 生命周期和 LIFO/drain 语义 | [错误通道](diagnostics.md) |
+| adapter 命令、manifest、probe、格式默认值、invoke strict input 和 direct CLI config 边界 | [适配器契约](adapter-contract.md) |
+| ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
-| 自动化测试层级、覆盖目标、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
+| 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
 | 测试函数变更时的 case 归属、账本更新和源码 `@case` 标记维护流程 | [测试用例维护](testing/case-maintenance.md) |
 | 最终 case 条目、证明目标和源码 `@case` 标记映射 | [测试用例编号账本](testing/cases.md) |
 | 脚本语言、包管理、TypeScript 脚本运行方式和脚本类型检查验证入口 | [工程工具链](tooling.md) |

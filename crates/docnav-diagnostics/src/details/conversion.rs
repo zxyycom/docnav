@@ -1,7 +1,6 @@
 use super::{
-    AdapterCandidateDetails, AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails,
-    CapabilityAdapterDetails, CliArgvDetails, DiagnosticDetails, FieldReasonDetails,
-    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
+    AdapterReasonDetails, BoundaryDetails, CapabilityAdapterDetails, DiagnosticDetails,
+    FieldReasonDetails, FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
     PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
@@ -13,6 +12,9 @@ impl From<FieldReasonDetails> for DiagnosticDetails {
             path: details.path,
             received: details.received,
             accepted: details.accepted,
+            field_issues: details.field_issues,
+            config_issues: details.config_issues,
+            typed_validation_failures: details.typed_validation_failures,
         }
     }
 }
@@ -110,36 +112,6 @@ impl From<InternalDetails> for DiagnosticDetails {
     fn from(details: InternalDetails) -> Self {
         Self::Internal {
             error_id: details.error_id,
-        }
-    }
-}
-
-impl From<CliArgvDetails> for DiagnosticDetails {
-    fn from(details: CliArgvDetails) -> Self {
-        Self::CliArgv {
-            tokens: details.tokens,
-        }
-    }
-}
-
-impl From<AdapterCandidateDetails> for DiagnosticDetails {
-    fn from(details: AdapterCandidateDetails) -> Self {
-        Self::AdapterCandidate {
-            adapter_id: details.adapter_id,
-            stage: details.stage,
-            code: details.code,
-            preselected: details.preselected,
-        }
-    }
-}
-
-impl From<AdapterConfigSourceDetails> for DiagnosticDetails {
-    fn from(details: AdapterConfigSourceDetails) -> Self {
-        Self::AdapterConfigSource {
-            source_level: details.source_level,
-            path_origin: details.path_origin,
-            path: details.path,
-            reason_code: details.reason_code,
         }
     }
 }

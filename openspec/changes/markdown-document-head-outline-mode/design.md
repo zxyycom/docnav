@@ -34,13 +34,13 @@
 
 2. **默认 `combined`，需要时再 `split`。**
 
-   `document_head_outline_mode` 的合法值为 `combined`、`split`、`hidden`，默认 `combined`。`combined` 优先服务 agent 选择章节前“反正大概率需要看一下”的场景；`split` 给需要单独读取 YAML 或 preamble 的消费者使用；`hidden` 保留现有只看 heading outline 的行为。
+   `document_head_outline_mode` 是 Markdown adapter-owned native option source，合法值为 `combined`、`split`、`hidden`，默认 `combined`。`combined` 优先服务 agent 选择章节前“反正大概率需要看一下”的场景；`split` 给需要单独读取 YAML 或 preamble 的消费者使用；`hidden` 保留现有只看 heading outline 的行为。
 
    `split` 模式下，frontmatter ref 使用 line-based adapter ref，例如 `FM:L1`；preamble 使用 `P:preamble`。当没有对应区域时不返回该 entry。
 
 3. **frontmatter dialect 显式化。**
 
-   `frontmatter_block_policy` 默认 `opening_only`：只识别文件开头的一个 YAML delimiter block，payload 不包含起止 delimiter。`pandoc_metadata_blocks` 可作为显式模式支持多 metadata block；实现必须在 Markdown adapter 文档中写清识别边界，并用 fixture 覆盖多个 block、未闭合 block 和普通 horizontal rule 的边界。
+   `frontmatter_block_policy` 是 Markdown adapter-owned native option source，默认 `opening_only`：只识别文件开头的一个 YAML delimiter block，payload 不包含起止 delimiter。`pandoc_metadata_blocks` 只有在 adapter 明确声明为 accepted native option value 时才可支持多 metadata block；未声明或未实现的 value 必须在 adapter owner 边界被拒绝。实现必须在 Markdown adapter 文档中写清识别边界，并用 fixture 覆盖多个 block、未闭合 block 和普通 horizontal rule 的边界。
 
    在 `combined` 模式下，frontmatter policy 只影响 display 摘要和 split 需要的内部分类；`HEAD:leading` read 始终返回 document head 原文。
 
@@ -72,5 +72,5 @@
 
 ## Open Questions
 
-- `pandoc_metadata_blocks` 是否首期实现，还是只在 schema 中预留但不暴露为 accepted value，需要审计时确认。
+- `pandoc_metadata_blocks` 是否首期实现，还是只在 schema 中预留但不暴露为 accepted native option value，需要审计时确认；未暴露时必须被 strict input validation 拒绝。
 - `split` 模式下多个 frontmatter entries 的 display 是否需要包含行号、block 序号或 cost，进入实现前应在 Markdown adapter 文档中固定。

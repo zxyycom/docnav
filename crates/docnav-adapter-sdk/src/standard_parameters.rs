@@ -7,8 +7,8 @@ use docnav_protocol::{
 use docnav_standard_parameters::{
     config_pagination_enabled_field, configurable_limit_field, find_query_field, ids,
     page_field as standard_page_field, read_ref_field, EntryPassthroughPolicy,
-    StandardParameterHandoff, StandardParameterPipeline, StandardParameterResolution,
-    StandardParameterValidationIssue, MAX_PAGINATION_LIMIT,
+    StandardParameterConfigSourceIssue, StandardParameterHandoff, StandardParameterPipeline,
+    StandardParameterResolution, StandardParameterValidationIssue, MAX_PAGINATION_LIMIT,
 };
 use docnav_typed_fields::{FieldDefs, FieldIdentity, JsonValue, TypedValue};
 use serde_json::json;
@@ -194,12 +194,11 @@ where
 }
 
 fn first_validation_error(resolution: &StandardParameterResolution) -> Result<(), AdapterError> {
-    if let Some(diagnostic) = resolution
-        .diagnostics()
-        .iter()
-        .find_map(StandardParameterHandoff::as_validation)
-    {
-        return Err(validation_error(diagnostic));
+    if let Some(diagnostic) = resolution.diagnostics().first() {
+        return Err(match diagnostic {
+            StandardParameterHandoff::Validation(diagnostic) => validation_error(diagnostic),
+            StandardParameterHandoff::ConfigSource(issue) => config_source_error(issue),
+        });
     }
     Ok(())
 }
@@ -209,6 +208,13 @@ fn validation_error(diagnostic: &StandardParameterValidationIssue) -> AdapterErr
         argument_field(diagnostic.identity.as_str()),
         validation_reason(diagnostic.identity.as_str()),
     )
+}
+
+fn config_source_error(issue: &StandardParameterConfigSourceIssue) -> AdapterError {
+    AdapterError::new(issue.to_record_draft(DiagnosticSource::with_stage(
+        "docnav-adapter-sdk",
+        "standard-parameters",
+    )))
 }
 
 fn argument_field(identity: &str) -> &'static str {

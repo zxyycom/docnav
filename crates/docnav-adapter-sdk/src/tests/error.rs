@@ -1,6 +1,6 @@
 use crate::{exit_code_for_diagnostic, AdapterError, AdapterExitCode};
 use docnav_diagnostics::{
-    typed_codes, CliArgvDetails, DiagnosticRecordDraft, DiagnosticSource, ProtocolDiagnosticCode,
+    typed_codes, BoundaryDetails, DiagnosticRecordDraft, DiagnosticSource, ProtocolDiagnosticCode,
 };
 
 // @case WB-SDK-ERROR-001
@@ -92,13 +92,13 @@ fn adapter_error_rejects_success_exit_code() {
 
 #[test]
 fn adapter_error_normalizes_non_protocol_diagnostic_for_protocol_projection() {
-    let warning_draft = DiagnosticRecordDraft::new::<typed_codes::readable_warning::CliArgvIgnored>(
-        "ignored adapter argv",
-        CliArgvDetails::new(vec!["--unused".into()]),
+    let boundary_draft = DiagnosticRecordDraft::new::<typed_codes::boundary::FailedToWriteJson>(
+        "failed to write JSON output",
+        BoundaryDetails::new("stdout closed"),
         DiagnosticSource::with_stage("test", "adapter"),
     );
 
-    let error = AdapterError::new(warning_draft);
+    let error = AdapterError::new(boundary_draft);
     let protocol_error = error.protocol_error();
 
     assert_eq!(error.exit_code(), AdapterExitCode::InternalError);

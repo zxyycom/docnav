@@ -180,7 +180,7 @@ fn invoke_pagination_disabled_finalizes_limit_without_protocol_pagination() {
 }
 
 #[test]
-fn invoke_protocol_decode_accepts_unmapped_arguments_before_standardization() {
+fn invoke_protocol_decode_rejects_unmapped_arguments() {
     let input = br#"{
           "protocol_version": "0.1",
           "request_id": "req-unmapped",
@@ -197,11 +197,17 @@ fn invoke_protocol_decode_accepts_unmapped_arguments_before_standardization() {
 
     let exit = invoke_once(&StubAdapter, &input[..], &mut stdout, &mut stderr);
 
-    assert_eq!(exit, AdapterExitCode::Success.code());
-    assert!(stderr.is_empty());
+    assert_eq!(exit, AdapterExitCode::ProtocolError.code());
+    let stderr = String::from_utf8(stderr).expect("stderr is utf8");
+    assert!(stderr.contains("request schema validation failed"));
     let response: ProtocolResponse =
         serde_json::from_slice(&stdout).expect("stdout is one JSON response");
     response.validate().expect("response validates");
+    let ProtocolResponse::Failure(FailureResponse { error, .. }) = response else {
+        panic!("expected failure response");
+    };
+    assert_eq!(error.code(), ProtocolDiagnosticCode::InvalidRequest);
+    assert_eq!(error.details()["field"], "request");
 }
 
 fn invoke_config(

@@ -27,9 +27,6 @@
     },
     "page": {
       "$ref": "readable-common.schema.json#/$defs/page"
-    },
-    "warnings": {
-      "$ref": "readable-common.schema.json#/$defs/warnings"
     }
   },
   "additionalProperties": false

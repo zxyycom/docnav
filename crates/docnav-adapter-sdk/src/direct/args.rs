@@ -1,20 +1,22 @@
+use std::fmt;
+
 use docnav_protocol::{positive_result, Operation, Options, PositiveInteger};
+use docnav_standard_parameters::StandardParameterConfigSourceIssue;
 use serde_json::{Map, Value};
 
 use super::cli::DirectCliConfig;
 use super::native_options::NativeOptionSpec;
 use super::output::DirectOutputMode;
-use super::warnings::DirectCliWarning;
 
+mod boundaries;
 mod diagnostics;
-mod loose;
 mod resolved;
 mod sources;
 mod spec;
 mod standard;
 
+use boundaries::{collect_probe_args, collect_protocol_only_args, BoundaryArgs};
 use diagnostics::{operation_parse_error, probe_parse_error, protocol_only_parse_error};
-use loose::{collect_probe_args, collect_protocol_only_args, LooseArgs};
 use sources::direct_cli_parameter_sources;
 use spec::{arg_ids, command_labels, flags, parse_output, probe_command, protocol_only_command};
 
@@ -29,7 +31,6 @@ pub(super) struct DirectOperationOptions {
     pub(super) output: DirectOutputMode,
     pub(super) ref_id: Option<String>,
     pub(super) query: Option<String>,
-    pub(super) warnings: Vec<DirectCliWarning>,
     native_options: Options,
 }
 
@@ -43,46 +44,74 @@ impl DirectOperationOptions {
     }
 }
 
+#[derive(Debug)]
 pub(super) struct DirectProbeOptions {
     pub(super) path: String,
-    pub(super) warnings: Vec<DirectCliWarning>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) enum DirectCliInputError {
+    Message(String),
+    ConfigSource(StandardParameterConfigSourceIssue),
+}
+
+impl DirectCliInputError {
+    pub(super) fn message(message: impl Into<String>) -> Self {
+        Self::Message(message.into())
+    }
+}
+
+impl fmt::Display for DirectCliInputError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Message(message) => formatter.write_str(message),
+            Self::ConfigSource(issue) => formatter.write_str(&issue.message()),
+        }
+    }
+}
+
+impl From<String> for DirectCliInputError {
+    fn from(message: String) -> Self {
+        Self::Message(message)
+    }
+}
+
+impl From<&str> for DirectCliInputError {
+    fn from(message: &str) -> Self {
+        Self::Message(message.to_owned())
+    }
 }
 
 pub(super) fn parse_protocol_only_options(
     args: &[String],
     native_options: &[NativeOptionSpec],
-) -> Result<Vec<DirectCliWarning>, String> {
-    let LooseArgs {
-        clap_args,
-        warnings,
-    } = collect_protocol_only_args(command_labels::MANIFEST, args, native_options)?;
+) -> Result<(), String> {
+    let BoundaryArgs { clap_args } =
+        collect_protocol_only_args(command_labels::MANIFEST, args, native_options)?;
     protocol_only_command(command_names::MANIFEST, "Emit adapter manifest")
         .try_get_matches_from(clap_argv(command_names::MANIFEST, clap_args))
         .map_err(|_| protocol_only_parse_error(args))?;
-    Ok(warnings)
+    Ok(())
 }
 
 pub(super) fn parse_probe(
     args: &[String],
     native_options: &[NativeOptionSpec],
 ) -> Result<DirectProbeOptions, String> {
-    let LooseArgs {
-        clap_args,
-        warnings,
-    } = collect_probe_args(args, native_options)?;
+    let BoundaryArgs { clap_args } = collect_probe_args(args, native_options)?;
     let matches = probe_command()
         .try_get_matches_from(clap_argv(command_names::PROBE, clap_args))
         .map_err(|_| probe_parse_error(args))?;
     let path = required_string(&matches, arg_ids::PATH, "probe requires <path>")?;
 
-    Ok(DirectProbeOptions { path, warnings })
+    Ok(DirectProbeOptions { path })
 }
 
 pub(super) fn parse_operation_options(
     operation: Operation,
     args: &[String],
     config: &DirectCliConfig<'_>,
-) -> Result<DirectOperationOptions, String> {
+) -> Result<DirectOperationOptions, DirectCliInputError> {
     let sources = direct_cli_parameter_sources(operation, args, config)?;
     operation_options_from_sources(operation, sources, config.native_options)
 }
@@ -128,7 +157,10 @@ fn parsed_native_options(
             return Err(format!("unknown native option {key:?}"));
         };
         if !spec.supports(operation) {
-            continue;
+            return Err(format!(
+                "native option {key:?} is not supported by {}",
+                operation.as_str()
+            ));
         }
         options.insert(key.clone(), spec.parse_value(value)?);
     }
@@ -139,7 +171,7 @@ fn operation_options_from_sources(
     operation: Operation,
     sources: DirectCliParameterSources,
     native_specs: &[NativeOptionSpec],
-) -> Result<DirectOperationOptions, String> {
+) -> Result<DirectOperationOptions, DirectCliInputError> {
     let limit = parse_operation_limit(&sources.limit)?;
     let output = parse_output(
         sources
@@ -156,7 +188,6 @@ fn operation_options_from_sources(
         output,
         ref_id: sources.ref_id,
         query: sources.query,
-        warnings: sources.warnings,
         native_options,
     })
 }

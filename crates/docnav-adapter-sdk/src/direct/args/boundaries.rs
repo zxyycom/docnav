@@ -1,25 +1,24 @@
 use docnav_cli_args::{
-    scan_loose_args, IgnoredArg, KnownValueFlag as LooseKnownValueFlag, LooseArgScan, MissingValue,
+    scan_arg_boundaries, ArgBoundaryScan, KnownValueFlag as BoundaryKnownValueFlag, MissingValue,
+    RejectedArg,
 };
 use docnav_protocol::Operation;
 
 use super::super::native_options::NativeOptionSpec;
-use super::super::warnings::DirectCliWarning;
 use super::spec::{command_labels, flags};
 
-pub(super) struct LooseArgs {
+pub(super) struct BoundaryArgs {
     pub(super) clap_args: Vec<String>,
-    pub(super) warnings: Vec<DirectCliWarning>,
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum LooseArgContext<'a> {
+pub(super) enum ArgBoundaryContext<'a> {
     ProtocolOnly { command: &'a str },
     Probe,
     Operation(Operation),
 }
 
-impl LooseArgContext<'_> {
+impl ArgBoundaryContext<'_> {
     fn accepts_path(self) -> bool {
         !matches!(self, Self::ProtocolOnly { .. })
     }
@@ -101,109 +100,114 @@ pub(super) fn collect_protocol_only_args(
     command: &str,
     args: &[String],
     native_options: &[NativeOptionSpec],
-) -> Result<LooseArgs, String> {
-    let context = LooseArgContext::ProtocolOnly { command };
-    collect_loose_args(context, args, native_options)
+) -> Result<BoundaryArgs, String> {
+    let context = ArgBoundaryContext::ProtocolOnly { command };
+    collect_boundary_args(context, args, native_options)
 }
 
 pub(super) fn collect_probe_args(
     args: &[String],
     native_options: &[NativeOptionSpec],
-) -> Result<LooseArgs, String> {
-    collect_loose_args(LooseArgContext::Probe, args, native_options)
+) -> Result<BoundaryArgs, String> {
+    collect_boundary_args(ArgBoundaryContext::Probe, args, native_options)
 }
 
 pub(super) fn collect_operation_args(
     operation: Operation,
     args: &[String],
     native_options: &[NativeOptionSpec],
-) -> Result<LooseArgs, String> {
-    collect_loose_args(LooseArgContext::Operation(operation), args, native_options)
+) -> Result<BoundaryArgs, String> {
+    collect_boundary_args(
+        ArgBoundaryContext::Operation(operation),
+        args,
+        native_options,
+    )
 }
 
-fn collect_loose_args(
-    context: LooseArgContext<'_>,
+fn collect_boundary_args(
+    context: ArgBoundaryContext<'_>,
     args: &[String],
     native_options: &[NativeOptionSpec],
-) -> Result<LooseArgs, String> {
-    let known_value_flags = loose_known_value_flags(context, native_options);
+) -> Result<BoundaryArgs, String> {
+    let known_value_flags = boundary_known_value_flags(context, native_options);
     let positional_limit = usize::from(context.accepts_path());
-    let scan = scan_loose_args(
+    let scan = scan_arg_boundaries(
         args,
-        &LooseArgScan::new(
+        &ArgBoundaryScan::new(
             context.command_label(),
             positional_limit,
             &known_value_flags,
         ),
     )
-    .map_err(loose_missing_value_error)?;
-    Ok(LooseArgs {
+    .map_err(boundary_missing_value_error)?;
+    if let Some(rejected) = scan.rejected.into_iter().next() {
+        return Err(strict_rejected_arg_error(rejected));
+    }
+    Ok(BoundaryArgs {
         clap_args: scan.retained_args,
-        warnings: scan
-            .ignored
-            .into_iter()
-            .map(warning_from_ignored_arg)
-            .collect(),
     })
 }
 
-fn loose_known_value_flags<'a>(
-    context: LooseArgContext<'a>,
+fn boundary_known_value_flags<'a>(
+    context: ArgBoundaryContext<'a>,
     native_options: &'a [NativeOptionSpec],
-) -> Vec<LooseKnownValueFlag<'a>> {
+) -> Vec<BoundaryKnownValueFlag<'a>> {
     let mut flags = vec![
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::PAGE,
             used: context.uses_flag(KnownValueFlag::Page),
         },
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::LIMIT,
             used: context.uses_flag(KnownValueFlag::Limit),
         },
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::PAGINATION,
             used: context.uses_flag(KnownValueFlag::Pagination),
         },
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::PROJECT_CONFIG_PATH,
             used: context.uses_flag(KnownValueFlag::ProjectConfigPath),
         },
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::REF,
             used: context.uses_flag(KnownValueFlag::Ref),
         },
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::QUERY,
             used: context.uses_flag(KnownValueFlag::Query),
         },
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::OUTPUT,
             used: context.uses_flag(KnownValueFlag::Output),
         },
-        LooseKnownValueFlag {
+        BoundaryKnownValueFlag {
             flag: flags::USER_CONFIG_PATH,
             used: context.uses_flag(KnownValueFlag::UserConfigPath),
         },
     ];
-    flags.extend(native_options.iter().map(|spec| LooseKnownValueFlag {
+    flags.extend(native_options.iter().map(|spec| BoundaryKnownValueFlag {
         flag: spec.flag,
         used: context.uses_flag(KnownValueFlag::Native(spec)),
     }));
     flags
 }
 
-fn warning_from_ignored_arg(ignored: IgnoredArg) -> DirectCliWarning {
-    match ignored {
-        IgnoredArg::UnknownFlag { token } => DirectCliWarning::unknown_flag(&token),
-        IgnoredArg::ExtraPositional { token } => DirectCliWarning::extra_positional(&token),
-        IgnoredArg::UnusedValueFlag {
+fn strict_rejected_arg_error(rejected: RejectedArg) -> String {
+    match rejected {
+        RejectedArg::UnknownFlag { token } => format!("unknown argument {token}"),
+        RejectedArg::ExtraPositional { token } => format!("extra positional argument {token}"),
+        RejectedArg::UnusedValueFlag {
             flag,
             value,
             command,
-        } => DirectCliWarning::unused_operation_flag(&flag, value.as_deref(), &command),
+        } => {
+            let value = value.map_or(String::new(), |value| format!(" {value}"));
+            format!("{flag}{value} is not used by {command} command")
+        }
     }
 }
 
-fn loose_missing_value_error(error: MissingValue) -> String {
+fn boundary_missing_value_error(error: MissingValue) -> String {
     format!("{} requires a value", error.flag())
 }

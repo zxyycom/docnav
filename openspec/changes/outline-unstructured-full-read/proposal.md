@@ -9,6 +9,7 @@
 ## What Changes
 
 - `outline` 增加配置触发的非结构化全文结果形态：成功结果直接包含全文 `content`、`content_type`、`cost` 和非结构化说明，不包含 `entries`、`ref`、`page` 或 continuation。
+- readable/protocol 输出必须使用对应 outline success payload 分支；配置命中是成功执行策略，不得通过 failure diagnostic wrapper 或 `doc:full` ref 表达。
 - **BREAKING (opt-in)**: 对命中非结构化配置的文档，`outline` 不再返回当前固定的 `entries[]` 与 `page` 字段；未命中配置的文档保持既有结构化 outline 契约。
 - Docnav 在 `outline` 入口消费生效配置中的非结构化文档策略，命中后短路为原文全文读取，而不是构造 `doc:full` 或其它 adapter ref；具体配置文件、格式和合并方式不由本 change 定义。
 - Markdown adapter/direct CLI 对等支持非结构化 outline 行为，确保各入口在同一生效配置语义下输出一致 readable/protocol 结果。

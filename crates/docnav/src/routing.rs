@@ -4,17 +4,17 @@ mod candidate;
 pub mod evidence;
 mod state;
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::project_context::ProjectContext;
 use crate::project_paths::NormalizedDocumentPath;
 use crate::registry::{AdapterRecord, AdapterRegistry};
 
-pub use evidence::{AdapterSelectionWarning, CandidateEvidence};
+pub use evidence::CandidateEvidence;
 
 use candidate::{
     evaluate_candidate, evaluate_preselected, infer_adapter_by_extension, CandidateResult,
 };
-use state::{PreselectedSource, SelectionState};
+use state::SelectionState;
 
 #[derive(Clone, Debug)]
 pub struct AdapterSelection {
@@ -22,7 +22,6 @@ pub struct AdapterSelection {
     pub manifest: Manifest,
     pub probe: ProbeResult,
     pub evidence: Vec<CandidateEvidence>,
-    pub warnings: Vec<AdapterSelectionWarning>,
 }
 
 #[derive(Clone, Copy)]
@@ -32,7 +31,6 @@ pub struct AdapterSelectionRequest<'a> {
     pub document: &'a NormalizedDocumentPath,
     pub operation: Operation,
     pub preselected_adapter_id: Option<&'a str>,
-    pub preselected_source: &'a str,
 }
 
 pub fn select_adapter(request: AdapterSelectionRequest<'_>) -> AppResult<AdapterSelection> {
@@ -42,28 +40,32 @@ pub fn select_adapter(request: AdapterSelectionRequest<'_>) -> AppResult<Adapter
         document,
         operation,
         preselected_adapter_id,
-        preselected_source,
     } = request;
     let mut state = SelectionState::default();
-    let preselected_source = PreselectedSource::from_raw(preselected_source);
 
-    let preselected = match preselected_adapter_id {
-        Some(adapter_id) => Some(adapter_id.to_owned()),
-        None => {
-            let inference = infer_adapter_by_extension(project, registry, document, operation);
-            state.record_inference_failures(inference.evidence);
-            inference.adapter_id
+    if let Some(adapter_id) = preselected_adapter_id {
+        state.mark_attempted(adapter_id);
+        match evaluate_preselected(project, registry, adapter_id, document, operation) {
+            CandidateResult::Selected(selected) => {
+                return Ok(state.into_selection(*selected));
+            }
+            CandidateResult::Continue(candidate) => {
+                let error = explicit_adapter_error(&candidate);
+                return Err(error);
+            }
         }
-    };
+    }
 
-    if let Some(adapter_id) = preselected {
+    let inference = infer_adapter_by_extension(project, registry, document, operation);
+    state.record_inference_failures(inference.evidence);
+    if let Some(adapter_id) = inference.adapter_id {
         state.mark_attempted(&adapter_id);
         match evaluate_preselected(project, registry, &adapter_id, document, operation) {
             CandidateResult::Selected(selected) => {
                 return Ok(state.into_selection(*selected));
             }
             CandidateResult::Continue(candidate) => {
-                state.record_failure(candidate, preselected_source.is_explicit());
+                state.record_failure(candidate);
             }
         }
     }
@@ -77,10 +79,14 @@ pub fn select_adapter(request: AdapterSelectionRequest<'_>) -> AppResult<Adapter
                 return Ok(state.into_selection(*selected));
             }
             CandidateResult::Continue(candidate) => {
-                state.record_failure(candidate, false);
+                state.record_failure(candidate);
             }
         }
     }
 
     Err(state.format_unknown(document))
+}
+
+fn explicit_adapter_error(candidate: &CandidateEvidence) -> AppError {
+    AppError::adapter_unavailable(candidate.adapter_id.clone(), candidate.reason.clone())
 }

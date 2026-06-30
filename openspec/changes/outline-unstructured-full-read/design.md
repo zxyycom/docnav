@@ -46,6 +46,10 @@
 
    普通 outline 仍是无 block header；非结构化 outline 使用 content block，避免把完整原文塞进 JSON header。renderer config 仍是仓库内代码契约，不由用户配置动态控制。
 
+5. **strict output projection 使用 documented success payload。**
+
+   配置命中的非结构化 outline 是成功执行策略，readable-json 使用 documented outline success payload 分支，protocol-json 包装同一 success result，readable-view 只使用 `/content` block 表达正文。未命中配置时继续保留 Markdown `doc:full` fallback navigation behavior；两者都不通过 primary diagnostic wrapper 表达。
+
 
 
 ## Risks / Trade-offs

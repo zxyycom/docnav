@@ -1,6 +1,7 @@
 // @case WB-SDK-DIRECT-OUTPUT-001
 use super::*;
 use docnav_protocol::{Cost, Measurement, OperationResult, ReadResult};
+use std::io;
 
 struct FailingStdout {
     attempted: bool,
@@ -52,7 +53,6 @@ fn readable_view_stdout_write_failure_is_io_error_with_diagnostic() {
     let exit = write_operation_output(
         read_result(),
         DirectOutputMode::ReadableView,
-        &[],
         &mut stdout,
         &mut stderr,
     );
@@ -75,7 +75,6 @@ fn readable_json_success_uses_shared_document_output() {
     let exit = write_operation_output(
         read_result(),
         DirectOutputMode::ReadableJson,
-        &[],
         &mut stdout,
         &mut stderr,
     );
@@ -85,18 +84,4 @@ fn readable_json_success_uses_shared_document_output() {
     let value: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
     assert_eq!(value["ref"], "ok");
     assert!(value.get("protocol_version").is_none());
-}
-
-#[test]
-fn direct_cli_warning_flush_projects_diagnostic_records_to_stderr() {
-    let mut stderr = Vec::new();
-    let warning = DirectCliWarning::unknown_flag("--future");
-
-    let exit =
-        append_cli_warnings_to_stderr(AdapterExitCode::Success.code(), &[warning], &mut stderr);
-
-    assert_eq!(exit, AdapterExitCode::Success.code());
-    let stderr = String::from_utf8(stderr).expect("stderr utf8");
-    assert!(stderr.contains("cli_argv_ignored"));
-    assert!(stderr.contains("--future"));
 }

@@ -6,9 +6,9 @@ import {
   expectJsonObject,
   expectNoJsonPayloadInStderr,
   expectNoProtocolEnvelope,
-  expectObjectArray,
   expectProtocolFailure,
   expectStderrEmpty,
+  expectStringArray,
   parseJson
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
@@ -42,7 +42,7 @@ async function testRefErrorOutputMapping() {
   validateSchema(readable, "readableError", readableJson);
   expectNoProtocolEnvelope(readable, readableJson);
   const readableDetails = expectJsonObject(readable, readableJson.details, "readable-json details is an object");
-  expectObjectArray(readable, readableJson.guidance, "readable-json guidance is an array");
+  expectStringArray(readable, readableJson.guidance, "readable-json guidance is an array");
   expect(readable, readableJson.code === "REF_INVALID", "readable-json returns REF_INVALID");
   expect(readable, readableDetails.ref === ref, "readable-json preserves details.ref");
 

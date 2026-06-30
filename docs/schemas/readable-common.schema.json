@@ -35,183 +35,71 @@
       ],
       "minimum": 1
     },
-    "warning": {
+    "diagnosticLocation": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "candidateFailure": {
       "type": "object",
       "required": [
-        "id",
-        "reason",
-        "effect",
-        "details"
+        "adapter_id",
+        "stage",
+        "reason"
       ],
       "properties": {
-        "id": {
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
           "enum": [
-            "cli_argv_ignored",
-            "adapter_candidate_failure",
-            "adapter_config_source_skipped"
+            "resolve",
+            "probe"
           ]
         },
         "reason": {
           "type": "string",
           "minLength": 1
-        },
-        "effect": {
-          "enum": [
-            "operation_continued",
-            "candidate_skipped"
-          ]
-        },
-        "details": {
-          "type": "object"
         }
       },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "id": {
-                "const": "cli_argv_ignored"
-              }
-            },
-            "required": [
-              "id"
-            ]
-          },
-          "then": {
-            "properties": {
-              "effect": {
-                "const": "operation_continued"
-              },
-              "details": {
-                "type": "object",
-                "required": [
-                  "tokens"
-                ],
-                "properties": {
-                  "tokens": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "id": {
-                "const": "adapter_candidate_failure"
-              }
-            },
-            "required": [
-              "id"
-            ]
-          },
-          "then": {
-            "properties": {
-              "effect": {
-                "const": "candidate_skipped"
-              },
-              "details": {
-                "type": "object",
-                "required": [
-                  "adapter_id",
-                  "stage",
-                  "code"
-                ],
-                "properties": {
-                  "adapter_id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "stage": {
-                    "enum": [
-                      "resolve",
-                      "probe"
-                    ]
-                  },
-                  "code": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "preselected": {
-                    "type": "boolean"
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "id": {
-                "const": "adapter_config_source_skipped"
-              }
-            },
-            "required": [
-              "id"
-            ]
-          },
-          "then": {
-            "properties": {
-              "effect": {
-                "const": "operation_continued"
-              },
-              "details": {
-                "type": "object",
-                "required": [
-                  "source_level",
-                  "path_origin",
-                  "path",
-                  "reason_code"
-                ],
-                "properties": {
-                  "source_level": {
-                    "enum": [
-                      "project",
-                      "user"
-                    ]
-                  },
-                  "path_origin": {
-                    "enum": [
-                      "default",
-                      "override"
-                    ]
-                  },
-                  "path": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "reason_code": {
-                    "enum": [
-                      "missing_override",
-                      "not_file",
-                      "unreadable",
-                      "invalid_json",
-                      "non_object"
-                    ]
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        }
-      ],
       "additionalProperties": false
     },
-    "warnings": {
+    "diagnosticDetails": {
+      "type": "object",
+      "properties": {
+        "field_issues": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "config_issues": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "typed_validation_failures": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "candidate_failures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/candidateFailure"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "guidance": {
       "type": "array",
+      "minItems": 1,
       "items": {
-        "$ref": "#/$defs/warning"
+        "type": "string",
+        "minLength": 1
       }
     }
   }

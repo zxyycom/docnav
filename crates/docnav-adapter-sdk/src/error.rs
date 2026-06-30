@@ -28,9 +28,7 @@ pub fn exit_code_for_diagnostic(code: impl Into<DiagnosticCode>) -> AdapterExitC
         DiagnosticCategory::Request => AdapterExitCode::ProtocolError,
         DiagnosticCategory::Document => AdapterExitCode::HandlerError,
         DiagnosticCategory::AdapterBoundary => AdapterExitCode::IoError,
-        DiagnosticCategory::Internal | DiagnosticCategory::Compatibility => {
-            AdapterExitCode::InternalError
-        }
+        DiagnosticCategory::Internal => AdapterExitCode::InternalError,
     }
 }
 

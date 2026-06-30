@@ -1,4 +1,3 @@
-use docnav_diagnostics::{DiagnosticDetails, WarningProjection};
 use docnav_typed_fields::{ProcessingBuild, TypedValue};
 use serde_json::json;
 
@@ -78,9 +77,9 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
     );
 
     assert_eq!(resolution.diagnostics().len(), 1);
-    let warning = resolution.diagnostics()[0].as_warning().unwrap();
-    assert_config_warning(
-        warning,
+    let issue = resolution.diagnostics()[0].as_config_source().unwrap();
+    assert_config_source_issue(
+        issue,
         "project",
         "override",
         &missing_project,
@@ -206,9 +205,9 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
     );
 
     assert_eq!(resolution.diagnostics().len(), 1);
-    let warning = resolution.diagnostics()[0].as_warning().unwrap();
-    assert_config_warning(
-        warning,
+    let issue = resolution.diagnostics()[0].as_config_source().unwrap();
+    assert_config_source_issue(
+        issue,
         "project",
         "override",
         &invalid_project,
@@ -216,24 +215,15 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
     );
 }
 
-fn assert_config_warning(
-    warning: &WarningProjection,
+fn assert_config_source_issue(
+    issue: &StandardParameterConfigSourceIssue,
     source_level: &str,
     path_origin: &str,
     path: &std::path::Path,
     reason_code: &str,
 ) {
-    let DiagnosticDetails::AdapterConfigSource {
-        source_level: actual_source_level,
-        path_origin: actual_path_origin,
-        path: actual_path,
-        reason_code: actual_reason_code,
-    } = warning.details()
-    else {
-        panic!("expected adapter config source warning details");
-    };
-    assert_eq!(actual_source_level, source_level);
-    assert_eq!(actual_path_origin, path_origin);
-    assert_eq!(actual_path, &path.display().to_string());
-    assert_eq!(actual_reason_code, reason_code);
+    assert_eq!(issue.source_level, source_level);
+    assert_eq!(issue.path_origin, path_origin);
+    assert_eq!(issue.path, path.display().to_string());
+    assert_eq!(issue.reason_code, reason_code);
 }

@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use docnav_diagnostics::{DiagnosticDetails, DiagnosticEffect};
 use docnav_typed_fields::{
     DefaultMetadata, FieldNumericRange, ProcessingId, TypedValue, ValidationReason, ValueKind,
 };
@@ -150,7 +149,7 @@ fn constructed_sources_report_validation_failures_through_diagnostic_handoff() {
 }
 
 #[test]
-fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() {
+fn explicit_config_source_failure_returns_issue_and_continues_resolution() {
     let fields = Params::field_defs().unwrap();
     let missing = temp_path("missing-project-config.json");
     let user_config = temp_file(
@@ -171,17 +170,8 @@ fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() 
         ));
 
     assert_eq!(loaded_project.diagnostics().len(), 1);
-    let warning = loaded_project.diagnostics()[0].as_warning().unwrap();
-    assert_eq!(warning.effect(), DiagnosticEffect::OperationContinued);
-    assert_eq!(
-        warning.details(),
-        &DiagnosticDetails::AdapterConfigSource {
-            source_level: "project".to_owned(),
-            path_origin: "override".to_owned(),
-            path: missing.display().to_string(),
-            reason_code: "missing_override".to_owned(),
-        }
-    );
+    let issue = loaded_project.diagnostics()[0].as_config_source().unwrap();
+    assert_config_source_issue(issue, "project", "override", &missing, "missing_override");
 
     let resolution = StandardParameterPipeline::new(&fields)
         .with_direct_input_processing_id(DIRECT_PROCESSING)
@@ -199,7 +189,7 @@ fn explicit_config_source_skip_returns_warning_event_and_continues_resolution() 
         TypedValue::Integer(300)
     );
     assert_eq!(resolution.diagnostics().len(), 1);
-    assert!(resolution.diagnostics()[0].as_warning().is_some());
+    assert!(resolution.diagnostics()[0].as_config_source().is_some());
 }
 
 #[test]
@@ -216,7 +206,7 @@ fn default_missing_config_source_has_no_diagnostic_event() {
 }
 
 #[test]
-fn invalid_config_sources_are_skipped_with_warning_events() {
+fn invalid_config_sources_are_reported_as_config_source_issues() {
     let invalid_json = temp_file("invalid-config.json", "{invalid");
     let non_object = temp_file("non-object-config.json", "[]");
     let not_file = temp_dir("not-file-config.json");
@@ -240,13 +230,13 @@ fn invalid_config_sources_are_skipped_with_warning_events() {
             not_file,
         ));
 
-    assert_warning_reason(&invalid, "invalid_json");
-    assert_warning_reason(&non_object, "non_object");
-    assert_warning_reason(&not_file, "not_file");
+    assert_config_source_reason(&invalid, "invalid_json");
+    assert_config_source_reason(&non_object, "non_object");
+    assert_config_source_reason(&not_file, "not_file");
 }
 
 #[test]
-fn unreadable_config_source_is_skipped_with_warning_event() {
+fn unreadable_config_source_is_reported_as_config_source_issue() {
     let Some((path, _guard)) = unreadable_file("unreadable-config.json") else {
         return;
     };
@@ -258,7 +248,7 @@ fn unreadable_config_source_is_skipped_with_warning_event() {
             path,
         ));
 
-    assert_warning_reason(&loaded, "unreadable");
+    assert_config_source_reason(&loaded, "unreadable");
 }
 
 #[test]
@@ -392,14 +382,20 @@ fn nested_processed_passthrough_preserves_raw_structure() {
     assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
 }
 
-fn assert_warning_reason(loaded: &LoadedStandardParameterConfigSource, reason_code: &str) {
-    let warning = loaded.diagnostics()[0].as_warning().unwrap();
-    let DiagnosticDetails::AdapterConfigSource {
-        reason_code: actual,
-        ..
-    } = warning.details()
-    else {
-        panic!("expected adapter config source warning details");
-    };
-    assert_eq!(actual, reason_code);
+fn assert_config_source_reason(loaded: &LoadedStandardParameterConfigSource, reason_code: &str) {
+    let issue = loaded.diagnostics()[0].as_config_source().unwrap();
+    assert_eq!(issue.reason_code, reason_code);
+}
+
+fn assert_config_source_issue(
+    issue: &StandardParameterConfigSourceIssue,
+    source_level: &str,
+    path_origin: &str,
+    path: &std::path::Path,
+    reason_code: &str,
+) {
+    assert_eq!(issue.source_level, source_level);
+    assert_eq!(issue.path_origin, path_origin);
+    assert_eq!(issue.path, path.display().to_string());
+    assert_eq!(issue.reason_code, reason_code);
 }

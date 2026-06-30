@@ -26,7 +26,6 @@ export function expectProtocolSuccess(record: CommandRecord, value: unknown, ope
   const envelope = expectJsonObject(record, value, "protocol response is an object");
   expectProtocolEnvelopeFields(record, envelope, operation, true);
   expect(record, Object.hasOwn(envelope, "result"), "protocol success has result");
-  expectNoWarningsField(record, envelope, "protocol-json stdout");
 }
 
 export function expectProtocolFailure(record: CommandRecord, value: unknown, operation: string | null, code: string) {
@@ -35,33 +34,17 @@ export function expectProtocolFailure(record: CommandRecord, value: unknown, ope
   expectProtocolEnvelopeFields(record, envelope, operation, false);
   expect(record, error.code === code, `error code is ${code}`);
   expect(record, Object.hasOwn(error, "details"), "protocol failure has error.details");
-  expectNoWarningsField(record, envelope, "protocol-json stdout");
+  expectPrimaryDiagnosticProjection(record, error, "protocol failure");
+  return error;
 }
 
-export function expectNoWarningsField(record: CommandRecord, value: unknown, label: string) {
-  const object = expectJsonObject(record, value, `${label} is an object`);
-  expect(record, !Object.hasOwn(object, "warnings"), `${label} omits warnings`);
-}
-
-export function expectStructuredWarning(
-  record: CommandRecord,
-  warning: unknown,
-  expectedTokens: readonly string[],
-  label = "CLI argv"
-) {
-  const warningRecord = expectJsonObject(record, warning, `structured warning exists for ${label}`);
-  const details = expectJsonObject(record, warningRecord.details, "CLI argv warning details is an object");
-  const tokens = expectStringArray(record, details.tokens, "CLI argv warning details.tokens is an array");
-  expect(record, warningRecord.id === "cli_argv_ignored", "CLI argv warning id matches");
-  expect(record, warningRecord.effect === "operation_continued", "CLI argv warning effect matches");
-  expect(
-    record,
-    typeof warningRecord.reason === "string" && warningRecord.reason.length > 0,
-    "CLI argv warning reason is nonempty"
-  );
-  for (const token of expectedTokens) {
-    expect(record, tokens.includes(token), `CLI argv warning mentions ${token}`);
-  }
+export function expectReadableFailure(record: CommandRecord, value: unknown, code: string) {
+  const error = expectJsonObject(record, value, "readable failure is an object");
+  expectNoProtocolEnvelope(record, error);
+  expect(record, error.code === code, `readable failure code is ${code}`);
+  expect(record, Object.hasOwn(error, "details"), "readable failure has details");
+  expectPrimaryDiagnosticProjection(record, error, "readable failure");
+  return error;
 }
 
 export function expectNoJsonPayloadInStderr(record: CommandRecord) {
@@ -91,6 +74,15 @@ function expectProtocolEnvelopeFields(record: CommandRecord, envelope: JsonRecor
   expect(record, typeof envelope.request_id === "string" && envelope.request_id.length > 0, "request_id is nonempty");
   expect(record, envelope.operation === operation, `operation is ${operation}`);
   expect(record, envelope.ok === ok, `ok is ${ok}`);
+}
+
+function expectPrimaryDiagnosticProjection(record: CommandRecord, error: JsonRecord, label: string) {
+  expect(record, typeof error.owner === "string" && error.owner.length > 0, `${label} has nonempty owner`);
+  const guidance = expectStringArray(record, error.guidance, `${label} guidance is an array`);
+  expect(record, guidance.length > 0, `${label} guidance is nonempty`);
+  for (const [index, item] of guidance.entries()) {
+    expect(record, item.length > 0, `${label} guidance ${index + 1} is nonempty`);
+  }
 }
 
 function findProtocolEnvelopeKeys(value: unknown, path = "$"): ProtocolEnvelopeKeyLocation[] {

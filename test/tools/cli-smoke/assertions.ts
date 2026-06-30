@@ -10,10 +10,8 @@ export {
   expectObjectArray,
   expectStderrEmpty,
   expectStderrIncludes,
-  expectStderrWarning,
   expectStdoutEmpty,
   expectStdoutIncludes,
-  expectStdoutWarning,
   expectString,
   expectStringArray,
   parseJson
@@ -22,10 +20,9 @@ export {
   containsProtocolResponseEnvelope,
   expectNoJsonPayloadInStderr,
   expectNoProtocolEnvelope,
-  expectNoWarningsField,
   expectProtocolFailure,
   expectProtocolSuccess,
-  expectStructuredWarning,
+  expectReadableFailure,
   looksLikeJson
 } from "./assertions/protocol.ts";
 export {

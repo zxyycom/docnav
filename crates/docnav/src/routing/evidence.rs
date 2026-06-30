@@ -3,15 +3,6 @@ use serde_json::Value;
 
 use docnav_diagnostics::FormatCandidateDetails;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AdapterSelectionWarning {
-    pub adapter_id: String,
-    pub stage: CandidateStage,
-    pub code: String,
-    pub reason: String,
-    pub preselected: bool,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct CandidateEvidence {
     pub adapter_id: String,
@@ -61,18 +52,6 @@ impl CandidateEvidence {
 
     pub(super) fn into_format_candidate_details(self) -> FormatCandidateDetails {
         FormatCandidateDetails::new(self.adapter_id, self.stage.as_str(), self.code)
-    }
-}
-
-impl AdapterSelectionWarning {
-    pub(super) fn candidate_failure(candidate: &CandidateEvidence, preselected: bool) -> Self {
-        Self {
-            adapter_id: candidate.adapter_id.clone(),
-            stage: candidate.stage,
-            code: candidate.code.clone(),
-            reason: candidate.reason.clone(),
-            preselected,
-        }
     }
 }
 

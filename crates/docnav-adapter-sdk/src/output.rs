@@ -210,9 +210,6 @@ fn boundary_diagnostic_record_draft(
         BoundaryDiagnosticCode::FailedToSerialize => DiagnosticRecordDraft::new::<
             typed_codes::boundary::FailedToSerialize,
         >(message, details, source),
-        BoundaryDiagnosticCode::FailedToWriteCliWarning => DiagnosticRecordDraft::new::<
-            typed_codes::boundary::FailedToWriteCliWarning,
-        >(message, details, source),
         BoundaryDiagnosticCode::FailedToWriteJson => DiagnosticRecordDraft::new::<
             typed_codes::boundary::FailedToWriteJson,
         >(message, details, source),

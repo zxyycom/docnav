@@ -2,7 +2,9 @@ use docnav_protocol::Operation;
 use serde_json::Value;
 
 use super::super::native_options::NativeOptionSpec;
-use super::loose::{is_flag, known_value_flag, operation_uses_flag, split_equals, KnownValueFlag};
+use super::boundaries::{
+    is_flag, known_value_flag, operation_uses_flag, split_equals, KnownValueFlag,
+};
 use super::spec::{flags, input_errors, pagination_values, parse_output, parse_protocol_output};
 
 pub(super) fn protocol_only_parse_error(args: &[String]) -> String {

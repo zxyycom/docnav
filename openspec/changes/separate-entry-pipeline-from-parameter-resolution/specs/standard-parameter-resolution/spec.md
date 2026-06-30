@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Entry parameter source resolution has no lifecycle ownership
-The parameter resolver MUST be documented and implemented as entry parameter source resolution. It MUST own source construction, source priority, typed validation, source info, diagnostic handoff, passthrough handoff, and operation argument binding metadata. Entry lifecycle classification, transport decode, command help, handler dispatch, request construction policy, output mode rendering, and exit code policy MUST remain with entry owners.
+The parameter resolver MUST be documented and implemented as entry parameter source resolution. It MUST own source construction, source priority, typed validation, source info, diagnostic handoff, explicit adapter native option source handling, passthrough handoff, and operation argument binding metadata. Entry lifecycle classification, transport decode, command help, handler dispatch, request construction policy, output mode rendering, and exit code policy MUST remain with entry owners.
 
 #### Scenario: Resolver consumes input views from entry owners
 - **WHEN** core CLI or adapter SDK has classified an invocation as a document operation or adapter invoke
@@ -40,8 +40,13 @@ Entry parameter source resolution MUST NOT mutate raw CLI argv tokens, raw decod
 - **THEN** entry parameter source resolution may return a derived typed runtime value from default
 - **THEN** no raw input object is modified to include that default
 
-#### Scenario: Passthrough does not rewrite caller input
-- **WHEN** direct input contains unmapped fields
-- **THEN** entry parameter source resolution leaves those fields outside typed validation
-- **THEN** passthrough handoff may describe retained, discarded, or delegated input
+#### Scenario: Adapter native options require explicit owner sources
+- **WHEN** an adapter owner declares native option source descriptors for a document operation
+- **THEN** entry parameter source resolution may project only those declared keys as adapter-native source values
+- **THEN** undeclared option keys remain unmapped public input for owner-boundary handling
+
+#### Scenario: Unmapped public input does not become implicit passthrough
+- **WHEN** direct input contains public fields that are not mapped to a standard parameter, registered config path, or owner-declared adapter native option source
+- **THEN** entry parameter source resolution returns an unmapped-input handoff to the entry owner
+- **THEN** the entry owner reports a blocking input diagnostic instead of delegating the input implicitly
 - **THEN** the resolver does not delete or rewrite the caller-owned raw input

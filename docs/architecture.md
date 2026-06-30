@@ -31,7 +31,7 @@ Docnav 分为两个语义层：
 
 选择机器可读入口表示调用方优先需要稳定、可预测、便于解析的输出；选择阅读入口表示调用方优先需要完成一次可继续的阅读链路。具体 stdout/stderr 通道、JSON shape 和错误包装由 [输出模式](output.md) 与 [原始协议](protocol.md) 定义。
 
-统一执行管线中的可恢复候选失败不应立即中断整个链路；`docnav` 应跳过失败候选、继续寻找可用 adapter，并把中间失败压入错误通道、保留为候选证据，交由输出层呈现。兜底不能静默吞错；所有被跳过的失败都必须保留 adapter id、阶段和原因。
+统一执行管线中的 automatic discovery 候选失败不应立即中断整个链路；`docnav` 应跳过失败候选、继续寻找可用 adapter，并把中间失败保留为 internal discovery state。兜底不能静默吞错；全部候选失败时必须返回 primary failure，并在从属 details 中保留 adapter id、阶段和稳定原因。
 
 ## 接入层
 
@@ -76,12 +76,12 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 - `docnav-protocol`：定义原始 invoke 协议、page、错误投影和稳定字段；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest/probe typed contract helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
 - `docnav-readable`：提供 readable payload/value helper、仓库内 renderer config、`ReadableViewKind`、readable-view block 渲染器和 conformance vector 类型。readable-view block framing 由本库拥有。
 - `docnav-adapter-sdk`：提供 invoke I/O、adapter 直接 CLI 的通用参数解析、标准参数/typed-field processing、命令分发、输出分流、错误输出投影和通用进程行为；可承接 format-neutral paging helper。格式 adapter 仍拥有 parser、ref、display semantics 和格式原生 options。
-- `docnav-json-io`：低层 JSON IO helper，位于 document output 编排下层，只负责 JSON value serialization、newline writing 和 serialization/write failure plumbing；不拥有 schema、protocol/readable wrapper、warning、output mode 或 exit code policy。
+- `docnav-json-io`：低层 JSON IO helper，位于 document output 编排下层，只负责 JSON value serialization、newline writing 和 serialization/write failure plumbing；不拥有 schema、protocol/readable wrapper、diagnostic projection、output mode 或 exit code policy。
 - `docnav-output`：document operation 输出编排和致命诊断投影 owner，位于 `docnav-readable` 和 `docnav-json-io` 之上、`docnav` core 和 `docnav-adapter-sdk` 之下；只承诺 `readable-view`、`readable-json` 和 `protocol-json` 的文档输出形状，help、version、manifest 或 probe 的成功输出仍由各命令 owner 定义。
 - `docnav-diagnostics`：错误通道 owner，定义 `DiagnosticStack`、`DiagnosticCode`、错误规则、警告规则、`DiagnosticId`、mark 生命周期和 LIFO/drain 语义；详细规则见 [错误通道](diagnostics.md)。本 crate 保存问题记录、机械身份和 code 规则集合，不拥有 surface output format 或 exit code enum。
-- `docnav-cli-args`：直接 CLI loose argv token scanning owner；输入由调用方提供 command context 和 known value flag metadata。业务参数解析、默认值合并、request 构造和最终 exit behavior 仍由调用方负责；该 crate 不适用于 adapter `invoke` stdin JSON。
-- `docnav-typed-fields`：字段级事实源 owner，承接 field identity、processing strategy declaration、processing input kind guard、processing build、value kind、字段级 constraints、static default metadata、validation attribution、schema metadata view 和 duplicate identity guard。`FieldDefSet` 聚合通用 typed field definitions，并提供 metadata 与 input-kind guard；input-specific helper 负责把具体输入格式映射到 `FieldDefSet` 的 metadata/validation。当前 JSON helper 承接 JSON path structured path、`serde_json::Value` extraction、unknown-field detection 和 JSON passthrough processing result。来源合并、CLI argv parsing、operation binding、manifest/probe policy、protocol envelope、readable output、passthrough handoff policy 和完整 JSON Schema document generation 仍由对应 consumer owner 定义。
-- `docnav-standard-parameters`：标准参数解析核心 owner，规则见 [标准参数](standard-parameters.md)。该 crate 消费 `docnav-typed-fields` metadata 和 validation，承接标准参数 registration、source kind/source info、来源合并、默认值、diagnostics、passthrough handoff 和 operation argument binding metadata；core、SDK 和 adapter `invoke` 的 consumer migration、request construction、输出和错误映射仍由对应 owner 处理。
+- `docnav-cli-args`：直接 CLI strict argv token classification owner；输入由调用方提供 command context 和 known value flag metadata。业务参数解析、默认值合并、request 构造和最终 exit behavior 仍由调用方负责；该 crate 不适用于 adapter `invoke` stdin JSON。
+- `docnav-typed-fields`：字段级事实源 owner，承接 field identity、processing strategy declaration、processing input kind guard、processing build、value kind、字段级 constraints、static default metadata、validation attribution、schema metadata view 和 duplicate identity guard。`FieldDefSet` 聚合通用 typed field definitions，并提供 metadata 与 input-kind guard；input-specific helper 负责把具体输入格式映射到 `FieldDefSet` 的 metadata/validation。当前 JSON helper 承接 JSON path structured path、`serde_json::Value` extraction、unknown-field detection 和 caller processing result。来源合并、CLI argv parsing、operation binding、manifest/probe policy、protocol envelope、readable output、native option handoff policy 和完整 JSON Schema document generation 仍由对应 consumer owner 定义。
+- `docnav-standard-parameters`：标准参数解析核心 owner，规则见 [标准参数](standard-parameters.md)。该 crate 消费 `docnav-typed-fields` metadata 和 validation，承接标准参数 registration、source kind/source info、来源合并、默认值、diagnostics、native option handoff 和 operation argument binding metadata；core、SDK 和 adapter `invoke` 的 consumer migration、request construction、输出和错误映射仍由对应 owner 处理。
 
 共享库不定义格式展示字段、格式原生 options 语义、ref 策略、adapter routing、项目配置、process runtime、path display normalization 或跨格式 outline 模型。新增共享 crate 或调整共享库边界时，先同步 owner 文档、schema、examples 和 testing 文档中的边界与验收说明。
 
@@ -101,27 +101,30 @@ user / agent / skill / prompt
 
 ## 标准参数边界
 
-标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、透传和校验由 [标准参数](standard-parameters.md) 定义。架构文档只记录跨制品边界：
+标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、owner-scoped native option source 和校验由 [标准参数](standard-parameters.md) 定义。架构文档只记录跨制品边界：
 
 - `docnav` 可以消费 core 标准参数结果做 adapter 选择、document context、request planning 和输出模式选择。
 - Adapter direct CLI 可以消费 SDK 标准参数结果做 request construction 和 operation build。
-- Adapter `invoke` 是独立入口；request `arguments` 是该入口的显式输入，并按 adapter 入口策略处理配置、默认值和未映射字段。
-- 格式原生 options 只由 adapter direct CLI、adapter `invoke` request arguments 或对应 registration 声明的来源提供；`docnav` 不从 manifest、配置或隐式默认值合成格式专属 options。
+- Adapter `invoke` 是独立入口；request `arguments` 是该入口的显式输入。未知 envelope 字段和 malformed request shape 停在 protocol direct input boundary；envelope 合法后，已注册参数、配置、默认值和未映射字段按标准参数与 adapter owner 规则处理。
+- 显式 public input 默认 strict：未知 argv、多余 positional、当前 operation 不适用的 flag、未映射 request/config 字段和 undeclared native option 不进入业务执行，入口 owner 必须把它们映射为输入或配置诊断。
+- 格式原生 options 只由 adapter direct CLI、adapter `invoke` request arguments、adapter 配置 `options` object 或对应 registration 声明的 owner-scoped source 提供；`docnav` 不从 manifest、core 配置或隐式默认值合成格式专属 options。
 - 配置不得改变 protocol envelope、readable JSON 字段或 `DiagnosticCode`；`DiagnosticCode` 由 [错误通道](diagnostics.md) 拥有，protocol/readable 字段由对应 surface owner 文档定义。
 
 ## Adapter 选择
 
-`docnav` 对所有文档操作先确定一个预选 adapter id，再用统一遍历函数兜底：
+`docnav` 对所有文档操作先区分 declared adapter id 和 automatic discovery：
 
-1. 若调用方传入 `--adapter <adapter-id>`，该 id 是预选 adapter。
-2. 若调用方未传入 `--adapter`，项目配置 `defaults.adapter` 优先于用户配置 `defaults.adapter` 作为预选 adapter。
-3. 若调用方和配置都未指定 adapter，`docnav` 使用 core 简易规则推断一个预选 adapter id，例如根据 path 扩展名匹配已注册 adapter 的 manifest；无法推断时预选为空。
-4. 若预选 adapter 存在，`docnav` 先解析该 adapter，校验 manifest schema、协议字段 shape 并执行 probe 校验。probe 成功则选中，失败时保留失败证据。
-5. 若预选 adapter 缺失、无法解析、字段不对齐或 probe 失败，`docnav` 调用 registry 遍历函数。该函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项，返回第一个 probe 成功的 adapter。
+1. 若调用方传入 `--adapter <adapter-id>`，该 id 是 declared adapter id。
+2. 若调用方未传入 `--adapter`，项目配置 `defaults.adapter` 优先于用户配置 `defaults.adapter` 作为 declared adapter id。
+3. 若存在 declared adapter id，`docnav` 只校验该 adapter，校验 manifest schema、协议字段 shape 并执行 probe 校验。成功则选中，失败则返回 adapter selection diagnostic。
+4. 若调用方和配置都未指定 adapter，`docnav` 进入 automatic discovery flow，可以先用 core 简易规则推断候选 adapter id，例如根据 path 扩展名匹配已注册 adapter 的 manifest；无法推断时候选为空。
+5. Automatic discovery 中的候选缺失、无法解析、字段不对齐或 probe 失败时，`docnav` 记录候选失败证据并调用 registry 遍历函数。该函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项，返回第一个 probe 成功的 adapter。
 
-所有选择都以 adapter probe 结果为准，不能只凭 `--adapter` 或扩展名静默选中。候选 adapter 的 manifest 或 probe 契约失败属于可恢复的选择失败：`docnav` 记录候选失败证据并继续遍历，不因单个候选字段缺失、类型不符、schema 不匹配、语义校验失败或进程不可用而直接停止选择流程。`supported: false` 也是普通候选失败证据。
+所有选择都以 adapter probe 结果为准，不能只凭 `--adapter`、配置或扩展名静默选中。Automatic discovery 中候选 adapter 的 manifest 或 probe 契约失败属于可恢复的选择失败：`docnav` 记录候选失败证据并继续遍历，不因单个候选字段缺失、类型不符、schema 不匹配、语义校验失败或进程不可用而直接停止选择流程。`supported: false` 也是普通候选失败证据。
 
-若后续候选成功，选择结果必须携带前面累积的候选证据，输出层按 [输出模式](output.md) 的规则呈现为 warning。全部候选失败时返回 `FORMAT_UNKNOWN`，protocol error details 使用候选摘要表达 adapter、阶段和稳定原因码；候选排障细节由 warning、stderr 诊断或内部错误通道按各自契约承载。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
+若后续候选成功，前面累积的候选失败只保留为 internal discovery state，成功 document output 不投影这些候选失败。全部候选失败时返回 `FORMAT_UNKNOWN`，primary `DiagnosticRecord.details.candidate_failures` 或 protocol error details 使用候选摘要表达 adapter、阶段和稳定原因码；候选排障细节由 stderr 诊断或内部错误通道按各自契约承载。
+
+显式 `--adapter <adapter-id>` 或配置提供的 adapter id 表达 caller intent。该 adapter 缺失、manifest invalid、probe 失败或 capability 不支持时，`docnav` 返回 adapter selection diagnostic，不把该显式失败伪装成 automatic discovery 成功路径。只有调用方没有显式声明 adapter id 时，候选遍历才是 internal discovery flow。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
 
 ## 项目根与路径
 

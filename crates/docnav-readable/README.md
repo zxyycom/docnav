@@ -69,7 +69,7 @@ The following are **NOT** part of the stable semantic contract and MUST NOT be a
 ```jsonc
 {
   "description": "Human-readable description of what this vector tests",
-  "view_kind": "outline|read|find|info|error|warning",
+  "view_kind": "outline|read|find|info|error",
   "config_override": null,                // or { "blocks": ["/pointer1", …] }
   "expected_failure": null,               // or { "error_id": "…", "message_contains": "…" }
   "input": { /* JSON value to render */ },
@@ -100,7 +100,7 @@ The following are **NOT** part of the stable semantic contract and MUST NOT be a
 
 ## Architecture boundary
 
-This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, warning placement, adapter routing, document parsing, or CLI wiring. Those responsibilities stay with their existing crates.
+This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, adapter routing, document parsing, or CLI wiring. Those responsibilities stay with their existing crates.
 
 ## Testing
 

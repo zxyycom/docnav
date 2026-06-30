@@ -29,14 +29,12 @@
 
 2. structuredContent 使用 readable schema。
    - 每个 tool 声明对应 operation 的精简 outputSchema。
-   - structuredContent 不包含 `protocol_version`、`request_id`、`operation` 或 `ok`。
+   - successful structuredContent 只映射 readable success payload 字段，不包含 `protocol_version`、`request_id`、`operation` 或 `ok`。
    - structuredContent 从 `docnav --output readable-json` 的 stdout 解析得到，不解析默认人类文本。
-   - 若 `docnav` readable JSON 包含 `warnings`，structuredContent 保留 `warnings` 字段。
 
-3. TextContent 承载精简阅读文本和非致命 warning。
+3. TextContent 承载精简阅读文本。
    - TextContent 文本渲染消费 `replace-text-with-readable-view` 的 readable-view contract、仓库 renderer config 和 conformance vectors。
    - Bridge 从核心 CLI readable output 获得结构化结果；Markdown parsing 和 block 字段选择继续由 owning layer 负责。
-   - 若 `docnav` readable JSON 包含 `warnings`，TextContent 在正常阅读文本后追加 warning 文本。
    - 机器稳定解析仍必须使用 `docnav --output protocol-json` 或 adapter invoke。
 
 4. MCP adapter 参数原样映射为 `docnav --adapter`。
@@ -44,16 +42,16 @@
    - 失败处理和候选继续遍历由核心 CLI 完成。
 
 5. 错误返回保留阅读语义。
-   - MCP structuredContent 保留必要 code/details。
+   - MCP structuredContent 和 TextContent 映射 readable error 中的 primary `DiagnosticRecord`，至少保留 code/message/owner，并在存在时保留 guidance/details。
    - 不复制完整 protocol 错误 envelope。
-   - 子进程退出码为 0 时，stderr 诊断不自动变成 MCP 错误；bridge 使用 readable JSON 的 `warnings` 表达非致命诊断，structuredContent 仍只来自 stdout readable JSON。
+   - 子进程退出码为 0 时，stderr 中的 owner-scoped status 不自动变成 MCP 错误；structuredContent 仍只来自 stdout readable JSON。
 
 ## Risks / Trade-offs
 
 - [子进程调用开销] → v0 优先保证职责边界和一致性，性能优化后续评估。
 - [schema 打包漂移] → tool outputSchema 从仓库 schema 生成或同步验证，禁止依赖远程 URL。
 - [MCP 文本模板影响字段] → 配置只能影响 TextContent 文案，不改变 structuredContent shape。
-- [stderr warning 被误判为失败] → 以 `docnav` 退出码和 stdout readable JSON payload 为准；成功退出时 stderr 非空不升级为 MCP 错误，payload 中的 warnings 进入 TextContent/structuredContent。
+- [stderr status 被误判为失败] → 以 `docnav` 退出码和 stdout readable JSON payload 为准；成功退出时 stderr 非空不升级为 MCP 错误。
 
 ## Migration Plan
 
@@ -63,4 +61,4 @@
 
 ## Open Questions
 
-- MCP SDK 具体版本在实现时按当前 Node.js 生态选择，但 tool schema 和 stdio 行为必须满足主规范。
+无未回答 contract 开放问题。MCP SDK 具体版本在实现时按当前 Node.js 生态选择，但 tool schema 和 stdio 行为必须满足主规范。

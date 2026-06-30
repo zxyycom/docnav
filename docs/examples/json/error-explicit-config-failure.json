@@ -1,0 +1,31 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-explicit-config",
+  "operation": "outline",
+  "ok": false,
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "显式配置路径不可用。",
+    "owner": "adapter_config",
+    "location": {
+      "argument": "project_config_path"
+    },
+    "received": "missing.json",
+    "expected": "a readable JSON object config file",
+    "details": {
+      "field": "project_config_path",
+      "reason": "missing_override",
+      "config_issues": [
+        {
+          "source_level": "project",
+          "path_origin": "override",
+          "path": "missing.json",
+          "reason_code": "missing_override"
+        }
+      ]
+    },
+    "guidance": [
+      "传入存在且可读取的 JSON object 配置文件，或删除该显式配置路径参数。"
+    ]
+  }
+}

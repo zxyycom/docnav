@@ -76,11 +76,6 @@ fn conformance_12_block_marker_in_body() {
 }
 
 #[test]
-fn conformance_13_warning() {
-    run_vector(&load_vector!("fixtures/conformance/13_warning.json"));
-}
-
-#[test]
 fn conformance_14_readable_error() {
     run_vector(&load_vector!("fixtures/conformance/14_readable_error.json"));
 }

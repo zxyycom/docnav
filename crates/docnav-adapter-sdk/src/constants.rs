@@ -17,7 +17,6 @@ pub(crate) mod diagnostics {
     pub const ADAPTER_ERROR_EXIT_CODE_CANNOT_BE: &str = "adapter error exit code cannot be";
     pub const FAILED_TO_READ_REQUEST: &str = "failed to read request";
     pub const FAILED_TO_SERIALIZE: &str = "failed to serialize";
-    pub const FAILED_TO_WRITE_CLI_WARNING: &str = "failed to write CLI warning";
     pub const FAILED_TO_WRITE_JSON: &str = "failed to write JSON";
     pub const FAILED_TO_WRITE_PROTOCOL_RESPONSE: &str = "failed to write protocol response";
     pub const FAILED_TO_WRITE_READABLE_VIEW: &str = "failed to write readable-view output";

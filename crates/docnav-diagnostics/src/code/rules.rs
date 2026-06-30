@@ -1,14 +1,13 @@
 use crate::details::DiagnosticDetailsRule;
 
 use super::details::{
-    ADAPTER_CANDIDATE_FIELDS, ADAPTER_CONFIG_FIELDS, ADAPTER_REASON_FIELDS, BOUNDARY_FIELDS,
-    CAPABILITY_ADAPTER_FIELDS, CLI_ARGV_FIELDS, FIELD_REASON_FIELDS, FORMAT_AMBIGUOUS_FIELDS,
-    FORMAT_UNKNOWN_FIELDS, INTERNAL_FIELDS, PATH_ENCODING_FIELDS, PATH_FIELDS, PATH_REASON_FIELDS,
-    REF_CANDIDATE_FIELDS, REF_FIELDS, REF_REASON_FIELDS,
+    ADAPTER_REASON_FIELDS, BOUNDARY_FIELDS, CAPABILITY_ADAPTER_FIELDS, FIELD_REASON_FIELDS,
+    FORMAT_AMBIGUOUS_FIELDS, FORMAT_UNKNOWN_FIELDS, INTERNAL_FIELDS, PATH_ENCODING_FIELDS,
+    PATH_FIELDS, PATH_REASON_FIELDS, REF_CANDIDATE_FIELDS, REF_FIELDS, REF_REASON_FIELDS,
 };
 use super::{
     BoundaryDiagnosticCode, DiagnosticCategory, DiagnosticEffect, DiagnosticSeverity,
-    ProtocolDiagnosticCode, ReadableWarningDiagnosticCode,
+    ProtocolDiagnosticCode,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -17,14 +16,6 @@ pub(super) struct ProtocolDiagnosticRule {
     pub(super) protocol_code: &'static str,
     pub(super) category: DiagnosticCategory,
     pub(super) severity: DiagnosticSeverity,
-    pub(super) effect: DiagnosticEffect,
-    pub(super) details: DiagnosticDetailsRule,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct ReadableWarningDiagnosticRule {
-    pub(super) code: ReadableWarningDiagnosticCode,
-    pub(super) warning_id: &'static str,
     pub(super) effect: DiagnosticEffect,
     pub(super) details: DiagnosticDetailsRule,
 }
@@ -48,21 +39,6 @@ macro_rules! protocol_rules {
                     protocol_code: $protocol_code,
                     category: DiagnosticCategory::$category,
                     severity: DiagnosticSeverity::$severity,
-                    effect: DiagnosticEffect::$effect,
-                    details: DiagnosticDetailsRule::exact($fields),
-                },
-            )+
-        ]
-    };
-}
-
-macro_rules! readable_warning_rules {
-    ($($code:ident => ($warning_id:literal, $effect:ident, $fields:ident)),+ $(,)?) => {
-        [
-            $(
-                ReadableWarningDiagnosticRule {
-                    code: ReadableWarningDiagnosticCode::$code,
-                    warning_id: $warning_id,
                     effect: DiagnosticEffect::$effect,
                     details: DiagnosticDetailsRule::exact($fields),
                 },
@@ -104,17 +80,10 @@ pub(super) const PROTOCOL_RULES: [ProtocolDiagnosticRule; 13] = protocol_rules![
     InternalError => ("INTERNAL_ERROR", Internal, Fatal, InternalFailure, INTERNAL_FIELDS),
 ];
 
-pub(super) const READABLE_WARNING_RULES: [ReadableWarningDiagnosticRule; 3] = readable_warning_rules![
-    CliArgvIgnored => ("cli_argv_ignored", OperationContinued, CLI_ARGV_FIELDS),
-    AdapterCandidateFailure => ("adapter_candidate_failure", CandidateSkipped, ADAPTER_CANDIDATE_FIELDS),
-    AdapterConfigSourceSkipped => ("adapter_config_source_skipped", OperationContinued, ADAPTER_CONFIG_FIELDS),
-];
-
-pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 19] = boundary_rules![
+pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 18] = boundary_rules![
     AdapterErrorExitCodeCannotBe => ("adapter_error_exit_code_cannot_be", Internal, Error, InternalFailure),
     FailedToReadRequest => ("failed_to_read_request", AdapterBoundary, Error, AdapterBoundaryFailed),
     FailedToSerialize => ("failed_to_serialize", Internal, Fatal, InternalFailure),
-    FailedToWriteCliWarning => ("failed_to_write_cli_warning", Internal, Fatal, InternalFailure),
     FailedToWriteJson => ("failed_to_write_json", Internal, Fatal, InternalFailure),
     FailedToWriteProtocolResponse => ("failed_to_write_protocol_response", Internal, Fatal, InternalFailure),
     FailedToWriteReadableView => ("failed_to_write_readable_view", Internal, Fatal, InternalFailure),
@@ -134,10 +103,8 @@ pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 19] = boundary_rules![
 
 #[cfg(test)]
 mod tests {
-    use super::{BOUNDARY_RULES, PROTOCOL_RULES, READABLE_WARNING_RULES};
-    use crate::code::{
-        BoundaryDiagnosticCode, ProtocolDiagnosticCode, ReadableWarningDiagnosticCode,
-    };
+    use super::{BOUNDARY_RULES, PROTOCOL_RULES};
+    use crate::code::{BoundaryDiagnosticCode, ProtocolDiagnosticCode};
 
     #[test]
     fn diagnostic_rule_tables_follow_enum_order() {
@@ -146,14 +113,6 @@ mod tests {
             ProtocolDiagnosticCode::InternalError as usize + 1
         );
         for (index, rule) in PROTOCOL_RULES.iter().enumerate() {
-            assert_eq!(rule.code as usize, index, "{:?}", rule.code);
-        }
-
-        assert_eq!(
-            READABLE_WARNING_RULES.len(),
-            ReadableWarningDiagnosticCode::AdapterConfigSourceSkipped as usize + 1
-        );
-        for (index, rule) in READABLE_WARNING_RULES.iter().enumerate() {
             assert_eq!(rule.code as usize, index, "{:?}", rule.code);
         }
 

@@ -6,6 +6,10 @@
   "input": {
     "code": "PARSE_ERROR",
     "error": "Failed to parse Markdown: unexpected token at line 42.",
+    "owner": "markdown_parser",
+    "location": {"line": 42},
+    "received": "```",
+    "expected": "a closed fenced code block",
     "details": {"line": 42, "token": "```"},
     "guidance": [
       "Verify the document is valid Markdown.",
@@ -16,6 +20,8 @@
   "assertions": [
     {"type": "block", "pointer": "/error", "payload_contains": "Failed to parse Markdown"},
     {"type": "header_field", "pointer": "/code", "value": "PARSE_ERROR"},
+    {"type": "header_field", "pointer": "/owner", "value": "markdown_parser"},
+    {"type": "header_contains", "text": "\"location\":"},
     {"type": "header_contains", "text": "\"guidance\": ["},
     {"type": "header_contains", "text": "Verify the document is valid Markdown"},
     {"type": "header_contains", "text": "Check for unclosed fenced code blocks"},

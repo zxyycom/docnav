@@ -1,4 +1,4 @@
-use docnav_cli_args::{scan_loose_args, LooseArgScan};
+use docnav_cli_args::{scan_arg_boundaries, ArgBoundaryScan};
 
 use crate::error::{AppError, AppResult};
 
@@ -7,9 +7,9 @@ use super::super::command_model::{
 };
 use super::super::flags;
 use super::argument_helpers::{
-    clap_argv, is_flag, known_value_flag, loose_value_flags,
+    boundary_value_flags, clap_argv, error_from_rejected_arg, is_flag, known_value_flag,
     missing_value_error as scan_missing_value_error, optional_explicit_string, parse_operation,
-    required_string, split_equals, warning_from_ignored_arg, ValueFlag,
+    required_string, split_equals, ValueFlag,
 };
 use super::{
     arg_ids, command_names, config_get_command, config_list_command, config_set_command,
@@ -42,13 +42,12 @@ fn parse_config_get(args: &[String]) -> AppResult<ParsedCli> {
         .try_get_matches_from(clap_argv(command_names::CONFIG_GET, parsed.clap_args))
         .map_err(|_| config_get_error(args))?;
     let key = required_string(&matches, arg_ids::KEY, "key")?;
-    Ok(ParsedCli::new(
-        CliCommand::Config(ConfigCommand::Get(ConfigGet {
+    Ok(ParsedCli::new(CliCommand::Config(ConfigCommand::Get(
+        ConfigGet {
             key,
             user: matches.get_flag(arg_ids::USER),
-        })),
-        parsed.warnings,
-    ))
+        },
+    ))))
 }
 
 fn parse_config_set(args: &[String]) -> AppResult<ParsedCli> {
@@ -58,14 +57,13 @@ fn parse_config_set(args: &[String]) -> AppResult<ParsedCli> {
         .map_err(|_| config_set_error(args))?;
     let key = required_string(&matches, arg_ids::KEY, "key")?;
     let value = required_string(&matches, arg_ids::VALUE, "value")?;
-    Ok(ParsedCli::new(
-        CliCommand::Config(ConfigCommand::Set(ConfigSet {
+    Ok(ParsedCli::new(CliCommand::Config(ConfigCommand::Set(
+        ConfigSet {
             key,
             value,
             user: matches.get_flag(arg_ids::USER),
-        })),
-        parsed.warnings,
-    ))
+        },
+    ))))
 }
 
 fn parse_config_unset(args: &[String]) -> AppResult<ParsedCli> {
@@ -74,13 +72,12 @@ fn parse_config_unset(args: &[String]) -> AppResult<ParsedCli> {
         .try_get_matches_from(clap_argv(command_names::CONFIG_UNSET, parsed.clap_args))
         .map_err(|_| config_unset_error(args))?;
     let key = required_string(&matches, arg_ids::KEY, "key")?;
-    Ok(ParsedCli::new(
-        CliCommand::Config(ConfigCommand::Unset(ConfigUnset {
+    Ok(ParsedCli::new(CliCommand::Config(ConfigCommand::Unset(
+        ConfigUnset {
             key,
             user: matches.get_flag(arg_ids::USER),
-        })),
-        parsed.warnings,
-    ))
+        },
+    ))))
 }
 
 fn parse_config_list(args: &[String]) -> AppResult<ParsedCli> {
@@ -93,14 +90,13 @@ fn parse_config_list(args: &[String]) -> AppResult<ParsedCli> {
         .map(|raw| parse_operation(&raw))
         .transpose()?;
 
-    Ok(ParsedCli::new(
-        CliCommand::Config(ConfigCommand::List(ConfigList {
+    Ok(ParsedCli::new(CliCommand::Config(ConfigCommand::List(
+        ConfigList {
             user: matches.get_flag(arg_ids::USER),
             path,
             operation,
-        })),
-        parsed.warnings,
-    ))
+        },
+    ))))
 }
 
 #[derive(Clone, Copy)]
@@ -111,7 +107,6 @@ enum ConfigFlagUsage {
 
 struct ParsedConfigCommon {
     clap_args: Vec<String>,
-    warnings: Vec<super::super::warning::CliWarning>,
 }
 
 fn collect_config_args(
@@ -121,7 +116,7 @@ fn collect_config_args(
     expected_positionals: usize,
 ) -> AppResult<ParsedConfigCommon> {
     let list_has_path = matches!(usage, ConfigFlagUsage::PathContext) && has_path_flag(args);
-    let known_value_flags = loose_value_flags(|flag| {
+    let known_value_flags = boundary_value_flags(|flag| {
         matches!(
             (usage, flag),
             (ConfigFlagUsage::PathContext, ValueFlag::Path)
@@ -129,20 +124,19 @@ fn collect_config_args(
                     if list_has_path
         )
     });
-    let scan = scan_loose_args(
+    let scan = scan_arg_boundaries(
         args,
-        &LooseArgScan::new(command, expected_positionals, &known_value_flags)
+        &ArgBoundaryScan::new(command, expected_positionals, &known_value_flags)
             .with_known_switch_flags(&[flags::USER]),
     )
     .map_err(scan_missing_value_error)?;
 
+    if let Some(rejected) = scan.rejected.into_iter().next() {
+        return Err(error_from_rejected_arg(rejected));
+    }
+
     Ok(ParsedConfigCommon {
         clap_args: scan.retained_args,
-        warnings: scan
-            .ignored
-            .into_iter()
-            .map(warning_from_ignored_arg)
-            .collect(),
     })
 }
 

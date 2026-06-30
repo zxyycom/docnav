@@ -17,9 +17,6 @@
         "$ref": "readable-common.schema.json#/$defs/capability"
       },
       "uniqueItems": true
-    },
-    "warnings": {
-      "$ref": "readable-common.schema.json#/$defs/warnings"
     }
   },
   "additionalProperties": false

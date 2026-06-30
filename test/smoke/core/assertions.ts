@@ -16,25 +16,6 @@ export function expectFormatCandidate(record: CommandRecord, candidate: unknown,
   }
 }
 
-export function expectCandidateWarning(record: CommandRecord, warning: unknown, expected: Record<string, unknown>) {
-  const warningRecord = isRecord(warning) ? warning : {};
-  const details = isRecord(warningRecord.details) ? warningRecord.details : {};
-  expect(record, isRecord(warning), `candidate warning exists for ${String(expected.adapter_id)}`);
-  for (const key of ["id", "reason", "effect", "details"]) {
-    expect(record, Object.hasOwn(warningRecord, key), `candidate warning has ${key}`);
-  }
-  expect(record, warningRecord.id === "adapter_candidate_failure", "candidate warning id matches");
-  expect(record, warningRecord.effect === "candidate_skipped", "candidate warning effect matches");
-  expect(
-    record,
-    typeof warningRecord.reason === "string" && warningRecord.reason.length > 0,
-    "candidate warning reason is nonempty"
-  );
-  for (const [key, value] of Object.entries(expected)) {
-    expect(record, details[key] === value, `candidate warning details.${key} is ${String(value)}`);
-  }
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

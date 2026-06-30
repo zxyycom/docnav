@@ -1,0 +1,29 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-cli-inapplicable-flag",
+  "operation": "info",
+  "ok": false,
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "参数不适用于当前 operation。",
+    "owner": "core_cli",
+    "location": {
+      "argv_index": 3
+    },
+    "received": "--ref",
+    "expected": "an option accepted by info",
+    "details": {
+      "field": "argv[3]",
+      "reason": "operation_inapplicable_argument",
+      "field_issues": [
+        {
+          "field": "argv[3]",
+          "reason": "operation_inapplicable_argument"
+        }
+      ]
+    },
+    "guidance": [
+      "删除 --ref；只有 read operation 接受 ref 输入。"
+    ]
+  }
+}

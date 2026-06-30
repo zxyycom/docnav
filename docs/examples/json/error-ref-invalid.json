@@ -6,6 +6,12 @@
   "error": {
     "code": "REF_INVALID",
     "message": "ref 不符合当前 adapter 的 ref 格式要求。",
+    "owner": "markdown_adapter",
+    "location": {
+      "argument": "ref"
+    },
+    "received": "bad:ref",
+    "expected": "Markdown heading ref or doc:full",
     "details": {
       "ref": "bad:ref",
       "reason": "unrecognized ref grammar"

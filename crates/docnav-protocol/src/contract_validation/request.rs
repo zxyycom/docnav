@@ -40,37 +40,30 @@ pub(crate) fn validate_protocol_request_contract_value(
     );
 
     match operation_name(value) {
-        Some("outline") => validate_field_set(
-            schema_names::PROTOCOL_REQUEST,
-            request_outline_argument_fields,
-            value,
-            &[],
-            &mut errors,
-        ),
-        Some("read") => validate_field_set(
-            schema_names::PROTOCOL_REQUEST,
-            request_read_argument_fields,
-            value,
-            &[],
-            &mut errors,
-        ),
-        Some("find") => validate_field_set(
-            schema_names::PROTOCOL_REQUEST,
-            request_find_argument_fields,
-            value,
-            &[],
-            &mut errors,
-        ),
-        Some("info") => validate_field_set(
-            schema_names::PROTOCOL_REQUEST,
-            request_info_argument_fields,
-            value,
-            &[],
-            &mut errors,
-        ),
+        Some("outline") => {
+            validate_argument_fields(value, request_outline_argument_fields, &mut errors)
+        }
+        Some("read") => validate_argument_fields(value, request_read_argument_fields, &mut errors),
+        Some("find") => validate_argument_fields(value, request_find_argument_fields, &mut errors),
+        Some("info") => validate_argument_fields(value, request_info_argument_fields, &mut errors),
         _ => {}
     }
     schema_result(schema_names::PROTOCOL_REQUEST, errors)
+}
+
+fn validate_argument_fields(
+    value: &Value,
+    build: fn() -> Result<FieldDefSet, FieldDefSetBuildError>,
+    errors: &mut Vec<String>,
+) {
+    validate_field_set(schema_names::PROTOCOL_REQUEST, build, value, &[], errors);
+    reject_unknown_fields(
+        schema_names::PROTOCOL_REQUEST,
+        build,
+        value,
+        &["arguments"],
+        errors,
+    );
 }
 
 fn request_base_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {

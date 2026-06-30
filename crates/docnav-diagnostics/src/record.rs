@@ -207,8 +207,10 @@ impl fmt::Display for DiagnosticRecordError {
 impl std::error::Error for DiagnosticRecordError {}
 
 const fn is_recoverable_effect(effect: DiagnosticEffect) -> bool {
-    matches!(
-        effect,
-        DiagnosticEffect::OperationContinued | DiagnosticEffect::CandidateSkipped
-    )
+    match effect {
+        DiagnosticEffect::InputRejected
+        | DiagnosticEffect::DocumentFailed
+        | DiagnosticEffect::AdapterBoundaryFailed
+        | DiagnosticEffect::InternalFailure => false,
+    }
 }

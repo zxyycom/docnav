@@ -44,7 +44,7 @@ Docnav 的核心文档操作会生成 protocol request，启动 adapter `invoke`
 
 运行时日志必须写入独立日志文件或显式配置的日志 sink，不得写入 document output stdout。`protocol-json` stdout 继续只输出 protocol-shaped payload；adapter stdout 继续只表示 adapter 协议或直接 CLI 结果。
 
-备选方案是把日志追加到 stderr。stderr 已承载诊断和 warning，默认追加结构化日志会增加人类输出噪音，并可能让调用方误把诊断和审计事件混在一起。
+备选方案是把日志追加到 stderr。stderr 已承载边界诊断和人类可读消息，默认追加结构化日志会增加人类输出噪音，并可能让调用方误把诊断和审计事件混在一起。
 
 ### Decision 4: 首期不强制引入日志库
 

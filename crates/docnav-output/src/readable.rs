@@ -1,9 +1,11 @@
 use std::io::Write;
 
-use docnav_diagnostics::{attach_warnings_to_value, WarningProjection};
-use docnav_protocol::{Cost, Entry, InfoResult, Measurement, OperationResult, ProtocolError};
+use docnav_protocol::{
+    protocol_error_default_guidance, Cost, Entry, InfoResult, Measurement, OperationResult,
+    ProtocolError,
+};
 use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 use crate::DocumentOutputError;
 
@@ -42,12 +44,23 @@ pub fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
 }
 
 pub fn protocol_error_readable(error: &ProtocolError) -> Value {
-    json!({
-        "code": error.code().protocol_code(),
-        "error": error.message(),
-        "details": error.details(),
-        "guidance": error.guidance().unwrap_or_default(),
-    })
+    let mut value = Map::new();
+    value.insert("code".to_owned(), json!(error.code().protocol_code()));
+    value.insert("error".to_owned(), json!(error.message()));
+    value.insert("owner".to_owned(), json!(error.owner()));
+    if let Some(location) = error.location() {
+        value.insert("location".to_owned(), location.clone());
+    }
+    value.insert("details".to_owned(), json!(error.details()));
+    value.insert("guidance".to_owned(), json!(readable_guidance(error)));
+    Value::Object(value)
+}
+
+fn readable_guidance(error: &ProtocolError) -> Vec<String> {
+    error
+        .guidance()
+        .map(|guidance| guidance.to_vec())
+        .unwrap_or_else(|| vec![protocol_error_default_guidance(error.code()).to_owned()])
 }
 
 fn readable_entry(entry: &Entry) -> Value {
@@ -199,17 +212,11 @@ fn measurement_summary(measurement: &Measurement) -> String {
     }
 }
 
-pub fn add_warnings(value: Value, warnings: &[WarningProjection]) -> Value {
-    attach_warnings_to_value(value, warnings)
-}
-
 pub(crate) fn write_readable_view_value<W: Write>(
     value: Value,
     kind: ReadableViewKind,
-    warnings: &[WarningProjection],
     stdout: &mut W,
 ) -> Result<(), DocumentOutputError> {
-    let value = add_warnings(value, warnings);
     let rendered = render_readable_view(
         &value,
         kind,

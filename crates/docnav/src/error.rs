@@ -23,7 +23,6 @@ impl DocnavExitCode {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AppError {
     diagnostic: Box<DiagnosticRecordDraft>,
-    related_diagnostics: Vec<DiagnosticRecordDraft>,
     exit_code: DocnavExitCode,
 }
 
@@ -35,7 +34,6 @@ impl AppError {
         let exit_code = exit_code_for_diagnostic(diagnostic.code());
         Self {
             diagnostic: Box::new(diagnostic),
-            related_diagnostics: Vec::new(),
             exit_code,
         }
     }
@@ -61,18 +59,6 @@ impl AppError {
 
     pub fn diagnostic(&self) -> &DiagnosticRecordDraft {
         self.diagnostic.as_ref()
-    }
-
-    pub fn related_diagnostics(&self) -> &[DiagnosticRecordDraft] {
-        &self.related_diagnostics
-    }
-
-    pub fn with_related_diagnostics(
-        mut self,
-        diagnostics: impl IntoIterator<Item = DiagnosticRecordDraft>,
-    ) -> Self {
-        self.related_diagnostics.extend(diagnostics);
-        self
     }
 
     pub const fn exit_code(&self) -> DocnavExitCode {
@@ -106,6 +92,15 @@ impl AppError {
             typed_codes::protocol::FormatUnknown,
         >(
             FormatUnknownDetails::new(path, reason, candidates),
+            DiagnosticSource::with_stage("docnav", "routing"),
+        ))
+    }
+
+    pub fn adapter_unavailable(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::new(protocol_error_record_draft::<
+            typed_codes::protocol::AdapterUnavailable,
+        >(
+            AdapterReasonDetails::new(adapter_id, reason),
             DiagnosticSource::with_stage("docnav", "routing"),
         ))
     }
@@ -152,9 +147,7 @@ pub fn exit_code_for_diagnostic(code: impl Into<DiagnosticCode>) -> DocnavExitCo
         DiagnosticCategory::Request => DocnavExitCode::InputError,
         DiagnosticCategory::Document => DocnavExitCode::DocumentError,
         DiagnosticCategory::AdapterBoundary => DocnavExitCode::AdapterOrProtocolError,
-        DiagnosticCategory::Internal | DiagnosticCategory::Compatibility => {
-            DocnavExitCode::InternalError
-        }
+        DiagnosticCategory::Internal => DocnavExitCode::InternalError,
     }
 }
 

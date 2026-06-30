@@ -11,14 +11,14 @@
 ## 2. 主规范与验证材料同步
 
 - [ ] 2.1 更新 `docs/adapters/markdown.md`，记录 document head 范围、`document_head_outline_mode`、`frontmatter_block_policy`、`HEAD:leading`、`FM:L{line}`、`P:preamble`、`doc:full` fallback 和 find 映射。
-- [ ] 2.2 更新 `docs/schemas/docnav-markdown-config.schema.json` 和 `docs/examples/json/docnav-markdown-config.json`，加入 document head 和 frontmatter block policy options。
+- [ ] 2.2 更新 `docs/schemas/docnav-markdown-config.schema.json` 和 `docs/examples/json/docnav-markdown-config.json`，加入 document head 和 frontmatter block policy options，并确保只声明 adapter owner 已接受的 native option values。
 - [ ] 2.3 更新 Markdown adapter 测试边界说明，明确 combined/split/hidden、opening-only、多 metadata block、未闭合 delimiter、horizontal rule 和 Unicode 分页证明目标。
 
 ## 3. Markdown Adapter 实现
 
 - [ ] 3.1 在 Markdown parser/document model 中计算 document head 原文范围，并保持 heading model、heading line/level ref 和 section 范围不变。
 - [ ] 3.2 实现 frontmatter block classification，默认 `opening_only`，并为显式多 metadata block policy 留出清晰、可测试的识别边界。
-- [ ] 3.3 接入 adapter-owned options `document_head_outline_mode` 和 `frontmatter_block_policy`，并让 direct CLI 配置合并后传入 outline/find/read 语义。
+- [ ] 3.3 接入 adapter-owned native option sources `document_head_outline_mode` 和 `frontmatter_block_policy`，并让 direct CLI/config 合并后传入 outline/find/read 语义；未声明 public input 必须被拒绝。
 - [ ] 3.4 更新 outline construction：combined 返回 `HEAD:leading`，split 返回 `FM:L{line}` 和 `P:preamble`，hidden 不返回 document head entry，且无可见 heading 时保留 `doc:full` fallback。
 - [ ] 3.5 更新 read ref handling：`HEAD:leading` 返回 document head 原文，`FM:L{line}` 返回 delimiter 内部 YAML payload，`P:preamble` 返回 frontmatter 后的前导 Markdown 原文。
 - [ ] 3.6 更新 find ref selection：document head 命中在 combined/split 模式下返回可 read 的 head region ref，hidden 或 fallback 场景保持可读行为。

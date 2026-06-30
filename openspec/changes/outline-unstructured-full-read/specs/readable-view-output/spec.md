@@ -7,7 +7,7 @@ Readable payload MUST 支持 outline 的结构化 entries 形态和非结构化�
 
 #### Scenario: 普通 outline readable-view 仍无 block
 - **WHEN** outline result 为结构化 entries 形态
-- **THEN** readable-view header 包含 entries、page 和可选 warnings
+- **THEN** readable-view header 包含 entries 和 page
 - **THEN** stdout 不包含 `/content` block
 
 #### Scenario: 非结构化 outline readable-view 使用 content block
@@ -19,5 +19,5 @@ Readable payload MUST 支持 outline 的结构化 entries 形态和非结构化�
 
 #### Scenario: 非结构化 outline readable-json 与 readable-view 同源
 - **WHEN** 同一个非结构化 outline result 分别渲染为 readable-json 和 readable-view
-- **THEN** 两者的 content、content_type、cost、reason 和 warnings 语义一致
+- **THEN** 两者的 content、content_type、cost 和 reason 语义一致
 - **THEN** readable-view 的 `/content` block payload 等于 readable-json 的 content 字符串

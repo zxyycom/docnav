@@ -26,7 +26,7 @@ document.path
 arguments
 ```
 
-`arguments` 是 adapter `invoke` 的显式 operation 输入。缺失的已注册标准参数可以由 adapter `invoke` 入口的配置或默认值补足。已解码的 protocol request 将 envelope、operation、document path、raw `arguments` object 和已注册字段作为 direct input 交给 [标准参数](standard-parameters.md#输入与配置映射) 与 typed-field processing。未映射 `arguments` 字段不由标准参数层解释，adapter 入口可按 [标准参数](standard-parameters.md#合并透传与校验) 中的透传处理结果和入口策略保留、丢弃或交给 adapter-owned 语义校验。
+`arguments` 是 adapter `invoke` 的显式 operation 输入。缺失的已注册标准参数可以由 adapter `invoke` 入口的配置或默认值补足。Unknown envelope fields、缺少必需 envelope 字段、operation 不合法、document path shape 错误或 `arguments` 非 object 停在 protocol direct input boundary，并返回 protocol-shaped failure。Envelope 合法后，operation、document path、raw `arguments` object 和已注册字段作为 direct input 交给 [标准参数](standard-parameters.md#输入与配置映射) 与 typed-field processing。未映射 `arguments` 字段默认产生 input diagnostic；只有 `arguments.options` 或 registration 声明的其它 owner-scoped native option source 可以交给 adapter/native option owner 校验或拒绝。
 
 v0 operation 参数：
 
@@ -69,11 +69,15 @@ operation          outline | read | find | info | null
 ok: false
 error.code
 error.message
-error.details
+error.owner
+error.location?
+error.received?
+error.expected?
 error.guidance?
+error.details
 ```
 
-失败响应的 `operation` 在请求 operation 可确定时必须与请求一致；请求无法解析到 operation 时使用 `null`。
+失败响应的 `operation` 在请求 operation 可确定时必须与请求一致；请求无法解析到 operation 时使用 `null`。`error` 是本次 failed request 的 primary `DiagnosticRecord` protocol projection；`code`、`message` 和 `owner` 必需，`location`、`received`、`expected`、`guidance` 和 `details` 按 diagnostics owner 的记录内容投影。`details` 只包含当前失败需要的 subordinate list 或 stable detail object，不得用多条 sibling errors 替代 primary record。
 
 envelope 仅存在于原始协议层。CLI `readable-view` header 和 `readable-json` 不得包含 `protocol_version`、`request_id`、`operation` 或 `ok`，也不替代完整协议接口。
 
@@ -181,15 +185,15 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 
 ## 错误投影
 
-本节定义错误规则投影到 protocol surface 后的 `code`、`details`、`message` 和 `guidance`。错误机械身份和 details rule 由 [错误通道](diagnostics.md) 的 `DiagnosticCode` 提供；本节拥有这些规则在原始协议中的可观察投影形状。protocol 调用方只依赖本节列出的 code 和 details；schema、examples、错误通道实现和消费方测试跟随本节同步。
+本节定义 primary `DiagnosticRecord` 投影到 protocol surface 后的 `code`、`owner`、`location`、`received`、`expected`、`details`、`message` 和 `guidance`。错误机械身份、primary record 字段规则和 details list shape 由 [错误通道](diagnostics.md) 提供；本节拥有这些规则在原始协议中的可观察投影形状。protocol 调用方只依赖本节列出的 code、owner 和 stable details；schema、examples、错误通道实现和消费方测试跟随本节同步。
 
 | 协议 `code` | 必需 `details` |
 | --- | --- |
-| `INVALID_REQUEST` | `field`、`reason` |
+| `INVALID_REQUEST` | `field`、`reason`；可包含 `field_issues`、`typed_validation_failures` 或 `config_issues` |
 | `DOCUMENT_NOT_FOUND` | `path` |
 | `DOCUMENT_PATH_INVALID` | `path`、`reason` |
 | `DOCUMENT_ENCODING_UNSUPPORTED` | `path`、`encoding` |
-| `FORMAT_UNKNOWN` | `path`、`reason`、`candidates` |
+| `FORMAT_UNKNOWN` | `path`、`reason`、`candidates`；primary record 可使用 `candidate_failures` 列表表达同一候选摘要 |
 | `FORMAT_AMBIGUOUS` | `path`、`candidates` |
 | `CAPABILITY_UNSUPPORTED` | `capability`、`adapter_id` |
 | `REF_NOT_FOUND` | `ref` |
@@ -199,11 +203,11 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 | `ADAPTER_INVOKE_FAILED` | `adapter_id`、`reason`；`exit_code`、`stderr` 可选 |
 | `INTERNAL_ERROR` | `error_id` |
 
-`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`MANIFEST_INVALID`、`ADAPTER_UNAVAILABLE`、`CAPABILITY_UNSUPPORTED`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload、stderr、exit code 和人类说明文案按 warning、stderr 诊断或内部错误通道各自契约承载。
+`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；primary `DiagnosticRecord.details.candidate_failures` 使用同一元素 shape。每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`MANIFEST_INVALID`、`ADAPTER_UNAVAILABLE`、`CAPABILITY_UNSUPPORTED`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload、stderr、exit code 和人类说明文案由 adapter boundary stderr 诊断或内部错误通道按各自契约承载。
 
 本地可执行文件 adapter 的 hash 校验失败时，`docnav` 使用 `ADAPTER_UNAVAILABLE`，并将 `details.reason` 设置为可机器识别的 `hash_mismatch`。
 
-错误 message 和 guidance 是可定制文案；调用方只解析 code 和 details。`INVALID_REQUEST` 可以在 details 中附带 `path`、`received` 或 `accepted` 等定位和校正信息；`accepted` 是字符串数组。这些补充字段不得替代必需的 `field` 和 `reason`。
+错误 message 和 guidance 是可定制文案；调用方只解析 code、owner 和 stable details。`INVALID_REQUEST` 可以在 top-level projection 中附带 `location`、`received` 或 `expected`，也可以在 details 中附带 `field_issues`、`typed_validation_failures` 或 `config_issues`。这些补充字段不得替代必需的 `field` 和 `reason`。
 
 Protocol response schema 是本节的验证材料，用于校验 protocol-visible code、details 字段集合、字段类型和 required details。修改 protocol error code 或 details 规则时，先更新本节和对应 schema/examples，再同步错误通道实现和消费方测试。
 
@@ -211,10 +215,10 @@ Protocol response schema 是本节的验证材料，用于校验 protocol-visibl
 
 [protocol-request.schema.json](schemas/protocol-request.schema.json) 和 [protocol-response.schema.json](schemas/protocol-response.schema.json) 只校验原始协议。响应 schema 使用 `operation` 绑定成功 result 类型。阅读输出使用独立 schema 做示例和工具输出校验，不作为机器兼容协议。
 
-CLI argv 兼容 warning 和 adapter candidate warning 只属于阅读输出层或 stderr 诊断。protocol response、manifest 和 probe schema 不增加 `warnings` 字段；`docnav --output protocol-json` 和 adapter direct `protocol-json` stdout 仍只输出对应 protocol-shaped payload。
+Protocol response、manifest 和 probe stdout 只输出各自 schema payload；`docnav --output protocol-json` 和 adapter direct `protocol-json` stdout 只输出对应 protocol-shaped payload。Strict public input failures and automatic discovery all-failed candidate lists use protocol failure projection.
 
 `docnav-protocol` request input pipeline 的可复用范围是 `serde_json::Value -> standard-parameter/typed-field processing -> raw protocol envelope facts + operation values`。pipeline 使用 `docnav-typed-fields` metadata 和标准参数 mapping 校验 runtime 字段级 path、presence、type、enum、range、length 和 pattern 规则，并把 raw `arguments` 作为 direct input 的一部分交给入口 mapper。
 
 Operation-specific typed request 由 [标准参数](standard-parameters.md#输入与配置映射) 从 `serde_json::Value`、argv tokens 和 config values 映射、校验并归一化后产出。response、manifest 和 probe 等已归一化 payload 可以继续使用 typed deserialize + semantic validate。
 
-调用方继续拥有错误归属、field path、request id fallback、stdout/stderr placement 和 exit behavior。public JSON Schema 文件保留为 contract material、examples/fixtures 校验和工具链 drift check，不作为 production decode path 的 generic schema validator。[错误通道](diagnostics.md) 拥有内部 code、category 和 details rule；这些规则投影到 protocol surface 时必须符合本文件定义的 code 和 details。readable wrapper、warning envelope、manifest/probe policy 由各自 owner 文档定义。
+调用方继续拥有错误归属、field path、request id fallback、stdout/stderr placement 和 exit behavior。public JSON Schema 文件保留为 contract material、examples/fixtures 校验和工具链 drift check，不作为 production decode path 的 generic schema validator。[错误通道](diagnostics.md) 拥有内部 code、category、primary record 字段和 details rule；这些规则投影到 protocol surface 时必须符合本文件定义的 code、owner 和 details。readable wrapper、manifest/probe policy 由各自 owner 文档定义。

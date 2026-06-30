@@ -14,6 +14,7 @@ Markdown 文档在首个 heading 前常放置 YAML frontmatter、摘要、序言
 - `split` 模式下，outline 可分别返回 frontmatter ref 与 preamble ref：frontmatter ref 返回 delimiter 内部 YAML payload，`content_type` 为 `application/yaml`；preamble ref 返回 frontmatter 后到第一个 heading 前的 Markdown 原文，`content_type` 为 `text/markdown`。
 - `hidden` 模式下，outline 不暴露 document head entry，heading outline、`doc:full` fallback 和普通 heading read 行为保持既有语义。
 - Markdown adapter 明确 frontmatter dialect 策略：默认只识别文件开头一个 YAML delimiter block；多 metadata block 只能通过显式 adapter option 启用，避免把普通正文误判为 metadata。
+- `document_head_outline_mode`、`frontmatter_block_policy` 和任何多 metadata block 开关都必须作为 Markdown adapter-owned native option sources 声明、校验和拒绝；未声明 public input 不得被共享层隐式 passthrough。
 - 本 change 计划取代较窄的 `markdown-frontmatter-outline-mode` 方案进入实现；在本 change 审计完成前，不应同时实现两个重叠方案。
 
 ## Capabilities

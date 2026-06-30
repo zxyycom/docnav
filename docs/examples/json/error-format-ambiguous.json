@@ -6,9 +6,27 @@
   "error": {
     "code": "FORMAT_AMBIGUOUS",
     "message": "多个适配器同等支持该文档。",
+    "owner": "adapter_selection",
+    "location": {
+      "argument": "path"
+    },
+    "received": "config/document.conf",
+    "expected": "one selected adapter",
     "details": {
       "path": "config/document.conf",
       "candidates": [
+        {
+          "adapter_id": "docnav-toml",
+          "stage": "probe",
+          "reason": "CONTENT_MATCH"
+        },
+        {
+          "adapter_id": "docnav-ini",
+          "stage": "probe",
+          "reason": "CONTENT_MATCH"
+        }
+      ],
+      "candidate_failures": [
         {
           "adapter_id": "docnav-toml",
           "stage": "probe",

@@ -13,7 +13,6 @@ export function validateReadableConformanceFixtures(): void {
 
   assertConformanceFixturesExist(conformanceDir);
   assertConformanceReadmeIndexesFixtures();
-  assertWarningFixtureOmitsLegacyTextMode(conformanceDir);
   assertConformanceDirectoryMatchesIndex(conformanceDir);
   assertMarkerFixtureRestoresPayload(conformanceDir);
 }
@@ -36,16 +35,6 @@ function assertConformanceReadmeIndexesFixtures(): void {
       `conformance README must index ${fixture}`
     );
   }
-}
-
-function assertWarningFixtureOmitsLegacyTextMode(conformanceDir: string): void {
-  const warningFixture = readText(
-    path.posix.join(conformanceDir, "13_warning.json")
-  );
-  assert(
-    !warningFixture.includes("--text"),
-    "warning conformance fixture must not describe removed text output as a current mode"
-  );
 }
 
 function assertConformanceDirectoryMatchesIndex(conformanceDir: string): void {

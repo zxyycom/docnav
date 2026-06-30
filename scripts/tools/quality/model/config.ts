@@ -35,7 +35,7 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.8.0",
+  version: "0.8.1",
 
   include: [
     "crates/**/*.rs",
@@ -203,6 +203,16 @@ export const DEFAULT_CONFIG = Object.freeze({
       ],
       reason:
         "OperationArguments::operation and OperationResult::operation map the same Operation enum variants at separate protocol request and result boundaries. Keeping the mappings separate preserves boundary ownership; extracting shared code would couple request-argument decoding to result-envelope projection for little maintenance gain."
+    },
+    {
+      ruleId: "scc-file-code-lines",
+      sourceTool: "scc",
+      path: "crates/docnav-protocol/src/error.rs",
+      codeArea: "rust-production",
+      metric: "code-lines",
+      value: 454,
+      reason:
+        "ProtocolError intentionally keeps protocol error constructors, DiagnosticRecord projection, owner/location projection, and serde rules in one owner file while the strict input contract stabilizes. The file has low decision-token density, and splitting it now would add navigation indirection without reducing behavior risk."
     }
   ]),
 

@@ -52,8 +52,14 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 - [error-format-unknown.json](json/error-format-unknown.json)
 - [error-format-ambiguous.json](json/error-format-ambiguous.json)
 - [error-invalid-request.json](json/error-invalid-request.json)
+- [error-unknown-argv.json](json/error-unknown-argv.json)
+- [error-extra-positional.json](json/error-extra-positional.json)
+- [error-operation-inapplicable-flag.json](json/error-operation-inapplicable-flag.json)
+- [error-explicit-adapter-failure.json](json/error-explicit-adapter-failure.json)
+- [error-explicit-config-failure.json](json/error-explicit-config-failure.json)
+- [error-unknown-config-field.json](json/error-unknown-config-field.json)
 
-错误示例只展示 protocol/readable surface 投影。错误 code、canonical details 规则和 warning/error 机械身份来自 [错误通道](../diagnostics.md)；本目录不作为 code/details 规则来源。
+错误示例只展示 protocol/readable surface 投影。错误 code、canonical details、primary diagnostic 字段和错误机械身份来自 [错误通道](../diagnostics.md)；本目录不作为 code/details 规则来源。
 
 `find` 与 `info` 能力示例：
 
@@ -68,6 +74,6 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 
 ## Schema
 
-原始协议和阅读输出由不同 schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。protocol 示例证明 raw 结构化字段；readable 示例证明从 raw facts 派生出的 `display`、成本摘要、warning 和错误投影形态。
+原始协议和阅读输出由不同 schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。protocol 示例证明 raw 结构化字段；readable 示例证明从 raw facts 派生出的 `display`、成本摘要和错误投影形态。
 
-示例只证明 protocol/readable、manifest、probe 和配置文件示例的 documented shape 与投影结果。direct CLI warning placement、protocol-json stdout purity、adapter machine command 边界、配置读取行为、diagnostic stack semantics 和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。
+示例只证明 protocol/readable、manifest、probe 和配置文件示例的 documented shape 与投影结果。direct CLI strict failure、primary diagnostic projection、protocol-json stdout purity、adapter machine command 边界、配置读取行为、diagnostic stack semantics 和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。

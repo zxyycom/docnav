@@ -265,6 +265,9 @@ fn parse_output(field: &str, value: &str, path: &Path) -> AppResult<OutputMode> 
                     .map(|value| (*value).to_owned())
                     .collect(),
             ),
+            field_issues: None,
+            config_issues: None,
+            typed_validation_failures: None,
         };
         AppError::new(protocol_error_record_draft_with_summary::<
             typed_codes::protocol::InvalidRequest,

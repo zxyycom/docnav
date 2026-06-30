@@ -8,15 +8,14 @@ use serde_json::{Map, Value};
 use super::super::cli::DirectCliConfig;
 use super::super::config::{adapter_direct_cli_config_source_descriptors, ConfigPathOverrides};
 use super::super::native_options::NativeOptionSpec;
-use super::super::warnings::DirectCliWarning;
-use super::loose::{collect_operation_args, LooseArgs};
+use super::boundaries::{collect_operation_args, BoundaryArgs};
 use super::resolved::{
     collect_diagnostics, merged_native_options, optional_string_value, required_json_value,
     required_string_value, resolved_limit, resolved_page,
 };
 use super::spec::{arg_ids, operation_about, operation_command};
 use super::standard::{resolve_operation_parameters, ID_OUTPUT, ID_PATH, ID_QUERY, ID_REF};
-use super::{clap_argv, operation_parse_error, required_string};
+use super::{clap_argv, operation_parse_error, required_string, DirectCliInputError};
 
 pub(super) struct DirectCliParameterSources {
     pub(super) path: String,
@@ -26,19 +25,17 @@ pub(super) struct DirectCliParameterSources {
     pub(super) ref_id: Option<String>,
     pub(super) query: Option<String>,
     pub(super) native_options: Map<String, Value>,
-    pub(super) warnings: Vec<DirectCliWarning>,
 }
 
 struct ResolvedDirectCliParameters {
     resolution: StandardParameterResolution,
-    warnings: Vec<DirectCliWarning>,
 }
 
 pub(super) fn direct_cli_parameter_sources(
     operation: Operation,
     args: &[String],
     config: &DirectCliConfig<'_>,
-) -> Result<DirectCliParameterSources, String> {
+) -> Result<DirectCliParameterSources, DirectCliInputError> {
     let resolved = resolve_direct_cli_parameters(operation, args, config)?;
     direct_cli_sources_from_resolution(operation, resolved, config)
 }
@@ -47,8 +44,8 @@ fn resolve_direct_cli_parameters(
     operation: Operation,
     args: &[String],
     config: &DirectCliConfig<'_>,
-) -> Result<ResolvedDirectCliParameters, String> {
-    let (matches, mut warnings) = parse_operation_matches(operation, args, config)?;
+) -> Result<ResolvedDirectCliParameters, DirectCliInputError> {
+    let matches = parse_operation_matches(operation, args, config)?;
     let direct_input = direct_input(operation, &matches, config.native_options)?;
     let descriptors = config_source_descriptors(config, &matches)?;
     let resolution = resolve_operation_parameters(
@@ -58,19 +55,16 @@ fn resolve_direct_cli_parameters(
         descriptors.user,
         config.default_limit,
     )?;
-    collect_diagnostics(&resolution, &mut warnings)?;
+    collect_diagnostics(&resolution)?;
 
-    Ok(ResolvedDirectCliParameters {
-        resolution,
-        warnings,
-    })
+    Ok(ResolvedDirectCliParameters { resolution })
 }
 
 fn direct_cli_sources_from_resolution(
     operation: Operation,
     resolved: ResolvedDirectCliParameters,
     config: &DirectCliConfig<'_>,
-) -> Result<DirectCliParameterSources, String> {
+) -> Result<DirectCliParameterSources, DirectCliInputError> {
     let resolution = resolved.resolution;
     Ok(DirectCliParameterSources {
         path: required_string_value(&resolution, ID_PATH)?,
@@ -79,7 +73,6 @@ fn direct_cli_sources_from_resolution(
         output: required_json_value(&resolution, ID_OUTPUT)?,
         ref_id: optional_string_value(&resolution, ID_REF)?,
         query: optional_string_value(&resolution, ID_QUERY)?,
-        warnings: resolved.warnings,
         native_options: merged_native_options(operation, &resolution, config.native_options),
     })
 }
@@ -88,11 +81,9 @@ fn parse_operation_matches(
     operation: Operation,
     args: &[String],
     config: &DirectCliConfig<'_>,
-) -> Result<(clap::parser::ArgMatches, Vec<DirectCliWarning>), String> {
-    let LooseArgs {
-        clap_args,
-        warnings,
-    } = collect_operation_args(operation, args, config.native_options)?;
+) -> Result<clap::parser::ArgMatches, DirectCliInputError> {
+    let BoundaryArgs { clap_args } =
+        collect_operation_args(operation, args, config.native_options)?;
     let matches = operation_command(
         operation,
         operation_about(operation),
@@ -100,9 +91,15 @@ fn parse_operation_matches(
         config.default_limit,
     )
     .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
-    .map_err(|_| operation_parse_error(operation, args, config.native_options))?;
+    .map_err(|_| {
+        DirectCliInputError::message(operation_parse_error(
+            operation,
+            args,
+            config.native_options,
+        ))
+    })?;
 
-    Ok((matches, warnings))
+    Ok(matches)
 }
 
 fn config_source_descriptors(

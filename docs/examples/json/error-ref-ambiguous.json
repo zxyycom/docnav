@@ -6,6 +6,12 @@
   "error": {
     "code": "REF_AMBIGUOUS",
     "message": "ref 定位部分匹配多个区域。",
+    "owner": "adapter",
+    "location": {
+      "argument": "ref"
+    },
+    "received": "legacy:Install",
+    "expected": "a ref that resolves to one region",
     "details": {
       "ref": "legacy:Install",
       "candidate_count": 2

@@ -27,7 +27,7 @@ Code: `test/smoke/core/cases/outputs.ts`
 
 Proves:
 - `readable-json`、显式/默认 `readable-view` 和 `protocol-json` 通过各自包装表达同一文档结果。
-- `readable-view` warning 保留在 stdout，并保持 readable warning schema 有效。
+- readable success output 只包含对应 operation success payload；failure guidance 通过 readable/protocol error projection 表达。
 
 ### BB-CORE-ARGS-001 Core 拒绝缺失的 operation 参数
 Status: implemented
@@ -49,14 +49,14 @@ Proves:
 - disabled pagination 在进入 adapter invoke request 前归一为最大 positive limit，request 只包含最终 `limit` 和 `page`。
 - `defaults.limit` 按 hard switch 被拒绝，不再形成 core `LIMIT` 参数来源。
 
-### BB-CORE-SELECT-001 显式 adapter 失败后 fallback 并报告 warning
+### BB-CORE-SELECT-001 显式 adapter 失败返回 selection diagnostic
 Status: implemented
 Existing smoke task: `CORE-SELECT-001`
 Code: `test/smoke/core/cases/adapter-selection.ts`
 
 Proves:
-- 显式选择的 adapter 失败时不会隐藏 registry fallback。
-- `readable-json` 结果携带被拒绝 adapter 的 candidate warning evidence。
+- 显式选择的 adapter 失败时返回 adapter selection diagnostic，不隐藏为 registry fallback。
+- 未显式声明 adapter 的 automatic discovery 全部失败时，candidate failures 从属于 primary diagnostic details。
 
 ### BB-CORE-FAIL-001 Candidate 进程失败投影为格式候选摘要
 Status: implemented
@@ -130,14 +130,15 @@ Proves:
 - operation-owned 必需参数缺失时，直接 adapter CLI 返回稳定 input failure。
 - 该 smoke case 代表这一类外部参数错误，不扩展成 token 组合矩阵。
 
-### BB-MD-WARN-001 Markdown 兼容 warning 保持可观察
+### BB-MD-BOUNDARY-001 Markdown strict argv failure 保持可观察
 Status: implemented
-Existing smoke task: `MD-WARN-001`
+Existing smoke task: `MD-BOUNDARY-001`
 Code: `test/smoke/markdown/cases/cli-args.ts`
 
 Proves:
-- document help、`readable-json` warning placement、unused native flag warning 和 `protocol-json` stderr warning 保持区分。
-- compatibility warning 不会静默改变命令成功/失败语义。
+- document help 不执行文档导航，并继续展示可纠错参数说明。
+- unknown argv、多余 positional、operation-inapplicable flag 和 undeclared native option 在 handler execution 前返回 primary input diagnostic。
+- `protocol-json` invalid input stdout 保持 protocol failure envelope，不退回文本错误或成功响应。
 
 ### BB-MD-CONFIG-001 Markdown 直接 CLI 配置可观察
 Status: implemented
@@ -147,7 +148,7 @@ Code: `test/smoke/markdown/cases/config.ts`
 Proves:
 - `docnav-markdown` direct CLI 按显式 argv、项目级配置、用户级配置和内置默认值合并 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 与 `options.max_heading_level`。
 - disabled pagination 在进入 Markdown operation 前归一为最大 positive limit，operation 只接收最终 `limit` 和 `page`。
-- 配置路径覆盖替代默认路径，配置源不可用时继续合并其它来源并输出 `adapter_config_source_skipped` warning details。
+- 配置路径覆盖替代默认路径；默认配置路径缺失表示 absent；显式或 present invalid config source 返回 primary config diagnostic，不继续合并其它来源。
 - document operation help 展示配置路径参数但不读取配置；`manifest` 和 `probe` 不执行 document operation 配置读取；`invoke` 不执行 adapter direct CLI argv parsing 或 help。
 
 ### BB-MD-ERROR-001 Markdown ref 错误跨输出模式一致映射
@@ -197,19 +198,19 @@ Proves:
 flowchart LR
   A["输入：CommandOutcome / AppError"] --> B{"输出入口"}
   B --> C["纯文本命令"]
-  C --> C1["stdout 写文本和 warning"]
+  C --> C1["stdout 写文本"]
   B --> D["非文档 JSON"]
-  D --> D1["stdout JSON payload 携带 warning"]
+  D --> D1["stdout JSON payload"]
   B --> E["文档 response / error"]
   E --> F{"输出模式"}
   F --> G["readable-view"]
   G --> G1["shared readable payload -> block renderer -> stdout"]
   F --> H["readable-json"]
-  H --> H1["shared readable payload + warning -> stdout"]
+  H --> H1["shared readable payload -> stdout"]
   F --> I["protocol-json"]
-  I --> I1["protocol envelope -> stdout<br/>warning -> stderr"]
+  I --> I1["protocol envelope -> stdout"]
   E --> J["错误分支"]
-  J --> J1["稳定 exit code + readable/protocol error shape"]
+  J --> J1["稳定 exit code + primary readable/protocol error shape"]
 ```
 
 ### WB-CORE-HELP-001 Core parser help/version 不进入 document output mode
@@ -234,7 +235,7 @@ Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
 - operation-owned 参数保持严格校验，例如 `outline --page 0` 会暴露 page 边界错误。
-- 未被当前 operation 使用的 known argument 不会被抢先 typed 解析，但会以 warning 保留 token evidence。
+- 未被当前 operation 使用的 known argument 不会被抢先 typed 解析，而是在 parser 边界返回 input diagnostic。
 
 ### WB-CORE-STDPARAMS-001 Core standard parameter adoption 保持 request construction 来源
 Status: implemented
@@ -259,21 +260,21 @@ Proves:
 - Core 区分 adapter discovery、selection、invoke process 和 malformed adapter output 边界。
 - manifest、probe 和 protocol response 的 schema invalid / semantic invalid path 保持可诊断。
 
-### WB-DIAG-WARN-001 Diagnostics warning 形状稳定
+### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
 Status: implemented
-Code: `crates/docnav-diagnostics/src/tests/warning.rs`
+Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`, `crates/docnav-diagnostics/src/tests/record_stack.rs`
 
 Proves:
-- warning id、effect、details 和 stderr text line 保持稳定。
-- CLI argv warning、adapter candidate warning 和 adapter config source warning 的结构化 payload 保持当前 documented shape。
+- DiagnosticCode、category、severity、effect 和 details rule 覆盖所有 current code。
+- primary failure diagnostic 的 code、owner、details 和 guidance 保持当前 documented shape。
 
-### WB-CLIARGS-COMPAT-001 Loose CLI 参数扫描保持兼容边界
+### WB-CLIARGS-BOUNDARY-001 Strict CLI 参数扫描保持输入边界
 Status: implemented
 Code: `crates/docnav-cli-args/src/tests.rs`
 
 Proves:
-- unknown flag 不消费后续 positional，used value flag 保留值，unused value flag 只记录事实。
-- switch flag 和 missing value 边界保持可观察。
+- unknown flag 不消费后续 positional，used value flag 保留值，unused value flag 记录 operation applicability failure。
+- switch flag、missing value、extra positional 和 unknown token 边界保持可观察，并可映射为 input diagnostic。
 
 ### WB-JSONIO-WRITE-001 JSON writer 保持格式和错误分类
 Status: implemented
@@ -288,8 +289,8 @@ Status: implemented
 Code: `crates/docnav-output/src/tests.rs`
 
 Proves:
-- readable JSON 不带 protocol envelope，protocol JSON warning 只写 stderr。
-- readable-view read 使用 block renderer，readable error 保留 code、details 和 guidance。
+- readable JSON success 不带 protocol envelope，protocol JSON success 只输出 protocol envelope。
+- readable-view read 使用 block renderer，readable error 保留 primary diagnostic code、owner、details 和 guidance。
 
 ### WB-READABLE-RENDERER-001 Readable renderer success path block/framing 规则
 Status: implemented
@@ -338,7 +339,7 @@ Code: `crates/docnav-readable/tests/conformance_tests.rs`
 
 Proves:
 - readable-view conformance fixture set 由测试执行，保持 fixture 与 renderer contract 同步。
-- renderer framing、block extraction、warning placement 和 extension-field case 由 fixture-driven assertions 覆盖。
+- renderer framing、block extraction、readable error projection 和 extension-field case 由 fixture-driven assertions 覆盖。
 
 ### WB-PROTO-BASIC-001 Protocol 基础类型和 envelope 规则稳定
 Status: implemented
@@ -443,8 +444,8 @@ Proves:
 - Standard parameter resolver consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
 - Processing-specific metadata projection and standard parameter registration bindings construct direct input, project config, user config and default sources before resolution.
 - Missing required values, invalid mapped values, optional mapped JSON null, static defaults and dynamic default source values all pass through typed-field validation and do not expose unsafe typed values.
-- Explicit skipped config sources return recoverable warning events while default missing config sources remain absent without diagnostics.
-- Passthrough handoff uses source-scoped caller passthrough processing results: direct input、project config 和 user config 的 processing result 原样返回并携带 entry passthrough disposition；raw-minus-mapped 或 locator 语义由入口 owner 自行解释，default 不产生 passthrough processing result。
+- Explicit or present invalid config sources return blocking config diagnostics while default missing config sources remain absent without diagnostics.
+- Unmapped public input returns source-scoped blocking diagnostics；owner-scoped native option sources can be delegated to adapter/native option owner with source info preserved.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
 ### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数
@@ -479,14 +480,14 @@ Proves:
 - invalid manifest、adapter id drift、invalid probe 和 probe adapter id drift 都不会写 machine stdout。
 - schema/semantic failure 通过 stderr 诊断保持可定位。
 
-### WB-SDK-DIRECT-ARGS-001 Direct adapter argv compatibility 不消费必需输入
+### WB-SDK-DIRECT-ARGS-001 Direct adapter argv strictness 不消费必需输入
 Status: implemented
 Code: `crates/docnav-adapter-sdk/src/direct/args/tests.rs`
 
 Proves:
-- direct adapter argv compatibility 保持 operation argument ownership。
-- unused 或 future flag 可以产生 warning，但不能静默改变 operation 的 required arguments。
-- Direct adapter document operations consume standard parameter resolution output for path/ref/query/page/limit/output, while native options remain adapter-owned passthrough.
+- direct adapter argv strictness 保持 operation argument ownership。
+- unused、future、unknown 或 extra argv 返回 input diagnostic，不能静默改变 operation 的 required arguments。
+- Direct adapter document operations consume standard parameter resolution output for path/ref/query/page/limit/output, while declared native options remain adapter-owned sources.
 
 ### WB-SDK-DIRECT-CONFIG-001 Direct adapter config sources 保持参数来源边界
 Status: implemented
@@ -494,9 +495,9 @@ Code: `crates/docnav-adapter-sdk/src/direct/config/tests.rs`
 
 Proves:
 - SDK direct CLI config source 规则从启动 cwd 解析项目级和用户级配置路径，支持覆盖路径，并在默认用户配置目录缺失时回退到启动 cwd。
-- 配置源读取只映射 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 和 `options` object；默认缺失源不 warning，不可用源产生 `adapter_config_source_skipped` 并继续合并其它来源。
+- 配置源读取只映射 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 和 declared `options` object；默认缺失源视为 absent，显式或 present invalid source 产生 blocking config diagnostic。
 - `defaults.limit` 按 hard switch 被拒绝，不再形成 `LIMIT` 参数来源。
-- direct CLI 参数来源按显式 argv、项目级配置、用户级配置和内置默认值合并，并把不适用于当前 operation 的 config native option 保留为未映射配置条目供入口策略处理。
+- direct CLI 参数来源按显式 argv、项目级配置、用户级配置和内置默认值合并，并把不适用于当前 operation 的 config native option 映射为 input/config diagnostic。
 
 ### WB-SDK-DIRECT-OUTPUT-001 Direct adapter document output 复用共享输出
 Status: implemented
@@ -521,7 +522,7 @@ Code: `crates/docnav-adapter-sdk/src/tests/invoke.rs`
 Proves:
 - SDK invoke 从 stdin 读取 protocol request，并在 invoke path 返回 protocol response。
 - request decode failure、manifest failure 和 handler error failure 不落入 direct readable CLI output。
-- Standard parameter normalization runs after protocol request decode and preserves `arguments.options` passthrough before adapter handler dispatch.
+- Standard parameter normalization runs after protocol request decode and preserves `arguments.options` as an owner-scoped native option source before adapter handler dispatch.
 - Adapter invoke 可用配置和内置默认值补足缺失的已注册 pagination 参数。
 - disabled pagination 在进入 adapter handler 前归一为最大 positive limit，且不会新增 protocol `pagination` 字段。
 

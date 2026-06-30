@@ -98,9 +98,9 @@ Markdown adapter 测试 MUST 覆盖无 heading、仅深层 heading、无效 head
 Smoke suite 必须覆盖：
 
 - Fixture corpus：normal Markdown、重复 heading、frontmatter、代码围栏伪 heading、深层 heading、无 heading、Unicode 内容、大分页内容、非 UTF-8 输入、UTF-8 BOM、CRLF 行尾、`.MD` 和 `.markdown`。
-- Operations 和入口：`outline -> ref -> read`、`find`、`info`、`probe`、`manifest`、有效 `invoke`、CLI help、direct CLI/invoke 共享语义归一和宽松 argv 成功路径。
+- Operations 和入口：`outline -> ref -> read`、`find`、`info`、`probe`、`manifest`、有效 `invoke`、CLI help、direct CLI/invoke 共享语义归一和 strict argv failure path。
 - 输出模式：`readable-view`、`readable-json` 和 `protocol-json`。
-- Warning 行为：readable warning 使用稳定 envelope；CLI argv warning 使用 `id: "cli_argv_ignored"`；测试不断言 exact token 分组、`reason` 文案或 token 消费顺序。
+- Strict failure 行为：unknown argv、多余 positional 和当前 operation 不适用参数返回 primary input diagnostic。
 - Readable-view framing：合法 JSON header、静态 `/content` block 引用、UTF-8 byte length、block 起止行和正文原值还原。
 
 #### Scenario: Node.js runner 使用构建产物
@@ -153,15 +153,14 @@ Smoke suite 必须覆盖：
 - **THEN** help 可以输出普通纯文本
 - **THEN** document operation help 仍只列出 readable-view、readable-json 和 protocol-json
 
-#### Scenario: 宽松 argv 成功路径被覆盖
+#### Scenario: strict argv failure path 被覆盖
 - **WHEN** smoke 测试执行 `docnav-markdown outline <path> --unknown extra --output readable-json`
 - **OR** 执行 `docnav-markdown outline --unknown <path> --output readable-view`
 - **OR** 执行 `docnav-markdown outline <path> --unknown --output protocol-json`
 - **AND** `<path>` 指向有效 Markdown fixture
-- **THEN** 命令成功返回所选输出模式的正常结果
-- **THEN** 输出包含 warning 或诊断
-- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** 测试断言 stable warning envelope、`cli_argv_ignored` id 和诊断存在性
+- **THEN** 命令非零退出
+- **THEN** 输出包含 primary input diagnostic
+- **THEN** 不返回所选输出模式的成功结果
 
 #### Scenario: fixture corpus 覆盖 Markdown 边界
 - **WHEN** smoke corpus 被执行
@@ -213,16 +212,16 @@ Smoke suite 必须覆盖：
 - **THEN** 日志不转储完整环境变量或与测试无关的机器信息
 
 ### Requirement: Markdown adapter 必须有负向 CLI 矩阵测试
-`docnav-markdown` MUST 提供由 Node.js 执行的黑盒 CLI 矩阵测试，覆盖非法命令行输入、宽松 argv 输入和非法 invoke 输入。每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
+`docnav-markdown` MUST 提供由 Node.js 执行的黑盒 CLI 矩阵测试，覆盖非法命令行输入、strict argv 输入和非法 invoke 输入。每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
 
 矩阵必须覆盖：
 
 - 必需语义：缺 path、缺 `--ref`、缺 `--query`。
-- 宽松 argv：unknown flag、多余 positional、当前 operation 不使用的参数，包括值非法但未被当前 operation 使用的 known 参数。
+- Strict argv：unknown flag、多余 positional、当前 operation 不使用的参数，包括值非法但未被当前 operation 使用的 known 参数。
 - 实际使用参数失败：`page` 或 `limit_chars` 为 0、`page` 或 `limit_chars` 非数字、`output` 非法、`max_heading_level` 越界。
 - 业务和输入错误：missing file、invalid ref、non-UTF-8 document。
 - Invoke 输入错误：malformed invoke JSON 作为 transport decode failure；缺少必需字段或参数类型错误由标准参数/typed-field processing 产生 protocol-shaped failure。
-- Warning 断言：稳定 warning envelope 和输出通道边界；不断言 exact token 分组、`reason` 文案或 token 消费顺序。
+- Failure 断言：primary input diagnostic 和输出通道边界。
 
 #### Scenario: 参数校验失败保持 CLI 诊断
 - **WHEN** 负向矩阵执行缺 path、缺 `--ref`、缺 `--query`、非法 page、非法 limit、非法 output 或非法 max heading level
@@ -230,28 +229,13 @@ Smoke suite 必须覆盖：
 - **THEN** stderr 或所选错误输出包含简洁诊断
 - **THEN** stdout 不包含成功的 protocol payload 或 readable result payload
 
-#### Scenario: unknown argv 不阻断成功路径
+#### Scenario: unknown argv 阻断操作
 - **WHEN** CLI 矩阵执行 unknown flag、多余 positional 或当前 operation 不使用的参数
 - **OR** 执行当前 operation 不使用、且值无法通过其它 operation 类型或范围校验的 known 参数
 - **AND** 当前 operation 的必需语义参数仍可被解析
-- **THEN** 进程成功退出
-- **THEN** stdout 包含所选输出模式的正常结果
-- **THEN** warning 或诊断必须存在
-- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** 测试不要求 exact token 分组、`reason` 文案或 token 消费顺序
-
-#### Scenario: readable-json warning envelope 保留
-- **WHEN** CLI 矩阵以 `--output readable-json` 执行宽松 argv 成功路径
-- **THEN** stdout 包含顶层 `warnings` 数组
-- **THEN** 每个 warning item 包含稳定 `id`、非空 `reason`、稳定 `effect` 和 `details` 对象
-- **THEN** CLI argv warning 使用 `id: "cli_argv_ignored"`
-- **THEN** stdout 通过对应 readable schema
-
-#### Scenario: protocol-shaped stdout 不承载 warning
-- **WHEN** CLI 矩阵以 `protocol-json`、manifest 或 probe 输出模式执行宽松 argv 成功路径
-- **THEN** stdout 通过对应 protocol、manifest 或 probe schema
-- **THEN** stdout 不因为 CLI warning 增加 `warnings` 字段
-- **THEN** warning 或诊断只允许出现在 stderr 或非 schema stdout 之外的通道
+- **THEN** 进程非零退出
+- **THEN** 输出包含 primary input diagnostic
+- **THEN** stdout 不包含成功结果
 
 #### Scenario: 当前 operation 使用的已知参数仍严格校验
 - **WHEN** 负向矩阵执行 `docnav-markdown outline <path> --page 0`
@@ -425,7 +409,7 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 - **THEN** heading 身份输入来自 ref 的结构坐标
 
 ### Requirement: docnav-markdown direct CLI 支持 JSON 配置文件
-`docnav-markdown` direct CLI MUST 读取项目级 `.docnav/docnav-markdown.json` 和默认用户配置目录下的 `docnav-markdown.json` 配置，并 MUST 支持 SDK-owned `--project-config-path <path>` 和 `--user-config-path <path>` 覆盖这两个配置文件路径；默认用户配置目录未提供时使用当前调用位置（启动 cwd）。首期配置 MUST 支持 `defaults.limit_chars`、`defaults.output` 和 `options.max_heading_level`。Document operation help MUST 展示两个配置路径参数。导致配置源被跳过的读取失败 MUST 产生 direct CLI warning，同时 operation MUST 使用其余来源继续执行。
+`docnav-markdown` direct CLI MUST 读取项目级 `.docnav/docnav-markdown.json` 和默认用户配置目录下的 `docnav-markdown.json` 配置，并 MUST 支持 SDK-owned `--project-config-path <path>` 和 `--user-config-path <path>` 覆盖这两个配置文件路径；默认用户配置目录未提供时使用当前调用位置（启动 cwd）。首期配置 MUST 支持 `defaults.limit_chars`、`defaults.output` 和 `options.max_heading_level`。Document operation help MUST 展示两个配置路径参数。默认配置源缺失视为 absent；显式覆盖缺失、不可读或 present invalid 配置源 MUST 产生 blocking config diagnostic。
 
 #### Scenario: max_heading_level 来自配置
 - **WHEN** `.docnav/docnav-markdown.json` 包含 `options.max_heading_level: 2`
@@ -464,7 +448,7 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 - **THEN** help 不读取 `.docnav/docnav-markdown.json`
 
 ### Requirement: docnav-markdown 配置必须由 smoke 和矩阵测试覆盖
-`docnav-markdown` black-box CLI smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置源不可用时继续合并并输出 warning、help 参数展示，以及 `invoke` request `arguments` 与配置/default sources 进入同一标准参数解析的边界。
+`docnav-markdown` black-box CLI smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置源不可用时返回 blocking config diagnostic、help 参数展示，以及 `invoke` request `arguments` 与配置/default sources 进入同一标准参数解析的边界。
 
 #### Scenario: Smoke 覆盖配置优先级
 - **WHEN** smoke suite 使用项目级配置和默认用户配置目录下的 `docnav-markdown.json`
@@ -481,14 +465,13 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 #### Scenario: 矩阵覆盖配置源不可用
 - **WHEN** smoke 或矩阵 fixture 提供语法无效的 JSON 配置源
 - **AND** 其它配置来源或内置默认值可用
-- **THEN** `docnav-markdown` 继续按其余来源合并标准参数来源对象
-- **THEN** 测试证明配置源跳过 warning 出现在当前输出模式允许的 warning 通道
+- **THEN** `docnav-markdown` 返回 blocking config diagnostic
+- **THEN** operation request 不构造
 
 #### Scenario: 矩阵覆盖显式配置路径不可用
 - **WHEN** smoke 或矩阵 fixture 显式传入不存在或不可读的 `--project-config-path`
-- **THEN** 覆盖后的项目级配置源不参与本次合并
-- **THEN** 用户级配置和内置默认值仍可参与标准参数来源对象合并
-- **THEN** 测试证明配置源跳过 warning 出现在当前输出模式允许的 warning 通道
+- **THEN** `docnav-markdown` 返回 blocking config diagnostic
+- **THEN** operation request 不构造
 
 #### Scenario: Invoke 使用配置补足 registered option
 - **WHEN** 项目级 `docnav-markdown.json` 设置 `options.max_heading_level`

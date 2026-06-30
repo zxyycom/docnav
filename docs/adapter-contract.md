@@ -20,9 +20,9 @@ probe
 文档操作的直接 CLI 支持 `readable-view`（默认）、`readable-json` 和 `protocol-json` 输出；`manifest`、`probe` 和 `protocol-json` 输出各自专属机器 schema。
 适配器可复用 SDK 的直接 CLI 基础能力完成通用命令分发、标准参数消费、adapter 配置读取、protocol request 构造、输出分流和错误通道投影。SDK direct CLI 的 argv 映射、配置字段映射、来源合并、校验和 metadata 由 [标准参数](standard-parameters.md) 定义；SDK 继续拥有命令分发、诊断投影与刷新、operation build 和最终 exit behavior。格式 adapter 只声明格式原生 CLI flag、native option registration、operation binding 和业务语义，并保留这些 options 的 ref 策略和 readable payload 字段语义。
 
-适配器直接 CLI argv 必须复用 [标准参数](standard-parameters.md#输入与配置映射) 定义的 direct input 映射与兼容规则。
+适配器直接 CLI argv 必须复用 [标准参数](standard-parameters.md#输入与配置映射) 定义的 direct input 映射与 strict unmapped-input 规则。
 
-`manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；存在可投影为 CLI warning 的诊断记录时按直接 CLI 规则写 stderr。`--help` 和子命令 help 只输出可纠错参数说明，不执行文档导航业务。共享 helper 的复用验收标准是保持这些 schema、plain text、stderr boundary 和 exit behavior 不变；document output owner 见 [输出模式](output.md#输出层边界)。
+`manifest`、`probe` 和文档操作 `protocol-json` 的 stdout 仍使用本文件定义的专属机器 schema；input 或 fatal diagnostic 按 owning command 的 stderr 或 structured failure channel 输出，不污染机器 stdout。`--help` 和子命令 help 只输出可纠错参数说明，不执行文档导航业务。共享 helper 的复用验收标准是保持这些 schema、plain text、stderr boundary 和 exit behavior 不变；document output owner 见 [输出模式](output.md#输出层边界)。
 
 ## 适配器职责
 
@@ -73,9 +73,9 @@ reasons[]
 
 ## Invoke
 
-`invoke` 是独立的 protocol stdin/stdout 入口。SDK 将解码后的 stdin JSON value 作为 direct input 交给标准参数/typed-field processing；request envelope、operation、document path 和 raw `arguments` 都从该 direct input 中映射、校验并产出诊断交接数据。缺失的已注册参数可由 adapter invoke 入口的配置或默认值补足。未映射字段不由标准参数层解释；adapter 入口可通过标准参数返回的透传处理结果按自身策略保留、丢弃或交给 adapter-owned 语义校验。
+`invoke` 是独立的 protocol stdin/stdout 入口。SDK 先按 protocol direct input boundary 校验 stdin JSON envelope：unknown envelope fields、缺少必需字段、operation 不合法、document path shape 错误或 `arguments` 非 object 都必须返回 protocol-shaped failure，且不进入标准参数/typed-field processing。Envelope 合法后，SDK 将 operation、document path 和 raw `arguments` 作为 direct input 交给标准参数/typed-field processing；缺失的已注册参数可由 adapter invoke 入口的配置或默认值补足。未映射 `arguments` 字段默认产生 input diagnostic；只有 `arguments.options` 或 registration 声明的其它 owner-scoped native option source 可以 delegated 给 adapter/native option owner 校验或拒绝。
 
-`invoke` stdin JSON 使用 direct input validation，而不是 CLI argv 的 ignored-token warning 规则。Malformed JSON 属于 stdin transport decode failure；已解码 JSON value 直接进入标准参数/typed-field processing。缺少 envelope 必需字段、已出现已注册参数类型错误或其它 direct input validation failure 不得被 warning 后忽略，也不得暴露为 safe operation values。未映射 `arguments` 字段不由标准参数层解释；adapter 层作为最终消费者，可以通过透传处理结果丢弃这些字段，或在 adapter-owned native option 语义中返回协议错误。通过标准参数解析的 `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
+`invoke` stdin JSON 使用 strict direct input validation。Malformed JSON 属于 stdin transport decode failure；已解码 JSON value 在 envelope 合法后才进入标准参数/typed-field processing。缺少 envelope 必需字段、已注册参数类型错误、未映射 `arguments` 字段、undeclared native option 或其它 direct input validation failure 必须返回 protocol-shaped failure，不得暴露为 safe operation values。通过标准参数解析的 `outline/read/find/info` request 必须与 direct CLI 文档操作共享语义归一、request 构造或统一 operation handler，不得维护第二套业务参数解释规则。
 
 SDK 可以复用 `docnav-protocol` 的 JSON decode、typed-field metadata 和标准参数 processing helper；failure surface 仍必须是由错误通道记录投影出的 protocol-shaped failure response。`invoke` stdin JSON 不是直接 CLI argv，按 [原始协议](protocol.md#schema-所有权) 的 direct input 边界验收。
 
@@ -93,11 +93,11 @@ SDK 可以复用 `docnav-protocol` 的 JSON decode、typed-field metadata 和标
 - Adapter direct CLI 和 adapter `invoke` 的配置字段映射、来源标记、合并顺序、默认值和 schema metadata 由 [标准参数](standard-parameters.md) 定义。
 - SDK 调用方必须提供 adapter id、registration、入口策略、内置默认值、native option specs 和可选默认用户配置目录；未提供默认用户配置目录时，SDK 按标准参数配置映射规则使用启动 cwd。
 - SDK document operation help 必须展示配置路径覆盖参数，但 help 不读取 adapter direct CLI 配置。
-- SDK document operation 必须按标准参数机制处理显式 argv、配置源和默认值；不可用配置源产生可投影为 `adapter_config_source_skipped` 的可恢复诊断，并继续按其余来源合并。
+- SDK document operation 必须按标准参数机制处理显式 argv、配置源、owner-scoped native option source 和默认值；默认配置路径缺失表示 absent，不产生诊断。显式 override 缺失、不可读、不是文件、invalid JSON、non-object JSON，或默认配置文件一旦存在但无效时，SDK 必须返回 config input diagnostic，不继续按其它来源构造 document operation。
 - manifest 只声明 adapter 能力，不提供默认参数。
 - `docnav` 按自身标准参数 registration 和入口策略解析 core 通用参数。
 - 格式原生 `options` 对 `docnav` 和接入层保持 opaque。
-- Adapter native options 只有在对应 registration 声明时才参与标准参数解析；否则按 adapter-owned policy 消费、丢弃或报错。
+- Adapter native options 只有在对应 registration 声明时才参与标准参数解析或 delegated 给 adapter/native option owner；否则必须按 unmapped public input 返回诊断。
 - page 不属于配置默认值；入口省略 page 时固定从 `1` 开始。
 
 ## 协议字段对齐

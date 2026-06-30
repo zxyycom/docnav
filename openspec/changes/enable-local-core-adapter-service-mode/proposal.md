@@ -8,7 +8,7 @@
 
 - 新增本地 core service 与 adapter service mode 的草案；两层作为一个整体 change 处理。
 - service mode 默认启用。
-- 连接失败类问题 fallback 到现有 `adapter invoke` 路径，并产生诊断 warning。
+- 连接失败类问题 fallback 到现有 `adapter invoke` 路径，并产生内部 fast-path diagnostic 或 owner-scoped status；document success output 保持 documented payload contract。
 - handshake、wire hash、frame 或内部 payload mismatch hard fail，不 fallback。
 - 内部协议仅限同版本/同 build 本地 fast path，不进入 public `docnav-protocol` schema。
 - 现有 adapter `invoke` 入口保留为兼容和 fallback 路径。
@@ -27,4 +27,4 @@
 
 - 未来会影响 `docnav` core execution path、adapter SDK serve loop、adapter lifecycle、local IPC、diagnostics、benchmark 和 integration tests。
 - 可能引入 async runtime、local socket/named pipe、length-delimited framing 和 internal binary payload 依赖。
-- 不改变 public protocol-json/readable output wrapper、adapter-owned ref、pagination semantics 或 existing single-request invoke contract。
+- 不改变 public protocol-json/readable success payload、primary failure projection、adapter-owned ref、pagination semantics 或 existing single-request invoke contract。

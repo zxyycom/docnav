@@ -12,13 +12,13 @@
 
 - [ ] 2.2 更新 `docs/protocol.md`，把 `OutlineResult` 定义为 structured entries 和 configured unstructured full content 两个可判别形态。
 - [ ] 2.3 更新 `docs/cli.md` 的 document command 行为，记录非结构化 outline 生效配置语义、输出和非分页边界；具体配置文件、格式和合并方式由配置能力文档定义。
-- [ ] 2.4 更新 `docs/output.md`，记录普通 outline 无 block、非结构化 outline 使用 `/content` block 的 readable-view 行为。
+- [ ] 2.4 更新 `docs/output.md`，记录普通 outline 无 block、非结构化 outline 使用 `/content` block 的 readable-view 行为，并保持 readable success payload 只承载成功结果。
 - [ ] 2.5 更新 `docs/adapters/markdown.md`，记录 `docnav-markdown` 非结构化 outline 配置、direct CLI 行为和 `doc:full` fallback 的边界差异。
 
 ## 3. 协议、Schema 与输出类型
 
 - [ ] 3.1 更新 shared protocol/result 类型，使 outline success result 支持 structured 和 unstructured 两个分支。
-- [ ] 3.3 更新 readable payload 类型和 output mapping，使 non-structured outline result 可以进入 readable-json、readable-view 和 protocol-json。
+- [ ] 3.3 更新 readable payload 类型和 output mapping，使 non-structured outline result 可以作为 documented success payload 进入 readable-json、readable-view 和 protocol-json。
 - [ ] 3.4 更新 readable-view renderer config 或 view kind 映射，为非结构化 outline 声明 `/content` block，同时保持普通 outline 无 block。
 
 ## 4. Core CLI 与 Markdown Adapter 实现
