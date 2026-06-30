@@ -132,5 +132,6 @@ fn invoke_standard_parameter_config(
         default_limit: config.default_limit,
         project_config: Some(descriptors.project),
         user_config: Some(descriptors.user),
+        native_options: config.native_options.to_vec(),
     })
 }

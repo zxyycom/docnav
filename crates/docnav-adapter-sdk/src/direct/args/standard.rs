@@ -9,7 +9,7 @@ use docnav_standard_parameters::{
 use docnav_typed_fields::{FieldDefBuilder, FieldDefs, FieldIdentity, JsonValue, ProcessingBuild};
 use serde_json::json;
 
-use crate::standard_parameters::native_options_passthrough;
+use crate::standard_parameters::{adapter_config_source_issue, native_options_passthrough};
 
 use super::super::output::DirectOutputMode;
 
@@ -203,26 +203,10 @@ fn loaded_config_source(
     descriptor: StandardParameterConfigSourceDescriptor,
 ) -> Result<LoadedStandardParameterConfigSource, String> {
     let loaded = load_standard_parameter_config_source(&descriptor);
-    reject_legacy_limit_config(&descriptor, loaded.value())?;
-    Ok(loaded)
-}
-
-fn reject_legacy_limit_config(
-    descriptor: &StandardParameterConfigSourceDescriptor,
-    value: Option<&JsonValue>,
-) -> Result<(), String> {
-    let has_legacy_limit = value
-        .and_then(|value| value.get("defaults"))
-        .and_then(JsonValue::as_object)
-        .is_some_and(|defaults| defaults.contains_key("limit"));
-    if has_legacy_limit {
-        return Err(format!(
-            "{} config {} uses unsupported defaults.limit; use defaults.pagination.limit",
-            descriptor.level.as_str(),
-            descriptor.path.display()
-        ));
+    if let Some(issue) = adapter_config_source_issue(&descriptor, loaded.value()) {
+        return Ok(loaded.with_config_source_issue(issue));
     }
-    Ok(())
+    Ok(loaded)
 }
 
 fn native_options_processing(

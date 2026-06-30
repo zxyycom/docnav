@@ -49,6 +49,7 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 - [probe-result.json](json/probe-result.json)
 - [error-ref-ambiguous.json](json/error-ref-ambiguous.json)
 - [error-ref-invalid.json](json/error-ref-invalid.json)
+- [error-ref-not-found.json](json/error-ref-not-found.json)
 - [error-format-unknown.json](json/error-format-unknown.json)
 - [error-format-ambiguous.json](json/error-format-ambiguous.json)
 - [error-invalid-request.json](json/error-invalid-request.json)
@@ -58,6 +59,7 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 - [error-explicit-adapter-failure.json](json/error-explicit-adapter-failure.json)
 - [error-explicit-config-failure.json](json/error-explicit-config-failure.json)
 - [error-unknown-config-field.json](json/error-unknown-config-field.json)
+- [readable-error.json](json/readable-error.json)
 
 错误示例只展示 protocol/readable surface 投影。错误 code、canonical details、primary diagnostic 字段和错误机械身份来自 [错误通道](../diagnostics.md)；本目录不作为 code/details 规则来源。
 

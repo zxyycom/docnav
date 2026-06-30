@@ -22,7 +22,7 @@
 - **THEN** structuredContent 从 stdout readable JSON 解析得到
 
 ### Requirement: MCP adapter 参数必须原样映射
-MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。Adapter id 解释、格式识别和候选继续遍历 MUST 由核心 `docnav` CLI 完成。
+MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。该值 MUST 作为 caller-declared adapter id 交给核心 `docnav` CLI；adapter 参数省略时，格式识别和候选继续遍历 MUST 由核心 `docnav` CLI 完成。
 
 #### Scenario: 传递 adapter id
 - **WHEN** MCP Client 传入 `adapter: "docnav-markdown"`

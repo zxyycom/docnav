@@ -89,6 +89,27 @@ function validateProtocolResponseErrorDetailsSchema() {
   console.log("protocol response error details shape ok");
 }
 
+function validateReadableErrorDetailsSchema() {
+  const ajv = createSchemaAjv();
+  const validate = compileRegisteredSchema(ajv, SCHEMAS.readableError);
+  const validError = readJson(EXAMPLES.readableError);
+  assert(
+    validate(validError),
+    `readable error schema must accept documented readable error: ${formatAjvErrors(validate)}`
+  );
+
+  const missingDetails = structuredClone(validError);
+  assert(isRecord(missingDetails), `${EXAMPLES.readableError} must be an object`);
+  delete missingDetails[FIELDS.details];
+
+  assert(
+    !validate(missingDetails),
+    "readable error schema must reject errors without details"
+  );
+
+  console.log("readable error details shape ok");
+}
+
 export function validateJsonSyntax() {
   const jsonFiles = walk(toAbs(FILE_SYSTEM.docsDir), (filePath) =>
     filePath.endsWith(FILE_SYSTEM.jsonExtension)
@@ -153,4 +174,5 @@ export function validateSchemas() {
   }
   validateProtocolResponseBindingSchema();
   validateProtocolResponseErrorDetailsSchema();
+  validateReadableErrorDetailsSchema();
 }

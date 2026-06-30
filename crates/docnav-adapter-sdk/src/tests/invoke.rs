@@ -1,7 +1,9 @@
 use super::common::{positive, HandlerErrorAdapter, ManifestShapeErrorAdapter, StubAdapter};
 use crate::invoke::{invoke_once_with_default_limit, invoke_once_with_standard_parameter_config};
 use crate::standard_parameters::InvokeStandardParameterConfig;
-use crate::{invoke_once, Adapter, AdapterExitCode, AdapterResult};
+use crate::{
+    invoke_once, Adapter, AdapterExitCode, AdapterResult, NativeOptionSpec, NativeOptionValueSpec,
+};
 use docnav_protocol::{
     AdapterIdentity, Entry, FailureResponse, FormatDescriptor, Manifest, Operation,
     OutlineArguments, OutlineResult, ProbeResult, ProtocolDiagnosticCode, ProtocolResponse,
@@ -14,6 +16,8 @@ use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+
+mod native_options;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -41,36 +45,6 @@ fn invoke_reads_one_request_and_writes_one_protocol_response() {
     assert_eq!(value["operation"], "outline");
     assert_eq!(value["ok"], true);
     assert_eq!(value["result"]["entries"][0]["ref"], "L1:Stub");
-}
-
-#[test]
-fn invoke_standard_parameter_normalization_preserves_options_passthrough() {
-    let input = br#"{
-          "protocol_version": "0.1",
-          "request_id": "req-opts",
-          "operation": "outline",
-          "document": { "path": "sample.stub" },
-          "arguments": {
-            "limit": 80,
-            "page": 1,
-            "options": { "required_by_test": true }
-          }
-        }"#;
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    let exit = invoke_once(
-        &OptionsRequiredAdapter,
-        &input[..],
-        &mut stdout,
-        &mut stderr,
-    );
-
-    assert_eq!(exit, AdapterExitCode::Success.code());
-    assert!(stderr.is_empty());
-    let response: ProtocolResponse =
-        serde_json::from_slice(&stdout).expect("stdout is one JSON response");
-    response.validate().expect("response validates");
 }
 
 #[test]
@@ -215,6 +189,15 @@ fn invoke_config(
     project_config: Option<PathBuf>,
     user_config: Option<PathBuf>,
 ) -> InvokeStandardParameterConfig {
+    invoke_config_with_native_options(default_limit, project_config, user_config, &[])
+}
+
+fn invoke_config_with_native_options(
+    default_limit: u32,
+    project_config: Option<PathBuf>,
+    user_config: Option<PathBuf>,
+    native_options: &[NativeOptionSpec],
+) -> InvokeStandardParameterConfig {
     InvokeStandardParameterConfig {
         default_limit,
         project_config: project_config.map(|path| {
@@ -231,6 +214,7 @@ fn invoke_config(
                 path,
             )
         }),
+        native_options: native_options.to_vec(),
     }
 }
 
@@ -396,80 +380,6 @@ fn failure_response_from_stdout(stdout: &[u8]) -> FailureResponse {
     match response {
         ProtocolResponse::Failure(response) => response,
         ProtocolResponse::Success(_) => panic!("expected failure response"),
-    }
-}
-
-struct OptionsRequiredAdapter;
-
-impl Adapter for OptionsRequiredAdapter {
-    fn adapter_id(&self) -> &str {
-        "options-required"
-    }
-
-    fn manifest(&self) -> Manifest {
-        Manifest {
-            manifest_version: MANIFEST_VERSION.to_owned(),
-            adapter: AdapterIdentity {
-                id: "options-required".to_owned(),
-                name: "Options Required".to_owned(),
-                version: "0.1.0".to_owned(),
-            },
-            formats: vec![FormatDescriptor {
-                id: "stub".to_owned(),
-                extensions: vec![".stub".to_owned()],
-                content_types: vec!["text/stub".to_owned()],
-            }],
-            capabilities: vec![Operation::Outline],
-        }
-    }
-
-    fn probe(&self, path: &str) -> ProbeResult {
-        ProbeResult {
-            probe_version: PROBE_VERSION.to_owned(),
-            adapter_id: "options-required".to_owned(),
-            path: path.to_owned(),
-            supported: true,
-            format: Some("stub".to_owned()),
-            confidence: 1.0,
-            reasons: Vec::new(),
-        }
-    }
-
-    fn outline(
-        &self,
-        _request: &RequestEnvelope,
-        arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
-        let Some(options) = &arguments.options else {
-            return Err(crate::AdapterError::invalid_request(
-                "arguments.options",
-                "missing options",
-            ));
-        };
-        if options
-            .get("required_by_test")
-            .and_then(serde_json::Value::as_bool)
-            != Some(true)
-        {
-            return Err(crate::AdapterError::invalid_request(
-                "arguments.options.required_by_test",
-                "missing required_by_test option",
-            ));
-        }
-        Ok(OutlineResult {
-            entries: vec![Entry {
-                ref_id: "L1:Options".to_owned(),
-                label: "options preserved".to_owned(),
-                kind: None,
-                location: None,
-                summary: None,
-                excerpt: None,
-                rank: None,
-                cost: None,
-                metadata: None,
-            }],
-            page: None,
-        })
     }
 }
 

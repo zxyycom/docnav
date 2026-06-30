@@ -214,8 +214,47 @@ fn legacy_defaults_limit_config_path_is_rejected() {
     .expect_err("legacy defaults.limit must fail");
     let error = error.to_string();
 
-    assert!(error.contains("unsupported defaults.limit"));
-    assert!(error.contains("defaults.pagination.limit"));
+    assert!(error.contains("unknown_config_field"));
+    assert!(error.contains("defaults.limit"));
+}
+
+#[test]
+fn unknown_config_fields_are_rejected_before_operation_request() {
+    let dir = temp_dir("unknown-config-fields");
+    let top_level_config = dir.join("top-level.json");
+    let defaults_config = dir.join("defaults.json");
+    write_json(
+        &top_level_config,
+        json!({
+            "future": true
+        }),
+    );
+    write_json(
+        &defaults_config,
+        json!({
+            "defaults": {
+                "future": true
+            }
+        }),
+    );
+
+    for (path, field) in [
+        (top_level_config.as_path(), "future"),
+        (defaults_config.as_path(), "defaults.future"),
+    ] {
+        let project_config_arg = path_arg(path);
+        let error = parse_for_test(
+            Operation::Outline,
+            &["doc.md", "--project-config-path", &project_config_arg],
+            6000,
+            &[],
+        )
+        .expect_err("unknown config field must fail");
+        let error = error.to_string();
+
+        assert!(error.contains("unknown_config_field"));
+        assert!(error.contains(field));
+    }
 }
 
 #[test]

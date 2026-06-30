@@ -39,6 +39,7 @@ pub struct StandardParameterConfigSourceIssue {
     pub source_level: String,
     pub path_origin: String,
     pub path: String,
+    pub field: Option<String>,
     pub reason_code: String,
 }
 
@@ -53,27 +54,42 @@ impl StandardParameterConfigSourceIssue {
             source_level: source_level.into(),
             path_origin: path_origin.into(),
             path: path.into(),
+            field: None,
             reason_code: reason_code.into(),
         }
     }
 
+    pub fn with_field(mut self, field: impl Into<String>) -> Self {
+        self.field = Some(field.into());
+        self
+    }
+
     pub fn message(&self) -> String {
+        let field = self
+            .field
+            .as_ref()
+            .map_or(String::new(), |field| format!(" field {field}"));
         format!(
-            "adapter config source failed: {} {} {} ({})",
-            self.source_level, self.path_origin, self.path, self.reason_code
+            "adapter config source failed: {} {} {}{} ({})",
+            self.source_level, self.path_origin, self.path, field, self.reason_code
         )
     }
 
     pub fn to_record_draft(&self, source: DiagnosticSource) -> DiagnosticRecordDraft {
-        let mut details = FieldReasonDetails::new("config", self.reason_code.clone());
+        let field = self.field.as_deref().unwrap_or("config");
+        let mut details = FieldReasonDetails::new(field, self.reason_code.clone());
         details.path = Some(self.path.clone());
-        details.received = Some(self.path.clone());
-        details.config_issues = Some(vec![AdapterConfigSourceDetails::new(
+        details.received = Some(self.field.clone().unwrap_or_else(|| self.path.clone()));
+        let mut issue = AdapterConfigSourceDetails::new(
             &self.source_level,
             &self.path_origin,
             &self.path,
             &self.reason_code,
-        )]);
+        );
+        if let Some(field) = &self.field {
+            issue = issue.with_field(field);
+        }
+        details.config_issues = Some(vec![issue]);
         DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
             self.message(),
             details,

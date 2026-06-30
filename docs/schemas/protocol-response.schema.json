@@ -667,6 +667,16 @@
         },
         "stderr": {
           "type": "string"
+        },
+        "selection_source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": [
+            "resolve",
+            "probe"
+          ]
         }
       },
       "additionalProperties": false

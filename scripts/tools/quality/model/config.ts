@@ -205,12 +205,25 @@ export const DEFAULT_CONFIG = Object.freeze({
         "OperationArguments::operation and OperationResult::operation map the same Operation enum variants at separate protocol request and result boundaries. Keeping the mappings separate preserves boundary ownership; extracting shared code would couple request-argument decoding to result-envelope projection for little maintenance gain."
     },
     {
+      ruleId: "pmd-cpd-duplicate-code",
+      sourceTool: "pmd-cpd",
+      codeArea: "rust-production",
+      metric: "duplicate-tokens",
+      value: 114,
+      suggestionIncludes: [
+        "crates/docnav-diagnostics/src/details/payload.rs",
+        "crates/docnav-standard-parameters/src/resolution.rs"
+      ],
+      reason:
+        "AdapterConfigSourceDetails is the serialized diagnostics payload, while StandardParameterConfigSourceIssue is the standard-parameter handoff fact. Keeping the constructors separate preserves crate and owner boundaries; extracting a shared type would couple fact capture to protocol projection for trivial field assignment."
+    },
+    {
       ruleId: "scc-file-code-lines",
       sourceTool: "scc",
       path: "crates/docnav-protocol/src/error.rs",
       codeArea: "rust-production",
       metric: "code-lines",
-      value: 454,
+      value: 452,
       reason:
         "ProtocolError intentionally keeps protocol error constructors, DiagnosticRecord projection, owner/location projection, and serde rules in one owner file while the strict input contract stabilizes. The file has low decision-token density, and splitting it now would add navigation indirection without reducing behavior risk."
     }

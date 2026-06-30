@@ -54,6 +54,8 @@ pub(super) const ADAPTER_REASON_FIELDS: &[DetailFieldRule] = &[
     required("reason", DetailKind::String),
     optional("exit_code", DetailKind::I32),
     optional("stderr", DetailKind::String),
+    optional("selection_source", DetailKind::String),
+    optional("stage", DetailKind::String),
 ];
 pub(super) const INTERNAL_FIELDS: &[DetailFieldRule] = &[required("error_id", DetailKind::String)];
 pub(super) const BOUNDARY_FIELDS: &[DetailFieldRule] = &[

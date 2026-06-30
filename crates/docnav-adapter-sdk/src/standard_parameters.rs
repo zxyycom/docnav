@@ -16,12 +16,14 @@ use serde_json::json;
 use crate::AdapterError;
 
 mod config;
+mod native_options;
 mod passthrough;
 
-pub(crate) use config::InvokeStandardParameterConfig;
+pub(crate) use config::{adapter_config_source_issue, InvokeStandardParameterConfig};
 pub(crate) use passthrough::native_options_passthrough;
 
 use config::loaded_config_source;
+use native_options::validated_native_options;
 use passthrough::{native_options_processing, options_from_resolution, raw_options};
 
 const DIRECT_PROCESSING: &str = "direct";
@@ -92,7 +94,7 @@ pub(crate) fn standardize_invoke_request(
         }
         Operation::Read => OperationArguments::Read(standardize_read(&request.arguments, &config)?),
         Operation::Find => OperationArguments::Find(standardize_find(&request.arguments, &config)?),
-        Operation::Info => OperationArguments::Info(standardize_info(&request.arguments)?),
+        Operation::Info => OperationArguments::Info(standardize_info(&request.arguments, &config)?),
     };
 
     Ok(RequestEnvelope {
@@ -114,7 +116,11 @@ fn standardize_outline(
     Ok(OutlineArguments {
         limit: finalized_limit(&resolution)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
-        options: options_from_resolution(&resolution),
+        options: validated_native_options(
+            Operation::Outline,
+            options_from_resolution(&resolution),
+            &config.native_options,
+        )?,
     })
 }
 
@@ -129,7 +135,11 @@ fn standardize_read(
         ref_id: required_string_value(&resolution, ID_REF)?,
         limit: finalized_limit(&resolution)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
-        options: options_from_resolution(&resolution),
+        options: validated_native_options(
+            Operation::Read,
+            options_from_resolution(&resolution),
+            &config.native_options,
+        )?,
     })
 }
 
@@ -144,13 +154,24 @@ fn standardize_find(
         query: required_string_value(&resolution, ID_QUERY)?,
         limit: finalized_limit(&resolution)?,
         page: required_positive_value(&resolution, ID_PAGE)?,
-        options: options_from_resolution(&resolution),
+        options: validated_native_options(
+            Operation::Find,
+            options_from_resolution(&resolution),
+            &config.native_options,
+        )?,
     })
 }
 
-fn standardize_info(arguments: &JsonValue) -> Result<docnav_protocol::InfoArguments, AdapterError> {
+fn standardize_info(
+    arguments: &JsonValue,
+    config: &InvokeStandardParameterConfig,
+) -> Result<docnav_protocol::InfoArguments, AdapterError> {
     Ok(docnav_protocol::InfoArguments {
-        options: raw_options(arguments),
+        options: validated_native_options(
+            Operation::Info,
+            raw_options(arguments),
+            &config.native_options,
+        )?,
     })
 }
 
@@ -305,7 +326,7 @@ fn validation_error_for_identity(identity: &str) -> AdapterError {
     invalid_request_error(argument_field(identity), validation_reason(identity))
 }
 
-fn invalid_request_error(field: &str, reason: &str) -> AdapterError {
+pub(super) fn invalid_request_error(field: &str, reason: &str) -> AdapterError {
     AdapterError::new(protocol_error_record_draft_with_summary::<
         typed_codes::protocol::InvalidRequest,
     >(

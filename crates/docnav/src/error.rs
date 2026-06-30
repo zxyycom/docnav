@@ -96,11 +96,17 @@ impl AppError {
         ))
     }
 
-    pub fn adapter_unavailable(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
+    pub fn adapter_unavailable_with_selection_context(
+        adapter_id: impl Into<String>,
+        reason: impl Into<String>,
+        selection_source: impl Into<String>,
+        stage: impl Into<String>,
+    ) -> Self {
         Self::new(protocol_error_record_draft::<
             typed_codes::protocol::AdapterUnavailable,
         >(
-            AdapterReasonDetails::new(adapter_id, reason),
+            AdapterReasonDetails::new(adapter_id, reason)
+                .with_selection_context(selection_source, stage),
             DiagnosticSource::with_stage("docnav", "routing"),
         ))
     }
@@ -122,6 +128,8 @@ impl AppError {
                 reason,
                 exit_code,
                 stderr: (!stderr.trim().is_empty()).then_some(stderr),
+                selection_source: None,
+                stage: None,
             },
             DiagnosticSource::with_stage("docnav", "adapter-output"),
         ))

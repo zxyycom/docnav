@@ -100,8 +100,8 @@
 - **THEN** pipeline 可以复用该 loaded source 而不重复读取同一文件
 - **THEN** post-load source construction 和 diagnostic handoff semantics 与 path-based pipeline path 保持一致
 
-### Requirement: Standard parameter passthrough 保持 owner-scoped
-标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 source-scoped passthrough processing results，使 owning CLI、adapter、protocol 或 config layer 可以 retain、discard、reject 或 delegate。
+### Requirement: Unmapped input 由 entry owner 决定边界结果
+标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 source-scoped passthrough processing results。Resolver 本身 MUST NOT 将 unmapped input 视为已接受；owning CLI、adapter、protocol 或 config layer MUST 按其已声明的 input source/key policy 显式 reject、discard internal-only leftovers，或 delegate adapter-owned native option source。
 
 #### Scenario: Unmapped input 不参与标准参数 validation
 - **WHEN** input field 未映射到 standard parameter identity
@@ -112,7 +112,8 @@
 #### Scenario: Adapter native option 保持 delegated
 - **WHEN** adapter direct CLI 或 invoke argument 包含没有 standard parameter mapping 的 native option
 - **THEN** resolver 让该 option 保持在 typed-field standard parameter validation 之外
-- **THEN** entry owner 仍负责 native option validation 或 strict input-boundary diagnostic
+- **THEN** entry owner 只有在声明 native option source/key 且拥有该 key 校验时才能继续处理
+- **THEN** 未声明或不适用于当前 operation 的 native option 返回 strict input-boundary diagnostic
 
 ### Requirement: Operation argument binding 保留 source semantics
 标准参数 resolver MUST 把 operation argument binding 建模为 standard parameter identity 到 protocol request `arguments` path 的映射，并保留 resolution 产生的 source info。

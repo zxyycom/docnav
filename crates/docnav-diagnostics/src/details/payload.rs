@@ -213,6 +213,10 @@ pub struct AdapterReasonDetails {
     pub exit_code: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stderr: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<String>,
 }
 
 impl AdapterReasonDetails {
@@ -222,7 +226,19 @@ impl AdapterReasonDetails {
             reason: reason.into(),
             exit_code: None,
             stderr: None,
+            selection_source: None,
+            stage: None,
         }
+    }
+
+    pub fn with_selection_context(
+        mut self,
+        selection_source: impl Into<String>,
+        stage: impl Into<String>,
+    ) -> Self {
+        self.selection_source = Some(selection_source.into());
+        self.stage = Some(stage.into());
+        self
     }
 }
 
@@ -244,6 +260,8 @@ pub struct AdapterConfigSourceDetails {
     pub source_level: String,
     pub path_origin: String,
     pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub field: Option<String>,
     pub reason_code: String,
 }
 
@@ -258,8 +276,14 @@ impl AdapterConfigSourceDetails {
             source_level: source_level.into(),
             path_origin: path_origin.into(),
             path: path.into(),
+            field: None,
             reason_code: reason_code.into(),
         }
+    }
+
+    pub fn with_field(mut self, field: impl Into<String>) -> Self {
+        self.field = Some(field.into());
+        self
     }
 }
 

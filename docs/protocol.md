@@ -199,9 +199,11 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 | `REF_NOT_FOUND` | `ref` |
 | `REF_AMBIGUOUS` | `ref`、`candidate_count` |
 | `REF_INVALID` | `ref`、`reason` |
-| `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason`；`exit_code`、`stderr` 可选 |
-| `ADAPTER_INVOKE_FAILED` | `adapter_id`、`reason`；`exit_code`、`stderr` 可选 |
+| `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason`；`exit_code`、`stderr`、`selection_source`、`stage` 可选 |
+| `ADAPTER_INVOKE_FAILED` | `adapter_id`、`reason`；`exit_code`、`stderr`、`selection_source`、`stage` 可选 |
 | `INTERNAL_ERROR` | `error_id` |
+
+`selection_source` 和 `stage` 只在声明式 adapter 选择失败需要区分来源和失败阶段时出现；自动 discovery 的候选失败列表使用 `FORMAT_UNKNOWN`/`FORMAT_AMBIGUOUS` candidate summary 表达。
 
 `FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；primary `DiagnosticRecord.details.candidate_failures` 使用同一元素 shape。每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`MANIFEST_INVALID`、`ADAPTER_UNAVAILABLE`、`CAPABILITY_UNSUPPORTED`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload、stderr、exit code 和人类说明文案由 adapter boundary stderr 诊断或内部错误通道按各自契约承载。
 

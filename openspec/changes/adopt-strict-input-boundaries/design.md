@@ -68,7 +68,7 @@ AI 友好性通过诊断质量实现。公共失败面使用一个 primary `Diag
 
 ### Decision 4: Config strictness distinguishes absence from invalid state
 
-默认配置路径不存在表示 absence，可以静默跳过；显式 override 缺失、不可读或非法返回 config diagnostic；默认配置文件一旦存在但无效也返回 config diagnostic。未知 config 字段按 config input failure 处理。`options` 是 adapter-owned native options 输入源；owner 已声明或能验证的 option key 才能进入后续处理。
+默认配置路径不存在表示 absence，可以静默跳过；显式 override 缺失、不可读或非法返回 config diagnostic；默认配置文件一旦存在但无效也返回 config diagnostic。未知 config 字段按 config input failure 处理。`options` 是 adapter-owned native options 输入源；只有 owner 已声明 option source/key 且拥有该 key 校验时才能进入后续处理。
 
 ### Decision 5: Existing in-progress changes must be reconciled before implementation
 

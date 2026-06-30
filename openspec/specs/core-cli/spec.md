@@ -155,12 +155,13 @@ Core CLI strict input 规则如下：
 - **THEN** 输出包含 checks 数组
 - **AND** 存在失败检查项时进程非零退出
 
-### Requirement: adapter 选择必须先校验一个预选 adapter
-`docnav` MUST 先确定一个预选 adapter id，并 MUST 使用统一的候选评估规则决定选中、继续遍历或直接失败。Adapter 评估 MUST 以 registry 记录解析、manifest 当前 schema、当前契约语义和 adapter probe 结果为准。
+### Requirement: adapter 选择必须区分声明式 adapter 和自动发现
+`docnav` MUST first honor a declared adapter id from `--adapter` or `defaults.adapter`. Declared adapter failure MUST return an adapter selection diagnostic with the declared source and candidate failure stage. When no declared adapter id exists, `docnav` MAY infer an adapter from registry manifest metadata and use the same candidate evaluation rules to select, continue traversal, or report discovery failure. Adapter 评估 MUST 以 registry 记录解析、manifest 当前 schema、当前契约语义和 adapter probe 结果为准。
 
 #### Scenario: 显式 adapter 记录解析失败后返回诊断
 - **WHEN** 调用方传入 `--adapter docnav-markdown` 但 registry 中无法解析该 adapter 记录
 - **THEN** `docnav` 返回 adapter selection diagnostic
+- **THEN** 错误 details 包含 adapter id、selection_source、stage 和 reason
 - **THEN** `docnav` 不把显式 adapter failure 转为 automatic discovery success path
 
 #### Scenario: probe 有效不支持后继续
@@ -168,14 +169,14 @@ Core CLI strict input 规则如下：
 - **THEN** `docnav` 保留 `PROBE_UNSUPPORTED` 候选证据
 - **THEN** `docnav` 继续 registry 遍历
 
-#### Scenario: 未显式指定时先 core 推断
+#### Scenario: 未声明 adapter 时先 core 推断
 - **WHEN** 调用方没有传入 `--adapter`
 - **AND** 配置没有指定 `defaults.adapter`
 - **THEN** `docnav` 使用候选 manifest 的格式信息推断一个预选 adapter id
 - **THEN** `docnav` 先校验该预选 adapter
 
-#### Scenario: 预选 adapter manifest 当前契约不一致后继续
-- **WHEN** 预选 adapter manifest 缺少 `docnav` 当前 CLI 选择 adapter 所需字段
+#### Scenario: 自动推断 adapter manifest 当前契约不一致后继续
+- **WHEN** 自动推断 adapter manifest 缺少 `docnav` 当前 CLI 选择 adapter 所需字段
 - **THEN** `docnav` 保留候选证据
 - **THEN** `docnav` 继续 registry 遍历
 

@@ -6,6 +6,7 @@
     "code",
     "error",
     "owner",
+    "details",
     "guidance"
   ],
   "properties": {

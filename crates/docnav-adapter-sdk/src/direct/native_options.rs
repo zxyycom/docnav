@@ -21,11 +21,11 @@ pub struct NativeOptionSpec {
 }
 
 impl NativeOptionSpec {
-    pub(super) fn supports(&self, operation: Operation) -> bool {
+    pub(crate) fn supports(&self, operation: Operation) -> bool {
         self.operations.contains(&operation)
     }
 
-    pub(super) fn parse_value(&self, value: &Value) -> Result<Value, String> {
+    pub(crate) fn parse_value(&self, value: &Value) -> Result<Value, String> {
         match self.value {
             NativeOptionValueSpec::IntegerRange { min, max } => {
                 let parsed = parse_integer_value(value)

@@ -237,6 +237,10 @@ pub enum DiagnosticDetails {
         exit_code: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         stderr: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        selection_source: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        stage: Option<String>,
     },
     Internal {
         error_id: String,

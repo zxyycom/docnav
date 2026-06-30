@@ -56,14 +56,14 @@ When no caller-declared adapter id exists, `docnav` MAY perform automatic adapte
 #### Scenario: 显式 adapter 解析失败时失败
 - **WHEN** 调用方传入 `--adapter docnav-markdown` 但 registry 中无法解析该 adapter 记录
 - **THEN** `docnav` 返回 adapter selection error
-- **THEN** 错误 details 包含 adapter id、stage 和 reason
+- **THEN** 错误 details 包含 adapter id、selection_source、stage 和 reason
 - **THEN** adapter selection 以该诊断结束
 
 #### Scenario: 配置声明 adapter 失败时失败
 - **WHEN** effective config 提供 `defaults.adapter`
 - **AND** 该 adapter 的 manifest、当前契约校验或 probe 失败
 - **THEN** `docnav` 返回 adapter selection error
-- **THEN** 错误 details 指向配置来源和 adapter 候选失败原因
+- **THEN** 错误 details 指向配置来源、adapter 候选失败阶段和原因
 - **THEN** adapter selection 以该诊断结束
 
 #### Scenario: 自动发现候选失败后可继续

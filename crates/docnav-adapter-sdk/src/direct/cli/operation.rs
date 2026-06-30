@@ -234,18 +234,23 @@ fn argv_reason(message: &str) -> (&'static str, Option<String>) {
 }
 
 fn config_source_details(issue: &StandardParameterConfigSourceIssue) -> FieldReasonDetails {
-    let field = match issue.source_level.as_str() {
+    let fallback_field = match issue.source_level.as_str() {
         "user" => "user_config_path",
         _ => "project_config_path",
     };
+    let field = issue.field.as_deref().unwrap_or(fallback_field);
     let mut details = FieldReasonDetails::new(field, issue.reason_code.clone());
     details.path = Some(issue.path.clone());
-    details.received = Some(issue.path.clone());
-    details.config_issues = Some(vec![AdapterConfigSourceDetails::new(
+    details.received = Some(issue.field.clone().unwrap_or_else(|| issue.path.clone()));
+    let mut config_issue = AdapterConfigSourceDetails::new(
         &issue.source_level,
         &issue.path_origin,
         &issue.path,
         &issue.reason_code,
-    )]);
+    );
+    if let Some(field) = &issue.field {
+        config_issue = config_issue.with_field(field);
+    }
+    details.config_issues = Some(vec![config_issue]);
     details
 }

@@ -17,7 +17,7 @@ The parameter resolver MUST be documented and implemented as entry parameter sou
 - **THEN** the invocation keeps its own owner-defined parsing and output boundary
 
 ### Requirement: Configuration source merge channel is a parameter-source subflow
-The configuration source merge channel MUST be defined as the project/user config source subflow inside entry parameter source resolution. It MUST read or receive loaded config sources, validate that available config roots are JSON objects, project registered config paths into source values, preserve skipped-source diagnostics, and contribute values to the shared source priority order. Direct input mapping, defaults, typed validation, passthrough policy, and operation argument binding MUST remain separate parts of entry parameter source resolution.
+The configuration source merge channel MUST be defined as the project/user config source subflow inside entry parameter source resolution. It MUST read or receive loaded config sources, validate that available config roots are JSON objects, project registered config paths into source values, surface invalid config-source diagnostic handoffs, and contribute values to the shared source priority order. Direct input mapping, defaults, typed validation, passthrough policy, and operation argument binding MUST remain separate parts of entry parameter source resolution.
 
 #### Scenario: Config merge contributes only config sources
 - **WHEN** project and user config sources contain registered config paths
@@ -25,11 +25,11 @@ The configuration source merge channel MUST be defined as the project/user confi
 - **THEN** direct input and default values are provided by separate parameter source subflows
 - **THEN** final typed runtime values are produced by entry parameter source resolution, not by config source merge alone
 
-#### Scenario: Skipped config source remains recoverable handoff
+#### Scenario: Invalid config source produces blocking handoff
 - **WHEN** an explicit project config override is missing, unreadable, invalid JSON, or not a JSON object
-- **THEN** the configuration source merge channel skips that config source
-- **THEN** it produces a recoverable skipped-source diagnostic handoff
-- **THEN** other available sources continue into entry parameter source resolution
+- **THEN** the configuration source merge channel records that config source issue
+- **THEN** entry parameter source resolution exposes it as a blocking config-source diagnostic handoff
+- **THEN** other available sources do not make the invalid config source recoverable
 
 ### Requirement: Parameter source resolution keeps raw inputs immutable
 Entry parameter source resolution MUST NOT mutate raw CLI argv tokens, raw decoded stdin JSON, protocol request envelopes, request `arguments`, or caller-owned config objects. Any normalized, supplemented, or finalized value MUST be represented as a derived typed runtime value with source info.

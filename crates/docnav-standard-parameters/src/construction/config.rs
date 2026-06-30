@@ -97,6 +97,12 @@ impl LoadedStandardParameterConfigSource {
         &self.diagnostics
     }
 
+    pub fn with_config_source_issue(mut self, issue: StandardParameterConfigSourceIssue) -> Self {
+        self.diagnostics
+            .push(StandardParameterHandoff::config_source(issue));
+        self
+    }
+
     pub(crate) fn into_parts(self) -> (Option<JsonValue>, Vec<StandardParameterHandoff>) {
         (self.value, self.diagnostics)
     }

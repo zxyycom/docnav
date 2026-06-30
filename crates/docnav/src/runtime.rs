@@ -76,12 +76,14 @@ impl DocnavRuntime for AdapterRuntime {
     fn execute_document(&self, request: DocumentRequest) -> AppResult<CommandOutcome> {
         let document = normalize_document_path(&request.project, &request.path)?;
         let registry = AdapterRegistry::load(&request.project)?;
+        let preselected_adapter_id = request.adapter.as_deref();
         let selection = select_adapter(AdapterSelectionRequest {
             project: &request.project,
             registry: &registry,
             document: &document,
             operation: request.operation,
-            preselected_adapter_id: request.adapter.as_deref(),
+            preselected_adapter_id,
+            preselected_adapter_source: request.defaults.adapter.source.as_str(),
         })?;
         let invoke = invoke_adapter(
             &request.project.project_root,
@@ -109,12 +111,14 @@ impl DocnavRuntime for AdapterRuntime {
         let effective_operation = operation.unwrap_or(Operation::Outline);
         let document = normalize_document_path(&context.project, &path)?;
         let registry = AdapterRegistry::load(&context.project)?;
+        let preselected_adapter_id = defaults.adapter.value.as_str();
         let selection = select_adapter(AdapterSelectionRequest {
             project: &context.project,
             registry: &registry,
             document: &document,
             operation: effective_operation,
-            preselected_adapter_id: defaults.adapter.value.as_str(),
+            preselected_adapter_id,
+            preselected_adapter_source: defaults.adapter.source.as_str(),
         })?;
 
         Ok(DocumentContextOutput {
