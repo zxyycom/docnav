@@ -3,14 +3,25 @@
 ## MODIFIED Requirements
 
 ### Requirement: `docnav` 是 core CLI router/manager
-`docnav` MUST 负责项目根解析、核心配置、core release static adapter registry、adapter inspection、adapter 选择、adapter layer dispatch、协议字段校验、输出模式和错误映射。默认 document operation path MUST use adapter-layer workspace crates registered in the current core release as adapter implementations. Adapter layer ownership MUST remain a code and contract boundary rather than a separate default distribution boundary. Independent adapter packages、external adapter executables and command paths MUST NOT become default document operation implementation sources.
+`docnav` MUST 负责项目根解析、核心配置、core release static adapter registry、adapter inspection、adapter 选择、adapter layer dispatch、协议字段校验、输出模式和错误映射。默认 document operation path MUST use adapter-layer workspace crates registered in the current core release as adapter implementations. Adapter layer ownership MUST remain a code and contract boundary rather than a separate default distribution boundary. Internal operation orchestration MUST be owned by `docnav-navigation`, while adapter layer interface definitions and shared contract types MUST be owned by `docnav-adapter-contracts`. Independent adapter packages、external adapter executables、command paths and historical adapter artifact records MUST NOT become default document operation implementation sources.
 
 #### Scenario: 读取 Markdown outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md`
-- **THEN** `docnav` 根据 path、配置、core release static adapter registry metadata、扩展名和 adapter-owned support check 选择 adapter
+- **THEN** `docnav` 从当前 core release static adapter registry 选择 adapter implementation
 - **THEN** `docnav` 将 page 和 limit 等 core 通用参数写入显式 operation input
 - **THEN** `docnav` 不从 adapter metadata、配置或隐式默认值生成格式专属 `options`
 - **THEN** adapter 生成的 ref 和 display 被保留到阅读输出
+
+#### Scenario: adapter contract owner remains smaller than operation orchestration
+- **WHEN** adapter crate 接入默认 document operation path
+- **THEN** adapter crate 依赖 `docnav-adapter-contracts` 暴露的 adapter layer interface definitions
+- **THEN** `docnav-navigation` 负责组合 `outline/read/find/info` 流程
+- **THEN** adapter crate 不需要依赖独立 runtime SDK、dynamic registration API 或 adapter direct CLI 才能参与默认 document operation
+
+#### Scenario: adapter interface starts from format-owned building blocks
+- **WHEN** adapter crate 实现 adapter layer interface
+- **THEN** adapter interface SHOULD prefer ref splitter、locator、format support check 和 parser/navigation primitives
+- **THEN** operation-level `outline/read/find/info` handlers MAY replace these primitives only after design/spec/tasks record that the primitive split creates implementation complexity without corresponding product benefit
 
 #### Scenario: core release static adapter registry inspection
 - **WHEN** 调用方执行 `docnav adapter list`
@@ -28,28 +39,21 @@
 - **WHEN** 项目配置、用户配置或历史 adapter record 指向 external adapter executable
 - **AND** 调用方执行 document operation
 - **THEN** `docnav` 不把该 executable 当作 adapter implementation source
-- **THEN** adapter selection 只使用当前 core release static adapter registry 和当前请求输入
+- **THEN** adapter implementation 只来自当前 core release static adapter registry
 
-### Requirement: Adapter 选择按阶段校验
-`docnav` MUST 先按显式 adapter、格式或 content type 提示校验 core release static adapter registry 中的 adapter；失败后 MUST 按扩展名匹配 registry candidate 并校验；仍失败时 MUST 逐个执行 adapter-owned support check，直到成功或全部失败。Selection MUST be based on current core release static adapter registry metadata、explicit request input and adapter-owned support checks. `docnav` MUST NOT 只凭格式提示或扩展名静默选择 adapter.
+### Requirement: Adapter selection source 必须受 core release registry 约束
+`docnav` MUST base adapter selection on the current core release static adapter registry, explicit request input and adapter-owned support checks. Format hints、content type hints、path information and config MAY guide selection, but they MUST NOT provide adapter implementation. `docnav` MUST NOT treat project/user historical adapter artifact records, installed packages, external executables or command paths as adapter candidates for the default document operation path.
 
-#### Scenario: 显式格式优先
+#### Scenario: 显式格式提示只选择 registry candidate
 - **WHEN** 调用方提供 `--format markdown`
-- **THEN** `docnav` 优先使用 core release static adapter registry metadata 中匹配 `formats[].id` 的 adapter 候选并执行校验
-- **THEN** 校验失败时继续扩展名匹配阶段
+- **THEN** `docnav` MAY use that hint to select or prioritize candidates
+- **THEN** every candidate implementation comes from the current core release static adapter registry
 
-#### Scenario: 显式 content type 优先
-- **WHEN** 调用方提供 `--format text/markdown`
-- **THEN** `docnav` 优先使用 core release static adapter registry metadata 中匹配 `formats[].content_types[]` 的 adapter 候选并执行校验
-- **THEN** 校验成功时选中该 adapter
-
-#### Scenario: 扩展名和全量 support check
-- **WHEN** 显式格式阶段未选中 adapter
-- **THEN** `docnav` 按 core release static adapter registry metadata 的 `formats[].extensions[]` 匹配 path 扩展名并校验候选 adapter
-- **THEN** 扩展名候选都失败时，`docnav` 逐个执行 adapter-owned support check
-- **THEN** 全部阶段失败时返回 `FORMAT_UNKNOWN`
+#### Scenario: adapter-owned support check 只验证 registry candidate
+- **WHEN** `docnav` 需要通过 adapter-owned support check 判断目标文档是否可处理
+- **THEN** `docnav` only invokes support checks on adapter implementations registered in the current core release static adapter registry
 
 #### Scenario: Historical adapter artifact records do not provide candidates
 - **WHEN** 项目或用户配置中存在历史 adapter artifact records
 - **AND** 调用方执行 document operation
-- **THEN** adapter 选择只使用当前 core release static adapter registry 和当前请求的显式输入
+- **THEN** adapter selection 只使用当前 core release static adapter registry、当前请求输入和 adapter-owned support checks

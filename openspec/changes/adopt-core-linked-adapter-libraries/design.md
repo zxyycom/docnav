@@ -2,17 +2,21 @@
 
 ## Context
 
-Proposal owns 动机、既有决策影响、当前发现和 high-level decision。本 design 从以下已确定方向开始：默认 document operation adapter implementation 随 `docnav` core release 交付，并通过 static adapter registry 被 `docnav` 调用；adapter layer 仍保留格式语义 ownership。
+本 change 的核心问题不是安全性、包体积或 adapter selection algorithm，而是默认架构路线的复杂度收益不匹配。独立 adapter 运行时制品要求 core 和 SDK 长期维护动态注册、生命周期管理、跨进程通信、manifest/schema、兼容策略和调试诊断；这些不是 Docnav 当前主要产品收益。
+
+本 design 从以下已确定方向开始：默认 document operation adapter implementation 随 `docnav` core release 交付，并通过 static adapter registry 被 `docnav` 调用；adapter layer 仍保留格式语义 ownership。
 
 目标形状：
 
 ```text
-docnav core
+docnav core CLI
   -> static adapter registry
   -> adapter-layer workspace crates
-  -> adapter-owned parse/ref/navigation
-  -> protocol/readable/diagnostic projection
+  -> adapter-owned format semantics
+  -> core protocol/readable/diagnostic projection
 ```
+
+后续实现中采用 `docnav-navigation` + `docnav-adapter-contracts` 的拆分：`docnav-navigation` 作为内部 document operation orchestration layer，集中调配 `outline/read/find/info`；`docnav-adapter-contracts` 承载 adapter layer interface definitions 和共享 contract types。这个拆分是 SDK 退场后的内部支撑结构，不是本 change 的根因，也不应把 public contract 范围扩大为新的运行时 adapter SDK。
 
 本 change 用四个边界定义“内置但不合并”：
 
@@ -33,11 +37,13 @@ Owner 分工：
 **Goals:**
 
 - 默认 document operation adapter implementation 收敛到随 core release 交付的 adapter-layer workspace crates。
+- Adapter-layer library 保持独立 workspace crate，不作为默认独立包体交付。
 - 默认 release 包含全部内置 adapter；默认 adapter set 不通过 feature gate 裁剪。
-- Core 使用一个统一 static adapter registry 注册内置 adapter。
+- Core 使用一个统一 static adapter registry 注册内置 adapter identity、metadata、capabilities、需求声明和 implementation handle。
 - 默认执行来源不再来自独立 adapter package、外部 executable、command path 或历史 adapter artifact record。
 - 动态 adapter registration 和 artifact management commands 从默认 CLI surface 删除。
 - Adapter layer 继续作为代码和契约边界存在，并保留 parser、navigation、ref、pagination 和 native option ownership。
+- 现有 SDK 退出外部 runtime adapter SDK 定位，并收敛为 `docnav-navigation` 内部 operation orchestration 和 `docnav-adapter-contracts` adapter interface definitions。
 - Protocol/readable 输出契约和 diagnostic projection 保持稳定。
 
 **Non-Goals:**
@@ -47,45 +53,50 @@ Owner 分工：
 - 不保留 direct adapter CLI 或 adapter `invoke` 作为默认 surface。
 - 不把 local service mode 作为 adapter implementation source；service mode 后续只作为 core service 性能与缓存问题讨论。
 - 不引入新 protocol output shape 来表达内部 static adapter registry。
+- 不重写完整 adapter selection algorithm；本 change 只定义 implementation source boundary。
 - 不把包体积作为本 change 的首要优化目标。
 
 ## Decisions
 
 ### Decision 1: Adapter implementation source 是 core release 内置 workspace crates
 
-`docnav` 的默认 document operation path 只使用当前 core release 中包含的 adapter-layer workspace crates 作为 implementation source。Adapter crates 是独立 workspace crates，直接作为 core release 的组成部分编译和交付。
+`docnav` 的默认 document operation path 只使用当前 core release 中包含的 adapter-layer workspace crates 作为 implementation source。Adapter crates 是独立 workspace crates，直接作为 core release 的组成部分编译和交付，但不再作为默认独立运行时包体。
 
 默认 release 包含全部内置 adapter。默认 adapter set 不使用 feature gate 裁剪，以避免 release profile、selection、测试矩阵和用户诊断复杂化。
 
-### Decision 2: Static adapter registry 是默认候选事实源
+### Decision 2: Static adapter registry 是 compile/package-time 事实源
 
-Core 维护一个统一 static adapter registry，注册当前 release 内置 adapter crates 的 adapter id、identity metadata、format metadata、capabilities 和 adapter layer implementation。Adapter selection、inspection 和 doctor 都从这个 registry 获取候选。
+Core 维护一个统一 static adapter registry，注册当前 release 内置 adapter crates 的 adapter id、identity metadata、format metadata、capabilities、需求声明和 adapter layer implementation handle。
 
-该 registry 是 compile/package-time 事实源，不是运行时动态注册表。Adapter crate 需要实现指定 adapter layer interface，并在 core registry 中显式注册其需求和能力。
+该 registry 是 compile/package-time 事实源，不是运行时动态注册表。Adapter crate 需要实现指定 adapter layer interface，并在 core registry 中显式注册自身需求和能力。
 
 ### Decision 3: Adapter layer boundary 保持独立
 
-Adapter implementation 被 core release 包含并由 `docnav` 调用，但 adapter layer 仍是代码和契约边界。Adapter 仍拥有 parser、format detection、navigation strategy、ref generation/parsing、pagination result 和 native option semantics。
+Adapter implementation 被 core release 包含并由 `docnav` 直接作为库调用，但 adapter layer 仍是代码和契约边界。Adapter 仍拥有 parser、format detection、navigation strategy、ref generation/parsing、pagination result 和 native option semantics。
 
 Core 可以调用 adapter layer API，但不能解析 adapter ref、重建格式结构、解释 native option 或合成格式专属 `options`。Ref 在 core 和接入层仍是 opaque pass-through value。
 
-### Decision 4: 动态 adapter management CLI surface 删除
+### Decision 4: 动态 adapter management 和历史 registration 材料删除
 
 `docnav adapter install/register/update/remove` 等围绕运行时制品和动态注册的命令不进入新默认 CLI surface。`docnav adapter list` 保留为 static registry inspection；`doctor` 检查 static registry、core 配置和 adapter layer 可用性。
 
-`implement-docnav-adapter-management` 需要改写为删除动态注册/制品管理命令，并把剩余范围收敛到 inspection 和 health check。用户要增加 adapter 时，通过修改 workspace crate、注册到 static registry 并重新编译 core，而不是运行时安装或注册。
+历史 `.docnav/adapters.json`、adapter artifact records、command path registry 和相关示例/fixture 对新默认路径是冗余材料，应从默认配置、docs、schema/examples 和测试中移除。Document operation、adapter selection、doctor 和 `init` 都不再依赖历史 adapter registration 材料。
 
 ### Decision 5: Direct adapter CLI / invoke 不作为默认 surface
 
 Adapter layer 不再需要独立 direct CLI 或 `invoke` 来参与默认 document operation。默认路径只要求 adapter layer 实现指定 interface，并通过 core static registry 接入。
 
-现有 adapter direct CLI / invoke 测试不能继续作为默认执行路径的证明。若未来需要 adapter 独立调试工具，应作为非默认开发工具单独设计，不参与默认 SDK 或 CLI contract。
+现有 adapter direct CLI / invoke 测试不能继续作为默认执行路径的证明。本 change 不保留非默认 adapter 本地调试入口；adapter 行为通过黑盒 CLI 测试、白盒 adapter/core 测试和 core 调用路径证明。
 
-### Decision 6: 历史 adapter registration 材料从默认路径移除
+### Decision 6: 现有 SDK 退出外部 runtime adapter SDK 定位，并拆成 navigation + adapter contracts
 
-历史 `.docnav/adapters.json`、adapter artifact records、command path registry 和相关示例/fixture 对新默认路径是冗余材料，应从默认配置、docs、schema/examples 和测试中移除。
+现有 SDK 不再作为外部 adapter runtime SDK 继续设计。它不再负责让独立 adapter 包通过动态注册、manifest、命令路径和跨进程协议接入默认 document operation path。
 
-Document operation、adapter selection、doctor 和 `init` 都不再依赖历史 adapter registration 材料。实现时需要清理创建、读取、校验和示例引用，避免它们继续暗示外部 adapter artifact 是合法来源。
+后续内部调配层命名为 `docnav-navigation`，用于集中调配 `outline/read/find/info` 等流程。Adapter interface definitions 和共享 contract types 拆到 `docnav-adapter-contracts`，让 adapter crates 依赖稳定、较小的接口边界，而不是依赖完整 operation orchestration。
+
+默认不新增独立 `docnav-adapter-support` crate。只有在实现中出现跨 adapter 的重复工具且放入 `docnav-adapter-contracts` 会污染 contract boundary 时，才重新评估是否拆出 support crate。
+
+Adapter layer interface 优先采用最小 building blocks：ref splitter、locator、format support check、parser/navigation primitives。若实现证明这些 primitives 过度细分、显著增加 adapter 开发复杂度且没有实际收益，可以把接口粒度扩大到 `outline/read/find/info` operation handlers；扩大前必须回到 design/spec/tasks 更新理由、边界和测试入口。
 
 ### Decision 7: Local service mode 后置为 core service 性能问题
 
@@ -93,40 +104,23 @@ Document operation、adapter selection、doctor 和 `init` 都不再依赖历史
 
 本 change 不阻塞未来 core service；但 service 不能重新引入默认动态 adapter 注册或独立 adapter artifact source。
 
-### Decision 8: 现有 SDK 不再是 runtime adapter SDK
-
-现有 SDK 不再作为外部 adapter runtime SDK 继续设计。它应转向 adapter layer 使用的 common utilities、adapter interface definitions，或成为 read/navigation 等命令的集中调配层的一部分。
-
-SDK 的 owner、命名和 API 需要在实现 adapter API 前重新审计。Adapter layer 的理想接口可能进一步收缩到 ref 拆分器、定位器等 building blocks，由集中调配层负责编排 read/navigation；这个拆分保留为剩余设计问题。
-
-## Remaining Design Questions
-
-以下问题仍需在实现 adapter API 前收敛，不能由 tasks 默认假设：
-
-1. **adapter support 与 orchestration 的拆分**：现有 SDK 应改造成 adapter support crate、adapter contract crate、core orchestration layer，还是其中几者的组合？需要确定 owner、crate 命名、public/private API 和测试入口。
-2. **最小 adapter layer interface**：adapter crate 最终只实现 ref splitter、locator 和格式支持判断，还是继续实现 outline/read/find/info 等 operation handler？需要在不破坏 adapter-owned 格式语义的前提下，确定 core orchestration 和 adapter building blocks 的边界。
-3. **非默认调试入口**：默认不保留 direct CLI / `invoke`；若仍需要本地调试工具，需要单独定义触发方式、输出契约和测试范围，且不能回到默认 adapter SDK 主路径。
-
-Decision gate：1-2 必须在实现 adapter crate/API 前收敛到 design、spec 或 tasks；3 可以作为后续开发体验 change，不阻塞默认 execution source 的边界修正。
-
 ## Risks / Trade-offs
 
 - [Risk] 第三方或本地自定义 adapter 独立包扩展路径改变。→ Mitigation: 明确这是默认路径的 breaking change；新增 adapter 的默认开发方式是修改 workspace crate、注册到 core static registry 并重新编译。
 - [Risk] 包体积增加。→ Mitigation: 默认 release 包含全部内置 adapter；后续通过压缩、release engineering 或性能优化处理体积，不恢复运行时动态制品管理。
-- [Risk] 现有 adapter SDK 抽象不匹配新方案。→ Mitigation: 把 SDK 重定位为 adapter support/interface/orchestration 问题，并在实现 adapter API 前收敛。
+- [Risk] 现有 adapter SDK 抽象不匹配新方案。→ Mitigation: 先移除外部 runtime SDK 定位，再把剩余能力收敛为 `docnav-navigation` 和 `docnav-adapter-contracts`；support crate 不作为默认拆分。
 - [Risk] 历史 adapter 配置或示例残留导致误导。→ Mitigation: tasks 中清理配置创建、schema/examples、fixtures、docs 和测试引用。
-- [Risk] OpenSpec 在途 change 与新方向冲突。→ Mitigation: tasks 中设置阻塞级审计，未完成前不得执行实现任务。
+- [Risk] Selection algorithm 细节继续抢占 change 主线。→ Mitigation: spec delta 只定义 implementation source boundary；阶段排序、诊断字段和候选证据留给相邻 contract 或实现任务处理。
+- [Risk] OpenSpec 在途 change 与新方向冲突。→ Mitigation: tasks 中先处置 adapter management、local service mode 和 entry/source resolution 相关 change，再进入实现。
 
 ## Implementation Sequence
 
-1. 审计 proposal、design、spec delta 和 tasks，确认本阶段只更新当前 change 目录，尚未提前修改主规范、schema、examples 或代码。
-2. 收敛 Remaining Design Questions 中的 adapter support/orchestration 和最小 adapter interface。
-3. 审计相关在途 change，标记保留、改写或替代路径。
-4. 同步 owner 主规范：`docs/architecture.md`、`docs/cli.md`、`docs/adapter-contract.md`、`docs/testing.md`，以及需要的 schema/example/fixture。
-5. 创建或调整 adapter-layer workspace crates，确保默认 release 直接包含全部内置 adapter，且默认 adapter set 不依赖 feature gate。
-6. 实现 core static adapter registry，并把 adapter selection、inspection 和 doctor 统一到该 registry。
-7. 移除动态 adapter registration/artifact management CLI surface 和历史 adapter registration 材料。
-8. 按已收敛的 support/orchestration 设计调整 SDK、adapter interface 和相关测试。
-9. 更新测试，覆盖 built-in static registry selection、dynamic management command removal、historical registration material removed、protocol/readable output 不变和 ref opaque pass-through。
+1. 处置相关在途 change，标记保留、改写或替代路径。
+2. 同步 owner 主规范：`docs/architecture.md`、`docs/cli.md`、`docs/adapter-contract.md`、`docs/testing.md`，以及需要的 schema/example/fixture。
+3. 创建或调整 adapter-layer workspace crates，确保默认 release 直接包含全部内置 adapter，且默认 adapter set 不依赖 feature gate。
+4. 实现 core static adapter registry，并把 adapter implementation source、inspection 和 doctor 统一到该 registry。
+5. 移除动态 adapter registration/artifact management CLI surface 和历史 adapter registration 材料。
+6. 将现有 SDK 残留能力收敛到 `docnav-navigation` 和 `docnav-adapter-contracts`，优先实现最小 adapter building-block interface。
+7. 更新测试，覆盖 built-in static registry source boundary、dynamic management command removal、historical registration material removed、protocol/readable output 不变和 ref opaque pass-through。
 
 Rollback 策略：如实现期间发现 core release 内置 adapter layer 无法满足已实现 adapter 的必要边界，停止实现并回到本 change 更新 design/spec。
