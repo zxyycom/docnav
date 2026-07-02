@@ -17,7 +17,7 @@ execute info
 
 `docnav-navigation` 把 core 已解析的 document operation input 构造成内部 protocol request，并通过选定 adapter handle 调用对应 operation。`readable-view`（默认）和 `readable-json` 以阅读为主；`protocol-json` 属于完整协议输出，不以可读性为目标。三种输出模式复用同一 adapter 业务结果，但不复用输出包装或展示形态。
 
-格式 adapter 只在静态 descriptor 中声明格式原生 native option registry entries、operation binding 和业务语义，并保留这些 options 的 ref 策略和 readable payload 字段语义。CLI argv 映射、配置字段映射、来源合并、标准参数校验、native option handoff 和 metadata 由 [标准参数](standard-parameters.md) 定义；adapter-owned option semantics 由 consuming adapter 校验，request construction、输出模式和最终 exit behavior 由 core/navigation/output owner 处理。
+格式 adapter 只在静态 descriptor 中声明格式原生 native option registry entries、native CLI/config/protocol source spelling、operation binding 和业务语义，并保留这些 options 的 ref 策略和 readable payload 字段语义。CLI argv 映射、配置字段映射、来源合并、标准参数校验、native option handoff 和 metadata 由 [标准参数](standard-parameters.md) 定义；adapter-owned option semantics 由 consuming adapter 校验，request construction、输出模式和最终 exit behavior 由 core/navigation/output owner 处理。
 
 `manifest` 和 `probe` 是 adapter handle 上的 metadata/support methods，不是独立默认 CLI 命令。`docnav adapter list` 可以展示 manifest metadata；adapter selection 必须以 static registry membership、capability 和 probe 结果为准。Document output owner 见 [输出模式](output.md#输出层边界)。
 
@@ -70,7 +70,7 @@ reasons[]
 
 ## Protocol Request Execution
 
-`docnav-navigation` 构造内部 operation request 并 dispatch selected adapter operation handler；它不是 adapter loader，也不改变 adapter implementation source。Adapter handle 接收已通过 core input/config boundary 的 typed operation input 和 merged native option values，不处理 stdin/stdout、CLI argv 或 exit code。Unknown envelope fields、malformed JSON 和 public input token classification 属于 core/protocol input owner，不进入 adapter library execution；native option unsupported/type/range failure 属于 adapter consumption diagnostic。
+`docnav-navigation` 构造内部 operation request 并 dispatch selected adapter operation handler；它不是 adapter loader，也不改变 adapter implementation source。Adapter handle 接收已通过 core input/config boundary、adapter selection 和 selected-adapter native option projection 的 typed operation input 和 merged native option values，不处理 stdin/stdout、CLI argv 或 exit code。Unknown envelope fields、malformed JSON 和 public input token classification 属于 core/protocol input owner，不进入 adapter library execution；native option type/range failure 属于 adapter consumption diagnostic。
 
 Adapter operation handler 必须：
 
@@ -82,12 +82,12 @@ Adapter operation handler 必须：
 ## 标准参数消费边界
 
 - Core document commands 的配置字段映射、来源标记、合并顺序、默认值和 schema metadata 由 [标准参数](standard-parameters.md) 定义。
-- Core static registry 和 adapter descriptor 必须提供 adapter id、入口策略、内置默认值和 native option registry entries；标准参数 pipeline 使用这些源码级信息准备 standard typed operation arguments 和 merged native option handoff，`docnav-navigation` 只消费已经解析出的 operation input。
+- Core static registry 和 adapter descriptor 必须提供 adapter id、入口策略、内置默认值、native option registry entries 和 native option public source spelling；标准参数 pipeline 使用这些源码级信息准备 standard typed operation arguments 和 merged native option handoff，`docnav-navigation` 只消费已经解析出的 operation input。
 - Core document operation 必须按标准参数机制处理显式 argv、配置源、native option source 和默认值；默认配置路径缺失表示 absent，不产生诊断。显式 override 缺失、不可读、不是文件、invalid JSON、non-object JSON，或默认配置文件一旦存在但无效时，core 必须返回 config input diagnostic，不继续构造 document operation。
 - manifest 只声明 adapter 能力，不提供默认参数。
 - `docnav` 按自身标准参数 registration 和入口策略解析 core 通用参数。
 - 格式原生 `options` 对 `docnav` 和接入层保持 opaque。
-- Adapter native options 只有在源码级 native option registry 中声明为 public source 时才参与 generic merge 或 delegated 给 adapter/native option owner；同名 option 可由不同 owner/namespace/type variant 同时声明。Core 不按 selected adapter 的支持范围、类型或取值范围预校验；选中 adapter 在消费时返回 unsupported option、type mismatch 或 range invalid 的结构化 diagnostic。显式 adapter id 不存在时，adapter selection diagnostic 优先于任何 option validation。
+- Adapter native options 只有在源码级 native option registry 中声明为 public source 时才参与 generic merge 或 delegated 给 adapter/native option owner；同名 option 可由不同 owner/namespace/type variant 同时声明。Core 在 adapter selection 后按 selected adapter descriptor 投影支持的 native options，不属于 selected adapter 的 option 返回 unsupported native option diagnostic；core 不预校验类型或取值范围，选中 adapter 在消费时返回 type mismatch 或 range invalid 的结构化 diagnostic。显式 adapter id 不存在时，adapter selection diagnostic 优先于任何 option validation。
 - page 不属于配置默认值；入口省略 page 时固定从 `1` 开始。
 
 ## 协议字段对齐

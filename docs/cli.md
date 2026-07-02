@@ -29,7 +29,7 @@ docnav version
 
 Rust CLI argv 结构解析以 `clap` 或 `clap` builder API 为基础。`clap` 承载命令、子命令、固定参数、默认值、枚举值和 help；core 标准参数 registration 承接 flag 映射、校验、help/default 文案和 operation argument binding。Docnav 在 command/operation 确定后只校验当前 operation 实际使用的参数。成功解析的 document CLI argv 进入标准参数机制，与配置和默认值一起产出 core 参数结果；随后进入 adapter routing、protocol request 构造和 output dispatch。该内部语义输入不是 protocol envelope 或 schema 稳定类型。
 
-未知 argv、多余 positional 和当前 operation 不使用的已知参数表达 invalid caller intent，必须在 document operation execution 和 adapter routing 前返回输入错误并写入错误通道。当前 operation 实际使用的 core 参数同样严格校验：缺少必需 path/ref/query、非法 page、非法 limit 或非法 output 必须返回输入错误。Native option 输入通过源码级 registry 进入 generic merge；core 不按 selected adapter 的支持范围、类型或范围预校验，adapter 在消费时返回 unsupported option、type mismatch 或 range invalid 的结构化诊断。当前 operation 不使用的 known 参数只需要按 token/operation membership 产生 applicability diagnostic，不触发其它 operation 的 eager typed validation。
+未知 argv、多余 positional 和当前 operation 不使用的已知参数表达 invalid caller intent，必须在 document operation execution 和 adapter routing 前返回输入错误并写入错误通道。当前 operation 实际使用的 core 参数同样严格校验：缺少必需 path/ref/query、非法 page、非法 limit 或非法 output 必须返回输入错误。Native option 输入通过源码级 registry 进入 generic merge；core 在 adapter selection 后按 selected adapter descriptor 判断支持性，不支持的 option 返回 native option diagnostic；类型、范围和格式语义由 adapter 在消费时返回 type mismatch 或 range invalid 的结构化诊断。当前 operation 不使用的 known 参数只需要按 token/operation membership 产生 applicability diagnostic，不触发其它 operation 的 eager typed validation。
 
 ## 配置命令边界
 

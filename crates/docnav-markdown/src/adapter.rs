@@ -32,14 +32,15 @@ const MARKDOWN_CAPABILITIES: &[Operation] = &[
     Operation::Info,
 ];
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
-const NATIVE_OPTIONS: &[NativeOptionSpec] = &[NativeOptionSpec {
-    identity: MAX_HEADING_LEVEL_IDENTITY,
-    owner: ADAPTER_ID,
-    namespace: NATIVE_OPTIONS_NAMESPACE,
-    key: MAX_HEADING_LEVEL_OPTION,
-    operations: MAX_HEADING_LEVEL_OPERATIONS,
-    value: NativeOptionValueSpec::Integer { min: 1, max: 6 },
-}];
+const NATIVE_OPTIONS: &[NativeOptionSpec] =
+    &[NativeOptionSpec::builder(MAX_HEADING_LEVEL_IDENTITY)
+        .owner(ADAPTER_ID)
+        .namespace(NATIVE_OPTIONS_NAMESPACE)
+        .key(MAX_HEADING_LEVEL_OPTION)
+        .operations(MAX_HEADING_LEVEL_OPERATIONS)
+        .cli_flag("--max-heading-level")
+        .value(NativeOptionValueSpec::Integer { min: 1, max: 6 })
+        .build()];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MarkdownAdapter;

@@ -108,7 +108,7 @@ user / agent / skill / prompt
 - `docnav` 可以消费 core 标准参数结果做 adapter 选择、document context、request planning 和输出模式选择。
 - `docnav-navigation` 消费 core 已解析的 operation input，构造内部 protocol request，并调用选定 adapter library handle。
 - 显式 public input 默认 strict：未知 argv、多余 positional、当前 operation 不适用的 flag、未映射 request/config 字段和无法归入源码级 native option registry/source 的输入不进入业务执行，入口 owner 必须把它们映射为输入或配置诊断。
-- 格式原生 options 只由 core 支持的 public input、配置 `options` object 或对应 registration 声明的 native option source 提供；`docnav` 不从 manifest、core 配置或隐式默认值合成格式专属 options，也不按 selected adapter 的支持范围、类型或范围预校验。Unsupported option、type mismatch 和 range invalid 由 consuming adapter 返回 adapter-owned structured diagnostic。
+- 格式原生 options 只由 core 支持的 public input、配置 `options` object 或对应 registration 声明的 native option source 提供；`docnav` 不从 manifest、core 配置或隐式默认值合成格式专属 options。Adapter selection 后，core 按 selected adapter descriptor 投影支持的 options 并为 unsupported option 返回 native option diagnostic；type mismatch 和 range invalid 由 consuming adapter 返回 adapter-owned structured diagnostic。
 - 配置不得改变 protocol envelope、readable JSON 字段或 `DiagnosticCode`；`DiagnosticCode` 由 [错误通道](diagnostics.md) 拥有，protocol/readable 字段由对应 surface owner 文档定义。
 
 ## Adapter 选择

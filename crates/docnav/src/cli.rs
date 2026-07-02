@@ -3,6 +3,8 @@ mod flags;
 mod parser;
 mod preflight;
 
+#[allow(unused_imports)]
+pub use command_model::NativeOptionCliInput;
 pub use command_model::{
     AdapterCommand, CliCommand, ConfigCommand, ConfigGet, ConfigList, ConfigSet, ConfigUnset,
     DocumentCommand, OutputMode, ParsedCli,

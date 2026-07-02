@@ -12,7 +12,8 @@ use docnav_protocol::{
 mod native_options;
 
 pub use native_options::{
-    NativeOptionIssue, NativeOptionSpec, NativeOptionValueKind, NativeOptionValueSpec,
+    NativeOptionIssue, NativeOptionSpec, NativeOptionSpecBuilder, NativeOptionValueKind,
+    NativeOptionValueSpec,
 };
 
 pub type AdapterResult<T> = Result<T, AdapterError>;

@@ -41,7 +41,7 @@ v0 operation 参数：
 - 预算只约束 adapter-owned 结果负载：outline/find 约束每页 entry facts 的可继续输出，read 约束 `content` 切分；`protocol_version`、`request_id`、`operation`、`ok`、JSON 字段名和固定包装不计入预算。
 - outline/find 遇到下一条 entry 或 match 会超过预算时，应在当前页停止并返回下一页 page。若单条记录本身超过预算，适配器必须保留完整 ref，并压缩 adapter-owned `label`、`summary`、`excerpt`、`cost` 或 `metadata` 等补充事实，使该页仍能前进；若完整 ref 本身已超过 `limit`，该单条记录可超出预算，但 `label` 仍应保留最小非空定位语义。
 - read 按 adapter 声明的预算切分 content；文本 adapter 不能切断 Unicode 字符；若当前位置后仍有内容，返回下一页 page。
-- `options` 是 adapter-owned 格式原生参数对象。只有在源码级 static option registry 声明为 public source 时，`options` 或其中 native option 才参与 core generic merge；同名 option 可以有多个 owner/namespace/type variants。`docnav` 和接入层不从 manifest、core 配置或隐式默认值合成格式专属 options，也不按 selected adapter 的支持范围、类型或范围预校验；unsupported option、type mismatch 和 range invalid 由 consuming adapter 返回 adapter-owned structured diagnostic。
+- `options` 是 adapter-owned 格式原生参数对象。只有在源码级 static option registry 声明为 public source 时，`options` 或其中 native option 才参与 core generic merge；同名 option 可以有多个 owner/namespace/type variants。`docnav` 和接入层不从 manifest、core 配置或隐式默认值合成格式专属 options；adapter selection 后，core 按 selected adapter descriptor 投影支持的 options 并为 unsupported option 返回 native option diagnostic，type mismatch 和 range invalid 由 consuming adapter 返回 adapter-owned structured diagnostic。
 - 继续读取时，调用方保持 path、ref、query 和其它显式参数稳定，只使用响应返回的 page。
 - page 是调用位置，不是配置默认参数；入口省略 page 时固定从 `1` 开始。
 

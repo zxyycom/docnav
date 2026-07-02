@@ -28,7 +28,9 @@ fn explicit_max_heading_level_value_is_parsed_for_outline() {
 
     match parsed.command {
         CliCommand::Document(command) => {
-            assert_eq!(command.max_heading_level.map(|value| value.get()), Some(2));
+            assert_eq!(command.native_options.len(), 1);
+            assert_eq!(command.native_options[0].flag, "--max-heading-level");
+            assert_eq!(command.native_options[0].value, "2");
         }
         command => panic!("expected document command, got {command:?}"),
     }

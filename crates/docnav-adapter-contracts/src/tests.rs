@@ -67,6 +67,7 @@ fn native_option_specs_keep_same_key_owner_and_type_variants() {
         namespace: "options",
         key: "shared",
         operations: &[Operation::Outline],
+        cli_flag: None,
         value: NativeOptionValueSpec::Integer { min: 1, max: 3 },
     };
     let string_variant = NativeOptionSpec {
@@ -75,6 +76,7 @@ fn native_option_specs_keep_same_key_owner_and_type_variants() {
         namespace: "options",
         key: "shared",
         operations: &[Operation::Outline],
+        cli_flag: None,
         value: NativeOptionValueSpec::String,
     };
 

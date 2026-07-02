@@ -2,6 +2,8 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::{Arg, ArgAction, Command};
 use docnav_protocol::Operation;
 
+use crate::registry;
+
 pub(in crate::cli) mod command_names {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
     pub(in crate::cli) const ADAPTER_LIST: &str = "list";
@@ -23,7 +25,6 @@ pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
     pub(in crate::cli) const KEY: &str = "key";
     pub(in crate::cli) const LIMIT: &str = "limit";
-    pub(in crate::cli) const MAX_HEADING_LEVEL: &str = "max-heading-level";
     pub(in crate::cli) const OPERATION: &str = "operation";
     pub(in crate::cli) const OUTPUT: &str = "output";
     pub(in crate::cli) const PAGE: &str = "page";
@@ -89,23 +90,26 @@ pub(in crate::cli) fn is_known_root_command(command: &str) -> bool {
 }
 
 pub(in crate::cli) fn document_clap_command(operation: Operation) -> Command {
-    match operation {
-        Operation::Outline => paged_document_command(
-            command_names::OUTLINE,
-            "Return compact document outline entries",
-        )
-        .arg(max_heading_level_arg()),
-        Operation::Read => {
-            paged_document_command(command_names::READ, "Read a document region by adapter ref")
-                .arg(ref_arg())
-        }
-        Operation::Find => {
-            paged_document_command(command_names::FIND, "Find matching document regions")
-                .arg(query_arg())
-                .arg(max_heading_level_arg())
-        }
-        Operation::Info => document_command(command_names::INFO, "Return adapter document summary"),
-    }
+    add_native_option_args(
+        match operation {
+            Operation::Outline => paged_document_command(
+                command_names::OUTLINE,
+                "Return compact document outline entries",
+            ),
+            Operation::Read => {
+                paged_document_command(command_names::READ, "Read a document region by adapter ref")
+                    .arg(ref_arg())
+            }
+            Operation::Find => {
+                paged_document_command(command_names::FIND, "Find matching document regions")
+                    .arg(query_arg())
+            }
+            Operation::Info => {
+                document_command(command_names::INFO, "Return adapter document summary")
+            }
+        },
+        operation,
+    )
 }
 
 fn document_command(name: &'static str, about: &'static str) -> Command {
@@ -202,13 +206,19 @@ fn limit_arg() -> Arg {
         .value_parser(clap::value_parser!(u32))
 }
 
-fn max_heading_level_arg() -> Arg {
-    value_arg(
-        arg_ids::MAX_HEADING_LEVEL,
-        "max-heading-level",
-        "integer 1..6",
-    )
-    .value_parser(clap::value_parser!(u32))
+fn add_native_option_args(mut command: Command, operation: Operation) -> Command {
+    let mut arg_ids = Vec::new();
+    for option in registry::native_options_for(operation) {
+        let Some(arg_id) = option.cli_arg_id() else {
+            continue;
+        };
+        if arg_ids.contains(&arg_id) {
+            continue;
+        }
+        arg_ids.push(arg_id);
+        command = command.arg(value_arg(arg_id, arg_id, "value"));
+    }
+    command
 }
 
 fn pagination_arg() -> Arg {

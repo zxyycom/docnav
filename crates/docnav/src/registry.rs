@@ -24,8 +24,12 @@ pub struct AdapterRecord {
 }
 
 impl AdapterRegistry {
+    pub fn builtin() -> Self {
+        Self { adapters: ADAPTERS }
+    }
+
     pub fn load(_project: &ProjectContext) -> AppResult<Self> {
-        Ok(Self { adapters: ADAPTERS })
+        Ok(Self::builtin())
     }
 
     pub fn find(&self, adapter_id: &str) -> Option<&AdapterRecord> {
@@ -70,6 +74,10 @@ impl AdapterRegistry {
         }
         keys
     }
+}
+
+pub fn native_options_for(operation: Operation) -> Vec<NativeOptionSpec> {
+    AdapterRegistry::builtin().native_options_for(operation)
 }
 
 impl AdapterRecord {

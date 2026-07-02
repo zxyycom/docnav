@@ -5,7 +5,7 @@ use docnav_protocol::Operation;
 use serde_json::json;
 
 use super::*;
-use crate::cli::DocumentCommand;
+use crate::cli::{DocumentCommand, NativeOptionCliInput};
 use crate::config::CoreConfig;
 use crate::project_context::ProjectContext;
 use crate::registry::AdapterRegistry;
@@ -20,7 +20,7 @@ fn core_document_parameters_use_standard_resolution_sources() {
         page: None,
         pagination_enabled: None,
         limit: None,
-        max_heading_level: None,
+        native_options: Vec::new(),
         output: None,
         adapter: Some("direct-adapter".to_owned()),
     };
@@ -74,7 +74,10 @@ fn core_document_parameters_merge_registered_native_options_without_selected_ada
         page: None,
         pagination_enabled: None,
         limit: None,
-        max_heading_level: Some(docnav_protocol::try_positive(4).unwrap()),
+        native_options: vec![NativeOptionCliInput {
+            flag: "--max-heading-level".to_owned(),
+            value: "4".to_owned(),
+        }],
         output: None,
         adapter: None,
     };
@@ -114,7 +117,7 @@ fn registered_native_options_preserve_config_json_value_when_cli_is_absent() {
         page: None,
         pagination_enabled: None,
         limit: None,
-        max_heading_level: None,
+        native_options: Vec::new(),
         output: None,
         adapter: None,
     };
@@ -144,22 +147,8 @@ fn registered_native_options_preserve_config_json_value_when_cli_is_absent() {
 
 #[test]
 fn native_option_specs_with_same_key_are_not_folded_by_key() {
-    let integer_variant = NativeOptionSpec {
-        identity: "docnav.adapters.integer.options.shared",
-        owner: "integer-adapter",
-        namespace: "options",
-        key: "shared",
-        operations: &[Operation::Outline],
-        value: docnav_adapter_contracts::NativeOptionValueSpec::Integer { min: 1, max: 3 },
-    };
-    let string_variant = NativeOptionSpec {
-        identity: "docnav.adapters.string.options.shared",
-        owner: "string-adapter",
-        namespace: "options",
-        key: "shared",
-        operations: &[Operation::Outline],
-        value: docnav_adapter_contracts::NativeOptionValueSpec::String,
-    };
+    let integer_variant = shared_integer_option();
+    let string_variant = shared_string_option();
 
     let options =
         native_option_keys_for_operation(Operation::Outline, &[integer_variant, string_variant]);
@@ -172,22 +161,8 @@ fn native_option_specs_with_same_key_are_not_folded_by_key() {
 
 #[test]
 fn registered_native_option_handoff_preserves_same_key_variant_metadata() {
-    let integer_variant = NativeOptionSpec {
-        identity: "docnav.adapters.integer.options.shared",
-        owner: "integer-adapter",
-        namespace: "options",
-        key: "shared",
-        operations: &[Operation::Outline],
-        value: docnav_adapter_contracts::NativeOptionValueSpec::Integer { min: 1, max: 3 },
-    };
-    let string_variant = NativeOptionSpec {
-        identity: "docnav.adapters.string.options.shared",
-        owner: "string-adapter",
-        namespace: "options",
-        key: "shared",
-        operations: &[Operation::Outline],
-        value: docnav_adapter_contracts::NativeOptionValueSpec::String,
-    };
+    let integer_variant = shared_integer_option();
+    let string_variant = shared_string_option();
     let command = DocumentCommand {
         operation: Operation::Outline,
         path: "doc.md".to_owned(),
@@ -196,7 +171,7 @@ fn registered_native_option_handoff_preserves_same_key_variant_metadata() {
         page: None,
         pagination_enabled: None,
         limit: None,
-        max_heading_level: None,
+        native_options: Vec::new(),
         output: None,
         adapter: None,
     };
@@ -236,7 +211,7 @@ fn core_pagination_disabled_finalizes_operation_limit() {
         page: None,
         pagination_enabled: Some(false),
         limit: Some(docnav_protocol::try_positive(12).unwrap()),
-        max_heading_level: None,
+        native_options: Vec::new(),
         output: None,
         adapter: None,
     };
@@ -261,6 +236,30 @@ fn project_context() -> ProjectContext {
         project_root: root.clone(),
         project_config_path: root.join(".docnav").join("docnav.json"),
         user_config_path: root.join("user").join("docnav.json"),
+    }
+}
+
+fn shared_integer_option() -> NativeOptionSpec {
+    NativeOptionSpec {
+        identity: "docnav.adapters.integer.options.shared",
+        owner: "integer-adapter",
+        namespace: "options",
+        key: "shared",
+        operations: &[Operation::Outline],
+        cli_flag: None,
+        value: docnav_adapter_contracts::NativeOptionValueSpec::Integer { min: 1, max: 3 },
+    }
+}
+
+fn shared_string_option() -> NativeOptionSpec {
+    NativeOptionSpec {
+        identity: "docnav.adapters.string.options.shared",
+        owner: "string-adapter",
+        namespace: "options",
+        key: "shared",
+        operations: &[Operation::Outline],
+        cli_flag: None,
+        value: docnav_adapter_contracts::NativeOptionValueSpec::String,
     }
 }
 

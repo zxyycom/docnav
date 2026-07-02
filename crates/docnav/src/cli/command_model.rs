@@ -106,9 +106,15 @@ pub struct DocumentCommand {
     pub page: Option<PositiveInteger>,
     pub pagination_enabled: Option<bool>,
     pub limit: Option<PositiveInteger>,
-    pub max_heading_level: Option<PositiveInteger>,
+    pub native_options: Vec<NativeOptionCliInput>,
     pub output: Option<OutputMode>,
     pub adapter: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeOptionCliInput {
+    pub flag: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

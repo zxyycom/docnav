@@ -8,10 +8,23 @@ pub struct NativeOptionSpec {
     pub namespace: &'static str,
     pub key: &'static str,
     pub operations: &'static [Operation],
+    pub cli_flag: Option<&'static str>,
     pub value: NativeOptionValueSpec,
 }
 
 impl NativeOptionSpec {
+    pub const fn builder(identity: &'static str) -> NativeOptionSpecBuilder {
+        NativeOptionSpecBuilder {
+            identity,
+            owner: "",
+            namespace: "",
+            key: "",
+            operations: &[],
+            cli_flag: None,
+            value: NativeOptionValueSpec::Json,
+        }
+    }
+
     pub fn applies_to(self, operation: Operation) -> bool {
         self.operations.contains(&operation)
     }
@@ -47,6 +60,66 @@ impl NativeOptionSpec {
 
     pub fn config_key(self) -> String {
         format!("{}.{}", self.namespace, self.key)
+    }
+
+    pub fn cli_arg_id(self) -> Option<&'static str> {
+        self.cli_flag
+            .map(|flag| flag.strip_prefix("--").unwrap_or(flag))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeOptionSpecBuilder {
+    identity: &'static str,
+    owner: &'static str,
+    namespace: &'static str,
+    key: &'static str,
+    operations: &'static [Operation],
+    cli_flag: Option<&'static str>,
+    value: NativeOptionValueSpec,
+}
+
+impl NativeOptionSpecBuilder {
+    pub const fn owner(mut self, owner: &'static str) -> Self {
+        self.owner = owner;
+        self
+    }
+
+    pub const fn namespace(mut self, namespace: &'static str) -> Self {
+        self.namespace = namespace;
+        self
+    }
+
+    pub const fn key(mut self, key: &'static str) -> Self {
+        self.key = key;
+        self
+    }
+
+    pub const fn operations(mut self, operations: &'static [Operation]) -> Self {
+        self.operations = operations;
+        self
+    }
+
+    pub const fn cli_flag(mut self, cli_flag: &'static str) -> Self {
+        self.cli_flag = Some(cli_flag);
+        self
+    }
+
+    pub const fn value(mut self, value: NativeOptionValueSpec) -> Self {
+        self.value = value;
+        self
+    }
+
+    pub const fn build(self) -> NativeOptionSpec {
+        NativeOptionSpec {
+            identity: self.identity,
+            owner: self.owner,
+            namespace: self.namespace,
+            key: self.key,
+            operations: self.operations,
+            cli_flag: self.cli_flag,
+            value: self.value,
+        }
     }
 }
 

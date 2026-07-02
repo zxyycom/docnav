@@ -65,7 +65,7 @@ pub(crate) fn resolve_registered_native_options(
 ) -> AppResult<Option<Options>> {
     let mut options = Options::new();
     for option in native_option_keys_for_operation(command.operation, native_options) {
-        let Some(resolved) = native_option_value(command, context, option.key) else {
+        let Some(resolved) = native_option_value(command, context, option) else {
             continue;
         };
         options.insert_entry(OptionEntry {
@@ -100,17 +100,21 @@ fn native_option_keys_for_operation(
 fn native_option_value(
     command: &DocumentCommand,
     context: &ConfigContext,
-    key: &str,
+    option: NativeOptionSpec,
 ) -> Option<NativeOptionResolvedValue> {
-    if key == "max_heading_level" {
-        if let Some(max_heading_level) = command.max_heading_level {
+    if let Some(cli_flag) = option.cli_flag {
+        if let Some(input) = command
+            .native_options
+            .iter()
+            .find(|input| input.flag == cli_flag)
+        {
             return Some(NativeOptionResolvedValue {
-                value: json!(max_heading_level.get()),
+                value: native_option_cli_value(&input.value),
                 source: "direct",
             });
         }
     }
-    if let Some(value) = context.project_config.options.value_for_key(key) {
+    if let Some(value) = context.project_config.options.value_for_key(option.key) {
         return Some(NativeOptionResolvedValue {
             value: value.clone(),
             source: "project_config",
@@ -119,12 +123,16 @@ fn native_option_value(
     context
         .user_config
         .options
-        .value_for_key(key)
+        .value_for_key(option.key)
         .cloned()
         .map(|value| NativeOptionResolvedValue {
             value,
             source: "user_config",
         })
+}
+
+fn native_option_cli_value(value: &str) -> Value {
+    serde_json::from_str(value).unwrap_or_else(|_| json!(value))
 }
 
 fn resolved_core_document_parameters_from_resolution(

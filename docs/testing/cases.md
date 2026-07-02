@@ -163,6 +163,7 @@ Code: `crates/docnav/src/standard_parameters/tests.rs`
 
 Proves:
 - Core document operation request construction consumes standard parameter resolution output, preserving source labels for direct input, project config and built-in defaults.
+- Adapter descriptor native CLI flags enter core parsing as native option sources instead of core-owned fields.
 
 ### WB-CORE-PREFLIGHT-001 Core preflight 检测 protocol-json intent
 Status: implemented
@@ -383,7 +384,7 @@ Proves:
 - Explicit or present invalid config sources return blocking config diagnostics while default missing config sources remain absent without diagnostics.
 - Unmapped public input returns source-scoped blocking diagnostics；owner-scoped native option sources can be delegated to adapter/native option owner with source info preserved.
 - Source-level static native option registry preserves owner/namespace/type variants, including same option name across multiple owners or value kinds, and generic merge does not collapse them into a single core type.
-- Core standard parameter resolution hands off final native option values without selected-adapter support/type/range prevalidation.
+- Core standard parameter resolution hands off final native option values without selected-adapter filtering or type/range prevalidation.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
 ### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影
@@ -518,7 +519,7 @@ Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
 Proves:
 - `max_heading_level` options 同时影响 outline 和 find 的 visible heading granularity。
 - `max_heading_level` 通过 source-level static native option registry 进入 generic merge，options shape 保持 adapter-owned，不上移为 core-owned 字段。
-- Markdown adapter consumes the final option value and returns adapter-owned diagnostics for unsupported option, type mismatch, or values outside `1..6`.
+- Markdown adapter consumes the final selected option value and returns adapter-owned diagnostics for type mismatch or values outside `1..6`.
 
 ### WB-MD-META-001 Markdown manifest/probe/info 元数据稳定
 Status: implemented

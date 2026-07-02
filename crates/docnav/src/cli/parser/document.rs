@@ -2,8 +2,9 @@ use docnav_cli_args::{scan_arg_boundaries, ArgBoundaryScan};
 use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
+use crate::registry;
 
-use super::super::command_model::{CliCommand, DocumentCommand, ParsedCli};
+use super::super::command_model::{CliCommand, DocumentCommand, NativeOptionCliInput, ParsedCli};
 use super::super::flags;
 use super::argument_helpers::{
     boundary_value_flags, clap_argv, error_from_rejected_arg, is_flag, known_value_flag,
@@ -31,7 +32,7 @@ struct BoundaryDocumentArgs {
 }
 
 fn collect_document_args(operation: Operation, args: &[String]) -> AppResult<BoundaryDocumentArgs> {
-    let known_value_flags = boundary_value_flags(|flag| document_uses_flag(operation, flag));
+    let known_value_flags = document_value_flags(operation);
     let scan = scan_arg_boundaries(
         args,
         &ArgBoundaryScan::new(operation.as_str(), 1, &known_value_flags),
@@ -58,7 +59,7 @@ fn document_command_from_matches(
         page: parse_page(operation, matches)?,
         pagination_enabled: parse_pagination_enabled(operation, matches)?,
         limit: parse_limit(operation, matches)?,
-        max_heading_level: parse_max_heading_level(operation, matches)?,
+        native_options: parse_native_options(operation, matches),
         output: optional_explicit_output(matches)?,
         adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
     })
@@ -96,20 +97,6 @@ fn parse_limit(
     optional_explicit_positive(matches, arg_ids::LIMIT, flags::LIMIT)
 }
 
-fn parse_max_heading_level(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-) -> AppResult<Option<docnav_protocol::PositiveInteger>> {
-    if !uses_max_heading_level(operation) {
-        return Ok(None);
-    }
-    optional_explicit_positive(
-        matches,
-        arg_ids::MAX_HEADING_LEVEL,
-        flags::MAX_HEADING_LEVEL,
-    )
-}
-
 fn parse_pagination_enabled(
     operation: Operation,
     matches: &clap::parser::ArgMatches,
@@ -134,7 +121,7 @@ fn pagination_enabled_from_cli(value: &str) -> AppResult<bool> {
 }
 
 fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
-    if !has_path_candidate(args) {
+    if !has_path_candidate(operation, args) {
         return AppError::invalid_request(
             "path",
             format!("{} requires <path>", operation.as_str()),
@@ -155,7 +142,6 @@ fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
 fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
     match flag {
         ValueFlag::Adapter | ValueFlag::Output => true,
-        ValueFlag::MaxHeadingLevel => uses_max_heading_level(operation),
         ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
         ValueFlag::Ref => operation == Operation::Read,
         ValueFlag::Query => operation == Operation::Find,
@@ -163,11 +149,38 @@ fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
     }
 }
 
-fn has_path_candidate(args: &[String]) -> bool {
+fn parse_native_options(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> Vec<NativeOptionCliInput> {
+    let mut flags = Vec::new();
+    let mut inputs = Vec::new();
+    for option in registry::native_options_for(operation) {
+        let Some(flag) = option.cli_flag else {
+            continue;
+        };
+        if flags.contains(&flag) {
+            continue;
+        }
+        flags.push(flag);
+        let Some(arg_id) = option.cli_arg_id() else {
+            continue;
+        };
+        if let Some(value) = optional_explicit_string(matches, arg_id) {
+            inputs.push(NativeOptionCliInput {
+                flag: flag.to_owned(),
+                value,
+            });
+        }
+    }
+    inputs
+}
+
+fn has_path_candidate(operation: Operation, args: &[String]) -> bool {
     let mut index = 0;
     while index < args.len() {
         let token = &args[index];
-        if known_value_flag(token).is_some() {
+        if is_known_document_value_flag(operation, token) {
             let (_flag, inline_value) = split_equals(token);
             index += if inline_value.is_some() { 1 } else { 2 };
         } else if is_flag(token) {
@@ -233,19 +246,12 @@ fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
         )),
         (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
         (ValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
-        (ValueFlag::MaxHeadingLevel, Some(value)) => {
-            positive_flag_error(flags::MAX_HEADING_LEVEL, value)
-        }
         (ValueFlag::Pagination, Some(value)) => pagination_flag_error(value),
         (ValueFlag::Output, Some(value)) => output_flag_error(value),
         (ValueFlag::Ref, Some("")) => Some(empty_value_error(flags::REF)),
         (ValueFlag::Query, Some("")) => Some(empty_value_error(flags::QUERY)),
         _ => None,
     }
-}
-
-fn uses_max_heading_level(operation: Operation) -> bool {
-    matches!(operation, Operation::Outline | Operation::Find)
 }
 
 fn pagination_flag_error(value: &str) -> Option<AppError> {
@@ -259,6 +265,33 @@ fn pagination_flag_error(value: &str) -> Option<AppError> {
         flags::PAGINATION,
         "expected enabled or disabled",
     ))
+}
+
+fn document_value_flags(operation: Operation) -> Vec<docnav_cli_args::KnownValueFlag<'static>> {
+    let mut flags = boundary_value_flags(|flag| document_uses_flag(operation, flag));
+    for option in registry::native_options_for(Operation::Outline)
+        .into_iter()
+        .chain(registry::native_options_for(Operation::Read))
+        .chain(registry::native_options_for(Operation::Find))
+        .chain(registry::native_options_for(Operation::Info))
+    {
+        let Some(flag) = option.cli_flag else {
+            continue;
+        };
+        let used = option.applies_to(operation);
+        if flags.iter().any(|existing| existing.flag == flag) {
+            continue;
+        }
+        flags.push(docnav_cli_args::KnownValueFlag { flag, used });
+    }
+    flags
+}
+
+fn is_known_document_value_flag(operation: Operation, token: &str) -> bool {
+    let (flag, _value) = split_equals(token);
+    document_value_flags(operation)
+        .iter()
+        .any(|known| known.flag == flag)
 }
 
 fn positive_flag_error(flag: &str, value: &str) -> Option<AppError> {
