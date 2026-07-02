@@ -4,23 +4,23 @@
 
 ### Requirement: 调用日志使用结构化 JSONL 事件
 
-Docnav runtime invocation logging MUST write structured JSON Lines / NDJSON events when invocation logging is enabled. Each event MUST include a schema version, timestamp, event name, request id when available, operation, selected adapter id when available, success/failure status, duration, and bounded size/status metadata sufficient to correlate a core CLI document operation with the adapter invoke result.
+Docnav runtime invocation logging MUST write structured JSON Lines / NDJSON events when invocation logging is enabled. Each event MUST include a schema version, timestamp, event name, request id when available, operation, selected adapter id when available, success/failure status, duration, and bounded size/status metadata sufficient to correlate a core CLI document operation with the linked adapter dispatch outcome.
 
 #### Scenario: 成功调用写入可关联事件
 
 - **WHEN** invocation logging is enabled and `docnav` completes an adapter-backed document operation successfully
-- **THEN** the log contains at least one JSONL event with `schema_version`, timestamp, event name, `request_id`, operation, adapter id, success status, duration, exit code, and bounded response size metadata
+- **THEN** the log contains at least one JSONL event with `schema_version`, timestamp, event name, `request_id`, operation, adapter id, success status, duration, output/error status metadata, and bounded response size metadata
 - **THEN** the event can be parsed independently from other log lines without requiring the full log file to be valid JSON
 
 #### Scenario: 失败调用写入失败边界
 
-- **WHEN** invocation logging is enabled and adapter selection, adapter process startup, stdin write, stdout parse, protocol response validation, or operation execution fails
+- **WHEN** invocation logging is enabled and adapter selection, navigation request construction, linked adapter handler dispatch, operation result validation, output projection, or operation execution fails
 - **THEN** the log records the available request id or fallback correlation id
-- **THEN** the log records the failure layer, stable error code when available, exit code when available, duration, and bounded diagnostic summary
+- **THEN** the log records the failure layer, stable error code when available, duration, and bounded diagnostic summary
 
 ### Requirement: 默认调用日志只记录元数据
 
-Invocation logging MUST default to metadata-only records. Metadata-only records MUST NOT include document body content, full protocol request/response payloads, full adapter stderr, full environment variables, or unbounded raw user input.
+Invocation logging MUST default to metadata-only records. Metadata-only records MUST NOT include document body content, full protocol request/response payloads, full structured diagnostic/debug output, full environment variables, or unbounded raw user input.
 
 #### Scenario: Read 响应不默认写入正文
 
@@ -52,7 +52,7 @@ Full protocol request/response tracing MUST be explicit opt-in. Trace records MU
 
 ### Requirement: 调用日志不得污染 stdout 或协议输出
 
-Invocation logging MUST be isolated from document output stdout and adapter protocol stdout. Logging MUST NOT add fields to `RequestEnvelope`, `ProtocolResponse`, readable output payloads, manifest output, or probe output.
+Invocation logging MUST be isolated from document output stdout and linked adapter handler payloads. Logging MUST NOT add fields to `RequestEnvelope`, `ProtocolResponse`, readable output payloads, manifest output, or probe output.
 
 #### Scenario: protocol-json stdout 保持纯净
 
@@ -60,11 +60,11 @@ Invocation logging MUST be isolated from document output stdout and adapter prot
 - **THEN** stdout contains only the protocol-shaped response for that operation
 - **THEN** log events are written only to the configured log sink
 
-#### Scenario: adapter invoke stdout 保持协议边界
+#### Scenario: linked adapter dispatch 保持 payload 边界
 
-- **WHEN** core CLI invokes an adapter subprocess
-- **THEN** adapter stdout is still parsed only as adapter protocol output
-- **THEN** runtime invocation logs are not written to adapter stdin or adapter stdout
+- **WHEN** core CLI dispatches a linked adapter handler
+- **THEN** the handler still returns only structured result or diagnostic payloads to the caller boundary
+- **THEN** runtime invocation logs are written only to the configured log sink and are not injected into handler input, handler output, or document stdout
 
 ### Requirement: 日志写入失败不改变文档操作语义
 
@@ -91,4 +91,4 @@ The first implementation of invocation logging MAY use an internal JSONL writer.
 
 - **WHEN** a later implementation introduces `tracing` or another logging framework
 - **THEN** the change records why the framework is needed beyond the internal writer
-- **THEN** validation proves that document stdout and adapter protocol stdout remain uncontaminated
+- **THEN** validation proves that document stdout and linked adapter handler payloads remain uncontaminated

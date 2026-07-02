@@ -9,18 +9,11 @@ export const root = path.resolve(
 );
 export const artifactsRoot = path.join(root, "artifacts", "docnav");
 
-export type ReleaseComponent =
-  | Readonly<{
-    component: "core";
-    packageName: string;
-    binName: string;
-  }>
-  | Readonly<{
-    component: "adapter";
-    adapterId: string;
-    packageName: string;
-    binName: string;
-  }>;
+export type ReleaseComponent = Readonly<{
+  component: "core";
+  packageName: string;
+  binName: string;
+}>;
 
 export type PackageLayout = {
   version: string;
@@ -47,8 +40,7 @@ export type ReleaseProducer =
 
 export type ReleaseManifestFile = {
   path: string;
-  component: "adapter" | "core";
-  adapter_id?: string;
+  component: "core";
   size_bytes: number;
   sha256: string;
 };
@@ -71,12 +63,6 @@ export const releaseComponents = Object.freeze([
     component: "core",
     packageName: "docnav",
     binName: "docnav",
-  }),
-  Object.freeze({
-    component: "adapter",
-    adapterId: "docnav-markdown",
-    packageName: "docnav-markdown",
-    binName: "docnav-markdown",
   }),
 ]) satisfies readonly ReleaseComponent[];
 

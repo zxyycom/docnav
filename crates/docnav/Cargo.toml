@@ -10,9 +10,12 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
+docnav-adapter-contracts.workspace = true
 docnav-cli-args.workspace = true
 docnav-diagnostics.workspace = true
 docnav-json-io.workspace = true
+docnav-markdown.workspace = true
+docnav-navigation.workspace = true
 docnav-output.workspace = true
 docnav-protocol.workspace = true
 docnav-standard-parameters.workspace = true

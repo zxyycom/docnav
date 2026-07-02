@@ -37,10 +37,7 @@ export function validateManifestFile(
     !entry.path.includes("/") && !entry.path.includes("\\"),
     "manifest file path must be a file name",
   );
-  assert(
-    entry.component === "core" || entry.component === "adapter",
-    "manifest file component must be core or adapter",
-  );
+  assert(entry.component === "core", "manifest file component must be core");
   const sizeBytes = entry.size_bytes;
   assert(
     typeof sizeBytes === "number" &&
@@ -53,15 +50,8 @@ export function validateManifestFile(
     "manifest file sha256 must be lowercase hex",
   );
 
-  if (entry.component === "adapter") {
-    assert(
-      entry.adapter_id === "docnav-markdown",
-      "adapter manifest entry must include adapter_id",
-    );
-  } else {
-    assert(
-      entry.adapter_id === undefined,
-      "core manifest entry must not include adapter_id",
-    );
-  }
+  assert(
+    entry.adapter_id === undefined,
+    "core manifest entry must not include adapter_id",
+  );
 }

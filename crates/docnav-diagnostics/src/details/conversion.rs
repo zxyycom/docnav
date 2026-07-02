@@ -15,6 +15,7 @@ impl From<FieldReasonDetails> for DiagnosticDetails {
             field_issues: details.field_issues,
             config_issues: details.config_issues,
             typed_validation_failures: details.typed_validation_failures,
+            option_issues: details.option_issues,
         }
     }
 }

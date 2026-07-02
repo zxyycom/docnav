@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/docnav-markdown-config.schema.json",
-  "$comment": "Reference schema for docnav-markdown JSON config examples and editor tooling.",
+  "$comment": "Reference schema for core docnav config examples that include Markdown native options. Runtime config loading owns global key/source/shape handling, options remains a raw native option map, core merges declared native option sources through the source-level static option registry, and the Markdown adapter owns option semantics such as max_heading_level type and range validation.",
   "type": "object",
   "properties": {
     "defaults": {
@@ -29,22 +29,15 @@
             "readable-json",
             "protocol-json"
           ],
-          "description": "Default direct CLI output mode for document operations."
+          "description": "Default core CLI output mode for document operations."
         }
       },
       "additionalProperties": false
     },
     "options": {
       "type": "object",
-      "properties": {
-        "max_heading_level": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 6,
-          "description": "Maximum Markdown heading level visible to outline and find operations."
-        }
-      },
-      "additionalProperties": false
+      "description": "Raw adapter-owned native option source map. The current Markdown descriptor declares max_heading_level for outline/find; core preserves the raw value and the Markdown adapter validates its type and 1..6 range when consumed.",
+      "additionalProperties": true
     }
   },
   "additionalProperties": false

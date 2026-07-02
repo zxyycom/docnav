@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Operation, Options, PositiveInteger};
+use crate::{Metadata, Operation, PositiveInteger};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -41,7 +41,7 @@ pub struct Entry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost: Option<Cost>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Options>,
+    pub metadata: Option<Metadata>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -101,7 +101,7 @@ pub struct InfoResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<InfoAdapter>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Options>,
+    pub metadata: Option<Metadata>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

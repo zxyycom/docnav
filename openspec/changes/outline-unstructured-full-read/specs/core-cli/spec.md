@@ -16,7 +16,7 @@
 #### Scenario: 未命中配置时保持普通 outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md`
 - **AND** 生效配置未声明该 path 为非结构化文档
-- **THEN** `docnav` 按既有 adapter routing 和 invoke 流程执行结构化 outline
+- **THEN** `docnav` 从当前 core release static adapter registry 选择 adapter implementation，并通过 linked adapter library/handler dispatch 执行结构化 outline
 - **THEN** 输出包含 entries 和 page
 
 #### Scenario: 输出说明非结构化策略命中

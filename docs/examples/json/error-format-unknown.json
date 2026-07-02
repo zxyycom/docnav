@@ -11,7 +11,7 @@
       "argument": "path"
     },
     "received": "docs/unknown.data",
-    "expected": "a document supported by an installed adapter",
+    "expected": "a document supported by a core release built-in adapter",
     "details": {
       "path": "docs/unknown.data",
       "reason": "NO_SUPPORTED_ADAPTER",

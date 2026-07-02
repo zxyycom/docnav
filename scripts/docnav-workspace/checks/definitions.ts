@@ -178,7 +178,7 @@ export const checks = defineChecks([
             ],
             mutex: ["cargo-build"],
             ignoreOutput: [
-              /^dev binaries ok: DOCNAV_BIN, DOCNAV_MARKDOWN_BIN$/
+              /^dev binaries ok: DOCNAV_BIN$/
             ]
           },
           {
@@ -186,15 +186,6 @@ export const checks = defineChecks([
             dependsOn: ["docnav-development-binaries"],
             envFile: DEV_BIN_ENV_FILE,
             tasks: [
-              {
-                id: "docnav-markdown-development-smoke",
-                label: "docnav-markdown development smoke",
-                command: "bun",
-                args: ["test/docnav-markdown-smoke.ts"],
-                ignoreOutput: [
-                  ...smokeSuccessOutput("Docnav Markdown Development Smoke", ".log/smoke/markdown/latest.log")
-                ]
-              },
               {
                 id: "docnav-core-development-smoke",
                 label: "docnav core development smoke",

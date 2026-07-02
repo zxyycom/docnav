@@ -29,23 +29,17 @@ try {
   assertSetup(smokeState.docnavBinaryPath, "docnav binary path is required; pass --bin <path> or DOCNAV_BIN");
   const docnavBinaryPath = String(smokeState.docnavBinaryPath);
   assertSetup(fs.existsSync(docnavBinaryPath), `docnav binary not found: ${docnavBinaryPath}`);
-  assertSetup(smokeState.markdownBinaryPath, "docnav-markdown binary path is required; set DOCNAV_MARKDOWN_BIN");
-  const markdownBinaryPath = String(smokeState.markdownBinaryPath);
-  assertSetup(
-    fs.existsSync(markdownBinaryPath),
-    `docnav-markdown binary not found: ${markdownBinaryPath}`
-  );
   fs.mkdirSync(tempRoot, { recursive: true });
 
   const results = await runSmokeTasks([
     {
       id: "real-markdown-link-chain",
-      label: "real docnav + real docnav-markdown ref handoff chain",
+      label: "built-in markdown ref handoff chain",
       tasks: createRealMarkdownLinkTasks()
     },
     {
       id: "real-markdown-ref-error",
-      label: "real docnav + real docnav-markdown ref error mapping",
+      label: "built-in markdown ref error mapping",
       tasks: createRealMarkdownRefErrorTasks()
     },
     { id: "document-output-boundary", label: "document output boundary", tasks: createDocumentOutputBoundaryTasks() },
@@ -72,6 +66,7 @@ try {
   suiteFailure = error;
 } finally {
   writeAuditLogs();
+  fs.rmSync(tempRoot, { recursive: true, force: true });
 }
 
 if (suiteFailure) {
@@ -79,5 +74,4 @@ if (suiteFailure) {
   process.exit(1);
 }
 
-fs.rmSync(tempRoot, { recursive: true, force: true });
 printSuccessSummary();

@@ -50,7 +50,7 @@
 标准参数 source layer MUST 从 pipeline-derived catalog/index 构造 direct input、project config、user config 和 default sources，然后进入 resolution。
 
 #### Scenario: Direct input 直接进入 source construction
-- **WHEN** caller receives CLI argv tokens or a decoded adapter `invoke` JSON value
+- **WHEN** caller receives core CLI argv tokens or a protocol request arguments object
 - **THEN** caller passes that direct input directly to standard parameter source construction
 - **THEN** direct processing paths and typed-field metadata produce mapped values, passthrough processing results, and validation diagnostic events
 - **THEN** entry owners map those diagnostics to their surface-specific input error or `INVALID_REQUEST`
@@ -67,7 +67,7 @@
 - **THEN** caller 可以让 processing result 表达 raw-minus-mapped、locator、剩余 JSON 子树或其它 owner-specific 处理结果
 
 #### Scenario: Direct input 通过 derived direct binding 映射
-- **WHEN** direct CLI input 或 adapter invoke arguments 包含 direct input processing path 映射到的值
+- **WHEN** core CLI input 或 protocol request arguments 包含 direct input processing path 映射到的值
 - **THEN** source construction 将该值映射到 derived catalog/index 中的 standard parameter identity 并标记为 direct input
 - **THEN** unmapped direct input 保持在 standard parameter validation 之外
 
@@ -101,7 +101,7 @@
 - **THEN** post-load source construction 和 diagnostic handoff semantics 与 path-based pipeline path 保持一致
 
 ### Requirement: Unmapped input 由 entry owner 决定边界结果
-标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 source-scoped passthrough processing results。Resolver 本身 MUST NOT 将 unmapped input 视为已接受；owning CLI、adapter、protocol 或 config layer MUST 按其已声明的 input source/key policy 显式 reject、discard internal-only leftovers，或 delegate adapter-owned native option source。
+标准参数 resolver MUST 让 unmapped input 保持在 standard parameter validation 之外，并按 entry policy 返回 source-scoped passthrough processing results。Resolver 本身 MUST NOT 将 unmapped input 视为已接受；owning CLI、adapter、protocol 或 config layer MUST 按其已声明的 input source/key policy 显式 reject、discard internal-only leftovers，或通过源码级 static native option registry delegate adapter-owned native option source。
 
 #### Scenario: Unmapped input 不参与标准参数 validation
 - **WHEN** input field 未映射到 standard parameter identity
@@ -110,10 +110,16 @@
 - **THEN** raw-minus-mapped passthrough、locator 或剩余 JSON 子树结构由 caller processing function 产生并由入口 owner 解释
 
 #### Scenario: Adapter native option 保持 delegated
-- **WHEN** adapter direct CLI 或 invoke argument 包含没有 standard parameter mapping 的 native option
+- **WHEN** core CLI、protocol arguments 或 config source 包含没有 standard parameter mapping 的 adapter-owned native option
 - **THEN** resolver 让该 option 保持在 typed-field standard parameter validation 之外
-- **THEN** entry owner 只有在声明 native option source/key 且拥有该 key 校验时才能继续处理
-- **THEN** 未声明或不适用于当前 operation 的 native option 返回 strict input-boundary diagnostic
+- **THEN** source-level static native option registry records owner、namespace、key and type variant metadata for handoff
+- **THEN** same option key MAY have multiple owner/namespace/type variants without being collapsed into one core type
+- **THEN** resolver returns merged native option source information to the entry owner or adapter owner
+
+#### Scenario: Adapter validates consumed option semantics
+- **WHEN** a selected adapter consumes delegated native option values
+- **THEN** adapter-owned validation determines unsupported option、type mismatch and range invalid
+- **THEN** resolver does not return selected-adapter support/type/range diagnostics for those values
 
 ### Requirement: Operation argument binding 保留 source semantics
 标准参数 resolver MUST 把 operation argument binding 建模为 standard parameter identity 到 protocol request `arguments` path 的映射，并保留 resolution 产生的 source info。

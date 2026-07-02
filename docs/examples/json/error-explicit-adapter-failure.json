@@ -11,13 +11,13 @@
       "argument": "adapter"
     },
     "received": "docnav-missing",
-    "expected": "an installed adapter id",
+    "expected": "an adapter id in the core release static registry",
     "details": {
       "adapter_id": "docnav-missing",
-      "reason": "adapter not found in registry"
+      "reason": "adapter not found in the core release static registry"
     },
     "guidance": [
-      "安装该 adapter，或删除 --adapter 让 docnav 自动发现可用 adapter。"
+      "选择当前 core release 内置的 adapter id，或删除 --adapter 让 docnav 自动发现可用 adapter。"
     ]
   }
 }

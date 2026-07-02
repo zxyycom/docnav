@@ -3,13 +3,25 @@
 ## ADDED Requirements
 
 ### Requirement: Core release 内置 adapter-layer workspace crates 必须成为默认 document operation implementation 来源
-`docnav` MUST use adapter-layer workspace crates shipped with the current core release as default document operation adapter implementations. The default release MUST include all built-in adapters without using feature gates to select the default adapter set. Project config、user config and CLI input MAY select or hint an adapter only when that adapter resolves to an implementation registered in the current core release static adapter registry. Project/user config、installed packages、external executables、command paths and historical adapter artifact records MUST NOT provide default document operation implementation. The adapter layer MUST remain a code and contract boundary, not a separate default distribution boundary.
+`docnav` MUST use adapter-layer workspace crates shipped with the current core release as default document operation adapter implementations. The default release MUST include all built-in adapters without using feature gates to select the default adapter set. Project config、user config and CLI input MAY select or hint an adapter only when that adapter resolves to an implementation registered in the current core release static adapter registry. Registry entries MUST expose source-level static descriptors containing adapter identity、capabilities、native option registry entries and operation handler bindings. Project/user config、installed packages、external executables、command paths and historical adapter artifact records MUST NOT provide default document operation implementation. The adapter layer MUST remain a code and contract boundary, not a separate default distribution boundary.
 
 #### Scenario: 默认发行物包含 adapter implementation
 - **WHEN** 构建默认 `docnav` 发行物
 - **THEN** 所有内置 adapter-layer workspace crates 随 `docnav` core release artifact 交付
 - **THEN** 默认发行物不需要启用额外 feature 才能获得内置 adapter set
 - **THEN** 默认发行物可直接执行已支持格式的 document operation
+
+#### Scenario: Static descriptor supplies operation bindings
+- **WHEN** core registry resolves the built-in Markdown adapter
+- **THEN** the registry entry exposes a static descriptor with Markdown capabilities, native option registry entries and handler bindings
+- **THEN** core standard parameter resolution can merge and hand off final native option values for linked dispatch
+- **THEN** Markdown adapter handler validates consumed option support, type and range semantics
+
+#### Scenario: Core passes absolute path to linked adapter
+- **WHEN** caller executes `docnav outline docs/guide.md` from a project subdirectory
+- **THEN** `docnav` resolves the document path against cwd/project context to an absolute path
+- **THEN** `docnav-navigation` and the linked adapter handler receive the absolute path
+- **THEN** adapter IO does not depend on process cwd
 
 #### Scenario: Historical adapter config does not provide implementation
 - **WHEN** `<project-root>/.docnav/adapters.json` 存在并包含 adapter command path
@@ -26,6 +38,12 @@
 #### Scenario: 列出 core release 内置 adapter libraries
 - **WHEN** 调用方执行 `docnav adapter list`
 - **THEN** 输出只包含当前 core release static adapter registry 中的 adapter id、version、supported formats 和 capabilities
+
+#### Scenario: Adapter diagnostics do not define process exit code
+- **WHEN** a linked adapter handler returns a structured diagnostic
+- **THEN** core/output maps that diagnostic to the selected protocol/readable surface
+- **THEN** final process exit code remains owned by `docnav` core CLI
+- **THEN** the adapter layer does not expose an exit-code API
 
 ## MODIFIED Requirements
 

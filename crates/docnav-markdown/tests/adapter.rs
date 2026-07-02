@@ -2,12 +2,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use docnav_adapter_sdk::{invoke_once, Adapter, AdapterExitCode};
+use docnav_adapter_contracts::Adapter;
 use docnav_markdown::MarkdownAdapter;
 use docnav_protocol::{
     positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
     OperationArguments, Options, OutlineArguments, OutlineResult, ProtocolDiagnosticCode,
-    ProtocolError, ProtocolResponse, ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
+    ProtocolError, ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -212,8 +212,8 @@ fn assert_canonical_ref(ref_id: &str) {
 
 #[path = "adapter/meta.rs"]
 mod meta;
-#[path = "adapter/options_error_invoke_display.rs"]
-mod options_error_invoke_display;
+#[path = "adapter/options_error_display.rs"]
+mod options_error_display;
 #[path = "adapter/outline_ref.rs"]
 mod outline_ref;
 #[path = "adapter/paging_find.rs"]

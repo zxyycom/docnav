@@ -17,9 +17,9 @@
 **Non-Goals:**
 
 - Markdown 和其它格式内容由 adapter 解析；MCP bridge 只处理 tool 输入输出包装。
-- Adapter probe、adapter invoke、格式识别和 adapter 选择由核心 `docnav` CLI 执行。
+- Adapter support checks、格式识别和 adapter 选择由核心 `docnav` CLI 执行。
 - Adapter 安装管理由 adapter 管理 change 实现。
-- MCP structuredContent 使用 readable schema；protocol envelope 通过 `docnav --output protocol-json` 或 adapter invoke 供机器稳定解析。
+- MCP structuredContent 使用 readable schema；protocol envelope 通过 `docnav --output protocol-json` 供机器稳定解析。
 
 ## Decisions
 
@@ -35,7 +35,7 @@
 3. TextContent 承载精简阅读文本。
    - TextContent 文本渲染消费 `replace-text-with-readable-view` 的 readable-view contract、仓库 renderer config 和 conformance vectors。
    - Bridge 从核心 CLI readable output 获得结构化结果；Markdown parsing 和 block 字段选择继续由 owning layer 负责。
-   - 机器稳定解析仍必须使用 `docnav --output protocol-json` 或 adapter invoke。
+   - 机器稳定解析仍必须使用 `docnav --output protocol-json`。
 
 4. MCP adapter 参数原样映射为 `docnav --adapter`。
    - MCP bridge 不解释 adapter id，不执行格式识别。

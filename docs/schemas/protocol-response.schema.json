@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/protocol-response.schema.json",
+  "$comment": "Validates protocol surface shape. ADAPTER_INVOKE_FAILED is a legacy/deprecated compatibility code for historical external invoke projection; the current core-linked adapter path returns structured adapter diagnostics and does not expose an adapter exit-code API.",
   "oneOf": [
     {
       "$ref": "#/$defs/success"
@@ -364,6 +365,7 @@
           ],
           "properties": {
             "code": {
+              "$comment": "ADAPTER_INVOKE_FAILED remains only for legacy external invoke compatibility; current core-linked document operations should use structured adapter diagnostics without external process details.",
               "enum": [
                 "INVALID_REQUEST",
                 "DOCUMENT_NOT_FOUND",
@@ -619,7 +621,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "$ref": "#/$defs/protocolErrorDetailsAdapterIdReason"
+                    "$ref": "#/$defs/protocolErrorDetailsLegacyAdapterInvoke"
                   }
                 }
               }
@@ -660,14 +662,6 @@
         "reason": {
           "type": "string"
         },
-        "exit_code": {
-          "type": "integer",
-          "minimum": -2147483648,
-          "maximum": 2147483647
-        },
-        "stderr": {
-          "type": "string"
-        },
         "selection_source": {
           "type": "string",
           "minLength": 1
@@ -677,6 +671,31 @@
             "resolve",
             "probe"
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolErrorDetailsLegacyAdapterInvoke": {
+      "$comment": "Legacy/deprecated external invoke projection only. Current core-linked adapter contracts return structured diagnostics and do not expose adapter process exit code or stderr.",
+      "type": "object",
+      "required": [
+        "adapter_id",
+        "reason"
+      ],
+      "properties": {
+        "adapter_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "stderr": {
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -723,6 +742,55 @@
           "items": {
             "type": "object"
           }
+        },
+        "option_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/protocolOptionIssue"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocolOptionIssue": {
+      "type": "object",
+      "required": [
+        "owner",
+        "namespace",
+        "key",
+        "source",
+        "reason_code"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type_variant": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "received": {},
+        "expected": {},
+        "location": {
+          "type": "object",
+          "minProperties": 1
         }
       },
       "additionalProperties": false

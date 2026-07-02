@@ -1,28 +1,30 @@
 use serde_json::{json, Value};
 
-use crate::adapter_output_contract::manifest_from_output;
-use crate::adapter_process::run_manifest;
 use crate::error::{AppResult, DocnavExitCode};
 use crate::output::CommandOutcome;
 use crate::project_context::ProjectContext;
 use crate::registry::{self, AdapterRegistry};
 
-use super::store::{path_string, read_config};
+use super::store::{path_string, read_config, ConfigFileSource};
 
 pub fn doctor() -> AppResult<CommandOutcome> {
     let project = ProjectContext::discover()?;
+    let registry = AdapterRegistry::load(&project)?;
     let mut checks = Vec::new();
     checks.push(check_config_file(
         "project_config",
         &project.project_config_path,
+        &registry,
+        ConfigFileSource::Project,
     ));
-    checks.push(check_config_file("user_config", &project.user_config_path));
-    let registry_path = registry::registry_path(&project);
-    let registry = AdapterRegistry::load(&project);
-    checks.push(registry::registry_check(&registry_path, &registry));
-    if let Ok(registry) = &registry {
-        checks.extend(adapter_manifest_checks(&project, registry));
-    }
+    checks.push(check_config_file(
+        "user_config",
+        &project.user_config_path,
+        &registry,
+        ConfigFileSource::User,
+    ));
+    checks.push(registry::registry_check(&registry));
+    checks.extend(registry::adapter_layer_checks(&registry));
 
     let exit_code = most_severe_exit(&checks);
 
@@ -35,8 +37,13 @@ pub fn doctor() -> AppResult<CommandOutcome> {
     ))
 }
 
-fn check_config_file(name: &str, path: &std::path::Path) -> Value {
-    match read_config(path) {
+fn check_config_file(
+    name: &str,
+    path: &std::path::Path,
+    registry: &AdapterRegistry,
+    source: ConfigFileSource,
+) -> Value {
+    match read_config(path, registry, source) {
         Ok(_) if path.exists() => json!({
             "name": name,
             "status": "pass",
@@ -60,52 +67,6 @@ fn check_config_file(name: &str, path: &std::path::Path) -> Value {
             })
         }
     }
-}
-
-fn adapter_manifest_checks(project: &ProjectContext, registry: &AdapterRegistry) -> Vec<Value> {
-    if registry.adapters.is_empty() {
-        return vec![json!({
-            "name": "adapter_manifest_checks",
-            "status": "pass",
-            "message": "no adapters are registered"
-        })];
-    }
-
-    registry
-        .adapters
-        .iter()
-        .map(
-            |adapter| match run_manifest(&project.project_root, adapter) {
-                Ok(output) => match manifest_from_output(&adapter.id, output) {
-                    Ok(manifest) => json!({
-                        "name": "adapter_manifest",
-                        "status": "pass",
-                        "adapter_id": adapter.id,
-                        "command": adapter.command,
-                        "manifest_adapter_id": manifest.adapter.id,
-                        "message": "adapter manifest passed current contract checks"
-                    }),
-                    Err(reason) => json!({
-                        "name": "adapter_manifest",
-                        "status": "fail",
-                        "adapter_id": adapter.id,
-                        "command": adapter.command,
-                        "message": reason,
-                        "exit_code": DocnavExitCode::AdapterOrProtocolError.code(),
-                    }),
-                },
-                Err(error) => json!({
-                    "name": "adapter_manifest",
-                    "status": "fail",
-                    "adapter_id": adapter.id,
-                    "command": adapter.command,
-                    "message": error.reason,
-                    "stderr": error.stderr,
-                    "exit_code": DocnavExitCode::AdapterOrProtocolError.code(),
-                }),
-            },
-        )
-        .collect()
 }
 
 fn most_severe_exit(checks: &[Value]) -> DocnavExitCode {

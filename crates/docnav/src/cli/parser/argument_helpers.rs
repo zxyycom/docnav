@@ -14,6 +14,7 @@ use super::arg_ids;
 pub(super) enum ValueFlag {
     Adapter,
     Limit,
+    MaxHeadingLevel,
     Operation,
     Output,
     Page,
@@ -26,6 +27,7 @@ pub(super) enum ValueFlag {
 const VALUE_FLAGS: &[(&str, ValueFlag)] = &[
     (flags::ADAPTER, ValueFlag::Adapter),
     (flags::LIMIT, ValueFlag::Limit),
+    (flags::MAX_HEADING_LEVEL, ValueFlag::MaxHeadingLevel),
     (flags::OPERATION, ValueFlag::Operation),
     (flags::OUTPUT, ValueFlag::Output),
     (flags::PAGE, ValueFlag::Page),
@@ -52,6 +54,7 @@ pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
     match flag {
         flags::ADAPTER => Some(ValueFlag::Adapter),
         flags::LIMIT => Some(ValueFlag::Limit),
+        flags::MAX_HEADING_LEVEL => Some(ValueFlag::MaxHeadingLevel),
         flags::OPERATION => Some(ValueFlag::Operation),
         flags::OUTPUT => Some(ValueFlag::Output),
         flags::PAGE => Some(ValueFlag::Page),

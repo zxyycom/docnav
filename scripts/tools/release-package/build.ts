@@ -65,7 +65,6 @@ function buildPackageFiles(packageDir: string, target: string): ReleaseManifestF
     return {
       path: toSlashPath(path.basename(destPath)),
       component: component.component,
-      ...(component.component === "adapter" ? { adapter_id: component.adapterId } : {}),
       size_bytes: fs.statSync(destPath).size,
       sha256: sha256File(destPath),
     };

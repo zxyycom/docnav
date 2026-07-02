@@ -64,7 +64,7 @@
 输出：updated owner docs，以及从既有行为语言到当前 strict contract language 的简短映射。
 
 - [x] 3.1 Navigation and architecture owner: update `docs/navigation.md` and `docs/architecture.md` so owner tables and architecture flow describe strict public input validation, internal adapter discovery failure lists and primary `DiagnosticRecord` ownership.
-- [x] 3.2 CLI owner: update `docs/cli.md` so core and adapter direct CLI use strict `clap` parser/mapper semantics, fail unknown/extra/operation-inapplicable argv before execution and route invalid input to primary `DiagnosticRecord` projection.
+- [x] 3.2 CLI owner: update `docs/cli.md` so core CLI uses strict `clap` parser/mapper semantics, fails unknown/extra/operation-inapplicable argv before execution and routes invalid input to primary `DiagnosticRecord` projection.
 - [x] 3.3 Parameter and adapter owner: update `docs/standard-parameters.md`, `docs/adapter-contract.md`, `docs/protocol.md` and `docs/adapters/markdown.md` so unmapped public input fails by default, config absence/invalid states are distinct, Markdown config-source failures use blocking diagnostics and adapter native options are explicit owner-scoped sources.
 - [x] 3.4 Ref owner: update `docs/ref-contract.md` so explicit ref input is strict at the entry boundary while ref generation and semantic interpretation remain adapter-owned.
 - [x] 3.5 Diagnostics and output owner: update `docs/diagnostics.md` and `docs/output.md` so public failures use one primary `DiagnosticRecord`, structured readable errors are written to the owning structured output channel and document success output follows the owning success payload schema.
@@ -84,10 +84,10 @@
 
 - [x] 4.1 Update readable schemas, including `readable-common.schema.json`, `readable-outline.schema.json`, `readable-read.schema.json`, `readable-find.schema.json`, `readable-info.schema.json` and `readable-error.schema.json`, so successful document payloads follow the documented success shape and readable failure payloads project the primary `DiagnosticRecord`.
 - [x] 4.2 Update `protocol-response.schema.json` so protocol failure envelopes validate primary `DiagnosticRecord` projection, candidate failure lists and strict input/config/ref failure details.
-- [x] 4.3 Update `protocol-request.schema.json` and invoke examples where needed so adapter `invoke` strict input validation has schema/example coverage.
+- [x] 4.3 Update `protocol-request.schema.json` and protocol request examples where needed so strict protocol input validation has schema/example coverage.
 - [x] 4.4 Update `docs/schemas/json-schema.md` so schema ownership points to primary `DiagnosticRecord` failure projection and success payload field ownership.
 - [x] 4.5 Add or update protocol/readable error examples for unknown argv, extra positional input, operation-inapplicable flag, explicit adapter failure, explicit config failure, explicit ref failure and unknown config field.
-- [x] 4.6 Update adapter SDK examples/proofs so invalid direct CLI/input JSON fails, and valid direct CLI/invoke still share the document operation semantic pipeline; no standalone adapter SDK example files exist in this workspace, so coverage is in docs examples plus SDK Rust tests.
+- [x] 4.6 Update adapter contract examples/proofs so invalid core CLI/protocol/config input fails before linked adapter execution, and valid inputs share the document operation semantic pipeline through linked handler dispatch.
 - [x] 4.7 Update smoke fixture expectations so `protocol-json` invalid input emits a failure envelope and successful stdout contains only the expected success payload shape.
 - [x] 4.8 Update readable-view conformance vectors so they prove success payload/header consistency, readable error projection and block payload restoration through the current readable field set.
 
@@ -107,7 +107,7 @@
 - [x] 5.2 Adapter selection slice: explicit CLI/config adapter failure returns adapter selection diagnostic; automatic discovery may continue internally and returns a candidate failure list when all candidates fail.
 - [x] 5.3 Parameter/config/native option slice: unmapped direct/config input returns blocking diagnostics; default config absence is silent absence; explicit or present invalid config fails; adapter native options are explicit owner-scoped sources.
 - [x] 5.4 Diagnostics/output slice: project one primary `DiagnosticRecord` for public failures; successful document output carries only the owning success payload; protocol-json stdout remains schema-valid.
-- [x] 5.5 Adapter SDK slice: adapter direct CLI returns diagnostics for invalid argv/config/native options; adapter `invoke` rejects unknown envelope fields and sends known argument validation through typed-field/standard-parameter processing.
+- [x] 5.5 Linked adapter contract slice: linked adapter handlers receive prepared operation input and native option values, return structured adapter diagnostics, and validate adapter-owned option support/type/range before business handling.
 - [x] 5.6 Cleanup slice: align implementation APIs/tests with strict argv diagnostics, primary `DiagnosticRecord` projection and success payload construction.
 
 验证：每个 slice 包含其 public boundary 的 focused tests，并在 integration 前报告 cross-slice API changes。
@@ -122,7 +122,7 @@
 
 输出：updated proof targets、changed tests/fixtures、validation commands 和 residual coverage gaps。
 
-- [x] 6.1 Unit tests: update core CLI parser, adapter routing, standard parameter resolution, adapter SDK direct CLI, diagnostics and output tests.
+- [x] 6.1 Unit tests: update core CLI parser, adapter routing, standard parameter resolution, linked adapter contract, diagnostics and output tests.
 - [x] 6.2 Smoke tests and case ledger: migrate unknown argv, extra positional, unused flag, explicit adapter failure and config invalid cases to strict failure assertions; prioritize `BB-CORE-OUTPUT-001`, `BB-CORE-SELECT-001`, `BB-MD-BOUNDARY-001` and `BB-MD-CONFIG-001`，并把 Markdown 成功路径预期改为 success payload 或 failure diagnostic proofs。
 - [x] 6.3 Schema/example validation: update validators and fixtures so readable success output has the documented success payload shape and protocol/readable failure examples include primary `DiagnosticRecord` guidance.
 - [x] 6.4 Active-change validation: run strict OpenSpec validation for this change and every coordinated active change touched in Track A.

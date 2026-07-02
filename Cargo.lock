@@ -135,9 +135,12 @@ name = "docnav"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "docnav-adapter-contracts",
  "docnav-cli-args",
  "docnav-diagnostics",
  "docnav-json-io",
+ "docnav-markdown",
+ "docnav-navigation",
  "docnav-output",
  "docnav-protocol",
  "docnav-standard-parameters",
@@ -147,17 +150,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "docnav-adapter-sdk"
+name = "docnav-adapter-contracts"
 version = "0.1.0"
 dependencies = [
- "clap",
- "docnav-cli-args",
  "docnav-diagnostics",
- "docnav-output",
  "docnav-protocol",
- "docnav-standard-parameters",
- "docnav-typed-fields",
- "serde",
  "serde_json",
 ]
 
@@ -185,11 +182,19 @@ dependencies = [
 name = "docnav-markdown"
 version = "0.1.0"
 dependencies = [
- "docnav-adapter-sdk",
+ "docnav-adapter-contracts",
  "docnav-protocol",
  "pulldown-cmark",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "docnav-navigation"
+version = "0.1.0"
+dependencies = [
+ "docnav-adapter-contracts",
+ "docnav-protocol",
 ]
 
 [[package]]

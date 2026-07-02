@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Public input boundaries must be strict by default
-Docnav public input boundaries MUST 默认拒绝 invalid caller intent。Public input boundaries 包括 core direct CLI argv、adapter direct CLI argv、adapter `invoke` stdin JSON、protocol request fields、explicit adapter selection、explicit config path overrides、present config files、explicit document paths、explicit refs、operation arguments 和 declared native options。
+Docnav public input boundaries MUST 默认拒绝 invalid caller intent。Public input boundaries 包括 core CLI argv、protocol request fields and arguments、explicit adapter selection、explicit config source declarations、present config files、explicit document paths、explicit refs、operation arguments 和 declared native options。
 
 AI-friendly behavior MUST 通过 precise diagnostics、stable error identities 和 actionable repair guidance 提供。Internal discovery MAY 在 caller 未显式声明失败候选时继续；successful output MUST 描述 successful document operation。
 
@@ -77,12 +77,12 @@ Invalid caller input diagnostics MUST 在 owner 可定位 input location 时包�
 发现 public failure 的 modules MUST 返回或构造足够的 diagnostics-owned facts，使 owning boundary 能投影一个 primary `DiagnosticRecord`。Boundary surfaces MUST 按 owner contract 投影该 primary record。Internal events 由内部流程消费；operation/output owner 可以把需要公开表达的状态建模为 explicit business fields 或 status。
 
 #### Scenario: Runtime module 报告 facts，boundary surface 拥有 final output
-- **WHEN** core runtime、adapter routing、standard parameter resolution、adapter direct CLI 或 adapter `invoke` handling 发现 strict failure
+- **WHEN** core runtime、adapter routing、standard parameter resolution 或 linked adapter dispatch 发现 strict failure
 - **THEN** 该 module 报告自己拥有的 diagnostic identity、owner、location、received value、expected shape、guidance 和 subordinate details
 - **THEN** final user-visible formatting 由 boundary surface owner 拥有
 
 #### Scenario: Boundary surface 投影一个 primary record
-- **WHEN** CLI、protocol surface、readable output、adapter direct CLI 或 adapter `invoke` handler 到达 failure output boundary
+- **WHEN** CLI、protocol surface 或 readable output 到达 failure output boundary
 - **THEN** boundary 投影一个 primary `DiagnosticRecord`
 - **THEN** stdout、stderr、process exit 和 envelope shape 遵循 `docs/cli.md`、`docs/protocol.md`、`docs/output.md` 或 `docs/adapter-contract.md`
 
@@ -91,41 +91,40 @@ Invalid caller input diagnostics MUST 在 owner 可定位 input location 时包�
 - **THEN** 这些 docs 描述各自 surface 的 display、mapping、stdout/stderr placement、envelope shape 或 exit behavior
 - **THEN** diagnostics-owned identity、canonical record fields 和 subordinate details 由 diagnostics docs/specs 拥有
 
-### Requirement: Direct CLI 配置读取只提供标准参数来源对象
-Adapter direct CLI document operation MUST read its own config sources and merge valid config values into standard direct CLI parameter source objects. Missing default config files mean the corresponding layer has no config source. Explicit override config paths that are missing, unreadable or not files MUST fail. Existing config files that contain invalid JSON, non-object root values, unknown top-level fields, unknown `defaults` fields or invalid known values MUST fail. Runtime config loading uses source reading, fixed field projection and standard parameter validation; config schema/example remains documentation and validation material.
+### Requirement: Config reading only provides standard parameter source objects
+Docnav config loading MUST read config sources and merge valid config values into standard parameter source objects. Missing default config files mean the corresponding layer has no config source. Explicit config sources that are missing, unreadable or not files MUST fail. Existing config files that contain invalid JSON, non-object root values, unknown top-level fields, unknown `defaults` fields or invalid known values MUST fail. Runtime config loading uses source reading, fixed field projection and standard parameter validation; config schema/example remains documentation and validation material.
 
 Config reading layer MUST handle JSON reading、fixed field projection 和 source priority。`options` object values 是 explicit adapter-owned native option source，并 MUST 由 owner chain 校验或拒绝。
 
 #### Scenario: 未覆盖默认配置文件缺失时使用下一级默认值
-- **WHEN** 项目级或用户级 adapter 配置文件不存在
-- **AND** 调用方没有显式覆盖该层配置路径
-- **THEN** adapter direct CLI 继续按其余来源解析默认值
+- **WHEN** 项目级或用户级配置文件不存在
+- **AND** 调用方没有显式覆盖该层配置来源
+- **THEN** Docnav 继续按其余来源解析默认值
 - **THEN** 缺失文件不产生配置源输入
 
 #### Scenario: 显式覆盖配置路径缺失时失败
-- **WHEN** 调用方显式传入 `--project-config-path missing.json`
-- **AND** 该路径不存在或不可读
-- **THEN** adapter direct CLI 返回配置输入错误
+- **WHEN** 调用方显式提供的配置来源不存在或不可读
+- **THEN** Docnav 返回配置输入错误
 - **THEN** 用户级配置和内置默认值不被用作绕过该错误的成功路径
 - **THEN** operation handler 不执行
 
 #### Scenario: Config schema 不作为 runtime 校验入口
 - **WHEN** `docs/schemas/docnav-markdown-config.schema.json` 不存在于运行环境
-- **AND** 调用方执行 `docnav-markdown outline docs/guide.md`
-- **THEN** adapter direct CLI 仍按配置源读取、字段投影和标准参数处理链路处理本次调用
+- **AND** 调用方执行 Markdown document operation
+- **THEN** Docnav 仍按配置源读取、字段投影和标准参数处理链路处理本次调用
 - **THEN** runtime 依赖配置源读取、字段投影和标准参数处理链路
 
 #### Scenario: 未知配置字段失败
-- **WHEN** adapter direct CLI 读取到 schema 未声明但 JSON 语法有效且顶层为 object 的配置字段
+- **WHEN** Docnav 读取到 schema 未声明但 JSON 语法有效且顶层为 object 的配置字段
 - **AND** 该字段不属于 adapter-owned `options` object
-- **THEN** adapter direct CLI 返回配置输入错误
+- **THEN** Docnav 返回配置输入错误
 - **THEN** 诊断包含字段路径和配置路径
 - **THEN** 已知字段不被用于继续成功路径
 
 #### Scenario: JSON 语法无效时失败
-- **WHEN** adapter direct CLI 读取到语法无效的 JSON 配置文件
-- **THEN** adapter direct CLI 返回配置输入错误
-- **THEN** direct CLI 不跳过该项目级配置源后继续合并用户级配置
+- **WHEN** Docnav 读取到语法无效的 JSON 配置文件
+- **THEN** Docnav 返回配置输入错误
+- **THEN** Docnav 不跳过该项目级配置源后继续合并用户级配置
 
 ### Requirement: Diagnostic channel changes update validation materials
 Changes to diagnostic channel semantics or surface projection MUST update the relevant owner docs, JSON Schema, examples, fixtures and tests in the same implementation work. Invalid public input fixtures MUST assert strict failure and actionable diagnostic guidance.
@@ -141,9 +140,9 @@ Changes to diagnostic channel semantics or surface projection MUST update the re
 - **THEN** success output follows the readable success payload schema
 - **THEN** readable output remains separate from the protocol response envelope
 
-#### Scenario: Adapter machine command projection 被验证
-- **WHEN** an adapter direct `manifest`, `probe` or `invoke` command writes machine output
-- **THEN** stdout follows the owning manifest, probe or protocol response schema
+#### Scenario: Machine-readable projection 被验证
+- **WHEN** core adapter inspection、manifest/probe-shaped metadata validation or protocol output writes machine-readable output
+- **THEN** stdout follows the owning metadata or protocol response schema
 - **THEN** failure output is derived from the primary `DiagnosticRecord` according to that surface policy
 
 #### Scenario: Strict diagnostics 需要 validation material
@@ -165,7 +164,7 @@ Existing public error fact sources 和 strict-input diagnostic families MUST mig
 - **THEN** valid success output follows the owning success payload shape
 
 #### Scenario: Direct stderr text 补充 primary record
-- **WHEN** a Rust entry point rejects command shape, fails manifest/probe/invoke decode, fails schema validation or hits output write failure before normal document output
+- **WHEN** a Rust entry point rejects command shape, fails metadata/schema validation or hits output write failure before normal document output
 - **THEN** the entry point creates or maps a primary `DiagnosticRecord`
 - **THEN** any stderr text is supplemental and follows the owning surface policy
 
@@ -209,7 +208,7 @@ Docnav raw protocol MUST 将机器可读事实表达为结构化 JSON 字段。R
 ### Requirement: Rust CLI 参数解析必须服务 AI 维护和一次成功调用
 **Reason**: 新契约把 Rust CLI 参数解析定义为 strict public input boundary，并把 AI 友好性落实到 actionable diagnostics。
 
-**Migration**: 使用 strict direct CLI 和 invoke input validation 作为文档操作前置契约。Documentation 和 tests 证明 invalid caller input 返回 stable、repairable diagnostics，valid inputs 共享 canonical document operation pipeline。
+**Migration**: 使用 strict core CLI、protocol request 和 config source validation 作为文档操作前置契约。Documentation 和 tests 证明 invalid caller input 返回 stable、repairable diagnostics，valid inputs 共享 core-linked document operation pipeline。
 
 ### Requirement: Runtime problems flow through a request-local diagnostic stack
 **Reason**: 新契约将 public failure surface 收敛为每个 failed request 一个 primary `DiagnosticRecord`，相关结构化数据挂载到该诊断的 `details`。

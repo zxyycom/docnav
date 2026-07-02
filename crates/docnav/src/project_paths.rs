@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use crate::error::{AppError, AppResult};
 use crate::project_context::ProjectContext;
@@ -41,54 +41,12 @@ pub fn normalize_document_path(
     let absolute_path = fs::canonicalize(&resolved).map_err(|error| {
         AppError::document_path_invalid(normalize_path_for_error(&resolved), error.to_string())
     })?;
-    let project_root =
-        fs::canonicalize(&project.project_root).unwrap_or_else(|_| project.project_root.clone());
-
-    let adapter_path = absolute_path
-        .strip_prefix(&project_root)
-        .ok()
-        .filter(|relative| !relative.as_os_str().is_empty())
-        .map(path_to_slash)
-        .unwrap_or_else(|| path_to_slash(&absolute_path));
+    let adapter_path = path_to_slash(&absolute_path);
 
     Ok(NormalizedDocumentPath {
         adapter_path,
         absolute_path,
     })
-}
-
-pub fn resolve_project_relative_command(
-    project_root: &Path,
-    command: &str,
-) -> Result<PathBuf, String> {
-    if command.is_empty() {
-        return Err("command must not be empty".to_owned());
-    }
-
-    let command_path = Path::new(command);
-    if command_path.is_absolute() {
-        return Err("command must be relative to the project root".to_owned());
-    }
-
-    let mut normalized = PathBuf::new();
-    for component in command_path.components() {
-        match component {
-            Component::Normal(part) => normalized.push(part),
-            Component::CurDir => {}
-            Component::ParentDir => {
-                return Err("command must not escape the project root".to_owned());
-            }
-            Component::Prefix(_) | Component::RootDir => {
-                return Err("command must be relative to the project root".to_owned());
-            }
-        }
-    }
-
-    if normalized.as_os_str().is_empty() {
-        return Err("command must not be empty".to_owned());
-    }
-
-    Ok(project_root.join(normalized))
 }
 
 pub fn path_to_slash(path: &Path) -> String {

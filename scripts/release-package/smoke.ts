@@ -23,10 +23,6 @@ const env = {
     packageDir,
     expectedBinaryName("docnav", manifest.target),
   ),
-  DOCNAV_MARKDOWN_BIN: path.join(
-    packageDir,
-    expectedBinaryName("docnav-markdown", manifest.target),
-  ),
 };
 
 try {
@@ -36,11 +32,6 @@ try {
   console.log(`Package: ${packageDir}`);
   console.log("");
 
-  runScript(
-    path.join(root, "test", "docnav-markdown-smoke.ts"),
-    [],
-    { env },
-  );
   runScript(
     path.join(root, "test", "docnav-core-smoke.ts"),
     [],

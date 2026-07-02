@@ -1,5 +1,5 @@
 pub type PositiveInteger = std::num::NonZeroU32;
-pub type Options = serde_json::Map<String, serde_json::Value>;
+pub type Metadata = serde_json::Map<String, serde_json::Value>;
 pub type ErrorDetails = std::collections::BTreeMap<String, serde_json::Value>;
 
 pub use docnav_diagnostics::ProtocolDiagnosticCode;
@@ -12,6 +12,7 @@ mod error;
 mod manifest;
 mod operation;
 mod operation_result;
+mod options;
 mod positive_integer;
 mod probe;
 mod request_context;
@@ -41,6 +42,7 @@ pub use operation_result::{
     Cost, Entry, FindResult, InfoAdapter, InfoDocument, InfoResult, Location, Measurement,
     OperationResult, OutlineResult, ReadResult,
 };
+pub use options::{OptionEntry, Options};
 pub use positive_integer::{positive_result, try_positive, PositiveIntegerError};
 pub use probe::{ProbeReason, ProbeReasonCode, ProbeResult, ProbeValidationError};
 pub use request_context::{

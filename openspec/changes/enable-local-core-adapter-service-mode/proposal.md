@@ -1,30 +1,28 @@
-本 change 只起草默认启用的本地 core 与 adapter service mode 想法和审计入口；当前内容是未审核临时文档，不影响现有其它文档或主规范。
+本 proposal 已按 `adopt-core-linked-adapter-libraries` 改写为 core service 性能问题；它不再把 local service mode 作为 adapter implementation source。
 
 ## Why
 
-当前 adapter `invoke` 是每次 stdin/stdout JSON 请求后退出，启动成本会成为高频 outline/read/find/info 的性能热点。service mode 需要作为 core 与适配层的通用 fast path 一起支持，否则架构收益不完整。
+默认 adapter implementation source 已收敛为 core release 内置 adapter-layer workspace crates 和 static registry。若 service mode 继续描述 adapter service 或 invoke fallback，会重新引入独立 adapter runtime 和进程来源，和当前边界冲突。仍可保留的需求是：降低 core CLI 高频调用的启动成本、缓存 project/config/registry 状态，并保证 document success output 不变。
 
 ## What Changes
 
-- 新增本地 core service 与 adapter service mode 的草案；两层作为一个整体 change 处理。
-- service mode 默认启用。
-- 连接失败类问题 fallback 到现有 `adapter invoke` 路径，并产生内部 fast-path diagnostic 或 owner-scoped status；document success output 保持 documented payload contract。
-- handshake、wire hash、frame 或内部 payload mismatch hard fail，不 fallback。
-- 内部协议仅限同版本/同 build 本地 fast path，不进入 public `docnav-protocol` schema。
-- 现有 adapter `invoke` 入口保留为兼容和 fallback 路径。
+- 将本 change 限定为 core service 性能、启动成本和缓存策略探索。
+- service 不提供 adapter executable discovery、adapter artifact hosting 或 adapter implementation source。
+- core service 只缓存 core-owned 状态，例如 project context、配置解析结果、static registry metadata 或安全可失效的 adapter layer metadata。
+- adapter layer 仍来自当前 core release static registry；service 只调用同一 adapter library handle。
+- 不改变 public `protocol-json`、`readable-json`、`readable-view`、ref、pagination 或 adapter-owned parser/navigation 语义。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `local-service-mode`: 本地 core service、adapter service、内部 IPC fast path、fallback 和 mismatch failure 边界。
+- `local-service-mode`: core-local service performance/cache boundary for current-release document operations.
 
 ### Modified Capabilities
 
-当前草案不直接修改已归档主 spec；审计门禁会确认是否需要拆到 `core-cli`、`adapter-protocol` 或新主 spec。
+无。
 
 ## Impact
 
-- 未来会影响 `docnav` core execution path、adapter SDK serve loop、adapter lifecycle、local IPC、diagnostics、benchmark 和 integration tests。
-- 可能引入 async runtime、local socket/named pipe、length-delimited framing 和 internal binary payload 依赖。
-- 不改变 public protocol-json/readable success payload、primary failure projection、adapter-owned ref、pagination semantics 或 existing single-request invoke contract。
+- 未来可能影响 `docnav` core startup path、cache invalidation、doctor/status output 和 performance benchmarks。
+- 不影响 adapter contract、adapter implementation source、schema/examples 或 release package file set。

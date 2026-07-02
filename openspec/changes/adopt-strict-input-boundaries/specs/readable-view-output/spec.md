@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: readable-view 必须成为统一默认阅读输出
-`docnav` 和 adapter direct CLI 的 document operation MUST 支持 `readable-view`，并在 caller omits `--output` 时使用该模式。Outline、read、find、info、later composition operations 和 readable errors MUST 使用同一个 readable-view format 和 common renderer。
+`docnav` document operations MUST 支持 `readable-view`，并在 caller omits `--output` 时使用该模式。Outline、read、find、info、later composition operations 和 readable errors MUST 使用同一个 readable-view format 和 common renderer。
 
 Invalid caller input MUST 按 owning output mode 渲染为 readable error。Structured readable error payloads MUST 写入 selected output mode 拥有的 structured output channel。
 

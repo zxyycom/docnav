@@ -3,7 +3,7 @@ use docnav_diagnostics::{
     DiagnosticSource, FieldReasonDetails, FormatCandidateDetails, FormatUnknownDetails,
     InternalDetails, PathDetails, PathReasonDetails,
 };
-use docnav_protocol::{protocol_error_record_draft, protocol_error_record_draft_with_summary};
+use docnav_protocol::protocol_error_record_draft;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DocnavExitCode {
@@ -108,44 +108,6 @@ impl AppError {
             AdapterReasonDetails::new(adapter_id, reason)
                 .with_selection_context(selection_source, stage),
             DiagnosticSource::with_stage("docnav", "routing"),
-        ))
-    }
-
-    pub fn adapter_invoke_failed(
-        adapter_id: impl Into<String>,
-        reason: impl Into<String>,
-        exit_code: Option<i32>,
-        stderr: impl Into<String>,
-    ) -> Self {
-        let reason = reason.into();
-        let stderr = stderr.into();
-        Self::new(protocol_error_record_draft_with_summary::<
-            typed_codes::protocol::AdapterInvokeFailed,
-        >(
-            reason.clone(),
-            AdapterReasonDetails {
-                adapter_id: adapter_id.into(),
-                reason,
-                exit_code,
-                stderr: (!stderr.trim().is_empty()).then_some(stderr),
-                selection_source: None,
-                stage: None,
-            },
-            DiagnosticSource::with_stage("docnav", "adapter-output"),
-        ))
-    }
-
-    pub fn invalid_request_with_summary(
-        field: impl Into<String>,
-        reason: impl Into<String>,
-        summary: impl Into<String>,
-        source: DiagnosticSource,
-    ) -> Self {
-        let reason = reason.into();
-        Self::new(protocol_error_record_draft_with_summary::<
-            typed_codes::protocol::InvalidRequest,
-        >(
-            summary, FieldReasonDetails::new(field, reason), source
         ))
     }
 }

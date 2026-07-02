@@ -51,6 +51,12 @@ pub fn protocol_error_readable(error: &ProtocolError) -> Value {
     if let Some(location) = error.location() {
         value.insert("location".to_owned(), location.clone());
     }
+    if let Some(received) = error.received() {
+        value.insert("received".to_owned(), received.clone());
+    }
+    if let Some(expected) = error.expected() {
+        value.insert("expected".to_owned(), expected.clone());
+    }
     value.insert("details".to_owned(), json!(error.details()));
     value.insert("guidance".to_owned(), json!(readable_guidance(error)));
     Value::Object(value)

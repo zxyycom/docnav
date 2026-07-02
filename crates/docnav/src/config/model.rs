@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -6,7 +8,7 @@ use crate::project_context::ProjectContext;
 pub(super) const DEFAULT_LIMIT: u32 = 6000;
 pub(super) const DEFAULT_OUTPUT: &str = "readable-view";
 pub(super) const DEFAULT_PAGINATION_ENABLED: bool = true;
-pub(super) const SUPPORTED_KEYS: [&str; 4] = [
+pub(super) const SUPPORTED_CORE_KEYS: [&str; 4] = [
     "defaults.adapter",
     "defaults.pagination.enabled",
     "defaults.pagination.limit",
@@ -25,6 +27,8 @@ pub struct ConfigContext {
 pub struct CoreConfig {
     #[serde(default, skip_serializing_if = "DefaultsConfig::is_empty")]
     pub defaults: DefaultsConfig,
+    #[serde(default, skip_serializing_if = "NativeOptionsConfig::is_empty")]
+    pub options: NativeOptionsConfig,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -47,9 +51,61 @@ pub struct PaginationConfig {
     pub limit: Option<u32>,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct NativeOptionsConfig {
+    #[serde(flatten)]
+    values: BTreeMap<String, Value>,
+}
+
 impl DefaultsConfig {
     fn is_empty(&self) -> bool {
         self.adapter.is_none() && self.pagination.is_empty() && self.output.is_none()
+    }
+}
+
+impl NativeOptionsConfig {
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    pub(crate) fn value_for_key(&self, key: &str) -> Option<&Value> {
+        self.values.get(key)
+    }
+
+    pub(crate) fn insert(&mut self, key: impl Into<String>, value: Value) {
+        self.values.insert(key.into(), value);
+    }
+
+    pub(crate) fn remove(&mut self, key: &str) {
+        self.values.remove(key);
+    }
+
+    pub(crate) fn keys(&self) -> impl Iterator<Item = &str> {
+        self.values.keys().map(String::as_str)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn native_options_config_accepts_generic_raw_map() {
+        let config: CoreConfig = serde_json::from_value(json!({
+            "options": {
+                "registered_elsewhere": {
+                    "raw": true
+                }
+            }
+        }))
+        .expect("generic native option map");
+
+        assert_eq!(
+            config.options.value_for_key("registered_elsewhere"),
+            Some(&json!({ "raw": true }))
+        );
     }
 }
 

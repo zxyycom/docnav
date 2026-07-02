@@ -6,7 +6,7 @@
 - [ ] 1.2 审计 capability ID 是否只新增 `invocation-logging`，且没有把 change name、`code-quality-observability` 或过宽 runtime umbrella 当作错误 owner。
 - [ ] 1.3 审计当前 change 是否只包含 `openspec/changes/add-invocation-audit-logging/` 下的未审核临时 artifacts，且没有修改现有 specs、docs、schemas、examples、测试或实现代码。
 - [ ] 1.4 审计 `design.md` 的 Open Questions 是否没有未回答问题，并确认日志路径、开关名称和日志库选型会在实现前由主规范与测试固化。
-- [ ] 1.5 审计安全边界：metadata-only 默认、raw trace 显式 opt-in、payload 截断/脱敏、stdout purity、adapter stdout/stderr 边界和日志失败降级都已进入 specs。
+- [ ] 1.5 审计安全边界：metadata-only 默认、raw trace 显式 opt-in、payload 截断/脱敏、stdout purity、document output/linked handler payload 边界和日志失败降级都已进入 specs。
 - [ ] 1.6 审计依赖边界：首期是否使用内部 JSONL writer；若要引入 `tracing` 或其它日志库，必须先完成依赖、feature、初始化和输出通道审计。
 
 ## 2. 规范同步
@@ -18,8 +18,8 @@
 
 ## 3. Core 实现
 
-- [ ] 3.1 在 core CLI 文档操作链路中确定最小插桩点，覆盖 adapter selection 后的 protocol request 构造、adapter `invoke` 调用、响应校验和错误映射结果。
-- [ ] 3.2 实现 metadata-only JSONL event writer，支持 schema version、timestamp、event、request id、operation、adapter id、duration、exit/status metadata、response size 和 bounded diagnostic summary。
+- [ ] 3.1 在 core CLI 文档操作链路中确定最小插桩点，覆盖 adapter selection 后的 navigation request construction、linked adapter handler dispatch、结果校验和错误映射结果。
+- [ ] 3.2 实现 metadata-only JSONL event writer，支持 schema version、timestamp、event、request id、operation、adapter id、duration、operation/output status metadata、response size 和 bounded diagnostic summary。
 - [ ] 3.3 实现日志配置解析和 sink 初始化，保证未启用日志时不产生运行时开销或可观察输出变化。
 - [ ] 3.4 实现日志写入失败降级，确保日志目录不可写、序列化失败或 append 失败不改变原本文档操作结果。
 - [ ] 3.5 实现 raw protocol trace 的显式启用、字段脱敏、大小限制和截断标记；未开启 trace 时不得写完整 request/response envelope。
@@ -28,9 +28,9 @@
 ## 4. 测试与验证
 
 - [ ] 4.1 增加 core 层单元或集成测试，覆盖成功调用写入可解析 JSONL event，并用 `request_id` 关联 request/response。
-- [ ] 4.2 增加失败路径测试，覆盖 adapter 启动失败、stdout 非 JSON、protocol response validation 失败和稳定错误映射摘要。
-- [ ] 4.3 增加 stdout purity 测试，证明启用日志后 `protocol-json` stdout、readable stdout 和 adapter protocol stdout 不被日志污染。
-- [ ] 4.4 增加安全测试，证明 metadata-only 默认不记录 full read content、完整 request/response payload、完整 stderr 或无界 query/ref。
+- [ ] 4.2 增加失败路径测试，覆盖 adapter selection failure、linked handler structured diagnostic、protocol/result validation 失败和稳定错误映射摘要。
+- [ ] 4.3 增加 stdout purity 测试，证明启用日志后 `protocol-json` stdout、readable stdout 和 linked adapter handler payload 不被日志污染。
+- [ ] 4.4 增加安全测试，证明 metadata-only 默认不记录 full read content、完整 request/response payload、完整 diagnostic/debug output 或无界 query/ref。
 - [ ] 4.5 增加 trace opt-in 测试，证明完整 payload 只在显式 trace 模式下出现，且超限字段带截断标记。
 - [ ] 4.6 增加日志写入失败降级测试，证明不可写日志路径不会改变原本文档操作的成功/失败语义。
 - [ ] 4.7 运行受影响 Rust tests、OpenSpec validation；若同步修改主规范、schema、examples 或跨 crate 行为，运行 `bun run verify:docnav-workspace`。

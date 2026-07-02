@@ -17,6 +17,7 @@ pub(super) const FIELD_REASON_FIELDS: &[DetailFieldRule] = &[
     optional("field_issues", DetailKind::ObjectArray),
     optional("config_issues", DetailKind::ObjectArray),
     optional("typed_validation_failures", DetailKind::ObjectArray),
+    optional("option_issues", DetailKind::ObjectArray),
 ];
 pub(super) const PATH_FIELDS: &[DetailFieldRule] = &[required("path", DetailKind::String)];
 pub(super) const PATH_REASON_FIELDS: &[DetailFieldRule] = &[

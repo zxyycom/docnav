@@ -5,27 +5,36 @@
   "ok": false,
   "error": {
     "code": "INVALID_REQUEST",
-    "message": "配置文件包含未知字段。",
-    "owner": "adapter_config",
+    "message": "Config file contains an unknown field.",
+    "owner": "docnav_config",
     "location": {
-      "config_path": ".docnav/docnav-markdown.json",
+      "config_path": ".docnav/docnav.json",
       "field": "defaults.limit"
     },
     "received": "defaults.limit",
-    "expected": "defaults.pagination.limit",
+    "expected": [
+      "defaults.pagination.limit"
+    ],
     "details": {
       "field": "defaults.limit",
       "reason": "unknown_config_field",
+      "path": ".docnav/docnav.json",
+      "received": "defaults.limit",
+      "accepted": [
+        "defaults.pagination.limit"
+      ],
       "config_issues": [
         {
-          "path": ".docnav/docnav-markdown.json",
+          "source_level": "project",
+          "path_origin": "default",
+          "path": ".docnav/docnav.json",
           "field": "defaults.limit",
           "reason_code": "unknown_config_field"
         }
       ]
     },
     "guidance": [
-      "把 defaults.limit 改为 defaults.pagination.limit。"
+      "Rename defaults.limit to defaults.pagination.limit."
     ]
   }
 }

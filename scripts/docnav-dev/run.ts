@@ -2,7 +2,6 @@ import { runProcessSync } from "../tools/process.ts";
 
 const binaries = new Map([
   ["docnav", process.env.DOCNAV_BIN],
-  ["docnav-markdown", process.env.DOCNAV_MARKDOWN_BIN],
 ]);
 const args = process.argv.slice(2);
 

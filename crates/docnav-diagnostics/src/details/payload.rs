@@ -29,6 +29,8 @@ pub struct FieldReasonDetails {
     pub config_issues: Option<Vec<AdapterConfigSourceDetails>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub typed_validation_failures: Option<Vec<Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub option_issues: Option<Vec<Value>>,
 }
 
 impl FieldReasonDetails {
@@ -42,6 +44,7 @@ impl FieldReasonDetails {
             field_issues: None,
             config_issues: None,
             typed_validation_failures: None,
+            option_issues: None,
         }
     }
 }

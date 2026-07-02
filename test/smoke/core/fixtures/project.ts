@@ -7,7 +7,6 @@ import { root, tempRoot } from "../config.ts";
 import { writeJson } from "./registry.ts";
 
 export interface SmokeProject {
-  binDir: string;
   docnavDir: string;
   docsDir: string;
   env: NodeJS.ProcessEnv;
@@ -48,15 +47,6 @@ export function copyNormalDocument(project: SmokeProject, relativePath: string) 
   return toSlashPath(relativePath);
 }
 
-export function wrapperPath(project: SmokeProject, id: string) {
-  const extension = process.platform === "win32" ? ".cmd" : "";
-  return path.join(project.binDir, `${slug(id)}${extension}`);
-}
-
-export function relativeCommand(project: SmokeProject, commandPath: string) {
-  return toSlashPath(path.relative(project.root, commandPath));
-}
-
 function smokeProjectPaths(projectRoot: string) {
   const docsDir = path.join(projectRoot, "docs");
 
@@ -64,7 +54,6 @@ function smokeProjectPaths(projectRoot: string) {
     root: projectRoot,
     docnavDir: path.join(projectRoot, ".docnav"),
     docsDir,
-    binDir: path.join(projectRoot, "bin"),
     normalPath: path.join(docsDir, "normal.md"),
     normalRelPath: "docs/normal.md"
   };
@@ -73,7 +62,6 @@ function smokeProjectPaths(projectRoot: string) {
 function createProjectDirectories(project: Omit<SmokeProject, "env">, userConfigDir: string) {
   fs.mkdirSync(project.root, { recursive: true });
   fs.mkdirSync(project.docsDir, { recursive: true });
-  fs.mkdirSync(project.binDir, { recursive: true });
   fs.mkdirSync(userConfigDir, { recursive: true });
 }
 

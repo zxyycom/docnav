@@ -13,7 +13,7 @@
 - [ ] 2.2 更新 `docs/protocol.md`，把 `OutlineResult` 定义为 structured entries 和 configured unstructured full content 两个可判别形态。
 - [ ] 2.3 更新 `docs/cli.md` 的 document command 行为，记录非结构化 outline 生效配置语义、输出和非分页边界；具体配置文件、格式和合并方式由配置能力文档定义。
 - [ ] 2.4 更新 `docs/output.md`，记录普通 outline 无 block、非结构化 outline 使用 `/content` block 的 readable-view 行为，并保持 readable success payload 只承载成功结果。
-- [ ] 2.5 更新 `docs/adapters/markdown.md`，记录 `docnav-markdown` 非结构化 outline 配置、direct CLI 行为和 `doc:full` fallback 的边界差异。
+- [ ] 2.5 更新 `docs/adapters/markdown.md`，记录 linked Markdown adapter 非结构化 outline 配置语义、core CLI 输出边界和 `doc:full` fallback 的边界差异。
 
 ## 3. 协议、Schema 与输出类型
 
@@ -26,13 +26,13 @@
 - [ ] 4.1 在 core outline 入口接入生效非结构化策略判断；不在本 change 固化具体配置文件、格式或合并方式。
 - [ ] 4.2 在 `docnav outline` execution pipeline 中加入配置命中分支，直接读取 UTF-8 原文全文并产出 unstructured outline result。
 - [ ] 4.3 确认非结构化分支不生成 adapter ref、不返回 page、不使用 `limit_chars` 裁剪内容，并输出稳定原因字段。
-- [ ] 4.4 在 `docnav-markdown` 中接入非结构化 outline 的生效配置/operation option，并让 direct CLI 三种输出模式与 core CLI shape 一致。
+- [ ] 4.4 在 linked Markdown adapter outline handler 中接入非结构化 outline 的生效配置/operation option，并确认 core CLI 三种输出模式使用一致 result shape。
 - [ ] 4.5 保持未命中配置的 Markdown outline、`doc:full` fallback、read/find/info 行为不变。
 
 
 - [ ] 5.1 增加 core CLI 行为测试，覆盖配置命中、未命中和 readable/protocol 输出中的稳定原因说明。
 - [ ] 5.2 增加 protocol/readable schema 示例，覆盖普通 structured outline 和 configured unstructured outline 两种 shape。
-- [ ] 5.3 增加 Markdown direct CLI smoke fixture，验证非结构化 Markdown outline 在 readable-json、readable-view 和 protocol-json 下不含 entries、ref 或 page。
+- [ ] 5.3 增加 core CLI smoke fixture，验证通过 linked Markdown adapter 的非结构化 Markdown outline 在 readable-json、readable-view 和 protocol-json 下不含 entries、ref 或 page。
 - [ ] 5.5 增加 readable-view conformance 或等价测试，验证非结构化 outline `/content` block payload 与 readable-json content 一致。
 
 ## 6. 验证与收尾

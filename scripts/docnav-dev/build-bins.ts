@@ -13,8 +13,7 @@ import { writeJsonFile } from "../tools/fs.ts";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const binaries: Array<CargoBinarySpec & { envName: string }> = [
-  { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" },
-  { packageName: "docnav-markdown", binName: "docnav-markdown", envName: "DOCNAV_MARKDOWN_BIN" }
+  { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" }
 ];
 
 export type DevBinarySpec = CargoBinarySpec & { envName: string };

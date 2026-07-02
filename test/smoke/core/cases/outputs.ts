@@ -1,4 +1,4 @@
-import { createProject, createRealMarkdownAdapter, writeRegistry } from "../fixtures.ts";
+import { createProject } from "../fixtures.ts";
 import type { SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
@@ -34,8 +34,6 @@ export function createDocumentOutputBoundaryTasks() {
 
 async function testDocumentOutputBoundary() {
   const project = createProject("output-boundary");
-  const markdown = createRealMarkdownAdapter(project);
-  writeRegistry(project, [markdown]);
 
   const readable = await readDocumentReadableJson(project, await readFirstOutlineRef(project));
   await assertReadableViewDocumentOutput(project, readable);

@@ -1,9 +1,6 @@
 import {
-  createFakeAdapter,
   createProject,
-  readAdapterCalls,
   writeProjectConfig,
-  writeRegistry
 } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
@@ -30,15 +27,13 @@ export function createAdapterSelectionTasks() {
 
 async function testExplicitAdapterFailureStopsSelection() {
   const project = createProject("selection-explicit-failure");
-  const invalid = createFakeAdapter(project, { id: "fake-invalid-manifest", mode: "manifest-invalid" });
-  const selected = createFakeAdapter(project, { id: "fake-after-invalid" });
-  writeRegistry(project, [invalid, selected]);
+  const missingAdapter = "custom-local-adapter";
 
   const record = await runCli("CORE-SELECT-001 invalid explicit adapter returns selection diagnostic", [
     "outline",
     project.normalRelPath,
     "--adapter",
-    invalid.id,
+    missingAdapter,
     "--output",
     "protocol-json"
   ], { project });
@@ -47,23 +42,46 @@ async function testExplicitAdapterFailureStopsSelection() {
   const json = parseJson(record);
   validateSchema(record, "protocolResponse", json);
   const error = expectProtocolFailure(record, json, "outline", "ADAPTER_UNAVAILABLE");
-  expectSelectionFailureDetails(record, error.details, invalid.id, "explicit");
+  expectSelectionFailureDetails(record, error.details, missingAdapter, "explicit");
 
-  const invalidCalls = readAdapterCalls(invalid);
-  const selectedCalls = readAdapterCalls(selected);
-  expect(record, invalidCalls.some((call) => call.command === "manifest"), "invalid preselected adapter manifest was called");
-  expect(record, selectedCalls.every((call) => call.command !== "probe"), "fallback adapter probe was not called");
-  expect(record, selectedCalls.every((call) => call.command !== "invoke"), "fallback adapter invoke was not called");
+  const invalidNativeRecord = await runCli(
+    "CORE-SELECT-001 invalid native option does not preempt missing adapter",
+    [
+      "outline",
+      project.normalRelPath,
+      "--adapter",
+      missingAdapter,
+      "--max-heading-level",
+      "100",
+      "--output",
+      "protocol-json"
+    ],
+    { project }
+  );
+  expectExit(invalidNativeRecord, exitCodes.protocolOrAdapterProcess);
+  expectNoJsonPayloadInStderr(invalidNativeRecord);
+  const invalidNativeJson = parseJson(invalidNativeRecord);
+  validateSchema(invalidNativeRecord, "protocolResponse", invalidNativeJson);
+  const invalidNativeError = expectProtocolFailure(
+    invalidNativeRecord,
+    invalidNativeJson,
+    "outline",
+    "ADAPTER_UNAVAILABLE"
+  );
+  expectSelectionFailureDetails(
+    invalidNativeRecord,
+    invalidNativeError.details,
+    missingAdapter,
+    "explicit"
+  );
 
   const configProject = createProject("selection-config-failure");
-  const configInvalid = createFakeAdapter(configProject, { id: "fake-config-invalid-manifest", mode: "manifest-invalid" });
-  const configSelected = createFakeAdapter(configProject, { id: "fake-config-after-invalid" });
+  const configMissingAdapter = "project-config-adapter";
   writeProjectConfig(configProject, {
     defaults: {
-      adapter: configInvalid.id
+      adapter: configMissingAdapter
     }
   });
-  writeRegistry(configProject, [configInvalid, configSelected]);
 
   const configRecord = await runCli("CORE-SELECT-001 invalid config adapter returns selection diagnostic", [
     "outline",
@@ -76,21 +94,7 @@ async function testExplicitAdapterFailureStopsSelection() {
   const configJson = parseJson(configRecord);
   validateSchema(configRecord, "protocolResponse", configJson);
   const configError = expectProtocolFailure(configRecord, configJson, "outline", "ADAPTER_UNAVAILABLE");
-  expectSelectionFailureDetails(configRecord, configError.details, configInvalid.id, "project");
-
-  const configInvalidCalls = readAdapterCalls(configInvalid);
-  const configSelectedCalls = readAdapterCalls(configSelected);
-  expect(
-    configRecord,
-    configInvalidCalls.some((call) => call.command === "manifest"),
-    "invalid config-selected adapter manifest was called"
-  );
-  expect(configRecord, configSelectedCalls.every((call) => call.command !== "probe"), "config fallback adapter probe was not called");
-  expect(
-    configRecord,
-    configSelectedCalls.every((call) => call.command !== "invoke"),
-    "config fallback adapter invoke was not called"
-  );
+  expectSelectionFailureDetails(configRecord, configError.details, configMissingAdapter, "project");
 }
 
 function expectSelectionFailureDetails(
@@ -106,8 +110,7 @@ function expectSelectionFailureDetails(
   expect(
     record,
     typeof details.reason === "string" &&
-      details.reason.includes("manifest") &&
-      details.reason.includes("failed validation"),
-    "selection failure reason describes manifest validation failure"
+      details.reason.includes("core release static registry"),
+    "selection failure reason describes static registry miss"
   );
 }

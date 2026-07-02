@@ -1,6 +1,7 @@
 use super::*;
 use docnav_diagnostics::{
-    DiagnosticCode, DiagnosticSource, DiagnosticStack, ProtocolDiagnosticCode,
+    typed_codes, AdapterConfigSourceDetails, DiagnosticCode, DiagnosticRecordDraft,
+    DiagnosticSource, DiagnosticStack, FieldReasonDetails, ProtocolDiagnosticCode,
 };
 
 // @case WB-PROTO-BASIC-001
@@ -164,6 +165,28 @@ fn protocol_error_required_details_come_from_diagnostic_rules() {
 }
 
 #[test]
+fn adapter_selection_default_guidance_uses_static_registry_language() {
+    for code in [
+        ProtocolDiagnosticCode::FormatUnknown,
+        ProtocolDiagnosticCode::AdapterUnavailable,
+    ] {
+        let guidance = protocol_error_default_guidance(code);
+
+        assert!(
+            guidance.contains("built-in adapter")
+                || guidance.contains("current core release static registry"),
+            "{code:?} guidance should mention the built-in/static registry source: {guidance}"
+        );
+        for removed_term in ["install", "register", "executable", "artifact"] {
+            assert!(
+                !guidance.contains(removed_term),
+                "{code:?} guidance should not mention {removed_term}: {guidance}"
+            );
+        }
+    }
+}
+
+#[test]
 fn protocol_error_roundtrips_through_diagnostic_record_projection() {
     let error = ProtocolError::ref_not_found("R99")
         .with_owner("docnav_protocol_test")
@@ -183,4 +206,40 @@ fn protocol_error_roundtrips_through_diagnostic_record_projection() {
         Some(&["Run outline first.".to_owned()][..])
     );
     assert_eq!(ProtocolError::from_diagnostic_record(record), Some(error));
+}
+
+#[test]
+fn protocol_error_location_uses_config_issue_path_and_field() {
+    let mut details = FieldReasonDetails::new("defaults.limit", "unknown_config_field");
+    details.received = Some("defaults.limit".to_owned());
+    details.config_issues = Some(vec![AdapterConfigSourceDetails::new(
+        "project",
+        "default",
+        ".docnav/docnav.json",
+        "unknown_config_field",
+    )
+    .with_field("defaults.limit")]);
+
+    let mut diagnostics = DiagnosticStack::new();
+    let id = diagnostics
+        .push(DiagnosticRecordDraft::new::<
+            typed_codes::protocol::InvalidRequest,
+        >(
+            "Config file contains an unknown field.",
+            details,
+            DiagnosticSource::with_stage("docnav", "config"),
+        ))
+        .unwrap();
+    let record = diagnostics.get(id).unwrap();
+    let error = ProtocolError::from_diagnostic_record(record).unwrap();
+
+    assert_eq!(error.owner(), "docnav_config");
+    assert_eq!(
+        error.location(),
+        Some(&serde_json::json!({
+            "config_path": ".docnav/docnav.json",
+            "field": "defaults.limit"
+        }))
+    );
+    assert_eq!(error.received(), Some(&serde_json::json!("defaults.limit")));
 }

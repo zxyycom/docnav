@@ -1,31 +1,31 @@
 {
   "protocol_version": "0.1",
-  "request_id": "req-explicit-config",
+  "request_id": "req-config-source",
   "operation": "outline",
   "ok": false,
   "error": {
     "code": "INVALID_REQUEST",
-    "message": "显式配置路径不可用。",
-    "owner": "adapter_config",
+    "message": "项目配置文件不可用。",
+    "owner": "core_config",
     "location": {
-      "argument": "project_config_path"
+      "config_path": ".docnav/docnav.json"
     },
-    "received": "missing.json",
+    "received": ".docnav/docnav.json",
     "expected": "a readable JSON object config file",
     "details": {
-      "field": "project_config_path",
-      "reason": "missing_override",
+      "field": "config",
+      "reason": "invalid_json",
       "config_issues": [
         {
           "source_level": "project",
-          "path_origin": "override",
-          "path": "missing.json",
-          "reason_code": "missing_override"
+          "path_origin": "default",
+          "path": ".docnav/docnav.json",
+          "reason_code": "invalid_json"
         }
       ]
     },
     "guidance": [
-      "传入存在且可读取的 JSON object 配置文件，或删除该显式配置路径参数。"
+      "修正 .docnav/docnav.json 为可读取的 JSON object 配置文件。"
     ]
   }
 }

@@ -4,11 +4,11 @@
 
 ## 输出层边界
 
-`--output` 只选择输出层的序列化、错误包装和通道承载方式，不改变 `docnav` 的 adapter 选择、配置合并、参数显式化、probe、invoke 或业务结果判断。Document operation 只接受 `readable-view`、`readable-json` 和 `protocol-json`。实现应先产出成功结果或诊断错误记录，再按输出 context 渲染为 readable-view、readable JSON、protocol envelope、命令自有 JSON 或 PlainText。
+`--output` 只选择输出层的序列化、错误包装和通道承载方式，不改变 `docnav` 的 adapter 选择、配置合并、参数显式化、probe、adapter library dispatch 或业务结果判断。Document operation 只接受 `readable-view`、`readable-json` 和 `protocol-json`。实现应先产出成功结果或诊断错误记录，再按输出 context 渲染为 readable-view、readable JSON、protocol envelope、命令自有 JSON 或 PlainText。
 
 `docnav-output` 是 document operation 输出编排和 primary failure projection owner：调用方传入 operation、request id、output mode、document outcome 和 primary `DiagnosticRecord` 或成功 payload，由该层决定 `readable-view`、`readable-json` 或 `protocol-json` 的包装、error 投影和 stdout/stderr 分流。共享 crate 边界见 [架构](architecture.md#共享库)；本文件定义文档输出模式、统一错误投影和通道契约。help、version、manifest、probe 和其它非 document 成功输出不承诺 document result shape，但致命诊断不应绕过统一错误投影。
 
-机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；错误发生在 CLI 参数解析、adapter 选择、adapter invoke 或输出转换阶段时，只要输出模式可以从 argv 或请求中确定，也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
+机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；错误发生在 CLI 参数解析、adapter 选择、adapter layer dispatch 或输出转换阶段时，只要输出模式可以从 argv 或请求中确定，也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
 
 统一执行管线按 [架构](architecture.md#adapter-选择) 累积 automatic discovery 候选失败并写入错误通道；全部候选失败时，这些记录从属于 primary `DiagnosticRecord.details.candidate_failures`。后续候选成功时，候选失败保持 internal discovery state，不进入 public document output。
 
@@ -19,13 +19,11 @@
 ```text
 docnav outline docs/guide.md --output protocol-json
 docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
-adapter invoke
-adapter outline docs/guide.md --output protocol-json
 ```
 
-文档操作输出完整原始协议 envelope。`manifest` 和 `probe` 输出其专属协议 schema。
+文档操作输出完整原始协议 envelope。`adapter list`、doctor、manifest metadata 和 probe result 由各自 owner 定义输出 shape。
 
-`docnav --output protocol-json` 由核心 CLI 生成非空 request id，使用标准参数机制和 operation binding 构造 adapter invoke request；写入 `arguments` 的字段是 adapter `invoke` 的显式输入，再调用 adapter `invoke`。
+`docnav --output protocol-json` 由核心 CLI 生成非空 request id，使用标准参数机制和 operation binding 构造内部 protocol request；写入 `arguments` 的字段是 adapter layer 的显式 operation input，再通过 `docnav-navigation` 调用 adapter library handle。
 
 `protocol-json` stdout 只承载 protocol response 或 failure envelope。若直接 CLI argv 中存在 unknown token、多余 positional 或 operation-inapplicable flag，stdout 输出 protocol failure envelope。若 automatic discovery 全部失败，stdout 输出包含 primary diagnostic 和 candidate failure list 的 protocol failure envelope。若后续候选成功，stdout 只输出成功 protocol response envelope。若参数解析失败但 argv 已能确定 `--output protocol-json`，stdout 仍输出 protocol failure envelope，而不是退回文本错误。
 
@@ -78,7 +76,7 @@ Some install text.
 
 用途：需要结构化阅读结果但不需要协议 envelope 的 AI 和人类辅助流程。输出不包含 `protocol_version`、`request_id`、`operation`、`ok` 或原始进程错误字段。
 
-`readable-json` 仍属于阅读输出层中的结构化机器友好形态。它必须保持 documented shape，便于 AI、工具和轻量自动化解析阅读结果；但它不包含完整协议 envelope，也不替代 `protocol-json` 或 `adapter invoke` 的完整机器兼容接口。脚本若需要跨版本稳定错误 envelope、request id、raw item facts、结构化成本或协议兼容校验，应使用 `protocol-json` 或 `adapter invoke`。
+`readable-json` 仍属于阅读输出层中的结构化机器友好形态。它必须保持 documented shape，便于 AI、工具和轻量自动化解析阅读结果；但它不包含完整协议 envelope，也不替代 `protocol-json` 的完整机器兼容接口。脚本若需要跨版本稳定错误 envelope、request id、raw item facts、结构化成本或协议兼容校验，应使用 `protocol-json`。
 
 阅读输出 schema 按 operation 独立定义，见 [JSON Schema 索引](schemas/json-schema.md)。
 
@@ -100,6 +98,6 @@ readable read 保留 adapter 返回的 `content_type`，并把 adapter 返回的
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断记录可投影到 stderr。
 - automatic discovery 候选记录只有在全部候选失败时从属于 primary failure details；后续候选成功时不进入 success stdout payload。
-- adapter direct CLI 默认配置路径缺失不产生诊断；显式或 present invalid config source 产生 failure projection，并阻断 document operation。
+- 默认配置路径缺失不产生诊断；显式或 present invalid config source 产生 failure projection，并阻断 document operation。
 - 直接 CLI argv 的 strict 分类和诊断交接数据见 [标准参数](standard-parameters.md#错误出口)；通道承载必须与该规则一致。
 - 非 document machine output 若复用低层 JSON writer，仍由各自 owner 决定 schema、plain text/stderr 边界和 exit behavior。

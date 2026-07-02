@@ -1,4 +1,6 @@
-use docnav_adapter_sdk::{Adapter, AdapterError, AdapterResult};
+use docnav_adapter_contracts::{
+    Adapter, AdapterError, AdapterResult, NativeOptionSpec, NativeOptionValueSpec,
+};
 use docnav_protocol::{
     AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoAdapter, InfoArguments,
     InfoDocument, InfoResult, Manifest, Measurement, Operation, OutlineArguments, OutlineResult,
@@ -17,16 +19,27 @@ pub const ADAPTER_ID: &str = "docnav-markdown";
 pub const ADAPTER_NAME: &str = "Docnav Markdown Adapter";
 pub const FORMAT_ID_MARKDOWN: &str = "markdown";
 pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
-pub const DEFAULT_LIMIT: u32 = 6000;
 pub const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
 // Markdown adapter 原生 option key，来自 adapter 契约；接入层只原样传递。
+pub const NATIVE_OPTIONS_NAMESPACE: &str = "options";
 pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
+pub const MAX_HEADING_LEVEL_IDENTITY: &str =
+    "docnav.adapters.docnav-markdown.options.max_heading_level";
 const MARKDOWN_CAPABILITIES: &[Operation] = &[
     Operation::Outline,
     Operation::Read,
     Operation::Find,
     Operation::Info,
 ];
+const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
+const NATIVE_OPTIONS: &[NativeOptionSpec] = &[NativeOptionSpec {
+    identity: MAX_HEADING_LEVEL_IDENTITY,
+    owner: ADAPTER_ID,
+    namespace: NATIVE_OPTIONS_NAMESPACE,
+    key: MAX_HEADING_LEVEL_OPTION,
+    operations: MAX_HEADING_LEVEL_OPERATIONS,
+    value: NativeOptionValueSpec::Integer { min: 1, max: 6 },
+}];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MarkdownAdapter;
@@ -51,6 +64,10 @@ impl Adapter for MarkdownAdapter {
             }],
             capabilities: MARKDOWN_CAPABILITIES.to_vec(),
         }
+    }
+
+    fn native_options(&self) -> &'static [NativeOptionSpec] {
+        NATIVE_OPTIONS
     }
 
     fn probe(&self, path: &str) -> ProbeResult {

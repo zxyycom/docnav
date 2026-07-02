@@ -1,16 +1,21 @@
-use std::path::Path;
-
-use docnav_diagnostics::{typed_codes, DiagnosticSource, FieldReasonDetails};
-use docnav_protocol::protocol_error_record_draft_with_summary;
 use serde_json::{json, Value};
 
 use crate::cli::OutputMode;
-use crate::error::{AppError, AppResult};
-use crate::project_paths::path_to_slash;
+use crate::error::AppResult;
+use crate::registry::AdapterRegistry;
 
 use super::model::{
     ConfigContext, ConfigSource, CoreConfig, ResolvedValue, DEFAULT_LIMIT, DEFAULT_OUTPUT,
-    DEFAULT_PAGINATION_ENABLED, SUPPORTED_KEYS,
+    DEFAULT_PAGINATION_ENABLED, SUPPORTED_CORE_KEYS,
+};
+
+mod update;
+mod validation;
+
+pub(super) use self::update::{set_key, unset_key};
+use self::validation::{parse_output, unknown_key};
+pub(super) use self::validation::{
+    validate_native_option_key_for_registry, validate_output_key, validate_positive_key,
 };
 
 pub fn resolve_adapter(explicit: Option<&str>, context: &ConfigContext) -> ResolvedValue {
@@ -79,11 +84,12 @@ pub fn resolve_output(
 pub(super) fn supported_values_for_scope(
     config: &CoreConfig,
     source: ConfigSource,
+    registry: &AdapterRegistry,
 ) -> AppResult<Vec<Value>> {
-    SUPPORTED_KEYS
-        .iter()
+    supported_keys(registry)
+        .into_iter()
         .map(|key| {
-            scoped_key_value(key, config, source.clone()).map(|resolved| {
+            scoped_key_value(&key, config, source.clone(), registry).map(|resolved| {
                 json!({
                     "key": key,
                     "value": resolved.value,
@@ -94,11 +100,14 @@ pub(super) fn supported_values_for_scope(
         .collect()
 }
 
-pub(super) fn effective_values(context: &ConfigContext) -> AppResult<Vec<Value>> {
-    SUPPORTED_KEYS
-        .iter()
+pub(super) fn effective_values(
+    context: &ConfigContext,
+    registry: &AdapterRegistry,
+) -> AppResult<Vec<Value>> {
+    supported_keys(registry)
+        .into_iter()
         .map(|key| {
-            effective_key_value(key, context).map(|resolved| {
+            effective_key_value(&key, context, registry).map(|resolved| {
                 json!({
                     "key": key,
                     "value": resolved.value,
@@ -109,13 +118,20 @@ pub(super) fn effective_values(context: &ConfigContext) -> AppResult<Vec<Value>>
         .collect()
 }
 
-pub(super) fn effective_key_value(key: &str, context: &ConfigContext) -> AppResult<ResolvedValue> {
+pub(super) fn effective_key_value(
+    key: &str,
+    context: &ConfigContext,
+    registry: &AdapterRegistry,
+) -> AppResult<ResolvedValue> {
     match key {
         "defaults.adapter" => Ok(resolve_adapter(None, context)),
         "defaults.pagination.enabled" => resolve_pagination_enabled(context),
         "defaults.pagination.limit" => resolve_limit(None, context),
         "defaults.output" => resolve_output(None, context),
-        _ => Err(unknown_key(key)),
+        _ => {
+            let option_key = registered_native_option_key(key, registry)?;
+            Ok(resolve_native_option(option_key, context))
+        }
     }
 }
 
@@ -123,6 +139,7 @@ pub(super) fn scoped_key_value(
     key: &str,
     config: &CoreConfig,
     source: ConfigSource,
+    registry: &AdapterRegistry,
 ) -> AppResult<ResolvedValue> {
     match key {
         "defaults.adapter" => Ok(config
@@ -149,65 +166,22 @@ pub(super) fn scoped_key_value(
             .as_ref()
             .map(|value| ResolvedValue::new(json!(value.as_str()), source))
             .unwrap_or_else(ResolvedValue::unset)),
-        _ => Err(unknown_key(key)),
+        _ => {
+            let option_key = registered_native_option_key(key, registry)?;
+            Ok(config
+                .options
+                .value_for_key(option_key)
+                .map(|value| ResolvedValue::new(value.clone(), source))
+                .unwrap_or_else(ResolvedValue::unset))
+        }
     }
 }
 
-pub(super) fn set_key(
-    config: &mut CoreConfig,
+pub(super) fn config_value_to_json(
     key: &str,
-    value: &str,
-    config_path: Option<&Path>,
-) -> AppResult<()> {
-    match key {
-        "defaults.adapter" => {
-            if value.is_empty() {
-                return Err(AppError::invalid_request(
-                    key,
-                    "adapter id must not be empty",
-                ));
-            }
-            config.defaults.adapter = Some(value.to_owned());
-        }
-        "defaults.pagination.enabled" => {
-            config.defaults.pagination.enabled = Some(parse_pagination_enabled(key, value)?);
-        }
-        "defaults.pagination.limit" => {
-            let limit = value.parse::<u32>().map_err(|_| {
-                AppError::invalid_request(
-                    key,
-                    "defaults.pagination.limit must be a positive integer",
-                )
-            })?;
-            validate_positive_key(key, limit)?;
-            config.defaults.pagination.limit = Some(limit);
-        }
-        "defaults.output" => {
-            let output = match config_path {
-                Some(path) => parse_output(key, value, path)?,
-                None => value
-                    .parse::<OutputMode>()
-                    .map_err(|reason: String| AppError::invalid_request(key, reason))?,
-            };
-            config.defaults.output = Some(output.as_str().to_owned());
-        }
-        _ => return Err(unknown_key(key)),
-    }
-    Ok(())
-}
-
-pub(super) fn unset_key(config: &mut CoreConfig, key: &str) -> AppResult<()> {
-    match key {
-        "defaults.adapter" => config.defaults.adapter = None,
-        "defaults.pagination.enabled" => config.defaults.pagination.enabled = None,
-        "defaults.pagination.limit" => config.defaults.pagination.limit = None,
-        "defaults.output" => config.defaults.output = None,
-        _ => return Err(unknown_key(key)),
-    }
-    Ok(())
-}
-
-pub(super) fn config_value_to_json(key: &str, config: &CoreConfig) -> AppResult<Value> {
+    config: &CoreConfig,
+    registry: &AdapterRegistry,
+) -> AppResult<Value> {
     Ok(match key {
         "defaults.adapter" => config
             .defaults
@@ -233,82 +207,49 @@ pub(super) fn config_value_to_json(key: &str, config: &CoreConfig) -> AppResult<
             .as_ref()
             .map(|value| json!(value.as_str()))
             .unwrap_or(Value::Null),
-        _ => return Err(unknown_key(key)),
+        _ => {
+            let option_key = registered_native_option_key(key, registry)?;
+            config
+                .options
+                .value_for_key(option_key)
+                .cloned()
+                .unwrap_or(Value::Null)
+        }
     })
 }
 
-pub(super) fn validate_output_key(
-    field: &str,
-    value: &Option<String>,
-    path: &Path,
-) -> AppResult<()> {
-    if let Some(value) = value {
-        parse_output(field, value, path)?;
-    }
-    Ok(())
-}
-
-fn parse_output(field: &str, value: &str, path: &Path) -> AppResult<OutputMode> {
-    value.parse::<OutputMode>().map_err(|reason: String| {
-        let path = path_to_slash(path);
-        let accepted = OutputMode::ACCEPTED_VALUES.join(", ");
-        let details = FieldReasonDetails {
-            field: field.to_owned(),
-            reason: format!(
-                "{path} contains invalid {field}: received {value:?}; accepted values: {accepted}; {reason}"
-            ),
-            path: Some(path),
-            received: Some(value.to_owned()),
-            accepted: Some(
-                OutputMode::ACCEPTED_VALUES
-                    .iter()
-                    .map(|value| (*value).to_owned())
-                    .collect(),
-            ),
-            field_issues: None,
-            config_issues: None,
-            typed_validation_failures: None,
-        };
-        AppError::new(protocol_error_record_draft_with_summary::<
-            typed_codes::protocol::InvalidRequest,
-        >(
-            "Invalid protocol request.",
-            details,
-            DiagnosticSource::with_stage("docnav", "config"),
-        ))
-    })
-}
-
-pub(super) fn ensure_supported_key(key: &str) -> AppResult<()> {
-    if SUPPORTED_KEYS.contains(&key) {
+pub(super) fn ensure_supported_key(key: &str, registry: &AdapterRegistry) -> AppResult<()> {
+    if SUPPORTED_CORE_KEYS.contains(&key) || registry.has_native_option_config_key(key) {
         Ok(())
     } else {
         Err(unknown_key(key))
     }
 }
 
-fn unknown_key(key: &str) -> AppError {
-    AppError::invalid_request("key", format!("unsupported docnav config key {key:?}"))
+fn supported_keys(registry: &AdapterRegistry) -> Vec<String> {
+    SUPPORTED_CORE_KEYS
+        .iter()
+        .map(|key| (*key).to_owned())
+        .chain(registry.native_option_config_keys())
+        .collect()
 }
 
-fn parse_pagination_enabled(key: &str, value: &str) -> AppResult<bool> {
-    match value {
-        "true" | "enabled" => Ok(true),
-        "false" | "disabled" => Ok(false),
-        _ => Err(AppError::invalid_request(
-            key,
-            format!("{key} must be true, false, enabled, or disabled"),
-        )),
+fn resolve_native_option(key: &str, context: &ConfigContext) -> ResolvedValue {
+    if let Some(value) = context.project_config.options.value_for_key(key) {
+        return ResolvedValue::project(value.clone());
     }
+    if let Some(value) = context.user_config.options.value_for_key(key) {
+        return ResolvedValue::user(value.clone());
+    }
+    ResolvedValue::unset()
 }
 
-pub(super) fn validate_positive_key(key: &str, value: u32) -> AppResult<()> {
-    if value == 0 {
-        Err(AppError::invalid_request(
-            key,
-            format!("{key} must be a positive integer"),
-        ))
-    } else {
-        Ok(())
-    }
+pub(super) fn registered_native_option_key<'a>(
+    config_key: &'a str,
+    registry: &AdapterRegistry,
+) -> AppResult<&'a str> {
+    validate_native_option_key_for_registry(registry, config_key)?;
+    config_key
+        .strip_prefix("options.")
+        .ok_or_else(|| unknown_key(config_key))
 }

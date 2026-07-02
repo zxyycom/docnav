@@ -3,12 +3,13 @@
 ## MODIFIED Requirements
 
 ### Requirement: `docnav` 是 core CLI router/manager
-`docnav` MUST 负责项目根解析、核心配置、core release static adapter registry、adapter inspection、adapter 选择、adapter layer dispatch、协议字段校验、输出模式和错误映射。默认 document operation path MUST use adapter-layer workspace crates registered in the current core release as adapter implementations. Adapter layer ownership MUST remain a code and contract boundary rather than a separate default distribution boundary. Internal operation orchestration MUST be owned by `docnav-navigation`, while adapter layer interface definitions and shared contract types MUST be owned by `docnav-adapter-contracts`. Independent adapter packages、external adapter executables、command paths and historical adapter artifact records MUST NOT become default document operation implementation sources.
+`docnav` MUST 负责项目根解析、核心配置、core release static adapter registry、adapter inspection、adapter 选择、standard parameter preparation、adapter layer dispatch、协议字段校验、输出模式和错误映射。默认 document operation path MUST use adapter-layer workspace crates registered in the current core release as adapter implementations. Adapter layer ownership MUST remain a code and contract boundary rather than a separate default distribution boundary. Internal operation orchestration MUST be owned by `docnav-navigation`, while adapter layer interface definitions, static descriptors and shared contract types MUST be owned by `docnav-adapter-contracts`. `docnav-navigation` MUST prepare requests and dispatch operation handlers; it MUST NOT act as an adapter loader. Independent adapter packages、external adapter executables、command paths and historical adapter artifact records MUST NOT become default document operation implementation sources.
 
 #### Scenario: 读取 Markdown outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md`
 - **THEN** `docnav` 从当前 core release static adapter registry 选择 adapter implementation
-- **THEN** `docnav` 将 page 和 limit 等 core 通用参数写入显式 operation input
+- **THEN** `docnav` resolves `docs/guide.md` to an absolute path before navigation dispatch
+- **THEN** `docnav` 将 page、limit 和 merged native options 等参数准备为 operation input
 - **THEN** `docnav` 不从 adapter metadata、配置或隐式默认值生成格式专属 `options`
 - **THEN** adapter 生成的 ref 和 display 被保留到阅读输出
 
@@ -18,10 +19,29 @@
 - **THEN** `docnav-navigation` 负责组合 `outline/read/find/info` 流程
 - **THEN** adapter crate 不需要依赖独立 runtime SDK、dynamic registration API 或 adapter direct CLI 才能参与默认 document operation
 
-#### Scenario: adapter interface starts from format-owned building blocks
+#### Scenario: adapter interface uses operation-handler granularity
 - **WHEN** adapter crate 实现 adapter layer interface
-- **THEN** adapter interface SHOULD prefer ref splitter、locator、format support check 和 parser/navigation primitives
-- **THEN** operation-level `outline/read/find/info` handlers MAY replace these primitives only after design/spec/tasks record that the primitive split creates implementation complexity without corresponding product benefit
+- **THEN** adapter handle exposes static descriptor metadata, support check, source-level native option registry entries and `outline/read/find/info` operation handlers through `docnav-adapter-contracts`
+- **THEN** parser、ref、navigation、pagination 和 native option semantics remain adapter-owned inside those handlers
+- **THEN** `docnav-navigation` dispatches the selected operation handler instead of composing adapter ref splitter、locator、format support check or parser/navigation primitives across the adapter/core boundary
+
+#### Scenario: native option registry feeds adapter handoff
+- **WHEN** the source-level native option registry includes the Markdown `options.max_heading_level` entry
+- **AND** request or config sources provide `options.max_heading_level`
+- **THEN** core standard parameter preparation merges the value with source and registry metadata
+- **THEN** the linked Markdown handler receives the final option value and validates support, type and range semantics
+
+#### Scenario: navigation layer is not an adapter loader
+- **WHEN** `docnav-navigation` dispatches an operation
+- **THEN** it receives a selected linked adapter handle from core registry/routing
+- **THEN** it prepares the request and calls the operation handler
+- **THEN** it does not load executables, resolve command paths, or mutate runtime adapter registration
+
+#### Scenario: adapter diagnostic boundary excludes exit code API
+- **WHEN** linked adapter handling fails
+- **THEN** the adapter layer returns structured diagnostic facts
+- **THEN** core/output owns protocol/readable projection and final process exit code
+- **THEN** adapter contract does not expose exit-code return semantics
 
 #### Scenario: core release static adapter registry inspection
 - **WHEN** 调用方执行 `docnav adapter list`

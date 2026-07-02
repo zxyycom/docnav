@@ -1,13 +1,13 @@
-本 delta 定义 Markdown adapter/direct CLI 对非结构化 outline 全文读取策略的支持；它只在 `openspec/changes/outline-unstructured-full-read/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 delta 定义 core `docnav outline` dispatch 到 linked Markdown adapter 时对非结构化 outline 全文读取策略的支持；它只在 `openspec/changes/outline-unstructured-full-read/` 下形成未审核临时文档，不影响现有其它文档或主规范。
 
 ## ADDED Requirements
 
 ### Requirement: Markdown outline 支持配置触发的非结构化全文读取
-`docnav-markdown` MUST 支持生效配置中的非结构化 outline 策略。命中该策略时，Markdown outline MUST 直接返回整篇 Markdown 原文内容，并 MUST NOT 返回 heading entries、`doc:full` entry、ref、page 或 continuation。本 change 不定义具体配置文件、格式或合并方式。
+Linked Markdown adapter outline handling MUST 支持生效配置中的非结构化 outline 策略。命中该策略时，Markdown outline MUST 直接返回整篇 Markdown 原文内容，并 MUST NOT 返回 heading entries、`doc:full` entry、ref、page 或 continuation。本 change 不定义具体配置文件、格式或合并方式。
 
-#### Scenario: Markdown direct CLI outline 自动全文读取
-- **WHEN** 调用方执行 `docnav-markdown outline docs/raw-note.md`
-- **AND** 生效 `docnav-markdown` 配置声明该 path 为非结构化文档
+#### Scenario: Core CLI dispatch 到 Markdown linked adapter 后自动全文读取
+- **WHEN** 调用方执行 `docnav outline docs/raw-note.md`
+- **AND** 生效 Markdown adapter 配置声明该 path 为非结构化文档
 - **THEN** 输出为非结构化 outline 结果
 - **THEN** content 等于整篇 Markdown 原文
 - **THEN** content_type 为 `text/markdown`

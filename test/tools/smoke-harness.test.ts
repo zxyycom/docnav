@@ -1,5 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import { createSmokeHarness, createSmokeState, resolveSmokeConcurrency } from "./smoke-harness.ts";
 import type { CommandRecord, SmokeState } from "./smoke-harness.ts";
@@ -131,6 +135,35 @@ describe("smoke harness task scheduling", () => {
     assert.equal(resolveSmokeConcurrency("2"), 2);
     assert.throws(() => resolveSmokeConcurrency("0"), /positive integer/);
     assert.throws(() => resolveSmokeConcurrency("abc"), /positive integer/);
+  });
+
+  it("cleans the core smoke temp root when the suite exits after failure", { timeout: 60_000 }, () => {
+    const tempRoot = path.join(
+      os.tmpdir(),
+      `docnav-core-smoke-cleanup-${process.pid}-${Date.now()}`
+    );
+
+    const result = spawnSync(process.execPath, ["test/docnav-core-smoke.ts"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        DOCNAV_BIN: process.execPath,
+        DOCNAV_CORE_SMOKE_TEMP_ROOT: tempRoot,
+        DOCNAV_SMOKE_CONCURRENCY: "1"
+      },
+      timeout: 60_000
+    });
+
+    const tempRootExists = fs.existsSync(tempRoot);
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+
+    assert.notEqual(result.status, 0, "fixture should exercise the failing smoke path");
+    assert.equal(
+      tempRootExists,
+      false,
+      `temp root should be cleaned after failure\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`
+    );
   });
 });
 

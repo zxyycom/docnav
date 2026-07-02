@@ -18,7 +18,7 @@
 
 - [ ] 3.1 在 Markdown parser/document model 中计算 document head 原文范围，并保持 heading model、heading line/level ref 和 section 范围不变。
 - [ ] 3.2 实现 frontmatter block classification，默认 `opening_only`，并为显式多 metadata block policy 留出清晰、可测试的识别边界。
-- [ ] 3.3 接入 adapter-owned native option sources `document_head_outline_mode` 和 `frontmatter_block_policy`，并让 direct CLI/config 合并后传入 outline/find/read 语义；未声明 public input 必须被拒绝。
+- [ ] 3.3 接入 adapter-owned native option sources `document_head_outline_mode` 和 `frontmatter_block_policy`，并让 core CLI/config 标准参数合并后传入 outline/find/read 语义；未声明 public input 必须被拒绝。
 - [ ] 3.4 更新 outline construction：combined 返回 `HEAD:leading`，split 返回 `FM:L{line}` 和 `P:preamble`，hidden 不返回 document head entry，且无可见 heading 时保留 `doc:full` fallback。
 - [ ] 3.5 更新 read ref handling：`HEAD:leading` 返回 document head 原文，`FM:L{line}` 返回 delimiter 内部 YAML payload，`P:preamble` 返回 frontmatter 后的前导 Markdown 原文。
 - [ ] 3.6 更新 find ref selection：document head 命中在 combined/split 模式下返回可 read 的 head region ref，hidden 或 fallback 场景保持可读行为。

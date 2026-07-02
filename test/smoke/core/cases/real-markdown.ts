@@ -1,4 +1,4 @@
-import { createProject, createRealMarkdownAdapter, writeRegistry } from "../fixtures.ts";
+import { createProject, writeProjectConfig } from "../fixtures.ts";
 import type { SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
@@ -12,6 +12,7 @@ import {
   expectStringArray,
   parseJson
 } from "../assertions.ts";
+import { exitCodes } from "../config.ts";
 import {
   assertReadableReadRefHandoff,
   runReadableJsonCase
@@ -42,6 +43,9 @@ export function createRealMarkdownRefErrorTasks() {
 async function testRealMarkdownRefHandoffChain() {
   const project = createRegisteredRealMarkdownProject("real-markdown-ref-handoff");
 
+  await assertMaxHeadingLevelCliOption(project);
+  await assertMaxHeadingLevelConfigOption();
+  await assertMaxHeadingLevelAdapterValidation(project);
   const outlineRef = await readFirstOutlineRef(project);
   await assertReadableReadRefHandoff(
     project,
@@ -100,11 +104,121 @@ async function testRealMarkdownRefInvalidProtocol() {
   expect(record, details.ref === "bad:ref", "REF_INVALID preserves ref in error details");
 }
 
+async function assertMaxHeadingLevelCliOption(project: SmokeProject) {
+  const record = await runCli("CORE-LINK-001 outline max heading level native option", [
+    "outline",
+    project.normalRelPath,
+    "--max-heading-level",
+    "1",
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectNoJsonPayloadInStderr(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  const result = expectJsonObject(record, json.result, "outline result is an object");
+  const entries = expectObjectArray(record, result.entries, "outline entries are objects");
+  expect(record, entries.length === 1, "max heading level filters nested Markdown headings");
+}
+
+async function assertMaxHeadingLevelConfigOption() {
+  const project = createRegisteredRealMarkdownProject("real-markdown-config-native-option");
+  writeProjectConfig(project, {
+    options: {
+      max_heading_level: 1
+    }
+  });
+
+  const record = await runCli("CORE-LINK-001 outline config max heading level native option", [
+    "outline",
+    project.normalRelPath,
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectNoJsonPayloadInStderr(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  const result = expectJsonObject(record, json.result, "outline result is an object");
+  const entries = expectObjectArray(record, result.entries, "outline entries are objects");
+  expect(record, entries.length === 1, "config max heading level filters nested Markdown headings");
+}
+
+async function assertMaxHeadingLevelAdapterValidation(project: SmokeProject) {
+  const record = await runCli("CORE-LINK-001 outline invalid max heading level is adapter-owned", [
+    "outline",
+    project.normalRelPath,
+    "--max-heading-level",
+    "7",
+    "--output",
+    "protocol-json"
+  ], { project });
+  expectExit(record, exitCodes.input);
+  expectNoJsonPayloadInStderr(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  const error = expectProtocolFailure(record, json, "outline", "INVALID_REQUEST");
+  const details = expectJsonObject(record, error.details, "protocol error details is an object");
+  expect(
+    record,
+    details.field === "arguments.options.max_heading_level",
+    "adapter option validation reports operation argument field"
+  );
+  expect(
+    record,
+    details.reason === "range_invalid",
+    "adapter option validation reports Markdown range reason"
+  );
+  expect(
+    record,
+    error.owner === "adapter_options",
+    "adapter option validation is adapter-owned"
+  );
+  expect(
+    record,
+    error.received === "7",
+    "adapter option validation reports received value"
+  );
+  expect(
+    record,
+    error.expected === "integer in range 1..6",
+    "adapter option validation reports expected value"
+  );
+  const issues = expectObjectArray(
+    record,
+    details.option_issues,
+    "adapter option validation reports option issues"
+  );
+  const issue = expectJsonObject(
+    record,
+    issues[0],
+    "adapter option validation issue is an object"
+  );
+  expect(
+    record,
+    issue.owner === "docnav-markdown",
+    "adapter option validation issue reports owner"
+  );
+  expect(
+    record,
+    issue.namespace === "options",
+    "adapter option validation issue reports namespace"
+  );
+  expect(
+    record,
+    issue.key === "max_heading_level",
+    "adapter option validation issue reports key"
+  );
+  expect(
+    record,
+    issue.reason_code === "range_invalid",
+    "adapter option validation issue reports range reason code"
+  );
+}
+
 function createRegisteredRealMarkdownProject(name: string) {
-  const project = createProject(name);
-  const markdown = createRealMarkdownAdapter(project);
-  writeRegistry(project, [markdown]);
-  return project;
+  return createProject(name);
 }
 
 async function readFirstOutlineRef(project: SmokeProject) {

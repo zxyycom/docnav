@@ -1,6 +1,6 @@
 use std::fs;
 
-use docnav_adapter_sdk::{AdapterError, AdapterResult};
+use docnav_adapter_contracts::{AdapterError, AdapterResult};
 use docnav_protocol::{positive_result, Entry, Location};
 use serde_json::json;
 

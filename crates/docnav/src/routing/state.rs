@@ -36,8 +36,6 @@ impl SelectionState {
     pub(super) fn into_selection(self, selected: SelectedCandidate) -> AdapterSelection {
         AdapterSelection {
             record: selected.record,
-            manifest: selected.manifest,
-            probe: selected.probe,
             evidence: self.evidence,
         }
     }

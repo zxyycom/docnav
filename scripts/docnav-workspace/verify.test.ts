@@ -81,7 +81,7 @@ describe("workspace verifier configuration", () => {
     assert.equal(
       completeReport(checkResult(catalogCheck, {
         stdout: [
-          "test case catalog ok: 86 implemented, 0 planned",
+          "test case catalog ok: 70 implemented, 1 planned",
           "catalog diagnostic"
         ].join("\n")
       })),
@@ -189,11 +189,8 @@ describe("workspace verifier configuration", () => {
       "--copy-to",
       ".cache/docnav/verify/dev-bins"
     ]);
-    assert.deepEqual(checkByLabel("docnav-markdown development smoke").mutex, []);
     assert.deepEqual(checkByLabel("docnav core development smoke").mutex, []);
-    assert.deepEqual(checkByLabel("docnav-markdown development smoke").dependsOn, ["docnav-development-binaries"]);
     assert.deepEqual(checkByLabel("docnav core development smoke").dependsOn, ["docnav-development-binaries"]);
-    assert.equal(checkByLabel("docnav-markdown development smoke").envFile, ".cache/docnav/verify/dev-bins.json");
     assert.deepEqual(checkByLabel("docs case catalog validator").dependsOn, []);
     assert.deepEqual(checkByLabel("docs schema validator").dependsOn, []);
     assert.deepEqual(checkByLabel("case catalog validator tests").dependsOn, []);
@@ -233,29 +230,22 @@ describe("workspace verifier configuration", () => {
       fs.mkdirSync(sourceDir, { recursive: true });
 
       const docnavSource = path.join(sourceDir, executableName("docnav"));
-      const markdownSource = path.join(sourceDir, executableName("docnav-markdown"));
       fs.writeFileSync(docnavSource, "docnav");
-      fs.writeFileSync(markdownSource, "docnav-markdown");
 
       const specs: DevBinarySpec[] = [
-        { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" },
-        { packageName: "docnav-markdown", binName: "docnav-markdown", envName: "DOCNAV_MARKDOWN_BIN" }
+        { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" }
       ];
       const env = prepareDevBinEnv({
         binaries: specs,
         copyTo: copyRoot,
         executables: new Map([
-          ["docnav", docnavSource],
-          ["docnav-markdown", markdownSource]
+          ["docnav", docnavSource]
         ])
       });
 
       assert.notEqual(env.DOCNAV_BIN, docnavSource);
-      assert.notEqual(env.DOCNAV_MARKDOWN_BIN, markdownSource);
-      assert.equal(path.dirname(env.DOCNAV_BIN), path.dirname(env.DOCNAV_MARKDOWN_BIN));
       assert.match(path.relative(copyRoot, env.DOCNAV_BIN), /^run-[^\\/]+[\\/]docnav(?:\.exe)?$/);
       assert.equal(fs.readFileSync(env.DOCNAV_BIN, "utf8"), "docnav");
-      assert.equal(fs.readFileSync(env.DOCNAV_MARKDOWN_BIN, "utf8"), "docnav-markdown");
     } finally {
       fs.rmSync(tempRoot, { force: true, recursive: true });
     }

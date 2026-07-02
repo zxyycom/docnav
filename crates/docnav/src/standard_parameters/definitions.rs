@@ -5,13 +5,12 @@ use docnav_standard_parameters::{
     pagination_enabled_field, read_ref_field, EntryPassthroughPolicy,
     LoadedStandardParameterConfigSource, StandardParameterPipeline, StandardParameterResolution,
 };
-use docnav_typed_fields::{FieldDefBuilder, FieldDefs, JsonValue};
+use docnav_typed_fields::{FieldDefBuilder, FieldDefSet, FieldDefs, JsonValue};
 use serde_json::{json, Map, Value};
 
 use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::ConfigContext;
 use crate::error::{AppError, AppResult};
-
 const DIRECT_PROCESSING: &str = "direct";
 const CONFIG_PROCESSING: &str = "config";
 
@@ -103,7 +102,7 @@ fn core_output_field() -> FieldDefBuilder<OutputMode> {
         .default_static(OutputMode::ReadableView)
 }
 
-pub(super) fn resolve_for_operation(
+pub(super) fn resolve_core_for_operation(
     command: &DocumentCommand,
     context: &ConfigContext,
 ) -> AppResult<StandardParameterResolution> {
@@ -129,7 +128,7 @@ fn resolve_core_standard_parameters<P>(
 ) -> AppResult<StandardParameterResolution>
 where
     P: FieldDefs,
-    P::DefinitionSet: AsRef<docnav_typed_fields::FieldDefSet>,
+    P::DefinitionSet: AsRef<FieldDefSet>,
 {
     let fields = P::field_defs().map_err(field_defs_error)?;
     resolve_with_fields(&fields, command, context)

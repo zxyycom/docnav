@@ -1,6 +1,6 @@
 ## 一句话核心
 
-operation composition 是一个未来方向：用 core/SDK 编排现有 document operations，减少重复调用，同时避免提前把候选体验固化成 adapter 协议或新命令。
+operation composition 是一个未来方向：用 core/shared-library 编排现有 document operations，减少重复调用，同时避免提前把候选体验固化成 adapter 协议或新命令。
 
 ## 文档状态
 
@@ -9,7 +9,7 @@ operation composition 是一个未来方向：用 core/SDK 编排现有 document
 ## Context
 
 
-很多体验优化并不要求 adapter 增加能力，而是把已有 operation 按固定模式串起来。例如先 outline 再 read、先 find 再 read、对一组 ref 重复 read。这类逻辑更像接入层编排或 SDK helper，而不是格式语义。
+很多体验优化并不要求 adapter 增加能力，而是把已有 operation 按固定模式串起来。例如先 outline 再 read、先 find 再 read、对一组 ref 重复 read。这类逻辑更像接入层编排或 shared helper，而不是格式语义。
 
 ## Goals / Non-Goals
 
@@ -22,22 +22,22 @@ Goals:
 
 Non-Goals:
 
-- 不新增 adapter invoke operation。
+- 不新增 adapter-level operation。
 - 不修改现有 `outline/read/find/info` 行为。
 - 不把候选体验排序成 roadmap 优先级。
 
 ## Direction
 
-1. 优先把 composition 放在 core/SDK 层。
+1. 优先把 composition 放在 core/shared-library 层。
 
-   core 已经拥有 adapter selection、config、output mode、error mapping 和 readable output；SDK 可以承载 adapter direct CLI 可复用的组合 helper。格式 adapter 应继续专注单次格式 operation。
+   core 已经拥有 adapter selection、config、output mode、error mapping 和 readable output；shared library helper 可以承载可复用的组合逻辑。格式 adapter 应继续专注单次格式 operation。
 
 2. 优先复用现有 public surface。
 
 
 3. 保持 raw protocol 简洁。
 
-   composition 不应默认进入 adapter invoke protocol。若需要机器稳定 contract，应先证明它不是接入层 convenience，而是跨 adapter 的长期业务语义。
+   composition 不应默认扩展 raw protocol。若需要机器稳定 contract，应先证明它不是接入层 convenience，而是跨 adapter 的长期业务语义。
 
 4. 把候选体验当作 examples，不当作当前承诺。
 
@@ -66,10 +66,10 @@ Non-Goals:
 后续讨论前先用以下临时标准粗筛候选；该标准不是最终验收规则：
 
 1. 是否主要由现有 `outline`、`read`、`find` 或 `info` 编排完成。
-2. 是否能默认放在 core/SDK 层，而不要求格式 adapter 增加新语义。
+2. 是否能默认放在 core/shared-library 层，而不要求格式 adapter 增加新语义。
 3. 是否减少调用方的重复往返、状态记忆或参数拼接。
 5. 是否能用 readable output 清楚表达结果、未完成项和 continuation。
-6. 是否能复用现有 command、option、输入归一化或 SDK helper；只有复用会造成歧义时才考虑新入口。
+6. 是否能复用现有 command、option、输入归一化或 shared helper；只有复用会造成歧义时才考虑新入口。
 7. 是否避免污染 raw adapter protocol；需要 protocol 扩展时必须先证明它是长期跨 adapter 语义。
 8. 是否有足够小的 spike 或示例可以验证体验收益，而不直接承诺完整实现。
 
@@ -89,5 +89,5 @@ Non-Goals:
 ## Open Questions
 
 - 哪些组合属于“使用体验 convenience”，哪些应成为长期 public contract？
-- SDK helper 应支持哪些组合，哪些只属于 core CLI？
+- Shared helper 应支持哪些组合，哪些只属于 core CLI？
 - composition 的 continuation 是统一模型，还是每个候选单独设计？

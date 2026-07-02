@@ -5,8 +5,7 @@ import { expect } from "./assertions.ts";
 import { logDir, logPaths, root, schemaPaths, tempRoot } from "./config.ts";
 
 export const smokeState = createSmokeState({
-  docnavBinaryPath: resolveBinaryPath(root, argValue("--bin") ?? process.env.DOCNAV_BIN),
-  markdownBinaryPath: resolveBinaryPath(root, process.env.DOCNAV_MARKDOWN_BIN)
+  docnavBinaryPath: resolveBinaryPath(root, argValue("--bin") ?? process.env.DOCNAV_BIN)
 });
 
 export const {
@@ -31,8 +30,7 @@ export const {
   auditTitle: "docnav core development smoke audit",
   auditMetadata: () => [
     `temp_root: ${tempRoot}`,
-    `docnav_binary: ${smokeState.docnavBinaryPath ?? "(missing)"}`,
-    `docnav_markdown_binary: ${smokeState.markdownBinaryPath ?? "(missing)"}`
+    `docnav_binary: ${smokeState.docnavBinaryPath ?? "(missing)"}`
   ],
   binaryPath: () => smokeState.docnavBinaryPath ?? null,
   binaryFallback: "docnav",

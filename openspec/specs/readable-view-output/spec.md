@@ -4,7 +4,7 @@
 定义 Docnav document operation 的 readable-view/readable-json 输出契约，包括默认阅读输出、renderer config ownership、block framing、三种 document output mode，以及 readable-view 与 readable-json 从同一 typed readable payload 派生的分层边界。
 ## Requirements
 ### Requirement: readable-view 必须成为统一默认阅读输出
-`docnav` 和 adapter direct CLI 的 document operation MUST 支持 `readable-view`，并 MUST 在调用方省略 `--output` 时使用该模式。outline、read、find、info、后续组合 operation 和 readable error MUST 使用同一 readable-view 格式和通用 renderer。
+Core `docnav` document operations, including linked adapter-backed `outline/read/find/info`, MUST support `readable-view` and MUST use that mode when caller omits `--output`. Outline、read、find、info、后续组合 operation 和 readable error MUST 使用同一 readable-view 格式和通用 renderer。
 
 #### Scenario: 默认 outline 使用 readable-view
 - **WHEN** 调用方执行 `docnav outline docs/guide.md` 且未传入 `--output`
@@ -26,7 +26,7 @@
 - **THEN** guidance 数组保持 header JSON 值，block 替换只应用于 renderer config 声明的字符串字段
 
 ### Requirement: renderer config 必须是仓库内契约
-Readable-view renderer MUST 使用随仓库提交的 renderer config 声明每个 readable view kind 的 block 字段。block 字段集合 MUST 只来自该仓库内 config；用户配置、项目配置、环境变量、CLI flag 和 adapter manifest 继续承载各自既有职责。Readable-view 稳定契约 MUST 通过字段名和值、block pointer 和 byte length 表达；conformance 对 JSON header object key 顺序和多个 block section 的输出顺序执行顺序无关断言。
+Readable-view renderer MUST 使用随仓库提交的 renderer config 声明每个 readable view kind 的 block 字段。block 字段集合 MUST 只来自该仓库内 config；用户配置、项目配置、环境变量、CLI flag 和 linked adapter descriptor metadata 继续承载各自既有职责。Readable-view 稳定契约 MUST 通过字段名和值、block pointer 和 byte length 表达；conformance 对 JSON header object key 顺序和多个 block section 的输出顺序执行顺序无关断言。
 
 #### Scenario: header 语义由字段和值承载
 - **WHEN** readable-view renderer 输出 JSON header
@@ -157,7 +157,7 @@ Document operation 的当前输出模式 MUST 只包含 `readable-view`、`reada
 
 #### Scenario: 交付审计确认三种模式
 - **WHEN** change 完成交付审计
-- **THEN** 核心和 adapter SDK document output implementation 使用 shared readable payload/renderer path
+- **THEN** core document output implementation 使用 shared readable payload/renderer path for linked adapter-backed results
 - **THEN** 当前非归档代码和文档只声明 readable-view、readable-json 和 protocol-json 作为 document output mode
 - **THEN** 非文档纯文本输出使用 `PlainText` 或等价明确命名，并与 document output mode 类型分离
 
@@ -188,7 +188,7 @@ Document operation 的当前输出模式 MUST 只包含 `readable-view`、`reada
 
 #### Scenario: 非文档输出保持 owner-specific
 
-- **WHEN** `docnav` 或 adapter 输出 help、version、manifest 或 probe
+- **WHEN** `docnav` outputs help、version、adapter inspection or manifest/probe-shaped contract metadata
 - **THEN** 该输出不成为 document output mode
 - **THEN** 该输出不需要 readable-view framing
 - **THEN** 该输出不通过 `docnav-output` 编排

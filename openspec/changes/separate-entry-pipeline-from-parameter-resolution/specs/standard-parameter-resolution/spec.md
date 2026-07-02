@@ -6,13 +6,13 @@
 The parameter resolver MUST be documented and implemented as entry parameter source resolution. It MUST own source construction, source priority, typed validation, source info, diagnostic handoff, explicit adapter native option source handling, passthrough handoff, and operation argument binding metadata. Entry lifecycle classification, transport decode, command help, handler dispatch, request construction policy, output mode rendering, and exit code policy MUST remain with entry owners.
 
 #### Scenario: Resolver consumes input views from entry owners
-- **WHEN** core CLI or adapter SDK has classified an invocation as a document operation or adapter invoke
+- **WHEN** core CLI has classified an invocation as a document operation or documented document-context inspection path
 - **THEN** the entry owner provides a direct input view and configured source descriptors to entry parameter source resolution
 - **THEN** the resolver returns derived typed runtime values, source info, diagnostics, and passthrough handoff
 - **THEN** the entry owner remains responsible for request construction, output projection, and exit behavior
 
 #### Scenario: Resolver is not used as global entry dispatcher
-- **WHEN** an invocation is help, manifest, probe, version, init, doctor, config without document context, or adapter management
+- **WHEN** an invocation is help, version, init, doctor, config without document context, or static adapter inspection
 - **THEN** the standard entry pipeline does not require that invocation to enter parameter source resolution
 - **THEN** the invocation keeps its own owner-defined parsing and output boundary
 

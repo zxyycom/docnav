@@ -3,6 +3,8 @@ use clap::{Arg, ArgAction, Command};
 use docnav_protocol::Operation;
 
 pub(in crate::cli) mod command_names {
+    pub(in crate::cli) const ADAPTER: &str = "adapter";
+    pub(in crate::cli) const ADAPTER_LIST: &str = "list";
     pub(in crate::cli) const CONFIG: &str = "config";
     pub(in crate::cli) const CONFIG_GET: &str = "get";
     pub(in crate::cli) const CONFIG_LIST: &str = "list";
@@ -21,6 +23,7 @@ pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
     pub(in crate::cli) const KEY: &str = "key";
     pub(in crate::cli) const LIMIT: &str = "limit";
+    pub(in crate::cli) const MAX_HEADING_LEVEL: &str = "max-heading-level";
     pub(in crate::cli) const OPERATION: &str = "operation";
     pub(in crate::cli) const OUTPUT: &str = "output";
     pub(in crate::cli) const PAGE: &str = "page";
@@ -65,6 +68,7 @@ pub(in crate::cli) fn cli_command() -> Command {
         .subcommand(document_clap_command(Operation::Read))
         .subcommand(document_clap_command(Operation::Find))
         .subcommand(document_clap_command(Operation::Info))
+        .subcommand(adapter_command())
         .subcommand(config_command())
         .subcommand(utility_clap_command(
             command_names::INIT,
@@ -89,7 +93,8 @@ pub(in crate::cli) fn document_clap_command(operation: Operation) -> Command {
         Operation::Outline => paged_document_command(
             command_names::OUTLINE,
             "Return compact document outline entries",
-        ),
+        )
+        .arg(max_heading_level_arg()),
         Operation::Read => {
             paged_document_command(command_names::READ, "Read a document region by adapter ref")
                 .arg(ref_arg())
@@ -97,6 +102,7 @@ pub(in crate::cli) fn document_clap_command(operation: Operation) -> Command {
         Operation::Find => {
             paged_document_command(command_names::FIND, "Find matching document regions")
                 .arg(query_arg())
+                .arg(max_heading_level_arg())
         }
         Operation::Info => document_command(command_names::INFO, "Return adapter document summary"),
     }
@@ -124,6 +130,15 @@ fn config_command() -> Command {
         .subcommand(config_set_command())
         .subcommand(config_unset_command())
         .subcommand(config_list_command())
+}
+
+pub(in crate::cli) fn adapter_command() -> Command {
+    Command::new(command_names::ADAPTER)
+        .about("Inspect core release built-in adapters")
+        .subcommand(
+            Command::new(command_names::ADAPTER_LIST)
+                .about("List adapters registered in the current core release"),
+        )
 }
 
 pub(in crate::cli) fn config_get_command() -> Command {
@@ -185,6 +200,15 @@ fn limit_arg() -> Arg {
     value_arg(arg_ids::LIMIT, "limit", "positive integer")
         .default_value(defaults::LIMIT)
         .value_parser(clap::value_parser!(u32))
+}
+
+fn max_heading_level_arg() -> Arg {
+    value_arg(
+        arg_ids::MAX_HEADING_LEVEL,
+        "max-heading-level",
+        "integer 1..6",
+    )
+    .value_parser(clap::value_parser!(u32))
 }
 
 fn pagination_arg() -> Arg {

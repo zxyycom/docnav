@@ -58,6 +58,7 @@ fn document_command_from_matches(
         page: parse_page(operation, matches)?,
         pagination_enabled: parse_pagination_enabled(operation, matches)?,
         limit: parse_limit(operation, matches)?,
+        max_heading_level: parse_max_heading_level(operation, matches)?,
         output: optional_explicit_output(matches)?,
         adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
     })
@@ -93,6 +94,20 @@ fn parse_limit(
         return Ok(None);
     }
     optional_explicit_positive(matches, arg_ids::LIMIT, flags::LIMIT)
+}
+
+fn parse_max_heading_level(
+    operation: Operation,
+    matches: &clap::parser::ArgMatches,
+) -> AppResult<Option<docnav_protocol::PositiveInteger>> {
+    if !uses_max_heading_level(operation) {
+        return Ok(None);
+    }
+    optional_explicit_positive(
+        matches,
+        arg_ids::MAX_HEADING_LEVEL,
+        flags::MAX_HEADING_LEVEL,
+    )
 }
 
 fn parse_pagination_enabled(
@@ -140,6 +155,7 @@ fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
 fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
     match flag {
         ValueFlag::Adapter | ValueFlag::Output => true,
+        ValueFlag::MaxHeadingLevel => uses_max_heading_level(operation),
         ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
         ValueFlag::Ref => operation == Operation::Read,
         ValueFlag::Query => operation == Operation::Find,
@@ -217,12 +233,19 @@ fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
         )),
         (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
         (ValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
+        (ValueFlag::MaxHeadingLevel, Some(value)) => {
+            positive_flag_error(flags::MAX_HEADING_LEVEL, value)
+        }
         (ValueFlag::Pagination, Some(value)) => pagination_flag_error(value),
         (ValueFlag::Output, Some(value)) => output_flag_error(value),
         (ValueFlag::Ref, Some("")) => Some(empty_value_error(flags::REF)),
         (ValueFlag::Query, Some("")) => Some(empty_value_error(flags::QUERY)),
         _ => None,
     }
+}
+
+fn uses_max_heading_level(operation: Operation) -> bool {
+    matches!(operation, Operation::Outline | Operation::Find)
 }
 
 fn pagination_flag_error(value: &str) -> Option<AppError> {

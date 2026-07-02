@@ -1,4 +1,4 @@
-本 design 记录 strict direct CLI 下 retained `clap` argv frontend 的实现边界、取舍和验证重点。原 `bpaf` 替换方向已由 `adopt-strict-input-boundaries` Track A 协调为 inactive。
+本 design 记录 strict core CLI 下 retained `clap` argv frontend 的实现边界、取舍和验证重点。原 `bpaf` 替换方向已由 `adopt-strict-input-boundaries` Track A 协调为 inactive。
 
 ## Context
 
@@ -10,14 +10,14 @@ Docnav 需要的是薄 argv frontend：它接收 argv、识别入口形态、收
 
 **Goals:**
 
-- 保留 `clap` 作为 direct CLI strict parser/help owner。
+- 保留 `clap` 作为 core CLI strict parser/help owner。
 - frontend 只输出 command/subcommand、positionals、raw flag values、help request 和 frontend diagnostics。
 - help 通过 `clap` surface 暴露，但仍从 command context、standard parameter metadata 和 adapter native option metadata 生成。
-- core CLI 与 adapter direct CLI 共享 strict input diagnostic 和 metadata-driven help 策略。
+- core CLI 使用 strict input diagnostic 和 metadata-driven help 策略。
 
 **Non-Goals:**
 
-- 不改变 adapter invoke stdin JSON。
+- 不改变 protocol request handling。
 - 不改变 standard parameter resolver 的内部模型。
 - 不把 parser crate 名写成长期 public contract；长期 contract 是 CLI 行为。
 - 不让 parser 的 typed parsing、fallback/default 或 required 语义成为 Docnav 参数语义 owner。
@@ -26,7 +26,7 @@ Docnav 需要的是薄 argv frontend：它接收 argv、识别入口形态、收
 ## Approach
 
 1. Dependency boundary
-   - `clap` 是 strict direct CLI parser/help owner 的实现依赖，不进入 protocol schema 或 adapter contract。
+   - `clap` 是 strict core CLI parser/help owner 的实现依赖，不进入 protocol schema 或 adapter contract。
    - 本 change 不引入 `bpaf` 替换 active parser/help surface；对外可观察行为用 CLI input diagnostic、help 和 validation contract 描述。
 
 2. Frontend output
@@ -45,8 +45,8 @@ Docnav 需要的是薄 argv frontend：它接收 argv、识别入口形态、收
 
 ## Decisions
 
-1. `clap` 是 strict direct CLI 的 active parser/help owner，但不是 protocol 或 adapter contract。
-   - Rationale: `adopt-strict-input-boundaries` 要求 direct CLI 保留 `clap` parser/help 决策，并把 unknown argv、extra positional、missing value 和 invalid value 映射为统一 input diagnostic。
+1. `clap` 是 strict core CLI 的 active parser/help owner，但不是 protocol 或 adapter contract。
+   - Rationale: `adopt-strict-input-boundaries` 要求 core CLI 保留 `clap` parser/help 决策，并把 unknown argv、extra positional、missing value 和 invalid value 映射为统一 input diagnostic。
 
 2. help generation 可以复用 retained `clap` surface，但不由 frontend 独占。
    - Rationale: help 需要展示标准参数 defaults、possible values 和 adapter native options；parser/help surface 可以降低渲染和 usage 维护成本，但不能成为这些语义的 owner。

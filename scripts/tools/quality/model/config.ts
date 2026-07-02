@@ -216,16 +216,6 @@ export const DEFAULT_CONFIG = Object.freeze({
       ],
       reason:
         "AdapterConfigSourceDetails is the serialized diagnostics payload, while StandardParameterConfigSourceIssue is the standard-parameter handoff fact. Keeping the constructors separate preserves crate and owner boundaries; extracting a shared type would couple fact capture to protocol projection for trivial field assignment."
-    },
-    {
-      ruleId: "scc-file-code-lines",
-      sourceTool: "scc",
-      path: "crates/docnav-protocol/src/error.rs",
-      codeArea: "rust-production",
-      metric: "code-lines",
-      value: 452,
-      reason:
-        "ProtocolError intentionally keeps protocol error constructors, DiagnosticRecord projection, owner/location projection, and serde rules in one owner file while the strict input contract stabilizes. The file has low decision-token density, and splitting it now would add navigation indirection without reducing behavior risk."
     }
   ]),
 

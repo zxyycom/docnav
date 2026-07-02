@@ -1,12 +1,13 @@
 [workspace]
 members = [
   "crates/docnav",
-  "crates/docnav-adapter-sdk",
+  "crates/docnav-adapter-contracts",
   "crates/docnav-cli-args",
   "crates/docnav-diagnostics",
   "crates/docnav-json-io",
   "crates/docnav-output",
   "crates/docnav-markdown",
+  "crates/docnav-navigation",
   "crates/docnav-protocol",
   "crates/docnav-readable",
   "crates/docnav-standard-parameters",
@@ -30,9 +31,12 @@ version = "0.1.0"
 [workspace.dependencies]
 clap = { version = "4.5.40", default-features = false, features = ["std", "help", "usage"] }
 docnav-protocol = { path = "crates/docnav-protocol" }
+docnav-adapter-contracts = { path = "crates/docnav-adapter-contracts" }
 docnav-cli-args = { path = "crates/docnav-cli-args" }
 docnav-diagnostics = { path = "crates/docnav-diagnostics" }
 docnav-json-io = { path = "crates/docnav-json-io" }
+docnav-markdown = { path = "crates/docnav-markdown" }
+docnav-navigation = { path = "crates/docnav-navigation" }
 docnav-output = { path = "crates/docnav-output" }
 docnav-readable = { path = "crates/docnav-readable" }
 docnav-standard-parameters = { path = "crates/docnav-standard-parameters" }

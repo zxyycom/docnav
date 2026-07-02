@@ -11,6 +11,7 @@
   ],
   "properties": {
     "code": {
+      "$comment": "ADAPTER_INVOKE_FAILED remains only for legacy/deprecated external invoke compatibility; current core-linked document operations should report structured adapter diagnostics without external process details.",
       "enum": [
         "INVALID_REQUEST",
         "DOCUMENT_NOT_FOUND",

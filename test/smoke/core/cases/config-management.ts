@@ -1,18 +1,16 @@
 import {
-  createFakeAdapter,
   createProject,
-  readAdapterCalls,
   writeJson,
   writeProjectConfig,
-  writeRegistry
 } from "../fixtures.ts";
-import type { FakeAdapter, SmokeProject } from "../fixtures.ts";
-import { runCli } from "../harness.ts";
+import type { SmokeProject } from "../fixtures.ts";
+import { runCli, validateSchema } from "../harness.ts";
 import {
   expect,
   expectExit,
   expectJsonObject,
   expectObjectArray,
+  expectProtocolFailure,
   expectReadableViewFieldValue,
   expectStderrEmpty,
   expectStdoutIncludes,
@@ -46,19 +44,17 @@ export function createToolCommandTasks() {
 
 async function testConfigPrecedenceAndPathContext() {
   const project = createProject("config-precedence");
-  const fake = createFakeAdapter(project, { id: "fake-config-context" });
   writeProjectConfig(project, {
     defaults: {
-      adapter: fake.id,
+      adapter: "docnav-markdown",
       output: "readable-json"
     }
   });
-  writeRegistry(project, [fake]);
 
   await assertUserPaginationConfigSet(project);
   await assertRemovedTextOutputFails(project);
-  await assertConfigListPathContext(project, fake.id);
-  await assertPaginationDisabledRequestFinalization(project, fake);
+  await assertConfigListPathContext(project, "docnav-markdown");
+  await assertPaginationDisabledSuccess(project);
   await assertLegacyDefaultsLimitConfigFails();
 }
 
@@ -148,7 +144,7 @@ async function assertConfigListPathContext(project: SmokeProject, adapterId: str
   expect(list, limit.value === 321, "config list --path reports final limit");
 }
 
-async function assertPaginationDisabledRequestFinalization(project: SmokeProject, adapter: FakeAdapter) {
+async function assertPaginationDisabledSuccess(project: SmokeProject) {
   const record = await runCli("CORE-CONFIG-001 config disabled pagination uses numeric limit only", [
     "outline",
     project.normalRelPath,
@@ -159,12 +155,8 @@ async function assertPaginationDisabledRequestFinalization(project: SmokeProject
   ], { project });
   expectExit(record, 0);
   expectStderrEmpty(record);
-  const invokeCall = [...readAdapterCalls(adapter)].reverse().find((call) => call.command === "invoke");
-  const stdin = expectJsonObject(record, invokeCall?.stdin, "fake adapter invoke stdin is an object");
-  const argumentsJson = expectJsonObject(record, stdin.arguments, "fake adapter invoke arguments is an object");
-  expect(record, argumentsJson.limit === 4294967295, "disabled pagination finalizes limit to max positive integer");
-  expect(record, argumentsJson.page === 1, "disabled pagination still sends page");
-  expect(record, !Object.hasOwn(argumentsJson, "pagination"), "protocol request does not include pagination field");
+  const json = parseJson(record);
+  expect(record, json.ok === true, "disabled pagination still dispatches through built-in adapter");
 }
 
 async function assertLegacyDefaultsLimitConfigFails() {
@@ -175,12 +167,37 @@ async function assertLegacyDefaultsLimitConfigFails() {
     }
   });
 
-  const record = await runCli("CORE-CONFIG-001 legacy defaults.limit config fails", ["config", "list"], { project });
+  const record = await runCli("CORE-CONFIG-001 legacy defaults.limit config fails", [
+    "outline",
+    project.normalRelPath,
+    "--output",
+    "protocol-json"
+  ], { project });
   expectExit(record, exitCodes.input);
   expectStderrEmpty(record);
-  expectStdoutIncludes(record, "failed to parse");
-  expectStdoutIncludes(record, "unknown field");
-  expectStdoutIncludes(record, "limit");
+  expectUnknownConfigFieldErrorShape(record, "defaults.limit", "project");
+}
+
+function expectUnknownConfigFieldErrorShape(record: CommandRecord, field: string, sourceLevel: string) {
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  const error = expectProtocolFailure(record, json, "outline", "INVALID_REQUEST");
+  const details = expectJsonObject(record, error.details, "unknown config error details are an object");
+  expect(record, error.owner === "docnav_config", "unknown config field owner is config boundary");
+  expect(record, details.field === field, "unknown config field reports field path");
+  expect(record, details.reason === "unknown_config_field", "unknown config field reports stable reason");
+
+  const location = expectJsonObject(record, error.location, "unknown config error has location");
+  expect(record, location.field === field, "unknown config location reports field path");
+  expect(record, typeof location.config_path === "string", "unknown config location reports config path");
+
+  const issues = expectObjectArray(record, details.config_issues, "unknown config error has config issues");
+  const issue = expectJsonObject(record, issues[0], "unknown config issue is an object");
+  expect(record, issue.field === field, "unknown config issue reports field path");
+  expect(record, issue.source_level === sourceLevel, "unknown config issue reports source level");
+  expect(record, issue.path_origin === "default", "unknown config issue reports path origin");
+  expect(record, typeof issue.path === "string", "unknown config issue reports config path");
+  expect(record, issue.reason_code === "unknown_config_field", "unknown config issue reports reason code");
 }
 
 async function testInitVersionDoctorAndHelp() {
@@ -207,17 +224,36 @@ async function testInitVersionDoctorAndHelp() {
   expectStdoutIncludes(help, "protocol-json");
   expect(help, !help.stdout.includes("text"), "outline help does not mention text output mode");
 
-  const doctorProject = createProject("tool-doctor-failing-check");
-  const bad = createFakeAdapter(doctorProject, { id: "fake-doctor-invalid", mode: "manifest-invalid" });
-  writeRegistry(doctorProject, [bad]);
-  const doctor = await runCli("CORE-TOOLS-001 doctor reports checks and fails on bad manifest", ["doctor"], {
+  const doctorProject = createProject("tool-doctor-static-registry");
+  const doctor = await runCli("CORE-TOOLS-001 doctor reports static registry checks", ["doctor"], {
     project: doctorProject
   });
-  expectExit(doctor, exitCodes.protocolOrAdapterProcess);
+  expectExit(doctor, 0);
   const doctorJson = parseJson(doctor);
   const checks = expectObjectArray(doctor, doctorJson.checks, "doctor output contains checks array");
-  expect(doctor, checks.some((check) => check.status === "fail"), "doctor reports failing check");
-  expect(doctor, readAdapterCalls(bad).some((call) => call.command === "manifest"), "doctor validates adapter manifest");
+  expect(
+    doctor,
+    checks.some((check) => check.name === "core_static_adapter_registry" && check.status === "pass"),
+    "doctor reports static adapter registry check"
+  );
+  expect(
+    doctor,
+    checks.some((check) => check.name === "adapter_layer" && check.adapter_id === "docnav-markdown"),
+    "doctor reports built-in markdown adapter layer"
+  );
+
+  // @case BB-CORE-ADAPTER-MGMT-001
+  const adapterList = await runCli("CORE-ADAPTER-MGMT-001 adapter list reports built-in registry", ["adapter", "list"], {
+    project: doctorProject
+  });
+  expectExit(adapterList, 0);
+  const adapterListJson = parseJson(adapterList);
+  const adapters = expectObjectArray(adapterList, adapterListJson.adapters, "adapter list returns adapters array");
+  expect(
+    adapterList,
+    adapters.some((adapter) => adapter.id === "docnav-markdown"),
+    "adapter list includes built-in markdown adapter"
+  );
 }
 
 function valueFor(record: CommandRecord, configListJson: JsonRecord, key: string): JsonRecord {

@@ -1,9 +1,6 @@
-mod adapter_output_contract;
-mod adapter_process;
 mod cli;
 mod config;
 mod error;
-mod invoke;
 mod output;
 mod project_context;
 mod project_paths;
@@ -84,6 +81,7 @@ fn execute<T: DocnavRuntime>(
             let request = runtime::DocumentRequest::from_command(command, &context)?;
             runtime.execute_document(request)
         }
+        CliCommand::Adapter(command) => registry::execute(command),
         CliCommand::Config(command) => config::execute(command, runtime),
         CliCommand::Init => config::init_project(),
         CliCommand::Doctor => config::doctor(),

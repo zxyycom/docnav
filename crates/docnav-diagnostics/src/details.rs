@@ -191,6 +191,8 @@ pub enum DiagnosticDetails {
         config_issues: Option<Vec<AdapterConfigSourceDetails>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         typed_validation_failures: Option<Vec<Value>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        option_issues: Option<Vec<Value>>,
     },
     Path {
         path: String,

@@ -1,3 +1,3 @@
 # enable-local-core-adapter-service-mode
 
-Add default local core and adapter service mode with safe fallback and strict internal protocol mismatch failures.
+Explore core-local service performance and cache behavior without changing the static adapter registry implementation source.

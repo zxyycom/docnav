@@ -4,9 +4,9 @@
 
 ## 关键原则
 
-- invoke 返回包含 operation 的完整 protocol envelope。
+- `protocol-json` 返回包含 operation 的完整 protocol envelope。
 - `docnav` 是识别格式、选择 adapter 和映射输出的核心 CLI。
-- CLI 默认阅读命令使用 `readable-view`；需要结构化消费或示例 JSON 校验时显式使用 `--output readable-json`；需要完整协议 envelope 时使用 `--output protocol-json` 或 adapter `invoke`。
+- CLI 默认阅读命令使用 `readable-view`；需要结构化消费或示例 JSON 校验时显式使用 `--output readable-json`；需要完整协议 envelope 时使用 `--output protocol-json`。
 - protocol outline 是扁平 entries，entry 使用 `ref`、`label` 和可选结构化 facts；readable outline 只保留 `ref` 和派生 `display`。
 - protocol find 是扁平 matches，match 使用同一 entry fact shape；readable find 只保留 `ref` 和派生 `display`。
 - ref 从 outline 原样交给 read。
@@ -17,12 +17,12 @@
 
 | 边界 | 请求 | 响应 |
 | --- | --- | --- |
-| adapter invoke | [protocol-outline-request.json](json/protocol-outline-request.json) | [protocol-outline-response.json](json/protocol-outline-response.json) |
+| protocol-json | [protocol-outline-request.json](json/protocol-outline-request.json) | [protocol-outline-response.json](json/protocol-outline-response.json) |
 | readable JSON | 不适用 | [readable-outline.json](json/readable-outline.json) |
 
 默认 CLI `readable-view` 输出由 pretty JSON header 承载相同 readable 字段；无 block 的 outline 不产生 block section。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
 
-invoke 请求显式传入 `page: 1`、`limit: 80` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
+protocol 请求显式传入 `page: 1`、`limit: 80` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
 ## Ref 与 Read
 
@@ -36,7 +36,7 @@ H:L4:H2
 
 | 边界 | 请求 | 响应 |
 | --- | --- | --- |
-| adapter invoke | [protocol-read-request.json](json/protocol-read-request.json) | [protocol-read-response.json](json/protocol-read-response.json) |
+| protocol-json | [protocol-read-request.json](json/protocol-read-request.json) | [protocol-read-response.json](json/protocol-read-response.json) |
 | readable JSON | 不适用 | [readable-read.json](json/readable-read.json) |
 
 默认 CLI `readable-view` read 输出将 `/content` 外置为 block，header 中保留 `ref`、`content_type`、由 `cost.measurements[]` 派生的 `cost` 摘要和 `page`。需要直接解析 `content` 字符串的示例和工具应使用 `--output readable-json`。
@@ -56,6 +56,7 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 - [error-unknown-argv.json](json/error-unknown-argv.json)
 - [error-extra-positional.json](json/error-extra-positional.json)
 - [error-operation-inapplicable-flag.json](json/error-operation-inapplicable-flag.json)
+- [error-adapter-option-invalid.json](json/error-adapter-option-invalid.json)
 - [error-explicit-adapter-failure.json](json/error-explicit-adapter-failure.json)
 - [error-explicit-config-failure.json](json/error-explicit-config-failure.json)
 - [error-unknown-config-field.json](json/error-unknown-config-field.json)
@@ -70,7 +71,7 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 
 ## 配置示例
 
-- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav-markdown` JSON 配置文件的文档化字段，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
+- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 core `docnav` 配置中 Markdown native option 相关字段的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
 
 配置示例只证明文件形状和示例值。配置发现、字段映射、来源合并、失败边界和字段语义由 [标准参数](../standard-parameters.md)、[适配器契约](../adapter-contract.md) 和 [Markdown Adapter](../adapters/markdown.md) 拥有。
 
@@ -78,4 +79,4 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 
 原始协议和阅读输出由不同 schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。protocol 示例证明 raw 结构化字段；readable 示例证明从 raw facts 派生出的 `display`、成本摘要和错误投影形态。
 
-示例只证明 protocol/readable、manifest、probe 和配置文件示例的 documented shape 与投影结果。direct CLI strict failure、primary diagnostic projection、protocol-json stdout purity、adapter machine command 边界、配置读取行为、diagnostic stack semantics 和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。
+示例只证明 protocol/readable、manifest、probe 和配置文件示例的 documented shape 与投影结果。Core CLI strict failure、primary diagnostic projection、protocol-json stdout purity、adapter inspection 边界、配置读取行为、diagnostic stack semantics 和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。

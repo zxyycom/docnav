@@ -29,7 +29,7 @@ Markdown 文档在首个 heading 前常放置 YAML frontmatter、摘要、序言
 
 ## Impact
 
-- 影响 `docnav-markdown` parser、outline、find、read、direct CLI 配置与 adapter-owned option schema。
+- 影响 `docnav-markdown` parser、outline、find、read、core CLI/config native option handoff 与 adapter-owned option schema。
 - 影响 Markdown config schema/example、Markdown smoke/adapter tests 和 `docs/adapters/markdown.md`。
 - 不改变其它 adapter 的 ref grammar；不要求共享层理解 Markdown frontmatter、preamble 或多 metadata block 方言。
 - 不新增 outline 顶层字段；protocol/readable output 继续使用既有 outline entries 和 read content block 形态。

@@ -5,7 +5,7 @@
 ### Requirement: 核心 CLI 必须严格拒绝无效显式输入
 `docnav` core CLI MUST 将 caller-provided argv、operation arguments、explicit adapter selection、explicit path/ref/query/page/limit/output values 和 explicit config declarations 作为 strict public input。Unknown flags、extra positional arguments，以及 selected command 或 operation 不支持的 flags MUST 在 document execution 前返回 input diagnostic。
 
-Core CLI MUST 将 valid document argv 映射为 canonical document operation input 或等价 semantic request，再进入 adapter routing、invoke request construction 和 output dispatch。CLI boundary 可见的 invalid input MUST 在 document execution 前完成 strict rejection。Direct CLI parser/help implementation MAY continue to use `clap`。
+Core CLI MUST 将 valid document argv 映射为 canonical document operation input 或等价 semantic request，再进入 adapter routing、internal operation request construction 和 output dispatch。CLI boundary 可见的 invalid input MUST 在 document execution 前完成 strict rejection。Direct CLI parser/help implementation MAY continue to use `clap`。
 
 Input diagnostics MUST 包含 stable error code、argument 或 field location、可安全暴露的 received value/token、expected command shape 或 accepted values，并在 owner 可生成时包含至少一个 actionable repair hint。
 
@@ -37,14 +37,14 @@ Input diagnostics MUST 包含 stable error code、argument 或 field location、
 #### Scenario: 有效 argv 仍进入共享语义管道
 - **WHEN** 调用方执行有效的 `docnav outline/read/find/info` CLI 命令
 - **THEN** document CLI input 映射为 canonical document operation input 或等价 semantic request
-- **THEN** adapter routing、invoke request 构造和 output mode 分流使用共享逻辑
+- **THEN** adapter routing、internal operation request 构造和 output mode 分流使用共享逻辑
 - **THEN** CLI 不创建独立业务参数解释路径
 
 #### Scenario: Help 不执行业务
 - **WHEN** 调用方执行 `docnav --help`
 - **OR** 执行 core 子命令 help
 - **THEN** 输出列出可用命令、关键参数、默认值或可选值
-- **THEN** 该命令不读取文档、不选择 adapter、不启动 adapter invoke
+- **THEN** 该命令不读取文档、不选择 adapter、不 dispatch linked adapter handler
 
 ## MODIFIED Requirements
 
@@ -120,7 +120,7 @@ Core CLI document output enum/help/config MUST expose only `readable-view`, `rea
 - **THEN** `docnav` 在 adapter routing 和 document operation 执行前返回
 
 ### Requirement: Core CLI 必须复用共享 helper 且保留 core policy owner
-`docnav` core CLI MUST reuse shared diagnostics, direct CLI argv parsing/mapping, JSON IO and document output orchestration helpers where they exist. Core CLI MUST continue to own adapter routing, configuration, project root handling, adapter process startup, registry command resolution, non-document command behavior and concrete core exit code enum.
+`docnav` core CLI MUST reuse shared diagnostics, direct CLI argv parsing/mapping, JSON IO and document output orchestration helpers where they exist. Core CLI MUST continue to own adapter routing, configuration, project root handling, linked adapter dispatch, registry command resolution, non-document command behavior and concrete core exit code enum.
 
 Shared argv helper usage MUST serve strict parsing/mapping and diagnostics. It MAY be implemented with `clap` command definitions and shared error mapping. Unknown flags, extra positional values and operation-inapplicable known flags MUST fail before successful document execution.
 
@@ -128,7 +128,7 @@ Shared argv helper usage MUST serve strict parsing/mapping and diagnostics. It M
 - **WHEN** core document CLI parses unknown flags, extra positional values or known flags that are not applicable to the selected operation
 - **THEN** it uses `clap` strict parsing, shared direct CLI argv mapping or equivalent strict diagnostics helper
 - **THEN** core CLI returns an input diagnostic before adapter routing
-- **THEN** core document CLI and adapter `invoke` stdin JSON both reject invalid direct input at their owner boundary
+- **THEN** core document CLI and protocol request handling both reject invalid direct input at their owner boundary
 
 #### Scenario: Core diagnostic construction 只服务 primary DiagnosticRecord
 - **WHEN** core CLI renders a strict input failure

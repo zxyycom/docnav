@@ -3,9 +3,10 @@ name = "docnav-markdown"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+autobins = false
 
 [dependencies]
-docnav-adapter-sdk = { path = "../docnav-adapter-sdk" }
+docnav-adapter-contracts.workspace = true
 docnav-protocol.workspace = true
 pulldown-cmark.workspace = true
 serde.workspace = true

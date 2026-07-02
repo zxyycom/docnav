@@ -1,3 +1,4 @@
+mod adapter_command;
 mod argument_helpers;
 mod config_command;
 mod document;
@@ -43,6 +44,7 @@ where
         command_names::READ => document::parse_document_command(Operation::Read, rest),
         command_names::FIND => document::parse_document_command(Operation::Find, rest),
         command_names::INFO => document::parse_document_command(Operation::Info, rest),
+        command_names::ADAPTER => adapter_command::parse_adapter_command(rest),
         command_names::CONFIG => config_command::parse_config_command(rest),
         command_names::INIT => {
             utility_command::parse_utility_command(CliCommand::Init, command_names::INIT, rest)
@@ -60,29 +62,38 @@ where
 }
 
 fn help_text(args: &[String]) -> Option<String> {
-    if !args.iter().any(|arg| arg == "--help" || arg == "-h") {
+    if !args.iter().any(|arg| is_help_flag(arg)) {
         return None;
     }
     let mut root = cli_command();
     let Some(first) = args.first().map(String::as_str) else {
         return Some(root.render_long_help().to_string());
     };
-    if first == "--help" || first == "-h" {
+    if is_help_flag(first) {
         return Some(root.render_long_help().to_string());
     }
     let Some(command) = root.find_subcommand_mut(first) else {
         return Some(root.render_long_help().to_string());
     };
-    if first == command_names::CONFIG {
-        if let Some(second) = args.get(1).map(String::as_str) {
-            if second != "--help" && second != "-h" {
-                if let Some(subcommand) = command.find_subcommand_mut(second) {
-                    return Some(subcommand.render_long_help().to_string());
-                }
-            }
+    if let Some(second) = nested_help_subcommand(first, args) {
+        if let Some(subcommand) = command.find_subcommand_mut(second) {
+            return Some(subcommand.render_long_help().to_string());
         }
+        return None;
     }
     Some(command.render_long_help().to_string())
+}
+
+fn nested_help_subcommand<'a>(first: &str, args: &'a [String]) -> Option<&'a str> {
+    if !matches!(first, command_names::CONFIG | command_names::ADAPTER) {
+        return None;
+    }
+    let second = args.get(1).map(String::as_str)?;
+    (!is_help_flag(second)).then_some(second)
+}
+
+fn is_help_flag(arg: &str) -> bool {
+    arg == "--help" || arg == "-h"
 }
 
 #[cfg(test)]

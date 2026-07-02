@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/protocol-request.schema.json",
-  "$comment": "Protocol request arguments are adapter invoke explicit input. This schema validates the envelope and registered argument field shapes; unmapped public argument fields fail unless they are inside a declared adapter-owned options source.",
+  "$comment": "Protocol request arguments are adapter layer explicit operation input. This schema validates the envelope and shared argument field shapes. Native options remain an opaque object; core classifies and merges them through the source-level static option registry, while adapter-side consumption owns unsupported/type/range validation.",
   "oneOf": [
     {
       "$ref": "#/$defs/outline"

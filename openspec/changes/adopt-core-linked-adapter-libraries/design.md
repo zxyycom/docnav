@@ -39,7 +39,7 @@ Owner 分工：
 - 默认 document operation adapter implementation 收敛到随 core release 交付的 adapter-layer workspace crates。
 - Adapter-layer library 保持独立 workspace crate，不作为默认独立包体交付。
 - 默认 release 包含全部内置 adapter；默认 adapter set 不通过 feature gate 裁剪。
-- Core 使用一个统一 static adapter registry 注册内置 adapter identity、metadata、capabilities、需求声明和 implementation handle。
+- Core 使用一个统一 static adapter registry 注册内置 adapter identity、metadata、capabilities、source-level native option registry entries、需求声明和 implementation handle。
 - 默认执行来源不再来自独立 adapter package、外部 executable、command path 或历史 adapter artifact record。
 - 动态 adapter registration 和 artifact management commands 从默认 CLI surface 删除。
 - Adapter layer 继续作为代码和契约边界存在，并保留 parser、navigation、ref、pagination 和 native option ownership。
@@ -66,7 +66,7 @@ Owner 分工：
 
 ### Decision 2: Static adapter registry 是 compile/package-time 事实源
 
-Core 维护一个统一 static adapter registry，注册当前 release 内置 adapter crates 的 adapter id、identity metadata、format metadata、capabilities、需求声明和 adapter layer implementation handle。
+Core 维护一个统一 static adapter registry，注册当前 release 内置 adapter crates 的 adapter id、identity metadata、format metadata、capabilities、source-level native option registry entries、需求声明和 adapter layer implementation handle。
 
 该 registry 是 compile/package-time 事实源，不是运行时动态注册表。Adapter crate 需要实现指定 adapter layer interface，并在 core registry 中显式注册自身需求和能力。
 
@@ -74,7 +74,7 @@ Core 维护一个统一 static adapter registry，注册当前 release 内置 ad
 
 Adapter implementation 被 core release 包含并由 `docnav` 直接作为库调用，但 adapter layer 仍是代码和契约边界。Adapter 仍拥有 parser、format detection、navigation strategy、ref generation/parsing、pagination result 和 native option semantics。
 
-Core 可以调用 adapter layer API，但不能解析 adapter ref、重建格式结构、解释 native option 或合成格式专属 `options`。Ref 在 core 和接入层仍是 opaque pass-through value。
+Core 可以调用 adapter layer API，但不能解析 adapter ref、重建格式结构、解释 native option 或合成格式专属 `options`。Native option registry entries 只提供 source 分类、merge metadata 和 handoff 事实；unsupported option、type mismatch 和 range invalid 由消费该 option 的 adapter 产生结构化诊断。Ref 在 core 和接入层仍是 opaque pass-through value。
 
 ### Decision 4: 动态 adapter management 和历史 registration 材料删除
 
@@ -96,7 +96,7 @@ Adapter layer 不再需要独立 direct CLI 或 `invoke` 来参与默认 documen
 
 默认不新增独立 `docnav-adapter-support` crate。只有在实现中出现跨 adapter 的重复工具且放入 `docnav-adapter-contracts` 会污染 contract boundary 时，才重新评估是否拆出 support crate。
 
-Adapter layer interface 优先采用最小 building blocks：ref splitter、locator、format support check、parser/navigation primitives。若实现证明这些 primitives 过度细分、显著增加 adapter 开发复杂度且没有实际收益，可以把接口粒度扩大到 `outline/read/find/info` operation handlers；扩大前必须回到 design/spec/tasks 更新理由、边界和测试入口。
+本 change 最终采用 operation-handler granularity：adapter handle 暴露 static descriptor metadata、support check、source-level native option registry entries，以及 `outline/read/find/info` operation handlers。早期 primitive split（ref splitter、locator、format support check、parser/navigation primitives）会要求 `docnav-navigation` 组合格式内部步骤，把 parser/ref/navigation 细节跨过 adapter/core 边界暴露出来；当前实现没有证明这种细分能带来产品收益。Operation handlers 保留 adapter-owned parser、ref、navigation、pagination 和 native option ownership，同时让 `docnav-navigation` 只负责 request construction、handler dispatch 和 operation flow。
 
 ### Decision 7: Local service mode 后置为 core service 性能问题
 
@@ -120,7 +120,7 @@ Adapter layer interface 优先采用最小 building blocks：ref splitter、loca
 3. 创建或调整 adapter-layer workspace crates，确保默认 release 直接包含全部内置 adapter，且默认 adapter set 不依赖 feature gate。
 4. 实现 core static adapter registry，并把 adapter implementation source、inspection 和 doctor 统一到该 registry。
 5. 移除动态 adapter registration/artifact management CLI surface 和历史 adapter registration 材料。
-6. 将现有 SDK 残留能力收敛到 `docnav-navigation` 和 `docnav-adapter-contracts`，优先实现最小 adapter building-block interface。
+6. 将现有 SDK 残留能力收敛到 `docnav-navigation` 和 `docnav-adapter-contracts`，采用 operation-handler adapter interface granularity。
 7. 更新测试，覆盖 built-in static registry source boundary、dynamic management command removal、historical registration material removed、protocol/readable output 不变和 ref opaque pass-through。
 
 Rollback 策略：如实现期间发现 core release 内置 adapter layer 无法满足已实现 adapter 的必要边界，停止实现并回到本 change 更新 design/spec。

@@ -44,10 +44,11 @@ Existing smoke task: `CORE-CONFIG-001`
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- 真实 CLI 边界按文档优先级解析 user、project 和 default config，包括 `defaults.pagination.enabled` 与 `defaults.pagination.limit`。
+- 真实 CLI 边界按文档优先级解析 user、project 和 default config，包括 `defaults.pagination.enabled`、`defaults.pagination.limit` 与 source-level static native option registry 暴露的 `options.max_heading_level`。
 - `config list --path` 会报告被选中文档路径对应的 adapter 和 defaults context。
-- disabled pagination 在进入 adapter invoke request 前归一为最大 positive limit，request 只包含最终 `limit` 和 `page`。
-- `defaults.limit` 按 hard switch 被拒绝，不再形成 core `LIMIT` 参数来源。
+- Config 层只证明 key/source/shape 与来源合并；`options.max_heading_level` 的类型和范围错误由 Markdown adapter-side validation case 证明。
+- disabled pagination 在进入 adapter layer request 前归一为最大 positive limit，request 只包含最终 `limit` 和 `page`。
+- `defaults.limit` 按 hard switch 被拒绝，并通过 structured `unknown_config_field` / `config_issues` 诊断报告配置来源、路径和字段。
 
 ### BB-CORE-SELECT-001 显式 adapter 失败返回 selection diagnostic
 Status: implemented
@@ -57,24 +58,25 @@ Code: `test/smoke/core/cases/adapter-selection.ts`
 Proves:
 - 显式选择的 adapter 失败时返回 adapter selection diagnostic，不隐藏为 registry fallback。
 - 未显式声明 adapter 的 automatic discovery 全部失败时，candidate failures 从属于 primary diagnostic details。
+- 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
 
-### BB-CORE-FAIL-001 Candidate 进程失败投影为格式候选摘要
+### BB-CORE-FAIL-001 Candidate support failure 投影为格式候选摘要
 Status: implemented
 Existing smoke task: `CORE-FAIL-001`
 Code: `test/smoke/core/cases/failures.ts`
 
 Proves:
-- candidate discovery 阶段的进程失败被报告为 `FORMAT_UNKNOWN` candidate summary。
-- candidate failure 不会被折叠成 selected adapter invoke failure。
+- candidate discovery 阶段的 built-in adapter support check failure 被报告为 `FORMAT_UNKNOWN` candidate summary。
+- candidate failure 不会被折叠成 selected adapter layer failure。
 
-### BB-CORE-INVOKE-001 已选 adapter 进程失败映射为 invoke failure
+### BB-CORE-SOURCE-001 Historical adapter registry 不参与默认执行来源
 Status: implemented
-Existing smoke task: `CORE-INVOKE-001`
+Existing smoke task: `CORE-SOURCE-001`
 Code: `test/smoke/core/cases/failures.ts`
 
 Proves:
-- adapter selection 之后的进程失败映射为 `ADAPTER_INVOKE_FAILED`。
-- selected invoke failure 与 format discovery failure 保持阶段区分。
+- 损坏的历史 `.docnav/adapters.json` 不影响 core release 内置 adapter dispatch。
+- 默认 document operation 不从 historical registration material、external executable 或 command path 读取 implementation source。
 
 ### BB-CORE-TOOLS-001 Core 非 document 命令保持可用
 Status: implemented
@@ -85,96 +87,14 @@ Proves:
 - `init`、`version`、`doctor` 和 document help 能通过真实 CLI 执行。
 - 非 document 命令在 smoke 层保持预期输出和退出行为。
 
-### BB-MD-LINK-001 Markdown 直接 CLI 保持文档链路
+### BB-CORE-ADAPTER-MGMT-001 Core adapter inspection 命令覆盖
 Status: implemented
-Existing smoke task: `MD-LINK-001`
-Code: `test/smoke/markdown/cases/outputs.ts`
+Existing smoke task: `CORE-ADAPTER-MGMT-001`
+Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- `docnav-markdown` 在真实进程边界完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info`。
-- 直接 CLI 的 `readable-json` 暴露 ref 和 content，不泄漏 protocol envelope。
-
-### BB-MD-OUTPUT-001 Markdown 直接 CLI 输出模式分层
-Status: implemented
-Existing smoke task: `MD-OUTPUT-001`
-Code: `test/smoke/markdown/cases/outputs.ts`
-
-Proves:
-- 直接 `readable-json`、显式/默认 `readable-view` 和 `protocol-json` read 输出通过不同包装表达等价文档内容。
-- 直接 adapter CLI 不把 protocol envelope 字段泄漏到 readable output。
-
-### BB-MD-MACHINE-001 直接 machine 命令保持协议形状
-Status: implemented
-Existing smoke task: `MD-MACHINE-001`
-Code: `test/smoke/markdown/cases/machine-commands.ts`
-
-Proves:
-- 直接 `manifest`、`probe` 和 valid `invoke` 输出保持 machine-readable 且 schema-valid。
-- machine command path 不经过 `readable-view` 包装。
-
-### BB-MD-CORPUS-001 Unicode corpus 分页可重组
-Status: implemented
-Existing smoke task: `MD-CORPUS-001`
-Code: `test/smoke/markdown/cases/corpus.ts`
-
-Proves:
-- Unicode outline/read 输出在进程边界保持有效。
-- 分页 read 可以按 page 继续读取并重组，且不丢失内容。
-
-### BB-MD-ARGS-001 Markdown 直接 CLI 拒绝缺失 operation 参数
-Status: implemented
-Existing smoke task: `MD-ARGS-001`
-Code: `test/smoke/markdown/cases/cli-args.ts`
-
-Proves:
-- operation-owned 必需参数缺失时，直接 adapter CLI 返回稳定 input failure。
-- 该 smoke case 代表这一类外部参数错误，不扩展成 token 组合矩阵。
-
-### BB-MD-BOUNDARY-001 Markdown strict argv failure 保持可观察
-Status: implemented
-Existing smoke task: `MD-BOUNDARY-001`
-Code: `test/smoke/markdown/cases/cli-args.ts`
-
-Proves:
-- document help 不执行文档导航，并继续展示可纠错参数说明。
-- unknown argv、多余 positional、operation-inapplicable flag 和 undeclared native option 在 handler execution 前返回 primary input diagnostic。
-- `protocol-json` invalid input stdout 保持 protocol failure envelope，不退回文本错误或成功响应。
-
-### BB-MD-CONFIG-001 Markdown 直接 CLI 配置可观察
-Status: implemented
-Existing smoke task: `MD-CONFIG-001`
-Code: `test/smoke/markdown/cases/config.ts`
-
-Proves:
-- `docnav-markdown` direct CLI 按显式 argv、项目级配置、用户级配置和内置默认值合并 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 与 `options.max_heading_level`。
-- disabled pagination 在进入 Markdown operation 前归一为最大 positive limit，operation 只接收最终 `limit` 和 `page`。
-- 配置路径覆盖替代默认路径；默认配置路径缺失表示 absent；显式或 present invalid config source 返回 primary config diagnostic，不继续合并其它来源。
-- document operation help 展示配置路径参数但不读取配置；`manifest` 和 `probe` 不执行 document operation 配置读取；`invoke` 不执行 adapter direct CLI argv parsing 或 help。
-
-### BB-MD-ERROR-001 Markdown ref 错误跨输出模式一致映射
-Status: implemented
-Existing smoke task: `MD-ERROR-001`
-Code: `test/smoke/markdown/cases/operation-errors.ts`
-
-Proves:
-- 同一个 invalid ref 在 `readable-json` 和 `protocol-json` 直接 CLI 输出中一致映射。
-- ref error shape 在 adapter process boundary 保持稳定。
-
-### BB-MD-INVOKE-001 Malformed invoke stdin 返回 protocol failure
-Status: implemented
-Existing smoke task: `MD-INVOKE-001`
-Code: `test/smoke/markdown/cases/invoke-errors.ts`
-
-Proves:
-- malformed `invoke` stdin 返回稳定 protocol error envelope。
-- 直接 adapter 进程把 invoke 错误保留在 protocol path，而不是暴露 raw parser failure。
-
-### BB-CORE-ADAPTER-MGMT-001 Core adapter 管理命令覆盖
-Status: planned
-
-Proves:
-- `adapter list/install/update/remove` 覆盖正式流程、manifest 校验、fingerprint 边界和错误映射。
-- 实现触发条件：adapter management 命令具备可执行测试入口后，将本 case 改为 `implemented` 并补 `Code:`/`@case`。
+- `adapter list` 输出 core release static registry 内置 adapter metadata。
+- `doctor` 报告 static registry 和 adapter layer 可用性。
 
 ### BB-RELEASE-PACKAGE-001 发布包二进制 smoke
 Status: planned
@@ -254,11 +174,27 @@ Proves:
 
 ### WB-CORE-ADAPTER-001 Core 校验 adapter contract 对齐
 Status: implemented
-Code: `crates/docnav/src/adapter_output_contract/tests.rs`
+Code: `crates/docnav/src/registry.rs`
 
 Proves:
-- Core 区分 adapter discovery、selection、invoke process 和 malformed adapter output 边界。
-- manifest、probe 和 protocol response 的 schema invalid / semantic invalid path 保持可诊断。
+- Core static registry 包含 release 内置 Markdown adapter descriptor metadata。
+- 内置 adapter descriptor capabilities 与 registry id 保持一致。
+
+### WB-CORE-ADAPTER-SURFACE-001 Core adapter command surface 保持静态注册表边界
+Status: implemented
+Code: `crates/docnav/src/cli/parser/tests.rs`
+
+Proves:
+- `adapter list` 解析为 static registry inspection command。
+- `adapter install/register/update/remove` 不再是默认有效 CLI commands。
+
+### WB-CORE-ADAPTER-SOURCE-001 Core adapter selection guidance 保持静态来源边界
+Status: implemented
+Code: `crates/docnav/src/routing.rs`
+
+Proves:
+- 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
+- guidance 指向 current core release static registry，不把 `install`、`register`、external executable 或 historical artifact 作为默认修复路径。
 
 ### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
 Status: implemented
@@ -446,109 +382,26 @@ Proves:
 - Missing required values, invalid mapped values, optional mapped JSON null, static defaults and dynamic default source values all pass through typed-field validation and do not expose unsafe typed values.
 - Explicit or present invalid config sources return blocking config diagnostics while default missing config sources remain absent without diagnostics.
 - Unmapped public input returns source-scoped blocking diagnostics；owner-scoped native option sources can be delegated to adapter/native option owner with source info preserved.
+- Source-level static native option registry preserves owner/namespace/type variants, including same option name across multiple owners or value kinds, and generic merge does not collapse them into a single core type.
+- Core standard parameter resolution hands off final native option values without selected-adapter support/type/range prevalidation.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
-### WB-SDK-PAGE-001 共享 adapter paging 一致按字符计数
+### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影
 Status: implemented
-Code: `crates/docnav-adapter-sdk/src/paging/tests.rs`
+Code: `crates/docnav-adapter-contracts/src/lib.rs`
 
 Proves:
-- SDK paging helper 使用 character count，不使用 byte slice 截断。
-- entry pagination 保留完整 ref，截断 display 时保持 continuation 行为可观察。
+- 默认 unsupported operation 通过 adapter contract 映射为 `CAPABILITY_UNSUPPORTED` protocol error。
+- Adapter error exit category、owner 和 stable details 不依赖 direct adapter CLI 或 adapter subprocess。
 
-### WB-SDK-EXECUTE-001 SDK operation dispatch 保持 typed request 边界
+### WB-NAVIGATION-DISPATCH-001 Navigation request construction and adapter dispatch 稳定
 Status: implemented
-Code: `crates/docnav-adapter-sdk/src/tests/execute.rs`
+Code: `crates/docnav-navigation/src/lib.rs`
 
 Proves:
-- SDK 根据 request operation 分发 typed adapter handler。
-- operation 和 arguments 不匹配时返回稳定 invalid request。
-
-### WB-SDK-ERROR-001 SDK error exit code 映射稳定
-Status: implemented
-Code: `crates/docnav-adapter-sdk/src/tests/error.rs`
-
-Proves:
-- diagnostic code 到 adapter exit code 的映射保持稳定。
-- adapter error 不能使用 success exit code。
-
-### WB-SDK-BOUNDARY-001 SDK manifest/probe boundary 不污染 stdout
-Status: implemented
-Code: `crates/docnav-adapter-sdk/src/tests/boundary.rs`
-
-Proves:
-- invalid manifest、adapter id drift、invalid probe 和 probe adapter id drift 都不会写 machine stdout。
-- schema/semantic failure 通过 stderr 诊断保持可定位。
-
-### WB-SDK-DIRECT-ARGS-001 Direct adapter argv strictness 不消费必需输入
-Status: implemented
-Code: `crates/docnav-adapter-sdk/src/direct/args/tests.rs`
-
-Proves:
-- direct adapter argv strictness 保持 operation argument ownership。
-- unused、future、unknown 或 extra argv 返回 input diagnostic，不能静默改变 operation 的 required arguments。
-- Direct adapter document operations consume standard parameter resolution output for path/ref/query/page/limit/output, while declared native options remain adapter-owned sources.
-
-### WB-SDK-DIRECT-CONFIG-001 Direct adapter config sources 保持参数来源边界
-Status: implemented
-Code: `crates/docnav-adapter-sdk/src/direct/config/tests.rs`
-
-Proves:
-- SDK direct CLI config source 规则从启动 cwd 解析项目级和用户级配置路径，支持覆盖路径，并在默认用户配置目录缺失时回退到启动 cwd。
-- 配置源读取只映射 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 和 declared `options` object；默认缺失源视为 absent，显式或 present invalid source 产生 blocking config diagnostic。
-- `defaults.limit` 按 hard switch 被拒绝，不再形成 `LIMIT` 参数来源。
-- direct CLI 参数来源按显式 argv、项目级配置、用户级配置和内置默认值合并，并把不适用于当前 operation 的 config native option 映射为 input/config diagnostic。
-
-### WB-SDK-DIRECT-OUTPUT-001 Direct adapter document output 复用共享输出
-Status: implemented
-Code: `crates/docnav-adapter-sdk/src/direct/output/tests.rs`
-
-Proves:
-- direct adapter readable-view 写失败映射为 IO error diagnostic。
-- direct adapter readable-json success 使用共享 document output path。
-
-### WB-SDK-MACHINE-001 Adapter machine commands 不被 readable 包装
-Status: implemented
-Code: `crates/docnav-adapter-sdk/src/tests/command.rs`
-
-Proves:
-- Adapter machine commands 返回 protocol、manifest 或 probe shape，不经过 `readable-view` wrapping。
-- SDK command dispatch 保持 machine command boundary。
-
-### WB-SDK-INVOKE-001 Adapter invoke request handling 保持 protocol 所有权
-Status: implemented
-Code: `crates/docnav-adapter-sdk/src/tests/invoke.rs`
-
-Proves:
-- SDK invoke 从 stdin 读取 protocol request，并在 invoke path 返回 protocol response。
-- request decode failure、manifest failure 和 handler error failure 不落入 direct readable CLI output。
-- Standard parameter normalization runs after protocol request decode and preserves `arguments.options` as an owner-scoped native option source before adapter handler dispatch.
-- Adapter invoke 可用配置和内置默认值补足缺失的已注册 pagination 参数。
-- disabled pagination 在进入 adapter handler 前归一为最大 positive limit，且不会新增 protocol `pagination` 字段。
-
-### WB-MD-CLI-001 Markdown direct CLI 与 invoke 结果一致
-Status: implemented
-Code: `crates/docnav-markdown/tests/cli.rs`
-
-Proves:
-- direct readable JSON 和 invoke protocol result 对 outline、info、find 返回同一业务结果。
-- 直接 CLI 和 invoke 共享 adapter execution path。
-
-### WB-MD-CLI-ERROR-001 Markdown direct CLI ref error 输出分层
-Status: implemented
-Code: `crates/docnav-markdown/tests/cli.rs`
-
-Proves:
-- direct CLI ref error 在 readable-json、protocol-json 和 readable-view 中保持稳定映射。
-- grammar 外 ref 样本保持错误输出 shape 稳定。
-
-### WB-MD-CLI-WRITE-001 Markdown direct CLI 写失败诊断稳定
-Status: implemented
-Code: `crates/docnav-markdown/src/cli/tests.rs`
-
-Proves:
-- readable-view output write failure 返回稳定 diagnostic。
-- 该测试聚焦 direct CLI writer 边界，真实进程行为由 smoke case 覆盖。
+- `docnav-navigation` 将 core operation input 映射为 protocol request arguments。
+- 缺失 operation-owned input 在 navigation boundary 返回 typed input error。
+- Adapter library handle dispatch 返回 protocol success/failure envelope，不需要 adapter subprocess。
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
@@ -660,11 +513,12 @@ Proves:
 
 ### WB-MD-OPTIONS-001 Markdown adapter-owned options 控制可见粒度
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
+Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - `max_heading_level` options 同时影响 outline 和 find 的 visible heading granularity。
-- options shape 保持 adapter-owned，不上移到 core。
+- `max_heading_level` 通过 source-level static native option registry 进入 generic merge，options shape 保持 adapter-owned，不上移为 core-owned 字段。
+- Markdown adapter consumes the final option value and returns adapter-owned diagnostics for unsupported option, type mismatch, or values outside `1..6`.
 
 ### WB-MD-META-001 Markdown manifest/probe/info 元数据稳定
 Status: implemented
@@ -676,23 +530,15 @@ Proves:
 
 ### WB-MD-ERROR-001 Markdown adapter document error 稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
+Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - non-UTF-8 document 返回稳定 encoding error。
 - 结构快照 ref 在文档变化后返回 `REF_NOT_FOUND` 而非 `REF_INVALID`。
 
-### WB-MD-INVOKE-001 Markdown adapter invoke 写 protocol envelope
-Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
-
-Proves:
-- Markdown adapter 的 SDK invoke path 写出 protocol response envelope。
-- direct adapter handler result 不绕过 protocol wrapper。
-
 ### WB-MD-DISPLAY-001 Markdown outline/find display 保留可读文本
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/options_error_invoke_display.rs`
+Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - outline display 包含 heading title，find display 包含 match snippet。
@@ -736,6 +582,7 @@ Code: `test/tools/smoke-harness.test.ts`
 Proves:
 - independent smoke tasks 可以并发运行，同时 command count 按 report 隔离。
 - failed task、nested task group、默认 runner 的 stdout/stderr command record 和 concurrency validation 保持预期 audit result shape。
+- core smoke repository temp root 在运行前创建并在运行结束后清理；清理失败或残留不得改变 command output contract。
 
 ```mermaid
 flowchart LR
