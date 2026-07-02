@@ -108,6 +108,11 @@ impl AdapterRecord {
             .filter(|option| option.applies_to(operation))
             .collect()
     }
+
+    #[cfg(test)]
+    pub(crate) const fn from_adapter(adapter: &'static dyn Adapter) -> Self {
+        Self { adapter }
+    }
 }
 
 impl std::fmt::Debug for AdapterRecord {
@@ -161,21 +166,18 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<Value> {
         .iter()
         .map(|adapter| {
             let manifest = adapter.manifest();
-            let status = if manifest.adapter.id == adapter.id()
-                && manifest.validate_semantics().is_ok()
-                && !manifest.capabilities.is_empty()
-            {
-                "pass"
-            } else {
-                "fail"
-            };
+            let status =
+                if manifest.adapter.id == adapter.id() && manifest.validate_semantics().is_ok() {
+                    "pass"
+                } else {
+                    "fail"
+                };
             json!({
                 "name": "adapter_layer",
                 "status": status,
                 "adapter_id": adapter.id(),
                 "version": manifest.adapter.version,
                 "formats": manifest.formats,
-                "capabilities": capabilities(&manifest.capabilities),
                 "message": if status == "pass" {
                     "built-in adapter layer metadata is available"
                 } else {
@@ -193,52 +195,8 @@ fn adapter_metadata(adapter: &AdapterRecord) -> Value {
         "name": manifest.adapter.name,
         "version": manifest.adapter.version,
         "formats": manifest.formats,
-        "capabilities": capabilities(&manifest.capabilities),
     })
 }
 
-fn capabilities(capabilities: &[Operation]) -> Vec<&'static str> {
-    capabilities
-        .iter()
-        .map(|operation| operation.as_str())
-        .collect()
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    // @case WB-CORE-ADAPTER-001
-    #[test]
-    fn static_registry_contains_built_in_markdown_adapter() {
-        let registry = AdapterRegistry { adapters: ADAPTERS };
-        let record = registry
-            .find("docnav-markdown")
-            .expect("built-in markdown adapter");
-
-        let manifest = record.manifest();
-
-        assert_eq!(record.id(), "docnav-markdown");
-        assert_eq!(manifest.adapter.id, "docnav-markdown");
-        assert!(manifest.capabilities.contains(&Operation::Outline));
-        assert!(manifest.capabilities.contains(&Operation::Read));
-        assert!(manifest.capabilities.contains(&Operation::Find));
-        assert!(manifest.capabilities.contains(&Operation::Info));
-    }
-
-    #[test]
-    fn static_registry_exposes_full_native_option_specs() {
-        let registry = AdapterRegistry { adapters: ADAPTERS };
-        let native_options = registry.native_options_for(Operation::Outline);
-
-        assert!(registry.has_native_option_config_key("options.max_heading_level"));
-        assert!(registry
-            .native_option_config_keys()
-            .contains(&"options.max_heading_level".to_owned()));
-        assert!(native_options.iter().any(|option| {
-            option.owner == "docnav-markdown"
-                && option.namespace == "options"
-                && option.key == "max_heading_level"
-        }));
-    }
-}
+mod tests;

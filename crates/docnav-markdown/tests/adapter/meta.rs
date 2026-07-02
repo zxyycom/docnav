@@ -2,7 +2,7 @@ use super::*;
 
 // @case WB-MD-META-001
 #[test]
-fn manifest_declares_markdown_v0_capabilities() {
+fn manifest_declares_markdown_v0_identity_and_formats() {
     let manifest = MarkdownAdapter.manifest();
 
     manifest.validate_semantics().expect("manifest semantics");
@@ -15,16 +15,6 @@ fn manifest_declares_markdown_v0_capabilities() {
     assert!(manifest.formats[0]
         .content_types
         .contains(&"text/markdown".to_owned()));
-    assert_eq!(
-        manifest.capabilities,
-        vec![
-            Operation::Outline,
-            Operation::Read,
-            Operation::Find,
-            Operation::Info
-        ]
-    );
-
     let value = serde_json::to_value(&manifest).expect("manifest JSON");
     assert!(value.get("protocol").is_none());
     assert!(value.get("recommended_parameters").is_none());
@@ -47,7 +37,7 @@ fn probe_returns_format_evidence_without_navigation_payload() {
 }
 
 #[test]
-fn info_returns_markdown_summary_and_capabilities() {
+fn info_returns_markdown_summary() {
     let path = write_doc("info.md", "# A\nBody\n");
     let arguments = InfoArguments { options: None };
     let request = make_request(
@@ -69,14 +59,5 @@ fn info_returns_markdown_summary_and_capabilities() {
             .as_ref()
             .and_then(|adapter| adapter.format.as_deref()),
         Some("markdown")
-    );
-    assert_eq!(
-        info.capabilities,
-        vec![
-            Operation::Outline,
-            Operation::Read,
-            Operation::Find,
-            Operation::Info
-        ]
     );
 }

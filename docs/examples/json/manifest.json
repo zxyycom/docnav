@@ -16,11 +16,5 @@
         "text/markdown"
       ]
     }
-  ],
-  "capabilities": [
-    "outline",
-    "read",
-    "find",
-    "info"
   ]
 }

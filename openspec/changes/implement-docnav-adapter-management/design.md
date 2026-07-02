@@ -25,12 +25,12 @@
    - Project/user config 和 CLI 只能选择 registry 中已有 adapter id，不能提供 executable 或 command path。
 
 2. `adapter list` 是 inspection，不是 management。
-   - 输出 adapter id、version、format metadata 和 capabilities。
+   - 输出 adapter id、version 和 format metadata。
    - 不读取 `.docnav/adapters.json`、用户级安装 registry、managed artifact record 或 fingerprint。
 
 3. Dynamic management commands 被删除。
    - `install/register/update/remove` 作为默认命令必须失败。
-   - 后续若重新引入动态 extension model，必须新开 change 并重新审计 security、distribution 和 compatibility 边界。
+   - 后续若重新引入动态 adapter distribution model，必须新开 change 并重新审计 security、distribution 和 compatibility 边界。
 
 ## Risks / Trade-offs
 

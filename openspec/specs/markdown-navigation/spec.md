@@ -3,13 +3,12 @@
 ## Purpose
 定义 Markdown 导航能力，包括 Markdown adapter 的 manifest metadata、probe、outline、read、find、info、ref handling、pagination、core CLI output 和边界案例验证。
 ## Requirements
-### Requirement: Markdown adapter 必须声明完整 v0 能力
-Core-linked Markdown adapter MUST expose manifest metadata through its static descriptor and `docnav-adapter-contracts` handle，并声明 Markdown 格式身份、扩展名、content type，以及 `outline`、`read`、`find`、`info` 全部 capability。Manifest 字段集合 MUST 排除协议范围字段和 `recommended_parameters`，且不声明默认参数或 native option values。
+### Requirement: Markdown adapter 必须提供完整 v0 文档操作
+Core-linked Markdown adapter MUST expose manifest metadata through its static descriptor and `docnav-adapter-contracts` handle，并声明 Markdown 格式身份、扩展名和 content type。`outline`、`read`、`find`、`info` 的固定文档操作面由 adapter contract 和 linked handler methods 定义。Manifest 字段集合 MUST 排除协议范围字段和 `recommended_parameters`，且不声明默认参数、native option values 或文档操作集合。
 
 #### Scenario: 读取 linked adapter metadata
 - **WHEN** 调用方执行 `docnav adapter list`
 - **THEN** 输出包含 core release static registry 中的 Markdown adapter metadata
-- **THEN** capabilities 包含 `outline`、`read`、`find` 和 `info`
 - **THEN** manifest 字段集合不包含 `protocol.min` 或 `protocol.max`
 - **THEN** manifest 字段集合不包含 `recommended_parameters`
 
@@ -70,12 +69,12 @@ Markdown find MUST 按 query 搜索 Markdown 文档并返回 matches，每个 ma
 - **THEN** find 不把 match 默认归到全文 ref
 
 ### Requirement: info 必须返回 Markdown 紧凑摘要
-Markdown info MUST 返回格式原生的紧凑摘要，至少表达格式身份、能力集合和 adapter 可读摘要。
+Markdown info MUST 返回格式原生的紧凑摘要，至少表达格式身份、文档事实和 adapter 可读摘要。
 
 #### Scenario: info Markdown 文档
 - **WHEN** 调用方执行 Markdown info
 - **THEN** 结果包含 Markdown content type
-- **THEN** 结果表达 adapter 支持的 capability 集合
+- **THEN** 结果表达 Markdown adapter 的可读摘要
 
 ### Requirement: Markdown 分页必须按 Unicode 字符预算
 Markdown outline、read 和 find MUST 按 UTF-8 解码后的 Unicode 字符计数分页，MUST 保证 page 可继续，且 MUST 不切断 Unicode 字符。
@@ -150,7 +149,7 @@ Smoke suite 必须覆盖：
 
 #### Scenario: adapter inspection 使用 core registry
 - **WHEN** smoke 测试执行 `docnav adapter list`
-- **THEN** 输出包含 linked Markdown adapter 的 id、version、formats 和 capabilities
+- **THEN** 输出包含 linked Markdown adapter 的 id、version 和 formats
 - **THEN** adapter inspection 不要求独立 Markdown executable
 
 #### Scenario: strict argv failure path 被覆盖
@@ -174,9 +173,9 @@ Smoke suite 必须覆盖：
 
 #### Scenario: registry metadata find info 被覆盖
 - **WHEN** smoke suite 执行 adapter inspection、find 和 info
-- **THEN** registry metadata 声明 Markdown capabilities 和 supported formats
+- **THEN** registry metadata 声明 Markdown supported formats
 - **THEN** find 返回带 ref 和 page 状态的 matches
-- **THEN** info 返回 Markdown 摘要和 capabilities
+- **THEN** info 返回 Markdown 摘要
 - **THEN** core CLI document operations 通过 linked Markdown adapter handler dispatch
 
 #### Scenario: JSON 输出通过 schema 或等价结构校验

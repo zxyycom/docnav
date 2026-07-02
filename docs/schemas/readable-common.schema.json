@@ -2,14 +2,6 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/readable-common.schema.json",
   "$defs": {
-    "capability": {
-      "enum": [
-        "outline",
-        "read",
-        "find",
-        "info"
-      ]
-    },
     "entry": {
       "type": "object",
       "required": [

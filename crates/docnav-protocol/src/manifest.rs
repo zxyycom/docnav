@@ -1,15 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use crate::Operation;
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Manifest {
     pub manifest_version: String,
     pub adapter: AdapterIdentity,
     pub formats: Vec<FormatDescriptor>,
-    pub capabilities: Vec<Operation>,
 }
 
 impl Manifest {

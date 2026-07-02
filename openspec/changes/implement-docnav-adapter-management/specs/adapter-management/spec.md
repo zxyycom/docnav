@@ -5,7 +5,7 @@
 
 #### Scenario: Static registry inspection
 - **WHEN** a caller executes `docnav adapter list`
-- **THEN** output includes adapter id, version, supported formats, and capabilities for built-in adapter layer implementations
+- **THEN** output includes adapter id, version, and supported formats for built-in adapter layer implementations
 - **THEN** no historical adapter registration file or installed adapter artifact is read
 
 ### Requirement: dynamic adapter management commands MUST NOT be default CLI commands

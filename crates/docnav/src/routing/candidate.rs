@@ -1,4 +1,4 @@
-use docnav_protocol::{Manifest, Operation, ProbeResult};
+use docnav_protocol::ProbeResult;
 use serde_json::json;
 
 use super::CandidateEvidence;
@@ -10,65 +10,15 @@ pub(super) enum CandidateResult {
     Continue(CandidateEvidence),
 }
 
-pub(super) struct ExtensionInference {
-    pub(super) adapter_id: Option<String>,
-    pub(super) evidence: Vec<CandidateEvidence>,
-}
-
 #[derive(Clone, Debug)]
 pub(super) struct SelectedCandidate {
     pub(super) record: AdapterRecord,
-}
-
-pub(super) fn infer_adapter_by_extension(
-    registry: &AdapterRegistry,
-    document: &NormalizedDocumentPath,
-    operation: Operation,
-) -> ExtensionInference {
-    let extension = document_extension(&document.adapter_path);
-    let Some(extension) = extension else {
-        return ExtensionInference {
-            adapter_id: None,
-            evidence: Vec::new(),
-        };
-    };
-    let mut evidence = Vec::new();
-
-    for record in registry.adapters {
-        let manifest = record.manifest();
-        if !manifest_matches_extension(&manifest, &extension) {
-            continue;
-        }
-        if let Err(candidate) = capability_for_candidate(record, &manifest, operation) {
-            evidence.push(candidate);
-            continue;
-        }
-        return ExtensionInference {
-            adapter_id: Some(record.id().to_owned()),
-            evidence,
-        };
-    }
-
-    ExtensionInference {
-        adapter_id: None,
-        evidence,
-    }
-}
-
-fn manifest_matches_extension(manifest: &Manifest, extension: &str) -> bool {
-    manifest.formats.iter().any(|format| {
-        format
-            .extensions
-            .iter()
-            .any(|candidate| candidate.eq_ignore_ascii_case(extension))
-    })
 }
 
 pub(super) fn evaluate_preselected(
     registry: &AdapterRegistry,
     adapter_id: &str,
     document: &NormalizedDocumentPath,
-    operation: Operation,
 ) -> CandidateResult {
     let Some(record) = registry.find(adapter_id) else {
         return CandidateResult::Continue(CandidateEvidence::resolve(
@@ -79,20 +29,13 @@ pub(super) fn evaluate_preselected(
         ));
     };
 
-    evaluate_candidate(record, document, operation)
+    evaluate_candidate(record, document)
 }
 
 pub(super) fn evaluate_candidate(
     record: &AdapterRecord,
     document: &NormalizedDocumentPath,
-    operation: Operation,
 ) -> CandidateResult {
-    let manifest = record.manifest();
-
-    if let Err(candidate) = capability_for_candidate(record, &manifest, operation) {
-        return CandidateResult::Continue(candidate);
-    }
-
     let probe = probe_for_candidate(record, document);
     if let Err(candidate) = probe_is_valid(record, document, &probe) {
         return CandidateResult::Continue(candidate);
@@ -108,26 +51,6 @@ pub(super) fn evaluate_candidate(
     }
 
     CandidateResult::Selected(Box::new(SelectedCandidate { record: *record }))
-}
-
-fn capability_for_candidate(
-    record: &AdapterRecord,
-    manifest: &Manifest,
-    operation: Operation,
-) -> Result<(), CandidateEvidence> {
-    if manifest.capabilities.contains(&operation) {
-        return Ok(());
-    }
-
-    Err({
-        let reason = format!("adapter does not declare capability {operation}");
-        CandidateEvidence::resolve(
-            record.id(),
-            "CAPABILITY_UNSUPPORTED",
-            reason,
-            json!({ "capability": operation, "adapter_id": record.id() }),
-        )
-    })
 }
 
 fn probe_for_candidate(record: &AdapterRecord, document: &NormalizedDocumentPath) -> ProbeResult {
@@ -168,13 +91,4 @@ fn probe_is_valid(
         ));
     }
     Ok(())
-}
-
-fn document_extension(path: &str) -> Option<String> {
-    let basename = path.rsplit('/').next().unwrap_or(path);
-    let dot = basename.rfind('.')?;
-    if dot == 0 {
-        return None;
-    }
-    Some(basename[dot..].to_owned())
 }

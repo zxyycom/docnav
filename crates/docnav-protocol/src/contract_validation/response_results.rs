@@ -2,12 +2,10 @@ use serde_json::Value;
 
 use crate::constants::schema_names;
 
-use super::field_builders::operation_value_fields;
 use super::helpers::{
     extend_owned_path, operation_name, reject_unknown_fields, validate_field_set,
     validate_object_array_items, validate_object_array_items_with_owned_prefix, validate_object_at,
-    validate_object_at_with_owned_prefix, validate_value_array_items, value_at, ObjectArraySpec,
-    ValueArraySpec,
+    validate_object_at_with_owned_prefix, value_at, ObjectArraySpec,
 };
 use super::response_fields::{
     response_cost_fields, response_entry_fields, response_find_result_fields,
@@ -41,7 +39,7 @@ fn success_result_shape(result: &Value) -> Option<&'static str> {
         .any(|field| object.contains_key(*field))
     {
         Some("read")
-    } else if ["capabilities", "document", "adapter", "metadata"]
+    } else if ["document", "adapter", "metadata"]
         .iter()
         .any(|field| object.contains_key(*field))
     {
@@ -122,16 +120,6 @@ fn validate_info_result(value: &Value, errors: &mut Vec<String>) {
     );
     validate_info_document(value, &["result", "document"], errors);
     validate_info_adapter(value, &["result", "adapter"], errors);
-    validate_value_array_items(
-        value,
-        &["result", "capabilities"],
-        &[],
-        ValueArraySpec {
-            schema: schema_names::PROTOCOL_RESPONSE,
-            build: operation_value_fields,
-        },
-        errors,
-    );
 }
 
 fn validate_entry_array(value: &Value, path: &[&str], errors: &mut Vec<String>) {

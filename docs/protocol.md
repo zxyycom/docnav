@@ -144,7 +144,6 @@ page:
 ### InfoResult
 
 ```text
-capabilities  array<string>, required
 document:
   content_type string, optional
   encoding     string, optional
@@ -158,7 +157,7 @@ adapter:
 metadata  object, optional
 ```
 
-`capabilities` 保持必需并表示 adapter 当前可执行的 operation 集合。`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。原始协议不返回 info `display`；阅读输出从这些事实派生可读摘要。
+`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。标准文档操作集合由 adapter contract、`Operation` enum 和 required adapter trait methods 定义，不由 info result 自报。原始协议不返回 info `display`；阅读输出从这些事实派生可读摘要。
 
 ## 分页模型
 
@@ -194,16 +193,15 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 | `DOCUMENT_ENCODING_UNSUPPORTED` | `path`、`encoding` |
 | `FORMAT_UNKNOWN` | `path`、`reason`、`candidates`；primary record 可使用 `candidate_failures` 列表表达同一候选摘要 |
 | `FORMAT_AMBIGUOUS` | `path`、`candidates` |
-| `CAPABILITY_UNSUPPORTED` | `capability`、`adapter_id` |
 | `REF_NOT_FOUND` | `ref` |
 | `REF_AMBIGUOUS` | `ref`、`candidate_count` |
 | `REF_INVALID` | `ref`、`reason` |
 | `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason`；`selection_source`、`stage` 可选 |
 | `INTERNAL_ERROR` | `error_id` |
 
-`selection_source` 和 `stage` 只在声明式 adapter 选择失败需要区分来源和失败阶段时出现；自动 discovery 的候选失败列表使用 `FORMAT_UNKNOWN`/`FORMAT_AMBIGUOUS` candidate summary 表达。
+`selection_source` 和 `stage` 只在声明式 adapter 选择失败需要区分来源和失败阶段时出现；自动 discovery 的候选 probe 失败列表使用 `FORMAT_UNKNOWN`/`FORMAT_AMBIGUOUS` candidate summary 表达。
 
-`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；primary `DiagnosticRecord.details.candidate_failures` 使用同一元素 shape。每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`MANIFEST_INVALID`、`ADAPTER_UNAVAILABLE`、`CAPABILITY_UNSUPPORTED`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload 和人类说明文案由内部错误通道按各自契约承载。
+`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；primary `DiagnosticRecord.details.candidate_failures` 使用同一元素 shape。每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`ADAPTER_UNAVAILABLE`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload 和人类说明文案由内部错误通道按各自契约承载。Manifest metadata invalid 和 missing linked handler 属于 adapter layer invariant failure，不进入默认 automatic discovery candidate reason set。
 
 错误 message 和 guidance 是可定制文案；调用方只解析 code、owner 和 stable details。`INVALID_REQUEST` 可以在 top-level projection 中附带 `location`、`received` 或 `expected`，也可以在 details 中附带 `field_issues`、`typed_validation_failures`、`config_issues` 或 `option_issues`。Core key/source/shape failures 使用 `field_issues` 或 `config_issues`；adapter-owned native option validation 使用 `option_issues` 表达 option owner、namespace/key、source、reason_code，以及可用的 type_variant、received 和 expected。range/type failure 必须在 top-level projection 或对应 option issue 中提供可比较的 received/expected 信息。显式 adapter 不存在时仍返回 adapter selection diagnostic，不投影为 option validation error。这些补充字段不得替代必需的 `field` 和 `reason`。
 

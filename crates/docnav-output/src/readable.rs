@@ -28,7 +28,6 @@ pub fn readable_payload(result: &OperationResult) -> Result<Value, DocumentOutpu
         }),
         OperationResult::Info(result) => json!({
             "display": info_display(result),
-            "capabilities": result.capabilities,
         }),
     };
     to_readable_value(&value).map_err(DocumentOutputError::ReadablePayload)

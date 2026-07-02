@@ -4,7 +4,7 @@
 
 - [测试用例维护](testing/case-maintenance.md)：测试函数变更时的 case 归属、`@case` 标记和账本更新流程。
 - [测试用例编号账本](testing/cases.md)：最终 case 条目、证明目标和源码 `@case` 标记映射。
-- [覆盖矩阵](testing/coverage.md)：跨入口、命令族和 capability 的最低覆盖目标。
+- [覆盖矩阵](testing/coverage.md)：跨入口、命令族和文档操作的最低覆盖目标。
 - [发布包验证](testing/release.md)：release package 的本地预验收和 CI/CD 验证边界。
 
 稳定字段、错误码、命令语义、adapter 行为和字段形状以 [文档导航](navigation.md#规则所有权) 指向的 owner 文档为准；测试文档只记录覆盖目标和验收边界。

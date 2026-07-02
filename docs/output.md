@@ -10,7 +10,7 @@
 
 机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；错误发生在 CLI 参数解析、adapter 选择、adapter layer dispatch 或输出转换阶段时，只要输出模式可以从 argv 或请求中确定，也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
 
-统一执行管线按 [架构](architecture.md#adapter-选择) 累积 automatic discovery 候选失败并写入错误通道；全部候选失败时，这些记录从属于 primary `DiagnosticRecord.details.candidate_failures`。后续候选成功时，候选失败保持 internal discovery state，不进入 public document output。
+统一执行管线按 [适配器契约](adapter-contract.md#adapter-选择) 累积 automatic discovery 候选失败并写入错误通道；全部候选失败时，这些记录从属于 primary `DiagnosticRecord.details.candidate_failures`。后续候选成功时，候选失败保持 internal discovery state，不进入 public document output。
 
 ## `protocol-json`
 
@@ -35,7 +35,7 @@ docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
 
 用途：文档操作的默认输出模式。人类和 AI 直接阅读，信息密度高，开箱即可定位内容。输出由一个 pretty JSON header 和零个或多个 length-delimited block section 组成。调用方和测试通过字段名和值、block pointer 和 UTF-8 byte length 判断语义；JSON header object key 顺序和多个 block section 的输出顺序不作为稳定契约。
 
-成功 header 始终只包含阅读层操作字段（ref、display、content_type、cost、page、capabilities 等）和该 operation 拥有的 success payload 字段。outline/find 的 `display` 由 raw item facts 派生；read 的 `cost` 是由 `cost.measurements[]` 派生的人类可读摘要。renderer config 声明为 block 的字符串字段（例如 read 的 `/content`、readable error 的 `/error`）在 header 中以 `{"$block": "<pointer>", "bytes": <utf8-byte-length>}` 引用替代；实际字符串内容写入 `[block <pointer> bytes=<n>]` ... `[endblock <pointer>]` section。
+成功 header 始终只包含阅读层操作字段（ref、display、content_type、cost、page 等）和该 operation 拥有的 success payload 字段。outline/find 的 `display` 由 raw item facts 派生；read 的 `cost` 是由 `cost.measurements[]` 派生的人类可读摘要。renderer config 声明为 block 的字符串字段（例如 read 的 `/content`、readable error 的 `/error`）在 header 中以 `{"$block": "<pointer>", "bytes": <utf8-byte-length>}` 引用替代；实际字符串内容写入 `[block <pointer> bytes=<n>]` ... `[endblock <pointer>]` section。
 
 renderer config 是仓库内提交的代码契约，不通过用户配置、项目配置、环境变量或 CLI flag 控制。声明：
 

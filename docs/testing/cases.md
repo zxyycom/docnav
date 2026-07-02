@@ -57,16 +57,16 @@ Code: `test/smoke/core/cases/adapter-selection.ts`
 
 Proves:
 - 显式选择的 adapter 失败时返回 adapter selection diagnostic，不隐藏为 registry fallback。
-- 未显式声明 adapter 的 automatic discovery 全部失败时，candidate failures 从属于 primary diagnostic details。
+- 未显式声明 adapter 的 automatic discovery 全部 probe 失败时，candidate failures 从属于 primary diagnostic details。
 - 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
 
-### BB-CORE-FAIL-001 Candidate support failure 投影为格式候选摘要
+### BB-CORE-FAIL-001 Candidate probe failure 投影为格式候选摘要
 Status: implemented
 Existing smoke task: `CORE-FAIL-001`
 Code: `test/smoke/core/cases/failures.ts`
 
 Proves:
-- candidate discovery 阶段的 built-in adapter support check failure 被报告为 `FORMAT_UNKNOWN` candidate summary。
+- candidate discovery 阶段的 built-in adapter probe failure 被报告为 `FORMAT_UNKNOWN` candidate summary。
 - candidate failure 不会被折叠成 selected adapter layer failure。
 
 ### BB-CORE-SOURCE-001 Core adapter source 来自 static registry
@@ -175,11 +175,12 @@ Proves:
 
 ### WB-CORE-ADAPTER-001 Core 校验 adapter contract 对齐
 Status: implemented
-Code: `crates/docnav/src/registry.rs`
+Code: `crates/docnav/src/registry/tests.rs`
 
 Proves:
 - Core static registry 包含 release 内置 Markdown adapter descriptor metadata。
-- 内置 adapter descriptor capabilities 与 registry id 保持一致。
+- 内置 adapter 通过 required handler methods 覆盖 `outline`、`read`、`find` 和 `info` 全部文档操作。
+- Adapter layer check 将 manifest id 与 registry id 不一致视为 adapter layer invalid。
 
 ### WB-CORE-ADAPTER-SURFACE-001 Core adapter command surface 保持静态注册表边界
 Status: implemented
@@ -191,11 +192,14 @@ Proves:
 
 ### WB-CORE-ADAPTER-SOURCE-001 Core adapter selection guidance 保持静态来源边界
 Status: implemented
-Code: `crates/docnav/src/routing.rs`
+Code: `crates/docnav/src/routing/tests.rs`, `crates/docnav/src/runtime/tests.rs`
 
 Proves:
 - 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
 - guidance 指向 current core release static registry 和当前可用 adapter id。
+- Automatic discovery 按 static registry 顺序执行 probe，扩展名 metadata 不改变候选顺序。
+- 无 declared adapter 的 `config list --path` context source 暴露为 `automatic_discovery`，不使用 inference 语义。
+- Selection candidate failure 由 resolve/probe 证据产生，不由 manifest metadata 产生。
 
 ### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
 Status: implemented
@@ -387,12 +391,12 @@ Proves:
 - Core standard parameter resolution hands off final native option values without selected-adapter filtering or type/range prevalidation.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
-### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影
+### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影边界
 Status: implemented
 Code: `crates/docnav-adapter-contracts/src/lib.rs`
 
 Proves:
-- 默认 unsupported operation 通过 adapter contract 映射为 `CAPABILITY_UNSUPPORTED` protocol error。
+- 默认 adapter layer 必须提供全部文档操作 handler；missing linked handler 属于 adapter layer invariant failure，不作为默认 selection candidate failure。
 - Adapter error exit category、owner 和 stable details 不依赖 direct adapter CLI 或 adapter subprocess。
 
 ### WB-NAVIGATION-DISPATCH-001 Navigation request construction and adapter dispatch 稳定
@@ -526,8 +530,8 @@ Status: implemented
 Code: `crates/docnav-markdown/tests/adapter/meta.rs`
 
 Proves:
-- manifest 声明 Markdown v0 capabilities，probe 返回 format evidence 而不泄漏 navigation payload。
-- info 返回 Markdown summary 和 capabilities。
+- manifest 声明 Markdown v0 identity 和 format metadata，probe 返回 format evidence 而不泄漏 navigation payload。
+- info 返回 Markdown summary。
 
 ### WB-MD-ERROR-001 Markdown adapter document error 稳定
 Status: implemented

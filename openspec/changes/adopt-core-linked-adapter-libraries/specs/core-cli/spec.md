@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Core release 内置 adapter-layer workspace crates 必须成为默认 document operation implementation 来源
-`docnav` MUST use adapter-layer workspace crates shipped with the current core release as default document operation adapter implementations. The default release MUST include all built-in adapters without using feature gates to select the default adapter set. Project config、user config and CLI input MAY select or hint an adapter only when that adapter resolves to an implementation registered in the current core release static adapter registry. Registry entries MUST expose source-level static descriptors containing adapter identity、capabilities、native option registry entries and operation handler bindings. Project/user config、installed packages、external executables、command paths and historical adapter artifact records MUST NOT provide default document operation implementation. The adapter layer MUST remain a code and contract boundary, not a separate default distribution boundary.
+`docnav` MUST use adapter-layer workspace crates shipped with the current core release as default document operation adapter implementations. The default release MUST include all built-in adapters without using feature gates to select the default adapter set. CLI input and effective project/user config MAY declare an adapter id only through `--adapter` or `defaults.adapter`, and that id MUST resolve to an implementation registered in the current core release static adapter registry. Registry entries MUST expose source-level static descriptors containing adapter identity、native option registry entries and operation handler bindings. Project/user config、installed packages、external executables、command paths and historical adapter artifact records MUST NOT provide default document operation implementation. The adapter layer MUST remain a code and contract boundary, not a separate default distribution boundary.
 
 #### Scenario: 默认发行物包含 adapter implementation
 - **WHEN** 构建默认 `docnav` 发行物
@@ -13,7 +13,7 @@
 
 #### Scenario: Static descriptor supplies operation bindings
 - **WHEN** core registry resolves the built-in Markdown adapter
-- **THEN** the registry entry exposes a static descriptor with Markdown capabilities, native option registry entries and handler bindings
+- **THEN** the registry entry exposes a static descriptor with Markdown identity, native option registry entries and handler bindings
 - **THEN** core standard parameter resolution can merge and hand off final native option values for linked dispatch
 - **THEN** Markdown adapter handler validates consumed option support, type and range semantics
 
@@ -37,7 +37,7 @@
 
 #### Scenario: 列出 core release 内置 adapter libraries
 - **WHEN** 调用方执行 `docnav adapter list`
-- **THEN** 输出只包含当前 core release static adapter registry 中的 adapter id、version、supported formats 和 capabilities
+- **THEN** 输出只包含当前 core release static adapter registry 中的 adapter id、version 和 supported formats
 
 #### Scenario: Adapter diagnostics do not define process exit code
 - **WHEN** a linked adapter handler returns a structured diagnostic
@@ -75,7 +75,7 @@
 - **THEN** 该命令不会写入 adapter registry、project config 或 user config
 
 ### Requirement: adapter selection source 必须来自当前 core release static registry
-`docnav` MUST choose adapter candidates only from the current core release static adapter registry. Declared adapter ids、format/content-type hints、path information and adapter-owned support checks MAY guide candidate selection, ranking or validation, but they MUST NOT cause `docnav` to load an implementation from installed packages、external executables、command paths or historical adapter artifact records. Candidate traversal details and diagnostic field shape are not changed by this requirement except that failure guidance MUST NOT present dynamic adapter registration as the default remediation path.
+`docnav` MUST choose adapter candidates only from the current core release static adapter registry. Declared adapter id MUST come only from `--adapter` or the effective `defaults.adapter` config value. With a declared adapter id, `docnav` MUST look up only the same-id static registry entry and probe it; missing registry entry or `supported: false` MUST be returned as adapter selection diagnostics without fallback. Without a declared adapter id, `docnav` MUST traverse the static registry in registry order and select the first adapter whose probe returns `supported: true`. Format facts、content type facts、path information、registry metadata、manifest metadata and probe metadata remain outside core candidate ordering; probe result is the only runtime support decision for each candidate. Candidate traversal details and diagnostic field shape are not changed by this requirement except that failure guidance MUST NOT present dynamic adapter registration as the default remediation path.
 
 #### Scenario: 声明式 adapter 不存在后不回退到外部实现
 - **WHEN** 调用方传入 `--adapter custom-local-adapter` 但当前 core release static adapter registry 中不存在该 adapter id
@@ -85,8 +85,10 @@
 #### Scenario: 未声明 adapter 时只遍历 registry candidates
 - **WHEN** 调用方没有传入 `--adapter`
 - **AND** 配置没有指定 `defaults.adapter`
-- **THEN** `docnav` MAY use request input、registry metadata and adapter-owned support checks to select an adapter
-- **THEN** every candidate implementation comes from the current core release static adapter registry
+- **THEN** `docnav` traverses the current core release static adapter registry in registry order
+- **THEN** `docnav` probes each adapter until the first `supported: true` result is found
+- **THEN** request input、registry metadata、manifest metadata and probe metadata do not change runtime candidate order
+- **THEN** registry order and probe results determine the selected adapter
 
 #### Scenario: 所有内置候选失败
 - **WHEN** 当前 core release static adapter registry 中没有 adapter 能校验目标文档

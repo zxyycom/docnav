@@ -17,7 +17,7 @@
 **Non-Goals:**
 
 - Markdown 和其它格式内容由 adapter 解析；MCP bridge 只处理 tool 输入输出包装。
-- Adapter support checks、格式识别和 adapter 选择由核心 `docnav` CLI 执行。
+- Adapter probe、格式识别和 adapter 选择由核心 `docnav` CLI 执行。
 - Adapter 安装管理由 adapter 管理 change 实现。
 - MCP structuredContent 使用 readable schema；protocol envelope 通过 `docnav --output protocol-json` 供机器稳定解析。
 

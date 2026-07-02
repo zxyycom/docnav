@@ -13,14 +13,6 @@ export function validateManifestSemantics() {
     "manifest example must describe docnav-markdown",
   );
 
-  const capabilities = jsonArray(manifest[FIELDS.capabilities], "manifest capabilities");
-  for (const capability of MARKDOWN_MANIFEST_EXPECTED.capabilities) {
-    assert(
-      capabilities.includes(capability),
-      `markdown manifest example missing capability ${capability}`,
-    );
-  }
-
   const formats = jsonArray(manifest[FIELDS.formats], "manifest formats");
   const markdownFormat = formats.find(
     (format): format is Record<string, unknown> =>
@@ -42,5 +34,5 @@ export function validateManifestSemantics() {
     "markdown manifest example missing text/markdown content type",
   );
 
-  console.log("manifest example consistency ok: markdown capabilities and format");
+  console.log("manifest example consistency ok: markdown identity and format");
 }

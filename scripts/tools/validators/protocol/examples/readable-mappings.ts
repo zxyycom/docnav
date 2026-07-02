@@ -34,7 +34,6 @@ function toReadablePayload(operation: string, protocolResult: unknown): unknown 
     case OPERATION_NAMES.info:
       return {
         display: infoDisplay(result),
-        capabilities: result[FIELDS.capabilities],
       };
     default:
       throw new Error(`unknown operation ${operation}`);

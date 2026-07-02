@@ -148,21 +148,6 @@ impl FormatCandidateDetails {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct CapabilityAdapterDetails {
-    pub capability: String,
-    pub adapter_id: String,
-}
-
-impl CapabilityAdapterDetails {
-    pub fn new(capability: impl Into<String>, adapter_id: impl Into<String>) -> Self {
-        Self {
-            capability: capability.into(),
-            adapter_id: adapter_id.into(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RefDetails {
     #[serde(rename = "ref")]
     pub ref_id: String,

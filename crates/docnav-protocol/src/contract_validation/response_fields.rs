@@ -181,16 +181,6 @@ pub(super) fn response_find_result_fields() -> Result<FieldDefSet, FieldDefSetBu
 pub(super) fn response_info_result_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
         .field_with_declaration_path(
-            ["result", "capabilities"],
-            FieldDef::builder("result.capabilities")
-                .process(
-                    super::JSON_CONTRACT_PROCESSING,
-                    json_path(["result", "capabilities"]),
-                )
-                .validation(non_empty_unique_array()),
-            ExpectedFieldShape::required(),
-        )
-        .field_with_declaration_path(
             ["result", "document"],
             object_field("result.document", ["result", "document"]),
             ExpectedFieldShape::optional(),

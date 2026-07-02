@@ -5,8 +5,7 @@
   "required": [
     "manifest_version",
     "adapter",
-    "formats",
-    "capabilities"
+    "formats"
   ],
   "properties": {
     "manifest_version": {
@@ -69,19 +68,6 @@
         },
         "additionalProperties": false
       }
-    },
-    "capabilities": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "enum": [
-          "outline",
-          "read",
-          "find",
-          "info"
-        ]
-      },
-      "uniqueItems": true
     }
   },
   "additionalProperties": false

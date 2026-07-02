@@ -130,6 +130,23 @@ fn core_linked_markdown_reports_user_native_option_source() {
     );
 }
 
+#[test]
+fn config_path_context_reports_automatic_discovery_adapter_source() {
+    let (_workspace, project_root) =
+        markdown_project("config-path-context-automatic-discovery-source", "# One\n");
+    let context = default_context(project_root);
+    let (path, operation, defaults) =
+        resolve_context_defaults("docs/guide.md".to_owned(), None, &context).unwrap();
+
+    let output = AdapterRuntime
+        .describe_document_context(path, operation, defaults, &context)
+        .unwrap();
+
+    assert_eq!(output.adapter.selected.as_deref(), Some("docnav-markdown"));
+    assert_eq!(output.adapter.source, "automatic_discovery");
+    assert_ne!(output.adapter.source, "inferred");
+}
+
 fn assert_invalid_native_option_source(
     workspace_name: &str,
     project_option: Option<Value>,

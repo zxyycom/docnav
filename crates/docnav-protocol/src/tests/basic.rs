@@ -85,10 +85,6 @@ fn protocol_error_codes_use_diagnostic_categories() {
             ProtocolErrorCategory::Request,
         ),
         (
-            ProtocolDiagnosticCode::CapabilityUnsupported,
-            ProtocolErrorCategory::Request,
-        ),
-        (
             ProtocolDiagnosticCode::DocumentNotFound,
             ProtocolErrorCategory::Document,
         ),

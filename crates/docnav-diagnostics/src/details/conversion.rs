@@ -1,6 +1,6 @@
 use super::{
-    AdapterReasonDetails, BoundaryDetails, CapabilityAdapterDetails, DiagnosticDetails,
-    FieldReasonDetails, FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
+    AdapterReasonDetails, BoundaryDetails, DiagnosticDetails, FieldReasonDetails,
+    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
     PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
@@ -59,15 +59,6 @@ impl From<FormatAmbiguousDetails> for DiagnosticDetails {
         Self::FormatAmbiguous {
             path: details.path,
             candidates: details.candidates,
-        }
-    }
-}
-
-impl From<CapabilityAdapterDetails> for DiagnosticDetails {
-    fn from(details: CapabilityAdapterDetails) -> Self {
-        Self::CapabilityAdapter {
-            capability: details.capability,
-            adapter_id: details.adapter_id,
         }
     }
 }

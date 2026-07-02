@@ -18,7 +18,6 @@ pub(super) fn default_owner_for_code(code: ProtocolDiagnosticCode) -> &'static s
         ProtocolDiagnosticCode::DocumentNotFound
         | ProtocolDiagnosticCode::DocumentPathInvalid
         | ProtocolDiagnosticCode::DocumentEncodingUnsupported
-        | ProtocolDiagnosticCode::CapabilityUnsupported
         | ProtocolDiagnosticCode::RefNotFound
         | ProtocolDiagnosticCode::RefAmbiguous
         | ProtocolDiagnosticCode::RefInvalid => "adapter",
@@ -50,9 +49,6 @@ pub const fn protocol_error_default_guidance(code: ProtocolDiagnosticCode) -> &'
             "Use a supported document format or select a built-in adapter from this release."
         }
         ProtocolDiagnosticCode::FormatAmbiguous => "Select an adapter explicitly.",
-        ProtocolDiagnosticCode::CapabilityUnsupported => {
-            "Use an operation supported by the selected adapter."
-        }
         ProtocolDiagnosticCode::RefNotFound => "Run outline again and use a returned ref.",
         ProtocolDiagnosticCode::RefAmbiguous => "Use a more specific ref from outline.",
         ProtocolDiagnosticCode::RefInvalid => "Use a valid ref returned by outline.",
@@ -78,9 +74,6 @@ pub const fn protocol_error_default_message(code: ProtocolDiagnosticCode) -> &'s
         ProtocolDiagnosticCode::FormatUnknown => protocol_error_messages::DOCUMENT_FORMAT_UNKNOWN,
         ProtocolDiagnosticCode::FormatAmbiguous => {
             protocol_error_messages::DOCUMENT_FORMAT_AMBIGUOUS
-        }
-        ProtocolDiagnosticCode::CapabilityUnsupported => {
-            protocol_error_messages::CAPABILITY_UNSUPPORTED
         }
         ProtocolDiagnosticCode::RefNotFound => protocol_error_messages::REF_NOT_FOUND,
         ProtocolDiagnosticCode::RefAmbiguous => protocol_error_messages::REF_AMBIGUOUS,

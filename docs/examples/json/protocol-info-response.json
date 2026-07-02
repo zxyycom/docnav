@@ -4,12 +4,6 @@
   "operation": "info",
   "ok": true,
   "result": {
-    "capabilities": [
-      "outline",
-      "read",
-      "find",
-      "info"
-    ],
     "document": {
       "content_type": "text/markdown",
       "encoding": "utf-8",

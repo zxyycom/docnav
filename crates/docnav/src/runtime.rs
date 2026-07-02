@@ -86,7 +86,6 @@ impl DocnavRuntime for AdapterRuntime {
         let selection = select_adapter(AdapterSelectionRequest {
             registry: &registry,
             document: &document,
-            operation: request.operation,
             preselected_adapter_id,
             preselected_adapter_source: request.defaults.adapter.source.as_str(),
         })?;
@@ -130,7 +129,6 @@ impl DocnavRuntime for AdapterRuntime {
         let selection = select_adapter(AdapterSelectionRequest {
             registry: &registry,
             document: &document,
-            operation: effective_operation,
             preselected_adapter_id,
             preselected_adapter_source: defaults.adapter.source.as_str(),
         })?;
@@ -141,7 +139,7 @@ impl DocnavRuntime for AdapterRuntime {
             adapter: AdapterContextOutput {
                 selected: Some(selection.record.id().to_owned()),
                 source: adapter_source(&defaults.adapter, &selection.evidence),
-                note: "selected built-in adapter passed static metadata and support checks"
+                note: "selected built-in adapter resolved from static registry and probe succeeded"
                     .to_owned(),
             },
             defaults,
@@ -278,7 +276,7 @@ fn adapter_source(
     if preselected.value != Value::Null {
         preselected.source.clone()
     } else if evidence.is_empty() {
-        "inferred".to_owned()
+        "automatic_discovery".to_owned()
     } else {
         "registry".to_owned()
     }

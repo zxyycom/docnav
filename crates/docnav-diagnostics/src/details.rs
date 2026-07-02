@@ -7,10 +7,10 @@ mod conversion;
 mod payload;
 
 pub use payload::{
-    AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails, CapabilityAdapterDetails,
-    DiagnosticDetailsPayload, FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails,
-    FormatUnknownDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
-    RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails, DiagnosticDetailsPayload,
+    FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails, FormatUnknownDetails,
+    InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails,
+    RefDetails, RefReasonDetails,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -213,10 +213,6 @@ pub enum DiagnosticDetails {
     FormatAmbiguous {
         path: String,
         candidates: Vec<FormatCandidateDetails>,
-    },
-    CapabilityAdapter {
-        capability: String,
-        adapter_id: String,
     },
     Ref {
         #[serde(rename = "ref")]

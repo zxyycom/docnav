@@ -103,7 +103,6 @@ export const READABLE_EXAMPLE_FILE = {
 export const FIELDS = {
   adapter: "adapter",
   arguments: "arguments",
-  capabilities: "capabilities",
   code: "code",
   content: "content",
   contentType: "content_type",
@@ -111,6 +110,7 @@ export const FIELDS = {
   cost: "cost",
   details: "details",
   display: "display",
+  document: "document",
   entries: "entries",
   error: "error",
   extensions: "extensions",
@@ -119,6 +119,7 @@ export const FIELDS = {
   limit: "limit",
   manifestVersion: "manifest_version",
   matches: "matches",
+  metadata: "metadata",
   ok: "ok",
   operation: "operation",
   page: "page",
@@ -133,6 +134,5 @@ export const MARKDOWN_MANIFEST_EXPECTED = {
   adapterId: "docnav-markdown",
   contentType: "text/markdown",
   extension: ".md",
-  formatId: "markdown",
-  capabilities: OPERATIONS
+  formatId: "markdown"
 };

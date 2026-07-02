@@ -14,13 +14,6 @@ pub(super) struct SelectionState {
 }
 
 impl SelectionState {
-    pub(super) fn record_inference_failures(&mut self, candidates: Vec<CandidateEvidence>) {
-        for candidate in candidates {
-            self.mark_attempted(&candidate.adapter_id);
-            self.record_failure(candidate);
-        }
-    }
-
     pub(super) fn record_failure(&mut self, candidate: CandidateEvidence) {
         self.evidence.push(candidate);
     }

@@ -3,20 +3,12 @@
   "$id": "https://docnav.dev/schemas/v0.1/readable-info.schema.json",
   "type": "object",
   "required": [
-    "display",
-    "capabilities"
+    "display"
   ],
   "properties": {
     "display": {
       "type": "string",
       "minLength": 1
-    },
-    "capabilities": {
-      "type": "array",
-      "items": {
-        "$ref": "readable-common.schema.json#/$defs/capability"
-      },
-      "uniqueItems": true
     }
   },
   "additionalProperties": false

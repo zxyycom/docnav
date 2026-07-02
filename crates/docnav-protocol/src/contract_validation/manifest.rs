@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use docnav_typed_fields::{
-    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldDefSetBuildError, FieldLength,
+    ExpectedFieldShape, FieldBound, FieldDefSet, FieldDefSetBuildError, FieldLength,
     FieldValidation,
 };
 
@@ -9,13 +9,11 @@ use crate::constants::schema_names;
 use crate::SchemaValidationError;
 
 use super::field_builders::{
-    json_path, non_empty_array_field, non_empty_string_field, non_empty_unique_array, object_field,
-    operation_value_fields, string_enum_field, value_field_set,
+    non_empty_array_field, non_empty_string_field, object_field, string_enum_field, value_field_set,
 };
 use super::helpers::{
     reject_unknown_fields, schema_result, validate_field_set, validate_object_array_items,
-    validate_value_array_items, validate_value_array_items_with_owned_prefix, ObjectArraySpec,
-    ValueArraySpec,
+    validate_value_array_items_with_owned_prefix, ObjectArraySpec, ValueArraySpec,
 };
 
 pub(crate) fn validate_manifest_contract_value(value: &Value) -> Result<(), SchemaValidationError> {
@@ -73,16 +71,6 @@ pub(crate) fn validate_manifest_contract_value(value: &Value) -> Result<(), Sche
         },
         &mut errors,
     );
-    validate_value_array_items(
-        value,
-        &["capabilities"],
-        &[],
-        ValueArraySpec {
-            schema: schema_names::MANIFEST,
-            build: operation_value_fields,
-        },
-        &mut errors,
-    );
     schema_result(schema_names::MANIFEST, errors)
 }
 
@@ -119,13 +107,6 @@ fn manifest_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
         .field_with_declaration_path(
             ["formats"],
             non_empty_array_field("formats", ["formats"]),
-            ExpectedFieldShape::required(),
-        )
-        .field_with_declaration_path(
-            ["capabilities"],
-            FieldDef::builder("capabilities")
-                .process(super::JSON_CONTRACT_PROCESSING, json_path(["capabilities"]))
-                .validation(non_empty_unique_array()),
             ExpectedFieldShape::required(),
         )
         .build()

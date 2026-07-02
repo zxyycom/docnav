@@ -37,7 +37,6 @@ pub struct TestFindPayload {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TestInfoPayload {
     pub display: String,
-    pub capabilities: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

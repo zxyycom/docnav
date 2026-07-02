@@ -20,7 +20,7 @@
 ### Requirement: `docnav` 是 core CLI router/manager
 `docnav` MUST own project root discovery, cwd handling, core configuration, document path resolution, adapter selection from the current static registry, standard parameter preparation, output mode dispatch and stable error mapping. Core MUST resolve the project/cwd/document path context and pass an absolute document path to the navigation layer and selected adapter handler.
 
-Core MUST NOT treat project/user historical adapter records, installed packages, external executables, command paths or manifest-provided implementation hints as default document operation implementations.
+Core MUST NOT treat project/user historical adapter records, installed packages, external executables, command paths or manifest metadata as default document operation implementations.
 
 #### Scenario: 读取 Markdown outline
 - **WHEN** caller executes `docnav outline docs/guide.md`
@@ -35,7 +35,7 @@ Core MUST NOT treat project/user historical adapter records, installed packages,
 - **THEN** `docnav` does not search installed packages, command paths, external executables or historical adapter artifacts as fallback implementation sources
 
 ### Requirement: Static registry 是 adapter implementation source
-The current core release static adapter registry MUST be the source of default document operation implementations. A registry entry MUST resolve to source-linked adapter code and a static descriptor containing adapter id, supported formats, content types, capabilities, native option registry entries, and operation handler bindings.
+The current core release static adapter registry MUST be the source of default document operation implementations. A registry entry MUST resolve to source-linked adapter code and a static descriptor containing adapter id, supported formats, content types, native option registry entries, and operation handler bindings. Descriptor metadata is inspection metadata and release invariant material. Runtime candidate order is the registry order, and format support is decided by adapter probe results.
 
 #### Scenario: Adapter list inspects linked metadata
 - **WHEN** caller executes `docnav adapter list`
@@ -44,8 +44,8 @@ The current core release static adapter registry MUST be the source of default d
 
 #### Scenario: Descriptor declares operation handlers
 - **WHEN** a linked adapter participates in document operations
-- **THEN** its descriptor identifies supported operations and handler bindings
-- **THEN** core can reject unsupported operations before invoking format-specific business logic
+- **THEN** it declares and provides `outline`, `read`, `find` and `info` handlers
+- **THEN** missing handlers are treated as adapter layer invalid or a release/doctor check failure, not as a recoverable per-request candidate branch
 
 ### Requirement: Navigation layer prepares requests and dispatches operations
 The navigation layer MUST act as an in-process request preparation and operation dispatch boundary. It MAY coordinate adapter selection facts, typed operation arguments, pagination, ref/query fields, native options and operation handler calls. It MUST NOT be described or implemented as an adapter loader, executable launcher or runtime registry manager.
@@ -63,18 +63,26 @@ Adapter handlers MUST return structured operation results or structured diagnost
 - **THEN** it returns structured diagnostic facts with adapter-owned context
 - **THEN** core/output maps those facts to protocol/readable output and final process exit code
 
-### Requirement: Adapter 选择按静态候选和支持检查校验
-`docnav` MUST choose adapter candidates only from the current static registry. Explicit adapter ids, format/content-type hints, path information and adapter-owned support checks MAY guide candidate selection, ranking or validation, but they MUST NOT provide adapter implementation.
+### Requirement: Adapter 选择按 static registry 和 probe 校验
+`docnav` MUST choose adapter implementations only from the current static registry. Declared adapter ids come only from direct input or `defaults.adapter`; when present, core MUST look up only that registry entry, execute its probe and MUST NOT fallback to automatic discovery. Without a declared adapter id, core MUST traverse the static registry in release order and select the first adapter whose probe returns `supported: true`. Descriptor, manifest, path, extension and content type facts remain inspection or adapter-owned recognition inputs; core runtime selection uses only declared adapter lookup or registry-order probe.
 
-#### Scenario: 显式格式优先
-- **WHEN** caller provides `--format markdown`
-- **THEN** `docnav` first considers registry candidates whose descriptor supports Markdown
-- **THEN** selection succeeds only if a linked candidate's support check accepts the document
+#### Scenario: 声明式 adapter 不 fallback
+- **WHEN** caller provides `--adapter docnav-markdown`
+- **THEN** `docnav` looks up only `docnav-markdown` in the current static registry
+- **THEN** selection succeeds only if that linked adapter's probe accepts the document
+- **THEN** unsupported, invalid or missing declared adapter failure returns an adapter selection diagnostic without trying later registry entries
 
-#### Scenario: 扩展名和支持检查
-- **WHEN** no explicit format selects an adapter
-- **THEN** `docnav` may use descriptor extension/content-type facts to order static candidates
-- **THEN** adapter-owned support checks determine whether a candidate can handle the document
+#### Scenario: 未声明 adapter 只按 registry 顺序 probe
+- **WHEN** no declared adapter id exists
+- **THEN** `docnav` traverses static registry entries in release order
+- **THEN** descriptor extension/content-type/format facts remain inspection metadata
+- **THEN** registry order and probe results determine the selected adapter
+- **THEN** the first adapter probe returning `supported: true` selects the adapter
+
+#### Scenario: missing operation handler is release invariant failure
+- **WHEN** a default adapter layer entry lacks `outline`, `read`, `find` or `info`
+- **THEN** that missing handler is an adapter layer invariant, release validation or `doctor` failure
+- **THEN** it is not modeled as a normal runtime candidate branch
 
 ### Requirement: 接入方式共享 `docnav` 契约
 Core CLI, tools, skills and AGENTS.md/system prompts MUST share `docnav` path, ref, page, limit, output mode and error contract. Adapter refs remain opaque strings generated and interpreted by the selected adapter.
@@ -85,12 +93,12 @@ Core CLI, tools, skills and AGENTS.md/system prompts MUST share `docnav` path, r
 - **THEN** the agent passes outline/find refs back to read unchanged
 
 ### Requirement: Markdown v0 通过 linked adapter 提供首期能力
-Markdown v0 adapter MUST implement `outline`, `read`, `find` and `info` capabilities through linked adapter handlers. `outline -> ref -> read` MUST remain the primary vertical reading flow.
+Markdown v0 adapter MUST implement `outline`, `read`, `find` and `info` through linked adapter handlers. `outline -> ref -> read` MUST remain the primary vertical reading flow.
 
-#### Scenario: Markdown capability 集合
+#### Scenario: Markdown operation handlers
 - **WHEN** caller inspects linked Markdown adapter metadata
-- **THEN** capabilities include `outline`, `read`, `find` and `info`
-- **THEN** each capability has core CLI behavior and linked handler verification
+- **THEN** the linked adapter exposes `outline`, `read`, `find` and `info` handlers
+- **THEN** each operation has core CLI behavior and linked handler verification
 
 ### Requirement: Outline 只使用扁平条目
 Shared protocol MUST define outline as flat entries. Each entry MUST contain `ref` and `display`; hierarchy MAY be represented by adapter-generated refs, labels or display text without adding Markdown-specific protocol fields.

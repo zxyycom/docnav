@@ -192,18 +192,7 @@
     },
     "infoResult": {
       "type": "object",
-      "required": [
-        "capabilities"
-      ],
       "properties": {
-        "capabilities": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/operation"
-          },
-          "uniqueItems": true
-        },
         "document": {
           "type": "object",
           "properties": {
@@ -372,7 +361,6 @@
                 "DOCUMENT_ENCODING_UNSUPPORTED",
                 "FORMAT_UNKNOWN",
                 "FORMAT_AMBIGUOUS",
-                "CAPABILITY_UNSUPPORTED",
                 "REF_NOT_FOUND",
                 "REF_AMBIGUOUS",
                 "REF_INVALID",
@@ -512,24 +500,6 @@
                 "properties": {
                   "details": {
                     "$ref": "#/$defs/protocolErrorDetailsFormatAmbiguous"
-                  }
-                }
-              }
-            },
-            {
-              "if": {
-                "type": "object",
-                "properties": {
-                  "code": {
-                    "const": "CAPABILITY_UNSUPPORTED"
-                  }
-                }
-              },
-              "then": {
-                "type": "object",
-                "properties": {
-                  "details": {
-                    "$ref": "#/$defs/protocolErrorDetailsCapabilityAdapter"
                   }
                 }
               }
@@ -815,9 +785,7 @@
         "reason": {
           "enum": [
             "ADAPTER_NOT_FOUND",
-            "MANIFEST_INVALID",
             "ADAPTER_UNAVAILABLE",
-            "CAPABILITY_UNSUPPORTED",
             "PROBE_INVALID",
             "PROBE_UNSUPPORTED",
             "CONTENT_MATCH"
@@ -876,22 +844,6 @@
           "items": {
             "$ref": "#/$defs/protocolFormatCandidate"
           }
-        }
-      },
-      "additionalProperties": false
-    },
-    "protocolErrorDetailsCapabilityAdapter": {
-      "type": "object",
-      "required": [
-        "capability",
-        "adapter_id"
-      ],
-      "properties": {
-        "capability": {
-          "type": "string"
-        },
-        "adapter_id": {
-          "type": "string"
         }
       },
       "additionalProperties": false

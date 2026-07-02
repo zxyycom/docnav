@@ -153,9 +153,6 @@ fn manifest_contract_rejects_schema_backed_field_failures() {
         manifest_with(|manifest| manifest["manifest_version"] = serde_json::json!("0.2")),
         manifest_with(|manifest| manifest["adapter"]["id"] = serde_json::json!("")),
         manifest_with(|manifest| manifest["formats"][0]["extensions"][0] = serde_json::json!("md")),
-        manifest_with(|manifest| {
-            manifest["capabilities"] = serde_json::json!(["outline", "outline"])
-        }),
         manifest_with(|manifest| manifest["formats"][0]["extra"] = serde_json::json!(true)),
     ];
 
@@ -179,8 +176,7 @@ fn minimal_manifest() -> Value {
                 "extensions": [".stub"],
                 "content_types": ["text/stub"]
             }
-        ],
-        "capabilities": ["outline", "read", "find", "info"]
+        ]
     })
 }
 
@@ -202,8 +198,7 @@ fn manifest_with_removed_protocol() -> Value {
                 "extensions": [".stub"],
                 "content_types": ["text/stub"]
             }
-        ],
-        "capabilities": ["outline", "read", "find", "info"]
+        ]
     })
 }
 
@@ -222,7 +217,6 @@ fn manifest_with_removed_recommended_parameters() -> Value {
                 "content_types": ["text/stub"]
             }
         ],
-        "capabilities": ["outline", "read", "find", "info"],
         "recommended_parameters": {
             "outline": {
                 "limit": 80
@@ -310,7 +304,7 @@ fn protocol_response_contract_rejects_schema_backed_field_failures() {
             "request_id": "req-1",
             "operation": "info",
             "ok": true,
-            "result": { "capabilities": ["outline", "outline"] }
+            "result": { "undocumented": true }
         }),
     ];
 

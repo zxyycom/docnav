@@ -102,10 +102,12 @@ Core CLI strict input 规则如下：
 ### Requirement: 核心配置 MVP 必须有限且可审计
 `docnav` MUST 在本 change 中只支持 `defaults.adapter`、`defaults.pagination.enabled`、`defaults.pagination.limit` 和 `defaults.output` 四个核心配置 key，并 MUST 按显式参数、项目配置、用户配置、内置默认值的优先级解析最终 core 参数值。Core 参数的默认值来源 MUST 限定为 CLI、配置和内置默认值；source-level static native option registry 只参与 native option source classification、merge metadata 和 handoff，adapter-owned option semantics 由 consuming adapter 校验。
 
-#### Scenario: 配置 adapter 预选
+#### Scenario: 配置 adapter 声明式选择
 - **WHEN** 调用方未传入 `--adapter`
 - **AND** 项目配置设置了 `defaults.adapter`
-- **THEN** `docnav` 使用该 adapter id 作为预选 adapter
+- **THEN** `docnav` 使用该 adapter id 作为 declared adapter
+- **THEN** `docnav` 只在当前 static registry 中查找该 adapter 并执行 probe
+- **THEN** `docnav` 不进入 automatic discovery 或 fallback
 
 #### Scenario: page 不可配置
 - **WHEN** 调用方省略 `--page`
@@ -157,7 +159,7 @@ Core CLI strict input 规则如下：
 - **AND** 存在失败检查项时进程非零退出
 
 ### Requirement: adapter 选择必须区分声明式 adapter 和自动发现
-`docnav` MUST first honor a declared adapter id from `--adapter` or `defaults.adapter`. Declared adapter failure MUST return an adapter selection diagnostic with the declared source and candidate failure stage. When no declared adapter id exists, `docnav` MAY infer an adapter from static registry descriptor metadata and use the same candidate evaluation rules to select, continue traversal, or report discovery failure. Adapter 评估 MUST 以 registry entry、descriptor metadata、当前契约语义和 linked support check 结果为准。
+`docnav` MUST first honor a declared adapter id from `--adapter` or `defaults.adapter`. Declared adapter failure MUST return an adapter selection diagnostic with the declared source and candidate failure stage. When no declared adapter id exists, `docnav` MUST enter automatic discovery by traversing the current static registry order and probing each linked adapter until the first `supported: true` result. Extension, content type, manifest metadata and descriptor metadata remain inspection or adapter-owned recognition facts. Adapter selection MUST use registry membership for implementation lookup, registry order for automatic discovery order and adapter probe results for format support.
 
 #### Scenario: 显式 adapter 记录解析失败后返回诊断
 - **WHEN** 调用方传入 `--adapter docnav-markdown` 但 registry 中无法解析该 adapter 记录
@@ -165,24 +167,29 @@ Core CLI strict input 规则如下：
 - **THEN** 错误 details 包含 adapter id、selection_source、stage 和 reason
 - **THEN** `docnav` 不把显式 adapter failure 转为 automatic discovery success path
 
-#### Scenario: linked support check 有效不支持后继续
-- **WHEN** 候选 adapter support check 返回符合当前语义的 unsupported result
+#### Scenario: linked probe 有效不支持后继续
+- **WHEN** 候选 adapter probe 返回符合当前语义的 unsupported result
 - **THEN** `docnav` 保留 unsupported 候选证据
 - **THEN** `docnav` 继续 registry 遍历
 
-#### Scenario: 未声明 adapter 时先 core 推断
+#### Scenario: 未声明 adapter 时按 registry 顺序 probe
 - **WHEN** 调用方没有传入 `--adapter`
 - **AND** 配置没有指定 `defaults.adapter`
-- **THEN** `docnav` 使用候选 descriptor 的格式信息推断一个预选 adapter id
-- **THEN** `docnav` 先校验该预选 adapter
+- **THEN** `docnav` 按当前 static registry 顺序遍历 linked adapter
+- **THEN** `docnav` 对每个 adapter 执行 probe
+- **THEN** `docnav` 选择第一个返回 `supported: true` 的 adapter
+- **THEN** descriptor metadata、manifest metadata、扩展名和 content type 不改变 traversal order
+- **THEN** probe result 决定每个候选是否支持该文档
 
-#### Scenario: 自动推断 adapter descriptor 当前契约不一致后继续
-- **WHEN** 自动推断 adapter descriptor 缺少 `docnav` 当前 CLI 选择 adapter 所需字段
-- **THEN** `docnav` 保留候选证据
-- **THEN** `docnav` 继续 registry 遍历
+#### Scenario: descriptor metadata 不参与 runtime candidate 选择
+- **WHEN** registry entry 的 descriptor 声明 extension、content type 或 format metadata
+- **AND** 调用方没有 declared adapter
+- **THEN** `docnav` 仍按 static registry 顺序执行 probe
+- **THEN** descriptor metadata 保持 inspection metadata
+- **THEN** registry order 和 probe result 决定 runtime selection outcome
 
 #### Scenario: registry 遍历候选当前契约不一致后继续
-- **WHEN** registry 遍历中的候选 adapter descriptor 或 support check 输出字段缺失、类型不符或语义校验失败
+- **WHEN** registry 遍历中的候选 adapter probe 输出字段缺失、类型不符或语义校验失败
 - **THEN** `docnav` 保留候选证据
 - **THEN** `docnav` 继续 registry 遍历
 - **THEN** 若后续候选成功，前序候选失败只保留为 internal discovery state，不进入 success output
@@ -195,12 +202,12 @@ Core CLI strict input 规则如下：
 - **THEN** 每条候选摘要只包含 adapter_id、stage 和 reason
 
 ### Requirement: Core release static registry 必须提供 adapter implementation source
-`docnav` MUST use the current core release static adapter registry as the adapter implementation source for document operations. Registry entries MUST resolve to linked adapter library handles and source-level descriptor metadata, including adapter id、manifest metadata、capabilities、native option registry entries and operation handlers.
+`docnav` MUST use the current core release static adapter registry as the adapter implementation source for document operations. Registry entries MUST resolve to linked adapter library handles and source-level descriptor metadata, including adapter id、manifest metadata、native option registry entries and operation handlers.
 
 #### Scenario: 使用 static registry entry
 - **WHEN** registry 中存在 Markdown adapter id 和 linked library handle
 - **THEN** `docnav` 可以按 adapter id 解析该 registry entry
-- **THEN** `docnav` 使用该 entry 的 descriptor metadata 和 handler handle 执行 support check 与 document operation
+- **THEN** `docnav` 使用该 entry 的 linked probe 和 operation handler 执行格式识别与 document operation
 
 #### Scenario: registry 保留遍历顺序
 - **WHEN** registry 的 `adapters` 数组包含多个候选

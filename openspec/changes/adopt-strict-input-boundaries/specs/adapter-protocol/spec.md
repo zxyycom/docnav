@@ -58,7 +58,7 @@ Protocol envelope、manifest/probe-shaped metadata and readable/protocol respons
 
 #### Scenario: metadata helper 不提供 implementation source
 - **WHEN** adapter metadata is rendered or validated as manifest/probe-shaped data
-- **THEN** fields express adapter identity、formats、extensions、content types、capabilities and observable metadata
+- **THEN** fields express adapter identity、formats、extensions、content types and observable metadata
 - **THEN** metadata does not provide command paths、external executables、protocol version ranges or default/native option values
 - **THEN** current core-linked document operations use the static registry descriptor and handler binding as the implementation source
 

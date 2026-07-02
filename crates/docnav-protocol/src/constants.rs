@@ -32,7 +32,6 @@ pub(crate) mod schema_names {
 // Protocol error message 默认文案集中在这里；调用方只解析 code 和 details。
 pub(crate) mod protocol_error_messages {
     pub const ADAPTER_UNAVAILABLE: &str = "Adapter is unavailable.";
-    pub const CAPABILITY_UNSUPPORTED: &str = "Adapter does not support the requested capability.";
     pub const DOCUMENT_ENCODING_UNSUPPORTED: &str = "Document encoding is unsupported.";
     pub const DOCUMENT_FORMAT_AMBIGUOUS: &str = "Document format is ambiguous.";
     pub const DOCUMENT_FORMAT_UNKNOWN: &str = "Document format is unknown.";

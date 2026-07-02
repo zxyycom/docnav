@@ -22,7 +22,7 @@ docnav version
 
 1. 项目根解析。
 2. path 规范化和可访问性检查。
-3. adapter 选择：显式 `--adapter` 或配置提供的 adapter id 按 declared intent 在 static registry 中校验；未声明 adapter 时才进入 automatic discovery，并按 registry 候选探测返回第一个成功项。显式 adapter id 不存在时返回 adapter selection diagnostic，优先于 native option validation。
+3. adapter 选择：显式 `--adapter` 或配置提供的 adapter id 按 declared intent 在 static registry 中查找并 probe；未声明 adapter 时才进入 automatic discovery，并按 registry 顺序 probe 返回第一个成功项。显式 adapter id 不存在时返回 adapter selection diagnostic，优先于 native option validation。完整规则见 [适配器契约](adapter-contract.md#adapter-选择)。
 4. 使用 core 标准参数 registration 解析显式 argv、项目配置、用户配置和 core 内置默认值。
 5. pagination enabled 状态、page、limit、output 和其它 core-owned 标准参数解析。
 6. 输出模式和错误映射选择。
@@ -44,11 +44,11 @@ CLI 本节只定义命令入口和退出边界：
 
 ## 内置 adapter 检查
 
-`docnav adapter list` 是 core release 内置 adapter inspection。它的数据源固定为随当前 release 编译的 static registry，只展示 adapter layer metadata，例如 adapter id、名称、版本、支持格式、扩展名、content type 和 capabilities。
+`docnav adapter list` 是 core release 内置 adapter inspection。它的数据源固定为随当前 release 编译的 static registry，只展示 adapter layer metadata，例如 adapter id、名称、版本、支持格式、扩展名、content type 和 operation metadata。
 
 默认 adapter 命令面只包含 `docnav adapter list`。
 
-`docnav doctor` 检查项目/用户配置、static registry 和 core release 内置 adapter layer 可用性。doctor 的 adapter layer check 可以调用 registry 中 adapter 的 metadata/probe 支持逻辑；修复建议应落在当前配置、static registry 或 linked adapter layer 边界内。
+`docnav doctor` 检查项目/用户配置、static registry 和 core release 内置 adapter layer 可用性。doctor 的 adapter layer check 可以调用 registry 中 adapter 的 metadata 支持逻辑，验证静态 descriptor 与 linked handler 是否一致；修复建议应落在当前配置、static registry 或 linked adapter layer 边界内。
 
 ## adapter 执行入口
 
@@ -76,7 +76,7 @@ CLI 本节只定义命令入口和退出边界：
 - `readable-view` 和 `readable-json` 写 stdout。
 - `protocol-json` 写 stdout，且只输出一个 JSON 值。
 - 诊断记录可投影到 stderr。
-- adapter automatic discovery 的候选失败在 discovery 过程中保持为 internal state；若后续候选成功，成功输出只包含最终业务 payload；若全部候选失败，候选摘要作为 primary failure details 投影。
+- adapter automatic discovery 的候选 probe 失败在 discovery 过程中保持为 internal state；若后续候选成功，成功输出只包含最终业务 payload；若全部候选失败，候选摘要作为 primary failure details 投影。
 - 直接 CLI argv 的 strict 分类和输入诊断交接数据见 [标准参数](standard-parameters.md#错误出口)；通道承载必须与该规则一致。
 - `config get` 的 key 不存在时必须返回 `INVALID_REQUEST`。
 - 成功退出 `0`；输入错误 `2`；文档/ref/格式错误 `3`；协议或 adapter layer 错误 `4`；内部错误 `1`。退出码由 CLI owner 按错误通道记录的 code category/effect 投影映射。

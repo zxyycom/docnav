@@ -345,13 +345,11 @@ fn framing_uses_lf_byte() {
 fn info_operation_no_blocks() {
     let payload = test_payloads::TestInfoPayload {
         display: "Markdown Adapter v0.1.0".into(),
-        capabilities: vec!["outline".into(), "read".into(), "find".into()],
     };
     let output = render_test(&payload, ReadableViewKind::Info).unwrap();
 
     // All fields in header JSON.
     assert_contains(&output, "\"display\": \"Markdown Adapter v0.1.0\"");
-    assert_contains(&output, "\"capabilities\": [");
     // No block sections.
     assert_not_contains(&output, "[block");
 }

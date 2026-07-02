@@ -17,9 +17,9 @@
 ## 3. Core release 内置 adapter-layer workspace crates 实现
 
 - [x] 3.1 将 adapter layer 实现为独立 workspace crates，并作为 core release 的直接组成部分编译；默认 adapter set 不通过 feature gate 裁剪。
-- [x] 3.2 实现 core static adapter registry，统一注册 adapter id、version、format metadata、capabilities、需求声明和 adapter layer implementation handle。
+- [x] 3.2 实现 core static adapter registry，统一注册 adapter id、version、format metadata、native option registry、operation handler bindings 和 adapter layer implementation handle。
 - [x] 3.3 将已实现 Markdown adapter 作为 core release 内置 adapter-layer workspace crate 接入 static registry，保持 Markdown parser、ref grammar、navigation strategy、pagination 和 native option 语义仍由 Markdown adapter owner 维护。
-- [x] 3.4 将默认 document operation path 的 adapter implementation source 收敛到 static registry 和 adapter layer API；项目配置、用户配置和 CLI 输入只能选择或提示 registry 中已有 adapter，不能提供 implementation。
+- [x] 3.4 将默认 document operation path 的 adapter implementation source 收敛到 static registry 和 adapter layer API；CLI 输入和有效项目/用户配置只能通过 `--adapter` 或 `defaults.adapter` 声明 registry 中已有 adapter id。
 - [x] 3.5 移除默认路径中对独立 adapter package、external executable、command path 和 historical artifact record 的读取、校验和 fallback。
 - [x] 3.6 将现有 SDK 中仍有价值的内部类型和工具迁移到 `docnav-navigation` 或 `docnav-adapter-contracts`；默认不新增 `docnav-adapter-support`，除非实现证明重复工具会污染 contract boundary。
 - [x] 3.7 保持 successful document output 的 `protocol-json`、`readable-json` 和 `readable-view` 语义不变，并继续把 adapter-generated ref 原样传递。
@@ -36,7 +36,7 @@
 
 - [x] 5.1 创建或调整 `docnav-navigation`，作为内部 operation orchestration layer，集中调配 `outline/read/find/info`。
 - [x] 5.2 创建或调整 `docnav-adapter-contracts`，承载 adapter layer interface definitions 和共享 contract types；adapter crates 不依赖完整 operation orchestration。
-- [x] 5.3 采用 operation-handler adapter interface：adapter handle 暴露 static descriptor metadata、support check、source-level native option registry entries 和 `outline/read/find/info` operation handlers；记录 primitive split 会把格式内部结构和 orchestration glue 扩散到 adapter/core 边界且当前没有产品收益。
+- [x] 5.3 采用 operation-handler adapter interface：adapter handle 暴露 static descriptor metadata、probe check、source-level native option registry entries 和 `outline/read/find/info` operation handlers；记录 primitive split 会把格式内部结构和 orchestration glue 扩散到 adapter/core 边界且当前没有产品收益。
 - [x] 5.4 不保留 adapter direct CLI、`invoke` 或非默认 adapter 本地调试入口；相关证明只通过黑盒 CLI 测试、白盒 adapter/core 测试和 core 调用路径完成。
 
 ## 6. 测试和验证

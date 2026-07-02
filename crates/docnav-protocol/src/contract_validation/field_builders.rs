@@ -39,10 +39,6 @@ pub(super) fn add_operation(
     )
 }
 
-pub(super) fn operation_value_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
-    value_field_set("operation", FieldValidation::string_enum::<Operation>())
-}
-
 pub(super) fn string_value_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     value_field_set("string", FieldValidation::string())
 }

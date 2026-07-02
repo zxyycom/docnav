@@ -168,8 +168,9 @@ fn missing_argument(
 mod tests {
     use docnav_adapter_contracts::{Adapter, AdapterError, AdapterResult};
     use docnav_protocol::{
-        positive_result, AdapterIdentity, Entry, FormatDescriptor, Manifest, Operation,
-        OperationArguments, OutlineArguments, OutlineResult, ProbeResult, PROTOCOL_VERSION,
+        positive_result, AdapterIdentity, Entry, FindArguments, FindResult, FormatDescriptor,
+        InfoArguments, InfoResult, Manifest, Operation, OperationArguments, OutlineArguments,
+        OutlineResult, ProbeResult, ReadArguments, ReadResult, PROTOCOL_VERSION,
     };
 
     use super::*;
@@ -195,7 +196,6 @@ mod tests {
                     extensions: vec![".stub".to_owned()],
                     content_types: vec!["text/stub".to_owned()],
                 }],
-                capabilities: vec![Operation::Outline],
             }
         }
 
@@ -227,9 +227,28 @@ mod tests {
         fn read(
             &self,
             _request: &RequestEnvelope,
-            _arguments: &docnav_protocol::ReadArguments,
-        ) -> AdapterResult<docnav_protocol::ReadResult> {
+            _arguments: &ReadArguments,
+        ) -> AdapterResult<ReadResult> {
             Err(AdapterError::ref_not_found("missing"))
+        }
+
+        fn find(
+            &self,
+            _request: &RequestEnvelope,
+            _arguments: &FindArguments,
+        ) -> AdapterResult<FindResult> {
+            Err(AdapterError::invalid_request(
+                "arguments.query",
+                "query is not indexed",
+            ))
+        }
+
+        fn info(
+            &self,
+            _request: &RequestEnvelope,
+            _arguments: &InfoArguments,
+        ) -> AdapterResult<InfoResult> {
+            Err(AdapterError::internal("stub-info-unimplemented"))
         }
     }
 

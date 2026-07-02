@@ -1,12 +1,12 @@
 use docnav_diagnostics::{
-    typed_codes, CapabilityAdapterDetails, DiagnosticCode, DiagnosticRecordDraft, DiagnosticSource,
-    DiagnosticStack, FieldReasonDetails, InternalDetails, PathDetails, PathEncodingDetails,
-    PathReasonDetails, RefDetails, RefReasonDetails,
+    typed_codes, DiagnosticCode, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
+    FieldReasonDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
+    RefDetails, RefReasonDetails,
 };
 use docnav_protocol::{
     protocol_error_record_draft, protocol_error_record_draft_with_summary, FindArguments,
-    FindResult, InfoArguments, InfoResult, Manifest, Operation, OutlineArguments, OutlineResult,
-    ProbeResult, ProtocolError, ReadArguments, ReadResult, RequestEnvelope,
+    FindResult, InfoArguments, InfoResult, Manifest, OutlineArguments, OutlineResult, ProbeResult,
+    ProtocolError, ReadArguments, ReadResult, RequestEnvelope,
 };
 
 mod native_options;
@@ -31,39 +31,27 @@ pub trait Adapter: Sync {
 
     fn outline(
         &self,
-        _request: &RequestEnvelope,
-        _arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
-        Err(self.unsupported(Operation::Outline))
-    }
+        request: &RequestEnvelope,
+        arguments: &OutlineArguments,
+    ) -> AdapterResult<OutlineResult>;
 
     fn read(
         &self,
-        _request: &RequestEnvelope,
-        _arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult> {
-        Err(self.unsupported(Operation::Read))
-    }
+        request: &RequestEnvelope,
+        arguments: &ReadArguments,
+    ) -> AdapterResult<ReadResult>;
 
     fn find(
         &self,
-        _request: &RequestEnvelope,
-        _arguments: &FindArguments,
-    ) -> AdapterResult<FindResult> {
-        Err(self.unsupported(Operation::Find))
-    }
+        request: &RequestEnvelope,
+        arguments: &FindArguments,
+    ) -> AdapterResult<FindResult>;
 
     fn info(
         &self,
-        _request: &RequestEnvelope,
-        _arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult> {
-        Err(self.unsupported(Operation::Info))
-    }
-
-    fn unsupported(&self, operation: Operation) -> AdapterError {
-        AdapterError::capability_unsupported(operation, self.adapter_id())
-    }
+        request: &RequestEnvelope,
+        arguments: &InfoArguments,
+    ) -> AdapterResult<InfoResult>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -164,15 +152,6 @@ impl AdapterError {
             typed_codes::protocol::RefInvalid,
         >(
             RefReasonDetails::new(ref_id, reason),
-            DiagnosticSource::with_stage("docnav-adapter-contracts", "adapter"),
-        ))
-    }
-
-    pub fn capability_unsupported(operation: Operation, adapter_id: impl Into<String>) -> Self {
-        Self::new(protocol_error_record_draft::<
-            typed_codes::protocol::CapabilityUnsupported,
-        >(
-            CapabilityAdapterDetails::new(operation.to_string(), adapter_id),
             DiagnosticSource::with_stage("docnav-adapter-contracts", "adapter"),
         ))
     }

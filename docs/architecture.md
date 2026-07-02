@@ -40,8 +40,8 @@ Docnav 文档操作分为两类输出：
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list`。
 - 维护 core release 内置 adapter static registry；`adapter list` 展示该 registry 中的 adapter metadata。
 - 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的 `config` 命令入口；配置字段映射、supported key、配置读取和来源合并规则见 [标准参数](standard-parameters.md)。
-- 根据 path、项目配置、static registry metadata、`--adapter`、core 简易推断和 probe 选择 adapter。
-- 自动选择并调用对应 adapter library handle。
+- 从 core release 内置 adapter static registry 选择 adapter implementation source。
+- 调用选定的 adapter library handle。
 - 在 adapter library dispatch 前消费标准参数机制产出的 core 参数结果，并由 `docnav-navigation` 构造内部 protocol request。
 - 统一处理 page、limit、输出模式和错误映射。
 - 校验 adapter operation 结果，并转换为默认 readable-view、结构化 readable-json 或完整 protocol 输出。
@@ -55,7 +55,7 @@ Docnav 文档操作分为两类输出：
 - 生成扁平 outline、ref、业务语义结果和下一页 page。
 - 按自身契约解析 ref 并读取。
 - 将 readable payload 交给共享 `docnav-readable` 渲染路径，不拥有通用 readable-view 渲染规则。
-- 在 manifest 中声明 adapter 身份、支持格式、扩展名、content type 和 capabilities。
+- 在 manifest 中声明 adapter 身份、支持格式、扩展名、content type 和 adapter layer metadata。
 
 adapter 只处理本格式请求，不承担跨格式路由、项目初始化、全局配置管理或调用入口适配。
 
@@ -100,22 +100,6 @@ caller
 - 显式 public input 默认 strict：未知 argv、多余 positional、当前 operation 不适用的 flag、未映射 request/config 字段和无法归入源码级 native option registry/source 的输入不进入业务执行，入口 owner 必须把它们映射为输入或配置诊断。
 - 格式原生 options 只由 core 支持的 public input、配置 `options` object 或对应 registration 声明的 native option source 提供；`docnav` 不从 manifest、core 配置或隐式默认值合成格式专属 options。Adapter selection 后，core 按 selected adapter descriptor 投影支持的 options 并为 unsupported option 返回 native option diagnostic；type mismatch 和 range invalid 由 consuming adapter 返回 adapter-owned structured diagnostic。
 - 配置不得改变 protocol envelope、readable JSON 字段或 `DiagnosticCode`；`DiagnosticCode` 由 [错误通道](diagnostics.md) 拥有，protocol/readable 字段由对应 surface owner 文档定义。
-
-## Adapter 选择
-
-`docnav` 对所有文档操作先区分 declared adapter id 和 automatic discovery：
-
-1. 若调用方传入 `--adapter <adapter-id>`，该 id 是 declared adapter id。
-2. 若调用方未传入 `--adapter`，项目配置 `defaults.adapter` 优先于用户配置 `defaults.adapter` 作为 declared adapter id。
-3. 若存在 declared adapter id，`docnav` 只在 static registry 中查找该 adapter，校验 manifest metadata、capability 并执行 probe 校验。成功则选中，失败则返回 adapter selection diagnostic。
-4. 若调用方和配置都未指定 adapter，`docnav` 进入 automatic discovery flow，可以先用 core 简易规则推断候选 adapter id，例如根据 path 扩展名匹配 static registry adapter 的 manifest；无法推断时候选为空。
-5. Automatic discovery 中的候选缺失、无法解析、字段不对齐或 probe 失败时，`docnav` 记录候选失败证据并调用 registry 遍历函数。该函数接收已尝试 adapter id 集合，按 registry 顺序跳过已尝试项，返回第一个 probe 成功的 adapter。
-
-所有选择都以 static registry membership 和 adapter probe 结果为准，不能只凭 `--adapter`、配置或扩展名静默选中。Automatic discovery 中候选 adapter 的 metadata 或 probe 契约失败属于可恢复的选择失败：`docnav` 记录候选失败证据并继续遍历，不因单个候选字段缺失、类型不符、语义校验失败或 adapter layer 不可用而直接停止选择流程。`supported: false` 也是普通候选失败证据。
-
-若后续候选成功，前面累积的候选失败只保留为 internal discovery state，成功 document output 不投影这些候选失败。全部候选失败时返回 `FORMAT_UNKNOWN`，primary `DiagnosticRecord.details.candidate_failures` 或 protocol error details 使用候选摘要表达 adapter、阶段和稳定原因码；候选排障细节由 stderr 诊断或内部错误通道按各自契约承载。
-
-显式 `--adapter <adapter-id>` 或配置提供的 adapter id 表达 caller intent。该 adapter 不在 static registry、metadata invalid、probe 失败或 capability 不支持时，`docnav` 返回 adapter selection diagnostic，不把该显式失败伪装成 automatic discovery 成功路径。只有调用方没有显式声明 adapter id 时，候选遍历才是 internal discovery flow。`ref` 只在选定 adapter 内部定位区域，`docnav` 和调用入口只原样传递 ref。
 
 ## 项目根与路径
 

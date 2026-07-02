@@ -37,10 +37,6 @@ pub(super) const FORMAT_AMBIGUOUS_FIELDS: &[DetailFieldRule] = &[
     required("path", DetailKind::String),
     required("candidates", DetailKind::ObjectArray),
 ];
-pub(super) const CAPABILITY_ADAPTER_FIELDS: &[DetailFieldRule] = &[
-    required("capability", DetailKind::String),
-    required("adapter_id", DetailKind::String),
-];
 pub(super) const REF_FIELDS: &[DetailFieldRule] = &[required("ref", DetailKind::String)];
 pub(super) const REF_CANDIDATE_FIELDS: &[DetailFieldRule] = &[
     required("ref", DetailKind::String),

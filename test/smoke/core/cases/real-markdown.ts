@@ -9,7 +9,6 @@ import {
   expectObjectArray,
   expectProtocolFailure,
   expectString,
-  expectStringArray,
   parseJson
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
@@ -259,9 +258,5 @@ async function assertInfoReadableOutput(project: SmokeProject) {
     "readable-json"
   ], "readableInfo");
   const display = expectString(record, json.display, "info display is a string");
-  const capabilities = expectStringArray(record, json.capabilities, "info capabilities are strings");
   expect(record, display.includes("Markdown | text/markdown"), "info readable result has Markdown display");
-  for (const capability of ["outline", "read", "find", "info"]) {
-    expect(record, capabilities.includes(capability), `info readable includes ${capability} capability`);
-  }
 }

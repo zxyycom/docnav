@@ -1,6 +1,6 @@
 use crate::details::{
-    AdapterReasonDetails, BoundaryDetails, CapabilityAdapterDetails, DiagnosticDetailsPayload,
-    FieldReasonDetails, FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
+    AdapterReasonDetails, BoundaryDetails, DiagnosticDetailsPayload, FieldReasonDetails,
+    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
     PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
@@ -32,7 +32,6 @@ pub mod typed_codes {
         pub struct DocumentEncodingUnsupported;
         pub struct FormatUnknown;
         pub struct FormatAmbiguous;
-        pub struct CapabilityUnsupported;
         pub struct RefNotFound;
         pub struct RefAmbiguous;
         pub struct RefInvalid;
@@ -122,11 +121,6 @@ protocol_marker!(
     typed_codes::protocol::FormatAmbiguous,
     FormatAmbiguous,
     FormatAmbiguousDetails
-);
-protocol_marker!(
-    typed_codes::protocol::CapabilityUnsupported,
-    CapabilityUnsupported,
-    CapabilityAdapterDetails
 );
 protocol_marker!(typed_codes::protocol::RefNotFound, RefNotFound, RefDetails);
 protocol_marker!(

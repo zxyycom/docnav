@@ -43,11 +43,11 @@ Adapter handlers MUST NOT read CLI argv、stdin、stdout、stderr、process cwd 
 - **THEN** core/output maps the diagnostic to protocol/readable output and the final process exit code
 
 ### Requirement: Manifest/probe metadata 不提供 implementation source
-Manifest、probe result 和 equivalent descriptor metadata MUST restrict field ownership to adapter identity, supported formats, extensions, content types, capabilities and observable metadata. They MUST NOT provide runtime implementation sources, command paths, external executables, protocol version ranges or default/native option values.
+Manifest、probe result 和 equivalent descriptor metadata MUST restrict field ownership to adapter identity, supported formats, extensions, content types and observable metadata. They MUST NOT provide runtime implementation sources, command paths, external executables, protocol version ranges, document operation sets or default/native option values.
 
 #### Scenario: 读取 manifest metadata
 - **WHEN** adapter metadata is rendered as manifest-shaped output
-- **THEN** fields express adapter identity, supported formats, extensions, content types and capabilities
+- **THEN** fields express adapter identity, supported formats, extensions and content types
 - **THEN** metadata does not contain command path, executable path, protocol range or `recommended_parameters`
 
 #### Scenario: 旧 implementation 字段被拒绝

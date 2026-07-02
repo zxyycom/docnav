@@ -82,7 +82,6 @@ pub enum ProtocolDiagnosticCode {
     DocumentEncodingUnsupported,
     FormatUnknown,
     FormatAmbiguous,
-    CapabilityUnsupported,
     RefNotFound,
     RefAmbiguous,
     RefInvalid,

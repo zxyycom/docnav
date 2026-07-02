@@ -21,9 +21,9 @@
 
 #### Scenario: adapter interface uses operation-handler granularity
 - **WHEN** adapter crate 实现 adapter layer interface
-- **THEN** adapter handle exposes static descriptor metadata, support check, source-level native option registry entries and `outline/read/find/info` operation handlers through `docnav-adapter-contracts`
+- **THEN** adapter handle exposes static descriptor metadata, probe check, source-level native option registry entries and `outline/read/find/info` operation handlers through `docnav-adapter-contracts`
 - **THEN** parser、ref、navigation、pagination 和 native option semantics remain adapter-owned inside those handlers
-- **THEN** `docnav-navigation` dispatches the selected operation handler instead of composing adapter ref splitter、locator、format support check or parser/navigation primitives across the adapter/core boundary
+- **THEN** `docnav-navigation` dispatches the selected operation handler instead of composing adapter ref splitter、locator、format probe validation or parser/navigation primitives across the adapter/core boundary
 
 #### Scenario: native option registry feeds adapter handoff
 - **WHEN** the source-level native option registry includes the Markdown `options.max_heading_level` entry
@@ -45,7 +45,7 @@
 
 #### Scenario: core release static adapter registry inspection
 - **WHEN** 调用方执行 `docnav adapter list`
-- **THEN** `docnav` 输出当前 core release static adapter registry 中 adapter library 的身份、版本、支持格式和 capabilities
+- **THEN** `docnav` 输出当前 core release static adapter registry 中 adapter library 的身份、版本和支持格式
 
 #### Scenario: dynamic adapter management commands are not default surface
 - **WHEN** 调用方执行 `docnav adapter install <source>`
@@ -62,18 +62,24 @@
 - **THEN** adapter implementation 只来自当前 core release static adapter registry
 
 ### Requirement: Adapter selection source 必须受 core release registry 约束
-`docnav` MUST base adapter selection on the current core release static adapter registry, explicit request input and adapter-owned support checks. Format hints、content type hints、path information and config MAY guide selection, but they MUST NOT provide adapter implementation. `docnav` MUST NOT treat project/user historical adapter artifact records, installed packages, external executables or command paths as adapter candidates for the default document operation path.
+`docnav` MUST base adapter selection on the current core release static adapter registry and adapter probe results. Declared adapter id MUST come only from `--adapter` or the effective `defaults.adapter` config value. When declared adapter id exists, `docnav` MUST look up only the matching static registry entry and probe it; it MUST NOT fall back to automatic discovery or any external implementation source. When no declared adapter id exists, `docnav` MUST traverse the static registry in registry order, probe each adapter, and select the first `supported: true` result. Format facts、content type facts、path/config metadata and manifest metadata remain inspection or adapter-owned recognition inputs; runtime selection uses declared lookup or registry-order probe. `docnav` MUST NOT treat project/user historical adapter artifact records, installed packages, external executables or command paths as adapter candidates for the default document operation path.
 
-#### Scenario: 显式格式提示只选择 registry candidate
-- **WHEN** 调用方提供 `--format markdown`
-- **THEN** `docnav` MAY use that hint to select or prioritize candidates
-- **THEN** every candidate implementation comes from the current core release static adapter registry
+#### Scenario: 声明式 adapter 只检查同名 registry entry
+- **WHEN** 调用方提供 `--adapter markdown`
+- **OR** effective config provides `defaults.adapter = "markdown"`
+- **THEN** `docnav` looks up only the `markdown` entry in the current core release static adapter registry
+- **THEN** `docnav` probes that adapter before selecting it
+- **THEN** `docnav` does not fall back to automatic discovery, manifest metadata selection, external adapter loading or dynamic registration
 
-#### Scenario: adapter-owned support check 只验证 registry candidate
-- **WHEN** `docnav` 需要通过 adapter-owned support check 判断目标文档是否可处理
-- **THEN** `docnav` only invokes support checks on adapter implementations registered in the current core release static adapter registry
+#### Scenario: 未声明 adapter 时按 registry 顺序 probe
+- **WHEN** 调用方没有传入 `--adapter`
+- **AND** config does not provide `defaults.adapter`
+- **THEN** `docnav` traverses the current core release static adapter registry in registry order
+- **THEN** `docnav` selects the first adapter whose probe returns `supported: true`
+- **THEN** extension、content type、path/config metadata and manifest metadata remain outside the runtime selection order
+- **THEN** registry order and probe results determine the selected adapter
 
 #### Scenario: Historical adapter artifact records do not provide candidates
 - **WHEN** 项目或用户配置中存在历史 adapter artifact records
 - **AND** 调用方执行 document operation
-- **THEN** adapter selection 只使用当前 core release static adapter registry、当前请求输入和 adapter-owned support checks
+- **THEN** adapter selection only uses declared adapter lookup or static registry ordered probe over current core release adapter implementations

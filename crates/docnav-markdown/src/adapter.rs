@@ -25,12 +25,6 @@ pub const NATIVE_OPTIONS_NAMESPACE: &str = "options";
 pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
 pub const MAX_HEADING_LEVEL_IDENTITY: &str =
     "docnav.adapters.docnav-markdown.options.max_heading_level";
-const MARKDOWN_CAPABILITIES: &[Operation] = &[
-    Operation::Outline,
-    Operation::Read,
-    Operation::Find,
-    Operation::Info,
-];
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
 const NATIVE_OPTIONS: &[NativeOptionSpec] =
     &[NativeOptionSpec::builder(MAX_HEADING_LEVEL_IDENTITY)
@@ -63,7 +57,6 @@ impl Adapter for MarkdownAdapter {
                 extensions: vec![".md".to_owned(), ".markdown".to_owned()],
                 content_types: vec![CONTENT_TYPE_MARKDOWN.to_owned()],
             }],
-            capabilities: MARKDOWN_CAPABILITIES.to_vec(),
         }
     }
 
@@ -175,7 +168,6 @@ impl Adapter for MarkdownAdapter {
     ) -> AdapterResult<InfoResult> {
         let document = MarkdownDocument::load(&request.document.path)?;
         Ok(InfoResult {
-            capabilities: MARKDOWN_CAPABILITIES.to_vec(),
             document: Some(InfoDocument {
                 content_type: Some(CONTENT_TYPE_MARKDOWN.to_owned()),
                 encoding: Some("utf-8".to_owned()),

@@ -39,7 +39,7 @@ Owner 分工：
 - 默认 document operation adapter implementation 收敛到随 core release 交付的 adapter-layer workspace crates。
 - Adapter-layer library 保持独立 workspace crate，不作为默认独立包体交付。
 - 默认 release 包含全部内置 adapter；默认 adapter set 不通过 feature gate 裁剪。
-- Core 使用一个统一 static adapter registry 注册内置 adapter identity、metadata、capabilities、source-level native option registry entries、需求声明和 implementation handle。
+- Core 使用一个统一 static adapter registry 注册内置 adapter identity、metadata、source-level native option registry entries、operation handler bindings 和 implementation handle。
 - 默认执行来源不再来自独立 adapter package、外部 executable、command path 或历史 adapter artifact record。
 - 动态 adapter registration 和 artifact management commands 从默认 CLI surface 删除。
 - Adapter layer 继续作为代码和契约边界存在，并保留 parser、navigation、ref、pagination 和 native option ownership。
@@ -66,7 +66,7 @@ Owner 分工：
 
 ### Decision 2: Static adapter registry 是 compile/package-time 事实源
 
-Core 维护一个统一 static adapter registry，注册当前 release 内置 adapter crates 的 adapter id、identity metadata、format metadata、capabilities、source-level native option registry entries、需求声明和 adapter layer implementation handle。
+Core 维护一个统一 static adapter registry，注册当前 release 内置 adapter crates 的 adapter id、identity metadata、format metadata、source-level native option registry entries、operation handler bindings 和 adapter layer implementation handle。
 
 该 registry 是 compile/package-time 事实源，不是运行时动态注册表。Adapter crate 需要实现指定 adapter layer interface，并在 core registry 中显式注册自身需求和能力。
 
@@ -96,7 +96,7 @@ Adapter layer 不再需要独立 direct CLI 或 `invoke` 来参与默认 documen
 
 默认不新增独立 `docnav-adapter-support` crate。只有在实现中出现跨 adapter 的重复工具且放入 `docnav-adapter-contracts` 会污染 contract boundary 时，才重新评估是否拆出 support crate。
 
-本 change 最终采用 operation-handler granularity：adapter handle 暴露 static descriptor metadata、support check、source-level native option registry entries，以及 `outline/read/find/info` operation handlers。早期 primitive split（ref splitter、locator、format support check、parser/navigation primitives）会要求 `docnav-navigation` 组合格式内部步骤，把 parser/ref/navigation 细节跨过 adapter/core 边界暴露出来；当前实现没有证明这种细分能带来产品收益。Operation handlers 保留 adapter-owned parser、ref、navigation、pagination 和 native option ownership，同时让 `docnav-navigation` 只负责 request construction、handler dispatch 和 operation flow。
+本 change 最终采用 operation-handler granularity：adapter handle 暴露 static descriptor metadata、probe check、source-level native option registry entries，以及 `outline/read/find/info` operation handlers。早期 primitive split（ref splitter、locator、format probe validation、parser/navigation primitives）会要求 `docnav-navigation` 组合格式内部步骤，把 parser/ref/navigation 细节跨过 adapter/core 边界暴露出来；当前实现没有证明这种细分能带来产品收益。Operation handlers 保留 adapter-owned parser、ref、navigation、pagination 和 native option ownership，同时让 `docnav-navigation` 只负责 request construction、handler dispatch 和 operation flow。
 
 ### Decision 7: Local service mode 后置为 core service 性能问题
 

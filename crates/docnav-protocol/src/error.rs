@@ -3,14 +3,14 @@ use serde_json::Value;
 use std::fmt;
 
 use docnav_diagnostics::{
-    typed_codes, AdapterReasonDetails, CapabilityAdapterDetails, DiagnosticCode, DiagnosticRecord,
-    DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails, FormatAmbiguousDetails,
-    FormatCandidateDetails, FormatUnknownDetails, InternalDetails, PathDetails,
-    PathEncodingDetails, PathReasonDetails, ProtocolDiagnosticCode, ProtocolDiagnosticMarker,
-    RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    typed_codes, AdapterReasonDetails, DiagnosticCode, DiagnosticRecord, DiagnosticRecordDraft,
+    DiagnosticSource, FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails,
+    FormatUnknownDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
+    ProtocolDiagnosticCode, ProtocolDiagnosticMarker, RefCandidateCountDetails, RefDetails,
+    RefReasonDetails,
 };
 
-use crate::{ErrorDetails, Operation};
+use crate::ErrorDetails;
 
 mod details;
 mod metadata;
@@ -187,12 +187,6 @@ impl ProtocolError {
         )
     }
 
-    pub fn capability_unsupported(capability: Operation, adapter_id: impl Into<String>) -> Self {
-        Self::with_default_message::<typed_codes::protocol::CapabilityUnsupported>(
-            CapabilityAdapterDetails::new(capability.to_string(), adapter_id),
-        )
-    }
-
     pub fn ref_not_found(ref_id: impl Into<String>) -> Self {
         Self::with_default_message::<typed_codes::protocol::RefNotFound>(RefDetails::new(ref_id))
     }
@@ -255,9 +249,6 @@ impl ProtocolError {
             }
             ProtocolDiagnosticCode::FormatAmbiguous => {
                 self.record_draft::<typed_codes::protocol::FormatAmbiguous>(source)
-            }
-            ProtocolDiagnosticCode::CapabilityUnsupported => {
-                self.record_draft::<typed_codes::protocol::CapabilityUnsupported>(source)
             }
             ProtocolDiagnosticCode::RefNotFound => {
                 self.record_draft::<typed_codes::protocol::RefNotFound>(source)

@@ -30,7 +30,7 @@ protocol response 示例应证明 outline/find item facts、read `cost.measureme
 
 operation readable schema 只描述 successful document payload 和该 output mode 拥有的结构。Rejected public input、invalid config、explicit adapter/ref failure 和 automatic discovery all-failed candidate lists 由 [readable-error.schema.json](readable-error.schema.json) 校验 primary `DiagnosticRecord` readable projection；successful readable schema 不承载被拒绝输入或失败候选信息。
 
-`readable-common.schema.json` 提供 readable 复用的 `capability`、`entry`、`page` 和 diagnostic projection 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义。
+`readable-common.schema.json` 提供 readable 复用的 `entry`、`page` 和 diagnostic projection 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义。
 
 ## 配置参考层
 

@@ -48,7 +48,7 @@ Input diagnostics MUST 包含 stable error code、argument 或 field location、
 
 ## MODIFIED Requirements
 
-### Requirement: adapter 选择必须先校验一个预选 adapter
+### Requirement: adapter 选择必须先处理声明式 adapter intent
 `docnav` MUST use strict adapter selection semantics for caller-declared adapter intent. When an adapter id is explicitly provided by CLI argv or effective config, failure to resolve, load, validate, or probe that adapter MUST return an adapter selection error as the final adapter-selection outcome.
 
 When no caller-declared adapter id exists, `docnav` MAY perform automatic adapter discovery by evaluating registry candidates. Automatic candidate failures MAY be appended to an internal failure list while discovery continues. If a later candidate succeeds, the successful output MUST describe only the successful document operation. If all automatic candidates fail, `docnav` MUST return `FORMAT_UNKNOWN` or the owning adapter-selection diagnostic with a candidate failure list.

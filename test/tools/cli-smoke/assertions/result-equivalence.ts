@@ -29,11 +29,6 @@ export function expectInfoResultsEquivalent(record: CommandRecord, actual: unkno
   const actualObject = readableInfoResult(record, actual, `${summary}: actual`);
   const expectedObject = expectJsonObject(record, expected, `${summary}: expected is an object`);
   expect(record, actualObject.display === expectedObject.display, `${summary}: display matches`);
-  expect(
-    record,
-    JSON.stringify(actualObject.capabilities) === JSON.stringify(expectedObject.capabilities),
-    `${summary}: capabilities match`
-  );
 }
 
 function expectEntryListEquivalent(
@@ -148,8 +143,7 @@ function readableInfoResult(record: CommandRecord, value: unknown, label: string
     return object;
   }
   return {
-    display: infoDisplay(record, object, label),
-    capabilities: object.capabilities
+    display: infoDisplay(record, object, label)
   };
 }
 
