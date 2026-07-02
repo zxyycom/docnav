@@ -213,10 +213,6 @@ pub struct AdapterReasonDetails {
     pub adapter_id: String,
     pub reason: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub exit_code: Option<i32>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stderr: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selection_source: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stage: Option<String>,
@@ -227,8 +223,6 @@ impl AdapterReasonDetails {
         Self {
             adapter_id: adapter_id.into(),
             reason: reason.into(),
-            exit_code: None,
-            stderr: None,
             selection_source: None,
             stage: None,
         }

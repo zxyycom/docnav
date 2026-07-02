@@ -68,7 +68,7 @@ OpenSpec change name 和 capability ID 是不同概念：
 
 1. 使用 kebab-case，小写英文、数字和连字符。
 2. 使用名词或名词短语，表达长期能力或稳定责任边界。
-3. 优先按产品/接口/制品所有权命名，例如 `core-cli`、`adapter-routing`、`readable-output`、`adapter-management`、`markdown-navigation`。
+3. 优先按产品、接口或组件所有权命名，例如 `core-cli`、`adapter-routing`、`readable-output`、`adapter-management`、`markdown-navigation`。
 4. 不默认复用 change name。
 5. 不包含 `implement`、`implementation`、`change`、`task`、日期或一次性迁移阶段。
 6. 不用 `v0`、`v1` 等版本阶段表达长期能力；版本范围写入 requirement、design 或 tasks。

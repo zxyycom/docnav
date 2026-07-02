@@ -37,12 +37,10 @@ pub mod typed_codes {
         pub struct RefAmbiguous;
         pub struct RefInvalid;
         pub struct AdapterUnavailable;
-        pub struct AdapterInvokeFailed;
         pub struct InternalError;
     }
 
     pub mod boundary {
-        pub struct AdapterErrorExitCodeCannotBe;
         pub struct FailedToReadRequest;
         pub struct FailedToSerialize;
         pub struct FailedToWriteJson;
@@ -147,20 +145,11 @@ protocol_marker!(
     AdapterReasonDetails
 );
 protocol_marker!(
-    typed_codes::protocol::AdapterInvokeFailed,
-    AdapterInvokeFailed,
-    AdapterReasonDetails
-);
-protocol_marker!(
     typed_codes::protocol::InternalError,
     InternalError,
     InternalDetails
 );
 
-boundary_marker!(
-    typed_codes::boundary::AdapterErrorExitCodeCannotBe,
-    AdapterErrorExitCodeCannotBe
-);
 boundary_marker!(
     typed_codes::boundary::FailedToReadRequest,
     FailedToReadRequest

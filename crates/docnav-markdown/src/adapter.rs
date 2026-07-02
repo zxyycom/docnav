@@ -20,7 +20,7 @@ pub const ADAPTER_NAME: &str = "Docnav Markdown Adapter";
 pub const FORMAT_ID_MARKDOWN: &str = "markdown";
 pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
 pub const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
-// Markdown adapter 原生 option key，来自 adapter 契约；接入层只原样传递。
+// Markdown adapter 原生 option key，来自 adapter 契约；核心 CLI 只原样传递。
 pub const NATIVE_OPTIONS_NAMESPACE: &str = "options";
 pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
 pub const MAX_HEADING_LEVEL_IDENTITY: &str =

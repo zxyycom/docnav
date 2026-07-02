@@ -103,8 +103,6 @@ impl From<AdapterReasonDetails> for DiagnosticDetails {
         Self::AdapterReason {
             adapter_id: details.adapter_id,
             reason: details.reason,
-            exit_code: details.exit_code,
-            stderr: details.stderr,
             selection_source: details.selection_source,
             stage: details.stage,
         }

@@ -4,7 +4,7 @@
 
 ## `docnav` 核心 CLI
 
-`docnav` 提供所有接入方式共享的核心能力入口：
+`docnav` 提供所有调用入口共享的核心能力入口：
 
 ```text
 docnav outline <path> [--adapter <adapter-id>] [--pagination enabled|disabled] [--page 1] [--limit 6000] [--output readable-view|readable-json|protocol-json]
@@ -44,9 +44,9 @@ CLI 本节只定义命令入口和退出边界：
 
 ## 内置 adapter 检查
 
-`docnav adapter list` 是 core release 内置 adapter inspection。它的数据源固定为随当前 release 编译的 static registry，只展示 adapter layer metadata，例如 adapter id、名称、版本、支持格式、扩展名、content type 和 capabilities。该命令没有动态 adapter 管理副作用。
+`docnav adapter list` 是 core release 内置 adapter inspection。它的数据源固定为随当前 release 编译的 static registry，只展示 adapter layer metadata，例如 adapter id、名称、版本、支持格式、扩展名、content type 和 capabilities。
 
-默认 adapter 命令面只包含 `docnav adapter list`。`docnav adapter install`、`docnav adapter register`、`docnav adapter update` 和 `docnav adapter remove` 按普通未知或无效子命令失败；失败路径没有 registration 副作用。
+默认 adapter 命令面只包含 `docnav adapter list`。
 
 `docnav doctor` 检查项目/用户配置、static registry 和 core release 内置 adapter layer 可用性。doctor 的 adapter layer check 可以调用 registry 中 adapter 的 metadata/probe 支持逻辑；修复建议应落在当前配置、static registry 或 linked adapter layer 边界内。
 
@@ -69,7 +69,6 @@ CLI 本节只定义命令入口和退出边界：
 | Core document operations：`docnav outline/read/find/info` | `docnav` core CLI | 是 | 是；unknown、extra 和 unused known 在执行前失败 | readable-view/readable-json/protocol-json 按输出模式投影 primary failure | `--output protocol-json` stdout 只含 protocol response envelope | 否 | CLI 与输出层共同验收 |
 | Core non-document commands：`config/init/doctor/version` | `docnav` core CLI | 否 | 类型化命令；无关 argv 按命令 owner 失败 | 成功输出走命令自有 PlainText/JSON；致命诊断走统一错误投影 | 成功不产生 document protocol result；错误按 output context 投影 | 否 | 代表性验收 |
 | Core adapter inspection：`docnav adapter list` | `docnav` static registry owner | 否 | 类型化命令；无关 argv 按命令 owner 失败 | 成功输出走命令自有 JSON；致命诊断走统一错误投影 | 成功不产生 document protocol result；错误按 output context 投影 | 否 | static registry inspection 验收 |
-| Unsupported dynamic adapter management：`install/register/update/remove` | `docnav` core CLI | 否 | 无效子命令失败 | 输入诊断按 core CLI 投影 | 不输出 document protocol result | 否 | 命令面移除验收 |
 | Help commands：root help 和子命令 help | 各 CLI owner | 否 | 不适用 | stdout/stderr 只输出 help 文本 | 不输出 protocol/readable payload | 否 | CLI owner 验收 |
 
 ## 通道与退出码

@@ -64,7 +64,7 @@ macro_rules! boundary_rules {
     };
 }
 
-pub(super) const PROTOCOL_RULES: [ProtocolDiagnosticRule; 13] = protocol_rules![
+pub(super) const PROTOCOL_RULES: [ProtocolDiagnosticRule; 12] = protocol_rules![
     InvalidRequest => ("INVALID_REQUEST", Request, Error, InputRejected, FIELD_REASON_FIELDS),
     DocumentNotFound => ("DOCUMENT_NOT_FOUND", Document, Error, DocumentFailed, PATH_FIELDS),
     DocumentPathInvalid => ("DOCUMENT_PATH_INVALID", Document, Error, DocumentFailed, PATH_REASON_FIELDS),
@@ -76,12 +76,10 @@ pub(super) const PROTOCOL_RULES: [ProtocolDiagnosticRule; 13] = protocol_rules![
     RefAmbiguous => ("REF_AMBIGUOUS", Document, Error, DocumentFailed, REF_CANDIDATE_FIELDS),
     RefInvalid => ("REF_INVALID", Document, Error, DocumentFailed, REF_REASON_FIELDS),
     AdapterUnavailable => ("ADAPTER_UNAVAILABLE", AdapterBoundary, Error, AdapterBoundaryFailed, ADAPTER_REASON_FIELDS),
-    AdapterInvokeFailed => ("ADAPTER_INVOKE_FAILED", AdapterBoundary, Error, AdapterBoundaryFailed, ADAPTER_REASON_FIELDS),
     InternalError => ("INTERNAL_ERROR", Internal, Fatal, InternalFailure, INTERNAL_FIELDS),
 ];
 
-pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 18] = boundary_rules![
-    AdapterErrorExitCodeCannotBe => ("adapter_error_exit_code_cannot_be", Internal, Error, InternalFailure),
+pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 17] = boundary_rules![
     FailedToReadRequest => ("failed_to_read_request", AdapterBoundary, Error, AdapterBoundaryFailed),
     FailedToSerialize => ("failed_to_serialize", Internal, Fatal, InternalFailure),
     FailedToWriteJson => ("failed_to_write_json", Internal, Fatal, InternalFailure),

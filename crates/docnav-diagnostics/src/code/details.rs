@@ -53,8 +53,6 @@ pub(super) const REF_REASON_FIELDS: &[DetailFieldRule] = &[
 pub(super) const ADAPTER_REASON_FIELDS: &[DetailFieldRule] = &[
     required("adapter_id", DetailKind::String),
     required("reason", DetailKind::String),
-    optional("exit_code", DetailKind::I32),
-    optional("stderr", DetailKind::String),
     optional("selection_source", DetailKind::String),
     optional("stage", DetailKind::String),
 ];

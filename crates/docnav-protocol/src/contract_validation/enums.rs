@@ -70,7 +70,6 @@ pub(super) enum ProtocolErrorCode {
     RefAmbiguous,
     RefInvalid,
     AdapterUnavailable,
-    AdapterInvokeFailed,
     InternalError,
 }
 
@@ -88,7 +87,6 @@ impl FieldStringEnum for ProtocolErrorCode {
             ProtocolErrorCode::RefAmbiguous,
             ProtocolErrorCode::RefInvalid,
             ProtocolErrorCode::AdapterUnavailable,
-            ProtocolErrorCode::AdapterInvokeFailed,
             ProtocolErrorCode::InternalError,
         ];
         VARIANTS
@@ -107,7 +105,6 @@ impl FieldStringEnum for ProtocolErrorCode {
             Self::RefAmbiguous => "REF_AMBIGUOUS",
             Self::RefInvalid => "REF_INVALID",
             Self::AdapterUnavailable => "ADAPTER_UNAVAILABLE",
-            Self::AdapterInvokeFailed => "ADAPTER_INVOKE_FAILED",
             Self::InternalError => "INTERNAL_ERROR",
         }
     }

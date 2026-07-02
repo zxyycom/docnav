@@ -69,14 +69,14 @@ Proves:
 - candidate discovery 阶段的 built-in adapter support check failure 被报告为 `FORMAT_UNKNOWN` candidate summary。
 - candidate failure 不会被折叠成 selected adapter layer failure。
 
-### BB-CORE-SOURCE-001 Historical adapter registry 不参与默认执行来源
+### BB-CORE-SOURCE-001 Core adapter source 来自 static registry
 Status: implemented
 Existing smoke task: `CORE-SOURCE-001`
 Code: `test/smoke/core/cases/failures.ts`
 
 Proves:
-- 损坏的历史 `.docnav/adapters.json` 不影响 core release 内置 adapter dispatch。
-- 默认 document operation 不从 historical registration material、external executable 或 command path 读取 implementation source。
+- core release 内置 adapter dispatch 使用 static registry 中的 linked adapter implementation。
+- 默认 document operation 的 implementation source 与项目配置中的普通文件内容解耦。
 
 ### BB-CORE-TOOLS-001 Core 非 document 命令保持可用
 Status: implemented
@@ -187,7 +187,7 @@ Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
 - `adapter list` 解析为 static registry inspection command。
-- `adapter install/register/update/remove` 不再是默认有效 CLI commands。
+- 默认 adapter command surface 只接受 `adapter list` 作为 inspection command。
 
 ### WB-CORE-ADAPTER-SOURCE-001 Core adapter selection guidance 保持静态来源边界
 Status: implemented
@@ -195,7 +195,7 @@ Code: `crates/docnav/src/routing.rs`
 
 Proves:
 - 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
-- guidance 指向 current core release static registry，不把 `install`、`register`、external executable 或 historical artifact 作为默认修复路径。
+- guidance 指向 current core release static registry 和当前可用 adapter id。
 
 ### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
 Status: implemented

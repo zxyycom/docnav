@@ -89,7 +89,7 @@ Adapter operation handler 必须：
 - 标准参数 pipeline 使用这些源码级信息准备 standard typed operation arguments、source info、诊断交接数据和 merged native option handoff。
 - `docnav-navigation` 只消费已解析出的 operation input；配置源读取、public input 分类、输出通道和 exit code 属于 core/CLI/output owner。
 - manifest 只声明 adapter 身份、格式和能力，不提供默认参数。
-- 格式原生 `options` 对 `docnav` 和接入层保持 opaque；core 只在 adapter selection 后按 selected adapter descriptor 做支持性投影。
+- 格式原生 `options` 对 `docnav` 和调用入口保持 opaque；core 只在 adapter selection 后按 selected adapter descriptor 做支持性投影。
 - 不属于 selected adapter 的 option 返回 unsupported native option diagnostic；type mismatch、range invalid 和格式语义由选中 adapter 在消费时诊断。
 - 显式 adapter id 不存在时，adapter selection diagnostic 优先于任何 option validation。
 - page 不属于配置默认值；入口省略 page 时固定从 `1` 开始。

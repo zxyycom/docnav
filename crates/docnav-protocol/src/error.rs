@@ -215,12 +215,6 @@ impl ProtocolError {
         )
     }
 
-    pub fn adapter_invoke_failed(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::with_default_message::<typed_codes::protocol::AdapterInvokeFailed>(
-            AdapterReasonDetails::new(adapter_id, reason),
-        )
-    }
-
     pub fn internal_error(error_id: impl Into<String>) -> Self {
         Self::with_default_message::<typed_codes::protocol::InternalError>(InternalDetails::new(
             error_id,
@@ -276,9 +270,6 @@ impl ProtocolError {
             }
             ProtocolDiagnosticCode::AdapterUnavailable => {
                 self.record_draft::<typed_codes::protocol::AdapterUnavailable>(source)
-            }
-            ProtocolDiagnosticCode::AdapterInvokeFailed => {
-                self.record_draft::<typed_codes::protocol::AdapterInvokeFailed>(source)
             }
             ProtocolDiagnosticCode::InternalError => {
                 self.record_draft::<typed_codes::protocol::InternalError>(source)

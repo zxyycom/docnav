@@ -59,7 +59,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 
 | 规则面 | Owner 文档 |
 | --- | --- |
-| 制品职责、调用链、adapter 选择、internal discovery failure list、运行边界 | [架构](architecture.md) |
+| 组件职责、输出分层、调用链、adapter 选择、internal discovery failure list、运行边界 | [架构](architecture.md) |
 | `docnav` 命令、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
 | 标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、strict unmapped input validation、源码级 native option registry、generic option 合并、adapter option handoff、标准参数 validation 和 operation binding | [标准参数](standard-parameters.md) |
 | 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
@@ -83,7 +83,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | --- | --- |
 | owner 文档 | 某类规则的完整解释和维护位置；其它文档只保留摘要或引用。 |
 | docnav | 核心 CLI，负责格式识别、adapter 路由、配置、管理和输出分发。 |
-| adapter | 独立格式处理制品，拥有格式解析、导航策略、ref 和分页语义。 |
+| adapter | 独立格式处理组件，拥有格式解析、导航策略、ref 和分页语义。 |
 | document | Docnav 操作的输入文件，由 path 定位并用于 adapter 选择。 |
 | `outline -> ref -> read` | 标准导航流程：先取结构条目，再把 adapter 生成的 ref 原样传回读取。 |
 | ref | adapter 生成和解析的非空 opaque string；共享层只原样传递。 |

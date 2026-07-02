@@ -125,10 +125,6 @@ fn protocol_error_codes_use_diagnostic_categories() {
             ProtocolErrorCategory::AdapterBoundary,
         ),
         (
-            ProtocolDiagnosticCode::AdapterInvokeFailed,
-            ProtocolErrorCategory::AdapterBoundary,
-        ),
-        (
             ProtocolDiagnosticCode::InternalError,
             ProtocolErrorCategory::Internal,
         ),
@@ -155,10 +151,10 @@ fn protocol_error_required_details_come_from_diagnostic_rules() {
             .collect::<Vec<_>>()
     );
     assert_eq!(
-        ProtocolDiagnosticCode::AdapterInvokeFailed
+        ProtocolDiagnosticCode::AdapterUnavailable
             .required_detail_names()
             .collect::<Vec<_>>(),
-        docnav_diagnostics::ProtocolDiagnosticCode::AdapterInvokeFailed
+        docnav_diagnostics::ProtocolDiagnosticCode::AdapterUnavailable
             .required_detail_names()
             .collect::<Vec<_>>()
     );

@@ -1,10 +1,10 @@
 # 架构
 
-本文是 Docnav v0 制品职责、接入方式、语义层、adapter 选择和进程边界的主规范。
+本文是 Docnav v0 组件职责、输出分层、adapter 选择和进程边界的主规范。
 
 ## 核心定位
 
-Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责识别、路由、分发、管理、配置和项目初始化。Skill 与 AGENTS.md / system prompt 是面向 agent 的使用指引，它们共享 `docnav` 契约，不复制解析逻辑。
+Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责识别、路由、分发、管理、配置和项目初始化。调用入口共享 `docnav` CLI 契约，不复制格式识别、adapter 路由或解析逻辑。
 
 核心流程：
 
@@ -14,16 +14,16 @@ outline -> ref -> read
 
 `path` 定位文档并供 `docnav` 选择 adapter；`ref` 只定位当前文档内部区域，由 adapter 生成和解析；`page` 表示分页位置；`limit` 表示 adapter-owned numeric budget，具体单位由 adapter owner 文档声明。
 
-## 语义层
+## 输出分层
 
-Docnav 分为两个语义层：
+Docnav 文档操作分为两类输出：
 
-| 层 | 目标 | 入口 |
+| 输出 | 目标 | 入口 |
 | --- | --- | --- |
-| 原始协议层 | 稳定校验、兼容、脚本与调试；不以可读性为目标 | `docnav --output protocol-json` |
-| 阅读输出层 | 为 AI 和人类提供高信息密度结果；不作为长期机器解析接口 | `docnav` 默认输出 (`readable-view`)、`docnav --output readable-json` |
+| 原始协议 | 稳定校验、兼容、脚本与调试；不以可读性为目标 | `docnav --output protocol-json` |
+| 阅读输出 | 为 AI 和人类提供高信息密度结果；不作为长期机器解析接口 | `docnav` 默认输出 (`readable-view`)、`docnav --output readable-json` |
 
-两层复用相同业务语义，例如 ref、display、内容、成本和 page，但使用不同的传输包装和展示形态。
+两类输出复用相同业务语义，例如 ref、display、内容、成本和 page，但使用不同的传输包装和展示形态。
 普通 CLI 输出优先服务阅读体验；需要机器稳定解析、兼容校验或自动化断言时，调用完整协议接口。
 所有命令先产出成功结果或诊断错误记录，再由输出层统一投影。Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-json` 三种稳定文档输出模式；help、version 和其它非文档命令的成功输出可以保持 PlainText 或命令自有 JSON，但致命诊断仍按当前 output context 走统一错误投影，除非对应 owner 文档明确规定更窄通道。
 
@@ -31,24 +31,14 @@ Docnav 分为两个语义层：
 
 选择机器可读入口表示调用方优先需要稳定、可预测、便于解析的输出；选择阅读入口表示调用方优先需要完成一次可继续的阅读链路。具体 stdout/stderr 通道、JSON shape 和错误包装由 [输出模式](output.md) 与 [原始协议](protocol.md) 定义。
 
-统一执行管线中的 automatic discovery 候选失败不应立即中断整个链路；`docnav` 应跳过失败候选、继续寻找可用 adapter，并把中间失败保留为 internal discovery state。兜底不能静默吞错；全部候选失败时必须返回 primary failure，并在从属 details 中保留 adapter id、阶段和稳定原因。
-
-## 接入层
-
-1. 直接 CLI：人类、脚本和自动化直接调用 `docnav outline/read/find/info`。
-2. Skill：通过 skill 指导 agent 使用 `docnav` CLI。
-3. AGENTS.md / system prompt：通过项目规则提示 agent 调用 `docnav` CLI。
-
-接入层的职责是收集调用者意图、传递参数并展示阅读结果。格式识别、adapter 路由和项目初始化属于 `docnav`；标准参数映射、配置读取、默认值和来源合并规则见 [标准参数](standard-parameters.md)。
-
-## 制品职责
+## 组件职责
 
 ### `docnav`
 
 负责：
 
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list`。
-- 维护 core release 内置 adapter layer static registry；`adapter list` 只检查该 release 内置 adapter metadata，不读取动态安装记录、外部 executable 或 command path。
+- 维护 core release 内置 adapter static registry；`adapter list` 展示该 registry 中的 adapter metadata。
 - 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的 `config` 命令入口；配置字段映射、supported key、配置读取和来源合并规则见 [标准参数](standard-parameters.md)。
 - 根据 path、项目配置、static registry metadata、`--adapter`、core 简易推断和 probe 选择 adapter。
 - 自动选择并调用对应 adapter library handle。
@@ -67,11 +57,11 @@ Docnav 分为两个语义层：
 - 将 readable payload 交给共享 `docnav-readable` 渲染路径，不拥有通用 readable-view 渲染规则。
 - 在 manifest 中声明 adapter 身份、支持格式、扩展名、content type 和 capabilities。
 
-adapter 只处理本格式请求，不承担跨格式路由、项目初始化、全局配置管理或接入层适配。
+adapter 只处理本格式请求，不承担跨格式路由、项目初始化、全局配置管理或调用入口适配。
 
 ### 共享库
 
-共享库只抽取稳定契约、机械流程和跨制品重复实现。共享 crate owner：
+共享库只抽取稳定契约、机械流程和跨组件重复实现。共享 crate owner：
 
 - `docnav-protocol`：定义原始 protocol request/response、page、错误投影和稳定字段；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest/probe typed contract helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
 - `docnav-readable`：提供 readable payload/value helper、仓库内 renderer config、`ReadableViewKind`、readable-view block 渲染器和 conformance vector 类型。readable-view block framing 由本库拥有。
@@ -91,7 +81,7 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 通用调用链：
 
 ```text
-user / agent / skill / prompt
+caller
   -> docnav：识别、路由、配置、分页参数和输出模式
   -> docnav-navigation：构造内部 protocol request 并调用 selected adapter library handle
   -> selected adapter layer：解析、导航、生成 ref 和语义结果
@@ -99,11 +89,11 @@ user / agent / skill / prompt
   <- docnav：转为 CLI 阅读输出或完整协议输出
 ```
 
-默认文档操作不启动 adapter 子进程。Adapter implementation source 只来自当前 core release 编译进来的 workspace adapter crates 和 static registry；历史 `.docnav/adapters.json`、adapter artifact record、external executable 和 command path 不参与默认执行来源。
+默认文档操作通过当前 core release 编译进来的 workspace adapter crates 和 static registry 选择 adapter implementation source。
 
 ## 标准参数边界
 
-标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、源码级 native option registry、generic option 合并、adapter option handoff 和标准参数校验由 [标准参数](standard-parameters.md) 定义。架构文档只记录跨制品边界：
+标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、源码级 native option registry、generic option 合并、adapter option handoff 和标准参数校验由 [标准参数](standard-parameters.md) 定义。架构文档只记录跨组件边界：
 
 - `docnav` 可以消费 core 标准参数结果做 adapter 选择、document context、request planning 和输出模式选择。
 - `docnav-navigation` 消费 core 已解析的 operation input，构造内部 protocol request，并调用选定 adapter library handle。
@@ -125,7 +115,7 @@ user / agent / skill / prompt
 
 若后续候选成功，前面累积的候选失败只保留为 internal discovery state，成功 document output 不投影这些候选失败。全部候选失败时返回 `FORMAT_UNKNOWN`，primary `DiagnosticRecord.details.candidate_failures` 或 protocol error details 使用候选摘要表达 adapter、阶段和稳定原因码；候选排障细节由 stderr 诊断或内部错误通道按各自契约承载。
 
-显式 `--adapter <adapter-id>` 或配置提供的 adapter id 表达 caller intent。该 adapter 不在 static registry、metadata invalid、probe 失败或 capability 不支持时，`docnav` 返回 adapter selection diagnostic，不把该显式失败伪装成 automatic discovery 成功路径。只有调用方没有显式声明 adapter id 时，候选遍历才是 internal discovery flow。`ref` 只在选定 adapter 内部定位区域，`docnav` 和接入层只原样传递 ref。
+显式 `--adapter <adapter-id>` 或配置提供的 adapter id 表达 caller intent。该 adapter 不在 static registry、metadata invalid、probe 失败或 capability 不支持时，`docnav` 返回 adapter selection diagnostic，不把该显式失败伪装成 automatic discovery 成功路径。只有调用方没有显式声明 adapter id 时，候选遍历才是 internal discovery flow。`ref` 只在选定 adapter 内部定位区域，`docnav` 和调用入口只原样传递 ref。
 
 ## 项目根与路径
 
@@ -139,7 +129,7 @@ user / agent / skill / prompt
 
 ## 运行边界
 
-- 默认文档操作通过 core release 内置 adapter library handle 执行，不通过外部 adapter 进程、动态制品 registry 或 command path。
+- 默认文档操作通过 core release 内置 adapter library handle 执行。
 - Adapter layer 只返回 typed operation result 或 adapter error；stdout/stderr、退出码和 readable/protocol 包装由 `docnav` core/output owner 处理。
 - 普通 CLI 默认输出 (`readable-view`) 和 `readable-json` 用于阅读；机器校验使用 `docnav --output protocol-json`。
-- `doctor` 检查项目/用户配置、static registry 和 adapter layer 可用性；历史 adapter registration material 不参与默认健康检查。
+- `doctor` 检查项目/用户配置、static registry 和 adapter layer 可用性。

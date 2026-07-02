@@ -1,10 +1,10 @@
 # 原始协议
 
-本文是 Docnav 原始协议的主规范。该协议服务于 `docnav --output protocol-json`、脚本、调试和兼容性校验，是 Docnav v0 的机器稳定接口层。CLI 阅读输出由 [输出模式](output.md) 拥有；adapter execution 由 [适配器契约](adapter-contract.md) 拥有。
+本文是 Docnav 原始协议的主规范。该协议服务于 `docnav --output protocol-json`、脚本、调试和兼容性校验，是 Docnav v0 的机器稳定接口。CLI 阅读输出由 [输出模式](output.md) 拥有；adapter execution 由 [适配器契约](adapter-contract.md) 拥有。
 
 ## 协议字段与生命周期
 
-v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 adapter 路由、安装、更新或 implementation source 协商；runtime 对 direct input 的字段 presence、type、operation/result 绑定和语义约束由 typed-field/标准参数处理链路产出诊断，public schema 用于示例、fixture 和 drift check。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法解析请求或无法提取版本字段时，错误响应使用协议常量 `protocol_version` 和 `operation: null`，请求 operation 可确定时在错误响应中保留该 operation。
+v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 runtime routing 或 implementation selection；runtime 对 direct input 的字段 presence、type、operation/result 绑定和语义约束由 typed-field/标准参数处理链路产出诊断，public schema 用于示例、fixture 和 drift check。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法解析请求或无法提取版本字段时，错误响应使用协议常量 `protocol_version` 和 `operation: null`，请求 operation 可确定时在错误响应中保留该 operation。
 
 `docnav --output protocol-json`：
 
@@ -78,7 +78,7 @@ error.details
 
 失败响应的 `operation` 在请求 operation 可确定时必须与请求一致；请求无法解析到 operation 时使用 `null`。`error` 是本次 failed request 的 primary `DiagnosticRecord` protocol projection；`code`、`message` 和 `owner` 必需，`location`、`received`、`expected`、`guidance` 和 `details` 按 diagnostics owner 的记录内容投影。`details` 只包含当前失败需要的 subordinate list 或 stable detail object，不得用多条 sibling errors 替代 primary record。
 
-envelope 仅存在于原始协议层。CLI `readable-view` header 和 `readable-json` 不得包含 `protocol_version`、`request_id`、`operation` 或 `ok`，也不替代完整协议接口。
+envelope 仅存在于原始协议输出。CLI `readable-view` header 和 `readable-json` 不得包含 `protocol_version`、`request_id`、`operation` 或 `ok`，也不替代完整协议接口。
 
 ## 紧凑语义结果
 
@@ -102,7 +102,7 @@ cost:
 metadata  object, optional
 ```
 
-`ref` 是 adapter-owned opaque identifier；`label` 是该 item 的最小非空名称或片段。其它字段是可选结构化事实，adapter 只在能稳定表达时返回。原始协议不返回 `display` 字段；阅读输出层按这些事实派生 `display`。
+`ref` 是 adapter-owned opaque identifier；`label` 是该 item 的最小非空名称或片段。其它字段是可选结构化事实，adapter 只在能稳定表达时返回。原始协议不返回 `display` 字段；阅读输出按这些事实派生 `display`。
 
 ### OutlineResult
 
@@ -158,7 +158,7 @@ adapter:
 metadata  object, optional
 ```
 
-`capabilities` 保持必需并表示 adapter 当前可执行的 operation 集合。`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。原始协议不返回 info `display`；阅读输出层从这些事实派生可读摘要。
+`capabilities` 保持必需并表示 adapter 当前可执行的 operation 集合。`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。原始协议不返回 info `display`；阅读输出从这些事实派生可读摘要。
 
 ## 分页模型
 
@@ -176,7 +176,7 @@ metadata  object, optional
 
 ## ref 规则
 
-ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav` 和接入层只把 ref 当作非空字符串；适配器负责生成和解析。
+ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav` 和调用入口只把 ref 当作非空字符串；适配器负责生成和解析。
 
 ## 编码
 
@@ -199,14 +199,11 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 | `REF_AMBIGUOUS` | `ref`、`candidate_count` |
 | `REF_INVALID` | `ref`、`reason` |
 | `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason`；`selection_source`、`stage` 可选 |
-| `ADAPTER_INVOKE_FAILED` | 旧 external invoke failure 的兼容投影；`adapter_id`、`reason` 必需，历史投影可包含 `exit_code`、`stderr` |
 | `INTERNAL_ERROR` | `error_id` |
 
 `selection_source` 和 `stage` 只在声明式 adapter 选择失败需要区分来源和失败阶段时出现；自动 discovery 的候选失败列表使用 `FORMAT_UNKNOWN`/`FORMAT_AMBIGUOUS` candidate summary 表达。
 
 `FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；primary `DiagnosticRecord.details.candidate_failures` 使用同一元素 shape。每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`MANIFEST_INVALID`、`ADAPTER_UNAVAILABLE`、`CAPABILITY_UNSUPPORTED`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload 和人类说明文案由内部错误通道按各自契约承载。
-
-`ADAPTER_INVOKE_FAILED` 表达旧 external invoke failure 的兼容投影语义。当前 core-linked default path 的 adapter layer 返回结构化 error/diagnostic；CLI process exit code 由 core/output owner 在最终 surface 映射。
 
 错误 message 和 guidance 是可定制文案；调用方只解析 code、owner 和 stable details。`INVALID_REQUEST` 可以在 top-level projection 中附带 `location`、`received` 或 `expected`，也可以在 details 中附带 `field_issues`、`typed_validation_failures`、`config_issues` 或 `option_issues`。Core key/source/shape failures 使用 `field_issues` 或 `config_issues`；adapter-owned native option validation 使用 `option_issues` 表达 option owner、namespace/key、source、reason_code，以及可用的 type_variant、received 和 expected。range/type failure 必须在 top-level projection 或对应 option issue 中提供可比较的 received/expected 信息。显式 adapter 不存在时仍返回 adapter selection diagnostic，不投影为 option validation error。这些补充字段不得替代必需的 `field` 和 `reason`。
 

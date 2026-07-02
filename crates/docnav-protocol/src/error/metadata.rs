@@ -12,9 +12,9 @@ pub(super) fn default_owner_for_code(code: ProtocolDiagnosticCode) -> &'static s
         ProtocolDiagnosticCode::FormatUnknown | ProtocolDiagnosticCode::FormatAmbiguous => {
             "adapter_selection"
         }
-        ProtocolDiagnosticCode::AdapterUnavailable
-        | ProtocolDiagnosticCode::AdapterInvokeFailed
-        | ProtocolDiagnosticCode::InternalError => "adapter",
+        ProtocolDiagnosticCode::AdapterUnavailable | ProtocolDiagnosticCode::InternalError => {
+            "adapter"
+        }
         ProtocolDiagnosticCode::DocumentNotFound
         | ProtocolDiagnosticCode::DocumentPathInvalid
         | ProtocolDiagnosticCode::DocumentEncodingUnsupported
@@ -59,9 +59,6 @@ pub const fn protocol_error_default_guidance(code: ProtocolDiagnosticCode) -> &'
         ProtocolDiagnosticCode::AdapterUnavailable => {
             "Select an adapter from the current core release static registry."
         }
-        ProtocolDiagnosticCode::AdapterInvokeFailed => {
-            "Inspect the adapter failure details and retry."
-        }
         ProtocolDiagnosticCode::InternalError => {
             "Retry the command or report the internal error id."
         }
@@ -89,9 +86,6 @@ pub const fn protocol_error_default_message(code: ProtocolDiagnosticCode) -> &'s
         ProtocolDiagnosticCode::RefAmbiguous => protocol_error_messages::REF_AMBIGUOUS,
         ProtocolDiagnosticCode::RefInvalid => protocol_error_messages::REF_INVALID,
         ProtocolDiagnosticCode::AdapterUnavailable => protocol_error_messages::ADAPTER_UNAVAILABLE,
-        ProtocolDiagnosticCode::AdapterInvokeFailed => {
-            protocol_error_messages::ADAPTER_INVOKE_FAILED
-        }
         ProtocolDiagnosticCode::InternalError => protocol_error_messages::INTERNAL_ERROR,
     }
 }

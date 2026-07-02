@@ -1,8 +1,8 @@
 # JSON Schema 索引
 
-本目录使用 JSON Schema Draft 2020-12，并按语义层拆分。Schema 是字段形状、surface 投影和示例的校验材料，不是新的规范来源；字段语义、诊断 code/details 规则、输出承载和职责边界由对应主规范文档定义。
+本目录使用 JSON Schema Draft 2020-12，并按输出类型拆分。Schema 是字段形状、surface 投影和示例的校验材料，不是新的规范来源；字段语义、诊断 code/details 规则、输出承载和职责边界由对应主规范文档定义。
 
-## 原始协议层
+## 原始协议
 
 | Schema | 用途 |
 | --- | --- |
@@ -11,7 +11,7 @@
 | [manifest.schema.json](manifest.schema.json) | adapter manifest |
 | [probe-result.schema.json](probe-result.schema.json) | adapter probe |
 
-## 阅读输出层
+## 阅读输出
 
 | Schema | 用途 |
 | --- | --- |

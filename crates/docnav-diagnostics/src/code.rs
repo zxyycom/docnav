@@ -87,7 +87,6 @@ pub enum ProtocolDiagnosticCode {
     RefAmbiguous,
     RefInvalid,
     AdapterUnavailable,
-    AdapterInvokeFailed,
     InternalError,
 }
 
@@ -128,7 +127,6 @@ impl From<ProtocolDiagnosticCode> for DiagnosticCode {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BoundaryDiagnosticCode {
-    AdapterErrorExitCodeCannotBe,
     FailedToReadRequest,
     FailedToSerialize,
     FailedToWriteJson,

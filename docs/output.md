@@ -27,7 +27,7 @@ docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
 
 `protocol-json` stdout 只承载 protocol response 或 failure envelope。若直接 CLI argv 中存在 unknown token、多余 positional 或 operation-inapplicable flag，stdout 输出 protocol failure envelope。若 automatic discovery 全部失败，stdout 输出包含 primary diagnostic 和 candidate failure list 的 protocol failure envelope。若后续候选成功，stdout 只输出成功 protocol response envelope。若参数解析失败但 argv 已能确定 `--output protocol-json`，stdout 仍输出 protocol failure envelope，而不是退回文本错误。
 
-原始协议成功结果保留 adapter 返回的结构化事实，例如 outline/find item 的 `label`、`kind`、`location`、`summary`、`excerpt`、`cost`、`metadata`，read 的 `cost.measurements[]`，以及 info 的 `document`、`adapter`、`metadata`。这些字段是 `protocol-json` 的事实来源；`display` 和人类可读成本摘要属于阅读输出层。
+原始协议成功结果保留 adapter 返回的结构化事实，例如 outline/find item 的 `label`、`kind`、`location`、`summary`、`excerpt`、`cost`、`metadata`，read 的 `cost.measurements[]`，以及 info 的 `document`、`adapter`、`metadata`。这些字段是 `protocol-json` 的事实来源；`display` 和人类可读成本摘要属于阅读输出。
 
 `docnav-json-io` 拥有低层 JSON serialization、newline writing 和 write failure plumbing；protocol envelope、诊断投影、错误归属和 exit code policy 仍由 document output 编排和调用方 surface 决定。
 
@@ -76,7 +76,7 @@ Some install text.
 
 用途：需要结构化阅读结果但不需要协议 envelope 的 AI 和人类辅助流程。输出不包含 `protocol_version`、`request_id`、`operation`、`ok` 或原始进程错误字段。
 
-`readable-json` 仍属于阅读输出层中的结构化机器友好形态。它必须保持 documented shape，便于 AI、工具和轻量自动化解析阅读结果；但它不包含完整协议 envelope，也不替代 `protocol-json` 的完整机器兼容接口。脚本若需要跨版本稳定错误 envelope、request id、raw item facts、结构化成本或协议兼容校验，应使用 `protocol-json`。
+`readable-json` 是阅读输出中的结构化机器友好形态。它必须保持 documented shape，便于 AI、工具和轻量自动化解析阅读结果；但它不包含完整协议 envelope，也不替代 `protocol-json` 的完整机器兼容接口。脚本若需要跨版本稳定错误 envelope、request id、raw item facts、结构化成本或协议兼容校验，应使用 `protocol-json`。
 
 阅读输出 schema 按 operation 独立定义，见 [JSON Schema 索引](schemas/json-schema.md)。
 
