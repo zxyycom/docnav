@@ -61,7 +61,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | --- | --- |
 | 组件职责、输出分层、调用链、运行边界 | [架构](architecture.md) |
 | adapter library interface、manifest metadata、probe、adapter 选择、internal discovery failure list、格式默认值和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
-| `docnav` 命令、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
+| `docnav` 命令、项目根解析、document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
 | 标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、strict unmapped input validation、源码级 native option registry、generic option 合并、adapter option handoff、标准参数 validation 和 operation binding | [标准参数](standard-parameters.md) |
 | 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
 | protocol envelope、operation、紧凑结果、page、protocol failure envelope 和 primary diagnostic projection | [原始协议](protocol.md) |

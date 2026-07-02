@@ -91,26 +91,6 @@ caller
 
 默认文档操作通过当前 core release 编译进来的 workspace adapter crates 和 static registry 选择 adapter implementation source。
 
-## 标准参数边界
-
-标准参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、源码级 native option registry、generic option 合并、adapter option handoff 和标准参数校验由 [标准参数](standard-parameters.md) 定义。架构文档只记录跨组件边界：
-
-- `docnav` 可以消费 core 标准参数结果做 adapter 选择、document context、request planning 和输出模式选择。
-- `docnav-navigation` 消费 core 已解析的 operation input，构造内部 protocol request，并调用选定 adapter library handle。
-- 显式 public input 默认 strict：未知 argv、多余 positional、当前 operation 不适用的 flag、未映射 request/config 字段和无法归入源码级 native option registry/source 的输入不进入业务执行，入口 owner 必须把它们映射为输入或配置诊断。
-- 格式原生 options 只由 core 支持的 public input、配置 `options` object 或对应 registration 声明的 native option source 提供；`docnav` 不从 manifest、core 配置或隐式默认值合成格式专属 options。Adapter selection 后，core 按 selected adapter descriptor 投影支持的 options 并为 unsupported option 返回 native option diagnostic；type mismatch 和 range invalid 由 consuming adapter 返回 adapter-owned structured diagnostic。
-- 配置不得改变 protocol envelope、readable JSON 字段或 `DiagnosticCode`；`DiagnosticCode` 由 [错误通道](diagnostics.md) 拥有，protocol/readable 字段由对应 surface owner 文档定义。
-
-## 项目根与路径
-
-`docnav` 按以下顺序确定项目根：
-
-1. 显式 `--project <path>`。
-2. 从启动 cwd 向上查找最近的 `.docnav/`。
-3. 未找到时使用启动 cwd。
-
-`docnav` 接受项目根内外的可访问文件路径。相对 path 基于启动 cwd 解析；`document.path` 必须使用 `/`，项目根内路径可以传项目相对路径，项目根外路径传规范化绝对路径。路径不存在、不可读或无法规范化时返回文档路径错误，不能调用 adapter layer。
-
 ## 运行边界
 
 - 默认文档操作通过 core release 内置 adapter library handle 执行。
