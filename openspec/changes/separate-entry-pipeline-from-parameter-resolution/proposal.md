@@ -27,6 +27,6 @@
 
 ## Impact
 
-- Affected docs/specs: `docs/architecture.md`, `docs/cli.md`, `docs/standard-parameters.md`, `docs/adapter-contract.md`, `docs/protocol.md`, `docs/testing.md`, and related OpenSpec specs.
+- Affected docs/specs: `docs/architecture.md`, `docs/cli.md`, `docs/navigation-config.md`, `docs/adapter-contract.md`, `docs/protocol.md`, `docs/testing.md`, and related OpenSpec specs.
 - Affected Rust crates: `docnav`, `docnav-navigation`, `docnav-adapter-contracts`, `docnav-standard-parameters`, `docnav-typed-fields`, and tests that assert source-resolution or request construction behavior.
 - Affected public surfaces: CLI help wording, docs terminology, input/error ownership descriptions, schema/example validation references, and adapter library contract documentation.

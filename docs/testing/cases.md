@@ -162,7 +162,7 @@ Status: implemented
 Code: `crates/docnav/src/standard_parameters/tests.rs`
 
 Proves:
-- Core document operation request construction consumes standard parameter resolution output, preserving source labels for direct input, project config and built-in defaults.
+- Core document operation request construction consumes navigation config output, preserving source labels for explicit input, project config and built-in defaults.
 - Adapter descriptor native CLI flags enter core parsing as native option sources instead of core-owned fields.
 
 ### WB-CORE-PREFLIGHT-001 Core preflight 检测 protocol-json intent
@@ -388,7 +388,7 @@ Proves:
 - Explicit or present invalid config sources return blocking config diagnostics while default missing config sources remain absent without diagnostics.
 - Unmapped public input returns source-scoped blocking diagnostics；owner-scoped native option sources can be delegated to adapter/native option owner with source info preserved.
 - Source-level static native option registry preserves owner/namespace/type variants, including same option name across multiple owners or value kinds, and generic merge does not collapse them into a single core type.
-- Core standard parameter resolution hands off final native option values without selected-adapter filtering or type/range prevalidation.
+- Core navigation config hands off final native option values without selected-adapter filtering or type/range prevalidation.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
 ### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影边界

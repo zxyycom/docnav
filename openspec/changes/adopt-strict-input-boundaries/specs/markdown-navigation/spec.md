@@ -61,7 +61,7 @@ Core CLI matrix MUST cover Markdown document operations through linked adapter d
 - **THEN** linked Markdown handler does not execute when failure belongs to core input/config boundary
 
 ### Requirement: Markdown adapter 支持 core 配置来源中的 native options
-Markdown adapter MUST receive core-provided config source facts through the standard parameter and native option handoff. Core config loading owns config source discovery, source priority, JSON parsing and config input diagnostics. Markdown adapter owns validation of declared adapter native options such as `options.max_heading_level`.
+Markdown adapter MUST receive core-provided config source facts through navigation config and native option handoff. Core config loading owns config source discovery, source priority, JSON parsing and config input diagnostics. Markdown adapter owns validation of declared adapter native options such as `options.max_heading_level`.
 
 Missing default config sources mean the corresponding layer has no config source. Present invalid config sources such as unreadable, invalid JSON or non-object root MUST fail at the core config input boundary. Unknown top-level fields, unknown `defaults` fields and undeclared `options` keys MUST fail before handler execution. Declared `options` keys enter adapter-owned native option validation with their source metadata preserved.
 
@@ -84,7 +84,7 @@ Missing default config sources mean the corresponding layer has no config source
 - **THEN** CLI 返回 native option input diagnostic
 
 ### Requirement: Markdown 配置来源必须由 smoke 和矩阵测试覆盖
-Docnav core smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置 source absence、配置 input failure、native option metadata handoff，以及 request arguments 与配置/default sources 进入同一标准参数解析的边界。
+Docnav core smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置 source absence、配置 input failure、native option metadata handoff，以及 navigation config/default sources 进入 request construction 前补全过程的边界。
 
 #### Scenario: 配置 source absence 被覆盖
 - **WHEN** 默认项目级或用户级配置文件不存在
@@ -100,4 +100,4 @@ Docnav core smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置 s
 - **WHEN** 项目级配置来源设置 `options.max_heading_level`
 - **AND** 该 key 由 Markdown native option owner 声明
 - **THEN** 测试证明 `outline` 和 `find` 都消费适用的 `options.max_heading_level`
-- **THEN** core operation 和有效 request 入口通过同一标准参数解析边界进入 handler
+- **THEN** core operation 通过同一 navigation config 边界补全后进入 handler

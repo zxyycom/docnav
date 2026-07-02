@@ -1,6 +1,6 @@
 # 输出模式
 
-本文是 `docnav` 文档操作输出模式、readable rendering、诊断投影承载、阅读文案配置和输出通道的主规范。CLI 命令面见 [CLI](cli.md)；直接 CLI argv 映射和标准参数机制见 [标准参数](standard-parameters.md)；原始协议 envelope 见 [原始协议](protocol.md)。
+本文是 `docnav` 文档操作输出模式、readable rendering、诊断投影承载、阅读文案配置和输出通道的主规范。CLI 命令面见 [CLI](cli.md)；core 配置合并和运行时补全见 [导航配置](navigation-config.md)；原始协议 envelope 见 [原始协议](protocol.md)。
 
 ## 输出层边界
 
@@ -23,7 +23,7 @@ docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
 
 文档操作输出完整原始协议 envelope。`adapter list`、doctor、manifest metadata 和 probe result 由各自 owner 定义输出 shape。
 
-`docnav --output protocol-json` 由核心 CLI 生成非空 request id，使用标准参数机制和 operation binding 构造内部 protocol request；写入 `arguments` 的字段是 adapter layer 的显式 operation input，再通过 `docnav-navigation` 调用 adapter library handle。
+`docnav --output protocol-json` 由 core 先完成导航配置合并、adapter selection 和 native option enrichment，再由 `docnav-navigation` 生成非空 request id 并构造内部 protocol request；写入 `arguments` 的字段是 adapter layer 的显式 operation input。
 
 `protocol-json` stdout 只承载 protocol response 或 failure envelope。若直接 CLI argv 中存在 unknown token、多余 positional 或 operation-inapplicable flag，stdout 输出 protocol failure envelope。若 automatic discovery 全部失败，stdout 输出包含 primary diagnostic 和 candidate failure list 的 protocol failure envelope。若后续候选成功，stdout 只输出成功 protocol response envelope。若参数解析失败但 argv 已能确定 `--output protocol-json`，stdout 仍输出 protocol failure envelope，而不是退回文本错误。
 
@@ -99,5 +99,5 @@ readable read 保留 adapter 返回的 `content_type`，并把 adapter 返回的
 - 诊断记录可投影到 stderr。
 - automatic discovery 候选记录只有在全部候选失败时从属于 primary failure details；后续候选成功时不进入 success stdout payload。
 - 默认配置路径缺失不产生诊断；显式或 present invalid config source 产生 failure projection，并阻断 document operation。
-- 直接 CLI argv 的 strict 分类和诊断交接数据见 [标准参数](standard-parameters.md#错误出口)；通道承载必须与该规则一致。
+- 导航配置的诊断交接见 [导航配置](navigation-config.md#错误出口)；通道承载必须与该规则一致。
 - 非 document machine output 若复用低层 JSON writer，仍由各自 owner 决定 schema、plain text/stderr 边界和 exit behavior。

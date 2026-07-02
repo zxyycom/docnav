@@ -50,7 +50,7 @@ Unmapped direct input MUST 产生 source-scoped unmapped-input diagnostics。Exp
 - **THEN** source construction returns an adapter-owned native option source
 - **THEN** adapter or entry owner validates or rejects the native option values
 
-#### Scenario: Defaults 进入标准参数解析
+#### Scenario: Defaults 进入导航配置补全
 - **WHEN** 字段存在 static default 或 caller-provided dynamic default
 - **THEN** default handling 将该值作为 default source candidate
 - **THEN** default 通过与其它 mapped source values 相同的 typed-field metadata validation

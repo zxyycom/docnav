@@ -4,7 +4,7 @@
 
 ## 协议字段与生命周期
 
-v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 runtime routing 或 implementation selection；runtime 对 direct input 的字段 presence、type、operation/result 绑定和语义约束由 typed-field/标准参数处理链路产出诊断，public schema 用于示例、fixture 和 drift check。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法解析请求或无法提取版本字段时，错误响应使用协议常量 `protocol_version` 和 `operation: null`，请求 operation 可确定时在错误响应中保留该 operation。
+v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 runtime routing 或 implementation selection；runtime 在 core 参数补全和 adapter execution 后产出 protocol envelope，public schema 用于示例、fixture 和 drift check。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法确定请求 operation 时，错误响应使用 `operation: null`。
 
 `docnav --output protocol-json`：
 
@@ -25,7 +25,7 @@ document.path
 arguments
 ```
 
-`arguments` 是 adapter layer 的显式 operation 输入。缺失的已注册标准参数可以由 core 配置或默认值补足。Unknown envelope fields、缺少必需 envelope 字段、operation 不合法、document path shape 错误或 `arguments` 非 object 停在 protocol direct input boundary，并返回 protocol-shaped failure。Envelope 合法后，operation、document path、raw `arguments` object 和已注册字段作为 direct input 交给 [标准参数](standard-parameters.md#输入与配置映射) 与 typed-field processing。未映射 `arguments` 字段默认产生 input diagnostic；`arguments.options` 或 registration 声明的其它 native option source 通过源码级静态 option registry 进入 generic merge，并交给 adapter/native option owner 在消费时校验或拒绝。
+`arguments` 是 adapter layer 的显式 operation 输入。当前 `docnav` CLI 先通过 [导航配置](navigation-config.md) 和 native option enrichment 得到完成后的 operation input，再由 `docnav-navigation` 构造内部 protocol request。Protocol envelope 不作为配置合并入口；它记录 adapter 调用时实际传入的 operation、document path 和 arguments。
 
 v0 operation 参数：
 
@@ -41,7 +41,7 @@ v0 operation 参数：
 - 预算只约束 adapter-owned 结果负载：outline/find 约束每页 entry facts 的可继续输出，read 约束 `content` 切分；`protocol_version`、`request_id`、`operation`、`ok`、JSON 字段名和固定包装不计入预算。
 - outline/find 遇到下一条 entry 或 match 会超过预算时，应在当前页停止并返回下一页 page。若单条记录本身超过预算，适配器必须保留完整 ref，并压缩 adapter-owned `label`、`summary`、`excerpt`、`cost` 或 `metadata` 等补充事实，使该页仍能前进；若完整 ref 本身已超过 `limit`，该单条记录可超出预算，但 `label` 仍应保留最小非空定位语义。
 - read 按 adapter 声明的预算切分 content；文本 adapter 不能切断 Unicode 字符；若当前位置后仍有内容，返回下一页 page。
-- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象，不解释格式语义；source classification、generic merge 和 unsupported option 投影见 [标准参数](standard-parameters.md) 与 [适配器契约](adapter-contract.md#标准参数消费边界)。Type mismatch、range invalid 和格式语义由 consuming adapter 返回 adapter-owned structured diagnostic。
+- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象，不解释格式语义；当前 core native option enrichment 和 selected-adapter 投影见 [导航配置](navigation-config.md#native-options) 与 [适配器契约](adapter-contract.md#文档操作执行边界)。Type mismatch、range invalid 和格式语义由 consuming adapter 返回 adapter-owned structured diagnostic。
 - 继续读取时，调用方保持 path、ref、query 和其它显式参数稳定，只使用响应返回的 page。
 - page 是调用位置，不是配置默认参数；入口省略 page 时固定从 `1` 开始。
 
@@ -213,8 +213,8 @@ Protocol response schema 是本节的验证材料，用于校验 protocol-visibl
 
 Protocol response stdout 只输出 schema payload；`docnav --output protocol-json` stdout 只输出对应 protocol-shaped payload。Strict public input failure 和 automatic discovery 全部失败时的 candidate list 都使用 protocol failure projection。
 
-`docnav-protocol` request input pipeline 的可复用范围是 `serde_json::Value -> standard-parameter/typed-field processing -> raw protocol envelope facts + operation values`。pipeline 使用 `docnav-typed-fields` metadata 和标准参数 mapping 校验 runtime 字段级 path、presence、type、enum、range、length 和 pattern 规则，并把 raw `arguments` 作为 direct input 的一部分交给入口 mapper。Native options 在 protocol schema 中保持 opaque object；core 只按 static option registry 做 source classification、merge 和 handoff，adapter-owned semantics 由 consuming adapter 诊断。
+`docnav-protocol` 当前只承接 protocol request/response 数据结构、schema 对齐和 protocol error projection。导航配置合并发生在 core 构造 operation input 之前；`docnav-navigation` 消费完成后的 operation input 并生成 protocol request。Native options 在 protocol schema 中保持 opaque object；adapter-owned semantics 由 consuming adapter 诊断。
 
-Operation-specific typed request 由 [标准参数](standard-parameters.md#输入与配置映射) 从 `serde_json::Value`、argv tokens 和 config values 映射、校验并归一化后产出。response、manifest 和 probe 等已归一化 payload 可以继续使用 typed deserialize + semantic validate。
+Operation-specific typed request 由 core 参数补全和 `docnav-navigation` request construction 共同产出。response、manifest 和 probe 等已归一化 payload 可以继续使用 typed deserialize + semantic validate。
 
 调用方继续拥有错误归属、field path、request id fallback、stdout/stderr placement 和 exit behavior。public JSON Schema 文件保留为 contract material、examples/fixtures 校验和工具链 drift check，不作为 production decode path 的 generic schema validator。[错误通道](diagnostics.md) 拥有内部 code、category、primary record 字段和 details rule；这些规则投影到 protocol surface 时必须符合本文件定义的 code、owner 和 details。readable wrapper、manifest/probe policy 由各自 owner 文档定义。

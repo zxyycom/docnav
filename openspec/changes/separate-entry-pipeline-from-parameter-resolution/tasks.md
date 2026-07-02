@@ -9,7 +9,7 @@
 
 - [ ] 2.1 更新 `docs/architecture.md`，明确 entry pipeline、parameter source resolution、static registry 和 adapter library dispatch owner 边界。
 - [ ] 2.2 更新 `docs/cli.md`，把 core document operations、non-document commands、help、`config list --path` 和 `adapter list` 的入口分类与配置读取边界写清楚。
-- [ ] 2.3 更新 `docs/standard-parameters.md`，将 protocol arguments、CLI argv 和 config sources 的映射写成 derived values，不暗示 external adapter process direct input。
+- [ ] 2.3 更新 `docs/navigation-config.md`，将 protocol arguments、CLI argv 和 config sources 的映射写成 derived values，不暗示 external adapter process direct input。
 - [ ] 2.4 更新 `docs/adapter-contract.md` 和 `docs/protocol.md`，明确 adapter library handle/protocol request execution boundary 和 raw protocol request 不可变。
 - [ ] 2.5 更新 `docs/testing.md`、`docs/testing/cases.md` 和 coverage 文案，覆盖 raw input immutable、static registry source boundary 和 dynamic command removal。
 

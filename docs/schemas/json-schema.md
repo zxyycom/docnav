@@ -38,7 +38,7 @@ operation readable schema 只描述 successful document payload 和该 output mo
 | --- | --- |
 | [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | Core `docnav` 配置中 Markdown native option 相关字段形状和示例校验；adapter-owned option range 语义不由 config schema 拥有 |
 
-配置 schema 只描述文档化的 JSON 文件形状，可用于示例校验和编辑器提示。配置文件发现、字段映射、来源合并、strict unmapped field failure、错误归属和 adapter-specific 字段语义由 [标准参数](../standard-parameters.md)、[适配器契约](../adapter-contract.md) 和对应 adapter 文档拥有。
+配置 schema 只描述文档化的 JSON 文件形状，可用于示例校验和编辑器提示。配置文件发现、字段映射、来源合并、strict unmapped field failure、错误归属和 adapter-specific 字段语义由 [导航配置](../navigation-config.md)、[适配器契约](../adapter-contract.md) 和对应 adapter 文档拥有。
 
 本仓库的 docs validator 和 core smoke 会先预加载 `docs/schemas/` 下的 schema，再按 `$id` 编译入口 schema；新增跨文件 `$ref` 时，应保持同目录相对引用，并为被引用 schema 设置稳定 `$id`。示例语义一致性由文档验证脚本检查，检查项必须能追溯到对应 owner 文档。
 

@@ -34,7 +34,7 @@ Docnav 的 AI 友好性需要落到“失败后可一次修正”。调用方显
 
 ## Impact
 
-- 受影响文档与规范：`docs/architecture.md`、`docs/cli.md`、`docs/standard-parameters.md`、`docs/adapter-contract.md`、`docs/protocol.md`、`docs/output.md`、`docs/diagnostics.md`、`docs/ref-contract.md`、`docs/testing.md`、`docs/testing/cases.md`、OpenSpec specs 以及相关 examples/schemas。
+- 受影响文档与规范：`docs/architecture.md`、`docs/cli.md`、`docs/navigation-config.md`、`docs/adapter-contract.md`、`docs/protocol.md`、`docs/output.md`、`docs/diagnostics.md`、`docs/ref-contract.md`、`docs/testing.md`、`docs/testing/cases.md`、OpenSpec specs 以及相关 examples/schemas。
 - 受影响 Rust crate：`docnav`、`docnav-navigation`、`docnav-standard-parameters`、`docnav-adapter-contracts`、`docnav-markdown`、`docnav-diagnostics`、`docnav-output`、adapter routing 模块，以及覆盖 strict failure、primary `DiagnosticRecord`、owner-scoped native options 和 success payload shape 的 smoke/unit tests。
 - 受影响 public surface：core CLI exit behavior、protocol/readable error shape、stdout/stderr channel policy、adapter selection semantics、config source handling、schema examples 和 test case expectations。
 - 受影响 active changes：`replace-clap-with-bpaf-frontend` 需要改为 strict CLI 下保留 `clap` 的方向；`separate-entry-pipeline-from-parameter-resolution` 需要改为 owner-scoped native option source；`implement-docnav-mcp-bridge`、`outline-unstructured-full-read`、`enable-local-core-adapter-service-mode` 和 `markdown-document-head-outline-mode` 需要与成功 payload、failure diagnostic、internal-event ownership 和 adapter-owned option 声明保持一致。Track A 负责协调其它 active changes 中涉及 diagnostic、protocol/readable output、config、native option、adapter selection 和 CLI parser/help 的语言。
