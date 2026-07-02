@@ -9,7 +9,7 @@
 | 角色 / 任务 | 必读 | 需要时再读 |
 | --- | --- | --- |
 | 实现 `docnav` 核心 CLI | [架构](architecture.md)、[CLI](cli.md)、[标准参数](standard-parameters.md)、[输出模式](output.md) | [原始协议](protocol.md)、[测试策略](testing.md) |
-| 实现协议或 SDK | [原始协议](protocol.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
+| 实现原始协议或机器输出 | [原始协议](protocol.md)、[输出模式](output.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
 | 实现错误通道 | [错误通道](diagnostics.md)、[架构](architecture.md) | [CLI](cli.md)、[输出模式](output.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md) |
 | 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | 对应实现面的主规范 |
 | 写测试或验证脚本 | [测试策略](testing.md)、[测试用例维护](testing/case-maintenance.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |

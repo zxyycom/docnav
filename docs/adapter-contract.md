@@ -2,7 +2,7 @@
 
 本文是格式适配器源码级 library interface、静态 descriptor、标准参数消费边界、manifest metadata 和 probe 的主规范。默认文档操作通过 core release 内置 adapter handle 调用。
 
-## Interface
+## 内置 adapter 接口
 
 每个默认适配器作为 core release 内置 workspace crate 暴露 `docnav-adapter-contracts::Adapter` handle，并由 `docnav` static registry 注册。该注册项是源码级静态 descriptor：声明 adapter id、manifest metadata、capabilities、native option registry entries、operation binding 和 handler handle。当前最小 interface 使用 operation handler 粒度：
 
@@ -32,7 +32,7 @@ execute info
 
 adapter 直接提供本格式的 ref、结构化 item facts、内容、结构化成本、info metadata 和 page，供 `docnav` 原样映射到原始协议，并由输出层派生阅读输出。
 
-## Manifest
+## manifest 元数据
 
 Adapter manifest metadata 包含稳定字段：
 
@@ -52,7 +52,7 @@ manifest 只接受 adapter 身份、支持格式、扩展名、content type 和 
 Markdown v0 adapter 的默认参数和 native option registry entries 属于 core-linked `docnav-markdown` 静态 descriptor 和标准参数声明：默认 `pagination.enabled: true`、`limit: 6000`，格式原生 `options.max_heading_level: 3`。这些值不进入 manifest；core document commands 按 [标准参数](standard-parameters.md) 定义的入口规则解析配置、默认值和 request arguments。
 Markdown find 返回的 match ref 可按共享调用流程原样传给 read；没有局部导航区域时，可以返回 adapter 定义的全文 ref。find 的 ref 归属策略和 read 对该 ref 的接受与解释行为，由 [Markdown Adapter](adapters/markdown.md) 定义。`max_heading_level` 等格式原生 options 只影响 adapter 的导航粒度。
 
-## Probe
+## probe 识别
 
 probe 只识别格式，不执行导航。probe 输入只包含 path；`docnav` 在调用 probe 前解析 `--adapter` 或 core 推断得到的预选 adapter，但 adapter 选择提示不会作为 probe 参数传入。probe result 包含：
 
@@ -68,26 +68,30 @@ reasons[]
 
 每次判断至少包含一个 reason。不支持或内容不匹配时返回 `supported: false` 并给出 reason。`docnav` 必须以 probe 结果为准，不能只凭 adapter id、扩展名或 manifest 静默选中。
 
-## Protocol Request Execution
+## 文档操作执行边界
 
-`docnav-navigation` 构造内部 operation request 并 dispatch selected adapter operation handler；它不是 adapter loader，也不改变 adapter implementation source。Adapter handle 接收已通过 core input/config boundary、adapter selection 和 selected-adapter native option projection 的 typed operation input 和 merged native option values，不处理 stdin/stdout、CLI argv 或 exit code。Unknown envelope fields、malformed JSON 和 public input token classification 属于 core/protocol input owner，不进入 adapter library execution；native option type/range failure 属于 adapter consumption diagnostic。
+`docnav-navigation` 的职责限于构造内部 operation request，并 dispatch selected adapter operation handler。Adapter implementation source 由 core release 的 static registry 和 linked workspace crate 决定。
+
+Adapter handle 接收的输入已经通过 core input/config boundary、adapter selection 和 selected-adapter native option projection；它只消费 typed operation input 和 merged native option values。Core、protocol 和 CLI owner 处理 stdin/stdout、CLI argv、exit code、unknown envelope fields、malformed JSON 和 public input token classification。Native option 的 type/range failure 属于 adapter consumption diagnostic。
 
 Adapter operation handler 必须：
 
 - 只处理当前 request 指定的一个 operation。
 - 为分页操作返回下一页页码，结束时返回 null。
 - 按自身声明的 `limit` 预算分页；ref 不得截断。outline/find 单条记录超过预算时，可以压缩 adapter-owned `label`、`summary`、`excerpt`、`cost` 或 `metadata` 等补充事实，但必须保留最小非空 `label` 并让分页前进。
-- 不输出 CLI 阅读文本，不写 stdout/stderr，也不决定最终 exit code。
+- 返回结构化 operation result 或 adapter diagnostic；CLI 阅读文本、stdout/stderr 和最终 exit code 由 core/output owner 处理。
 
 ## 标准参数消费边界
 
-- Core document commands 的配置字段映射、来源标记、合并顺序、默认值和 schema metadata 由 [标准参数](standard-parameters.md) 定义。
-- Core static registry 和 adapter descriptor 必须提供 adapter id、入口策略、内置默认值、native option registry entries 和 native option public source spelling；标准参数 pipeline 使用这些源码级信息准备 standard typed operation arguments 和 merged native option handoff，`docnav-navigation` 只消费已经解析出的 operation input。
-- Core document operation 必须按标准参数机制处理显式 argv、配置源、native option source 和默认值；默认配置路径缺失表示 absent，不产生诊断。显式 override 缺失、不可读、不是文件、invalid JSON、non-object JSON，或默认配置文件一旦存在但无效时，core 必须返回 config input diagnostic，不继续构造 document operation。
-- manifest 只声明 adapter 能力，不提供默认参数。
-- `docnav` 按自身标准参数 registration 和入口策略解析 core 通用参数。
-- 格式原生 `options` 对 `docnav` 和接入层保持 opaque。
-- Adapter native options 只有在源码级 native option registry 中声明为 public source 时才参与 generic merge 或 delegated 给 adapter/native option owner；同名 option 可由不同 owner/namespace/type variant 同时声明。Core 在 adapter selection 后按 selected adapter descriptor 投影支持的 native options，不属于 selected adapter 的 option 返回 unsupported native option diagnostic；core 不预校验类型或取值范围，选中 adapter 在消费时返回 type mismatch 或 range invalid 的结构化 diagnostic。显式 adapter id 不存在时，adapter selection diagnostic 优先于任何 option validation。
+本节只说明 adapter descriptor 与标准参数之间的交接；来源合并和字段映射的完整规则由 [标准参数](standard-parameters.md) 拥有。
+
+- Core static registry 和 adapter descriptor 提供 adapter id、入口策略、内置默认值、native option registry entries 和 native option public source spelling。
+- 标准参数 pipeline 使用这些源码级信息准备 standard typed operation arguments、source info、诊断交接数据和 merged native option handoff。
+- `docnav-navigation` 只消费已解析出的 operation input；配置源读取、public input 分类、输出通道和 exit code 属于 core/CLI/output owner。
+- manifest 只声明 adapter 身份、格式和能力，不提供默认参数。
+- 格式原生 `options` 对 `docnav` 和接入层保持 opaque；core 只在 adapter selection 后按 selected adapter descriptor 做支持性投影。
+- 不属于 selected adapter 的 option 返回 unsupported native option diagnostic；type mismatch、range invalid 和格式语义由选中 adapter 在消费时诊断。
+- 显式 adapter id 不存在时，adapter selection diagnostic 优先于任何 option validation。
 - page 不属于配置默认值；入口省略 page 时固定从 `1` 开始。
 
 ## 协议字段对齐

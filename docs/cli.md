@@ -42,19 +42,19 @@ CLI 本节只定义命令入口和退出边界：
 - `config list --path <path> [--operation outline|read|find|info]` 可以解析文档上下文；触发的 adapter、标准参数来源和最终值由标准参数机制提供。
 - `config` 命令不产生 document protocol response。
 
-## Adapter Inspection
+## 内置 adapter 检查
 
-`docnav adapter list` 是 core release 内置 adapter inspection，不是动态 adapter 管理入口。它只展示 static registry 中随当前 release 编译的 adapter layer metadata，例如 adapter id、名称、版本、支持格式、扩展名、content type 和 capabilities。`adapter list` 不读取 `.docnav/adapters.json`、用户级安装 registry、adapter artifact record、external executable 或 command path，也不刷新 fingerprint。
+`docnav adapter list` 是 core release 内置 adapter inspection。它的数据源固定为随当前 release 编译的 static registry，只展示 adapter layer metadata，例如 adapter id、名称、版本、支持格式、扩展名、content type 和 capabilities。该命令没有动态 adapter 管理副作用。
 
-`docnav adapter install`、`docnav adapter register`、`docnav adapter update` 和 `docnav adapter remove` 不属于默认 CLI surface。调用这些命令必须按普通未知或无效子命令失败，不得创建、读取或修复历史 adapter registration material。
+默认 adapter 命令面只包含 `docnav adapter list`。`docnav adapter install`、`docnav adapter register`、`docnav adapter update` 和 `docnav adapter remove` 按普通未知或无效子命令失败；失败路径没有 registration 副作用。
 
-`docnav doctor` 检查项目/用户配置、static registry 和 core release 内置 adapter layer 可用性。doctor 的 adapter layer check 可以调用 registry 中 adapter 的 metadata/probe 支持逻辑，但不得把外部 adapter artifact 或历史 registration file 当作修复路径。
+`docnav doctor` 检查项目/用户配置、static registry 和 core release 内置 adapter layer 可用性。doctor 的 adapter layer check 可以调用 registry 中 adapter 的 metadata/probe 支持逻辑；修复建议应落在当前配置、static registry 或 linked adapter layer 边界内。
 
-## Adapter Library Interface
+## adapter 执行入口
 
-默认 CLI surface 不提供 `docnav-markdown` 等 adapter direct CLI，也不提供 adapter `invoke` 入口。格式 adapter 作为 core release 内置 workspace crate 暴露 `docnav-adapter-contracts::Adapter` library handle；`docnav-navigation` 负责构造内部 protocol request 并调用 `outline/read/find/info` operation handlers。
+默认 CLI surface 的 adapter 执行入口是 core-linked library handle。格式 adapter 作为 core release 内置 workspace crate 暴露 `docnav-adapter-contracts::Adapter`；core CLI 通过 `docnav-navigation` 构造内部 protocol request 并调用 `outline/read/find/info` operation handlers。
 
-格式 adapter 的默认值来自对应标准参数 definition 和源码级 static option registry。`docnav` document operation 在构造 request 前，按标准参数机制解析显式 argv、配置、native option source 和内置默认值；request construction 只序列化 protocol 需要的字段，以及当前入口明确保留的 adapter-owned options。`docnav-markdown` 默认值见 [Markdown Adapter](adapters/markdown.md#默认值)。
+格式 adapter 的默认值来自对应标准参数 definition 和源码级 static option registry。`docnav` document operation 在构造 request 前完成 argv、配置、native option source 和内置默认值解析；request construction 只序列化 protocol 需要的字段，以及当前入口明确保留的 adapter-owned options。完整映射规则见 [标准参数](standard-parameters.md)，`docnav-markdown` 默认值见 [Markdown Adapter](adapters/markdown.md#默认值)。
 
 分页操作省略 page 时固定读取第一页，并输出下一页 page 或 null。文档操作默认使用 `readable-view`；`protocol-json` 使用原始协议 envelope。输出共享库的所有权见 [架构](architecture.md#共享库) 和 [输出模式](output.md#输出层边界)；CLI 本节只定义入口、参数和命令族边界。
 
@@ -82,7 +82,7 @@ CLI 本节只定义命令入口和退出边界：
 - `config get` 的 key 不存在时必须返回 `INVALID_REQUEST`。
 - 成功退出 `0`；输入错误 `2`；文档/ref/格式错误 `3`；协议或 adapter layer 错误 `4`；内部错误 `1`。退出码由 CLI owner 按错误通道记录的 code category/effect 投影映射。
 
-## Page 分页
+## 分页入口
 
 - 分页操作的 page 是正整数；省略时固定为 `1`，且配置不能改变初始页。
 - 结果固定返回下一页 page；null 表示没有更多信息。

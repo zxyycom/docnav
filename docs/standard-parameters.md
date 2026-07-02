@@ -6,21 +6,21 @@
 
 ## 行为范围
 
-标准参数机制说明一个参数如何在 CLI、配置文件和 protocol request `arguments` 中保持同一语义。它定义参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、strict unmapped input handling、源码级 native option registry 接入、generic option 合并、adapter option handoff 和标准参数校验。
+标准参数机制说明一个参数如何在 CLI、配置文件和 protocol request `arguments` 中保持同一语义。它拥有参数身份、入口字段映射、配置字段映射、来源标记、合并顺序、默认值、strict unmapped input handling、源码级 native option registry 接入、generic option 合并、adapter option handoff 和标准参数校验。
 
-使用方通过 registration 或 metadata 把本入口的输入字段映射到标准参数，得到 typed values、source info、可进入错误通道的诊断交接数据，以及按来源携带的 native option 或 unmapped-input 处理结果。Native option registry 是源码级静态事实源，不是运行时动态注册表；同一个 option 名称可以在不同 owner、namespace 或 type variant 下存在多条 registry entry。标准参数机制在返回这些结果后结束；后续流程如何把交接数据压入错误通道、失败或交给 adapter/native option owner，由对应 owner 文档说明。
+使用方通过 registration 或 metadata 把本入口输入映射到标准参数，得到 typed values、source info、可进入错误通道的诊断交接数据，以及按来源携带的 native option 或 unmapped-input 处理结果。Native option registry 是源码级静态事实源；同一个 option 名称可以在不同 owner、namespace 或 type variant 下存在多条 registry entry。
 
-本文只解释标准参数行为。入口生命周期、transport 包装、输出格式、request envelope 和 operation handler 不在本文内重新定义。
+标准参数机制在返回这些结果后结束。入口生命周期、transport 包装、输出格式、request envelope、operation handler、adapter-side option validation 和 exit behavior 由对应 owner 文档定义。
 
 ## 标准参数模型
 
-标准参数对象不是 argv、config 文件或 protocol request body。它是入口完成映射后的统一语义对象，表示“本次调用最终要使用哪些标准参数值，以及这些值从哪里来”。
+标准参数对象是入口完成映射后的统一语义对象，表示“本次调用最终要使用哪些标准参数值，以及这些值从哪里来”。
 
 从高层看，一个标准参数由四类信息组成：
 
 1. 参数身份：这个值代表什么语义。身份包括 stable identity、canonical key、value kind、schema、默认值和基础校验。
 2. 入口字段映射：这个值在不同入口上如何被命名。CLI flag、配置路径和 protocol argument path 可以不同，但必须映射回同一个参数身份。
-3. 来源标记：映射后的来源对象带有 `direct`、`project_config`、`user_config` 或 `default` 标记。标准参数机制不提供单独的来源开关；某参数不应从某来源取值时，移除该来源对应的映射路径即可。
+3. 来源标记：映射后的来源对象带有 `direct`、`project_config`、`user_config` 或 `default` 标记。某参数的可用来源由映射路径决定；移除某个来源的映射路径，就表示该参数不能从该来源取值。
 4. 解析结果：合并校验后的标准参数 typed value、每个最终值的 source info、诊断交接数据，以及 direct input、project config、user config 各自的 native option 或 unmapped-input 处理结果。Native option 结果保留 registry owner、namespace、type variant 和 source info；标准参数层不把同名 option 折叠成单一类型。
 
 定义新参数时，先确定参数身份，再声明它在哪些入口暴露、各入口字段如何映射，以及未映射字段是否保留。这样新增入口只需要新增入口字段映射，修改校验只需要改参数身份本身。
@@ -29,7 +29,7 @@
 
 下面以 `limit` 为例。流程图是本文的主线，只描述稳定契约，不规定具体实现函数或模块拆分。
 
-`limit` 的标准参数身份是 `LIMIT`，canonical key 为 `docnav.defaults.pagination.limit`。它在 CLI 和 protocol request arguments 中暴露为 `limit`，在配置文件中映射为 `defaults.pagination.limit`，基础校验只要求正整数。标准参数层不定义预算单位，也不决定分页策略；预算如何计数、如何压缩单页结果，以及 read 是否按字符、token 或其它单位切分，由最终消费该值的 adapter owner 说明。
+`limit` 的标准参数身份是 `LIMIT`，canonical key 为 `docnav.defaults.pagination.limit`。它在 CLI 和 protocol request arguments 中暴露为 `limit`，在配置文件中映射为 `defaults.pagination.limit`，基础校验只要求正整数。预算单位、单页结果压缩方式，以及 read 按字符、token 或其它单位切分的策略，由最终消费该值的 adapter owner 说明。
 
 `pagination.enabled` 的标准参数身份是 `PAGINATION_ENABLED`，canonical key 为 `docnav.defaults.pagination.enabled`。Core CLI 在 argv 中把 `--pagination enabled|disabled` 映射为本 identity；配置文件使用 `defaults.pagination.enabled`。Protocol request 不从 `arguments.pagination` 读取该值，只允许配置和 built-in default 参与 enabled 解析。来源合并完成后，入口在进入 adapter 前执行 disabled finalization：当最终 enabled 为 `false` 时，operation 入参中的 `limit` 使用标准参数运行时定义的最大正整数预算。
 
@@ -79,14 +79,14 @@ flowchart TD
 
 ## 输入与配置映射
 
-Direct input 是一次调用显式给出的输入，包括 CLI argv 和 protocol request arguments。它们不是两个不同的标准参数机制，只是同一套 registration 在不同入口上的 spelling。映射完成后，direct input 形成 `source=direct` 的来源对象。
+Direct input 是一次调用显式给出的输入，包括 CLI argv 和 protocol request arguments。它们共享同一套 registration，只是在不同入口使用不同 spelling。映射完成后，direct input 形成 `source=direct` 的来源对象。
 
 | 入口输入 | 映射方式 | 来源对象 |
 | --- | --- | --- |
 | CLI argv | CLI registration 把 flag 映射到标准参数 identity；adapter descriptor 声明的 native CLI flag 映射为 native option source。 | `source=direct` |
 | Protocol request arguments | Operation argument binding 把 argument path 映射到标准参数 identity。 | `source=direct` |
 
-没有映射到标准参数 identity 的 public input 条目不进入标准参数校验，默认形成 source-scoped unmapped-input 诊断交接数据。唯一例外是入口 registration 明确声明的 adapter-owned native option source，例如 adapter descriptor 暴露的 native CLI flag、protocol request `arguments.options` 或配置 `options` object；这些值通过源码级静态 native option registry 分类，并以 owner/namespace/type variant 保留 source info。标准参数层只做全局 key/source/shape 处理、来源合并和 handoff，不按 selected adapter 的支持范围、类型或取值范围预校验，也不因 selected adapter 不消费某个 option 提前拒绝。
+没有映射到标准参数 identity 的 public input 条目不进入标准参数校验，默认形成 source-scoped unmapped-input 诊断交接数据。唯一例外是入口 registration 明确声明的 adapter-owned native option source，例如 adapter descriptor 暴露的 native CLI flag、protocol request `arguments.options` 或配置 `options` object；这些值通过源码级静态 native option registry 分类，并以 owner/namespace/type variant 保留 source info。标准参数层只做全局 key/source/shape 处理、来源合并和 handoff；selected adapter 支持范围、类型和取值范围由后续 core/adapter owner 校验。
 
 配置是显式输入之外的来源。`docnav` 入口从启动 cwd 和项目根规则得到项目配置源 `<project-root>/.docnav/docnav.json`，并从 core 用户配置 owner 得到用户配置文件。Document operation 的 direct input 只提供本次调用的命令参数和 native option source，不拥有配置文件路径。
 
@@ -96,17 +96,17 @@ Direct input 是一次调用显式给出的输入，包括 CLI argv 和 protocol
 | --- | --- | --- |
 | `docnav` | `.docnav/docnav.json` | 用户配置文件 `docnav.json` |
 
-配置读取先校验 JSON 顶层 object，再按已注册的配置路径映射字段。未知顶层字段、未知 `defaults` 字段、无法归入源码级 native option registry 的 `options` key 或其它未映射配置字段产生 config input diagnostic；不会被静默跳过。已归入 registry 的 native option raw value 会保留到最终 option source；adapter selection 完成后，core 按 selected adapter descriptor 投影可接受 entries，不属于 selected adapter 的 option 返回 native option unsupported diagnostic，类型、范围和格式语义继续由 adapter 在消费时校验。Document identity 参数不从配置域读取：`path`、`ref` 和 `query` 只能来自显式输入；`page` 来自显式输入或入口固定默认 `1`，不使用 `defaults.page` 一类配置默认值。
+配置读取先校验 JSON 顶层 object，再按已注册的配置路径映射字段。未知顶层字段、未知 `defaults` 字段、无法归入源码级 native option registry 的 `options` key 或其它未映射配置字段产生 config input diagnostic。已归入 registry 的 native option raw value 会保留到最终 option source；adapter selection 完成后，core 按 selected adapter descriptor 投影可接受 entries，不属于 selected adapter 的 option 返回 native option unsupported diagnostic，类型、范围和格式语义继续由 adapter 在消费时校验。Document identity 参数不从配置域读取：`path`、`ref` 和 `query` 只能来自显式输入；`page` 来自显式输入或入口固定默认 `1`，不使用 `defaults.page` 一类配置默认值。
 
-配置字段只有注册了 config path 或 native option source 才会形成后续输入。取消某个参数的 config path，就等于该参数不能从配置文件取得；CLI flag 和 protocol argument path 也遵循同一规则。Config 层只拥有全局 key/source/shape 边界或 raw value 保留；格式专属语义由 consuming adapter 拥有。`defaults.pagination.limit` 是 `LIMIT` 的唯一配置路径，旧 `defaults.limit` 不形成标准参数来源，并按未知 `defaults` 字段失败。
+配置字段只有注册了 config path 或 native option source 才会形成后续输入。取消某个参数的 config path，就等于该参数不能从配置文件取得；CLI flag 和 protocol argument path 也遵循同一规则。Config 层只拥有全局 key/source/shape 边界或 raw value 保留；格式专属语义由 consuming adapter 拥有。`defaults.pagination.limit` 是 `LIMIT` 的唯一配置路径；未注册的 `defaults` 字段按 config input diagnostic 失败。
 
 配置只控制所属入口明确声明的行为默认值。配置不得改变 protocol-json 字段、readable-json 字段或 `DiagnosticCode`。`docnav config set` 和 `unset` 默认写项目配置；传入 `--user` 时写用户配置。`config list` 不带 path 时列出 core 配置域当前生效值；`config list --path <path> [--operation outline|read|find|info]` 解析文档上下文，并展示该 path 触发的 adapter、core 标准参数来源和最终值。
 
-## 合并、Native Option 与校验
+## 合并、格式原生参数与校验
 
 标准参数来源固定为 direct input、project config、user config 和 default。Default 来自参数 definition 的 static default 或 dynamic default。解析器按流程图中的优先级覆盖，并保留每个最终值的来源信息。
 
-未映射 public input 是边界错误，而不是兼容性 warning。未知顶层配置字段、未知 `defaults` 字段、无法归入源码级 native option registry/source 的输入、未映射 direct input 字段、unknown argv、多余 positional 和当前 operation 不适用的 flag 都必须产生 blocking diagnostic。已归入 registry 的 native option source 可以 delegated 给 adapter/native option owner 做后续校验；selected adapter 是否支持由 core 在 adapter selection 后按 descriptor 判断，类型是否匹配、取值范围是否合法和格式语义属于 adapter-side validation。
+未映射 public input 是边界错误，而不是兼容性 warning。未知顶层配置字段、未知 `defaults` 字段、无法归入源码级 native option registry/source 的输入、未映射 direct input 字段、unknown argv、多余 positional 和当前 operation 不适用的 flag 都必须产生 blocking diagnostic。已归入 registry 的 native option source 可以 delegated 给 adapter/native option owner；标准参数层不判断 selected adapter 是否支持，也不解释类型、范围或格式语义。
 
 共享层只对已映射标准参数执行 schema-backed validation。未映射和 native option 处理结果由入口配置的 typed-fields `ProcessingBuild` 产出；未配置处理函数时，未映射 public input 由入口 owner 转为 blocking diagnostic。标准参数 pipeline 对处理结果只做三件事：
 
@@ -114,11 +114,11 @@ Direct input 是一次调用显式给出的输入，包括 CLI argv 和 protocol
 2. 应用 entry policy，把结果标记为 blocking diagnostic 或 delegated native option source。
 3. 连同 source info 交给入口 owner 或 adapter/native option owner。
 
-标准参数 pipeline 不解释 native option 的格式语义，不按 selected adapter 过滤，也不把同名 option 合并为单一类型。selected-adapter projection 发生在标准参数 pipeline 之后、`docnav-navigation` request construction 之前。需要 raw-minus-mapped 或 native option source 时，入口处理函数可以返回定位器、变更描述或已经组织好的剩余 JSON 子树。default 没有原始输入对象，因此没有未映射输入处理结果。
+标准参数 pipeline 不解释 native option 的格式语义，不按 selected adapter 过滤，也不把同名 option 合并为单一类型。Selected-adapter projection 发生在标准参数 pipeline 之后、`docnav-navigation` request construction 之前，由 core/adapter 契约 owner 定义。需要 raw-minus-mapped 或 native option source 时，入口处理函数可以返回定位器、变更描述或已经组织好的剩余 JSON 子树。default 没有原始输入对象，因此没有未映射输入处理结果。
 
 解析器完成后，标准参数层的工作结束。后续模块消费 typed values、source info、诊断交接数据和 native option source；标准参数层不再参与后续执行，也不决定最终输出通道、exit code、adapter option diagnostic 或 protocol/readable 投影。
 
-## Metadata 与交接边界
+## 元数据与交接边界
 
 Schema facet 是标准参数定义的一部分，用来表达 value kind、enum、minimum、maximum、description、requiredness 和 default metadata。静态默认值在 build/register 阶段校验；动态默认值在 runtime 产出后进入同一 schema facet 校验。
 
