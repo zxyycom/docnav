@@ -25,7 +25,7 @@ document.path
 arguments
 ```
 
-`arguments` 是 adapter layer 的显式 operation 输入。`docnav-navigation` 通过 [Navigation Input Resolution](navigation-input-resolution.md) 接收 raw command、config source descriptors/paths 和 registry，加载 raw config sources，解析 selected adapter typed-field 参数声明后构造内部 protocol request。Protocol envelope 不作为来源合并入口；它记录 adapter 调用时实际传入的 operation、document path 和 arguments。
+`arguments` 是已解析的 document operation 输入，只记录进入 adapter 调用的 operation-specific 参数。来源解析、adapter selection、typed-field validation/extraction 和 request construction 由 [Navigation Input Resolution](navigation-input-resolution.md#request-construction) 定义。
 
 v0 operation 参数：
 
@@ -36,14 +36,10 @@ v0 operation 参数：
 | `find` | `query` | `limit`、`page`、`options` |
 | `info` | 无 | `options` |
 
-- 最终 `limit` 和 `page` 必须是正整数，第一页固定为 `1`。
-- `limit` 是 adapter-owned 的结果预算，用于分页和单页结果压缩；标准协议只要求它是正整数，不规定预算单位。具体 adapter 必须在自身规范中声明预算如何计数。
-- 预算只约束 adapter-owned 结果负载：outline/find 约束每页 entry facts 的可继续输出，read 约束 `content` 切分；`protocol_version`、`request_id`、`operation`、`ok`、JSON 字段名和固定包装不计入预算。
-- outline/find 遇到下一条 entry 或 match 会超过预算时，应在当前页停止并返回下一页 page。若单条记录本身超过预算，适配器必须保留完整 ref，并压缩 adapter-owned `label`、`summary`、`excerpt`、`cost` 或 `metadata` 等补充事实，使该页仍能前进；若完整 ref 本身已超过 `limit`，该单条记录可超出预算，但 `label` 仍应保留最小非空定位语义。
-- read 按 adapter 声明的预算切分 content；文本 adapter 不能切断 Unicode 字符；若当前位置后仍有内容，返回下一页 page。
-- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象，不解释格式语义；selected adapter typed-field 参数声明、来源解析和 typed extraction 见 [Navigation Input Resolution](navigation-input-resolution.md#selected-adapter-参数声明) 与 [适配器契约](adapter-contract.md#文档操作执行边界)。
-- 继续读取时，调用方保持 path、ref、query 和其它显式参数稳定，只使用响应返回的 page。
-- page 是调用位置，不是配置默认参数；入口省略 page 时固定从 `1` 开始。
+- 最终 `limit` 和 `page` 必须是正整数；入口省略 page 时固定从 `1` 开始。
+- `limit` 是 adapter-owned 结果预算。原始协议只要求它是正整数，不定义预算单位；分页执行边界由 [适配器契约](adapter-contract.md#文档操作执行边界) 定义。
+- 预算只约束 adapter-owned 结果负载；`protocol_version`、`request_id`、`operation`、`ok`、JSON 字段名和固定包装不计入预算。
+- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象；字段声明、来源解析、校验和格式语义见 [Navigation Input Resolution](navigation-input-resolution.md#selected-adapter-参数声明) 与 [适配器契约](adapter-contract.md#文档操作执行边界)。
 
 ## 响应包装
 
@@ -76,9 +72,9 @@ error.guidance?
 error.details
 ```
 
-失败响应的 `operation` 在请求 operation 可确定时必须与请求一致；请求无法解析到 operation 时使用 `null`。`error` 是本次 failed request 的 primary `DiagnosticRecord` protocol projection；`code`、`message` 和 `owner` 必需，`location`、`received`、`expected`、`guidance` 和 `details` 按 diagnostics owner 的记录内容投影。`details` 只包含当前失败需要的 subordinate list 或 stable detail object，不得用多条 sibling errors 替代 primary record。
+失败响应的 `operation` 在请求 operation 可确定时必须与请求一致；请求无法解析到 operation 时使用 `null`。`error` 对象见 [协议错误对象](#协议错误对象)。
 
-envelope 仅存在于原始协议输出。CLI `readable-view` header 和 `readable-json` 不得包含 `protocol_version`、`request_id`、`operation` 或 `ok`，也不替代完整协议接口。
+Protocol envelope 只属于 `protocol-json` 输出模式。阅读输出的包装和字段 shape 见 [输出模式](output.md)。
 
 ## 紧凑语义结果
 
@@ -157,64 +153,54 @@ adapter:
 metadata  object, optional
 ```
 
-`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。标准文档操作集合由 adapter contract、`Operation` enum 和 required adapter trait methods 定义，不由 info result 自报。原始协议不返回 info `display`；阅读输出从这些事实派生可读摘要。
+`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。InfoResult 的 protocol-visible scope 是当前文档和选中 adapter 的 facts；operation set 由 adapter contract 定义，manifest/probe 输出由对应 owner 定义。原始协议不返回 info `display`。
 
 ## 分页模型
 
-`outline`、`read` 和 `find` 使用同一分页模型：
+`outline`、`read` 和 `find` result 使用同一 continuation 字段：
 
 ```json
 {"page": 2}
 ```
 
-- 响应中的 page 是下一页页码；非 null 时必须等于请求 page 加 1，并可直接作为下一次请求的 page。
+- 响应中的 `page` 是下一页页码；非 null 时必须等于请求 `page + 1`。
 - `page: null` 表示当前操作已经没有更多信息。
-- page 只表达下一页编号，不携带命令、其他参数或不透明游标。
+- `page` 只表达下一页编号，不携带命令、参数或不透明游标。
+- 继续读取时，调用方保持 operation、document path 和其它 arguments 稳定，只替换为响应返回的 `page`。
 - 请求超过结果末尾的 page 时返回空结果和 `page: null`，不作为错误。
-- 文档变化后，调用方应从第一页重新读取。
 
 ## ref 规则
 
-ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav` 和调用入口只把 ref 当作非空字符串；适配器负责生成和解析。
+ref 共享规则由 [Ref](ref-contract.md) 定义。原始协议只承载非空 opaque string。
 
 ## 编码
 
 所有格式适配器的 v0 契约只支持 UTF-8，可接受 UTF-8 BOM。无法解码时返回 `DOCUMENT_ENCODING_UNSUPPORTED`。
 
-## 错误投影
+## 协议错误对象
 
-本节定义 primary `DiagnosticRecord` 投影到 protocol surface 后的 `code`、`owner`、`location`、`received`、`expected`、`details`、`message` 和 `guidance`。错误机械身份、primary record 字段规则和 details list shape 由 [错误通道](diagnostics.md) 提供；本节拥有这些规则在原始协议中的可观察投影形状。protocol 调用方只依赖本节列出的 code、owner 和 stable details；schema、examples、错误通道实现和消费方测试跟随本节同步。
+失败响应的 `error` 来自一个 primary `DiagnosticRecord`。Protocol 调用方稳定解析 `code`、`owner` 和本节列出的 `details`；`message` 和 `guidance` 是可读文案。
 
-| 协议 `code` | 必需 `details` |
-| --- | --- |
-| `INVALID_REQUEST` | `field`、`reason`；可包含 `field_issues`、`typed_validation_failures`、`config_issues` 或 `option_issues` |
-| `DOCUMENT_NOT_FOUND` | `path` |
-| `DOCUMENT_PATH_INVALID` | `path`、`reason` |
-| `DOCUMENT_ENCODING_UNSUPPORTED` | `path`、`encoding` |
-| `FORMAT_UNKNOWN` | `path`、`reason`、`candidates`；primary record 可使用 `candidate_failures` 列表表达同一候选摘要 |
-| `FORMAT_AMBIGUOUS` | `path`、`candidates` |
-| `REF_NOT_FOUND` | `ref` |
-| `REF_AMBIGUOUS` | `ref`、`candidate_count` |
-| `REF_INVALID` | `ref`、`reason` |
-| `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason`；`selection_source`、`stage` 可选 |
-| `INTERNAL_ERROR` | `error_id` |
+| 协议 `code` | 必需 `details` | 可选 `details` |
+| --- | --- | --- |
+| `INVALID_REQUEST` | `field`、`reason` | `field_issues`、`typed_validation_failures`、`config_issues`、`option_issues` |
+| `DOCUMENT_NOT_FOUND` | `path` | 无 |
+| `DOCUMENT_PATH_INVALID` | `path`、`reason` | 无 |
+| `DOCUMENT_ENCODING_UNSUPPORTED` | `path`、`encoding` | 无 |
+| `FORMAT_UNKNOWN` | `path`、`reason`、`candidates` | `candidate_failures` |
+| `FORMAT_AMBIGUOUS` | `path`、`candidates` | `candidate_failures` |
+| `REF_NOT_FOUND` | `ref` | 无 |
+| `REF_AMBIGUOUS` | `ref`、`candidate_count` | 无 |
+| `REF_INVALID` | `ref`、`reason` | 无 |
+| `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason` | `selection_source`、`stage` |
+| `INTERNAL_ERROR` | `error_id` | 无 |
 
-`selection_source` 和 `stage` 只在声明式 adapter 选择失败需要区分来源和失败阶段时出现；自动 discovery 的候选 probe 失败列表使用 `FORMAT_UNKNOWN`/`FORMAT_AMBIGUOUS` candidate summary 表达。
+`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`candidates` 和 `candidate_failures` 的元素包含 `adapter_id`、`stage` 和 `reason`；`stage` 取值为 `resolve` 或 `probe`。
 
-`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；primary `DiagnosticRecord.details.candidate_failures` 使用同一元素 shape。每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`ADAPTER_UNAVAILABLE`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload 和人类说明文案由内部错误通道按各自契约承载。Manifest metadata invalid 和 missing linked handler 属于 adapter layer invariant failure，不进入默认 automatic discovery candidate reason set。
-
-错误 message 和 guidance 是可定制文案；调用方只解析 code、owner 和 stable details。`INVALID_REQUEST` 可以在 top-level projection 中附带 `location`、`received` 或 `expected`，也可以在 details 中附带 `field_issues`、`typed_validation_failures`、`config_issues` 或 `option_issues`。Core CLI key/source/shape failures 使用 `field_issues`；navigation input resolution 的 config source loading 和 selected-adapter native option validation 分别使用 `config_issues` 和 `option_issues` 表达 source、option owner、namespace/key、reason_code，以及可用的 type_variant、received 和 expected。range/type failure 必须在 top-level projection 或对应 option issue 中提供可比较的 received/expected 信息。显式 adapter 不存在时仍返回 adapter selection diagnostic，不投影为 option validation error。这些补充字段不得替代必需的 `field` 和 `reason`。
-
-Protocol response schema 是本节的验证材料，用于校验 protocol-visible code、details 字段集合、字段类型和 required details。修改 protocol error code 或 details 规则时，先更新本节和对应 schema/examples，再同步错误通道实现和消费方测试。
+相关失败只能作为 `details` 的从属结构出现，不形成 sibling error list。修改 protocol error code 或 details 时，先更新本节，再同步 schema、examples、fixtures 和消费方测试。
 
 ## Schema 所有权
 
-[protocol-request.schema.json](schemas/protocol-request.schema.json) 和 [protocol-response.schema.json](schemas/protocol-response.schema.json) 只校验原始协议。响应 schema 使用 `operation` 绑定成功 result 类型。阅读输出使用独立 schema 做示例和工具输出校验，不作为机器兼容协议。
+[protocol-request.schema.json](schemas/protocol-request.schema.json) 和 [protocol-response.schema.json](schemas/protocol-response.schema.json) 只校验原始协议。响应 schema 使用 `operation` 绑定成功 result 类型；`options` 在 protocol schema 中保持 opaque object。阅读输出、manifest 和 probe 使用各自 schema，由对应 owner 文档定义。
 
-Protocol response stdout 只输出 schema payload；`docnav --output protocol-json` stdout 只输出对应 protocol-shaped payload。Strict public input failure 和 automatic discovery 全部失败时的 candidate list 都使用 protocol failure projection。
-
-`docnav-protocol` 当前只承接 protocol request/response 数据结构、schema 对齐和 protocol error projection。Navigation input resolution 发生在 `docnav-navigation` 中，并在 protocol request 构造前完成 typed-field validation/extraction。Native options 在 protocol schema 中保持 opaque object；adapter-owned semantics 由 selected adapter typed-field 参数声明和 adapter 文档定义。
-
-Operation-specific typed request 由 `docnav-navigation` 解析来源、提取 typed 参数并完成 request construction 后产出。response、manifest 和 probe 等已归一化 payload 可以继续使用 typed deserialize + semantic validate。
-
-调用方继续拥有错误归属、field path、request id fallback、stdout/stderr placement 和 exit behavior。public JSON Schema 文件保留为 contract material、examples/fixtures 校验和工具链 drift check，不作为 production decode path 的 generic schema validator。[错误通道](diagnostics.md) 拥有内部 code、category、primary record 字段和 details rule；这些规则投影到 protocol surface 时必须符合本文件定义的 code、owner 和 details。readable wrapper、manifest/probe policy 由各自 owner 文档定义。
+Schema 是本文件的验证材料，不重新定义产品语义。修改 protocol-visible envelope、operation 参数、result shape、page、error code 或 details 时，先更新本文件，再同步 schema、examples、fixtures 和消费方测试。

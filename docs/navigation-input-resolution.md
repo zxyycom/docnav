@@ -129,7 +129,7 @@ Resolution 完成后，`docnav-navigation` 构造内部 protocol request：
 | Adapter selection | Declared adapter lookup/probe 失败或 automatic discovery 全部失败按 [适配器契约](adapter-contract.md#adapter-选择) 返回 selection diagnostic。 |
 | Request construction | 绑定 metadata 缺失、arguments shape invalid 或 envelope construction failure 返回 internal/navigation diagnostic。 |
 
-错误投影字段由 [原始协议](protocol.md#错误投影)、[输出模式](output.md) 和 [错误通道](diagnostics.md) 拥有；本文只定义 input resolution 失败位置和 owner。
+本文只定义 input resolution 的失败位置和 owner；protocol failure shape 见 [协议错误对象](protocol.md#协议错误对象)，readable failure shape 见 [输出模式](output.md)，内部记录语义见 [错误通道](diagnostics.md)。
 
 ## 维护注意事项
 

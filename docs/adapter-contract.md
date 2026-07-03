@@ -96,6 +96,7 @@ Adapter operation handler 必须：
 - 为分页操作返回下一页页码，结束时返回 null。
 - 按自身声明的 `limit` 预算分页，并始终返回完整 ref。
 - 在 outline/find 单条记录超过预算时，保留完整 ref 和最小非空 `label`，并让分页前进；其它 adapter-owned facts 可以省略或压缩。
+- 分页文本 `read` content 时，不切断 Unicode 字符。
 - 返回结构化 operation result 或 adapter diagnostic。
 
 Operation result 属于已选中 adapter 的执行结果。执行失败、result shape invalid 或 result semantic invalid 是 selected adapter execution failure；candidate selection 在 adapter 选中后结束。
