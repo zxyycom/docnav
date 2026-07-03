@@ -212,10 +212,10 @@ export const DEFAULT_CONFIG = Object.freeze({
       value: 114,
       suggestionIncludes: [
         "crates/docnav-diagnostics/src/details/payload.rs",
-        "crates/docnav-standard-parameters/src/resolution.rs"
+        "crates/docnav-parameter-resolution/src/resolution.rs"
       ],
       reason:
-        "AdapterConfigSourceDetails is the serialized diagnostics payload, while StandardParameterConfigSourceIssue is the standard-parameter handoff fact. Keeping the constructors separate preserves crate and owner boundaries; extracting a shared type would couple fact capture to protocol projection for trivial field assignment."
+        "AdapterConfigSourceDetails is the serialized diagnostics payload, while ParameterConfigSourceIssue is the parameter-resolution handoff fact. Keeping the constructors separate preserves crate and owner boundaries; extracting a shared type would couple fact capture to protocol projection for trivial field assignment."
     }
   ]),
 

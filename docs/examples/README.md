@@ -71,9 +71,9 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 
 ## 配置示例
 
-- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 core `docnav` 配置中 Markdown native option 相关字段的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
+- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 Markdown native option 相关字段的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
 
-配置示例只证明文件形状和示例值。配置发现、字段映射、来源合并、失败边界和字段语义由 [导航配置](../navigation-config.md)、[适配器契约](../adapter-contract.md) 和 [Markdown Adapter](../adapters/markdown.md) 拥有。
+配置示例只证明文件形状和示例值。配置发现、字段映射、来源合并、失败边界和字段语义由 [Navigation Input Resolution](../navigation-input-resolution.md)、[适配器契约](../adapter-contract.md) 和 [Markdown Adapter](../adapters/markdown.md) 拥有。
 
 ## Schema
 

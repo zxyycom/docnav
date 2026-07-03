@@ -1,0 +1,198 @@
+#![allow(dead_code)]
+
+// @case WB-PARAM-RESOLVE-001
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use docnav_typed_fields::{
+    FieldBound, FieldDef, FieldDefs, FieldIdentity, FieldValidation, JsonValue, ProcessStrategy,
+    ProcessingId,
+};
+
+use super::*;
+
+mod construction;
+mod pipeline;
+mod resolution;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum OutputMode {
+    ReadableView,
+    ReadableJson,
+}
+
+impl docnav_typed_fields::FieldStringEnum for OutputMode {
+    fn variants() -> &'static [Self] {
+        &[Self::ReadableView, Self::ReadableJson]
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::ReadableView => "readable-view",
+            Self::ReadableJson => "readable-json",
+        }
+    }
+}
+
+const CONFIG_PROCESSING: &str = "config";
+const DIRECT_PROCESSING: &str = "direct";
+
+fn config_json_path<I, S>(segments: I) -> ProcessStrategy
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    ProcessStrategy::json_path(segments)
+}
+
+#[derive(Debug, FieldDefs)]
+struct Params {
+    #[field(
+        FieldDef::builder("docnav.defaults.pagination.limit")
+            .process(DIRECT_PROCESSING, config_json_path(["limit"]))
+            .process(
+                CONFIG_PROCESSING,
+                config_json_path(["defaults", "pagination", "limit"]),
+            )
+            .validation(FieldValidation::int().between(
+                FieldBound::closed(1),
+                FieldBound::closed(100_000),
+            ))
+            .default_static(20_000)
+    )]
+    limit: Option<i64>,
+
+    #[field(
+        FieldDef::builder("docnav.defaults.output")
+            .process(DIRECT_PROCESSING, config_json_path(["output"]))
+            .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
+            .validation(FieldValidation::string_enum::<OutputMode>())
+    )]
+    output: OutputMode,
+}
+
+fn catalog_entry(identity: &str) -> ParameterCatalogEntry {
+    let metadata = Params::field_defs()
+        .unwrap()
+        .schema_metadata()
+        .into_iter()
+        .find(|metadata| metadata.identity.as_str() == identity)
+        .unwrap();
+    ParameterCatalogEntry::new(metadata)
+}
+
+fn parameter_catalog() -> ParameterCatalog {
+    let definitions = Params::field_defs().unwrap();
+    derive_parameter_catalog(
+        &definitions,
+        &ProcessingId::from(DIRECT_PROCESSING),
+        &ProcessingId::from(CONFIG_PROCESSING),
+    )
+    .unwrap()
+}
+
+fn source_with_value(identity: &FieldIdentity, value: JsonValue) -> ParameterSource {
+    ParameterSource::default().with_value(identity.clone(), value)
+}
+
+fn identity(value: &str) -> FieldIdentity {
+    FieldIdentity::new(value).unwrap()
+}
+
+fn path<const N: usize>(segments: [&str; N]) -> ParameterPath {
+    ParameterPath::new(segments).unwrap()
+}
+
+fn passthrough_from(
+    resolution: &ParameterResolution,
+    source: ParameterSourceKind,
+) -> &PassthroughValue {
+    resolution
+        .passthrough()
+        .iter()
+        .find(|value| value.source == ParameterSourceInfo::new(source))
+        .unwrap()
+}
+
+fn temp_path(file_name: &str) -> PathBuf {
+    let mut path = std::env::temp_dir();
+    path.push(format!(
+        "docnav-parameter-resolution-{}-{file_name}",
+        std::process::id()
+    ));
+    let _ = fs::remove_file(&path);
+    path
+}
+
+fn temp_file(file_name: &str, content: &str) -> PathBuf {
+    let path = temp_path(file_name);
+    write_file(&path, content);
+    path
+}
+
+fn temp_dir(dir_name: &str) -> PathBuf {
+    let path = temp_path(dir_name);
+    let _ = fs::remove_dir_all(&path);
+    fs::create_dir(&path).unwrap();
+    path
+}
+
+#[cfg(windows)]
+struct UnreadableFileGuard {
+    _file: fs::File,
+}
+
+#[cfg(unix)]
+struct UnreadableFileGuard {
+    path: PathBuf,
+    permissions: fs::Permissions,
+}
+
+#[cfg(not(any(unix, windows)))]
+struct UnreadableFileGuard;
+
+#[cfg(windows)]
+fn unreadable_file(file_name: &str) -> Option<(PathBuf, UnreadableFileGuard)> {
+    use std::os::windows::fs::OpenOptionsExt;
+
+    let path = temp_file(file_name, "{}");
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .share_mode(0)
+        .open(&path)
+        .ok()?;
+    Some((path, UnreadableFileGuard { _file: file }))
+}
+
+#[cfg(unix)]
+fn unreadable_file(file_name: &str) -> Option<(PathBuf, UnreadableFileGuard)> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = temp_file(file_name, "{}");
+    let permissions = fs::metadata(&path).ok()?.permissions();
+    let mut unreadable = permissions.clone();
+    unreadable.set_mode(0o0);
+    fs::set_permissions(&path, unreadable).ok()?;
+    if fs::read_to_string(&path).is_ok() {
+        fs::set_permissions(&path, permissions).ok()?;
+        return None;
+    }
+    Some((path.clone(), UnreadableFileGuard { path, permissions }))
+}
+
+#[cfg(not(any(unix, windows)))]
+fn unreadable_file(_file_name: &str) -> Option<(PathBuf, UnreadableFileGuard)> {
+    None
+}
+
+#[cfg(unix)]
+impl Drop for UnreadableFileGuard {
+    fn drop(&mut self) {
+        let _ = fs::set_permissions(&self.path, self.permissions.clone());
+    }
+}
+
+fn write_file(path: &Path, content: &str) {
+    fs::write(path, content).unwrap();
+}

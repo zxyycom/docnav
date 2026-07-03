@@ -1,13 +1,12 @@
 mod cli;
 mod config;
 mod error;
+mod navigation_defaults;
 mod output;
 mod project_context;
 mod project_paths;
 mod registry;
-mod routing;
 mod runtime;
-mod standard_parameters;
 
 use std::io::{Read, Write};
 
@@ -77,8 +76,8 @@ fn execute<T: DocnavRuntime>(
 ) -> AppResult<output::CommandOutcome> {
     match command {
         CliCommand::Document(command) => {
-            let context = config::load_context()?;
-            let request = runtime::DocumentRequest::from_command(command, &context)?;
+            let project = project_context::ProjectContext::discover()?;
+            let request = runtime::DocumentRequest::from_command(command, project);
             runtime.execute_document(request)
         }
         CliCommand::Adapter(command) => registry::execute(command),

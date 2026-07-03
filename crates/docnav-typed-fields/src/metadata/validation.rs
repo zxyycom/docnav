@@ -22,7 +22,7 @@ impl SchemaMetadataView {
                 Ok(None)
             };
         };
-        if value.is_null() && !self.constraints.required {
+        if value.is_null() && !self.constraints.required && self.value_kind != ValueKind::Json {
             return Ok(None);
         }
         self.validate_value(value).map(Some)
@@ -69,6 +69,9 @@ impl SchemaMetadataView {
     }
 
     fn decode_value(&self, value: &Value) -> Result<TypedValue, ValidationFailure> {
+        if value.is_null() && self.value_kind == ValueKind::Json {
+            return Ok(TypedValue::Json(Value::Null));
+        }
         if value.is_null() {
             return self.decode_null();
         }
@@ -86,6 +89,7 @@ impl SchemaMetadataView {
             (ValueKind::Boolean, Value::Bool(value)) => Ok(TypedValue::Boolean(*value)),
             (ValueKind::Array, Value::Array(value)) => Ok(TypedValue::Array(value.clone())),
             (ValueKind::Object, Value::Object(value)) => Ok(TypedValue::Object(value.clone())),
+            (ValueKind::Json, value) => Ok(TypedValue::Json(value.clone())),
             _ => Err(self.wrong_type(actual_value_kind(value))),
         }
     }

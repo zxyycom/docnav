@@ -1,7 +1,6 @@
 use docnav_diagnostics::{
-    typed_codes, AdapterReasonDetails, DiagnosticCategory, DiagnosticCode, DiagnosticRecordDraft,
-    DiagnosticSource, FieldReasonDetails, FormatCandidateDetails, FormatUnknownDetails,
-    InternalDetails, PathDetails, PathReasonDetails,
+    typed_codes, DiagnosticCategory, DiagnosticCode, DiagnosticRecordDraft, DiagnosticSource,
+    FieldReasonDetails, InternalDetails, PathDetails, PathReasonDetails,
 };
 use docnav_protocol::protocol_error_record_draft;
 
@@ -80,34 +79,6 @@ impl AppError {
         >(
             PathReasonDetails::new(path, reason),
             DiagnosticSource::with_stage("docnav", "runtime"),
-        ))
-    }
-
-    pub fn format_unknown(
-        path: impl Into<String>,
-        reason: impl Into<String>,
-        candidates: Vec<FormatCandidateDetails>,
-    ) -> Self {
-        Self::new(protocol_error_record_draft::<
-            typed_codes::protocol::FormatUnknown,
-        >(
-            FormatUnknownDetails::new(path, reason, candidates),
-            DiagnosticSource::with_stage("docnav", "routing"),
-        ))
-    }
-
-    pub fn adapter_unavailable_with_selection_context(
-        adapter_id: impl Into<String>,
-        reason: impl Into<String>,
-        selection_source: impl Into<String>,
-        stage: impl Into<String>,
-    ) -> Self {
-        Self::new(protocol_error_record_draft::<
-            typed_codes::protocol::AdapterUnavailable,
-        >(
-            AdapterReasonDetails::new(adapter_id, reason)
-                .with_selection_context(selection_source, stage),
-            DiagnosticSource::with_stage("docnav", "routing"),
         ))
     }
 }

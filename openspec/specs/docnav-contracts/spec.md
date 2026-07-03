@@ -1,7 +1,7 @@
 # docnav-contracts Specification
 
 ## Purpose
-定义 Docnav v0 长期文档契约，约束原始协议、阅读输出、core CLI 职责、linked adapter 边界、标准参数、诊断投影、示例材料和自动化验证映射。默认文档操作路径是 core release 内的静态注册 linked adapter library，不是 runtime dynamic registration、external executable 或 adapter `invoke` 进程。
+定义 Docnav v0 长期文档契约，约束原始协议、阅读输出、core CLI 职责、navigation input resolution、linked adapter 边界、诊断投影、示例材料和自动化验证映射。默认文档操作路径是 core release 内的静态注册 linked adapter library，不是 runtime dynamic registration、external executable 或 adapter `invoke` 进程。
 
 ## Requirements
 ### Requirement: 原始协议与阅读输出分层
@@ -18,15 +18,15 @@
 - **THEN** `content_type` does not participate in content budget truncation
 
 ### Requirement: `docnav` 是 core CLI router/manager
-`docnav` MUST own project root discovery, cwd handling, core configuration, document path resolution, adapter selection from the current static registry, standard parameter preparation, output mode dispatch and stable error mapping. Core MUST resolve the project/cwd/document path context and pass an absolute document path to the navigation layer and selected adapter handler.
+`docnav` MUST own command classification, project root discovery, cwd handling, config source descriptor/path discovery for handoff, document path resolution, output mode dispatch and stable error mapping. For navigation commands, core MUST pass the raw command, config source descriptors/paths and current static registry to `docnav-navigation`; `docnav-navigation` MUST load raw project/user config sources before source resolution. Core MUST resolve the project/cwd/document path context before navigation input resolution.
 
 Core MUST NOT treat project/user historical adapter records, installed packages, external executables, command paths or manifest metadata as default document operation implementations.
 
 #### Scenario: 读取 Markdown outline
 - **WHEN** caller executes `docnav outline docs/guide.md`
 - **THEN** `docnav` resolves `docs/guide.md` against the effective cwd/project context into an absolute document path
-- **THEN** `docnav` selects a linked adapter from the current core release static adapter registry
-- **THEN** standard parameter resolution prepares typed operation input before dispatch
+- **THEN** `docnav` passes raw command, config source descriptors/paths and static registry to `docnav-navigation`
+- **THEN** navigation input resolution selects the adapter and prepares typed operation input before dispatch
 - **THEN** adapter-generated refs and display facts are preserved into the selected output surface
 
 #### Scenario: Missing adapter implementation
@@ -47,11 +47,12 @@ The current core release static adapter registry MUST be the source of default d
 - **THEN** it declares and provides `outline`, `read`, `find` and `info` handlers
 - **THEN** missing handlers are treated as adapter layer invalid or a release/doctor check failure, not as a recoverable per-request candidate branch
 
-### Requirement: Navigation layer prepares requests and dispatches operations
-The navigation layer MUST act as an in-process request preparation and operation dispatch boundary. It MAY coordinate adapter selection facts, typed operation arguments, pagination, ref/query fields, native options and operation handler calls. It MUST NOT be described or implemented as an adapter loader, executable launcher or runtime registry manager.
+### Requirement: Navigation layer resolves inputs, prepares requests and dispatches operations
+The navigation layer MUST act as the in-process navigation input resolution, request preparation and operation dispatch boundary. It MUST parse routing-required input, select the adapter from the provided registry, read selected adapter typed-field parameter declarations, resolve sources, validate/extract typed operation arguments, construct request envelopes and call operation handlers. It MUST NOT be described or implemented as an adapter loader, executable launcher or runtime registry manager.
 
 #### Scenario: Dispatch linked operation
-- **WHEN** core has selected the linked Markdown adapter and prepared typed outline input
+- **WHEN** core passes a raw Markdown outline command, config sources and registry to `docnav-navigation`
+- **THEN** the navigation layer selects the linked Markdown adapter and prepares typed outline input
 - **THEN** the navigation layer dispatches to the descriptor-bound outline handler
 - **THEN** the handler receives prepared values rather than CLI argv, process cwd, stdin or stdout handles
 
@@ -64,11 +65,11 @@ Adapter handlers MUST return structured operation results or structured diagnost
 - **THEN** core/output maps those facts to protocol/readable output and final process exit code
 
 ### Requirement: Adapter 选择按 static registry 和 probe 校验
-`docnav` MUST choose adapter implementations only from the current static registry. Declared adapter ids come only from direct input or `defaults.adapter`; when present, core MUST look up only that registry entry, execute its probe and MUST NOT fallback to automatic discovery. Without a declared adapter id, core MUST traverse the static registry in release order and select the first adapter whose probe returns `supported: true`. Descriptor, manifest, path, extension and content type facts remain inspection or adapter-owned recognition inputs; core runtime selection uses only declared adapter lookup or registry-order probe.
+`docnav-navigation` MUST choose adapter implementations only from the current static registry provided by core. Declared adapter ids come only from direct input or `defaults.adapter`; when present, `docnav-navigation` MUST look up only that registry entry, execute its probe and MUST NOT fallback to automatic discovery. Without a declared adapter id, `docnav-navigation` MUST traverse the static registry in release order and select the first adapter whose probe returns `supported: true`. Descriptor, manifest, path, extension and content type facts remain inspection or adapter-owned recognition inputs; runtime selection uses only declared adapter lookup or registry-order probe.
 
 #### Scenario: 声明式 adapter 不 fallback
 - **WHEN** caller provides `--adapter docnav-markdown`
-- **THEN** `docnav` looks up only `docnav-markdown` in the current static registry
+- **THEN** `docnav-navigation` looks up only `docnav-markdown` in the current static registry
 - **THEN** selection succeeds only if that linked adapter's probe accepts the document
 - **THEN** unsupported, invalid or missing declared adapter failure returns an adapter selection diagnostic without trying later registry entries
 
@@ -123,20 +124,20 @@ Page MUST be call-position state rather than configuration default. When an entr
 - **THEN** ref remains complete
 - **THEN** the single record may exceed budget but pagination still progresses
 
-### Requirement: Standard parameters use source-level native option registry
-Core standard parameter resolution MUST prepare typed standard operation arguments from explicit CLI/protocol input, project/user configuration and built-in defaults according to the owning docs. Adapter-owned native options MAY participate through the source-level static native option registry. Registry entries MUST preserve owner, namespace, key and type variant metadata; the same option key MAY have multiple variants without being collapsed into one core type.
+### Requirement: Navigation input resolution uses source-level native option registry
+Navigation input resolution MUST prepare typed operation arguments from explicit input, project/user configuration and built-in defaults according to the owning docs. Adapter-owned native options MAY participate through the source-level static native option registry and selected adapter typed-field declarations. Registry entries MUST preserve owner, namespace, key and type variant metadata; the same option key MAY have multiple variants without being collapsed into one core type.
 
 #### Scenario: Markdown max heading level reaches adapter
 - **WHEN** `<project-root>/.docnav/docnav.json`、core user config or request arguments provide `options.max_heading_level`
 - **AND** the source-level static registry contains the Markdown option entry
-- **THEN** standard parameter resolution merges the value with source info and registry metadata
+- **THEN** navigation input resolution merges the value with source info and registry metadata
 - **THEN** the Markdown handler receives the final max-heading-level option value
 
-#### Scenario: Adapter owns option validation
+#### Scenario: Selected adapter typed-field declarations own option validation
 - **WHEN** request/config input contains a native option value
 - **AND** adapter selection succeeds
-- **THEN** the selected adapter validates unsupported option, type mismatch and range invalid at consumption time
-- **THEN** core does not reject the value only because the selected adapter does not support that option
+- **THEN** navigation input resolution validates selected adapter support, type mismatch and range invalid before handler dispatch
+- **THEN** unsupported option diagnostics preserve selected adapter/source metadata
 
 ### Requirement: Ref 文档必须描述 adapter 拥有的 ref 边界
 Ref docs and examples MUST describe ref as an adapter-generated and adapter-interpreted non-empty opaque string. Shared protocol, `docnav` and access layers MUST validate only shared field shape and pass ref unchanged to the selected adapter.
@@ -170,11 +171,11 @@ Audience-facing explanations, design reasons and requirements MUST primarily use
 - **THEN** rule descriptions use Chinese and machine identifiers remain English
 
 ### Requirement: 文档契约可映射到自动化验证
-Testing strategy MUST map protocol stability, readable output density, standard parameter ownership, adapter descriptor/native option registry and adapter-side validation, ref/page/limit behavior and core CLI end-to-end linked adapter behavior to automated tests or documented smoke checks.
+Testing strategy MUST map protocol stability, readable output density, navigation input resolution ownership, adapter descriptor/native option registry and selected adapter typed-field validation, ref/page/limit behavior and core CLI end-to-end linked adapter behavior to automated tests or documented smoke checks.
 
 #### Scenario: 提出实现变更
 - **WHEN** implementer plans a behavior change
-- **THEN** docs identify protocol, readable, standard-parameter, adapter-boundary and `docnav` route tests
+- **THEN** docs identify protocol, readable, navigation input resolution, adapter-boundary and `docnav` route tests
 - **THEN** package smoke proves linked adapter behavior through the packaged `docnav` binary
 
 ### Requirement: 文档阅读路径清晰
@@ -213,7 +214,7 @@ Docnav runtime and public surface code MUST record runtime problems in a request
 - **THEN** the caller or surface owner decides continuation, failure, output format, output channel and exit behavior
 
 ### Requirement: DiagnosticCode owns identity and canonical details
-`docnav-diagnostics` MUST own `DiagnosticCode`, grouped code families, each code's canonical details object and projection metadata. Other Docnav crates MUST use those diagnostics-owned identities and MUST NOT redefine protocol, readable, adapter or standard-parameter diagnostic code identities.
+`docnav-diagnostics` MUST own `DiagnosticCode`, grouped code families, each code's canonical details object and projection metadata. Other Docnav crates MUST use those diagnostics-owned identities and MUST NOT redefine protocol, readable, adapter or navigation input resolution diagnostic code identities.
 
 #### Scenario: Diagnostic code owns surface error identity
 - **WHEN** a diagnostic record is rendered as a fatal error, protocol error code, stderr line, readable error field or other surface field
@@ -229,7 +230,7 @@ Docnav runtime and public surface code MUST record runtime problems in a request
 Modules that discover problems MUST push diagnostic records into the channel. Boundary surfaces MUST read those records and project them according to their owner contract.
 
 #### Scenario: Runtime module writes but does not format final output
-- **WHEN** core runtime, adapter routing, standard parameter resolution or linked adapter dispatch discovers a problem
+- **WHEN** core runtime, navigation input resolution, adapter selection or selected adapter dispatch discovers a problem
 - **THEN** that module records what happened, its impact, canonical details and source in the diagnostic stack
 - **THEN** that module does not own final user-visible formatting unless it is also the boundary surface owner
 

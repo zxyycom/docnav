@@ -30,7 +30,7 @@ Non-Goals:
 
 1. 优先把 composition 放在 core/shared-library 层。
 
-   core 已经拥有 adapter selection、config、output mode、error mapping 和 readable output；shared library helper 可以承载可复用的组合逻辑。格式 adapter 应继续专注单次格式 operation。
+   core 拥有 command classification、config source descriptor/path handoff、output mode、error mapping 和 readable output；`docnav-navigation` 拥有 raw config source loading、adapter selection 与 navigation input resolution。shared library helper 可以承载可复用的组合逻辑。格式 adapter 应继续专注单次格式 operation。
 
 2. 优先复用现有 public surface。
 

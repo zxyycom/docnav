@@ -155,7 +155,7 @@ ratatui::restore();
 ## Migration Plan
 
 1. 在 core CLI 参数层增加 `outline --interactive`，普通 `outline` 行为保持不变。
-2. 将 interactive workflow 放在 `docnav` core CLI 内部，复用现有 semantic request、adapter routing 和 read execution。
+2. 将 interactive workflow 放在 `docnav` CLI 交互层，复用现有 core handoff、navigation input resolution、adapter selection 和 read execution。
 3. 先实现 prompt-style 多选 MVP；若后续需求要求 full TUI，再单独提 change 或扩展 design。
 4. 失败或回滚时移除 `--interactive` 参数和交互依赖，不影响 adapter protocol 和已有 document operation。
 

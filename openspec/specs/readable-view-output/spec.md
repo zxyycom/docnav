@@ -146,7 +146,7 @@ Document operation 的当前输出模式 MUST 只包含 `readable-view`、`reada
 - **WHEN** 调用方执行 document operation 并传入无效 `--output` 值
 - **THEN** CLI 返回输入错误
 - **THEN** help 指向 `readable-view`、`readable-json` 和 `protocol-json`
-- **THEN** CLI 在 adapter routing 和 document operation 执行前返回
+- **THEN** CLI 在 adapter selection 和 document operation 执行前返回
 
 #### Scenario: 普通执行校验配置 output 值
 - **WHEN** 项目或用户配置包含无效 `defaults.output` 值

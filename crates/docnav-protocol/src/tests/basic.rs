@@ -157,7 +157,7 @@ fn protocol_error_required_details_come_from_diagnostic_rules() {
 }
 
 #[test]
-fn adapter_selection_default_guidance_uses_static_registry_language() {
+fn navigation_routing_default_guidance_uses_static_registry_language() {
     for code in [
         ProtocolDiagnosticCode::FormatUnknown,
         ProtocolDiagnosticCode::AdapterUnavailable,

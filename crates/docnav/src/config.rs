@@ -9,4 +9,3 @@ pub use doctor::doctor;
 #[cfg(test)]
 pub(crate) use model::CoreConfig;
 pub use model::{ConfigContext, ResolvedValue};
-pub use store::load_context;

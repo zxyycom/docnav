@@ -14,8 +14,8 @@
 #### Scenario: Static descriptor supplies operation bindings
 - **WHEN** core registry resolves the built-in Markdown adapter
 - **THEN** the registry entry exposes a static descriptor with Markdown identity, native option registry entries and handler bindings
-- **THEN** core standard parameter resolution can merge and hand off final native option values for linked dispatch
-- **THEN** Markdown adapter handler validates consumed option support, type and range semantics
+- **THEN** navigation input resolution can merge, validate/extract and hand off final native option values for linked dispatch
+- **THEN** selected Markdown typed-field declarations validate consumed option support, type and range semantics before handler dispatch
 
 #### Scenario: Core passes absolute path to linked adapter
 - **WHEN** caller executes `docnav outline docs/guide.md` from a project subdirectory
@@ -75,7 +75,7 @@
 - **THEN** 该命令不会写入 adapter registry、project config 或 user config
 
 ### Requirement: adapter selection source 必须来自当前 core release static registry
-`docnav` MUST choose adapter candidates only from the current core release static adapter registry. Declared adapter id MUST come only from `--adapter` or the effective `defaults.adapter` config value. With a declared adapter id, `docnav` MUST look up only the same-id static registry entry and probe it; missing registry entry or `supported: false` MUST be returned as adapter selection diagnostics without fallback. Without a declared adapter id, `docnav` MUST traverse the static registry in registry order and select the first adapter whose probe returns `supported: true`. Format facts、content type facts、path information、registry metadata、manifest metadata and probe metadata remain outside core candidate ordering; probe result is the only runtime support decision for each candidate. Candidate traversal details and diagnostic field shape are not changed by this requirement except that failure guidance MUST NOT present dynamic adapter registration as the default remediation path.
+`docnav-navigation` MUST choose adapter candidates only from the current core release static adapter registry. Declared adapter id MUST come only from `--adapter` or the effective `defaults.adapter` config value. With a declared adapter id, `docnav-navigation` MUST look up only the same-id static registry entry and probe it; missing registry entry or `supported: false` MUST be returned as adapter selection diagnostics without fallback. Without a declared adapter id, `docnav-navigation` MUST traverse the static registry in registry order and select the first adapter whose probe returns `supported: true`. Format facts、content type facts、path information、registry metadata、manifest metadata and probe metadata remain outside candidate ordering; probe result is the only runtime support decision for each candidate. Candidate traversal details and diagnostic field shape are not changed by this requirement except that failure guidance MUST NOT present dynamic adapter registration as the default remediation path.
 
 #### Scenario: 声明式 adapter 不存在后不回退到外部实现
 - **WHEN** 调用方传入 `--adapter custom-local-adapter` 但当前 core release static adapter registry 中不存在该 adapter id

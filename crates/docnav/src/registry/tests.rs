@@ -12,7 +12,9 @@ use super::*;
 fn static_registry_contains_built_in_markdown_adapter() {
     let registry = AdapterRegistry { adapters: ADAPTERS };
     let record = registry
-        .find("docnav-markdown")
+        .adapters
+        .iter()
+        .find(|adapter| adapter.id() == "docnav-markdown")
         .expect("built-in markdown adapter");
 
     let manifest = record.manifest();

@@ -1,8 +1,11 @@
-use docnav_adapter_contracts::{AdapterError, NativeOptionIssue, NativeOptionSpec};
-use docnav_navigation::{execute_protocol_request, protocol_request, OperationInput};
-use docnav_protocol::{Operation, OptionEntry, Options, PositiveInteger};
+use docnav_navigation::{
+    execute_navigation_command, resolve_navigation_context, NavigationCommand,
+    NavigationConfigSourceDescriptor, NavigationConfigSourceDescriptors, NavigationContextDefaults,
+    NavigationNativeOptionInput, NavigationOutputMode, NavigationPaginationDefaults,
+    NavigationResolvedValue,
+};
+use docnav_protocol::Operation;
 use serde::Serialize;
-use serde_json::Value;
 
 use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::{ConfigContext, ResolvedValue};
@@ -11,26 +14,12 @@ use crate::output::{outcome_for_response, CommandOutcome};
 use crate::project_context::ProjectContext;
 use crate::project_paths::normalize_document_path;
 use crate::registry::AdapterRegistry;
-use crate::routing::{select_adapter, AdapterSelectionRequest};
-use crate::standard_parameters::{
-    resolve_core_document_parameters, resolve_registered_native_options,
-};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DocumentRequest {
     pub project: ProjectContext,
-    pub operation: Operation,
-    pub path: String,
-    pub ref_id: Option<String>,
-    pub query: Option<String>,
-    pub page: Option<PositiveInteger>,
-    pub limit: Option<PositiveInteger>,
-    pub options: Option<docnav_protocol::Options>,
-    pub output: OutputMode,
-    pub adapter: Option<String>,
-    pub defaults: ResolvedDocumentDefaults,
-    source_command: DocumentCommand,
-    source_context: ConfigContext,
+    pub command: DocumentCommand,
+    pub config_source_descriptors: NavigationConfigSourceDescriptors,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -70,7 +59,6 @@ pub trait DocnavRuntime {
         &self,
         path: String,
         operation: Option<Operation>,
-        defaults: ResolvedDocumentDefaults,
         context: &ConfigContext,
     ) -> AppResult<DocumentContextOutput>;
 }
@@ -80,205 +68,143 @@ pub struct AdapterRuntime;
 
 impl DocnavRuntime for AdapterRuntime {
     fn execute_document(&self, request: DocumentRequest) -> AppResult<CommandOutcome> {
-        let document = normalize_document_path(&request.project, &request.path)?;
+        let document = normalize_document_path(&request.project, &request.command.path)?;
         let registry = AdapterRegistry::load(&request.project)?;
-        let preselected_adapter_id = request.adapter.as_deref();
-        let selection = select_adapter(AdapterSelectionRequest {
-            registry: &registry,
-            document: &document,
-            preselected_adapter_id,
-            preselected_adapter_source: request.defaults.adapter.source.as_str(),
-        })?;
-        let native_options = registry.native_options_for(request.operation);
-        let options = resolve_registered_native_options(
-            &request.source_command,
-            &request.source_context,
-            &native_options,
-        )?;
-        let options = project_native_options_for_selected_adapter(
-            options,
-            selection.record.id(),
-            &selection.record.native_options_for(request.operation),
-        )?;
-        let protocol_request = protocol_request(OperationInput {
-            operation: request.operation,
-            document_path: document.adapter_path.clone(),
-            ref_id: request.ref_id.clone(),
-            query: request.query.clone(),
-            page: request.page,
-            limit: request.limit,
-            options,
-        })
-        .map_err(|error| AppError::invalid_request(error.field(), error.reason()))?;
-        let response = execute_protocol_request(selection.record.adapter(), &protocol_request);
-
-        outcome_for_response(response, request.output)
+        let outcome = execute_navigation_command(
+            navigation_command(&request.command, document.adapter_path),
+            request.config_source_descriptors,
+            &registry,
+        )
+        .map_err(|error| AppError::new(error.into_diagnostic()))?;
+        outcome_for_response(outcome.response, output_mode(outcome.output)?)
     }
 
     fn describe_document_context(
         &self,
         path: String,
         operation: Option<Operation>,
-        defaults: ResolvedDocumentDefaults,
         context: &ConfigContext,
     ) -> AppResult<DocumentContextOutput> {
         let effective_operation = operation.unwrap_or(Operation::Outline);
         let document = normalize_document_path(&context.project, &path)?;
         let registry = AdapterRegistry::load(&context.project)?;
-        let preselected_adapter_id = defaults.adapter.value.as_str();
-        let selection = select_adapter(AdapterSelectionRequest {
-            registry: &registry,
-            document: &document,
-            preselected_adapter_id,
-            preselected_adapter_source: defaults.adapter.source.as_str(),
-        })?;
+        let context = resolve_navigation_context(
+            context_navigation_command(effective_operation, document.adapter_path.clone()),
+            navigation_config_source_descriptors(&context.project),
+            &registry,
+        )
+        .map_err(|error| AppError::new(error.into_diagnostic()))?;
 
         Ok(DocumentContextOutput {
-            path: document.adapter_path,
+            path: document.adapter_path.clone(),
             operation: Some(effective_operation),
             adapter: AdapterContextOutput {
-                selected: Some(selection.record.id().to_owned()),
-                source: adapter_source(&defaults.adapter, &selection.evidence),
-                note: "selected built-in adapter resolved from static registry and probe succeeded"
-                    .to_owned(),
+                selected: Some(context.selection.adapter_id),
+                source: context.selection.source,
+                note: context.selection.note,
             },
-            defaults,
+            defaults: document_defaults(context.defaults),
             runtime_status: "static_adapter_registry_ready".to_owned(),
         })
     }
 }
 
-fn project_native_options_for_selected_adapter(
-    options: Option<Options>,
-    adapter_id: &str,
-    selected_specs: &[NativeOptionSpec],
-) -> AppResult<Option<Options>> {
-    let Some(options) = options else {
-        return Ok(None);
-    };
-    let mut projected = Options::new();
-    for (key, value) in options.iter() {
-        let selected_entries = options
-            .entries()
-            .iter()
-            .filter(|entry| selected_option_entry(entry, selected_specs))
-            .filter(|entry| entry.key == *key)
-            .cloned()
-            .collect::<Vec<_>>();
-        if selected_entries.is_empty() {
-            return Err(unsupported_native_option(adapter_id, key, value, &options));
-        }
-        for entry in selected_entries {
-            projected.insert_entry(entry);
-        }
-    }
-    Ok((!projected.is_empty()).then_some(projected))
-}
-
-fn selected_option_entry(entry: &OptionEntry, selected_specs: &[NativeOptionSpec]) -> bool {
-    selected_specs.iter().any(|spec| {
-        spec.identity == entry.identity
-            && spec.owner == entry.owner
-            && spec.namespace == entry.namespace
-            && spec.key == entry.key
-            && spec.value_kind().as_str() == entry.type_variant
-    })
-}
-
-fn unsupported_native_option(
-    adapter_id: &str,
-    key: &str,
-    value: &Value,
-    options: &Options,
-) -> AppError {
-    let entry = options.entry_for_key(key);
-    let issue = NativeOptionIssue {
-        owner: adapter_id.to_owned(),
-        namespace: entry
-            .map(|entry| entry.namespace.clone())
-            .unwrap_or_else(|| "options".to_owned()),
-        key: key.to_owned(),
-        source: entry
-            .map(|entry| entry.source.clone())
-            .unwrap_or_else(|| "direct".to_owned()),
-        reason_code: "unsupported".to_owned(),
-        field: format!("arguments.options.{key}"),
-        received: Some(received_value(value)),
-        expected: None,
-        type_variant: entry.map(|entry| entry.type_variant.clone()),
-    };
-    AppError::new(
-        AdapterError::native_option_invalid(
-            "Native option is not supported by the selected adapter.",
-            issue,
-            [format!(
-                "Remove option {key} or select an adapter that supports it."
-            )],
-        )
-        .into_diagnostic(),
-    )
-}
-
-fn received_value(value: &Value) -> String {
-    value
-        .as_str()
-        .map(str::to_owned)
-        .unwrap_or_else(|| value.to_string())
-}
-
-impl DocumentRequest {
-    pub fn from_command(command: DocumentCommand, context: &ConfigContext) -> AppResult<Self> {
-        let resolved = resolve_core_document_parameters(&command, context)?;
-
-        Ok(Self {
-            project: context.project.clone(),
-            operation: command.operation,
-            path: resolved.path,
-            ref_id: resolved.ref_id,
-            query: resolved.query,
-            page: resolved.page,
-            limit: resolved.limit,
-            options: resolved.options,
-            output: resolved.output,
-            adapter: resolved.adapter,
-            defaults: resolved.defaults,
-            source_command: command,
-            source_context: context.clone(),
-        })
+fn navigation_command(command: &DocumentCommand, document_path: String) -> NavigationCommand {
+    NavigationCommand {
+        operation: command.operation,
+        document_path,
+        ref_id: command.ref_id.clone(),
+        query: command.query.clone(),
+        page: command.page,
+        pagination_enabled: command.pagination_enabled,
+        limit: command.limit,
+        output: command.output.map(navigation_output_mode),
+        adapter: command.adapter.clone(),
+        native_options: navigation_native_options(command),
     }
 }
 
-pub fn resolve_context_defaults(
-    path: String,
-    operation: Option<Operation>,
-    context: &ConfigContext,
-) -> AppResult<(String, Option<Operation>, ResolvedDocumentDefaults)> {
-    let command = DocumentCommand {
-        operation: operation.unwrap_or(Operation::Outline),
-        path: path.clone(),
+fn context_navigation_command(operation: Operation, document_path: String) -> NavigationCommand {
+    NavigationCommand {
+        operation,
+        document_path,
         ref_id: None,
         query: None,
         page: None,
         pagination_enabled: None,
         limit: None,
-        native_options: Vec::new(),
         output: None,
         adapter: None,
-    };
-    let defaults = resolve_core_document_parameters(&command, context)?.defaults;
-    Ok((path, operation, defaults))
+        native_options: Vec::new(),
+    }
 }
 
-fn adapter_source(
-    preselected: &ResolvedValue,
-    evidence: &[crate::routing::CandidateEvidence],
-) -> String {
-    if preselected.value != Value::Null {
-        preselected.source.clone()
-    } else if evidence.is_empty() {
-        "automatic_discovery".to_owned()
-    } else {
-        "registry".to_owned()
+fn navigation_native_options(command: &DocumentCommand) -> Vec<NavigationNativeOptionInput> {
+    command
+        .native_options
+        .iter()
+        .map(|input| NavigationNativeOptionInput {
+            flag: input.flag.clone(),
+            value: input.value.clone(),
+        })
+        .collect()
+}
+
+fn navigation_config_source_descriptors(
+    project: &ProjectContext,
+) -> NavigationConfigSourceDescriptors {
+    NavigationConfigSourceDescriptors {
+        project: NavigationConfigSourceDescriptor::default(project.project_config_path.clone()),
+        user: NavigationConfigSourceDescriptor::default(project.user_config_path.clone()),
+    }
+}
+
+fn navigation_output_mode(output: OutputMode) -> NavigationOutputMode {
+    match output {
+        OutputMode::ReadableView => NavigationOutputMode::ReadableView,
+        OutputMode::ReadableJson => NavigationOutputMode::ReadableJson,
+        OutputMode::ProtocolJson => NavigationOutputMode::ProtocolJson,
+    }
+}
+
+fn output_mode(output: NavigationOutputMode) -> AppResult<OutputMode> {
+    output
+        .as_str()
+        .parse()
+        .map_err(|error| AppError::internal(format!("navigation-output-mode:{error}")))
+}
+
+impl DocumentRequest {
+    pub fn from_command(command: DocumentCommand, project: ProjectContext) -> Self {
+        let config_source_descriptors = navigation_config_source_descriptors(&project);
+        Self {
+            project,
+            command,
+            config_source_descriptors,
+        }
+    }
+}
+
+fn document_defaults(defaults: NavigationContextDefaults) -> ResolvedDocumentDefaults {
+    ResolvedDocumentDefaults {
+        adapter: resolved_value(defaults.adapter),
+        pagination: defaults.pagination.map(pagination_defaults),
+        output: resolved_value(defaults.output),
+        page: defaults.page.map(resolved_value),
+    }
+}
+
+fn pagination_defaults(defaults: NavigationPaginationDefaults) -> ResolvedPaginationDefaults {
+    ResolvedPaginationDefaults {
+        enabled: resolved_value(defaults.enabled),
+        limit: resolved_value(defaults.limit),
+    }
+}
+
+fn resolved_value(value: NavigationResolvedValue) -> ResolvedValue {
+    ResolvedValue {
+        value: value.value,
+        source: value.source,
     }
 }
 

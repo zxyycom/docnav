@@ -2,9 +2,9 @@
 
 ## Context
 
-Docnav 的核心文档操作会解析输入和配置、选择 core release static registry 中的 adapter、构造 navigation request、调用 linked adapter handler，并把结构化 result/diagnostic 映射到 protocol/readable output。当前这条链路只通过内存对象、selected adapter facts 和 protocol `request_id` 关联；验证脚本和 smoke runner 会写 `.log/.../latest.log`，但这些是测试/验证运行日志，不是普通 CLI 调用的运行时审计记录。
+Docnav 的文档操作由 core 完成 command classification 和 config source descriptor/path handoff，再由 `docnav-navigation` 加载 config sources、选择 core release static registry 中的 adapter、构造 navigation request、调用 selected adapter handler，并把结构化 result/diagnostic 交给输出投影。当前这条链路只通过内存对象、selected adapter facts 和 protocol `request_id` 关联；验证脚本和 smoke runner 会写 `.log/.../latest.log`，但这些是测试/验证运行日志，不是普通 CLI 调用的运行时审计记录。
 
-本 change 影响 core CLI 文档操作、linked adapter dispatch 和输出投影之间的运行时观测边界。它必须保持 linked adapter handler payload、`readable-view`、`readable-json` 和 `protocol-json` 的输出契约不变，也必须保持 machine-readable stdout 纯净。
+本 change 影响 core CLI handoff、navigation-owned selected adapter dispatch 和输出投影之间的运行时观测边界。它必须保持 selected adapter handler payload、`readable-view`、`readable-json` 和 `protocol-json` 的输出契约不变，也必须保持 machine-readable stdout 纯净。
 
 当前 change 只在 `openspec/changes/add-invocation-audit-logging/` 下形成未审核临时 artifacts，不影响现有其它文档、主规范、schema、示例或实现代码。
 

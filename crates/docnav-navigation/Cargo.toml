@@ -6,4 +6,8 @@ license.workspace = true
 
 [dependencies]
 docnav-adapter-contracts.workspace = true
+docnav-diagnostics.workspace = true
 docnav-protocol.workspace = true
+docnav-parameter-resolution.workspace = true
+docnav-typed-fields.workspace = true
+serde_json.workspace = true

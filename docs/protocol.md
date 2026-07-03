@@ -4,7 +4,7 @@
 
 ## 协议字段与生命周期
 
-v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 runtime routing 或 implementation selection；runtime 在 core 参数补全和 adapter execution 后产出 protocol envelope，public schema 用于示例、fixture 和 drift check。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法确定请求 operation 时，错误响应使用 `operation: null`。
+v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是 envelope 的固定 schema 识别字段，不参与 runtime routing 或 implementation selection；runtime 在 navigation input resolution 和 adapter execution 后产出 protocol envelope，public schema 用于示例、fixture 和 drift check。正常响应的 `protocol_version`、operation 和 result shape 必须与请求及 schema 对齐；无法确定请求 operation 时，错误响应使用 `operation: null`。
 
 `docnav --output protocol-json`：
 
@@ -25,7 +25,7 @@ document.path
 arguments
 ```
 
-`arguments` 是 adapter layer 的显式 operation 输入。当前 `docnav` CLI 先通过 [导航配置](navigation-config.md) 和 native option enrichment 得到完成后的 operation input，再由 `docnav-navigation` 构造内部 protocol request。Protocol envelope 不作为配置合并入口；它记录 adapter 调用时实际传入的 operation、document path 和 arguments。
+`arguments` 是 adapter layer 的显式 operation 输入。`docnav-navigation` 通过 [Navigation Input Resolution](navigation-input-resolution.md) 接收 raw command、config source descriptors/paths 和 registry，加载 raw config sources，解析 selected adapter typed-field 参数声明后构造内部 protocol request。Protocol envelope 不作为来源合并入口；它记录 adapter 调用时实际传入的 operation、document path 和 arguments。
 
 v0 operation 参数：
 
@@ -41,7 +41,7 @@ v0 operation 参数：
 - 预算只约束 adapter-owned 结果负载：outline/find 约束每页 entry facts 的可继续输出，read 约束 `content` 切分；`protocol_version`、`request_id`、`operation`、`ok`、JSON 字段名和固定包装不计入预算。
 - outline/find 遇到下一条 entry 或 match 会超过预算时，应在当前页停止并返回下一页 page。若单条记录本身超过预算，适配器必须保留完整 ref，并压缩 adapter-owned `label`、`summary`、`excerpt`、`cost` 或 `metadata` 等补充事实，使该页仍能前进；若完整 ref 本身已超过 `limit`，该单条记录可超出预算，但 `label` 仍应保留最小非空定位语义。
 - read 按 adapter 声明的预算切分 content；文本 adapter 不能切断 Unicode 字符；若当前位置后仍有内容，返回下一页 page。
-- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象，不解释格式语义；当前 core native option enrichment 和 selected-adapter 投影见 [导航配置](navigation-config.md#native-options) 与 [适配器契约](adapter-contract.md#文档操作执行边界)。Type mismatch、range invalid 和格式语义由 consuming adapter 返回 adapter-owned structured diagnostic。
+- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象，不解释格式语义；selected adapter typed-field 参数声明、来源解析和 typed extraction 见 [Navigation Input Resolution](navigation-input-resolution.md#selected-adapter-参数声明) 与 [适配器契约](adapter-contract.md#文档操作执行边界)。
 - 继续读取时，调用方保持 path、ref、query 和其它显式参数稳定，只使用响应返回的 page。
 - page 是调用位置，不是配置默认参数；入口省略 page 时固定从 `1` 开始。
 
@@ -203,7 +203,7 @@ ref 规则由 [ref-contract.md](ref-contract.md) 定义。原始协议、`docnav
 
 `FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`FORMAT_UNKNOWN` 和 `FORMAT_AMBIGUOUS` 的 `details.candidates` 是候选摘要数组；primary `DiagnosticRecord.details.candidate_failures` 使用同一元素 shape。每个元素包含 `adapter_id`、`stage` 和 `reason`。`stage` 取值为 `resolve` 或 `probe`；`reason` 是候选层稳定原因码，当前取值包括 `ADAPTER_NOT_FOUND`、`ADAPTER_UNAVAILABLE`、`PROBE_INVALID`、`PROBE_UNSUPPORTED` 和 `CONTENT_MATCH`。Protocol error details 的稳定契约到候选摘要为止；adapter probe payload 和人类说明文案由内部错误通道按各自契约承载。Manifest metadata invalid 和 missing linked handler 属于 adapter layer invariant failure，不进入默认 automatic discovery candidate reason set。
 
-错误 message 和 guidance 是可定制文案；调用方只解析 code、owner 和 stable details。`INVALID_REQUEST` 可以在 top-level projection 中附带 `location`、`received` 或 `expected`，也可以在 details 中附带 `field_issues`、`typed_validation_failures`、`config_issues` 或 `option_issues`。Core key/source/shape failures 使用 `field_issues` 或 `config_issues`；adapter-owned native option validation 使用 `option_issues` 表达 option owner、namespace/key、source、reason_code，以及可用的 type_variant、received 和 expected。range/type failure 必须在 top-level projection 或对应 option issue 中提供可比较的 received/expected 信息。显式 adapter 不存在时仍返回 adapter selection diagnostic，不投影为 option validation error。这些补充字段不得替代必需的 `field` 和 `reason`。
+错误 message 和 guidance 是可定制文案；调用方只解析 code、owner 和 stable details。`INVALID_REQUEST` 可以在 top-level projection 中附带 `location`、`received` 或 `expected`，也可以在 details 中附带 `field_issues`、`typed_validation_failures`、`config_issues` 或 `option_issues`。Core CLI key/source/shape failures 使用 `field_issues`；navigation input resolution 的 config source loading 和 selected-adapter native option validation 分别使用 `config_issues` 和 `option_issues` 表达 source、option owner、namespace/key、reason_code，以及可用的 type_variant、received 和 expected。range/type failure 必须在 top-level projection 或对应 option issue 中提供可比较的 received/expected 信息。显式 adapter 不存在时仍返回 adapter selection diagnostic，不投影为 option validation error。这些补充字段不得替代必需的 `field` 和 `reason`。
 
 Protocol response schema 是本节的验证材料，用于校验 protocol-visible code、details 字段集合、字段类型和 required details。修改 protocol error code 或 details 规则时，先更新本节和对应 schema/examples，再同步错误通道实现和消费方测试。
 
@@ -213,8 +213,8 @@ Protocol response schema 是本节的验证材料，用于校验 protocol-visibl
 
 Protocol response stdout 只输出 schema payload；`docnav --output protocol-json` stdout 只输出对应 protocol-shaped payload。Strict public input failure 和 automatic discovery 全部失败时的 candidate list 都使用 protocol failure projection。
 
-`docnav-protocol` 当前只承接 protocol request/response 数据结构、schema 对齐和 protocol error projection。导航配置合并发生在 core 构造 operation input 之前；`docnav-navigation` 消费完成后的 operation input 并生成 protocol request。Native options 在 protocol schema 中保持 opaque object；adapter-owned semantics 由 consuming adapter 诊断。
+`docnav-protocol` 当前只承接 protocol request/response 数据结构、schema 对齐和 protocol error projection。Navigation input resolution 发生在 `docnav-navigation` 中，并在 protocol request 构造前完成 typed-field validation/extraction。Native options 在 protocol schema 中保持 opaque object；adapter-owned semantics 由 selected adapter typed-field 参数声明和 adapter 文档定义。
 
-Operation-specific typed request 由 core 参数补全和 `docnav-navigation` request construction 共同产出。response、manifest 和 probe 等已归一化 payload 可以继续使用 typed deserialize + semantic validate。
+Operation-specific typed request 由 `docnav-navigation` 解析来源、提取 typed 参数并完成 request construction 后产出。response、manifest 和 probe 等已归一化 payload 可以继续使用 typed deserialize + semantic validate。
 
 调用方继续拥有错误归属、field path、request id fallback、stdout/stderr placement 和 exit behavior。public JSON Schema 文件保留为 contract material、examples/fixtures 校验和工具链 drift check，不作为 production decode path 的 generic schema validator。[错误通道](diagnostics.md) 拥有内部 code、category、primary record 字段和 details rule；这些规则投影到 protocol surface 时必须符合本文件定义的 code、owner 和 details。readable wrapper、manifest/probe policy 由各自 owner 文档定义。

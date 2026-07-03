@@ -38,15 +38,15 @@ Proves:
 - document command 缺少本 operation 拥有的必需参数时返回稳定 input failure。
 - 该 smoke case 代表这一类外部 CLI 错误，不枚举所有 parser 组合。
 
-### BB-CORE-CONFIG-001 配置优先级和 path context 可观察
+### BB-CORE-CONFIG-001 Config source 与 navigation input resolution 优先级可观察
 Status: implemented
 Existing smoke task: `CORE-CONFIG-001`
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- 真实 CLI 边界按文档优先级解析 user、project 和 default config，包括 `defaults.pagination.enabled`、`defaults.pagination.limit` 与 source-level static native option registry 暴露的 `options.max_heading_level`。
+- 真实 CLI 边界按文档优先级解析 explicit、project、user 和 built-in sources，包括 `defaults.pagination.enabled`、`defaults.pagination.limit` 与 source-level static native option registry 暴露的 `options.max_heading_level`。
 - `config list --path` 会报告被选中文档路径对应的 adapter 和 defaults context。
-- Config 层只证明 key/source/shape 与来源合并；`options.max_heading_level` 的类型和范围错误由 Markdown adapter-side validation case 证明。
+- Config source 层只证明 key/source/shape 与来源参与；`options.max_heading_level` 的类型和范围错误由 selected Markdown typed-field 参数声明和 navigation input resolution 证明。
 - disabled pagination 在进入 adapter layer request 前归一为最大 positive limit，request 只包含最终 `limit` 和 `page`。
 - `defaults.limit` 按 hard switch 被拒绝，并通过 structured `unknown_config_field` / `config_issues` 诊断报告配置来源、路径和字段。
 
@@ -157,13 +157,13 @@ Proves:
 - operation-owned 参数保持严格校验，例如 `outline --page 0` 会暴露 page 边界错误。
 - 未被当前 operation 使用的 known argument 不会被抢先 typed 解析，而是在 parser 边界返回 input diagnostic。
 
-### WB-CORE-STDPARAMS-001 Core standard parameter adoption 保持 request construction 来源
+### WB-NAV-INPUT-RESOLUTION-001 Navigation input resolution 保持来源解析边界
 Status: implemented
-Code: `crates/docnav/src/standard_parameters/tests.rs`
+Code: `crates/docnav-navigation/src/tests/navigation.rs`
 
 Proves:
-- Core document operation request construction consumes navigation config output, preserving source labels for explicit input, project config and built-in defaults.
-- Adapter descriptor native CLI flags enter core parsing as native option sources instead of core-owned fields.
+- Navigation input resolution preserves source labels for explicit input, project config, user config and built-in defaults.
+- Adapter descriptor native CLI flags enter parsing as native option sources instead of core-owned fields.
 
 ### WB-CORE-PREFLIGHT-001 Core preflight 检测 protocol-json intent
 Status: implemented
@@ -190,15 +190,15 @@ Proves:
 - `adapter list` 解析为 static registry inspection command。
 - 默认 adapter command surface 只接受 `adapter list` 作为 inspection command。
 
-### WB-CORE-ADAPTER-SOURCE-001 Core adapter selection guidance 保持静态来源边界
+### WB-NAV-ADAPTER-SOURCE-001 Navigation adapter selection 保持静态来源边界
 Status: implemented
-Code: `crates/docnav/src/routing/tests.rs`, `crates/docnav/src/runtime/tests.rs`
+Code: `crates/docnav-navigation/src/tests/navigation.rs`
 
 Proves:
 - 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
-- guidance 指向 current core release static registry 和当前可用 adapter id。
-- Automatic discovery 按 static registry 顺序执行 probe，扩展名 metadata 不改变候选顺序。
-- 无 declared adapter 的 `config list --path` context source 暴露为 `automatic_discovery`，不使用 inference 语义。
+- diagnostic owner 来自 `docnav-navigation` routing，而不是 core routing。
+- guidance 指向 current core release static registry，且不提示 install/register/executable/artifact 旧动态入口。
+- Automatic discovery 由 `docnav-navigation` 按 static registry 顺序执行 probe，扩展名 metadata 不改变候选顺序。
 - Selection candidate failure 由 resolve/probe 证据产生，不由 manifest metadata 产生。
 
 ### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
@@ -377,18 +377,18 @@ Proves:
 - `FieldDefs` derive 在编译期拒绝 leaf Rust field 类型与 `FieldDefBuilder<T>` 类型不一致的声明。
 - 缺少 field validation 或缺少 `#[field(...)]` attribute 的声明无法通过 trybuild compile-fail fixtures。
 
-### WB-STDPARAMS-RESOLVE-001 Standard parameter resolver 保持来源解析边界
+### WB-PARAM-RESOLVE-001 Navigation input resolution helper 保持来源解析边界
 Status: implemented
-Code: `crates/docnav-standard-parameters/src/tests.rs`
+Code: `crates/docnav-parameter-resolution/src/tests.rs`
 
 Proves:
-- Standard parameter resolver consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
-- Processing-specific metadata projection and standard parameter registration bindings construct direct input, project config, user config and default sources before resolution.
+- Navigation input resolution helper consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
+- Processing-specific metadata projection and navigation parameter bindings construct direct input, project config, user config and default sources before resolution.
 - Missing required values, invalid mapped values, optional mapped JSON null, static defaults and dynamic default source values all pass through typed-field validation and do not expose unsafe typed values.
 - Explicit or present invalid config sources return blocking config diagnostics while default missing config sources remain absent without diagnostics.
-- Unmapped public input returns source-scoped blocking diagnostics；owner-scoped native option sources can be delegated to adapter/native option owner with source info preserved.
+- Unmapped public input returns source-scoped blocking diagnostics；owner-scoped native option sources are resolved through selected-adapter typed-field validation/extraction with source info preserved.
 - Source-level static native option registry preserves owner/namespace/type variants, including same option name across multiple owners or value kinds, and generic merge does not collapse them into a single core type.
-- Core navigation config hands off final native option values without selected-adapter filtering or type/range prevalidation.
+- Navigation input resolution hands off final native option values after selected-adapter typed-field filtering and validation/extraction.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
 
 ### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影边界
@@ -399,12 +399,12 @@ Proves:
 - 默认 adapter layer 必须提供全部文档操作 handler；missing linked handler 属于 adapter layer invariant failure，不作为默认 selection candidate failure。
 - Adapter error exit category、owner 和 stable details 不依赖 direct adapter CLI 或 adapter subprocess。
 
-### WB-NAVIGATION-DISPATCH-001 Navigation request construction and adapter dispatch 稳定
+### WB-NAVIGATION-DISPATCH-001 Navigation input resolution、request construction and adapter dispatch 稳定
 Status: implemented
 Code: `crates/docnav-navigation/src/lib.rs`
 
 Proves:
-- `docnav-navigation` 将 core operation input 映射为 protocol request arguments。
+- `docnav-navigation` 接收 raw navigation command、config source descriptors/paths 和 registry，加载 raw config sources，解析 routing 输入、选择 adapter，并将 typed input resolution 结果映射为 protocol request arguments。
 - 缺失 operation-owned input 在 navigation boundary 返回 typed input error。
 - Adapter library handle dispatch 返回 protocol success/failure envelope，不需要 adapter subprocess。
 
@@ -516,14 +516,14 @@ Proves:
 - find 匹配 hidden heading 或 heading 前内容时，ref 指向当前 visible region 或 full document fallback。
 - find display 保留匹配片段且 ref 不受 display 内容影响。
 
-### WB-MD-OPTIONS-001 Markdown adapter-owned options 控制可见粒度
+### WB-MD-OPTIONS-001 Markdown typed option 控制可见粒度
 Status: implemented
 Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - `max_heading_level` options 同时影响 outline 和 find 的 visible heading granularity。
-- `max_heading_level` 通过 source-level static native option registry 进入 generic merge，options shape 保持 adapter-owned，不上移为 core-owned 字段。
-- Markdown adapter consumes the final selected option value and returns adapter-owned diagnostics for type mismatch or values outside `1..6`.
+- `max_heading_level` 通过 source-level static native option registry 和 selected-adapter typed-field validation/extraction 进入 request construction，options shape 保持 adapter-owned，不上移为 core-owned 字段。
+- Markdown adapter 只证明已校验 typed option value 对 outline/find visible heading granularity 的业务效果；default、type、range 和 unsupported validation 由 `docnav-navigation` 在 handler dispatch 前完成。
 
 ### WB-MD-META-001 Markdown manifest/probe/info 元数据稳定
 Status: implemented

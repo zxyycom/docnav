@@ -102,6 +102,7 @@ fn value_kind_name(kind: ValueKind) -> &'static str {
         ValueKind::Boolean => "boolean",
         ValueKind::Array => "array",
         ValueKind::Object => "object",
+        ValueKind::Json => "JSON value",
     }
 }
 

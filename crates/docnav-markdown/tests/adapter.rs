@@ -6,12 +6,17 @@ use docnav_adapter_contracts::Adapter;
 use docnav_markdown::MarkdownAdapter;
 use docnav_protocol::{
     positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
-    OperationArguments, Options, OutlineArguments, OutlineResult, ProtocolDiagnosticCode,
-    ProtocolError, ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
+    OperationArguments, OptionEntry, Options, OutlineArguments, OutlineResult,
+    ProtocolDiagnosticCode, ProtocolError, ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+const ADAPTER_ID: &str = "docnav-markdown";
+const NATIVE_OPTIONS_NAMESPACE: &str = "options";
 const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
+const MAX_HEADING_LEVEL_IDENTITY: &str =
+    "docnav.adapters.docnav-markdown.options.max_heading_level";
+const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
 
 fn positive(value: u32) -> docnav_protocol::PositiveInteger {
     positive_result(value).expect("positive test integer")
@@ -58,7 +63,9 @@ fn outline_args(limit: u32, page: u32, max_heading_level: Option<u8>) -> Outline
     OutlineArguments {
         limit: positive(limit),
         page: positive(page),
-        options: max_heading_level.map(max_heading_level_options),
+        options: Some(max_heading_level_options(
+            max_heading_level.unwrap_or(DEFAULT_MAX_HEADING_LEVEL),
+        )),
     }
 }
 
@@ -67,16 +74,23 @@ fn find_args(query: &str, limit: u32, page: u32, max_heading_level: Option<u8>) 
         query: query.to_owned(),
         limit: positive(limit),
         page: positive(page),
-        options: max_heading_level.map(max_heading_level_options),
+        options: Some(max_heading_level_options(
+            max_heading_level.unwrap_or(DEFAULT_MAX_HEADING_LEVEL),
+        )),
     }
 }
 
 fn max_heading_level_options(level: u8) -> Options {
     let mut options = Options::new();
-    options.insert(
-        MAX_HEADING_LEVEL_OPTION.to_owned(),
-        serde_json::Value::from(level),
-    );
+    options.insert_entry(OptionEntry {
+        identity: MAX_HEADING_LEVEL_IDENTITY.to_owned(),
+        owner: ADAPTER_ID.to_owned(),
+        namespace: NATIVE_OPTIONS_NAMESPACE.to_owned(),
+        key: MAX_HEADING_LEVEL_OPTION.to_owned(),
+        source: "explicit".to_owned(),
+        type_variant: "integer".to_owned(),
+        value: serde_json::Value::from(level),
+    });
     options
 }
 

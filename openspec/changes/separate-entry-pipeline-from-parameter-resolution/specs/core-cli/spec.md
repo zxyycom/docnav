@@ -21,8 +21,8 @@
 - **WHEN** a caller executes `docnav outline docs/guide.md --limit 120`
 - **THEN** core classifies the invocation as a document operation
 - **THEN** core maps argv into a direct input view
-- **THEN** core invokes entry parameter source resolution with direct input, configured sources, explicit adapter native option source descriptors when an adapter owner has declared them, and defaults
-- **THEN** adapter routing and protocol request construction consume derived typed runtime values rather than raw argv tokens
+- **THEN** core hands the direct input view, config source descriptors/paths, registry and declared native option source descriptors to `docnav-navigation`
+- **THEN** navigation adapter selection and request construction consume derived typed runtime values rather than raw argv tokens
 
 ### Requirement: Core CLI MUST keep raw argv immutable during parameter resolution
 Core CLI parameter source resolution MUST NOT delete, rewrite, reorder, or supplement raw argv tokens. Input-boundary diagnostics, output intent preflight, and document request construction MUST use derived facts or typed runtime values while preserving the original argv as the raw invocation record.

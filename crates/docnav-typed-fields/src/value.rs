@@ -150,6 +150,26 @@ impl FieldValue for serde_json::Map<String, Value> {
     }
 }
 
+impl FieldValue for Value {
+    fn value_kind() -> ValueKind {
+        ValueKind::Json
+    }
+
+    fn into_json_value(self) -> Value {
+        self
+    }
+
+    fn from_typed_value(value: TypedValue) -> Result<Self, FieldValueError> {
+        match value {
+            TypedValue::Json(value) => Ok(value),
+            value => Err(FieldValueError {
+                expected: Self::value_kind(),
+                actual: value.actual_kind(),
+            }),
+        }
+    }
+}
+
 impl<T: FieldStringEnum> FieldValue for T {
     fn value_kind() -> ValueKind {
         ValueKind::String
@@ -207,6 +227,7 @@ impl TypedValue {
             Self::Boolean(_) => ActualValueKind::Boolean,
             Self::Array(_) => ActualValueKind::Array,
             Self::Object(_) => ActualValueKind::Object,
+            Self::Json(value) => crate::field::constraints::actual_value_kind(value),
             Self::Null => ActualValueKind::Null,
         }
     }

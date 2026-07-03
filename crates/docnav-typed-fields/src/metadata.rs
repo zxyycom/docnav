@@ -61,6 +61,7 @@ pub enum ValueKind {
     Boolean,
     Array,
     Object,
+    Json,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -82,6 +83,7 @@ pub enum TypedValue {
     Boolean(bool),
     Array(Vec<Value>),
     Object(serde_json::Map<String, Value>),
+    Json(Value),
     Null,
 }
 

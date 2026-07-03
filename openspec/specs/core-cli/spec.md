@@ -1,10 +1,10 @@
 # core-cli Specification
 
 ## Purpose
-定义 `docnav` 核心 CLI 的命令解析、adapter 选择、linked adapter dispatch、输出分层、配置和稳定错误映射行为。
+定义 `docnav` 核心 CLI 的命令解析、非 navigation 命令、config source descriptor/path handoff、static registry ownership、输出分层和稳定错误映射行为。
 ## Requirements
 ### Requirement: 核心 CLI 必须作为独立 docnav 可执行入口交付
-`docnav` MUST 作为独立 Rust workspace crate 和可执行二进制交付。格式解析 MUST 由选中的 adapter 完成，核心 CLI MUST 只负责命令解析、linked adapter dispatch、协议校验和输出映射。
+`docnav` MUST 作为独立 Rust workspace crate 和可执行二进制交付。格式解析 MUST 由选中的 adapter 完成，核心 CLI MUST 只负责命令解析、非 navigation 命令、config source descriptor/path handoff、registry ownership、协议校验和输出映射。
 
 #### Scenario: 构建核心 CLI
 - **WHEN** 构建 workspace 中的 `docnav` package
@@ -16,31 +16,32 @@
 
 #### Scenario: 执行 outline 命令
 - **WHEN** 调用方执行 `docnav outline docs/guide.md`
-- **THEN** `docnav` 解析最终 page 和 limit
-- **THEN** `docnav` 解析 document path 为 absolute path
+- **THEN** `docnav-navigation` 解析最终 page 和 limit
+- **THEN** `docnav-navigation` 解析 document path 为 absolute path
 - **THEN** `docnav-navigation` dispatches the selected linked adapter operation handler
 
 #### Scenario: 执行 info 命令
 - **WHEN** 调用方执行 `docnav info docs/guide.md`
-- **THEN** `docnav` dispatches the selected linked adapter info handler
+- **THEN** `docnav-navigation` dispatches the selected linked adapter info handler
 - **THEN** info operation input 不包含 page 或 limit
 
 ### Requirement: 核心 CLI 必须严格拒绝未知、多余和未使用参数
-`docnav` core CLI MUST 使用 `clap` 或 `clap` builder API 作为命令、子命令、固定参数、默认值、枚举值和 help 的 argv 结构解析基础。Document operation argv 必须先映射为 canonical document operation input 或等价 semantic request，再进入 adapter routing、navigation request preparation、linked adapter dispatch 和 output dispatch。
+`docnav` core CLI MUST 使用 `clap` 或 `clap` builder API 作为命令、子命令、固定参数、默认值、枚举值和 help 的 argv 结构解析基础。Document operation argv 必须先映射为 raw navigation command 或等价 handoff input，再连同 config source descriptors/paths 和 registry 进入 `docnav-navigation`；adapter selection、navigation request preparation 和 selected adapter dispatch 发生在 navigation input resolution 边界内。
 
 Core CLI strict input 规则如下：
 
 - 未知 flag、多余 positional 和当前 operation 不使用的已知参数 MUST 在执行前返回 `INVALID_REQUEST`。
 - 当前 operation 实际使用的参数必须保持严格；缺值或值非法时必须返回 `INVALID_REQUEST`。
-- `clap` 负责已知命令、已知参数声明、默认值、枚举和 help；Docnav 在确定 command/operation 后只允许当前 operation owning boundary 使用的参数进入 semantic request，不复制业务参数解释、默认值归一或 request 构造逻辑。
+- `clap` 负责已知命令、已知参数声明、默认值、枚举和 help；Docnav 在确定 command/operation 后只允许当前 operation owning boundary 使用的参数进入 raw navigation command，不复制业务参数解释、默认值归一或 request 构造逻辑。
 - 每个 rejected argv family 必须形成 primary input diagnostic；输出通道按当前输出模式投影 failure。
 - `protocol-json` stdout 只输出 protocol response envelope；document success payload 不承载 caller input diagnostic。
 
 #### Scenario: 核心 CLI 进入共享 semantic request 管道
 - **WHEN** 调用方执行有效的 `docnav outline/read/find/info` CLI 命令
 - **THEN** `clap` 或 `clap` builder 解析出类型化命令
-- **THEN** document CLI input 映射为 canonical document operation input 或等价 semantic request
-- **THEN** adapter routing、navigation request preparation 和 output mode 分流使用共享逻辑
+- **THEN** document CLI input 映射为 raw navigation command 或等价 handoff input
+- **THEN** `docnav-navigation` 负责 adapter selection、navigation request preparation 和 selected adapter dispatch
+- **THEN** output mode 分流使用共享输出逻辑
 - **THEN** CLI 不创建独立业务参数解释路径
 
 #### Scenario: 未知 argv 阻断文档操作
@@ -82,17 +83,17 @@ Core CLI strict input 规则如下：
 - **OR** 执行 `docnav doctor`
 - **OR** 执行 `docnav version`
 - **THEN** `docnav` 通过 `clap` 或 `clap` builder 解析出类型化非文档命令
-- **THEN** 这些命令不进入 canonical document operation input 或等价 semantic request
-- **THEN** 这些命令不执行 adapter routing、adapter dispatch 或文档导航业务
+- **THEN** 这些命令不进入 raw navigation command 或 navigation input resolution
+- **THEN** 这些命令不执行 adapter selection、adapter dispatch 或文档导航业务
 - **THEN** 代表性成功、失败、stdout、stderr 和 exit code 行为由 core CLI smoke 或等价测试覆盖
 
 ### Requirement: path 必须规范化并支持项目根外文件
-`docnav` MUST 从 cwd/project root 和输入 path 解析 document path，MUST 将传给 navigation layer 和 adapter handler 的 document path 规范化为 absolute path，并 MUST 允许读取项目根外的可访问文件。
+`docnav` MUST preserve caller path input and cwd/project root context for navigation handoff. `docnav-navigation` MUST resolve document path to the absolute path passed to the selected adapter handler, and document operations MUST allow accessible files outside the project root.
 
 #### Scenario: 项目根外路径
 - **WHEN** 调用方传入会解析到项目根外且可访问的 path
-- **THEN** `docnav` 保留 absolute document path
-- **THEN** `docnav` 仍可继续选择 linked adapter 并 dispatch operation handler
+- **THEN** `docnav-navigation` 保留 absolute document path
+- **THEN** `docnav-navigation` 仍可继续选择 linked adapter 并 dispatch operation handler
 
 #### Scenario: 不可访问路径
 - **WHEN** 调用方传入不存在或不可读的 path
@@ -100,18 +101,18 @@ Core CLI strict input 规则如下：
 - **THEN** 不 dispatch adapter operation
 
 ### Requirement: 核心配置 MVP 必须有限且可审计
-`docnav` MUST 在本 change 中只支持 `defaults.adapter`、`defaults.pagination.enabled`、`defaults.pagination.limit` 和 `defaults.output` 四个核心配置 key，并 MUST 按显式参数、项目配置、用户配置、内置默认值的优先级解析最终 core 参数值。Core 参数的默认值来源 MUST 限定为 CLI、配置和内置默认值；source-level static native option registry 只参与 native option source classification、merge metadata 和 handoff，adapter-owned option semantics 由 consuming adapter 校验。
+`docnav` MUST provide an auditable core config command surface for `defaults.adapter`、`defaults.pagination.enabled`、`defaults.pagination.limit` 和 `defaults.output`。For navigation commands, core MUST supply project/user config source descriptors/paths to `docnav-navigation`; `docnav-navigation` MUST load raw config sources and resolve effective navigation values with priority `explicit > project > user > built_in`. Source-level static native option registry only participates in native option source classification、merge metadata and handoff; selected adapter typed-field declarations own adapter-owned option semantics.
 
 #### Scenario: 配置 adapter 声明式选择
 - **WHEN** 调用方未传入 `--adapter`
 - **AND** 项目配置设置了 `defaults.adapter`
-- **THEN** `docnav` 使用该 adapter id 作为 declared adapter
-- **THEN** `docnav` 只在当前 static registry 中查找该 adapter 并执行 probe
-- **THEN** `docnav` 不进入 automatic discovery 或 fallback
+- **THEN** `docnav-navigation` 使用该 adapter id 作为 declared adapter
+- **THEN** `docnav-navigation` 只在当前 static registry 中查找该 adapter 并执行 probe
+- **THEN** `docnav-navigation` 不进入 automatic discovery 或 fallback
 
 #### Scenario: page 不可配置
 - **WHEN** 调用方省略 `--page`
-- **THEN** `docnav` 使用 page `1`
+- **THEN** `docnav-navigation` 使用 page `1`
 - **THEN** 项目配置和用户配置保持初始 page 为 `1`
 
 #### Scenario: 未知配置 key
@@ -135,7 +136,7 @@ Core CLI strict input 规则如下：
 
 #### Scenario: 按文档上下文列出最终配置
 - **WHEN** 调用方执行 `docnav config list --path docs/guide.md --operation outline`
-- **THEN** `docnav` 按文档命令规则解析 path 并选择 adapter
+- **THEN** core 使用 navigation input resolution 或等价只读 helper 解析该文档上下文
 - **THEN** 输出包含选中 adapter id
 - **THEN** 输出包含该文档和 operation 下的最终默认参数及其来源
 
@@ -159,7 +160,7 @@ Core CLI strict input 规则如下：
 - **AND** 存在失败检查项时进程非零退出
 
 ### Requirement: adapter 选择必须区分声明式 adapter 和自动发现
-`docnav` MUST first honor a declared adapter id from `--adapter` or `defaults.adapter`. Declared adapter failure MUST return an adapter selection diagnostic with the declared source and candidate failure stage. When no declared adapter id exists, `docnav` MUST enter automatic discovery by traversing the current static registry order and probing each linked adapter until the first `supported: true` result. Extension, content type, manifest metadata and descriptor metadata remain inspection or adapter-owned recognition facts. Adapter selection MUST use registry membership for implementation lookup, registry order for automatic discovery order and adapter probe results for format support.
+`docnav-navigation` MUST first honor a declared adapter id from `--adapter` or `defaults.adapter`. Declared adapter failure MUST return an adapter selection diagnostic with the declared source and candidate failure stage. When no declared adapter id exists, `docnav-navigation` MUST enter automatic discovery by traversing the current static registry order and probing each linked adapter until the first `supported: true` result. Extension, content type, manifest metadata and descriptor metadata remain inspection or adapter-owned recognition facts. Adapter selection MUST use registry membership for implementation lookup, registry order for automatic discovery order and adapter probe results for format support.
 
 #### Scenario: 显式 adapter 记录解析失败后返回诊断
 - **WHEN** 调用方传入 `--adapter docnav-markdown` 但 registry 中无法解析该 adapter 记录
@@ -202,12 +203,12 @@ Core CLI strict input 规则如下：
 - **THEN** 每条候选摘要只包含 adapter_id、stage 和 reason
 
 ### Requirement: Core release static registry 必须提供 adapter implementation source
-`docnav` MUST use the current core release static adapter registry as the adapter implementation source for document operations. Registry entries MUST resolve to linked adapter library handles and source-level descriptor metadata, including adapter id、manifest metadata、native option registry entries and operation handlers.
+`docnav` core MUST own the current core release static adapter registry as the adapter implementation source for document operations and MUST pass that registry to `docnav-navigation`. Registry entries MUST resolve to linked adapter library handles and source-level descriptor metadata, including adapter id、manifest metadata、native option registry entries and operation handlers.
 
 #### Scenario: 使用 static registry entry
 - **WHEN** registry 中存在 Markdown adapter id 和 linked library handle
-- **THEN** `docnav` 可以按 adapter id 解析该 registry entry
-- **THEN** `docnav` 使用该 entry 的 linked probe 和 operation handler 执行格式识别与 document operation
+- **THEN** `docnav` 可以将该 registry entry 作为 handoff registry 的一部分提供
+- **THEN** `docnav-navigation` 使用该 entry 的 linked probe 和 operation handler 执行格式识别与 document operation
 
 #### Scenario: registry 保留遍历顺序
 - **WHEN** registry 的 `adapters` 数组包含多个候选
@@ -219,16 +220,16 @@ Core CLI strict input 规则如下：
 - **THEN** 不从 external executable、command path 或 historical adapter record 补足该 implementation
 
 ### Requirement: navigation request 必须包含最终 typed operation arguments
-`docnav` MUST 在 linked adapter dispatch 前解析配置和默认值，并 MUST 将最终 page、limit、ref、query 和 merged native options 等参数准备为 operation arguments。Core `docnav` MUST NOT synthesize format-specific `options`; source-level native option registry MAY declare public option sources and owner/namespace/type variants, but descriptor metadata MUST NOT be treated as request `options` values. Core MUST NOT reject an option only because the selected adapter does not support it; consuming adapter owns unsupported/type/range diagnostics.
+`docnav-navigation` MUST load raw project/user config sources before selected adapter dispatch, resolve configuration and defaults, and prepare final page、limit、ref、query and merged native options as operation arguments. Core `docnav` MUST pass raw navigation command、config source descriptors/paths and registry to `docnav-navigation`; it MUST NOT synthesize format-specific `options`. Source-level native option registry MAY declare public option sources and owner/namespace/type variants, but descriptor metadata MUST NOT be treated as request `options` values. Selected adapter typed-field declarations own unsupported/type/range diagnostics before handler dispatch.
 
 #### Scenario: 省略 page
 - **WHEN** 调用方省略 page
-- **THEN** `docnav` 传给 navigation layer 的 page 为 `1`
+- **THEN** `docnav-navigation` resolves page as `1` before request construction
 
 #### Scenario: 不写入格式 options
 - **WHEN** selected registry entry metadata passes current validation
-- **THEN** `docnav` 仍能解析 core 默认参数
-- **THEN** navigation request 不包含由 manifest metadata、配置或隐式默认值合成的格式 options
+- **THEN** `docnav-navigation` 仍能解析 navigation defaults
+- **THEN** navigation request 不包含由 manifest metadata 或隐式格式默认值合成的格式 options
 
 #### Scenario: Missing adapter selection precedes option validation
 - **WHEN** caller declares an adapter id absent from the current static registry
@@ -271,7 +272,7 @@ Core CLI strict input 规则如下：
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --output <invalid-output>`
 - **THEN** `docnav` 返回 `INVALID_REQUEST`
 - **THEN** CLI help 只列出 readable-view、readable-json 和 protocol-json
-- **THEN** `docnav` 在 adapter routing 和 document operation 执行前返回
+- **THEN** `docnav` 在 navigation input resolution 和 document operation 执行前返回
 
 #### Scenario: help 和 version 仍可输出纯文本
 - **WHEN** 调用方执行 `docnav --help` 或 `docnav --version`
@@ -312,13 +313,13 @@ Core CLI strict input 规则如下：
 
 ### Requirement: Core CLI 必须复用共享 helper 且保留 core policy owner
 
-`docnav` core CLI MUST 在共享 helper 存在后复用 diagnostics、CLI argv classifier、JSON IO 和 document output orchestration helper。Core CLI MUST 继续拥有 adapter routing、configuration、project root handling、static registry ownership、non-document command behavior 和 concrete core exit code enum。
+`docnav` core CLI MUST 在共享 helper 存在后复用 diagnostics、CLI argv classifier、JSON IO 和 document output orchestration helper。Core CLI MUST 继续拥有 command classification、configuration command behavior、project root context for handoff、static registry ownership、non-document command behavior 和 concrete core exit code enum。
 
 #### Scenario: Core document argv strict classification 使用共享 scanner
 
 - **WHEN** core document CLI 解析 unknown flags、extra positional values 或当前 operation 不使用的 known flags
 - **THEN** 它使用共享 CLI argv scanner 做 token classification
-- **THEN** 当前 operation 实际使用参数的 typed parsing 仍由 core 拥有
+- **THEN** 当前 operation 实际使用参数的 typed parsing 由 navigation input resolution 拥有
 - **THEN** argv scanner 不应用于 protocol JSON request decoding
 
 #### Scenario: Core input failure 使用共享 diagnostics
@@ -349,25 +350,25 @@ Core CLI strict input 规则如下：
 - **THEN** 它可以使用共享 classification helper
 - **THEN** concrete core exit code enum 和最终 process exit decision 仍由 `docnav` core 拥有
 
-### Requirement: Core CLI resolves pagination defaults before linked adapter dispatch
-`docnav` document commands MUST resolve `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>` into an explicit positive integer `limit` and `page` before dispatching a linked adapter handler. Core MUST treat `limit` as an adapter-owned numeric budget and MUST NOT interpret its unit.
+### Requirement: Navigation input resolution resolves pagination defaults before selected adapter dispatch
+`docnav-navigation` MUST resolve `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>` into an explicit positive integer `limit` and `page` before dispatching a linked adapter handler. Core MUST treat `limit` as an adapter-owned numeric budget and MUST NOT interpret its unit.
 
-#### Scenario: Core resolves pagination sources
+#### Scenario: Navigation resolves pagination sources
 - **WHEN** a caller runs a document operation
-- **THEN** core maps pagination argv, project config, user config, and built-in defaults to the same standard parameter identities
+- **THEN** navigation input resolution maps pagination argv, project config, user config, and built-in defaults to the same declared parameter identities
 - **THEN** direct input overrides project config, project config overrides user config, and user config overrides built-in defaults
 
-#### Scenario: Core passes resolved limit to adapter
-- **WHEN** core has resolved effective pagination enabled state, limit, and page
+#### Scenario: Navigation passes resolved limit to adapter
+- **WHEN** navigation input resolution has resolved effective pagination enabled state, limit, and page
 - **THEN** the selected adapter receives explicit operation arguments
 - **THEN** the outgoing request contains `limit` and `page` rather than a protocol `pagination` field
 
-#### Scenario: Core disables pagination through limit finalization
+#### Scenario: Navigation disables pagination through limit finalization
 - **WHEN** effective pagination is disabled
-- **THEN** core finalizes the outgoing limit as the configured maximum positive protocol budget
-- **THEN** core does not add a separate pagination field to the adapter request
+- **THEN** navigation input resolution finalizes the outgoing limit as the configured maximum positive protocol budget
+- **THEN** request construction does not add a separate pagination field to the adapter request
 
 #### Scenario: Core keeps page outside configuration defaults
 - **WHEN** a caller omits `page`
-- **THEN** core resolves `page` to `1`
+- **THEN** navigation input resolution resolves `page` to `1`
 - **THEN** project and user config do not provide `defaults.page` or `defaults.pagination.page`

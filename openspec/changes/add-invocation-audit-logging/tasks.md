@@ -18,7 +18,7 @@
 
 ## 3. Core 实现
 
-- [ ] 3.1 在 core CLI 文档操作链路中确定最小插桩点，覆盖 adapter selection 后的 navigation request construction、linked adapter handler dispatch、结果校验和错误映射结果。
+- [ ] 3.1 在文档操作链路中确定最小插桩点，覆盖 navigation-owned adapter selection 后的 navigation request construction、selected adapter handler dispatch、结果校验和错误映射结果。
 - [ ] 3.2 实现 metadata-only JSONL event writer，支持 schema version、timestamp、event、request id、operation、adapter id、duration、operation/output status metadata、response size 和 bounded diagnostic summary。
 - [ ] 3.3 实现日志配置解析和 sink 初始化，保证未启用日志时不产生运行时开销或可观察输出变化。
 - [ ] 3.4 实现日志写入失败降级，确保日志目录不可写、序列化失败或 append 失败不改变原本文档操作结果。

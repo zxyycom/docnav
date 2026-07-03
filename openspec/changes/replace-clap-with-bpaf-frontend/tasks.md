@@ -5,7 +5,7 @@
 - [ ] 1.1 审计当前 clap usage：列出 core CLI parsing、help rendering、defaults、possible values、value parser 和 validation 的现有 owner。
 - [ ] 1.2 确认 `clap` 只作为 strict core CLI parser/help 实现依赖；CLI 可观察 contract 必须写成行为而不是 crate 名。
 - [ ] 1.3 确认 frontend 输出模型只包含 command/subcommand、positionals、raw flag values、help request 和 frontend diagnostics。
-- [ ] 1.4 确认标准参数流程或 owning native option handler 继续拥有参数语义、默认值、operation applicability 和 strict validation。
+- [ ] 1.4 确认 navigation input resolution 和 selected adapter typed-field declarations 继续拥有参数语义、默认值、operation applicability 和 strict validation。
 - [ ] 1.5 确认 help 输出、strict input diagnostic 行为和 adapter native options 都有测试或 smoke 验证入口。
 
 ## 2. 轮廓实现
@@ -15,7 +15,7 @@
 - [ ] 2.3 用 retained `clap` parser/help surface 构建 command/subcommand、positionals、raw flag values 和 help request 的 frontend mapping。
 - [ ] 2.4 将 core CLI 的 document/config/utility 入口切到新的 frontend mapping。
 - [ ] 2.5 将 core adapter inspection 入口切到新的 frontend mapping。
-- [ ] 2.6 将 `clap` help surface 连接到 standard parameter metadata、command context 和 owner native option metadata。
+- [ ] 2.6 将 `clap` help surface 连接到 navigation parameter metadata、command context 和 owner native option metadata。
 - [ ] 2.7 将 unknown argv、extra positional、operation-inapplicable flag 投影为 strict primary input diagnostic。
 
 ## 3. 验证

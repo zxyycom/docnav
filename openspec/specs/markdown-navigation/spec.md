@@ -209,7 +209,7 @@ Core CLI Markdown smoke runner MUST write an audit log for every executed comman
 - **THEN** 日志不转储完整环境变量或与测试无关的机器信息
 
 ### Requirement: Markdown adapter 必须有 core CLI 负向矩阵测试
-Core CLI smoke MUST provide a black-box matrix for Markdown document operations, covering invalid command-line input, strict argv input, invalid config input and Markdown adapter-owned option validation through linked adapter dispatch. 每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
+Core CLI smoke MUST provide a black-box matrix for Markdown document operations, covering invalid command-line input, strict argv input, invalid config input and navigation input resolution native option validation before linked adapter dispatch. 每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
 
 矩阵必须覆盖：
 
@@ -217,7 +217,7 @@ Core CLI smoke MUST provide a black-box matrix for Markdown document operations,
 - Strict argv：unknown flag、多余 positional、当前 operation 不使用的参数，包括值非法但未被当前 operation 使用的 known 参数。
 - 实际使用参数失败：`page` 或 `limit` 为 0、`page` 或 `limit` 非数字、`output` 非法、`max_heading_level` 越界。
 - 业务和输入错误：missing file、invalid ref、non-UTF-8 document。
-- Protocol-json failure projection：CLI 输入、配置输入和 adapter-owned option validation failure 在 `--output protocol-json` 下产生 protocol-shaped failure envelope。
+- Protocol-json failure projection：CLI 输入、配置输入和 selected-adapter typed-field option validation failure 在 `--output protocol-json` 下产生 protocol-shaped failure envelope。
 - Failure 断言：primary input diagnostic 和输出通道边界。
 
 #### Scenario: 参数校验失败保持 CLI 诊断
@@ -258,7 +258,7 @@ Core CLI smoke MUST provide a black-box matrix for Markdown document operations,
 - **WHEN** 负向矩阵以 `--output protocol-json` 执行 unknown argv、缺少必需参数或参数类型错误的 core CLI 请求
 - **THEN** stdout 包含 `INVALID_REQUEST` protocol failure envelope
 - **THEN** failure envelope 的 operation 在可解析时保留对应 operation，否则为 null
-- **THEN** 失败来自标准参数/typed-field processing
+- **THEN** 失败来自 navigation input resolution 的 typed-field processing
 - **THEN** 进程非零退出
 
 ### Requirement: 保留成熟 parser 行为基线
@@ -400,8 +400,8 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 - **THEN** read 按当前解析结果中的 line 和 level 执行匹配
 - **THEN** heading 身份输入来自 ref 的结构坐标
 
-### Requirement: Core CLI 支持 core 配置中的 Markdown native options
-Core `docnav` document operations MUST read project/user core config through the standard parameter pipeline and source-level native option registry. Project config MUST be read from `<project-root>/.docnav/docnav.json`; user config MUST come from the core user config file. 首期 core 配置 MUST support `defaults.pagination.enabled`、`defaults.pagination.limit` 和 `defaults.output`；`options` MUST remain a raw adapter-owned native option map. 当前 Markdown static descriptor declares `options.max_heading_level` as a public native option source, and its type semantics and `1..6` range validation are owned by the Markdown adapter when consumed. Core MUST resolve project root/cwd/document path before adapter dispatch and pass an absolute document path to the navigation layer and selected Markdown adapter. Missing default config sources MUST be treated as absent; present invalid config sources MUST produce blocking config diagnostics.
+### Requirement: Navigation input resolution 支持 Markdown native options
+Core `docnav` document operations MUST pass the raw navigation command, config source descriptors/paths and static registry to `docnav-navigation`. `docnav-navigation` MUST load raw project/user config sources and resolve Markdown native options through the selected Markdown typed-field declarations and source-level native option registry. Project config MUST be read from `<project-root>/.docnav/docnav.json`; user config MUST come from the core user config descriptor/path. 首期 config source MUST support `defaults.pagination.enabled`、`defaults.pagination.limit` 和 `defaults.output`；`options` MUST remain a raw adapter-owned native option source map until selected adapter typed-field validation/extraction. 当前 Markdown static descriptor declares `options.max_heading_level` as a public native option source, and its type semantics and `1..6` range validation are enforced before request construction. Core MUST resolve project root/cwd/document path before navigation input resolution. Missing default config sources MUST be treated as absent; present invalid config sources MUST produce blocking config diagnostics.
 
 #### Scenario: max_heading_level 来自配置
 - **WHEN** `<project-root>/.docnav/docnav.json` 包含 `options.max_heading_level: 2`
@@ -419,14 +419,14 @@ Core `docnav` document operations MUST read project/user core config through the
 #### Scenario: 显式 max_heading_level 覆盖配置
 - **WHEN** `<project-root>/.docnav/docnav.json` 包含 `options.max_heading_level: 2`
 - **AND** 调用方执行 `docnav outline docs/guide.md --max-heading-level 4`
-- **THEN** standard parameter pipeline 将最终 native option source 设为显式 argv 值 `4`
+- **THEN** navigation input resolution 将最终 native option source 设为显式 argv 值 `4`
 - **THEN** 配置值 `2` 不覆盖显式 argv
 
 #### Scenario: 项目配置覆盖用户配置
 - **WHEN** core 用户配置文件包含 `options.max_heading_level: 2`
 - **AND** `<project-root>/.docnav/docnav.json` 包含 `options.max_heading_level: 4`
 - **AND** 调用方执行 `docnav outline docs/guide.md`
-- **THEN** standard parameter pipeline 将最终 native option source 设为 project config 值 `4`
+- **THEN** navigation input resolution 将最终 native option source 设为 project config 值 `4`
 - **THEN** user config 值 `2` 不覆盖 project config
 
 #### Scenario: output 默认值来自配置
@@ -436,7 +436,7 @@ Core `docnav` document operations MUST read project/user core config through the
 - **THEN** 输出不使用 readable-view block framing
 
 ### Requirement: Markdown native option config sources 必须由 core smoke 和矩阵测试覆盖
-Core CLI smoke 和矩阵 MUST 覆盖 core 配置读取、优先级、present invalid config source 返回 blocking config diagnostic，以及 protocol request `arguments` 与配置/default sources 进入同一标准参数解析的边界。
+Core CLI smoke 和矩阵 MUST 覆盖 navigation-owned raw config source loading、优先级、present invalid config source 返回 blocking config diagnostic，以及 protocol request `arguments` 与配置/default sources 进入同一 navigation input resolution 的边界。
 
 #### Scenario: Smoke 覆盖配置优先级
 - **WHEN** smoke suite 使用项目级 `<project-root>/.docnav/docnav.json` 和 core 用户配置文件
@@ -454,36 +454,36 @@ Core CLI smoke 和矩阵 MUST 覆盖 core 配置读取、优先级、present inv
 #### Scenario: Protocol arguments 使用配置补足 registered option
 - **WHEN** `<project-root>/.docnav/docnav.json` 设置 `options.max_heading_level`
 - **AND** smoke suite 通过 core `docnav --output protocol-json` 执行未显式携带 options 的 outline request
-- **THEN** core standard parameter pipeline 将 request `arguments` 映射为 direct input
-- **THEN** pipeline 将项目级配置中的 `options.max_heading_level` 保留为 project config native option source
+- **THEN** navigation input resolution 将 request `arguments` 映射为 direct input
+- **THEN** resolution 将项目级配置中的 `options.max_heading_level` 保留为 project config native option source
 - **THEN** outline 行为与 request 显式携带相同 `max_heading_level` 的行为一致
 
 ### Requirement: Markdown native options 提供 core 配置 schema 和示例参考
-`docs/schemas/docnav-markdown-config.schema.json` MUST 描述 core `docnav` 配置中 Markdown-relevant fields 的参考 shape，包含 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 和 raw `options` native option map。`docs/examples/json/docnav-markdown-config.json` MUST 提供包含 `options.max_heading_level` 的 core config 示例。该 schema/example 用于文档校验和编辑器提示；runtime defaults、source-level native option registry entries 和 config validation ownership 由标准参数与 adapter owner 文档定义。
+`docs/schemas/docnav-markdown-config.schema.json` MUST 描述 core `docnav` 配置 source 中 Markdown-relevant fields 的参考 shape，包含 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 和 raw `options` native option map。`docs/examples/json/docnav-markdown-config.json` MUST 提供包含 `options.max_heading_level` 的 core config 示例。该 schema/example 用于文档校验和编辑器提示；runtime defaults、source-level native option registry entries 和 config validation ownership 由 navigation input resolution 与 adapter owner 文档定义。
 
 #### Scenario: 配置示例通过 schema 校验
 - **WHEN** docs validator 校验 `docs/examples/json/docnav-markdown-config.json`
 - **THEN** 示例符合 `docs/schemas/docnav-markdown-config.schema.json`
 - **THEN** schema 约束 `defaults.pagination.limit` 为正整数、`defaults.output` 为 core document output mode，并把 `options` 作为 raw native option map
-- **THEN** Markdown adapter 在消费时校验 `options.max_heading_level` 的 type 和 `1..6` 语义范围
+- **THEN** navigation input resolution 通过 selected Markdown typed-field declaration 校验 `options.max_heading_level` 的 type 和 `1..6` 语义范围
 
 #### Scenario: schema 不改变 core runtime 行为
 - **WHEN** core CLI 读取 `docnav` core config
 - **THEN** runtime 不要求加载 `docs/schemas/docnav-markdown-config.schema.json`
-- **THEN** 配置读取和 source merge 由 standard parameter pipeline 与 source-level native option registry 负责
-- **THEN** Markdown option 语义和 range validation 由 Markdown adapter owner 负责
+- **THEN** 配置读取和 source merge 由 navigation input resolution 与 source-level native option registry 负责
+- **THEN** Markdown option 语义和 range validation 由 selected Markdown typed-field declaration 负责
 
-### Requirement: Markdown linked adapter consumes core pagination defaults
-Core document operations MUST consume `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>` through the shared standard-parameter source model before dispatching the linked Markdown adapter. Markdown-specific code MUST keep ownership of Markdown native options and Markdown's adapter-specific interpretation of `limit`.
+### Requirement: Markdown linked adapter consumes resolved pagination defaults
+Document operations MUST consume `defaults.pagination.enabled`, `defaults.pagination.limit`, `--pagination enabled|disabled`, and `--limit <n>` through navigation input resolution before dispatching the linked Markdown adapter. Markdown-specific code MUST keep ownership of Markdown's adapter-specific interpretation of `limit`.
 
 #### Scenario: Core resolves pagination before Markdown dispatch
 - **WHEN** core CLI runs a paginated Markdown document operation
-- **THEN** standard parameter handling resolves the final limit and page before Markdown operation logic runs
-- **THEN** Markdown-specific code keeps ownership of Markdown native options
+- **THEN** navigation input resolution resolves the final limit and page before Markdown operation logic runs
+- **THEN** Markdown-specific code keeps ownership of Markdown's budget-unit interpretation
 
 #### Scenario: Markdown native option config example uses pagination limit
 - **WHEN** core config schema or example for Markdown native options documents pagination defaults
 - **THEN** it uses `defaults.pagination.enabled` for the default pagination state
 - **THEN** it uses `defaults.pagination.limit` for the numeric budget default
-- **THEN** it does not describe that budget as a core or standard-parameter unit
+- **THEN** it does not describe that budget as a core or navigation-input-resolution unit
 - **THEN** any Markdown-specific unit description remains owned by the Markdown adapter documentation

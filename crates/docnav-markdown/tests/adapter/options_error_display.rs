@@ -7,7 +7,7 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
     let default_outline = OutlineArguments {
         limit: positive(6000),
         page: positive(1),
-        options: None,
+        options: Some(max_heading_level_options(3)),
     };
     let expanded_outline = OutlineArguments {
         options: Some(max_heading_level_options(4)),
@@ -24,7 +24,7 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
         query: "needle".to_owned(),
         limit: positive(6000),
         page: positive(1),
-        options: None,
+        options: Some(max_heading_level_options(3)),
     };
     let expanded_find = FindArguments {
         options: Some(max_heading_level_options(4)),
@@ -56,134 +56,6 @@ fn non_utf8_document_returns_stable_encoding_error() {
     assert_eq!(
         error.protocol_error().code(),
         ProtocolDiagnosticCode::DocumentEncodingUnsupported
-    );
-}
-
-#[test]
-fn unsupported_option_returns_adapter_owned_option_issue() {
-    let path = write_doc("unsupported-option.md", "# Top\n");
-    let mut options = Options::new();
-    options.insert("shared".to_owned(), serde_json::json!(true));
-    let arguments = OutlineArguments {
-        limit: positive(6000),
-        page: positive(1),
-        options: Some(options),
-    };
-    let request = make_request(
-        &path,
-        Operation::Outline,
-        OperationArguments::Outline(arguments.clone()),
-    );
-
-    let error = MarkdownAdapter
-        .outline(&request, &arguments)
-        .expect_err("unknown option should be adapter-owned");
-    let protocol_error = error.protocol_error();
-
-    assert_eq!(
-        protocol_error.code(),
-        ProtocolDiagnosticCode::InvalidRequest
-    );
-    assert_eq!(protocol_error.owner(), "adapter_options");
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("reason")
-            .and_then(serde_json::Value::as_str),
-        Some("unsupported")
-    );
-    let issues = protocol_error
-        .details()
-        .get("option_issues")
-        .and_then(serde_json::Value::as_array)
-        .expect("option issues");
-    assert_eq!(issues[0]["owner"], "docnav-markdown");
-    assert_eq!(issues[0]["namespace"], "options");
-    assert_eq!(issues[0]["key"], "shared");
-    assert_eq!(issues[0]["source"], "direct");
-    assert_eq!(issues[0]["reason_code"], "unsupported");
-}
-
-#[test]
-fn invalid_max_heading_level_returns_structured_option_issue() {
-    let path = write_doc("invalid-option.md", "# Top\n");
-    let arguments = OutlineArguments {
-        limit: positive(6000),
-        page: positive(1),
-        options: Some(max_heading_level_options(9)),
-    };
-    let request = make_request(
-        &path,
-        Operation::Outline,
-        OperationArguments::Outline(arguments.clone()),
-    );
-
-    let error = MarkdownAdapter
-        .outline(&request, &arguments)
-        .expect_err("range-invalid option should fail");
-    let value = serde_json::to_value(error.protocol_error()).expect("protocol error value");
-
-    assert_eq!(value["code"], "INVALID_REQUEST");
-    assert_eq!(value["owner"], "adapter_options");
-    assert_eq!(
-        value["location"]["field"],
-        "arguments.options.max_heading_level"
-    );
-    assert_eq!(value["received"], "9");
-    assert_eq!(value["expected"], "integer in range 1..6");
-    assert_eq!(value["details"]["reason"], "range_invalid");
-    assert_eq!(
-        value["details"]["option_issues"][0]["owner"],
-        "docnav-markdown"
-    );
-    assert_eq!(value["details"]["option_issues"][0]["namespace"], "options");
-    assert_eq!(
-        value["details"]["option_issues"][0]["key"],
-        "max_heading_level"
-    );
-    assert_eq!(value["details"]["option_issues"][0]["source"], "direct");
-    assert_eq!(
-        value["details"]["option_issues"][0]["reason_code"],
-        "range_invalid"
-    );
-}
-
-#[test]
-fn max_heading_level_type_mismatch_returns_structured_option_issue() {
-    let path = write_doc("type-mismatch-option.md", "# Top\n");
-    let mut options = Options::new();
-    options.insert(
-        MAX_HEADING_LEVEL_OPTION.to_owned(),
-        serde_json::json!("wide"),
-    );
-    let arguments = OutlineArguments {
-        limit: positive(6000),
-        page: positive(1),
-        options: Some(options),
-    };
-    let request = make_request(
-        &path,
-        Operation::Outline,
-        OperationArguments::Outline(arguments.clone()),
-    );
-
-    let error = MarkdownAdapter
-        .outline(&request, &arguments)
-        .expect_err("type-mismatched option should fail");
-    let value = serde_json::to_value(error.protocol_error()).expect("protocol error value");
-
-    assert_eq!(value["code"], "INVALID_REQUEST");
-    assert_eq!(value["owner"], "adapter_options");
-    assert_eq!(value["received"], "wide");
-    assert_eq!(value["expected"], "integer in range 1..6");
-    assert_eq!(value["details"]["reason"], "type_mismatch");
-    assert_eq!(
-        value["details"]["option_issues"][0]["type_variant"],
-        "integer"
-    );
-    assert_eq!(
-        value["details"]["option_issues"][0]["reason_code"],
-        "type_mismatch"
     );
 }
 

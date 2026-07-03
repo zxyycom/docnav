@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use super::*;
 use crate::cli::{DocumentCommand, NativeOptionCliInput};
 use crate::config::{ConfigContext, CoreConfig};
-use crate::output::write_outcome;
+use crate::output::{write_error, write_outcome, ErrorOutput};
 
 #[test]
 fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
@@ -37,7 +37,7 @@ fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
         output: Some(OutputMode::ProtocolJson),
         adapter: None,
     };
-    let request = DocumentRequest::from_command(command, &context).unwrap();
+    let request = DocumentRequest::from_command(command, context.project.clone());
 
     let outcome = AdapterRuntime.execute_document(request).unwrap();
     let output = write_protocol_json(outcome);
@@ -58,18 +58,17 @@ fn core_linked_markdown_consumes_project_native_max_heading_level() {
         "# One\n\n## Two\n\n### Three\n\n#### Four\n",
     );
 
-    let context = ConfigContext {
-        project: project_context(project_root.clone(), project_root.clone()),
-        project_config: serde_json::from_value(json!({
+    let context = default_context(project_root);
+    write_config_file(
+        &context.project.project_config_path,
+        json!({
             "options": {
                 "max_heading_level": 2
             }
-        }))
-        .unwrap(),
-        user_config: CoreConfig::default(),
-    };
+        }),
+    );
     let command = outline_command(None, None);
-    let request = DocumentRequest::from_command(command, &context).unwrap();
+    let request = DocumentRequest::from_command(command, context.project.clone());
 
     let outcome = AdapterRuntime.execute_document(request).unwrap();
     let output = write_protocol_json(outcome);
@@ -85,10 +84,13 @@ fn core_linked_markdown_delegates_native_option_range_to_adapter() {
         markdown_project("linked-native-options-invalid", "# One\n\n## Two\n");
     let context = default_context(project_root);
     let command = outline_command(Some(7), None);
-    let request = DocumentRequest::from_command(command, &context).unwrap();
+    let request = DocumentRequest::from_command(command, context.project.clone());
 
-    let outcome = AdapterRuntime.execute_document(request).unwrap();
-    let (exit_code, output) = write_protocol_json_with_exit(outcome);
+    let (exit_code, output) = write_document_result(
+        AdapterRuntime.execute_document(request),
+        Operation::Outline,
+        OutputMode::ProtocolJson,
+    );
 
     assert_eq!(exit_code, 2);
     assert_eq!(output["ok"], false);
@@ -104,7 +106,7 @@ fn core_linked_markdown_delegates_native_option_range_to_adapter() {
     );
     assert_eq!(
         output["error"]["details"]["option_issues"][0]["source"],
-        "direct"
+        "explicit"
     );
 }
 
@@ -115,7 +117,7 @@ fn core_linked_markdown_reports_project_native_option_source() {
         Some(json!("wide")),
         None,
         "type_mismatch",
-        "project_config",
+        "project",
     );
 }
 
@@ -126,7 +128,7 @@ fn core_linked_markdown_reports_user_native_option_source() {
         None,
         Some(json!(9)),
         "range_invalid",
-        "user_config",
+        "user",
     );
 }
 
@@ -135,16 +137,15 @@ fn config_path_context_reports_automatic_discovery_adapter_source() {
     let (_workspace, project_root) =
         markdown_project("config-path-context-automatic-discovery-source", "# One\n");
     let context = default_context(project_root);
-    let (path, operation, defaults) =
-        resolve_context_defaults("docs/guide.md".to_owned(), None, &context).unwrap();
-
     let output = AdapterRuntime
-        .describe_document_context(path, operation, defaults, &context)
+        .describe_document_context("docs/guide.md".to_owned(), None, &context)
         .unwrap();
 
     assert_eq!(output.adapter.selected.as_deref(), Some("docnav-markdown"));
     assert_eq!(output.adapter.source, "automatic_discovery");
     assert_ne!(output.adapter.source, "inferred");
+    assert_eq!(output.defaults.output.value, json!("readable-view"));
+    assert_eq!(output.defaults.output.source, "built_in");
 }
 
 fn assert_invalid_native_option_source(
@@ -155,16 +156,21 @@ fn assert_invalid_native_option_source(
     source: &str,
 ) {
     let (_workspace, project_root) = markdown_project(workspace_name, "# One\n\n## Two\n");
-    let context = ConfigContext {
-        project: project_context(project_root.clone(), project_root),
-        project_config: core_config_with_native_option(project_option),
-        user_config: core_config_with_native_option(user_option),
-    };
+    let context = default_context(project_root);
+    if let Some(value) = project_option {
+        write_native_option_config(&context.project.project_config_path, value);
+    }
+    if let Some(value) = user_option {
+        write_native_option_config(&context.project.user_config_path, value);
+    }
     let command = outline_command(None, None);
-    let request = DocumentRequest::from_command(command, &context).unwrap();
+    let request = DocumentRequest::from_command(command, context.project.clone());
 
-    let outcome = AdapterRuntime.execute_document(request).unwrap();
-    let (exit_code, output) = write_protocol_json_with_exit(outcome);
+    let (exit_code, output) = write_document_result(
+        AdapterRuntime.execute_document(request),
+        Operation::Outline,
+        OutputMode::ProtocolJson,
+    );
 
     assert_eq!(exit_code, 2);
     assert_eq!(output["error"]["details"]["reason"], reason);
@@ -174,24 +180,12 @@ fn assert_invalid_native_option_source(
     );
 }
 
-fn core_config_with_native_option(value: Option<Value>) -> CoreConfig {
-    match value {
-        Some(value) => serde_json::from_value(json!({
-            "options": {
-                "max_heading_level": value
-            }
-        }))
-        .unwrap(),
-        None => CoreConfig::default(),
-    }
-}
-
 #[test]
-fn missing_adapter_selection_precedes_invalid_native_option() {
+fn missing_adapter_routing_precedes_invalid_native_option() {
     let (_workspace, project_root) = markdown_project("missing-adapter-before-options", "# One\n");
     let context = default_context(project_root);
     let command = outline_command(Some(9), Some("missing-adapter"));
-    let request = DocumentRequest::from_command(command, &context).unwrap();
+    let request = DocumentRequest::from_command(command, context.project.clone());
 
     let error = match AdapterRuntime.execute_document(request) {
         Ok(_) => panic!("missing adapter should fail before options"),
@@ -208,7 +202,7 @@ fn missing_adapter_selection_precedes_invalid_native_option() {
         protocol_error.code(),
         docnav_protocol::ProtocolDiagnosticCode::AdapterUnavailable
     );
-    assert_eq!(protocol_error.owner(), "adapter_selection");
+    assert_eq!(protocol_error.owner(), "docnav_navigation_routing");
     assert_eq!(
         protocol_error
             .details()
@@ -231,6 +225,22 @@ fn markdown_project(name: &str, content: &str) -> (TempWorkspace, PathBuf) {
     fs::create_dir_all(&docs_dir).unwrap();
     fs::write(docs_dir.join("guide.md"), content).unwrap();
     (workspace, project_root)
+}
+
+fn write_native_option_config(path: &Path, value: Value) {
+    write_config_file(
+        path,
+        json!({
+            "options": {
+                "max_heading_level": value
+            }
+        }),
+    );
+}
+
+fn write_config_file(path: &Path, value: Value) {
+    fs::create_dir_all(path.parent().expect("config parent")).unwrap();
+    fs::write(path, serde_json::to_string_pretty(&value).unwrap()).unwrap();
 }
 
 fn default_context(project_root: PathBuf) -> ConfigContext {
@@ -273,6 +283,33 @@ fn write_protocol_json_with_exit(outcome: CommandOutcome) -> (i32, Value) {
         String::from_utf8_lossy(&stderr)
     );
     (exit_code, serde_json::from_slice(&stdout).unwrap())
+}
+
+fn write_document_result(
+    result: AppResult<CommandOutcome>,
+    operation: Operation,
+    output_mode: OutputMode,
+) -> (i32, Value) {
+    match result {
+        Ok(outcome) => write_protocol_json_with_exit(outcome),
+        Err(error) => {
+            let mut stdout = Vec::new();
+            let mut stderr = Vec::new();
+            let exit_code = write_error(ErrorOutput {
+                error: &error,
+                output_mode,
+                operation: Some(operation),
+                stdout: &mut stdout,
+                stderr: &mut stderr,
+            });
+            assert!(
+                stderr.is_empty(),
+                "stderr: {}",
+                String::from_utf8_lossy(&stderr)
+            );
+            (exit_code, serde_json::from_slice(&stdout).unwrap())
+        }
+    }
 }
 
 fn first_entry_label(output: &Value) -> Option<&str> {

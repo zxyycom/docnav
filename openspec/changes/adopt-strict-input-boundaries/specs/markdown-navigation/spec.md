@@ -30,7 +30,7 @@ Smoke suite 必须覆盖：
 - **THEN** protocol JSON 输出符合 protocol response envelope 结构
 
 ### Requirement: Markdown adapter 必须有 core CLI 负向矩阵测试
-Core CLI matrix MUST cover Markdown document operations through linked adapter dispatch, including invalid command-line input、strict argv failure、非法配置输入和 Markdown adapter-owned option validation。每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
+Core CLI matrix MUST cover Markdown document operations through linked adapter dispatch, including invalid command-line input、strict argv failure、非法配置输入和 navigation input resolution native option validation。每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
 
 矩阵必须覆盖：
 
@@ -60,10 +60,10 @@ Core CLI matrix MUST cover Markdown document operations through linked adapter d
 - **THEN** failure envelope 投影一个 primary `DiagnosticRecord`
 - **THEN** linked Markdown handler does not execute when failure belongs to core input/config boundary
 
-### Requirement: Markdown adapter 支持 core 配置来源中的 native options
-Markdown adapter MUST receive core-provided config source facts through navigation config and native option handoff. Core config loading owns config source discovery, source priority, JSON parsing and config input diagnostics. Markdown adapter owns validation of declared adapter native options such as `options.max_heading_level`.
+### Requirement: Markdown adapter 消费已校验 typed native options
+Markdown adapter MUST receive typed native option values through navigation input resolution. Core owns config source descriptor/path handoff; `docnav-navigation` owns raw config source discovery, JSON reading, source priority, selected adapter typed-field validation/extraction and config input diagnostics. Markdown adapter documents the business effect of validated options, such as `options.max_heading_level` controlling visible heading granularity.
 
-Missing default config sources mean the corresponding layer has no config source. Present invalid config sources such as unreadable, invalid JSON or non-object root MUST fail at the core config input boundary. Unknown top-level fields, unknown `defaults` fields and undeclared `options` keys MUST fail before handler execution. Declared `options` keys enter adapter-owned native option validation with their source metadata preserved.
+Missing default config sources mean the corresponding layer has no config source. Present invalid config sources such as unreadable, invalid JSON or non-object root MUST fail at the navigation config source boundary. Unknown top-level fields, unknown `defaults` fields and undeclared `options` keys MUST fail before handler execution. Declared `options` keys enter selected-adapter typed-field validation/extraction with their source metadata preserved.
 
 #### Scenario: 默认配置来源缺失表示 absence
 - **WHEN** 项目级或用户级默认配置来源不存在
@@ -76,15 +76,15 @@ Missing default config sources mean the corresponding layer has no config source
 - **THEN** CLI 返回配置输入错误
 - **THEN** 已知字段不被用于继续成功路径
 
-#### Scenario: options key 由 adapter owner 校验
+#### Scenario: options key 由 navigation input resolution 校验
 - **WHEN** 配置文件包含 `options.max_heading_level: 2`
-- **THEN** core 将 `options` object 合并为 adapter-owned native options 参数来源
-- **THEN** Markdown native option owner 校验 `max_heading_level`
+- **THEN** `docnav-navigation` 将 `options` object 合并为 selected Markdown native option source
+- **THEN** selected-adapter typed-field validation/extraction 校验并提取 `max_heading_level`
 - **WHEN** 配置文件包含 undeclared `options` key
 - **THEN** CLI 返回 native option input diagnostic
 
 ### Requirement: Markdown 配置来源必须由 smoke 和矩阵测试覆盖
-Docnav core smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置 source absence、配置 input failure、native option metadata handoff，以及 navigation config/default sources 进入 request construction 前补全过程的边界。
+Docnav core smoke 和矩阵 MUST 覆盖 navigation-owned config source loading、优先级、配置 source absence、配置 input failure、native option metadata handoff，以及 navigation input resolution/default sources 进入 request construction 前补全过程的边界。
 
 #### Scenario: 配置 source absence 被覆盖
 - **WHEN** 默认项目级或用户级配置文件不存在
@@ -98,6 +98,6 @@ Docnav core smoke 和矩阵 MUST 覆盖配置文件读取、优先级、配置 s
 
 #### Scenario: Valid options 仍影响 Markdown 导航语义
 - **WHEN** 项目级配置来源设置 `options.max_heading_level`
-- **AND** 该 key 由 Markdown native option owner 声明
-- **THEN** 测试证明 `outline` 和 `find` 都消费适用的 `options.max_heading_level`
-- **THEN** core operation 通过同一 navigation config 边界补全后进入 handler
+- **AND** 该 key 由 selected Markdown typed-field declaration 声明并通过 navigation input resolution 校验
+- **THEN** 测试证明 validated `options.max_heading_level` typed value 影响 `outline` 和 `find` 的 visible heading granularity
+- **THEN** core operation 通过同一 navigation input resolution 边界补全后进入 handler

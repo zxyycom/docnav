@@ -5,14 +5,14 @@
 ### Requirement: 核心 CLI 必须严格拒绝无效显式输入
 `docnav` core CLI MUST 将 caller-provided argv、operation arguments、explicit adapter selection、explicit path/ref/query/page/limit/output values 和 explicit config declarations 作为 strict public input。Unknown flags、extra positional arguments，以及 selected command 或 operation 不支持的 flags MUST 在 document execution 前返回 input diagnostic。
 
-Core CLI MUST 将 valid document argv 映射为 canonical document operation input 或等价 semantic request，再进入 adapter routing、internal operation request construction 和 output dispatch。CLI boundary 可见的 invalid input MUST 在 document execution 前完成 strict rejection。Direct CLI parser/help implementation MAY continue to use `clap`。
+Core CLI MUST 将 valid document argv 映射为 raw navigation command 或等价 handoff input，再连同 config source descriptors/paths 和 registry 交给 `docnav-navigation`；navigation input resolution 负责 adapter selection 和 internal operation request construction，core/output 负责 output dispatch。CLI boundary 可见的 invalid input MUST 在 document execution 前完成 strict rejection。Direct CLI parser/help implementation MAY continue to use `clap`。
 
 Input diagnostics MUST 包含 stable error code、argument 或 field location、可安全暴露的 received value/token、expected command shape 或 accepted values，并在 owner 可生成时包含至少一个 actionable repair hint。
 
 #### Scenario: 未知 argv 被拒绝
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --future extra --output readable-json`
 - **THEN** `docnav` 返回输入错误或 `INVALID_REQUEST`
-- **THEN** adapter routing 和 document operation 不执行
+- **THEN** navigation input resolution 和 document operation 不执行
 - **THEN** 诊断标出未知 argv token
 - **THEN** 诊断提供可接受参数或修复建议
 
@@ -37,7 +37,8 @@ Input diagnostics MUST 包含 stable error code、argument 或 field location、
 #### Scenario: 有效 argv 仍进入共享语义管道
 - **WHEN** 调用方执行有效的 `docnav outline/read/find/info` CLI 命令
 - **THEN** document CLI input 映射为 canonical document operation input 或等价 semantic request
-- **THEN** adapter routing、internal operation request 构造和 output mode 分流使用共享逻辑
+- **THEN** `docnav-navigation` 负责 adapter selection 和 internal operation request 构造
+- **THEN** output mode 分流使用共享输出逻辑
 - **THEN** CLI 不创建独立业务参数解释路径
 
 #### Scenario: Help 不执行业务
@@ -117,17 +118,17 @@ Core CLI document output enum/help/config MUST expose only `readable-view`, `rea
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --output <invalid-output>`
 - **THEN** `docnav` 返回 `INVALID_REQUEST`
 - **THEN** CLI help 只列出 readable-view、readable-json 和 protocol-json
-- **THEN** `docnav` 在 adapter routing 和 document operation 执行前返回
+- **THEN** `docnav` 在 navigation input resolution 和 document operation 执行前返回
 
 ### Requirement: Core CLI 必须复用共享 helper 且保留 core policy owner
-`docnav` core CLI MUST reuse shared diagnostics, direct CLI argv parsing/mapping, JSON IO and document output orchestration helpers where they exist. Core CLI MUST continue to own adapter routing, configuration, project root handling, linked adapter dispatch, registry command resolution, non-document command behavior and concrete core exit code enum.
+`docnav` core CLI MUST reuse shared diagnostics, direct CLI argv parsing/mapping, JSON IO and document output orchestration helpers where they exist. Core CLI MUST continue to own command classification, configuration command behavior, project root context for handoff, static registry ownership, registry command resolution, non-document command behavior and concrete core exit code enum.
 
 Shared argv helper usage MUST serve strict parsing/mapping and diagnostics. It MAY be implemented with `clap` command definitions and shared error mapping. Unknown flags, extra positional values and operation-inapplicable known flags MUST fail before successful document execution.
 
 #### Scenario: Core document argv 使用严格 parser 或 helper
 - **WHEN** core document CLI parses unknown flags, extra positional values or known flags that are not applicable to the selected operation
 - **THEN** it uses `clap` strict parsing, shared direct CLI argv mapping or equivalent strict diagnostics helper
-- **THEN** core CLI returns an input diagnostic before adapter routing
+- **THEN** core CLI returns an input diagnostic before navigation input resolution
 - **THEN** core document CLI and protocol request handling both reject invalid direct input at their owner boundary
 
 #### Scenario: Core diagnostic construction 只服务 primary DiagnosticRecord

@@ -7,7 +7,7 @@ use crate::error::{AppError, AppResult};
 use crate::output::CommandOutcome;
 use crate::project_context::ProjectContext;
 use crate::registry::AdapterRegistry;
-use crate::runtime::{self, DocnavRuntime};
+use crate::runtime::DocnavRuntime;
 
 use super::keys::{
     config_value_to_json, effective_key_value, effective_values, ensure_supported_key, set_key,
@@ -133,11 +133,7 @@ fn config_list<T: DocnavRuntime>(command: ConfigList, runtime: &T) -> AppResult<
         effective_values(&context, &registry)?
     };
     let path_context = match command.path {
-        Some(path) => {
-            let (path, operation, defaults) =
-                runtime::resolve_context_defaults(path, command.operation, &context)?;
-            Some(runtime.describe_document_context(path, operation, defaults, &context)?)
-        }
+        Some(path) => Some(runtime.describe_document_context(path, command.operation, &context)?),
         None => None,
     };
 

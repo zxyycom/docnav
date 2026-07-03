@@ -37,9 +37,9 @@ pub(in crate::cli) mod arg_ids {
 }
 
 pub(in crate::cli) mod defaults {
-    pub(in crate::cli) const LIMIT: &str = crate::standard_parameters::DEFAULT_LIMIT_TEXT;
-    pub(in crate::cli) const OUTPUT: &str = crate::standard_parameters::DEFAULT_OUTPUT_TEXT;
-    pub(in crate::cli) const PAGE: &str = crate::standard_parameters::DEFAULT_PAGE_TEXT;
+    pub(in crate::cli) const LIMIT: &str = crate::navigation_defaults::DEFAULT_LIMIT_TEXT;
+    pub(in crate::cli) const OUTPUT: &str = crate::navigation_defaults::DEFAULT_OUTPUT_TEXT;
+    pub(in crate::cli) const PAGE: &str = crate::navigation_defaults::DEFAULT_PAGE_TEXT;
     pub(in crate::cli) const PAGINATION: &str = "enabled";
 }
 

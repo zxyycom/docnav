@@ -143,7 +143,6 @@ dependencies = [
  "docnav-navigation",
  "docnav-output",
  "docnav-protocol",
- "docnav-standard-parameters",
  "docnav-typed-fields",
  "serde",
  "serde_json",
@@ -194,7 +193,11 @@ name = "docnav-navigation"
 version = "0.1.0"
 dependencies = [
  "docnav-adapter-contracts",
+ "docnav-diagnostics",
+ "docnav-parameter-resolution",
  "docnav-protocol",
+ "docnav-typed-fields",
+ "serde_json",
 ]
 
 [[package]]
@@ -206,6 +209,15 @@ dependencies = [
  "docnav-protocol",
  "docnav-readable",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "docnav-parameter-resolution"
+version = "0.1.0"
+dependencies = [
+ "docnav-diagnostics",
+ "docnav-typed-fields",
  "serde_json",
 ]
 
@@ -225,15 +237,6 @@ name = "docnav-readable"
 version = "0.1.0"
 dependencies = [
  "serde",
- "serde_json",
-]
-
-[[package]]
-name = "docnav-standard-parameters"
-version = "0.1.0"
-dependencies = [
- "docnav-diagnostics",
- "docnav-typed-fields",
  "serde_json",
 ]
 

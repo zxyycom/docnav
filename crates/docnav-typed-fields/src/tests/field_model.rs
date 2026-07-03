@@ -1,5 +1,6 @@
 use super::*;
 use serde_json::json;
+use serde_json::Value;
 
 // @case WB-TYPED-FIELDS-001
 fn limit_field() -> FieldDef {
@@ -34,6 +35,36 @@ fn builder_exposes_schema_metadata_and_validates_values() {
         .validate_optional_value(Some(&json!(4000)))
         .expect("valid value decodes");
     assert_eq!(value, Some(TypedValue::Integer(4000)));
+}
+
+#[test]
+fn json_validation_accepts_any_json_value_including_null() {
+    let field = FieldDef::builder("docnav.adapters.example.options.payload")
+        .process(CONFIG_PROCESSING, config_json_path(["options", "payload"]))
+        .validation(FieldValidation::json())
+        .build()
+        .expect("json field builds");
+    let schema = field.schema_metadata();
+
+    assert_eq!(schema.value_kind, ValueKind::Json);
+    assert_eq!(
+        schema
+            .validate_optional_value(Some(&json!({"mode": "wide"})))
+            .expect("object JSON passes"),
+        Some(TypedValue::Json(json!({"mode": "wide"})))
+    );
+    assert_eq!(
+        schema
+            .validate_optional_value(Some(&Value::Null))
+            .expect("null JSON passes"),
+        Some(TypedValue::Json(Value::Null))
+    );
+    assert_eq!(
+        schema
+            .validate_optional_value(None)
+            .expect("absent optional JSON passes"),
+        None
+    );
 }
 
 #[test]

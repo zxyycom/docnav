@@ -100,7 +100,7 @@ The following are **NOT** part of the stable semantic contract and MUST NOT be a
 
 ## Architecture boundary
 
-This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, adapter routing, document parsing, or CLI wiring. Those responsibilities stay with their existing crates.
+This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, adapter selection, document parsing, or CLI wiring. Those responsibilities stay with their existing crates.
 
 ## Testing
 

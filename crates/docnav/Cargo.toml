@@ -18,7 +18,6 @@ docnav-markdown.workspace = true
 docnav-navigation.workspace = true
 docnav-output.workspace = true
 docnav-protocol.workspace = true
-docnav-standard-parameters.workspace = true
 docnav-typed-fields.workspace = true
 serde.workspace = true
 serde_json.workspace = true

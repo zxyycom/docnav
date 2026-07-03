@@ -10,7 +10,7 @@ pub(super) fn default_owner_for_code(code: ProtocolDiagnosticCode) -> &'static s
     match code {
         ProtocolDiagnosticCode::InvalidRequest => "protocol_input",
         ProtocolDiagnosticCode::FormatUnknown | ProtocolDiagnosticCode::FormatAmbiguous => {
-            "adapter_selection"
+            "docnav_navigation_routing"
         }
         ProtocolDiagnosticCode::AdapterUnavailable | ProtocolDiagnosticCode::InternalError => {
             "adapter"
@@ -27,10 +27,12 @@ pub(super) fn default_owner_for_code(code: ProtocolDiagnosticCode) -> &'static s
 pub(super) fn owner_from_source(source: &DiagnosticSource) -> String {
     match (source.component.as_str(), source.stage.as_deref()) {
         ("docnav", Some("core")) => "core_cli".to_owned(),
-        ("docnav", Some("standard-parameters")) => "standard_parameters".to_owned(),
-        ("docnav", Some("routing")) => "adapter_selection".to_owned(),
+        ("docnav-parameter-resolution", Some("parameter-resolution")) => {
+            "parameter_resolution".to_owned()
+        }
         ("docnav", Some("runtime")) => "runtime".to_owned(),
         ("docnav", Some("adapter-output")) => "adapter_boundary".to_owned(),
+        ("docnav-navigation", Some("routing")) => "docnav_navigation_routing".to_owned(),
         ("docnav-adapter-contracts", Some("adapter" | "adapter-error")) => "adapter".to_owned(),
         (component, Some(stage)) => {
             format!("{}_{}", owner_segment(component), owner_segment(stage))

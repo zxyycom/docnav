@@ -10,7 +10,7 @@ members = [
   "crates/docnav-navigation",
   "crates/docnav-protocol",
   "crates/docnav-readable",
-  "crates/docnav-standard-parameters",
+  "crates/docnav-parameter-resolution",
   "crates/docnav-typed-fields",
   "crates/docnav-typed-fields-macros"
 ]
@@ -39,7 +39,7 @@ docnav-markdown = { path = "crates/docnav-markdown" }
 docnav-navigation = { path = "crates/docnav-navigation" }
 docnav-output = { path = "crates/docnav-output" }
 docnav-readable = { path = "crates/docnav-readable" }
-docnav-standard-parameters = { path = "crates/docnav-standard-parameters" }
+docnav-parameter-resolution = { path = "crates/docnav-parameter-resolution" }
 docnav-typed-fields = { path = "crates/docnav-typed-fields" }
 docnav-typed-fields-macros = { path = "crates/docnav-typed-fields-macros" }
 jsonschema = { version = "0.46.5", default-features = false }

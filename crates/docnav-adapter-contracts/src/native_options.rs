@@ -10,6 +10,7 @@ pub struct NativeOptionSpec {
     pub operations: &'static [Operation],
     pub cli_flag: Option<&'static str>,
     pub value: NativeOptionValueSpec,
+    pub default: Option<NativeOptionDefaultValue>,
 }
 
 impl NativeOptionSpec {
@@ -22,6 +23,7 @@ impl NativeOptionSpec {
             operations: &[],
             cli_flag: None,
             value: NativeOptionValueSpec::Json,
+            default: None,
         }
     }
 
@@ -41,7 +43,7 @@ impl NativeOptionSpec {
     pub fn expected_value_description(self) -> String {
         match self.value {
             NativeOptionValueSpec::Integer { min, max } => {
-                format!("an integer from {min} to {max}")
+                format!("integer in range {min}..{max}")
             }
             NativeOptionValueSpec::String => "a string".to_owned(),
             NativeOptionValueSpec::Boolean => "a boolean".to_owned(),
@@ -66,6 +68,10 @@ impl NativeOptionSpec {
         self.cli_flag
             .map(|flag| flag.strip_prefix("--").unwrap_or(flag))
     }
+
+    pub fn default_value(self) -> Option<Value> {
+        self.default.map(NativeOptionDefaultValue::into_json)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -77,6 +83,7 @@ pub struct NativeOptionSpecBuilder {
     operations: &'static [Operation],
     cli_flag: Option<&'static str>,
     value: NativeOptionValueSpec,
+    default: Option<NativeOptionDefaultValue>,
 }
 
 impl NativeOptionSpecBuilder {
@@ -110,6 +117,21 @@ impl NativeOptionSpecBuilder {
         self
     }
 
+    pub const fn default_integer(mut self, value: i64) -> Self {
+        self.default = Some(NativeOptionDefaultValue::Integer(value));
+        self
+    }
+
+    pub const fn default_string(mut self, value: &'static str) -> Self {
+        self.default = Some(NativeOptionDefaultValue::String(value));
+        self
+    }
+
+    pub const fn default_boolean(mut self, value: bool) -> Self {
+        self.default = Some(NativeOptionDefaultValue::Boolean(value));
+        self
+    }
+
     pub const fn build(self) -> NativeOptionSpec {
         NativeOptionSpec {
             identity: self.identity,
@@ -119,6 +141,7 @@ impl NativeOptionSpecBuilder {
             operations: self.operations,
             cli_flag: self.cli_flag,
             value: self.value,
+            default: self.default,
         }
     }
 }
@@ -129,6 +152,23 @@ pub enum NativeOptionValueSpec {
     String,
     Boolean,
     Json,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NativeOptionDefaultValue {
+    Integer(i64),
+    String(&'static str),
+    Boolean(bool),
+}
+
+impl NativeOptionDefaultValue {
+    pub fn into_json(self) -> Value {
+        match self {
+            Self::Integer(value) => json!(value),
+            Self::String(value) => json!(value),
+            Self::Boolean(value) => json!(value),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

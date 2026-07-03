@@ -4,7 +4,7 @@
 
 ## 核心定位
 
-Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责识别、路由、分发、管理、配置和项目初始化。调用入口共享 `docnav` CLI 契约，不复制格式识别、adapter 路由或解析逻辑。
+Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责命令类型识别、非 navigation 命令、adapter registry 管理、配置管理入口、项目初始化、输出模式和错误投影。Navigation command 的 adapter selection、typed 参数解析、request construction 和 selected adapter dispatch 由 `docnav-navigation` 拥有。调用入口共享 `docnav` CLI 契约，不复制格式识别、adapter selection 或解析逻辑。
 
 核心流程：
 
@@ -27,7 +27,7 @@ Docnav 文档操作分为两类输出：
 普通 CLI 输出优先服务阅读体验；需要机器稳定解析、兼容校验或自动化断言时，调用完整协议接口。
 所有命令先产出成功结果或诊断错误记录，再由输出层统一投影。Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-json` 三种稳定文档输出模式；help、version 和其它非文档命令的成功输出可以保持 PlainText 或命令自有 JSON，但致命诊断仍按当前 output context 走统一错误投影，除非对应 owner 文档明确规定更窄通道。
 
-`docnav` 对文档操作使用单一执行管线：参数归一化、adapter 选择、配置解析、probe、adapter library dispatch 和结果判断不按输出模式分叉。管线产出业务结果、错误通道记录和候选证据；输出层负责按模式序列化、包装并写入 stdout/stderr。
+`docnav` 对文档操作使用单一执行管线：core 完成命令分流、config source descriptor/path handoff 和输出模式识别；`docnav-navigation` 完成 raw config source loading、adapter selection、typed 参数解析、probe、adapter library dispatch 和结果判断。管线不按输出模式分叉；它产出业务结果、错误通道记录和候选证据，输出层负责按模式序列化、包装并写入 stdout/stderr。
 
 选择机器可读入口表示调用方优先需要稳定、可预测、便于解析的输出；选择阅读入口表示调用方优先需要完成一次可继续的阅读链路。具体 stdout/stderr 通道、JSON shape 和错误包装由 [输出模式](output.md) 与 [原始协议](protocol.md) 定义。
 
@@ -39,11 +39,10 @@ Docnav 文档操作分为两类输出：
 
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list`。
 - 维护 core release 内置 adapter static registry；`adapter list` 展示该 registry 中的 adapter metadata。
-- 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的 `config` 命令入口；配置字段映射、supported key、配置读取和来源合并规则见 [导航配置](navigation-config.md)。
-- 从 core release 内置 adapter static registry 选择 adapter implementation source。
-- 调用选定的 adapter library handle。
-- 在 adapter library dispatch 前完成导航配置合并和 native option enrichment，并由 `docnav-navigation` 构造内部 protocol request。
-- 统一处理 page、limit、输出模式和错误映射。
+- 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的 `config` 命令入口；navigation command 的 config source descriptor/path handoff、raw source loading 和参数解析规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
+- 解析命令类型；非 navigation 命令由 core 自己处理。
+- 对 navigation 命令把 raw command、config source descriptors/paths 和 adapter registry 交给 `docnav-navigation`。
+- 统一处理输出模式和错误映射。
 - 校验 adapter operation 结果，并转换为默认 readable-view、结构化 readable-json 或完整 protocol 输出。
 
 ### 格式 Adapter
@@ -51,7 +50,7 @@ Docnav 文档操作分为两类输出：
 负责：
 
 - 使用成熟 parser 识别和解析对应格式。
-- 定义格式原生导航参数、源码级 native option registry entries、adapter-side option validation 和内置默认值。
+- 定义格式原生导航参数、源码级 native option registry entries、typed-field 参数声明和内置默认值。
 - 生成扁平 outline、ref、业务语义结果和下一页 page。
 - 按自身契约解析 ref 并读取。
 - 将 readable payload 交给共享 `docnav-readable` 渲染路径，不拥有通用 readable-view 渲染规则。
@@ -66,15 +65,15 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 - `docnav-protocol`：定义原始 protocol request/response、page、错误投影和稳定字段；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest/probe typed contract helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
 - `docnav-readable`：提供 readable payload/value helper、仓库内 renderer config、`ReadableViewKind`、readable-view block 渲染器和 conformance vector 类型。readable-view block framing 由本库拥有。
 - `docnav-adapter-contracts`：定义 core release 内置 adapter layer 的最小 interface、adapter error、exit category 和共享 operation result contract。格式 adapter 依赖本 crate 暴露 library handle；本 crate 不拥有 parser、ref grammar、routing policy、输出模式或 CLI surface。
-- `docnav-navigation`：内部 document operation orchestration owner，负责把 core 已补全的 operation input 构造成 protocol request，并通过 `docnav-adapter-contracts::Adapter` 调用 `outline/read/find/info`。它不拥有 static registry、格式解析、ref 语法或外部 CLI 命令。
+- `docnav-navigation`：internal document operation orchestration owner，负责 raw project/user config source loading、navigation input resolution、adapter selection、selected adapter typed-field 参数解析、`RequestEnvelope` / `OperationArguments` 构造，并通过 `docnav-adapter-contracts::Adapter` 调用 `outline/read/find/info`。它不拥有 static registry 数据源、格式解析、ref 语法、外部 CLI 命令或非 navigation 命令行为。
 - `docnav-json-io`：低层 JSON IO helper，位于 document output 编排下层，只负责 JSON value serialization、newline writing 和 serialization/write failure plumbing；不拥有 schema、protocol/readable wrapper、diagnostic projection、output mode 或 exit code policy。
 - `docnav-output`：document operation 输出编排和致命诊断投影 owner，位于 `docnav-readable` 和 `docnav-json-io` 之上、`docnav` core 和 `docnav-navigation` 之下；只承诺 `readable-view`、`readable-json` 和 `protocol-json` 的文档输出形状，help、version、adapter list 或 doctor 的成功输出仍由各命令 owner 定义。
 - `docnav-diagnostics`：错误通道 owner，定义 `DiagnosticStack`、`DiagnosticCode`、错误规则、警告规则、`DiagnosticId`、mark 生命周期和 LIFO/drain 语义；详细规则见 [错误通道](diagnostics.md)。本 crate 保存问题记录、机械身份和 code 规则集合，不拥有 surface output format 或 exit code enum。
 - `docnav-cli-args`：直接 CLI strict argv token classification owner；输入由调用方提供 command context 和 known value flag metadata。业务参数解析、默认值合并、request 构造和最终 exit behavior 仍由调用方负责；该 crate 不适用于 protocol JSON request decoding。
 - `docnav-typed-fields`：字段级事实源 owner，承接 field identity、processing strategy declaration、processing input kind guard、processing build、value kind、字段级 constraints、static default metadata、validation attribution、schema metadata view 和 duplicate identity guard。`FieldDefSet` 聚合通用 typed field definitions，并提供 metadata 与 input-kind guard；input-specific helper 负责把具体输入格式映射到 `FieldDefSet` 的 metadata/validation。当前 JSON helper 承接 JSON path structured path、`serde_json::Value` extraction、unknown-field detection 和 caller processing result。来源合并、CLI argv parsing、operation binding、manifest/probe policy、protocol envelope、readable output、native option handoff policy 和完整 JSON Schema document generation 仍由对应 consumer owner 定义。
-- `docnav-standard-parameters`：当前实现中的参数来源合并 helper。该 crate 消费 `docnav-typed-fields` metadata 和 validation，提供 source kind/source info、来源合并、默认值、diagnostic handoff 和 operation argument binding metadata；长期产品入口按 [导航配置](navigation-config.md) 描述，core runtime 负责内置 adapter native option enrichment，`docnav-navigation` 负责 request construction。
+- `docnav-parameter-resolution`：当前实现中的参数来源解析 helper。该 crate 消费 `docnav-typed-fields` metadata 和 validation，提供 source kind/source info、来源合并、默认值、diagnostic handoff 和 operation argument binding metadata；长期产品入口按 [Navigation Input Resolution](navigation-input-resolution.md) 描述，`docnav-navigation` 负责加载 navigation config sources、使用 selected adapter typed-field 声明解析来源并构造 request。
 
-共享库不定义格式展示字段、格式原生 options 语义、ref 策略、adapter routing、项目配置、process runtime、path display normalization 或跨格式 outline 模型。新增共享 crate 或调整共享库边界时，先同步 owner 文档、schema、examples 和 testing 文档中的边界与验收说明。
+除上述 owner 明确承接的职责外，共享库不定义格式展示字段、格式原生 options 语义、ref 策略、项目配置命令、process runtime、path display normalization 或跨格式 outline 模型。新增共享 crate 或调整共享库边界时，先同步 owner 文档、schema、examples 和 testing 文档中的边界与验收说明。
 
 ## 调用链
 
@@ -82,8 +81,8 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 
 ```text
 caller
-  -> docnav：识别、路由、配置、分页参数和输出模式
-  -> docnav-navigation：构造内部 protocol request 并调用 selected adapter library handle
+  -> docnav：解析命令类型、提供 config source descriptors/paths、处理非 navigation 命令和输出模式
+  -> docnav-navigation：加载 raw config sources、解析 routing 输入、选择 adapter、解析 typed 参数、构造内部 protocol request 并调用 selected adapter library handle
   -> selected adapter layer：解析、导航、生成 ref 和语义结果
   <- protocol result
   <- docnav：转为 CLI 阅读输出或完整协议输出

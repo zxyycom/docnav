@@ -11,6 +11,7 @@ fn native_option_specs_keep_same_key_owner_and_type_variants() {
         operations: &[Operation::Outline],
         cli_flag: None,
         value: NativeOptionValueSpec::Integer { min: 1, max: 3 },
+        default: None,
     };
     let string_variant = NativeOptionSpec {
         identity: "docnav.adapters.string.options.shared",
@@ -20,6 +21,7 @@ fn native_option_specs_keep_same_key_owner_and_type_variants() {
         operations: &[Operation::Outline],
         cli_flag: None,
         value: NativeOptionValueSpec::String,
+        default: None,
     };
 
     let specs = [integer_variant, string_variant];

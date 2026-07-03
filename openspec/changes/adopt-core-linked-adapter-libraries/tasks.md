@@ -45,5 +45,5 @@
 - [x] 6.2 添加 adapter source 边界测试，覆盖 historical adapter registration material 不再参与 document operation implementation source。
 - [x] 6.3 添加命令面测试，覆盖 `adapter list` 内置 adapter metadata inspection，以及 `adapter install/register/update/remove` 不再是有效默认 CLI commands。
 - [x] 6.4 添加 protocol/readable 回归测试，证明 default built-in adapter layer dispatch 后 document success/failure output shape 与对应 schema/example 仍一致。
-- [x] 6.5 添加 `docnav-navigation`、`docnav-adapter-contracts`、static descriptor/source-level native option registry、generic merge、adapter-side option validation 和 operation-handler adapter interface 相关测试。
+- [x] 6.5 添加 `docnav-navigation`、`docnav-adapter-contracts`、static descriptor/source-level native option registry、generic merge、selected adapter typed-field option validation 和 operation-handler adapter interface 相关测试。
 - [x] 6.6 运行范围匹配的格式化、单元、集成和 schema/example 验证；跨 docs、schema、CLI 和 Rust 行为完成后优先运行 `bun run verify:docnav-workspace`。

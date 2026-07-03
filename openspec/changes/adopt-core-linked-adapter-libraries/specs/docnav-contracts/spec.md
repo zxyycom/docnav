@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: `docnav` 是 core CLI router/manager
-`docnav` MUST 负责项目根解析、核心配置、core release static adapter registry、adapter inspection、adapter 选择、standard parameter preparation、adapter layer dispatch、协议字段校验、输出模式和错误映射。默认 document operation path MUST use adapter-layer workspace crates registered in the current core release as adapter implementations. Adapter layer ownership MUST remain a code and contract boundary rather than a separate default distribution boundary. Internal operation orchestration MUST be owned by `docnav-navigation`, while adapter layer interface definitions, static descriptors and shared contract types MUST be owned by `docnav-adapter-contracts`. `docnav-navigation` MUST prepare requests and dispatch operation handlers; it MUST NOT act as an adapter loader. Independent adapter packages、external adapter executables、command paths and historical adapter artifact records MUST NOT become default document operation implementation sources.
+`docnav` MUST 负责项目根解析、核心配置 source loading、core release static adapter registry、adapter inspection、协议字段校验、输出模式和错误映射。默认 document operation path MUST use adapter-layer workspace crates registered in the current core release as adapter implementations. Adapter layer ownership MUST remain a code and contract boundary rather than a separate default distribution boundary. Internal operation orchestration, adapter selection and navigation input resolution MUST be owned by `docnav-navigation`, while adapter layer interface definitions, static descriptors and shared contract types MUST be owned by `docnav-adapter-contracts`. `docnav-navigation` MUST prepare requests and dispatch operation handlers; it MUST NOT act as an adapter loader. Independent adapter packages、external adapter executables、command paths and historical adapter artifact records MUST NOT become default document operation implementation sources.
 
 #### Scenario: 读取 Markdown outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md`
@@ -28,7 +28,7 @@
 #### Scenario: native option registry feeds adapter handoff
 - **WHEN** the source-level native option registry includes the Markdown `options.max_heading_level` entry
 - **AND** request or config sources provide `options.max_heading_level`
-- **THEN** core standard parameter preparation merges the value with source and registry metadata
+- **THEN** navigation input resolution merges the value with source and registry metadata
 - **THEN** the linked Markdown handler receives the final option value and validates support, type and range semantics
 
 #### Scenario: navigation layer is not an adapter loader

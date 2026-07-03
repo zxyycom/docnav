@@ -19,10 +19,10 @@ pub const ADAPTER_ID: &str = "docnav-markdown";
 pub const ADAPTER_NAME: &str = "Docnav Markdown Adapter";
 pub const FORMAT_ID_MARKDOWN: &str = "markdown";
 pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
-pub const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
 // Markdown adapter 原生 option key，来自 adapter 契约；核心 CLI 只原样传递。
 pub const NATIVE_OPTIONS_NAMESPACE: &str = "options";
 pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
+const DEFAULT_MAX_HEADING_LEVEL_VALUE: i64 = 3;
 pub const MAX_HEADING_LEVEL_IDENTITY: &str =
     "docnav.adapters.docnav-markdown.options.max_heading_level";
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
@@ -34,6 +34,7 @@ const NATIVE_OPTIONS: &[NativeOptionSpec] =
         .operations(MAX_HEADING_LEVEL_OPERATIONS)
         .cli_flag("--max-heading-level")
         .value(NativeOptionValueSpec::Integer { min: 1, max: 6 })
+        .default_integer(DEFAULT_MAX_HEADING_LEVEL_VALUE)
         .build()];
 
 #[derive(Clone, Copy, Debug, Default)]

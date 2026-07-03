@@ -147,6 +147,12 @@ impl FieldValidation<serde_json::Map<String, Value>> {
     }
 }
 
+impl FieldValidation<Value> {
+    pub fn json() -> Self {
+        Self::new(ValueKind::Json)
+    }
+}
+
 impl<T> FieldValidation<T> {
     fn new(value_kind: ValueKind) -> Self {
         Self {

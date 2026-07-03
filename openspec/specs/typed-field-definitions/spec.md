@@ -1,7 +1,7 @@
 # typed-field-definitions Specification
 
 ## Purpose
-Define the typed field definition core: reusable field identity, extraction strategy metadata, value kind and constraint metadata, static default metadata, field-level decode/validation attribution, schema metadata views, and duplicate identity checks. Consumer owners remain responsible for CLI/config source resolution, operation binding, manifest/probe policy, protocol envelopes, readable output, and complete JSON Schema documents.
+Define the typed field definition core: reusable field identity, extraction strategy metadata, value kind and constraint metadata, static default metadata, field-level decode/validation attribution, schema metadata views, and duplicate identity checks. Consumer owners remain responsible for navigation input resolution, CLI/config source mapping, operation binding, manifest/probe policy, protocol envelopes, readable output, and complete JSON Schema documents.
 ## Requirements
 ### Requirement: Typed field definitions define reusable field identity and extraction metadata
 Typed field definitions MUST define stable field identity, field extraction strategies, field validation metadata, required/default metadata, and field-level constraint metadata without depending on a consumer-specific transport, CLI surface, or schema document layout.
@@ -69,9 +69,9 @@ Typed field registration MUST reject duplicate canonical field identities in a d
 ### Requirement: Consumers keep their owner semantics
 Consumers of typed field definitions MUST reuse field metadata without inheriting semantics owned by other consumers or public contract surfaces.
 
-#### Scenario: Standard parameter resolution consumes field metadata
-- **WHEN** standard parameter resolution consumes typed field metadata
-- **THEN** source mapping, merge order, source info, passthrough policy, input-boundary policy, and operation argument binding remain standard-parameter responsibilities
+#### Scenario: Navigation input resolution consumes field metadata
+- **WHEN** navigation input resolution consumes typed field metadata
+- **THEN** source mapping, merge order, source info, passthrough policy, input-boundary policy, and operation argument binding remain navigation input resolution responsibilities
 
 #### Scenario: JSON contract validation consumes field metadata
 - **WHEN** manifest, probe, or protocol JSON validation consumes typed field metadata
@@ -110,4 +110,4 @@ Typed field definitions MUST support building a set of field definitions that va
 - **AND** non-finite floating number range bounds and empty open/closed ranges fail during set build
 - **AND** non-finite floating number static defaults fail during set build with a reason that explains Rust `f64` can represent non-finite values but JSON numbers cannot
 - **AND** built definition sets expose a typed `to_builder()` copy path that can statically override leaf field builders and rebuild a new read-only definition set
-- **AND** the set does not perform standard parameter source merge, CLI argv parsing, operation binding, manifest/probe policy, or complete schema document generation
+- **AND** the set does not perform navigation source merge, CLI argv parsing, operation binding, manifest/probe policy, or complete schema document generation

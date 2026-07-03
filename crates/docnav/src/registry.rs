@@ -1,5 +1,6 @@
 use docnav_adapter_contracts::{Adapter, NativeOptionSpec};
 use docnav_markdown::MarkdownAdapter;
+use docnav_navigation::{NavigationAdapterRef, NavigationAdapterRegistry};
 use docnav_protocol::{Manifest, Operation};
 use serde_json::{json, Value};
 
@@ -30,12 +31,6 @@ impl AdapterRegistry {
 
     pub fn load(_project: &ProjectContext) -> AppResult<Self> {
         Ok(Self::builtin())
-    }
-
-    pub fn find(&self, adapter_id: &str) -> Option<&AdapterRecord> {
-        self.adapters
-            .iter()
-            .find(|adapter| adapter.id() == adapter_id)
     }
 
     pub fn len(&self) -> usize {
@@ -76,6 +71,18 @@ impl AdapterRegistry {
     }
 }
 
+impl NavigationAdapterRegistry for AdapterRegistry {
+    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
+        self.adapters
+            .iter()
+            .map(|record| NavigationAdapterRef {
+                id: record.id(),
+                adapter: record.adapter(),
+            })
+            .collect()
+    }
+}
+
 pub fn native_options_for(operation: Operation) -> Vec<NativeOptionSpec> {
     AdapterRegistry::builtin().native_options_for(operation)
 }
@@ -91,10 +98,6 @@ impl AdapterRecord {
 
     pub fn manifest(&self) -> Manifest {
         self.adapter.manifest()
-    }
-
-    pub fn probe(&self, path: &str) -> docnav_protocol::ProbeResult {
-        self.adapter.probe(path)
     }
 
     pub fn native_options(&self) -> &'static [NativeOptionSpec] {
