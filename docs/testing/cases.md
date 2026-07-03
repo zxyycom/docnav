@@ -160,7 +160,7 @@ Proves:
 
 ### WB-NAV-INPUT-RESOLUTION-001 Navigation input resolution 保持来源解析边界
 Status: implemented
-Code: `crates/docnav-navigation/src/tests/navigation.rs`
+Code: `crates/docnav-navigation/src/tests/navigation/native_options.rs`
 
 Proves:
 - Navigation input resolution preserves source labels for explicit input, project config, user config and built-in defaults.
@@ -193,7 +193,7 @@ Proves:
 
 ### WB-NAV-ADAPTER-SOURCE-001 Navigation adapter selection 保持静态来源边界
 Status: implemented
-Code: `crates/docnav-navigation/src/tests/navigation.rs`
+Code: `crates/docnav-navigation/src/tests/navigation/adapter_source.rs`
 
 Proves:
 - 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
