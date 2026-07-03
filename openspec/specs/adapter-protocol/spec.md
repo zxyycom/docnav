@@ -2,7 +2,6 @@
 
 ## Purpose
 定义 Docnav v0 原始协议共享类型、schema/example 校验材料、linked adapter operation handler 边界，以及 adapter descriptor/probe/manifest 元数据的所有权。该规范不定义 adapter direct CLI、外部 `invoke` 进程或 runtime adapter SDK 作为当前默认执行路径。
-
 ## Requirements
 ### Requirement: 共享协议类型完整覆盖 v0 原始协议
 `docnav-protocol` MUST 定义 v0 request envelope、response envelope、operation、operation arguments、operation result、page、protocol error、manifest 和 probe 的共享类型，并 MUST 不包含格式专属解析字段。
@@ -26,21 +25,38 @@ Protocol response schema 和共享校验 MUST 使用响应 `operation` 绑定成
 - **THEN** result 必须符合 ReadResult
 
 ### Requirement: Linked adapter handler 接收已准备的 operation input
-Current document operations MUST dispatch to linked adapter operation handlers through the in-process adapter contract. Core MUST resolve command and document context, then `docnav-navigation` MUST prepare typed operation input from raw command/config sources and selected adapter typed-field declarations before dispatch, including pagination, ref/query fields and declared native options.
+Docnav core 和 navigation layer MUST 在 dispatch linked adapter handler 前完成 public input boundary 处理。Core MUST classify commands and pass config source descriptors/paths; `docnav-navigation` MUST load raw config sources and construct typed operation input from raw command, protocol request arguments, project/user config and built-in defaults, preserving declared adapter-owned native option source metadata. Linked adapter handlers MUST NOT read CLI argv、stdin、stdout、stderr、process cwd or process exit code to obtain operation input.
 
-Adapter handlers MUST NOT read CLI argv、stdin、stdout、stderr、process cwd or process exit code to obtain operation input. The adapter contract MAY return success payloads or structured adapter diagnostics; final protocol/readable projection and process exit code remain owned by core/output surfaces.
+Invalid public input MUST fail before linked adapter business execution when it belongs to core CLI parsing、protocol envelope/request shape、config source loading、navigation input resolution mapping or operation applicability。Declared adapter-owned native options MAY be handed to the selected adapter through source-level static native option registry metadata；unsupported option、type mismatch or range invalid MUST be reported by selected adapter typed-field validation before format business handling continues.
 
-#### Scenario: Navigation prepares request before linked dispatch
-- **WHEN** `docnav outline docs/guide.md --limit 120` selects the linked Markdown adapter
-- **THEN** core resolves the document path context before calling the navigation layer
-- **THEN** navigation input resolution selects the adapter and prepares typed operation input with `limit: 120`
-- **THEN** the linked Markdown handler receives the prepared input without reading process cwd or CLI argv
+#### Scenario: core CLI unknown argv 被拒绝在 adapter dispatch 前
+- **WHEN** caller executes `docnav outline docs/guide.md --unknown --output readable-json`
+- **THEN** core CLI returns an input diagnostic
+- **THEN** navigation does not dispatch the linked adapter handler
+- **THEN** failure output projects one primary `DiagnosticRecord`
 
-#### Scenario: Adapter error is structured
-- **WHEN** a linked adapter cannot satisfy an operation
-- **THEN** it returns a structured diagnostic or adapter error to the caller boundary
-- **THEN** it does not expose an adapter exit-code API
-- **THEN** core/output maps the diagnostic to protocol/readable output and the final process exit code
+#### Scenario: protocol request shape failure 停在 protocol owner
+- **WHEN** a protocol request JSON value contains unknown envelope fields、missing required fields or malformed request shape
+- **THEN** protocol input validation rejects the request at the protocol boundary
+- **THEN** navigation input resolution does not receive the invalid envelope
+- **THEN** failure output uses the protocol failure projection for the primary `DiagnosticRecord`
+
+#### Scenario: known operation arguments 进入 navigation input resolution
+- **WHEN** a protocol request envelope is valid but operation arguments contain wrong type、unmapped arguments or invalid values
+- **THEN** navigation input resolution and typed-field processing produce validation diagnostics
+- **THEN** linked adapter business handling does not execute
+- **THEN** the owning surface projects the diagnostics as a failed document request
+
+#### Scenario: declared native option handoff 保留 owner metadata
+- **WHEN** CLI、config or protocol arguments provide `options.max_heading_level: 2`
+- **AND** the source-level static native option registry declares the Markdown option source
+- **THEN** navigation input resolution preserves source kind、owner、namespace、key and type variant metadata
+- **THEN** the linked Markdown handler receives the merged native option value in prepared operation input
+
+#### Scenario: selected adapter typed-field native option validation 返回结构化诊断
+- **WHEN** adapter selection succeeds and prepared input contains an unsupported option、type mismatch or range invalid value for the selected adapter
+- **THEN** selected adapter typed-field validation returns a structured diagnostic before handler execution
+- **THEN** core/output projects that diagnostic through the selected raw or readable failure surface
 
 ### Requirement: Manifest/probe metadata 不提供 implementation source
 Manifest、probe result 和 equivalent descriptor metadata MUST restrict field ownership to adapter identity, supported formats, extensions, content types and observable metadata. They MUST NOT provide runtime implementation sources, command paths, external executables, protocol version ranges, document operation sets or default/native option values.
@@ -101,3 +117,4 @@ Docnav protocol validation MUST use current protocol、manifest、probe and read
 - **THEN** request schema or typed-field validation fails
 - **THEN** the failure uses `INVALID_REQUEST` or the diagnostics-owned current equivalent
 - **THEN** it does not use version-range negotiation
+

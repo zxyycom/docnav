@@ -49,38 +49,6 @@ Input diagnostics MUST 包含 stable error code、argument 或 field location、
 
 ## MODIFIED Requirements
 
-### Requirement: adapter 选择必须先处理声明式 adapter intent
-`docnav` MUST use strict adapter selection semantics for caller-declared adapter intent. When an adapter id is explicitly provided by CLI argv or effective config, failure to resolve, load, validate, or probe that adapter MUST return an adapter selection error as the final adapter-selection outcome.
-
-When no caller-declared adapter id exists, `docnav` MAY perform automatic adapter discovery by evaluating registry candidates. Automatic candidate failures MAY be appended to an internal failure list while discovery continues. If a later candidate succeeds, the successful output MUST describe only the successful document operation. If all automatic candidates fail, `docnav` MUST return `FORMAT_UNKNOWN` or the owning adapter-selection diagnostic with a candidate failure list.
-
-#### Scenario: 显式 adapter 解析失败时失败
-- **WHEN** 调用方传入 `--adapter docnav-markdown` 但 registry 中无法解析该 adapter 记录
-- **THEN** `docnav` 返回 adapter selection error
-- **THEN** 错误 details 包含 adapter id、selection_source、stage 和 reason
-- **THEN** adapter selection 以该诊断结束
-
-#### Scenario: 配置声明 adapter 失败时失败
-- **WHEN** effective config 提供 `defaults.adapter`
-- **AND** 该 adapter 的 manifest、当前契约校验或 probe 失败
-- **THEN** `docnav` 返回 adapter selection error
-- **THEN** 错误 details 指向配置来源、adapter 候选失败阶段和原因
-- **THEN** adapter selection 以该诊断结束
-
-#### Scenario: 自动发现候选失败后可继续
-- **WHEN** 调用方没有通过 CLI 或配置声明 adapter id
-- **AND** registry 遍历中的候选 adapter manifest 或 probe 输出字段缺失、类型不符、语义校验失败或返回 `supported: false`
-- **THEN** `docnav` 可以追加候选失败条目
-- **THEN** `docnav` 可以继续评估后续候选
-- **THEN** 若后续候选成功，成功输出只描述成功的 document operation
-
-#### Scenario: 自动发现全部失败
-- **WHEN** 没有 adapter 能校验目标文档
-- **THEN** `docnav` 返回 `FORMAT_UNKNOWN`
-- **THEN** failure output 包含候选失败列表
-- **THEN** 候选失败列表是 JSON 数组
-- **THEN** 每条失败项只包含 adapter_id、stage 和 reason
-
 ### Requirement: 输出模式必须按协议层和阅读层分离
 `docnav --output protocol-json` MUST output the raw protocol response envelope for document operations. `readable-view` and `readable-json` MUST remain readable-layer results derived from the same typed readable payload. Invalid caller input MUST be projected as an error.
 
@@ -148,10 +116,3 @@ Shared argv helper usage MUST serve strict parsing/mapping and diagnostics. It M
 - **WHEN** core CLI 将 `DiagnosticCode` 对应的共享分类映射为 process exit code
 - **THEN** 它可以使用共享 classification helper
 - **THEN** concrete core exit code enum 和最终 process exit decision 仍由 `docnav` core 拥有
-
-## REMOVED Requirements
-
-### Requirement: 核心 CLI 必须兼容未知、多余和未使用参数
-**Reason**: 新契约把 caller argv 作为 strict public input，由 CLI owner 在 document execution 前返回 input diagnostic。
-
-**Migration**: Unknown argv、extra positional arguments 和 operation-inapplicable known flags 统一投影为带 actionable repair guidance 的 input diagnostics。Valid document argv 继续映射为 canonical document operation input 或等价 semantic request。

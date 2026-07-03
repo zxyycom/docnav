@@ -2,7 +2,6 @@
 
 ## Purpose
 定义 Docnav v0 长期文档契约，约束原始协议、阅读输出、core CLI 职责、navigation input resolution、linked adapter 边界、诊断投影、示例材料和自动化验证映射。默认文档操作路径是 core release 内的静态注册 linked adapter library，不是 runtime dynamic registration、external executable 或 adapter `invoke` 进程。
-
 ## Requirements
 ### Requirement: 原始协议与阅读输出分层
 项目 MUST 将 `docnav --output protocol-json` 原始协议与 CLI 阅读输出定义为两个独立语义层。原始协议层 MUST 作为机器稳定接口；阅读输出层 MUST 优先服务 AI 和人类阅读，不作为长期机器解析接口。两层 MUST 复用业务语义，并以各自 schema 校验字段形状。
@@ -18,21 +17,63 @@
 - **THEN** `content_type` does not participate in content budget truncation
 
 ### Requirement: `docnav` 是 core CLI router/manager
-`docnav` MUST own command classification, project root discovery, cwd handling, config source descriptor/path discovery for handoff, document path resolution, output mode dispatch and stable error mapping. For navigation commands, core MUST pass the raw command, config source descriptors/paths and current static registry to `docnav-navigation`; `docnav-navigation` MUST load raw project/user config sources before source resolution. Core MUST resolve the project/cwd/document path context before navigation input resolution.
-
-Core MUST NOT treat project/user historical adapter records, installed packages, external executables, command paths or manifest metadata as default document operation implementations.
+`docnav` MUST 负责项目根解析、核心配置 source loading、core release static adapter registry、adapter inspection、协议字段校验、输出模式和错误映射。默认 document operation path MUST use adapter-layer workspace crates registered in the current core release as adapter implementations. Adapter layer ownership MUST remain a code and contract boundary rather than a separate default distribution boundary. Internal operation orchestration, adapter selection and navigation input resolution MUST be owned by `docnav-navigation`, while adapter layer interface definitions, static descriptors and shared contract types MUST be owned by `docnav-adapter-contracts`. `docnav-navigation` MUST prepare requests and dispatch operation handlers; it MUST NOT act as an adapter loader. Independent adapter packages、external adapter executables、command paths and historical adapter artifact records MUST NOT become default document operation implementation sources.
 
 #### Scenario: 读取 Markdown outline
-- **WHEN** caller executes `docnav outline docs/guide.md`
-- **THEN** `docnav` resolves `docs/guide.md` against the effective cwd/project context into an absolute document path
-- **THEN** `docnav` passes raw command, config source descriptors/paths and static registry to `docnav-navigation`
-- **THEN** navigation input resolution selects the adapter and prepares typed operation input before dispatch
-- **THEN** adapter-generated refs and display facts are preserved into the selected output surface
+- **WHEN** 调用方执行 `docnav outline docs/guide.md`
+- **THEN** `docnav` 从当前 core release static adapter registry 选择 adapter implementation
+- **THEN** `docnav` resolves `docs/guide.md` to an absolute path before navigation dispatch
+- **THEN** `docnav` 将 page、limit 和 merged native options 等参数准备为 operation input
+- **THEN** `docnav` 不从 adapter metadata、配置或隐式默认值生成格式专属 `options`
+- **THEN** adapter 生成的 ref 和 display 被保留到阅读输出
 
-#### Scenario: Missing adapter implementation
-- **WHEN** caller explicitly requests an adapter id absent from the current static registry
-- **THEN** `docnav` returns a stable adapter selection diagnostic
-- **THEN** `docnav` does not search installed packages, command paths, external executables or historical adapter artifacts as fallback implementation sources
+#### Scenario: adapter contract owner remains smaller than operation orchestration
+- **WHEN** adapter crate 接入默认 document operation path
+- **THEN** adapter crate 依赖 `docnav-adapter-contracts` 暴露的 adapter layer interface definitions
+- **THEN** `docnav-navigation` 负责组合 `outline/read/find/info` 流程
+- **THEN** adapter crate 不需要依赖独立 runtime SDK、dynamic registration API 或 adapter direct CLI 才能参与默认 document operation
+
+#### Scenario: adapter interface uses operation-handler granularity
+- **WHEN** adapter crate 实现 adapter layer interface
+- **THEN** adapter handle exposes static descriptor metadata, probe check, source-level native option registry entries and `outline/read/find/info` operation handlers through `docnav-adapter-contracts`
+- **THEN** parser、ref、navigation、pagination 和 native option semantics remain adapter-owned inside those handlers
+- **THEN** `docnav-navigation` dispatches the selected operation handler instead of composing adapter ref splitter、locator、format probe validation or parser/navigation primitives across the adapter/core boundary
+
+#### Scenario: native option registry feeds adapter handoff
+- **WHEN** the source-level native option registry includes the Markdown `options.max_heading_level` entry
+- **AND** request or config sources provide `options.max_heading_level`
+- **THEN** navigation input resolution merges the value with source and registry metadata
+- **THEN** the linked Markdown handler receives the final option value and validates support, type and range semantics
+
+#### Scenario: navigation layer is not an adapter loader
+- **WHEN** `docnav-navigation` dispatches an operation
+- **THEN** it receives a selected linked adapter handle from core registry/routing
+- **THEN** it prepares the request and calls the operation handler
+- **THEN** it does not load executables, resolve command paths, or mutate runtime adapter registration
+
+#### Scenario: adapter diagnostic boundary excludes exit code API
+- **WHEN** linked adapter handling fails
+- **THEN** the adapter layer returns structured diagnostic facts
+- **THEN** core/output owns protocol/readable projection and final process exit code
+- **THEN** adapter contract does not expose exit-code return semantics
+
+#### Scenario: core release static adapter registry inspection
+- **WHEN** 调用方执行 `docnav adapter list`
+- **THEN** `docnav` 输出当前 core release static adapter registry 中 adapter library 的身份、版本和支持格式
+
+#### Scenario: dynamic adapter management commands are not default surface
+- **WHEN** 调用方执行 `docnav adapter install <source>`
+- **OR** 调用方执行 `docnav adapter register <source>`
+- **OR** 调用方执行 `docnav adapter update <adapter-id>`
+- **OR** 调用方执行 `docnav adapter remove <adapter-id>`
+- **THEN** `docnav` 不把这些命令作为有效默认 adapter management surface
+- **THEN** 这些命令不会改变当前 release 的 static adapter registry
+
+#### Scenario: External adapter artifact is not a default implementation source
+- **WHEN** 项目配置、用户配置或历史 adapter record 指向 external adapter executable
+- **AND** 调用方执行 document operation
+- **THEN** `docnav` 不把该 executable 当作 adapter implementation source
+- **THEN** adapter implementation 只来自当前 core release static adapter registry
 
 ### Requirement: Static registry 是 adapter implementation source
 The current core release static adapter registry MUST be the source of default document operation implementations. A registry entry MUST resolve to source-linked adapter code and a static descriptor containing adapter id, supported formats, content types, native option registry entries, and operation handler bindings. Descriptor metadata is inspection metadata and release invariant material. Runtime candidate order is the registry order, and format support is decided by adapter probe results.
@@ -200,52 +241,60 @@ Docnav shared Rust crates MUST keep raw protocol, document output orchestration,
 - **THEN** `docnav-adapter-contracts` defines in-process adapter descriptors, handler traits and shared adapter-layer types
 - **THEN** neither crate creates an external runtime adapter SDK contract by itself
 
-### Requirement: Runtime problems flow through a request-local diagnostic stack
-Docnav runtime and public surface code MUST record runtime problems in a request-local diagnostic stack before the owning boundary decides whether to continue, fail, exit or write surface-specific output.
-
-#### Scenario: Fatal problem records context before failure surface
-- **WHEN** an operation encounters a fatal request, document, adapter boundary or internal failure
-- **THEN** the diagnostic stack records the fatal context before the fatal outcome is returned or propagated
-- **THEN** the record carries a diagnostic code that can be projected to surface error code, message, details, guidance and exit-code category
-
-#### Scenario: Diagnostic stack stores facts only
-- **WHEN** a diagnostic record is pushed
-- **THEN** the stack stores the record without deciding whether the operation succeeds or fails
-- **THEN** the caller or surface owner decides continuation, failure, output format, output channel and exit behavior
-
 ### Requirement: DiagnosticCode owns identity and canonical details
-`docnav-diagnostics` MUST own `DiagnosticCode`, grouped code families, each code's canonical details object and projection metadata. Other Docnav crates MUST use those diagnostics-owned identities and MUST NOT redefine protocol, readable, adapter or navigation input resolution diagnostic code identities.
+`docnav-diagnostics` MUST provide stable diagnostic identities、grouped code families、primary `DiagnosticRecord` construction/validation rules 和 canonical `details` list helper materials。It MUST NOT own operation outcome、surface output format、exit behavior、adapter selection、strict input routing、protocol envelope、readable wrapping、CLI surface 或 public projection policy。Public failure surfaces MUST consume one primary `DiagnosticRecord` for the failed request。`DiagnosticCode` 保持为 record `code` field 使用的 stable machine identity；public surface contract 是 owner-specific `DiagnosticRecord` projection。
 
-#### Scenario: Diagnostic code owns surface error identity
-- **WHEN** a diagnostic record is rendered as a fatal error, protocol error code, stderr line, readable error field or other surface field
-- **THEN** mechanical identity is derived from the record's `DiagnosticCode`
-- **THEN** the surface field does not become the source of identity for the internal channel
+#### Scenario: Diagnostic code 提供 primary record identity
+- **WHEN** implementation 按 purpose、producer 或 projection family 组织 diagnostic codes
+- **THEN** top-level diagnostic identity 映射到 primary `DiagnosticRecord.code`
+- **THEN** `docnav-diagnostics` 外部 callers 使用 helper-provided constructors 或 mappings 创建 primary records
 
-#### Scenario: Diagnostic code owns canonical details
-- **WHEN** a caller creates a diagnostic record for a specific `DiagnosticCode`
-- **THEN** record details conform to the canonical details object structure for that code
-- **THEN** surface projection maps from that canonical details object
+#### Scenario: Diagnostic details 从属于 primary record
+- **WHEN** caller 为 specific diagnostic identity 创建 `DiagnosticRecord`
+- **THEN** required fields、optional fields 和 allowed `details` list keys 遵循 diagnostic helper record rules
+- **THEN** field issues、config issues、typed validation failures 和 candidate failures 从属于该 record
+
+#### Scenario: Projection rules 来自 primary record
+- **WHEN** implementation renders protocol、readable、CLI、adapter 或 stderr failure output
+- **THEN** visible error code、message、details、guidance 和 exit behavior 来自 primary `DiagnosticRecord` 与 owning surface policy
+- **THEN** schema、examples 和 fixtures 验证 projection；rule source 仍由 owner contract 提供
 
 ### Requirement: Boundary surfaces project diagnostic records
-Modules that discover problems MUST push diagnostic records into the channel. Boundary surfaces MUST read those records and project them according to their owner contract.
+发现 public failure 的 modules MUST 返回或构造足够的 diagnostic record facts，使 owning boundary 能投影一个 primary `DiagnosticRecord`。Boundary surfaces MUST 按 owner contract 投影该 primary record。Internal events 由内部流程消费；operation/output owner 可以把需要公开表达的状态建模为 explicit business fields 或 status。
 
-#### Scenario: Runtime module writes but does not format final output
-- **WHEN** core runtime, navigation input resolution, adapter selection or selected adapter dispatch discovers a problem
-- **THEN** that module records what happened, its impact, canonical details and source in the diagnostic stack
-- **THEN** that module does not own final user-visible formatting unless it is also the boundary surface owner
+#### Scenario: Runtime module 报告 facts，boundary surface 拥有 final output
+- **WHEN** core runtime、navigation input resolution、adapter selection 或 selected adapter dispatch 发现 strict failure
+- **THEN** 该 module 报告自己拥有的 diagnostic identity、owner、location、received value、expected shape、guidance 和 subordinate details
+- **THEN** final user-visible formatting 由 boundary surface owner 拥有
 
-#### Scenario: Boundary surface projects records to its own contract
-- **WHEN** CLI, protocol surface or readable output reaches an output boundary
-- **THEN** the boundary reads relevant diagnostic stack records
-- **THEN** the boundary projects records according to `docs/cli.md`, `docs/protocol.md`, `docs/output.md` or `docs/adapter-contract.md`
+#### Scenario: Boundary surface 投影一个 primary record
+- **WHEN** CLI、protocol surface 或 readable output 到达 failure output boundary
+- **THEN** boundary 投影一个 primary `DiagnosticRecord`
+- **THEN** stdout、stderr、process exit 和 envelope shape 遵循 `docs/cli.md`、`docs/protocol.md`、`docs/output.md` 或 `docs/adapter-contract.md`
+
+#### Scenario: Surface docs keep helper and projection ownership separate
+- **WHEN** protocol、readable、CLI、adapter、schema 或 example docs 描述 diagnostic output
+- **THEN** 这些 docs 描述各自 surface 的 display、mapping、stdout/stderr placement、envelope shape 或 exit behavior
+- **THEN** stable identity、canonical record field invariants 和 subordinate details helpers 由 `docnav-diagnostics` helper boundary 提供
+- **THEN** public projection rules remain owned by protocol/output/CLI/adapter/schema/example surface docs
 
 ### Requirement: Legacy diagnostic sources are fully migrated
-Existing error fact sources MUST fully migrate to diagnostic channel records and diagnostics-owned projections. The completed implementation MUST NOT retain a legacy parallel diagnostic fact source.
+Existing public error fact sources 和 strict-input diagnostic families MUST migrate to helper-backed primary `DiagnosticRecord` construction/validation and surface-owned projection。Document success output 使用 owning success payload shape。Internal logging、tracing 或 owner-scoped status 可以记录 non-fatal events；document success output 不承载通用诊断通道。
 
-#### Scenario: Stable error projection uses diagnostic code
-- **WHEN** a fatal diagnostic is rendered or serialized as a stable surface error
-- **THEN** the target surface error code is derived from `DiagnosticCode`
-- **THEN** no legacy stable error object remains as an owning fact model after migration completes
+#### Scenario: Stable error projection 使用 primary record
+- **WHEN** a fatal or blocking diagnostic is rendered or serialized as a stable surface error
+- **THEN** the target surface error fields derive from the primary `DiagnosticRecord`
+- **THEN** no parallel public error object owns a second field shape for the same failed request
+
+#### Scenario: 成功路径诊断场景改为失败或 owner fields
+- **WHEN** public input boundaries 收到 unknown argv、skipped explicit config、explicit adapter fallback 或 undeclared native option cases
+- **THEN** the owning boundary returns a failure diagnostic
+- **THEN** valid success output follows the owning success payload shape
+
+#### Scenario: Direct stderr text 补充 primary record
+- **WHEN** a Rust entry point rejects command shape, fails metadata/schema validation or hits output write failure before normal document output
+- **THEN** the entry point creates or maps a primary `DiagnosticRecord`
+- **THEN** any stderr text is supplemental and follows the owning surface policy
 
 ### Requirement: Protocol error rules JSON is removed
 `docs/protocol/error-rules.json` MUST be deleted as a rule source. Protocol error code and details validation MUST consume `DiagnosticCode` protocol projections from `docnav-diagnostics`, while protocol docs, schema, examples and tests remain validation and presentation materials.
@@ -256,36 +305,112 @@ Existing error fact sources MUST fully migrate to diagnostic channel records and
 - **THEN** it does not maintain a separate protocol-local required-details rule source
 
 ### Requirement: Diagnostic channel changes update validation materials
-Changes to diagnostic channel semantics or surface projection MUST update relevant owner docs, JSON Schema, examples, fixtures and tests in the same implementation work.
+Changes to diagnostic helper semantics or surface projection MUST update the relevant owner docs, JSON Schema, examples, fixtures and tests in the same implementation work. Invalid public input fixtures MUST assert strict failure and actionable diagnostic guidance.
 
-#### Scenario: Protocol JSON projection is validated
+#### Scenario: Protocol JSON projection 被验证
 - **WHEN** a document operation is rendered as `protocol-json`
 - **THEN** stdout follows the protocol response schema owned by the protocol docs
-- **THEN** protocol-visible diagnostic fields are derived from diagnostic channel records
+- **THEN** any protocol-visible diagnostic fields or errors are derived from the primary `DiagnosticRecord`
 
-#### Scenario: Readable output projection is validated
+#### Scenario: Readable output projection 被验证
 - **WHEN** a document operation is rendered as `readable-view` or `readable-json`
-- **THEN** primary failure diagnostics are rendered from diagnostic channel records when the operation fails
+- **THEN** fatal or blocking diagnostics are rendered as readable error output according to the readable output owner
+- **THEN** success output follows the readable success payload schema
 - **THEN** readable output remains separate from the protocol response envelope
 
+#### Scenario: Machine-readable projection 被验证
+- **WHEN** core adapter inspection、manifest/probe-shaped metadata validation or protocol output writes machine-readable output
+- **THEN** stdout follows the owning metadata or protocol response schema
+- **THEN** failure output is derived from the primary `DiagnosticRecord` according to that surface policy
+
+#### Scenario: Strict diagnostics 需要 validation material
+- **WHEN** implementation defines or changes a strict input error
+- **THEN** owner docs describe the failing condition, error code, details shape and guidance
+- **THEN** schema, examples, fixtures and tests are updated in the same implementation work
+
 ### Requirement: Raw protocol exposes structured facts and readable output organizes them
-Docnav raw protocol MUST express machine-readable facts as structured JSON fields. Readable output MUST organize those facts into display text, summary and layout, and MUST NOT become the raw protocol fact source.
+Docnav raw protocol MUST 将机器可读事实表达为结构化 JSON 字段。Readable output MUST 把这些事实组织成面向阅读的 display text、summary 和布局，并且不成为 raw protocol fact source。
 
 #### Scenario: 请求预算使用 canonical limit
-- **WHEN** document operation request carries pagination budget
-- **THEN** canonical protocol argument is `limit`
-- **THEN** `limit` is a positive integer and budget-unit interpretation remains adapter-owned
-- **THEN** schema, examples, typed arguments and operation handling use `limit`
+- **WHEN** document operation request 携带分页预算
+- **THEN** canonical protocol argument 是 `limit`
+- **THEN** `limit` 是 positive integer，预算单位解释仍归 adapter 所有
+- **THEN** schema、examples、typed arguments 和 operation handling 使用 `limit`
+
+#### Scenario: cost 在协议中结构化，在 readable 输出中摘要化
+- **WHEN** operation result 报告 cost
+- **THEN** raw protocol 携带结构化 `cost.measurements[]`
+- **THEN** 每个 measurement 包含机器可读的 `unit` 和 `value`
+- **THEN** readable output 可以从这些 measurements 派生成紧凑成本摘要
 
 #### Scenario: 导航条目分离 ref、事实字段和 display
-- **WHEN** outline entries or find matches return
-- **THEN** each raw protocol item keeps `ref` as an adapter-owned opaque string
-- **THEN** available label, location, summary, excerpt, rank, cost and metadata facts use structured fields
-- **THEN** readable output owns final display rows
+- **WHEN** outline entries 或 find matches 返回
+- **THEN** 每个 raw protocol item 保留 `ref` 作为 adapter-owned opaque string
+- **THEN** label、location、summary、excerpt、rank、cost 和 metadata 等 item facts 在可用时使用结构化字段
+- **THEN** readable output 拥有最终 display row
 
-#### Scenario: error 投影保留结构化 details
-- **WHEN** protocol output returns `ok: false`
-- **THEN** `error.code` selects a documented structured `error.details` shape
-- **THEN** `error.message` and `error.guidance` remain display fields
-- **AND WHEN** readable output returns failure
-- **THEN** readable error projection preserves primary diagnostic structured details
+#### Scenario: info result 将 metadata 与摘要分离
+- **WHEN** info 返回 document 或 adapter facts
+- **THEN** raw protocol 使用结构化 document 和 adapter metadata 字段
+- **THEN** readable output 可以把这些字段呈现为紧凑摘要
+
+#### Scenario: failure projection 保留 structured details
+- **WHEN** protocol output 返回 `ok: false`
+- **THEN** `error.code`、`error.details`、`error.message` 和 `error.guidance` derive from the primary `DiagnosticRecord`
+- **THEN** readable failure output 通过 readable error fields 投影同一个 primary diagnostic
+
+#### Scenario: continuation owner 保持稳定
+- **WHEN** 引入 structured fields
+- **THEN** `page` 仍是 protocol-owned next-page integer or null
+
+### Requirement: Public input boundaries must be strict by default
+Docnav public input boundaries MUST 默认拒绝 invalid caller intent。Public input boundaries 包括 core CLI argv、protocol request fields and arguments、explicit adapter selection、explicit config source declarations、present config files、explicit document paths、explicit refs、operation arguments 和 declared native options。
+
+AI-friendly behavior MUST 通过 precise diagnostics、stable error identities 和 actionable repair guidance 提供。Internal discovery MAY 在 caller 未显式声明失败候选时继续；successful output MUST 描述 successful document operation。
+
+#### Scenario: Invalid caller input 快速失败
+- **WHEN** caller 提供 unknown argv、extra positional input、unknown protocol fields、unknown config fields 或 undeclared native options
+- **THEN** owning boundary 返回 input 或 config diagnostic
+- **THEN** owning boundary 在 document operation execution 前返回
+- **THEN** diagnostic 在可用时标出 input location，并提供 expected shape 或 repair guidance
+
+#### Scenario: Internal discovery 可继续且 success payload 稳定
+- **WHEN** Docnav 执行 automatic adapter discovery，且 caller 未声明 adapter id
+- **AND** internal candidate 在 manifest、schema 或 probe validation 失败
+- **THEN** Docnav may continue evaluating later candidates
+- **THEN** 后续 candidate 成功时，successful output 只描述 successful document operation
+- **THEN** 全部 candidates 失败时，failure output 包含 candidate failure list
+
+#### Scenario: Explicit selection failure 返回 owning diagnostic
+- **WHEN** caller 显式声明 adapter id、config path、operation argument、ref 或 path
+- **AND** declared input 的 validation 或 resolution 失败
+- **THEN** Docnav 返回 owning diagnostic
+- **THEN** 该 diagnostic 是 declared input 的 final outcome
+
+### Requirement: Public failures must use a single primary DiagnosticRecord
+Docnav public failure surfaces MUST 由 failed request 的一个 primary `DiagnosticRecord` 驱动。`docnav-diagnostics` MUST remain a diagnostic/error model helper boundary for stable identities、record construction/validation 和 details helper materials。Protocol、output、CLI、adapter、schema 和 example surface owners MUST define their own projection、framing、channel 和 exit behavior from that primary record。Canonical primary record structure includes：
+
+- `code`: 必需的 stable machine-readable code。
+- `message`: 必需的简短 human-readable summary。
+- `owner`: 必需的 owning boundary 或 stage。
+- `location`: owner 可定位时提供的 input location object。
+- `received`: useful 且 safe to expose 时提供的 received value 或 token。
+- `expected`: 可用时提供的 expected shape 或 accepted values。
+- `guidance`: actionable repair steps。
+- `details`: optional object，只包含本次 failure 需要的 subordinate structured lists，例如 `field_issues`、`config_issues`、`typed_validation_failures` 或 `candidate_failures`。
+
+Invalid caller input diagnostics MUST 在 owner 可定位 input location 时包含 `location`，在 owner 可描述 expected shape 或 values 时包含 `expected`，并包含至少一个 `guidance` item。Diagnostic details MAY 包含 field issue lists、config issue lists、typed validation failure lists 或 candidate failure lists。这些 related details remain subordinate to the primary `DiagnosticRecord`。Candidate discovery all-failed details MUST 表达为 candidate failure list。
+
+#### Scenario: Strict input problem 返回单个诊断
+- **WHEN** operation 在 public boundary 遇到 invalid caller input
+- **THEN** owning boundary 返回 failed request 的一个 primary `DiagnosticRecord`
+- **THEN** diagnostic 在可用时标出 invalid input location、received value、expected shape 和 guidance
+- **THEN** request 返回 diagnostic outcome
+
+#### Scenario: 全部 candidate 失败时报告 discovery failure list
+- **WHEN** automatic adapter discovery 评估多个 candidates 且全部失败
+- **THEN** Docnav 返回一个 adapter-selection 或 `FORMAT_UNKNOWN` diagnostic
+- **THEN** failure output 包含 candidate failure list
+- **THEN** 每个 candidate failure item 使用 bounded summary shape
+- **THEN** candidate failure list 从属于 primary `DiagnosticRecord`
+

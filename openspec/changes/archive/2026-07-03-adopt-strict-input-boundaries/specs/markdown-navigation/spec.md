@@ -60,7 +60,7 @@ Core CLI matrix MUST cover Markdown document operations through linked adapter d
 - **THEN** failure envelope 投影一个 primary `DiagnosticRecord`
 - **THEN** linked Markdown handler does not execute when failure belongs to core input/config boundary
 
-### Requirement: Markdown adapter 消费已校验 typed native options
+### Requirement: Navigation input resolution 支持 Markdown native options
 Markdown adapter MUST receive typed native option values through navigation input resolution. Core owns config source descriptor/path handoff; `docnav-navigation` owns raw config source discovery, JSON reading, source priority, selected adapter typed-field validation/extraction and config input diagnostics. Markdown adapter documents the business effect of validated options, such as `options.max_heading_level` controlling visible heading granularity.
 
 Missing default config sources mean the corresponding layer has no config source. Present invalid config sources such as unreadable, invalid JSON or non-object root MUST fail at the navigation config source boundary. Unknown top-level fields, unknown `defaults` fields and undeclared `options` keys MUST fail before handler execution. Declared `options` keys enter selected-adapter typed-field validation/extraction with their source metadata preserved.
@@ -83,7 +83,7 @@ Missing default config sources mean the corresponding layer has no config source
 - **WHEN** 配置文件包含 undeclared `options` key
 - **THEN** CLI 返回 native option input diagnostic
 
-### Requirement: Markdown 配置来源必须由 smoke 和矩阵测试覆盖
+### Requirement: Markdown native option config sources 必须由 core smoke 和矩阵测试覆盖
 Docnav core smoke 和矩阵 MUST 覆盖 navigation-owned config source loading、优先级、配置 source absence、配置 input failure、native option metadata handoff，以及 navigation input resolution/default sources 进入 request construction 前补全过程的边界。
 
 #### Scenario: 配置 source absence 被覆盖

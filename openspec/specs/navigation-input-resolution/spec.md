@@ -2,7 +2,6 @@
 
 ## Purpose
 定义 document navigation input resolution 的长期契约：`docnav` core 只解析命令类型，并为 navigation command 提供 config source descriptors/paths 与 registry；raw project/user config source loading、routing 输入解析、adapter selection、selected adapter typed-field 参数声明读取、来源优先级、typed validation/extraction、operation argument binding、request construction 和 adapter dispatch 由 `docnav-navigation` 拥有。
-
 ## Requirements
 ### Requirement: Core only hands raw navigation inputs to the navigation layer
 `docnav` core MUST classify each invocation before navigation input resolution. For non-navigation commands, core MUST keep the owner-defined command behavior in core. For navigation commands, core MUST pass the raw command, project/user config source descriptors/paths and current static adapter registry to `docnav-navigation`.
@@ -105,3 +104,19 @@ Navigation input resolution MUST report missing required values, unmapped public
 - **AND** the same request contains an invalid-looking native option
 - **THEN** navigation input resolution returns adapter selection diagnostics
 - **THEN** option validation for that adapter does not run
+
+### Requirement: Adapter native options 必须是 explicit owner-scoped input sources
+Adapter native options MUST 表达为 explicit owner-scoped input sources. `docnav-navigation` MUST know which selected-adapter source locations can contain adapter-owned options, and MUST validate/extract those values through selected adapter typed-field declarations before handler execution.
+
+Unknown direct input、unknown config fields 和 undeclared native options 默认 MUST 产生 blocking diagnostics。只有 selected adapter typed-field declarations 声明 option namespace 并拥有校验规则时，native option value MAY enter request construction.
+
+#### Scenario: 已声明 native option 进入 selected adapter typed-field 校验
+- **WHEN** core CLI、config 或 protocol request input 包含已声明的 adapter native option
+- **THEN** navigation input resolution records it as an adapter-owned native option source
+- **THEN** selected adapter typed-field validation/extraction validates or rejects that option before handler execution
+
+#### Scenario: 未声明 native option 返回输入诊断
+- **WHEN** core CLI、config 或 protocol request input 包含 undeclared native option
+- **THEN** navigation input resolution returns input diagnostic
+- **THEN** request 在 handler execution 前返回
+

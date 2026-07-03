@@ -141,7 +141,7 @@ Core CLI strict input 规则如下：
 - **THEN** 输出包含该文档和 operation 下的最终默认参数及其来源
 
 ### Requirement: 核心管理命令必须提供 MVP 行为
-`docnav` MUST 实现 `init`、`doctor`、`version` 和 core release adapter inspection 的可验证基础行为。
+`docnav` MUST 实现 `init`、`doctor`、`version` 和 core release 内置 adapter inspection 的可验证基础行为。核心管理命令 MUST keep adapter inspection tied to adapter implementations registered in the current core release static adapter registry. `docnav` MUST NOT expose `adapter install`、`adapter register`、`adapter update` or `adapter remove` as valid default CLI commands.
 
 #### Scenario: init 幂等创建项目配置
 - **WHEN** 调用方执行 `docnav init`
@@ -152,12 +152,20 @@ Core CLI strict input 规则如下：
 - **WHEN** 调用方执行 `docnav version`
 - **THEN** stdout 包含 `docnav` crate version
 
-#### Scenario: doctor 检查配置和 linked adapter libraries
+#### Scenario: doctor 检查配置和 core release 内置 adapter libraries
 - **WHEN** 调用方执行 `docnav doctor`
-- **THEN** `docnav` 检查项目配置、用户配置和 core release static adapter registry
-- **THEN** `docnav` 检查 linked adapter layer metadata 和 handler 可用性
+- **THEN** `docnav` 检查项目配置和用户配置
+- **THEN** `docnav` 检查当前 core release static adapter registry metadata 和 adapter layer 可用性
 - **THEN** 输出包含 checks 数组
 - **AND** 存在失败检查项时进程非零退出
+
+#### Scenario: dynamic adapter management commands are removed
+- **WHEN** 调用方执行 `docnav adapter install ./target/release/custom-adapter`
+- **OR** 调用方执行 `docnav adapter register ./target/release/custom-adapter`
+- **OR** 调用方执行 `docnav adapter update custom-adapter`
+- **OR** 调用方执行 `docnav adapter remove custom-adapter`
+- **THEN** `docnav` 按标准 CLI unknown/unsupported command 行为返回失败
+- **THEN** 该命令不会写入 adapter registry、project config 或 user config
 
 ### Requirement: adapter 选择必须区分声明式 adapter 和自动发现
 `docnav-navigation` MUST first honor a declared adapter id from `--adapter` or `defaults.adapter`. Declared adapter failure MUST return an adapter selection diagnostic with the declared source and candidate failure stage. When no declared adapter id exists, `docnav-navigation` MUST enter automatic discovery by traversing the current static registry order and probing each linked adapter until the first `supported: true` result. Extension, content type, manifest metadata and descriptor metadata remain inspection or adapter-owned recognition facts. Adapter selection MUST use registry membership for implementation lookup, registry order for automatic discovery order and adapter probe results for format support.
@@ -243,9 +251,11 @@ Core CLI strict input 规则如下：
 - **THEN** `docnav` 不继续尝试其它 adapter
 
 ### Requirement: 输出模式必须按协议层和阅读层分离
-`docnav --output protocol-json` MUST 输出原始 protocol response envelope。默认 readable-view 和 readable-json 输出必须保持为阅读层结果，并必须从同一个完整 readable payload 派生。Document success output MUST 只包含成功业务 payload 和该输出模式拥有的结构；caller input diagnostics、config failures 和 automatic discovery candidate failures MUST NOT 进入 success payload。Public failure MUST project one primary `DiagnosticRecord` through the selected output mode.
+`docnav --output protocol-json` MUST output the raw protocol response envelope for document operations. `readable-view` and `readable-json` MUST remain readable-layer results derived from the same typed readable payload. Invalid caller input MUST be projected as an error.
 
-核心 CLI document output enum/help/config MUST expose only `readable-view`、`readable-json` 和 `protocol-json`。Help、version 和其它非文档纯文本输出 MUST 通过与 document output mode 分离的 `PlainText` 或等价明确命名通道承载。
+Successful document output MUST follow the owning operation payload schema. Rejected argv, invalid config sources and automatic discovery all-failed lists are represented by failure diagnostics; discovery attempts that later succeed remain internal state.
+
+Core CLI document output enum/help/config MUST expose only `readable-view`, `readable-json` and `protocol-json`. Help, version and other non-document plain text output MUST use `PlainText` or an equivalent explicitly separated channel.
 
 #### Scenario: readable-json outline
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --output readable-json`
@@ -258,34 +268,26 @@ Core CLI strict input 规则如下：
 - **THEN** JSON header 包含 entries 和 page
 - **THEN** 输出不包含 protocol envelope 字段
 
-#### Scenario: readable-json input failure
-- **WHEN** 调用方执行带有未知参数的 readable-json 命令
-- **THEN** 输出包含 primary failure diagnostic 的 readable projection
-- **THEN** 输出不包含 success payload fields
+#### Scenario: invalid argv 在 readable-json 中失败
+- **WHEN** 调用方执行带有未知参数的 readable-json document 命令
+- **THEN** `docnav` 返回输入错误或 `INVALID_REQUEST`
+- **THEN** stdout 按 readable error owner 输出结构化失败诊断
+- **THEN** stderr 只承载 owner 允许的 supplemental human text
+- **THEN** stdout 不包含成功 operation payload
+- **THEN** 输出使用 readable error shape
 
-#### Scenario: protocol-json input failure
-- **WHEN** 调用方执行带有未知参数的 protocol-json 命令
-- **THEN** stdout 包含完整 protocol failure envelope
-- **THEN** 不 dispatch adapter operation
+#### Scenario: invalid argv 在 protocol-json 中失败
+- **WHEN** 调用方执行带有未知参数的 protocol-json document 命令
+- **THEN** `docnav` 返回输入错误或 `INVALID_REQUEST`
+- **THEN** stdout 按 protocol failure response contract 输出
+- **THEN** stdout 不包含成功 result
+- **THEN** stdout 使用 protocol failure shape
 
 #### Scenario: document output 值按三种模式校验
 - **WHEN** 调用方执行 `docnav outline docs/guide.md --output <invalid-output>`
 - **THEN** `docnav` 返回 `INVALID_REQUEST`
 - **THEN** CLI help 只列出 readable-view、readable-json 和 protocol-json
 - **THEN** `docnav` 在 navigation input resolution 和 document operation 执行前返回
-
-#### Scenario: help 和 version 仍可输出纯文本
-- **WHEN** 调用方执行 `docnav --help` 或 `docnav --version`
-- **THEN** CLI 可以输出普通纯文本
-- **THEN** 该输出使用非文档 `PlainText` 或等价明确命名通道
-- **THEN** 该输出不需要使用 readable-view header 或 block framing
-
-#### Scenario: defaults.output 无效值返回配置错误
-- **WHEN** 有效项目或用户配置包含无效 `defaults.output` 值
-- **AND** 调用方执行 `docnav outline docs/guide.md`
-- **THEN** `docnav` 返回配置错误
-- **THEN** 错误包含配置路径、`defaults.output`、收到的值和可接受值
-- **THEN** document execution 在配置错误路径直接返回
 
 ### Requirement: 核心 CLI 必须保留 adapter 业务语义
 `docnav` MUST 在输出映射中保留 adapter 返回的 ref、display、content、content_type、cost 和 page。
@@ -312,40 +314,30 @@ Core CLI strict input 规则如下：
 - **THEN** CLI 退出码由 core CLI/output owner 映射为对应失败类别
 
 ### Requirement: Core CLI 必须复用共享 helper 且保留 core policy owner
+`docnav` core CLI MUST reuse shared diagnostics, direct CLI argv parsing/mapping, JSON IO and document output orchestration helpers where they exist. Core CLI MUST continue to own command classification, configuration command behavior, project root context for handoff, static registry ownership, registry command resolution, non-document command behavior and concrete core exit code enum.
 
-`docnav` core CLI MUST 在共享 helper 存在后复用 diagnostics、CLI argv classifier、JSON IO 和 document output orchestration helper。Core CLI MUST 继续拥有 command classification、configuration command behavior、project root context for handoff、static registry ownership、non-document command behavior 和 concrete core exit code enum。
+Shared argv helper usage MUST serve strict parsing/mapping and diagnostics. It MAY be implemented with `clap` command definitions and shared error mapping. Unknown flags, extra positional values and operation-inapplicable known flags MUST fail before successful document execution.
 
-#### Scenario: Core document argv strict classification 使用共享 scanner
+#### Scenario: Core document argv 使用严格 parser 或 helper
+- **WHEN** core document CLI parses unknown flags, extra positional values or known flags that are not applicable to the selected operation
+- **THEN** it uses `clap` strict parsing, shared direct CLI argv mapping or equivalent strict diagnostics helper
+- **THEN** core CLI returns an input diagnostic before navigation input resolution
+- **THEN** core document CLI and protocol request handling both reject invalid direct input at their owner boundary
 
-- **WHEN** core document CLI 解析 unknown flags、extra positional values 或当前 operation 不使用的 known flags
-- **THEN** 它使用共享 CLI argv scanner 做 token classification
-- **THEN** 当前 operation 实际使用参数的 typed parsing 由 navigation input resolution 拥有
-- **THEN** argv scanner 不应用于 protocol JSON request decoding
-
-#### Scenario: Core input failure 使用共享 diagnostics
-
-- **WHEN** core CLI 遇到 unknown flags、extra positional values 或当前 operation 不使用的 known flags
-- **THEN** 它使用 `docnav-diagnostics` 产生 primary input diagnostic
-- **THEN** selected output mode 投影 failure
-- **THEN** success output 不包含 caller input diagnostic fields
-
-#### Scenario: Core non-document JSON output 保持 core-owned
-
-- **WHEN** core CLI 输出非 document operation 的 machine-readable JSON
-- **THEN** 它可以复用 `docnav-json-io` 执行低层 JSON value serialization 和 newline writing
-- **THEN** help、version、adapter inspection 或其它非 document output mode 不通过 `docnav-output` 编排
-- **THEN** schema、plain text、stderr 和 exit behavior 仍由 core owning surface 决定
+#### Scenario: Core diagnostic construction 只服务 primary DiagnosticRecord
+- **WHEN** core CLI renders a strict input failure
+- **THEN** it constructs or maps one primary `DiagnosticRecord`
+- **THEN** the primary `DiagnosticRecord` identity is derived from the owning error code
+- **THEN** protocol-json stdout 使用 protocol failure response fields
 
 #### Scenario: Core document output 使用共享输出编排
-
 - **WHEN** core CLI 得到 document operation success 或 diagnostic failure outcome
-- **THEN** 它将 outcome、operation、request id 和 output mode 传给 `docnav-output` 的 document-only facade
+- **THEN** 它将 outcome、operation、request id、output mode 和允许投影的 diagnostics 传给 `docnav-output` 的 document-only facade
 - **THEN** `readable-json` 和 `readable-view` 从同一个 readable payload 派生
 - **THEN** `protocol-json` 向 stdout 写出一个 protocol response envelope
-- **THEN** diagnostic failures 通过 selected output mode 的 primary failure projection 输出
+- **THEN** rejected caller input 使用 diagnostic failure outcome
 
 #### Scenario: Core exit code enum 仍由 core 拥有
-
 - **WHEN** core CLI 将 `DiagnosticCode` 对应的共享分类映射为 process exit code
 - **THEN** 它可以使用共享 classification helper
 - **THEN** concrete core exit code enum 和最终 process exit decision 仍由 `docnav` core 拥有
@@ -372,3 +364,92 @@ Core CLI strict input 规则如下：
 - **WHEN** a caller omits `page`
 - **THEN** navigation input resolution resolves `page` to `1`
 - **THEN** project and user config do not provide `defaults.page` or `defaults.pagination.page`
+
+### Requirement: Core release 内置 adapter-layer workspace crates 必须成为默认 document operation implementation 来源
+`docnav` MUST use adapter-layer workspace crates shipped with the current core release as default document operation adapter implementations. The default release MUST include all built-in adapters without using feature gates to select the default adapter set. CLI input and effective project/user config MAY declare an adapter id only through `--adapter` or `defaults.adapter`, and that id MUST resolve to an implementation registered in the current core release static adapter registry. Registry entries MUST expose source-level static descriptors containing adapter identity、native option registry entries and operation handler bindings. Project/user config、installed packages、external executables、command paths and historical adapter artifact records MUST NOT provide default document operation implementation. The adapter layer MUST remain a code and contract boundary, not a separate default distribution boundary.
+
+#### Scenario: 默认发行物包含 adapter implementation
+- **WHEN** 构建默认 `docnav` 发行物
+- **THEN** 所有内置 adapter-layer workspace crates 随 `docnav` core release artifact 交付
+- **THEN** 默认发行物不需要启用额外 feature 才能获得内置 adapter set
+- **THEN** 默认发行物可直接执行已支持格式的 document operation
+
+#### Scenario: Static descriptor supplies operation bindings
+- **WHEN** core registry resolves the built-in Markdown adapter
+- **THEN** the registry entry exposes a static descriptor with Markdown identity, native option registry entries and handler bindings
+- **THEN** navigation input resolution can merge, validate/extract and hand off final native option values for linked dispatch
+- **THEN** selected Markdown typed-field declarations validate consumed option support, type and range semantics before handler dispatch
+
+#### Scenario: Core passes absolute path to linked adapter
+- **WHEN** caller executes `docnav outline docs/guide.md` from a project subdirectory
+- **THEN** `docnav` resolves the document path against cwd/project context to an absolute path
+- **THEN** `docnav-navigation` and the linked adapter handler receive the absolute path
+- **THEN** adapter IO does not depend on process cwd
+
+#### Scenario: Historical adapter config does not provide implementation
+- **WHEN** `<project-root>/.docnav/adapters.json` 存在并包含 adapter command path
+- **AND** 调用方执行 `docnav outline docs/guide.md`
+- **THEN** `docnav` 不把 adapter command path 当作 implementation source
+- **THEN** `docnav` 只从当前 core release static adapter registry 选择 adapter implementation
+
+#### Scenario: 声明式 adapter 只解析内置 adapter id
+- **WHEN** 调用方通过 `--adapter custom-local-adapter` 声明 adapter id
+- **AND** 该 id 不存在于当前 core release static adapter registry
+- **THEN** `docnav` 返回 adapter selection diagnostic
+- **THEN** `docnav` 不尝试从 installed package、external executable、command path 或 historical artifact record 加载该 adapter
+
+#### Scenario: 列出 core release 内置 adapter libraries
+- **WHEN** 调用方执行 `docnav adapter list`
+- **THEN** 输出只包含当前 core release static adapter registry 中的 adapter id、version 和 supported formats
+
+#### Scenario: Adapter diagnostics do not define process exit code
+- **WHEN** a linked adapter handler returns a structured diagnostic
+- **THEN** core/output maps that diagnostic to the selected protocol/readable surface
+- **THEN** final process exit code remains owned by `docnav` core CLI
+- **THEN** the adapter layer does not expose an exit-code API
+
+### Requirement: 核心 CLI 必须严格拒绝无效显式输入
+`docnav` core CLI MUST 将 caller-provided argv、operation arguments、explicit adapter selection、explicit path/ref/query/page/limit/output values 和 explicit config declarations 作为 strict public input。Unknown flags、extra positional arguments，以及 selected command 或 operation 不支持的 flags MUST 在 document execution 前返回 input diagnostic。
+
+Core CLI MUST 将 valid document argv 映射为 raw navigation command 或等价 handoff input，再连同 config source descriptors/paths 和 registry 交给 `docnav-navigation`；navigation input resolution 负责 adapter selection 和 internal operation request construction，core/output 负责 output dispatch。CLI boundary 可见的 invalid input MUST 在 document execution 前完成 strict rejection。Direct CLI parser/help implementation MAY continue to use `clap`。
+
+Input diagnostics MUST 包含 stable error code、argument 或 field location、可安全暴露的 received value/token、expected command shape 或 accepted values，并在 owner 可生成时包含至少一个 actionable repair hint。
+
+#### Scenario: 未知 argv 被拒绝
+- **WHEN** 调用方执行 `docnav outline docs/guide.md --future extra --output readable-json`
+- **THEN** `docnav` 返回输入错误或 `INVALID_REQUEST`
+- **THEN** navigation input resolution 和 document operation 不执行
+- **THEN** 诊断标出未知 argv token
+- **THEN** 诊断提供可接受参数或修复建议
+
+#### Scenario: 多余 positional 被拒绝
+- **WHEN** 调用方执行 `docnav outline docs/guide.md extra.md`
+- **THEN** `docnav` 返回输入错误或 `INVALID_REQUEST`
+- **THEN** 诊断标出多余 positional 的位置和值
+- **THEN** document operation 不执行
+
+#### Scenario: 当前 operation 不支持的已知参数被拒绝
+- **WHEN** 调用方执行 `docnav info docs/guide.md --page 2`
+- **THEN** `docnav` 返回输入错误或 `INVALID_REQUEST`
+- **THEN** 诊断说明该参数不适用于 `info`
+- **THEN** 诊断指向支持该参数的 operation 或建议删除该参数
+
+#### Scenario: 参数值类型无效时被拒绝
+- **WHEN** 调用方执行 `docnav read docs/guide.md --ref intro --limit nope`
+- **THEN** `docnav` 返回输入错误或 `INVALID_REQUEST`
+- **THEN** 诊断标出 `--limit` 的 received value
+- **THEN** 诊断说明该参数的 expected value shape
+
+#### Scenario: 有效 argv 仍进入共享语义管道
+- **WHEN** 调用方执行有效的 `docnav outline/read/find/info` CLI 命令
+- **THEN** document CLI input 映射为 canonical document operation input 或等价 semantic request
+- **THEN** `docnav-navigation` 负责 adapter selection 和 internal operation request 构造
+- **THEN** output mode 分流使用共享输出逻辑
+- **THEN** CLI 不创建独立业务参数解释路径
+
+#### Scenario: Help 不执行业务
+- **WHEN** 调用方执行 `docnav --help`
+- **OR** 执行 core 子命令 help
+- **THEN** 输出列出可用命令、关键参数、默认值或可选值
+- **THEN** 该命令不读取文档、不选择 adapter、不 dispatch linked adapter handler
+

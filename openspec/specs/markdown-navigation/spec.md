@@ -92,103 +92,31 @@ Markdown adapter 测试 MUST 覆盖无 heading、仅深层 heading、无效 head
 - **THEN** 全部参考边界案例都有对应测试或 fixture
 
 ### Requirement: Markdown adapter 必须通过 core CLI 黑盒 smoke 测试
-Core CLI smoke MUST cover linked Markdown adapter behavior through the `docnav` executable. 测试必须启动构建后的 core binary，并通过真实进程边界传入 argv、cwd 和环境；Markdown adapter implementation source MUST come from the current core release static registry. 核心 fixtures 必须是提交到项目中的固定文件。
+Core CLI smoke MUST cover linked Markdown adapter behavior through the `docnav` executable. 测试必须启动构建后的 core binary，并通过真实进程边界传入 argv、cwd 和环境；Markdown adapter implementation source MUST come from the current core release static registry。核心 fixtures 必须是提交到项目中的固定文件。
 
 Smoke suite 必须覆盖：
 
 - Fixture corpus：normal Markdown、重复 heading、frontmatter、代码围栏伪 heading、深层 heading、无 heading、Unicode 内容、大分页内容、非 UTF-8 输入、UTF-8 BOM、CRLF 行尾、`.MD` 和 `.markdown`。
 - Operations 和入口：`outline -> ref -> read`、`find`、`info`、core adapter inspection、CLI help、linked adapter dispatch 和 strict argv failure path。
 - 输出模式：`readable-view`、`readable-json` 和 `protocol-json`。
-- Strict failure 行为：unknown argv、多余 positional 和当前 operation 不适用参数返回 primary input diagnostic。
+- Strict input 行为：unknown argv、多余 positional、operation-inapplicable 参数和 undeclared native options 返回 primary `DiagnosticRecord` 投影。
 - Readable-view framing：合法 JSON header、静态 `/content` block 引用、UTF-8 byte length、block 起止行和正文原值还原。
 
-#### Scenario: Node.js runner 使用 core 构建产物
-- **WHEN** smoke 测试运行
-- **THEN** 测试使用已构建的 `docnav` binary 路径启动真实进程
-- **THEN** Node.js runner 负责传入命令参数、工作目录和环境
-- **THEN** 黑盒断言基于进程 stdout、stderr 和 exit code
-- **THEN** Markdown adapter behavior 通过 core-linked adapter dispatch 观察
-
-#### Scenario: fixture corpus 是固定项目文件
-- **WHEN** reviewer 查看 smoke fixture corpus
-- **THEN** normal、duplicate headings、frontmatter、code fence、deep headings、no headings、unicode、large pagination、non-UTF-8、UTF-8 BOM、CRLF、`.MD` 和 `.markdown` 用例都能在项目目录中直接找到
-- **THEN** 核心 fixture 内容不依赖测试运行时临时生成
-
-#### Scenario: 通过 CLI outline ref 读取内容
-- **WHEN** smoke 测试对 normal Markdown fixture 执行 `docnav outline <path> --output readable-json` 并提取 entry ref
-- **THEN** 使用该 ref 执行 `docnav read <path> --ref <ref> --output readable-json` 返回对应 Markdown 内容
-- **THEN** read 结果包含 `content_type: "text/markdown"`
-- **THEN** outline 和 read 的 readable JSON 均不包含 protocol envelope 字段
-
-#### Scenario: protocol-json smoke 使用 envelope
-- **WHEN** smoke 测试执行 `docnav read <path> --ref <ref> --output protocol-json`
-- **THEN** stdout 包含成功 protocol response envelope
-- **THEN** envelope 的 `operation` 为 `read`
-- **THEN** stderr 不包含用户可读结果或重复 JSON payload
-
-#### Scenario: readable-view 输出 smoke 保留完整字段和 Markdown block
-- **WHEN** smoke 测试执行 `outline`、`read`、`find` 和 `info` 的默认或显式 `readable-view` 输出
-- **THEN** 每个 stdout 从 pretty JSON header 开始
-- **THEN** JSON header 包含对应 operation 的全部 readable 字段和 page 状态
-- **THEN** read header 的 content 原位置包含 `/content` block 引用和 UTF-8 byte length
-- **THEN** `/content` block 还原值等于 readable-json content
-- **THEN** stdout 不包含完整 protocol envelope
-- **THEN** 成功路径 stderr 为空或只包含非阻断诊断
-
-#### Scenario: CLI help 可用于纠错
-- **WHEN** smoke 测试执行 `docnav --help`
-- **OR** 执行 `docnav outline --help`
-- **THEN** stdout 或 stderr 包含可用命令、关键参数、默认值或输出模式信息
-- **THEN** help 只把 readable-view、readable-json 和 protocol-json 列为 document operation 输出模式
-- **THEN** 该命令不执行文档导航业务
-
-#### Scenario: document output 值按三种模式校验
-- **WHEN** smoke 测试执行 `docnav outline <path> --output <invalid-output>`
-- **THEN** 命令非零退出并报告非法 output value
-- **THEN** stdout 为空或仅包含该错误路径允许的诊断 payload
-
-#### Scenario: adapter inspection 使用 core registry
-- **WHEN** smoke 测试执行 `docnav adapter list`
-- **THEN** 输出包含 linked Markdown adapter 的 id、version 和 formats
-- **THEN** adapter inspection 不要求独立 Markdown executable
-
-#### Scenario: strict argv failure path 被覆盖
+#### Scenario: Strict argv failure 被覆盖
 - **WHEN** smoke 测试执行 `docnav outline <path> --unknown extra --output readable-json`
 - **OR** 执行 `docnav outline --unknown <path> --output readable-view`
 - **OR** 执行 `docnav outline <path> --unknown --output protocol-json`
 - **AND** `<path>` 指向有效 Markdown fixture
-- **THEN** 命令非零退出
-- **THEN** 输出包含 primary input diagnostic
-- **THEN** 不返回所选输出模式的成功结果
+- **THEN** 命令返回 strict input failure
+- **THEN** linked Markdown handler 不执行
+- **THEN** failure output 投影 primary `DiagnosticRecord`
 
-#### Scenario: fixture corpus 覆盖 Markdown 边界
-- **WHEN** smoke corpus 被执行
-- **THEN** 重复 heading 产生不同 ref
-- **THEN** frontmatter 和代码围栏伪 heading 不产生 outline entry
-- **THEN** 深层 heading 和无 heading fixture 在可见 outline 为空时可回退到全文 ref
-- **THEN** Unicode 和 large pagination fixture 证明 page 可继续读取且不会切断 Unicode 字符
-- **THEN** UTF-8 BOM 和 CRLF fixture 可被读取并保持正确 outline/read 行为
-- **THEN** `.MD` 和 `.markdown` 扩展名 fixture 可被 probe 识别为 Markdown
-- **THEN** 非 UTF-8 fixture 通过 CLI 返回稳定编码错误
-
-#### Scenario: registry metadata find info 被覆盖
-- **WHEN** smoke suite 执行 adapter inspection、find 和 info
-- **THEN** registry metadata 声明 Markdown supported formats
-- **THEN** find 返回带 ref 和 page 状态的 matches
-- **THEN** info 返回 Markdown 摘要
-- **THEN** core CLI document operations 通过 linked Markdown adapter handler dispatch
-
-#### Scenario: JSON 输出通过 schema 或等价结构校验
-- **WHEN** smoke suite 检查 `readable-json` 和 `protocol-json` 输出
-- **THEN** readable JSON 输出符合对应 readable schema 或等价字段集合断言
+#### Scenario: 成功 smoke 使用成功 payload shape
+- **WHEN** smoke suite 检查有效 `readable-json`、`readable-view` 和 `protocol-json` 输出
+- **THEN** Markdown adapter behavior 通过 core-linked adapter dispatch 观察
+- **THEN** successful document output 使用 owning success payload shape
+- **THEN** readable success output 使用 current success schema fields
 - **THEN** protocol JSON 输出符合 protocol response envelope 结构
-- **THEN** adapter inspection 输出符合 core command owner 定义的 metadata shape
-
-#### Scenario: 分页继续和越界 page 被覆盖
-- **WHEN** smoke suite 对 large pagination fixture 使用返回的下一页 page 继续读取
-- **THEN** 第二页返回后续内容且 page 状态可继续或为 null
-- **WHEN** smoke suite 请求超过结果末尾的 page
-- **THEN** 返回空结果和 `page: null`，且不作为错误
 
 ### Requirement: Core Markdown smoke 必须输出可审计日志
 Core CLI Markdown smoke runner MUST write an audit log for every executed command. The log MUST include the command line, working directory, fixture reference, exit code, stdout, stderr, and assertion summary. The runner MUST write a stable latest log and a timestamped log under `.log/smoke/core/`.
@@ -209,57 +137,35 @@ Core CLI Markdown smoke runner MUST write an audit log for every executed comman
 - **THEN** 日志不转储完整环境变量或与测试无关的机器信息
 
 ### Requirement: Markdown adapter 必须有 core CLI 负向矩阵测试
-Core CLI smoke MUST provide a black-box matrix for Markdown document operations, covering invalid command-line input, strict argv input, invalid config input and navigation input resolution native option validation before linked adapter dispatch. 每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
+Core CLI matrix MUST cover Markdown document operations through linked adapter dispatch, including invalid command-line input、strict argv failure、非法配置输入和 navigation input resolution native option validation。每个用例必须按所属输出层断言 stdout、stderr 和 process exit code。
 
 矩阵必须覆盖：
 
 - 必需语义：缺 path、缺 `--ref`、缺 `--query`。
 - Strict argv：unknown flag、多余 positional、当前 operation 不使用的参数，包括值非法但未被当前 operation 使用的 known 参数。
 - 实际使用参数失败：`page` 或 `limit` 为 0、`page` 或 `limit` 非数字、`output` 非法、`max_heading_level` 越界。
+- 配置输入失败：present config invalid JSON、non-object root、未知顶层字段、未知 `defaults` 字段和 undeclared `options` key。
 - 业务和输入错误：missing file、invalid ref、non-UTF-8 document。
-- Protocol-json failure projection：CLI 输入、配置输入和 selected-adapter typed-field option validation failure 在 `--output protocol-json` 下产生 protocol-shaped failure envelope。
-- Failure 断言：primary input diagnostic 和输出通道边界。
+- Protocol-shaped failure：`protocol-json` output mode must use the protocol failure envelope when strict argv、config input or native option validation fails.
 
-#### Scenario: 参数校验失败保持 CLI 诊断
-- **WHEN** 负向矩阵执行缺 path、缺 `--ref`、缺 `--query`、非法 page、非法 limit、非法 output 或非法 max heading level
-- **THEN** 进程非零退出
-- **THEN** stderr 或所选错误输出包含简洁诊断
-- **THEN** stdout 不包含成功的 protocol payload 或 readable result payload
-
-#### Scenario: unknown argv 阻断操作
+#### Scenario: unknown argv 阻断 document execution
 - **WHEN** CLI 矩阵执行 unknown flag、多余 positional 或当前 operation 不使用的参数
-- **OR** 执行当前 operation 不使用、且值无法通过其它 operation 类型或范围校验的 known 参数
 - **AND** 当前 operation 的必需语义参数仍可被解析
 - **THEN** 进程非零退出
-- **THEN** 输出包含 primary input diagnostic
-- **THEN** stdout 不包含成功结果
+- **THEN** stdout 按所选 output mode 承载 failure projection 或保持该错误路径允许的空 stdout
+- **THEN** failure diagnostic 标出输入位置、received token、expected shape 和 guidance
 
-#### Scenario: 当前 operation 使用的已知参数仍严格校验
-- **WHEN** 负向矩阵执行 `docnav outline <path> --page 0`
-- **OR** 执行 `docnav outline <path> --limit nope`
-- **OR** 执行 `docnav outline <path> --output nope`
-- **OR** 执行 `docnav outline <path> --max-heading-level 9`
-- **THEN** 进程非零退出
-- **THEN** 诊断指出对应已知参数非法
+#### Scenario: readable-json strict failure 使用 readable error
+- **WHEN** CLI 矩阵以 `--output readable-json` 执行 strict argv failure 或 config input failure
+- **THEN** stdout 输出 readable error payload
+- **THEN** payload 投影一个 primary `DiagnosticRecord`
+- **THEN** stdout 不包含 successful operation payload
 
-#### Scenario: readable operation 错误保留 code 和 details
-- **WHEN** 负向矩阵以 `--output readable-json` 执行 missing file、invalid ref 或 non-UTF-8 document 用例
-- **THEN** stdout 包含 readable error JSON，并保留稳定 `code`、`error`、`details` 和 `guidance`
-- **THEN** stdout 不包含 `protocol_version`、`request_id`、`operation` 或 `ok`
-- **THEN** stderr 不包含替代 readable payload
-
-#### Scenario: protocol-json operation 错误保留 envelope
-- **WHEN** 负向矩阵以 `--output protocol-json` 执行 invalid ref 或 non-UTF-8 document 用例
-- **THEN** stdout 包含 failure protocol envelope
-- **THEN** envelope 保留 request operation 和稳定 error details
-- **THEN** stderr 只包含诊断，且不重复 protocol JSON
-
-#### Scenario: protocol-json input failure 返回结构化协议失败
-- **WHEN** 负向矩阵以 `--output protocol-json` 执行 unknown argv、缺少必需参数或参数类型错误的 core CLI 请求
-- **THEN** stdout 包含 `INVALID_REQUEST` protocol failure envelope
-- **THEN** failure envelope 的 operation 在可解析时保留对应 operation，否则为 null
-- **THEN** 失败来自 navigation input resolution 的 typed-field processing
-- **THEN** 进程非零退出
+#### Scenario: protocol-shaped stdout 使用 failure envelope
+- **WHEN** CLI 矩阵以 `--output protocol-json` 执行 strict argv failure、config input failure 或 native option validation failure
+- **THEN** stdout 通过 protocol response schema
+- **THEN** failure envelope 投影一个 primary `DiagnosticRecord`
+- **THEN** linked Markdown handler does not execute when failure belongs to core input/config boundary
 
 ### Requirement: 保留成熟 parser 行为基线
 Markdown 适配器 MUST 使用成熟 parser；章节 MUST 从目标 heading 开始，并在下一个同级或更高级 heading 前结束。
@@ -401,62 +307,46 @@ outline 的超长 title 或 breadcrumb，以及 find 的超长匹配片段或补
 - **THEN** heading 身份输入来自 ref 的结构坐标
 
 ### Requirement: Navigation input resolution 支持 Markdown native options
-Core `docnav` document operations MUST pass the raw navigation command, config source descriptors/paths and static registry to `docnav-navigation`. `docnav-navigation` MUST load raw project/user config sources and resolve Markdown native options through the selected Markdown typed-field declarations and source-level native option registry. Project config MUST be read from `<project-root>/.docnav/docnav.json`; user config MUST come from the core user config descriptor/path. 首期 config source MUST support `defaults.pagination.enabled`、`defaults.pagination.limit` 和 `defaults.output`；`options` MUST remain a raw adapter-owned native option source map until selected adapter typed-field validation/extraction. 当前 Markdown static descriptor declares `options.max_heading_level` as a public native option source, and its type semantics and `1..6` range validation are enforced before request construction. Core MUST resolve project root/cwd/document path before navigation input resolution. Missing default config sources MUST be treated as absent; present invalid config sources MUST produce blocking config diagnostics.
+Markdown adapter MUST receive typed native option values through navigation input resolution. Core owns config source descriptor/path handoff; `docnav-navigation` owns raw config source discovery, JSON reading, source priority, selected adapter typed-field validation/extraction and config input diagnostics. Markdown adapter documents the business effect of validated options, such as `options.max_heading_level` controlling visible heading granularity.
 
-#### Scenario: max_heading_level 来自配置
-- **WHEN** `<project-root>/.docnav/docnav.json` 包含 `options.max_heading_level: 2`
-- **AND** 调用方执行 `docnav outline docs/guide.md`
-- **THEN** outline 只显示当前 max_heading_level 下可见的 heading entries
-- **THEN** 该结果与 protocol request `arguments.options.max_heading_level: 2` 的行为一致
-- **THEN** adapter 接收的 document path 是 core 解析后的 absolute path
+Missing default config sources mean the corresponding layer has no config source. Present invalid config sources such as unreadable, invalid JSON or non-object root MUST fail at the navigation config source boundary. Unknown top-level fields, unknown `defaults` fields and undeclared `options` keys MUST fail before handler execution. Declared `options` keys enter selected-adapter typed-field validation/extraction with their source metadata preserved.
 
-#### Scenario: find 使用配置中的 max_heading_level
-- **WHEN** core 用户配置文件包含 `options.max_heading_level: 2`
-- **AND** 调用方执行 `docnav find docs/guide.md --query install`
-- **THEN** find 只搜索当前 max_heading_level 下可见的 heading entries
-- **THEN** 该结果与 protocol request `arguments.options.max_heading_level: 2` 的行为一致
+#### Scenario: 默认配置来源缺失表示 absence
+- **WHEN** 项目级或用户级默认配置来源不存在
+- **THEN** 该配置 source absent
+- **THEN** Markdown adapter 使用其它有效来源和内置默认值继续构造参数来源
 
-#### Scenario: 显式 max_heading_level 覆盖配置
-- **WHEN** `<project-root>/.docnav/docnav.json` 包含 `options.max_heading_level: 2`
-- **AND** 调用方执行 `docnav outline docs/guide.md --max-heading-level 4`
-- **THEN** navigation input resolution 将最终 native option source 设为显式 argv 值 `4`
-- **THEN** 配置值 `2` 不覆盖显式 argv
+#### Scenario: present config invalid 时失败
+- **WHEN** 默认配置路径存在
+- **AND** 配置内容 unreadable、invalid JSON、non-object root、包含未知顶层字段或未知 `defaults` 字段
+- **THEN** CLI 返回配置输入错误
+- **THEN** 已知字段不被用于继续成功路径
 
-#### Scenario: 项目配置覆盖用户配置
-- **WHEN** core 用户配置文件包含 `options.max_heading_level: 2`
-- **AND** `<project-root>/.docnav/docnav.json` 包含 `options.max_heading_level: 4`
-- **AND** 调用方执行 `docnav outline docs/guide.md`
-- **THEN** navigation input resolution 将最终 native option source 设为 project config 值 `4`
-- **THEN** user config 值 `2` 不覆盖 project config
-
-#### Scenario: output 默认值来自配置
-- **WHEN** `<project-root>/.docnav/docnav.json` 包含 `defaults.output: "readable-json"`
-- **AND** 调用方执行 `docnav info docs/guide.md` 且未传入 `--output`
-- **THEN** stdout 使用 readable-json 输出
-- **THEN** 输出不使用 readable-view block framing
+#### Scenario: options key 由 navigation input resolution 校验
+- **WHEN** 配置文件包含 `options.max_heading_level: 2`
+- **THEN** `docnav-navigation` 将 `options` object 合并为 selected Markdown native option source
+- **THEN** selected-adapter typed-field validation/extraction 校验并提取 `max_heading_level`
+- **WHEN** 配置文件包含 undeclared `options` key
+- **THEN** CLI 返回 native option input diagnostic
 
 ### Requirement: Markdown native option config sources 必须由 core smoke 和矩阵测试覆盖
-Core CLI smoke 和矩阵 MUST 覆盖 navigation-owned raw config source loading、优先级、present invalid config source 返回 blocking config diagnostic，以及 protocol request `arguments` 与配置/default sources 进入同一 navigation input resolution 的边界。
+Docnav core smoke 和矩阵 MUST 覆盖 navigation-owned config source loading、优先级、配置 source absence、配置 input failure、native option metadata handoff，以及 navigation input resolution/default sources 进入 request construction 前补全过程的边界。
 
-#### Scenario: Smoke 覆盖配置优先级
-- **WHEN** smoke suite 使用项目级 `<project-root>/.docnav/docnav.json` 和 core 用户配置文件
-- **THEN** 测试证明显式 argv 覆盖项目级配置
-- **THEN** 项目级配置覆盖用户级配置
-- **THEN** 用户级配置覆盖内置默认值
-- **THEN** 测试证明 `outline` 和 `find` 都消费适用的 `options.max_heading_level`
+#### Scenario: 配置 source absence 被覆盖
+- **WHEN** 默认项目级或用户级配置文件不存在
+- **THEN** smoke 测试证明该 source absent
+- **THEN** operation 可以使用其它有效来源和内置默认值成功
 
-#### Scenario: 矩阵覆盖配置源不可用
-- **WHEN** smoke 或矩阵 fixture 提供语法无效的 JSON 配置源
-- **AND** 其它配置来源或内置默认值可用
-- **THEN** `docnav` 返回 blocking config diagnostic
-- **THEN** operation request 不构造
+#### Scenario: 配置 input failure 被覆盖
+- **WHEN** present config invalid JSON、non-object root、未知字段或 undeclared option key 出现
+- **THEN** 矩阵测试证明 CLI 返回 strict failure
+- **THEN** failure output 投影一个 primary `DiagnosticRecord`
 
-#### Scenario: Protocol arguments 使用配置补足 registered option
-- **WHEN** `<project-root>/.docnav/docnav.json` 设置 `options.max_heading_level`
-- **AND** smoke suite 通过 core `docnav --output protocol-json` 执行未显式携带 options 的 outline request
-- **THEN** navigation input resolution 将 request `arguments` 映射为 direct input
-- **THEN** resolution 将项目级配置中的 `options.max_heading_level` 保留为 project config native option source
-- **THEN** outline 行为与 request 显式携带相同 `max_heading_level` 的行为一致
+#### Scenario: Valid options 仍影响 Markdown 导航语义
+- **WHEN** 项目级配置来源设置 `options.max_heading_level`
+- **AND** 该 key 由 selected Markdown typed-field declaration 声明并通过 navigation input resolution 校验
+- **THEN** 测试证明 validated `options.max_heading_level` typed value 影响 `outline` 和 `find` 的 visible heading granularity
+- **THEN** core operation 通过同一 navigation input resolution 边界补全后进入 handler
 
 ### Requirement: Markdown native options 提供 core 配置 schema 和示例参考
 `docs/schemas/docnav-markdown-config.schema.json` MUST 描述 core `docnav` 配置 source 中 Markdown-relevant fields 的参考 shape，包含 `defaults.pagination.enabled`、`defaults.pagination.limit`、`defaults.output` 和 raw `options` native option map。`docs/examples/json/docnav-markdown-config.json` MUST 提供包含 `options.max_heading_level` 的 core config 示例。该 schema/example 用于文档校验和编辑器提示；runtime defaults、source-level native option registry entries 和 config validation ownership 由 navigation input resolution 与 adapter owner 文档定义。
@@ -487,3 +377,4 @@ Document operations MUST consume `defaults.pagination.enabled`, `defaults.pagina
 - **THEN** it uses `defaults.pagination.limit` for the numeric budget default
 - **THEN** it does not describe that budget as a core or navigation-input-resolution unit
 - **THEN** any Markdown-specific unit description remains owned by the Markdown adapter documentation
+
