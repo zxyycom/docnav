@@ -50,6 +50,7 @@ impl From<FormatUnknownDetails> for DiagnosticDetails {
             path: details.path,
             reason: details.reason,
             candidates: details.candidates,
+            candidate_failures: details.candidate_failures,
         }
     }
 }
@@ -59,6 +60,7 @@ impl From<FormatAmbiguousDetails> for DiagnosticDetails {
         Self::FormatAmbiguous {
             path: details.path,
             candidates: details.candidates,
+            candidate_failures: details.candidate_failures,
         }
     }
 }

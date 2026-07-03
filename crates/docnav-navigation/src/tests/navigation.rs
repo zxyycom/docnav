@@ -11,7 +11,7 @@ use crate::{
 
 use super::support::{
     config_sources, diagnostic_record, navigation_command, temp_workspace_path, write_config_file,
-    StubRegistry,
+    StubRegistry, UnsupportedRegistry,
 };
 
 #[test]
@@ -87,6 +87,36 @@ fn navigation_resolves_selected_adapter_options_and_dispatches() {
         }
         ProtocolResponse::Failure(failure) => panic!("expected success, got {failure:?}"),
     }
+}
+
+#[test]
+fn automatic_discovery_all_fail_projects_candidate_failures() {
+    let error = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(Value::Null, Value::Null),
+        &UnsupportedRegistry,
+    )
+    .expect_err("all adapter candidates should fail");
+    let protocol_error = protocol_error(error.diagnostic());
+
+    assert_eq!(protocol_error.code(), ProtocolDiagnosticCode::FormatUnknown);
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("reason")
+            .and_then(Value::as_str),
+        Some("NO_SUPPORTED_ADAPTER")
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("candidate_failures")
+            .and_then(Value::as_array)
+            .and_then(|failures| failures.first())
+            .and_then(|failure| failure.get("reason"))
+            .and_then(Value::as_str),
+        Some("PROBE_UNSUPPORTED")
+    );
 }
 
 #[test]

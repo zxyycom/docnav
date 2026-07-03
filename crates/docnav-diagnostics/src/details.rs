@@ -209,10 +209,14 @@ pub enum DiagnosticDetails {
         path: String,
         reason: String,
         candidates: Vec<FormatCandidateDetails>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        candidate_failures: Option<Vec<FormatCandidateDetails>>,
     },
     FormatAmbiguous {
         path: String,
         candidates: Vec<FormatCandidateDetails>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        candidate_failures: Option<Vec<FormatCandidateDetails>>,
     },
     Ref {
         #[serde(rename = "ref")]

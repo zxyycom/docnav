@@ -200,14 +200,16 @@ Proves:
 - guidance 指向 current core release static registry，且不提示 install/register/executable/artifact 旧动态入口。
 - Automatic discovery 由 `docnav-navigation` 按 static registry 顺序执行 probe，扩展名 metadata 不改变候选顺序。
 - Selection candidate failure 由 resolve/probe 证据产生，不由 manifest metadata 产生。
+- Automatic discovery 全部候选失败时返回 `FORMAT_UNKNOWN`，并把 routing-owned candidate evidence 投影到 primary details 的 `candidate_failures`。
 
 ### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
 Status: implemented
-Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`, `crates/docnav-protocol/src/tests/basic.rs`, `crates/docnav-output/src/tests.rs`
+Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`, `crates/docnav-diagnostics/src/tests/record.rs`, `crates/docnav-protocol/src/tests/basic.rs`, `crates/docnav-output/src/tests.rs`
 
 Proves:
 - DiagnosticCode、category、severity、effect 和 details rule 覆盖所有 current code。
 - primary failure diagnostic 的 code、owner、details、guidance 和从属 details 保持当前 documented shape。
+- Direct `DiagnosticRecordDraft::into_record()` validates format details that include optional subordinate `candidate_failures`.
 
 ### WB-CLIARGS-BOUNDARY-001 Strict CLI 参数扫描保持输入边界
 Status: implemented

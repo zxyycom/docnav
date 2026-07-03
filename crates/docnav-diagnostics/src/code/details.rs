@@ -32,10 +32,12 @@ pub(super) const FORMAT_UNKNOWN_FIELDS: &[DetailFieldRule] = &[
     required("path", DetailKind::String),
     required("reason", DetailKind::String),
     required("candidates", DetailKind::ObjectArray),
+    optional("candidate_failures", DetailKind::ObjectArray),
 ];
 pub(super) const FORMAT_AMBIGUOUS_FIELDS: &[DetailFieldRule] = &[
     required("path", DetailKind::String),
     required("candidates", DetailKind::ObjectArray),
+    optional("candidate_failures", DetailKind::ObjectArray),
 ];
 pub(super) const REF_FIELDS: &[DetailFieldRule] = &[required("ref", DetailKind::String)];
 pub(super) const REF_CANDIDATE_FIELDS: &[DetailFieldRule] = &[

@@ -1,7 +1,7 @@
 use super::*;
 use docnav_diagnostics::{
     typed_codes, AdapterConfigSourceDetails, DiagnosticCode, DiagnosticRecordDraft,
-    DiagnosticSource, DiagnosticStack, FieldReasonDetails, ProtocolDiagnosticCode,
+    DiagnosticSource, FieldReasonDetails, ProtocolDiagnosticCode,
 };
 
 // @case WB-PROTO-BASIC-001
@@ -183,21 +183,17 @@ fn protocol_error_roundtrips_through_diagnostic_record_projection() {
     let error = ProtocolError::ref_not_found("R99")
         .with_owner("docnav_protocol_test")
         .with_guidance(["Run outline first."]);
-    let mut diagnostics = DiagnosticStack::new();
-    let id = diagnostics
-        .push(
-            error
-                .to_record_draft(DiagnosticSource::with_stage("docnav-protocol", "test"))
-                .expect("typed protocol error details convert to diagnostic record"),
-        )
+    let record = error
+        .to_record_draft(DiagnosticSource::with_stage("docnav-protocol", "test"))
+        .expect("typed protocol error details convert to diagnostic record")
+        .into_record()
         .unwrap();
-    let record = diagnostics.get(id).unwrap();
 
     assert_eq!(
         record.guidance(),
         Some(&["Run outline first.".to_owned()][..])
     );
-    assert_eq!(ProtocolError::from_diagnostic_record(record), Some(error));
+    assert_eq!(ProtocolError::from_diagnostic_record(&record), Some(error));
 }
 
 #[test]
@@ -212,18 +208,14 @@ fn protocol_error_location_uses_config_issue_path_and_field() {
     )
     .with_field("defaults.limit")]);
 
-    let mut diagnostics = DiagnosticStack::new();
-    let id = diagnostics
-        .push(DiagnosticRecordDraft::new::<
-            typed_codes::protocol::InvalidRequest,
-        >(
-            "Config file contains an unknown field.",
-            details,
-            DiagnosticSource::with_stage("docnav", "config"),
-        ))
-        .unwrap();
-    let record = diagnostics.get(id).unwrap();
-    let error = ProtocolError::from_diagnostic_record(record).unwrap();
+    let record = DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
+        "Config file contains an unknown field.",
+        details,
+        DiagnosticSource::with_stage("docnav", "config"),
+    )
+    .into_record()
+    .unwrap();
+    let error = ProtocolError::from_diagnostic_record(&record).unwrap();
 
     assert_eq!(error.owner(), "docnav_config");
     assert_eq!(

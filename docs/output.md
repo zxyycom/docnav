@@ -10,7 +10,7 @@
 
 机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；错误发生在 CLI 参数解析、adapter 选择、adapter layer dispatch 或输出转换阶段时，只要输出模式可以从 argv 或请求中确定，也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
 
-统一执行管线按 [适配器契约](adapter-contract.md#adapter-选择) 累积 automatic discovery 候选失败并写入错误通道；全部候选失败时，这些记录从属于 primary `DiagnosticRecord.details.candidate_failures`。后续候选成功时，候选失败保持 internal discovery state，不进入 public document output。
+统一执行管线按 [适配器契约](adapter-contract.md#adapter-选择) 累积 automatic discovery 候选失败证据；全部候选失败时，这些记录从属于 primary `DiagnosticRecord.details.candidate_failures`。后续候选成功时，候选失败保持 internal discovery state，不进入 public document output。
 
 ## `protocol-json`
 

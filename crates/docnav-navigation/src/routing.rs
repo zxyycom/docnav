@@ -258,7 +258,7 @@ impl SelectionState {
     }
 
     fn format_unknown(self, document_path: &str) -> NavigationError {
-        let candidates = self
+        let candidates: Vec<FormatCandidateDetails> = self
             .evidence
             .into_iter()
             .map(CandidateEvidence::into_format_candidate_details)
@@ -266,7 +266,12 @@ impl SelectionState {
         NavigationError::new(protocol_error_record_draft::<
             typed_codes::protocol::FormatUnknown,
         >(
-            FormatUnknownDetails::new(document_path.to_owned(), "NO_SUPPORTED_ADAPTER", candidates),
+            FormatUnknownDetails::new(
+                document_path.to_owned(),
+                "NO_SUPPORTED_ADAPTER",
+                candidates.clone(),
+            )
+            .with_candidate_failures(candidates),
             DiagnosticSource::with_stage("docnav-navigation", "routing"),
         ))
     }

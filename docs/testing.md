@@ -14,7 +14,7 @@
 | 层级 | 核心目标 |
 | --- | --- |
 | schema | 原始协议、manifest、probe 和各 operation readable 输出分别通过独立 schema；readable schema 用于示例和工具输出校验，不作为完整机器协议 |
-| 单元 | parser、ref、默认值、分页、错误通道记录/投影和其它自定义逻辑不变量 |
+| 单元 | parser、ref、默认值、分页、diagnostic record/projection helper 和其它自定义逻辑不变量 |
 | 集成 | `docnav` 配置优先级、static registry adapter 选择、adapter inspection、protocol request dispatch、输出模式和真实 CLI 通道 |
 | 端到端 | 真实 CLI、release package、协议映射、精简输出和 continuation 链路 |
 
@@ -22,7 +22,7 @@
 
 测试按“用户可观察契约”和“自定义逻辑不变量”划分所有权。同一行为只有在证明不同责任时才跨层测试：Rust tests 证明内部不变量，CLI smoke 证明真实进程入口的外部契约。
 
-历史回归只作为风险线索或代表性输入来源，不作为证明目标。无论是新增 case、拆分 case，还是把断言嵌入已有 case，新增断言都必须先能写出“owner 明确承诺的语义 -> 可观察结果”的证明目标，并能追溯到当前 owner 文档、schema、示例、错误通道投影或覆盖矩阵。只有当明文契约要求校验缺失、拒绝、输出通道不污染、ref 不改变或其它否定性边界时，才测试该否定行为；否则使用现有覆盖、局部验证命令或代码审查证明本次改动。
+历史回归只作为风险线索或代表性输入来源，不作为证明目标。无论是新增 case、拆分 case，还是把断言嵌入已有 case，新增断言都必须先能写出“owner 明确承诺的语义 -> 可观察结果”的证明目标，并能追溯到当前 owner 文档、schema、示例、primary failure projection 或覆盖矩阵。只有当明文契约要求校验缺失、拒绝、输出通道不污染、ref 不改变或其它否定性边界时，才测试该否定行为；否则使用现有覆盖、局部验证命令或代码审查证明本次改动。
 
 ### CLI smoke
 

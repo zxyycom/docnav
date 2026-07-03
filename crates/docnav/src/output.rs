@@ -1,6 +1,5 @@
 use std::io::{self, Write};
 
-use docnav_diagnostics::DiagnosticStack;
 use docnav_json_io::write_json_value_pretty;
 use docnav_output::{
     write_document_diagnostic_error, write_document_response, DocumentOutputMode,
@@ -99,16 +98,9 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
         stdout,
         stderr,
     } = request;
-    let mut diagnostics = DiagnosticStack::new();
-    let error_id = match diagnostics.push(error.diagnostic().clone()) {
-        Ok(id) => id,
+    let error_record = match error.diagnostic().clone().into_record() {
+        Ok(record) => record,
         Err(error) => return write_io_error(io::Error::other(error), stderr),
-    };
-    let Some(error_record) = diagnostics.get(error_id).cloned() else {
-        return write_io_error(
-            io::Error::other("pushed diagnostic record not found"),
-            stderr,
-        );
     };
     let request_id = generate_request_id();
     let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, &request_id, operation);

@@ -85,13 +85,13 @@ fn invalid_mapped_value_reports_diagnostic_without_safe_value() {
         diagnostic.failure.reason,
         ValidationReason::BelowMinimum { .. }
     ));
-    let mut stack = docnav_diagnostics::DiagnosticStack::new();
-    let id = stack
-        .push(resolution.diagnostics()[0].to_record_draft(
-            docnav_diagnostics::DiagnosticSource::with_stage("docnav-parameter-resolution", "test"),
+    let record = resolution.diagnostics()[0]
+        .to_record_draft(docnav_diagnostics::DiagnosticSource::with_stage(
+            "docnav-parameter-resolution",
+            "test",
         ))
+        .into_record()
         .unwrap();
-    let record = stack.get(id).unwrap();
     assert_eq!(
         record.code(),
         docnav_diagnostics::DiagnosticCode::from(

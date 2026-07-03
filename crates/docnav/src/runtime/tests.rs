@@ -191,12 +191,12 @@ fn missing_adapter_routing_precedes_invalid_native_option() {
         Ok(_) => panic!("missing adapter should fail before options"),
         Err(error) => error,
     };
-    let mut diagnostics = docnav_diagnostics::DiagnosticStack::new();
-    let id = diagnostics
-        .push(error.diagnostic().clone())
+    let record = error
+        .diagnostic()
+        .clone()
+        .into_record()
         .expect("diagnostic should be valid");
-    let record = diagnostics.get(id).expect("diagnostic record");
-    let protocol_error = docnav_protocol::ProtocolError::from_diagnostic_record(record).unwrap();
+    let protocol_error = docnav_protocol::ProtocolError::from_diagnostic_record(&record).unwrap();
 
     assert_eq!(
         protocol_error.code(),

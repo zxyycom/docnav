@@ -14,7 +14,7 @@ Core 负责 invocation 入口和非 navigation 命令：
 2. 为 navigation command 提供 project config 和 user config 的 source descriptor/path，包括默认路径、显式 override 路径和 project root/user config 定位结果。
 3. 对非 navigation 命令在 core 内完成处理，不进入 navigation input resolution。
 4. 对 navigation 命令，把 raw command、config source descriptors/paths 和当前 core release 的 adapter registry 交给 `docnav-navigation`。
-5. 接收 navigation outcome，并按 [输出模式](output.md) 和 [错误通道](diagnostics.md) 进行 surface 投影。
+5. 接收 navigation outcome，并按 [输出模式](output.md)、[原始协议](protocol.md) 和 [CLI](cli.md) 规则进行 surface 投影与退出码映射。
 
 Core 不为 navigation command 预先读取 raw config JSON、完成参数来源合并、native option enrichment、selected-adapter projection 或 request construction。
 
@@ -129,7 +129,7 @@ Resolution 完成后，`docnav-navigation` 构造内部 protocol request：
 | Adapter selection | Declared adapter lookup/probe 失败或 automatic discovery 全部失败按 [适配器契约](adapter-contract.md#adapter-选择) 返回 selection diagnostic。 |
 | Request construction | 绑定 metadata 缺失、arguments shape invalid 或 envelope construction failure 返回 internal/navigation diagnostic。 |
 
-本文只定义 input resolution 的失败位置和 owner；protocol failure shape 见 [协议错误对象](protocol.md#协议错误对象)，readable failure shape 见 [输出模式](output.md)，内部记录语义见 [错误通道](diagnostics.md)。
+本文只定义 input resolution 的失败位置和 owner；protocol failure shape 见 [协议错误对象](protocol.md#协议错误对象)，readable failure shape 见 [输出模式](output.md)，退出码见 [CLI](cli.md#退出码)。
 
 ## 维护注意事项
 

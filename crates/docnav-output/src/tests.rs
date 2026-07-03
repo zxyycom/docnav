@@ -1,8 +1,7 @@
 // @case WB-OUTPUT-DOCUMENT-001
 use super::*;
 use docnav_diagnostics::{
-    typed_codes, DiagnosticRecord, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
-    RefDetails,
+    typed_codes, DiagnosticRecord, DiagnosticRecordDraft, DiagnosticSource, RefDetails,
 };
 use docnav_protocol::{
     Cost, Entry, Measurement, Operation, OperationResult, OutlineResult, ProtocolResponse,
@@ -11,18 +10,14 @@ use docnav_protocol::{
 use serde_json::Value;
 
 fn ref_not_found_record() -> DiagnosticRecord {
-    let mut diagnostics = DiagnosticStack::new();
-    let id = diagnostics
-        .push(
-            DiagnosticRecordDraft::new::<typed_codes::protocol::RefNotFound>(
-                "No content found for ref `R99`",
-                RefDetails::new("R99"),
-                DiagnosticSource::with_stage("test", "output"),
-            )
-            .with_guidance(["Run outline first."]),
-        )
-        .unwrap();
-    diagnostics.get(id).unwrap().clone()
+    DiagnosticRecordDraft::new::<typed_codes::protocol::RefNotFound>(
+        "No content found for ref `R99`",
+        RefDetails::new("R99"),
+        DiagnosticSource::with_stage("test", "output"),
+    )
+    .with_guidance(["Run outline first."])
+    .into_record()
+    .unwrap()
 }
 
 fn read_result() -> OperationResult {

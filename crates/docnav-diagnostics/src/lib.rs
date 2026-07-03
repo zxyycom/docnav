@@ -1,7 +1,6 @@
 mod code;
 mod details;
 mod record;
-mod stack;
 
 pub use code::{
     typed_codes, BoundaryDiagnosticCode, BoundaryDiagnosticMarker, DiagnosticCategory,
@@ -16,9 +15,8 @@ pub use details::{
     RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 pub use record::{
-    DiagnosticRecord, DiagnosticRecordDraft, DiagnosticRecordError, DiagnosticSource,
+    DiagnosticId, DiagnosticRecord, DiagnosticRecordDraft, DiagnosticRecordError, DiagnosticSource,
 };
-pub use stack::{DiagnosticId, DiagnosticMark, DiagnosticStack};
 
 #[cfg(test)]
 mod tests;

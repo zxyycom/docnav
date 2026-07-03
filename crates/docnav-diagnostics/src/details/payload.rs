@@ -95,6 +95,8 @@ pub struct FormatUnknownDetails {
     pub path: String,
     pub reason: String,
     pub candidates: Vec<FormatCandidateDetails>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub candidate_failures: Option<Vec<FormatCandidateDetails>>,
 }
 
 impl FormatUnknownDetails {
@@ -107,7 +109,16 @@ impl FormatUnknownDetails {
             path: path.into(),
             reason: reason.into(),
             candidates,
+            candidate_failures: None,
         }
+    }
+
+    pub fn with_candidate_failures(
+        mut self,
+        candidate_failures: Vec<FormatCandidateDetails>,
+    ) -> Self {
+        self.candidate_failures = Some(candidate_failures);
+        self
     }
 }
 
@@ -115,6 +126,8 @@ impl FormatUnknownDetails {
 pub struct FormatAmbiguousDetails {
     pub path: String,
     pub candidates: Vec<FormatCandidateDetails>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub candidate_failures: Option<Vec<FormatCandidateDetails>>,
 }
 
 impl FormatAmbiguousDetails {
@@ -122,7 +135,16 @@ impl FormatAmbiguousDetails {
         Self {
             path: path.into(),
             candidates,
+            candidate_failures: None,
         }
+    }
+
+    pub fn with_candidate_failures(
+        mut self,
+        candidate_failures: Vec<FormatCandidateDetails>,
+    ) -> Self {
+        self.candidate_failures = Some(candidate_failures);
+        self
     }
 }
 

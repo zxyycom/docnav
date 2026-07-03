@@ -1,7 +1,7 @@
 use docnav_diagnostics::{
-    typed_codes, DiagnosticCode, DiagnosticRecordDraft, DiagnosticSource, DiagnosticStack,
-    FieldReasonDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
-    RefDetails, RefReasonDetails,
+    typed_codes, DiagnosticCode, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails,
+    InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails, RefDetails,
+    RefReasonDetails,
 };
 use docnav_protocol::{
     protocol_error_record_draft, protocol_error_record_draft_with_summary, FindArguments,
@@ -173,14 +173,10 @@ impl From<DiagnosticRecordDraft> for AdapterError {
 }
 
 pub fn protocol_error_from_diagnostic(diagnostic: DiagnosticRecordDraft) -> ProtocolError {
-    let mut diagnostics = DiagnosticStack::new();
-    let Some(id) = diagnostics.push(diagnostic).ok() else {
+    let Ok(record) = diagnostic.into_record() else {
         return diagnostic_projection_failed();
     };
-    let Some(record) = diagnostics.get(id) else {
-        return diagnostic_projection_failed();
-    };
-    ProtocolError::from_diagnostic_record(record).unwrap_or_else(diagnostic_projection_failed)
+    ProtocolError::from_diagnostic_record(&record).unwrap_or_else(diagnostic_projection_failed)
 }
 
 fn normalize_protocol_diagnostic(diagnostic: DiagnosticRecordDraft) -> DiagnosticRecordDraft {

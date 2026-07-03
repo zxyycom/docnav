@@ -80,9 +80,7 @@ pub(super) fn write_config_file(path: &Path, value: Value) {
 pub(super) fn diagnostic_record(
     diagnostic: &docnav_diagnostics::DiagnosticRecordDraft,
 ) -> docnav_diagnostics::DiagnosticRecord {
-    let mut stack = docnav_diagnostics::DiagnosticStack::new();
-    let id = stack.push(diagnostic.clone()).expect("valid diagnostic");
-    stack.get(id).expect("diagnostic record").clone()
+    diagnostic.clone().into_record().expect("valid diagnostic")
 }
 
 pub(super) fn temp_workspace_path(name: &str) -> PathBuf {
@@ -108,7 +106,20 @@ impl NavigationAdapterRegistry for StubRegistry {
     }
 }
 
+pub(super) struct UnsupportedRegistry;
+
+impl NavigationAdapterRegistry for UnsupportedRegistry {
+    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
+        vec![NavigationAdapterRef {
+            id: "docnav-unsupported",
+            adapter: &UnsupportedAdapter,
+        }]
+    }
+}
+
 struct StubAdapter;
+
+struct UnsupportedAdapter;
 
 impl Adapter for StubAdapter {
     fn adapter_id(&self) -> &str {
@@ -209,5 +220,74 @@ impl Adapter for StubAdapter {
         _arguments: &InfoArguments,
     ) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("stub-info-unimplemented"))
+    }
+}
+
+impl Adapter for UnsupportedAdapter {
+    fn adapter_id(&self) -> &str {
+        "docnav-unsupported"
+    }
+
+    fn manifest(&self) -> Manifest {
+        Manifest {
+            manifest_version: "0.1".to_owned(),
+            adapter: AdapterIdentity {
+                id: "docnav-unsupported".to_owned(),
+                name: "Unsupported".to_owned(),
+                version: "0.1.0".to_owned(),
+            },
+            formats: vec![FormatDescriptor {
+                id: "unsupported".to_owned(),
+                extensions: vec![".unsupported".to_owned()],
+                content_types: vec!["application/x-unsupported".to_owned()],
+            }],
+        }
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        ProbeResult {
+            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
+            adapter_id: "docnav-unsupported".to_owned(),
+            path: path.to_owned(),
+            supported: false,
+            format: None,
+            confidence: 0.0,
+            reasons: vec![ProbeReason {
+                code: ProbeReasonCode::ContentMatch,
+                detail: "unsupported test probe rejected".to_owned(),
+            }],
+        }
+    }
+
+    fn outline(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &OutlineArguments,
+    ) -> AdapterResult<OutlineResult> {
+        Err(AdapterError::internal("unsupported-outline-unreachable"))
+    }
+
+    fn read(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &ReadArguments,
+    ) -> AdapterResult<ReadResult> {
+        Err(AdapterError::internal("unsupported-read-unreachable"))
+    }
+
+    fn find(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &FindArguments,
+    ) -> AdapterResult<FindResult> {
+        Err(AdapterError::internal("unsupported-find-unreachable"))
+    }
+
+    fn info(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &InfoArguments,
+    ) -> AdapterResult<InfoResult> {
+        Err(AdapterError::internal("unsupported-info-unreachable"))
     }
 }

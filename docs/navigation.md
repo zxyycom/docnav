@@ -10,7 +10,6 @@
 | --- | --- | --- |
 | 实现 `docnav` 核心 CLI | [架构](architecture.md)、[CLI](cli.md)、[Navigation Input Resolution](navigation-input-resolution.md)、[输出模式](output.md) | [原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[测试策略](testing.md) |
 | 实现原始协议或机器输出 | [原始协议](protocol.md)、[输出模式](output.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
-| 实现错误通道 | [错误通道](diagnostics.md)、[架构](architecture.md) | [CLI](cli.md)、[输出模式](output.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md) |
 | 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | 对应实现面的主规范 |
 | 写测试或验证脚本 | [测试策略](testing.md)、[测试用例维护](testing/case-maintenance.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |
 | 审计历史或变更依据 | `../openspec/changes/` | 按 change 目录读取对应 proposal、design、specs、tasks |
@@ -62,10 +61,10 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | 组件职责、输出分层、调用链、运行边界 | [架构](architecture.md) |
 | adapter library interface、manifest metadata、probe、adapter 选择、internal discovery failure list、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
-| navigation command 的 raw command、config source descriptors/paths 和 registry 交接、routing 必需输入解析、adapter selection 调用、selected adapter typed-field 参数声明、explicit/project/user/built_in 来源解析、typed-field 校验提取、`RequestEnvelope` / `OperationArguments` 构造和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
+| navigation command 的 raw command、config source descriptors/paths 和 registry 交接、routing 必需输入解析、adapter selection 调用、selected adapter typed-field 参数声明、explicit/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、`RequestEnvelope` / `OperationArguments` 构造和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
 | 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
-| protocol envelope、operation、紧凑结果、page、protocol failure envelope 和 primary diagnostic projection | [原始协议](protocol.md) |
-| 错误通道、DiagnosticRecord、DiagnosticCode、primary failure、错误规则、警告规则、请求内 DiagnosticId 身份、strict caller input blocking 语义和从属 details 语义 | [错误通道](diagnostics.md) |
+| protocol envelope、operation、紧凑结果、page、protocol failure envelope、protocol error fields、code/details 规则和 primary diagnostic projection | [原始协议](protocol.md) |
+| diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |
 | ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |

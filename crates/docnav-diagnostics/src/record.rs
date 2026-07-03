@@ -4,7 +4,17 @@ use serde::Serialize;
 
 use crate::code::{DiagnosticCode, DiagnosticCodeMarker, DiagnosticEffect, DiagnosticSeverity};
 use crate::details::{DiagnosticDetails, DiagnosticDetailsError};
-use crate::stack::DiagnosticId;
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct DiagnosticId(u64);
+
+impl DiagnosticId {
+    const REQUEST_LOCAL_PRIMARY: Self = Self(0);
+
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct DiagnosticSource {
@@ -164,10 +174,7 @@ impl DiagnosticRecordDraft {
         self
     }
 
-    pub(crate) fn into_record(
-        self,
-        id: DiagnosticId,
-    ) -> Result<DiagnosticRecord, DiagnosticRecordError> {
+    pub fn into_record(self) -> Result<DiagnosticRecord, DiagnosticRecordError> {
         if self.summary.is_empty() {
             return Err(DiagnosticRecordError::EmptySummary);
         }
@@ -176,7 +183,7 @@ impl DiagnosticRecordDraft {
             .validate_value(&self.details.to_value())
             .map_err(DiagnosticRecordError::InvalidDetails)?;
         Ok(DiagnosticRecord {
-            id,
+            id: DiagnosticId::REQUEST_LOCAL_PRIMARY,
             summary: self.summary,
             severity: self.severity,
             code: self.code,
