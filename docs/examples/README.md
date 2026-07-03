@@ -22,7 +22,7 @@
 
 默认 CLI `readable-view` 输出由 pretty JSON header 承载相同 readable 字段；无 block 的 outline 不产生 block section。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
 
-protocol 请求显式传入 `page: 1`、`limit: 80` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
+protocol 请求显式传入 `page: 1`、`limit: 28` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
 ## Ref 与 Read
 

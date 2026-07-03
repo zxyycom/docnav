@@ -3,7 +3,8 @@ use super::*;
 // @case WB-MD-PAGE-001
 #[test]
 fn read_paginates_unicode_without_splitting_characters() {
-    let path = write_doc("unicode.md", "# A\n界界界abc\n");
+    let selected = "# A\n界界界abc\n";
+    let path = write_doc("unicode.md", selected);
     let ref_id = "H:L1:H1";
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
@@ -22,6 +23,7 @@ fn read_paginates_unicode_without_splitting_characters() {
         .expect("first page");
     assert_eq!(first.ref_id, ref_id);
     assert_eq!(first.content, "# A\n界");
+    assert_cost_measurements(&first.cost, "selection", selected);
     assert_eq!(first.page, Some(positive(2)));
 
     let second_arguments = ReadArguments {

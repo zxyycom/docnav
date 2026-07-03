@@ -43,6 +43,11 @@ fn test_cost() -> Cost {
                 value: 4,
                 scope: Some("selection".to_owned()),
             },
+            Measurement {
+                unit: "tokens".to_owned(),
+                value: 8,
+                scope: Some("selection".to_owned()),
+            },
         ],
     }
 }
@@ -120,6 +125,25 @@ fn readable_view_read_uses_block_renderer() {
     assert!(output.contains("\"$block\": \"/content\""));
     assert!(output.contains("[block /content bytes=4]"));
     assert!(output.contains("body"));
+}
+
+#[test]
+fn readable_json_read_cost_is_derived_from_measurements() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    write_document_result(
+        &read_result(),
+        "request-1",
+        DocumentOutputMode::ReadableJson,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+
+    assert!(stderr.is_empty());
+    let value: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(value["cost"], "1 line | 0.0 KB | 8 tokens");
 }
 
 #[test]

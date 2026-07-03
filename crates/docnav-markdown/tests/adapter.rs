@@ -137,6 +137,22 @@ fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {
         .unwrap_or_else(|_| panic!("read ref: {ref_id}"))
 }
 
+fn assert_cost_measurements(cost: &docnav_protocol::Cost, scope: &str, text: &str) {
+    let expected = [
+        docnav_text_cost::line_cost(text),
+        docnav_text_cost::byte_cost(text),
+        docnav_text_cost::token_cost(text),
+    ];
+
+    assert_eq!(cost.measurements.len(), expected.len());
+    for (actual, expected) in cost.measurements.iter().zip(expected.iter()) {
+        assert_eq!(actual.unit, expected.unit);
+        assert_eq!(actual.value, expected.value);
+        assert_eq!(expected.scope, None);
+        assert_eq!(actual.scope.as_deref(), Some(scope));
+    }
+}
+
 fn read_ref_error(path: &Path, ref_id: &str) -> ProtocolError {
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),

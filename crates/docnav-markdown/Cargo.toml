@@ -8,6 +8,7 @@ autobins = false
 [dependencies]
 docnav-adapter-contracts.workspace = true
 docnav-protocol.workspace = true
+docnav-text-cost.workspace = true
 pulldown-cmark.workspace = true
 serde.workspace = true
 serde_json.workspace = true

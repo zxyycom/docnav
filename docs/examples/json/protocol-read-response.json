@@ -16,7 +16,12 @@
         },
         {
           "unit": "bytes",
-          "value": 100,
+          "value": 75,
+          "scope": "selection"
+        },
+        {
+          "unit": "tokens",
+          "value": 14,
           "scope": "selection"
         }
       ]

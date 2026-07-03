@@ -235,6 +235,15 @@ Code: `crates/docnav-output/src/tests.rs`
 Proves:
 - readable JSON success 不带 protocol envelope，protocol JSON success 只输出 protocol envelope。
 - readable-view read 使用 block renderer，readable error 保留 primary diagnostic code、owner、details 和 guidance。
+- readable read 的成本摘要由 `cost.measurements[]` 派生，并保留对非 bytes/lines measurement unit 的通用摘要。
+
+### WB-TEXT-COST-001 Shared text cost helper 保持纯文本边界
+Status: implemented
+Code: `crates/docnav-text-cost/src/tests.rs`
+
+Proves:
+- shared text cost helper functions 只接收纯文本并返回 unscoped protocol-compatible `Measurement`。
+- `line_cost`、`byte_cost` 和 `token_cost` 分别固定 `lines`、`bytes`、`tokens` unit，并覆盖空文本、Unicode bytes、换行和 plain-text `o200k_base` token counting。
 
 ### WB-READABLE-RENDERER-001 Readable renderer success path block/framing 规则
 Status: implemented
@@ -443,7 +452,7 @@ Code: `crates/docnav-markdown/src/markdown/tests.rs`
 Proves:
 - outline 生成 canonical ref，重复 title/path 不影响 ref，max heading level 只影响可见性。
 - deep-only document 在当前可见层级下 fallback 到 `doc:full`。
-- outline display 保留 title/cost，但 ref 不包含展示文本。
+- outline cost 按 `lines`、`bytes`、`tokens` 顺序报告 entry-scoped measurements，display 保留 title/cost，但 ref 不包含展示文本。
 
 ### WB-MD-ADAPTER-OUTLINE-001 Markdown adapter outline 默认层级和 fallback 稳定
 Status: implemented
@@ -494,6 +503,7 @@ Code: `crates/docnav-markdown/tests/adapter/paging_find.rs`
 Proves:
 - Markdown read pagination 按 Unicode 字符计数，不拆分字符。
 - page 前进和结束状态可通过返回的 page metadata 观察。
+- read cost 使用 selection-scoped helper measurements；token cost 不参与分页预算。
 
 ### WB-MD-PAGE-002 Markdown outline/find pagination 保持 continuation
 Status: implemented

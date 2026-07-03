@@ -21,7 +21,12 @@
             },
             {
               "unit": "bytes",
-              "value": 100,
+              "value": 106,
+              "scope": "entry"
+            },
+            {
+              "unit": "tokens",
+              "value": 22,
               "scope": "entry"
             }
           ]
@@ -46,7 +51,12 @@
             },
             {
               "unit": "bytes",
-              "value": 100,
+              "value": 75,
+              "scope": "entry"
+            },
+            {
+              "unit": "tokens",
+              "value": 14,
               "scope": "entry"
             }
           ]

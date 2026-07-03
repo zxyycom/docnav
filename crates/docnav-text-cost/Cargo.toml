@@ -1,0 +1,9 @@
+[package]
+name = "docnav-text-cost"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+docnav-protocol.workspace = true
+tiktoken-rs.workspace = true

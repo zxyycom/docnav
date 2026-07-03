@@ -126,7 +126,7 @@ page:
   positive integer | null, required
 ```
 
-`cost.measurements[]` 是机器稳定的结构化成本事实。常见单位包括 `lines` 和 `bytes`，但具体单位集合由 adapter 拥有；阅读输出负责把它压缩为人类可读摘要。
+`cost.measurements[]` 是机器稳定的结构化成本事实。常见单位包括 `lines`、`bytes` 和 `tokens`，但具体单位集合由 adapter 拥有；阅读输出负责把它压缩为人类可读摘要。
 
 ### FindResult
 

@@ -1,6 +1,41 @@
 use super::refs::FULL_DOCUMENT_REF;
 use super::*;
 
+fn assert_cost_measurements(cost: &docnav_protocol::Cost, scope: &str, text: &str) {
+    let actual = cost
+        .measurements
+        .iter()
+        .map(|measurement| {
+            (
+                measurement.unit.as_str(),
+                measurement.value,
+                measurement.scope.as_deref(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        actual,
+        vec![
+            (
+                "lines",
+                docnav_text_cost::line_cost(text).value,
+                Some(scope)
+            ),
+            (
+                "bytes",
+                docnav_text_cost::byte_cost(text).value,
+                Some(scope)
+            ),
+            (
+                "tokens",
+                docnav_text_cost::token_cost(text).value,
+                Some(scope)
+            ),
+        ]
+    );
+}
+
 // @case WB-MD-PARSE-001
 #[test]
 fn parser_ignores_code_fence_pseudo_heading_and_invalid_heading() {
@@ -102,12 +137,13 @@ fn outline_refs_consistent_under_different_max_heading_level() {
 
 #[test]
 fn outline_entry_includes_title_level_and_cost() {
-    let document = MarkdownDocument::parse("# Guide\nContent here\n".to_owned());
+    let source = "# Guide\nContent here\n";
+    let document = MarkdownDocument::parse(source.to_owned());
     let entries = document.outline_entries(3);
 
     assert_eq!(entries[0].label, "Guide");
     assert_eq!(entries[0].metadata.as_ref().unwrap()["heading_level"], 1);
-    assert!(entries[0].cost.as_ref().unwrap().measurements.len() >= 2);
+    assert_cost_measurements(entries[0].cost.as_ref().unwrap(), "entry", source);
 }
 
 #[test]
@@ -124,12 +160,14 @@ fn outline_entry_handles_whitespace_only_title() {
 
 #[test]
 fn deep_heading_can_be_filtered_to_full_document() {
-    let document = MarkdownDocument::parse("Intro\n\n#### Deep\nBody\n".to_owned());
+    let source = "Intro\n\n#### Deep\nBody\n";
+    let document = MarkdownDocument::parse(source.to_owned());
 
     let entries = document.outline_entries(3);
 
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].ref_id, FULL_DOCUMENT_REF);
+    assert_cost_measurements(entries[0].cost.as_ref().unwrap(), "entry", source);
 }
 
 #[test]

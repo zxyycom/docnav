@@ -7,7 +7,7 @@
   },
   "arguments": {
     "page": 1,
-    "limit": 80,
+    "limit": 28,
     "options": {
       "max_heading_level": 3
     }

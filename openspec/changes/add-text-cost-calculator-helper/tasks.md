@@ -17,7 +17,7 @@
 
 ## 3. 实施与验证
 
-- [ ] 3.1 实现 shared text cost calculator helper functions，覆盖纯文本输入、空文本、Unicode、换行、字节数、scope 不由 helper 附加、`tiktoken-rs` `o200k_base_singleton()` 和 ordinary plain-text token counting 边界。
-- [ ] 3.2 更新 Markdown adapter cost 计算，改为由 Markdown adapter 选择 helper functions，并把已选中文本作为唯一 required input 交给 helper，在 current `cost.measurements[]` 内输出 helper 结果。
-- [ ] 3.3 同步 owner 主规范、schema/example、fixture 和测试，证明 raw protocol shape 与 readable summary 分层不变。
-- [ ] 3.4 运行范围匹配的 Rust、schema/example、OpenSpec 和 workspace 验证，并确认 CI/release Rust toolchain 满足 `tiktoken-rs` `0.12.0` 的 Rust 1.85+ floor。
+- [x] 3.1 实现 shared text cost calculator helper functions，覆盖纯文本输入、空文本、Unicode、换行、字节数、scope 不由 helper 附加、`tiktoken-rs` `o200k_base_singleton()` 和 ordinary plain-text token counting 边界。
+- [x] 3.2 更新 Markdown adapter cost 计算，改为由 Markdown adapter 选择 helper functions，并把已选中文本作为唯一 required input 交给 helper，在 current `cost.measurements[]` 内输出 helper 结果。
+- [x] 3.3 同步 owner 主规范、schema/example、fixture 和测试，证明 raw protocol shape 与 readable summary 分层不变。
+- [x] 3.4 运行范围匹配的 Rust、schema/example、OpenSpec 和 workspace 验证，并确认 CI/release Rust toolchain 满足 `tiktoken-rs` `0.12.0` 的 Rust 1.85+ floor。

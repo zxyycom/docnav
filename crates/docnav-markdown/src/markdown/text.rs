@@ -1,4 +1,5 @@
 use docnav_protocol::{Cost, Measurement};
+use docnav_text_cost::{byte_cost, line_cost, token_cost};
 
 pub fn cost_for(content: &str) -> Cost {
     scoped_cost_for(content, "selection")
@@ -7,18 +8,16 @@ pub fn cost_for(content: &str) -> Cost {
 pub fn scoped_cost_for(content: &str, scope: &str) -> Cost {
     Cost {
         measurements: vec![
-            Measurement {
-                unit: "lines".to_owned(),
-                value: line_count(content) as u64,
-                scope: Some(scope.to_owned()),
-            },
-            Measurement {
-                unit: "bytes".to_owned(),
-                value: content.len() as u64,
-                scope: Some(scope.to_owned()),
-            },
+            scoped(line_cost(content), scope),
+            scoped(byte_cost(content), scope),
+            scoped(token_cost(content), scope),
         ],
     }
+}
+
+fn scoped(mut measurement: Measurement, scope: &str) -> Measurement {
+    measurement.scope = Some(scope.to_owned());
+    measurement
 }
 
 pub(super) fn match_facts(source: &str, line_starts: &[usize], offset: usize) -> (usize, String) {
@@ -66,14 +65,6 @@ fn line_bounds(starts: &[usize], source_len: usize, line: usize) -> (usize, usiz
         .unwrap_or(source_len)
         .min(source_len);
     (start, end)
-}
-
-fn line_count(content: &str) -> usize {
-    if content.is_empty() {
-        0
-    } else {
-        content.bytes().filter(|byte| *byte == b'\n').count() + 1
-    }
 }
 
 fn compact_text(text: &str) -> String {
