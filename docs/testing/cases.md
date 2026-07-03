@@ -47,6 +47,7 @@ Proves:
 - 真实 CLI 边界按文档优先级解析 explicit、project、user 和 built-in sources，包括 `defaults.pagination.enabled`、`defaults.pagination.limit` 与 source-level static native option registry 暴露的 `options.max_heading_level`。
 - `config list --path` 会报告被选中文档路径对应的 adapter 和 defaults context。
 - Config source 层只证明 key/source/shape 与来源参与；`options.max_heading_level` 的类型和范围错误由 selected Markdown typed-field 参数声明和 navigation input resolution 证明。
+- `options.max_heading_level` 来自 project/user config 时只对 declared applicable operation 进入 request construction；对 `read` 这类不适用 operation 返回 structured `unsupported` / `option_issues` diagnostic 并保留 source level。
 - disabled pagination 在进入 adapter layer request 前归一为最大 positive limit，request 只包含最终 `limit` 和 `page`。
 - `defaults.limit` 按 hard switch 被拒绝，并通过 structured `unknown_config_field` / `config_issues` 诊断报告配置来源、路径和字段。
 

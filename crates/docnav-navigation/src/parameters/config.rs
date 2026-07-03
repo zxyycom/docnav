@@ -1,6 +1,7 @@
 use docnav_adapter_contracts::NativeOptionSpec;
 use docnav_diagnostics::DiagnosticSource;
 use docnav_parameter_resolution::{ParameterResolution, ParameterResolutionHandoff};
+use docnav_protocol::Operation;
 use serde_json::Value;
 
 use crate::{NavigationCommand, NavigationConfigSource, NavigationConfigSources, NavigationError};
@@ -22,7 +23,12 @@ pub(super) fn validate_navigation_sources(
 ) -> Result<(), NavigationError> {
     first_config_source_error(config_sources)?;
     validate_explicit_native_options(command, selected_adapter_id, selected_native_options)?;
-    validate_config_sources(config_sources, selected_adapter_id, selected_native_options)
+    validate_config_sources(
+        config_sources,
+        command.operation,
+        selected_adapter_id,
+        selected_native_options,
+    )
 }
 
 pub(super) fn first_resolution_error(
@@ -73,16 +79,19 @@ fn first_config_source_error(
 
 fn validate_config_sources(
     config_sources: &NavigationConfigSources,
+    operation: Operation,
     selected_adapter_id: &str,
     selected_native_options: &[NativeOptionSpec],
 ) -> Result<(), NavigationError> {
     validate_config_source(
         &config_sources.project,
+        operation,
         selected_adapter_id,
         selected_native_options,
     )?;
     validate_config_source(
         &config_sources.user,
+        operation,
         selected_adapter_id,
         selected_native_options,
     )
@@ -118,6 +127,7 @@ fn validate_explicit_native_options(
 
 fn validate_config_source(
     source: &NavigationConfigSource,
+    operation: Operation,
     selected_adapter_id: &str,
     selected_native_options: &[NativeOptionSpec],
 ) -> Result<(), NavigationError> {
@@ -130,9 +140,13 @@ fn validate_config_source(
     for (key, child) in root {
         match key.as_str() {
             "defaults" => validate_defaults_shape(source, child)?,
-            "options" => {
-                validate_options_shape(source, child, selected_adapter_id, selected_native_options)?
-            }
+            "options" => validate_options_shape(
+                source,
+                child,
+                operation,
+                selected_adapter_id,
+                selected_native_options,
+            )?,
             _ => {
                 return Err(NavigationError::config_unknown_field(
                     source.level,
@@ -204,14 +218,20 @@ fn validate_pagination_shape(
 fn validate_options_shape(
     source: &NavigationConfigSource,
     value: &Value,
+    operation: Operation,
     selected_adapter_id: &str,
     selected_native_options: &[NativeOptionSpec],
 ) -> Result<(), NavigationError> {
     let Some(options) = value.as_object() else {
         return Err(invalid_nested_object(source, "options"));
     };
+    let operation_native_options = selected_native_options
+        .iter()
+        .copied()
+        .filter(|spec| spec.applies_to(operation))
+        .collect::<Vec<_>>();
     for (key, value) in options {
-        if selected_native_options.iter().any(|spec| spec.key == key) {
+        if operation_native_options.iter().any(|spec| spec.key == key) {
             continue;
         }
         return Err(unsupported_option(
@@ -219,7 +239,7 @@ fn validate_options_shape(
                 source: source.level,
                 path: &source.path,
                 owner: selected_adapter_id,
-                selected_native_options,
+                selected_native_options: &operation_native_options,
             },
             key,
             value.clone(),

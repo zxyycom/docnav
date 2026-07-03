@@ -209,6 +209,31 @@ fn navigation_resolves_json_native_option_through_typed_fields() {
 }
 
 #[test]
+fn navigation_accepts_config_option_applicable_to_operation() {
+    let outcome = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(
+            json!({
+                "options": {
+                    "max_heading_level": 2
+                }
+            }),
+            Value::Null,
+        ),
+        &StubRegistry,
+    )
+    .expect("applicable native option");
+
+    let ProtocolResponse::Success(success) = outcome.response else {
+        panic!("expected success");
+    };
+    let OperationResult::Outline(result) = success.result else {
+        panic!("expected outline result");
+    };
+    assert_eq!(result.entries[0].label, "Max 2");
+}
+
+#[test]
 fn navigation_reports_explicit_native_option_type_failure() {
     let error = execute_loaded_navigation_command(
         navigation_command(vec![NavigationNativeOptionInput {
@@ -312,6 +337,41 @@ fn navigation_rejects_unknown_config_option_after_adapter_routing() {
     .expect_err("unsupported native option");
     let protocol_error = protocol_error(error.diagnostic());
 
+    assert_eq!(first_option_issue_source(&protocol_error), Some("project"));
+}
+
+#[test]
+fn navigation_rejects_config_option_not_applicable_to_operation() {
+    let mut command = navigation_command(Vec::new());
+    command.operation = docnav_protocol::Operation::Read;
+    command.ref_id = Some("stub:1".to_owned());
+
+    let error = execute_loaded_navigation_command(
+        command,
+        config_sources(
+            json!({
+                "options": {
+                    "max_heading_level": 2
+                }
+            }),
+            Value::Null,
+        ),
+        &StubRegistry,
+    )
+    .expect_err("operation-inapplicable native option");
+    let protocol_error = protocol_error(error.diagnostic());
+
+    assert_eq!(
+        protocol_error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("reason")
+            .and_then(Value::as_str),
+        Some("unsupported")
+    );
     assert_eq!(first_option_issue_source(&protocol_error), Some("project"));
 }
 

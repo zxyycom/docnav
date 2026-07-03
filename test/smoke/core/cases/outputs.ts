@@ -7,6 +7,7 @@ import {
   expectJsonObject,
   expectObjectArray,
   expectProtocolSuccess,
+  expectReadableFailure,
   expectReadableViewBlockRestoresField,
   expectStderrEmpty,
   expectString,
@@ -14,6 +15,7 @@ import {
   parseJson,
   parseReadableViewHeader
 } from "../assertions.ts";
+import { exitCodes } from "../config.ts";
 import { runReadableJsonCase } from "./readable-output.ts";
 
 interface ReadableDocumentOutput {
@@ -39,6 +41,7 @@ async function testDocumentOutputBoundary() {
   await assertReadableViewDocumentOutput(project, readable);
   await assertDefaultDocumentOutput(project, readable.ref);
   await assertProtocolJsonMatchesReadableOutput(project, readable);
+  await assertReadableJsonFailureOutput(project);
 }
 
 async function readFirstOutlineRef(project: SmokeProject): Promise<string> {
@@ -119,4 +122,22 @@ async function assertProtocolJsonMatchesReadableOutput(project: SmokeProject, re
   const protocolResult = expectJsonObject(protocol, protocolJson.result, "protocol result is an object");
   expect(protocol, protocolResult.ref === readable.ref, "protocol-json result preserves ref");
   expect(protocol, protocolResult.content === readable.content, "protocol-json result matches readable-json content");
+}
+
+async function assertReadableJsonFailureOutput(project: SmokeProject) {
+  const failure = await runCli("CORE-OUTPUT-001 read readable-json ref failure", [
+    "read",
+    project.normalRelPath,
+    "--ref",
+    "bad:ref",
+    "--output",
+    "readable-json"
+  ], { project });
+  expectExit(failure, exitCodes.documentRefFormat);
+  expectStderrEmpty(failure);
+  const json = parseJson(failure);
+  validateSchema(failure, "readableError", json);
+  const error = expectReadableFailure(failure, json, "REF_INVALID");
+  const details = expectJsonObject(failure, error.details, "readable failure details is an object");
+  expect(failure, details.ref === "bad:ref", "readable failure preserves ref in details");
 }

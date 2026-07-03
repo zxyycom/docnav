@@ -19,6 +19,10 @@ import {
 import type { JsonRecord } from "../assertions.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 import { exitCodes } from "../config.ts";
+import {
+  assertProjectNativeOptionConfigAffectsOutline,
+  assertUserNativeOptionConfigRejectedForRead
+} from "./config-native-options.ts";
 
 export function createConfigContextTasks() {
   return [
@@ -55,6 +59,8 @@ async function testConfigPrecedenceAndPathContext() {
   await assertRemovedTextOutputFails(project);
   await assertConfigListPathContext(project, "docnav-markdown");
   await assertPaginationDisabledSuccess(project);
+  await assertProjectNativeOptionConfigAffectsOutline();
+  await assertUserNativeOptionConfigRejectedForRead();
   await assertLegacyDefaultsLimitConfigFails();
 }
 
