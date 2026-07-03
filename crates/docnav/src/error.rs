@@ -47,6 +47,31 @@ impl AppError {
         ))
     }
 
+    pub fn invalid_request_with_input_context(
+        field: impl Into<String>,
+        reason: impl Into<String>,
+        received: Option<impl Into<String>>,
+        accepted: impl IntoIterator<Item = impl Into<String>>,
+        guidance: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        let accepted = accepted.into_iter().map(Into::into).collect::<Vec<_>>();
+        let guidance = guidance.into_iter().map(Into::into).collect::<Vec<_>>();
+        let mut details = FieldReasonDetails::new(field, reason);
+        details.received = received.map(Into::into);
+        if !accepted.is_empty() {
+            details.accepted = Some(accepted);
+        }
+
+        let mut draft = protocol_error_record_draft::<typed_codes::protocol::InvalidRequest>(
+            details,
+            DiagnosticSource::with_stage("docnav", "core"),
+        );
+        if !guidance.is_empty() {
+            draft = draft.with_guidance(guidance);
+        }
+        Self::new(draft)
+    }
+
     pub fn internal(error_id: impl Into<String>) -> Self {
         Self::new(protocol_error_record_draft::<
             typed_codes::protocol::InternalError,

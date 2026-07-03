@@ -8,6 +8,8 @@
 
 `docnav-output` 是 document operation 输出编排和 primary failure projection owner：调用方传入 operation、request id、output mode、document outcome 和 primary `DiagnosticRecord` 或成功 payload，由该层决定 `readable-view`、`readable-json` 或 `protocol-json` 的包装、error 投影和 stdout/stderr 分流。
 
+Document operation failure projection 由本文件与 [原始协议](protocol.md)、[CLI](cli.md) 等 surface owner 分别承担；`docnav-diagnostics` 提供 diagnostic/error model helper primitives 和 record invariants。
+
 机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；只要输出模式可以从 argv 或请求中确定，失败也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
 
 上游失败或 renderer 失败进入输出层时，必须已经归并为一个 primary `DiagnosticRecord`。输出层只负责按当前 output mode 投影该 primary diagnostic，不重新分类失败来源、不改写 details 语义、不新增 sibling error list。

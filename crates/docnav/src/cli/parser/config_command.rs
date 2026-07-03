@@ -8,8 +8,8 @@ use super::super::command_model::{
 use super::super::flags;
 use super::argument_helpers::{
     boundary_value_flags, clap_argv, error_from_rejected_arg, is_flag, known_value_flag,
-    missing_value_error as scan_missing_value_error, optional_explicit_string, parse_operation,
-    required_string, split_equals, ValueFlag,
+    missing_value_error as scan_missing_value_error, missing_value_flag_error,
+    optional_explicit_string, parse_operation, required_string, split_equals, ValueFlag,
 };
 use super::{
     arg_ids, command_names, config_get_command, config_list_command, config_set_command,
@@ -184,7 +184,7 @@ fn first_missing_value_error(args: &[String]) -> Option<AppError> {
         if known_value_flag(token).is_some() {
             let (flag, inline_value) = split_equals(token);
             if inline_value.is_none() && args.get(index + 1).is_none() {
-                return Some(AppError::invalid_request(flag, "flag requires a value"));
+                return Some(missing_value_flag_error(flag));
             }
             index += if inline_value.is_some() { 1 } else { 2 };
         } else {
@@ -201,11 +201,8 @@ fn invalid_operation_error(args: &[String]) -> Option<AppError> {
         let (flag, inline_value) = split_equals(token);
         if flag == flags::OPERATION {
             let value = inline_value.or_else(|| args.get(index + 1).map(String::as_str))?;
-            if parse_operation(value).is_err() {
-                return Some(AppError::invalid_request(
-                    flags::OPERATION,
-                    "expected outline, read, find, or info",
-                ));
+            if let Err(error) = parse_operation(value) {
+                return Some(error);
             }
             index += if inline_value.is_some() { 1 } else { 2 };
         } else {

@@ -70,17 +70,23 @@ fn invalid_output_value_returns_error() {
         .get("reason")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("");
+    assert_eq!(reason, "invalid_value");
+    assert_eq!(details["received"], "text");
     assert!(
-        reason.contains("invalid --output"),
-        "error should mention --output, got: {reason}"
+        details["accepted"]
+            .as_array()
+            .is_some_and(|accepted| accepted
+                .iter()
+                .any(|value| value.as_str() == Some("readable-view"))),
+        "error should list readable-view, got: {details}"
     );
     assert!(
-        reason.contains("readable-view"),
-        "error should list accepted values, got: {reason}"
-    );
-    assert!(
-        reason.contains("protocol-json"),
-        "error should list protocol-json, got: {reason}"
+        details["accepted"]
+            .as_array()
+            .is_some_and(|accepted| accepted
+                .iter()
+                .any(|value| value.as_str() == Some("protocol-json"))),
+        "error should list protocol-json, got: {details}"
     );
 }
 
@@ -94,6 +100,6 @@ fn bogus_output_value_returns_error() {
         .get("reason")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("");
-    assert!(reason.contains("invalid --output"));
-    assert!(reason.contains("bogus"));
+    assert_eq!(reason, "invalid_value");
+    assert_eq!(details["received"], "bogus");
 }

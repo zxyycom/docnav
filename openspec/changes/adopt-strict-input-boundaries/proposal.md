@@ -11,7 +11,7 @@ Docnav 的 AI 友好性需要落到“失败后可一次修正”。调用方显
 - **BREAKING**：公共输入边界按 strict-by-default 校验。未知 argv、多余 positional、当前 operation 不支持的 flag、未归属的协议/配置字段和 undeclared native option 在 owner 边界返回输入诊断。
 - **BREAKING**：显式用户意图按 owner contract 校验。显式 `--adapter`、显式配置路径、显式 ref/path/operation 参数失败时返回对应 owner diagnostic。
 - 自动 discovery、隐式默认配置缺失和内部候选探测属于 owner-declared internal flow；成功结果表达被选中操作的成功 payload，全部候选失败时返回候选失败列表。
-- failure surface 使用一个 primary `DiagnosticRecord`，字段名由 diagnostics owner 统一；字段问题列表、config 问题列表和候选失败列表作为该诊断的从属结构化失败信息。
+- failure surface 使用一个 primary `DiagnosticRecord`；diagnostic/error model helper primitives 和 record invariants 由 `docnav-diagnostics` 提供，protocol/output/CLI 等 surface owners 负责各自的 public projection、framing、channel 和 exit policy。字段问题列表、config 问题列表和候选失败列表作为该诊断的从属结构化失败信息。
 - document success output 承载成功业务 payload 和对应输出模式拥有的结构；失败修复建议进入 failure diagnostic。
 - `docnav-navigation` 接收 raw navigation command、config source descriptors/paths 和 registry，加载 project/user config sources，并将 adapter-owned `options` 和 native options 作为 owner-scoped source 进入 selected adapter typed-field validation/extraction。
 - core CLI 保留 `clap` 作为 parser/help 的默认实现依赖；严格输入契约由 parser/mapper 直接产出 input diagnostic。
@@ -34,7 +34,7 @@ Docnav 的 AI 友好性需要落到“失败后可一次修正”。调用方显
 
 ## Impact
 
-- 受影响文档与规范：`docs/architecture.md`、`docs/cli.md`、`docs/navigation-input-resolution.md`、`docs/adapter-contract.md`、`docs/protocol.md`、`docs/output.md`、`docs/diagnostics.md`、`docs/ref-contract.md`、`docs/testing.md`、`docs/testing/cases.md`、OpenSpec specs 以及相关 examples/schemas。
+- 受影响文档与规范：`docs/architecture.md`、`docs/cli.md`、`docs/navigation-input-resolution.md`、`docs/adapter-contract.md`、`docs/protocol.md`、`docs/output.md`、`docs/ref-contract.md`、`docs/testing.md`、`docs/testing/cases.md`、OpenSpec specs 以及相关 examples/schemas。Diagnostic helper crate 边界落在 architecture；public failure projection 落在 protocol/output/CLI 等 surface owner。
 - 受影响 Rust crate：`docnav`、`docnav-navigation`、`docnav-adapter-contracts`、`docnav-markdown`、`docnav-diagnostics`、`docnav-output`、navigation input resolution/adapter selection 模块，以及覆盖 strict failure、primary `DiagnosticRecord`、owner-scoped native options 和 success payload shape 的 smoke/unit tests。
 - 受影响 public surface：core CLI exit behavior、protocol/readable error shape、stdout/stderr channel policy、adapter selection semantics、config source handling、schema examples 和 test case expectations。
 - 受影响 active changes：`replace-clap-with-bpaf-frontend` 需要改为 strict CLI 下保留 `clap` 的方向；`separate-entry-pipeline-from-parameter-resolution` 需要改为 owner-scoped native option source；`implement-docnav-mcp-bridge`、`outline-unstructured-full-read`、`enable-local-core-adapter-service-mode` 和 `markdown-document-head-outline-mode` 需要与成功 payload、failure diagnostic、internal-event ownership 和 adapter-owned option 声明保持一致。Track A 负责协调其它 active changes 中涉及 diagnostic、protocol/readable output、config、native option、adapter selection 和 CLI parser/help 的语言。

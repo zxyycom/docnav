@@ -7,11 +7,18 @@ use crate::registry;
 use super::super::command_model::{CliCommand, DocumentCommand, NativeOptionCliInput, ParsedCli};
 use super::super::flags;
 use super::argument_helpers::{
-    boundary_value_flags, clap_argv, error_from_rejected_arg, is_flag, known_value_flag,
-    missing_value_error, optional_explicit_output, optional_explicit_positive,
-    optional_explicit_string, required_string, split_equals, ValueFlag,
+    boundary_value_flags, clap_argv, error_from_rejected_arg, invalid_output_value_error,
+    invalid_positive_value_error, invalid_value_error, is_flag, known_value_flag,
+    missing_value_error, missing_value_flag_error, optional_explicit_output,
+    optional_explicit_positive, optional_explicit_string, required_string, split_equals, ValueFlag,
 };
 use super::{arg_ids, document_clap_command, spec};
+
+const PAGINATION_ACCEPTED_VALUES: [&str; 2] = [
+    spec::pagination_values::ENABLED,
+    spec::pagination_values::DISABLED,
+];
+const PAGINATION_GUIDANCE: [&str; 1] = ["Use --pagination enabled or --pagination disabled."];
 
 pub(super) fn parse_document_command(
     operation: Operation,
@@ -113,10 +120,7 @@ fn pagination_enabled_from_cli(value: &str) -> AppResult<bool> {
     match value {
         spec::pagination_values::ENABLED => Ok(true),
         spec::pagination_values::DISABLED => Ok(false),
-        _ => Err(AppError::invalid_request(
-            flags::PAGINATION,
-            "expected enabled or disabled",
-        )),
+        _ => Err(invalid_pagination_value_error(value)),
     }
 }
 
@@ -240,10 +244,7 @@ fn value_flag_occurrence(args: &[String], index: usize) -> Option<ValueFlagOccur
 
 fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
     match (occurrence.flag, occurrence.value) {
-        (_, None) => Some(AppError::invalid_request(
-            occurrence.flag_token,
-            "flag requires a value",
-        )),
+        (_, None) => Some(missing_value_flag_error(occurrence.flag_token)),
         (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
         (ValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
         (ValueFlag::Pagination, Some(value)) => pagination_flag_error(value),
@@ -261,10 +262,16 @@ fn pagination_flag_error(value: &str) -> Option<AppError> {
     ) {
         return None;
     }
-    Some(AppError::invalid_request(
+    Some(invalid_pagination_value_error(value))
+}
+
+fn invalid_pagination_value_error(value: &str) -> AppError {
+    invalid_value_error(
         flags::PAGINATION,
-        "expected enabled or disabled",
-    ))
+        value,
+        PAGINATION_ACCEPTED_VALUES,
+        PAGINATION_GUIDANCE,
+    )
 }
 
 fn document_value_flags(operation: Operation) -> Vec<docnav_cli_args::KnownValueFlag<'static>> {
@@ -303,24 +310,21 @@ fn positive_flag_error(flag: &str, value: &str) -> Option<AppError> {
     {
         return None;
     }
-    Some(AppError::invalid_request(
-        flag,
-        format!("{flag} must be a positive integer"),
-    ))
+    Some(invalid_positive_value_error(flag, value))
 }
 
 fn output_flag_error(value: &str) -> Option<AppError> {
     value
         .parse::<super::super::command_model::OutputMode>()
         .err()
-        .map(|reason| {
-            AppError::invalid_request(
-                flags::OUTPUT,
-                format!("invalid {}: {reason}", flags::OUTPUT),
-            )
-        })
+        .map(|_reason| invalid_output_value_error(value))
 }
 
 fn empty_value_error(flag: &str) -> AppError {
-    AppError::invalid_request(flag, format!("{flag} value must not be empty"))
+    invalid_value_error(
+        flag,
+        "",
+        [format!("non-empty value for {flag}")],
+        [format!("Provide a non-empty value for {flag}.")],
+    )
 }
