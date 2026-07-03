@@ -59,6 +59,29 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, "$ tsgo -p tsconfig.json"), []);
   });
 
+  it("filters docs schema validator success details", () => {
+    const check = checkByLabel("docs schema validator");
+
+    assert.deepEqual(visibleOutputLines(check, "readable error details shape ok", "passed"), []);
+  });
+
+  it("filters workspace verifier script test package output", () => {
+    const check = checkByLabel("workspace verifier script tests");
+    const output = [
+      "$ bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts scripts/tools/parallel-task-runner/index.test.ts",
+      "bun test v1.3.14 (0d9b296a)",
+      "",
+      "scripts\\docnav-workspace\\verify.test.ts:",
+      "(pass) workspace verifier configuration > filters output [0.27ms]",
+      "",
+      "  1 pass",
+      "  0 fail",
+      "Ran 1 test across 1 file. [1.61s]"
+    ].join("\n");
+
+    assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
+  });
+
   it("filters cargo trybuild success noise from successful cargo test output", () => {
     const check = checkByLabel("cargo test");
     const output = [
@@ -130,8 +153,8 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("quality quick check"));
     assert.ok(requiredLabels.includes("docs case catalog validator"));
     assert.ok(requiredLabels.includes("docs schema validator"));
+    assert.ok(requiredLabels.includes("workspace verifier script tests"));
     assert.ok(requiredLabels.includes("case catalog validator tests"));
-    assert.ok(requiredLabels.includes("smoke harness tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
     assert.ok(!requiredLabels.includes("cargo test"));
     assert.ok(!requiredLabels.includes("quality internal script tests"));
@@ -193,6 +216,8 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(checkByLabel("docnav core development smoke").dependsOn, ["docnav-development-binaries"]);
     assert.deepEqual(checkByLabel("docs case catalog validator").dependsOn, []);
     assert.deepEqual(checkByLabel("docs schema validator").dependsOn, []);
+    assert.equal(checkByLabel("workspace verifier script tests").command, "bun");
+    assert.deepEqual(checkByLabel("workspace verifier script tests").args, ["run", "test:workspace-verifier"]);
     assert.deepEqual(checkByLabel("case catalog validator tests").dependsOn, []);
   });
 

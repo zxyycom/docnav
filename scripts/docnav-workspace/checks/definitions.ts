@@ -97,11 +97,12 @@ export const checks = defineChecks([
       {
         id: "workspace-verifier-script-tests",
         label: "workspace verifier script tests",
-        tasks: scriptTestChecks([
-          ["workspace-verifier-tests", "workspace verifier tests", "scripts/docnav-workspace/verify.test.ts"],
-          ["smoke-harness-tests", "smoke harness tests", "test/tools/smoke-harness.test.ts"],
-          ["parallel-task-runner-tests", "parallel task runner tests", "scripts/tools/parallel-task-runner/index.test.ts"]
-        ])
+        command: "bun",
+        args: ["run", "test:workspace-verifier"],
+        ignoreOutput: [
+          /^\$ bun test scripts\/docnav-workspace\/verify\.test\.ts test\/tools\/smoke-harness\.test\.ts scripts\/tools\/parallel-task-runner\/index\.test\.ts$/,
+          ...testRunnerSuccessOutput
+        ]
       },
       {
         id: "validator-script-tests",
@@ -252,7 +253,8 @@ function docsValidatorChecks(): CheckDefinition[] {
       /^schema strict compile ok:/,
       /^schema ok:/,
       /^protocol response operation\/result binding ok$/,
-      /^protocol response error details shape ok$/
+      /^protocol response error details shape ok$/,
+      /^readable error details shape ok$/
     ]),
     docsValidatorCheck(
       "docs-example-consistency-validator",

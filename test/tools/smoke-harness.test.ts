@@ -137,28 +137,30 @@ describe("smoke harness task scheduling", () => {
     assert.throws(() => resolveSmokeConcurrency("abc"), /positive integer/);
   });
 
-  it("cleans the core smoke temp root when the suite exits after failure", { timeout: 60_000 }, () => {
+  it("cleans the core smoke temp root when the suite exits after failure", { timeout: 10_000 }, () => {
     const tempRoot = path.join(
       os.tmpdir(),
       `docnav-core-smoke-cleanup-${process.pid}-${Date.now()}`
     );
+    fs.mkdirSync(tempRoot, { recursive: true });
+    fs.writeFileSync(path.join(tempRoot, "marker"), "cleanup fixture");
 
     const result = spawnSync(process.execPath, ["test/docnav-core-smoke.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: {
         ...process.env,
-        DOCNAV_BIN: process.execPath,
-        DOCNAV_CORE_SMOKE_TEMP_ROOT: tempRoot,
-        DOCNAV_SMOKE_CONCURRENCY: "1"
+        DOCNAV_BIN: path.join(tempRoot, "missing-docnav"),
+        DOCNAV_CORE_SMOKE_TEMP_ROOT: tempRoot
       },
-      timeout: 60_000
+      timeout: 10_000
     });
 
     const tempRootExists = fs.existsSync(tempRoot);
     fs.rmSync(tempRoot, { recursive: true, force: true });
 
     assert.notEqual(result.status, 0, "fixture should exercise the failing smoke path");
+    assert.match(result.stderr, /docnav binary not found:/);
     assert.equal(
       tempRootExists,
       false,
