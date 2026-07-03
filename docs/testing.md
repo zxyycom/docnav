@@ -49,7 +49,7 @@ Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明
 - Markdown 解析、ref 生成和定位。
 - Unicode 字符预算、分页和终止规则。
 - protocol、manifest 和 probe decode pipeline 的 schema invalid、typed deserialize invalid 和 semantic invalid 边界。
-- diagnostics stack/id/mark/order、DiagnosticCode details/primary `DiagnosticRecord` 投影、core CLI argv strictness、document output orchestration、低层 JSON writer 和 paging helper 的可观察行为边界。
+- DiagnosticCode details、primary `DiagnosticRecord` 投影、从属 details 语义、core CLI argv strictness、document output orchestration、低层 JSON writer 和 paging helper 的可观察行为边界。
 
 以下行为由 CLI smoke 验证外部契约，无需在 Rust 中建立重复矩阵：
 

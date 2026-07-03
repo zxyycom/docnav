@@ -203,11 +203,11 @@ Proves:
 
 ### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
 Status: implemented
-Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`, `crates/docnav-diagnostics/src/tests/record_stack.rs`
+Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`, `crates/docnav-protocol/src/tests/basic.rs`, `crates/docnav-output/src/tests.rs`
 
 Proves:
 - DiagnosticCode、category、severity、effect 和 details rule 覆盖所有 current code。
-- primary failure diagnostic 的 code、owner、details 和 guidance 保持当前 documented shape。
+- primary failure diagnostic 的 code、owner、details、guidance 和从属 details 保持当前 documented shape。
 
 ### WB-CLIARGS-BOUNDARY-001 Strict CLI 参数扫描保持输入边界
 Status: implemented

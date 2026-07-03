@@ -65,7 +65,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | navigation command 的 raw command、config source descriptors/paths 和 registry 交接、routing 必需输入解析、adapter selection 调用、selected adapter typed-field 参数声明、explicit/project/user/built_in 来源解析、typed-field 校验提取、`RequestEnvelope` / `OperationArguments` 构造和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
 | 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
 | protocol envelope、operation、紧凑结果、page、protocol failure envelope 和 primary diagnostic projection | [原始协议](protocol.md) |
-| 错误通道、DiagnosticStack、DiagnosticCode、primary DiagnosticRecord、错误规则、警告规则、DiagnosticId、mark 生命周期和 LIFO/drain 语义 | [错误通道](diagnostics.md) |
+| 错误通道、DiagnosticRecord、DiagnosticCode、primary failure、错误规则、警告规则、请求内 DiagnosticId 身份、strict caller input blocking 语义和从属 details 语义 | [错误通道](diagnostics.md) |
 | ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |

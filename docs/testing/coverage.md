@@ -20,14 +20,14 @@
 | adapter inspection | descriptor metadata、static registry membership 和 `adapter list` 覆盖 static registry metadata、linked handler availability 和 adapter layer 可用性；manifest/probe-shaped JSON 只作为 schema/example contract material。 | CLI smoke、schema/docs validators、Rust core/adapter tests |
 | adapter source boundary | 默认 adapter implementation source 是 core release static registry 中的 linked adapter libraries。 | Core CLI smoke、Rust core tests |
 | ref 与分页 | 至少覆盖 `outline -> ref -> read`、`find -> ref -> read`、invalid/not-found ref、分页继续和终止。 | CLI smoke、Rust adapter tests |
-| 错误通道与投影阶段 | 覆盖 CLI 输入错误、adapter selection explicit failure、missing adapter + invalid-looking option 时 selection diagnostic 优先、automatic discovery all-failed probe candidate list、selected adapter layer failure、selected-adapter typed-field option validation failure、ref error、primary `DiagnosticRecord` protocol/readable 投影、canonical details 和 stack id/mark/LIFO 语义的代表样本。 | CLI smoke、schema/docs validators、Rust diagnostics/output tests |
+| 错误通道与投影阶段 | 覆盖 CLI 输入错误、adapter selection explicit failure、missing adapter + invalid-looking option 时 selection diagnostic 优先、automatic discovery all-failed probe candidate list、selected adapter layer failure、selected-adapter typed-field option validation failure、ref error、primary `DiagnosticRecord` protocol/readable 投影、canonical details、请求内 `DiagnosticId` 身份和从属 details 语义的代表样本。 | CLI smoke、schema/docs validators、Rust diagnostics/output tests |
 | Navigation input resolution 与 path context | 覆盖 explicit/project/user/built_in 来源合并、`--path` context、navigation-owned raw config source loading、navigation input resolution 到 internal protocol request construction 的映射、source-level static native option registry 暴露和同名多 owner/type variant model、default config absence、explicit/present invalid config failure、config key/source/shape failure、selected adapter typed-field option type/range validation、help 不读取配置和解析结果不回写原始 protocol JSON 的边界。 | Core CLI smoke、Rust config/navigation tests |
 | release package | 覆盖 core-only package manifest、文件集合、校验和、host/target 选择和 package 内 `docnav` 二进制 smoke；linked adapters 通过 core CLI 行为证明。 | release package scripts、package smoke |
 
 ## 层级选择
 
 - CLI smoke：证明真实 core CLI 入口、stdout/stderr、exit code、strict failure/error 投影承载位置和 package 可执行性。
-- Rust tests：证明 parser、ref、分页、decode stage、diagnostic stack/code/details/投影 helper、renderer 和内部状态转换等自定义逻辑不变量。
+- Rust tests：证明 parser、ref、分页、decode stage、diagnostic record/code/details/投影 helper、renderer 和内部状态转换等自定义逻辑不变量。
 - schema/docs validators：证明字段形状、示例链路、schema 投影映射和文档化 fixture 与当前 owner 文档一致，且 schema/example/fixture 不成为 code/details 规则来源。
 - 测试用例维护：定义测试函数变更时的 case 归属、账本更新和 `@case` 标记维护流程。
 - 测试用例编号账本：保存最终 case 条目、证明目标和源码 `@case` 标记映射，不替代测试实现或覆盖矩阵。
