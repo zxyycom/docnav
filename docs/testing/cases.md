@@ -11,6 +11,9 @@ Proves:
 - 真实 `docnav` 进程可以通过 Markdown adapter 完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info` 链路。
 - Core 不解析 adapter ref，用户可见 readable JSON 不包含 protocol envelope。
 
+决策说明:
+- 保留为一个 smoke case 是因为 `outline`/`find` 产生的 refs、后续 `read` 和 `info` 都复用同一个真实 Markdown project、adapter selection 和 readable-json 入口；拆分会重复 fixture 初始化和 ref 获取模板，而不会增加新的 owner 证明。
+
 ### BB-CORE-MD-OPTIONS-001 Markdown max_heading_level option 通过真实 CLI 生效
 Status: implemented
 Existing smoke task: `CORE-LINK-001`
@@ -47,18 +50,42 @@ Proves:
 - document command 缺少本 operation 拥有的必需参数时返回稳定 input failure。
 - 该 smoke case 代表这一类外部 CLI 错误，不枚举所有 parser 组合。
 
-### BB-CORE-CONFIG-001 Config source 与 navigation input resolution 优先级可观察
+### BB-CORE-CONFIG-001 Config source 与 path context 可观察
 Status: implemented
 Existing smoke task: `CORE-CONFIG-001`
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- 真实 CLI 边界可通过 `config set` 存储 user `defaults.pagination.enabled` 与 `options.max_heading_level`，并在 `config list --path` 中展示 project/user/defaults context 与最终值。
-- `config list --path` 会报告被选中文档路径对应的 adapter 和 defaults context。
-- Config source 层只证明 source/shape 与来源参与；`options.max_heading_level` 的类型和范围错误由 selected Markdown declaration registration 和 navigation input resolution 证明。
-- `options.max_heading_level` 来自 project/user config 时只对 declared applicable operation 进入 request construction；对 `read` 这类不适用 operation 返回 structured `unsupported` / `option_issues` diagnostic 并保留 source level。
-- disabled pagination 通过 CLI/config 命令可观察为 user config stored value 和 `config list --path` final context；本 case 不证明进入 adapter dispatch 前的 request shape。
-- `defaults.limit` 按 hard switch 被拒绝，并通过 structured `unknown_config_field` / `config_issues` 诊断报告配置来源、路径和字段。
+- 真实 CLI 边界可通过 `config set --user` 存储 user `defaults.pagination.limit` 与 `defaults.pagination.enabled`。
+- `config list --path --operation outline` 会报告被选中文档路径对应的 adapter、project `defaults.output`、user pagination values 和 final defaults context。
+- disabled pagination 通过 CLI/config 命令可观察为 user config stored value 和 `config list --path` final context；携带显式 numeric `--limit` 的 `outline` 命令仍能成功进入 document command 链路。
+
+### BB-CORE-CONFIG-002 Removed defaults.output=text 通过 config set 被拒绝
+Status: implemented
+Existing smoke task: `CORE-CONFIG-002`
+Code: `test/smoke/core/cases/config-management.ts`
+
+Proves:
+- `config set defaults.output text` 返回 input failure，并将 removed output mode 投影为 `INVALID_REQUEST`。
+- readable error payload 报告 `defaults.output`、received `text` 和 accepted output modes: `readable-view`、`readable-json`、`protocol-json`。
+
+### BB-CORE-CONFIG-003 Legacy defaults.limit 通过 config source diagnostic 被拒绝
+Status: implemented
+Existing smoke task: `CORE-CONFIG-003`
+Code: `test/smoke/core/cases/config-management.ts`
+
+Proves:
+- project config 中的 legacy `defaults.limit` 会在真实 `outline` CLI 链路中返回 config-owned `INVALID_REQUEST`。
+- structured `unknown_config_field` / `config_issues` diagnostic 报告字段、source level、path origin 和 config path。
+
+### BB-CORE-CONFIG-004 Native option config 按 selected operation declaration 生效
+Status: implemented
+Existing smoke task: `CORE-CONFIG-004`
+Code: `test/smoke/core/cases/config-management.ts`
+
+Proves:
+- project config 中的 `options.max_heading_level` 通过 selected Markdown declaration 影响 `outline` entries。
+- user config 中的 `options.max_heading_level` 可通过 `config set --user` 存储；当 `read` operation 不声明 native options 时，返回 structured `unsupported` / `option_issues` diagnostic 并保留 source level。
 
 ### BB-CORE-SELECT-001 显式 adapter 失败返回 selection diagnostic
 Status: implemented
@@ -94,8 +121,8 @@ Existing smoke task: `CORE-TOOLS-001`
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- `init`、`version`、`doctor` 和 document help 能通过真实 CLI 执行。
-- 非 document 命令在 smoke 层保持预期输出和退出行为。
+- `init` 通过真实 CLI 创建 project config。
+- `version` 输出 crate version，document help 暴露 output/pagination CLI options。
 
 ### BB-CORE-ADAPTER-MGMT-001 Core adapter inspection 命令覆盖
 Status: implemented
@@ -103,8 +130,8 @@ Existing smoke task: `CORE-ADAPTER-MGMT-001`
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- `adapter list` 输出 core release static registry 内置 adapter metadata。
-- `doctor` 报告 static registry 和 adapter layer 可用性。
+- `doctor` 报告 static registry 和 adapter layer checks。
+- `adapter list` 输出 core release static registry 内置 Markdown adapter metadata。
 
 ### BB-RELEASE-PACKAGE-001 发布包二进制 smoke
 Status: planned
@@ -124,6 +151,9 @@ Proves:
 - Core output assembly 分离 protocol JSON、readable JSON、readable view、stdout、stderr 和 exit code 职责。
 - 内部编排覆盖 core 文档输出 smoke 中观察到的分支。
 - Core document output facade can render an unstructured outline success through readable-view with `/content` block framing while preserving the stable reason and omitting entries/page.
+
+决策说明:
+- 保留为一个多分支 case 是因为所有断言都进入 `write_outcome` / `write_error` 输出编排入口，并共享 stdout/stderr/exit-code projection 基底；拆分会重复构造相同 `CommandOutcome` / `AppError` fixture。
 
 ```mermaid
 flowchart LR
@@ -162,11 +192,18 @@ Proves:
 
 ### WB-CORE-ARGS-001 Core parser 保持 operation 参数所有权
 Status: implemented
-Code: `crates/docnav/src/cli/parser/tests.rs`
+Code: `crates/docnav/src/cli/parser/tests/document_arguments.rs`
 
 Proves:
 - operation-owned 参数保持严格校验，例如 `outline --page 0` 会暴露 page 边界错误。
 - 未被当前 operation 使用的 known argument 不会被抢先 typed 解析，而是在 parser 边界返回 input diagnostic。
+
+### WB-CORE-ARGS-REPAIR-001 Core parser input diagnostics expose protocol repair context
+Status: implemented
+Code: `crates/docnav/src/cli/parser/tests/document_arguments.rs`
+
+Proves:
+- Unknown document flags、extra document positionals and operation-inapplicable known arguments produce parser diagnostics whose protocol-json error projection preserves reason、received token、expected context and repair guidance.
 
 ### WB-NAV-INPUT-RESOLUTION-001 Navigation input resolution 保持来源解析边界
 Status: implemented
@@ -225,14 +262,22 @@ Proves:
 - Automatic discovery 全部候选失败时返回 `FORMAT_UNKNOWN`，并把 routing-owned probe failure reason 投影到 primary details 的 `candidate_failures`。
 - 本 case 不证明 discovery 顺序、extension metadata 排序或 manifest metadata 与 candidate failure 的关系。
 
-### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
+### WB-DIAG-RULES-001 Diagnostics code rules 保持稳定
 Status: implemented
-Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`, `crates/docnav-diagnostics/src/tests/record.rs`, `crates/docnav-protocol/src/tests/basic.rs`, `crates/docnav-output/src/tests.rs`
+Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`
 
 Proves:
-- DiagnosticCode、category、severity、effect 和 details rule 覆盖所有 current code。
-- primary failure diagnostic 的 code、owner、details、guidance 和从属 details 保持当前 documented shape。
-- Direct `DiagnosticRecordDraft::into_record()` validates format details that include optional subordinate `candidate_failures`.
+- `DiagnosticCode::all()` exposes the current diagnostic registry, including representative protocol and boundary diagnostic codes.
+- Each registry code exposes a non-empty unique stable string, details rule, category, severity, effect and declared diagnostic projection route.
+
+### WB-DIAG-RECORD-001 Diagnostic record construction validates typed details
+Status: implemented
+Code: `crates/docnav-diagnostics/src/tests/record.rs`
+
+Proves:
+- `DiagnosticRecordDraft::into_record()` creates primary records with code defaults, typed details, source and absent guidance preserved.
+- Record construction rejects empty summaries and erased details whose shape does not match the diagnostic code.
+- Format diagnostic details can carry subordinate `candidate_failures` in the primary record details object.
 
 ### WB-CLIARGS-BOUNDARY-001 Strict CLI 参数扫描保持输入边界
 Status: implemented
@@ -260,6 +305,9 @@ Proves:
 - readable read 的成本摘要由 `cost.measurements[]` 派生，并保留对非 bytes/lines measurement unit 的通用摘要。
 - outline readable output covers the structured discriminator and the unstructured branch across readable-json、readable-view and protocol-json, including stable reason, stable cost facts and absence of entries/ref/page/continuation.
 
+决策说明:
+- 保留为一个 facade case 是因为 success/error、readable/protocol 和 structured/unstructured 分支都复用 `docnav-output` document facade 和同一 result/diagnostic projection helpers；这里证明输出矩阵，不重新证明 navigation selector 或 adapter behavior。
+
 ### WB-TEXT-COST-001 Shared text cost helper 保持纯文本边界
 Status: implemented
 Code: `crates/docnav-text-cost/src/tests.rs`
@@ -277,6 +325,7 @@ Proves:
 - readable error payload、header standalone JSON 和 default config success path 保持可还原。
 
 决策说明:
+- 保留 block/framing 成功矩阵为一个 case 是因为这些断言共享 renderer config、readable value fixture 和可还原 readable-view 文本基底；拆分成按 operation 的 case 会重复 header/block parsing 模板。
 - `to_readable_value` 当前证明目标限定为有效 typed payload -> readable JSON value。serialization failure 需要人工构造 failing `Serialize` 才能触发，不登记为独立证明目标；若 production readable payload 引入非平凡序列化失败风险，再新增窄单测覆盖该分支。
 
 ```mermaid
@@ -318,14 +367,26 @@ Proves:
 - renderer framing、block extraction、readable error projection 和 extension-field case 由 fixture-driven assertions 覆盖。
 - fixture coverage includes unstructured outline `/content` block rendering while keeping kind、reason and empty cost facts in the readable-view header.
 
+决策说明:
+- 保留为一个 conformance-vector case 是因为 fixture harness 已把不同 vectors 统一为同一 header/block/payload assertion model；拆分会重复 harness 调度，且不会改变 owner 边界。
+
 ### WB-PROTO-BASIC-001 Protocol 基础类型和 envelope 规则稳定
 Status: implemented
 Code: `crates/docnav-protocol/src/tests/basic.rs`
 
 Proves:
 - positive integer、generated request id、success response 和 failure operation preservation 保持协议基础不变量。
-- protocol diagnostic code category 映射保持共享分类稳定。
 - outline success response coverage includes structured and unstructured discriminator branches, including the unstructured no entries/ref/page/continuation boundary.
+
+### WB-PROTO-DIAGNOSTICS-001 Protocol diagnostic mapping and projection 保持稳定
+Status: implemented
+Code: `crates/docnav-protocol/src/tests/basic.rs`
+
+Proves:
+- Protocol diagnostic codes map to protocol error categories and their diagnostic projection rules expose the protocol code.
+- Protocol error required details stay aligned with diagnostic typed-code rules.
+- Navigation routing protocol errors expose static-registry guidance, and protocol errors round-trip through `DiagnosticRecord` projection while preserving guidance.
+- Invalid-request records with config issue details project protocol owner, location and received value from the diagnostic record.
 
 ### WB-PROTO-DECODE-001 Protocol request decode 按阶段失败
 Status: implemented
@@ -387,7 +448,7 @@ Code: `crates/docnav-typed-fields/src/tests/field_ranges.rs`
 
 Proves:
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
-- Static default metadata 通过 field validation；invalid default、non-finite default、non-finite range、empty range 和 missing processing strategy 在 build 阶段失败。
+- Static default metadata 通过 field validation；invalid default、non-finite default、non-finite range 和 empty range 在 build 阶段失败。
 
 ### WB-TYPED-FIELDS-PROCESSING-001 Typed field processing build 稳定
 Status: implemented
@@ -396,6 +457,7 @@ Code: `crates/docnav-typed-fields/src/tests/processing.rs`
 Proves:
 - Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
 - Empty processing id 在 build 阶段失败。
+- Field set build rejects a leaf declaration without a processing strategy and preserves the declaration path in the build error.
 
 ### WB-TYPED-FIELDS-PROJECTION-001 Typed field definition set projection 稳定
 Status: implemented
@@ -431,11 +493,11 @@ Proves:
 
 ### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影边界
 Status: implemented
-Code: `crates/docnav-adapter-contracts/src/lib.rs`
+Code: `crates/docnav-adapter-contracts/src/tests.rs`
 
 Proves:
-- 默认 adapter layer 必须提供全部文档操作 handler；missing linked handler 属于 adapter layer invariant failure，不作为默认 selection candidate failure。
-- Adapter error exit category、owner 和 stable details 不依赖 direct adapter CLI 或 adapter subprocess。
+- Adapter document errors project to protocol error code, owner, location and default guidance through `AdapterError::protocol_error()`.
+- Adapter-owned native option errors project issue metadata to invalid-request received, expected, details and guidance fields.
 
 ### WB-CONTRACTS-NATIVE-001 Adapter contracts 声明 native option typed fields
 Status: implemented
@@ -595,7 +657,6 @@ Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - non-UTF-8 document 返回稳定 encoding error。
-- 结构快照 ref 在文档变化后返回 `REF_NOT_FOUND` 而非 `REF_INVALID`。
 
 ### WB-MD-DISPLAY-001 Markdown outline/find display 保留可读文本
 Status: implemented
@@ -674,6 +735,9 @@ Proves:
 - task normalization、concurrency、mutex serialization、dependency ordering 和 nested task expansion 保持稳定。
 - prepare strategy、invalid list metadata、duplicate id 和 unknown dependency failure 保持可诊断。
 
+决策说明:
+- 保留为一个 runner case 是因为 normalize、prepare、graph validation 和 scheduler constraints 形成同一 task graph pipeline；各分支共享 `NormalizedTask` shape 和 event-order harness。
+
 ```mermaid
 flowchart LR
   A["输入：task definitions / group definitions"] --> B["normalize 或 prepareTasks"]
@@ -689,13 +753,21 @@ flowchart LR
   I --> J
 ```
 
-### AUX-QUALITY-PARSER-001 Quality scanner parsers 保持 fixture 语义
+### AUX-QUALITY-PARSER-001 Quality scanner parser fixtures 稳定
 Status: implemented
 Code: `scripts/tools/quality/measurement/scanners.test.ts`
 
 Proves:
-- quality scanner wrapper 仍能解析预期的 scc、Lizard 和 PMD CPD output shape。
-- PMD CPD exit 4 没有 XML 时不被误判为空扫描成功。
+- scc 3.7 by-file CSV 解析 Provider path 和 `Complexity` decision-token value，并将未知 header 投影为 parser failure。
+- Lizard 1.23 CSV row 解析 function name、file path、line range、NLOC、parameter count 和 cyclomatic complexity。
+- PMD CPD parser helpers 解析 code-area language、version output 和 XML duplicate fragment locations/token count。
+
+### AUX-QUALITY-CPD-WRAPPER-001 Quality PMD CPD wrapper failure projection 稳定
+Status: implemented
+Code: `scripts/tools/quality/measurement/scanners.test.ts`
+
+Proves:
+- PMD CPD wrapper 将 exit 4 且 empty output 的工具结果映射为 skipped scan failure diagnostic，错误文本保留 exit code 和 `no output` 原因。
 
 ### AUX-QUALITY-CACHE-001 Quality measurement cache identity 稳定
 Status: implemented
@@ -730,6 +802,13 @@ Code: `scripts/tools/quality/input/files.test.ts`
 Proves:
 - quality input git pathspec 参数使用显式 `--` 分隔并保留 glob pathspec magic。
 - 空 pathspec 可按调用方需要保留 `--` 或完全省略。
+
+### AUX-QUALITY-CHANGED-FILES-001 Quality changed-file input explicit list failure 稳定
+Status: implemented
+Code: `scripts/tools/quality/input/files.test.ts`
+
+Proves:
+- quality changed-file input 将 unreadable explicit `--changed-files` path 映射为 thrown diagnostic，错误文本保留 flag 名称和请求的文件路径。
 
 ### AUX-QUALITY-CODE-AREAS-001 Quality code area 分类稳定
 Status: implemented
@@ -803,3 +882,6 @@ Proves:
 - case catalog validator accepts implemented cases with matching markers and planned cases without markers.
 - case catalog validator reports duplicate documented IDs、duplicate source markers、invalid marker IDs、invalid `Status:`、implemented case without `Code:`、documented implemented cases missing markers、undocumented source markers、planned cases with markers and `Code:` path drift.
 - 真实仓库由 `bun run validate:docs cases` 作为集成验证。
+
+决策说明:
+- 保留为一个 validator taxonomy case 是因为 success 与 failure labels 都来自同一 case catalog snapshot validator；一个 synthetic catalog 可以覆盖 status、marker 和 path drift 分类，避免复制 document/marker fixture。

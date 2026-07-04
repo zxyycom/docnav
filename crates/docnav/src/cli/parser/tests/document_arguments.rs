@@ -5,6 +5,7 @@ use crate::output::{write_error, ErrorOutput};
 use docnav_protocol::Operation;
 use serde_json::{json, Value};
 
+// @case WB-CORE-ARGS-001
 #[test]
 fn used_known_argument_stays_strict() {
     let error = parse(["outline", "doc.md", "--page", "0"]).expect_err("page is invalid");
@@ -92,6 +93,7 @@ fn extra_document_positional_is_rejected() {
     assert_diagnostic(error, "argv", "extra_positional");
 }
 
+// @case WB-CORE-ARGS-REPAIR-001
 #[test]
 fn unknown_document_argument_protocol_error_has_repair_context() {
     let error = parse([

@@ -19,8 +19,8 @@ import {
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// @case AUX-QUALITY-PARSER-001
 describe("quality scanner output parsing", () => {
+  // @case AUX-QUALITY-PARSER-001
   it("parses scc 3.7 Provider paths and rejects unknown CSV headers", () => {
     const csv = [
       SCC_BY_FILE_CSV_HEADER,
@@ -92,7 +92,10 @@ describe("quality scanner output parsing", () => {
       "crates/docnav/src/b.rs"
     ]);
   });
+});
 
+describe("quality PMD CPD wrapper failure projection", () => {
+  // @case AUX-QUALITY-CPD-WRAPPER-001
   it("does not treat PMD CPD exit 4 without XML as a successful empty scan", () => {
     const toolConfig = createFakePmdToolConfig({ stdout: "", stderr: "", exitCode: 4 });
 

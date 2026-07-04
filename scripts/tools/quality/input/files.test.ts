@@ -41,6 +41,7 @@ describe("quality input git pathspecs", () => {
   });
 });
 
+// @case AUX-QUALITY-CHANGED-FILES-001
 describe("quality changed file input", () => {
   it("fails fast when an explicit changed-files list cannot be read", () => {
     assert.throws(

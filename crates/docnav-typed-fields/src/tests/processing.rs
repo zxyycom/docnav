@@ -34,3 +34,28 @@ fn processing_build_rejects_empty_processing_id() {
 
     assert_eq!(error, InvalidProcessingId);
 }
+
+#[test]
+fn set_build_rejects_missing_processing_strategy() {
+    #[derive(Debug, FieldDefs)]
+    struct Params {
+        #[field(group)]
+        defaults: MissingProcessingDefaults,
+    }
+
+    #[derive(Debug, FieldDefs)]
+    struct MissingProcessingDefaults {
+        #[field(FieldDef::builder("docnav.defaults.limit").validation(FieldValidation::int()))]
+        limit: Option<i64>,
+    }
+
+    let error = Params::field_defs().expect_err("missing processing definition fails at set build");
+
+    assert_eq!(
+        error,
+        FieldDefSetBuildError::Field(FieldDefBuildFailure {
+            declaration_path: Some(vec!["defaults".to_string(), "limit".to_string()]),
+            error: BuildError::MissingProcessingStrategy,
+        })
+    );
+}

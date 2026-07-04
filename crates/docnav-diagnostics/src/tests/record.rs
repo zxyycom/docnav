@@ -4,12 +4,14 @@ use crate::{
     FormatUnknownDetails, ProtocolDiagnosticCode,
 };
 
+// @case WB-DIAG-RECORD-001
 #[test]
 fn diagnostic_record_validates_details_and_uses_code_defaults() {
+    let source = DiagnosticSource::with_stage("docnav", "argv");
     let record = DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
         "invalid input",
         FieldReasonDetails::new("argv", "unknown argument --future"),
-        DiagnosticSource::with_stage("docnav", "argv"),
+        source.clone(),
     )
     .into_record()
     .unwrap();
@@ -18,6 +20,7 @@ fn diagnostic_record_validates_details_and_uses_code_defaults() {
     assert_eq!(record.code(), ProtocolDiagnosticCode::InvalidRequest.into());
     assert_eq!(record.severity(), DiagnosticSeverity::Error);
     assert_eq!(record.effect(), DiagnosticEffect::InputRejected);
+    assert_eq!(record.source(), &source);
     assert!(record.guidance().is_none());
     assert!(!record.recoverable());
 

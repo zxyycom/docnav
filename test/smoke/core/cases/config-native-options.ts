@@ -20,7 +20,7 @@ export async function assertProjectNativeOptionConfigAffectsOutline() {
     }
   });
 
-  const record = await runCli("CORE-CONFIG-001 project config max heading level affects outline", [
+  const record = await runCli("CORE-CONFIG-004 project config max heading level affects outline", [
     "outline",
     project.normalRelPath,
     "--output",
@@ -39,7 +39,7 @@ export async function assertProjectNativeOptionConfigAffectsOutline() {
 
 export async function assertUserNativeOptionConfigRejectedForRead() {
   const project = createProject("user-native-option-read");
-  const setOption = await runCli("CORE-CONFIG-001 config set user options.max_heading_level", [
+  const setOption = await runCli("CORE-CONFIG-004 config set user options.max_heading_level", [
     "config",
     "set",
     "options.max_heading_level",
@@ -52,7 +52,7 @@ export async function assertUserNativeOptionConfigRejectedForRead() {
   expect(setOption, setOptionJson.scope === "user", "user native option config set writes user scope");
   expect(setOption, setOptionJson.value === 1, "user native option config set stores numeric value");
 
-  const record = await runCli("CORE-CONFIG-001 read rejects config max heading level", [
+  const record = await runCli("CORE-CONFIG-004 read rejects config max heading level", [
     "read",
     project.normalRelPath,
     "--ref",

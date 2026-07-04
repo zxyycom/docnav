@@ -267,5 +267,4 @@ fn diagnostic_projection_failed() -> ProtocolError {
 }
 
 #[cfg(test)]
-// @case WB-CONTRACTS-ERROR-001
 mod tests;

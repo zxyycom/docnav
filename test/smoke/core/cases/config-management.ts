@@ -29,8 +29,26 @@ export function createConfigContextTasks() {
     // @case BB-CORE-CONFIG-001
     {
       id: "CORE-CONFIG-001",
-      label: "CORE-CONFIG-001 config precedence and path context",
-      run: testConfigPrecedenceAndPathContext
+      label: "CORE-CONFIG-001 config source and path context",
+      run: testConfigSourceAndPathContext
+    },
+    // @case BB-CORE-CONFIG-002
+    {
+      id: "CORE-CONFIG-002",
+      label: "CORE-CONFIG-002 removed defaults.output value rejected",
+      run: testRemovedOutputConfigRejected
+    },
+    // @case BB-CORE-CONFIG-003
+    {
+      id: "CORE-CONFIG-003",
+      label: "CORE-CONFIG-003 legacy defaults.limit rejected",
+      run: assertLegacyDefaultsLimitConfigFails
+    },
+    // @case BB-CORE-CONFIG-004
+    {
+      id: "CORE-CONFIG-004",
+      label: "CORE-CONFIG-004 native option config behavior",
+      run: testNativeOptionConfigBehavior
     }
   ];
 }
@@ -40,13 +58,19 @@ export function createToolCommandTasks() {
     // @case BB-CORE-TOOLS-001
     {
       id: "CORE-TOOLS-001",
-      label: "CORE-TOOLS-001 init version doctor and help commands",
-      run: testInitVersionDoctorAndHelp
+      label: "CORE-TOOLS-001 init version and help commands",
+      run: testInitVersionAndHelp
+    },
+    // @case BB-CORE-ADAPTER-MGMT-001
+    {
+      id: "CORE-ADAPTER-MGMT-001",
+      label: "CORE-ADAPTER-MGMT-001 doctor and adapter list commands",
+      run: testAdapterManagementCommands
     }
   ];
 }
 
-async function testConfigPrecedenceAndPathContext() {
+async function testConfigSourceAndPathContext() {
   const project = createProject("config-precedence");
   writeProjectConfig(project, {
     defaults: {
@@ -56,12 +80,18 @@ async function testConfigPrecedenceAndPathContext() {
   });
 
   await assertUserPaginationConfigSet(project);
-  await assertRemovedTextOutputFails(project);
   await assertConfigListPathContext(project, "docnav-markdown");
   await assertPaginationDisabledSuccess(project);
+}
+
+async function testRemovedOutputConfigRejected() {
+  const project = createProject("removed-output-mode");
+  await assertRemovedTextOutputFails(project);
+}
+
+async function testNativeOptionConfigBehavior() {
   await assertProjectNativeOptionConfigAffectsOutline();
   await assertUserNativeOptionConfigRejectedForRead();
-  await assertLegacyDefaultsLimitConfigFails();
 }
 
 async function assertUserPaginationConfigSet(project: SmokeProject) {
@@ -92,7 +122,7 @@ async function assertUserPaginationConfigSet(project: SmokeProject) {
 }
 
 async function assertRemovedTextOutputFails(project: SmokeProject) {
-  const setRemovedOutput = await runCli("CORE-CONFIG-001 config set defaults.output text fails", [
+  const setRemovedOutput = await runCli("CORE-CONFIG-002 config set defaults.output text fails", [
     "config",
     "set",
     "defaults.output",
@@ -173,7 +203,7 @@ async function assertLegacyDefaultsLimitConfigFails() {
     }
   });
 
-  const record = await runCli("CORE-CONFIG-001 legacy defaults.limit config fails", [
+  const record = await runCli("CORE-CONFIG-003 legacy defaults.limit config fails", [
     "outline",
     project.normalRelPath,
     "--output",
@@ -206,7 +236,7 @@ function expectUnknownConfigFieldErrorShape(record: CommandRecord, field: string
   expect(record, issue.reason_code === "unknown_config_field", "unknown config issue reports reason code");
 }
 
-async function testInitVersionDoctorAndHelp() {
+async function testInitVersionAndHelp() {
   const initProject = createProject("tool-init", { docnavDir: false, normalDocument: false });
   const init = await runCli("CORE-TOOLS-001 init creates project config", ["init"], { project: initProject });
   expectExit(init, 0);
@@ -227,9 +257,11 @@ async function testInitVersionDoctorAndHelp() {
   expectStdoutIncludes(help, "--limit");
   expectStdoutIncludes(help, "--output <readable-view|readable-json|protocol-json>");
   expectStdoutIncludes(help, "[possible values: readable-view, readable-json, protocol-json]");
+}
 
+async function testAdapterManagementCommands() {
   const doctorProject = createProject("tool-doctor-static-registry");
-  const doctor = await runCli("CORE-TOOLS-001 doctor reports static registry checks", ["doctor"], {
+  const doctor = await runCli("CORE-ADAPTER-MGMT-001 doctor reports static registry checks", ["doctor"], {
     project: doctorProject
   });
   expectExit(doctor, 0);
@@ -246,7 +278,6 @@ async function testInitVersionDoctorAndHelp() {
     "doctor reports built-in markdown adapter layer"
   );
 
-  // @case BB-CORE-ADAPTER-MGMT-001
   const adapterList = await runCli("CORE-ADAPTER-MGMT-001 adapter list reports built-in registry", ["adapter", "list"], {
     project: doctorProject
   });

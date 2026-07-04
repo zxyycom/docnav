@@ -114,6 +114,7 @@ fn failure_response_rules_preserve_or_null_operation() {
     unparsed.validate().expect("unparsed failure validates");
 }
 
+// @case WB-PROTO-DIAGNOSTICS-001
 #[test]
 fn protocol_error_codes_use_diagnostic_categories() {
     let cases = [
