@@ -37,8 +37,8 @@ describe("quality warning generation", () => {
       [["scc-file-code-lines", "scripts/high-token-module.ts", "code-lines", 500]]
     );
     assert.match(warnings.all[0]!.message, /500 code lines/);
+    assert.match(warnings.all[0]!.message, /threshold: 300 code lines/);
     assert.match(warnings.all[0]!.suggestion ?? "", /responsibility/);
-    assert.doesNotMatch(warnings.all[0]!.suggestion ?? "", /\bsplitting\b|\bsplit\b/i);
   });
 
   it("uses complexity-aware function code density thresholds", () => {

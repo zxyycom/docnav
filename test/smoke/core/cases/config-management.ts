@@ -225,10 +225,8 @@ async function testInitVersionDoctorAndHelp() {
   expectStdoutIncludes(help, "--output");
   expectStdoutIncludes(help, "--pagination");
   expectStdoutIncludes(help, "--limit");
-  expectStdoutIncludes(help, "readable-view");
-  expectStdoutIncludes(help, "readable-json");
-  expectStdoutIncludes(help, "protocol-json");
-  expect(help, !help.stdout.includes("text"), "outline help does not mention text output mode");
+  expectStdoutIncludes(help, "--output <readable-view|readable-json|protocol-json>");
+  expectStdoutIncludes(help, "[possible values: readable-view, readable-json, protocol-json]");
 
   const doctorProject = createProject("tool-doctor-static-registry");
   const doctor = await runCli("CORE-TOOLS-001 doctor reports static registry checks", ["doctor"], {

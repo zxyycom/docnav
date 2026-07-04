@@ -42,9 +42,7 @@ export function createRealMarkdownRefErrorTasks() {
 async function testRealMarkdownRefHandoffChain() {
   const project = createRegisteredRealMarkdownProject("real-markdown-ref-handoff");
 
-  await assertMaxHeadingLevelCliOption(project);
-  await assertMaxHeadingLevelConfigOption();
-  await assertMaxHeadingLevelAdapterValidation(project);
+  await assertMaxHeadingLevelBehavior(project);
   const outlineRef = await readFirstOutlineRef(project);
   await assertReadableReadRefHandoff(
     project,
@@ -101,6 +99,13 @@ async function testRealMarkdownRefInvalidProtocol() {
   expect(record, Object.hasOwn(details, "ref"), "REF_INVALID includes details.ref");
   expect(record, Object.hasOwn(details, "reason"), "REF_INVALID includes details.reason");
   expect(record, details.ref === "bad:ref", "REF_INVALID preserves ref in error details");
+}
+
+// @case BB-CORE-MD-OPTIONS-001
+async function assertMaxHeadingLevelBehavior(project: SmokeProject) {
+  await assertMaxHeadingLevelCliOption(project);
+  await assertMaxHeadingLevelConfigOption();
+  await assertMaxHeadingLevelAdapterValidation(project);
 }
 
 async function assertMaxHeadingLevelCliOption(project: SmokeProject) {

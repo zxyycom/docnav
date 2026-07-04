@@ -12,6 +12,7 @@ use super::super::support::{
     config_sources, navigation_command, temp_workspace_path, write_config_file, StubRegistry,
 };
 
+// @case WB-NAVIGATION-DISPATCH-001
 #[test]
 fn navigation_loads_project_and_user_config_sources_from_descriptors() {
     let workspace = temp_workspace_path("navigation-owned-config-loading");

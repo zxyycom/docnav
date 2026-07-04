@@ -170,7 +170,6 @@ impl NavigationResolvedValue {
     }
 }
 
-// @case WB-NAVIGATION-DISPATCH-001
 pub fn execute_navigation_command<R>(
     command: NavigationCommand,
     config_sources: NavigationConfigSourceDescriptors,

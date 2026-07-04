@@ -133,6 +133,7 @@ fn adapter_option_field_declaration_rejects_invalid_path() {
     );
 }
 
+// @case WB-CONTRACTS-UNSTRUCTURED-001
 #[test]
 fn unstructured_full_read_hooks_default_to_absent_capabilities() {
     let adapter = NoHookAdapter;

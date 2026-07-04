@@ -16,7 +16,7 @@ describe("quality code area classification", () => {
     assert.equal(classifyQualityFile("scripts/tools/validators/schema/index.ts"), "typescript-validation-smoke");
   });
 
-  it("keeps source scan globs on TypeScript script sources", () => {
+  it("keeps source scan globs on Rust and TypeScript sources", () => {
     assert.deepEqual(DEFAULT_CONFIG.include, [
       "crates/**/*.rs",
       "scripts/**/*.ts",

@@ -11,6 +11,14 @@ Proves:
 - 真实 `docnav` 进程可以通过 Markdown adapter 完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info` 链路。
 - Core 不解析 adapter ref，用户可见 readable JSON 不包含 protocol envelope。
 
+### BB-CORE-MD-OPTIONS-001 Markdown max_heading_level option 通过真实 CLI 生效
+Status: implemented
+Existing smoke task: `CORE-LINK-001`
+Code: `test/smoke/core/cases/real-markdown.ts`
+
+Proves:
+- Markdown `max_heading_level` 可以从 CLI flag 和 project config 影响 `outline` 可见粒度；越界值作为 adapter-owned option validation error 投影。
+
 ### BB-CORE-REF-001 Adapter ref 错误穿过 Core
 Status: implemented
 Existing smoke task: `CORE-REF-001`
@@ -45,11 +53,11 @@ Existing smoke task: `CORE-CONFIG-001`
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- 真实 CLI 边界按文档优先级解析 explicit、project、user 和 built-in sources，包括 `defaults.pagination.enabled`、`defaults.pagination.limit` 与 selected adapter declaration 暴露的 `options.max_heading_level`。
+- 真实 CLI 边界可通过 `config set` 存储 user `defaults.pagination.enabled` 与 `options.max_heading_level`，并在 `config list --path` 中展示 project/user/defaults context 与最终值。
 - `config list --path` 会报告被选中文档路径对应的 adapter 和 defaults context。
 - Config source 层只证明 source/shape 与来源参与；`options.max_heading_level` 的类型和范围错误由 selected Markdown declaration registration 和 navigation input resolution 证明。
 - `options.max_heading_level` 来自 project/user config 时只对 declared applicable operation 进入 request construction；对 `read` 这类不适用 operation 返回 structured `unsupported` / `option_issues` diagnostic 并保留 source level。
-- disabled pagination 在进入 adapter layer request 前归一为最大 positive limit，request 只包含最终 `limit` 和 `page`。
+- disabled pagination 通过 CLI/config 命令可观察为 user config stored value 和 `config list --path` final context；本 case 不证明进入 adapter dispatch 前的 request shape。
 - `defaults.limit` 按 hard switch 被拒绝，并通过 structured `unknown_config_field` / `config_issues` 诊断报告配置来源、路径和字段。
 
 ### BB-CORE-SELECT-001 显式 adapter 失败返回 selection diagnostic
@@ -58,8 +66,7 @@ Existing smoke task: `CORE-SELECT-001`
 Code: `test/smoke/core/cases/adapter-selection.ts`
 
 Proves:
-- 显式选择的 adapter 失败时返回 adapter selection diagnostic，不隐藏为 registry fallback。
-- 未显式声明 adapter 的 automatic discovery 全部 probe 失败时，candidate failures 从属于 primary diagnostic details。
+- 显式 CLI 或 project config 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。
 - 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
 
 ### BB-CORE-FAIL-001 Candidate probe failure 投影为格式候选摘要
@@ -70,6 +77,7 @@ Code: `test/smoke/core/cases/failures.ts`
 Proves:
 - candidate discovery 阶段的 built-in adapter probe failure 被报告为 `FORMAT_UNKNOWN` candidate summary。
 - candidate failure 不会被折叠成 selected adapter layer failure。
+- 未显式声明 adapter 的 automatic discovery 全部 probe 失败时，candidate failures 从属于 primary diagnostic details。
 
 ### BB-CORE-SOURCE-001 Core adapter source 来自 static registry
 Status: implemented
@@ -165,9 +173,10 @@ Status: implemented
 Code: `crates/docnav-navigation/src/tests/navigation/native_options.rs`
 
 Proves:
-- Navigation input resolution preserves source labels for explicit input, project config, user config and built-in defaults.
+- Navigation input resolution preserves source labels for explicit input and project config option issues.
 - Adapter descriptor native CLI flags enter parsing as native option sources instead of core-owned fields.
-- Selected adapter-owned declarations control native option typed validation/extraction; navigation only registers, merges and resolves declared fields.
+- Selected adapter-owned declarations control native option typed validation/extraction; navigation registers, merges and resolves declared fields.
+- Built-in adapter defaults affect the resolved operation result when no explicit/project value is provided.
 
 ### WB-NAV-OUTLINE-MODE-001 Navigation outline_mode selectors and pre-dispatch stable
 Status: implemented
@@ -194,7 +203,7 @@ Code: `crates/docnav/src/registry/tests.rs`
 
 Proves:
 - Core static registry 包含 release 内置 Markdown adapter descriptor metadata。
-- 内置 adapter 通过 required handler methods 覆盖 `outline`、`read`、`find` 和 `info` 全部文档操作。
+- Core static registry exposes Markdown native option config keys and outline native option specs.
 - Adapter layer check 将 manifest id 与 registry id 不一致视为 adapter layer invalid。
 
 ### WB-CORE-ADAPTER-SURFACE-001 Core adapter command surface 保持静态注册表边界
@@ -213,9 +222,8 @@ Proves:
 - 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
 - diagnostic owner 来自 `docnav-navigation` routing，而不是 core routing。
 - guidance 指向 current core release static registry，且不提示 install/register/executable/artifact 旧动态入口。
-- Automatic discovery 由 `docnav-navigation` 按 static registry 顺序执行 probe，扩展名 metadata 不改变候选顺序。
-- Selection candidate failure 由 resolve/probe 证据产生，不由 manifest metadata 产生。
-- Automatic discovery 全部候选失败时返回 `FORMAT_UNKNOWN`，并把 routing-owned candidate evidence 投影到 primary details 的 `candidate_failures`。
+- Automatic discovery 全部候选失败时返回 `FORMAT_UNKNOWN`，并把 routing-owned probe failure reason 投影到 primary details 的 `candidate_failures`。
+- 本 case 不证明 discovery 顺序、extension metadata 排序或 manifest metadata 与 candidate failure 的关系。
 
 ### WB-DIAG-RULES-001 Diagnostics primary record rules 保持稳定
 Status: implemented
@@ -324,9 +332,10 @@ Status: implemented
 Code: `crates/docnav-protocol/src/tests/decode.rs`
 
 Proves:
-- Protocol request decoding 先运行 typed-field contract validation，再进入 typed deserialization。
-- field-contract-invalid、typed-invalid 和 semantic-invalid request/probe/response 保持可区分。
-- request operation/arguments pairing 和 response operation/result pairing 保留在 semantic validation 阶段。
+- Protocol request decoding runs schema/field-contract validation before raw typed decode.
+- Protocol request decoding rejects unmapped request arguments at the schema stage.
+- Protocol request decoding preserves defaultable empty arguments for operation-specific later resolution.
+- Probe result semantic validation and protocol response operation/result pairing remain semantic-stage failures.
 
 ### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema constraints 被实现测试消费
 Status: implemented
@@ -436,14 +445,22 @@ Proves:
 - `AdapterOptionSpec` wraps typed-field declaration, source bindings, validation and static default metadata without owning the use-site registration step.
 - Direct registration into a typed-field set preserves identity、`options.*` final arguments path、value kind、static default 和 operation applicability, so navigation does not reconstruct adapter-owned validation semantics.
 
-### WB-NAVIGATION-DISPATCH-001 Navigation input resolution、request construction and adapter dispatch 稳定
+### WB-CONTRACTS-UNSTRUCTURED-001 Adapter contracts unstructured full-read hook defaults 稳定
 Status: implemented
-Code: `crates/docnav-navigation/src/lib.rs`
+Code: `crates/docnav-adapter-contracts/src/tests.rs`
 
 Proves:
-- `docnav-navigation` 接收 raw navigation command、config source descriptors/paths 和 registry，加载 raw config sources，解析 routing 输入、选择 adapter，并将 typed input resolution 结果映射为 protocol request arguments。
-- 缺失 operation-owned input 在 navigation boundary 返回 typed input error。
-- Adapter library handle dispatch 返回 protocol success/failure envelope，不需要 adapter subprocess。
+- Adapter contract default unstructured full-read capabilities are absent unless the adapter opts in.
+- Default unstructured full-read content hook returns an adapter error, cost measurement returns an empty `Cost`, and result facts return defaults.
+
+### WB-NAVIGATION-DISPATCH-001 Navigation config source loading and dispatch 稳定
+Status: implemented
+Code: `crates/docnav-navigation/src/tests/navigation/config_sources.rs`
+
+Proves:
+- `docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。
+- Project config source values participate in selected adapter option resolution and dispatch, producing the expected protocol success result.
+- Nested non-object config source shapes at `defaults`、`defaults.pagination` 和 `options` return navigation-owned typed input errors.
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
@@ -451,8 +468,8 @@ Code: `crates/docnav-markdown/src/markdown/refs/tests.rs`
 
 Proves:
 - canonical heading ref 由 line 和 level 结构字段构成。
-- parser 将前导零、非法 level、非数字字段、grammar 外格式和错误 prefix 映射到 grammar 外输入。
-- `doc:full` sentinel 仍作为 adapter-owned full document ref 保留。
+- parser 将前导零、非法 level、zero line、非数字字段、缺失/额外字段、错误 prefix 和 `doc:full` 映射到 grammar 外输入。
+- `doc:full` sentinel 的保留语义由 Markdown ref matching case 覆盖；本 case 只证明 grammar parser 不把它当作 heading ref。
 
 ### WB-MD-REF-MATCH-001 Markdown parsed ref 精确匹配 heading 坐标
 Status: implemented
@@ -461,6 +478,7 @@ Code: `crates/docnav-markdown/src/markdown/refs/tests.rs`
 Proves:
 - parsed heading ref 在 line 和 level 同时匹配时命中目标 heading。
 - matcher 的命中条件由 parsed ref 的 line 和 level 决定。
+- `FULL_DOCUMENT_REF` 保留 adapter-owned full document sentinel `doc:full`。
 
 ### WB-MD-PARSE-001 Markdown parser 忽略非 heading 结构
 Status: implemented
@@ -684,10 +702,10 @@ Status: implemented
 Code: `scripts/tools/quality/measurement/cache.test.ts`
 
 Proves:
-- duplicate-code cache key 由 scan identity、tool args、config、code area 和 input fingerprint 决定。
+- duplicate-code cache key changes for tested code area and input fingerprint differences, and cache lookup misses when tool version differs.
 - duplicate-code cache entry 使用 `.cache/docnav/quality/<scan_cache_version>/` 作为 owner 目录。
 - cache hit 返回不带 changed-scope annotation 的 metric，保持复用扫描与当前 diff 语义分离。
-- baseline snapshot cache key 由 baseline commit、scan config 和工具版本决定，命中时通过 snapshot hash 防止错读缓存内容。
+- baseline snapshot cache key changes for tested tool version differences，命中时通过 snapshot hash 防止错读缓存内容。
 
 ### AUX-QUALITY-CPD-TASK-001 Quality CPD task planning 稳定
 Status: implemented
@@ -720,7 +738,7 @@ Code: `scripts/tools/quality/model/code-areas.test.ts`
 Proves:
 - smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `typescript-validation-smoke` 的广泛 globs 遮蔽。
 - smoke harness 和 validator infrastructure 仍归入 `typescript-validation-smoke`。
-- quality scan input globs 只覆盖 TypeScript 脚本源码。
+- quality scan input globs 覆盖 Rust source、TypeScript scripts 和 TypeScript tests；code area globs 将 production scripts 与 validation/smoke TypeScript 分开。
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
@@ -740,7 +758,7 @@ Code: `scripts/tools/quality/output/warnings/generator.test.ts`
 Proves:
 - 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。
 - 文件大小 warning 根据 scc decision-token count 选择 code-line floor，低 decision-token 文件可使用更高行数阈值。
-- warning record 的 rule id、metric、message 和 suggestion 反映代码行数语义，且 suggestion 不直接把行数信号转成拆分建议。
+- warning record 的 rule id、metric、message 和 suggestion 反映代码行数、阈值和 responsibility-focused guidance。
 - 函数 warning 使用复杂度感知的代码密度阈值：普通复杂度函数超过 50 行触发，CC < 5 的简单函数超过 150 行才触发。
 - 函数代码密度 warning record 的 rule id、metric 和 message 反映组合阈值语义，不再输出单纯函数代码行数规则。
 - 已知可接受 warning 保留在 all/changed/regression warning records 中，并通过 `acceptedReason` 字段携带原因。
@@ -753,7 +771,7 @@ Code: `scripts/tools/quality/scan-command/index.test.ts`
 Proves:
 - quality scan 默认跳过 baseline，baseline generation 保持 opt-in。
 - quality scan profile 默认为 full；quick profile 固定跳过 baseline，并拒绝 baseline 参数。
-- quality scan 的 verifier 输出模式保持 opt-in，用于按未带 `acceptedReason` 的 warning 判定 workspace verifier 状态。
+- quality scan 的 `--verification-output` flag parsing 保持 opt-in。
 - changed file collection 在 CLI defaults 下仍能解析当前 changed scope。
 
 ### AUX-RELEASE-ARGS-001 Release package 参数解析保持边界
@@ -782,5 +800,6 @@ Status: implemented
 Code: `scripts/tools/validators/case-catalog/index.test.ts`
 
 Proves:
-- case catalog validator 对 `Status:`、planned case、duplicate marker 和 `Code:` 路径错配有独立测试。
+- case catalog validator accepts implemented cases with matching markers and planned cases without markers.
+- case catalog validator reports duplicate documented IDs、duplicate source markers、invalid marker IDs、invalid `Status:`、implemented case without `Code:`、documented implemented cases missing markers、undocumented source markers、planned cases with markers and `Code:` path drift.
 - 真实仓库由 `bun run validate:docs cases` 作为集成验证。
