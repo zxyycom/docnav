@@ -4,6 +4,7 @@
   "operation": "outline",
   "ok": true,
   "result": {
+    "kind": "structured",
     "entries": [
       {
         "ref": "H:L1:H1",

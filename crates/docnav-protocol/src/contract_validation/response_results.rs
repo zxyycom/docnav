@@ -3,15 +3,16 @@ use serde_json::Value;
 use crate::constants::schema_names;
 
 use super::helpers::{
-    extend_owned_path, operation_name, reject_unknown_fields, validate_field_set,
-    validate_object_array_items, validate_object_array_items_with_owned_prefix, validate_object_at,
-    validate_object_at_with_owned_prefix, value_at, ObjectArraySpec,
+    expect_string_value, extend_owned_path, operation_name, reject_unknown_fields,
+    validate_field_set, validate_object_array_items, validate_object_array_items_with_owned_prefix,
+    validate_object_at, validate_object_at_with_owned_prefix, value_at, ObjectArraySpec,
 };
 use super::response_fields::{
-    response_cost_fields, response_entry_fields, response_find_result_fields,
-    response_info_adapter_fields, response_info_document_fields, response_info_result_fields,
-    response_location_fields, response_measurement_fields, response_outline_result_fields,
-    response_read_result_fields,
+    response_cost_fields, response_cost_fields_allow_empty, response_entry_fields,
+    response_find_result_fields, response_info_adapter_fields, response_info_document_fields,
+    response_info_result_fields, response_location_fields, response_measurement_fields,
+    response_read_result_fields, response_structured_outline_result_fields,
+    response_unstructured_outline_result_fields,
 };
 
 pub(super) fn validate_success_result_shape(value: &Value, errors: &mut Vec<String>) {
@@ -30,7 +31,11 @@ fn success_result_shape(result: &Value) -> Option<&'static str> {
     let Value::Object(object) = result else {
         return None;
     };
-    if object.contains_key("entries") {
+    if matches!(
+        object.get("kind").and_then(Value::as_str),
+        Some("structured" | "unstructured")
+    ) || object.contains_key("entries")
+    {
         Some("outline")
     } else if object.contains_key("matches") {
         Some("find")
@@ -50,21 +55,57 @@ fn success_result_shape(result: &Value) -> Option<&'static str> {
 }
 
 fn validate_outline_result(value: &Value, errors: &mut Vec<String>) {
+    match outline_result_kind(value) {
+        Some("unstructured") => validate_unstructured_outline_result(value, errors),
+        _ => validate_structured_outline_result(value, errors),
+    }
+}
+
+fn outline_result_kind(value: &Value) -> Option<&str> {
+    value_at(value, &["result", "kind"]).and_then(Value::as_str)
+}
+
+fn validate_structured_outline_result(value: &Value, errors: &mut Vec<String>) {
     validate_field_set(
         schema_names::PROTOCOL_RESPONSE,
-        response_outline_result_fields,
+        response_structured_outline_result_fields,
         value,
         &[],
         errors,
     );
     reject_unknown_fields(
         schema_names::PROTOCOL_RESPONSE,
-        response_outline_result_fields,
+        response_structured_outline_result_fields,
         value,
         &["result"],
         errors,
     );
+    expect_string_value(value, &["result", "kind"], "structured", errors);
     validate_entry_array(value, &["result", "entries"], errors);
+}
+
+fn validate_unstructured_outline_result(value: &Value, errors: &mut Vec<String>) {
+    validate_field_set(
+        schema_names::PROTOCOL_RESPONSE,
+        response_unstructured_outline_result_fields,
+        value,
+        &[],
+        errors,
+    );
+    reject_unknown_fields(
+        schema_names::PROTOCOL_RESPONSE,
+        response_unstructured_outline_result_fields,
+        value,
+        &["result"],
+        errors,
+    );
+    expect_string_value(value, &["result", "kind"], "unstructured", errors);
+    validate_cost_with(
+        response_cost_fields_allow_empty,
+        value,
+        &["result", "cost"],
+        errors,
+    );
 }
 
 fn validate_read_result(value: &Value, errors: &mut Vec<String>) {
@@ -169,12 +210,21 @@ fn validate_cost_in_entry(entry: &Value, prefix: &[String], errors: &mut Vec<Str
 }
 
 fn validate_cost(value: &Value, path: &[&str], errors: &mut Vec<String>) {
+    validate_cost_with(response_cost_fields, value, path, errors);
+}
+
+fn validate_cost_with(
+    build: super::helpers::FieldSetBuilder,
+    value: &Value,
+    path: &[&str],
+    errors: &mut Vec<String>,
+) {
     validate_object_at(
         value,
         path,
         ObjectArraySpec {
             schema: schema_names::PROTOCOL_RESPONSE,
-            build: response_cost_fields,
+            build,
         },
         validate_measurements,
         errors,

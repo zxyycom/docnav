@@ -4,8 +4,8 @@ use docnav_diagnostics::{
 };
 use docnav_protocol::{
     normalize_protocol_diagnostic, protocol_error_record_draft,
-    protocol_error_record_draft_with_summary, FindArguments, FindResult, InfoArguments, InfoResult,
-    Manifest, OutlineArguments, OutlineResult, ProbeResult, ProtocolDiagnosticFallback,
+    protocol_error_record_draft_with_summary, Cost, FindArguments, FindResult, InfoArguments,
+    InfoResult, Manifest, OutlineArguments, OutlineResult, ProbeResult, ProtocolDiagnosticFallback,
     ProtocolError, ReadArguments, ReadResult, RequestEnvelope,
 };
 pub use docnav_typed_fields::{
@@ -36,6 +36,10 @@ pub trait Adapter: Sync {
         Vec::new()
     }
 
+    fn unstructured_full_read_capabilities(&self) -> UnstructuredFullReadCapabilities {
+        UnstructuredFullReadCapabilities::default()
+    }
+
     fn probe(&self, path: &str) -> ProbeResult;
 
     fn outline(
@@ -61,6 +65,69 @@ pub trait Adapter: Sync {
         request: &RequestEnvelope,
         arguments: &InfoArguments,
     ) -> AdapterResult<InfoResult>;
+
+    fn unstructured_full_read(
+        &self,
+        _request: &RequestEnvelope,
+    ) -> AdapterResult<UnstructuredFullRead> {
+        Err(AdapterError::internal(
+            "unstructured-full-read-hook-unavailable",
+        ))
+    }
+
+    fn measure_unstructured_full_read_cost(
+        &self,
+        _request: &RequestEnvelope,
+        _requested_units: &[String],
+    ) -> AdapterResult<Cost> {
+        Ok(Cost {
+            measurements: Vec::new(),
+        })
+    }
+
+    fn unstructured_full_read_facts(
+        &self,
+        _request: &RequestEnvelope,
+    ) -> AdapterResult<UnstructuredFullReadFacts> {
+        Ok(UnstructuredFullReadFacts::default())
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct UnstructuredFullReadCapabilities {
+    pub content_hook: bool,
+    pub cost_measurement_units: Vec<String>,
+    pub result_facts_hook: bool,
+}
+
+impl UnstructuredFullReadCapabilities {
+    pub fn has_cost_measurement_unit(&self, unit: &str) -> bool {
+        self.cost_measurement_units
+            .iter()
+            .any(|declared| declared == unit)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnstructuredFullRead {
+    pub content: String,
+    pub content_type: String,
+    pub facts: UnstructuredFullReadFacts,
+}
+
+impl UnstructuredFullRead {
+    pub fn new(content: impl Into<String>, content_type: impl Into<String>) -> Self {
+        Self {
+            content: content.into(),
+            content_type: content_type.into(),
+            facts: UnstructuredFullReadFacts::default(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct UnstructuredFullReadFacts {
+    pub cost: Option<Cost>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

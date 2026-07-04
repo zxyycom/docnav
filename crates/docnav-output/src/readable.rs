@@ -2,7 +2,7 @@ use std::io::Write;
 
 use docnav_protocol::{
     protocol_error_default_guidance, Cost, Entry, InfoResult, Measurement, OperationResult,
-    ProtocolError,
+    OutlineResult, ProtocolError,
 };
 use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind};
 use serde_json::{json, Map, Value};
@@ -11,10 +11,7 @@ use crate::DocumentOutputError;
 
 pub fn readable_payload(result: &OperationResult) -> Result<Value, DocumentOutputError> {
     let value = match result {
-        OperationResult::Outline(result) => json!({
-            "entries": result.entries.iter().map(readable_entry).collect::<Vec<_>>(),
-            "page": result.page,
-        }),
+        OperationResult::Outline(result) => readable_outline_payload(result),
         OperationResult::Read(result) => json!({
             "ref": result.ref_id,
             "content": result.content,
@@ -33,9 +30,29 @@ pub fn readable_payload(result: &OperationResult) -> Result<Value, DocumentOutpu
     to_readable_value(&value).map_err(DocumentOutputError::ReadablePayload)
 }
 
+fn readable_outline_payload(result: &OutlineResult) -> Value {
+    match result {
+        OutlineResult::Structured(result) => json!({
+            "kind": "structured",
+            "entries": result.entries.iter().map(readable_entry).collect::<Vec<_>>(),
+            "page": result.page,
+        }),
+        OutlineResult::Unstructured(result) => json!({
+            "kind": "unstructured",
+            "reason": result.reason,
+            "content": result.content,
+            "content_type": result.content_type,
+            "cost": result.cost,
+        }),
+    }
+}
+
 pub fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
     match result {
-        OperationResult::Outline(_) => ReadableViewKind::Outline,
+        OperationResult::Outline(OutlineResult::Structured(_)) => ReadableViewKind::Outline,
+        OperationResult::Outline(OutlineResult::Unstructured(_)) => {
+            ReadableViewKind::OutlineUnstructured
+        }
         OperationResult::Read(_) => ReadableViewKind::Read,
         OperationResult::Find(_) => ReadableViewKind::Find,
         OperationResult::Info(_) => ReadableViewKind::Info,

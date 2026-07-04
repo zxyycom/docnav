@@ -65,6 +65,7 @@ pub fn run_vector(vector: &ConformanceVector) {
 fn parse_view_kind(s: &str) -> ReadableViewKind {
     match s {
         "outline" => ReadableViewKind::Outline,
+        "outline-unstructured" => ReadableViewKind::OutlineUnstructured,
         "read" => ReadableViewKind::Read,
         "find" => ReadableViewKind::Find,
         "info" => ReadableViewKind::Info,

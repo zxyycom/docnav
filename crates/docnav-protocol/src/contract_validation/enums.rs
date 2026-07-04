@@ -1,6 +1,6 @@
 use docnav_typed_fields::FieldStringEnum;
 
-use crate::{Operation, ProbeReasonCode, PROTOCOL_VERSION};
+use crate::{Operation, ProbeReasonCode, UnstructuredOutlineReason, PROTOCOL_VERSION};
 
 #[derive(Clone, Copy)]
 pub(super) enum ContractVersion {
@@ -33,6 +33,46 @@ impl FieldStringEnum for Operation {
 
     fn as_str(&self) -> &'static str {
         Operation::as_str(*self)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum OutlineResultKind {
+    Structured,
+    Unstructured,
+}
+
+impl FieldStringEnum for OutlineResultKind {
+    fn variants() -> &'static [Self] {
+        const VARIANTS: &[OutlineResultKind] = &[
+            OutlineResultKind::Structured,
+            OutlineResultKind::Unstructured,
+        ];
+        VARIANTS
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Structured => "structured",
+            Self::Unstructured => "unstructured",
+        }
+    }
+}
+
+impl FieldStringEnum for UnstructuredOutlineReason {
+    fn variants() -> &'static [Self] {
+        const VARIANTS: &[UnstructuredOutlineReason] = &[
+            UnstructuredOutlineReason::PathRule,
+            UnstructuredOutlineReason::CostThreshold,
+        ];
+        VARIANTS
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::PathRule => "path_rule",
+            Self::CostThreshold => "cost_threshold",
+        }
     }
 }
 

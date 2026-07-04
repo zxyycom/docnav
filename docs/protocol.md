@@ -103,13 +103,32 @@ metadata  object, optional
 ### OutlineResult
 
 ```text
-entries[]:
-  entry item, required
-page:
-  positive integer | null, required
+kind:
+  "structured" | "unstructured", required
+
+structured branch:
+  entries[]:
+    entry item, required
+  page:
+    positive integer | null, required
+
+unstructured branch:
+  reason:
+    "path_rule" | "cost_threshold", required
+  content:
+    string, required
+  content_type:
+    string, required
+  cost:
+    measurements[]:
+      unit   string, required
+      value  non-negative integer, required
+      scope  string, optional
 ```
 
-outline 永远返回扁平 entries。层级、位置、摘要和成本等信息只能作为每条 entry 的结构化事实返回，不改变扁平列表模型。
+Structured outline 返回扁平 entries。层级、位置、摘要和成本等信息只能作为每条 entry 的结构化事实返回，不改变扁平列表模型。
+
+Navigation `outline_mode = "unstructured_full"` 触发的 outline success 使用 unstructured branch。该 branch 直接返回完整 content，不返回 entries、ref、page 或 continuation。`cost.measurements[]` 可以为空；`reason` 稳定区分 `path_rule` 和 `cost_threshold`。
 
 ### ReadResult
 

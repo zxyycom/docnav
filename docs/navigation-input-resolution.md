@@ -59,9 +59,13 @@ Config source 只表达 document operation 默认值和 adapter-owned native opt
 | `defaults.pagination.enabled` | 默认分页状态。 |
 | `defaults.pagination.limit` | 默认分页预算，必须是正整数。 |
 | `defaults.output` | 默认输出模式。 |
+| `outline.mode_rules[]` | `outline` 的 path selector。每条 rule 包含 `path` 和 `mode`。 |
+| `outline.auto_full_read.thresholds[]` | `outline` 的 adapter-scoped cost threshold selector。每条 threshold 包含 `adapter`、`unit` 和正整数 `value`。 |
 | `options.*` | Adapter-owned native option source value。 |
 
-`defaults.limit` 和 `defaults.page` 不是合法字段。未知顶层字段、未知 `defaults.*` 字段、未知 `defaults.pagination.*` 字段和无法由当前 registry 声明接收的 `options.*` source 都是 input resolution failure。
+`outline.mode_rules[].mode` 只能是 `structured` 或 `unstructured_full`。`outline.mode_rules[].path` 使用 Rust `regex` matcher pattern，匹配使用 `/` 分隔的规范化 `document.path`，且 pattern 必须匹配整个路径。项目根内文档使用 project-relative path，项目根外文档使用规范化绝对 path。当前文档化 pattern syntax 是 Rust regex crate 支持的正则表达式，例如 `docs/raw\.md`、`notes/raw/.+\.md` 和 `.*\.txt`；它不是 glob、gitignore 规则或 shell expansion。Unsupported matcher feature、无法编译的 pattern、缺少 `path` / `mode` 或未知 mode 都是 source-scoped input resolution failure。
+
+`defaults.limit` 和 `defaults.page` 不是合法字段。未知顶层字段、未知 `defaults.*` 字段、未知 `defaults.pagination.*` 字段、未知 `outline.*` 字段和无法由当前 registry 声明接收的 `options.*` source 都是 input resolution failure。
 
 配置 schema 只用于示例校验和编辑器提示；runtime 不要求先加载 schema。
 
@@ -91,6 +95,24 @@ docnav-navigation
 Resolution 必须保持来源信息，便于诊断表达 explicit、project config、user config 或 built-in default。Config source 缺失不产生诊断；present invalid source、unknown field、unmapped public input、type/range invalid 和 missing required value 产生 blocking diagnostic。
 
 当 `pagination.enabled` 最终为 `false` 时，resolution 在构造 operation arguments 前把分页预算归一为最大正整数预算。该归一化不回写 raw command、config source 或 protocol JSON。
+
+## Outline Mode Resolution
+
+`outline` operation 在标准调用参数中包含 navigation-owned `outline_mode`。合法值为 `structured` 和 `unstructured_full`，默认值为 `structured`。`outline_mode` 不是 adapter 私有 option、ref policy、raw protocol argument 或 public CLI override flag。
+
+`outline_mode` resolution 发生在 document path 规范化、adapter selection、通用字段声明和 selected adapter declaration registration 之后，且早于 selected adapter 的正常 outline handler dispatch。优先级固定为：
+
+1. `outline.mode_rules[]` path selector。
+2. `outline.auto_full_read.thresholds[]` adapter-scoped cost threshold selector。
+3. built-in default `structured`。
+
+Path selector 只在 `outline` operation 中生效。User config rules 保持文件顺序；project config rules 保持文件顺序并在 user rules 之后评估；最后一个匹配当前规范化 document path 的 rule 胜出。匹配结果可以显式产出 `structured`，此时 cost threshold selector 不得覆盖该 path rule。
+
+Cost threshold selector 只在没有 path rule 产出 `outline_mode` 时运行。Navigation 必须先按 selected adapter id 过滤 `outline.auto_full_read.thresholds[]`；没有 selected-adapter candidate threshold 时保持 `structured`，且不得调用 selected adapter 的 full-read cost measurement hook。存在 candidate threshold 时，navigation 按 `unit` 合并阈值，同一 `unit` 取最小正整数 `value`，并只把这些 effective units 传给 selected adapter 的 full-read cost measurement hook/declaration。
+
+Threshold 比较只使用 selected adapter 返回的标准 `Cost.measurements[]`。Adapter 未声明、无法安全返回 measurement，或返回结果中没有 effective threshold 的 `unit` 时，selector 不命中并保持 `structured`。Navigation 不解析格式私有内容，也不为 adapter 缺失的 unit 发明成本语义。
+
+当 `outline_mode` 为 `unstructured_full` 时，navigation 在正常 outline handler 前进入非结构化全文读取路径，通过 selected adapter 的可选 full-read hook 或默认 UTF-8 原文读取方案产出非结构化 outline success result。该路径不返回 entries、ref、page 或 continuation；cost threshold 只是 selector，不是 `limit`、`page` 或 content 截断预算。
 
 ## Selected Adapter 参数声明
 

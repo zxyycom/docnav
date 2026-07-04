@@ -1,0 +1,17 @@
+{
+  "outline": {
+    "mode_rules": [
+      {
+        "path": "notes/raw/.+\\.md",
+        "mode": "unstructured_full"
+      },
+      {
+        "path": "notes/raw/index\\.md",
+        "mode": "structured"
+      }
+    ]
+  },
+  "options": {
+    "max_heading_level": 3
+  }
+}

@@ -35,7 +35,8 @@ pub(super) fn validate_navigation_sources(
         fields,
         selected_native_options,
     };
-    validate_config_sources(config_sources, &context)
+    validate_config_sources(config_sources, &context)?;
+    crate::outline_mode::validate_outline_config_sources(command, config_sources)
 }
 
 pub(super) fn first_resolution_error(
@@ -134,6 +135,7 @@ fn validate_config_source(
         match key.as_str() {
             "defaults" => validate_defaults_shape(source, child)?,
             "options" => validate_options_shape(source, child, value, context)?,
+            "outline" => {}
             _ => {
                 return Err(NavigationError::config_unknown_field(
                     source.level,

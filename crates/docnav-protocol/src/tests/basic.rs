@@ -18,8 +18,8 @@ fn constructs_outline_success_response() {
     let response = ProtocolResponse::success(
         PROTOCOL_VERSION,
         "req-outline-001",
-        OperationResult::Outline(OutlineResult {
-            entries: vec![Entry {
+        OperationResult::Outline(OutlineResult::structured(
+            vec![Entry {
                 ref_id: "L1:Guide".to_owned(),
                 label: "Guide".to_owned(),
                 kind: None,
@@ -30,8 +30,8 @@ fn constructs_outline_success_response() {
                 cost: None,
                 metadata: None,
             }],
-            page: Some(positive(2)),
-        }),
+            Some(positive(2)),
+        )),
     );
 
     let value = serde_json::to_value(response).expect("response serializes");
@@ -39,10 +39,47 @@ fn constructs_outline_success_response() {
     assert_eq!(value["request_id"], "req-outline-001");
     assert_eq!(value["operation"], "outline");
     assert_eq!(value["ok"], true);
+    assert_eq!(value["result"]["kind"], "structured");
     assert_eq!(value["result"]["entries"][0]["ref"], "L1:Guide");
     assert_eq!(value["result"]["entries"][0]["label"], "Guide");
     assert_eq!(value["result"]["page"], 2);
     assert!(value["result"].get("markdown_heading_path").is_none());
+}
+
+#[test]
+fn constructs_unstructured_outline_success_response() {
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "req-outline-unstructured-001",
+        OperationResult::Outline(OutlineResult::unstructured(
+            UnstructuredOutlineReason::PathRule,
+            "full body",
+            "text/plain",
+            Cost {
+                measurements: Vec::new(),
+            },
+        )),
+    );
+
+    let value = serde_json::to_value(response).expect("response serializes");
+    validate_protocol_response_value(&value).expect("unstructured outline validates");
+    assert_eq!(value["operation"], "outline");
+    assert_eq!(value["ok"], true);
+    assert_eq!(value["result"]["kind"], "unstructured");
+    assert_eq!(value["result"]["reason"], "path_rule");
+    assert_eq!(value["result"]["content"], "full body");
+    assert_eq!(value["result"]["content_type"], "text/plain");
+    assert_eq!(
+        value["result"]["cost"]["measurements"]
+            .as_array()
+            .expect("measurements array")
+            .len(),
+        0
+    );
+    assert!(value["result"].get("entries").is_none());
+    assert!(value["result"].get("ref").is_none());
+    assert!(value["result"].get("page").is_none());
+    assert!(value["result"].get("continuation").is_none());
 }
 
 #[test]

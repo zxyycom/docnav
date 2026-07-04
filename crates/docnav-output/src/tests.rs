@@ -5,7 +5,7 @@ use docnav_diagnostics::{
 };
 use docnav_protocol::{
     Cost, Entry, Measurement, Operation, OperationResult, OutlineResult, ProtocolResponse,
-    ReadResult, PROTOCOL_VERSION,
+    ReadResult, UnstructuredOutlineReason, PROTOCOL_VERSION,
 };
 use serde_json::Value;
 
@@ -30,6 +30,15 @@ fn read_result() -> OperationResult {
     })
 }
 
+fn unstructured_outline_result(cost: Cost) -> OperationResult {
+    OperationResult::Outline(OutlineResult::unstructured(
+        UnstructuredOutlineReason::PathRule,
+        "full body\n",
+        "text/markdown",
+        cost,
+    ))
+}
+
 fn test_cost() -> Cost {
     Cost {
         measurements: vec![
@@ -52,10 +61,16 @@ fn test_cost() -> Cost {
     }
 }
 
+fn empty_cost() -> Cost {
+    Cost {
+        measurements: Vec::new(),
+    }
+}
+
 #[test]
 fn readable_json_success_omits_diagnostics_without_protocol_envelope() {
-    let result = OperationResult::Outline(OutlineResult {
-        entries: vec![Entry {
+    let result = OperationResult::Outline(OutlineResult::structured(
+        vec![Entry {
             ref_id: "R1".into(),
             label: "Intro".into(),
             kind: None,
@@ -66,8 +81,8 @@ fn readable_json_success_omits_diagnostics_without_protocol_envelope() {
             cost: None,
             metadata: None,
         }],
-        page: None,
-    });
+        None,
+    ));
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
 
@@ -82,6 +97,7 @@ fn readable_json_success_omits_diagnostics_without_protocol_envelope() {
 
     assert!(stderr.is_empty());
     let value: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(value["kind"], "structured");
     assert_eq!(value["entries"][0]["ref"], "R1");
     assert!(value.get("protocol_version").is_none());
 }
@@ -144,6 +160,87 @@ fn readable_json_read_cost_is_derived_from_measurements() {
     assert!(stderr.is_empty());
     let value: Value = serde_json::from_slice(&stdout).unwrap();
     assert_eq!(value["cost"], "1 line | 0.0 KB | 8 tokens");
+}
+
+#[test]
+fn readable_json_unstructured_outline_preserves_content_cost_and_reason() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    write_document_result(
+        &unstructured_outline_result(empty_cost()),
+        "request-1",
+        DocumentOutputMode::ReadableJson,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+
+    assert!(stderr.is_empty());
+    let value: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(value["kind"], "unstructured");
+    assert_eq!(value["reason"], "path_rule");
+    assert_eq!(value["content"], "full body\n");
+    assert_eq!(value["content_type"], "text/markdown");
+    assert_eq!(value["cost"]["measurements"].as_array().unwrap().len(), 0);
+    assert!(value.get("entries").is_none());
+    assert!(value.get("ref").is_none());
+    assert!(value.get("page").is_none());
+    assert!(value.get("continuation").is_none());
+}
+
+#[test]
+fn readable_view_unstructured_outline_uses_content_block() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    write_document_result(
+        &unstructured_outline_result(test_cost()),
+        "request-1",
+        DocumentOutputMode::ReadableView,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+
+    assert!(stderr.is_empty());
+    let output = String::from_utf8(stdout).unwrap();
+    assert!(output.contains("\"kind\": \"unstructured\""));
+    assert!(output.contains("\"reason\": \"path_rule\""));
+    assert!(output.contains("\"$block\": \"/content\""));
+    assert!(output.contains("[block /content bytes=10]"));
+    assert!(output.contains("full body\n"));
+    assert!(output.contains("\"measurements\""));
+    assert!(!output.contains("\"entries\""));
+    assert!(!output.contains("\"page\""));
+}
+
+#[test]
+fn protocol_json_unstructured_outline_uses_union_branch_without_navigation_fields() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    write_document_result(
+        &unstructured_outline_result(empty_cost()),
+        "request-1",
+        DocumentOutputMode::ProtocolJson,
+        &mut stdout,
+        &mut stderr,
+    )
+    .unwrap();
+
+    assert!(stderr.is_empty());
+    let value: Value = serde_json::from_slice(&stdout).unwrap();
+    let result = &value["result"];
+    assert_eq!(value["operation"], "outline");
+    assert_eq!(result["kind"], "unstructured");
+    assert_eq!(result["reason"], "path_rule");
+    assert_eq!(result["content"], "full body\n");
+    assert_eq!(result["cost"]["measurements"].as_array().unwrap().len(), 0);
+    assert!(result.get("entries").is_none());
+    assert!(result.get("ref").is_none());
+    assert!(result.get("page").is_none());
+    assert!(result.get("continuation").is_none());
 }
 
 #[test]

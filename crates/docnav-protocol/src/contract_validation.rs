@@ -8,6 +8,7 @@ mod request;
 mod response;
 mod response_fields;
 mod response_results;
+mod value_helpers;
 
 pub(crate) use manifest::validate_manifest_contract_value;
 pub(crate) use probe::validate_probe_result_contract_value;

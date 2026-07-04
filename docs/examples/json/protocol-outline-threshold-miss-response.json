@@ -1,0 +1,32 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-outline-threshold-miss-001",
+  "operation": "outline",
+  "ok": true,
+  "result": {
+    "kind": "structured",
+    "entries": [
+      {
+        "ref": "H:L1:H1",
+        "label": "Guide",
+        "kind": "heading",
+        "location": {
+          "line_start": 1
+        },
+        "cost": {
+          "measurements": [
+            {
+              "unit": "tokens",
+              "value": 2800,
+              "scope": "entry"
+            }
+          ]
+        },
+        "metadata": {
+          "heading_level": 1
+        }
+      }
+    ],
+    "page": null
+  }
+}

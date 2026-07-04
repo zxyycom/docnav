@@ -60,6 +60,7 @@ fn navigation_includes_adapter_native_option_default() {
     let OperationResult::Outline(result) = success.result else {
         panic!("expected outline result");
     };
+    let result = result.as_structured().expect("structured outline result");
     assert_eq!(result.entries[0].label, "Max 3");
 }
 
@@ -88,6 +89,7 @@ fn navigation_resolves_json_native_option_through_typed_fields() {
     let OperationResult::Outline(result) = success.result else {
         panic!("expected outline result");
     };
+    let result = result.as_structured().expect("structured outline result");
 
     assert_eq!(result.entries[0].label, "Payload null");
 }
@@ -114,6 +116,7 @@ fn navigation_accepts_config_option_applicable_to_operation() {
     let OperationResult::Outline(result) = success.result else {
         panic!("expected outline result");
     };
+    let result = result.as_structured().expect("structured outline result");
     assert_eq!(result.entries[0].label, "Max 2");
 }
 

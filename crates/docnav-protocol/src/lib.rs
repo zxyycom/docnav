@@ -41,7 +41,8 @@ pub use manifest::{AdapterIdentity, FormatDescriptor, Manifest, ManifestValidati
 pub use operation::{Operation, OperationParseError, PagedOperation};
 pub use operation_result::{
     Cost, Entry, FindResult, InfoAdapter, InfoDocument, InfoResult, Location, Measurement,
-    OperationResult, OutlineResult, ReadResult,
+    OperationResult, OutlineResult, ReadResult, StructuredOutlineResult, UnstructuredOutlineReason,
+    UnstructuredOutlineResult,
 };
 pub use options::{OptionEntry, Options};
 pub use positive_integer::{positive_result, try_positive, PositiveIntegerError};

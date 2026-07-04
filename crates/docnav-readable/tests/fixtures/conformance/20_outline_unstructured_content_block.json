@@ -1,0 +1,28 @@
+{
+  "description": "Unstructured outline uses /content as a readable-view block while preserving kind, reason and empty cost facts in the header.",
+  "view_kind": "outline-unstructured",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "kind": "unstructured",
+    "reason": "path_rule",
+    "content": "raw note\nsecond line",
+    "content_type": "text/markdown",
+    "cost": {
+      "measurements": []
+    }
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/content", "byte_length": 20, "payload": "raw note\nsecond line"},
+    {"type": "header_field", "pointer": "/kind", "value": "unstructured"},
+    {"type": "header_field", "pointer": "/reason", "value": "path_rule"},
+    {"type": "header_field", "pointer": "/content_type", "value": "text/markdown"},
+    {"type": "header_field", "pointer": "/cost/measurements", "value": []},
+    {"type": "header_contains", "text": "\"$block\": \"/content\""},
+    {"type": "output_contains", "text": "[block /content bytes=20]"},
+    {"type": "output_contains", "text": "[endblock /content]"},
+    {"type": "output_not_contains", "text": "\"entries\""},
+    {"type": "output_not_contains", "text": "\"page\""},
+    {"type": "no_cr_in_framing"}
+  ]
+}

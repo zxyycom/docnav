@@ -87,6 +87,7 @@ fn decode_protocol_response_keeps_operation_result_pairing_semantic() {
         "operation": "read",
         "ok": true,
         "result": {
+            "kind": "structured",
             "entries": [],
             "page": null
         }

@@ -10,14 +10,39 @@ pub struct NavigationError {
     diagnostic: Box<DiagnosticRecordDraft>,
 }
 
-struct ConfigFieldError<'a> {
+pub(crate) struct ConfigFieldError<'a> {
     source_level: &'static str,
     path: &'a str,
     field: String,
     reason_code: &'static str,
-    accepted: Option<&'a str>,
+    accepted: Option<Vec<String>>,
     summary: &'static str,
     guidance: String,
+}
+
+impl<'a> ConfigFieldError<'a> {
+    pub(crate) fn invalid(
+        source_level: &'static str,
+        path: &'a str,
+        field: impl Into<String>,
+        reason_code: &'static str,
+        guidance: impl Into<String>,
+    ) -> Self {
+        Self {
+            source_level,
+            path,
+            field: field.into(),
+            reason_code,
+            accepted: None,
+            summary: "Config file contains an invalid field value.",
+            guidance: guidance.into(),
+        }
+    }
+
+    pub(crate) fn with_accepted(mut self, accepted: Vec<String>) -> Self {
+        self.accepted = Some(accepted);
+        self
+    }
 }
 
 impl NavigationError {
@@ -64,9 +89,30 @@ impl NavigationError {
             path,
             field,
             reason_code: "unknown_config_field",
-            accepted,
+            accepted: accepted.map(|value| vec![value.to_owned()]),
             summary: "Config file contains an unknown field.",
             guidance,
+        })
+    }
+
+    pub(crate) fn config_invalid_field(spec: ConfigFieldError<'_>) -> Self {
+        Self::config_field_error(spec)
+    }
+
+    pub fn config_missing_field(
+        source_level: &'static str,
+        path: &str,
+        field: impl Into<String>,
+    ) -> Self {
+        let field = field.into();
+        Self::config_field_error(ConfigFieldError {
+            source_level,
+            path,
+            field: field.clone(),
+            reason_code: "missing_config_field",
+            accepted: None,
+            summary: "Config file is missing a required field.",
+            guidance: format!("Add config field {field}."),
         })
     }
 
@@ -86,7 +132,7 @@ impl NavigationError {
         let mut details = FieldReasonDetails::new(spec.field.clone(), spec.reason_code);
         details.path = Some(spec.path.to_owned());
         details.received = Some(spec.field.clone());
-        details.accepted = spec.accepted.map(|value| vec![value.to_owned()]);
+        details.accepted = spec.accepted;
         let mut issue = AdapterConfigSourceDetails::new(
             spec.source_level,
             "default",

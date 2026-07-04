@@ -5,7 +5,7 @@ use docnav_diagnostics::{
 };
 use docnav_protocol::{
     protocol_error_record_draft_with_summary, Cost, Entry, Measurement, OperationResult,
-    OutlineResult, ProtocolResponse, ReadResult,
+    OutlineResult, ProtocolResponse, ReadResult, UnstructuredOutlineReason,
 };
 use serde_json::{json, Value};
 
@@ -60,8 +60,8 @@ fn document_readable_json_uses_success_payload_without_protocol_envelope() {
     let response = ProtocolResponse::success(
         PROTOCOL_VERSION,
         "request-1",
-        OperationResult::Outline(OutlineResult {
-            entries: vec![Entry {
+        OperationResult::Outline(OutlineResult::structured(
+            vec![Entry {
                 ref_id: "R1".into(),
                 label: "Test".into(),
                 kind: None,
@@ -72,13 +72,14 @@ fn document_readable_json_uses_success_payload_without_protocol_envelope() {
                 cost: None,
                 metadata: None,
             }],
-            page: None,
-        }),
+            None,
+        )),
     );
     let outcome = outcome_for_response(response, OutputMode::ReadableJson).unwrap();
     let (stdout, stderr) = write_success(outcome);
     assert!(stderr.is_empty());
     let value: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(value["kind"], "structured");
     assert_eq!(value["entries"][0]["ref"], "R1");
     assert!(value.get("protocol_version").is_none());
 }
@@ -88,10 +89,7 @@ fn document_protocol_json_writes_protocol_envelope_with_empty_stderr() {
     let response = ProtocolResponse::success(
         PROTOCOL_VERSION,
         "request-1",
-        OperationResult::Outline(OutlineResult {
-            entries: vec![],
-            page: None,
-        }),
+        OperationResult::Outline(OutlineResult::structured(vec![], None)),
     );
     let outcome = outcome_for_response(response, OutputMode::ProtocolJson).unwrap();
     let (stdout, stderr) = write_success(outcome);
@@ -99,6 +97,34 @@ fn document_protocol_json_writes_protocol_envelope_with_empty_stderr() {
     assert_eq!(stdout["protocol_version"], PROTOCOL_VERSION);
     let stderr = String::from_utf8(stderr).unwrap();
     assert!(stderr.is_empty());
+}
+
+#[test]
+fn document_unstructured_outline_readable_view_uses_shared_output_facade() {
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "request-1",
+        OperationResult::Outline(OutlineResult::unstructured(
+            UnstructuredOutlineReason::CostThreshold,
+            "small note",
+            "text/markdown",
+            Cost {
+                measurements: Vec::new(),
+            },
+        )),
+    );
+    let outcome = outcome_for_response(response, OutputMode::ReadableView).unwrap();
+    let (stdout, stderr) = write_success(outcome);
+
+    assert!(stderr.is_empty());
+    let output = String::from_utf8(stdout).unwrap();
+    assert!(output.contains("\"kind\": \"unstructured\""));
+    assert!(output.contains("\"reason\": \"cost_threshold\""));
+    assert!(output.contains("\"$block\": \"/content\""));
+    assert!(output.contains("[block /content bytes=10]"));
+    assert!(output.contains("small note"));
+    assert!(!output.contains("\"entries\""));
+    assert!(!output.contains("\"page\""));
 }
 
 #[test]

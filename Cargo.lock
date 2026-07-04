@@ -222,6 +222,7 @@ dependencies = [
  "docnav-parameter-resolution",
  "docnav-protocol",
  "docnav-typed-fields",
+ "regex",
  "serde_json",
 ]
 

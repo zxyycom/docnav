@@ -6,8 +6,8 @@ use docnav_adapter_contracts::Adapter;
 use docnav_markdown::MarkdownAdapter;
 use docnav_protocol::{
     positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
-    OperationArguments, OptionEntry, Options, OutlineArguments, OutlineResult,
-    ProtocolDiagnosticCode, ProtocolError, ReadArguments, RequestEnvelope, PROTOCOL_VERSION,
+    OperationArguments, OptionEntry, Options, OutlineArguments, ProtocolDiagnosticCode,
+    ProtocolError, ReadArguments, RequestEnvelope, StructuredOutlineResult, PROTOCOL_VERSION,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -94,7 +94,7 @@ fn max_heading_level_options(level: u8) -> Options {
     options
 }
 
-fn outline_result(path: &Path, arguments: &OutlineArguments) -> OutlineResult {
+fn outline_result(path: &Path, arguments: &OutlineArguments) -> StructuredOutlineResult {
     let request = make_request(
         path,
         Operation::Outline,
@@ -103,6 +103,8 @@ fn outline_result(path: &Path, arguments: &OutlineArguments) -> OutlineResult {
     MarkdownAdapter
         .outline(&request, arguments)
         .expect("outline result")
+        .into_structured()
+        .expect("structured outline result")
 }
 
 fn find_result(path: &Path, arguments: &FindArguments) -> FindResult {

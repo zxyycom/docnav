@@ -15,6 +15,8 @@ Outline heading 识别范围排除：
 
 ## Outline
 
+本节定义 Markdown adapter 正常结构化 outline handler 的行为。若 navigation 标准 `outline_mode` 已解析为 `unstructured_full`，core-mediated navigation 在调用 linked Markdown adapter 的正常 outline handler 前直接返回整篇 Markdown 原文，`content_type` 为 `text/markdown`，且结果不包含 heading entries、`doc:full`、ref、page 或 continuation。`outline_mode` 不是 Markdown adapter-owned native option。
+
 Markdown outline 按文档顺序返回扁平 heading entries。每条 entry 包含：
 
 | 字段 | 内容 |
@@ -34,7 +36,7 @@ Markdown adapter 的静态 descriptor 声明 `options.max_heading_level` adapter
 
 ### 无可见 heading 时的全文 ref
 
-当前 outline 参数过滤后没有可见 heading 时，outline 返回单条 `doc:full` entry。该 ref 读取整篇 Markdown 文档。
+当前 outline 参数过滤后没有可见 heading，且 navigation `outline_mode` 为默认 `structured` 时，outline 返回单条 `doc:full` entry。该 ref 读取整篇 Markdown 文档。
 
 ## Find
 
@@ -170,9 +172,11 @@ Core `docnav` 配置源可以携带以下与 Markdown adapter 相关的 source v
 | `defaults.pagination.enabled` | 通用 `pagination.enabled` | outline、read 和 find 的默认分页状态 |
 | `defaults.pagination.limit` | 通用 `limit` | outline、read 和 find 的默认 Unicode 字符预算 |
 | `defaults.output` | 通用 `output` | document operation 默认输出模式 |
+| `outline.mode_rules[]` | navigation-owned selector | 可按 Markdown document path 选择 `structured` 或 `unstructured_full` |
+| `outline.auto_full_read.thresholds[]` | navigation-owned selector | 可按 selected adapter id `docnav-markdown` 和 declared full-read cost unit 选择 `unstructured_full` |
 | `options.max_heading_level` | Markdown native option | outline 和 find 的可见 heading 粒度 |
 
-Markdown native option 的 core 配置参考形状见 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json) 和 [docnav-markdown-config.json](../examples/json/docnav-markdown-config.json)。这些文件只作为配置填写提示和示例校验；配置发现、字段映射、来源合并、失败处理和 runtime 参数校验由 [Navigation Input Resolution](../navigation-input-resolution.md) 与 [适配器契约](../adapter-contract.md#文档操作执行边界) 定义，runtime 不要求先加载该 schema。Config source 只提供 raw source value，`max_heading_level` 的 `1..6` 语义由 Markdown typed-field declaration 表达，并在 request construction 前校验/提取。
+Markdown native option 和 outline selector 的 core 配置参考形状见 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。基础 native option 示例见 [docnav-markdown-config.json](../examples/json/docnav-markdown-config.json)，selector 示例见 [示例索引](../examples/README.md#配置示例)。这些文件只作为配置填写提示和示例校验；配置发现、字段映射、来源合并、失败处理和 runtime 参数校验由 [Navigation Input Resolution](../navigation-input-resolution.md) 与 [适配器契约](../adapter-contract.md#文档操作执行边界) 定义，runtime 不要求先加载该 schema。Config source 只提供 raw source value，`max_heading_level` 的 `1..6` 语义由 Markdown typed-field declaration 表达，并在 request construction 前校验/提取。
 
 `options.max_heading_level` 是 Markdown adapter-owned native option source。CLI/config source 通过 Markdown `AdapterOptionSpec` declaration 进入 navigation input resolution；adapter selection 后，`docnav-navigation` 只解析 selected Markdown adapter declarations 注册出的 options。Type mismatch 或 `1..6` 范围外值在 typed-field validation/extraction 阶段返回带来源的 diagnostic。
 

@@ -1,6 +1,7 @@
 mod adapter_source;
 mod config_sources;
 mod native_options;
+mod outline_mode;
 
 use serde_json::Value;
 

@@ -50,6 +50,7 @@ fn navigation_loads_project_and_user_config_sources_from_descriptors() {
     let OperationResult::Outline(result) = success.result else {
         panic!("expected outline result");
     };
+    let result = result.as_structured().expect("structured outline result");
     assert_eq!(result.entries[0].label, "Max 2");
     let _ = fs::remove_dir_all(workspace);
 }

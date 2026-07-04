@@ -28,3 +28,4 @@ assertion types, and the explicitly excluded stability surface.
 | `17_order_independent_assertions.json` | Order-independent assertions |
 | `18_renderer_failure_missing_pointer.json` | Renderer failure — missing pointer |
 | `19_renderer_failure_non_string.json` | Renderer failure — non-string target |
+| `20_outline_unstructured_content_block.json` | Unstructured outline `/content` block |

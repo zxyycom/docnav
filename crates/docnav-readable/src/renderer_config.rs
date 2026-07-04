@@ -107,10 +107,18 @@ impl RendererConfig {
     pub fn default_config() -> Self {
         let mut views = BTreeMap::new();
 
-        // outline – no blocks (all fields in JSON header)
+        // structured outline – no blocks (all fields in JSON header)
         views.insert(
             ReadableViewKind::Outline,
             ViewBlockConfig { blocks: vec![] },
+        );
+
+        // unstructured outline – full content is the primary block
+        views.insert(
+            ReadableViewKind::OutlineUnstructured,
+            ViewBlockConfig {
+                blocks: vec!["/content".to_owned()],
+            },
         );
 
         // read – content body is the primary block

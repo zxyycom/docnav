@@ -221,8 +221,8 @@ impl Adapter for StubAdapter {
                     .map(|value| format!("Max {value}"))
             })
             .unwrap_or_else(|| "Stub".to_owned());
-        Ok(OutlineResult {
-            entries: vec![Entry {
+        Ok(OutlineResult::structured(
+            vec![Entry {
                 ref_id: "stub:1".to_owned(),
                 label,
                 kind: None,
@@ -233,8 +233,8 @@ impl Adapter for StubAdapter {
                 cost: None,
                 metadata: None,
             }],
-            page: None,
-        })
+            None,
+        ))
     }
 
     fn read(

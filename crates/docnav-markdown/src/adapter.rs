@@ -1,6 +1,6 @@
 use docnav_adapter_contracts::{
     Adapter, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterResult,
-    FieldBound, FieldValidation,
+    FieldBound, FieldValidation, UnstructuredFullRead, UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
     AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoAdapter, InfoArguments,
@@ -56,6 +56,18 @@ impl Adapter for MarkdownAdapter {
         markdown_adapter_options()
     }
 
+    fn unstructured_full_read_capabilities(&self) -> UnstructuredFullReadCapabilities {
+        UnstructuredFullReadCapabilities {
+            content_hook: true,
+            cost_measurement_units: vec![
+                "lines".to_owned(),
+                "bytes".to_owned(),
+                "tokens".to_owned(),
+            ],
+            result_facts_hook: false,
+        }
+    }
+
     fn probe(&self, path: &str) -> ProbeResult {
         let extension_match = is_markdown_extension(path);
         let mut reasons = Vec::new();
@@ -108,7 +120,7 @@ impl Adapter for MarkdownAdapter {
         let max_heading_level = max_heading_level_from_options(arguments.options.as_ref())?;
         let entries = document.outline_entries(max_heading_level);
         let (entries, page) = paginate_entries(&entries, arguments.page, arguments.limit);
-        Ok(OutlineResult { entries, page })
+        Ok(OutlineResult::structured(entries, page))
     }
 
     fn read(
@@ -177,6 +189,32 @@ impl Adapter for MarkdownAdapter {
                 "heading_count".to_owned(),
                 json!(document.headings().len()),
             )])),
+        })
+    }
+
+    fn unstructured_full_read(
+        &self,
+        request: &RequestEnvelope,
+    ) -> AdapterResult<UnstructuredFullRead> {
+        let document = MarkdownDocument::load(&request.document.path)?;
+        let mut result = UnstructuredFullRead::new(document.source(), CONTENT_TYPE_MARKDOWN);
+        result.facts.cost = Some(cost_for(document.source()));
+        Ok(result)
+    }
+
+    fn measure_unstructured_full_read_cost(
+        &self,
+        request: &RequestEnvelope,
+        requested_units: &[String],
+    ) -> AdapterResult<docnav_protocol::Cost> {
+        let document = MarkdownDocument::load(&request.document.path)?;
+        let cost = cost_for(document.source());
+        Ok(docnav_protocol::Cost {
+            measurements: cost
+                .measurements
+                .into_iter()
+                .filter(|measurement| requested_units.iter().any(|unit| unit == &measurement.unit))
+                .collect(),
         })
     }
 }

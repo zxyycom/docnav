@@ -16,7 +16,9 @@ fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
 
     let result = MarkdownAdapter
         .outline(&request, &arguments)
-        .expect("outline result");
+        .expect("outline result")
+        .into_structured()
+        .expect("structured outline result");
 
     assert_eq!(result.entries.len(), 2);
     // Guide: line 1, level 1
@@ -49,7 +51,9 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
         );
         let outline = MarkdownAdapter
             .outline(&request, &arguments)
-            .expect("outline result");
+            .expect("outline result")
+            .into_structured()
+            .expect("structured outline result");
         assert_eq!(outline.entries[0].ref_id, "doc:full");
 
         let read_arguments = ReadArguments {
@@ -84,7 +88,9 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
 
     let outline = MarkdownAdapter
         .outline(&request, &arguments)
-        .expect("outline result");
+        .expect("outline result")
+        .into_structured()
+        .expect("structured outline result");
 
     let all_refs: Vec<String> = outline
         .entries

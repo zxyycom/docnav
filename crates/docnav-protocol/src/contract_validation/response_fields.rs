@@ -3,12 +3,13 @@ use docnav_typed_fields::{
     FieldValidation,
 };
 
-use super::enums::ProtocolErrorCode;
+use super::enums::{OutlineResultKind, ProtocolErrorCode};
 use super::field_builders::{
     add_operation, add_protocol_version, add_request_id, bool_field, json_path,
     non_empty_string_field, non_empty_unique_array, non_negative_int_field, number_field,
     object_field, positive_int_field, string_enum_field, string_field,
 };
+use crate::UnstructuredOutlineReason;
 
 pub(super) fn response_common_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     add_request_id(add_protocol_version(
@@ -108,8 +109,14 @@ fn response_common_builder() -> FieldDefSetBuilder {
     )
 }
 
-pub(super) fn response_outline_result_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+pub(super) fn response_structured_outline_result_fields(
+) -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["result", "kind"],
+            string_enum_field::<OutlineResultKind>("result.kind", ["result", "kind"]),
+            ExpectedFieldShape::required(),
+        )
         .field_with_declaration_path(
             ["result", "entries"],
             FieldDef::builder("result.entries")
@@ -128,13 +135,43 @@ pub(super) fn response_outline_result_fields() -> Result<FieldDefSet, FieldDefSe
         .build()
 }
 
+pub(super) fn response_unstructured_outline_result_fields(
+) -> Result<FieldDefSet, FieldDefSetBuildError> {
+    add_result_content_fields(
+        FieldDefSet::builder()
+            .field_with_declaration_path(
+                ["result", "kind"],
+                string_enum_field::<OutlineResultKind>("result.kind", ["result", "kind"]),
+                ExpectedFieldShape::required(),
+            )
+            .field_with_declaration_path(
+                ["result", "reason"],
+                string_enum_field::<UnstructuredOutlineReason>(
+                    "result.reason",
+                    ["result", "reason"],
+                ),
+                ExpectedFieldShape::required(),
+            ),
+    )
+    .build()
+}
+
 pub(super) fn response_read_result_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
-    FieldDefSet::builder()
-        .field_with_declaration_path(
-            ["result", "ref"],
-            non_empty_string_field("result.ref", ["result", "ref"]),
-            ExpectedFieldShape::required(),
-        )
+    add_result_content_fields(FieldDefSet::builder().field_with_declaration_path(
+        ["result", "ref"],
+        non_empty_string_field("result.ref", ["result", "ref"]),
+        ExpectedFieldShape::required(),
+    ))
+    .field_with_declaration_path(
+        ["result", "page"],
+        positive_int_field("result.page", ["result", "page"]),
+        ExpectedFieldShape::required_nullable(),
+    )
+    .build()
+}
+
+fn add_result_content_fields(builder: FieldDefSetBuilder) -> FieldDefSetBuilder {
+    builder
         .field_with_declaration_path(
             ["result", "content"],
             string_field("result.content", ["result", "content"]),
@@ -150,12 +187,6 @@ pub(super) fn response_read_result_fields() -> Result<FieldDefSet, FieldDefSetBu
             object_field("result.cost", ["result", "cost"]),
             ExpectedFieldShape::required(),
         )
-        .field_with_declaration_path(
-            ["result", "page"],
-            positive_int_field("result.page", ["result", "page"]),
-            ExpectedFieldShape::required_nullable(),
-        )
-        .build()
 }
 
 pub(super) fn response_find_result_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
@@ -270,6 +301,18 @@ pub(super) fn response_cost_fields() -> Result<FieldDefSet, FieldDefSetBuildErro
             FieldDef::builder("cost.measurements")
                 .process(super::JSON_CONTRACT_PROCESSING, json_path(["measurements"]))
                 .validation(non_empty_unique_array()),
+            ExpectedFieldShape::required(),
+        )
+        .build()
+}
+
+pub(super) fn response_cost_fields_allow_empty() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["measurements"],
+            FieldDef::builder("cost.measurements")
+                .process(super::JSON_CONTRACT_PROCESSING, json_path(["measurements"]))
+                .validation(FieldValidation::array().unique_items()),
             ExpectedFieldShape::required(),
         )
         .build()

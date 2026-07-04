@@ -20,7 +20,9 @@
 | protocol-json | [protocol-outline-request.json](json/protocol-outline-request.json) | [protocol-outline-response.json](json/protocol-outline-response.json) |
 | readable JSON | 不适用 | [readable-outline.json](json/readable-outline.json) |
 
-默认 CLI `readable-view` 输出由 pretty JSON header 承载相同 readable 字段；无 block 的 outline 不产生 block section。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
+Structured outline 示例使用 `kind: "structured"`、entries 和 page。非结构化全文 outline 示例包括 path selector 触发的 [protocol-outline-unstructured-path-response.json](json/protocol-outline-unstructured-path-response.json) / [readable-outline-unstructured-path.json](json/readable-outline-unstructured-path.json)，cost threshold 触发的 [protocol-outline-unstructured-cost-response.json](json/protocol-outline-unstructured-cost-response.json) / [readable-outline-unstructured-cost.json](json/readable-outline-unstructured-cost.json)，以及 threshold 不命中后保持 structured 的 [protocol-outline-threshold-miss-response.json](json/protocol-outline-threshold-miss-response.json) / [readable-outline-threshold-miss.json](json/readable-outline-threshold-miss.json)。
+
+默认 CLI `readable-view` 输出由 pretty JSON header 承载相同 readable 字段；structured outline 不产生 block section，unstructured outline 使用 `/content` block 承载全文。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
 
 protocol 请求显式传入 `page: 1`、`limit: 28` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
@@ -72,8 +74,12 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 ## 配置示例
 
 - [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 Markdown native option 相关字段的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
+- [docnav-markdown-config-path-unstructured.json](json/docnav-markdown-config-path-unstructured.json) 展示 `outline.mode_rules[]` path selector 和后写 rule 覆盖。
+- [docnav-markdown-config-cost-unstructured.json](json/docnav-markdown-config-cost-unstructured.json) 展示 adapter-scoped cost threshold selector。
+- [docnav-markdown-config-threshold-miss.json](json/docnav-markdown-config-threshold-miss.json) 展示 threshold candidate filtering 和不命中时保持 structured 的输入形状。
+- [error-invalid-path-rule.json](json/error-invalid-path-rule.json) 展示 invalid path rule 的 protocol error projection。
 
-配置示例只证明文件形状和示例值。配置发现、字段映射、来源合并、失败边界和字段语义由 [Navigation Input Resolution](../navigation-input-resolution.md)、[适配器契约](../adapter-contract.md) 和 [Markdown Adapter](../adapters/markdown.md) 拥有。
+配置示例只证明文件形状和示例值。配置发现、字段映射、来源合并、selector priority、matcher diagnostics、threshold comparison、失败边界和字段语义由 [Navigation Input Resolution](../navigation-input-resolution.md)、[适配器契约](../adapter-contract.md) 和 [Markdown Adapter](../adapters/markdown.md) 拥有。
 
 ## Schema
 

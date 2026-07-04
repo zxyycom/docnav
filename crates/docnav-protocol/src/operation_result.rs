@@ -68,10 +68,74 @@ pub struct Measurement {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum OutlineResult {
+    Structured(StructuredOutlineResult),
+    Unstructured(UnstructuredOutlineResult),
+}
+
+impl OutlineResult {
+    pub fn structured(entries: Vec<Entry>, page: Option<PositiveInteger>) -> Self {
+        Self::Structured(StructuredOutlineResult { entries, page })
+    }
+
+    pub fn unstructured(
+        reason: UnstructuredOutlineReason,
+        content: impl Into<String>,
+        content_type: impl Into<String>,
+        cost: Cost,
+    ) -> Self {
+        Self::Unstructured(UnstructuredOutlineResult {
+            reason,
+            content: content.into(),
+            content_type: content_type.into(),
+            cost,
+        })
+    }
+
+    pub const fn as_structured(&self) -> Option<&StructuredOutlineResult> {
+        match self {
+            Self::Structured(result) => Some(result),
+            Self::Unstructured(_) => None,
+        }
+    }
+
+    pub fn into_structured(self) -> Option<StructuredOutlineResult> {
+        match self {
+            Self::Structured(result) => Some(result),
+            Self::Unstructured(_) => None,
+        }
+    }
+
+    pub const fn as_unstructured(&self) -> Option<&UnstructuredOutlineResult> {
+        match self {
+            Self::Structured(_) => None,
+            Self::Unstructured(result) => Some(result),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct OutlineResult {
+pub struct StructuredOutlineResult {
     pub entries: Vec<Entry>,
     pub page: Option<PositiveInteger>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UnstructuredOutlineResult {
+    pub reason: UnstructuredOutlineReason,
+    pub content: String,
+    pub content_type: String,
+    pub cost: Cost,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnstructuredOutlineReason {
+    PathRule,
+    CostThreshold,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -1,5 +1,9 @@
 use super::*;
-use docnav_protocol::Operation;
+use docnav_protocol::{
+    AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoArguments, InfoResult,
+    Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode,
+    ProbeResult, ReadArguments, ReadResult, RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION,
+};
 
 #[test]
 fn adapter_options_keep_same_target_key_with_distinct_identity_and_owner() {
@@ -127,4 +131,112 @@ fn adapter_option_field_declaration_rejects_invalid_path() {
         error.to_string(),
         "adapter option docnav.adapters.markdown.options.max_heading_level declaration path must be options.<key>, got markdown.max_heading_level"
     );
+}
+
+#[test]
+fn unstructured_full_read_hooks_default_to_absent_capabilities() {
+    let adapter = NoHookAdapter;
+    let request = RequestEnvelope {
+        protocol_version: docnav_protocol::PROTOCOL_VERSION.to_owned(),
+        request_id: "req-hooks".to_owned(),
+        operation: Operation::Outline,
+        document: docnav_protocol::Document {
+            path: "doc.stub".to_owned(),
+        },
+        arguments: docnav_protocol::OperationArguments::Outline(OutlineArguments {
+            limit: docnav_protocol::positive_result(80).unwrap(),
+            page: docnav_protocol::positive_result(1).unwrap(),
+            options: None,
+        }),
+    };
+
+    let capabilities = adapter.unstructured_full_read_capabilities();
+
+    assert!(!capabilities.content_hook);
+    assert!(!capabilities.result_facts_hook);
+    assert!(capabilities.cost_measurement_units.is_empty());
+    assert!(!capabilities.has_cost_measurement_unit("tokens"));
+    assert!(adapter.unstructured_full_read(&request).is_err());
+    assert_eq!(
+        adapter
+            .measure_unstructured_full_read_cost(&request, &["tokens".to_owned()])
+            .unwrap()
+            .measurements,
+        Vec::new()
+    );
+    assert_eq!(
+        adapter.unstructured_full_read_facts(&request).unwrap(),
+        UnstructuredFullReadFacts::default()
+    );
+}
+
+struct NoHookAdapter;
+
+impl Adapter for NoHookAdapter {
+    fn adapter_id(&self) -> &str {
+        "no-hook"
+    }
+
+    fn manifest(&self) -> Manifest {
+        Manifest {
+            manifest_version: MANIFEST_VERSION.to_owned(),
+            adapter: AdapterIdentity {
+                id: "no-hook".to_owned(),
+                name: "No Hook".to_owned(),
+                version: "0.1.0".to_owned(),
+            },
+            formats: vec![FormatDescriptor {
+                id: "stub".to_owned(),
+                extensions: vec![".stub".to_owned()],
+                content_types: vec!["text/stub".to_owned()],
+            }],
+        }
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        ProbeResult {
+            probe_version: PROBE_VERSION.to_owned(),
+            adapter_id: self.adapter_id().to_owned(),
+            path: path.to_owned(),
+            supported: true,
+            format: Some("stub".to_owned()),
+            confidence: 1.0,
+            reasons: vec![ProbeReason {
+                code: ProbeReasonCode::ContentMatch,
+                detail: "test adapter".to_owned(),
+            }],
+        }
+    }
+
+    fn outline(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &OutlineArguments,
+    ) -> AdapterResult<OutlineResult> {
+        unreachable!("unstructured hook test does not dispatch outline")
+    }
+
+    fn read(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &ReadArguments,
+    ) -> AdapterResult<ReadResult> {
+        unreachable!("unstructured hook test does not dispatch read")
+    }
+
+    fn find(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &FindArguments,
+    ) -> AdapterResult<FindResult> {
+        unreachable!("unstructured hook test does not dispatch find")
+    }
+
+    fn info(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &InfoArguments,
+    ) -> AdapterResult<InfoResult> {
+        unreachable!("unstructured hook test does not dispatch info")
+    }
 }

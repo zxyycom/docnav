@@ -126,7 +126,7 @@ export function validateSchemas() {
   const cases = [
     {
       schema: SCHEMAS.docnavMarkdownConfig,
-      data: [EXAMPLES.docnavMarkdownConfig]
+      data: listExampleJson(/^docnav-markdown-config(?:-[a-z-]+)?\.json$/)
     },
     {
       schema: SCHEMAS.protocolRequest,
@@ -149,7 +149,7 @@ export function validateSchemas() {
     },
     {
       schema: SCHEMAS.readableOutline,
-      data: [EXAMPLES.readableOutline]
+      data: listExampleJson(/^readable-outline(?:-[a-z-]+)?\.json$/)
     },
     {
       schema: SCHEMAS.readableRead,

@@ -2,11 +2,13 @@ use serde_json::{Map, Value};
 
 use docnav_typed_fields::{FieldDefSet, FieldDefSetBuildError, JsonFieldSet};
 
-use crate::SchemaValidationError;
-
 use super::formatting::{
-    json_pointer, json_pointer_str, push_field_extraction_errors,
-    push_owned_field_extraction_errors, push_wrapped_value_errors,
+    json_pointer, push_field_extraction_errors, push_owned_field_extraction_errors,
+    push_wrapped_value_errors,
+};
+pub(super) use super::value_helpers::{
+    expect_bool_value, expect_string_value, extend_owned_path, operation_name, schema_result,
+    value_at,
 };
 use super::{JSON_CONTRACT_PROCESSING, VALUE_FIELD};
 
@@ -258,36 +260,6 @@ fn reject_unknown_fields_with_owned_prefix(check: StrictObjectCheck<'_>, errors:
         )),
     }
 }
-pub(super) fn expect_bool_value(
-    value: &Value,
-    path: &[&str],
-    expected: bool,
-    errors: &mut Vec<String>,
-) {
-    if value_at(value, path).and_then(Value::as_bool) == Some(expected) {
-        return;
-    }
-    errors.push(format!(
-        "{}: expected const {expected}",
-        json_pointer_str(path)
-    ));
-}
-
-pub(super) fn value_at<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
-    let mut current = value;
-    for segment in path {
-        let Value::Object(object) = current else {
-            return None;
-        };
-        current = object.get(*segment)?;
-    }
-    Some(current)
-}
-
-pub(super) fn operation_name(value: &Value) -> Option<&str> {
-    value.get("operation").and_then(Value::as_str)
-}
-
 fn indexed_path(path: &[&str], index: usize) -> Vec<String> {
     let mut item_path = path
         .iter()
@@ -295,21 +267,4 @@ fn indexed_path(path: &[&str], index: usize) -> Vec<String> {
         .collect::<Vec<_>>();
     item_path.push(index.to_string());
     item_path
-}
-
-pub(super) fn extend_owned_path(prefix: &[String], path: &[&str]) -> Vec<String> {
-    let mut extended = prefix.to_vec();
-    extended.extend(path.iter().map(|segment| (*segment).to_string()));
-    extended
-}
-
-pub(super) fn schema_result(
-    schema: &'static str,
-    errors: Vec<String>,
-) -> Result<(), SchemaValidationError> {
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(SchemaValidationError { schema, errors })
-    }
 }

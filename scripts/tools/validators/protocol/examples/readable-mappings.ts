@@ -15,6 +15,7 @@ function toReadablePayload(operation: string, protocolResult: unknown): unknown 
   switch (operation) {
     case OPERATION_NAMES.outline:
       return {
+        kind: result.kind,
         entries: jsonArray(result[FIELDS.entries], "outline entries").map(readableEntry),
         page: result[FIELDS.page],
       };

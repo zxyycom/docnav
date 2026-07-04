@@ -115,6 +115,22 @@
       },
       "additionalProperties": false
     },
+    "costMaybeEmpty": {
+      "type": "object",
+      "required": [
+        "measurements"
+      ],
+      "properties": {
+        "measurements": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/measurement"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "page": {
       "type": [
         "integer",
@@ -122,13 +138,33 @@
       ],
       "minimum": 1
     },
+    "outlineReason": {
+      "enum": [
+        "path_rule",
+        "cost_threshold"
+      ]
+    },
     "outlineResult": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/structuredOutlineResult"
+        },
+        {
+          "$ref": "#/$defs/unstructuredOutlineResult"
+        }
+      ]
+    },
+    "structuredOutlineResult": {
       "type": "object",
       "required": [
+        "kind",
         "entries",
         "page"
       ],
       "properties": {
+        "kind": {
+          "const": "structured"
+        },
         "entries": {
           "type": "array",
           "items": {
@@ -137,6 +173,35 @@
         },
         "page": {
           "$ref": "#/$defs/page"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unstructuredOutlineResult": {
+      "type": "object",
+      "required": [
+        "kind",
+        "reason",
+        "content",
+        "content_type",
+        "cost"
+      ],
+      "properties": {
+        "kind": {
+          "const": "unstructured"
+        },
+        "reason": {
+          "$ref": "#/$defs/outlineReason"
+        },
+        "content": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cost": {
+          "$ref": "#/$defs/costMaybeEmpty"
         }
       },
       "additionalProperties": false

@@ -1,4 +1,4 @@
-//! Readable view kind — one variant per document operation / error.
+//! Readable view kind — one variant per readable renderer block policy.
 //!
 //! Used by the renderer config to select the correct block-field list.
 
@@ -7,9 +7,10 @@ use std::fmt;
 
 /// Identifies the kind of readable view for renderer config lookup.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 pub enum ReadableViewKind {
     Outline,
+    OutlineUnstructured,
     Read,
     Find,
     Info,
@@ -22,6 +23,7 @@ impl ReadableViewKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Outline => "outline",
+            Self::OutlineUnstructured => "outline-unstructured",
             Self::Read => "read",
             Self::Find => "find",
             Self::Info => "info",

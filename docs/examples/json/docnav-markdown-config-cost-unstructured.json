@@ -1,0 +1,16 @@
+{
+  "outline": {
+    "auto_full_read": {
+      "thresholds": [
+        {
+          "adapter": "docnav-markdown",
+          "unit": "tokens",
+          "value": 1200
+        }
+      ]
+    }
+  },
+  "options": {
+    "max_heading_level": 3
+  }
+}

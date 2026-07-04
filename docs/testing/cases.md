@@ -28,6 +28,7 @@ Code: `test/smoke/core/cases/outputs.ts`
 Proves:
 - `readable-json`、显式/默认 `readable-view` 和 `protocol-json` 通过各自包装表达同一文档结果。
 - readable success output 只包含对应 operation success payload；failure guidance 通过 readable/protocol error projection 表达。
+- Unstructured outline selected by config renders through real CLI in readable-json、readable-view 和 protocol-json, preserving content/reason/cost facts while omitting entries/ref/page/continuation.
 
 ### BB-CORE-ARGS-001 Core 拒绝缺失的 operation 参数
 Status: implemented
@@ -114,6 +115,7 @@ Code: `crates/docnav/src/output/tests.rs`
 Proves:
 - Core output assembly 分离 protocol JSON、readable JSON、readable view、stdout、stderr 和 exit code 职责。
 - 内部编排覆盖 core 文档输出 smoke 中观察到的分支。
+- Core document output facade can render an unstructured outline success through readable-view with `/content` block framing while preserving the stable reason and omitting entries/page.
 
 ```mermaid
 flowchart LR
@@ -166,6 +168,16 @@ Proves:
 - Navigation input resolution preserves source labels for explicit input, project config, user config and built-in defaults.
 - Adapter descriptor native CLI flags enter parsing as native option sources instead of core-owned fields.
 - Selected adapter-owned declarations control native option typed validation/extraction; navigation only registers, merges and resolves declared fields.
+
+### WB-NAV-OUTLINE-MODE-001 Navigation outline_mode selectors and pre-dispatch stable
+Status: implemented
+Code: `crates/docnav-navigation/src/tests/navigation/outline_mode.rs`
+
+Proves:
+- path rules use deterministic source/order priority, can select unstructured full read, and can opt out to structured before cost thresholds run.
+- adapter-scoped cost thresholds filter by selected adapter, merge same-unit thresholds to the minimum value, request only declared units, and fall back to structured when measurement is missing or unavailable.
+- unstructured full-read pre-dispatch skips the normal outline handler and returns either default UTF-8 content, adapter hook content with selector cost, or adapter hook result facts with stable `path_rule` / `cost_threshold` reasons.
+- path-triggered default full-read returns a controlled non-UTF-8 failure instead of producing lossy content.
 
 ### WB-CORE-PREFLIGHT-001 Core preflight 检测 protocol-json intent
 Status: implemented
@@ -237,6 +249,7 @@ Proves:
 - readable JSON success 不带 protocol envelope，protocol JSON success 只输出 protocol envelope。
 - readable-view read 使用 block renderer，readable error 保留 primary diagnostic code、owner、details 和 guidance。
 - readable read 的成本摘要由 `cost.measurements[]` 派生，并保留对非 bytes/lines measurement unit 的通用摘要。
+- outline readable output covers the structured discriminator and the unstructured branch across readable-json、readable-view and protocol-json, including stable reason, stable cost facts and absence of entries/ref/page/continuation.
 
 ### WB-TEXT-COST-001 Shared text cost helper 保持纯文本边界
 Status: implemented
@@ -294,6 +307,7 @@ Code: `crates/docnav-readable/tests/conformance_tests.rs`
 Proves:
 - readable-view conformance fixture set 由测试执行，保持 fixture 与 renderer contract 同步。
 - renderer framing、block extraction、readable error projection 和 extension-field case 由 fixture-driven assertions 覆盖。
+- fixture coverage includes unstructured outline `/content` block rendering while keeping kind、reason and empty cost facts in the readable-view header.
 
 ### WB-PROTO-BASIC-001 Protocol 基础类型和 envelope 规则稳定
 Status: implemented
@@ -302,6 +316,7 @@ Code: `crates/docnav-protocol/src/tests/basic.rs`
 Proves:
 - positive integer、generated request id、success response 和 failure operation preservation 保持协议基础不变量。
 - protocol diagnostic code category 映射保持共享分类稳定。
+- outline success response coverage includes structured and unstructured discriminator branches, including the unstructured no entries/ref/page/continuation boundary.
 
 ### WB-PROTO-DECODE-001 Protocol request decode 按阶段失败
 Status: implemented

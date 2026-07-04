@@ -114,3 +114,10 @@ fn conformance_19_renderer_failure_non_string() {
         "fixtures/conformance/19_renderer_failure_non_string.json"
     ));
 }
+
+#[test]
+fn conformance_20_outline_unstructured_content_block() {
+    run_vector(&load_vector!(
+        "fixtures/conformance/20_outline_unstructured_content_block.json"
+    ));
+}

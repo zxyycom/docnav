@@ -22,7 +22,7 @@
 | [readable-error.schema.json](readable-error.schema.json) | CLI 精简错误 |
 | [readable-common.schema.json](readable-common.schema.json) | readable schema 共享 `$defs` |
 
-`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 只校验 CLI `readable-json`。`readable-view` 不使用 readable JSON schema 校验；framing、header block refs 和 payload 还原的验收边界见 [输出模式](../output.md) 和 readable-view conformance vectors。protocol schema 保持独立。
+`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 只校验 CLI `readable-json`。`readable-view` 不使用 readable JSON schema 校验；framing、header block refs 和 payload 还原的验收边界见 [输出模式](../output.md) 和 readable-view conformance vectors。protocol schema 保持独立。`readable-outline.schema.json` 校验 `kind: "structured"` entries/page branch 和 `kind: "unstructured"` content/content_type/cost/reason branch。
 
 原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并按 [原始协议](../protocol.md#协议错误对象) 中的 primary diagnostic projection 校验错误字段和 details；protocol envelope 和投影字段由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验材料，用于示例、fixture、CI drift check 和第三方对齐；production runtime decode path 的字段级校验由 `docnav-typed-fields` contract validation 承接。阅读输出 schema 用于文档示例和实现自测，不表示 readable 输出是长期机器解析协议。
 
@@ -36,7 +36,7 @@ operation readable schema 只描述 successful document payload 和该 output mo
 
 | Schema | 用途 |
 | --- | --- |
-| [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | `docnav` 配置 source 中 Markdown native option 相关字段形状和示例校验；selected adapter declarations 的参数语义不由 config schema 拥有 |
+| [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | `docnav` 配置 source 中 Markdown native option 和 navigation-owned outline selector 相关字段形状和示例校验；selected adapter declarations 的参数语义、selector priority、path matching 和 threshold comparison 不由 config schema 拥有 |
 
 配置 schema 只描述文档化的 JSON 文件形状，可用于示例校验和编辑器提示。配置文件发现、字段映射、来源合并、strict unmapped field failure、错误归属和 adapter-specific 字段语义由 [Navigation Input Resolution](../navigation-input-resolution.md)、[适配器契约](../adapter-contract.md) 和对应 adapter 文档拥有。
 

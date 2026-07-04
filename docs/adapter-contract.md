@@ -18,6 +18,19 @@ execute find
 execute info
 ```
 
+Adapter MAY additionally expose a hook set used only by navigation-triggered non-structured full-read outline:
+
+```text
+unstructured_full_read content hook
+declare full-read cost measurement units
+measure full-read cost for requested units
+contribute unstructured result facts
+```
+
+该 hook set 是可选能力，不替代默认 adapter layer 必需的 `outline`、`read`、`find` 和 `info` handler。`docnav-navigation` 在标准 `outline_mode = "unstructured_full"` 且跳过正常 outline handler 后，才会调用 selected adapter 声明的 `unstructured_full_read` content hook。未声明 content hook 时，navigation 可以使用默认 UTF-8 原文读取 fallback；该 fallback 只读取文件、做 UTF-8 decode 并设置基础 `content_type`，不解析 adapter 私有 ref 或格式结构。
+
+Full-read cost measurement declaration SHOULD list the standard cost units the adapter can produce for the non-structured full-read path. Measurement hook MUST receive navigation-selected requested units and return standard `Cost.measurements[]` for the content that full-read would return. 未声明 hook/declaration 时，adapter 的 full-read measurement set 为空。
+
 `manifest` 和 `probe` 是 adapter handle 上的 metadata/support methods。默认 adapter layer 的必需文档操作集合为 `outline`、`read`、`find` 和 `info`；进入默认 adapter layer 的 adapter 必须全部实现这些 handler。缺少任一 handler 属于 adapter layer invalid 或 release validation 问题，单次 adapter selection 只处理 registry lookup 和 probe outcome。
 
 `docnav-navigation` 接收 core 交出的 raw navigation command、config source descriptors/paths 和 adapter registry，加载 raw project/user config sources，完成 navigation input resolution，构造内部 operation request，并通过 selected adapter handle dispatch 对应 operation。Adapter 返回结构化业务结果或 adapter diagnostic。
@@ -118,3 +131,5 @@ Adapter operation handler 必须：
 - 返回结构化 operation result 或 adapter diagnostic。
 
 Operation result 属于已选中 adapter 的执行结果。执行失败、result shape invalid 或 result semantic invalid 是 selected adapter execution failure；candidate selection 在 adapter 选中后结束。
+
+非结构化全文 hook set 只能为 `kind: "unstructured"` outline success result 补充 `content`、`content_type`、`Cost.measurements[]` 或其它稳定 result facts。Hook result MUST NOT 返回 entries、ref、page、continuation 或 readable-only wrapper；readable 文案、block framing 和 cost display 都由输出层从稳定 result facts 派生。
