@@ -82,6 +82,19 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
   });
 
+  it("filters quality timing details from terminal-visible output", () => {
+    const check = checkByLabel("quality full check");
+    const output = [
+      "Quality verification status: passed",
+      "",
+      "Timing breakdown:",
+      "  123ms  scan current revision",
+      "  456ms  total"
+    ].join("\n");
+
+    assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
+  });
+
   it("filters cargo trybuild success noise from successful cargo test output", () => {
     const check = checkByLabel("cargo test");
     const output = [
@@ -191,6 +204,9 @@ describe("workspace verifier configuration", () => {
       "--artifact-dir",
       "artifacts/docnav-quality/quick"
     ]);
+    assert.deepEqual(checkByLabel("quality quick check").env, {
+      DOCNAV_QUALITY_TIMINGS: "1"
+    });
     assert.deepEqual(checkByLabel("quality quick check").warningOutput, [/^Quality check status: warning$/m]);
     assert.equal(checkByLabel("quality full check").type, PROFILE_FULL);
     assert.equal(checkByLabel("quality full check").command, "bun");
@@ -201,6 +217,9 @@ describe("workspace verifier configuration", () => {
       "--with-baseline",
       "--verification-output"
     ]);
+    assert.deepEqual(checkByLabel("quality full check").env, {
+      DOCNAV_QUALITY_TIMINGS: "1"
+    });
     assert.deepEqual(checkByLabel("quality full check").warningOutput, [/^Quality verification status: warning$/m]);
     assert.deepEqual(checkByLabel("cargo test").mutex, ["cargo-build"]);
     assert.deepEqual(checkByLabel("docnav development binaries").mutex, ["cargo-build"]);

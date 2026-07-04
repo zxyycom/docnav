@@ -82,6 +82,9 @@ export const checks = defineChecks([
           "--artifact-dir",
           "artifacts/docnav-quality/quick"
         ],
+        env: {
+          DOCNAV_QUALITY_TIMINGS: "1"
+        },
         allowOutput: [
           ...qualityWarningOutput
         ],
@@ -153,6 +156,9 @@ export const checks = defineChecks([
           "--with-baseline",
           "--verification-output"
         ],
+        env: {
+          DOCNAV_QUALITY_TIMINGS: "1"
+        },
         dependsOn: ["quality-internal-tests"],
         allowOutput: [
           ...qualityVerificationWarningOutput
