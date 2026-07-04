@@ -2,7 +2,9 @@ use docnav_diagnostics::{
     typed_codes, DiagnosticCategory, DiagnosticCode, DiagnosticRecordDraft, DiagnosticSource,
     FieldReasonDetails, InternalDetails, PathDetails, PathReasonDetails,
 };
-use docnav_protocol::protocol_error_record_draft;
+use docnav_protocol::{
+    normalize_protocol_diagnostic, protocol_error_record_draft, ProtocolDiagnosticFallback,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DocnavExitCode {
@@ -29,7 +31,14 @@ pub type AppResult<T> = Result<T, AppError>;
 
 impl AppError {
     pub fn new(diagnostic: DiagnosticRecordDraft) -> Self {
-        let diagnostic = normalize_protocol_diagnostic(diagnostic);
+        let diagnostic = normalize_protocol_diagnostic(
+            diagnostic,
+            ProtocolDiagnosticFallback::new(
+                DiagnosticSource::with_stage("docnav", "app-error"),
+                "app-error-diagnostic-invalid",
+                "app-error-diagnostic-not-protocol",
+            ),
+        );
         let exit_code = exit_code_for_diagnostic(diagnostic.code());
         Self {
             diagnostic: Box::new(diagnostic),
@@ -115,30 +124,4 @@ pub fn exit_code_for_diagnostic(code: impl Into<DiagnosticCode>) -> DocnavExitCo
         DiagnosticCategory::AdapterBoundary => DocnavExitCode::AdapterOrProtocolError,
         DiagnosticCategory::Internal => DocnavExitCode::InternalError,
     }
-}
-
-fn normalize_protocol_diagnostic(diagnostic: DiagnosticRecordDraft) -> DiagnosticRecordDraft {
-    if is_valid_protocol_diagnostic(&diagnostic) {
-        return diagnostic;
-    }
-
-    let error_id = if matches!(diagnostic.code(), DiagnosticCode::Protocol(_)) {
-        "app-error-diagnostic-invalid"
-    } else {
-        "app-error-diagnostic-not-protocol"
-    };
-    protocol_error_record_draft::<typed_codes::protocol::InternalError>(
-        InternalDetails::new(error_id),
-        DiagnosticSource::with_stage("docnav", "app-error"),
-    )
-}
-
-fn is_valid_protocol_diagnostic(diagnostic: &DiagnosticRecordDraft) -> bool {
-    matches!(diagnostic.code(), DiagnosticCode::Protocol(_))
-        && !diagnostic.summary().is_empty()
-        && diagnostic
-            .code()
-            .details_rule()
-            .validate_value(&diagnostic.details().to_value())
-            .is_ok()
 }

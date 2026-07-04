@@ -64,6 +64,36 @@ fn registered_native_option_config_key_keeps_raw_value() {
     );
 }
 
+#[test]
+fn nested_non_object_config_field_reports_structured_config_issue() {
+    let root = temp_root("nested-non-object");
+    let path = write_project_config(
+        &root,
+        json!({
+            "defaults": {
+                "pagination": false
+            }
+        }),
+    );
+    let registry = registry_for_root(&root);
+
+    let error = read_config(&path, &registry, ConfigFileSource::Project).unwrap_err();
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(details["field"], "defaults.pagination");
+    assert_eq!(details["reason"], "invalid_config_object");
+    assert_eq!(details["received"], "defaults.pagination");
+    assert_eq!(
+        details["config_issues"][0]["source_level"],
+        Value::String("project".to_owned())
+    );
+    assert_eq!(details["config_issues"][0]["field"], "defaults.pagination");
+    assert_eq!(
+        details["config_issues"][0]["reason_code"],
+        "invalid_config_object"
+    );
+}
+
 fn write_project_config(root: &Path, value: Value) -> PathBuf {
     let path = root.join(".docnav").join("docnav.json");
     fs::create_dir_all(path.parent().expect("config parent")).unwrap();

@@ -51,6 +51,56 @@ where
     DiagnosticRecordDraft::new::<C>(summary, details, source)
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProtocolDiagnosticFallback {
+    source: DiagnosticSource,
+    invalid_protocol_error_id: String,
+    non_protocol_error_id: String,
+}
+
+impl ProtocolDiagnosticFallback {
+    pub fn new(
+        source: DiagnosticSource,
+        invalid_protocol_error_id: impl Into<String>,
+        non_protocol_error_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            source,
+            invalid_protocol_error_id: invalid_protocol_error_id.into(),
+            non_protocol_error_id: non_protocol_error_id.into(),
+        }
+    }
+}
+
+pub fn normalize_protocol_diagnostic(
+    diagnostic: DiagnosticRecordDraft,
+    fallback: ProtocolDiagnosticFallback,
+) -> DiagnosticRecordDraft {
+    if is_valid_protocol_diagnostic(&diagnostic) {
+        return diagnostic;
+    }
+
+    let error_id = if matches!(diagnostic.code(), DiagnosticCode::Protocol(_)) {
+        fallback.invalid_protocol_error_id
+    } else {
+        fallback.non_protocol_error_id
+    };
+    protocol_error_record_draft::<typed_codes::protocol::InternalError>(
+        InternalDetails::new(error_id),
+        fallback.source,
+    )
+}
+
+pub fn is_valid_protocol_diagnostic(diagnostic: &DiagnosticRecordDraft) -> bool {
+    matches!(diagnostic.code(), DiagnosticCode::Protocol(_))
+        && !diagnostic.summary().is_empty()
+        && diagnostic
+            .code()
+            .details_rule()
+            .validate_value(&diagnostic.details().to_value())
+            .is_ok()
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProtocolError {

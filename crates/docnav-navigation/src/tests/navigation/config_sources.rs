@@ -83,5 +83,22 @@ fn navigation_rejects_nested_non_object_config_shapes() {
                 .and_then(Value::as_str),
             Some(field)
         );
+        assert_eq!(
+            protocol_error
+                .details()
+                .get("reason")
+                .and_then(Value::as_str),
+            Some("invalid_config_object")
+        );
+        assert_eq!(
+            protocol_error
+                .details()
+                .get("config_issues")
+                .and_then(Value::as_array)
+                .and_then(|issues| issues.first())
+                .and_then(|issue| issue.get("field"))
+                .and_then(Value::as_str),
+            Some(field)
+        );
     }
 }

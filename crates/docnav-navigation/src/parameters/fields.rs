@@ -21,7 +21,7 @@ pub(super) fn adapter_intent_fields() -> Result<FieldDefSet, NavigationError> {
             ExpectedFieldShape::optional(),
         )
         .build()
-        .map_err(|error| NavigationError::internal(format!("adapter-intent-fields:{error}")))
+        .map_err(|_| NavigationError::internal("adapter-intent-fields-build-failed"))
 }
 
 pub(super) struct OperationFieldSet {
@@ -153,9 +153,9 @@ pub(super) fn operation_fields(
 
     builder = builder
         .adapter_options(selected_adapter.adapter_options(), operation)
-        .map_err(|error| NavigationError::internal(format!("adapter-option:{error}")))?;
+        .map_err(|_| NavigationError::internal("adapter-option-field-declaration-invalid"))?;
 
     builder
         .build()
-        .map_err(|error| NavigationError::internal(format!("operation-fields:{error}")))
+        .map_err(|_| NavigationError::internal("operation-fields-build-failed"))
 }

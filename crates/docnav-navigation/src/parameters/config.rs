@@ -213,7 +213,7 @@ fn validate_options_shape(
     };
     let unused_options = JsonFieldSet::new(context.fields)
         .unused_fields(super::CONFIG_PROCESSING, root, ["options"])
-        .map_err(|error| NavigationError::internal(format!("config-options:{error}")))?;
+        .map_err(|_| NavigationError::internal("config-options-unused-fields-failed"))?;
     let Some(unused_options) = unused_options.as_object() else {
         return Ok(());
     };
@@ -234,13 +234,7 @@ fn validate_options_shape(
 }
 
 fn invalid_nested_object(source: &NavigationConfigSource, field: &str) -> NavigationError {
-    NavigationError::invalid_request(
-        field,
-        format!(
-            "{} config field {field} in {} must be an object",
-            source.level, source.path
-        ),
-    )
+    NavigationError::config_invalid_object(source.level, &source.path, field)
 }
 
 fn handoff_error(diagnostic: &ParameterResolutionHandoff) -> NavigationError {

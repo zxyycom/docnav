@@ -1,11 +1,11 @@
 use docnav_diagnostics::{
-    typed_codes, DiagnosticCode, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails,
-    InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails, RefDetails,
-    RefReasonDetails,
+    typed_codes, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails, InternalDetails,
+    PathDetails, PathEncodingDetails, PathReasonDetails, RefDetails, RefReasonDetails,
 };
 use docnav_protocol::{
-    protocol_error_record_draft, protocol_error_record_draft_with_summary, FindArguments,
-    FindResult, InfoArguments, InfoResult, Manifest, OutlineArguments, OutlineResult, ProbeResult,
+    normalize_protocol_diagnostic, protocol_error_record_draft,
+    protocol_error_record_draft_with_summary, FindArguments, FindResult, InfoArguments, InfoResult,
+    Manifest, OutlineArguments, OutlineResult, ProbeResult, ProtocolDiagnosticFallback,
     ProtocolError, ReadArguments, ReadResult, RequestEnvelope,
 };
 pub use docnav_typed_fields::{
@@ -70,7 +70,14 @@ pub struct AdapterError {
 
 impl AdapterError {
     pub fn new(diagnostic: DiagnosticRecordDraft) -> Self {
-        let diagnostic = normalize_protocol_diagnostic(diagnostic);
+        let diagnostic = normalize_protocol_diagnostic(
+            diagnostic,
+            ProtocolDiagnosticFallback::new(
+                DiagnosticSource::with_stage("docnav-adapter-contracts", "adapter-error"),
+                "adapter-error-diagnostic-invalid",
+                "adapter-error-diagnostic-not-protocol",
+            ),
+        );
         Self {
             diagnostic: Box::new(diagnostic),
         }
@@ -188,38 +195,8 @@ pub fn protocol_error_from_diagnostic(diagnostic: DiagnosticRecordDraft) -> Prot
     ProtocolError::from_diagnostic_record(&record).unwrap_or_else(diagnostic_projection_failed)
 }
 
-fn normalize_protocol_diagnostic(diagnostic: DiagnosticRecordDraft) -> DiagnosticRecordDraft {
-    if is_valid_protocol_diagnostic(&diagnostic) {
-        return diagnostic;
-    }
-
-    let error_id = if matches!(diagnostic.code(), DiagnosticCode::Protocol(_)) {
-        "adapter-error-diagnostic-invalid"
-    } else {
-        "adapter-error-diagnostic-not-protocol"
-    };
-    internal_diagnostic(error_id)
-}
-
-fn is_valid_protocol_diagnostic(diagnostic: &DiagnosticRecordDraft) -> bool {
-    matches!(diagnostic.code(), DiagnosticCode::Protocol(_))
-        && !diagnostic.summary().is_empty()
-        && diagnostic
-            .code()
-            .details_rule()
-            .validate_value(&diagnostic.details().to_value())
-            .is_ok()
-}
-
 fn diagnostic_projection_failed() -> ProtocolError {
     ProtocolError::internal_error("adapter-diagnostic-projection-failed")
-}
-
-fn internal_diagnostic(error_id: impl Into<String>) -> DiagnosticRecordDraft {
-    protocol_error_record_draft::<typed_codes::protocol::InternalError>(
-        InternalDetails::new(error_id),
-        DiagnosticSource::with_stage("docnav-adapter-contracts", "adapter-error"),
-    )
 }
 
 #[cfg(test)]

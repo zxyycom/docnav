@@ -15,6 +15,8 @@ use crate::registry::AdapterRegistry;
 use super::keys::{validate_output_key, validate_positive_key};
 use super::model::{ConfigContext, CoreConfig};
 
+const INVALID_CONFIG_OBJECT: &str = "invalid_config_object";
+
 pub fn load_context() -> AppResult<ConfigContext> {
     let project = ProjectContext::discover()?;
     let registry = AdapterRegistry::load(&project)?;
@@ -75,7 +77,7 @@ pub(super) fn write_config(path: &Path, config: &CoreConfig) -> AppResult<()> {
         })?;
     }
     let content = serde_json::to_string_pretty(config)
-        .map_err(|error| AppError::internal(format!("serialize-config:{error}")))?;
+        .map_err(|_| AppError::internal("serialize-config-failed"))?;
     fs::write(path, format!("{content}\n")).map_err(|error| {
         AppError::invalid_request(
             "config",
@@ -146,7 +148,7 @@ fn validate_config_shape(
 
 fn validate_defaults_shape(value: &Value, path: &Path, source: ConfigFileSource) -> AppResult<()> {
     let Some(defaults) = value.as_object() else {
-        return Ok(());
+        return Err(invalid_config_object_error(path, source, "defaults"));
     };
 
     for (key, child) in defaults {
@@ -181,7 +183,11 @@ fn validate_pagination_shape(
     source: ConfigFileSource,
 ) -> AppResult<()> {
     let Some(pagination) = value.as_object() else {
-        return Ok(());
+        return Err(invalid_config_object_error(
+            path,
+            source,
+            "defaults.pagination",
+        ));
     };
 
     for key in pagination.keys() {
@@ -208,7 +214,7 @@ fn validate_options_shape(
     source: ConfigFileSource,
 ) -> AppResult<()> {
     let Some(options) = value.as_object() else {
-        return Ok(());
+        return Err(invalid_config_object_error(path, source, "options"));
     };
 
     for key in options.keys() {
@@ -253,6 +259,20 @@ fn unknown_config_field_error(
                 Some(accepted) => format!("Rename {field} to {accepted}."),
                 None => format!("Remove unsupported config field {field}."),
             }),
+        },
+    )
+}
+
+fn invalid_config_object_error(path: &Path, source: ConfigFileSource, field: &str) -> AppError {
+    config_error(
+        path,
+        source,
+        ConfigErrorSpec {
+            field,
+            reason_code: INVALID_CONFIG_OBJECT,
+            accepted: None,
+            summary: "Config file field must be an object.",
+            guidance: Some(format!("Use an object for config field {field}.")),
         },
     )
 }

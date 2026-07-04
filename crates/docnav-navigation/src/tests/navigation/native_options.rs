@@ -290,8 +290,6 @@ fn navigation_maps_invalid_adapter_option_declaration_to_internal_error() {
             .details()
             .get("error_id")
             .and_then(Value::as_str),
-        Some(
-            "adapter-option:adapter option docnav.adapters.invalid.options.bad_path declaration path must be options.<key>, got invalid.bad_path"
-        )
+        Some("adapter-option-field-declaration-invalid")
     );
 }

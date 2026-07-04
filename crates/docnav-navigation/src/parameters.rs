@@ -176,9 +176,8 @@ fn required_resolved_value(
     resolution: &ParameterResolution,
     identity: &str,
 ) -> Result<NavigationResolvedValue, NavigationError> {
-    resolved_value(resolution, identity).ok_or_else(|| {
-        NavigationError::internal(format!("missing-resolved-navigation-parameter:{identity}"))
-    })
+    resolved_value(resolution, identity)
+        .ok_or_else(|| NavigationError::internal("missing-resolved-navigation-parameter"))
 }
 
 fn resolved_value(
@@ -206,5 +205,14 @@ fn resolve_with_fields(
         .with_loaded_user_config(config_sources.user.loaded.clone())
         .with_passthrough_policy(EntryPassthroughPolicy::Discard)
         .resolve(input::direct_input(command, selected_native_options))
-        .map_err(|error| NavigationError::internal(format!("{context}:{error}")))
+        .map_err(|_| NavigationError::internal(resolution_pipeline_error_id(context)))
+}
+
+fn resolution_pipeline_error_id(context: &str) -> &'static str {
+    match context {
+        "adapter-intent" => "adapter-intent-resolution-failed",
+        "operation-input" => "operation-input-resolution-failed",
+        "context-defaults" => "context-defaults-resolution-failed",
+        _ => "parameter-resolution-failed",
+    }
 }

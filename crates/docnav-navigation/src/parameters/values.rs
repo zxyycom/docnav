@@ -49,7 +49,7 @@ pub(super) fn required_string_value(
     identity: &str,
 ) -> Result<String, NavigationError> {
     optional_string_value(resolution, identity)?
-        .ok_or_else(|| NavigationError::internal(format!("missing-resolved-parameter:{identity}")))
+        .ok_or_else(|| NavigationError::internal("missing-resolved-parameter"))
 }
 
 pub(super) fn optional_string_value(
@@ -62,9 +62,7 @@ pub(super) fn optional_string_value(
     match &value.value {
         TypedValue::String(value) => Ok(Some(value.clone())),
         TypedValue::Null => Ok(None),
-        _ => Err(NavigationError::internal(format!(
-            "unexpected-parameter-type:{identity}"
-        ))),
+        _ => Err(NavigationError::internal("unexpected-parameter-type")),
     }
 }
 
@@ -86,7 +84,7 @@ pub(super) fn resolved_source_label(
 
 pub(super) fn identity_key(identity: &str) -> Result<FieldIdentity, NavigationError> {
     FieldIdentity::new(identity)
-        .map_err(|error| NavigationError::internal(format!("invalid-parameter-identity:{error}")))
+        .map_err(|_| NavigationError::internal("invalid-parameter-identity"))
 }
 
 pub(super) fn source_label(source: ParameterSourceKind) -> &'static str {
@@ -115,13 +113,11 @@ fn required_bool_value(
     resolution: &ParameterResolution,
     identity: &str,
 ) -> Result<bool, NavigationError> {
-    let value = resolution.value(&identity_key(identity)?).ok_or_else(|| {
-        NavigationError::internal(format!("missing-resolved-parameter:{identity}"))
-    })?;
+    let value = resolution
+        .value(&identity_key(identity)?)
+        .ok_or_else(|| NavigationError::internal("missing-resolved-parameter"))?;
     let TypedValue::Boolean(value) = value.value else {
-        return Err(NavigationError::internal(format!(
-            "unexpected-parameter-type:{identity}"
-        )));
+        return Err(NavigationError::internal("unexpected-parameter-type"));
     };
     Ok(value)
 }
@@ -130,13 +126,11 @@ fn required_positive_value(
     resolution: &ParameterResolution,
     identity: &str,
 ) -> Result<PositiveInteger, NavigationError> {
-    let value = resolution.value(&identity_key(identity)?).ok_or_else(|| {
-        NavigationError::internal(format!("missing-resolved-parameter:{identity}"))
-    })?;
+    let value = resolution
+        .value(&identity_key(identity)?)
+        .ok_or_else(|| NavigationError::internal("missing-resolved-parameter"))?;
     let TypedValue::Integer(value) = value.value else {
-        return Err(NavigationError::internal(format!(
-            "unexpected-parameter-type:{identity}"
-        )));
+        return Err(NavigationError::internal("unexpected-parameter-type"));
     };
     u32::try_from(value)
         .ok()

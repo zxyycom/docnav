@@ -171,7 +171,7 @@ fn output_mode(output: NavigationOutputMode) -> AppResult<OutputMode> {
     output
         .as_str()
         .parse()
-        .map_err(|error| AppError::internal(format!("navigation-output-mode:{error}")))
+        .map_err(|_| AppError::internal("navigation-output-mode-invalid"))
 }
 
 impl DocumentRequest {

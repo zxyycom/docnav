@@ -2,8 +2,8 @@ use std::io::{self, Write};
 
 use docnav_json_io::write_json_value_pretty;
 use docnav_output::{
-    write_document_diagnostic_error, write_document_response, DocumentOutputMode,
-    ProtocolOutputContext,
+    write_document_diagnostic_error, write_document_response, DocumentOutputError,
+    DocumentOutputMode, ProtocolOutputContext,
 };
 use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, PROTOCOL_VERSION};
 use serde_json::Value;
@@ -74,19 +74,22 @@ pub fn write_outcome<W: Write, E: Write>(
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32 {
-    let result = match outcome.output {
-        CommandOutput::PlainText(text) => write_plain_text(&text, stdout),
-        CommandOutput::Json(value) => write_json(value, stdout).map_err(io::Error::other),
+    match outcome.output {
+        CommandOutput::PlainText(text) => match write_plain_text(&text, stdout) {
+            Ok(()) => outcome.exit_code.code(),
+            Err(error) => write_io_error(error, stderr),
+        },
+        CommandOutput::Json(value) => match write_json(value, stdout) {
+            Ok(()) => outcome.exit_code.code(),
+            Err(error) => write_io_error(io::Error::other(error), stderr),
+        },
         CommandOutput::DocumentResponse { response, mode } => {
-            write_document_response(&response, mode, stdout, stderr)
-                .map(|_| ())
-                .map_err(io::Error::other)
+            let operation = response_operation(&response);
+            match write_document_response(&response, mode, stdout, stderr) {
+                Ok(_) => outcome.exit_code.code(),
+                Err(error) => write_document_output_error(error, mode, operation, stdout, stderr),
+            }
         }
-    };
-
-    match result {
-        Ok(()) => outcome.exit_code.code(),
-        Err(error) => write_io_error(error, stderr),
     }
 }
 
@@ -133,6 +136,42 @@ fn document_output_mode(mode: OutputMode) -> DocumentOutputMode {
         OutputMode::ReadableJson => DocumentOutputMode::ReadableJson,
         OutputMode::ProtocolJson => DocumentOutputMode::ProtocolJson,
     }
+}
+
+fn cli_output_mode(mode: DocumentOutputMode) -> OutputMode {
+    match mode {
+        DocumentOutputMode::ReadableView => OutputMode::ReadableView,
+        DocumentOutputMode::ReadableJson => OutputMode::ReadableJson,
+        DocumentOutputMode::ProtocolJson => OutputMode::ProtocolJson,
+    }
+}
+
+fn response_operation(response: &ProtocolResponse) -> Option<Operation> {
+    match response {
+        ProtocolResponse::Success(success) => Some(success.operation),
+        ProtocolResponse::Failure(failure) => failure.operation,
+    }
+}
+
+fn write_document_output_error<W: Write, E: Write>(
+    error: DocumentOutputError,
+    mode: DocumentOutputMode,
+    operation: Option<Operation>,
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32 {
+    if !error.can_project_as_primary_diagnostic() {
+        return write_io_error(io::Error::other(error), stderr);
+    }
+
+    let app_error = AppError::internal(error.primary_error_id());
+    write_error(ErrorOutput {
+        error: &app_error,
+        output_mode: cli_output_mode(mode),
+        operation,
+        stdout,
+        stderr,
+    })
 }
 
 fn write_plain_text<W: Write>(text: &str, stdout: &mut W) -> io::Result<()> {

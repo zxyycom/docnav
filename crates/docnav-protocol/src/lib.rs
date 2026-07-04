@@ -32,8 +32,9 @@ pub use envelope::{
     SuccessResponse,
 };
 pub use error::{
-    protocol_error_category, protocol_error_default_guidance, protocol_error_default_message,
-    protocol_error_record_draft, protocol_error_record_draft_with_summary, InvalidErrorDetail,
+    is_valid_protocol_diagnostic, normalize_protocol_diagnostic, protocol_error_category,
+    protocol_error_default_guidance, protocol_error_default_message, protocol_error_record_draft,
+    protocol_error_record_draft_with_summary, InvalidErrorDetail, ProtocolDiagnosticFallback,
     ProtocolError, ProtocolErrorCategory,
 };
 pub use manifest::{AdapterIdentity, FormatDescriptor, Manifest, ManifestValidationError};

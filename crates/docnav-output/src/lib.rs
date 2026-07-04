@@ -36,6 +36,22 @@ pub enum DocumentOutputError {
     StdoutWrite(io::Error),
 }
 
+impl DocumentOutputError {
+    pub fn can_project_as_primary_diagnostic(&self) -> bool {
+        !matches!(self, Self::StdoutJson(_) | Self::StdoutWrite(_))
+    }
+
+    pub fn primary_error_id(&self) -> &'static str {
+        match self {
+            Self::DiagnosticProjection => "diagnostic-projection-failed",
+            Self::ReadablePayload(_) => "readable-payload-failed",
+            Self::ReadableViewRender(_) => RenderError::ERROR_ID,
+            Self::StdoutJson(_) => "stdout-json-write-failed",
+            Self::StdoutWrite(_) => "stdout-write-failed",
+        }
+    }
+}
+
 impl fmt::Display for DocumentOutputError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

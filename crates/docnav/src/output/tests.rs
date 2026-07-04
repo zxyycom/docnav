@@ -157,6 +157,29 @@ fn app_error_normalizes_non_protocol_diagnostic_before_document_output() {
 }
 
 #[test]
+fn document_output_error_projects_primary_internal_diagnostic_when_possible() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit = write_document_output_error(
+        DocumentOutputError::DiagnosticProjection,
+        DocumentOutputMode::ProtocolJson,
+        Some(Operation::Read),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, DocnavExitCode::InternalError.code());
+    assert!(stderr.is_empty());
+    let output: Value = serde_json::from_slice(&stdout).unwrap();
+    assert_eq!(output["error"]["code"], "INTERNAL_ERROR");
+    assert_eq!(
+        output["error"]["details"]["error_id"],
+        "diagnostic-projection-failed"
+    );
+    assert_eq!(output["operation"], "read");
+}
+
+#[test]
 fn output_mode_values_remain_unchanged() {
     assert_eq!(OutputMode::ReadableView.as_str(), "readable-view");
     assert_eq!(OutputMode::ReadableJson.as_str(), "readable-json");

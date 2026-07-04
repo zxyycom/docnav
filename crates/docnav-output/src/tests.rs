@@ -229,3 +229,11 @@ fn response_failure_returns_failure_status() {
         "Run outline again and use a returned ref."
     );
 }
+
+#[test]
+fn readable_view_render_error_uses_stable_primary_error_id() {
+    let error = DocumentOutputError::ReadableViewRender(docnav_readable::RenderError::new("boom"));
+
+    assert!(error.can_project_as_primary_diagnostic());
+    assert_eq!(error.primary_error_id(), "readable_view_render_failed");
+}
