@@ -1,7 +1,7 @@
 use docnav_adapter_contracts::AdapterOptionSpec;
 use docnav_diagnostics::DiagnosticSource;
 use docnav_parameter_resolution::{ParameterResolution, ParameterResolutionHandoff};
-use docnav_typed_fields::{FieldDefSet, JsonFieldSet};
+use docnav_typed_fields::FieldDefSet;
 use serde_json::Value;
 
 use crate::{NavigationCommand, NavigationConfigSource, NavigationConfigSources, NavigationError};
@@ -14,6 +14,10 @@ use super::{
     },
     values::validation_error_for_identity,
 };
+
+mod key_registry;
+
+use key_registry::{ConfigKeyIssue, ConfigKeyRegistry};
 
 struct ConfigValidationContext<'a> {
     selected_adapter_id: &'a str,
@@ -128,111 +132,68 @@ fn validate_config_source(
     let Some(value) = source.loaded.value() else {
         return Ok(());
     };
-    let Some(root) = value.as_object() else {
-        return Ok(());
-    };
-    for (key, child) in root {
-        match key.as_str() {
-            "defaults" => validate_defaults_shape(source, child)?,
-            "options" => validate_options_shape(source, child, value, context)?,
-            "outline" => {}
-            _ => {
-                return Err(NavigationError::config_unknown_field(
-                    source.level,
-                    &source.path,
-                    key,
-                    None,
-                ));
-            }
-        }
+    let issue = config_key_registry(context).first_issue(value);
+    if let Some(issue) = issue {
+        return Err(config_key_issue_error(source, value, context, issue));
     }
     Ok(())
 }
 
-fn validate_defaults_shape(
-    source: &NavigationConfigSource,
-    value: &Value,
-) -> Result<(), NavigationError> {
-    let Some(defaults) = value.as_object() else {
-        return Err(invalid_nested_object(source, "defaults"));
-    };
-    for (key, child) in defaults {
-        match key.as_str() {
-            "adapter" | "output" => {}
-            "pagination" => validate_pagination_shape(source, child)?,
-            "limit" => {
-                return Err(NavigationError::config_unknown_field(
-                    source.level,
-                    &source.path,
-                    "defaults.limit",
-                    Some("defaults.pagination.limit"),
-                ));
-            }
-            _ => {
-                return Err(NavigationError::config_unknown_field(
-                    source.level,
-                    &source.path,
-                    format!("defaults.{key}"),
-                    None,
-                ));
-            }
-        }
-    }
-    Ok(())
+fn config_key_registry(context: &ConfigValidationContext<'_>) -> ConfigKeyRegistry {
+    ConfigKeyRegistry::from_field_set(context.fields, super::CONFIG_PROCESSING)
+        .leaf_path(["defaults", "adapter"])
+        .leaf_path(["defaults", "output"])
+        .leaf_path(["defaults", "pagination", "enabled"])
+        .leaf_path(["defaults", "pagination", "limit"])
+        .container_path(["options"])
+        .array_item_leaf_path(["outline", "mode_rules"], "path")
+        .array_item_leaf_path(["outline", "mode_rules"], "mode")
+        .array_item_leaf_path(["outline", "auto_full_read", "thresholds"], "adapter")
+        .array_item_leaf_path(["outline", "auto_full_read", "thresholds"], "unit")
+        .array_item_leaf_path(["outline", "auto_full_read", "thresholds"], "value")
 }
 
-fn validate_pagination_shape(
+fn config_key_issue_error(
     source: &NavigationConfigSource,
-    value: &Value,
-) -> Result<(), NavigationError> {
-    let Some(pagination) = value.as_object() else {
-        return Err(invalid_nested_object(source, "defaults.pagination"));
-    };
-    for key in pagination.keys() {
-        match key.as_str() {
-            "enabled" | "limit" => {}
-            _ => {
-                return Err(NavigationError::config_unknown_field(
-                    source.level,
-                    &source.path,
-                    format!("defaults.pagination.{key}"),
-                    None,
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn validate_options_shape(
-    source: &NavigationConfigSource,
-    value: &Value,
     root: &Value,
     context: &ConfigValidationContext<'_>,
-) -> Result<(), NavigationError> {
-    let Some(_options) = value.as_object() else {
-        return Err(invalid_nested_object(source, "options"));
-    };
-    let unused_options = JsonFieldSet::new(context.fields)
-        .unused_fields(super::CONFIG_PROCESSING, root, ["options"])
-        .map_err(|_| NavigationError::internal("config-options-unused-fields-failed"))?;
-    let Some(unused_options) = unused_options.as_object() else {
-        return Ok(());
-    };
-    if let Some((key, value)) = unused_options.iter().next() {
-        return Err(unsupported_option(
-            UnsupportedOptionContext {
-                source: source.level,
-                path: &source.path,
-                owner: context.selected_adapter_id,
-                selected_native_options: context.selected_native_options,
-            },
-            key,
-            value.clone(),
-        )
-        .into());
+    issue: ConfigKeyIssue,
+) -> NavigationError {
+    match issue {
+        ConfigKeyIssue::ExpectedObject { path } => {
+            let field = path.field();
+            invalid_nested_object(source, &field)
+        }
+        ConfigKeyIssue::UnregisteredField { path } => {
+            if let Some(key) = path.option_key() {
+                return unsupported_option(
+                    UnsupportedOptionContext {
+                        source: source.level,
+                        path: &source.path,
+                        owner: context.selected_adapter_id,
+                        selected_native_options: context.selected_native_options,
+                    },
+                    key,
+                    path.value(root).cloned().unwrap_or(Value::Null),
+                )
+                .into();
+            }
+            let field = path.field();
+            NavigationError::config_unknown_field(
+                source.level,
+                &source.path,
+                field.as_str(),
+                accepted_config_field(field.as_str()),
+            )
+        }
     }
-    Ok(())
+}
+
+fn accepted_config_field(field: &str) -> Option<&'static str> {
+    match field {
+        "defaults.limit" => Some("defaults.pagination.limit"),
+        _ => None,
+    }
 }
 
 fn invalid_nested_object(source: &NavigationConfigSource, field: &str) -> NavigationError {

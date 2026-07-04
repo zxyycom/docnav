@@ -176,6 +176,7 @@ Code: `crates/docnav-navigation/src/tests/navigation/outline_mode.rs`
 Proves:
 - path rules use deterministic source/order priority, can select unstructured full read, and can opt out to structured before cost thresholds run.
 - adapter-scoped cost thresholds filter by selected adapter, merge same-unit thresholds to the minimum value, request only declared units, and fall back to structured when measurement is missing or unavailable.
+- outline config source shape rejects an unregistered `outline.*` key and an unregistered `outline.mode_rules[]` item key before selector parsing and reports the source-scoped field path.
 - unstructured full-read pre-dispatch skips the normal outline handler and returns either default UTF-8 content, adapter hook content with selector cost, or adapter hook result facts with stable `path_rule` / `cost_threshold` reasons.
 - path-triggered default full-read returns a controlled non-UTF-8 failure instead of producing lossy content.
 

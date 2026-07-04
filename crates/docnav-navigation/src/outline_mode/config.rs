@@ -81,10 +81,6 @@ pub(super) fn thresholds(
             "outline.auto_full_read",
         ));
     };
-    reject_unknown_rule_fields(source, auto_full_read, ["thresholds"], |key| {
-        format!("outline.auto_full_read.{key}")
-    })?;
-
     let Some(value) = auto_full_read.get("thresholds") else {
         return Ok(Vec::new());
     };
@@ -155,10 +151,6 @@ fn mode_rule(
             &format!("outline.mode_rules[{index}]"),
         ));
     };
-    reject_unknown_rule_fields(source, object, ["path", "mode"], |key| {
-        format!("outline.mode_rules[{index}].{key}")
-    })?;
-
     let path = required_string(source, object, &field("path"))?;
     compile_path_pattern(source, &field("path"), &path)?;
     let mode = match required_string(source, object, &field("mode"))?.as_str() {
@@ -200,10 +192,6 @@ fn threshold(
             &format!("outline.auto_full_read.thresholds[{index}]"),
         ));
     };
-    reject_unknown_rule_fields(source, object, ["adapter", "unit", "value"], |key| {
-        format!("outline.auto_full_read.thresholds[{index}].{key}")
-    })?;
-
     let adapter = required_string(source, object, &field("adapter"))?;
     let unit = required_string(source, object, &field("unit"))?;
     let value = required_positive_u64(source, object, &field("value"))?;
@@ -262,26 +250,6 @@ fn required_positive_u64(
             "Use a positive integer value.",
         )
     })
-}
-
-fn reject_unknown_rule_fields<const N: usize>(
-    source: &NavigationConfigSource,
-    object: &Map<String, Value>,
-    accepted: [&str; N],
-    field_for_key: impl Fn(&str) -> String,
-) -> Result<(), NavigationError> {
-    if let Some(key) = object
-        .keys()
-        .find(|key| !accepted.iter().any(|accepted| accepted == &key.as_str()))
-    {
-        return Err(NavigationError::config_unknown_field(
-            source.level,
-            &source.path,
-            field_for_key(key),
-            None,
-        ));
-    }
-    Ok(())
 }
 
 fn invalid_config_field(

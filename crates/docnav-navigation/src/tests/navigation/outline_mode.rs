@@ -311,3 +311,79 @@ fn invalid_path_rule_returns_source_scoped_diagnostic() {
         Some("invalid_path_pattern")
     );
 }
+
+#[test]
+fn unregistered_outline_config_key_returns_source_scoped_diagnostic() {
+    let error = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(
+            json!({
+                "outline": {
+                    "bogus": true
+                }
+            }),
+            Value::Null,
+        ),
+        &SingleRegistry::new(&RecordingAdapter::default()),
+    )
+    .expect_err("unregistered outline config key should fail");
+    let protocol_error = super::protocol_error(error.diagnostic());
+
+    assert_eq!(
+        protocol_error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("field")
+            .and_then(Value::as_str),
+        Some("outline.bogus")
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("reason")
+            .and_then(Value::as_str),
+        Some("unknown_config_field")
+    );
+}
+
+#[test]
+fn unregistered_outline_rule_key_is_rejected_before_rule_parsing() {
+    let error = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(
+            json!({
+                "outline": {
+                    "mode_rules": [
+                        {"bogus": true, "path": "(", "mode": "structured"}
+                    ]
+                }
+            }),
+            Value::Null,
+        ),
+        &SingleRegistry::new(&RecordingAdapter::default()),
+    )
+    .expect_err("unregistered outline rule key should fail before regex parsing");
+    let protocol_error = super::protocol_error(error.diagnostic());
+
+    assert_eq!(
+        protocol_error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("field")
+            .and_then(Value::as_str),
+        Some("outline.mode_rules[0].bogus")
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("reason")
+            .and_then(Value::as_str),
+        Some("unknown_config_field")
+    );
+}

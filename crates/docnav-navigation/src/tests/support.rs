@@ -109,6 +109,17 @@ impl NavigationAdapterRegistry for InvalidOptionRegistry {
     }
 }
 
+pub(super) struct InvalidOptionConfigPathRegistry;
+
+impl NavigationAdapterRegistry for InvalidOptionConfigPathRegistry {
+    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
+        vec![NavigationAdapterRef {
+            id: "docnav-invalid-option-config-path",
+            adapter: &InvalidOptionConfigPathAdapter,
+        }]
+    }
+}
+
 fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
     vec![
         AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_level")
@@ -157,11 +168,28 @@ fn invalid_adapter_options() -> Vec<AdapterOptionSpec> {
     ]
 }
 
+fn invalid_adapter_option_config_paths() -> Vec<AdapterOptionSpec> {
+    vec![
+        AdapterOptionSpec::builder("docnav.adapters.invalid.options.bad_path")
+            .owner("docnav-invalid-option-config-path")
+            .operations(MAX_HEADING_LEVEL_OPERATIONS)
+            .path(["options", "bad_path"])
+            .process(
+                "config",
+                AdapterOptionProcessStrategy::json_path(["invalid", "bad_path"]),
+            )
+            .validation(FieldValidation::int())
+            .build(),
+    ]
+}
+
 struct StubAdapter;
 
 struct UnsupportedAdapter;
 
 struct InvalidOptionAdapter;
+
+struct InvalidOptionConfigPathAdapter;
 
 impl Adapter for StubAdapter {
     fn adapter_id(&self) -> &str {
@@ -404,5 +432,86 @@ impl Adapter for InvalidOptionAdapter {
         _arguments: &InfoArguments,
     ) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("invalid-option-info-unreachable"))
+    }
+}
+
+impl Adapter for InvalidOptionConfigPathAdapter {
+    fn adapter_id(&self) -> &str {
+        "docnav-invalid-option-config-path"
+    }
+
+    fn manifest(&self) -> Manifest {
+        Manifest {
+            manifest_version: "0.1".to_owned(),
+            adapter: AdapterIdentity {
+                id: "docnav-invalid-option-config-path".to_owned(),
+                name: "Invalid Option Config Path".to_owned(),
+                version: "0.1.0".to_owned(),
+            },
+            formats: vec![FormatDescriptor {
+                id: "invalid-option-config-path".to_owned(),
+                extensions: vec![".stub".to_owned()],
+                content_types: vec!["text/stub".to_owned()],
+            }],
+        }
+    }
+
+    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
+        invalid_adapter_option_config_paths()
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        ProbeResult {
+            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
+            adapter_id: "docnav-invalid-option-config-path".to_owned(),
+            path: path.to_owned(),
+            supported: true,
+            format: Some("invalid-option-config-path".to_owned()),
+            confidence: 1.0,
+            reasons: vec![ProbeReason {
+                code: ProbeReasonCode::ContentMatch,
+                detail: "invalid option config path test probe accepted".to_owned(),
+            }],
+        }
+    }
+
+    fn outline(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &OutlineArguments,
+    ) -> AdapterResult<OutlineResult> {
+        Err(AdapterError::internal(
+            "invalid-option-config-path-outline-unreachable",
+        ))
+    }
+
+    fn read(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &ReadArguments,
+    ) -> AdapterResult<ReadResult> {
+        Err(AdapterError::internal(
+            "invalid-option-config-path-read-unreachable",
+        ))
+    }
+
+    fn find(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &FindArguments,
+    ) -> AdapterResult<FindResult> {
+        Err(AdapterError::internal(
+            "invalid-option-config-path-find-unreachable",
+        ))
+    }
+
+    fn info(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &InfoArguments,
+    ) -> AdapterResult<InfoResult> {
+        Err(AdapterError::internal(
+            "invalid-option-config-path-info-unreachable",
+        ))
     }
 }

@@ -13,6 +13,8 @@ use super::{
     DEFAULT_PAGINATION_ENABLED, DIRECT_PROCESSING,
 };
 
+const ADAPTER_OPTION_DECLARATION_ERROR_ID: &str = "adapter-option-field-declaration-invalid";
+
 pub(super) fn adapter_intent_fields() -> Result<FieldDefSet, NavigationError> {
     FieldDefSet::builder()
         .field_with_declaration_path(
@@ -75,12 +77,16 @@ impl OperationFieldSetBuilder {
         mut self,
         options: Vec<AdapterOptionSpec>,
         operation: Operation,
-    ) -> Result<Self, docnav_adapter_contracts::AdapterOptionSpecError> {
+    ) -> Result<Self, NavigationError> {
         for option in options {
             if !option.applies_to(operation) {
                 continue;
             }
-            self.builder = self.builder.field_declaration(option.field_declaration()?);
+            validate_adapter_option_config_path(&option)?;
+            let declaration = option
+                .field_declaration()
+                .map_err(|_| invalid_adapter_option_declaration())?;
+            self.builder = self.builder.field_declaration(declaration);
             self.adapter_options.push(option);
         }
         Ok(self)
@@ -151,11 +157,33 @@ pub(super) fn operation_fields(
             );
     }
 
-    builder = builder
-        .adapter_options(selected_adapter.adapter_options(), operation)
-        .map_err(|_| NavigationError::internal("adapter-option-field-declaration-invalid"))?;
+    builder = builder.adapter_options(selected_adapter.adapter_options(), operation)?;
 
     builder
         .build()
         .map_err(|_| NavigationError::internal("operation-fields-build-failed"))
+}
+
+fn validate_adapter_option_config_path(option: &AdapterOptionSpec) -> Result<(), NavigationError> {
+    let Some(path) = option
+        .processing_path(CONFIG_PROCESSING)
+        .map_err(|_| invalid_adapter_option_declaration())?
+    else {
+        return Ok(());
+    };
+    if is_adapter_option_config_path(&path) {
+        Ok(())
+    } else {
+        Err(invalid_adapter_option_declaration())
+    }
+}
+
+fn is_adapter_option_config_path(path: &[String]) -> bool {
+    path.len() == 2
+        && path.first().is_some_and(|segment| segment == "options")
+        && path.get(1).is_some_and(|segment| !segment.is_empty())
+}
+
+fn invalid_adapter_option_declaration() -> NavigationError {
+    NavigationError::internal(ADAPTER_OPTION_DECLARATION_ERROR_ID)
 }
