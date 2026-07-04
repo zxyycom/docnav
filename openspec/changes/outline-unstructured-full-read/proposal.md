@@ -1,34 +1,28 @@
-本 change 目标是让配置命中的非结构化文档在 `outline` 时直接返回全文内容，不再要求模型先取得 ref 再调用 read；它只在 `openspec/changes/outline-unstructured-full-read/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 change 让 navigation input resolution 通过配置 selectors 产出 `outline_mode = "unstructured_full"` 后，`outline` 在 adapter 正常 outline dispatch 前直接返回全文内容。
 
 ## Why
 
-有些 Markdown 或文本型文档不适合通过 heading、outline entry 或局部 ref 阅读；在这些文档上强制执行 `outline -> ref -> read` 会让调用方在不知道内容的情况下得到一个无意义 ref，并额外消耗一次模型调用。
-
-现在需要一个显式、可配置的非结构化路径：当配置声明某个文档不做结构化导航时，第一次 `outline` 就应返回原文全文，并在 CLI/readable 输出中说明这是自动全文读取。
+有些文档不适合通过 heading、outline entry 或局部 ref 阅读。对这类文档继续强制 `outline -> ref -> read` 会让调用方先拿到低价值 ref，再多发一次 `read`。当 path rule 显式选择全文读取，或 selected adapter 的 cost threshold 判定全文成本足够低时，第一次 `outline` 应直接返回原文全文。
 
 ## What Changes
 
-- `outline` 增加配置触发的非结构化全文结果形态：成功结果直接包含全文 `content`、`content_type`、`cost` 和非结构化说明，不包含 `entries`、`ref`、`page` 或 continuation。
-- readable/protocol 输出必须使用对应 outline success payload 分支；配置命中是成功执行策略，不得通过 failure diagnostic wrapper 或 `doc:full` ref 表达。
-- **BREAKING (opt-in)**: 对命中非结构化配置的文档，`outline` 不再返回当前固定的 `entries[]` 与 `page` 字段；未命中配置的文档保持既有结构化 outline 契约。
-- Docnav 在 `outline` 入口消费生效配置中的非结构化文档策略，命中后短路为原文全文读取，而不是构造 `doc:full` 或其它 adapter ref；具体配置文件、格式和合并方式不由本 change 定义。
-- Core `docnav outline` 与 linked Markdown adapter outline handling 使用同一生效配置语义，并输出一致 readable/protocol 结果。
-- 非目标：不改变普通结构化文档的 `outline -> ref -> read` 主流程；不把 `ignore` 语义解释为跳过文件；不要求其它 adapter 复用 Markdown 的 `doc:full` 或 ref grammar；不为非结构化全文读取引入分页。
+- `outline` success result 改为带 `kind` 的 union：structured branch 保留 entries/page 语义，unstructured branch 直接返回 content/content_type/cost/reason。
+- `outline_mode` 是 navigation-owned execution policy；resolution 顺序为 path rules > adapter-scoped cost thresholds > built-in default。
+- Cost threshold evaluation 先按 selected adapter 过滤并按 unit 合并最小阈值，再按需调用 adapter cost measurement hook。
+- Adapter contract 增加非结构化全文 hook set，用于格式专属全文读取、cost measurement 和稳定 result facts 补充。
+- Non-structured full-read result 不返回 entries/ref/page/continuation，不分页、不裁剪，也不新增 public CLI outline-mode override flag。
 
 ## Capabilities
 
-### New Capabilities
-
-- 无。
-
-### Modified Capabilities
-
-- `core-cli`: 增加 core CLI 对生效非结构化 outline 配置的消费方式和输出映射。
-- `adapter-protocol`: 扩展共享 outline success result，使其支持结构化 entries 与非结构化全文内容两个形态。
-- `markdown-navigation`: 增加 linked Markdown adapter 的非结构化 outline 行为、配置语义和测试边界。
-- `readable-view-output`: 让 outline readable-view 在非结构化结果形态下可以使用 `/content` block，并保持结构化 outline 无 block 的既有行为。
+- `navigation-input-resolution`: 新增 `outline_mode`、path rules、adapter-scoped cost threshold selector 和 pre-dispatch resolution 边界。
+- `adapter-protocol`: 扩展 outline result union，并新增非结构化全文 hook set。
+- `docnav-contracts`: 记录 `outline -> ref -> read` 主流程外的 opt-in full-read exception。
+- `core-cli`: 映射标准 `outline_mode` 的 readable/protocol 输出，不新增 override flag。
+- `markdown-navigation`: 覆盖 Markdown 在 navigation-level `unstructured_full` 下的 smoke 行为，并保持正常 outline 不变。
+- `readable-view-output`: 支持非结构化 outline 的 `/content` block。
 
 ## Impact
 
-- 受影响代码：outline execution pipeline、生效配置策略判断、shared protocol/result types、readable payload/output renderer 配置和 Markdown adapter operation handler。
-- 不受影响范围：普通结构化 outline 默认行为、read/find/info 语义、ref opaque pass-through 契约、Markdown heading ref grammar 和其它 adapter 的私有导航策略。
+受影响范围：navigation input resolution、outline execution pipeline、adapter hook contract、shared protocol/result types、readable output mapping、config schema/examples 和 Markdown smoke fixtures。
+
+不受影响范围：默认 structured outline 行为、read/find/info、ref opaque pass-through、Markdown heading ref grammar 和 adapter 私有导航策略。

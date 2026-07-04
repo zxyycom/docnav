@@ -1,82 +1,41 @@
-本 design 说明配置命中的非结构化文档如何在 `outline` 时直接返回全文内容；它只在 `openspec/changes/outline-unstructured-full-read/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 design 只记录 `outline-unstructured-full-read` 的关键取舍。字段级 MUST、场景和测试矩阵由本 change 下的 capability spec delta 与 tasks 承接。
 
 ## Context
 
-当前 Docnav 把 `outline` 定义为扁平 `entries[]` 和 `page`，调用方再把 entry ref 原样传给 `read`。这个流程适合 heading、章节、书签等结构化文档，但不适合被项目显式标记为“不要结构化导航”的文档。
+Docnav 的默认文档阅读流程是 `outline -> ref -> read`。这适合结构化文档，但对明确不需要结构化导航的文档，或 selected adapter 能证明全文成本很低的文档，会多消耗一次调用。
 
-对这类文档继续返回 `doc:full` 或其它全文 ref 只会让模型在无法预知内容的情况下多调用一次 `read`。本 change 将该路径定义为 opt-in 的 `outline` 结果形态扩展：配置命中时直接读取原文全文。
-
-## Goals / Non-Goals
-
-**Goals:**
-
-- 让 `docnav outline <path>` 在非结构化配置命中时一次性返回完整原文内容。
-- 保证该路径不返回 ref、不返回 page、不提供 continuation。
-- 保持未命中配置的普通文档继续使用既有结构化 `outline -> ref -> read` 流程。
-- 让 core CLI 与 linked Markdown adapter 对同一生效配置语义保持一致。
-
-**Non-Goals:**
-
-- 不改变普通结构化 outline 的 entries、display、ref、page 和分页规则。
-- 不把 `ignore` 解释为跳过文件或 adapter probe。
-- 不引入非结构化全文读取分页、摘要、chunking 或自动结构恢复。
-- 不要求共享层解析 Markdown heading、frontmatter 或任何格式私有结构。
+本 change 增加 opt-in 的 navigation execution policy：navigation input resolution 产出 `outline_mode = "unstructured_full"` 后，`outline` 在 selected adapter 的正常 outline handler 前直接返回全文内容。
 
 ## Decisions
 
-1. **使用 `OutlineResult` union，而不是复用 `doc:full`。**
+1. **`outline_mode` 由 navigation 拥有。**
+   `structured` 是默认值；`unstructured_full` 是标准 outline execution policy，不是 adapter 私有 outline option，也不是 ref policy。Resolution 顺序为 path rules > adapter-scoped cost thresholds > built-in default。Public CLI 不新增 outline-mode override flag。
 
-   命中非结构化配置后，`outline` 返回 `kind: "unstructured"`、`reason: "configured_unstructured_document"`、`content`、`content_type` 和 `cost`。结构化结果继续返回 `kind: "structured"` 或等价可判别字段、`entries` 和 `page`。
+2. **`OutlineResult` 使用带 `kind` 的 union。**
+   Structured branch 增加 `kind: "structured"`；unstructured branch 使用 `kind: "unstructured"`、`reason`、`content`、`content_type` 和稳定 `cost`。这是一项 shape-level breaking change，但避免调用方同时依赖 shape probing 和 discriminator probing。
 
-   备选方案是继续返回 `doc:full` ref。该方案保持旧 shape，但会强制调用方额外调用 `read`，与本 change 的目标冲突。
+3. **非结构化全文结果不分页、不裁剪。**
+   `unstructured_full` 命中后成功结果不返回 entries、ref、page 或 continuation。Cost threshold 只决定是否进入全文读取，不成为输出上限。
 
-2. **非结构化全文读取不分页。**
+4. **Cost threshold 先筛选再按需计算。**
+   Cost 计算可能昂贵，因此 navigation 必须先完成 adapter selection，只保留 selected adapter 的 candidate thresholds，再按 `unit` 合并为最小有效阈值。没有 candidate thresholds 时不调用 adapter cost measurement hook；有 candidate thresholds 时只请求有效 units。具体比较语义归 `navigation-input-resolution` delta。
 
-   配置命中时，`page` 和 continuation 不出现在成功结果中；`limit` 和 `page` 仍可由 CLI 参数解析层校验，以保持命令行兼容，但不用于裁剪全文内容。
+5. **Adapter 只通过非结构化全文 hook set 补充格式事实。**
+   Adapter 可以声明 `unstructured_full_read`、full-read cost measurement hook/declaration 和结果事实补充 hook。Hook set 只服务非结构化全文路径，可以补 `content`、`content_type`、`Cost.measurements[]` 或其它稳定 result facts；不得生成 entries、ref、page、continuation 或 readable-only wrapper。未声明 content hook 时，navigation 使用默认 UTF-8 原文读取 fallback。
 
-   备选方案是按 read 的 `limit` 分页。该方案更节省单次输出，但会重新引入 continuation 与多轮调用，违背“自动全文阅读”的用户意图。
+6. **Readable output 只投影成功 payload。**
+   `unstructured_full` 是成功执行策略，不通过 diagnostic wrapper 或 Markdown `doc:full` ref 表达。Readable-view 使用 `/content` block，cost 展示只能从 stable result facts 派生。
 
-3. **配置命中是 execution policy，不是 adapter ref policy。**
+## Risks
 
-   本 change 只定义 `outline` 在获得生效非结构化文档策略后如何执行：命中后按文本文件原文读取并走 document output pipeline。具体配置文件、格式和合并方式由配置能力或对应主规范定义；共享 ref 契约不新增全文 ref。
+- Existing outline consumers must handle `kind`; structured outline behavior remains the same apart from the discriminator.
+- Full-read output can be large by design; selectors and adapter thresholds are the opt-in guard.
+- Cost threshold hooks must be callable only after selected-adapter candidate filtering, otherwise small-document optimization can become a performance regression.
+- The default UTF-8 fallback must stay shallow: file read, UTF-8 decode and basic `content_type`; format-specific facts belong to adapter hooks.
 
-   备选方案是让 Markdown adapter 在 outline 中生成特殊 ref。该方案不能减少模型调用，也会把 execution policy 藏进 adapter ref。
+## Implementation Order
 
-4. **readable-view 为非结构化 outline 单独声明 `/content` block。**
-
-   普通 outline 仍是无 block header；非结构化 outline 使用 content block，避免把完整原文塞进 JSON header。renderer config 仍是仓库内代码契约，不由用户配置动态控制。
-
-5. **strict output projection 使用 documented success payload。**
-
-   配置命中的非结构化 outline 是成功执行策略，readable-json 使用 documented outline success payload 分支，protocol-json 包装同一 success result，readable-view 只使用 `/content` block 表达正文。未命中配置时继续保留 Markdown `doc:full` fallback navigation behavior；两者都不通过 primary diagnostic wrapper 表达。
-
-
-
-## Risks / Trade-offs
-
-- [Risk] `outline` 不再总是 entries/page，现有消费者若假设固定 shape 会失败。  
-
-- [Risk] 全文读取可能输出很大内容。  
-  Mitigation: 这是配置显式选择的行为；实现和 docs 必须说明该路径不使用 `limit_chars` 分页，配置应只用于用户确认适合全文阅读的文档。
-
-- [Risk] 本 change 过早定义配置来源，后续可能与 core 配置模型冲突。
-  Mitigation: 本 change 只引用“生效配置”语义；具体配置文件、格式和合并方式留给配置能力 change 或主规范沉淀。
-
-- [Risk] 非结构化结果与普通 outline 共用 operation 名称，阅读输出文案可能误导调用方。  
-  Mitigation: readable payload 必须包含稳定 `kind`、`reason` 或等价字段，并在 readable-view header 中说明自动全文读取。
-
-## Migration Plan
-
-1. 先更新主规范、schema、examples 和 OpenSpec delta 中的 union shape。
-2. 再实现 shared protocol/readable result 类型和 readable-view config。
-3. 接着在 core outline 入口和 linked Markdown adapter 接入生效非结构化策略。
-
-未配置非结构化规则的项目无需迁移。
-
-## Open Questions
-
-- 无。
-
-## 实现边界
-
-- 非结构化 outline 的主要结果是全文内容 branch；实现阶段不得重新引入 `doc:full` ref 作为该配置路径的主要结果。
+1. Update owner docs, schema/examples and result types for the new outline union.
+2. Implement navigation resolution for path rules, cost threshold candidate filtering and pre-dispatch execution.
+3. Add adapter hook set support, default UTF-8 fallback and readable-view `/content` rendering.
+4. Add focused tests for structured compatibility, path-triggered full read, cost-triggered full read, hook/fallback behavior and output mapping.
