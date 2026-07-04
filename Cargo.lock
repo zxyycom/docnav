@@ -177,6 +177,7 @@ version = "0.1.0"
 dependencies = [
  "docnav-diagnostics",
  "docnav-protocol",
+ "docnav-typed-fields",
  "serde_json",
 ]
 

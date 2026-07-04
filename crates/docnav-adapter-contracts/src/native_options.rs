@@ -1,226 +1,279 @@
 use docnav_protocol::Operation;
-use serde_json::{json, Map, Value};
+use docnav_typed_fields::{
+    BuildError, ExpectedFieldShape, FieldDef, FieldDefBuilder, FieldDefDeclaration,
+    FieldValidation, FieldValue, ProcessStrategy as FieldProcessStrategy, ProcessingId,
+    SchemaMetadataView, ValueKind,
+};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct NativeOptionSpec {
-    pub identity: &'static str,
-    pub owner: &'static str,
-    pub namespace: &'static str,
-    pub key: &'static str,
-    pub operations: &'static [Operation],
-    pub cli_flag: Option<&'static str>,
-    pub value: NativeOptionValueSpec,
-    pub default: Option<NativeOptionDefaultValue>,
+use crate::native_option_descriptions::{expected_value_description, value_kind_name};
+use crate::native_option_spec_error::AdapterOptionSpecError;
+
+#[derive(Clone, Debug)]
+pub struct AdapterOptionSpec {
+    pub identity: String,
+    pub owner: String,
+    pub operations: Vec<Operation>,
+    sources: Vec<AdapterOptionSource>,
+    field: FieldDefDeclaration,
 }
 
-impl NativeOptionSpec {
-    pub const fn builder(identity: &'static str) -> NativeOptionSpecBuilder {
-        NativeOptionSpecBuilder {
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct AdapterOptionSource {
+    processing_id: String,
+    strategy: AdapterOptionProcessStrategy,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AdapterOptionProcessStrategy {
+    JsonPath(Vec<String>),
+    CliFlag { flag: &'static str },
+}
+
+#[derive(Debug)]
+pub struct AdapterOptionSpecBuilder<T = ()> {
+    identity: String,
+    owner: String,
+    operations: Vec<Operation>,
+    field: FieldDefBuilder<T>,
+    declaration_path: Option<Vec<String>>,
+    expected: ExpectedFieldShape,
+    sources: Vec<AdapterOptionSource>,
+}
+
+impl AdapterOptionSpec {
+    pub fn builder(identity: impl Into<String>) -> AdapterOptionSpecBuilder {
+        let identity = identity.into();
+        AdapterOptionSpecBuilder {
+            field: FieldDef::builder(identity.clone()),
             identity,
-            owner: "",
-            namespace: "",
-            key: "",
-            operations: &[],
-            cli_flag: None,
-            value: NativeOptionValueSpec::Json,
-            default: None,
+            owner: String::new(),
+            operations: Vec::new(),
+            declaration_path: None,
+            expected: ExpectedFieldShape::optional(),
+            sources: Vec::new(),
         }
     }
 
-    pub fn applies_to(self, operation: Operation) -> bool {
+    pub fn applies_to(&self, operation: Operation) -> bool {
         self.operations.contains(&operation)
     }
 
-    pub fn accepts_integer(self, value: i64) -> bool {
-        match self.value {
-            NativeOptionValueSpec::Integer { min, max } => (min..=max).contains(&value),
-            NativeOptionValueSpec::String
-            | NativeOptionValueSpec::Boolean
-            | NativeOptionValueSpec::Json => false,
-        }
+    pub fn namespace(&self) -> &str {
+        self.declaration_path()
+            .first()
+            .map(String::as_str)
+            .unwrap_or("")
     }
 
-    pub fn expected_value_description(self) -> String {
-        match self.value {
-            NativeOptionValueSpec::Integer { min, max } => {
-                format!("integer in range {min}..{max}")
-            }
-            NativeOptionValueSpec::String => "a string".to_owned(),
-            NativeOptionValueSpec::Boolean => "a boolean".to_owned(),
-            NativeOptionValueSpec::Json => "a JSON value".to_owned(),
-        }
+    pub fn key(&self) -> &str {
+        self.declaration_path()
+            .get(1)
+            .map(String::as_str)
+            .unwrap_or("")
     }
 
-    pub fn value_kind(self) -> NativeOptionValueKind {
-        match self.value {
-            NativeOptionValueSpec::Integer { .. } => NativeOptionValueKind::Integer,
-            NativeOptionValueSpec::String => NativeOptionValueKind::String,
-            NativeOptionValueSpec::Boolean => NativeOptionValueKind::Boolean,
-            NativeOptionValueSpec::Json => NativeOptionValueKind::Json,
-        }
+    pub fn cli_flag(&self) -> Option<&'static str> {
+        self.sources
+            .iter()
+            .find_map(|source| source.strategy.as_cli_flag())
     }
 
-    pub fn config_key(self) -> String {
-        format!("{}.{}", self.namespace, self.key)
-    }
-
-    pub fn cli_arg_id(self) -> Option<&'static str> {
-        self.cli_flag
+    pub fn cli_arg_id(&self) -> Option<&'static str> {
+        self.cli_flag()
             .map(|flag| flag.strip_prefix("--").unwrap_or(flag))
     }
 
-    pub fn default_value(self) -> Option<Value> {
-        self.default.map(NativeOptionDefaultValue::into_json)
+    pub fn cli_input_path(&self) -> Option<Vec<String>> {
+        self.cli_flag()?;
+        self.processing_path(ProcessingId::from("cli"))
+            .ok()
+            .flatten()
+    }
+
+    pub fn processing_path(
+        &self,
+        processing_id: impl Into<ProcessingId>,
+    ) -> Result<Option<Vec<String>>, BuildError> {
+        self.field
+            .processing_metadata(&processing_id.into())
+            .map(|metadata| {
+                metadata.map(|metadata| {
+                    metadata
+                        .path
+                        .segments()
+                        .into_iter()
+                        .map(str::to_owned)
+                        .collect()
+                })
+            })
+    }
+
+    pub fn field_declaration(&self) -> Result<FieldDefDeclaration, AdapterOptionSpecError> {
+        self.validate_declaration()?;
+        Ok(self.field.clone())
+    }
+
+    pub fn validate_declaration(&self) -> Result<(), AdapterOptionSpecError> {
+        let declaration_path = self.declaration_path();
+        if declaration_path.len() == 2
+            && declaration_path
+                .first()
+                .is_some_and(|segment| segment == "options")
+            && declaration_path
+                .get(1)
+                .is_some_and(|segment| !segment.is_empty())
+        {
+            return Ok(());
+        }
+        Err(AdapterOptionSpecError::InvalidDeclarationPath {
+            identity: self.identity.clone(),
+            path: declaration_path.to_vec(),
+        })
+    }
+
+    pub fn value_kind(&self) -> ValueKind {
+        self.schema_metadata()
+            .map(|metadata| metadata.value_kind)
+            .unwrap_or(ValueKind::Json)
+    }
+
+    pub fn value_kind_name(&self) -> &'static str {
+        value_kind_name(self.value_kind())
+    }
+
+    pub fn expected_value_description(&self) -> String {
+        self.schema_metadata()
+            .map(|metadata| expected_value_description(&metadata))
+            .unwrap_or_else(|_| "a JSON value".to_owned())
+    }
+
+    fn schema_metadata(&self) -> Result<SchemaMetadataView, docnav_typed_fields::BuildError> {
+        self.field.schema_metadata()
+    }
+
+    fn declaration_path(&self) -> &[String] {
+        self.field.declaration_path().unwrap_or(&[])
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct NativeOptionSpecBuilder {
-    identity: &'static str,
-    owner: &'static str,
-    namespace: &'static str,
-    key: &'static str,
-    operations: &'static [Operation],
-    cli_flag: Option<&'static str>,
-    value: NativeOptionValueSpec,
-    default: Option<NativeOptionDefaultValue>,
+impl AdapterOptionProcessStrategy {
+    pub fn json_path<I, S>(segments: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self::JsonPath(segments.into_iter().map(Into::into).collect())
+    }
+
+    pub fn cli_flag(flag: &'static str) -> Self {
+        Self::CliFlag { flag }
+    }
+
+    fn as_cli_flag(&self) -> Option<&'static str> {
+        match self {
+            Self::CliFlag { flag } => Some(*flag),
+            Self::JsonPath(_) => None,
+        }
+    }
+
+    fn field_process(&self, declaration_path: &[String]) -> FieldProcessStrategy {
+        match self {
+            Self::JsonPath(path) => FieldProcessStrategy::json_path(path.clone()),
+            Self::CliFlag { .. } => FieldProcessStrategy::json_path(declaration_path.to_vec()),
+        }
+    }
 }
 
-impl NativeOptionSpecBuilder {
-    pub const fn owner(mut self, owner: &'static str) -> Self {
-        self.owner = owner;
+impl<T> AdapterOptionSpecBuilder<T> {
+    pub fn owner(mut self, owner: impl Into<String>) -> Self {
+        self.owner = owner.into();
         self
     }
 
-    pub const fn namespace(mut self, namespace: &'static str) -> Self {
-        self.namespace = namespace;
+    pub fn operations(mut self, operations: &[Operation]) -> Self {
+        self.operations = operations.to_vec();
         self
     }
 
-    pub const fn key(mut self, key: &'static str) -> Self {
-        self.key = key;
+    pub fn path<I, S>(mut self, path: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.declaration_path = Some(path.into_iter().map(Into::into).collect());
         self
     }
 
-    pub const fn operations(mut self, operations: &'static [Operation]) -> Self {
-        self.operations = operations;
+    pub fn process(
+        mut self,
+        processing_id: impl Into<String>,
+        strategy: AdapterOptionProcessStrategy,
+    ) -> Self {
+        let processing_id = processing_id.into();
+        if let Some(existing) = self
+            .sources
+            .iter_mut()
+            .find(|source| source.processing_id == processing_id)
+        {
+            existing.strategy = strategy;
+        } else {
+            self.sources.push(AdapterOptionSource {
+                processing_id,
+                strategy,
+            });
+        }
         self
     }
 
-    pub const fn cli_flag(mut self, cli_flag: &'static str) -> Self {
-        self.cli_flag = Some(cli_flag);
+    pub fn default_static(mut self, value: impl Into<T>) -> Self
+    where
+        T: FieldValue,
+    {
+        self.field = self.field.default_static(value);
         self
     }
 
-    pub const fn value(mut self, value: NativeOptionValueSpec) -> Self {
-        self.value = value;
+    pub fn expected_shape(mut self, expected: ExpectedFieldShape) -> Self {
+        self.expected = expected;
         self
     }
 
-    pub const fn default_integer(mut self, value: i64) -> Self {
-        self.default = Some(NativeOptionDefaultValue::Integer(value));
-        self
-    }
-
-    pub const fn default_string(mut self, value: &'static str) -> Self {
-        self.default = Some(NativeOptionDefaultValue::String(value));
-        self
-    }
-
-    pub const fn default_boolean(mut self, value: bool) -> Self {
-        self.default = Some(NativeOptionDefaultValue::Boolean(value));
-        self
-    }
-
-    pub const fn build(self) -> NativeOptionSpec {
-        NativeOptionSpec {
+    pub fn build(self) -> AdapterOptionSpec
+    where
+        T: 'static,
+    {
+        let declaration_path = self.declaration_path.unwrap_or_default();
+        let mut field = self.field;
+        for source in &self.sources {
+            field = field.process(
+                source.processing_id.clone(),
+                source.strategy.field_process(&declaration_path),
+            );
+        }
+        AdapterOptionSpec {
             identity: self.identity,
             owner: self.owner,
-            namespace: self.namespace,
-            key: self.key,
             operations: self.operations,
-            cli_flag: self.cli_flag,
-            value: self.value,
-            default: self.default,
+            sources: self.sources,
+            field: FieldDefDeclaration::with_declaration_path(
+                declaration_path,
+                field,
+                self.expected,
+            ),
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NativeOptionValueSpec {
-    Integer { min: i64, max: i64 },
-    String,
-    Boolean,
-    Json,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NativeOptionDefaultValue {
-    Integer(i64),
-    String(&'static str),
-    Boolean(bool),
-}
-
-impl NativeOptionDefaultValue {
-    pub fn into_json(self) -> Value {
-        match self {
-            Self::Integer(value) => json!(value),
-            Self::String(value) => json!(value),
-            Self::Boolean(value) => json!(value),
+impl AdapterOptionSpecBuilder<()> {
+    pub fn validation<U>(self, validation: FieldValidation<U>) -> AdapterOptionSpecBuilder<U> {
+        AdapterOptionSpecBuilder {
+            identity: self.identity,
+            owner: self.owner,
+            operations: self.operations,
+            field: self.field.validation(validation),
+            declaration_path: self.declaration_path,
+            expected: self.expected,
+            sources: self.sources,
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NativeOptionValueKind {
-    Integer,
-    String,
-    Boolean,
-    Json,
-}
-
-impl NativeOptionValueKind {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Integer => "integer",
-            Self::String => "string",
-            Self::Boolean => "boolean",
-            Self::Json => "json",
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NativeOptionIssue {
-    pub owner: String,
-    pub namespace: String,
-    pub key: String,
-    pub source: String,
-    pub reason_code: String,
-    pub field: String,
-    pub received: Option<String>,
-    pub expected: Option<String>,
-    pub type_variant: Option<String>,
-}
-
-impl NativeOptionIssue {
-    pub fn into_json(self) -> Value {
-        let mut issue = Map::new();
-        issue.insert("owner".to_owned(), json!(self.owner));
-        issue.insert("namespace".to_owned(), json!(self.namespace));
-        issue.insert("key".to_owned(), json!(self.key));
-        issue.insert("source".to_owned(), json!(self.source));
-        issue.insert("reason_code".to_owned(), json!(self.reason_code));
-        issue.insert("location".to_owned(), json!({ "field": self.field }));
-        if let Some(type_variant) = self.type_variant {
-            issue.insert("type_variant".to_owned(), json!(type_variant));
-        }
-        if let Some(received) = self.received {
-            issue.insert("received".to_owned(), json!(received));
-        }
-        if let Some(expected) = self.expected {
-            issue.insert("expected".to_owned(), json!(expected));
-        }
-        Value::Object(issue)
     }
 }

@@ -6,11 +6,21 @@ use crate::metadata::{FieldConstraints, ValueKind};
 use crate::range::{FieldBound, FieldLength, FieldNumericRange, FieldRange};
 use crate::value::{FieldStringEnum, FieldValue};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct FieldValidation<T = ()> {
     value_kind: ValueKind,
     constraints: FieldConstraints,
     typed: PhantomData<T>,
+}
+
+impl<T> Clone for FieldValidation<T> {
+    fn clone(&self) -> Self {
+        Self {
+            value_kind: self.value_kind,
+            constraints: self.constraints.clone(),
+            typed: PhantomData,
+        }
+    }
 }
 
 impl FieldValidation<String> {

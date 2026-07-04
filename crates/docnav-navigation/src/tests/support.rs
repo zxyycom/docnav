@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterError, AdapterResult, NativeOptionSpec, NativeOptionValueSpec,
+    Adapter, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterResult,
+    FieldBound, FieldValidation,
 };
 use docnav_parameter_resolution::LoadedParameterConfigSource;
 use docnav_protocol::{
@@ -19,26 +20,6 @@ use crate::{
 };
 
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline];
-const MAX_HEADING_LEVEL_OPTION: NativeOptionSpec =
-    NativeOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_level")
-        .owner("docnav-markdown")
-        .namespace("options")
-        .key("max_heading_level")
-        .operations(MAX_HEADING_LEVEL_OPERATIONS)
-        .cli_flag("--max-heading-level")
-        .value(NativeOptionValueSpec::Integer { min: 1, max: 6 })
-        .default_integer(3)
-        .build();
-const PAYLOAD_OPTION: NativeOptionSpec =
-    NativeOptionSpec::builder("docnav.adapters.docnav-markdown.options.payload")
-        .owner("docnav-markdown")
-        .namespace("options")
-        .key("payload")
-        .operations(MAX_HEADING_LEVEL_OPERATIONS)
-        .cli_flag("--payload")
-        .value(NativeOptionValueSpec::Json)
-        .build();
-const NATIVE_OPTIONS: &[NativeOptionSpec] = &[MAX_HEADING_LEVEL_OPTION, PAYLOAD_OPTION];
 
 pub(super) fn navigation_command(
     native_options: Vec<NavigationNativeOptionInput>,
@@ -117,9 +98,70 @@ impl NavigationAdapterRegistry for UnsupportedRegistry {
     }
 }
 
+pub(super) struct InvalidOptionRegistry;
+
+impl NavigationAdapterRegistry for InvalidOptionRegistry {
+    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
+        vec![NavigationAdapterRef {
+            id: "docnav-invalid-options",
+            adapter: &InvalidOptionAdapter,
+        }]
+    }
+}
+
+fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
+    vec![
+        AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_level")
+            .owner("docnav-markdown")
+            .operations(MAX_HEADING_LEVEL_OPERATIONS)
+            .path(["options", "max_heading_level"])
+            .process(
+                "cli",
+                AdapterOptionProcessStrategy::cli_flag("--max-heading-level"),
+            )
+            .process(
+                "config",
+                AdapterOptionProcessStrategy::json_path(["options", "max_heading_level"]),
+            )
+            .validation(
+                FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
+            )
+            .default_static(3)
+            .build(),
+        AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.payload")
+            .owner("docnav-markdown")
+            .operations(MAX_HEADING_LEVEL_OPERATIONS)
+            .path(["options", "payload"])
+            .process("cli", AdapterOptionProcessStrategy::cli_flag("--payload"))
+            .process(
+                "config",
+                AdapterOptionProcessStrategy::json_path(["options", "payload"]),
+            )
+            .validation(FieldValidation::json())
+            .build(),
+    ]
+}
+
+fn invalid_adapter_options() -> Vec<AdapterOptionSpec> {
+    vec![
+        AdapterOptionSpec::builder("docnav.adapters.invalid.options.bad_path")
+            .owner("docnav-invalid-options")
+            .operations(MAX_HEADING_LEVEL_OPERATIONS)
+            .path(["invalid", "bad_path"])
+            .process(
+                "config",
+                AdapterOptionProcessStrategy::json_path(["options", "bad_path"]),
+            )
+            .validation(FieldValidation::int())
+            .build(),
+    ]
+}
+
 struct StubAdapter;
 
 struct UnsupportedAdapter;
+
+struct InvalidOptionAdapter;
 
 impl Adapter for StubAdapter {
     fn adapter_id(&self) -> &str {
@@ -142,8 +184,8 @@ impl Adapter for StubAdapter {
         }
     }
 
-    fn native_options(&self) -> &'static [NativeOptionSpec] {
-        NATIVE_OPTIONS
+    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
+        stub_adapter_options()
     }
 
     fn probe(&self, path: &str) -> ProbeResult {
@@ -289,5 +331,78 @@ impl Adapter for UnsupportedAdapter {
         _arguments: &InfoArguments,
     ) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("unsupported-info-unreachable"))
+    }
+}
+
+impl Adapter for InvalidOptionAdapter {
+    fn adapter_id(&self) -> &str {
+        "docnav-invalid-options"
+    }
+
+    fn manifest(&self) -> Manifest {
+        Manifest {
+            manifest_version: "0.1".to_owned(),
+            adapter: AdapterIdentity {
+                id: "docnav-invalid-options".to_owned(),
+                name: "Invalid Options".to_owned(),
+                version: "0.1.0".to_owned(),
+            },
+            formats: vec![FormatDescriptor {
+                id: "invalid-options".to_owned(),
+                extensions: vec![".stub".to_owned()],
+                content_types: vec!["text/stub".to_owned()],
+            }],
+        }
+    }
+
+    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
+        invalid_adapter_options()
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        ProbeResult {
+            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
+            adapter_id: "docnav-invalid-options".to_owned(),
+            path: path.to_owned(),
+            supported: true,
+            format: Some("invalid-options".to_owned()),
+            confidence: 1.0,
+            reasons: vec![ProbeReason {
+                code: ProbeReasonCode::ContentMatch,
+                detail: "invalid option test probe accepted".to_owned(),
+            }],
+        }
+    }
+
+    fn outline(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &OutlineArguments,
+    ) -> AdapterResult<OutlineResult> {
+        Err(AdapterError::internal("invalid-option-outline-unreachable"))
+    }
+
+    fn read(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &ReadArguments,
+    ) -> AdapterResult<ReadResult> {
+        Err(AdapterError::internal("invalid-option-read-unreachable"))
+    }
+
+    fn find(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &FindArguments,
+    ) -> AdapterResult<FindResult> {
+        Err(AdapterError::internal("invalid-option-find-unreachable"))
+    }
+
+    fn info(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &InfoArguments,
+    ) -> AdapterResult<InfoResult> {
+        Err(AdapterError::internal("invalid-option-info-unreachable"))
     }
 }

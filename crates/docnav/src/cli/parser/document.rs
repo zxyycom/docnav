@@ -160,21 +160,19 @@ fn parse_native_options(
     let mut flags = Vec::new();
     let mut inputs = Vec::new();
     for option in registry::native_options_for(operation) {
-        let Some(flag) = option.cli_flag else {
+        let Some(flag) = option.cli_flag() else {
             continue;
         };
+        let flag = flag.to_owned();
         if flags.contains(&flag) {
             continue;
         }
-        flags.push(flag);
-        let Some(arg_id) = option.cli_arg_id() else {
+        flags.push(flag.clone());
+        let Some(arg_id) = option.cli_arg_id().map(str::to_owned) else {
             continue;
         };
-        if let Some(value) = optional_explicit_string(matches, arg_id) {
-            inputs.push(NativeOptionCliInput {
-                flag: flag.to_owned(),
-                value,
-            });
+        if let Some(value) = optional_explicit_string(matches, &arg_id) {
+            inputs.push(NativeOptionCliInput { flag, value });
         }
     }
     inputs
@@ -282,7 +280,7 @@ fn document_value_flags(operation: Operation) -> Vec<docnav_cli_args::KnownValue
         .chain(registry::native_options_for(Operation::Find))
         .chain(registry::native_options_for(Operation::Info))
     {
-        let Some(flag) = option.cli_flag else {
+        let Some(flag) = option.cli_flag() else {
             continue;
         };
         let used = option.applies_to(operation);

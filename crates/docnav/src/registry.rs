@@ -1,4 +1,4 @@
-use docnav_adapter_contracts::{Adapter, NativeOptionSpec};
+use docnav_adapter_contracts::{Adapter, AdapterOptionSpec};
 use docnav_markdown::MarkdownAdapter;
 use docnav_navigation::{NavigationAdapterRef, NavigationAdapterRegistry};
 use docnav_protocol::{Manifest, Operation};
@@ -41,7 +41,7 @@ impl AdapterRegistry {
         self.adapters.is_empty()
     }
 
-    pub fn native_options_for(&self, operation: Operation) -> Vec<NativeOptionSpec> {
+    pub fn native_options_for(&self, operation: Operation) -> Vec<AdapterOptionSpec> {
         self.adapters
             .iter()
             .flat_map(|record| record.native_options_for(operation))
@@ -51,8 +51,8 @@ impl AdapterRegistry {
     pub fn has_native_option_config_key(&self, key: &str) -> bool {
         self.adapters
             .iter()
-            .flat_map(|record| record.native_options().iter().copied())
-            .any(|option| option.config_key() == key)
+            .flat_map(|record| record.adapter_options())
+            .any(|option| native_option_config_key(&option).as_deref() == Some(key))
     }
 
     pub fn native_option_config_keys(&self) -> Vec<String> {
@@ -60,14 +60,24 @@ impl AdapterRegistry {
         for option in self
             .adapters
             .iter()
-            .flat_map(|record| record.native_options().iter().copied())
+            .flat_map(|record| record.adapter_options())
         {
-            let key = option.config_key();
-            if !keys.contains(&key) {
-                keys.push(key);
+            if let Some(key) = native_option_config_key(&option) {
+                if !keys.contains(&key) {
+                    keys.push(key);
+                }
             }
         }
         keys
+    }
+}
+
+fn native_option_config_key(option: &AdapterOptionSpec) -> Option<String> {
+    let path = option.processing_path("config").ok().flatten()?;
+    if path.len() == 2 && path.first().is_some_and(|segment| segment == "options") {
+        Some(path.join("."))
+    } else {
+        None
     }
 }
 
@@ -83,7 +93,7 @@ impl NavigationAdapterRegistry for AdapterRegistry {
     }
 }
 
-pub fn native_options_for(operation: Operation) -> Vec<NativeOptionSpec> {
+pub fn native_options_for(operation: Operation) -> Vec<AdapterOptionSpec> {
     AdapterRegistry::builtin().native_options_for(operation)
 }
 
@@ -100,14 +110,13 @@ impl AdapterRecord {
         self.adapter.manifest()
     }
 
-    pub fn native_options(&self) -> &'static [NativeOptionSpec] {
-        self.adapter.native_options()
+    pub fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
+        self.adapter.adapter_options()
     }
 
-    pub fn native_options_for(&self, operation: Operation) -> Vec<NativeOptionSpec> {
-        self.native_options()
-            .iter()
-            .copied()
+    pub fn native_options_for(&self, operation: Operation) -> Vec<AdapterOptionSpec> {
+        self.adapter_options()
+            .into_iter()
             .filter(|option| option.applies_to(operation))
             .collect()
     }

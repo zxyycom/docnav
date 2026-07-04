@@ -1,7 +1,7 @@
-use docnav_adapter_contracts::NativeOptionSpec;
+use docnav_adapter_contracts::AdapterOptionSpec;
 use docnav_diagnostics::DiagnosticSource;
 use docnav_parameter_resolution::{ParameterResolution, ParameterResolutionHandoff};
-use docnav_protocol::Operation;
+use docnav_typed_fields::{FieldDefSet, JsonFieldSet};
 use serde_json::Value;
 
 use crate::{NavigationCommand, NavigationConfigSource, NavigationConfigSources, NavigationError};
@@ -15,20 +15,27 @@ use super::{
     values::validation_error_for_identity,
 };
 
+struct ConfigValidationContext<'a> {
+    selected_adapter_id: &'a str,
+    fields: &'a FieldDefSet,
+    selected_native_options: &'a [AdapterOptionSpec],
+}
+
 pub(super) fn validate_navigation_sources(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_native_options: &[NativeOptionSpec],
+    fields: &FieldDefSet,
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Result<(), NavigationError> {
     first_config_source_error(config_sources)?;
     validate_explicit_native_options(command, selected_adapter_id, selected_native_options)?;
-    validate_config_sources(
-        config_sources,
-        command.operation,
+    let context = ConfigValidationContext {
         selected_adapter_id,
+        fields,
         selected_native_options,
-    )
+    };
+    validate_config_sources(config_sources, &context)
 }
 
 pub(super) fn first_resolution_error(
@@ -44,7 +51,7 @@ pub(super) fn first_operation_resolution_error(
     resolution: &ParameterResolution,
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Result<(), NavigationError> {
     if let Some(diagnostic) = resolution.diagnostics().first() {
         if let ParameterResolutionHandoff::Validation(diagnostic) = diagnostic {
@@ -79,33 +86,21 @@ fn first_config_source_error(
 
 fn validate_config_sources(
     config_sources: &NavigationConfigSources,
-    operation: Operation,
-    selected_adapter_id: &str,
-    selected_native_options: &[NativeOptionSpec],
+    context: &ConfigValidationContext<'_>,
 ) -> Result<(), NavigationError> {
-    validate_config_source(
-        &config_sources.project,
-        operation,
-        selected_adapter_id,
-        selected_native_options,
-    )?;
-    validate_config_source(
-        &config_sources.user,
-        operation,
-        selected_adapter_id,
-        selected_native_options,
-    )
+    validate_config_source(&config_sources.project, context)?;
+    validate_config_source(&config_sources.user, context)
 }
 
 fn validate_explicit_native_options(
     command: &NavigationCommand,
     selected_adapter_id: &str,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Result<(), NavigationError> {
     for option in &command.native_options {
         if selected_native_options
             .iter()
-            .any(|spec| spec.cli_flag == Some(option.flag.as_str()))
+            .any(|spec| spec.cli_flag() == Some(option.flag.as_str()))
         {
             continue;
         }
@@ -127,9 +122,7 @@ fn validate_explicit_native_options(
 
 fn validate_config_source(
     source: &NavigationConfigSource,
-    operation: Operation,
-    selected_adapter_id: &str,
-    selected_native_options: &[NativeOptionSpec],
+    context: &ConfigValidationContext<'_>,
 ) -> Result<(), NavigationError> {
     let Some(value) = source.loaded.value() else {
         return Ok(());
@@ -140,13 +133,7 @@ fn validate_config_source(
     for (key, child) in root {
         match key.as_str() {
             "defaults" => validate_defaults_shape(source, child)?,
-            "options" => validate_options_shape(
-                source,
-                child,
-                operation,
-                selected_adapter_id,
-                selected_native_options,
-            )?,
+            "options" => validate_options_shape(source, child, value, context)?,
             _ => {
                 return Err(NavigationError::config_unknown_field(
                     source.level,
@@ -218,28 +205,25 @@ fn validate_pagination_shape(
 fn validate_options_shape(
     source: &NavigationConfigSource,
     value: &Value,
-    operation: Operation,
-    selected_adapter_id: &str,
-    selected_native_options: &[NativeOptionSpec],
+    root: &Value,
+    context: &ConfigValidationContext<'_>,
 ) -> Result<(), NavigationError> {
-    let Some(options) = value.as_object() else {
+    let Some(_options) = value.as_object() else {
         return Err(invalid_nested_object(source, "options"));
     };
-    let operation_native_options = selected_native_options
-        .iter()
-        .copied()
-        .filter(|spec| spec.applies_to(operation))
-        .collect::<Vec<_>>();
-    for (key, value) in options {
-        if operation_native_options.iter().any(|spec| spec.key == key) {
-            continue;
-        }
+    let unused_options = JsonFieldSet::new(context.fields)
+        .unused_fields(super::CONFIG_PROCESSING, root, ["options"])
+        .map_err(|error| NavigationError::internal(format!("config-options:{error}")))?;
+    let Some(unused_options) = unused_options.as_object() else {
+        return Ok(());
+    };
+    if let Some((key, value)) = unused_options.iter().next() {
         return Err(unsupported_option(
             UnsupportedOptionContext {
                 source: source.level,
                 path: &source.path,
-                owner: selected_adapter_id,
-                selected_native_options: &operation_native_options,
+                owner: context.selected_adapter_id,
+                selected_native_options: context.selected_native_options,
             },
             key,
             value.clone(),

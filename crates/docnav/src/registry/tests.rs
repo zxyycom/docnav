@@ -56,8 +56,8 @@ fn static_registry_exposes_full_native_option_specs() {
         .contains(&"options.max_heading_level".to_owned()));
     assert!(native_options.iter().any(|option| {
         option.owner == "docnav-markdown"
-            && option.namespace == "options"
-            && option.key == "max_heading_level"
+            && option.namespace() == "options"
+            && option.key() == "max_heading_level"
     }));
 }
 

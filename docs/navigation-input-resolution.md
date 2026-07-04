@@ -1,6 +1,6 @@
 # Navigation Input Resolution
 
-本文是 document navigation input resolution 的主规范。读者应能从本文判断 `docnav` core 和 `docnav-navigation` 的 owner 边界、navigation command 的输入来源如何进入解析流程、raw project/user config source 如何加载、selected adapter 的 typed-field 参数声明如何参与解析，以及最终如何构造 `RequestEnvelope` / `OperationArguments` 并调用 adapter。
+本文是 document navigation input resolution 的主规范。读者应能从本文判断 `docnav` core 和 `docnav-navigation` 的 owner 边界、navigation command 的输入来源如何进入解析流程、raw project/user config source 如何加载、通用字段声明与 selected adapter declarations 如何在使用点注册并合并参与解析，以及最终如何构造 `RequestEnvelope` / `OperationArguments` 并调用 adapter。
 
 配置只是 navigation 参数来源之一。本文不把配置文件、CLI argv、protocol arguments 或 adapter defaults 单独提升为主 owner；这些来源都在 `docnav-navigation` 的 input resolution 流程中按统一规则解析。
 
@@ -25,7 +25,7 @@ Core 不为 navigation command 预先读取 raw config JSON、完成参数来源
 1. 根据 core 提供的 config source descriptors/paths 加载 raw project/user config sources，保留路径、缺失状态、读取失败和原始 JSON value。
 2. 从 raw navigation command 和 raw config sources 中解析 routing 必需输入，例如 operation、document path、declared adapter intent、ref/query 和 direct parameter sources。
 3. 使用 adapter registry 和 routing 输入选择 selected adapter；adapter selection 规则见 [适配器契约](adapter-contract.md#adapter-选择)。
-4. 读取 selected adapter 暴露的 typed-field 参数声明，包括通用 operation 参数、adapter-owned native options、内置默认值和 operation binding metadata。
+4. 构造 operation field set：注册通用 operation 参数，并把 selected adapter 的 `AdapterOptionSpec` 注册进同一个 typed-field set，保留 adapter-owned native options、内置默认值和 source binding metadata。
 5. 将 explicit command value、project config、user config 和 built-in default 作为来源集合，按 `explicit > project > user > built_in` 解析每个声明参数。
 6. 使用 typed-field 的底层校验和提取函数得到 typed 参数；解析失败时返回带来源信息的 blocking diagnostic。
 7. 构造 `RequestEnvelope` / `OperationArguments`，并通过 selected adapter handle 调用对应 operation。
@@ -41,7 +41,7 @@ Navigation input resolution 接收四类来源：
 | explicit | raw navigation command | 本次调用显式传入的 operation、path、ref/query、page、limit、output、adapter intent 和 native option source |
 | project | `docnav-navigation` 从 project config descriptor/path 加载的 source | 项目级 document operation 默认值和 adapter-owned native option source |
 | user | `docnav-navigation` 从 user config descriptor/path 加载的 source | 用户级 document operation 默认值和 adapter-owned native option source |
-| built_in | selected adapter typed-field declarations 和 core navigation defaults | 缺省 pagination、limit、output、page 和 adapter 参数默认值 |
+| built_in | `docnav-navigation` 注册后的 selected adapter declarations 和 core navigation defaults | 缺省 pagination、limit、output、page 和 adapter 参数默认值 |
 
 Project config 路径为 `<project-root>/.docnav/docnav.json`。User config descriptor/path 由 core 用户配置位置提供。`docnav-navigation` 加载这些 descriptor/path 指向的 raw source：默认路径缺失表示该来源 absent；显式存在但不可读、JSON 无效或顶层不是 object 是 config source failure。
 
@@ -79,7 +79,7 @@ docnav-navigation
   load raw project/user config sources
   parse routing-required input
   select adapter from registry
-  read selected adapter typed-field parameter declarations
+  declare common fields + register selected adapter native option declarations
   collect explicit/project/user/built_in source candidates
   resolve declared parameters with explicit > project > user > built_in
   validate/extract typed values through typed-field helpers
@@ -94,16 +94,16 @@ Resolution 必须保持来源信息，便于诊断表达 explicit、project conf
 
 ## Selected Adapter 参数声明
 
-Selected adapter 的 typed-field 参数声明是 adapter 参数事实源。声明至少提供：
+通用 operation 字段由 `docnav-navigation` 声明；selected adapter 的 typed-field declarations 是 adapter-owned native option 参数事实源。Adapter 只声明这些字段；`docnav-navigation` 在构造 operation field set 时按 selected adapter 和 operation 主动注册。Adapter declaration 至少提供：
 
-- 参数 identity、owner、namespace/key 和 operation applicability。
-- direct input、project config、user config 和 built-in default 的映射。
+- 参数 identity、owner、`options.<key>` final arguments path 和 operation applicability。
+- explicit input、project config、user config 和 built-in default 的 processing/source 映射。
 - value kind、required/optional/nullability、allowed values、range、static default 和 dynamic default metadata。
 - operation binding metadata，用于把 typed values 写入 `OperationArguments`。
 
 `options.*` 保持 adapter-owned namespace。多个 adapter 或多个 type variant 可以声明同名 option key；resolution 不把同名 key 折叠为 core-owned 字段。Adapter selection 完成后，只解析 selected adapter 声明接收的 native option sources。
 
-Typed-field helper 负责字段级校验和 typed extraction。Adapter 可以通过声明表达格式语义约束，但 handler 不再接收未校验 raw option value 来执行基础类型或范围校验。
+Typed-field helper 负责字段级校验和 typed extraction。Adapter 可以通过声明表达格式语义约束，但 handler 不再接收未校验 raw option value 来执行基础类型或范围校验。`docnav-navigation` 只合并通用字段和 selected adapter 注册的字段，并执行来源解析、校验、提取和 `OperationArguments` 绑定；它不从 config key 或独立 registry entry 重新推导 adapter-owned value kind、range 或 default 语义。Config unknown-option detection 使用当前 operation field set 的 typed-field processing metadata 判断哪些 `options.*` source 已被声明接收。
 
 ## Request Construction
 
@@ -137,7 +137,7 @@ Resolution 完成后，`docnav-navigation` 构造内部 protocol request：
 
 1. Core 只分流命令并提供 config source descriptors/paths；navigation command 的 raw config source loading、来源合并、typed validation、request construction 和 adapter dispatch 由 `docnav-navigation` 拥有。
 2. Config 是参数来源之一，不是 navigation input resolution 的 owner。
-3. 只有 selected adapter 的 typed-field 参数声明参与 native option resolution。
+3. 只有 selected adapter 注册的 typed-field option 字段参与 native option resolution。
 4. 来源优先级固定为 `explicit > project > user > built_in`。
 5. `path`、`ref`、`query` 和 `page` 不进入配置文件字段集合。
 6. Typed-field 校验/提取先于 `RequestEnvelope` / `OperationArguments` 构造。

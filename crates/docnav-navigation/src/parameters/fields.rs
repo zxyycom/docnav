@@ -1,12 +1,10 @@
-use docnav_adapter_contracts::{NativeOptionDefaultValue, NativeOptionSpec, NativeOptionValueSpec};
+use docnav_adapter_contracts::{Adapter, AdapterOptionSpec};
 use docnav_parameter_resolution::{
     adapter_id_field, configurable_limit_field, configurable_output_field, document_path_field,
     find_query_field, page_field as standard_page_field, pagination_enabled_field, read_ref_field,
 };
 use docnav_protocol::Operation;
-use docnav_typed_fields::{
-    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldValidation, ProcessStrategy,
-};
+use docnav_typed_fields::{ExpectedFieldShape, FieldDefBuilder, FieldDefSet, FieldDefSetBuilder};
 
 use crate::{NavigationError, NavigationOutputMode};
 
@@ -26,11 +24,81 @@ pub(super) fn adapter_intent_fields() -> Result<FieldDefSet, NavigationError> {
         .map_err(|error| NavigationError::internal(format!("adapter-intent-fields:{error}")))
 }
 
+pub(super) struct OperationFieldSet {
+    fields: FieldDefSet,
+    adapter_options: Vec<AdapterOptionSpec>,
+}
+
+impl OperationFieldSet {
+    pub(super) fn adapter_options(&self) -> &[AdapterOptionSpec] {
+        &self.adapter_options
+    }
+}
+
+impl AsRef<FieldDefSet> for OperationFieldSet {
+    fn as_ref(&self) -> &FieldDefSet {
+        &self.fields
+    }
+}
+
+struct OperationFieldSetBuilder {
+    builder: FieldDefSetBuilder,
+    adapter_options: Vec<AdapterOptionSpec>,
+}
+
+impl OperationFieldSetBuilder {
+    fn new() -> Self {
+        Self {
+            builder: FieldDefSet::builder(),
+            adapter_options: Vec::new(),
+        }
+    }
+
+    fn field_with_declaration_path<T, I, S>(
+        mut self,
+        declaration_path: I,
+        builder: FieldDefBuilder<T>,
+        expected: ExpectedFieldShape,
+    ) -> Self
+    where
+        T: 'static,
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.builder =
+            self.builder
+                .field_with_declaration_path(declaration_path, builder, expected);
+        self
+    }
+
+    fn adapter_options(
+        mut self,
+        options: Vec<AdapterOptionSpec>,
+        operation: Operation,
+    ) -> Result<Self, docnav_adapter_contracts::AdapterOptionSpecError> {
+        for option in options {
+            if !option.applies_to(operation) {
+                continue;
+            }
+            self.builder = self.builder.field_declaration(option.field_declaration()?);
+            self.adapter_options.push(option);
+        }
+        Ok(self)
+    }
+
+    fn build(self) -> Result<OperationFieldSet, docnav_typed_fields::FieldDefSetBuildError> {
+        Ok(OperationFieldSet {
+            fields: self.builder.build()?,
+            adapter_options: self.adapter_options,
+        })
+    }
+}
+
 pub(super) fn operation_fields(
     operation: Operation,
-    selected_native_options: &[NativeOptionSpec],
-) -> Result<FieldDefSet, NavigationError> {
-    let mut builder = FieldDefSet::builder()
+    selected_adapter: &dyn Adapter,
+) -> Result<OperationFieldSet, NavigationError> {
+    let mut builder = OperationFieldSetBuilder::new()
         .field_with_declaration_path(
             ["path"],
             document_path_field(DIRECT_PROCESSING),
@@ -83,83 +151,11 @@ pub(super) fn operation_fields(
             );
     }
 
-    for spec in selected_native_options
-        .iter()
-        .copied()
-        .filter(|spec| spec.applies_to(operation))
-    {
-        builder = add_native_option_field(builder, spec);
-    }
+    builder = builder
+        .adapter_options(selected_adapter.adapter_options(), operation)
+        .map_err(|error| NavigationError::internal(format!("adapter-option:{error}")))?;
 
     builder
         .build()
         .map_err(|error| NavigationError::internal(format!("operation-fields:{error}")))
-}
-
-fn add_native_option_field(
-    builder: docnav_typed_fields::FieldDefSetBuilder,
-    spec: NativeOptionSpec,
-) -> docnav_typed_fields::FieldDefSetBuilder {
-    let base = FieldDef::builder(spec.identity)
-        .process(
-            DIRECT_PROCESSING,
-            ProcessStrategy::json_path(["options", spec.key]),
-        )
-        .process(
-            CONFIG_PROCESSING,
-            ProcessStrategy::json_path(["options", spec.key]),
-        );
-    match spec.value {
-        NativeOptionValueSpec::Integer { min, max } => {
-            let field = base.validation(
-                FieldValidation::int().between(FieldBound::closed(min), FieldBound::closed(max)),
-            );
-            let field = match spec.default {
-                Some(NativeOptionDefaultValue::Integer(default)) => field.default_static(default),
-                _ => field,
-            };
-            builder.field_with_declaration_path(
-                ["options", spec.key],
-                field,
-                ExpectedFieldShape::optional(),
-            )
-        }
-        NativeOptionValueSpec::String => builder.field_with_declaration_path(
-            ["options", spec.key],
-            native_string_field(base, spec),
-            ExpectedFieldShape::optional(),
-        ),
-        NativeOptionValueSpec::Boolean => builder.field_with_declaration_path(
-            ["options", spec.key],
-            native_boolean_field(base, spec),
-            ExpectedFieldShape::optional(),
-        ),
-        NativeOptionValueSpec::Json => builder.field_with_declaration_path(
-            ["options", spec.key],
-            base.validation(FieldValidation::json()),
-            ExpectedFieldShape::optional(),
-        ),
-    }
-}
-
-fn native_string_field(
-    base: docnav_typed_fields::FieldDefBuilder,
-    spec: NativeOptionSpec,
-) -> docnav_typed_fields::FieldDefBuilder<String> {
-    let field = base.validation(FieldValidation::string());
-    match spec.default {
-        Some(NativeOptionDefaultValue::String(default)) => field.default_static(default.to_owned()),
-        _ => field,
-    }
-}
-
-fn native_boolean_field(
-    base: docnav_typed_fields::FieldDefBuilder,
-    spec: NativeOptionSpec,
-) -> docnav_typed_fields::FieldDefBuilder<bool> {
-    let field = base.validation(FieldValidation::boolean());
-    match spec.default {
-        Some(NativeOptionDefaultValue::Boolean(default)) => field.default_static(default),
-        _ => field,
-    }
 }

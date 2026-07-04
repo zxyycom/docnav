@@ -240,7 +240,7 @@ where
         &command,
         &config_sources,
         selection.adapter.id,
-        selection.adapter.adapter.native_options(),
+        selection.adapter.adapter,
     )?;
     let request = protocol_request(OperationInput {
         operation: command.operation,
@@ -294,7 +294,7 @@ where
         &command,
         &config_sources,
         selection.adapter.id,
-        selection.adapter.adapter.native_options(),
+        selection.adapter.adapter,
     )?;
     let selection = NavigationContextSelection::from_selection(
         &selection,

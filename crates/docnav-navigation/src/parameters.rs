@@ -4,7 +4,7 @@ mod input;
 mod native_options;
 mod values;
 
-use docnav_adapter_contracts::NativeOptionSpec;
+use docnav_adapter_contracts::{Adapter, AdapterOptionSpec};
 use docnav_parameter_resolution::{
     ids, EntryPassthroughPolicy, ParameterResolution, ParameterResolutionPipeline,
 };
@@ -16,7 +16,7 @@ use crate::{
     NavigationOutputMode, NavigationPaginationDefaults, NavigationResolvedValue,
 };
 
-const DIRECT_PROCESSING: &str = "explicit";
+const DIRECT_PROCESSING: &str = "cli";
 const CONFIG_PROCESSING: &str = "config";
 const DEFAULT_LIMIT: i64 = 6000;
 const DEFAULT_PAGE: i64 = 1;
@@ -53,13 +53,8 @@ pub fn resolve_adapter_intent(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
 ) -> Result<AdapterIntent, NavigationError> {
-    let resolution = resolve_with_fields(
-        fields::adapter_intent_fields()?,
-        command,
-        config_sources,
-        &[],
-        "adapter-intent",
-    )?;
+    let fields = fields::adapter_intent_fields()?;
+    let resolution = resolve_with_fields(&fields, command, config_sources, &[], "adapter-intent")?;
 
     config::first_resolution_error(&resolution)?;
     Ok(AdapterIntent {
@@ -72,17 +67,20 @@ pub fn resolve_operation_input(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_native_options: &[NativeOptionSpec],
+    selected_adapter: &dyn Adapter,
 ) -> Result<ResolvedNavigationInput, NavigationError> {
+    let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
+    let selected_native_options = operation_fields.adapter_options();
     config::validate_navigation_sources(
         command,
         config_sources,
         selected_adapter_id,
+        operation_fields.as_ref(),
         selected_native_options,
     )?;
 
     let resolution = resolve_with_fields(
-        fields::operation_fields(command.operation, selected_native_options)?,
+        operation_fields.as_ref(),
         command,
         config_sources,
         selected_native_options,
@@ -103,17 +101,20 @@ pub fn resolve_context_defaults(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_native_options: &[NativeOptionSpec],
+    selected_adapter: &dyn Adapter,
 ) -> Result<NavigationContextDefaults, NavigationError> {
+    let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
+    let selected_native_options = operation_fields.adapter_options();
     config::validate_navigation_sources(
         command,
         config_sources,
         selected_adapter_id,
+        operation_fields.as_ref(),
         selected_native_options,
     )?;
 
     let resolution = resolve_with_fields(
-        fields::operation_fields(command.operation, selected_native_options)?,
+        operation_fields.as_ref(),
         command,
         config_sources,
         selected_native_options,
@@ -133,7 +134,7 @@ pub fn resolve_context_defaults(
 fn resolved_input_from_resolution(
     operation: Operation,
     resolution: &ParameterResolution,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Result<ResolvedNavigationInput, NavigationError> {
     let options = native_options::resolved_options(resolution, selected_native_options)?;
     Ok(ResolvedNavigationInput {
@@ -192,13 +193,13 @@ fn resolved_value(
 }
 
 fn resolve_with_fields(
-    fields: docnav_typed_fields::FieldDefSet,
+    fields: &docnav_typed_fields::FieldDefSet,
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
     context: &str,
 ) -> Result<ParameterResolution, NavigationError> {
-    ParameterResolutionPipeline::new(&fields)
+    ParameterResolutionPipeline::new(fields)
         .with_direct_input_processing_id(DIRECT_PROCESSING)
         .with_config_processing_id(CONFIG_PROCESSING)
         .with_loaded_project_config(config_sources.project.loaded.clone())

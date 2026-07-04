@@ -1,4 +1,5 @@
-use clap::builder::NonEmptyStringValueParser;
+use clap::builder::{NonEmptyStringValueParser, Str};
+use clap::Id;
 use clap::{Arg, ArgAction, Command};
 use docnav_protocol::Operation;
 
@@ -264,7 +265,7 @@ fn user_arg() -> Arg {
         .action(ArgAction::SetTrue)
 }
 
-fn value_arg(id: &'static str, long: &'static str, value_name: &'static str) -> Arg {
+fn value_arg(id: impl Into<Id>, long: impl Into<Str>, value_name: &'static str) -> Arg {
     Arg::new(id)
         .long(long)
         .value_name(value_name)

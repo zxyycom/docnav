@@ -1,8 +1,8 @@
-use docnav_adapter_contracts::{AdapterError, NativeOptionIssue, NativeOptionSpec};
+use docnav_adapter_contracts::{AdapterError, AdapterOptionSpec, NativeOptionIssue};
 use docnav_parameter_resolution::{ParameterResolution, ParameterSourceKind};
 use docnav_protocol::{OptionEntry, Options};
 use docnav_typed_fields::ValidationReason;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::{NavigationCommand, NavigationConfigSources, NavigationError};
 
@@ -15,12 +15,12 @@ pub(super) struct UnsupportedOptionContext<'a> {
     pub source: &'static str,
     pub path: &'a str,
     pub owner: &'a str,
-    pub selected_native_options: &'a [NativeOptionSpec],
+    pub selected_native_options: &'a [AdapterOptionSpec],
 }
 
 pub(super) fn resolved_options(
     resolution: &ParameterResolution,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Result<Options, NavigationError> {
     options_from_resolution(resolution, selected_native_options)
 }
@@ -28,22 +28,22 @@ pub(super) fn resolved_options(
 pub(super) fn native_option_validation_error(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
-    spec: NativeOptionSpec,
+    spec: &AdapterOptionSpec,
     source: Option<ParameterSourceKind>,
     reason: &ValidationReason,
 ) -> AdapterError {
     let source = source.map(source_label).unwrap_or("explicit");
     let value = raw_native_option_value_for_source(command, config_sources, spec, source);
     let issue = NativeOptionIssue {
-        owner: spec.owner.to_owned(),
-        namespace: spec.namespace.to_owned(),
-        key: spec.key.to_owned(),
+        owner: spec.owner.clone(),
+        namespace: spec.namespace().to_owned(),
+        key: spec.key().to_owned(),
         source: source.to_owned(),
         reason_code: native_option_reason_code(reason).to_owned(),
-        field: format!("arguments.options.{}", spec.key),
+        field: format!("arguments.options.{}", spec.key()),
         received: value.as_ref().map(received_value),
         expected: Some(spec.expected_value_description()),
-        type_variant: Some(spec.value_kind().as_str().to_owned()),
+        type_variant: Some(spec.value_kind_name().to_owned()),
     };
     AdapterError::native_option_invalid(
         "Native option value is invalid.",
@@ -51,7 +51,7 @@ pub(super) fn native_option_validation_error(
         [format!(
             "Use {} for option {}.",
             spec.expected_value_description(),
-            spec.key
+            spec.key()
         )],
     )
 }
@@ -82,20 +82,16 @@ pub(super) fn unsupported_option(
     )
 }
 
-pub(super) fn spec_for_identity(
-    specs: &[NativeOptionSpec],
+pub(super) fn spec_for_identity<'a>(
+    specs: &'a [AdapterOptionSpec],
     identity: &str,
-) -> Option<NativeOptionSpec> {
-    specs.iter().copied().find(|spec| spec.identity == identity)
-}
-
-pub(super) fn config_options(config: Option<&Value>) -> Option<&Map<String, Value>> {
-    config?.get("options").and_then(Value::as_object)
+) -> Option<&'a AdapterOptionSpec> {
+    specs.iter().find(|spec| spec.identity == identity)
 }
 
 fn options_from_resolution(
     resolution: &ParameterResolution,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Result<Options, NavigationError> {
     let mut options = Options::new();
     for (identity, resolved) in resolution.values() {
@@ -103,12 +99,12 @@ fn options_from_resolution(
             continue;
         };
         options.insert_entry(OptionEntry {
-            identity: spec.identity.to_owned(),
-            owner: spec.owner.to_owned(),
-            namespace: spec.namespace.to_owned(),
-            key: spec.key.to_owned(),
+            identity: spec.identity.clone(),
+            owner: spec.owner.clone(),
+            namespace: spec.namespace().to_owned(),
+            key: spec.key().to_owned(),
             source: source_label(resolved.source.kind).to_owned(),
-            type_variant: spec.value_kind().as_str().to_owned(),
+            type_variant: spec.value_kind_name().to_owned(),
             value: typed_value_to_json(&resolved.value),
         });
     }
@@ -118,23 +114,27 @@ fn options_from_resolution(
 fn raw_native_option_value_for_source(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
-    spec: NativeOptionSpec,
+    spec: &AdapterOptionSpec,
     source: &str,
 ) -> Option<Value> {
     match source {
-        "explicit" => spec.cli_flag.and_then(|cli_flag| {
+        "explicit" => spec.cli_flag().and_then(|cli_flag| {
             command
                 .native_options
                 .iter()
                 .find(|option| option.flag == cli_flag)
                 .map(|option| native_option_cli_value(&option.value))
         }),
-        "project" => config_options(config_sources.project.loaded.value())
-            .and_then(|options| options.get(spec.key))
-            .cloned(),
-        "user" => config_options(config_sources.user.loaded.value())
-            .and_then(|options| options.get(spec.key))
-            .cloned(),
+        "project" => spec
+            .processing_path(super::CONFIG_PROCESSING)
+            .ok()
+            .flatten()
+            .and_then(|path| value_at_path(config_sources.project.loaded.value()?, &path)),
+        "user" => spec
+            .processing_path(super::CONFIG_PROCESSING)
+            .ok()
+            .flatten()
+            .and_then(|path| value_at_path(config_sources.user.loaded.value()?, &path)),
         _ => None,
     }
 }
@@ -154,10 +154,10 @@ fn native_option_reason_code(reason: &ValidationReason) -> &'static str {
     }
 }
 
-fn supported_option_keys(selected_native_options: &[NativeOptionSpec]) -> String {
+fn supported_option_keys(selected_native_options: &[AdapterOptionSpec]) -> String {
     let keys = selected_native_options
         .iter()
-        .map(|spec| spec.key)
+        .map(|spec| spec.key())
         .collect::<Vec<_>>();
     if keys.is_empty() {
         "no native options".to_owned()
@@ -171,4 +171,12 @@ fn received_value(value: &Value) -> String {
         .as_str()
         .map(str::to_owned)
         .unwrap_or_else(|| value.to_string())
+}
+
+fn value_at_path(root: &Value, path: &[String]) -> Option<Value> {
+    let mut current = root;
+    for segment in path {
+        current = current.get(segment)?;
+    }
+    Some(current.clone())
 }

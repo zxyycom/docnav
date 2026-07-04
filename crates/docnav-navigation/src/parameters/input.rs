@@ -1,11 +1,11 @@
-use docnav_adapter_contracts::NativeOptionSpec;
+use docnav_adapter_contracts::AdapterOptionSpec;
 use serde_json::{json, Map, Value};
 
 use crate::NavigationCommand;
 
 pub(super) fn direct_input(
     command: &NavigationCommand,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Value {
     let mut input = Map::new();
     input.insert("path".to_owned(), json!(command.document_path));
@@ -25,8 +25,8 @@ pub(super) fn direct_input(
         input.insert("output".to_owned(), json!(output.as_str()));
     }
     let options = native_option_input(command, selected_native_options);
-    if !options.is_empty() {
-        input.insert("options".to_owned(), Value::Object(options));
+    for (key, value) in options {
+        input.insert(key, value);
     }
     Value::Object(input)
 }
@@ -43,16 +43,39 @@ fn insert_optional_string(input: &mut Map<String, Value>, key: &str, value: Opti
 
 fn native_option_input(
     command: &NavigationCommand,
-    selected_native_options: &[NativeOptionSpec],
+    selected_native_options: &[AdapterOptionSpec],
 ) -> Map<String, Value> {
-    command
-        .native_options
-        .iter()
-        .filter_map(|option| {
-            selected_native_options
-                .iter()
-                .find(|spec| spec.cli_flag == Some(option.flag.as_str()))
-                .map(|spec| (spec.key.to_owned(), native_option_cli_value(&option.value)))
-        })
-        .collect()
+    let mut input = Map::new();
+    for option in &command.native_options {
+        let Some(spec) = selected_native_options
+            .iter()
+            .find(|spec| spec.cli_flag() == Some(option.flag.as_str()))
+        else {
+            continue;
+        };
+        let Some(path) = spec.cli_input_path() else {
+            continue;
+        };
+        insert_at_path(&mut input, &path, native_option_cli_value(&option.value));
+    }
+    input
+}
+
+fn insert_at_path(root: &mut Map<String, Value>, path: &[String], value: Value) {
+    let Some((first, rest)) = path.split_first() else {
+        return;
+    };
+    if rest.is_empty() {
+        root.insert(first.clone(), value);
+        return;
+    }
+    let child = root
+        .entry(first.clone())
+        .or_insert_with(|| Value::Object(Map::new()));
+    if !child.is_object() {
+        *child = Value::Object(Map::new());
+    }
+    if let Some(child) = child.as_object_mut() {
+        insert_at_path(child, rest, value);
+    }
 }

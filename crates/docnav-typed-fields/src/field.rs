@@ -137,7 +137,7 @@ impl FieldDef {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FieldDefBuilder<T = ()> {
     identity: String,
     processes: Vec<(String, ProcessStrategy)>,
@@ -153,6 +153,18 @@ impl FieldDefBuilder<()> {
             processes: Vec::new(),
             validation: None,
             default: Ok(DefaultMetadata::None),
+            typed: PhantomData,
+        }
+    }
+}
+
+impl<T> Clone for FieldDefBuilder<T> {
+    fn clone(&self) -> Self {
+        Self {
+            identity: self.identity.clone(),
+            processes: self.processes.clone(),
+            validation: self.validation.clone(),
+            default: self.default.clone(),
             typed: PhantomData,
         }
     }

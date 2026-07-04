@@ -1,5 +1,6 @@
 use docnav_adapter_contracts::{
-    Adapter, AdapterError, AdapterResult, NativeOptionSpec, NativeOptionValueSpec,
+    Adapter, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterResult,
+    FieldBound, FieldValidation,
 };
 use docnav_protocol::{
     AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoAdapter, InfoArguments,
@@ -26,16 +27,6 @@ const DEFAULT_MAX_HEADING_LEVEL_VALUE: i64 = 3;
 pub const MAX_HEADING_LEVEL_IDENTITY: &str =
     "docnav.adapters.docnav-markdown.options.max_heading_level";
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
-const NATIVE_OPTIONS: &[NativeOptionSpec] =
-    &[NativeOptionSpec::builder(MAX_HEADING_LEVEL_IDENTITY)
-        .owner(ADAPTER_ID)
-        .namespace(NATIVE_OPTIONS_NAMESPACE)
-        .key(MAX_HEADING_LEVEL_OPTION)
-        .operations(MAX_HEADING_LEVEL_OPERATIONS)
-        .cli_flag("--max-heading-level")
-        .value(NativeOptionValueSpec::Integer { min: 1, max: 6 })
-        .default_integer(DEFAULT_MAX_HEADING_LEVEL_VALUE)
-        .build()];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MarkdownAdapter;
@@ -61,8 +52,8 @@ impl Adapter for MarkdownAdapter {
         }
     }
 
-    fn native_options(&self) -> &'static [NativeOptionSpec] {
-        NATIVE_OPTIONS
+    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
+        markdown_adapter_options()
     }
 
     fn probe(&self, path: &str) -> ProbeResult {
@@ -188,6 +179,27 @@ impl Adapter for MarkdownAdapter {
             )])),
         })
     }
+}
+
+fn markdown_adapter_options() -> Vec<AdapterOptionSpec> {
+    vec![AdapterOptionSpec::builder(MAX_HEADING_LEVEL_IDENTITY)
+        .owner(ADAPTER_ID)
+        .operations(MAX_HEADING_LEVEL_OPERATIONS)
+        .path([NATIVE_OPTIONS_NAMESPACE, MAX_HEADING_LEVEL_OPTION])
+        .process(
+            "cli",
+            AdapterOptionProcessStrategy::cli_flag("--max-heading-level"),
+        )
+        .process(
+            "config",
+            AdapterOptionProcessStrategy::json_path([
+                NATIVE_OPTIONS_NAMESPACE,
+                MAX_HEADING_LEVEL_OPTION,
+            ]),
+        )
+        .validation(FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)))
+        .default_static(DEFAULT_MAX_HEADING_LEVEL_VALUE)
+        .build()]
 }
 
 fn probe(

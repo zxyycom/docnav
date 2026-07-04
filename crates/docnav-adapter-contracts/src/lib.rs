@@ -8,12 +8,21 @@ use docnav_protocol::{
     FindResult, InfoArguments, InfoResult, Manifest, OutlineArguments, OutlineResult, ProbeResult,
     ProtocolError, ReadArguments, ReadResult, RequestEnvelope,
 };
+pub use docnav_typed_fields::{
+    DefaultMetadata, ExpectedFieldShape, FieldBound, FieldDefBuilder, FieldDefDeclaration,
+    FieldDefSet, FieldDefSetBuilder, FieldValidation, FieldValue, ProcessStrategy, ProcessingId,
+    ValueKind,
+};
 
+mod native_option_descriptions;
+mod native_option_issue;
+mod native_option_spec_error;
 mod native_options;
 
+pub use native_option_issue::NativeOptionIssue;
+pub use native_option_spec_error::AdapterOptionSpecError;
 pub use native_options::{
-    NativeOptionDefaultValue, NativeOptionIssue, NativeOptionSpec, NativeOptionSpecBuilder,
-    NativeOptionValueKind, NativeOptionValueSpec,
+    AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterOptionSpecBuilder,
 };
 
 pub type AdapterResult<T> = Result<T, AdapterError>;
@@ -23,8 +32,8 @@ pub trait Adapter: Sync {
 
     fn manifest(&self) -> Manifest;
 
-    fn native_options(&self) -> &'static [NativeOptionSpec] {
-        &[]
+    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
+        Vec::new()
     }
 
     fn probe(&self, path: &str) -> ProbeResult;

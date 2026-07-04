@@ -61,7 +61,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | 组件职责、输出分层、调用链、运行边界 | [架构](architecture.md) |
 | adapter library interface、manifest metadata、probe、adapter 选择、internal discovery failure list、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
-| navigation command 的 raw command、config source descriptors/paths 和 registry 交接、routing 必需输入解析、adapter selection 调用、selected adapter typed-field 参数声明、explicit/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、`RequestEnvelope` / `OperationArguments` 构造和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
+| navigation command 的 raw command、config source descriptors/paths 和 registry 交接、routing 必需输入解析、adapter selection 调用、通用字段声明与 selected adapter declarations 注册合并、explicit/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、`RequestEnvelope` / `OperationArguments` 构造和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
 | 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
 | protocol envelope、operation、紧凑结果、page、protocol failure envelope、protocol error fields、code/details 规则和 primary diagnostic projection | [原始协议](protocol.md) |
 | diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |
