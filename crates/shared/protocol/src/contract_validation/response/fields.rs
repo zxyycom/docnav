@@ -3,8 +3,8 @@ use docnav_typed_fields::{
     FieldValidation,
 };
 
-use super::enums::{OutlineResultKind, ProtocolErrorCode};
-use super::field_builders::{
+use super::super::enums::{OutlineResultKind, ProtocolErrorCode};
+use super::super::field_builders::{
     add_operation, add_protocol_version, add_request_id, bool_field, json_path,
     non_empty_string_field, non_empty_unique_array, non_negative_int_field, number_field,
     object_field, positive_int_field, string_enum_field, string_field,
@@ -73,7 +73,7 @@ pub(super) fn response_failure_fields() -> Result<FieldDefSet, FieldDefSetBuildE
         ["error", "guidance"],
         FieldDef::builder("error.guidance")
             .process(
-                super::JSON_CONTRACT_PROCESSING,
+                super::super::JSON_CONTRACT_PROCESSING,
                 json_path(["error", "guidance"]),
             )
             .validation(FieldValidation::array()),
@@ -121,7 +121,7 @@ pub(super) fn response_structured_outline_result_fields(
             ["result", "entries"],
             FieldDef::builder("result.entries")
                 .process(
-                    super::JSON_CONTRACT_PROCESSING,
+                    super::super::JSON_CONTRACT_PROCESSING,
                     json_path(["result", "entries"]),
                 )
                 .validation(FieldValidation::array()),
@@ -195,7 +195,7 @@ pub(super) fn response_find_result_fields() -> Result<FieldDefSet, FieldDefSetBu
             ["result", "matches"],
             FieldDef::builder("result.matches")
                 .process(
-                    super::JSON_CONTRACT_PROCESSING,
+                    super::super::JSON_CONTRACT_PROCESSING,
                     json_path(["result", "matches"]),
                 )
                 .validation(FieldValidation::array()),
@@ -299,7 +299,10 @@ pub(super) fn response_cost_fields() -> Result<FieldDefSet, FieldDefSetBuildErro
         .field_with_declaration_path(
             ["measurements"],
             FieldDef::builder("cost.measurements")
-                .process(super::JSON_CONTRACT_PROCESSING, json_path(["measurements"]))
+                .process(
+                    super::super::JSON_CONTRACT_PROCESSING,
+                    json_path(["measurements"]),
+                )
                 .validation(non_empty_unique_array()),
             ExpectedFieldShape::required(),
         )
@@ -311,7 +314,10 @@ pub(super) fn response_cost_fields_allow_empty() -> Result<FieldDefSet, FieldDef
         .field_with_declaration_path(
             ["measurements"],
             FieldDef::builder("cost.measurements")
-                .process(super::JSON_CONTRACT_PROCESSING, json_path(["measurements"]))
+                .process(
+                    super::super::JSON_CONTRACT_PROCESSING,
+                    json_path(["measurements"]),
+                )
                 .validation(FieldValidation::array().unique_items()),
             ExpectedFieldShape::required(),
         )

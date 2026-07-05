@@ -9,7 +9,7 @@ portable semantics for other implementations.
 Each file describes an input JSON value, view kind, optional config override,
 optional expected failure, and a list of order-independent assertions.
 
-See `crates/docnav-readable/README.md` for the full conformance contract,
+See `crates/shared/readable/README.md` for the full conformance contract,
 assertion types, and the explicitly excluded stability surface.
 
 ## Covered scenarios

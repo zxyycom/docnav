@@ -5,8 +5,8 @@ use docnav_typed_fields::{
     SchemaMetadataView, ValueKind,
 };
 
-use crate::native_option_descriptions::{expected_value_description, value_kind_name};
-use crate::native_option_spec_error::AdapterOptionSpecError;
+use super::descriptions::{expected_value_description, value_kind_name};
+use super::spec_error::AdapterOptionSpecError;
 
 #[derive(Clone, Debug)]
 pub struct AdapterOptionSpec {

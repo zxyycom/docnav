@@ -1,11 +1,12 @@
 use super::*;
 
 const PROTOCOL_REQUEST_SCHEMA: &str =
-    include_str!("../../../../docs/schemas/protocol-request.schema.json");
+    include_str!("../../../../../docs/schemas/protocol-request.schema.json");
 const PROTOCOL_RESPONSE_SCHEMA: &str =
-    include_str!("../../../../docs/schemas/protocol-response.schema.json");
-const MANIFEST_SCHEMA: &str = include_str!("../../../../docs/schemas/manifest.schema.json");
-const PROBE_RESULT_SCHEMA: &str = include_str!("../../../../docs/schemas/probe-result.schema.json");
+    include_str!("../../../../../docs/schemas/protocol-response.schema.json");
+const MANIFEST_SCHEMA: &str = include_str!("../../../../../docs/schemas/manifest.schema.json");
+const PROBE_RESULT_SCHEMA: &str =
+    include_str!("../../../../../docs/schemas/probe-result.schema.json");
 
 // @case WB-PROTO-SCHEMA-001
 #[test]

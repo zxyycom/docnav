@@ -1,19 +1,19 @@
 [workspace]
 members = [
   "crates/docnav",
-  "crates/docnav-adapter-contracts",
-  "crates/docnav-cli-args",
-  "crates/docnav-diagnostics",
-  "crates/docnav-json-io",
-  "crates/docnav-output",
-  "crates/docnav-markdown",
-  "crates/docnav-navigation",
-  "crates/docnav-protocol",
-  "crates/docnav-readable",
-  "crates/docnav-text-cost",
-  "crates/docnav-parameter-resolution",
-  "crates/docnav-typed-fields",
-  "crates/docnav-typed-fields-macros"
+  "crates/adapters/markdown",
+  "crates/shared/adapter-contracts",
+  "crates/shared/cli-args",
+  "crates/shared/diagnostics",
+  "crates/shared/json-io",
+  "crates/shared/navigation",
+  "crates/shared/output",
+  "crates/shared/parameter-resolution",
+  "crates/shared/protocol",
+  "crates/shared/readable",
+  "crates/shared/text-cost",
+  "crates/shared/typed-fields",
+  "crates/shared/typed-fields-macros"
 ]
 resolver = "2"
 
@@ -31,19 +31,19 @@ version = "0.1.0"
 
 [workspace.dependencies]
 clap = { version = "4.5.40", default-features = false, features = ["std", "help", "usage"] }
-docnav-protocol = { path = "crates/docnav-protocol" }
-docnav-adapter-contracts = { path = "crates/docnav-adapter-contracts" }
-docnav-cli-args = { path = "crates/docnav-cli-args" }
-docnav-diagnostics = { path = "crates/docnav-diagnostics" }
-docnav-json-io = { path = "crates/docnav-json-io" }
-docnav-markdown = { path = "crates/docnav-markdown" }
-docnav-navigation = { path = "crates/docnav-navigation" }
-docnav-output = { path = "crates/docnav-output" }
-docnav-readable = { path = "crates/docnav-readable" }
-docnav-text-cost = { path = "crates/docnav-text-cost" }
-docnav-parameter-resolution = { path = "crates/docnav-parameter-resolution" }
-docnav-typed-fields = { path = "crates/docnav-typed-fields" }
-docnav-typed-fields-macros = { path = "crates/docnav-typed-fields-macros" }
+docnav-protocol = { path = "crates/shared/protocol" }
+docnav-adapter-contracts = { path = "crates/shared/adapter-contracts" }
+docnav-cli-args = { path = "crates/shared/cli-args" }
+docnav-diagnostics = { path = "crates/shared/diagnostics" }
+docnav-json-io = { path = "crates/shared/json-io" }
+docnav-markdown = { path = "crates/adapters/markdown" }
+docnav-navigation = { path = "crates/shared/navigation" }
+docnav-output = { path = "crates/shared/output" }
+docnav-readable = { path = "crates/shared/readable" }
+docnav-text-cost = { path = "crates/shared/text-cost" }
+docnav-parameter-resolution = { path = "crates/shared/parameter-resolution" }
+docnav-typed-fields = { path = "crates/shared/typed-fields" }
+docnav-typed-fields-macros = { path = "crates/shared/typed-fields-macros" }
 jsonschema = { version = "0.46.5", default-features = false }
 pulldown-cmark = "0.13.4"
 regex = "1.11"

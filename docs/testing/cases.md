@@ -207,7 +207,7 @@ Proves:
 
 ### WB-NAV-INPUT-RESOLUTION-001 Navigation input resolution 保持来源解析边界
 Status: implemented
-Code: `crates/docnav-navigation/src/tests/navigation/native_options.rs`
+Code: `crates/shared/navigation/src/tests/navigation/native_options.rs`
 
 Proves:
 - Navigation input resolution preserves source labels for explicit input and project config option issues.
@@ -217,7 +217,7 @@ Proves:
 
 ### WB-NAV-OUTLINE-MODE-001 Navigation outline_mode selectors and pre-dispatch stable
 Status: implemented
-Code: `crates/docnav-navigation/src/tests/navigation/outline_mode.rs`
+Code: `crates/shared/navigation/src/tests/navigation/outline_mode.rs`
 
 Proves:
 - path rules use deterministic source/order priority, can select unstructured full read, and can opt out to structured before cost thresholds run.
@@ -253,7 +253,7 @@ Proves:
 
 ### WB-NAV-ADAPTER-SOURCE-001 Navigation adapter selection 保持静态来源边界
 Status: implemented
-Code: `crates/docnav-navigation/src/tests/navigation/adapter_source.rs`
+Code: `crates/shared/navigation/src/tests/navigation/adapter_source.rs`
 
 Proves:
 - 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
@@ -264,7 +264,7 @@ Proves:
 
 ### WB-DIAG-RULES-001 Diagnostics code rules 保持稳定
 Status: implemented
-Code: `crates/docnav-diagnostics/src/tests/code_rules.rs`
+Code: `crates/shared/diagnostics/src/tests/code_rules.rs`
 
 Proves:
 - `DiagnosticCode::all()` exposes the current diagnostic registry, including representative protocol and boundary diagnostic codes.
@@ -272,7 +272,7 @@ Proves:
 
 ### WB-DIAG-RECORD-001 Diagnostic record construction validates typed details
 Status: implemented
-Code: `crates/docnav-diagnostics/src/tests/record.rs`
+Code: `crates/shared/diagnostics/src/tests/record.rs`
 
 Proves:
 - `DiagnosticRecordDraft::into_record()` creates primary records with code defaults, typed details, source and absent guidance preserved.
@@ -281,7 +281,7 @@ Proves:
 
 ### WB-CLIARGS-BOUNDARY-001 Strict CLI 参数扫描保持输入边界
 Status: implemented
-Code: `crates/docnav-cli-args/src/tests.rs`
+Code: `crates/shared/cli-args/src/tests.rs`
 
 Proves:
 - unknown flag 不消费后续 positional，used value flag 保留值，unused value flag 记录 operation applicability failure。
@@ -289,7 +289,7 @@ Proves:
 
 ### WB-JSONIO-WRITE-001 JSON writer 保持格式和错误分类
 Status: implemented
-Code: `crates/docnav-json-io/src/tests.rs`
+Code: `crates/shared/json-io/src/tests.rs`
 
 Proves:
 - compact/pretty JSON 都以换行结束。
@@ -297,7 +297,7 @@ Proves:
 
 ### WB-OUTPUT-DOCUMENT-001 共享 document output facade 分层
 Status: implemented
-Code: `crates/docnav-output/src/tests.rs`
+Code: `crates/shared/output/src/tests.rs`
 
 Proves:
 - readable JSON success 不带 protocol envelope，protocol JSON success 只输出 protocol envelope。
@@ -310,7 +310,7 @@ Proves:
 
 ### WB-TEXT-COST-001 Shared text cost helper 保持纯文本边界
 Status: implemented
-Code: `crates/docnav-text-cost/src/tests.rs`
+Code: `crates/shared/text-cost/src/tests.rs`
 
 Proves:
 - shared text cost helper functions 只接收纯文本并返回 unscoped protocol-compatible `Measurement`。
@@ -318,7 +318,7 @@ Proves:
 
 ### WB-READABLE-RENDERER-001 Readable renderer success path block/framing 规则
 Status: implemented
-Code: `crates/docnav-readable/src/renderer/tests/success.rs`
+Code: `crates/shared/readable/src/renderer/tests/success.rs`
 
 Proves:
 - readable-view header、block replacement、UTF-8 byte length、LF framing、extension fields 和 operation-specific block/no-block config 保持稳定。
@@ -342,7 +342,7 @@ flowchart LR
 
 ### WB-READABLE-RENDERER-002 Readable renderer config/error 边界稳定
 Status: implemented
-Code: `crates/docnav-readable/src/renderer/tests/errors.rs`
+Code: `crates/shared/readable/src/renderer/tests/errors.rs`
 
 Proves:
 - renderer 可以区分 missing pointer、non-string target、duplicate pointer 和 pointer syntax。
@@ -360,7 +360,7 @@ flowchart LR
 
 ### WB-READABLE-VIEW-001 Readable-view conformance vectors 被测试消费
 Status: implemented
-Code: `crates/docnav-readable/tests/conformance_tests.rs`
+Code: `crates/shared/readable/tests/conformance_tests.rs`
 
 Proves:
 - readable-view conformance fixture set 由测试执行，保持 fixture 与 renderer contract 同步。
@@ -372,7 +372,7 @@ Proves:
 
 ### WB-PROTO-BASIC-001 Protocol 基础类型和 envelope 规则稳定
 Status: implemented
-Code: `crates/docnav-protocol/src/tests/basic.rs`
+Code: `crates/shared/protocol/src/tests/basic.rs`
 
 Proves:
 - positive integer、generated request id、success response 和 failure operation preservation 保持协议基础不变量。
@@ -380,7 +380,7 @@ Proves:
 
 ### WB-PROTO-DIAGNOSTICS-001 Protocol diagnostic mapping and projection 保持稳定
 Status: implemented
-Code: `crates/docnav-protocol/src/tests/basic.rs`
+Code: `crates/shared/protocol/src/tests/basic.rs`
 
 Proves:
 - Protocol diagnostic codes map to protocol error categories and their diagnostic projection rules expose the protocol code.
@@ -390,7 +390,7 @@ Proves:
 
 ### WB-PROTO-DECODE-001 Protocol request decode 按阶段失败
 Status: implemented
-Code: `crates/docnav-protocol/src/tests/decode.rs`
+Code: `crates/shared/protocol/src/tests/decode.rs`
 
 Proves:
 - Protocol request decoding runs schema/field-contract validation before raw typed decode.
@@ -400,7 +400,7 @@ Proves:
 
 ### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema constraints 被实现测试消费
 Status: implemented
-Code: `crates/docnav-protocol/src/tests/schema.rs`
+Code: `crates/shared/protocol/src/tests/schema.rs`
 
 Proves:
 - 已文档化的 protocol fixtures 仍能通过 public JSON Schema、runtime typed contract validation，并 deserialize 为共享 protocol types。
@@ -408,7 +408,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-001 Typed field definition core 保持字段级不变量
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/field_model.rs`
+Code: `crates/shared/typed-fields/src/tests/field_model.rs`
 
 Proves:
 - Builder 生成 field identity、processing strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON value 校验为 typed value。
@@ -417,7 +417,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PRESENCE-001 Typed field declaration presence policy 稳定
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/field_presence.rs`
+Code: `crates/shared/typed-fields/src/tests/field_presence.rs`
 
 Proves:
 - `T` / `Option<T>` field declaration 分别投影为 required/non-nullable 和 optional/nullable schema metadata。
@@ -427,7 +427,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-METADATA-001 Typed field metadata build invariants 稳定
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/field_metadata.rs`
+Code: `crates/shared/typed-fields/src/tests/field_metadata.rs`
 
 Proves:
 - duplicate field identity 在 definition set build 阶段失败，并保留 previous/current declaration path 和 processing path。
@@ -435,7 +435,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-CONSTRAINTS-001 Typed field string/array constraints 稳定
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/constraints.rs`
+Code: `crates/shared/typed-fields/src/tests/constraints.rs`
 
 Proves:
 - String regex、closed minimum length 和 open maximum length 对 present value 产生稳定 validation failure reason。
@@ -444,7 +444,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-RANGES-001 Typed field numeric ranges and defaults 稳定
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/field_ranges.rs`
+Code: `crates/shared/typed-fields/src/tests/field_ranges.rs`
 
 Proves:
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
@@ -452,7 +452,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PROCESSING-001 Typed field processing build 稳定
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/processing.rs`
+Code: `crates/shared/typed-fields/src/tests/processing.rs`
 
 Proves:
 - Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
@@ -461,7 +461,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PROJECTION-001 Typed field definition set projection 稳定
 Status: implemented
-Code: `crates/docnav-typed-fields/src/tests/set_projection.rs`
+Code: `crates/shared/typed-fields/src/tests/set_projection.rs`
 
 Proves:
 - FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象。
@@ -471,7 +471,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-COMPILE-001 FieldDefs derive 拒绝非法声明
 Status: implemented
-Code: `crates/docnav-typed-fields/tests/field_defs_compile.rs`
+Code: `crates/shared/typed-fields/tests/field_defs_compile.rs`
 
 Proves:
 - `FieldDefs` derive 在编译期拒绝 leaf Rust field 类型与 `FieldDefBuilder<T>` 类型不一致的声明。
@@ -479,7 +479,7 @@ Proves:
 
 ### WB-PARAM-RESOLVE-001 Navigation input resolution helper 保持来源解析边界
 Status: implemented
-Code: `crates/docnav-parameter-resolution/src/tests.rs`
+Code: `crates/shared/parameter-resolution/src/tests.rs`
 
 Proves:
 - Navigation input resolution helper consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
@@ -493,7 +493,7 @@ Proves:
 
 ### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影边界
 Status: implemented
-Code: `crates/docnav-adapter-contracts/src/tests.rs`
+Code: `crates/shared/adapter-contracts/src/tests.rs`
 
 Proves:
 - Adapter document errors project to protocol error code, owner, location and default guidance through `AdapterError::protocol_error()`.
@@ -501,7 +501,7 @@ Proves:
 
 ### WB-CONTRACTS-NATIVE-001 Adapter contracts 声明 native option typed fields
 Status: implemented
-Code: `crates/docnav-adapter-contracts/src/tests.rs`
+Code: `crates/shared/adapter-contracts/src/tests.rs`
 
 Proves:
 - `AdapterOptionSpec` wraps typed-field declaration, source bindings, validation and static default metadata without owning the use-site registration step.
@@ -509,7 +509,7 @@ Proves:
 
 ### WB-CONTRACTS-UNSTRUCTURED-001 Adapter contracts unstructured full-read hook defaults 稳定
 Status: implemented
-Code: `crates/docnav-adapter-contracts/src/tests.rs`
+Code: `crates/shared/adapter-contracts/src/tests.rs`
 
 Proves:
 - Adapter contract default unstructured full-read capabilities are absent unless the adapter opts in.
@@ -517,7 +517,7 @@ Proves:
 
 ### WB-NAVIGATION-DISPATCH-001 Navigation config source loading and dispatch 稳定
 Status: implemented
-Code: `crates/docnav-navigation/src/tests/navigation/config_sources.rs`
+Code: `crates/shared/navigation/src/tests/navigation/config_sources.rs`
 
 Proves:
 - `docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。
@@ -526,7 +526,7 @@ Proves:
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/refs/tests.rs`
+Code: `crates/adapters/markdown/src/markdown/refs/tests.rs`
 
 Proves:
 - canonical heading ref 由 line 和 level 结构字段构成。
@@ -535,7 +535,7 @@ Proves:
 
 ### WB-MD-REF-MATCH-001 Markdown parsed ref 精确匹配 heading 坐标
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/refs/tests.rs`
+Code: `crates/adapters/markdown/src/markdown/refs/tests.rs`
 
 Proves:
 - parsed heading ref 在 line 和 level 同时匹配时命中目标 heading。
@@ -544,7 +544,7 @@ Proves:
 
 ### WB-MD-PARSE-001 Markdown parser 忽略非 heading 结构
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/tests.rs`
+Code: `crates/adapters/markdown/src/markdown/tests.rs`
 
 Proves:
 - code fence pseudo heading、invalid heading 和 frontmatter 不进入 heading model。
@@ -552,7 +552,7 @@ Proves:
 
 ### WB-MD-OUTLINE-001 Markdown outline ref 和 display 语义稳定
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/tests.rs`
+Code: `crates/adapters/markdown/src/markdown/tests.rs`
 
 Proves:
 - outline 生成 canonical ref，重复 title/path 不影响 ref，max heading level 只影响可见性。
@@ -561,7 +561,7 @@ Proves:
 
 ### WB-MD-ADAPTER-OUTLINE-001 Markdown adapter outline 默认层级和 fallback 稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/outline_ref.rs`
+Code: `crates/adapters/markdown/tests/adapter/outline_ref.rs`
 
 Proves:
 - adapter outline 默认显示 H1-H3，并忽略 code fence 内 heading 和超出默认层级的 heading。
@@ -569,7 +569,7 @@ Proves:
 
 ### WB-MD-READ-001 Markdown read resolve 和 doc:full ref 稳定
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/tests.rs`
+Code: `crates/adapters/markdown/src/markdown/tests.rs`
 
 Proves:
 - canonical ref 可解析到 heading，`doc:full` 可解析完整文档。
@@ -578,7 +578,7 @@ Proves:
 
 ### WB-MD-LINK-001 Markdown outline/find ref 可通过 read roundtrip
 Status: implemented
-Code: `crates/docnav-markdown/src/markdown/tests.rs`
+Code: `crates/adapters/markdown/src/markdown/tests.rs`
 
 Proves:
 - Markdown navigation 生成的 outline entry ref 可以直接传给 read。
@@ -586,7 +586,7 @@ Proves:
 
 ### WB-MD-REF-001 Markdown 重复标题生成唯一可读 ref
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/outline_ref.rs`
+Code: `crates/adapters/markdown/tests/adapter/outline_ref.rs`
 
 Proves:
 - 重复 heading path 会生成唯一 ref，且每个 ref 都能读取目标 section。
@@ -594,7 +594,7 @@ Proves:
 
 ### WB-MD-REF-002 Markdown ref 错误区分 invalid 和 not-found
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/outline_ref.rs`
+Code: `crates/adapters/markdown/tests/adapter/outline_ref.rs`
 
 Proves:
 - grammar 外输入返回 `REF_INVALID`。
@@ -603,7 +603,7 @@ Proves:
 
 ### WB-MD-PAGE-001 Markdown read 分页按 Unicode 字符计数
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/paging_find.rs`
+Code: `crates/adapters/markdown/tests/adapter/paging_find.rs`
 
 Proves:
 - Markdown read pagination 按 Unicode 字符计数，不拆分字符。
@@ -612,7 +612,7 @@ Proves:
 
 ### WB-MD-PAGE-002 Markdown outline/find pagination 保持 continuation
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/paging_find.rs`
+Code: `crates/adapters/markdown/tests/adapter/paging_find.rs`
 
 Proves:
 - outline 和 find 结果按 response page 继续读取直到结束。
@@ -620,7 +620,7 @@ Proves:
 
 ### WB-MD-PAGING-DISPLAY-001 Markdown paging helper 保留 ref 并截断 display
 Status: implemented
-Code: `crates/docnav-markdown/src/paging/tests.rs`
+Code: `crates/adapters/markdown/src/paging/tests.rs`
 
 Proves:
 - Markdown paging helper 对 Unicode 计数一致。
@@ -628,7 +628,7 @@ Proves:
 
 ### WB-MD-FIND-001 Markdown find ref 和 display 语义稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/paging_find.rs`
+Code: `crates/adapters/markdown/tests/adapter/paging_find.rs`
 
 Proves:
 - find 匹配 hidden heading 或 heading 前内容时，ref 指向当前 visible region 或 full document fallback。
@@ -636,7 +636,7 @@ Proves:
 
 ### WB-MD-OPTIONS-001 Markdown typed option 控制可见粒度
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
+Code: `crates/adapters/markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - `max_heading_level` options 同时影响 outline 和 find 的 visible heading granularity。
@@ -645,7 +645,7 @@ Proves:
 
 ### WB-MD-META-001 Markdown manifest/probe/info 元数据稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/meta.rs`
+Code: `crates/adapters/markdown/tests/adapter/meta.rs`
 
 Proves:
 - manifest 声明 Markdown v0 identity 和 format metadata，probe 返回 format evidence 而不泄漏 navigation payload。
@@ -653,14 +653,14 @@ Proves:
 
 ### WB-MD-ERROR-001 Markdown adapter document error 稳定
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
+Code: `crates/adapters/markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - non-UTF-8 document 返回稳定 encoding error。
 
 ### WB-MD-DISPLAY-001 Markdown outline/find display 保留可读文本
 Status: implemented
-Code: `crates/docnav-markdown/tests/adapter/options_error_display.rs`
+Code: `crates/adapters/markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - outline display 包含 heading title，find display 包含 match snippet。

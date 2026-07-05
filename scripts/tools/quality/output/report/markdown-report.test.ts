@@ -102,7 +102,7 @@ describe("quality report", () => {
 
   it("shows accepted reasons next to warning records", () => {
     const metrics = qualityMetrics();
-    const acceptedWarning = warning("crates/docnav-protocol/src/envelope.rs", "pmd-cpd-duplicate-code", 86);
+    const acceptedWarning = warning("crates/shared/protocol/src/envelope.rs", "pmd-cpd-duplicate-code", 86);
     acceptedWarning.acceptedReason =
       "OperationArguments::operation and OperationResult::operation live at separate protocol request and result boundaries.";
     metrics.warnings = {

@@ -3,16 +3,19 @@ use serde_json::Value;
 use crate::constants::schema_names;
 use crate::SchemaValidationError;
 
+mod fields;
+mod results;
+
 use super::field_builders::string_value_fields;
 use super::helpers::{
     expect_bool_value, reject_unknown_fields, schema_result, validate_field_set,
     validate_value_array_items, value_at, ValueArraySpec,
 };
-use super::response_fields::{
+use fields::{
     response_common_fields, response_failure_fields, response_success_fields,
     response_unknown_shape_fields,
 };
-use super::response_results::validate_success_result_shape;
+use results::validate_success_result_shape;
 
 pub(crate) fn validate_protocol_response_contract_value(
     value: &Value,

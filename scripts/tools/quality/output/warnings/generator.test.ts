@@ -160,13 +160,13 @@ function acceptedProtocolOperationDuplicate({
     codeAreas: ["rust-production"],
     locations: [
       {
-        path: "crates/docnav-protocol/src/envelope.rs",
+        path: "crates/shared/protocol/src/envelope.rs",
         startLine: 62 + startLineOffset,
         endLine: 75 + startLineOffset,
         codeArea: "rust-production"
       },
       {
-        path: "crates/docnav-protocol/src/operation_result.rs",
+        path: "crates/shared/protocol/src/operation_result.rs",
         startLine: 14 + startLineOffset,
         endLine: 27 + startLineOffset,
         codeArea: "rust-production"

@@ -33,6 +33,12 @@ describe("quality code area classification", () => {
       "test/**/*.ts"
     ]);
   });
+
+  it("classifies nested workspace crates by Rust source role", () => {
+    assert.equal(classifyQualityFile("crates/shared/protocol/src/lib.rs"), "rust-production");
+    assert.equal(classifyQualityFile("crates/shared/protocol/src/tests/schema.rs"), "rust-tests");
+    assert.equal(classifyQualityFile("crates/adapters/markdown/tests/adapter.rs"), "rust-tests");
+  });
 });
 
 function classifyQualityFile(filePath: string): string {

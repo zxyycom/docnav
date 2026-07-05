@@ -71,8 +71,8 @@ export const READABLE_SCHEMA_BY_OPERATION = {
 };
 
 export const OUTPUT_MODE_CONSISTENCY = {
-  conformanceDir: "crates/docnav-readable/tests/fixtures/conformance",
-  conformanceReadme: "crates/docnav-readable/tests/fixtures/conformance/README.md",
+  conformanceDir: "crates/shared/readable/tests/fixtures/conformance",
+  conformanceReadme: "crates/shared/readable/tests/fixtures/conformance/README.md",
   conformanceFixtures: [
     "01_no_block_outline.json",
     "04_single_block.json",

@@ -14,15 +14,11 @@ pub use docnav_typed_fields::{
     ValueKind,
 };
 
-mod native_option_descriptions;
-mod native_option_issue;
-mod native_option_spec_error;
-mod native_options;
+mod native_option;
 
-pub use native_option_issue::NativeOptionIssue;
-pub use native_option_spec_error::AdapterOptionSpecError;
-pub use native_options::{
+pub use native_option::{
     AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterOptionSpecBuilder,
+    AdapterOptionSpecError, NativeOptionIssue,
 };
 
 pub type AdapterResult<T> = Result<T, AdapterError>;

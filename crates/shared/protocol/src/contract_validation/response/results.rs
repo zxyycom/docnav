@@ -2,12 +2,12 @@ use serde_json::Value;
 
 use crate::constants::schema_names;
 
-use super::helpers::{
+use super::super::helpers::{
     expect_string_value, extend_owned_path, operation_name, reject_unknown_fields,
     validate_field_set, validate_object_array_items, validate_object_array_items_with_owned_prefix,
     validate_object_at, validate_object_at_with_owned_prefix, value_at, ObjectArraySpec,
 };
-use super::response_fields::{
+use super::fields::{
     response_cost_fields, response_cost_fields_allow_empty, response_entry_fields,
     response_find_result_fields, response_info_adapter_fields, response_info_document_fields,
     response_info_result_fields, response_location_fields, response_measurement_fields,
@@ -214,7 +214,7 @@ fn validate_cost(value: &Value, path: &[&str], errors: &mut Vec<String>) {
 }
 
 fn validate_cost_with(
-    build: super::helpers::FieldSetBuilder,
+    build: super::super::helpers::FieldSetBuilder,
     value: &Value,
     path: &[&str],
     errors: &mut Vec<String>,

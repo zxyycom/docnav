@@ -35,7 +35,7 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.8.1",
+  version: "0.8.2",
 
   include: [
     "crates/**/*.rs",
@@ -68,9 +68,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   codeAreas: Object.freeze({
     "rust-production": {
       description: "Rust production code (non-test, non-fixture, non-generated)",
-      globs: ["crates/*/src/**/*.rs"],
+      globs: ["crates/**/src/**/*.rs"],
       excludeGlobs: [
-        "crates/*/src/tests/**",
+        "crates/**/src/tests/**",
         "**/tests.rs",
         "**/fixtures/**",
         "**/generated/**"
@@ -80,8 +80,8 @@ export const DEFAULT_CONFIG = Object.freeze({
     "rust-tests": {
       description: "Rust test code",
       globs: [
-        "crates/*/tests/**/*.rs",
-        "crates/*/src/tests/**/*.rs",
+        "crates/**/tests/**/*.rs",
+        "crates/**/src/tests/**/*.rs",
         "**/tests.rs"
       ],
       excludeGlobs: ["**/fixtures/**", "**/generated/**"],
@@ -198,8 +198,8 @@ export const DEFAULT_CONFIG = Object.freeze({
       metric: "duplicate-tokens",
       value: 86,
       suggestionIncludes: [
-        "crates/docnav-protocol/src/envelope.rs",
-        "crates/docnav-protocol/src/operation_result.rs"
+        "crates/shared/protocol/src/envelope.rs",
+        "crates/shared/protocol/src/operation_result.rs"
       ],
       reason:
         "OperationArguments::operation and OperationResult::operation map the same Operation enum variants at separate protocol request and result boundaries. Keeping the mappings separate preserves boundary ownership; extracting shared code would couple request-argument decoding to result-envelope projection for little maintenance gain."
@@ -211,8 +211,8 @@ export const DEFAULT_CONFIG = Object.freeze({
       metric: "duplicate-tokens",
       value: 114,
       suggestionIncludes: [
-        "crates/docnav-diagnostics/src/details/payload.rs",
-        "crates/docnav-parameter-resolution/src/resolution.rs"
+        "crates/shared/diagnostics/src/details/payload.rs",
+        "crates/shared/parameter-resolution/src/resolution.rs"
       ],
       reason:
         "AdapterConfigSourceDetails is the serialized diagnostics payload, while ParameterConfigSourceIssue is the parameter-resolution handoff fact. Keeping the constructors separate preserves crate and owner boundaries; extracting a shared type would couple fact capture to protocol projection for trivial field assignment."
