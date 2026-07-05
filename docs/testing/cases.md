@@ -727,6 +727,23 @@ flowchart LR
   L --> M
 ```
 
+### AUX-SMOKE-HARNESS-002 Core smoke config fixture helper 保持配置/文档分层
+Status: implemented
+Code: `test/smoke/core/fixtures/project.test.ts`
+
+Proves:
+- config cases 使用按语义命名的 checked-in JSON fixture，并复用共享 Markdown document path。
+- mutable config cases 把 config fixture 安装到 `.tmp/docnav/smoke/` 的 CLI project wrapper，写入副本不改变 checked-in fixture。
+
+```mermaid
+flowchart LR
+  A["输入：config fixture 名称"] --> B{"helper"}
+  B -->|"configFixtureProject"| C["复制语义 config fixture"]
+  B -->|"mutableConfigFixtureProject"| D["复制语义 config fixture"]
+  C --> E["文档路径指向共享 normal.md"]
+  D --> F["project/user config 写入隔离副本"]
+```
+
 ### AUX-PARALLEL-RUNNER-001 Parallel task runner 保持调度契约
 Status: implemented
 Code: `scripts/tools/parallel-task-runner/index.test.ts`

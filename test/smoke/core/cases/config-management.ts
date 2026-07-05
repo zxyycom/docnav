@@ -1,7 +1,7 @@
 import {
+  configFixtureProject,
   createProject,
-  writeJson,
-  writeProjectConfig,
+  mutableConfigFixtureProject,
 } from "../fixtures.ts";
 import type { SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
@@ -71,13 +71,7 @@ export function createToolCommandTasks() {
 }
 
 async function testConfigSourceAndPathContext() {
-  const project = createProject("config-precedence");
-  writeProjectConfig(project, {
-    defaults: {
-      adapter: "docnav-markdown",
-      output: "readable-json"
-    }
-  });
+  const project = mutableConfigFixtureProject("config-precedence-base", "config-precedence");
 
   await assertUserPaginationConfigSet(project);
   await assertConfigListPathContext(project, "docnav-markdown");
@@ -85,7 +79,7 @@ async function testConfigSourceAndPathContext() {
 }
 
 async function testRemovedOutputConfigRejected() {
-  const project = createProject("removed-output-mode");
+  const project = mutableConfigFixtureProject("empty", "removed-output-mode");
   await assertRemovedTextOutputFails(project);
 }
 
@@ -196,12 +190,7 @@ async function assertPaginationDisabledSuccess(project: SmokeProject) {
 }
 
 async function assertLegacyDefaultsLimitConfigFails() {
-  const project = createProject("legacy-defaults-limit", { config: false });
-  writeJson(`${project.docnavDir}/docnav.json`, {
-    defaults: {
-      limit: 12
-    }
-  });
+  const project = configFixtureProject("legacy-defaults-limit");
 
   const record = await runCli("CORE-CONFIG-003 legacy defaults.limit config fails", [
     "outline",
@@ -260,7 +249,7 @@ async function testInitVersionAndHelp() {
 }
 
 async function testAdapterManagementCommands() {
-  const doctorProject = createProject("tool-doctor-static-registry");
+  const doctorProject = configFixtureProject("empty");
   const doctor = await runCli("CORE-ADAPTER-MGMT-001 doctor reports static registry checks", ["doctor"], {
     project: doctorProject
   });

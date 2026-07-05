@@ -1,6 +1,6 @@
 import {
+  configFixtureProject,
   createProject,
-  writeProjectConfig,
 } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
@@ -75,13 +75,8 @@ async function testExplicitAdapterFailureStopsSelection() {
     "explicit"
   );
 
-  const configProject = createProject("selection-config-failure");
+  const configProject = configFixtureProject("selection-config-failure");
   const configMissingAdapter = "project-config-adapter";
-  writeProjectConfig(configProject, {
-    defaults: {
-      adapter: configMissingAdapter
-    }
-  });
 
   const configRecord = await runCli("CORE-SELECT-001 invalid config adapter returns selection diagnostic", [
     "outline",

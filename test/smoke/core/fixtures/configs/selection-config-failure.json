@@ -1,0 +1,5 @@
+{
+  "defaults": {
+    "adapter": "project-config-adapter"
+  }
+}

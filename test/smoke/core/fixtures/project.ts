@@ -24,6 +24,7 @@ interface CreateProjectOptions {
 let projectCounter = 0;
 
 export const fixturesDir = path.join(root, "test", "smoke", "core", "fixtures");
+const configFixturesDir = path.join(fixturesDir, "configs");
 const normalDocumentFixture = path.join(fixturesDir, "normal.md");
 
 export function createProject(name: string, options: CreateProjectOptions = {}): SmokeProject {
@@ -41,6 +42,24 @@ export function createProject(name: string, options: CreateProjectOptions = {}):
   };
 }
 
+export function configFixtureProject(configName: string, name: string = configName): SmokeProject {
+  const projectRoot = path.join(tempRoot, `${String(projectCounter++).padStart(2, "0")}-${slug(name)}`);
+  const project = sharedDocumentProjectPaths(projectRoot);
+  const userConfigDir = path.join(projectRoot, ".user-config");
+
+  createProjectDirectories(project, userConfigDir);
+  copyConfigFixture(configName, path.join(project.docnavDir, "docnav.json"));
+
+  return {
+    ...project,
+    env: isolatedEnv(projectRoot, userConfigDir)
+  };
+}
+
+export function mutableConfigFixtureProject(configName: string, name: string = configName): SmokeProject {
+  return configFixtureProject(configName, name);
+}
+
 export function copyNormalDocument(project: SmokeProject, relativePath: string) {
   const filePath = path.join(project.root, relativePath);
   copyFile(normalDocumentFixture, filePath);
@@ -56,6 +75,16 @@ function smokeProjectPaths(projectRoot: string) {
     docsDir,
     normalPath: path.join(docsDir, "normal.md"),
     normalRelPath: "docs/normal.md"
+  };
+}
+
+function sharedDocumentProjectPaths(projectRoot: string) {
+  return {
+    root: projectRoot,
+    docnavDir: path.join(projectRoot, ".docnav"),
+    docsDir: path.join(projectRoot, "docs"),
+    normalPath: normalDocumentFixture,
+    normalRelPath: toSlashPath(normalDocumentFixture)
   };
 }
 
@@ -95,6 +124,14 @@ function isolatedEnv(projectRoot: string, userConfigDir: string): NodeJS.Process
     APPDATA: path.join(projectRoot, ".appdata"),
     XDG_CONFIG_HOME: path.join(projectRoot, ".xdg-config")
   };
+}
+
+function copyConfigFixture(name: string, targetPath: string) {
+  const sourcePath = path.join(configFixturesDir, `${name}.json`);
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error(`smoke config fixture not found: ${name}`);
+  }
+  copyFile(sourcePath, targetPath);
 }
 
 function slug(value: string) {

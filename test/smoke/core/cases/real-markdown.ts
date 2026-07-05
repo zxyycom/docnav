@@ -1,4 +1,4 @@
-import { createProject, writeProjectConfig } from "../fixtures.ts";
+import { configFixtureProject, createProject } from "../fixtures.ts";
 import type { SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
@@ -127,12 +127,7 @@ async function assertMaxHeadingLevelCliOption(project: SmokeProject) {
 }
 
 async function assertMaxHeadingLevelConfigOption() {
-  const project = createRegisteredRealMarkdownProject("real-markdown-config-native-option");
-  writeProjectConfig(project, {
-    options: {
-      max_heading_level: 1
-    }
-  });
+  const project = configFixtureProject("real-markdown-config-native-option");
 
   const record = await runCli("CORE-LINK-001 outline config max heading level native option", [
     "outline",

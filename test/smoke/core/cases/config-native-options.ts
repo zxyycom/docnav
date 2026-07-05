@@ -8,17 +8,12 @@ import {
   parseJson
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
-import { createProject, writeProjectConfig } from "../fixtures.ts";
+import { configFixtureProject, mutableConfigFixtureProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 
 export async function assertProjectNativeOptionConfigAffectsOutline() {
-  const project = createProject("project-native-option-outline");
-  writeProjectConfig(project, {
-    options: {
-      max_heading_level: 1
-    }
-  });
+  const project = configFixtureProject("project-native-option-outline");
 
   const record = await runCli("CORE-CONFIG-004 project config max heading level affects outline", [
     "outline",
@@ -38,7 +33,7 @@ export async function assertProjectNativeOptionConfigAffectsOutline() {
 }
 
 export async function assertUserNativeOptionConfigRejectedForRead() {
-  const project = createProject("user-native-option-read");
+  const project = mutableConfigFixtureProject("empty", "user-native-option-read");
   const setOption = await runCli("CORE-CONFIG-004 config set user options.max_heading_level", [
     "config",
     "set",
