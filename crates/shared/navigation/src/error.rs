@@ -5,6 +5,8 @@ use docnav_diagnostics::{
 };
 use docnav_protocol::protocol_error_record_draft_with_summary;
 
+use crate::NavigationConfigSource;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NavigationError {
     diagnostic: Box<DiagnosticRecordDraft>,
@@ -12,6 +14,7 @@ pub struct NavigationError {
 
 pub(crate) struct ConfigFieldError<'a> {
     source_level: &'static str,
+    path_origin: &'static str,
     path: &'a str,
     field: String,
     reason_code: &'static str,
@@ -22,15 +25,15 @@ pub(crate) struct ConfigFieldError<'a> {
 
 impl<'a> ConfigFieldError<'a> {
     pub(crate) fn invalid(
-        source_level: &'static str,
-        path: &'a str,
+        source: &'a NavigationConfigSource,
         field: impl Into<String>,
         reason_code: &'static str,
         guidance: impl Into<String>,
     ) -> Self {
         Self {
-            source_level,
-            path,
+            source_level: source.level,
+            path_origin: source.origin,
+            path: &source.path,
             field: field.into(),
             reason_code,
             accepted: None,
@@ -75,6 +78,7 @@ impl NavigationError {
 
     pub fn config_unknown_field(
         source_level: &'static str,
+        path_origin: &'static str,
         path: &str,
         field: impl Into<String>,
         accepted: Option<&str>,
@@ -86,6 +90,7 @@ impl NavigationError {
         };
         Self::config_field_error(ConfigFieldError {
             source_level,
+            path_origin,
             path,
             field,
             reason_code: "unknown_config_field",
@@ -101,12 +106,14 @@ impl NavigationError {
 
     pub fn config_missing_field(
         source_level: &'static str,
+        path_origin: &'static str,
         path: &str,
         field: impl Into<String>,
     ) -> Self {
         let field = field.into();
         Self::config_field_error(ConfigFieldError {
             source_level,
+            path_origin,
             path,
             field: field.clone(),
             reason_code: "missing_config_field",
@@ -116,9 +123,15 @@ impl NavigationError {
         })
     }
 
-    pub fn config_invalid_object(source_level: &'static str, path: &str, field: &str) -> Self {
+    pub fn config_invalid_object(
+        source_level: &'static str,
+        path_origin: &'static str,
+        path: &str,
+        field: &str,
+    ) -> Self {
         Self::config_field_error(ConfigFieldError {
             source_level,
+            path_origin,
             path,
             field: field.to_owned(),
             reason_code: "invalid_config_object",
@@ -135,7 +148,7 @@ impl NavigationError {
         details.accepted = spec.accepted;
         let mut issue = AdapterConfigSourceDetails::new(
             spec.source_level,
-            "default",
+            spec.path_origin,
             spec.path,
             spec.reason_code,
         );

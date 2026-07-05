@@ -23,6 +23,7 @@ import {
   assertProjectNativeOptionConfigAffectsOutline,
   assertUserNativeOptionConfigRejectedForRead
 } from "./config-native-options.ts";
+import { testConfigPathFlagsSelectConfigTargets } from "./config-path-flags.ts";
 
 export function createConfigContextTasks() {
   return [
@@ -49,6 +50,12 @@ export function createConfigContextTasks() {
       id: "CORE-CONFIG-004",
       label: "CORE-CONFIG-004 native option config behavior",
       run: testNativeOptionConfigBehavior
+    },
+    // @case BB-CORE-CONFIG-PATH-001
+    {
+      id: "CORE-CONFIG-PATH-001",
+      label: "CORE-CONFIG-PATH-001 config path flags select config files",
+      run: testConfigPathFlagsSelectConfigTargets
     }
   ];
 }

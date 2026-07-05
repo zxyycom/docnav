@@ -82,6 +82,7 @@ pub struct NavigationNativeOptionInput {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NavigationConfigSourceOrigin {
     Default,
+    ExplicitCli,
     Override,
 }
 
@@ -89,7 +90,16 @@ impl NavigationConfigSourceOrigin {
     const fn to_parameter_origin(self) -> ConfigPathOrigin {
         match self {
             Self::Default => ConfigPathOrigin::Default,
+            Self::ExplicitCli => ConfigPathOrigin::ExplicitCli,
             Self::Override => ConfigPathOrigin::Override,
+        }
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::ExplicitCli => "explicit_cli",
+            Self::Override => "override",
         }
     }
 }
@@ -108,6 +118,10 @@ impl NavigationConfigSourceDescriptor {
     pub fn default(path: PathBuf) -> Self {
         Self::new(NavigationConfigSourceOrigin::Default, path)
     }
+
+    pub fn explicit_cli(path: PathBuf) -> Self {
+        Self::new(NavigationConfigSourceOrigin::ExplicitCli, path)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -119,6 +133,7 @@ pub struct NavigationConfigSourceDescriptors {
 #[derive(Clone, Debug, PartialEq)]
 struct NavigationConfigSource {
     pub level: &'static str,
+    pub origin: &'static str,
     pub path: String,
     pub loaded: LoadedParameterConfigSource,
 }
@@ -318,6 +333,7 @@ fn load_navigation_config_source(
     );
     NavigationConfigSource {
         level,
+        origin: descriptor.origin.as_str(),
         path: descriptor.path.display().to_string(),
         loaded: load_parameter_config_source(&parameter_descriptor),
     }

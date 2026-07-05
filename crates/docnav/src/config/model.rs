@@ -27,6 +27,8 @@ pub struct ConfigContext {
 pub struct CoreConfig {
     #[serde(default, skip_serializing_if = "DefaultsConfig::is_empty")]
     pub defaults: DefaultsConfig,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline: Option<Value>,
     #[serde(default, skip_serializing_if = "NativeOptionsConfig::is_empty")]
     pub options: NativeOptionsConfig,
 }

@@ -9,6 +9,7 @@ use super::*;
 use crate::cli::{DocumentCommand, NativeOptionCliInput};
 use crate::config::{ConfigContext, CoreConfig};
 use crate::output::{write_error, write_outcome, ErrorOutput};
+use crate::project_context::{SelectedConfigPath, SelectedConfigPaths};
 
 #[test]
 fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
@@ -36,6 +37,7 @@ fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
         native_options: Vec::new(),
         output: Some(OutputMode::ProtocolJson),
         adapter: None,
+        config_paths: Default::default(),
     };
     let request = DocumentRequest::from_command(command, context.project.clone());
 
@@ -60,7 +62,7 @@ fn core_linked_markdown_consumes_project_native_max_heading_level() {
 
     let context = default_context(project_root);
     write_config_file(
-        &context.project.project_config_path,
+        context.project.project_config_path(),
         json!({
             "options": {
                 "max_heading_level": 2
@@ -138,7 +140,7 @@ fn config_path_context_reports_automatic_discovery_adapter_source() {
         markdown_project("config-path-context-automatic-discovery-source", "# One\n");
     let context = default_context(project_root);
     let output = AdapterRuntime
-        .describe_document_context("docs/guide.md".to_owned(), None, &context)
+        .describe_document_context("docs/guide.md".to_owned(), None, &context.project)
         .unwrap();
 
     assert_eq!(output.adapter.selected.as_deref(), Some("docnav-markdown"));
@@ -158,10 +160,10 @@ fn assert_invalid_native_option_source(
     let (_workspace, project_root) = markdown_project(workspace_name, "# One\n\n## Two\n");
     let context = default_context(project_root);
     if let Some(value) = project_option {
-        write_native_option_config(&context.project.project_config_path, value);
+        write_native_option_config(context.project.project_config_path(), value);
     }
     if let Some(value) = user_option {
-        write_native_option_config(&context.project.user_config_path, value);
+        write_native_option_config(context.project.user_config_path(), value);
     }
     let command = outline_command(None, None);
     let request = DocumentRequest::from_command(command, context.project.clone());
@@ -270,6 +272,7 @@ fn outline_command(max_heading_level: Option<u32>, adapter: Option<&str>) -> Doc
             .unwrap_or_default(),
         output: Some(OutputMode::ProtocolJson),
         adapter: adapter.map(str::to_owned),
+        config_paths: Default::default(),
     }
 }
 
@@ -331,8 +334,12 @@ fn entry_labels(output: &Value) -> Vec<&str> {
 fn project_context(project_root: PathBuf, cwd: PathBuf) -> ProjectContext {
     ProjectContext {
         cwd,
-        project_config_path: project_root.join(".docnav").join("docnav.json"),
-        user_config_path: project_root.join(".docnav-user").join("docnav.json"),
+        config_paths: SelectedConfigPaths {
+            project: SelectedConfigPath::default(project_root.join(".docnav").join("docnav.json")),
+            user: SelectedConfigPath::default(
+                project_root.join(".docnav-user").join("docnav.json"),
+            ),
+        },
         project_root,
     }
 }

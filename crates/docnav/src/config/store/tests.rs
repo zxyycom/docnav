@@ -4,8 +4,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
 
-use super::{read_config, ConfigFileSource};
-use crate::project_context::ProjectContext;
+// @case WB-CORE-CONFIG-SOURCE-001
+use super::{read_selected_config, write_config, ConfigFileSource};
+use crate::project_context::{
+    ConfigPathOrigin, ProjectContext, SelectedConfigPath, SelectedConfigPaths,
+};
 use crate::registry::AdapterRegistry;
 
 #[test]
@@ -21,7 +24,12 @@ fn unknown_config_field_reports_structured_config_issue() {
     );
     let registry = registry_for_root(&root);
 
-    let error = read_config(&path, &registry, ConfigFileSource::Project).unwrap_err();
+    let error = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap_err();
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "defaults.limit");
@@ -56,12 +64,63 @@ fn registered_native_option_config_key_keeps_raw_value() {
     );
     let registry = registry_for_root(&root);
 
-    let config = read_config(&path, &registry, ConfigFileSource::Project).unwrap();
+    let config = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap();
 
     assert_eq!(
         config.options.value_for_key("max_heading_level"),
         Some(&json!("wide"))
     );
+}
+
+#[test]
+fn navigation_owned_outline_config_is_accepted_and_preserved() {
+    let root = temp_root("outline-preserve");
+    let outline = json!({
+        "mode_rules": [
+            {
+                "path": "docs/raw\\.md",
+                "mode": "unstructured_full"
+            }
+        ],
+        "auto_full_read": {
+            "thresholds": [
+                {
+                    "adapter": "docnav-markdown",
+                    "unit": "bytes",
+                    "value": 4096
+                }
+            ]
+        }
+    });
+    let path = write_project_config(
+        &root,
+        json!({
+            "defaults": {
+                "output": "readable-json"
+            },
+            "outline": outline.clone()
+        }),
+    );
+    let registry = registry_for_root(&root);
+
+    let config = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap();
+    assert_eq!(config.outline.as_ref(), Some(&outline));
+
+    let rewritten = root.join(".docnav").join("rewritten.json");
+    write_config(&rewritten, &config).unwrap();
+    let value: Value = serde_json::from_str(&fs::read_to_string(&rewritten).unwrap()).unwrap();
+    assert_eq!(value["outline"], outline);
+    assert_eq!(value["defaults"]["output"], "readable-json");
 }
 
 #[test]
@@ -77,7 +136,12 @@ fn nested_non_object_config_field_reports_structured_config_issue() {
     );
     let registry = registry_for_root(&root);
 
-    let error = read_config(&path, &registry, ConfigFileSource::Project).unwrap_err();
+    let error = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap_err();
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "defaults.pagination");
@@ -94,6 +158,55 @@ fn nested_non_object_config_field_reports_structured_config_issue() {
     );
 }
 
+#[test]
+fn default_missing_config_path_is_absent() {
+    let root = temp_root("default-missing");
+    let registry = registry_for_root(&root);
+    let path = root.join(".docnav").join("missing.json");
+
+    let config = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap();
+
+    assert_eq!(config, super::CoreConfig::default());
+}
+
+#[test]
+fn explicit_missing_config_path_reports_blocking_issue() {
+    let root = temp_root("explicit-missing");
+    let registry = registry_for_root(&root);
+    let path = root.join("selected-project.json");
+
+    let error = read_selected_config(
+        &SelectedConfigPath {
+            path,
+            origin: ConfigPathOrigin::ExplicitCli,
+        },
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap_err();
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(details["field"], "config");
+    assert_eq!(details["reason"], "missing_explicit_cli");
+    assert_eq!(
+        details["config_issues"][0]["source_level"],
+        Value::String("project".to_owned())
+    );
+    assert_eq!(
+        details["config_issues"][0]["path_origin"],
+        Value::String("explicit_cli".to_owned())
+    );
+    assert_eq!(
+        details["config_issues"][0]["reason_code"],
+        "missing_explicit_cli"
+    );
+}
+
 fn write_project_config(root: &Path, value: Value) -> PathBuf {
     let path = root.join(".docnav").join("docnav.json");
     fs::create_dir_all(path.parent().expect("config parent")).unwrap();
@@ -105,8 +218,10 @@ fn registry_for_root(root: &Path) -> AdapterRegistry {
     AdapterRegistry::load(&ProjectContext {
         cwd: root.to_owned(),
         project_root: root.to_owned(),
-        project_config_path: root.join(".docnav").join("docnav.json"),
-        user_config_path: root.join(".user-config").join("docnav.json"),
+        config_paths: SelectedConfigPaths {
+            project: SelectedConfigPath::default(root.join(".docnav").join("docnav.json")),
+            user: SelectedConfigPath::default(root.join(".user-config").join("docnav.json")),
+        },
     })
     .unwrap()
 }

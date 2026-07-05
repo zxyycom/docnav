@@ -32,6 +32,7 @@ fn adapter_error_constructors_project_protocol_error_details() {
         received: Some("7".to_owned()),
         expected: Some("integer in range 1..6".to_owned()),
         type_variant: Some("integer".to_owned()),
+        config_source: None,
     };
     let invalid = AdapterError::native_option_invalid(
         "invalid max heading level",

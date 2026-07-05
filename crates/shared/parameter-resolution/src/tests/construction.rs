@@ -156,18 +156,24 @@ fn explicit_config_source_failure_returns_issue_and_continues_resolution() {
     );
     let loaded_project = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::Project,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         missing.clone(),
     ));
     let loaded_user = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::User,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         user_config,
     ));
 
     assert_eq!(loaded_project.diagnostics().len(), 1);
     let issue = loaded_project.diagnostics()[0].as_config_source().unwrap();
-    assert_config_source_issue(issue, "project", "override", &missing, "missing_override");
+    assert_config_source_issue(
+        issue,
+        "project",
+        "explicit_cli",
+        &missing,
+        "missing_explicit_cli",
+    );
 
     let resolution = ParameterResolutionPipeline::new(&fields)
         .with_direct_input_processing_id(DIRECT_PROCESSING)
@@ -201,6 +207,21 @@ fn default_missing_config_source_has_no_diagnostic_event() {
 }
 
 #[test]
+fn override_missing_config_source_uses_override_diagnostic_event() {
+    let missing = temp_path("missing-override-config.json");
+
+    let loaded = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
+        ConfigSourceLevel::Project,
+        ConfigPathOrigin::Override,
+        missing.clone(),
+    ));
+
+    assert_eq!(loaded.diagnostics().len(), 1);
+    let issue = loaded.diagnostics()[0].as_config_source().unwrap();
+    assert_config_source_issue(issue, "project", "override", &missing, "missing_override");
+}
+
+#[test]
 fn invalid_config_sources_are_reported_as_config_source_issues() {
     let invalid_json = temp_file("invalid-config.json", "{invalid");
     let non_object = temp_file("non-object-config.json", "[]");
@@ -208,17 +229,17 @@ fn invalid_config_sources_are_reported_as_config_source_issues() {
 
     let invalid = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::Project,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         invalid_json,
     ));
     let non_object = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::User,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         non_object,
     ));
     let not_file = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::Project,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         not_file,
     ));
 
@@ -235,7 +256,7 @@ fn unreadable_config_source_is_reported_as_config_source_issue() {
 
     let loaded = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::Project,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         path,
     ));
 

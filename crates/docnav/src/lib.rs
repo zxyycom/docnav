@@ -76,14 +76,17 @@ fn execute<T: DocnavRuntime>(
 ) -> AppResult<output::CommandOutcome> {
     match command {
         CliCommand::Document(command) => {
-            let project = project_context::ProjectContext::discover()?;
+            let project = project_context::ProjectContext::discover_with_cli_config_paths(
+                command.config_paths.project_config.as_deref(),
+                command.config_paths.user_config.as_deref(),
+            )?;
             let request = runtime::DocumentRequest::from_command(command, project);
             runtime.execute_document(request)
         }
         CliCommand::Adapter(command) => registry::execute(command),
         CliCommand::Config(command) => config::execute(command, runtime),
-        CliCommand::Init => config::init_project(),
-        CliCommand::Doctor => config::doctor(),
+        CliCommand::Init(config_paths) => config::init_project(config_paths),
+        CliCommand::Doctor(config_paths) => config::doctor(config_paths),
         CliCommand::Version => Ok(output::CommandOutcome::plain_text(format!(
             "docnav {}",
             env!("CARGO_PKG_VERSION")

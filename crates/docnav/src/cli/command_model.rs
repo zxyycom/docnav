@@ -65,8 +65,8 @@ pub enum CliCommand {
     Document(DocumentCommand),
     Adapter(AdapterCommand),
     Config(ConfigCommand),
-    Init,
-    Doctor,
+    Init(ConfigPathArgs),
+    Doctor(ConfigPathArgs),
     Version,
     Help(String),
 }
@@ -77,8 +77,8 @@ impl CliCommand {
             Self::Document(command) => Some(command.operation),
             Self::Adapter(_)
             | Self::Config(_)
-            | Self::Init
-            | Self::Doctor
+            | Self::Init(_)
+            | Self::Doctor(_)
             | Self::Version
             | Self::Help(_) => None,
         }
@@ -89,12 +89,18 @@ impl CliCommand {
             Self::Document(command) => command.output,
             Self::Adapter(_)
             | Self::Config(_)
-            | Self::Init
-            | Self::Doctor
+            | Self::Init(_)
+            | Self::Doctor(_)
             | Self::Version
             | Self::Help(_) => None,
         }
     }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ConfigPathArgs {
+    pub project_config: Option<String>,
+    pub user_config: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -109,6 +115,7 @@ pub struct DocumentCommand {
     pub native_options: Vec<NativeOptionCliInput>,
     pub output: Option<OutputMode>,
     pub adapter: Option<String>,
+    pub config_paths: ConfigPathArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -134,6 +141,7 @@ pub enum ConfigCommand {
 pub struct ConfigGet {
     pub key: String,
     pub user: bool,
+    pub config_paths: ConfigPathArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -141,12 +149,14 @@ pub struct ConfigSet {
     pub key: String,
     pub value: String,
     pub user: bool,
+    pub config_paths: ConfigPathArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConfigUnset {
     pub key: String,
     pub user: bool,
+    pub config_paths: ConfigPathArgs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -154,4 +164,5 @@ pub struct ConfigList {
     pub user: bool,
     pub path: Option<String>,
     pub operation: Option<Operation>,
+    pub config_paths: ConfigPathArgs,
 }

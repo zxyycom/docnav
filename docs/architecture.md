@@ -39,7 +39,7 @@ Docnav 文档操作分为两类输出：
 
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list`。
 - 维护 core release 内置 adapter static registry；`adapter list` 展示该 registry 中的 adapter metadata。
-- 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的 `config` 命令入口；navigation command 的 config source descriptor/path handoff、raw source loading 和参数解析规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
+- 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的 `config` 命令入口；config path flag、`config`/`init`/`doctor` target 语义见 [CLI](cli.md)，navigation command 的 config source descriptor/path handoff、raw source loading 和参数解析规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 - 解析命令类型；非 navigation 命令由 core 自己处理。
 - 对 navigation 命令把 raw command、config source descriptors/paths 和 adapter registry 交给 `docnav-navigation`。
 - 统一处理输出模式和错误映射。
@@ -82,7 +82,7 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 
 ```text
 caller
-  -> docnav：解析命令类型、提供 config source descriptors/paths、处理非 navigation 命令和输出模式
+  -> docnav：解析命令类型、按 CLI 规则选择 config source descriptors/paths、处理非 navigation 命令和输出模式
   -> docnav-navigation：加载 raw config sources、解析 routing 输入、选择 adapter、解析 typed 参数、构造内部 protocol request 并调用 selected adapter library handle
   -> selected adapter layer：解析、导航、生成 ref 和语义结果
   <- protocol result

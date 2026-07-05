@@ -60,6 +60,16 @@ export function mutableConfigFixtureProject(configName: string, name: string = c
   return configFixtureProject(configName, name);
 }
 
+export function configFixturePath(configName: string): string {
+  return resolveConfigFixturePath(configName);
+}
+
+export function copyConfigFixtureToProject(project: SmokeProject, configName: string, relativePath: string): string {
+  const targetPath = path.join(project.root, relativePath);
+  copyConfigFixture(configName, targetPath);
+  return targetPath;
+}
+
 export function copyNormalDocument(project: SmokeProject, relativePath: string) {
   const filePath = path.join(project.root, relativePath);
   copyFile(normalDocumentFixture, filePath);
@@ -127,11 +137,16 @@ function isolatedEnv(projectRoot: string, userConfigDir: string): NodeJS.Process
 }
 
 function copyConfigFixture(name: string, targetPath: string) {
+  const sourcePath = resolveConfigFixturePath(name);
+  copyFile(sourcePath, targetPath);
+}
+
+function resolveConfigFixturePath(name: string) {
   const sourcePath = path.join(configFixturesDir, `${name}.json`);
   if (!fs.existsSync(sourcePath)) {
     throw new Error(`smoke config fixture not found: ${name}`);
   }
-  copyFile(sourcePath, targetPath);
+  return sourcePath;
 }
 
 function slug(value: string) {

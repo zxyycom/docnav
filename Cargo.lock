@@ -165,6 +165,7 @@ dependencies = [
  "docnav-markdown",
  "docnav-navigation",
  "docnav-output",
+ "docnav-parameter-resolution",
  "docnav-protocol",
  "docnav-typed-fields",
  "serde",

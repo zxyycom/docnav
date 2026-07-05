@@ -9,7 +9,7 @@ use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
 
-use super::command_model::{CliCommand, ParsedCli};
+use super::command_model::{CliCommand, ConfigPathArgs, ParsedCli};
 
 use spec::{cli_command, is_known_root_command};
 
@@ -46,12 +46,16 @@ where
         command_names::INFO => document::parse_document_command(Operation::Info, rest),
         command_names::ADAPTER => adapter_command::parse_adapter_command(rest),
         command_names::CONFIG => config_command::parse_config_command(rest),
-        command_names::INIT => {
-            utility_command::parse_utility_command(CliCommand::Init, command_names::INIT, rest)
-        }
-        command_names::DOCTOR => {
-            utility_command::parse_utility_command(CliCommand::Doctor, command_names::DOCTOR, rest)
-        }
+        command_names::INIT => utility_command::parse_utility_command(
+            CliCommand::Init(ConfigPathArgs::default()),
+            command_names::INIT,
+            rest,
+        ),
+        command_names::DOCTOR => utility_command::parse_utility_command(
+            CliCommand::Doctor(ConfigPathArgs::default()),
+            command_names::DOCTOR,
+            rest,
+        ),
         command_names::VERSION => utility_command::parse_utility_command(
             CliCommand::Version,
             command_names::VERSION,

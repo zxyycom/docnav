@@ -1,6 +1,7 @@
+use docnav_diagnostics::AdapterConfigSourceDetails;
 use serde_json::{json, Map, Value};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NativeOptionIssue {
     pub owner: String,
     pub namespace: String,
@@ -11,6 +12,7 @@ pub struct NativeOptionIssue {
     pub received: Option<String>,
     pub expected: Option<String>,
     pub type_variant: Option<String>,
+    pub config_source: Option<AdapterConfigSourceDetails>,
 }
 
 impl NativeOptionIssue {

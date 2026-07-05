@@ -6,7 +6,7 @@ use docnav_protocol::{Operation, PositiveInteger};
 
 use crate::error::{AppError, AppResult};
 
-use super::super::command_model::OutputMode;
+use super::super::command_model::{ConfigPathArgs, OutputMode};
 use super::super::flags;
 use super::arg_ids;
 
@@ -19,8 +19,10 @@ pub(super) enum ValueFlag {
     Page,
     Pagination,
     Path,
+    ProjectConfig,
     Query,
     Ref,
+    UserConfig,
 }
 
 const VALUE_FLAGS: &[(&str, ValueFlag)] = &[
@@ -31,8 +33,10 @@ const VALUE_FLAGS: &[(&str, ValueFlag)] = &[
     (flags::PAGE, ValueFlag::Page),
     (flags::PAGINATION, ValueFlag::Pagination),
     (flags::PATH, ValueFlag::Path),
+    (flags::PROJECT_CONFIG, ValueFlag::ProjectConfig),
     (flags::QUERY, ValueFlag::Query),
     (flags::REF, ValueFlag::Ref),
+    (flags::USER_CONFIG, ValueFlag::UserConfig),
 ];
 
 const UNKNOWN_ARGUMENT: &str = "unknown_argument";
@@ -63,8 +67,10 @@ pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
         flags::PAGE => Some(ValueFlag::Page),
         flags::PAGINATION => Some(ValueFlag::Pagination),
         flags::PATH => Some(ValueFlag::Path),
+        flags::PROJECT_CONFIG => Some(ValueFlag::ProjectConfig),
         flags::QUERY => Some(ValueFlag::Query),
         flags::REF => Some(ValueFlag::Ref),
+        flags::USER_CONFIG => Some(ValueFlag::UserConfig),
         _ => None,
     }
 }
@@ -217,6 +223,20 @@ pub(super) fn optional_explicit_string(matches: &ArgMatches, id: &str) -> Option
     is_command_line(matches, id)
         .then(|| matches.get_one::<String>(id).cloned())
         .flatten()
+}
+
+pub(super) fn config_path_args(matches: &ArgMatches) -> ConfigPathArgs {
+    ConfigPathArgs {
+        project_config: optional_explicit_string(matches, arg_ids::PROJECT_CONFIG),
+        user_config: optional_explicit_string(matches, arg_ids::USER_CONFIG),
+    }
+}
+
+pub(super) fn project_config_path_args(matches: &ArgMatches) -> ConfigPathArgs {
+    ConfigPathArgs {
+        project_config: optional_explicit_string(matches, arg_ids::PROJECT_CONFIG),
+        user_config: None,
+    }
 }
 
 pub(super) fn optional_explicit_output(matches: &ArgMatches) -> AppResult<Option<OutputMode>> {

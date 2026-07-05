@@ -143,10 +143,16 @@ fn scan_value_flag_arg(
     flag_token: &str,
 ) -> Result<(), MissingValue> {
     if flag.used {
-        push_retained_value_arg(&mut state.retained_args, args, &mut state.index, flag_token)
+        push_retained_value_arg(
+            &mut state.retained_args,
+            args,
+            config,
+            &mut state.index,
+            flag_token,
+        )
     } else {
         let token = args[state.index].clone();
-        let value = rejected_value(args, &mut state.index, flag_token)?;
+        let value = rejected_value(args, config, &mut state.index, flag_token)?;
         state.rejected.push(RejectedArg::UnusedValueFlag {
             flag: token,
             value,
@@ -183,6 +189,7 @@ fn known_value_flag<'a>(
 fn push_retained_value_arg(
     retained_args: &mut Vec<String>,
     args: &[String],
+    config: &ArgBoundaryScan<'_>,
     index: &mut usize,
     flag: &str,
 ) -> Result<(), MissingValue> {
@@ -197,6 +204,9 @@ fn push_retained_value_arg(
         .get(*index + 1)
         .ok_or_else(|| missing_value(flag))?
         .clone();
+    if is_known_flag_value(config, &value) {
+        return Err(missing_value(flag));
+    }
     retained_args.push(token.clone());
     retained_args.push(value);
     *index += 2;
@@ -205,6 +215,7 @@ fn push_retained_value_arg(
 
 fn rejected_value(
     args: &[String],
+    config: &ArgBoundaryScan<'_>,
     index: &mut usize,
     flag: &str,
 ) -> Result<Option<String>, MissingValue> {
@@ -218,6 +229,9 @@ fn rejected_value(
         .get(*index + 1)
         .ok_or_else(|| missing_value(flag))?
         .clone();
+    if is_known_flag_value(config, &value) {
+        return Err(missing_value(flag));
+    }
     *index += 2;
     Ok(Some(value))
 }
@@ -230,6 +244,12 @@ fn missing_value(flag: &str) -> MissingValue {
 
 fn is_long_flag(value: &str) -> bool {
     value.starts_with("--")
+}
+
+fn is_known_flag_value(config: &ArgBoundaryScan<'_>, value: &str) -> bool {
+    let (flag_token, _inline_value) = split_equals(value);
+    known_value_flag(config.known_value_flags, flag_token).is_some()
+        || is_known_switch_flag(config, value)
 }
 
 fn split_equals(token: &str) -> (&str, Option<&str>) {

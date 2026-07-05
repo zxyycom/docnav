@@ -31,9 +31,11 @@ pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const PAGE: &str = "page";
     pub(in crate::cli) const PAGINATION: &str = "pagination";
     pub(in crate::cli) const PATH: &str = "path";
+    pub(in crate::cli) const PROJECT_CONFIG: &str = "project-config";
     pub(in crate::cli) const QUERY: &str = "query";
     pub(in crate::cli) const REF: &str = "ref";
     pub(in crate::cli) const USER: &str = "user";
+    pub(in crate::cli) const USER_CONFIG: &str = "user-config";
     pub(in crate::cli) const VALUE: &str = "value";
 }
 
@@ -60,6 +62,13 @@ pub(in crate::cli) mod operation_values {
 pub(in crate::cli) mod pagination_values {
     pub(in crate::cli) const DISABLED: &str = "disabled";
     pub(in crate::cli) const ENABLED: &str = "enabled";
+}
+
+#[derive(Clone, Copy)]
+enum ConfigPathSupport {
+    None,
+    ProjectOnly,
+    ProjectAndUser,
 }
 
 pub(in crate::cli) fn cli_command() -> Command {
@@ -114,11 +123,14 @@ pub(in crate::cli) fn document_clap_command(operation: Operation) -> Command {
 }
 
 fn document_command(name: &'static str, about: &'static str) -> Command {
-    Command::new(name)
-        .about(about)
-        .arg(path_arg())
-        .arg(adapter_arg())
-        .arg(output_arg())
+    with_config_path_args(
+        Command::new(name)
+            .about(about)
+            .arg(path_arg())
+            .arg(adapter_arg())
+            .arg(output_arg()),
+        ConfigPathSupport::ProjectAndUser,
+    )
 }
 
 fn paged_document_command(name: &'static str, about: &'static str) -> Command {
@@ -147,37 +159,55 @@ pub(in crate::cli) fn adapter_command() -> Command {
 }
 
 pub(in crate::cli) fn config_get_command() -> Command {
-    Command::new(command_names::CONFIG_GET)
-        .about("Read an effective configuration key")
-        .arg(key_arg())
-        .arg(user_arg())
+    with_config_path_args(
+        Command::new(command_names::CONFIG_GET)
+            .about("Read an effective configuration key")
+            .arg(key_arg())
+            .arg(user_arg()),
+        ConfigPathSupport::ProjectAndUser,
+    )
 }
 
 pub(in crate::cli) fn config_set_command() -> Command {
-    Command::new(command_names::CONFIG_SET)
-        .about("Set a project or user configuration key")
-        .arg(key_arg())
-        .arg(positional_value_arg(arg_ids::VALUE, "value"))
-        .arg(user_arg())
+    with_config_path_args(
+        Command::new(command_names::CONFIG_SET)
+            .about("Set a project or user configuration key")
+            .arg(key_arg())
+            .arg(positional_value_arg(arg_ids::VALUE, "value"))
+            .arg(user_arg()),
+        ConfigPathSupport::ProjectAndUser,
+    )
 }
 
 pub(in crate::cli) fn config_unset_command() -> Command {
-    Command::new(command_names::CONFIG_UNSET)
-        .about("Remove a project or user configuration key")
-        .arg(key_arg())
-        .arg(user_arg())
+    with_config_path_args(
+        Command::new(command_names::CONFIG_UNSET)
+            .about("Remove a project or user configuration key")
+            .arg(key_arg())
+            .arg(user_arg()),
+        ConfigPathSupport::ProjectAndUser,
+    )
 }
 
 pub(in crate::cli) fn config_list_command() -> Command {
-    Command::new(command_names::CONFIG_LIST)
-        .about("List effective configuration")
-        .arg(user_arg())
-        .arg(value_arg(arg_ids::PATH, "path", "path"))
-        .arg(operation_arg())
+    with_config_path_args(
+        Command::new(command_names::CONFIG_LIST)
+            .about("List effective configuration")
+            .arg(user_arg())
+            .arg(value_arg(arg_ids::PATH, "path", "path"))
+            .arg(operation_arg()),
+        ConfigPathSupport::ProjectAndUser,
+    )
 }
 
 pub(in crate::cli) fn utility_clap_command(name: &'static str, about: &'static str) -> Command {
-    Command::new(name).about(about)
+    let command = Command::new(name).about(about);
+    let support = match name {
+        command_names::INIT => ConfigPathSupport::ProjectOnly,
+        command_names::DOCTOR => ConfigPathSupport::ProjectAndUser,
+        _ => ConfigPathSupport::None,
+    };
+    with_config_path_args(command, support)
 }
 
 fn path_arg() -> Arg {
@@ -193,6 +223,24 @@ fn key_arg() -> Arg {
 
 fn adapter_arg() -> Arg {
     value_arg(arg_ids::ADAPTER, "adapter", "adapter-id")
+}
+
+fn project_config_arg() -> Arg {
+    value_arg(arg_ids::PROJECT_CONFIG, "project-config", "path")
+}
+
+fn user_config_arg() -> Arg {
+    value_arg(arg_ids::USER_CONFIG, "user-config", "path")
+}
+
+fn with_config_path_args(command: Command, support: ConfigPathSupport) -> Command {
+    match support {
+        ConfigPathSupport::None => command,
+        ConfigPathSupport::ProjectOnly => command.arg(project_config_arg()),
+        ConfigPathSupport::ProjectAndUser => {
+            command.arg(project_config_arg()).arg(user_config_arg())
+        }
+    }
 }
 
 fn page_arg() -> Arg {

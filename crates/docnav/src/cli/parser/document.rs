@@ -7,9 +7,9 @@ use crate::registry;
 use super::super::command_model::{CliCommand, DocumentCommand, NativeOptionCliInput, ParsedCli};
 use super::super::flags;
 use super::argument_helpers::{
-    boundary_value_flags, clap_argv, error_from_rejected_arg, invalid_output_value_error,
-    invalid_positive_value_error, invalid_value_error, is_flag, known_value_flag,
-    missing_value_error, missing_value_flag_error, optional_explicit_output,
+    boundary_value_flags, clap_argv, config_path_args, error_from_rejected_arg,
+    invalid_output_value_error, invalid_positive_value_error, invalid_value_error, is_flag,
+    known_value_flag, missing_value_error, missing_value_flag_error, optional_explicit_output,
     optional_explicit_positive, optional_explicit_string, required_string, split_equals, ValueFlag,
 };
 use super::{arg_ids, document_clap_command, spec};
@@ -69,6 +69,7 @@ fn document_command_from_matches(
         native_options: parse_native_options(operation, matches),
         output: optional_explicit_output(matches)?,
         adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
+        config_paths: config_path_args(matches),
     })
 }
 
@@ -146,6 +147,7 @@ fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
 fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
     match flag {
         ValueFlag::Adapter | ValueFlag::Output => true,
+        ValueFlag::ProjectConfig | ValueFlag::UserConfig => true,
         ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
         ValueFlag::Ref => operation == Operation::Read,
         ValueFlag::Query => operation == Operation::Find,

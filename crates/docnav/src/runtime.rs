@@ -1,14 +1,13 @@
 use docnav_navigation::{
     execute_navigation_command, resolve_navigation_context, NavigationCommand,
-    NavigationConfigSourceDescriptor, NavigationConfigSourceDescriptors, NavigationContextDefaults,
-    NavigationNativeOptionInput, NavigationOutputMode, NavigationPaginationDefaults,
-    NavigationResolvedValue,
+    NavigationConfigSourceDescriptors, NavigationContextDefaults, NavigationNativeOptionInput,
+    NavigationOutputMode, NavigationPaginationDefaults, NavigationResolvedValue,
 };
 use docnav_protocol::Operation;
 use serde::Serialize;
 
 use crate::cli::{DocumentCommand, OutputMode};
-use crate::config::{ConfigContext, ResolvedValue};
+use crate::config::ResolvedValue;
 use crate::error::{AppError, AppResult};
 use crate::output::{outcome_for_response, CommandOutcome};
 use crate::project_context::ProjectContext;
@@ -59,7 +58,7 @@ pub trait DocnavRuntime {
         &self,
         path: String,
         operation: Option<Operation>,
-        context: &ConfigContext,
+        project: &ProjectContext,
     ) -> AppResult<DocumentContextOutput>;
 }
 
@@ -83,14 +82,14 @@ impl DocnavRuntime for AdapterRuntime {
         &self,
         path: String,
         operation: Option<Operation>,
-        context: &ConfigContext,
+        project: &ProjectContext,
     ) -> AppResult<DocumentContextOutput> {
         let effective_operation = operation.unwrap_or(Operation::Outline);
-        let document = normalize_document_path(&context.project, &path)?;
-        let registry = AdapterRegistry::load(&context.project)?;
+        let document = normalize_document_path(project, &path)?;
+        let registry = AdapterRegistry::load(project)?;
         let context = resolve_navigation_context(
             context_navigation_command(effective_operation, document.adapter_path.clone()),
-            navigation_config_source_descriptors(&context.project),
+            project.navigation_config_source_descriptors(),
             &registry,
         )
         .map_err(|error| AppError::new(error.into_diagnostic()))?;
@@ -150,15 +149,6 @@ fn navigation_native_options(command: &DocumentCommand) -> Vec<NavigationNativeO
         .collect()
 }
 
-fn navigation_config_source_descriptors(
-    project: &ProjectContext,
-) -> NavigationConfigSourceDescriptors {
-    NavigationConfigSourceDescriptors {
-        project: NavigationConfigSourceDescriptor::default(project.project_config_path.clone()),
-        user: NavigationConfigSourceDescriptor::default(project.user_config_path.clone()),
-    }
-}
-
 fn navigation_output_mode(output: OutputMode) -> NavigationOutputMode {
     match output {
         OutputMode::ReadableView => NavigationOutputMode::ReadableView,
@@ -176,7 +166,7 @@ fn output_mode(output: NavigationOutputMode) -> AppResult<OutputMode> {
 
 impl DocumentRequest {
     pub fn from_command(command: DocumentCommand, project: ProjectContext) -> Self {
-        let config_source_descriptors = navigation_config_source_descriptors(&project);
+        let config_source_descriptors = project.navigation_config_source_descriptors();
         Self {
             project,
             command,

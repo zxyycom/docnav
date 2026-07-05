@@ -42,11 +42,13 @@ pub(super) fn config_sources(project: Value, user: Value) -> NavigationConfigSou
     NavigationConfigSources {
         project: NavigationConfigSource {
             level: "project",
+            origin: "default",
             path: "project/.docnav/docnav.json".to_owned(),
             loaded: LoadedParameterConfigSource::from_value(project),
         },
         user: NavigationConfigSource {
             level: "user",
+            origin: "default",
             path: "user/docnav.json".to_owned(),
             loaded: LoadedParameterConfigSource::from_value(user),
         },

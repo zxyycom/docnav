@@ -176,6 +176,10 @@ impl AdapterError {
         let mut details = FieldReasonDetails::new(issue.field.clone(), issue.reason_code.clone());
         details.received = issue.received.clone();
         details.accepted = issue.expected.clone().map(|value| vec![value]);
+        details.config_issues = issue
+            .config_source
+            .clone()
+            .map(|config_source| vec![config_source]);
         details.option_issues = Some(vec![issue.into_json()]);
         Self::new(
             protocol_error_record_draft_with_summary::<typed_codes::protocol::InvalidRequest>(

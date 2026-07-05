@@ -104,7 +104,7 @@ mod tests {
     use serde_json::Value;
 
     use super::*;
-    use crate::project_context::ProjectContext;
+    use crate::project_context::{ProjectContext, SelectedConfigPath, SelectedConfigPaths};
 
     #[test]
     fn max_heading_level_config_accepts_registered_raw_values() {
@@ -138,8 +138,10 @@ mod tests {
         ProjectContext {
             cwd: root.clone(),
             project_root: root.clone(),
-            project_config_path: root.join(".docnav").join("docnav.json"),
-            user_config_path: root.join("user").join("docnav.json"),
+            config_paths: SelectedConfigPaths {
+                project: SelectedConfigPath::default(root.join(".docnav").join("docnav.json")),
+                user: SelectedConfigPath::default(root.join("user").join("docnav.json")),
+            },
         }
     }
 

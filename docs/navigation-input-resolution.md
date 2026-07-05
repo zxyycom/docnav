@@ -11,7 +11,7 @@
 Core 负责 invocation 入口和非 navigation 命令：
 
 1. 解析命令类型，区分 navigation command、`config`、`init`、`doctor`、`version`、help 和 adapter inspection。
-2. 为 navigation command 提供 project config 和 user config 的 source descriptor/path，包括默认路径、显式 override 路径和 project root/user config 定位结果。
+2. 为 navigation command 提供 project config 和 user config 的 source descriptor，包括 source level、resolved path 和 path origin。
 3. 对非 navigation 命令在 core 内完成处理，不进入 navigation input resolution。
 4. 对 navigation 命令，把 raw command、config source descriptors/paths 和当前 core release 的 adapter registry 交给 `docnav-navigation`。
 5. 接收 navigation outcome，并按 [输出模式](output.md)、[原始协议](protocol.md) 和 [CLI](cli.md) 规则进行 surface 投影与退出码映射。
@@ -43,7 +43,13 @@ Navigation input resolution 接收四类来源：
 | user | `docnav-navigation` 从 user config descriptor/path 加载的 source | 用户级 document operation 默认值和 adapter-owned native option source |
 | built_in | `docnav-navigation` 注册后的 selected adapter declarations 和 core navigation defaults | 缺省 pagination、limit、output、page 和 adapter 参数默认值 |
 
-Project config 路径为 `<project-root>/.docnav/docnav.json`。User config descriptor/path 由 core 用户配置位置提供。`docnav-navigation` 加载这些 descriptor/path 指向的 raw source：默认路径缺失表示该来源 absent；显式存在但不可读、JSON 无效或顶层不是 object 是 config source failure。
+Core-supplied project/user config descriptor 至少包含：
+
+- source level：`project` 或 `user`。
+- resolved path：core 为本次 invocation 选择的 exact config JSON file path。
+- path origin：路径来自 explicit CLI flag 还是 default path resolution。Project default 来自当前 project context 的 `.docnav/docnav.json`；user defaults 来自 `DOCNAV_CONFIG_DIR/docnav.json` 或平台用户默认 `.docnav/docnav.json`。所有非 explicit origin 都按 default path origin 处理缺失语义。
+
+`docnav-navigation` 加载这些 descriptor/path 指向的 raw source：default path missing 表示该来源 absent，不产生 diagnostic。Explicit path selected by `--project-config` or `--user-config` missing、unreadable、invalid JSON 或 top-level non-object 是 blocking config source diagnostic。Present default-path source 如果 unreadable、invalid JSON 或 top-level non-object，也作为 config source diagnostic 处理。
 
 `path`、`ref` 和 `query` 是当前调用的 direct navigation input，不从配置文件取得。`page` 是 continuation call-position state，不是配置字段；入口省略时使用 built-in `1`。
 
@@ -92,7 +98,11 @@ docnav-navigation
   dispatch selected adapter operation handler
 ```
 
-Resolution 必须保持来源信息，便于诊断表达 explicit、project config、user config 或 built-in default。Config source 缺失不产生诊断；present invalid source、unknown field、unmapped public input、type/range invalid 和 missing required value 产生 blocking diagnostic。
+Resolution 必须保持来源信息，便于诊断表达 explicit、project config、user config 或 built-in default。Default-path config source 缺失不产生 diagnostic；explicit config path missing、present invalid source、unknown field、unmapped public input、type/range invalid 和 missing required value 产生 blocking diagnostic。
+
+Config path flag 只影响 source descriptor 的 resolved path 和 path origin，不成为 navigation parameter source value。显式选择的 config file 内部字段仍以 `project` 或 `user` source level 参与 `explicit > project > user > built_in` 合并；direct argv value 始终优先于 project config，project config 始终优先于 user config。
+
+Config source diagnostic details 必须携带 source level 和 selected config file path，使 project config 与 user config 在路径都由 CLI flag 选择时仍可区分。
 
 当 `pagination.enabled` 最终为 `false` 时，resolution 在构造 operation arguments 前把分页预算归一为最大正整数预算。该归一化不回写 raw command、config source 或 protocol JSON。
 
@@ -145,7 +155,7 @@ Resolution 完成后，`docnav-navigation` 构造内部 protocol request：
 | 位置 | 结果 |
 | --- | --- |
 | Core command classification | 非 navigation 命令不进入本文流程；help/version 不读取 document config。 |
-| Config source loading | `docnav-navigation` 将默认路径缺失视为 absent；存在但不可读、JSON 无效或顶层非 object 返回 config source diagnostic。 |
+| Config source loading | `docnav-navigation` 将 default path missing 视为 absent；explicit path missing、unreadable、JSON 无效或顶层非 object 返回 blocking config source diagnostic；present default-path source unreadable、JSON 无效或顶层非 object 也返回 config source diagnostic。 |
 | Source mapping | 未知字段、旧字段名、operation 不适用参数、unmapped input 或 selected adapter 不接收的 native option source 返回 input diagnostic。 |
 | Typed-field validation/extraction | 类型、范围、allowed value、required/nullability 和 default invalid 返回带来源的 typed validation diagnostic。 |
 | Adapter selection | Declared adapter lookup/probe 失败或 automatic discovery 全部失败按 [适配器契约](adapter-contract.md#adapter-选择) 返回 selection diagnostic。 |
@@ -161,6 +171,7 @@ Resolution 完成后，`docnav-navigation` 构造内部 protocol request：
 2. Config 是参数来源之一，不是 navigation input resolution 的 owner。
 3. 只有 selected adapter 注册的 typed-field option 字段参与 native option resolution。
 4. 来源优先级固定为 `explicit > project > user > built_in`。
-5. `path`、`ref`、`query` 和 `page` 不进入配置文件字段集合。
-6. Typed-field 校验/提取先于 `RequestEnvelope` / `OperationArguments` 构造。
-7. 解析结果不回写 raw command、config source、schema 示例或 protocol JSON fixture。
+5. Config source descriptor 必须保留 source level、resolved path 和 path origin；config path flag selection 不改变参数来源优先级。
+6. `path`、`ref`、`query` 和 `page` 不进入配置文件字段集合。
+7. Typed-field 校验/提取先于 `RequestEnvelope` / `OperationArguments` 构造。
+8. 解析结果不回写 raw command、config source、schema 示例或 protocol JSON fixture。

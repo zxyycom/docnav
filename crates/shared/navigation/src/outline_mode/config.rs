@@ -77,6 +77,7 @@ pub(super) fn thresholds(
     let Some(auto_full_read) = auto_full_read.as_object() else {
         return Err(NavigationError::config_invalid_object(
             source.level,
+            source.origin,
             &source.path,
             "outline.auto_full_read",
         ));
@@ -128,7 +129,7 @@ pub(super) fn outline_config(
         return Ok(None);
     };
     outline.as_object().map(Some).ok_or_else(|| {
-        NavigationError::config_invalid_object(source.level, &source.path, "outline")
+        NavigationError::config_invalid_object(source.level, source.origin, &source.path, "outline")
     })
 }
 
@@ -147,6 +148,7 @@ fn mode_rule(
     let Some(object) = value.as_object() else {
         return Err(NavigationError::config_invalid_object(
             source.level,
+            source.origin,
             &source.path,
             &format!("outline.mode_rules[{index}]"),
         ));
@@ -159,8 +161,7 @@ fn mode_rule(
         _ => {
             return Err(NavigationError::config_invalid_field(
                 ConfigFieldError::invalid(
-                    source.level,
-                    &source.path,
+                    source,
                     field("mode"),
                     "invalid_outline_mode",
                     "Use structured or unstructured_full for outline.mode_rules[].mode.",
@@ -188,6 +189,7 @@ fn threshold(
     let Some(object) = value.as_object() else {
         return Err(NavigationError::config_invalid_object(
             source.level,
+            source.origin,
             &source.path,
             &format!("outline.auto_full_read.thresholds[{index}]"),
         ));
@@ -211,6 +213,7 @@ fn required_string(
     let Some(value) = object.get(key) else {
         return Err(NavigationError::config_missing_field(
             source.level,
+            source.origin,
             &source.path,
             field,
         ));
@@ -238,6 +241,7 @@ fn required_positive_u64(
     let Some(value) = object.get(key) else {
         return Err(NavigationError::config_missing_field(
             source.level,
+            source.origin,
             &source.path,
             field,
         ));
@@ -259,8 +263,7 @@ fn invalid_config_field(
     guidance: &str,
 ) -> NavigationError {
     NavigationError::config_invalid_field(ConfigFieldError::invalid(
-        source.level,
-        &source.path,
+        source,
         field,
         reason_code,
         guidance,

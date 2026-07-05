@@ -7,8 +7,8 @@ use super::super::command_model::{
 };
 use super::super::flags;
 use super::argument_helpers::{
-    boundary_value_flags, clap_argv, error_from_rejected_arg, is_flag, known_value_flag,
-    missing_value_error as scan_missing_value_error, missing_value_flag_error,
+    boundary_value_flags, clap_argv, config_path_args, error_from_rejected_arg, is_flag,
+    known_value_flag, missing_value_error as scan_missing_value_error, missing_value_flag_error,
     optional_explicit_string, parse_operation, required_string, split_equals, ValueFlag,
 };
 use super::{
@@ -46,6 +46,7 @@ fn parse_config_get(args: &[String]) -> AppResult<ParsedCli> {
         ConfigGet {
             key,
             user: matches.get_flag(arg_ids::USER),
+            config_paths: config_path_args(&matches),
         },
     ))))
 }
@@ -62,6 +63,7 @@ fn parse_config_set(args: &[String]) -> AppResult<ParsedCli> {
             key,
             value,
             user: matches.get_flag(arg_ids::USER),
+            config_paths: config_path_args(&matches),
         },
     ))))
 }
@@ -76,6 +78,7 @@ fn parse_config_unset(args: &[String]) -> AppResult<ParsedCli> {
         ConfigUnset {
             key,
             user: matches.get_flag(arg_ids::USER),
+            config_paths: config_path_args(&matches),
         },
     ))))
 }
@@ -95,6 +98,7 @@ fn parse_config_list(args: &[String]) -> AppResult<ParsedCli> {
             user: matches.get_flag(arg_ids::USER),
             path,
             operation,
+            config_paths: config_path_args(&matches),
         },
     ))))
 }
@@ -116,13 +120,12 @@ fn collect_config_args(
     expected_positionals: usize,
 ) -> AppResult<ParsedConfigCommon> {
     let list_has_path = matches!(usage, ConfigFlagUsage::PathContext) && has_path_flag(args);
-    let known_value_flags = boundary_value_flags(|flag| {
-        matches!(
-            (usage, flag),
-            (ConfigFlagUsage::PathContext, ValueFlag::Path)
-                | (ConfigFlagUsage::PathContext, ValueFlag::Operation)
-                    if list_has_path
-        )
+    let known_value_flags = boundary_value_flags(|flag| match flag {
+        ValueFlag::ProjectConfig | ValueFlag::UserConfig => true,
+        ValueFlag::Path | ValueFlag::Operation => {
+            matches!(usage, ConfigFlagUsage::PathContext) && list_has_path
+        }
+        _ => false,
     });
     let scan = scan_arg_boundaries(
         args,

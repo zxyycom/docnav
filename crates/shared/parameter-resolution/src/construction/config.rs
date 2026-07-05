@@ -25,6 +25,7 @@ impl ConfigSourceLevel {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ConfigPathOrigin {
     Default,
+    ExplicitCli,
     Override,
 }
 
@@ -32,6 +33,7 @@ impl ConfigPathOrigin {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Default => "default",
+            Self::ExplicitCli => "explicit_cli",
             Self::Override => "override",
         }
     }
@@ -39,6 +41,7 @@ impl ConfigPathOrigin {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ConfigSourceSkipReason {
+    MissingExplicitCli,
     MissingOverride,
     NotFile,
     Unreadable,
@@ -49,6 +52,7 @@ pub enum ConfigSourceSkipReason {
 impl ConfigSourceSkipReason {
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::MissingExplicitCli => "missing_explicit_cli",
             Self::MissingOverride => "missing_override",
             Self::NotFile => "not_file",
             Self::Unreadable => "unreadable",
@@ -138,6 +142,9 @@ fn read_config_source(descriptor: &ParameterConfigSourceDescriptor) -> LoadedPar
 fn missing_source(descriptor: &ParameterConfigSourceDescriptor) -> LoadedParameterConfigSource {
     match descriptor.origin {
         ConfigPathOrigin::Default => LoadedParameterConfigSource::default(),
+        ConfigPathOrigin::ExplicitCli => {
+            skipped(descriptor, ConfigSourceSkipReason::MissingExplicitCli)
+        }
         ConfigPathOrigin::Override => skipped(descriptor, ConfigSourceSkipReason::MissingOverride),
     }
 }

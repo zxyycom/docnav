@@ -49,7 +49,7 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
         .with_config_processing_id(CONFIG_PROCESSING)
         .with_config_source_descriptor(ParameterConfigSourceDescriptor::new(
             ConfigSourceLevel::Project,
-            ConfigPathOrigin::Override,
+            ConfigPathOrigin::ExplicitCli,
             missing_project.clone(),
         ))
         .with_user_config_path(user_config)
@@ -76,14 +76,17 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
         ParameterSourceInfo::new(ParameterSourceKind::UserConfig)
     );
 
-    assert_eq!(resolution.diagnostics().len(), 1);
-    let issue = resolution.diagnostics()[0].as_config_source().unwrap();
+    let issue = resolution
+        .diagnostics()
+        .iter()
+        .find_map(ParameterResolutionHandoff::as_config_source)
+        .unwrap();
     assert_config_source_issue(
         issue,
         "project",
-        "override",
+        "explicit_cli",
         &missing_project,
-        "missing_override",
+        "missing_explicit_cli",
     );
 
     let passthrough = passthrough_from(&resolution, ParameterSourceKind::DirectInput);
@@ -93,6 +96,32 @@ fn pipeline_resolves_paths_defaults_diagnostics_and_passthrough_through_facade()
         ParameterSourceInfo::new(ParameterSourceKind::DirectInput)
     );
     assert_eq!(passthrough.disposition, PassthroughDisposition::Delegated);
+}
+
+#[test]
+fn pipeline_config_path_facade_uses_override_origin() {
+    let fields = Params::field_defs().unwrap();
+    let missing_project = temp_path("pipeline-missing-override-project-config.json");
+
+    let resolution = ParameterResolutionPipeline::new(&fields)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
+        .with_project_config_path(missing_project.clone())
+        .resolve(None::<JsonValue>)
+        .unwrap();
+
+    let issue = resolution
+        .diagnostics()
+        .iter()
+        .find_map(ParameterResolutionHandoff::as_config_source)
+        .unwrap();
+    assert_config_source_issue(
+        issue,
+        "project",
+        "override",
+        &missing_project,
+        "missing_override",
+    );
 }
 
 #[test]
@@ -170,12 +199,12 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
     );
     let loaded_project = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::Project,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         invalid_project.clone(),
     ));
     let loaded_user = load_parameter_config_source(&ParameterConfigSourceDescriptor::new(
         ConfigSourceLevel::User,
-        ConfigPathOrigin::Override,
+        ConfigPathOrigin::ExplicitCli,
         user_config,
     ));
 
@@ -205,7 +234,7 @@ fn pipeline_reuses_loaded_config_sources_from_standard_loader() {
     assert_config_source_issue(
         issue,
         "project",
-        "override",
+        "explicit_cli",
         &invalid_project,
         "invalid_json",
     );

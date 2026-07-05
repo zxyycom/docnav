@@ -4,7 +4,7 @@ use docnav_parameter_resolution::{
     ids, ParameterResolution, ParameterSourceKind, MAX_PAGINATION_LIMIT,
 };
 use docnav_protocol::{Operation, PositiveInteger};
-use docnav_typed_fields::{FieldIdentity, TypedValue};
+use docnav_typed_fields::{FieldIdentity, TypedValue, ValidationReason};
 use serde_json::{json, Value};
 
 use crate::{NavigationError, NavigationOutputMode};
@@ -106,6 +106,21 @@ pub(super) fn typed_value_to_json(value: &TypedValue) -> Value {
         TypedValue::Object(value) => Value::Object(value.clone()),
         TypedValue::Json(value) => value.clone(),
         TypedValue::Null => Value::Null,
+    }
+}
+
+pub(super) fn validation_reason_code(reason: &ValidationReason) -> &'static str {
+    match reason {
+        ValidationReason::WrongType { .. } => "type_mismatch",
+        ValidationReason::BelowMinimum { .. } | ValidationReason::AboveMaximum { .. } => {
+            "range_invalid"
+        }
+        ValidationReason::MissingRequired => "missing_required",
+        ValidationReason::DisallowedEnumValue { .. } => "enum_invalid",
+        ValidationReason::BelowMinimumLength { .. }
+        | ValidationReason::AboveMaximumLength { .. } => "length_invalid",
+        ValidationReason::RegexMismatch { .. } => "pattern_invalid",
+        ValidationReason::DuplicateArrayItem { .. } => "duplicate_item",
     }
 }
 

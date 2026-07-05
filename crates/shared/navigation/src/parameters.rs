@@ -56,7 +56,7 @@ pub fn resolve_adapter_intent(
     let fields = fields::adapter_intent_fields()?;
     let resolution = resolve_with_fields(&fields, command, config_sources, &[], "adapter-intent")?;
 
-    config::first_resolution_error(&resolution)?;
+    config::first_resolution_error(&resolution, config_sources)?;
     Ok(AdapterIntent {
         adapter_id: values::optional_string_value(&resolution, ids::ADAPTER)?,
         source: values::resolved_source_label(&resolution, ids::ADAPTER).unwrap_or("built_in"),

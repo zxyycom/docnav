@@ -24,6 +24,29 @@ fn used_value_flag_is_retained_and_consumes_value() {
 }
 
 #[test]
+fn used_value_flag_requires_a_value_before_known_value_flag() {
+    let flags = [
+        KnownValueFlag::used("--project-config"),
+        KnownValueFlag::used("--user-config"),
+    ];
+    let error = scan(&["doc.md", "--project-config", "--user-config"], 1, &flags).unwrap_err();
+
+    assert_eq!(error.flag(), "--project-config");
+}
+
+#[test]
+fn used_value_flag_allows_unknown_hyphen_value() {
+    let flags = [KnownValueFlag::used("--project-config")];
+    let result = scan(&["doc.md", "--project-config", "--custom-path"], 1, &flags).unwrap();
+
+    assert_eq!(
+        result.retained_args,
+        ["doc.md", "--project-config", "--custom-path"]
+    );
+    assert!(result.rejected.is_empty());
+}
+
+#[test]
 fn unused_value_flag_records_fact_without_validating_value() {
     let flags = [KnownValueFlag::unused("--page")];
     let result = scan(&["doc.md", "--page", "nope"], 1, &flags).unwrap();

@@ -1,4 +1,5 @@
 use docnav_adapter_contracts::{AdapterError, AdapterOptionSpec, NativeOptionIssue};
+use docnav_diagnostics::AdapterConfigSourceDetails;
 use docnav_parameter_resolution::{ParameterResolution, ParameterSourceKind};
 use docnav_protocol::{OptionEntry, Options};
 use docnav_typed_fields::ValidationReason;
@@ -8,11 +9,12 @@ use crate::{NavigationCommand, NavigationConfigSources, NavigationError};
 
 use super::{
     input::native_option_cli_value,
-    values::{source_label, typed_value_to_json},
+    values::{source_label, typed_value_to_json, validation_reason_code},
 };
 
 pub(super) struct UnsupportedOptionContext<'a> {
     pub source: &'static str,
+    pub path_origin: Option<&'static str>,
     pub path: &'a str,
     pub owner: &'a str,
     pub selected_native_options: &'a [AdapterOptionSpec],
@@ -34,16 +36,18 @@ pub(super) fn native_option_validation_error(
 ) -> AdapterError {
     let source = source.map(source_label).unwrap_or("explicit");
     let value = raw_native_option_value_for_source(command, config_sources, spec, source);
+    let reason_code = validation_reason_code(reason);
     let issue = NativeOptionIssue {
         owner: spec.owner.clone(),
         namespace: spec.namespace().to_owned(),
         key: spec.key().to_owned(),
         source: source.to_owned(),
-        reason_code: native_option_reason_code(reason).to_owned(),
+        reason_code: reason_code.to_owned(),
         field: format!("arguments.options.{}", spec.key()),
         received: value.as_ref().map(received_value),
         expected: Some(spec.expected_value_description()),
         type_variant: Some(spec.value_kind_name().to_owned()),
+        config_source: option_config_source_issue(config_sources, spec, source, reason_code),
     };
     AdapterError::native_option_invalid(
         "Native option value is invalid.",
@@ -71,6 +75,15 @@ pub(super) fn unsupported_option(
         received: Some(received_value(&value)),
         expected: Some(supported_option_keys(context.selected_native_options)),
         type_variant: None,
+        config_source: context.path_origin.map(|path_origin| {
+            AdapterConfigSourceDetails::new(
+                context.source,
+                path_origin,
+                context.path,
+                "unsupported",
+            )
+            .with_field(format!("options.{key}"))
+        }),
     };
     AdapterError::native_option_invalid(
         "Native option is not supported by the selected adapter.",
@@ -139,19 +152,32 @@ fn raw_native_option_value_for_source(
     }
 }
 
-fn native_option_reason_code(reason: &ValidationReason) -> &'static str {
-    match reason {
-        ValidationReason::WrongType { .. } => "type_mismatch",
-        ValidationReason::BelowMinimum { .. } | ValidationReason::AboveMaximum { .. } => {
-            "range_invalid"
-        }
-        ValidationReason::MissingRequired => "missing_required",
-        ValidationReason::DisallowedEnumValue { .. } => "enum_invalid",
-        ValidationReason::BelowMinimumLength { .. }
-        | ValidationReason::AboveMaximumLength { .. } => "length_invalid",
-        ValidationReason::RegexMismatch { .. } => "pattern_invalid",
-        ValidationReason::DuplicateArrayItem { .. } => "duplicate_item",
-    }
+fn option_config_source_issue(
+    config_sources: &NavigationConfigSources,
+    spec: &AdapterOptionSpec,
+    source: &str,
+    reason_code: &str,
+) -> Option<AdapterConfigSourceDetails> {
+    let config_source = match source {
+        "project" => &config_sources.project,
+        "user" => &config_sources.user,
+        _ => return None,
+    };
+    let field = spec
+        .processing_path(super::CONFIG_PROCESSING)
+        .ok()
+        .flatten()
+        .map(|path| path.join("."))
+        .unwrap_or_else(|| format!("options.{}", spec.key()));
+    Some(
+        AdapterConfigSourceDetails::new(
+            config_source.level,
+            config_source.origin,
+            &config_source.path,
+            reason_code,
+        )
+        .with_field(field),
+    )
 }
 
 fn supported_option_keys(selected_native_options: &[AdapterOptionSpec]) -> String {

@@ -70,12 +70,16 @@ pub fn resolve_output(
         let output = parse_output(
             "defaults.output",
             output,
-            &context.project.project_config_path,
+            context.project.project_config_path(),
         )?;
         return Ok(ResolvedValue::project(json!(output.as_str())));
     }
     if let Some(output) = &context.user_config.defaults.output {
-        let output = parse_output("defaults.output", output, &context.project.user_config_path)?;
+        let output = parse_output(
+            "defaults.output",
+            output,
+            context.project.user_config_path(),
+        )?;
         return Ok(ResolvedValue::user(json!(output.as_str())));
     }
     Ok(ResolvedValue::built_in(json!(DEFAULT_OUTPUT)))

@@ -87,6 +87,17 @@ Proves:
 - project config 中的 `options.max_heading_level` 通过 selected Markdown declaration 影响 `outline` entries。
 - user config 中的 `options.max_heading_level` 可通过 `config set --user` 存储；当 `read` operation 不声明 native options 时，返回 structured `unsupported` / `option_issues` diagnostic 并保留 source level。
 
+### BB-CORE-CONFIG-PATH-001 Config path flags select CLI config targets
+Status: implemented
+Existing smoke task: `CORE-CONFIG-PATH-001`
+Code: `test/smoke/core/cases/config-management.ts`
+
+Proves:
+- 真实 document operation 通过 `--project-config <path>` 和 `--user-config <path>` 使用显式 selected config files，而不是 project context、`DOCNAV_CONFIG_DIR` 或平台默认路径。
+- `config set` 默认写 selected project config file，`config set --user` 写 selected user config file；`--user` 只选择 scope，文件路径由 `--project-config` / `--user-config` 或默认 resolution 选择。
+- `config list --path --operation` 使用 selected project/user config files 解析 document context。
+- `config set` 写入场景先复制 checked-in config fixture 到临时 selected config file，再把该临时文件传给 CLI。
+
 ### BB-CORE-SELECT-001 显式 adapter 失败返回 selection diagnostic
 Status: implemented
 Existing smoke task: `CORE-SELECT-001`
@@ -204,6 +215,38 @@ Code: `crates/docnav/src/cli/parser/tests/document_arguments.rs`
 
 Proves:
 - Unknown document flags、extra document positionals and operation-inapplicable known arguments produce parser diagnostics whose protocol-json error projection preserves reason、received token、expected context and repair guidance.
+
+### WB-CORE-CONFIG-PATH-001 Core parser and resolver select config file paths
+Status: implemented
+Code: `crates/docnav/src/cli/parser/tests/config_paths.rs`
+
+Proves:
+- Core parser accepts `--project-config <path>` and `--user-config <path>` on document operations, `config`, and `doctor`; accepts `--project-config <path>` on `init`; and rejects missing values or use on undocumented commands before reading config sources or dispatching operations.
+- Config path resolution treats explicit values as exact config JSON file paths, not directories.
+- User config path resolution uses `--user-config`, then `DOCNAV_CONFIG_DIR/docnav.json`, then the platform user default under `.docnav/docnav.json`.
+- Project config path resolution uses `--project-config`, then the current project context's `.docnav/docnav.json`, without changing project context discovery.
+- Core descriptors preserve source level, resolved path and path origin for downstream navigation loading.
+
+### WB-CORE-CONFIG-SOURCE-001 Core config source store preserves navigation-owned fields
+Status: implemented
+Code: `crates/docnav/src/config/store/tests.rs`
+
+Proves:
+- Core config source loading accepts documented navigation-owned `outline.mode_rules[]` and `outline.auto_full_read.thresholds[]` fields instead of rejecting them as unknown top-level config.
+- Core config source writeback preserves raw `outline` config while continuing to validate core-owned defaults and registry-declared native option config keys.
+- Explicit CLI selected config paths report source-scoped `explicit_cli` / `missing_explicit_cli` diagnostics while default missing paths remain absent.
+
+### WB-CORE-CONFIG-PATH-002 Core config commands use selected config file paths
+Status: implemented
+Code: `crates/docnav/src/config/commands/tests.rs`
+
+Proves:
+- `config set` writes selected project config file, and `config set --user` writes selected user config file.
+- `config get` / `config list` reject explicitly selected missing config files when that source is needed, while default missing config paths remain absent.
+- `config get --user` and `config list --user` values read only the selected user config; project config source loading is deferred unless `config list --user --path` asks document context resolution to use the full selected descriptor set.
+- `config set` and `config unset` mutate core-owned keys without dropping navigation-owned `outline` config.
+- `config list --path --operation` passes selected project/user config files and origins into document context resolution.
+- `init --project-config` creates or preserves the selected project config file and rejects an existing directory at that selected file path.
 
 ### WB-NAV-INPUT-RESOLUTION-001 Navigation input resolution 保持来源解析边界
 Status: implemented
@@ -523,6 +566,16 @@ Proves:
 - `docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。
 - Project config source values participate in selected adapter option resolution and dispatch, producing the expected protocol success result.
 - Nested non-object config source shapes at `defaults`、`defaults.pagination` 和 `options` return navigation-owned typed input errors.
+
+### WB-NAVIGATION-CONFIG-SOURCES-002 Navigation loads config sources with descriptor origin
+Status: implemented
+Code: `crates/shared/navigation/src/tests/navigation/config_sources.rs`, `crates/shared/parameter-resolution/src/tests/construction.rs`
+
+Proves:
+- `docnav-navigation` loads project/user config sources from core-supplied descriptors that carry source level, resolved path and path origin.
+- Default-path missing project/user config sources are absent without diagnostics.
+- Explicit-path missing、unreadable、invalid JSON 和 top-level non-object config sources return blocking config source diagnostics with source level and selected config file path.
+- Selecting a config file through CLI flag does not promote values inside that file to direct argv source; parameter priority remains `explicit > project > user > built_in`.
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
