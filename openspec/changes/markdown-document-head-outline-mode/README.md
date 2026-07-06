@@ -1,3 +1,7 @@
 # markdown-document-head-outline-mode
 
-Add a Markdown document-head outline mode that exposes frontmatter and pre-heading context as adapter-owned readable regions.
+Expose Markdown document head as one adapter-owned readable region in structured outline.
+
+Scope:
+- `markdown-adapter` capability only.
+- One special ref: `HEAD:leading`.

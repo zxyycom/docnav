@@ -1,20 +1,19 @@
-本 design 只在 `openspec/changes/markdown-document-head-outline-mode/` 下形成未审核临时文档，说明 Markdown document head outline mode 的范围、refs、配置和取舍。
+本 design 定义 Markdown document head ref 的范围、read/find 行为和验证边界。
 
 ## Context
 
-当前 Markdown heading section 从 heading 自身开始，首个有效 heading 前的内容不属于任何 heading ref。`find` 命中这一区域时当前实现只能退回 `doc:full`，这能保证 read 包含命中文本，但粒度过粗。
+当前 Markdown heading section 从 heading 自身开始，首个有效 heading 前的内容不属于任何 heading ref。`find` 命中这一区域时只能退回 `doc:full`，可以保证 read 包含命中文本，但读取粒度过粗。
 
-已有 `markdown-frontmatter-outline-mode` change 聚焦 YAML frontmatter metadata；它无法覆盖 frontmatter 后的普通前导正文，也会引入 outline 顶层 metadata 字段和 inline 分页复杂度。本 change 改用 adapter-owned refs 暴露 document head，保持普通 structured outline shape。
+Document head 将这段前导内容建模为 Markdown adapter-owned readable region，使 outline 可以提供结构化入口，read 继续承担大段内容和分页输出。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 将首个有效 Markdown heading 前的内容建模为 document head 可读区域。
-- 默认用一个 `HEAD:leading` entry 暴露 document head，让调用方一次 read 获取 frontmatter 与前导正文原文。
-- 在需要精细消费时支持 `split` 模式，分别暴露 recognized frontmatter block 与 preamble。
-- 支持显式 frontmatter block policy，默认只承诺文档开头一个 YAML delimiter block，多 metadata block 必须显式启用。
-- 保持 heading ref grammar、普通 heading read、`doc:full` fallback 和 shared ref opacity 不变。
+- 将首个有效 Markdown heading 前的非空内容建模为 document head 可读区域。
+- 用一个 `HEAD:leading` entry 暴露 document head，让调用方一次 read 获取 frontmatter 与前导正文原文。
+- 让 find 命中 document head 时返回可 read 的区域 ref。
+- 保持 heading ref grammar、普通 heading read、`doc:full` fallback、shared ref opacity 和 protocol top-level shape 不变。
 
 **Non-Goals:**
 
@@ -22,55 +21,35 @@
 - 不解析 YAML 字段语义，不定义 metadata schema、排序、合并或规范化。
 - 不把 document head 当作其它 adapter 必须复用的共享概念。
 - 不改变 `outline-unstructured-full-read` 的整篇全文读取策略。
-- 不在审计门禁完成前更新主规范、schema/example、测试或实现代码。
 
 ## Decisions
 
-1. **document head 是可读区域，不是 metadata 字段。**
+1. **document head 是一个合并可读区域。**
 
-   Document head 定义为当前 Markdown 文档从开头到第一个有效 Markdown heading 起点之前的原文区域。默认 `combined` 模式返回一个 `HEAD:leading` outline entry；读取该 ref 返回整段原文，`content_type` 为 `text/markdown`。这保留 YAML delimiter、空行、注释、序言和其它前导文本，避免 adapter 猜测摘要或 metadata 语义。
+   Document head 定义为当前 Markdown 文档从开头到第一个有效 Markdown heading 起点之前的原文区域。区域读取保留原文，包括 YAML delimiter、空行、注释、序言和其它前导文本，避免 adapter 猜测摘要或 metadata 语义。
 
-   备选方案是把它作为 outline 顶层 metadata inline 返回。该方案会扩大 shared/readable 输出 shape，并且无法优雅承载普通 Markdown 前导正文，因此不采用。
+   只有 document head 包含非空、非纯空白内容，并且当前 structured outline 至少有一个可见 heading entry 时，outline 才暴露 document head entry。当前 outline 参数下没有可见 heading 时，Markdown outline 继续使用既有 `doc:full` fallback。
 
-2. **默认 `combined`，需要时再 `split`。**
+2. **满足条件时始终暴露。**
 
-   `document_head_outline_mode` 是 Markdown adapter-owned native option source，合法值为 `combined`、`split`、`hidden`，默认 `combined`。`combined` 优先服务 agent 选择章节前“反正大概率需要看一下”的场景；`split` 给需要单独读取 YAML 或 preamble 的消费者使用；`hidden` 保留现有只看 heading outline 的行为。
+   Document head 是 Markdown structured outline 的默认组成部分。只要满足 entry eligibility，outline 就返回 `HEAD:leading`。
 
-   `split` 模式下，frontmatter ref 使用 line-based adapter ref，例如 `FM:L1`；preamble 使用 `P:preamble`。当没有对应区域时不返回该 entry。
+   这个 ref 仍是 adapter-owned opaque string。Core、protocol 和 readable output 只传递或展示 adapter 返回的 ref，不解析 document head 语义。
 
-3. **frontmatter dialect 显式化。**
+3. **outline entry 只作为导航入口，内容通过 read 分页。**
 
-   `frontmatter_block_policy` 是 Markdown adapter-owned native option source，默认 `opening_only`：只识别文件开头的一个 YAML delimiter block，payload 不包含起止 delimiter。`pandoc_metadata_blocks` 只有在 adapter 明确声明为 accepted native option value 时才可支持多 metadata block；未声明或未实现的 value 必须在 adapter owner 边界被拒绝。实现必须在 Markdown adapter 文档中写清识别边界，并用 fixture 覆盖多个 block、未闭合 block 和普通 horizontal rule 的边界。
+   Outline 中的 `HEAD:leading` entry 只返回既有 entry facts，例如 `ref`、非空 `label`、`kind`、`location.line_start` 和必要 metadata。大段内容仍由 read 返回，并沿用 read 的 Unicode 字符预算、page 和 content block 输出规则。Raw protocol 不返回 `display`；readable output 从 entry facts 派生 display。
 
-   在 `combined` 模式下，frontmatter policy 只影响 display 摘要和 split 需要的内部分类；`HEAD:leading` read 始终返回 document head 原文。
+4. **find 必须返回可继续 read 的区域 ref。**
 
-4. **outline entry 只作为导航入口，内容通过 read 分页。**
-
-   Outline 中的 `HEAD:leading`、`FM:L{line}` 和 `P:preamble` entries 只包含 ref/display。大段内容仍由 read 返回，并沿用 read 的 Unicode 字符预算、page 和 content block 输出规则。这样避免把 outline pagination 与大段头部内容绑在一起。
-
-5. **document head 不破坏既有 `doc:full` fallback。**
-
-   如果当前 outline 参数下没有可见 heading entry，Markdown outline 继续使用既有 `doc:full` fallback，而不是只返回 document head entry。Document head entry 只在普通 structured outline 中作为首个可选区域出现在 heading entries 之前。
-
-6. **find 必须返回可继续 read 的区域 ref。**
-
-   当 find 命中 document head 且 document head mode 暴露对应区域时，match ref 使用 `HEAD:leading` 或 split 下更精确的 `FM:L{line}` / `P:preamble`。当 mode 为 `hidden` 或当前 outline 走 `doc:full` fallback 时，find 保持可 read 的既有行为，必要时使用 `doc:full`。
+   当 find 命中 document head 且当前 structured outline 至少有一个可见 heading entry 时，match ref 使用 `HEAD:leading`。当当前 outline 走 `doc:full` fallback 时，find 保持可 read 的既有 fallback 行为，必要时使用 `doc:full`。
 
 ## Risks / Trade-offs
 
-- [Risk] `HEAD:leading` 包含 YAML delimiter，与 split frontmatter 的 delimiter-free payload 不同。Mitigation: 文档明确 `combined` 是原文区域读取，`split` 才是 typed region 读取。
-- [Risk] `combined` 默认会让 outline entry 多一个非 heading entry。Mitigation: display 明确标注 `document head`，ref 前缀区别于 heading ref，且 `hidden` 可恢复旧 outline。
-- [Risk] 多 metadata block 容易误判 horizontal rule。Mitigation: 默认 `opening_only`；多 block 只能显式启用并由测试覆盖方言边界。
-- [Risk] 与现有 `markdown-frontmatter-outline-mode` change 重叠。Mitigation: 本 change 明确计划取代较窄 frontmatter 方案；进入实现前必须通过审计门禁确认只推进一个方案。
+- [Risk] structured outline 默认多一个非 heading entry。Mitigation: entry 使用非 heading `kind`、清晰 `label` 和不同 ref prefix，调用方仍可按 `kind` 或 ref prefix 区分 heading 与 document head。
 
-## Migration Plan
+## Implementation Order
 
-1. 先完成本 change 的阻塞级审计，确认它取代 `markdown-frontmatter-outline-mode` 或将后者关闭/归档为 superseded。
-2. 审计通过后同步 `docs/adapters/markdown.md`、Markdown config schema/example 和测试计划。
-3. 再实现 parser 区域识别、adapter-owned options、outline/find/read refs 和 smoke/unit tests。
-4. 未配置用户默认获得 `combined` 行为；如需要完全保持旧 outline，可设置 `document_head_outline_mode: "hidden"`。
-
-## Open Questions
-
-- `pandoc_metadata_blocks` 是否首期实现，还是只在 schema 中预留但不暴露为 accepted native option value，需要审计时确认；未暴露时必须被 strict input validation 拒绝。
-- `split` 模式下多个 frontmatter entries 的 display 是否需要包含行号、block 序号或 cost，进入实现前应在 Markdown adapter 文档中固定。
+1. 同步 `docs/adapters/markdown.md`、testing case ledger 和测试计划。
+2. 实现 parser 区域识别、outline/find/read ref 和 smoke/unit tests。
+3. 运行 adapter tests、smoke tests、OpenSpec strict validation 和 workspace verification。
