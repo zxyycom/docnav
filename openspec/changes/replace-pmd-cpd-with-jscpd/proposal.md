@@ -1,6 +1,6 @@
 本 change 起草用 jscpd 替换仓库质量观测中的 PMD CPD duplicate-code scanner，并保持归一化质量快照、warning、report 和 baseline 语义稳定。
 
-当前 change 只在 `openspec/changes/replace-pmd-cpd-with-jscpd/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+实现前审计阶段曾确认 proposal slice 只在 `openspec/changes/replace-pmd-cpd-with-jscpd/` 下形成临时文档；进入实现后按 tasks 同步主规范、文档、测试、CI、依赖和代码。
 
 ## Why
 

@@ -3,7 +3,7 @@
 /**
  * Docnav 代码质量观测命令入口。
  *
- * 代码质量扫描：Clippy 保持 Rust 阻断 gate，Lizard/scc/PMD CPD
+ * 代码质量扫描：Clippy 保持 Rust 阻断 gate，Lizard/scc/jscpd
  * 生成代码质量快照、warning 状态和报告。
  */
 
@@ -111,7 +111,7 @@ function printBanner(scanProfile: QualityScanOptions["scanProfile"]): void {
   console.log("Docnav Code Quality Observability");
   console.log(`Profile: ${scanProfile}`);
   if (scanProfile === "quick") {
-    console.log("Quick check — skips baseline comparison and PMD CPD duplicate detection.");
+    console.log("Quick check — skips baseline comparison and jscpd duplicate detection.");
   } else {
     console.log("Full check — runs all configured scanners; baseline comparison is opt-in.");
   }

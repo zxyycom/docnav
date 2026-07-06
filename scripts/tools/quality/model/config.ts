@@ -8,7 +8,13 @@
 
 import { errorMessage } from "../../errors.ts";
 import { isStringArray } from "../../type-guards.ts";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { QualityConfig } from "./schema.ts";
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const JSCPD_BIN_NAME = process.platform === "win32" ? "jscpd.cmd" : "jscpd";
+const DEFAULT_JSCPD_COMMAND = resolve(REPO_ROOT, "node_modules", ".bin", JSCPD_BIN_NAME);
 
 /**
  * 读取 JSON 编码的字符串数组环境变量。
@@ -170,8 +176,8 @@ export const DEFAULT_CONFIG = Object.freeze({
     }
   },
 
-  pmdCpd: {
-    /** CPD cache miss task 的最大并发数；任务按 code area 并行执行 */
+  jscpd: {
+    /** jscpd cache miss task 的最大并发数；任务按 code area 并行执行 */
     maxParallelTasks: 4,
     /** 按 code area 拆分的 minimum tokens（超过此阈值才报告） */
     minimumTokens: Object.freeze({
@@ -190,34 +196,7 @@ export const DEFAULT_CONFIG = Object.freeze({
     }
   },
 
-  acceptedWarnings: Object.freeze([
-    {
-      ruleId: "pmd-cpd-duplicate-code",
-      sourceTool: "pmd-cpd",
-      codeArea: "rust-production",
-      metric: "duplicate-tokens",
-      value: 86,
-      suggestionIncludes: [
-        "crates/shared/protocol/src/envelope.rs",
-        "crates/shared/protocol/src/operation_result.rs"
-      ],
-      reason:
-        "OperationArguments::operation and OperationResult::operation map the same Operation enum variants at separate protocol request and result boundaries. Keeping the mappings separate preserves boundary ownership; extracting shared code would couple request-argument decoding to result-envelope projection for little maintenance gain."
-    },
-    {
-      ruleId: "pmd-cpd-duplicate-code",
-      sourceTool: "pmd-cpd",
-      codeArea: "rust-production",
-      metric: "duplicate-tokens",
-      value: 114,
-      suggestionIncludes: [
-        "crates/shared/diagnostics/src/details/payload.rs",
-        "crates/shared/parameter-resolution/src/resolution.rs"
-      ],
-      reason:
-        "AdapterConfigSourceDetails is the serialized diagnostics payload, while ParameterConfigSourceIssue is the parameter-resolution handoff fact. Keeping the constructors separate preserves crate and owner boundaries; extracting a shared type would couple fact capture to protocol projection for trivial field assignment."
-    }
-  ]),
+  acceptedWarnings: Object.freeze([]),
 
   report: {
     topN: 10,
@@ -229,7 +208,7 @@ export const DEFAULT_CONFIG = Object.freeze({
 
   artifactDir: "artifacts/docnav-quality",
 
-  /** 工具可用性：如何发现 lizard/scc/pmd 命令 */
+  /** 工具可用性：如何发现 lizard/scc/jscpd 命令 */
   tools: {
     lizard: {
       /** Python 解释器（优先使用 DOCNAV_LIZARD_CMD 环境变量，其次 'python3' 或 'python'（Windows）） */
@@ -243,10 +222,10 @@ export const DEFAULT_CONFIG = Object.freeze({
       command: process.env.DOCNAV_SCC_CMD || "scc",
       args: readJsonStringArrayEnv("DOCNAV_SCC_ARGS")
     },
-    pmdCpd: {
-      /** PMD CPD 的命令，使用快速启动脚本或直接 Java 调用 */
-      command: "pmd",
-      args: ["cpd"]
+    jscpd: {
+      /** jscpd 通过当前仓库 devDependency 的本地 bin 提供，不依赖 baseline repo、全局 jscpd 或 cpd 命令。 */
+      command: process.env.DOCNAV_JSCPD_CMD || DEFAULT_JSCPD_COMMAND,
+      args: readJsonStringArrayEnv("DOCNAV_JSCPD_ARGS")
     }
   }
 }) satisfies QualityConfig;

@@ -28,6 +28,24 @@ Quality snapshots MUST cover the repository's agreed initial metrics such as lin
 - **THEN** it contains metric sections for the configured tool set
 - **THEN** absent tools are represented explicitly rather than silently hidden
 
+### Requirement: Duplicate-code observation uses repository-managed jscpd
+Repository quality observation MUST use repository-managed jscpd for duplicate-code detection when full-profile duplicate detection is enabled. Duplicate-code observation MUST NOT require Java, PMD, a system `pmd` command, or a system `cpd` command.
+
+#### Scenario: Full profile normalizes jscpd findings
+- **WHEN** the full quality profile runs and jscpd is available
+- **THEN** the duplicate-code scan invokes jscpd through the repository dependency surface
+- **THEN** jscpd JSON findings are normalized into duplicate-code fragments before reports, warnings, baseline comparison, cache entries, or verifier output consume them
+
+#### Scenario: Quick profile skips duplicate detection
+- **WHEN** the quick quality profile runs
+- **THEN** duplicate-code detection is skipped
+- **THEN** the user-visible output states that the run is not a full quality scan
+
+#### Scenario: Missing or invalid jscpd output is explicit
+- **WHEN** jscpd is unavailable, exits non-zero, omits its JSON report, or emits unparsable JSON
+- **THEN** tool availability or scan execution records an explicit failure
+- **THEN** the scan does not silently report an empty successful duplicate-code result
+
 ### Requirement: Reports support machine and human consumers
 Quality reports MUST provide machine-readable data and human-readable summaries without requiring one consumer to parse the other's representation.
 

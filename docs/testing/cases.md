@@ -830,14 +830,18 @@ Code: `scripts/tools/quality/measurement/scanners.test.ts`
 Proves:
 - scc 3.7 by-file CSV 解析 Provider path 和 `Complexity` decision-token value，并将未知 header 投影为 parser failure。
 - Lizard 1.23 CSV row 解析 function name、file path、line range、NLOC、parameter count 和 cyclomatic complexity。
-- PMD CPD parser helpers 解析 code-area language、version output 和 XML duplicate fragment locations/token count。
+- jscpd parser helpers 解析 code-area format、version output 和 JSON duplicate fragment locations/token count，并把 invalid JSON 或 invalid duplicate item 映射为 `jscpd-parse-failure`。
 
-### AUX-QUALITY-CPD-WRAPPER-001 Quality PMD CPD wrapper failure projection 稳定
+### AUX-QUALITY-JSCPD-WRAPPER-001 Quality jscpd wrapper failure projection 稳定
 Status: implemented
-Code: `scripts/tools/quality/measurement/scanners.test.ts`
+Code: `scripts/tools/quality/measurement/scanners.test.ts`, `scripts/tools/quality/measurement/scanners/jscpd/area-scans.test.ts`
 
 Proves:
-- PMD CPD wrapper 将 exit 4 且 empty output 的工具结果映射为 skipped scan failure diagnostic，错误文本保留 exit code 和 `no output` 原因。
+- jscpd wrapper 将 successful process without JSON report 映射为 `jscpd-report-failure` scan failure diagnostic，不把缺失或空 JSON 当作 successful empty duplicate-code result。
+- jscpd wrapper 使用真实 `jscpd` duplicate scan 证明发现重复代码时仍解析 JSON 并生成 `DuplicateCodeFragment`，不让第三方 threshold 决定扫描失败。
+- jscpd tool availability check 将 missing dependency 或 unavailable binary 映射为 `tool-unavailable`。
+- jscpd wrapper 将 non-zero execution 映射为 `jscpd-execution-error`，不把执行失败标成 skipped scan。
+- current revision jscpd area scan 将 execution/report/parse failure 记录为 `fatalIssues` 的 `current-scan` failure channel，不静默降级为空 duplicate result。
 
 ### AUX-QUALITY-CACHE-001 Quality measurement cache identity 稳定
 Status: implemented
@@ -849,12 +853,12 @@ Proves:
 - cache hit 返回不带 changed-scope annotation 的 metric，保持复用扫描与当前 diff 语义分离。
 - baseline snapshot cache key changes for tested tool version differences，命中时通过 snapshot hash 防止错读缓存内容。
 
-### AUX-QUALITY-CPD-TASK-001 Quality CPD task planning 稳定
+### AUX-QUALITY-JSCPD-TASK-001 Quality jscpd task planning 稳定
 Status: implemented
-Code: `scripts/tools/quality/measurement/scanners/pmd-cpd/area-scans.test.ts`
+Code: `scripts/tools/quality/measurement/scanners/jscpd/area-scans.test.ts`
 
 Proves:
-- PMD CPD 每个 code area 生成一个 scan task。
+- jscpd 每个 code area 生成一个 scan task。
 - task id 和文件排序保持可复现。
 
 ### AUX-QUALITY-FINGERPRINT-001 Quality input fingerprint 稳定
@@ -910,8 +914,8 @@ Proves:
 - warning record 的 rule id、metric、message 和 suggestion 反映代码行数、阈值和 responsibility-focused guidance。
 - 函数 warning 使用复杂度感知的代码密度阈值：普通复杂度函数超过 50 行触发，CC < 5 的简单函数超过 150 行才触发。
 - 函数代码密度 warning record 的 rule id、metric 和 message 反映组合阈值语义，不再输出单纯函数代码行数规则。
-- 已知可接受 warning 保留在 all/changed/regression warning records 中，并通过 `acceptedReason` 字段携带原因。
-- accepted warning 匹配不依赖重复片段行号；匹配不到任何 generated warning 的 accepted rule 会生成 `quality-accepted-warning-unmatched` warning。
+- 配置的已知可接受 warning 保留在 all/changed/regression warning records 中，并通过 `acceptedReason` 字段携带原因。
+- 配置的 accepted warning 匹配不依赖重复片段行号；匹配不到任何 generated warning 的 accepted rule 会生成 `quality-accepted-warning-unmatched` warning。
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented

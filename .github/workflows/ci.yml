@@ -17,7 +17,6 @@ jobs:
     timeout-minutes: 45
     env:
       CARGO_TERM_COLOR: always
-      PMD_VERSION: 7.25.0
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,12 +63,6 @@ jobs:
         with:
           go-version: "1.25.x"
 
-      - name: Install Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
       - name: Install quality tools
         run: |
           uv venv "$RUNNER_TEMP/docnav-quality-venv"
@@ -81,12 +74,7 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           export PATH="$(go env GOPATH)/bin:$PATH"
           scc --version
-          curl -fsSL -o "$RUNNER_TEMP/pmd.zip" "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-dist-${PMD_VERSION}-bin.zip"
-          unzip -q "$RUNNER_TEMP/pmd.zip" -d "$RUNNER_TEMP/pmd"
-          echo "$RUNNER_TEMP/pmd/pmd-bin-${PMD_VERSION}/bin" >> "$GITHUB_PATH"
-          export PATH="$RUNNER_TEMP/pmd/pmd-bin-${PMD_VERSION}/bin:$PATH"
-          pmd --version
-          pmd cpd --help >/dev/null
+          pnpm exec jscpd --version
 
       - name: Verify workspace
         run: bun run verify:docnav-workspace

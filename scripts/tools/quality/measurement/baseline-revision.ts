@@ -4,7 +4,7 @@
 
 import { scanWithLizard } from "./scanners/lizard.ts";
 import { scanWithScc } from "./scanners/scc.ts";
-import { scanPmdCpdAreasWithCache } from "./scanners/pmd-cpd/area-scans.ts";
+import { scanJscpdAreasWithCache } from "./scanners/jscpd/area-scans.ts";
 import { classifyFiles } from "../model/code-areas.ts";
 import { buildAggregates } from "./aggregate.ts";
 import { collectBaselineFiles, buildFingerprints } from "../input/files.ts";
@@ -77,8 +77,8 @@ export async function runBaselineRevisionScan(
     functionMetrics = scanBaselineLizard({ context, baselineFiles });
   }
 
-  if (isToolAvailable(toolResults, "pmd-cpd")) {
-    duplicateCode = await scanBaselineCpd({ context, fileMap });
+  if (isToolAvailable(toolResults, "jscpd")) {
+    duplicateCode = await scanBaselineJscpd({ context, fileMap });
   }
 
   const aggregates = buildAggregates({
@@ -140,15 +140,15 @@ function scanBaselineLizard({
   return functionMetrics;
 }
 
-async function scanBaselineCpd({
+async function scanBaselineJscpd({
   context,
   fileMap
 }: {
   context: BaselineScanContext;
   fileMap: CodeAreaFileMap;
 }): Promise<DuplicateCodeFragment[]> {
-  console.log("  Running baseline PMD CPD...");
-  const fragments = await scanPmdCpdAreasWithCache({
+  console.log("  Running baseline jscpd...");
+  const fragments = await scanJscpdAreasWithCache({
     cacheRootDir: context.cacheRootDir,
     commitSha: context.commitSha,
     config: context.config,
@@ -161,6 +161,6 @@ async function scanBaselineCpd({
     toolResults: context.toolResults
   });
 
-  console.log(`    Baseline CPD: ${fragments.length} duplicate fragments`);
+  console.log(`    Baseline jscpd: ${fragments.length} duplicate fragments`);
   return fragments;
 }

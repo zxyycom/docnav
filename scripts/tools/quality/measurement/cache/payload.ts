@@ -9,13 +9,13 @@ import {
   SCAN_CACHE_VERSION,
   type BaselineSnapshotCacheIdentity,
   type BaselineSnapshotCacheManifest,
-  type CpdCacheIdentity,
+  type DuplicateCodeCacheIdentity,
   type ScanCachePayload
 } from "./types.ts";
 
 export function isMatchingPayload(
   payload: unknown,
-  identity: CpdCacheIdentity,
+  identity: DuplicateCodeCacheIdentity,
   cacheKey: string
 ): payload is ScanCachePayload {
   if (!isNonArrayRecord(payload)) return false;
@@ -68,7 +68,7 @@ export function isBaselineSnapshot(value: unknown): value is BaselineSnapshot {
 
 function cacheIdentityFieldsMatch(
   payload: Record<string, unknown>,
-  identity: CpdCacheIdentity,
+  identity: DuplicateCodeCacheIdentity,
   cacheKey: string
 ): boolean {
   return payload.scanCacheVersion === SCAN_CACHE_VERSION &&
@@ -81,7 +81,7 @@ function cacheIdentityFieldsMatch(
     payload.commitSha === identity.commitSha;
 }
 
-function cacheStructuredFieldsMatch(payload: Record<string, unknown>, identity: CpdCacheIdentity): boolean {
+function cacheStructuredFieldsMatch(payload: Record<string, unknown>, identity: DuplicateCodeCacheIdentity): boolean {
   return stableStringify(payload.normalizedToolArgs) === stableStringify([...identity.normalizedToolArgs]) &&
     stableStringify(payload.inputFingerprint) === stableStringify(identity.inputFingerprint);
 }

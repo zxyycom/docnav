@@ -70,11 +70,11 @@ describe("quality warning generation", () => {
     assert.match(warnings.all[1]!.message, /threshold: 50 code lines/);
   });
 
-  it("adds accepted reasons without relying on duplicate line numbers", () => {
+  it("adds configured accepted reasons without relying on duplicate line numbers", () => {
     const warnings = generateWarningChannels({
       baseline: null,
       comparisonStatus: "baseline-unavailable",
-      config: DEFAULT_CONFIG,
+      config: configWithAcceptedWarnings([acceptedProtocolOperationDuplicateAcceptance()]),
       duplicates: [acceptedProtocolOperationDuplicate({ startLineOffset: 20 })],
       files: [],
       functions: [],
@@ -93,8 +93,8 @@ describe("quality warning generation", () => {
       comparisonStatus: "baseline-unavailable",
       config: configWithAcceptedWarnings([
         {
-          ruleId: "pmd-cpd-duplicate-code",
-          sourceTool: "pmd-cpd",
+          ruleId: "jscpd-duplicate-code",
+          sourceTool: "jscpd",
           metric: "duplicate-tokens",
           value: 999,
           reason: "stale acceptance for test"
@@ -172,6 +172,21 @@ function acceptedProtocolOperationDuplicate({
         codeArea: "rust-production"
       }
     ]
+  };
+}
+
+function acceptedProtocolOperationDuplicateAcceptance(): AcceptedWarningConfig {
+  return {
+    ruleId: "jscpd-duplicate-code",
+    sourceTool: "jscpd",
+    codeArea: "rust-production",
+    metric: "duplicate-tokens",
+    suggestionIncludes: [
+      "crates/shared/protocol/src/envelope.rs",
+      "crates/shared/protocol/src/operation_result.rs"
+    ],
+    reason:
+      "OperationArguments::operation and OperationResult::operation map the same Operation enum variants at separate protocol request and result boundaries."
   };
 }
 

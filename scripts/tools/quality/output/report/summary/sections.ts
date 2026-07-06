@@ -7,7 +7,7 @@ import {
 } from "./tables.ts";
 
 export function title() {
-  const nonBlocking = "**⚠️ 非阻断观测快照 — Lizard、scc 和 PMD CPD 指标值不作为合并阻断条件。Clippy 继续承担 Rust 阻断式 lint gate。**";
+  const nonBlocking = "**⚠️ 非阻断观测快照 — Lizard、scc 和 jscpd 指标值不作为合并阻断条件。Clippy 继续承担 Rust 阻断式 lint gate。**";
   return [
     "# Docnav Code Quality Snapshot",
     "",
@@ -128,7 +128,7 @@ export function footer(metrics: QualityMetrics, options: ReportOptions): string 
     "",
     `*Config version: ${metrics.metadata.configVersion} | Schema version: ${metrics.metadata.schemaVersion}*`,
     "",
-    "*⚠️ 本报告为**非阻断观测快照**。Lizard、scc 和 PMD CPD 指标值不作为合并阻断条件。Clippy 继续承担 Rust 阻断式 lint gate。*"
+    "*⚠️ 本报告为**非阻断观测快照**。Lizard、scc 和 jscpd 指标值不作为合并阻断条件。Clippy 继续承担 Rust 阻断式 lint gate。*"
   ].join("\n");
 }
 

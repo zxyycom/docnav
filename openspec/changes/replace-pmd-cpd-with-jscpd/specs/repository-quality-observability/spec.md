@@ -1,11 +1,11 @@
 本 change 的 delta spec 定义 repository quality duplicate-code 观测迁移到 jscpd 后必须保持的可观察行为、归一化边界和非阻断语义。
 
-当前 change 只在 `openspec/changes/replace-pmd-cpd-with-jscpd/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+实现前审计阶段曾确认 proposal slice 只在 `openspec/changes/replace-pmd-cpd-with-jscpd/` 下形成临时文档；进入实现后按 tasks 同步主规范、文档、测试、CI、依赖和代码。
 
 ## ADDED Requirements
 
 ### Requirement: Duplicate-code observation uses jscpd
-Repository quality observation MUST use jscpd as the configured duplicate-code scanner when duplicate detection is enabled. The scanner MUST be discovered through repository-managed package/dependency configuration, and duplicate-code observation MUST NOT require Java, PMD, or a system `pmd` command.
+Repository quality observation MUST use jscpd as the configured duplicate-code scanner when duplicate detection is enabled. The scanner MUST be discovered through repository-managed package/dependency configuration, and duplicate-code observation MUST NOT require Java, PMD, a system `pmd` command, or a system `cpd` command.
 
 #### Scenario: Full profile runs jscpd duplicate detection
 - **WHEN** the full quality profile runs and jscpd is available

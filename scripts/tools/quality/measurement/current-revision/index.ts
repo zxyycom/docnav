@@ -3,7 +3,7 @@
  */
 
 import { buildAggregates } from "../aggregate.ts";
-import { runPmdCpdScan } from "./pmd-cpd.ts";
+import { runJscpdScan } from "./jscpd.ts";
 import { runLizardScan } from "./lizard.ts";
 import { runSccScan } from "./scc.ts";
 import type { ScanContext } from "./scan-context.ts";
@@ -24,9 +24,9 @@ export async function runCurrentRevisionScan({
   runSccScan(context, scanFiles);
   runLizardScan(context, scanFiles);
   if (scanProfile === "full") {
-    await runPmdCpdScan(context, fileMap);
+    await runJscpdScan(context, fileMap);
   } else {
-    console.log("Skipping PMD CPD duplicate detection for quick quality check");
+    console.log("Skipping jscpd duplicate detection for quick quality check");
   }
 
   context.metrics.aggregates = buildAggregates({

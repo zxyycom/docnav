@@ -13,7 +13,7 @@ import {
   writeBaselineSnapshotCacheEntry,
   writeScanCacheEntry,
   type BaselineSnapshotCacheIdentity,
-  type CpdCacheIdentity
+  type DuplicateCodeCacheIdentity
 } from "./cache.ts";
 import { DEFAULT_CONFIG } from "../model/config.ts";
 import type { BaselineSnapshot, DuplicateCodeFragment } from "../model/schema.ts";
@@ -117,9 +117,23 @@ describe("quality measurement cache", () => {
         `.cache/docnav/quality/quality-scan-cache-v1/${baseKey}.json`
       );
 
+      const oldPmdIdentity = {
+        ...identity,
+        toolName: "pmd-cpd" as "jscpd",
+        toolVersion: "7.25.0"
+      };
+      assert.notEqual(baseKey, buildScanCacheKey(oldPmdIdentity));
+      assert.notEqual(
+        baseKey,
+        buildScanCacheKey({
+          ...identity,
+          normalizedToolArgs: ["exec", "jscpd", "--min-tokens", "75", "--reporters", "json"]
+        })
+      );
+
       const mismatched = loadScanCacheEntry({
         rootDir: tempDir,
-        identity: { ...identity, toolVersion: "7.26.0" }
+        identity: { ...identity, toolVersion: "5.0.12" }
       });
       assert.equal(mismatched.hit, false);
     } finally {
@@ -163,12 +177,12 @@ describe("quality measurement cache", () => {
   });
 });
 
-function cacheIdentity(): CpdCacheIdentity {
+function cacheIdentity(): DuplicateCodeCacheIdentity {
   return {
     scanKind: "current",
-    toolName: "pmd-cpd",
-    toolVersion: "7.25.0",
-    normalizedToolArgs: ["cpd", "--minimum-tokens", "75", "--format", "xml"],
+    toolName: "jscpd",
+    toolVersion: "5.0.11",
+    normalizedToolArgs: ["<repo-local-jscpd-bin>", "--min-tokens", "75", "--reporters", "json"],
     configVersion: "quality-observability-v1",
     codeArea: TEST_CODE_AREA,
     commitSha: "abc123",
@@ -214,11 +228,11 @@ function baselineSnapshotIdentity(lizardVersion = "1.23.0"): BaselineSnapshotCac
         source: "system"
       },
       {
-        name: "pmd-cpd",
+        name: "jscpd",
         available: true,
-        version: "7.25.0",
+        version: "5.0.11",
         error: null,
-        source: "system"
+        source: "repository devDependency"
       }
     ]
   });

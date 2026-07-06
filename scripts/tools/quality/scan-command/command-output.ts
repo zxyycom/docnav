@@ -39,7 +39,7 @@ export function writeBaselineRawOutputs(rawDir: string, baselineSnapshot: Baseli
     writeQualityJsonArtifact(join(baselineRawDir, "baseline-lizard-functions.json"), baselineSnapshot.functionMetrics);
   }
   if (baselineSnapshot.duplicateCode) {
-    writeQualityJsonArtifact(join(baselineRawDir, "baseline-cpd-fragments.json"), baselineSnapshot.duplicateCode);
+    writeQualityJsonArtifact(join(baselineRawDir, "baseline-jscpd-fragments.json"), baselineSnapshot.duplicateCode);
   }
   if (baselineSnapshot.aggregates) {
     writeQualityJsonArtifact(join(baselineRawDir, "baseline-aggregates.json"), baselineSnapshot.aggregates);

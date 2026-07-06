@@ -11,6 +11,8 @@
 3. Python 工具使用 `uv`。
 4. Rust 工具使用 Cargo workspace 命令或验证脚本封装的 Cargo 调用。
 
+质量观测的 duplicate-code scanner 使用当前仓库 devDependency 中的 `jscpd`，wrapper 通过当前仓库 `node_modules/.bin/jscpd`（Windows 为 `jscpd.cmd`）运行扫描；不要求 baseline materialized repo 安装 `jscpd`，也不要求全局 `jscpd`、`cpd`、Java 或 PMD 安装。CI 可以保留 `pnpm exec jscpd --version` 作为依赖安装 smoke，但扫描 wrapper 不通过 baseline cwd 解析依赖。
+
 ## TypeScript 脚本
 
 `scripts/` 和 `test/` 下的手写脚本以 TypeScript 源码为目标形态。脚本源码负责表达模块 contract、输入输出边界和共享状态类型；生成产物、分发产物或外部工具兼容层不拥有这些类型。

@@ -69,7 +69,7 @@ export interface QualityConfig {
     functionCodeDensity: FunctionCodeDensityThreshold;
     parameterCount: QualityThreshold;
   };
-  pmdCpd: {
+  jscpd: {
     defaultMinimumTokens: number;
     duplicateFragments: { changedDelta: number };
     maxParallelTasks: number;
@@ -91,7 +91,7 @@ export interface QualityConfig {
   };
   tools: {
     lizard: ToolConfig;
-    pmdCpd: ToolConfig;
+    jscpd: ToolConfig;
     scc: ToolConfig;
   };
   version: string;

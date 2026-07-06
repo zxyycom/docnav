@@ -35,7 +35,7 @@ function buildDuplicateWarning(input: DuplicateWarningInput): WarningCandidate |
     context.hasBaselineDuplicates
   );
   const duplicateDelta = baselineDuplicateCount === null ? null : 1 - baselineDuplicateCount;
-  const duplicateDeltaFloor = context.config.pmdCpd?.duplicateFragments?.changedDelta ?? 0;
+  const duplicateDeltaFloor = context.config.jscpd?.duplicateFragments?.changedDelta ?? 0;
   const locations = dup.locations.map(formatDuplicateWarningLocation).join(", ");
 
   return buildMetricWarning({
@@ -50,8 +50,8 @@ function buildDuplicateWarning(input: DuplicateWarningInput): WarningCandidate |
     message: `Duplicate code fragment (${dup.tokenCount} tokens) across ${dup.locations.length} locations in areas [${uniqueAreas.join(", ")}]`,
     metric: "duplicate-tokens",
     path: primaryLocation?.path || "unknown",
-    ruleId: "pmd-cpd-duplicate-code",
-    sourceTool: "pmd-cpd",
+    ruleId: "jscpd-duplicate-code",
+    sourceTool: "jscpd",
     suggestion: `Consider extracting shared code into a common function or module. Locations: ${locations}`,
     value: dup.tokenCount
   });

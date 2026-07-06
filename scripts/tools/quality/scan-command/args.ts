@@ -95,10 +95,10 @@ Output:
   report.md               Human-readable Markdown summary
   warnings.ndjson         Changed warning records when baseline comparison is enabled (newline-delimited JSON)
   warnings-all.ndjson     Full warning records for local/governance use
-  raw/                    Raw tool outputs (Lizard, scc, PMD CPD)
+  raw/                    Raw tool outputs (Lizard, scc, jscpd)
 
 Profiles:
-  quick                  Fast current-snapshot quality check; skips baseline and PMD CPD.
+  quick                  Fast current-snapshot quality check; skips baseline and jscpd.
   full                   Full quality check; runs all configured scanners and optional baseline comparison.
 
 Warning status:

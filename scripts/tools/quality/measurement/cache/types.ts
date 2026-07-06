@@ -11,25 +11,25 @@ export const BASELINE_SNAPSHOT_CACHE_KIND = "baseline-snapshot";
 
 export type ScanKind = "baseline" | "current";
 
-export type CpdCacheIdentity = {
+export type DuplicateCodeCacheIdentity = {
   codeArea: string;
   commitSha: string;
   configVersion: string;
   inputFingerprint: CodeAreaFingerprint;
   normalizedToolArgs: readonly string[];
   scanKind: ScanKind;
-  toolName: "pmd-cpd";
+  toolName: "jscpd";
   toolVersion: string;
 };
 
-export type CpdCacheHit = {
+export type DuplicateCodeCacheHit = {
   cacheKey: string;
   cachePath: string;
   hit: true;
   metrics: DuplicateCodeFragment[];
 };
 
-export type CpdCacheMiss = {
+export type DuplicateCodeCacheMiss = {
   cacheKey: string;
   cachePath: string;
   hit: false;
@@ -47,7 +47,7 @@ export type ScanCachePayload = {
   normalizedToolArgs: string[];
   scanCacheVersion: string;
   scanKind: ScanKind;
-  toolName: "pmd-cpd";
+  toolName: "jscpd";
   toolVersion: string;
 };
 
@@ -58,13 +58,13 @@ export type BaselineSnapshotCacheIdentity = {
   excludeDirs: string[];
   generatedFiles: string[];
   include: string[];
-  pmdCpd: {
+  jscpd: {
     defaultMinimumTokens: number;
     minimumTokens: Record<string, number>;
   };
   toolArgs: {
     lizard: string[];
-    pmdCpd: string[];
+    jscpd: string[];
     scc: string[];
   };
   tools: Pick<ToolAvailability, "available" | "name" | "source" | "version">[];

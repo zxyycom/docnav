@@ -32,9 +32,9 @@ import {
   type BaselineSnapshotCacheIdentity,
   type BaselineSnapshotCacheManifest,
   type BaselineSnapshotCacheMiss,
-  type CpdCacheHit,
-  type CpdCacheIdentity,
-  type CpdCacheMiss,
+  type DuplicateCodeCacheHit,
+  type DuplicateCodeCacheIdentity,
+  type DuplicateCodeCacheMiss,
   type ScanCachePayload
 } from "./cache/types.ts";
 
@@ -49,9 +49,9 @@ export type {
   BaselineSnapshotCacheHit,
   BaselineSnapshotCacheIdentity,
   BaselineSnapshotCacheMiss,
-  CpdCacheHit,
-  CpdCacheIdentity,
-  CpdCacheMiss,
+  DuplicateCodeCacheHit,
+  DuplicateCodeCacheIdentity,
+  DuplicateCodeCacheMiss,
   ScanKind
 } from "./cache/types.ts";
 
@@ -59,9 +59,9 @@ export function loadScanCacheEntry({
   rootDir,
   identity
 }: {
-  identity: CpdCacheIdentity;
+  identity: DuplicateCodeCacheIdentity;
   rootDir: string;
-}): CpdCacheHit | CpdCacheMiss {
+}): DuplicateCodeCacheHit | DuplicateCodeCacheMiss {
   const cacheKey = buildScanCacheKey(identity);
   const cachePath = getScanCachePath(rootDir, cacheKey);
 
@@ -88,7 +88,7 @@ export function writeScanCacheEntry({
   identity,
   metrics
 }: {
-  identity: CpdCacheIdentity;
+  identity: DuplicateCodeCacheIdentity;
   metrics: DuplicateCodeFragment[];
   rootDir: string;
 }): { cacheKey: string; cachePath: string } {
@@ -129,13 +129,13 @@ export function createBaselineSnapshotCacheIdentity({
     excludeDirs: [...config.excludeDirs],
     generatedFiles: [...config.generatedFiles],
     codeAreas: config.codeAreas,
-    pmdCpd: {
-      defaultMinimumTokens: config.pmdCpd.defaultMinimumTokens,
-      minimumTokens: { ...config.pmdCpd.minimumTokens }
+    jscpd: {
+      defaultMinimumTokens: config.jscpd.defaultMinimumTokens,
+      minimumTokens: { ...config.jscpd.minimumTokens }
     },
     toolArgs: {
       lizard: [...config.tools.lizard.args],
-      pmdCpd: [...config.tools.pmdCpd.args],
+      jscpd: [...config.tools.jscpd.args],
       scc: [...config.tools.scc.args]
     },
     tools: toolResults

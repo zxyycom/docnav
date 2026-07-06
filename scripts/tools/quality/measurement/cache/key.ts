@@ -6,10 +6,10 @@ import {
   BASELINE_SNAPSHOT_CACHE_KIND,
   SCAN_CACHE_VERSION,
   type BaselineSnapshotCacheIdentity,
-  type CpdCacheIdentity
+  type DuplicateCodeCacheIdentity
 } from "./types.ts";
 
-export function buildScanCacheKey(identity: CpdCacheIdentity): string {
+export function buildScanCacheKey(identity: DuplicateCodeCacheIdentity): string {
   const keyInput = {
     scan_cache_version: SCAN_CACHE_VERSION,
     scan_kind: identity.scanKind,
