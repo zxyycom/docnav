@@ -127,17 +127,38 @@ function stringField(record: Record<string, unknown>, name: string): string {
 }
 
 function normalizeJscpdPath(filePath: string, cwd: string): string {
-  const withoutExtendedPrefix = filePath.startsWith("\\\\?\\") ? filePath.slice(4) : filePath;
-  if (!path.isAbsolute(withoutExtendedPrefix)) {
+  const withoutExtendedPrefix = stripWindowsExtendedPathPrefix(filePath);
+  const normalizedCwd = stripWindowsExtendedPathPrefix(cwd);
+  const pathApi = pathApiForJscpdPath(withoutExtendedPrefix, normalizedCwd);
+
+  if (!pathApi.isAbsolute(withoutExtendedPrefix)) {
     return toSlashPath(withoutExtendedPrefix);
   }
 
-  const relativePath = path.relative(cwd, withoutExtendedPrefix);
+  const relativePath = pathApi.relative(normalizedCwd, withoutExtendedPrefix);
   if (relativePath === "") {
     return ".";
   }
-  if (!relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
+  if (!relativePath.startsWith("..") && !pathApi.isAbsolute(relativePath)) {
     return toSlashPath(relativePath);
   }
   return toSlashPath(withoutExtendedPrefix);
+}
+
+function stripWindowsExtendedPathPrefix(filePath: string): string {
+  if (filePath.startsWith("\\\\?\\UNC\\")) {
+    return `\\\\${filePath.slice(8)}`;
+  }
+  if (filePath.startsWith("\\\\?\\")) {
+    return filePath.slice(4);
+  }
+  return filePath;
+}
+
+function pathApiForJscpdPath(filePath: string, cwd: string): path.PlatformPath {
+  return isWindowsAbsolutePath(filePath) || isWindowsAbsolutePath(cwd) ? path.win32 : path;
+}
+
+function isWindowsAbsolutePath(filePath: string): boolean {
+  return /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith("\\\\");
 }
