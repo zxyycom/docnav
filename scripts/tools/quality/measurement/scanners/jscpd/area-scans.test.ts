@@ -42,27 +42,29 @@ describe("jscpd tasks", () => {
     writeFileSync(fakeJscpdPath, "process.exit(0);\n", "utf8");
 
     try {
-      const fragments = await scanJscpdAreasWithCache({
-        cacheRootDir: tempDir,
-        commitSha: "abc123",
-        config: configWithJscpdCommand(process.execPath, [fakeJscpdPath]),
-        cwd: tempDir,
-        failOnSkipped: false,
-        fatalIssues,
-        fileMap: new Map([
-          ["typescript-production-scripts", ["scripts/a.ts", "scripts/b.ts"]]
-        ]),
-        fingerprints: {
-          "typescript-production-scripts": {
-            fileCount: 2,
-            fileList: ["scripts/a.ts", "scripts/b.ts"],
-            fingerprint: "sha256:test"
-          }
-        },
-        logPrefix: "",
-        scanKind: "current",
-        toolResults: availableJscpd()
-      });
+      const fragments = await withMutedConsoleLog(() =>
+        scanJscpdAreasWithCache({
+          cacheRootDir: tempDir,
+          commitSha: "abc123",
+          config: configWithJscpdCommand(process.execPath, [fakeJscpdPath]),
+          cwd: tempDir,
+          failOnSkipped: false,
+          fatalIssues,
+          fileMap: new Map([
+            ["typescript-production-scripts", ["scripts/a.ts", "scripts/b.ts"]]
+          ]),
+          fingerprints: {
+            "typescript-production-scripts": {
+              fileCount: 2,
+              fileList: ["scripts/a.ts", "scripts/b.ts"],
+              fingerprint: "sha256:test"
+            }
+          },
+          logPrefix: "",
+          scanKind: "current",
+          toolResults: availableJscpd()
+        })
+      );
 
       assert.deepEqual(fragments, []);
       assert.equal(fatalIssues.length, 1);
@@ -84,6 +86,16 @@ function configWithJscpdCommand(command: string, args: string[]): QualityConfig 
       jscpd: { command, args }
     }
   };
+}
+
+async function withMutedConsoleLog<T>(callback: () => Promise<T>): Promise<T> {
+  const originalLog: typeof console.log = console.log;
+  console.log = () => undefined;
+  try {
+    return await callback();
+  } finally {
+    console.log = originalLog;
+  }
 }
 
 function availableJscpd(): ToolAvailability[] {

@@ -9,6 +9,8 @@ import {
 import { runProcessSync } from "../tools/process.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const TOML_SECTION_HEADER_PATTERN = new RegExp("^\\[[^\\]]+\\]$");
+const TOML_VERSION_ASSIGNMENT_PATTERN = new RegExp("^version\\s*=\\s*\"([^\"]+)\"");
 
 type BinaryCandidate = {
   binaryPath: string;
@@ -153,17 +155,23 @@ function buildDebugDocnavBinary(): string {
 }
 
 function readWorkspaceVersion(): string | null {
-  let content: string;
+  const content = readWorkspaceCargoToml();
+  return content === null ? null : workspacePackageVersion(content);
+}
+
+function readWorkspaceCargoToml(): string | null {
   try {
-    content = fs.readFileSync(path.join(root, "Cargo.toml"), "utf8");
+    return fs.readFileSync(path.join(root, "Cargo.toml"), "utf8");
   } catch {
     return null;
   }
+}
 
+function workspacePackageVersion(content: string): string | null {
   let inWorkspacePackage = false;
   for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();
-    if (/^\[[^\]]+\]$/.test(trimmed)) {
+    if (isTomlSectionHeader(trimmed)) {
       inWorkspacePackage = trimmed === "[workspace.package]";
       continue;
     }
@@ -172,13 +180,26 @@ function readWorkspaceVersion(): string | null {
       continue;
     }
 
-    const versionMatch = /^version\s*=\s*"([^"]+)"/.exec(trimmed);
-    if (versionMatch?.[1]) {
-      return versionMatch[1];
+    const version = workspaceVersionAssignment(trimmed);
+    if (version !== null) {
+      return version;
     }
   }
 
   return null;
+}
+
+function isTomlSectionHeader(line: string): boolean {
+  return TOML_SECTION_HEADER_PATTERN.test(line);
+}
+
+function workspaceVersionAssignment(line: string): string | null {
+  const versionMatch = TOML_VERSION_ASSIGNMENT_PATTERN.exec(line);
+  if (!versionMatch) {
+    return null;
+  }
+
+  return versionMatch[1] || null;
 }
 
 function hostTargetHints(): string[] {
