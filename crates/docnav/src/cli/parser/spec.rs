@@ -3,7 +3,7 @@ use clap::Id;
 use clap::{Arg, ArgAction, Command};
 use docnav_protocol::Operation;
 
-use crate::registry;
+use super::ParserContext;
 
 pub(in crate::cli) mod command_names {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
@@ -71,14 +71,14 @@ enum ConfigPathSupport {
     ProjectAndUser,
 }
 
-pub(in crate::cli) fn cli_command() -> Command {
+pub(in crate::cli) fn cli_command(context: &ParserContext) -> Command {
     Command::new("docnav")
         .about("Structured document navigation CLI")
         .disable_help_subcommand(true)
-        .subcommand(document_clap_command(Operation::Outline))
-        .subcommand(document_clap_command(Operation::Read))
-        .subcommand(document_clap_command(Operation::Find))
-        .subcommand(document_clap_command(Operation::Info))
+        .subcommand(document_clap_command(Operation::Outline, context))
+        .subcommand(document_clap_command(Operation::Read, context))
+        .subcommand(document_clap_command(Operation::Find, context))
+        .subcommand(document_clap_command(Operation::Info, context))
         .subcommand(adapter_command())
         .subcommand(config_command())
         .subcommand(utility_clap_command(
@@ -95,11 +95,14 @@ pub(in crate::cli) fn cli_command() -> Command {
         ))
 }
 
-pub(in crate::cli) fn is_known_root_command(command: &str) -> bool {
-    cli_command().find_subcommand(command).is_some()
+pub(in crate::cli) fn is_known_root_command(command: &str, context: &ParserContext) -> bool {
+    cli_command(context).find_subcommand(command).is_some()
 }
 
-pub(in crate::cli) fn document_clap_command(operation: Operation) -> Command {
+pub(in crate::cli) fn document_clap_command(
+    operation: Operation,
+    context: &ParserContext,
+) -> Command {
     add_native_option_args(
         match operation {
             Operation::Outline => paged_document_command(
@@ -119,6 +122,7 @@ pub(in crate::cli) fn document_clap_command(operation: Operation) -> Command {
             }
         },
         operation,
+        context,
     )
 }
 
@@ -255,17 +259,13 @@ fn limit_arg() -> Arg {
         .value_parser(clap::value_parser!(u32))
 }
 
-fn add_native_option_args(mut command: Command, operation: Operation) -> Command {
-    let mut arg_ids = Vec::new();
-    for option in registry::native_options_for(operation) {
-        let Some(arg_id) = option.cli_arg_id() else {
-            continue;
-        };
-        if arg_ids.contains(&arg_id) {
-            continue;
-        }
-        arg_ids.push(arg_id);
-        command = command.arg(value_arg(arg_id, arg_id, "value"));
+fn add_native_option_args(
+    mut command: Command,
+    operation: Operation,
+    context: &ParserContext,
+) -> Command {
+    for arg_id in context.native_options().arg_ids_for_operation(operation) {
+        command = command.arg(value_arg(*arg_id, *arg_id, "value"));
     }
     command
 }

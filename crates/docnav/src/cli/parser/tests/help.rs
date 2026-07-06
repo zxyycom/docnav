@@ -43,6 +43,26 @@ fn help_text_shows_three_output_modes() {
 }
 
 #[test]
+fn help_text_scopes_native_options_to_supported_operations() {
+    let outline = parse(["outline", "--help"]).expect("parse outline help");
+    let read = parse(["read", "--help"]).expect("parse read help");
+
+    match (outline.command, read.command) {
+        (CliCommand::Help(outline_text), CliCommand::Help(read_text)) => {
+            assert!(
+                outline_text.contains("--max-heading-level"),
+                "outline help should list markdown outline native option; got:\n{outline_text}"
+            );
+            assert!(
+                !read_text.contains("--max-heading-level"),
+                "read help should not list outline-only native option; got:\n{read_text}"
+            );
+        }
+        commands => panic!("expected help commands, got {commands:?}"),
+    }
+}
+
+#[test]
 fn help_command_has_no_output_mode() {
     let parsed = parse(["--help"]).expect("parse --help");
     match parsed.command {

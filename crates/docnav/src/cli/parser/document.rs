@@ -2,7 +2,6 @@ use docnav_cli_args::{scan_arg_boundaries, ArgBoundaryScan};
 use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
-use crate::registry;
 
 use super::super::command_model::{CliCommand, DocumentCommand, NativeOptionCliInput, ParsedCli};
 use super::super::flags;
@@ -12,7 +11,7 @@ use super::argument_helpers::{
     known_value_flag, missing_value_error, missing_value_flag_error, optional_explicit_output,
     optional_explicit_positive, optional_explicit_string, required_string, split_equals, ValueFlag,
 };
-use super::{arg_ids, document_clap_command, spec};
+use super::{arg_ids, document_clap_command, spec, ParserContext};
 
 const PAGINATION_ACCEPTED_VALUES: [&str; 2] = [
     spec::pagination_values::ENABLED,
@@ -23,14 +22,15 @@ const PAGINATION_GUIDANCE: [&str; 1] = ["Use --pagination enabled or --paginatio
 pub(super) fn parse_document_command(
     operation: Operation,
     args: &[String],
+    context: &ParserContext,
 ) -> AppResult<ParsedCli> {
-    let BoundaryDocumentArgs { clap_args } = collect_document_args(operation, args)?;
-    let matches = document_clap_command(operation)
+    let BoundaryDocumentArgs { clap_args } = collect_document_args(operation, args, context)?;
+    let matches = document_clap_command(operation, context)
         .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
-        .map_err(|_| document_parse_error(operation, args))?;
+        .map_err(|_| document_parse_error(operation, args, context))?;
 
     Ok(ParsedCli::new(CliCommand::Document(
-        document_command_from_matches(operation, &matches)?,
+        document_command_from_matches(operation, &matches, context)?,
     )))
 }
 
@@ -38,8 +38,12 @@ struct BoundaryDocumentArgs {
     clap_args: Vec<String>,
 }
 
-fn collect_document_args(operation: Operation, args: &[String]) -> AppResult<BoundaryDocumentArgs> {
-    let known_value_flags = document_value_flags(operation);
+fn collect_document_args(
+    operation: Operation,
+    args: &[String],
+    context: &ParserContext,
+) -> AppResult<BoundaryDocumentArgs> {
+    let known_value_flags = document_value_flags(operation, context);
     let scan = scan_arg_boundaries(
         args,
         &ArgBoundaryScan::new(operation.as_str(), 1, &known_value_flags),
@@ -57,6 +61,7 @@ fn collect_document_args(operation: Operation, args: &[String]) -> AppResult<Bou
 fn document_command_from_matches(
     operation: Operation,
     matches: &clap::parser::ArgMatches,
+    context: &ParserContext,
 ) -> AppResult<DocumentCommand> {
     Ok(DocumentCommand {
         operation,
@@ -66,7 +71,7 @@ fn document_command_from_matches(
         page: parse_page(operation, matches)?,
         pagination_enabled: parse_pagination_enabled(operation, matches)?,
         limit: parse_limit(operation, matches)?,
-        native_options: parse_native_options(operation, matches),
+        native_options: parse_native_options(operation, matches, context),
         output: optional_explicit_output(matches)?,
         adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
         config_paths: config_path_args(matches),
@@ -125,8 +130,12 @@ fn pagination_enabled_from_cli(value: &str) -> AppResult<bool> {
     }
 }
 
-fn document_parse_error(operation: Operation, args: &[String]) -> AppError {
-    if !has_path_candidate(operation, args) {
+fn document_parse_error(
+    operation: Operation,
+    args: &[String],
+    context: &ParserContext,
+) -> AppError {
+    if !has_path_candidate(operation, args, context) {
         return AppError::invalid_request(
             "path",
             format!("{} requires <path>", operation.as_str()),
@@ -158,33 +167,25 @@ fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
 fn parse_native_options(
     operation: Operation,
     matches: &clap::parser::ArgMatches,
+    context: &ParserContext,
 ) -> Vec<NativeOptionCliInput> {
-    let mut flags = Vec::new();
     let mut inputs = Vec::new();
-    for option in registry::native_options_for(operation) {
-        let Some(flag) = option.cli_flag() else {
-            continue;
-        };
-        let flag = flag.to_owned();
-        if flags.contains(&flag) {
-            continue;
-        }
-        flags.push(flag.clone());
-        let Some(arg_id) = option.cli_arg_id().map(str::to_owned) else {
-            continue;
-        };
-        if let Some(value) = optional_explicit_string(matches, &arg_id) {
-            inputs.push(NativeOptionCliInput { flag, value });
+    for option in context.native_options().for_operation(operation) {
+        if let Some(value) = optional_explicit_string(matches, option.arg_id()) {
+            inputs.push(NativeOptionCliInput {
+                flag: option.flag().to_owned(),
+                value,
+            });
         }
     }
     inputs
 }
 
-fn has_path_candidate(operation: Operation, args: &[String]) -> bool {
+fn has_path_candidate(operation: Operation, args: &[String], context: &ParserContext) -> bool {
     let mut index = 0;
     while index < args.len() {
         let token = &args[index];
-        if is_known_document_value_flag(operation, token) {
+        if is_known_document_value_flag(operation, token, context) {
             let (_flag, inline_value) = split_equals(token);
             index += if inline_value.is_some() { 1 } else { 2 };
         } else if is_flag(token) {
@@ -274,17 +275,13 @@ fn invalid_pagination_value_error(value: &str) -> AppError {
     )
 }
 
-fn document_value_flags(operation: Operation) -> Vec<docnav_cli_args::KnownValueFlag<'static>> {
+fn document_value_flags(
+    operation: Operation,
+    context: &ParserContext,
+) -> Vec<docnav_cli_args::KnownValueFlag<'static>> {
     let mut flags = boundary_value_flags(|flag| document_uses_flag(operation, flag));
-    for option in registry::native_options_for(Operation::Outline)
-        .into_iter()
-        .chain(registry::native_options_for(Operation::Read))
-        .chain(registry::native_options_for(Operation::Find))
-        .chain(registry::native_options_for(Operation::Info))
-    {
-        let Some(flag) = option.cli_flag() else {
-            continue;
-        };
+    for option in context.native_options().all_document_options() {
+        let flag = option.flag();
         let used = option.applies_to(operation);
         if flags.iter().any(|existing| existing.flag == flag) {
             continue;
@@ -294,9 +291,13 @@ fn document_value_flags(operation: Operation) -> Vec<docnav_cli_args::KnownValue
     flags
 }
 
-fn is_known_document_value_flag(operation: Operation, token: &str) -> bool {
+fn is_known_document_value_flag(
+    operation: Operation,
+    token: &str,
+    context: &ParserContext,
+) -> bool {
     let (flag, _value) = split_equals(token);
-    document_value_flags(operation)
+    document_value_flags(operation, context)
         .iter()
         .any(|known| known.flag == flag)
 }

@@ -2,6 +2,7 @@ mod adapter_command;
 mod argument_helpers;
 mod config_command;
 mod document;
+mod native_options;
 mod spec;
 mod utility_command;
 
@@ -11,6 +12,7 @@ use crate::error::{AppError, AppResult};
 
 use super::command_model::{CliCommand, ConfigPathArgs, ParsedCli};
 
+use native_options::NativeOptionCatalog;
 use spec::{cli_command, is_known_root_command};
 
 pub(super) use spec::{
@@ -18,13 +20,33 @@ pub(super) use spec::{
     config_unset_command, document_clap_command, utility_clap_command,
 };
 
+#[derive(Clone, Debug, Default)]
+pub(super) struct ParserContext {
+    native_options: NativeOptionCatalog,
+}
+
+impl ParserContext {
+    fn native_options(&self) -> &NativeOptionCatalog {
+        &self.native_options
+    }
+}
+
 pub fn parse<I, S>(args: I) -> AppResult<ParsedCli>
 where
     I: IntoIterator<Item = S>,
     S: Into<String>,
 {
+    let context = ParserContext::default();
+    parse_with_context(args, &context)
+}
+
+fn parse_with_context<I, S>(args: I, context: &ParserContext) -> AppResult<ParsedCli>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
     let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    if let Some(help) = help_text(&args) {
+    if let Some(help) = help_text(&args, context) {
         return Ok(ParsedCli::new(CliCommand::Help(help)));
     }
 
@@ -32,7 +54,7 @@ where
         return Err(AppError::invalid_request("command", "missing command"));
     };
 
-    if !is_known_root_command(command) {
+    if !is_known_root_command(command, context) {
         return Err(AppError::invalid_request(
             "command",
             format!("unknown command {command:?}"),
@@ -40,10 +62,12 @@ where
     }
 
     match command.as_str() {
-        command_names::OUTLINE => document::parse_document_command(Operation::Outline, rest),
-        command_names::READ => document::parse_document_command(Operation::Read, rest),
-        command_names::FIND => document::parse_document_command(Operation::Find, rest),
-        command_names::INFO => document::parse_document_command(Operation::Info, rest),
+        command_names::OUTLINE => {
+            document::parse_document_command(Operation::Outline, rest, context)
+        }
+        command_names::READ => document::parse_document_command(Operation::Read, rest, context),
+        command_names::FIND => document::parse_document_command(Operation::Find, rest, context),
+        command_names::INFO => document::parse_document_command(Operation::Info, rest, context),
         command_names::ADAPTER => adapter_command::parse_adapter_command(rest),
         command_names::CONFIG => config_command::parse_config_command(rest),
         command_names::INIT => utility_command::parse_utility_command(
@@ -65,11 +89,11 @@ where
     }
 }
 
-fn help_text(args: &[String]) -> Option<String> {
+fn help_text(args: &[String], context: &ParserContext) -> Option<String> {
     if !args.iter().any(|arg| is_help_flag(arg)) {
         return None;
     }
-    let mut root = cli_command();
+    let mut root = cli_command(context);
     let Some(first) = args.first().map(String::as_str) else {
         return Some(root.render_long_help().to_string());
     };

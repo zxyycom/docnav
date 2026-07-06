@@ -3,6 +3,7 @@ mod config;
 mod error;
 mod navigation_defaults;
 mod output;
+mod pipeline;
 mod project_context;
 mod project_paths;
 mod registry;
@@ -10,8 +11,9 @@ mod runtime;
 
 use std::io::{Read, Write};
 
-use cli::{CliCommand, OutputMode};
-use error::AppResult;
+use cli::OutputMode;
+use docnav_protocol::Operation;
+use error::{AppError, AppResult};
 use runtime::{AdapterRuntime, DocnavRuntime};
 
 pub fn run<I, S, R, W, E>(args: I, stdin: R, stdout: W, stderr: E) -> i32
@@ -40,57 +42,129 @@ where
     E: Write,
     T: DocnavRuntime,
 {
-    let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    let output_context = cli::output_context(&args);
-    let parsed = match cli::parse(args) {
-        Ok(parsed) => parsed,
-        Err(error) => {
-            return output::write_error(output::ErrorOutput {
-                error: &error,
-                output_mode: output_context.output_mode,
-                operation: output_context.operation,
-                stdout: &mut stdout,
-                stderr: &mut stderr,
-            })
+    let invocation = RunInvocation::collect(args);
+    let invocation = match invocation.parse() {
+        Ok(invocation) => invocation,
+        Err(failure) => {
+            return write_invocation_error(
+                &failure.error,
+                failure.output_context,
+                &mut stdout,
+                &mut stderr,
+            )
         }
     };
 
-    let cli::ParsedCli { command } = parsed;
-    let output_mode = command.output_mode().unwrap_or(OutputMode::ReadableView);
-    let operation = command.operation();
-    match execute(command, runtime) {
+    let execution = invocation.execute(runtime);
+    match execution.result {
         Ok(outcome) => output::write_outcome(outcome, &mut stdout, &mut stderr),
-        Err(error) => output::write_error(output::ErrorOutput {
-            error: &error,
-            output_mode,
-            operation,
-            stdout: &mut stdout,
-            stderr: &mut stderr,
-        }),
+        Err(error) => {
+            write_invocation_error(&error, execution.output_context, &mut stdout, &mut stderr)
+        }
     }
 }
 
-fn execute<T: DocnavRuntime>(
-    command: CliCommand,
-    runtime: &T,
-) -> AppResult<output::CommandOutcome> {
-    match command {
-        CliCommand::Document(command) => {
-            let project = project_context::ProjectContext::discover_with_cli_config_paths(
-                command.config_paths.project_config.as_deref(),
-                command.config_paths.user_config.as_deref(),
-            )?;
-            let request = runtime::DocumentRequest::from_command(command, project);
-            runtime.execute_document(request)
+struct RunInvocation {
+    args: Vec<String>,
+    output_context: InvocationOutputContext,
+}
+
+impl RunInvocation {
+    fn collect<I, S>(args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let args: Vec<String> = args.into_iter().map(Into::into).collect();
+        let output_context = InvocationOutputContext::preflight(&args);
+        Self {
+            args,
+            output_context,
         }
-        CliCommand::Adapter(command) => registry::execute(command),
-        CliCommand::Config(command) => config::execute(command, runtime),
-        CliCommand::Init(config_paths) => config::init_project(config_paths),
-        CliCommand::Doctor(config_paths) => config::doctor(config_paths),
-        CliCommand::Version => Ok(output::CommandOutcome::plain_text(format!(
-            "docnav {}",
-            env!("CARGO_PKG_VERSION")
-        ))),
-        CliCommand::Help(text) => Ok(output::CommandOutcome::plain_text(text)),
     }
+
+    fn parse(self) -> Result<CliInvocation, InvocationParseFailure> {
+        match cli::parse(self.args) {
+            Ok(parsed) => Ok(CliInvocation::from_parsed(parsed)),
+            Err(error) => Err(InvocationParseFailure {
+                error,
+                output_context: self.output_context,
+            }),
+        }
+    }
+}
+
+struct InvocationParseFailure {
+    error: AppError,
+    output_context: InvocationOutputContext,
+}
+
+struct CliInvocation {
+    command: cli::CliCommand,
+    output_context: InvocationOutputContext,
+}
+
+impl CliInvocation {
+    fn from_parsed(parsed: cli::ParsedCli) -> Self {
+        let cli::ParsedCli { command } = parsed;
+        let output_context = InvocationOutputContext::parsed_command(&command);
+        Self {
+            command,
+            output_context,
+        }
+    }
+
+    fn execute<T: DocnavRuntime>(self, runtime: &T) -> InvocationExecution {
+        let Self {
+            command,
+            output_context,
+        } = self;
+        InvocationExecution {
+            result: pipeline::execute(command, runtime),
+            output_context,
+        }
+    }
+}
+
+struct InvocationExecution {
+    result: AppResult<output::CommandOutcome>,
+    output_context: InvocationOutputContext,
+}
+
+#[derive(Clone, Copy)]
+struct InvocationOutputContext {
+    output_mode: OutputMode,
+    operation: Option<Operation>,
+}
+
+impl InvocationOutputContext {
+    fn preflight(args: &[String]) -> Self {
+        let output_context = cli::output_context(args);
+        Self {
+            output_mode: output_context.output_mode,
+            operation: output_context.operation,
+        }
+    }
+
+    fn parsed_command(command: &cli::CliCommand) -> Self {
+        Self {
+            output_mode: command.output_mode().unwrap_or(OutputMode::ReadableView),
+            operation: command.operation(),
+        }
+    }
+}
+
+fn write_invocation_error<W: Write, E: Write>(
+    error: &AppError,
+    output_context: InvocationOutputContext,
+    stdout: &mut W,
+    stderr: &mut E,
+) -> i32 {
+    output::write_error(output::ErrorOutput {
+        error,
+        output_mode: output_context.output_mode,
+        operation: output_context.operation,
+        stdout,
+        stderr,
+    })
 }
