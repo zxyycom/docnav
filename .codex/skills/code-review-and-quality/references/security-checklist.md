@@ -1,6 +1,6 @@
 # 安全清单（Security Checklist）
 
-这是 code review 时使用的 Docnav security quick reference。需要深入 threat model 或改动本身以 hardening 为主时，切到 [security-and-hardening](../../security-and-hardening/SKILL.md)。
+这是 code review 时使用的 Docnav security quick reference。需要深入 threat model 或改动本身以 hardening 为主时，使用本清单中的 boundary、asset、abuse case 和 verification gap 结构完成审查。
 
 重点是 Docnav 的 local-tool trust boundaries：恶意文档、opaque ref、filesystem path、adapter process、stdio/JSON、schema/protocol validation、generated output、external command、dependency 与 secret handling。不要把本清单降级成通用 Web auth/session 审查。
 
