@@ -13,6 +13,7 @@
     "typecheck:scripts:tsc": "tsc -p tsconfig.json",
     "package:docnav": "bun scripts/release-package/build.ts",
     "info:docnav-package": "bun scripts/release-package/info.ts",
+    "docnav": "bun scripts/docnav-local/run.ts",
     "cli:dev": "bun scripts/cargo/with-bins.ts --bin docnav:docnav:DOCNAV_BIN -- bun scripts/docnav-dev/run.ts",
     "dnm": "bun scripts/cargo/with-bins.ts --quiet --bin docnav:docnav:DOCNAV_BIN -- bun scripts/docnav-dev/run.ts docnav",
     "smoke:docnav-core:dev": "bun scripts/cargo/with-bins.ts --bin docnav:docnav:DOCNAV_BIN -- bun test/docnav-core-smoke.ts",
