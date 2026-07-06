@@ -21,8 +21,8 @@
 - 无。
 
 ### Modified Capabilities
-- `readable-view-output`: 修改 `readable-view` 的 ownership 与渲染路径，允许 adapter 可选返回自定义纯文本 readable-view，并规定 generic fallback、失败处理和与 machine outputs 的边界。
-- `markdown-navigation`: 增加 Markdown adapter 自己选择的 md-like `readable-view` 行为，覆盖 outline、read、find 和 info 的格式感知省略输出。
+- `output-contract`: 修改 `readable-view` 的 ownership 与渲染路径，允许 adapter 可选返回自定义纯文本 readable-view，并规定 generic fallback、失败处理和与 machine outputs 的边界。
+- `markdown-adapter`: 增加 Markdown adapter 自己选择的 md-like `readable-view` 行为，覆盖 outline、read、find 和 info 的格式感知省略输出。
 
 ## Impact
 

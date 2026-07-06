@@ -37,9 +37,28 @@ bun run verify:docnav-workspace
 | Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](coding-style.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
-| 变更工作流 | `../openspec/changes/`、`../openspec/specs/` | 规划较大 PR、审计 change 设计、验收、归档或历史决策 |
+| 变更工作流 | `../openspec/changes/`、`../openspec/specs/` | 规划较大 PR、审计 change 设计、验收、归档或历史决策；capability 命名见下方对照表 |
 
 Schema、示例和机器规则文件是验证材料，不在这些文件重新定义产品语义。与主规范不一致时默认修正验证材料；若验证材料代表有意契约变更，必须同步更新 owner 主规范。
+
+OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change name。跨层总览统一进入 `docnav-architecture`；字段、输出、诊断、ref、adapter 和验证规则进入各自 owner，避免把多个 owner 合并成总包 capability。
+
+| OpenSpec capability | 对应 owner | 使用时机 |
+| --- | --- | --- |
+| `docnav-architecture` | [架构](architecture.md) | 组件职责、调用链、运行边界和跨层不变量 |
+| `core-cli` | [CLI](cli.md) | `docnav` 命令、argv、path/config、static registry 和退出行为 |
+| `navigation-input-resolution` | [Navigation Input Resolution](navigation-input-resolution.md) | config source、adapter selection、typed extraction、request construction 和 dispatch |
+| `adapter-contract` | [适配器契约](adapter-contract.md) | linked adapter interface、manifest/probe、native option declaration 和 handler result |
+| `protocol-contract` | [原始协议](protocol.md) | raw protocol envelope、operation/result pairing、page 和 protocol failure |
+| `output-contract` | [输出模式](output.md) | output modes、readable-view、readable-json、renderer config 和 output channels |
+| `diagnostics-contract` | [架构](architecture.md) | DiagnosticCode、DiagnosticRecord、canonical details 和 primary projection |
+| `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar 和 roundtrip |
+| `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown parser/probe/ref/outline/read/find/info/native options |
+| `typed-fields` | [架构](architecture.md) | typed field identity、constraint metadata、schema metadata projection 和 duplicate guard |
+| `contract-validation` | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | schema/example validation、runtime validation parity 和 drift checks |
+| `release-artifacts` | [发布包验证](testing/release.md) | package layout、manifest/checksum 和 release artifact verification |
+| `repository-quality-observability` | [工程工具链](tooling.md) | 非阻断质量快照、报告、baseline delta 和扫描边界 |
+| `openspec-governance` | 本文档 | OpenSpec 与 docs-first 的分工、capability 命名和归档规则 |
 
 ## 规范状态与实现状态
 

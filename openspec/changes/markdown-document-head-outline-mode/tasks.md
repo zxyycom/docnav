@@ -3,7 +3,7 @@
 ## 1. 阻塞级审计门禁
 
 - [ ] 1.1 审计 proposal、design、specs 和 tasks 是否都围绕“Markdown structured outline 暴露 document head 可读区域，而不是新增 outline metadata 字段或整篇非结构化读取”这一核心目标。
-- [ ] 1.2 审计 capability ID 是否正确只复用 `markdown-navigation`，且没有创建一次性、同义或过宽 capability。
+- [ ] 1.2 审计 capability ID 是否正确只复用 `markdown-adapter`，且没有创建一次性、同义或过宽 capability。
 - [ ] 1.3 审计当前 change 是否只包含 `openspec/changes/markdown-document-head-outline-mode/` 下的未审核临时 artifacts，且没有修改现有 specs、docs、schemas、examples、测试或实现代码。
 - [ ] 1.4 审计本 change 与 `markdown-frontmatter-outline-mode` 的重叠关系，并在进入实现前明确后者是被 supersede、合并还是继续保留非重叠范围。
 - [ ] 1.5 在 1.1-1.4 全部完成前，不得执行任何实现任务、主规范更新、示例更新、测试更新或代码改动。

@@ -25,7 +25,7 @@ Markdown 文档在首个 heading 前常放置 YAML frontmatter、摘要、序言
 
 ### Modified Capabilities
 
-- `markdown-navigation`: 增加 Markdown document head 区域、adapter-owned refs、outline 模式、frontmatter dialect 边界和 find-to-read 映射。
+- `markdown-adapter`: 增加 Markdown document head 区域、adapter-owned refs、outline 模式、frontmatter dialect 边界和 find-to-read 映射。
 
 ## Impact
 

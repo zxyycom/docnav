@@ -3,7 +3,7 @@
 ## 1. 阻塞级审计
 
 - [ ] 1.1 审计 proposal、design、specs 和 tasks 是否都围绕“adapter 可选注入 readable-view 自定义文本渲染，Markdown adapter 首期选择 md-like 输出”这一核心目标。
-- [ ] 1.2 审计 capability ID 是否只复用现有 `readable-view-output` 和 `markdown-navigation`，不创建同义新 capability。
+- [ ] 1.2 审计 capability ID 是否只复用现有 `output-contract` 和 `markdown-adapter`，不创建同义新 capability。
 - [ ] 1.3 审计当前 change 是否只包含 `openspec/changes/add-adapter-readable-view-rendering/` 下的未审核临时 artifacts，且没有修改主规范、schema、example 或实现代码。
 - [ ] 1.4 审计通用 hook 文案是否没有暗示所有 adapter 必须实现 md-like、native-like、省略标记、ref guidance 或 continuation guidance。
 - [ ] 1.5 审计 `## Open Questions` 是否没有未回答问题或已收敛歧义；若 generic fallback 形态仍需单独决策，先记录为后续 change 或 implementation note。

@@ -3,7 +3,7 @@
 ## 1. 阻塞级审计门禁
 
 - [ ] 1.1 审计 proposal、design、specs 和 tasks 是否都围绕“为 Docnav 核心调用链引入默认元数据级调用日志和可选协议追踪”这一核心目标；审计未完成前不得执行任何实现任务。
-- [ ] 1.2 审计 capability ID 是否只新增 `invocation-logging`，且没有把 change name、`code-quality-observability` 或过宽 runtime umbrella 当作错误 owner。
+- [ ] 1.2 审计 capability ID 是否只新增 `invocation-logging`，且没有把 change name、`repository-quality-observability` 或过宽 runtime umbrella 当作错误 owner。
 - [ ] 1.3 审计当前 change 是否只包含 `openspec/changes/add-invocation-audit-logging/` 下的未审核临时 artifacts，且没有修改现有 specs、docs、schemas、examples、测试或实现代码。
 - [ ] 1.4 审计 `design.md` 的 Open Questions 是否没有未回答问题，并确认日志路径、开关名称和日志库选型会在实现前由主规范与测试固化。
 - [ ] 1.5 审计安全边界：metadata-only 默认、raw trace 显式 opt-in、payload 截断/脱敏、stdout purity、document output/linked handler payload 边界和日志失败降级都已进入 specs。
