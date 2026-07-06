@@ -41,7 +41,11 @@ fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
 
 #[test]
 fn outline_falls_back_to_full_document_for_no_visible_heading() {
-    for content in ["plain body\nwith no heading\n", "#### Deep\nBody\n"] {
+    for content in [
+        "plain body\nwith no heading\n",
+        "---\ntitle: Only frontmatter\n---\n",
+        "Lead text.\n\n#### Deep\nBody\n",
+    ] {
         let path = write_doc("fallback.md", content);
         let arguments = outline_args(6000, 1, Some(3));
         let request = make_request(
@@ -73,6 +77,77 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
         assert_eq!(read.content, content);
         assert_eq!(read.content_type, "text/markdown");
     }
+}
+
+// @case WB-MD-DOCHEAD-001
+#[test]
+fn outline_exposes_document_head_before_visible_headings_when_nonblank() {
+    let path = write_doc(
+        "document-head.md",
+        "---\ntitle: Sample\n---\n\nLead text.\n\n# Real\nBody\n",
+    );
+    let arguments = outline_args(6000, 1, Some(3));
+
+    let outline = outline_result(&path, &arguments);
+
+    assert_eq!(
+        entry_refs(&outline.entries),
+        vec!["HEAD:leading", "H:L7:H1"]
+    );
+    assert_eq!(outline.entries[0].label, "document head");
+    assert_eq!(outline.entries[0].kind.as_deref(), Some("document_head"));
+    assert_eq!(
+        outline.entries[0].metadata.as_ref().unwrap()["document_region"],
+        serde_json::json!("leading")
+    );
+}
+
+#[test]
+fn outline_exposes_document_head_for_frontmatter_only_or_plain_lead() {
+    for (content, heading_ref) in [
+        ("---\ntitle: Sample\n---\n\n# Real\nBody\n", "H:L5:H1"),
+        ("Lead text only.\n\n# Real\nBody\n", "H:L3:H1"),
+    ] {
+        let path = write_doc("document-head-variants.md", content);
+        let arguments = outline_args(6000, 1, Some(3));
+
+        let outline = outline_result(&path, &arguments);
+
+        assert_eq!(
+            entry_refs(&outline.entries),
+            vec!["HEAD:leading", heading_ref]
+        );
+    }
+}
+
+#[test]
+fn outline_omits_document_head_for_empty_or_whitespace_only_prefix() {
+    for content in ["# Real\nBody\n", "\n \t\n# Real\nBody\n"] {
+        let path = write_doc("empty-head.md", content);
+        let arguments = outline_args(6000, 1, Some(3));
+
+        let outline = outline_result(&path, &arguments);
+
+        assert!(!entry_refs(&outline.entries).contains(&"HEAD:leading"));
+        assert_eq!(outline.entries.len(), 1);
+        assert_eq!(outline.entries[0].kind.as_deref(), Some("heading"));
+    }
+}
+
+#[test]
+fn outline_keeps_frontmatter_pseudo_heading_fence_pseudo_heading_and_hr_in_document_head() {
+    let path = write_doc(
+        "document-head-boundaries.md",
+        "---\ntitle: Sample\n# not a heading\n---\n\n---\nLead.\n\n```md\n# not a heading\n```\n\n# Real\nBody\n",
+    );
+    let arguments = outline_args(6000, 1, Some(3));
+
+    let outline = outline_result(&path, &arguments);
+
+    assert_eq!(
+        entry_refs(&outline.entries),
+        vec!["HEAD:leading", "H:L13:H1"]
+    );
 }
 
 // @case WB-MD-REF-001

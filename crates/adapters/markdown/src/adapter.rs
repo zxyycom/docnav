@@ -132,6 +132,7 @@ impl Adapter for MarkdownAdapter {
         let resolved = document.resolve_ref(&arguments.ref_id)?;
         let content = match resolved {
             ResolvedRef::FullDocument => document.source(),
+            ResolvedRef::DocumentHead => document.document_head_content(),
             ResolvedRef::Heading(heading) => document.section_content(heading),
         };
         let (content_page, page) = paginate_text(content, arguments.page, arguments.limit);

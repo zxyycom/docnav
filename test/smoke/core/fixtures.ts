@@ -2,6 +2,7 @@ export { writeDamagedRegistry, writeJson, writeProjectConfig } from "./fixtures/
 export type { SmokeProject } from "./fixtures/project.ts";
 export {
   configFixturePath,
+  copyDocumentFixture,
   copyNormalDocument,
   copyConfigFixtureToProject,
   configFixtureProject,

@@ -64,29 +64,70 @@ fn find_ref_targets_current_visible_region_and_read_contains_match() {
     assert!(!read.content.contains("# Next"));
 }
 
+// @case WB-MD-DOCHEAD-002
 #[test]
-fn find_match_before_first_visible_heading_falls_back_to_full_document() {
+fn find_match_before_first_visible_heading_uses_document_head_ref() {
     let path = write_doc("find-before-heading.md", "target before\n\n# Later\nbody\n");
     let arguments = find_args("target before", 6000, 1, Some(3));
 
     let result = find_result(&path, &arguments);
 
     assert_eq!(result.matches.len(), 1);
-    assert_eq!(result.matches[0].ref_id, "doc:full");
+    assert_eq!(result.matches[0].ref_id, "HEAD:leading");
 
     let read = read_ref(&path, &result.matches[0].ref_id);
+    assert_eq!(read.content, "target before\n\n");
+    assert_eq!(read.content_type, "text/markdown");
     assert!(read.content.contains("target before"));
 }
 
 #[test]
 fn find_falls_back_to_full_document_when_no_heading_is_visible() {
-    let path = write_doc("fallback-find.md", "#### Deep\ntarget\n");
+    let path = write_doc("fallback-find.md", "target before\n\n#### Deep\nbody\n");
     let arguments = find_args("target", 6000, 1, Some(3));
 
     let result = find_result(&path, &arguments);
 
     assert_eq!(result.matches.len(), 1);
     assert_eq!(result.matches[0].ref_id, "doc:full");
+    let read = read_ref(&path, &result.matches[0].ref_id);
+    assert!(read.content.contains("target before"));
+}
+
+#[test]
+fn read_document_head_returns_original_markdown_and_paginates_unicode() {
+    let path = write_doc(
+        "read-document-head.md",
+        "---\ntitle: Sample\n---\n\n界界界abc\n\n# Later\nbody\n",
+    );
+
+    let first = read_ref_with_page(&path, "HEAD:leading", 7, 1);
+
+    assert_eq!(first.ref_id, "HEAD:leading");
+    assert_eq!(first.content, "---\ntit");
+    assert_eq!(first.content_type, "text/markdown");
+    assert_cost_measurements(
+        &first.cost,
+        "selection",
+        "---\ntitle: Sample\n---\n\n界界界abc\n\n",
+    );
+    assert_eq!(first.page, Some(positive(2)));
+
+    let unicode_page = read_ref_with_page(&path, "HEAD:leading", 7, 4);
+    assert!(unicode_page.content.contains("界界界"));
+}
+
+#[test]
+fn read_document_head_preserves_yaml_delimiters_and_leading_text() {
+    let path = write_doc(
+        "read-document-head-frontmatter.md",
+        "---\ntitle: Sample\n---\n\nLead text.\n\n# Later\nbody\n",
+    );
+
+    let read = read_ref(&path, "HEAD:leading");
+
+    assert_eq!(read.content, "---\ntitle: Sample\n---\n\nLead text.\n\n");
+    assert_eq!(read.content_type, "text/markdown");
 }
 
 // @case WB-MD-PAGE-002

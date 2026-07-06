@@ -5,7 +5,7 @@ use docnav_protocol::{positive_result, Entry, Location};
 use serde_json::json;
 
 use super::parse::parse_headings;
-use super::refs::{heading_ref, ParsedRef, FULL_DOCUMENT_REF};
+use super::refs::{heading_ref, ParsedRef, DOCUMENT_HEAD_REF, FULL_DOCUMENT_REF};
 use super::text::{line_starts, match_facts, scoped_cost_for};
 
 #[derive(Clone, Debug)]
@@ -13,6 +13,7 @@ pub struct MarkdownDocument {
     source: String,
     line_starts: Vec<usize>,
     headings: Vec<Heading>,
+    document_head_end: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -28,6 +29,7 @@ pub struct Heading {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ResolvedRef<'a> {
     FullDocument,
+    DocumentHead,
     Heading(&'a Heading),
 }
 
@@ -46,11 +48,13 @@ impl MarkdownDocument {
     pub fn parse(source: String) -> Self {
         let line_starts = line_starts(&source);
         let headings = parse_headings(&source, &line_starts, source.len());
+        let document_head_end = headings.first().map(|heading| heading.start).unwrap_or(0);
 
         Self {
             source,
             line_starts,
             headings,
+            document_head_end,
         }
     }
 
@@ -76,6 +80,10 @@ impl MarkdownDocument {
         }
     }
 
+    pub fn document_head_content(&self) -> &str {
+        &self.source[..self.document_head_end]
+    }
+
     pub fn outline_entries(&self, max_heading_level: u8) -> Vec<Entry> {
         let mut entries: Vec<Entry> = self
             .headings
@@ -99,6 +107,8 @@ impl MarkdownDocument {
 
         if entries.is_empty() {
             entries.push(self.full_entry());
+        } else if self.has_document_head() {
+            entries.insert(0, self.document_head_entry());
         }
 
         entries
@@ -111,13 +121,22 @@ impl MarkdownDocument {
             .filter(|heading| heading.level <= max_heading_level)
             .collect();
         let fallback_ref = FULL_DOCUMENT_REF.to_owned();
+        let document_head_ref = DOCUMENT_HEAD_REF.to_owned();
+        let has_visible_headings = !visible_headings.is_empty();
+        let has_document_head = self.has_document_head();
 
         self.source
             .match_indices(query)
             .map(|(offset, _)| {
-                let ref_id = containing_heading(&visible_headings, offset)
-                    .map(heading_ref)
-                    .unwrap_or_else(|| fallback_ref.clone());
+                let ref_id =
+                    if has_visible_headings && has_document_head && offset < self.document_head_end
+                    {
+                        document_head_ref.clone()
+                    } else {
+                        containing_heading(&visible_headings, offset)
+                            .map(heading_ref)
+                            .unwrap_or_else(|| fallback_ref.clone())
+                    };
                 let (line, label) = match_facts(&self.source, &self.line_starts, offset);
                 Entry {
                     ref_id,
@@ -140,17 +159,24 @@ impl MarkdownDocument {
     /// 按 Markdown adapter 私有契约解析并匹配 ref。
     ///
     /// - `doc:full` → `FullDocument`
+    /// - `HEAD:leading` → `DocumentHead`
     /// - canonical heading ref 无匹配 → `REF_NOT_FOUND`
     /// - 其它非空输入 → `REF_INVALID`
     pub fn resolve_ref(&self, ref_id: &str) -> AdapterResult<ResolvedRef<'_>> {
         if ref_id == FULL_DOCUMENT_REF {
             return Ok(ResolvedRef::FullDocument);
         }
+        if ref_id == DOCUMENT_HEAD_REF {
+            return self
+                .has_document_head()
+                .then_some(ResolvedRef::DocumentHead)
+                .ok_or_else(|| AdapterError::ref_not_found(ref_id));
+        }
 
         let Some(parsed) = ParsedRef::parse(ref_id) else {
             return Err(AdapterError::ref_invalid(
                 ref_id,
-                "expected H:L{line}:H{level} or doc:full",
+                "expected H:L{line}:H{level}, HEAD:leading, or doc:full",
             ));
         };
 
@@ -162,6 +188,30 @@ impl MarkdownDocument {
 
     pub fn section_content(&self, heading: &Heading) -> &str {
         &self.source[heading.start..heading.end]
+    }
+
+    fn has_document_head(&self) -> bool {
+        !self.document_head_content().trim().is_empty()
+    }
+
+    fn document_head_entry(&self) -> Entry {
+        Entry {
+            ref_id: DOCUMENT_HEAD_REF.to_owned(),
+            label: "document head".to_owned(),
+            kind: Some("document_head".to_owned()),
+            location: Some(Location {
+                line_start: positive_line(1),
+                line_end: None,
+            }),
+            summary: None,
+            excerpt: None,
+            rank: None,
+            cost: Some(scoped_cost_for(self.document_head_content(), "entry")),
+            metadata: Some(serde_json::Map::from_iter([(
+                "document_region".to_owned(),
+                json!("leading"),
+            )])),
+        }
     }
 }
 

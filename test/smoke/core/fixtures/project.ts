@@ -76,6 +76,12 @@ export function copyNormalDocument(project: SmokeProject, relativePath: string) 
   return toSlashPath(relativePath);
 }
 
+export function copyDocumentFixture(project: SmokeProject, fixtureName: string, relativePath: string) {
+  const filePath = path.join(project.root, relativePath);
+  copyFile(resolveDocumentFixturePath(fixtureName), filePath);
+  return toSlashPath(relativePath);
+}
+
 function smokeProjectPaths(projectRoot: string) {
   const docsDir = path.join(projectRoot, "docs");
 
@@ -145,6 +151,14 @@ function resolveConfigFixturePath(name: string) {
   const sourcePath = path.join(configFixturesDir, `${name}.json`);
   if (!fs.existsSync(sourcePath)) {
     throw new Error(`smoke config fixture not found: ${name}`);
+  }
+  return sourcePath;
+}
+
+function resolveDocumentFixturePath(name: string) {
+  const sourcePath = path.join(fixturesDir, name);
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error(`smoke document fixture not found: ${name}`);
   }
   return sourcePath;
 }

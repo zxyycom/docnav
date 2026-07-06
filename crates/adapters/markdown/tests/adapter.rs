@@ -123,10 +123,19 @@ fn entry_refs(entries: &[docnav_protocol::Entry]) -> Vec<&str> {
 }
 
 fn read_ref(path: &Path, ref_id: &str) -> docnav_protocol::ReadResult {
+    read_ref_with_page(path, ref_id, 6000, 1)
+}
+
+fn read_ref_with_page(
+    path: &Path,
+    ref_id: &str,
+    limit: u32,
+    page: u32,
+) -> docnav_protocol::ReadResult {
     let arguments = ReadArguments {
         ref_id: ref_id.to_owned(),
-        limit: positive(6000),
-        page: positive(1),
+        limit: positive(limit),
+        page: positive(page),
         options: None,
     };
     let request = make_request(

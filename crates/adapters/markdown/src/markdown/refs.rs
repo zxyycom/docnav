@@ -1,6 +1,7 @@
 use super::document::Heading;
 
 pub const FULL_DOCUMENT_REF: &str = "doc:full";
+pub const DOCUMENT_HEAD_REF: &str = "HEAD:leading";
 
 /// 生成 canonical heading ref: `H:L{line}:H{level}`。
 /// `line` 为 1-based canonical 十进制正整数；`level` 为 1-6。

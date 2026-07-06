@@ -22,6 +22,17 @@ Code: `test/smoke/core/cases/real-markdown.ts`
 Proves:
 - Markdown `max_heading_level` 可以从 CLI flag 和 project config 影响 `outline` 可见粒度；越界值作为 adapter-owned option validation error 投影。
 
+### BB-CORE-MD-DOCHEAD-001 Markdown document head 通过真实 CLI 输出模式可观察
+Status: implemented
+Existing smoke task: `CORE-LINK-001`
+Code: `test/smoke/core/cases/real-markdown-document-head.ts`
+
+Proves:
+- 真实 CLI fixture 包含 YAML frontmatter、普通前导正文和可见 heading 时，structured outline 在 heading entries 前暴露 `HEAD:leading`。
+- `protocol-json` 验证 raw document head entry facts：非空 `label`、非 heading `kind`、`location.line_start`、`metadata.document_region = leading` 和缺少 readable-only `display`。
+- `readable-json` 和 `readable-view` 验证 display、成本摘要和 read content block 由输出层从 raw facts 与 read result 派生。
+- 通过 `HEAD:leading` 执行 read 返回 document head 原文，`content_type` 为 `text/markdown`，并保留 frontmatter delimiter 与普通前导正文。
+
 ### BB-CORE-REF-001 Adapter ref 错误穿过 Core
 Status: implemented
 Existing smoke task: `CORE-REF-001`
@@ -612,6 +623,27 @@ Proves:
 - deep-only document 在当前可见层级下 fallback 到 `doc:full`。
 - outline cost 按 `lines`、`bytes`、`tokens` 顺序报告 entry-scoped measurements，display 保留 title/cost，但 ref 不包含展示文本。
 
+### WB-MD-DOCHEAD-001 Markdown document head outline eligibility 和 raw facts 稳定
+Status: implemented
+Code: `crates/adapters/markdown/tests/adapter/outline_ref.rs`
+
+Proves:
+- document head 定义为文档开头到第一个有效 Markdown heading 起点之前的原文区域，frontmatter 内伪 heading、代码围栏伪 heading 和普通 horizontal rule 不改变第一个有效 heading 判定。
+- document head 非空、非纯空白且当前 structured outline 至少有一个可见 heading entry 时，outline 始终在 heading entries 前暴露 `HEAD:leading`。
+- 空或纯空白 document head 不暴露 `HEAD:leading`，heading entries 的顺序和 canonical heading ref grammar 保持不变。
+- 当前 outline 参数过滤后没有可见 heading entry 时，outline 保留单条 `doc:full` fallback，不只返回 document head entry。
+- raw document head entry facts 使用非空 `label`、非 heading `kind`、`location.line_start` 和 `metadata.document_region = leading`；readable-only `display` 不进入 raw protocol contract。
+
+### WB-MD-DOCHEAD-002 Markdown document head read/find roundtrip 和分页稳定
+Status: implemented
+Code: `crates/adapters/markdown/tests/adapter/paging_find.rs`
+
+Proves:
+- `read HEAD:leading` 返回 document head 原文，`content_type` 为 `text/markdown`，并保留 YAML frontmatter 起止 delimiter、注释、空行和普通前导正文。
+- document head read 的 `limit` 和 `page` 使用普通 read content 分页规则，按 Unicode 字符预算分页且不拆分字符。
+- find 命中 document head 且当前 structured outline 至少有一个可见 heading entry 时返回 `HEAD:leading`，使用该 ref read 可读取包含命中文本的 content。
+- find 命中 document head 但当前 outline 使用 `doc:full` fallback 时，返回 ref 仍可 read 到包含命中文本的内容。
+
 ### WB-MD-ADAPTER-OUTLINE-001 Markdown adapter outline 默认层级和 fallback 稳定
 Status: implemented
 Code: `crates/adapters/markdown/tests/adapter/outline_ref.rs`
@@ -684,8 +716,9 @@ Status: implemented
 Code: `crates/adapters/markdown/tests/adapter/paging_find.rs`
 
 Proves:
-- find 匹配 hidden heading 或 heading 前内容时，ref 指向当前 visible region 或 full document fallback。
+- find 匹配 hidden heading 时，ref 指向当前 visible region 或 full document fallback。
 - find display 保留匹配片段且 ref 不受 display 内容影响。
+- document head 命中到 `HEAD:leading` 的语义由 `WB-MD-DOCHEAD-002` 覆盖。
 
 ### WB-MD-OPTIONS-001 Markdown typed option 控制可见粒度
 Status: implemented

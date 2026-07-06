@@ -12,6 +12,7 @@ import {
   parseJson
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
+import { assertDocumentHeadOutputModes } from "./real-markdown-document-head.ts";
 import {
   assertReadableReadRefHandoff,
   runReadableJsonCase
@@ -43,6 +44,7 @@ async function testRealMarkdownRefHandoffChain() {
   const project = createRegisteredRealMarkdownProject("real-markdown-ref-handoff");
 
   await assertMaxHeadingLevelBehavior(project);
+  await assertDocumentHeadOutputModes(project);
   const outlineRef = await readFirstOutlineRef(project);
   await assertReadableReadRefHandoff(
     project,
