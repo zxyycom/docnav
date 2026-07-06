@@ -8,7 +8,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "lint:scripts": "eslint --max-warnings 0 --cache --cache-location .eslintcache --cache-strategy content eslint.config.ts scripts/**/*.ts test/**/*.ts",
+    "lint:scripts": "eslint --max-warnings 0 --cache --cache-location .eslintcache --cache-strategy content",
     "typecheck:scripts": "tsgo -p tsconfig.json",
     "typecheck:scripts:tsc": "tsc -p tsconfig.json",
     "package:docnav": "bun scripts/release-package/build.ts",

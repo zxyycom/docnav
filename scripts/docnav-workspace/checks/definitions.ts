@@ -68,7 +68,7 @@ export const checks = defineChecks([
         command: "bun",
         args: ["run", "lint:scripts"],
         ignoreOutput: [
-          /^\$ eslint --max-warnings 0 --cache --cache-location \.eslintcache --cache-strategy content eslint\.config\.ts scripts\/\*\*\/\*\.ts test\/\*\*\/\*\.ts$/
+          /^\$ eslint --max-warnings 0 --cache --cache-location \.eslintcache --cache-strategy content$/
         ]
       },
       {

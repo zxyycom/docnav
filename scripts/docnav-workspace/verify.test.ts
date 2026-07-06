@@ -54,9 +54,17 @@ describe("workspace verifier configuration", () => {
   });
 
   it("filters package manager echoes from successful script checks", () => {
-    const check = checkByLabel("TypeScript script typecheck");
+    const typecheck = checkByLabel("TypeScript script typecheck");
+    const lint = checkByLabel("TypeScript script lint");
 
-    assert.deepEqual(visibleOutputLines(check, "$ tsgo -p tsconfig.json"), []);
+    assert.deepEqual(visibleOutputLines(typecheck, "$ tsgo -p tsconfig.json"), []);
+    assert.deepEqual(
+      visibleOutputLines(
+        lint,
+        "$ eslint --max-warnings 0 --cache --cache-location .eslintcache --cache-strategy content"
+      ),
+      []
+    );
   });
 
   it("filters docs schema validator success details", () => {
