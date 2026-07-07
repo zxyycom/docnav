@@ -5,6 +5,7 @@ args = [
     "--mcp",
 ]
 enabled_tools = [
+    "codegraph_explore",
     "codegraph_search",
     "codegraph_node",
     "codegraph_callers",
@@ -12,8 +13,7 @@ enabled_tools = [
     "codegraph_impact",
     "codegraph_files",
     "codegraph_status",
-    "codegraph_trace",
 ]
 default_tools_approval_mode = "approve"
 [mcp_servers.codegraph.env]
-CODEGRAPH_MCP_TOOLS = "search,node,callers,callees,impact,files,status,trace"
+CODEGRAPH_MCP_TOOLS = "explore,search,node,callers,callees,impact,files,status"
