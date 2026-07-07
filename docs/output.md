@@ -10,6 +10,8 @@
 
 Document operation failure projection 由本文件与 [原始协议](protocol.md)、[CLI](cli.md) 等 surface owner 分别承担；`docnav-diagnostics` 提供 diagnostic/error model helper primitives 和 record invariants。
 
+Runtime invocation log event 不是 document output，不由 `readable-view`、`readable-json` 或 `protocol-json` 承载。启用 invocation logging 后，输出层仍只渲染 document outcome 或 primary diagnostic；日志事件只能写入 [CLI](cli.md#invocation-logging) 解析出的独立 sink/path，不得作为 readable payload、protocol field、manifest/probe field 或 linked adapter handler payload 注入。
+
 机器可读输出必须优先保持稳定和可解析。若调用方选择 `protocol-json` 或 `readable-json`，stdout 必须只输出一个符合该模式 documented shape 的 JSON 值；只要输出模式可以从 argv 或请求中确定，失败也必须使用对应 JSON 错误形态。无法确定 operation 时，协议错误 envelope 使用 `operation: null`。
 
 上游失败或 renderer 失败进入输出层时，必须已经归并为一个 primary `DiagnosticRecord`。输出层只负责按当前 output mode 投影该 primary diagnostic，不重新分类失败来源、不改写 details 语义、不新增 sibling error list。
@@ -120,3 +122,4 @@ Readable error 保留 `code`、`owner`、必要 `details`、`guidance` 和可用
 - `readable-json` 成功或失败输出写 stdout，且只输出一个 JSON 值。
 - `protocol-json` 成功或失败输出写 stdout，且只输出一个 JSON 值。
 - renderer 无法生成 valid readable-view payload 时，stdout 为空，诊断写 stderr。
+- Runtime invocation log 写入独立 sink/path，不能写 stdout。日志写入失败诊断如需可见，必须是 bounded 且不得破坏 machine-readable stdout。

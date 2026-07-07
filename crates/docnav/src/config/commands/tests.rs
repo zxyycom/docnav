@@ -66,6 +66,43 @@ fn config_set_writes_selected_project_and_user_config_files() {
 }
 
 #[test]
+fn config_set_rejects_empty_invocation_log_paths() {
+    let workspace = temp_workspace("config-set-empty-invocation-log-paths");
+    let project_config = workspace.join("selected-project.json");
+    let user_config = workspace.join("selected-user.json");
+
+    for (key, reason) in [
+        (
+            "invocation_log.path",
+            "invocation log path must not be empty",
+        ),
+        (
+            "invocation_log.content_capture.root",
+            "invocation log content capture root must not be empty",
+        ),
+    ] {
+        let error = expect_command_error(
+            execute(
+                ConfigCommand::Set(ConfigSet {
+                    key: key.to_owned(),
+                    value: String::new(),
+                    user: false,
+                    config_paths: config_paths(&project_config, &user_config),
+                }),
+                &UnusedRuntime,
+            ),
+            "empty invocation log config value should fail",
+        );
+        let details = error.diagnostic().details().to_value();
+
+        assert_eq!(details["field"], key);
+        assert_eq!(details["reason"], reason);
+    }
+
+    let _ = fs::remove_dir_all(workspace);
+}
+
+#[test]
 fn config_list_path_context_uses_selected_config_files() {
     let workspace = temp_workspace("config-list-selected-paths");
     let project_config = workspace.join("selected-project.json");

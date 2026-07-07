@@ -8,11 +8,15 @@ use crate::project_context::ProjectContext;
 pub(super) const DEFAULT_LIMIT: u32 = 6000;
 pub(super) const DEFAULT_OUTPUT: &str = "readable-view";
 pub(super) const DEFAULT_PAGINATION_ENABLED: bool = true;
-pub(super) const SUPPORTED_CORE_KEYS: [&str; 4] = [
+pub(super) const SUPPORTED_CORE_KEYS: [&str; 8] = [
     "defaults.adapter",
     "defaults.pagination.enabled",
     "defaults.pagination.limit",
     "defaults.output",
+    "invocation_log.enabled",
+    "invocation_log.path",
+    "invocation_log.content_capture.enabled",
+    "invocation_log.content_capture.root",
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,6 +33,8 @@ pub struct CoreConfig {
     pub defaults: DefaultsConfig,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outline: Option<Value>,
+    #[serde(default, skip_serializing_if = "InvocationLogConfig::is_empty")]
+    pub invocation_log: InvocationLogConfig,
     #[serde(default, skip_serializing_if = "NativeOptionsConfig::is_empty")]
     pub options: NativeOptionsConfig,
 }
@@ -51,6 +57,26 @@ pub struct PaginationConfig {
     pub enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InvocationLogConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "ContentCaptureConfig::is_empty")]
+    pub content_capture: ContentCaptureConfig,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContentCaptureConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -84,6 +110,18 @@ impl NativeOptionsConfig {
 
     pub(crate) fn keys(&self) -> impl Iterator<Item = &str> {
         self.values.keys().map(String::as_str)
+    }
+}
+
+impl InvocationLogConfig {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.enabled.is_none() && self.path.is_none() && self.content_capture.is_empty()
+    }
+}
+
+impl ContentCaptureConfig {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.enabled.is_none() && self.root.is_none()
     }
 }
 

@@ -259,6 +259,21 @@ Proves:
 - `config list --path --operation` passes selected project/user config files and origins into document context resolution.
 - `init --project-config` creates or preserves the selected project config file and rejects an existing directory at that selected file path.
 
+### WB-CORE-INVOCATION-LOG-001 Core runtime invocation log 保持审计边界
+Status: implemented
+Code: `crates/docnav/src/runtime/tests.rs`
+
+Proves:
+- Invocation logging 默认关闭，且配置关闭时不创建日志副作用。
+- CLI/config 显式启用后，core document operation 写入 JSONL operation event，并保留 request id、adapter id、operation status、bounded failure layer/code/summary 和 stdout purity。
+- Config load failure 可由显式 CLI log 在 runtime config 初始化前记录为 config-layer failure。
+- Metadata-only read event 只记录 SHA-256 content hash、content type 和 size metadata；未单独开启 content capture 时不写正文文件。
+- 单独开启 content capture 后正文文件只写入独立 root 下的日期/`sha256-<content_hash>.content` 相对路径，文件 bytes hash 与主日志 hash 一致。
+- 日志文件写入失败、output projection failure 和 content capture failure 不改变原 document operation 的成功/失败语义。
+
+决策说明:
+- 保留为一个多分支 case 是因为所有断言共享 core runtime document operation、output projection 和 invocation log writer 链路；拆分会重复 project/config/log fixture 初始化，且不会改变 owner 边界。
+
 ### WB-NAV-INPUT-RESOLUTION-001 Navigation input resolution 保持来源解析边界
 Status: implemented
 Code: `crates/shared/navigation/src/tests/navigation/native_options.rs`

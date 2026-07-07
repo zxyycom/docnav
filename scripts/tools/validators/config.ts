@@ -27,6 +27,7 @@ export const SCHEMAS = {
   protocolRequest: "docs/schemas/protocol-request.schema.json",
   protocolResponse: "docs/schemas/protocol-response.schema.json",
   docnavMarkdownConfig: "docs/schemas/docnav-markdown-config.schema.json",
+  invocationLogEvent: "docs/schemas/invocation-log-event.schema.json",
   readableError: "docs/schemas/readable-error.schema.json",
   readableFind: "docs/schemas/readable-find.schema.json",
   readableInfo: "docs/schemas/readable-info.schema.json",

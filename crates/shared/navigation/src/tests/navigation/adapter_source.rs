@@ -1,7 +1,7 @@
 use docnav_protocol::ProtocolDiagnosticCode;
 use serde_json::Value;
 
-use crate::execute_loaded_navigation_command;
+use crate::{execute_loaded_navigation_command, NavigationFailureLayer};
 
 use super::super::support::{
     config_sources, navigation_command, StubRegistry, UnsupportedRegistry,
@@ -40,6 +40,26 @@ fn explicit_missing_adapter_reports_static_registry_guidance() {
             "guidance should not mention {removed_term}: {guidance}"
         );
     }
+}
+
+#[test]
+fn explicit_missing_adapter_error_carries_invocation_failure_layer() {
+    let mut command = navigation_command(Vec::new());
+    command.adapter = Some("custom-local-adapter".to_owned());
+
+    let error = execute_loaded_navigation_command(
+        command,
+        config_sources(Value::Null, Value::Null),
+        &StubRegistry,
+    )
+    .expect_err("missing adapter");
+
+    assert_eq!(
+        error.failure_layer(),
+        Some(NavigationFailureLayer::AdapterSelection)
+    );
+    assert_eq!(error.selected_adapter_id(), None);
+    assert_eq!(error.request_id(), None);
 }
 
 #[test]

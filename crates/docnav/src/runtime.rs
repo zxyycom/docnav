@@ -5,10 +5,12 @@ use docnav_navigation::{
 };
 use docnav_protocol::Operation;
 use serde::Serialize;
+use std::time::Instant;
 
 use crate::cli::{DocumentCommand, OutputMode};
-use crate::config::ResolvedValue;
+use crate::config::{ConfigContext, CoreConfig, ResolvedValue};
 use crate::error::{AppError, AppResult};
+use crate::invocation_log::{DocumentInvocationLog, InvocationLogger};
 use crate::output::{outcome_for_response, CommandOutcome};
 use crate::project_context::ProjectContext;
 use crate::project_paths::normalize_document_path;
@@ -19,6 +21,9 @@ pub struct DocumentRequest {
     pub project: ProjectContext,
     pub command: DocumentCommand,
     pub config_source_descriptors: NavigationConfigSourceDescriptors,
+    pub(crate) project_config: CoreConfig,
+    pub(crate) user_config: CoreConfig,
+    pub(crate) started: Instant,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -67,15 +72,53 @@ pub struct AdapterRuntime;
 
 impl DocnavRuntime for AdapterRuntime {
     fn execute_document(&self, request: DocumentRequest) -> AppResult<CommandOutcome> {
-        let document = normalize_document_path(&request.project, &request.command.path)?;
-        let registry = AdapterRegistry::load(&request.project)?;
-        let outcome = execute_navigation_command(
+        let logger = InvocationLogger::from_command(
+            &request.command,
+            &request.project,
+            &request.project_config,
+            &request.user_config,
+        );
+        let started = request.started;
+        let document = match normalize_document_path(&request.project, &request.command.path) {
+            Ok(document) => document,
+            Err(error) => {
+                let context = logger.document_context(&request.command, &request.project, None);
+                logger.record_app_error(&context, &error, "operation", started.elapsed());
+                return Err(error);
+            }
+        };
+        let log_context = logger.document_context(
+            &request.command,
+            &request.project,
+            Some(&document.absolute_path),
+        );
+        let registry = match AdapterRegistry::load(&request.project) {
+            Ok(registry) => registry,
+            Err(error) => {
+                logger.record_app_error(&log_context, &error, "operation", started.elapsed());
+                return Err(error);
+            }
+        };
+        let outcome = match execute_navigation_command(
             navigation_command(&request.command, document.adapter_path),
             request.config_source_descriptors,
             &registry,
-        )
-        .map_err(|error| AppError::new(error.into_diagnostic()))?;
-        outcome_for_response(outcome.response, output_mode(outcome.output)?)
+        ) {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                logger.record_navigation_error(&log_context, &error, started.elapsed());
+                return Err(AppError::new(error.into_diagnostic()));
+            }
+        };
+        let output = match output_mode(outcome.output) {
+            Ok(output) => output,
+            Err(error) => {
+                logger.record_app_error(&log_context, &error, "operation", started.elapsed());
+                return Err(error);
+            }
+        };
+        let invocation_log = DocumentInvocationLog::new(logger, log_context, started);
+        outcome_for_response(outcome, output, Some(invocation_log))
     }
 
     fn describe_document_context(
@@ -165,12 +208,24 @@ fn output_mode(output: NavigationOutputMode) -> AppResult<OutputMode> {
 }
 
 impl DocumentRequest {
-    pub fn from_command(command: DocumentCommand, project: ProjectContext) -> Self {
-        let config_source_descriptors = project.navigation_config_source_descriptors();
+    #[cfg(test)]
+    pub(crate) fn from_config_context(command: DocumentCommand, context: ConfigContext) -> Self {
+        Self::from_config_context_started(command, context, Instant::now())
+    }
+
+    pub(crate) fn from_config_context_started(
+        command: DocumentCommand,
+        context: ConfigContext,
+        started: Instant,
+    ) -> Self {
+        let config_source_descriptors = context.project.navigation_config_source_descriptors();
         Self {
-            project,
+            project: context.project,
             command,
             config_source_descriptors,
+            project_config: context.project_config,
+            user_config: context.user_config,
+            started,
         }
     }
 }

@@ -3,6 +3,9 @@ use super::*;
 use docnav_diagnostics::{
     typed_codes, BoundaryDetails, DiagnosticRecordDraft, DiagnosticSource, RefDetails,
 };
+use docnav_navigation::{
+    NavigationCommandOutcome, NavigationInvocationTrace, NavigationOutputMode,
+};
 use docnav_protocol::{
     protocol_error_record_draft_with_summary, Cost, Entry, Measurement, OperationResult,
     OutlineResult, ProtocolResponse, ReadResult, UnstructuredOutlineReason,
@@ -48,7 +51,7 @@ fn document_readable_view_uses_shared_output_facade() {
             page: None,
         }),
     );
-    let outcome = outcome_for_response(response, OutputMode::ReadableView).unwrap();
+    let outcome = document_outcome(response, OutputMode::ReadableView);
     let (stdout, _) = write_success(outcome);
     let output = String::from_utf8(stdout).unwrap();
     assert!(output.contains("\"$block\": \"/content\""));
@@ -75,7 +78,7 @@ fn document_readable_json_uses_success_payload_without_protocol_envelope() {
             None,
         )),
     );
-    let outcome = outcome_for_response(response, OutputMode::ReadableJson).unwrap();
+    let outcome = document_outcome(response, OutputMode::ReadableJson);
     let (stdout, stderr) = write_success(outcome);
     assert!(stderr.is_empty());
     let value: Value = serde_json::from_slice(&stdout).unwrap();
@@ -91,7 +94,7 @@ fn document_protocol_json_writes_protocol_envelope_with_empty_stderr() {
         "request-1",
         OperationResult::Outline(OutlineResult::structured(vec![], None)),
     );
-    let outcome = outcome_for_response(response, OutputMode::ProtocolJson).unwrap();
+    let outcome = document_outcome(response, OutputMode::ProtocolJson);
     let (stdout, stderr) = write_success(outcome);
     let stdout: Value = serde_json::from_slice(&stdout).unwrap();
     assert_eq!(stdout["protocol_version"], PROTOCOL_VERSION);
@@ -113,7 +116,7 @@ fn document_unstructured_outline_readable_view_uses_shared_output_facade() {
             },
         )),
     );
-    let outcome = outcome_for_response(response, OutputMode::ReadableView).unwrap();
+    let outcome = document_outcome(response, OutputMode::ReadableView);
     let (stdout, stderr) = write_success(outcome);
 
     assert!(stderr.is_empty());
@@ -227,4 +230,28 @@ fn test_cost() -> Cost {
             },
         ],
     }
+}
+
+fn document_outcome(response: ProtocolResponse, output: OutputMode) -> CommandOutcome {
+    let operation = response_operation(&response).unwrap_or(Operation::Outline);
+    let navigation_output = match output {
+        OutputMode::ReadableView => NavigationOutputMode::ReadableView,
+        OutputMode::ReadableJson => NavigationOutputMode::ReadableJson,
+        OutputMode::ProtocolJson => NavigationOutputMode::ProtocolJson,
+    };
+    outcome_for_response(
+        NavigationCommandOutcome {
+            response,
+            output: navigation_output,
+            trace: NavigationInvocationTrace {
+                operation,
+                selected_adapter_id: Some("test-adapter".to_owned()),
+                request_id: Some("request-1".to_owned()),
+                failure_layer: None,
+            },
+        },
+        output,
+        None,
+    )
+    .unwrap()
 }

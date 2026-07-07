@@ -15,6 +15,7 @@ mod validation;
 pub(super) use self::update::{set_key, unset_key};
 use self::validation::{parse_output, unknown_key};
 pub(super) use self::validation::{
+    validate_invocation_log_content_capture_root_key, validate_invocation_log_path_key,
     validate_native_option_key_for_registry, validate_output_key, validate_positive_key,
 };
 
@@ -132,6 +133,14 @@ pub(super) fn effective_key_value(
         "defaults.pagination.enabled" => resolve_pagination_enabled(context),
         "defaults.pagination.limit" => resolve_limit(None, context),
         "defaults.output" => resolve_output(None, context),
+        "invocation_log.enabled" => Ok(resolve_invocation_log_enabled(context)),
+        "invocation_log.path" => Ok(resolve_invocation_log_path(context)),
+        "invocation_log.content_capture.enabled" => {
+            Ok(resolve_invocation_log_content_capture_enabled(context))
+        }
+        "invocation_log.content_capture.root" => {
+            Ok(resolve_invocation_log_content_capture_root(context))
+        }
         _ => {
             let option_key = registered_native_option_key(key, registry)?;
             Ok(resolve_native_option(option_key, context))
@@ -169,6 +178,30 @@ pub(super) fn scoped_key_value(
             .output
             .as_ref()
             .map(|value| ResolvedValue::new(json!(value.as_str()), source))
+            .unwrap_or_else(ResolvedValue::unset)),
+        "invocation_log.enabled" => Ok(config
+            .invocation_log
+            .enabled
+            .map(|value| ResolvedValue::new(json!(value), source.clone()))
+            .unwrap_or_else(ResolvedValue::unset)),
+        "invocation_log.path" => Ok(config
+            .invocation_log
+            .path
+            .as_ref()
+            .map(|value| ResolvedValue::new(json!(value), source.clone()))
+            .unwrap_or_else(ResolvedValue::unset)),
+        "invocation_log.content_capture.enabled" => Ok(config
+            .invocation_log
+            .content_capture
+            .enabled
+            .map(|value| ResolvedValue::new(json!(value), source.clone()))
+            .unwrap_or_else(ResolvedValue::unset)),
+        "invocation_log.content_capture.root" => Ok(config
+            .invocation_log
+            .content_capture
+            .root
+            .as_ref()
+            .map(|value| ResolvedValue::new(json!(value), source))
             .unwrap_or_else(ResolvedValue::unset)),
         _ => {
             let option_key = registered_native_option_key(key, registry)?;
@@ -211,6 +244,30 @@ pub(super) fn config_value_to_json(
             .as_ref()
             .map(|value| json!(value.as_str()))
             .unwrap_or(Value::Null),
+        "invocation_log.enabled" => config
+            .invocation_log
+            .enabled
+            .map(|value| json!(value))
+            .unwrap_or(Value::Null),
+        "invocation_log.path" => config
+            .invocation_log
+            .path
+            .as_ref()
+            .map(|value| json!(value))
+            .unwrap_or(Value::Null),
+        "invocation_log.content_capture.enabled" => config
+            .invocation_log
+            .content_capture
+            .enabled
+            .map(|value| json!(value))
+            .unwrap_or(Value::Null),
+        "invocation_log.content_capture.root" => config
+            .invocation_log
+            .content_capture
+            .root
+            .as_ref()
+            .map(|value| json!(value))
+            .unwrap_or(Value::Null),
         _ => {
             let option_key = registered_native_option_key(key, registry)?;
             config
@@ -244,6 +301,51 @@ fn resolve_native_option(key: &str, context: &ConfigContext) -> ResolvedValue {
     }
     if let Some(value) = context.user_config.options.value_for_key(key) {
         return ResolvedValue::user(value.clone());
+    }
+    ResolvedValue::unset()
+}
+
+fn resolve_invocation_log_enabled(context: &ConfigContext) -> ResolvedValue {
+    if let Some(value) = context.project_config.invocation_log.enabled {
+        return ResolvedValue::project(json!(value));
+    }
+    if let Some(value) = context.user_config.invocation_log.enabled {
+        return ResolvedValue::user(json!(value));
+    }
+    ResolvedValue::unset()
+}
+
+fn resolve_invocation_log_path(context: &ConfigContext) -> ResolvedValue {
+    if let Some(value) = &context.project_config.invocation_log.path {
+        return ResolvedValue::project(json!(value));
+    }
+    if let Some(value) = &context.user_config.invocation_log.path {
+        return ResolvedValue::user(json!(value));
+    }
+    ResolvedValue::unset()
+}
+
+fn resolve_invocation_log_content_capture_enabled(context: &ConfigContext) -> ResolvedValue {
+    if let Some(value) = context
+        .project_config
+        .invocation_log
+        .content_capture
+        .enabled
+    {
+        return ResolvedValue::project(json!(value));
+    }
+    if let Some(value) = context.user_config.invocation_log.content_capture.enabled {
+        return ResolvedValue::user(json!(value));
+    }
+    ResolvedValue::unset()
+}
+
+fn resolve_invocation_log_content_capture_root(context: &ConfigContext) -> ResolvedValue {
+    if let Some(value) = &context.project_config.invocation_log.content_capture.root {
+        return ResolvedValue::project(json!(value));
+    }
+    if let Some(value) = &context.user_config.invocation_log.content_capture.root {
+        return ResolvedValue::user(json!(value));
     }
     ResolvedValue::unset()
 }

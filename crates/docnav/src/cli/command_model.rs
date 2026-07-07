@@ -115,6 +115,8 @@ pub struct DocumentCommand {
     pub native_options: Vec<NativeOptionCliInput>,
     pub output: Option<OutputMode>,
     pub adapter: Option<String>,
+    pub invocation_log: Option<String>,
+    pub invocation_log_content_root: Option<String>,
     pub config_paths: ConfigPathArgs,
 }
 

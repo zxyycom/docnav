@@ -1,4 +1,6 @@
 pub(super) const ADAPTER: &str = "--adapter";
+pub(super) const INVOCATION_LOG: &str = "--invocation-log";
+pub(super) const INVOCATION_LOG_CONTENT_ROOT: &str = "--invocation-log-content-root";
 pub(super) const LIMIT: &str = "--limit";
 pub(super) const OPERATION: &str = "--operation";
 pub(super) const OUTPUT: &str = "--output";

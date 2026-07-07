@@ -6,6 +6,14 @@
     },
     "output": "readable-view"
   },
+  "invocation_log": {
+    "enabled": true,
+    "path": "logs/docnav-invocations.jsonl",
+    "content_capture": {
+      "enabled": true,
+      "root": "logs/docnav-content"
+    }
+  },
   "options": {
     "max_heading_level": 3
   }

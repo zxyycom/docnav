@@ -97,6 +97,29 @@ pub(in crate::config) fn validate_positive_key(key: &str, value: u32) -> AppResu
     }
 }
 
+pub(in crate::config) fn validate_invocation_log_path_key(key: &str, value: &str) -> AppResult<()> {
+    if value.is_empty() {
+        return Err(AppError::invalid_request(
+            key,
+            "invocation log path must not be empty",
+        ));
+    }
+    Ok(())
+}
+
+pub(in crate::config) fn validate_invocation_log_content_capture_root_key(
+    key: &str,
+    value: &str,
+) -> AppResult<()> {
+    if value.is_empty() {
+        return Err(AppError::invalid_request(
+            key,
+            "invocation log content capture root must not be empty",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;

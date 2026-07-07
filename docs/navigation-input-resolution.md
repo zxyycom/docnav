@@ -17,6 +17,7 @@ Core 负责 invocation 入口和非 navigation 命令：
 5. 接收 navigation outcome，并按 [输出模式](output.md)、[原始协议](protocol.md) 和 [CLI](cli.md) 规则进行 surface 投影与退出码映射。
 
 Core 不为 navigation command 预先读取 raw config JSON、完成参数来源合并、native option enrichment、selected-adapter projection 或 request construction。
+例外是 core-owned runtime invocation logging surface：core 可以读取所选 project/user config 文件中的 `invocation_log` section 来初始化独立日志 sink，但该 section 不属于 navigation parameter source，不参与 selected adapter declaration 注册，也不得写入 `RequestEnvelope` / `OperationArguments`。
 
 ### `docnav-navigation`
 
@@ -53,6 +54,10 @@ Core-supplied project/user config descriptor 至少包含：
 
 `path`、`ref` 和 `query` 是当前调用的 direct navigation input，不从配置文件取得。`page` 是 continuation call-position state，不是配置字段；入口省略时使用 built-in `1`。
 
+Runtime invocation logging 可以记录这些来源的 bounded metadata，例如 selected config source descriptor、adapter selection outcome、request id availability、operation、page/limit、path display 和 selected adapter dispatch status。
+Document path metadata 只记录 bounded display 和 hash。
+Ref/query metadata 可以记录 presence/length/hash/preview。日志不得记录完整 raw config source、完整 direct query/ref、完整 protocol request/response 或 adapter-owned ref grammar 作为跨层稳定身份。
+
 ## 配置文件形状
 
 Config source 只表达 document operation 默认值和 adapter-owned native option source，不拥有最终参数解析流程。
@@ -67,11 +72,15 @@ Config source 只表达 document operation 默认值和 adapter-owned native opt
 | `defaults.output` | 默认输出模式。 |
 | `outline.mode_rules[]` | `outline` 的 path selector。每条 rule 包含 `path` 和 `mode`。 |
 | `outline.auto_full_read.thresholds[]` | `outline` 的 adapter-scoped cost threshold selector。每条 threshold 包含 `adapter`、`unit` 和正整数 `value`。 |
+| `invocation_log.enabled` | Core-owned runtime invocation logging 显式启用开关。 |
+| `invocation_log.path` | Core-owned JSONL invocation log file path。 |
+| `invocation_log.content_capture.enabled` | Core-owned content capture 显式启用开关。 |
+| `invocation_log.content_capture.root` | Core-owned content capture root directory path。 |
 | `options.*` | Adapter-owned native option source value。 |
 
 `outline.mode_rules[].mode` 只能是 `structured` 或 `unstructured_full`。`outline.mode_rules[].path` 使用 Rust `regex` matcher pattern，匹配使用 `/` 分隔的规范化 `document.path`，且 pattern 必须匹配整个路径。项目根内文档使用 project-relative path，项目根外文档使用规范化绝对 path。当前文档化 pattern syntax 是 Rust regex crate 支持的正则表达式，例如 `docs/raw\.md`、`notes/raw/.+\.md` 和 `.*\.txt`；它不是 glob、gitignore 规则或 shell expansion。Unsupported matcher feature、无法编译的 pattern、缺少 `path` / `mode` 或未知 mode 都是 source-scoped input resolution failure。
 
-`defaults.limit` 和 `defaults.page` 不是合法字段。未知顶层字段、未知 `defaults.*` 字段、未知 `defaults.pagination.*` 字段、未知 `outline.*` 字段和无法由当前 registry 声明接收的 `options.*` source 都是 input resolution failure。
+`invocation_log.*` 字段只声明配置文件 shape；日志 enablement、path 规范化、content capture root、写入失败降级和输出通道由 [CLI](cli.md#invocation-logging) 与 [输出模式](output.md) 拥有。`defaults.limit` 和 `defaults.page` 不是合法字段。未知顶层字段、未知 `defaults.*` 字段、未知 `defaults.pagination.*` 字段、未知 `outline.*` 字段、未知 `invocation_log.*` 字段和无法由当前 registry 声明接收的 `options.*` source 都是 input resolution failure。
 
 配置 schema 只用于示例校验和编辑器提示；runtime 不要求先加载 schema。
 
@@ -99,6 +108,8 @@ docnav-navigation
 ```
 
 Resolution 必须保持来源信息，便于诊断表达 explicit、project config、user config 或 built-in default。Default-path config source 缺失不产生 diagnostic；explicit config path missing、present invalid source、unknown field、unmapped public input、type/range invalid 和 missing required value 产生 blocking diagnostic。
+
+Invocation logging 可观察 resolution 阶段的稳定 metadata，但不改变 resolution outcome。可记录的 navigation-owned metadata 包括 adapter selection success/failure layer、selected adapter id、request construction success/failure、request id 或 fallback correlation id availability、operation arguments 的 bounded shape、selected adapter dispatch start/end status 和 output/error status metadata。不得把日志 event 作为额外 resolution result 返回给 caller。
 
 Config path flag 只影响 source descriptor 的 resolved path 和 path origin，不成为 navigation parameter source value。显式选择的 config file 内部字段仍以 `project` 或 `user` source level 参与 `explicit > project > user > built_in` 合并；direct argv value 始终优先于 project config，project config 始终优先于 user config。
 
@@ -149,6 +160,8 @@ Resolution 完成后，`docnav-navigation` 构造内部 protocol request：
 | `info` | `options` |
 
 最终 `limit` 和 `page` 必须是正整数。`ref` 和 `query` 是 operation-owned required input；缺失或非法时在 navigation boundary 返回 input diagnostic。`options` 是 selected adapter 的 typed native option object；原始协议只承载该对象，不解释格式语义。
+
+Invocation log 中的 request construction metadata 只能引用 `RequestEnvelope` 的 correlation facts 和 bounded argument summaries。`ref` 和 `query` 摘要不得替代 adapter-owned ref/query 语义；日志实现不能为了记录日志而重新解析 ref、复制 adapter native option 语义或改变 request construction failure classification。
 
 ## 错误出口
 

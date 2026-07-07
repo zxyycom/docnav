@@ -74,6 +74,11 @@ fn document_command_from_matches(
         native_options: parse_native_options(operation, matches, context),
         output: optional_explicit_output(matches)?,
         adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
+        invocation_log: optional_explicit_string(matches, arg_ids::INVOCATION_LOG),
+        invocation_log_content_root: optional_explicit_string(
+            matches,
+            arg_ids::INVOCATION_LOG_CONTENT_ROOT,
+        ),
         config_paths: config_path_args(matches),
     })
 }
@@ -155,7 +160,10 @@ fn document_parse_error(
 
 fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
     match flag {
-        ValueFlag::Adapter | ValueFlag::Output => true,
+        ValueFlag::Adapter
+        | ValueFlag::InvocationLog
+        | ValueFlag::InvocationLogContentRoot
+        | ValueFlag::Output => true,
         ValueFlag::ProjectConfig | ValueFlag::UserConfig => true,
         ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
         ValueFlag::Ref => operation == Operation::Read,

@@ -124,6 +124,61 @@ fn navigation_owned_outline_config_is_accepted_and_preserved() {
 }
 
 #[test]
+fn direct_config_file_rejects_empty_invocation_log_path() {
+    let root = temp_root("empty-invocation-log-path");
+    let path = write_project_config(
+        &root,
+        json!({
+            "invocation_log": {
+                "path": ""
+            }
+        }),
+    );
+    let registry = registry_for_root(&root);
+
+    let error = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap_err();
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(details["field"], "invocation_log.path");
+    assert_eq!(details["reason"], "invocation log path must not be empty");
+}
+
+#[test]
+fn direct_config_file_rejects_empty_invocation_log_content_capture_root() {
+    let root = temp_root("empty-invocation-log-content-root");
+    let path = write_project_config(
+        &root,
+        json!({
+            "invocation_log": {
+                "content_capture": {
+                    "root": ""
+                }
+            }
+        }),
+    );
+    let registry = registry_for_root(&root);
+
+    let error = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap_err();
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(details["field"], "invocation_log.content_capture.root");
+    assert_eq!(
+        details["reason"],
+        "invocation log content capture root must not be empty"
+    );
+}
+
+#[test]
 fn nested_non_object_config_field_reports_structured_config_issue() {
     let root = temp_root("nested-non-object");
     let path = write_project_config(

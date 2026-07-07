@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/docnav-markdown-config.schema.json",
-  "$comment": "Reference schema for docnav config source examples that include Markdown native options and navigation-owned outline selectors. The schema describes JSON file shape only. Navigation input resolution owns source mapping, selector priority, path matching and threshold comparison; selected adapter declarations own option semantics such as max_heading_level type and range validation before request construction.",
+  "$comment": "Reference schema for docnav config source examples that include Markdown native options, navigation-owned outline selectors and core-owned invocation_log shape. The schema describes JSON file shape only. Navigation input resolution owns source mapping, selector priority, path matching and threshold comparison; selected adapter declarations own option semantics such as max_heading_level type and range validation before request construction; CLI owns invocation logging enablement and path behavior.",
   "type": "object",
   "properties": {
     "defaults": {
@@ -30,6 +30,38 @@
             "protocol-json"
           ],
           "description": "Default core CLI output mode for document operations."
+        }
+      },
+      "additionalProperties": false
+    },
+    "invocation_log": {
+      "type": "object",
+      "description": "Core-owned runtime invocation logging config section shape. CLI owns enablement semantics, source precedence, path normalization, sink behavior and failure downgrade.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Explicit runtime invocation log enablement flag."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "JSONL invocation log file path from the selected config source."
+        },
+        "content_capture": {
+          "type": "object",
+          "description": "Explicit content capture config section shape for invocation logging.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Explicit content capture enablement flag."
+            },
+            "root": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Content capture root directory path from the selected config source."
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

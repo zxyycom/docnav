@@ -12,7 +12,10 @@ use crate::project_context::{ConfigPathOrigin, ProjectContext, SelectedConfigPat
 use crate::project_paths::path_to_slash;
 use crate::registry::AdapterRegistry;
 
-use super::keys::{validate_output_key, validate_positive_key};
+use super::keys::{
+    validate_invocation_log_content_capture_root_key, validate_invocation_log_path_key,
+    validate_output_key, validate_positive_key,
+};
 use super::model::{ConfigContext, CoreConfig};
 
 mod diagnostics;
@@ -26,6 +29,10 @@ pub fn load_context(
     user_config: Option<&str>,
 ) -> AppResult<ConfigContext> {
     let project = ProjectContext::discover_with_cli_config_paths(project_config, user_config)?;
+    load_context_for_project(project)
+}
+
+pub(crate) fn load_context_for_project(project: ProjectContext) -> AppResult<ConfigContext> {
     let registry = AdapterRegistry::load(&project)?;
     let project_config = read_context_config(&project, &registry, ConfigFileSource::Project)?;
     let user_config = read_context_config(&project, &registry, ConfigFileSource::User)?;
@@ -180,6 +187,15 @@ fn validate_config(
         validate_positive_key("defaults.pagination.limit", limit)?;
     }
     validate_output_key("defaults.output", &config.defaults.output, path)?;
+    if let Some(log_path) = &config.invocation_log.path {
+        validate_invocation_log_path_key("invocation_log.path", log_path)?;
+    }
+    if let Some(root) = &config.invocation_log.content_capture.root {
+        validate_invocation_log_content_capture_root_key(
+            "invocation_log.content_capture.root",
+            root,
+        )?;
+    }
     for key in config.options.keys() {
         let field = format!("options.{key}");
         if !registry.has_native_option_config_key(&field) {
@@ -210,6 +226,7 @@ fn validate_config_shape(
         match key.as_str() {
             "defaults" => validate_defaults_shape(child, path, source, origin)?,
             "outline" => validate_outline_shape(child, path, source, origin)?,
+            "invocation_log" => validate_invocation_log_shape(child, path, source, origin)?,
             "options" => validate_options_shape(child, path, registry, source, origin)?,
             _ => return Err(unknown_config_field_error(path, source, origin, key, None)),
         }
@@ -282,6 +299,75 @@ fn validate_pagination_shape(
                     source,
                     origin,
                     &format!("defaults.pagination.{key}"),
+                    None,
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_invocation_log_shape(
+    value: &Value,
+    path: &Path,
+    source: ConfigFileSource,
+    origin: ConfigPathOrigin,
+) -> AppResult<()> {
+    let Some(invocation_log) = value.as_object() else {
+        return Err(invalid_config_object_error(
+            path,
+            source,
+            origin,
+            "invocation_log",
+        ));
+    };
+
+    for (key, child) in invocation_log {
+        match key.as_str() {
+            "enabled" | "path" => {}
+            "content_capture" => {
+                validate_invocation_log_content_capture_shape(child, path, source, origin)?
+            }
+            _ => {
+                return Err(unknown_config_field_error(
+                    path,
+                    source,
+                    origin,
+                    &format!("invocation_log.{key}"),
+                    None,
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_invocation_log_content_capture_shape(
+    value: &Value,
+    path: &Path,
+    source: ConfigFileSource,
+    origin: ConfigPathOrigin,
+) -> AppResult<()> {
+    let Some(content_capture) = value.as_object() else {
+        return Err(invalid_config_object_error(
+            path,
+            source,
+            origin,
+            "invocation_log.content_capture",
+        ));
+    };
+
+    for key in content_capture.keys() {
+        match key.as_str() {
+            "enabled" | "root" => {}
+            _ => {
+                return Err(unknown_config_field_error(
+                    path,
+                    source,
+                    origin,
+                    &format!("invocation_log.content_capture.{key}"),
                     None,
                 ));
             }

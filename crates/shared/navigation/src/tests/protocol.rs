@@ -1,7 +1,13 @@
-use docnav_protocol::{positive_result, Operation, OperationArguments, PROTOCOL_VERSION};
+use docnav_protocol::{
+    positive_result, Operation, OperationArguments, OperationResult, OutlineResult,
+    ProtocolResponse, SuccessResponse, PROTOCOL_VERSION,
+};
 use serde_json::Value;
 
-use crate::{protocol_request, OperationInput};
+use crate::{
+    protocol_request, validate_navigation_response, NavigationFailureLayer,
+    NavigationInvocationTrace, OperationInput,
+};
 
 #[test]
 fn protocol_request_maps_core_inputs_to_operation_arguments() {
@@ -54,4 +60,30 @@ fn protocol_request_rejects_missing_read_ref() {
 
     assert_eq!(error.field(), "ref");
     assert_eq!(error.reason(), "read requires ref");
+}
+
+#[test]
+fn response_validation_failure_carries_result_validation_layer() {
+    let response = ProtocolResponse::Success(SuccessResponse {
+        protocol_version: PROTOCOL_VERSION.to_owned(),
+        request_id: "req-invalid-result".to_owned(),
+        operation: Operation::Read,
+        ok: true,
+        result: OperationResult::Outline(OutlineResult::structured(Vec::new(), None)),
+    });
+    let mut trace = NavigationInvocationTrace {
+        operation: Operation::Read,
+        selected_adapter_id: Some("docnav-test".to_owned()),
+        request_id: Some("req-invalid-result".to_owned()),
+        failure_layer: None,
+    };
+
+    let error = validate_navigation_response(response, &mut trace).expect_err("invalid response");
+
+    assert_eq!(
+        error.failure_layer(),
+        Some(NavigationFailureLayer::ResultValidation)
+    );
+    assert_eq!(error.selected_adapter_id(), Some("docnav-test"));
+    assert_eq!(error.request_id(), Some("req-invalid-result"));
 }

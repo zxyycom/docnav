@@ -129,6 +129,10 @@ export function validateSchemas() {
       data: listExampleJson(/^docnav-markdown-config(?:-[a-z-]+)?\.json$/)
     },
     {
+      schema: SCHEMAS.invocationLogEvent,
+      data: listExampleJson(/^invocation-log-[a-z-]+\.json$/)
+    },
+    {
       schema: SCHEMAS.protocolRequest,
       data: listExampleJson(/^protocol-.*-request\.json$/)
     },

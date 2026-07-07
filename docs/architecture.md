@@ -24,6 +24,7 @@ Docnav 文档操作分为两类输出：
 | 阅读输出 | 为 AI 和人类提供高信息密度结果；不作为长期机器解析接口 | `docnav` 默认输出 (`readable-view`)、`docnav --output readable-json` |
 
 两类输出复用相同业务语义，例如 ref、display、内容、成本和 page，但使用不同的传输包装和展示形态。
+Runtime invocation log 是第三类独立审计 sink，不属于 document output。它只在 CLI/config 显式启用后写入 owner-documented sink/path；未启用时不得新增 stdout/stderr、protocol/readable 字段、adapter handler payload 或日志文件副作用。启用后，日志事件仍不得进入 `readable-view`、`readable-json` 或 `protocol-json` stdout。
 普通 CLI 输出优先服务阅读体验；需要机器稳定解析、兼容校验或自动化断言时，调用完整协议接口。
 所有命令先产出成功结果或 primary failure，再由输出层统一投影。Document operation 只声明 `readable-view`、`readable-json` 和 `protocol-json` 三种稳定文档输出模式；help、version 和其它非文档命令的成功输出可以保持 PlainText 或命令自有 JSON，但致命诊断仍按当前 output context 走统一错误投影，除非对应 owner 文档明确规定更窄通道。
 
@@ -44,6 +45,9 @@ Docnav 文档操作分为两类输出：
 - 对 navigation 命令把 raw command、config source descriptors/paths 和 adapter registry 交给 `docnav-navigation`。
 - 统一处理输出模式和错误映射。
 - 校验 adapter operation 结果，并转换为默认 readable-view、结构化 readable-json 或完整 protocol 输出。
+- 拥有 runtime invocation logging orchestration：按 [CLI](cli.md) 解析显式启用、日志 sink/path 和可选 content capture root，围绕 navigation-owned adapter selection、request construction、selected adapter dispatch、结果校验和输出投影边界记录 metadata-only JSONL 事件，并保证未启用或日志写入失败时不改变 document operation outcome。
+
+Invocation logging 不把 adapter、protocol envelope 或输出层变成日志 owner。Adapter 继续只返回 typed result 或 diagnostic；`RequestEnvelope` / `ProtocolResponse` 继续由 [原始协议](protocol.md) 拥有；document stdout/stderr 继续由 [输出模式](output.md) 拥有。
 
 ### 格式 Adapter
 
@@ -91,9 +95,12 @@ caller
 
 默认文档操作通过当前 core release 编译进来的 workspace adapter crates 和 static registry 选择 adapter implementation source。
 
+Invocation logging 的插桩点跟随同一调用链，但不改变链路输入输出：可记录 core CLI invocation metadata、navigation adapter selection outcome、`RequestEnvelope` 构造状态、selected adapter dispatch outcome、operation/output status、duration、响应大小摘要和 bounded diagnostic summary。日志事件使用 JSON Lines / NDJSON，一行一个独立 JSON event；事件字段 shape 由 [JSON Schema 索引](schemas/json-schema.md) 中的 invocation log schema 校验，字段语义和启用语义仍由本文件、[CLI](cli.md)、[Navigation Input Resolution](navigation-input-resolution.md)、[输出模式](output.md) 和 [原始协议](protocol.md) 分别拥有。
+
 ## 运行边界
 
 - 默认文档操作通过 core release 内置 adapter library handle 执行。
 - Adapter layer 只返回 typed operation result 或 adapter error；stdout/stderr、退出码和 readable/protocol 包装由 `docnav` core/output owner 处理。
 - 普通 CLI 默认输出 (`readable-view`) 和 `readable-json` 用于阅读；机器校验使用 `docnav --output protocol-json`。
 - `doctor` 检查项目/用户配置、static registry 和 adapter layer 可用性。
+- Runtime invocation logging 是本地运行时审计能力，不是测试/验证日志系统。它不得复用 verify/smoke `.log` 文件或 code-quality observability output 作为运行时 contract；这些开发期 artifact 仍由测试和质量工具 owner 定义。默认实现使用仓库内 JSONL writer；引入外部日志框架前必须完成依赖、初始化行为、feature 选择、输出 sink 隔离和 stdout purity 审计。

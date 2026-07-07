@@ -148,6 +148,36 @@ struct NavigationConfigSources {
 pub struct NavigationCommandOutcome {
     pub response: ProtocolResponse,
     pub output: NavigationOutputMode,
+    pub trace: NavigationInvocationTrace,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NavigationInvocationTrace {
+    pub operation: Operation,
+    pub selected_adapter_id: Option<String>,
+    pub request_id: Option<String>,
+    pub failure_layer: Option<NavigationFailureLayer>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NavigationFailureLayer {
+    Config,
+    AdapterSelection,
+    RequestConstruction,
+    AdapterDispatch,
+    ResultValidation,
+}
+
+impl NavigationFailureLayer {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Config => "config",
+            Self::AdapterSelection => "adapter_selection",
+            Self::RequestConstruction => "request_construction",
+            Self::AdapterDispatch => "adapter_dispatch",
+            Self::ResultValidation => "result_validation",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -208,19 +238,37 @@ fn execute_loaded_navigation_command<R>(
 where
     R: NavigationAdapterRegistry + ?Sized,
 {
-    let adapter_intent = resolve_adapter_intent(&command, &config_sources)?;
+    let mut trace = NavigationInvocationTrace {
+        operation: command.operation,
+        selected_adapter_id: None,
+        request_id: None,
+        failure_layer: None,
+    };
+    let adapter_intent = resolve_adapter_intent(&command, &config_sources).map_err(|error| {
+        trace.failure_layer = Some(NavigationFailureLayer::Config);
+        error.with_invocation_trace(&trace)
+    })?;
     let selection = select_adapter(AdapterSelectionRequest {
         registry,
         document_path: &command.document_path,
         preselected_adapter_id: adapter_intent.adapter_id.as_deref(),
         preselected_adapter_source: adapter_intent.source,
+    })
+    .map_err(|error| {
+        trace.failure_layer = Some(NavigationFailureLayer::AdapterSelection);
+        error.with_invocation_trace(&trace)
     })?;
+    trace.selected_adapter_id = Some(selection.adapter.id.to_owned());
     let resolved = resolve_operation_input(
         &command,
         &config_sources,
         selection.adapter.id,
         selection.adapter.adapter,
-    )?;
+    )
+    .map_err(|error| {
+        trace.failure_layer = Some(NavigationFailureLayer::RequestConstruction);
+        error.with_invocation_trace(&trace)
+    })?;
     let request = protocol_request(OperationInput {
         operation: command.operation,
         document_path: resolved.document_path,
@@ -230,14 +278,39 @@ where
         limit: resolved.limit,
         options: resolved.options,
     })
-    .map_err(|error| NavigationError::invalid_request(error.field(), error.reason()))?;
+    .map_err(|error| {
+        trace.failure_layer = Some(NavigationFailureLayer::RequestConstruction);
+        NavigationError::invalid_request(error.field(), error.reason())
+            .with_invocation_trace(&trace)
+    })?;
+    trace.request_id = Some(request.request_id.clone());
 
-    let response = execute_navigation_request(&config_sources, selection.adapter, &request)?;
+    let response = execute_navigation_request(&config_sources, selection.adapter, &request)
+        .map_err(|error| {
+            trace.failure_layer = Some(NavigationFailureLayer::AdapterDispatch);
+            error.with_invocation_trace(&trace)
+        })?;
+    if matches!(response, ProtocolResponse::Failure(_)) {
+        trace.failure_layer = Some(NavigationFailureLayer::AdapterDispatch);
+    }
+    let response = validate_navigation_response(response, &mut trace)?;
 
     Ok(NavigationCommandOutcome {
         response,
         output: resolved.output,
+        trace,
     })
+}
+
+fn validate_navigation_response(
+    response: ProtocolResponse,
+    trace: &mut NavigationInvocationTrace,
+) -> Result<ProtocolResponse, NavigationError> {
+    response.validate().map_err(|error| {
+        trace.failure_layer = Some(NavigationFailureLayer::ResultValidation);
+        NavigationError::protocol_response_invalid(error.to_string()).with_invocation_trace(trace)
+    })?;
+    Ok(response)
 }
 
 fn execute_navigation_request(

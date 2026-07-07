@@ -5,11 +5,14 @@ use docnav_diagnostics::{
 };
 use docnav_protocol::protocol_error_record_draft_with_summary;
 
-use crate::NavigationConfigSource;
+use crate::{NavigationConfigSource, NavigationFailureLayer, NavigationInvocationTrace};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NavigationError {
     diagnostic: Box<DiagnosticRecordDraft>,
+    failure_layer: Option<NavigationFailureLayer>,
+    selected_adapter_id: Option<String>,
+    request_id: Option<String>,
 }
 
 pub(crate) struct ConfigFieldError<'a> {
@@ -52,6 +55,9 @@ impl NavigationError {
     pub fn new(diagnostic: DiagnosticRecordDraft) -> Self {
         Self {
             diagnostic: Box::new(diagnostic),
+            failure_layer: None,
+            selected_adapter_id: None,
+            request_id: None,
         }
     }
 
@@ -73,6 +79,17 @@ impl NavigationError {
             "Navigation input resolution failed.",
             InternalDetails::new(error_id),
             DiagnosticSource::with_stage("docnav-navigation", "internal"),
+        ))
+    }
+
+    pub fn protocol_response_invalid(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
+        Self::new(DiagnosticRecordDraft::new::<
+            typed_codes::protocol::InternalError,
+        >(
+            "Navigation response validation failed.",
+            InternalDetails::new(format!("protocol-response-validation-failed: {reason}")),
+            DiagnosticSource::with_stage("docnav-navigation", "result-validation"),
         ))
     }
 
@@ -167,6 +184,25 @@ impl NavigationError {
 
     pub fn diagnostic(&self) -> &DiagnosticRecordDraft {
         self.diagnostic.as_ref()
+    }
+
+    pub fn failure_layer(&self) -> Option<NavigationFailureLayer> {
+        self.failure_layer
+    }
+
+    pub fn selected_adapter_id(&self) -> Option<&str> {
+        self.selected_adapter_id.as_deref()
+    }
+
+    pub fn request_id(&self) -> Option<&str> {
+        self.request_id.as_deref()
+    }
+
+    pub(crate) fn with_invocation_trace(mut self, trace: &NavigationInvocationTrace) -> Self {
+        self.failure_layer = trace.failure_layer;
+        self.selected_adapter_id = trace.selected_adapter_id.clone();
+        self.request_id = trace.request_id.clone();
+        self
     }
 
     pub fn into_diagnostic(self) -> DiagnosticRecordDraft {

@@ -24,6 +24,8 @@ pub(in crate::cli) mod command_names {
 
 pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
+    pub(in crate::cli) const INVOCATION_LOG: &str = "invocation-log";
+    pub(in crate::cli) const INVOCATION_LOG_CONTENT_ROOT: &str = "invocation-log-content-root";
     pub(in crate::cli) const KEY: &str = "key";
     pub(in crate::cli) const LIMIT: &str = "limit";
     pub(in crate::cli) const OPERATION: &str = "operation";
@@ -132,6 +134,8 @@ fn document_command(name: &'static str, about: &'static str) -> Command {
             .about(about)
             .arg(path_arg())
             .arg(adapter_arg())
+            .arg(invocation_log_arg())
+            .arg(invocation_log_content_root_arg())
             .arg(output_arg()),
         ConfigPathSupport::ProjectAndUser,
     )
@@ -227,6 +231,18 @@ fn key_arg() -> Arg {
 
 fn adapter_arg() -> Arg {
     value_arg(arg_ids::ADAPTER, "adapter", "adapter-id")
+}
+
+fn invocation_log_arg() -> Arg {
+    value_arg(arg_ids::INVOCATION_LOG, "invocation-log", "path")
+}
+
+fn invocation_log_content_root_arg() -> Arg {
+    value_arg(
+        arg_ids::INVOCATION_LOG_CONTENT_ROOT,
+        "invocation-log-content-root",
+        "path",
+    )
 }
 
 fn project_config_arg() -> Arg {

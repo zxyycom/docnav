@@ -73,7 +73,7 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 
 ## 配置示例
 
-- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 Markdown native option 相关字段的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
+- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 Markdown native option、document operation defaults 和 core-owned `invocation_log` section 的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
 - [docnav-markdown-config-path-unstructured.json](json/docnav-markdown-config-path-unstructured.json) 展示 `outline.mode_rules[]` path selector 和后写 rule 覆盖。
 - [docnav-markdown-config-cost-unstructured.json](json/docnav-markdown-config-cost-unstructured.json) 展示 adapter-scoped cost threshold selector。
 - [docnav-markdown-config-threshold-miss.json](json/docnav-markdown-config-threshold-miss.json) 展示 threshold candidate filtering 和不命中时保持 structured 的输入形状。
@@ -81,8 +81,17 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 
 配置示例只证明文件形状和示例值。配置发现、字段映射、来源合并、selector priority、matcher diagnostics、threshold comparison、失败边界和字段语义由 [Navigation Input Resolution](../navigation-input-resolution.md)、[适配器契约](../adapter-contract.md) 和 [Markdown Adapter](../adapters/markdown.md) 拥有。
 
+## Runtime invocation log
+
+- [invocation-log-operation-completed.json](json/invocation-log-operation-completed.json) 展示 metadata-only successful operation event：正文通过 `hash_algorithm: "sha256"`、小写 64 位十六进制 `content_hash`、content type 和 size metadata 引用，不 inline 完整 content。
+- [invocation-log-operation-failed.json](json/invocation-log-operation-failed.json) 展示 bounded failure event：记录 failure layer、stable code when available 和 bounded summary。
+- [invocation-log-content-captured.json](json/invocation-log-content-captured.json) 展示 content capture event：正文位置只通过 `relative_path` 表达，格式为 `<YYYY-MM-DD>/sha256-<content_hash>.content`。
+- [invocation-log-content-capture-failed.json](json/invocation-log-content-capture-failed.json) 展示 content capture failure event：失败诊断与正文 hash、content type 和 size metadata 分开记录，不 inline 完整 content。
+
+Invocation log 示例只证明 [invocation-log-event.schema.json](../schemas/invocation-log-event.schema.json) 的 documented shape。CLI/config 开关、sink/path、content capture root、日志失败降级、stdout purity 和 hash 计算输入由对应主规范和实现测试证明。
+
 ## Schema
 
 原始协议和阅读输出由不同 schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。protocol 示例证明 raw 结构化字段；readable 示例证明从 raw facts 派生出的 `display`、成本摘要和错误投影形态。
 
-示例只证明 protocol/readable、manifest、probe 和配置文件示例的 documented shape 与投影结果。Core CLI strict failure、primary diagnostic projection、protocol-json stdout purity、adapter inspection 边界、配置读取行为和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。
+示例只证明 protocol/readable、manifest、probe、配置文件示例和 invocation log event 的 documented shape 与投影结果。Core CLI strict failure、primary diagnostic projection、protocol-json stdout purity、adapter inspection 边界、配置读取行为、invocation logging side-effect 边界和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。

@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 
 use docnav_json_io::write_json_value_pretty;
+use docnav_navigation::NavigationCommandOutcome;
 use docnav_output::{
     write_document_diagnostic_error, write_document_response, DocumentOutputError,
     DocumentOutputMode, ProtocolOutputContext,
@@ -10,6 +11,7 @@ use serde_json::Value;
 
 use crate::cli::OutputMode;
 use crate::error::{exit_code_for_diagnostic, AppError, AppResult, DocnavExitCode};
+use crate::invocation_log::DocumentInvocationLog;
 
 pub struct CommandOutcome {
     output: CommandOutput,
@@ -20,8 +22,9 @@ enum CommandOutput {
     PlainText(String),
     Json(Value),
     DocumentResponse {
-        response: Box<ProtocolResponse>,
+        outcome: Box<NavigationCommandOutcome>,
         mode: DocumentOutputMode,
+        invocation_log: Option<DocumentInvocationLog>,
     },
 }
 
@@ -47,15 +50,20 @@ impl CommandOutcome {
         }
     }
 
-    fn document_response(response: ProtocolResponse, mode: OutputMode) -> Self {
-        let exit_code = match &response {
+    fn document_response(
+        outcome: NavigationCommandOutcome,
+        mode: OutputMode,
+        invocation_log: Option<DocumentInvocationLog>,
+    ) -> Self {
+        let exit_code = match &outcome.response {
             ProtocolResponse::Success(_) => DocnavExitCode::Success,
             ProtocolResponse::Failure(failure) => exit_code_for_diagnostic(failure.error.code()),
         };
         Self {
             output: CommandOutput::DocumentResponse {
-                response: Box::new(response),
+                outcome: Box::new(outcome),
                 mode: document_output_mode(mode),
+                invocation_log,
             },
             exit_code,
         }
@@ -63,10 +71,15 @@ impl CommandOutcome {
 }
 
 pub fn outcome_for_response(
-    response: ProtocolResponse,
+    outcome: NavigationCommandOutcome,
     output: OutputMode,
+    invocation_log: Option<DocumentInvocationLog>,
 ) -> AppResult<CommandOutcome> {
-    Ok(CommandOutcome::document_response(response, output))
+    Ok(CommandOutcome::document_response(
+        outcome,
+        output,
+        invocation_log,
+    ))
 }
 
 pub fn write_outcome<W: Write, E: Write>(
@@ -83,11 +96,33 @@ pub fn write_outcome<W: Write, E: Write>(
             Ok(()) => outcome.exit_code.code(),
             Err(error) => write_io_error(io::Error::other(error), stderr),
         },
-        CommandOutput::DocumentResponse { response, mode } => {
-            let operation = response_operation(&response);
-            match write_document_response(&response, mode, stdout, stderr) {
-                Ok(_) => outcome.exit_code.code(),
-                Err(error) => write_document_output_error(error, mode, operation, stdout, stderr),
+        CommandOutput::DocumentResponse {
+            outcome: navigation_outcome,
+            mode,
+            invocation_log,
+        } => {
+            let operation = response_operation(&navigation_outcome.response);
+            match write_document_response(&navigation_outcome.response, mode, stdout, stderr) {
+                Ok(_) => {
+                    if let Some(invocation_log) = invocation_log {
+                        invocation_log.record_outcome(&navigation_outcome);
+                    }
+                    outcome.exit_code.code()
+                }
+                Err(error) => {
+                    let error_code = error.primary_error_id().to_owned();
+                    let error_summary = error.to_string();
+                    let exit_code =
+                        write_document_output_error(error, mode, operation, stdout, stderr);
+                    if let Some(invocation_log) = invocation_log.as_ref() {
+                        invocation_log.record_output_projection_error(
+                            &navigation_outcome,
+                            &error_code,
+                            error_summary,
+                        );
+                    }
+                    exit_code
+                }
             }
         }
     }

@@ -13,6 +13,8 @@ use super::arg_ids;
 #[derive(Clone, Copy)]
 pub(super) enum ValueFlag {
     Adapter,
+    InvocationLog,
+    InvocationLogContentRoot,
     Limit,
     Operation,
     Output,
@@ -27,6 +29,11 @@ pub(super) enum ValueFlag {
 
 const VALUE_FLAGS: &[(&str, ValueFlag)] = &[
     (flags::ADAPTER, ValueFlag::Adapter),
+    (flags::INVOCATION_LOG, ValueFlag::InvocationLog),
+    (
+        flags::INVOCATION_LOG_CONTENT_ROOT,
+        ValueFlag::InvocationLogContentRoot,
+    ),
     (flags::LIMIT, ValueFlag::Limit),
     (flags::OPERATION, ValueFlag::Operation),
     (flags::OUTPUT, ValueFlag::Output),
@@ -61,6 +68,8 @@ pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
     let (flag, _value) = split_equals(token);
     match flag {
         flags::ADAPTER => Some(ValueFlag::Adapter),
+        flags::INVOCATION_LOG => Some(ValueFlag::InvocationLog),
+        flags::INVOCATION_LOG_CONTENT_ROOT => Some(ValueFlag::InvocationLogContentRoot),
         flags::LIMIT => Some(ValueFlag::Limit),
         flags::OPERATION => Some(ValueFlag::Operation),
         flags::OUTPUT => Some(ValueFlag::Output),

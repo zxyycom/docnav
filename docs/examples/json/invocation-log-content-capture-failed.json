@@ -1,0 +1,25 @@
+{
+  "schema_version": "0.1",
+  "timestamp": "2026-07-07T03:10:02Z",
+  "event": "content_capture_failed",
+  "request_id": "req-read-001",
+  "correlation_id": "req-read-001",
+  "operation": "read",
+  "captured_at": "2026-07-07T03:10:02Z",
+  "content": {
+    "hash_algorithm": "sha256",
+    "content_hash": "8c3a9c62728e4d2c5cb0f9a0d893b265d9f6f26fd0f6c1c5c1b8f4b3d2c7a9e1",
+    "content_type": "text/markdown",
+    "size_bytes": 75,
+    "size_chars": 75,
+    "summary": {
+      "kind": "presence"
+    }
+  },
+  "relative_path": "2026-07-07/sha256-8c3a9c62728e4d2c5cb0f9a0d893b265d9f6f26fd0f6c1c5c1b8f4b3d2c7a9e1.content",
+  "failure": {
+    "layer": "operation",
+    "code": "content_capture.write_failed",
+    "summary": "Content capture write failed after the operation result was summarized."
+  }
+}

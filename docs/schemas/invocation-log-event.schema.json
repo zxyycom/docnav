@@ -1,0 +1,476 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docnav.dev/schemas/v0.1/invocation-log-event.schema.json",
+  "$comment": "Validation material for runtime invocation JSONL event lines. CLI/config enablement, sink placement, protocol envelope semantics, adapter behavior, content file bytes, stdout/stderr placement and failure downgrade behavior are owned by the main docs, not by this schema.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/operationCompleted"
+    },
+    {
+      "$ref": "#/$defs/operationFailed"
+    },
+    {
+      "$ref": "#/$defs/contentCaptured"
+    },
+    {
+      "$ref": "#/$defs/contentCaptureFailed"
+    }
+  ],
+  "$defs": {
+    "timestampUtc": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+    },
+    "operationName": {
+      "enum": [
+        "outline",
+        "read",
+        "find",
+        "info"
+      ]
+    },
+    "contentHash": {
+      "type": "object",
+      "required": [
+        "hash_algorithm",
+        "content_hash"
+      ],
+      "properties": {
+        "hash_algorithm": {
+          "const": "sha256"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "boundedSummary": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "omitted"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "presence"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "length",
+            "hash_algorithm",
+            "value_hash"
+          ],
+          "properties": {
+            "kind": {
+              "const": "length_hash"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hash_algorithm": {
+              "const": "sha256"
+            },
+            "value_hash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "length",
+            "preview"
+          ],
+          "properties": {
+            "kind": {
+              "const": "bounded_preview"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "preview": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "contentReference": {
+      "type": "object",
+      "required": [
+        "hash_algorithm",
+        "content_hash",
+        "content_type",
+        "size_bytes",
+        "size_chars"
+      ],
+      "properties": {
+        "hash_algorithm": {
+          "const": "sha256"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "content_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_chars": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "summary": {
+          "$ref": "#/$defs/boundedSummary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "documentSummary": {
+      "type": "object",
+      "required": [
+        "path_display"
+      ],
+      "properties": {
+        "path_display": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "path_kind": {
+          "enum": [
+            "project_relative",
+            "absolute"
+          ]
+        },
+        "path_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "argumentsSummary": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ref": {
+          "$ref": "#/$defs/boundedSummary"
+        },
+        "query": {
+          "$ref": "#/$defs/boundedSummary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "responseSummary": {
+      "type": "object",
+      "required": [
+        "output_status",
+        "response_size_bytes"
+      ],
+      "properties": {
+        "output_status": {
+          "enum": [
+            "ok",
+            "error"
+          ]
+        },
+        "response_size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "page": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "content": {
+          "$ref": "#/$defs/contentReference"
+        }
+      },
+      "additionalProperties": false
+    },
+    "failureSummary": {
+      "type": "object",
+      "required": [
+        "layer",
+        "summary"
+      ],
+      "properties": {
+        "layer": {
+          "enum": [
+            "cli_input",
+            "config",
+            "adapter_selection",
+            "request_construction",
+            "adapter_dispatch",
+            "result_validation",
+            "output_projection",
+            "operation"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "additionalProperties": false
+    },
+    "operationCompleted": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "timestamp",
+        "event",
+        "correlation_id",
+        "operation",
+        "status",
+        "duration_ms",
+        "document",
+        "result"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.1"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestampUtc"
+        },
+        "event": {
+          "const": "operation_completed"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "$ref": "#/$defs/operationName"
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "const": "success"
+        },
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "document": {
+          "$ref": "#/$defs/documentSummary"
+        },
+        "arguments": {
+          "$ref": "#/$defs/argumentsSummary"
+        },
+        "result": {
+          "$ref": "#/$defs/responseSummary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operationFailed": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "timestamp",
+        "event",
+        "correlation_id",
+        "operation",
+        "status",
+        "duration_ms",
+        "document",
+        "failure"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.1"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestampUtc"
+        },
+        "event": {
+          "const": "operation_failed"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "$ref": "#/$defs/operationName"
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "const": "failure"
+        },
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "document": {
+          "$ref": "#/$defs/documentSummary"
+        },
+        "arguments": {
+          "$ref": "#/$defs/argumentsSummary"
+        },
+        "failure": {
+          "$ref": "#/$defs/failureSummary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contentCaptured": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "timestamp",
+        "event",
+        "correlation_id",
+        "operation",
+        "captured_at",
+        "content",
+        "relative_path"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.1"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestampUtc"
+        },
+        "event": {
+          "const": "content_captured"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "$ref": "#/$defs/operationName"
+        },
+        "captured_at": {
+          "$ref": "#/$defs/timestampUtc"
+        },
+        "content": {
+          "$ref": "#/$defs/contentReference"
+        },
+        "relative_path": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}/sha256-[a-f0-9]{64}\\.content$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contentCaptureFailed": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "timestamp",
+        "event",
+        "correlation_id",
+        "operation",
+        "captured_at",
+        "content",
+        "relative_path",
+        "failure"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.1"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/timestampUtc"
+        },
+        "event": {
+          "const": "content_capture_failed"
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "$ref": "#/$defs/operationName"
+        },
+        "captured_at": {
+          "$ref": "#/$defs/timestampUtc"
+        },
+        "content": {
+          "$ref": "#/$defs/contentReference"
+        },
+        "relative_path": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}/sha256-[a-f0-9]{64}\\.content$"
+        },
+        "failure": {
+          "$ref": "#/$defs/failureSummary"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

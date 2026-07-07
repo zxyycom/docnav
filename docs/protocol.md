@@ -13,6 +13,8 @@ v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是
 3. 诊断可投影到 stderr。
 4. 成功退出码为 `0`；失败尽可能输出结构化错误并返回非零退出码。
 
+Runtime invocation logging 不扩展 `RequestEnvelope` 或 `ProtocolResponse`。启用日志时，protocol stdout 仍只输出上述单个 response/failure envelope；日志只能记录 request/response correlation metadata、operation、request id 或 fallback correlation id、bounded status/size metadata 和 bounded diagnostic summary。完整 request/response payload、operation result `content` 和 protocol error details 不得作为完整对象复制进主 invocation log。
+
 ## 请求包装
 
 所有字段必需：
@@ -223,3 +225,5 @@ ref 共享规则由 [Ref](ref-contract.md) 定义。原始协议只承载非空 
 [protocol-request.schema.json](schemas/protocol-request.schema.json) 和 [protocol-response.schema.json](schemas/protocol-response.schema.json) 只校验原始协议。响应 schema 使用 `operation` 绑定成功 result 类型；`options` 在 protocol schema 中保持 opaque object。阅读输出、manifest 和 probe 使用各自 schema，由对应 owner 文档定义。
 
 Schema 是本文件的验证材料，不重新定义产品语义。修改 protocol-visible envelope、operation 参数、result shape、page、error code 或 details 时，先更新本文件，再同步 schema、examples、fixtures 和消费方测试。
+
+[invocation-log-event.schema.json](schemas/invocation-log-event.schema.json) 是 runtime invocation log JSONL event 的 validation material，不是 protocol schema。它不得作为修改 protocol envelope、operation result、error details 或 stdout/stderr placement 的依据；这些语义仍由本文件、[CLI](cli.md)、[输出模式](output.md) 和 [架构](architecture.md) 拥有。

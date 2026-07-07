@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.1",
+  "timestamp": "2026-07-07T03:11:00Z",
+  "event": "operation_failed",
+  "correlation_id": "inv-20260707-001",
+  "operation": "read",
+  "status": "failure",
+  "duration_ms": 3.8,
+  "document": {
+    "path_display": "docs/examples/markdown/nested-duplicate.md",
+    "path_kind": "project_relative",
+    "path_hash": "3f786850e387550fdab836ed7e6dc881de23001b4f7a8c9d0e1f203142536475"
+  },
+  "arguments": {
+    "ref": {
+      "kind": "length_hash",
+      "length": 12,
+      "hash_algorithm": "sha256",
+      "value_hash": "0c4e7a8f9b1d6c2a3e5f708192a4b6c8d0e2f4a6b8c0d2e4f6081a3c5e7f9012"
+    }
+  },
+  "failure": {
+    "layer": "request_construction",
+    "code": "ref.invalid",
+    "summary": "Ref failed non-empty structured validation before adapter dispatch."
+  }
+}
