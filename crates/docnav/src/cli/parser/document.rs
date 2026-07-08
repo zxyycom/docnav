@@ -1,23 +1,19 @@
 use docnav_cli_args::{scan_arg_boundaries, ArgBoundaryScan};
 use docnav_protocol::Operation;
 
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
 
 use super::super::command_model::{CliCommand, DocumentCommand, NativeOptionCliInput, ParsedCli};
 use super::super::flags;
 use super::argument_helpers::{
-    boundary_value_flags, clap_argv, config_path_args, error_from_rejected_arg,
-    invalid_output_value_error, invalid_positive_value_error, invalid_value_error, is_flag,
-    known_value_flag, missing_value_error, missing_value_flag_error, optional_explicit_output,
-    optional_explicit_positive, optional_explicit_string, required_string, split_equals, ValueFlag,
+    clap_argv, config_path_args, error_from_rejected_arg, missing_value_error,
+    optional_explicit_output, optional_explicit_positive, optional_explicit_string,
+    required_string,
 };
-use super::{arg_ids, document_clap_command, spec, ParserContext};
+use super::{arg_ids, document_clap_command, ParserContext};
 
-const PAGINATION_ACCEPTED_VALUES: [&str; 2] = [
-    spec::pagination_values::ENABLED,
-    spec::pagination_values::DISABLED,
-];
-const PAGINATION_GUIDANCE: [&str; 1] = ["Use --pagination enabled or --pagination disabled."];
+mod errors;
+mod value_flags;
 
 pub(super) fn parse_document_command(
     operation: Operation,
@@ -27,7 +23,7 @@ pub(super) fn parse_document_command(
     let BoundaryDocumentArgs { clap_args } = collect_document_args(operation, args, context)?;
     let matches = document_clap_command(operation, context)
         .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
-        .map_err(|_| document_parse_error(operation, args, context))?;
+        .map_err(|_| errors::document_parse_error(operation, args, context))?;
 
     Ok(ParsedCli::new(CliCommand::Document(
         document_command_from_matches(operation, &matches, context)?,
@@ -43,7 +39,7 @@ fn collect_document_args(
     args: &[String],
     context: &ParserContext,
 ) -> AppResult<BoundaryDocumentArgs> {
-    let known_value_flags = document_value_flags(operation, context);
+    let known_value_flags = value_flags::document_value_flags(operation, context);
     let scan = scan_arg_boundaries(
         args,
         &ArgBoundaryScan::new(operation.as_str(), 1, &known_value_flags),
@@ -129,46 +125,9 @@ fn parse_pagination_enabled(
 
 fn pagination_enabled_from_cli(value: &str) -> AppResult<bool> {
     match value {
-        spec::pagination_values::ENABLED => Ok(true),
-        spec::pagination_values::DISABLED => Ok(false),
-        _ => Err(invalid_pagination_value_error(value)),
-    }
-}
-
-fn document_parse_error(
-    operation: Operation,
-    args: &[String],
-    context: &ParserContext,
-) -> AppError {
-    if !has_path_candidate(operation, args, context) {
-        return AppError::invalid_request(
-            "path",
-            format!("{} requires <path>", operation.as_str()),
-        );
-    }
-    match operation {
-        Operation::Read if !has_value_flag(args, flags::REF) => {
-            AppError::invalid_request(flags::REF, "read requires --ref <ref>")
-        }
-        Operation::Find if !has_value_flag(args, flags::QUERY) => {
-            AppError::invalid_request(flags::QUERY, "find requires --query <text>")
-        }
-        _ => first_invalid_used_flag(operation, args)
-            .unwrap_or_else(|| AppError::invalid_request("argv", "invalid command line arguments")),
-    }
-}
-
-fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
-    match flag {
-        ValueFlag::Adapter
-        | ValueFlag::InvocationLog
-        | ValueFlag::InvocationLogContentRoot
-        | ValueFlag::Output => true,
-        ValueFlag::ProjectConfig | ValueFlag::UserConfig => true,
-        ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
-        ValueFlag::Ref => operation == Operation::Read,
-        ValueFlag::Query => operation == Operation::Find,
-        ValueFlag::Operation | ValueFlag::Path => false,
+        super::spec::pagination_values::ENABLED => Ok(true),
+        super::spec::pagination_values::DISABLED => Ok(false),
+        _ => Err(errors::invalid_pagination_value_error(value)),
     }
 }
 
@@ -187,153 +146,4 @@ fn parse_native_options(
         }
     }
     inputs
-}
-
-fn has_path_candidate(operation: Operation, args: &[String], context: &ParserContext) -> bool {
-    let mut index = 0;
-    while index < args.len() {
-        let token = &args[index];
-        if is_known_document_value_flag(operation, token, context) {
-            let (_flag, inline_value) = split_equals(token);
-            index += if inline_value.is_some() { 1 } else { 2 };
-        } else if is_flag(token) {
-            index += 1;
-        } else {
-            return true;
-        }
-    }
-    false
-}
-
-fn has_value_flag(args: &[String], expected: &str) -> bool {
-    args.iter().any(|token| {
-        let (flag, value) = split_equals(token);
-        flag == expected && value.is_some()
-    }) || args
-        .windows(2)
-        .any(|window| window.first().is_some_and(|token| token == expected))
-}
-
-fn first_invalid_used_flag(operation: Operation, args: &[String]) -> Option<AppError> {
-    let mut index = 0;
-    while index < args.len() {
-        let Some(occurrence) = value_flag_occurrence(args, index) else {
-            index += 1;
-            continue;
-        };
-        if document_uses_flag(operation, occurrence.flag) {
-            if let Some(error) = value_flag_error(occurrence) {
-                return Some(error);
-            }
-        }
-        index += occurrence.consumed;
-    }
-    None
-}
-
-#[derive(Clone, Copy)]
-struct ValueFlagOccurrence<'a> {
-    flag: ValueFlag,
-    flag_token: &'a str,
-    value: Option<&'a str>,
-    consumed: usize,
-}
-
-fn value_flag_occurrence(args: &[String], index: usize) -> Option<ValueFlagOccurrence<'_>> {
-    let token = &args[index];
-    let flag = known_value_flag(token)?;
-    let (flag_token, inline_value) = split_equals(token);
-    Some(ValueFlagOccurrence {
-        flag,
-        flag_token,
-        value: inline_value.or_else(|| args.get(index + 1).map(String::as_str)),
-        consumed: if inline_value.is_some() { 1 } else { 2 },
-    })
-}
-
-fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
-    match (occurrence.flag, occurrence.value) {
-        (_, None) => Some(missing_value_flag_error(occurrence.flag_token)),
-        (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
-        (ValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
-        (ValueFlag::Pagination, Some(value)) => pagination_flag_error(value),
-        (ValueFlag::Output, Some(value)) => output_flag_error(value),
-        (ValueFlag::Ref, Some("")) => Some(empty_value_error(flags::REF)),
-        (ValueFlag::Query, Some("")) => Some(empty_value_error(flags::QUERY)),
-        _ => None,
-    }
-}
-
-fn pagination_flag_error(value: &str) -> Option<AppError> {
-    if matches!(
-        value,
-        spec::pagination_values::ENABLED | spec::pagination_values::DISABLED
-    ) {
-        return None;
-    }
-    Some(invalid_pagination_value_error(value))
-}
-
-fn invalid_pagination_value_error(value: &str) -> AppError {
-    invalid_value_error(
-        flags::PAGINATION,
-        value,
-        PAGINATION_ACCEPTED_VALUES,
-        PAGINATION_GUIDANCE,
-    )
-}
-
-fn document_value_flags(
-    operation: Operation,
-    context: &ParserContext,
-) -> Vec<docnav_cli_args::KnownValueFlag<'static>> {
-    let mut flags = boundary_value_flags(|flag| document_uses_flag(operation, flag));
-    for option in context.native_options().all_document_options() {
-        let flag = option.flag();
-        let used = option.applies_to(operation);
-        if flags.iter().any(|existing| existing.flag == flag) {
-            continue;
-        }
-        flags.push(docnav_cli_args::KnownValueFlag { flag, used });
-    }
-    flags
-}
-
-fn is_known_document_value_flag(
-    operation: Operation,
-    token: &str,
-    context: &ParserContext,
-) -> bool {
-    let (flag, _value) = split_equals(token);
-    document_value_flags(operation, context)
-        .iter()
-        .any(|known| known.flag == flag)
-}
-
-fn positive_flag_error(flag: &str, value: &str) -> Option<AppError> {
-    if value
-        .parse::<u32>()
-        .ok()
-        .filter(|value| *value > 0)
-        .is_some()
-    {
-        return None;
-    }
-    Some(invalid_positive_value_error(flag, value))
-}
-
-fn output_flag_error(value: &str) -> Option<AppError> {
-    value
-        .parse::<super::super::command_model::OutputMode>()
-        .err()
-        .map(|_reason| invalid_output_value_error(value))
-}
-
-fn empty_value_error(flag: &str) -> AppError {
-    invalid_value_error(
-        flag,
-        "",
-        [format!("non-empty value for {flag}")],
-        [format!("Provide a non-empty value for {flag}.")],
-    )
 }

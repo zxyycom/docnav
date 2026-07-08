@@ -261,7 +261,7 @@ Proves:
 
 ### WB-CORE-INVOCATION-LOG-001 Core runtime invocation log 保持审计边界
 Status: implemented
-Code: `crates/docnav/src/runtime/tests.rs`
+Code: `crates/docnav/src/runtime/tests/invocation_logging.rs`
 
 Proves:
 - Invocation logging 默认关闭，且配置关闭时不创建日志副作用。
