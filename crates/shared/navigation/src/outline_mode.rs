@@ -2,7 +2,7 @@ mod config;
 mod path_rules;
 mod unstructured;
 
-use docnav_adapter_contracts::Adapter;
+use docnav_adapter_contracts::AdapterDefinition;
 use docnav_protocol::{Cost, RequestEnvelope, UnstructuredOutlineReason};
 
 use crate::{NavigationCommand, NavigationConfigSources, NavigationError};
@@ -26,7 +26,7 @@ pub(super) struct UnstructuredFullSelection {
 pub(super) fn resolve_outline_mode(
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_adapter: &dyn Adapter,
+    selected_adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
 ) -> Result<OutlineMode, NavigationError> {
     let normalized_path = normalized_document_path(&request.document.path, config_sources);
@@ -58,7 +58,7 @@ pub(super) fn validate_outline_config_sources(
 }
 
 pub(super) fn execute_unstructured_outline(
-    adapter: &dyn Adapter,
+    adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
     selection: UnstructuredFullSelection,
 ) -> docnav_protocol::ProtocolResponse {

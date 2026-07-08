@@ -196,6 +196,150 @@ fn adapter_option_field_declaration_rejects_invalid_path() {
     );
 }
 
+// @case WB-CONTRACTS-DEFINITION-001
+#[test]
+fn adapter_definition_requires_all_operation_handlers() {
+    let adapter = NoHookAdapter;
+    let error = AdapterDefinition::builder("no-hook")
+        .adapter(&adapter)
+        .manifest(adapter.manifest())
+        .operation_handler(Operation::Outline)
+        .operation_handler(Operation::Read)
+        .operation_handler(Operation::Find)
+        .build()
+        .expect_err("missing info handler");
+
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::MissingRequiredHandlers { operations, .. }
+            if operations == vec![Operation::Info]
+    ));
+}
+
+#[test]
+fn adapter_definition_rejects_invalid_and_duplicate_native_options() {
+    let adapter = NoHookAdapter;
+    let invalid = AdapterOptionSpec::builder("docnav.adapters.no-hook.options.bad")
+        .owner("no-hook")
+        .operations(&[Operation::Outline])
+        .path(["invalid", "bad"])
+        .validation(FieldValidation::int())
+        .build();
+    let error = definition_builder(&adapter)
+        .native_option(invalid)
+        .build()
+        .expect_err("invalid option path");
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::InvalidNativeOption { .. }
+    ));
+
+    let shared = no_hook_option("docnav.adapters.no-hook.options.shared", "shared");
+    let error = definition_builder(&adapter)
+        .native_option(shared.clone())
+        .native_option(shared)
+        .build()
+        .expect_err("duplicate native option identity");
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::DuplicateNativeOptionDeclaration { .. }
+    ));
+
+    let error = definition_builder(&adapter)
+        .native_option(no_hook_option(
+            "docnav.adapters.no-hook.options.first",
+            "shared",
+        ))
+        .native_option(no_hook_option(
+            "docnav.adapters.no-hook.options.second",
+            "shared",
+        ))
+        .build()
+        .expect_err("duplicate native option path");
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::DuplicateNativeOptionPath { .. }
+    ));
+}
+
+#[test]
+fn adapter_definition_rejects_duplicate_handlers_and_capability_groups() {
+    let adapter = NoHookAdapter;
+    let error = definition_builder(&adapter)
+        .operation_handler(Operation::Outline)
+        .build()
+        .expect_err("duplicate outline handler");
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::DuplicateOperationHandler {
+            operation: Operation::Outline,
+            ..
+        }
+    ));
+
+    let capabilities = UnstructuredFullReadCapabilities {
+        content_hook: true,
+        cost_measurement_units: Vec::new(),
+        result_facts_hook: false,
+    };
+    let error = definition_builder(&adapter)
+        .full_read_capability_group(capabilities.clone())
+        .full_read_capability_group(capabilities)
+        .build()
+        .expect_err("duplicate full-read group");
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::DuplicateCapabilityGroup {
+            capability: "full_read",
+            ..
+        }
+    ));
+}
+
+#[test]
+fn adapter_definition_rejects_unsupported_full_read_capability_group() {
+    let adapter = NoHookAdapter;
+    let error = definition_builder(&adapter)
+        .full_read_capability_group(UnstructuredFullReadCapabilities::default())
+        .build()
+        .expect_err("empty full-read group");
+
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::UnsupportedCapabilityCombination {
+            capability: "full_read",
+            ..
+        }
+    ));
+}
+
+#[test]
+fn native_option_handoff_preserves_handler_facing_typed_metadata() {
+    let mut options = docnav_protocol::Options::new();
+    options.insert_entry(docnav_protocol::OptionEntry {
+        identity: "docnav.adapters.no-hook.options.max".to_owned(),
+        owner: "no-hook".to_owned(),
+        namespace: "options".to_owned(),
+        key: "max".to_owned(),
+        source: "project".to_owned(),
+        type_variant: "integer".to_owned(),
+        value: serde_json::json!(4),
+    });
+
+    let handoff = NativeOptionHandoff::from_options(Some(&options));
+    let value = handoff
+        .get("no-hook", "options", "max")
+        .expect("typed option value");
+
+    assert_eq!(value.identity, "docnav.adapters.no-hook.options.max");
+    assert_eq!(value.owner, "no-hook");
+    assert_eq!(value.namespace, "options");
+    assert_eq!(value.key, "max");
+    assert_eq!(value.source, "project");
+    assert_eq!(value.type_variant, "integer");
+    assert_eq!(value.value, serde_json::json!(4));
+}
+
 // @case WB-CONTRACTS-UNSTRUCTURED-001
 #[test]
 fn unstructured_full_read_hooks_default_to_absent_capabilities() {
@@ -235,6 +379,22 @@ fn unstructured_full_read_hooks_default_to_absent_capabilities() {
 }
 
 struct NoHookAdapter;
+
+fn definition_builder(adapter: &NoHookAdapter) -> AdapterDefinitionBuilder<'_> {
+    AdapterDefinition::builder("no-hook")
+        .adapter(adapter)
+        .manifest(adapter.manifest())
+        .required_operation_handlers()
+}
+
+fn no_hook_option(identity: &str, key: &str) -> AdapterOptionSpec {
+    AdapterOptionSpec::builder(identity)
+        .owner("no-hook")
+        .operations(&[Operation::Outline])
+        .path(["options", key])
+        .validation(FieldValidation::int())
+        .build()
+}
 
 impl Adapter for NoHookAdapter {
     fn adapter_id(&self) -> &str {

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use docnav_adapter_contracts::{Adapter, AdapterResult};
+use docnav_adapter_contracts::{AdapterDefinition, AdapterResult, NativeOptionHandoff};
 use docnav_protocol::{
     generate_request_id, Document, FindArguments, InfoArguments, Operation, OperationArguments,
     OperationResult, Options, OutlineArguments, PositiveInteger, ProtocolResponse, ReadArguments,
@@ -58,10 +58,11 @@ pub fn protocol_request(input: OperationInput) -> Result<RequestEnvelope, Naviga
 }
 
 pub fn execute_protocol_request(
-    adapter: &dyn Adapter,
+    adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
+    native_options: &NativeOptionHandoff,
 ) -> ProtocolResponse {
-    match execute_operation(adapter, request) {
+    match execute_operation(adapter, request, native_options) {
         Ok(result) => ProtocolResponse::success(
             request.protocol_version.clone(),
             request.request_id.clone(),
@@ -72,27 +73,11 @@ pub fn execute_protocol_request(
 }
 
 pub fn execute_operation(
-    adapter: &dyn Adapter,
+    adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
+    native_options: &NativeOptionHandoff,
 ) -> AdapterResult<OperationResult> {
-    match (&request.operation, &request.arguments) {
-        (Operation::Outline, OperationArguments::Outline(arguments)) => adapter
-            .outline(request, arguments)
-            .map(OperationResult::Outline),
-        (Operation::Read, OperationArguments::Read(arguments)) => {
-            adapter.read(request, arguments).map(OperationResult::Read)
-        }
-        (Operation::Find, OperationArguments::Find(arguments)) => {
-            adapter.find(request, arguments).map(OperationResult::Find)
-        }
-        (Operation::Info, OperationArguments::Info(arguments)) => {
-            adapter.info(request, arguments).map(OperationResult::Info)
-        }
-        _ => Err(docnav_adapter_contracts::AdapterError::invalid_request(
-            "arguments",
-            format!("arguments do not match operation {}", request.operation),
-        )),
-    }
+    adapter.execute_operation(request, native_options)
 }
 
 fn operation_arguments(input: &OperationInput) -> Result<OperationArguments, NavigationInputError> {

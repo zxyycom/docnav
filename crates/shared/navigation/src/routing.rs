@@ -1,4 +1,4 @@
-use docnav_adapter_contracts::Adapter;
+use docnav_adapter_contracts::AdapterDefinition;
 use docnav_diagnostics::{
     typed_codes, AdapterReasonDetails, DiagnosticSource, FormatCandidateDetails,
     FormatUnknownDetails,
@@ -8,10 +8,19 @@ use serde_json::{json, Value};
 
 use crate::NavigationError;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct NavigationAdapterRef<'a> {
-    pub id: &'a str,
-    pub adapter: &'a dyn Adapter,
+    pub definition: AdapterDefinition<'a>,
+}
+
+impl<'a> NavigationAdapterRef<'a> {
+    pub fn new(definition: AdapterDefinition<'a>) -> Self {
+        Self { definition }
+    }
+
+    pub fn id(&self) -> &str {
+        self.definition.id()
+    }
 }
 
 pub trait NavigationAdapterRegistry {
@@ -20,7 +29,7 @@ pub trait NavigationAdapterRegistry {
     fn find_adapter(&self, adapter_id: &str) -> Option<NavigationAdapterRef<'_>> {
         self.adapters()
             .into_iter()
-            .find(|adapter| adapter.id == adapter_id)
+            .find(|adapter| adapter.id() == adapter_id)
     }
 }
 
@@ -86,7 +95,7 @@ where
     }
 
     for adapter in registry.adapters() {
-        if state.has_attempted(adapter.id) {
+        if state.has_attempted(adapter.id()) {
             continue;
         }
         match evaluate_candidate(adapter, document_path) {
@@ -131,14 +140,14 @@ fn evaluate_candidate<'a>(
     adapter: NavigationAdapterRef<'a>,
     document_path: &str,
 ) -> CandidateResult<'a> {
-    let probe = adapter.adapter.probe(document_path);
-    if let Err(candidate) = probe_is_valid(adapter, document_path, &probe) {
+    let probe = adapter.definition.probe(document_path);
+    if let Err(candidate) = probe_is_valid(&adapter, document_path, &probe) {
         return CandidateResult::Continue(candidate);
     }
 
     if !probe.supported {
         return CandidateResult::Continue(CandidateEvidence::probe(
-            adapter.id,
+            adapter.id(),
             "PROBE_UNSUPPORTED",
             "adapter probe returned supported=false",
             json!({ "probe": probe }),
@@ -149,24 +158,25 @@ fn evaluate_candidate<'a>(
 }
 
 fn probe_is_valid(
-    adapter: NavigationAdapterRef<'_>,
+    adapter: &NavigationAdapterRef<'_>,
     document_path: &str,
     probe: &ProbeResult,
 ) -> Result<(), CandidateEvidence> {
-    if probe.adapter_id != adapter.id {
+    if probe.adapter_id != adapter.id() {
         return Err(CandidateEvidence::probe(
-            adapter.id,
+            adapter.id(),
             "PROBE_INVALID",
             format!(
                 "probe adapter_id {:?} does not match registry id {:?}",
-                probe.adapter_id, adapter.id
+                probe.adapter_id,
+                adapter.id()
             ),
             json!({}),
         ));
     }
     if probe.path != document_path {
         return Err(CandidateEvidence::probe(
-            adapter.id,
+            adapter.id(),
             "PROBE_INVALID",
             "probe path does not match requested document path",
             json!({}),
@@ -174,7 +184,7 @@ fn probe_is_valid(
     }
     if let Err(error) = probe.validate_semantics() {
         return Err(CandidateEvidence::probe(
-            adapter.id,
+            adapter.id(),
             "PROBE_INVALID",
             error.to_string(),
             json!({}),
@@ -281,7 +291,7 @@ impl std::fmt::Debug for NavigationAdapterRef<'_> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("NavigationAdapterRef")
-            .field("id", &self.id)
+            .field("id", &self.id())
             .finish_non_exhaustive()
     }
 }

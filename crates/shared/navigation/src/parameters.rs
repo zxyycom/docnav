@@ -4,7 +4,7 @@ mod input;
 mod native_options;
 mod values;
 
-use docnav_adapter_contracts::{Adapter, AdapterOptionSpec};
+use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec, NativeOptionHandoff};
 use docnav_parameter_resolution::{
     ids, EntryPassthroughPolicy, ParameterResolution, ParameterResolutionPipeline,
 };
@@ -28,7 +28,7 @@ pub struct AdapterIntent {
     pub source: &'static str,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedNavigationInput {
     pub document_path: String,
     pub ref_id: Option<String>,
@@ -37,6 +37,7 @@ pub struct ResolvedNavigationInput {
     pub limit: Option<PositiveInteger>,
     pub output: NavigationOutputMode,
     pub options: Option<Options>,
+    pub native_options: NativeOptionHandoff,
 }
 
 impl FieldStringEnum for NavigationOutputMode {
@@ -67,7 +68,7 @@ pub fn resolve_operation_input(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_adapter: &dyn Adapter,
+    selected_adapter: &AdapterDefinition<'_>,
 ) -> Result<ResolvedNavigationInput, NavigationError> {
     let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
     let selected_native_options = operation_fields.adapter_options();
@@ -101,7 +102,7 @@ pub fn resolve_context_defaults(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_adapter: &dyn Adapter,
+    selected_adapter: &AdapterDefinition<'_>,
 ) -> Result<NavigationContextDefaults, NavigationError> {
     let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
     let selected_native_options = operation_fields.adapter_options();
@@ -137,6 +138,8 @@ fn resolved_input_from_resolution(
     selected_native_options: &[AdapterOptionSpec],
 ) -> Result<ResolvedNavigationInput, NavigationError> {
     let options = native_options::resolved_options(resolution, selected_native_options)?;
+    let native_option_handoff =
+        NativeOptionHandoff::from_options((!options.is_empty()).then_some(&options));
     Ok(ResolvedNavigationInput {
         document_path: values::required_string_value(resolution, ids::PATH)?,
         ref_id: values::optional_string_value(resolution, ids::REF)?,
@@ -145,6 +148,7 @@ fn resolved_input_from_resolution(
         limit: values::optional_document_limit(operation, resolution)?,
         output: values::required_output_value(resolution)?,
         options: (!options.is_empty()).then_some(options),
+        native_options: native_option_handoff,
     })
 }
 

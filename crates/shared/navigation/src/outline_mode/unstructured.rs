@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::ErrorKind;
 
-use docnav_adapter_contracts::{Adapter, AdapterError, AdapterResult, UnstructuredFullRead};
+use docnav_adapter_contracts::{
+    AdapterDefinition, AdapterError, AdapterResult, UnstructuredFullRead,
+};
 use docnav_protocol::{Cost, OperationResult, OutlineResult, ProtocolResponse, RequestEnvelope};
 
 use crate::{NavigationConfigSources, NavigationError};
@@ -16,7 +18,7 @@ type EffectiveThresholds = BTreeMap<String, u64>;
 pub(super) fn resolve_cost_thresholds(
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_adapter: &dyn Adapter,
+    selected_adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
 ) -> Result<OutlineMode, NavigationError> {
     let effective = effective_thresholds(config_sources, selected_adapter_id)?;
@@ -69,7 +71,7 @@ fn effective_thresholds(
 
 fn requested_threshold_units(
     effective: &EffectiveThresholds,
-    adapter: &dyn Adapter,
+    adapter: &AdapterDefinition<'_>,
 ) -> Vec<String> {
     let capabilities = adapter.unstructured_full_read_capabilities();
     effective
@@ -88,7 +90,7 @@ fn cost_matches_threshold(cost: &Cost, effective: &EffectiveThresholds) -> bool 
 }
 
 pub(super) fn execute_unstructured_outline(
-    adapter: &dyn Adapter,
+    adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
     selection: UnstructuredFullSelection,
 ) -> ProtocolResponse {
@@ -108,7 +110,7 @@ pub(super) fn execute_unstructured_outline(
 }
 
 fn unstructured_full_read(
-    adapter: &dyn Adapter,
+    adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
     selector_cost: Cost,
 ) -> AdapterResult<UnstructuredFullRead> {

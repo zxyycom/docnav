@@ -310,7 +310,7 @@ Code: `crates/docnav/src/registry/tests.rs`
 Proves:
 - Core static registry 包含 release 内置 Markdown adapter descriptor metadata。
 - Core static registry exposes Markdown native option config keys and outline native option specs.
-- Adapter layer check 将 manifest id 与 registry id 不一致视为 adapter layer invalid。
+- Adapter layer check 从 adapter definition 读取 metadata，并把 core-owned implementation source 保留为 static registry fact。
 
 ### WB-CORE-ADAPTER-SURFACE-001 Core adapter command surface 保持静态注册表边界
 Status: implemented
@@ -575,6 +575,16 @@ Code: `crates/shared/adapter-contracts/src/tests.rs`
 Proves:
 - `AdapterOptionSpec` wraps typed-field declaration, source bindings, validation and static default metadata without owning the use-site registration step.
 - Direct registration into a typed-field set preserves identity、`options.*` final arguments path、value kind、static default 和 operation applicability, so navigation does not reconstruct adapter-owned validation semantics.
+- `NativeOptionHandoff` preserves handler-facing identity、owner、namespace、key、source、type metadata 和 typed JSON value from resolved protocol options.
+
+### WB-CONTRACTS-DEFINITION-001 Adapter definition validation 收敛 registry-facing facts
+Status: implemented
+Code: `crates/shared/adapter-contracts/src/tests.rs`
+
+Proves:
+- Adapter definition validation rejects missing required operation handlers before registry/navigation dispatch.
+- Adapter definition validation rejects invalid native option paths, duplicate native option declarations and duplicate native option paths.
+- Adapter definition validation rejects duplicate handler declarations, duplicate full-read capability groups and unsupported empty full-read capability groups.
 
 ### WB-CONTRACTS-UNSTRUCTURED-001 Adapter contracts unstructured full-read hook defaults 稳定
 Status: implemented
@@ -741,7 +751,8 @@ Code: `crates/adapters/markdown/tests/adapter/options_error_display.rs`
 
 Proves:
 - `max_heading_level` options 同时影响 outline 和 find 的 visible heading granularity。
-- `max_heading_level` 通过 Markdown `AdapterOptionSpec` declaration、selected adapter declaration registration 和 typed-field validation/extraction 进入 request construction，options shape 保持 adapter-owned，不上移为 core-owned 字段。
+- `max_heading_level` 通过 Markdown definition 中的 `AdapterOptionSpec` declaration、selected adapter declaration registration 和 typed-field validation/extraction 进入 request construction，options shape 保持 adapter-owned，不上移为 core-owned 字段。
+- Markdown outline handler consumes the typed `NativeOptionHandoff` for `max_heading_level`, including source and type metadata, instead of raw CLI/config values.
 - Markdown adapter 只证明已校验 typed option value 对 outline/find visible heading granularity 的业务效果；default、type、range 和 unsupported validation 由 `docnav-navigation` 在 handler dispatch 前完成。
 
 ### WB-MD-META-001 Markdown manifest/probe/info 元数据稳定
@@ -751,6 +762,7 @@ Code: `crates/adapters/markdown/tests/adapter/meta.rs`
 Proves:
 - manifest 声明 Markdown v0 identity 和 format metadata，probe 返回 format evidence 而不泄漏 navigation payload。
 - info 返回 Markdown summary。
+- Markdown registry-facing definition exposes metadata、required operation handlers、`max_heading_level` native option declaration 和 full-read capability group.
 
 ### WB-MD-ERROR-001 Markdown adapter document error 稳定
 Status: implemented

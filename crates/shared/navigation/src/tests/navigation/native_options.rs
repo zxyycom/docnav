@@ -3,10 +3,7 @@ use serde_json::{json, Value};
 
 use crate::{execute_loaded_navigation_command, NavigationNativeOptionInput, NavigationOutputMode};
 
-use super::super::support::{
-    config_sources, navigation_command, InvalidOptionConfigPathRegistry, InvalidOptionRegistry,
-    StubRegistry,
-};
+use super::super::support::{config_sources, navigation_command, StubRegistry};
 
 #[test]
 // @case WB-NAV-INPUT-RESOLUTION-001
@@ -275,45 +272,5 @@ fn navigation_rejects_config_option_not_applicable_to_operation() {
     assert_eq!(
         super::first_option_issue_source(&protocol_error),
         Some("project")
-    );
-}
-
-#[test]
-fn navigation_maps_invalid_adapter_option_declaration_to_internal_error() {
-    let error = execute_loaded_navigation_command(
-        navigation_command(Vec::new()),
-        config_sources(Value::Null, Value::Null),
-        &InvalidOptionRegistry,
-    )
-    .expect_err("invalid adapter option declaration");
-    let protocol_error = super::protocol_error(error.diagnostic());
-
-    assert_eq!(protocol_error.code(), ProtocolDiagnosticCode::InternalError);
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("error_id")
-            .and_then(Value::as_str),
-        Some("adapter-option-field-declaration-invalid")
-    );
-}
-
-#[test]
-fn navigation_maps_invalid_adapter_option_config_path_to_internal_error() {
-    let error = execute_loaded_navigation_command(
-        navigation_command(Vec::new()),
-        config_sources(json!({"invalid": {"bad_path": 1}}), Value::Null),
-        &InvalidOptionConfigPathRegistry,
-    )
-    .expect_err("invalid adapter option config path");
-    let protocol_error = super::protocol_error(error.diagnostic());
-
-    assert_eq!(protocol_error.code(), ProtocolDiagnosticCode::InternalError);
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("error_id")
-            .and_then(Value::as_str),
-        Some("adapter-option-field-declaration-invalid")
     );
 }

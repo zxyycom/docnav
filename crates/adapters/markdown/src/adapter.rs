@@ -1,6 +1,7 @@
 use docnav_adapter_contracts::{
-    Adapter, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterResult,
-    FieldBound, FieldValidation, UnstructuredFullRead, UnstructuredFullReadCapabilities,
+    Adapter, AdapterDefinition, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec,
+    AdapterResult, FieldBound, FieldValidation, NativeOptionHandoff, UnstructuredFullRead,
+    UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
     AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoAdapter, InfoArguments,
@@ -11,7 +12,7 @@ use docnav_protocol::{
 use serde_json::json;
 
 use crate::markdown::{
-    cost_for, is_markdown_extension, is_utf8_markdown_candidate, max_heading_level_from_options,
+    cost_for, is_markdown_extension, is_utf8_markdown_candidate, max_heading_level_from_handoff,
     MarkdownDocument, ResolvedRef,
 };
 use crate::paging::{paginate_entries, paginate_text};
@@ -37,19 +38,7 @@ impl Adapter for MarkdownAdapter {
     }
 
     fn manifest(&self) -> Manifest {
-        Manifest {
-            manifest_version: MANIFEST_VERSION.to_owned(),
-            adapter: AdapterIdentity {
-                id: ADAPTER_ID.to_owned(),
-                name: ADAPTER_NAME.to_owned(),
-                version: env!("CARGO_PKG_VERSION").to_owned(),
-            },
-            formats: vec![FormatDescriptor {
-                id: FORMAT_ID_MARKDOWN.to_owned(),
-                extensions: vec![".md".to_owned(), ".markdown".to_owned()],
-                content_types: vec![CONTENT_TYPE_MARKDOWN.to_owned()],
-            }],
-        }
+        markdown_manifest()
     }
 
     fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
@@ -57,15 +46,7 @@ impl Adapter for MarkdownAdapter {
     }
 
     fn unstructured_full_read_capabilities(&self) -> UnstructuredFullReadCapabilities {
-        UnstructuredFullReadCapabilities {
-            content_hook: true,
-            cost_measurement_units: vec![
-                "lines".to_owned(),
-                "bytes".to_owned(),
-                "tokens".to_owned(),
-            ],
-            result_facts_hook: false,
-        }
+        markdown_full_read_capabilities()
     }
 
     fn probe(&self, path: &str) -> ProbeResult {
@@ -116,8 +97,18 @@ impl Adapter for MarkdownAdapter {
         request: &RequestEnvelope,
         arguments: &OutlineArguments,
     ) -> AdapterResult<OutlineResult> {
+        let native_options = NativeOptionHandoff::from_options(arguments.options.as_ref());
+        self.outline_with_native_options(request, arguments, &native_options)
+    }
+
+    fn outline_with_native_options(
+        &self,
+        request: &RequestEnvelope,
+        arguments: &OutlineArguments,
+        native_options: &NativeOptionHandoff,
+    ) -> AdapterResult<OutlineResult> {
         let document = MarkdownDocument::load(&request.document.path)?;
-        let max_heading_level = max_heading_level_from_options(arguments.options.as_ref())?;
+        let max_heading_level = max_heading_level_from_handoff(native_options)?;
         let entries = document.outline_entries(max_heading_level);
         let (entries, page) = paginate_entries(&entries, arguments.page, arguments.limit);
         Ok(OutlineResult::structured(entries, page))
@@ -151,6 +142,16 @@ impl Adapter for MarkdownAdapter {
         request: &RequestEnvelope,
         arguments: &FindArguments,
     ) -> AdapterResult<FindResult> {
+        let native_options = NativeOptionHandoff::from_options(arguments.options.as_ref());
+        self.find_with_native_options(request, arguments, &native_options)
+    }
+
+    fn find_with_native_options(
+        &self,
+        request: &RequestEnvelope,
+        arguments: &FindArguments,
+        native_options: &NativeOptionHandoff,
+    ) -> AdapterResult<FindResult> {
         if arguments.query.is_empty() {
             return Err(AdapterError::invalid_request(
                 "arguments.query",
@@ -159,7 +160,7 @@ impl Adapter for MarkdownAdapter {
         }
 
         let document = MarkdownDocument::load(&request.document.path)?;
-        let max_heading_level = max_heading_level_from_options(arguments.options.as_ref())?;
+        let max_heading_level = max_heading_level_from_handoff(native_options)?;
         let matches = document.find_entries(&arguments.query, max_heading_level);
         let (matches, page) = paginate_entries(&matches, arguments.page, arguments.limit);
 
@@ -217,6 +218,41 @@ impl Adapter for MarkdownAdapter {
                 .filter(|measurement| requested_units.iter().any(|unit| unit == &measurement.unit))
                 .collect(),
         })
+    }
+}
+
+pub fn markdown_adapter_definition() -> AdapterDefinition<'static> {
+    AdapterDefinition::builder(ADAPTER_ID)
+        .adapter(&MarkdownAdapter)
+        .manifest(markdown_manifest())
+        .required_operation_handlers()
+        .native_options(markdown_adapter_options())
+        .full_read_capability_group(markdown_full_read_capabilities())
+        .build()
+        .expect("Markdown adapter definition is valid")
+}
+
+fn markdown_manifest() -> Manifest {
+    Manifest {
+        manifest_version: MANIFEST_VERSION.to_owned(),
+        adapter: AdapterIdentity {
+            id: ADAPTER_ID.to_owned(),
+            name: ADAPTER_NAME.to_owned(),
+            version: env!("CARGO_PKG_VERSION").to_owned(),
+        },
+        formats: vec![FormatDescriptor {
+            id: FORMAT_ID_MARKDOWN.to_owned(),
+            extensions: vec![".md".to_owned(), ".markdown".to_owned()],
+            content_types: vec![CONTENT_TYPE_MARKDOWN.to_owned()],
+        }],
+    }
+}
+
+fn markdown_full_read_capabilities() -> UnstructuredFullReadCapabilities {
+    UnstructuredFullReadCapabilities {
+        content_hook: true,
+        cost_measurement_units: vec!["lines".to_owned(), "bytes".to_owned(), "tokens".to_owned()],
+        result_facts_hook: false,
     }
 }
 

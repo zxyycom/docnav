@@ -2,8 +2,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterError, AdapterResult, UnstructuredFullRead, UnstructuredFullReadCapabilities,
-    UnstructuredFullReadFacts,
+    Adapter, AdapterDefinition, AdapterError, AdapterResult, UnstructuredFullRead,
+    UnstructuredFullReadCapabilities, UnstructuredFullReadFacts,
 };
 use docnav_protocol::{
     AdapterIdentity, Cost, Entry, FindArguments, FindResult, FormatDescriptor, InfoArguments,
@@ -65,10 +65,10 @@ impl<'a> SingleRegistry<'a> {
 
 impl NavigationAdapterRegistry for SingleRegistry<'_> {
     fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
-        vec![NavigationAdapterRef {
-            id: "docnav-markdown",
-            adapter: self.adapter,
-        }]
+        vec![NavigationAdapterRef::new(
+            AdapterDefinition::transition_from_adapter(self.adapter)
+                .expect("valid recording adapter definition"),
+        )]
     }
 }
 

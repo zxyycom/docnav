@@ -1,10 +1,3 @@
-use docnav_adapter_contracts::AdapterResult;
-use docnav_protocol::{
-    AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoArguments, InfoResult,
-    OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode, ProbeResult, ReadArguments,
-    ReadResult, RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION,
-};
-
 use super::*;
 
 // @case WB-CORE-ADAPTER-001
@@ -21,6 +14,7 @@ fn static_registry_contains_built_in_markdown_adapter() {
 
     assert_eq!(record.id(), "docnav-markdown");
     assert_eq!(manifest.adapter.id, "docnav-markdown");
+    assert_eq!(record.implementation_source(), "core_static");
     assert!(manifest
         .formats
         .iter()
@@ -28,20 +22,19 @@ fn static_registry_contains_built_in_markdown_adapter() {
 }
 
 #[test]
-fn adapter_layer_check_fails_when_manifest_id_mismatches_registry_id() {
-    static MISMATCHED: MismatchedManifestAdapter = MismatchedManifestAdapter;
-    let adapters = [AdapterRecord::from_adapter(&MISMATCHED)];
-    let registry = AdapterRegistry {
-        adapters: Box::leak(Box::new(adapters)),
-    };
-
+fn adapter_layer_check_reports_definition_metadata_and_core_source() {
+    let registry = AdapterRegistry { adapters: ADAPTERS };
     let checks = adapter_layer_checks(&registry);
     let check = checks.first().expect("adapter layer check");
 
-    assert_eq!(check.get("status").and_then(Value::as_str), Some("fail"));
+    assert_eq!(check.get("status").and_then(Value::as_str), Some("pass"));
     assert_eq!(
         check.get("message").and_then(Value::as_str),
-        Some("built-in adapter layer metadata is invalid")
+        Some("built-in adapter layer metadata is available")
+    );
+    assert_eq!(
+        check.get("implementation_source").and_then(Value::as_str),
+        Some("core_static")
     );
 }
 
@@ -59,75 +52,4 @@ fn static_registry_exposes_full_native_option_specs() {
             && option.namespace() == "options"
             && option.key() == "max_heading_level"
     }));
-}
-
-struct MismatchedManifestAdapter;
-
-impl Adapter for MismatchedManifestAdapter {
-    fn adapter_id(&self) -> &str {
-        "registry-id"
-    }
-
-    fn manifest(&self) -> Manifest {
-        Manifest {
-            manifest_version: MANIFEST_VERSION.to_owned(),
-            adapter: AdapterIdentity {
-                id: "manifest-id".to_owned(),
-                name: "Mismatched".to_owned(),
-                version: "0.1.0".to_owned(),
-            },
-            formats: vec![FormatDescriptor {
-                id: "mismatched".to_owned(),
-                extensions: vec![".mismatch".to_owned()],
-                content_types: vec!["text/mismatched".to_owned()],
-            }],
-        }
-    }
-
-    fn probe(&self, path: &str) -> ProbeResult {
-        ProbeResult {
-            probe_version: PROBE_VERSION.to_owned(),
-            adapter_id: self.adapter_id().to_owned(),
-            path: path.to_owned(),
-            supported: true,
-            format: Some("partial".to_owned()),
-            confidence: 1.0,
-            reasons: vec![ProbeReason {
-                code: ProbeReasonCode::ContentMatch,
-                detail: "test adapter".to_owned(),
-            }],
-        }
-    }
-
-    fn outline(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
-        unreachable!("registry tests only inspect manifest metadata")
-    }
-
-    fn read(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult> {
-        unreachable!("registry tests only inspect manifest metadata")
-    }
-
-    fn find(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &FindArguments,
-    ) -> AdapterResult<FindResult> {
-        unreachable!("registry tests only inspect manifest metadata")
-    }
-
-    fn info(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult> {
-        unreachable!("registry tests only inspect manifest metadata")
-    }
 }

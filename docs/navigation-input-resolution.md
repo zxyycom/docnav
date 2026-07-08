@@ -26,12 +26,12 @@ Core 不为 navigation command 预先读取 raw config JSON、完成参数来源
 1. 根据 core 提供的 config source descriptors/paths 加载 raw project/user config sources，保留路径、缺失状态、读取失败和原始 JSON value。
 2. 从 raw navigation command 和 raw config sources 中解析 routing 必需输入，例如 operation、document path、declared adapter intent、ref/query 和 direct parameter sources。
 3. 使用 adapter registry 和 routing 输入选择 selected adapter；adapter selection 规则见 [适配器契约](adapter-contract.md#adapter-选择)。
-4. 构造 operation field set：注册通用 operation 参数，并把 selected adapter 的 `AdapterOptionSpec` 注册进同一个 typed-field set，保留 adapter-owned native options、内置默认值和 source binding metadata。
+4. 构造 operation field set：注册通用 operation 参数，并从 selected adapter definition 注册当前 operation 适用的 `AdapterOptionSpec`，保留 adapter-owned native options、内置默认值、source binding metadata 和 handler binding metadata。
 5. 将 explicit command value、project config、user config 和 built-in default 作为来源集合，按 `explicit > project > user > built_in` 解析每个声明参数。
 6. 使用 typed-field 的底层校验和提取函数得到 typed 参数；解析失败时返回带来源信息的 blocking diagnostic。
-7. 构造 `RequestEnvelope` / `OperationArguments`，并通过 selected adapter handle 调用对应 operation。
+7. 构造 `RequestEnvelope` / `OperationArguments` 和 handler-facing selected adapter `NativeOptionHandoff`，并通过 selected adapter definition 调用对应 operation handler。
 
-Adapter handler 接收的是已解析 typed arguments。参数基础校验和提取发生在 input resolution 阶段，不由 handler 再消费 raw source value。
+Adapter handler 接收的是已解析 typed operation arguments 和 selected adapter native option handoff。参数基础校验和提取发生在 input resolution 阶段，不由 handler 再消费 raw source value、raw CLI argv 或 raw config JSON。
 
 ## 输入来源
 
@@ -98,13 +98,13 @@ docnav-navigation
   load raw project/user config sources
   parse routing-required input
   select adapter from registry
-  declare common fields + register selected adapter native option declarations
+  declare common fields + register selected adapter definition native option declarations
   collect explicit/project/user/built_in source candidates
   resolve declared parameters with explicit > project > user > built_in
   validate/extract typed values through typed-field helpers
-  bind typed values into OperationArguments
+  bind typed values into OperationArguments + NativeOptionHandoff
   construct RequestEnvelope
-  dispatch selected adapter operation handler
+  dispatch selected adapter definition operation handler
 ```
 
 Resolution 必须保持来源信息，便于诊断表达 explicit、project config、user config 或 built-in default。Default-path config source 缺失不产生 diagnostic；explicit config path missing、present invalid source、unknown field、unmapped public input、type/range invalid 和 missing required value 产生 blocking diagnostic。
@@ -129,24 +129,24 @@ Config source diagnostic details 必须携带 source level 和 selected config f
 
 Path selector 只在 `outline` operation 中生效。User config rules 保持文件顺序；project config rules 保持文件顺序并在 user rules 之后评估；最后一个匹配当前规范化 document path 的 rule 胜出。匹配结果可以显式产出 `structured`，此时 cost threshold selector 不得覆盖该 path rule。
 
-Cost threshold selector 只在没有 path rule 产出 `outline_mode` 时运行。Navigation 必须先按 selected adapter id 过滤 `outline.auto_full_read.thresholds[]`；没有 selected-adapter candidate threshold 时保持 `structured`，且不得调用 selected adapter 的 full-read cost measurement hook。存在 candidate threshold 时，navigation 按 `unit` 合并阈值，同一 `unit` 取最小正整数 `value`，并只把这些 effective units 传给 selected adapter 的 full-read cost measurement hook/declaration。
+Cost threshold selector 只在没有 path rule 产出 `outline_mode` 时运行。Navigation 必须先按 selected adapter id 过滤 `outline.auto_full_read.thresholds[]`；没有 selected-adapter candidate threshold 时保持 `structured`，且不得调用 selected adapter definition 的 full-read capability group。存在 candidate threshold 时，navigation 按 `unit` 合并阈值，同一 `unit` 取最小正整数 `value`，并只把这些 effective units 传给 selected adapter definition 声明的 full-read cost measurement hook/declaration。
 
-Threshold 比较只使用 selected adapter 返回的标准 `Cost.measurements[]`。Adapter 未声明、无法安全返回 measurement，或返回结果中没有 effective threshold 的 `unit` 时，selector 不命中并保持 `structured`。Navigation 不解析格式私有内容，也不为 adapter 缺失的 unit 发明成本语义。
+Threshold 比较只使用 selected adapter full-read capability group 返回的标准 `Cost.measurements[]`。Adapter definition 未声明、无法安全返回 measurement，或返回结果中没有 effective threshold 的 `unit` 时，selector 不命中并保持 `structured`。Navigation 不解析格式私有内容，也不为 adapter 缺失的 unit 发明成本语义。
 
-当 `outline_mode` 为 `unstructured_full` 时，navigation 在正常 outline handler 前进入非结构化全文读取路径，通过 selected adapter 的可选 full-read hook 或默认 UTF-8 原文读取方案产出非结构化 outline success result。该路径不返回 entries、ref、page 或 continuation；cost threshold 只是 selector，不是 `limit`、`page` 或 content 截断预算。
+当 `outline_mode` 为 `unstructured_full` 时，navigation 在正常 outline handler 前进入非结构化全文读取路径，通过 selected adapter definition 的可选 full-read capability group 或默认 UTF-8 原文读取方案产出非结构化 outline success result。该路径不返回 entries、ref、page 或 continuation；cost threshold 只是 selector，不是 `limit`、`page` 或 content 截断预算。
 
 ## Selected Adapter 参数声明
 
-通用 operation 字段由 `docnav-navigation` 声明；selected adapter 的 typed-field declarations 是 adapter-owned native option 参数事实源。Adapter 只声明这些字段；`docnav-navigation` 在构造 operation field set 时按 selected adapter 和 operation 主动注册。Adapter declaration 至少提供：
+通用 operation 字段由 `docnav-navigation` 声明；selected adapter definition 的 typed-field declarations 是 adapter-owned native option 参数事实源。Adapter 只在 definition/factory 中声明这些字段；`docnav-navigation` 在构造 operation field set 时按 selected adapter definition 和 operation 主动注册。Adapter declaration 至少提供：
 
 - 参数 identity、owner、`options.<key>` final arguments path 和 operation applicability。
 - explicit input、project config、user config 和 built-in default 的 processing/source 映射。
 - value kind、required/optional/nullability、allowed values、range、static default 和 dynamic default metadata。
-- operation binding metadata，用于把 typed values 写入 `OperationArguments`。
+- operation binding metadata，用于把 typed values 写入 `OperationArguments` 并构造 handler-facing `NativeOptionHandoff`。
 
-`options.*` 保持 adapter-owned namespace。多个 adapter 或多个 type variant 可以声明同名 option key；resolution 不把同名 key 折叠为 core-owned 字段。Adapter selection 完成后，只解析 selected adapter 声明接收的 native option sources。
+`options.*` 保持 adapter-owned namespace。多个 adapter 或多个 type variant 可以声明同名 option key；resolution 不把同名 key 折叠为 core-owned 字段。Adapter selection 完成后，只解析 selected adapter definition 声明接收的 native option sources。未被 selected definition 声明接收的 owner-scoped `options.*` source 必须严格失败，不进入 dispatch。
 
-Typed-field helper 负责字段级校验和 typed extraction。Adapter 可以通过声明表达格式语义约束，但 handler 不再接收未校验 raw option value 来执行基础类型或范围校验。`docnav-navigation` 只合并通用字段和 selected adapter 注册的字段，并执行来源解析、校验、提取和 `OperationArguments` 绑定；它不从 config key 或独立 registry entry 重新推导 adapter-owned value kind、range 或 default 语义。Config unknown-option detection 使用当前 operation field set 的 typed-field processing metadata 判断哪些 `options.*` source 已被声明接收。
+Typed-field helper 负责字段级校验和 typed extraction。Adapter 可以通过声明表达格式语义约束，但 handler 不再接收未校验 raw option value 来执行基础类型或范围校验。`docnav-navigation` 只合并通用字段和 selected adapter definition 注册的字段，并执行来源解析、校验、提取、`OperationArguments` 绑定和 `NativeOptionHandoff` 构造；它不从 config key、CLI flag 或独立 registry entry 重新推导 adapter-owned value kind、range 或 default 语义。Config unknown-option detection 使用当前 operation field set 的 typed-field processing metadata 判断哪些 `options.*` source 已被声明接收。
 
 ## Request Construction
 
@@ -159,7 +159,7 @@ Resolution 完成后，`docnav-navigation` 构造内部 protocol request：
 | `find` | `query`、`limit`、`page`、`options` |
 | `info` | `options` |
 
-最终 `limit` 和 `page` 必须是正整数。`ref` 和 `query` 是 operation-owned required input；缺失或非法时在 navigation boundary 返回 input diagnostic。`options` 是 selected adapter 的 typed native option object；原始协议只承载该对象，不解释格式语义。
+最终 `limit` 和 `page` 必须是正整数。`ref` 和 `query` 是 operation-owned required input；缺失或非法时在 navigation boundary 返回 input diagnostic。`options` 是 selected adapter 的 typed native option object；原始协议只承载该对象，不解释格式语义。Handler-facing `NativeOptionHandoff` 从同一 typed resolution result 派生，保留 identity、owner、namespace、key、source、type metadata 和 typed JSON value；它是内部 dispatch contract，不改变 `protocol-json`、`readable-json` 或 `readable-view` 输出 shape。
 
 Invocation log 中的 request construction metadata 只能引用 `RequestEnvelope` 的 correlation facts 和 bounded argument summaries。`ref` 和 `query` 摘要不得替代 adapter-owned ref/query 语义；日志实现不能为了记录日志而重新解析 ref、复制 adapter native option 语义或改变 request construction failure classification。
 

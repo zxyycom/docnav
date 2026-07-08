@@ -258,12 +258,12 @@ where
         trace.failure_layer = Some(NavigationFailureLayer::AdapterSelection);
         error.with_invocation_trace(&trace)
     })?;
-    trace.selected_adapter_id = Some(selection.adapter.id.to_owned());
+    trace.selected_adapter_id = Some(selection.adapter.id().to_owned());
     let resolved = resolve_operation_input(
         &command,
         &config_sources,
-        selection.adapter.id,
-        selection.adapter.adapter,
+        selection.adapter.id(),
+        &selection.adapter.definition,
     )
     .map_err(|error| {
         trace.failure_layer = Some(NavigationFailureLayer::RequestConstruction);
@@ -285,11 +285,16 @@ where
     })?;
     trace.request_id = Some(request.request_id.clone());
 
-    let response = execute_navigation_request(&config_sources, selection.adapter, &request)
-        .map_err(|error| {
-            trace.failure_layer = Some(NavigationFailureLayer::AdapterDispatch);
-            error.with_invocation_trace(&trace)
-        })?;
+    let response = execute_navigation_request(
+        &config_sources,
+        &selection.adapter,
+        &request,
+        &resolved.native_options,
+    )
+    .map_err(|error| {
+        trace.failure_layer = Some(NavigationFailureLayer::AdapterDispatch);
+        error.with_invocation_trace(&trace)
+    })?;
     if matches!(response, ProtocolResponse::Failure(_)) {
         trace.failure_layer = Some(NavigationFailureLayer::AdapterDispatch);
     }
@@ -315,22 +320,27 @@ fn validate_navigation_response(
 
 fn execute_navigation_request(
     config_sources: &NavigationConfigSources,
-    adapter: NavigationAdapterRef<'_>,
+    adapter: &NavigationAdapterRef<'_>,
     request: &RequestEnvelope,
+    native_options: &docnav_adapter_contracts::NativeOptionHandoff,
 ) -> Result<ProtocolResponse, NavigationError> {
     if request.operation == Operation::Outline {
         if let OutlineMode::UnstructuredFull(unstructured) =
-            resolve_outline_mode(config_sources, adapter.id, adapter.adapter, request)?
+            resolve_outline_mode(config_sources, adapter.id(), &adapter.definition, request)?
         {
             return Ok(execute_unstructured_outline(
-                adapter.adapter,
+                &adapter.definition,
                 request,
                 unstructured,
             ));
         }
     }
 
-    Ok(execute_protocol_request(adapter.adapter, request))
+    Ok(execute_protocol_request(
+        &adapter.definition,
+        request,
+        native_options,
+    ))
 }
 
 pub fn resolve_navigation_context<R>(
@@ -366,8 +376,8 @@ where
     let defaults = resolve_context_defaults(
         &command,
         &config_sources,
-        selection.adapter.id,
-        selection.adapter.adapter,
+        selection.adapter.id(),
+        &selection.adapter.definition,
     )?;
     let selection = NavigationContextSelection::from_selection(
         &selection,

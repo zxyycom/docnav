@@ -18,7 +18,7 @@ impl NavigationContextSelection {
         preselected_adapter_source: &str,
     ) -> Self {
         Self {
-            adapter_id: selection.adapter.id.to_owned(),
+            adapter_id: selection.adapter.id().to_owned(),
             source: context_selection_source(
                 preselected_adapter_id,
                 preselected_adapter_source,

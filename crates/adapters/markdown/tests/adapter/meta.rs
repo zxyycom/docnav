@@ -21,6 +21,33 @@ fn manifest_declares_markdown_v0_identity_and_formats() {
 }
 
 #[test]
+fn definition_declares_metadata_handlers_native_option_and_full_read_group() {
+    let definition = markdown_adapter_definition();
+
+    assert_eq!(definition.id(), "docnav-markdown");
+    assert_eq!(definition.manifest().adapter.id, "docnav-markdown");
+    assert!(definition
+        .operation_handlers()
+        .operations()
+        .contains(&Operation::Outline));
+    assert!(definition
+        .native_options()
+        .iter()
+        .any(|option| option.key() == "max_heading_level"
+            && option.owner == "docnav-markdown"
+            && option.applies_to(Operation::Outline)
+            && option.applies_to(Operation::Find)));
+
+    let full_read = definition
+        .full_read_capability_group()
+        .expect("full-read capability group");
+    assert!(full_read.capabilities().content_hook);
+    assert!(full_read.has_cost_measurement_unit("lines"));
+    assert!(full_read.has_cost_measurement_unit("bytes"));
+    assert!(full_read.has_cost_measurement_unit("tokens"));
+}
+
+#[test]
 fn probe_returns_format_evidence_without_navigation_payload() {
     let path = write_doc("sample.md", "# Title\n");
     let probe = MarkdownAdapter.probe(&path_string(&path));

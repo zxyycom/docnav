@@ -14,11 +14,16 @@ pub use docnav_typed_fields::{
     ValueKind,
 };
 
+mod definition;
 mod native_option;
 
+pub use definition::{
+    AdapterDefinition, AdapterDefinitionBuilder, AdapterDefinitionError, AdapterOperationHandlers,
+    FullReadCapabilityGroup,
+};
 pub use native_option::{
     AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterOptionSpecBuilder,
-    AdapterOptionSpecError, NativeOptionIssue,
+    AdapterOptionSpecError, NativeOptionHandoff, NativeOptionIssue, NativeOptionValue,
 };
 
 pub type AdapterResult<T> = Result<T, AdapterError>;
@@ -44,11 +49,29 @@ pub trait Adapter: Sync {
         arguments: &OutlineArguments,
     ) -> AdapterResult<OutlineResult>;
 
+    fn outline_with_native_options(
+        &self,
+        request: &RequestEnvelope,
+        arguments: &OutlineArguments,
+        _native_options: &NativeOptionHandoff,
+    ) -> AdapterResult<OutlineResult> {
+        self.outline(request, arguments)
+    }
+
     fn read(
         &self,
         request: &RequestEnvelope,
         arguments: &ReadArguments,
     ) -> AdapterResult<ReadResult>;
+
+    fn read_with_native_options(
+        &self,
+        request: &RequestEnvelope,
+        arguments: &ReadArguments,
+        _native_options: &NativeOptionHandoff,
+    ) -> AdapterResult<ReadResult> {
+        self.read(request, arguments)
+    }
 
     fn find(
         &self,
@@ -56,11 +79,29 @@ pub trait Adapter: Sync {
         arguments: &FindArguments,
     ) -> AdapterResult<FindResult>;
 
+    fn find_with_native_options(
+        &self,
+        request: &RequestEnvelope,
+        arguments: &FindArguments,
+        _native_options: &NativeOptionHandoff,
+    ) -> AdapterResult<FindResult> {
+        self.find(request, arguments)
+    }
+
     fn info(
         &self,
         request: &RequestEnvelope,
         arguments: &InfoArguments,
     ) -> AdapterResult<InfoResult>;
+
+    fn info_with_native_options(
+        &self,
+        request: &RequestEnvelope,
+        arguments: &InfoArguments,
+        _native_options: &NativeOptionHandoff,
+    ) -> AdapterResult<InfoResult> {
+        self.info(request, arguments)
+    }
 
     fn unstructured_full_read(
         &self,

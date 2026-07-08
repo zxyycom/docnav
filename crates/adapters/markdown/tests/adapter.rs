@@ -2,8 +2,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use docnav_adapter_contracts::Adapter;
-use docnav_markdown::MarkdownAdapter;
+use docnav_adapter_contracts::{Adapter, NativeOptionHandoff};
+use docnav_markdown::{markdown_adapter_definition, MarkdownAdapter};
 use docnav_protocol::{
     positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
     OperationArguments, OptionEntry, Options, OutlineArguments, ProtocolDiagnosticCode,

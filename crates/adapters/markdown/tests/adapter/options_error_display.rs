@@ -38,6 +38,36 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
     assert_eq!(entry_refs(&expanded_matches.matches), vec!["H:L3:H4"]);
 }
 
+#[test]
+fn outline_consumes_max_heading_level_from_typed_handoff() {
+    let path = write_doc("typed-handoff.md", "# Top\n\n#### Deep\n");
+    let arguments = OutlineArguments {
+        limit: positive(6000),
+        page: positive(1),
+        options: None,
+    };
+    let handoff_options = max_heading_level_options(4);
+    let native_options = NativeOptionHandoff::from_options(Some(&handoff_options));
+    let request = make_request(
+        &path,
+        Operation::Outline,
+        OperationArguments::Outline(arguments.clone()),
+    );
+
+    let result = MarkdownAdapter
+        .outline_with_native_options(&request, &arguments, &native_options)
+        .expect("outline via typed handoff")
+        .into_structured()
+        .expect("structured outline");
+
+    assert_eq!(entry_refs(&result.entries), vec!["H:L1:H1", "H:L3:H4"]);
+    let value = native_options
+        .get("docnav-markdown", "options", "max_heading_level")
+        .expect("max heading level handoff");
+    assert_eq!(value.source, "explicit");
+    assert_eq!(value.type_variant, "integer");
+}
+
 // @case WB-MD-ERROR-001
 #[test]
 fn non_utf8_document_returns_stable_encoding_error() {

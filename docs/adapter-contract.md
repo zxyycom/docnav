@@ -4,7 +4,9 @@
 
 ## 内置 adapter 接口
 
-每个默认适配器作为 core release 内置 workspace crate 暴露 `docnav-adapter-contracts::Adapter` handle，并由 `docnav` static registry 注册。注册项是源码级静态 descriptor，声明 adapter id、manifest metadata、operation metadata、adapter-owned native option declarations、operation binding 和 handler handle。
+每个默认适配器作为 core release 内置 workspace crate 暴露一个 registry-facing adapter definition 或 definition factory，并由 `docnav` static registry 注册。该 definition 是 adapter 作者对 shared layers 的单一 authoring surface：identity、manifest metadata、format descriptors、adapter-owned native option declarations、必需 operation handler handles 和 optional capability groups 都必须从同一个 definition/factory 可达。Adapter-private helper/module 可以拆分 construction，但不得成为 registry、core、CLI、navigation 或 dispatch 的第二个声明入口。
+
+当前实现仍保留 `docnav-adapter-contracts::Adapter` handle 作为受控过渡 dispatch target。过渡层由 `docnav-adapter-contracts` / core registry / `docnav-navigation` 拥有，从 adapter definition 派生当前 handler dispatch path；移除条件是 static registry、CLI native option catalog、adapter inspection、navigation declaration registration、full-read pre-dispatch 和 operation dispatch 都只消费 selected definition 中的 adapter-owned facts。Adapter implementation source 不是 adapter-owned fact，仍由 core static registry 记录。
 
 当前最小 interface 使用 operation handler 粒度：
 
@@ -18,7 +20,7 @@ execute find
 execute info
 ```
 
-Adapter MAY additionally expose a hook set used only by navigation-triggered non-structured full-read outline:
+Adapter definition MAY additionally declare a full-read capability group used only by navigation-triggered non-structured full-read outline:
 
 ```text
 unstructured_full_read content hook
@@ -27,15 +29,15 @@ measure full-read cost for requested units
 contribute unstructured result facts
 ```
 
-该 hook set 是可选能力，不替代默认 adapter layer 必需的 `outline`、`read`、`find` 和 `info` handler。`docnav-navigation` 在标准 `outline_mode = "unstructured_full"` 且跳过正常 outline handler 后，才会调用 selected adapter 声明的 `unstructured_full_read` content hook。未声明 content hook 时，navigation 可以使用默认 UTF-8 原文读取 fallback；该 fallback 只读取文件、做 UTF-8 decode 并设置基础 `content_type`，不解析 adapter 私有 ref 或格式结构。
+该 capability group 是可选能力，不替代默认 adapter layer 必需的 `outline`、`read`、`find` 和 `info` handler。`docnav-navigation` 在标准 `outline_mode = "unstructured_full"` 且跳过正常 outline handler 后，才会调用 selected adapter definition 声明的 `unstructured_full_read` content hook。未声明 content hook 时，navigation 可以使用默认 UTF-8 原文读取 fallback；该 fallback 只读取文件、做 UTF-8 decode 并设置基础 `content_type`，不解析 adapter 私有 ref 或格式结构。
 
 Full-read cost measurement declaration SHOULD list the standard cost units the adapter can produce for the non-structured full-read path. Measurement hook MUST receive navigation-selected requested units and return standard `Cost.measurements[]` for the content that full-read would return. 未声明 hook/declaration 时，adapter 的 full-read measurement set 为空。
 
-`manifest` 和 `probe` 是 adapter handle 上的 metadata/support methods。默认 adapter layer 的必需文档操作集合为 `outline`、`read`、`find` 和 `info`；进入默认 adapter layer 的 adapter 必须全部实现这些 handler。缺少任一 handler 属于 adapter layer invalid 或 release validation 问题，单次 adapter selection 只处理 registry lookup 和 probe outcome。
+`manifest` 和 `probe` 是 adapter definition 暴露的 metadata/support facts。默认 adapter layer 的必需文档操作集合为 `outline`、`read`、`find` 和 `info`；进入默认 adapter layer 的 adapter definition 必须全部声明这些 handler。缺少任一 handler 属于 adapter definition invalid 或 release validation 问题，单次 adapter selection 只处理 registry lookup 和 probe outcome。
 
-`docnav-navigation` 接收 core 交出的 raw navigation command、config source descriptors/paths 和 adapter registry，加载 raw project/user config sources，完成 navigation input resolution，构造内部 operation request，并通过 selected adapter handle dispatch 对应 operation。Adapter 返回结构化业务结果或 adapter diagnostic。
+`docnav-navigation` 接收 core 交出的 raw navigation command、config source descriptors/paths 和 adapter registry，加载 raw project/user config sources，完成 navigation input resolution，构造内部 operation request，并通过 selected adapter definition dispatch 对应 operation。Adapter 返回结构化业务结果或 adapter diagnostic。
 
-格式 adapter 在静态 descriptor 中声明格式原生 native options、内置默认值 metadata 和 adapter-owned option semantics。`docnav-navigation` 为当前 operation 构造 operation field set：通用 operation 字段由 `docnav-navigation` 声明并注册，selected adapter 暴露的 `AdapterOptionSpec` 由使用点注册进同一个 typed-field set。本文定义 selected adapter 最终消费 typed operation arguments 的边界。Input resolution 规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
+格式 adapter 在 definition 中声明格式原生 native options、内置默认值 metadata、adapter-owned option semantics 和 handler binding metadata。`docnav-navigation` 为当前 operation 构造 operation field set：通用 operation 字段由 `docnav-navigation` 声明并注册，selected adapter definition 暴露的 `AdapterOptionSpec` 由使用点注册进同一个 typed-field set。解析成功后，navigation 保留 external `OperationArguments.options` 作为 protocol-stable request facts，并额外交付 handler-facing `NativeOptionHandoff`。该 handoff 保留 identity、owner、namespace、key、source、type metadata 和 typed JSON value，供 adapter handler 消费；handler 不再接收 raw CLI argv、raw config JSON 或未校验 native option source value。Input resolution 规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 
 Adapter 个性化参数使用 `AdapterOptionSpec` 包装 typed-field builder 声明。`path(...)` 声明该 option 注册后进入 `OperationArguments.options` 的 `options.*` 位置；`process(...)` 声明 CLI/config source binding，source path 由底层 typed-field processing metadata 提供，不作为 final arguments path 的隐含替代；`validation(...)` 和 `default_static(...)` 显式转发到底层 `docnav-typed-fields` 类型。典型形态：
 
@@ -54,11 +56,28 @@ AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_
     .build()
 ```
 
+最小 adapter authoring 形态：
+
+```rust
+pub fn markdown_adapter_definition() -> AdapterDefinition<'static> {
+    AdapterDefinition::builder("docnav-markdown")
+        .adapter(&MarkdownAdapter)
+        .manifest(markdown_manifest())
+        .required_operation_handlers()
+        .native_options(markdown_adapter_options())
+        .full_read_capability_group(markdown_full_read_capabilities())
+        .build()
+        .expect("Markdown adapter definition is valid")
+}
+```
+
+`markdown_manifest()`、`markdown_adapter_options()` 或其它 private helpers 只服务 adapter-private construction；registry-facing export 仍是一个 definition/factory。
+
 ## 适配器职责
 
 - 使用成熟 parser 解析格式。
 - 生成扁平 outline 和 adapter-owned ref。
-- 定义格式原生导航参数、adapter-owned native option declarations 和内置默认值 metadata。
+- 定义格式原生导航参数、adapter-owned native option declarations、内置默认值 metadata、handler binding 和 optional capability groups。
 - 返回有限结果和下一页 page。
 - 按自身契约解析 ref 并读取，将非法 ref、无匹配 ref 等失败返回为 adapter diagnostic。
 - 返回符合 [原始协议](protocol.md#紧凑语义结果) 的紧凑语义结果。
@@ -105,21 +124,21 @@ Adapter selection 的输入是 resolved declared adapter id，或 declared adapt
 
 Declared adapter id 表达 caller intent。存在 declared adapter id 时，`docnav` 使用 declared selection path。
 
-存在 declared adapter id 时，`docnav-navigation` 在当前 core release 的 static registry 中查找同名 adapter，并执行该 adapter 的 probe。registry lookup 失败、probe result 契约无效或 probe 返回 `supported: false` 时，返回 adapter selection diagnostic；probe 返回 `supported: true` 时选中该 adapter。声明式选择的通过条件是同名 registry entry 和成功 probe。
+存在 declared adapter id 时，`docnav-navigation` 在当前 core release 的 static registry 中查找同名 adapter definition，并执行该 definition 暴露的 probe。registry lookup 失败、probe result 契约无效或 probe 返回 `supported: false` 时，返回 adapter selection diagnostic；probe 返回 `supported: true` 时选中该 adapter definition。声明式选择的通过条件是同名 registry entry 和成功 probe。
 
-不存在 declared adapter id 时，`docnav-navigation` 进入 automatic discovery。Automatic discovery 只按 static registry 顺序遍历 adapter 并执行 probe，返回第一个 `supported: true` 的 adapter。
+不存在 declared adapter id 时，`docnav-navigation` 进入 automatic discovery。Automatic discovery 只按 static registry 顺序遍历 adapter definitions 并执行 probe，返回第一个 `supported: true` 的 adapter definition。
 
 遍历过程中，单个 adapter 的 probe 契约无效、adapter layer 不可用或 `supported: false` 都是可恢复的候选失败。`docnav-navigation` 记录候选失败证据后继续遍历后续 adapter。若后续候选成功，selection outcome 是选中 adapter；全部候选失败时，selection outcome 是 format selection failure，并保留候选失败证据。
 
-Static registry 中的 adapter 是 core release 内置 adapter layer 的静态成员。Adapter layer invariant failure 属于 release validation 问题；单次文档操作的 candidate selection 只处理 registry lookup 和 probe outcome。
+Static registry 中的 adapter definition 是 core release 内置 adapter layer 的静态成员。Adapter definition validation failure 属于 release validation 问题；单次文档操作的 candidate selection 只处理 registry lookup 和 probe outcome。
 
 `ref` 在选定 adapter 内部定位区域。`docnav` core 把非空 ref 原样传给选定 adapter。
 
 ## 文档操作执行边界
 
-`docnav-navigation` 的职责是对 navigation command 执行 input resolution、构造内部 operation request，并 dispatch selected adapter operation handler。Adapter implementation source 由 core release 的 static registry 和 linked workspace crate 决定。
+`docnav-navigation` 的职责是对 navigation command 执行 input resolution、构造内部 operation request 和 `NativeOptionHandoff`，并通过 selected adapter definition dispatch selected operation handler。Adapter implementation source 由 core release 的 static registry 和 linked workspace crate 决定。
 
-Adapter handle 接收的输入已经通过 `docnav-navigation` 的 routing 解析、adapter selection、common field declaration、selected adapter declaration registration、typed-field validation/extraction 和 operation argument binding。Adapter 消费 typed operation input、ref 和 selected adapter native option values；基础类型、required/nullability、allowed value 和范围校验不得留给 handler 消费 raw source value 后再完成。
+Adapter handler 接收的输入已经通过 `docnav-navigation` 的 routing 解析、adapter selection、common field declaration、selected adapter definition declaration registration、typed-field validation/extraction、operation argument binding 和 native option handoff construction。Adapter 消费 typed operation input、ref 和 selected adapter native option values；基础类型、required/nullability、allowed value 和范围校验不得留给 handler 消费 raw source value 后再完成。
 
 Adapter operation handler 必须：
 
@@ -132,4 +151,4 @@ Adapter operation handler 必须：
 
 Operation result 属于已选中 adapter 的执行结果。执行失败、result shape invalid 或 result semantic invalid 是 selected adapter execution failure；candidate selection 在 adapter 选中后结束。
 
-非结构化全文 hook set 只能为 `kind: "unstructured"` outline success result 补充 `content`、`content_type`、`Cost.measurements[]` 或其它稳定 result facts。Hook result MUST NOT 返回 entries、ref、page、continuation 或 readable-only wrapper；readable 文案、block framing 和 cost display 都由输出层从稳定 result facts 派生。
+非结构化全文 capability group 只能为 `kind: "unstructured"` outline success result 补充 `content`、`content_type`、`Cost.measurements[]` 或其它稳定 result facts。Hook result MUST NOT 返回 entries、ref、page、continuation 或 readable-only wrapper；readable 文案、block framing 和 cost display 都由输出层从稳定 result facts 派生。

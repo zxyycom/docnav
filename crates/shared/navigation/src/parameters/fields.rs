@@ -1,4 +1,4 @@
-use docnav_adapter_contracts::{Adapter, AdapterOptionSpec};
+use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec};
 use docnav_parameter_resolution::{
     adapter_id_field, configurable_limit_field, configurable_output_field, document_path_field,
     find_query_field, page_field as standard_page_field, pagination_enabled_field, read_ref_field,
@@ -102,7 +102,7 @@ impl OperationFieldSetBuilder {
 
 pub(super) fn operation_fields(
     operation: Operation,
-    selected_adapter: &dyn Adapter,
+    selected_adapter: &AdapterDefinition<'_>,
 ) -> Result<OperationFieldSet, NavigationError> {
     let mut builder = OperationFieldSetBuilder::new()
         .field_with_declaration_path(
@@ -157,7 +157,7 @@ pub(super) fn operation_fields(
             );
     }
 
-    builder = builder.adapter_options(selected_adapter.adapter_options(), operation)?;
+    builder = builder.adapter_options(selected_adapter.native_options().to_vec(), operation)?;
 
     builder
         .build()

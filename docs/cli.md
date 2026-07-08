@@ -125,7 +125,7 @@ Runtime invocation logging 可读取同一 project/user config 文件中的 `inv
 
 ## 内置 adapter 检查
 
-`docnav adapter list` 展示当前 release 编译进 static registry 的 adapter metadata，例如 adapter id、名称、版本、支持格式、扩展名、content type 和 operation metadata。
+`docnav adapter list` 展示当前 release 编译进 static registry 的 adapter metadata，例如 adapter id、名称、版本、core-owned implementation source、支持格式、扩展名、content type 和 operation metadata。Adapter-owned metadata 来自 registered adapter definition；implementation source 由 core static registry 记录。
 
 默认 adapter 命令面只包含 `docnav adapter list`。
 

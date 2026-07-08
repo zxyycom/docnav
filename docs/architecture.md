@@ -39,7 +39,7 @@ Runtime invocation log 是第三类独立审计 sink，不属于 document output
 负责：
 
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list`。
-- 维护 core release 内置 adapter static registry；`adapter list` 展示该 registry 中的 adapter metadata。
+- 维护 core release 内置 adapter static registry；registry 记录 core-owned implementation source，并注册 adapter definition/factory；`adapter list` 展示该 registry 中的 adapter metadata。
 - 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的 `config` 命令入口；config path flag、`config`/`init`/`doctor` target 语义见 [CLI](cli.md)，navigation command 的 config source descriptor/path handoff、raw source loading 和参数解析规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 - 解析命令类型；非 navigation 命令由 core 自己处理。
 - 对 navigation 命令把 raw command、config source descriptors/paths 和 adapter registry 交给 `docnav-navigation`。
@@ -68,8 +68,8 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 
 - `docnav-protocol`：定义原始 protocol request/response、page、错误投影和稳定字段；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest/probe typed contract helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
 - `docnav-readable`：提供 readable payload/value helper、仓库内 renderer config、`ReadableViewKind`、readable-view block 渲染器和 conformance vector 类型。readable-view block framing 由本库拥有。
-- `docnav-adapter-contracts`：定义 core release 内置 adapter layer 的最小 interface、adapter error、exit category、adapter-owned native option declaration wrapper 和共享 operation result contract。格式 adapter 依赖本 crate 暴露 library handle；本 crate 不拥有 parser、ref grammar、routing policy、输出模式或 CLI surface，也不拥有 selected adapter declaration 的注册时机。
-- `docnav-navigation`：internal document operation orchestration owner，负责 raw project/user config source loading、navigation input resolution、adapter selection、通用字段声明与 selected adapter declarations 的注册合并和解析、`RequestEnvelope` / `OperationArguments` 构造，并通过 `docnav-adapter-contracts::Adapter` 调用 `outline/read/find/info`。它不拥有 static registry 数据源、格式解析、ref 语法、外部 CLI 命令、adapter-owned option 语义或非 navigation 命令行为。
+- `docnav-adapter-contracts`：定义 core release 内置 adapter layer 的 registry-facing adapter definition、definition validation、受控过渡 dispatch contract、adapter error、exit category、adapter-owned native option declaration wrapper、handler-facing native option handoff、full-read capability group 和共享 operation result contract。格式 adapter 依赖本 crate 暴露 definition/factory 和过渡期 library handle；本 crate 不拥有 parser、ref grammar、routing policy、输出模式、CLI surface、static registry placement 或 selected adapter declaration 的注册时机。
+- `docnav-navigation`：internal document operation orchestration owner，负责 raw project/user config source loading、navigation input resolution、adapter selection、通用字段声明与 selected adapter definition declarations 的注册合并和解析、`RequestEnvelope` / `OperationArguments` 与 `NativeOptionHandoff` 构造，并通过 selected adapter definition 调用 `outline/read/find/info`。它不拥有 static registry 数据源、格式解析、ref 语法、外部 CLI 命令、adapter-owned option 语义或非 navigation 命令行为。
 - `docnav-json-io`：低层 JSON IO helper，位于 document output 编排下层，只负责 JSON value serialization、newline writing 和 serialization/write failure plumbing；不拥有 schema、protocol/readable wrapper、diagnostic projection、output mode 或 exit code policy。
 - `docnav-output`：document operation 输出编排和致命诊断投影 owner，位于 `docnav-readable` 和 `docnav-json-io` 之上、`docnav` core 和 `docnav-navigation` 之下；只承诺 `readable-view`、`readable-json` 和 `protocol-json` 的文档输出形状，help、version、adapter list 或 doctor 的成功输出仍由各命令 owner 定义。
 - `docnav-text-cost`：共享 text cost helper owner，提供只接收纯文本并返回 protocol-compatible `Measurement` 的 `line_cost`、`byte_cost` 和 `token_cost`。调用方拥有文本选择、helper function 集合选择、measurement 顺序、scope 附加、输出暴露和分页预算语义；本 crate 不解析格式、ref、path、operation、adapter policy 或 readable 输出。
@@ -87,7 +87,7 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 ```text
 caller
   -> docnav：解析命令类型、按 CLI 规则选择 config source descriptors/paths、处理非 navigation 命令和输出模式
-  -> docnav-navigation：加载 raw config sources、解析 routing 输入、选择 adapter、解析 typed 参数、构造内部 protocol request 并调用 selected adapter library handle
+  -> docnav-navigation：加载 raw config sources、解析 routing 输入、选择 adapter definition、解析 typed 参数、构造内部 protocol request/native option handoff 并通过 selected definition 调用 adapter operation handler
   -> selected adapter layer：解析、导航、生成 ref 和语义结果
   <- protocol result
   <- docnav：转为 CLI 阅读输出或完整协议输出
