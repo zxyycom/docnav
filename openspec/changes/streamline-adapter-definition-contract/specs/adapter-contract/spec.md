@@ -1,9 +1,9 @@
-本 delta spec 修改 adapter contract，使 linked adapter 扩展面收敛为 registry-facing descriptor、高层 operation handler、内部 typed native option handoff/accessor 和 capability group；当前文档只在 `openspec/changes/streamline-adapter-definition-contract/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 delta spec 修改 adapter contract，使 linked adapter 扩展面收敛为单一 registry-facing adapter definition/descriptor、高层 operation handler、内部 typed native option handoff/accessor 和 capability group。实施和归档前，主规范与当前二进制状态仍以 `docs/`、代码和测试为准。
 
 ## MODIFIED Requirements
 
 ### Requirement: Linked adapter handlers receive prepared operation input
-Linked adapter handlers MUST receive operation-specific typed input after core CLI parsing, config source loading, adapter selection, native option extraction, default resolution, request construction, and adapter-specific internal typed native option handoff have completed. Handler inputs MUST NOT require adapter implementations to consume raw CLI argv, raw config JSON, or untyped native option source values for basic type, requiredness, allowed-value, or range validation.
+Linked adapter handlers MUST receive operation-specific typed input after core CLI parsing, config source loading, adapter selection, native option extraction, default resolution, request construction, and adapter-specific internal typed native option handoff have completed. Handler inputs MUST be derivable from the selected adapter definition's operation binding and native option declarations. Raw CLI argv, raw config JSON, and untyped native option source values MUST remain inputs to earlier owner boundaries for basic type, requiredness, allowed-value, and range validation.
 
 #### Scenario: Handler receives outline input
 - **WHEN** navigation dispatches an outline operation to a selected adapter
@@ -21,10 +21,16 @@ Linked adapter handlers MUST receive operation-specific typed input after core C
 - **WHEN** a selected adapter declares a native option with a typed accessor or typed handoff binding
 - **THEN** navigation resolves and validates the declared option before dispatch
 - **THEN** the handler consumes the typed value through the adapter-owned accessor or handoff structure
-- **THEN** the handler does not repeat basic JSON type or range validation for that option
+- **THEN** basic JSON type and range validation remains proven by navigation resolution for that option
 
-### Requirement: Adapter metadata excludes implementation source
-Adapter definition, manifest, probe, and descriptor metadata MUST describe adapter identity, supported format facts, native option declarations, capability declarations, and operation support. The adapter definition MUST be the registry-facing aggregation point for metadata, declarations, capability groups, and operation handler handles. Adapter implementation source MUST remain a core static-registry fact instead of adapter definition, manifest, or probe metadata.
+#### Scenario: Handler receives typed native option binding
+- **WHEN** a selected adapter declaration binds a native option such as `max_heading_level` to handler input
+- **THEN** the binding is prepared from the selected adapter definition before handler dispatch
+- **THEN** the handler receives a typed value or typed accessor for that option
+- **THEN** handler correctness is proven through that typed value or typed accessor
+
+### Requirement: Adapter definition owns registry-facing adapter facts
+Adapter definition, manifest, probe, and descriptor metadata MUST describe adapter identity, supported format facts, native option declarations, capability declarations, and operation support. The adapter definition MUST be the registry-facing aggregation point and adapter authoring surface for metadata, declarations, full-read capability group, and operation handler handles. Adapter authors MUST expose each adapter-owned fact through one registry-facing definition or definition factory. Adapter-private helpers or modules may construct portions of that definition, but shared layers MUST consume adapter-owned facts only through the exported definition/factory. Adapter implementation source MUST remain a core static-registry fact.
 
 #### Scenario: Core lists built-in adapters
 - **WHEN** `docnav adapter list` inspects adapters
@@ -34,12 +40,24 @@ Adapter definition, manifest, probe, and descriptor metadata MUST describe adapt
 
 #### Scenario: Registry consumes a single adapter definition
 - **WHEN** a built-in adapter is registered with core
-- **THEN** the registry receives one adapter definition or equivalent facade for that adapter
+- **THEN** the registry receives one adapter definition for that adapter
 - **THEN** identity, format descriptors, native option declarations, operation handlers, and optional capability groups are reachable from that definition
-- **THEN** the registry does not reconstruct adapter-owned native option or capability semantics from unrelated hook methods
+- **THEN** the registry uses definition-provided adapter-owned native option and capability semantics
+
+#### Scenario: Adapter author uses one registry-facing definition
+- **WHEN** a linked adapter declares identity, format descriptors, native options, required operation handlers, and full-read support/content/cost/facts
+- **THEN** those declarations are authored in one adapter definition or definition factory
+- **THEN** static registry, adapter inspection, CLI native option discovery, navigation declaration registration, and dispatch consume facts derived from that definition
+- **THEN** any transition adapter layer is owned by contract/registry/navigation code and derives from that definition
+
+#### Scenario: Adapter implementation uses private helpers
+- **WHEN** an adapter implementation splits definition construction across private helper functions or modules
+- **THEN** the adapter exports one registry-facing definition or definition factory
+- **THEN** registry, core, CLI, navigation, and dispatch consume adapter-owned facts through that exported definition or factory
+- **THEN** private helper boundaries do not become shared-layer declaration inputs
 
 ### Requirement: Native options are adapter-owned declarations
-Format-native options MUST be declared by the owning adapter and consumed by navigation input resolution as owner-scoped input sources. Shared layers MUST accept native option input only through selected-adapter declarations. Declarations MUST provide enough typed metadata for navigation to resolve defaults, validate source values, and produce adapter-specific internal typed native option handoff or accessor values before handler dispatch without requiring external protocol JSON shape changes.
+Format-native options MUST be declared by the owning adapter in the adapter definition and consumed by navigation input resolution as owner-scoped input sources. Shared layers MUST accept native option input only through selected-adapter declarations. The same declaration MUST provide typed metadata for CLI/config extraction, default resolution, source validation, operation applicability, and adapter-specific internal typed native option handoff or accessor values before handler dispatch while external protocol JSON shape remains owned by the protocol contract.
 
 #### Scenario: Adapter declares a native option
 - **WHEN** a Markdown adapter option is registered in the static registry through its adapter definition
@@ -56,23 +74,28 @@ Format-native options MUST be declared by the owning adapter and consumed by nav
 - **WHEN** project config, user config, or explicit CLI input provides an adapter native option
 - **THEN** navigation uses the selected adapter declaration to resolve and validate the value
 - **THEN** the adapter declaration remains the source of value kind, default, range, and operation applicability semantics
-- **THEN** core and navigation do not infer adapter-owned semantics from the config key name alone
+- **THEN** core and navigation use selected declaration metadata for adapter-owned semantics
+
+#### Scenario: Native option declaration drives every consumer
+- **WHEN** a native option declaration exposes CLI, config, default, validation, and handler binding metadata
+- **THEN** CLI option discovery, config validation, navigation extraction, and dispatch handoff use that declaration
+- **THEN** that declaration is the complete shared source for adapter-owned option semantics
 
 ### Requirement: Adapter operation support is explicit
-Adapter definitions MUST declare supported document operations and any optional capability groups, including unstructured full-read support and cost measurements used by navigation pre-dispatch policy. Navigation uses only declared support facts when selecting adapter-level capabilities. Optional capability groups MUST aggregate related optional hooks under one declared owner boundary instead of requiring navigation to infer support from unrelated methods.
+Adapter definitions MUST declare supported document operations and capability groups, including unstructured full-read support, content, cost measurement, and result facts used by navigation pre-dispatch policy. Required operation handler handles and capability group handles MUST be reachable from the same adapter definition. Navigation uses declared support facts when selecting adapter-level capabilities. Capability groups MUST aggregate related hooks under one declared owner boundary.
 
 #### Scenario: Adapter supports unstructured full read
 - **WHEN** an adapter declares a full-read capability group
 - **THEN** navigation may use that declaration for opt-in full-read pre-dispatch
 - **THEN** the adapter still owns the content and cost facts it returns
-- **THEN** content, cost measurement, and result facts support are interpreted within the declared full-read capability boundary
+- **THEN** support, content, cost measurement, and result facts are interpreted within the declared full-read capability boundary
 
-#### Scenario: Adapter lacks a required hook
-- **WHEN** policy requires a capability that the selected adapter does not declare
+#### Scenario: Capability boundary is unavailable
+- **WHEN** policy requires a capability outside the selected adapter definition
 - **THEN** navigation reports the unsupported boundary
 - **THEN** fallback behavior must come from a declared owner rather than inference
 
-#### Scenario: Optional capability does not replace operation handlers
+#### Scenario: Full-read capability complements operation handlers
 - **WHEN** an adapter declares an optional full-read capability group
 - **THEN** the adapter still declares the required `outline`, `read`, `find`, and `info` operation handlers
 - **THEN** navigation uses the optional capability only for the policy path that explicitly permits it
