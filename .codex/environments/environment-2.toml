@@ -5,6 +5,7 @@ name = "clear"
 [setup]
 script = '''
 cd "$CODEX_WORKTREE_PATH"
+git submodule update --init --recursive scripts/tools/foundation scripts/tools/parallel-task-runner scripts/tools/quality-core
 pnpm install --frozen-lockfile
 git restore --staged --worktree .
 git clean -fd
