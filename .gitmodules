@@ -1,0 +1,14 @@
+[submodule "scripts/tools/foundation"]
+	path = scripts/tools/foundation
+	url = https://github.com/zxyycom/script-tool-foundation.git
+	branch = main
+
+[submodule "scripts/tools/parallel-task-runner"]
+	path = scripts/tools/parallel-task-runner
+	url = https://github.com/zxyycom/script-tool-parallel-task-runner.git
+	branch = main
+
+[submodule "scripts/tools/quality-core"]
+	path = scripts/tools/quality-core
+	url = https://github.com/zxyycom/script-tool-quality-core.git
+	branch = main
