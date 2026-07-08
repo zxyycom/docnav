@@ -58,7 +58,7 @@ Invocation logging 不把 adapter、protocol envelope 或输出层变成日志 o
 - 生成扁平 outline、ref、业务语义结果和下一页 page。
 - 按自身契约解析 ref 并读取。
 - 将 readable payload 交给共享 `docnav-readable` 渲染路径，不拥有通用 readable-view 渲染规则。
-- 在 manifest 中声明 adapter 身份、支持格式、扩展名、content type 和 adapter layer metadata。
+- 通过 registry-facing adapter definition/factory 声明 adapter 身份、manifest/format metadata、native option declarations、operation handlers 和 optional capability groups。
 
 adapter 只处理本格式请求，不承担跨格式路由、项目初始化、全局配置管理或调用入口适配。
 

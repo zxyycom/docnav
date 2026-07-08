@@ -263,6 +263,31 @@ fn adapter_definition_rejects_invalid_and_duplicate_native_options() {
 }
 
 #[test]
+fn adapter_definition_rejects_native_option_owner_mismatch() {
+    let adapter = NoHookAdapter;
+    let mismatched_owner = AdapterOptionSpec::builder("docnav.adapters.other.options.shared")
+        .owner("other-adapter")
+        .operations(&[Operation::Outline])
+        .path(["options", "shared"])
+        .validation(FieldValidation::int())
+        .build();
+
+    let error = definition_builder(&adapter)
+        .native_option(mismatched_owner)
+        .build()
+        .expect_err("native option owner mismatch");
+
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::NativeOptionOwnerMismatch {
+            id,
+            owner,
+            ..
+        } if id == "no-hook" && owner == "other-adapter"
+    ));
+}
+
+#[test]
 fn adapter_definition_rejects_duplicate_handlers_and_capability_groups() {
     let adapter = NoHookAdapter;
     let error = definition_builder(&adapter)

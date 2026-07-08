@@ -157,6 +157,13 @@ fn validate_native_options(
                 reason: error.to_string(),
             }
         })?;
+        if option.owner != id {
+            return Err(AdapterDefinitionError::NativeOptionOwnerMismatch {
+                id: id.to_owned(),
+                option: option.identity.clone(),
+                owner: option.owner.clone(),
+            });
+        }
         if !identities.insert(option.identity.clone()) {
             return Err(AdapterDefinitionError::DuplicateNativeOptionDeclaration {
                 id: id.to_owned(),

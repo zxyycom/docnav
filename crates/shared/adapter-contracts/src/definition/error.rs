@@ -27,6 +27,11 @@ pub enum AdapterDefinitionError {
         option: String,
         reason: String,
     },
+    NativeOptionOwnerMismatch {
+        id: String,
+        option: String,
+        owner: String,
+    },
     DuplicateNativeOptionDeclaration {
         id: String,
         option: String,
@@ -73,6 +78,10 @@ impl fmt::Display for AdapterDefinitionError {
             Self::InvalidNativeOption { id, option, reason } => write!(
                 formatter,
                 "adapter definition {id} has invalid native option {option}: {reason}"
+            ),
+            Self::NativeOptionOwnerMismatch { id, option, owner } => write!(
+                formatter,
+                "adapter definition {id} declares native option {option} for owner {owner}"
             ),
             Self::DuplicateNativeOptionDeclaration { id, option } => write!(
                 formatter,

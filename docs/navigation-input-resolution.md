@@ -1,6 +1,6 @@
 # Navigation Input Resolution
 
-本文是 document navigation input resolution 的主规范。读者应能从本文判断 `docnav` core 和 `docnav-navigation` 的 owner 边界、navigation command 的输入来源如何进入解析流程、raw project/user config source 如何加载、通用字段声明与 selected adapter declarations 如何在使用点注册并合并参与解析，以及最终如何构造 `RequestEnvelope` / `OperationArguments` 并调用 adapter。
+本文是 document navigation input resolution 的主规范。读者应能从本文判断 `docnav` core 和 `docnav-navigation` 的 owner 边界、navigation command 的输入来源如何进入解析流程、raw project/user config source 如何加载、通用字段声明与 selected adapter definition declarations 如何在使用点注册并合并参与解析，以及最终如何构造 `RequestEnvelope` / `OperationArguments` / `NativeOptionHandoff` 并通过 selected adapter definition dispatch。
 
 配置只是 navigation 参数来源之一。本文不把配置文件、CLI argv、protocol arguments 或 adapter defaults 单独提升为主 owner；这些来源都在 `docnav-navigation` 的 input resolution 流程中按统一规则解析。
 
@@ -42,7 +42,7 @@ Navigation input resolution 接收四类来源：
 | explicit | raw navigation command | 本次调用显式传入的 operation、path、ref/query、page、limit、output、adapter intent 和 native option source |
 | project | `docnav-navigation` 从 project config descriptor/path 加载的 source | 项目级 document operation 默认值和 adapter-owned native option source |
 | user | `docnav-navigation` 从 user config descriptor/path 加载的 source | 用户级 document operation 默认值和 adapter-owned native option source |
-| built_in | `docnav-navigation` 注册后的 selected adapter declarations 和 core navigation defaults | 缺省 pagination、limit、output、page 和 adapter 参数默认值 |
+| built_in | `docnav-navigation` 注册后的 selected adapter definition declarations 和 core navigation defaults | 缺省 pagination、limit、output、page 和 adapter 参数默认值 |
 
 Core-supplied project/user config descriptor 至少包含：
 
