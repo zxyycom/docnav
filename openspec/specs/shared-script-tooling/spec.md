@@ -29,7 +29,7 @@ Shared script tooling MUST use multiple Git toolkit repository boundaries for th
 - **THEN** foundation helpers are placed under `scripts/tools/foundation/`
 - **THEN** parallel task scheduling is placed under `scripts/tools/parallel-task-runner/`
 - **THEN** quality observability core is placed under `scripts/tools/quality-core/`
-- **THEN** each toolkit repository exposes its own public source entrypoint and records its dependencies, tests, Git revision policy, and changelog owner
+- **THEN** each toolkit repository exposes its own public source entrypoint and records its dependencies, tests, minimal README owner, and Git revision or pin policy
 
 #### Scenario: 首批不覆盖所有脚本
 
@@ -72,12 +72,12 @@ Docnav callers and command entrypoints MUST preserve existing command names, scr
 
 ### Requirement: 提取必须具备交付准备和验证证据
 
-Extracted script tooling MUST provide toolkit-repository-level verification, local tooling readiness, Git revision or pin strategy, changelog entries for breaking changes, and Docnav migration evidence before a toolkit boundary is accepted.
+Extracted script tooling MUST provide toolkit-repository-level verification, local tooling readiness, a minimal README owner, Git revision or pin strategy, and Docnav migration evidence before a toolkit boundary is accepted.
 
 #### Scenario: Subrepository readiness exists
 
 - **WHEN** a toolkit is extracted into one of the first-batch toolkit repositories
-- **THEN** it declares a private tooling manifest if needed, public source entrypoint, README, runtime prerequisites, typecheck/lint/test commands, changelog or Git revision policy, and delivery notes
+- **THEN** it declares a private tooling manifest if needed, public source entrypoint, minimal README, runtime prerequisites, typecheck/lint/test commands, and Git revision or pin strategy
 - **THEN** those checks run without requiring Docnav-specific docs, schemas, examples, OpenSpec changes, or release artifacts
 
 #### Scenario: Docnav migration evidence exists
@@ -85,4 +85,3 @@ Extracted script tooling MUST provide toolkit-repository-level verification, loc
 - **WHEN** Docnav adopts an extracted toolkit
 - **THEN** Docnav runs the relevant script typecheck, lint, focused script tests, workspace verifier, quality scan, release package test, or validator commands for the touched surface
 - **THEN** the recorded evidence compares migration-relevant command output, artifact paths, warning statuses, reports, quality artifacts, and exit behavior with the pre-extraction behavior
-

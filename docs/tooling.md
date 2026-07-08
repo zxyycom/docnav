@@ -45,6 +45,6 @@ required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality c
 
 ## 共享脚本子仓库
 
-`scripts/tools/foundation/`、`scripts/tools/parallel-task-runner/` 和 `scripts/tools/quality-core/` 是私有 Git 子仓库形态的共享脚本工具边界。每个子仓库使用自己的 private `package.json`、`tsconfig.json`、README、CHANGELOG 和 DELIVERY notes 记录运行前置条件、public source entrypoint、验证脚本和 revision policy；这些 manifest 只服务本地 tooling，不是 npm publish contract。
+`scripts/tools/foundation/`、`scripts/tools/parallel-task-runner/` 和 `scripts/tools/quality-core/` 是私有 Git 子仓库形态的共享脚本工具边界。每个子仓库只保留一份极简 README 作为文档 owner，用于说明用途、public source entrypoint 和本地检查；private `package.json` 与 `tsconfig.json` 只服务 Bun、TypeScript、ESLint 和测试配置，不是 npm publish contract。Docnav 侧通过 `.gitmodules`、submodule revision 和父仓库提交记录持有 revision/pin 集成状态。
 
 Docnav 通过源码 import 和当前 Git revision 或等价 pin 集成这些子仓库。Docnav-owned command entrypoints、callers、quality defaults、workspace profiles、release product config、validators 和 package scripts 仍留在 Docnav 侧，并通过 typed config、task definitions 或 explicit options 直接导入共享 source entrypoint，不保留旧 wrapper/re-export 层。
