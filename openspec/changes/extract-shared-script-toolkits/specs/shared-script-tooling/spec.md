@@ -1,15 +1,15 @@
-本 spec delta 定义共享脚本工具能力的新增要求：Docnav 脚本中可复用的工具内核必须能被提取为子仓库或可发布包，同时 Docnav 专属策略必须留在 Docnav 集成层。
+本 spec delta 定义共享脚本工具能力的新增要求：Docnav 脚本中可复用的工具内核必须能被提取为 Git 子仓库，同时 Docnav 专属策略必须留在 Docnav 集成层。
 
 ## ADDED Requirements
 
 ### Requirement: 共享脚本工具必须分离通用内核和 Docnav 策略
 
-Shared script tooling MUST expose reusable execution, task, quality, verifier, and packaging primitives separately from Docnav-specific policy. The reusable primitives MAY be used by Docnav and other projects, but Docnav-owned paths, package names, artifact layouts, validators, quality policies, verification profiles, release components, CLI package scripts, and owner documentation MUST remain outside shared defaults.
+Shared script tooling MUST expose reusable execution, task, and quality primitives separately from Docnav-specific policy. The reusable primitives MAY be used by Docnav and other projects, but Docnav-owned paths, artifact layouts, validators, quality policies, verification profiles, release components, CLI package scripts, and owner documentation MUST remain outside shared defaults.
 
 #### Scenario: Docnav 策略不进入共享默认值
 
 - **WHEN** a shared script toolkit is extracted from Docnav scripts
-- **THEN** the toolkit exposes Docnav-neutral functions, types, task models, scanner adapters, or packaging helpers
+- **THEN** the toolkit exposes Docnav-neutral functions, types, task models, scanner adapters, metrics aggregation, warning/report generation, or cache helpers
 - **THEN** Docnav-specific values such as `artifacts/docnav-quality`, `.cache/docnav`, `product: "docnav"`, `binName: "docnav"`, Docnav OpenSpec validators, and Docnav schema/example paths remain outside shared default behavior
 
 #### Scenario: Docnav 集成层拥有配置
@@ -18,21 +18,23 @@ Shared script tooling MUST expose reusable execution, task, quality, verifier, a
 - **THEN** Docnav passes repository root, artifact paths, task definitions, quality config, release components, output filters, and validation rules through a documented API
 - **THEN** the shared toolkit does not infer those values by inspecting the Docnav repository layout
 
-### Requirement: 共享脚本工具必须支持多包和多子仓库拆分
+### Requirement: 共享脚本工具必须使用 Git 子仓库边界
 
-Shared script tooling MUST allow independent package or repository boundaries by domain, maturity, dependency set, and release cadence. A single all-encompassing scripts repository MUST NOT be required for extraction.
+Shared script tooling MUST use multiple Git subrepository boundaries for the first extraction. The first extraction MUST separate foundation helpers, parallel task scheduling, and quality core into three distinct subrepositories by domain, maturity, dependency set, and release cadence, and npm package publication MUST NOT be required for Docnav integration.
 
-#### Scenario: 能力按生命周期分开提取
+#### Scenario: 首批能力拆成多个子仓库
 
-- **WHEN** foundation helpers, parallel task scheduling, quality observability, workspace verification, and release packaging helpers have different maturity or dependency needs
-- **THEN** the extraction plan can place them in separate packages or repositories
-- **THEN** each package or repository records its exports, dependencies, tests, version policy, and changelog owner
+- **WHEN** foundation helpers, parallel task scheduling, and quality observability core are extracted
+- **THEN** foundation helpers are placed under `subrepos/script-foundation/`
+- **THEN** parallel task scheduling is placed under `subrepos/script-parallel-task-runner/`
+- **THEN** quality observability core is placed under `subrepos/script-quality-core/`
+- **THEN** each subrepository exposes its own public source entrypoint and records its dependencies, tests, Git revision policy, and changelog owner
 
 #### Scenario: 首批不覆盖所有脚本
 
 - **WHEN** only a subset of Docnav script tooling has a clear reusable boundary
 - **THEN** Docnav extracts only that subset
-- **THEN** unrelated Docnav quality, verifier, release, or validation behavior remains in Docnav scripts
+- **THEN** workspace verifier profiles, release product config, validators, Docnav quality defaults, and CLI wrappers remain in Docnav scripts
 
 ### Requirement: 共享脚本工具必须通过 typed config 接收可变策略
 
@@ -41,8 +43,9 @@ Shared script tooling MUST represent configurable behavior through typed configu
 #### Scenario: Quality core 接收调用方配置
 
 - **WHEN** quality observability code is extracted
-- **THEN** scanner execution, metrics aggregation, warning generation, baseline/cache handling, and report generation use a caller-provided quality config
-- **THEN** code areas, include/exclude globs, thresholds, accepted warnings, artifact directories, tool command paths, and repository root are supplied by Docnav wrapper or configuration
+- **THEN** scanner execution, metrics aggregation, warning generation, baseline/cache handling, report generation, and quality scan orchestration use a caller-provided quality config and runtime options
+- **THEN** code areas, include/exclude globs, thresholds, accepted warnings, artifact directories, cache directories, tool command paths, repository root, changed-file input, baseline policy, report options, and output adapter are supplied by Docnav wrapper or configuration
+- **THEN** Docnav defaults such as `DOCNAV_*` environment variables, `artifacts/docnav-quality`, `.cache/docnav/quality`, `crates/**/*.rs`, `docs/examples/**`, and `docs/schemas/**` remain outside shared defaults
 
 #### Scenario: Verifier core 接收任务定义
 
@@ -66,18 +69,18 @@ Docnav wrappers MUST preserve existing command names, script entry points, artif
 - **THEN** Docnav `docnav` CLI operations, adapter routing, protocol envelopes, readable output, schemas, and examples remain unchanged
 - **THEN** script extraction does not add fields, flags, adapter payloads, or output modes to Docnav product contracts
 
-### Requirement: 提取必须具备发布准备和验证证据
+### Requirement: 提取必须具备交付准备和验证证据
 
-Extracted script tooling MUST provide package-level verification, publishing readiness, version or pin strategy, changelog entries for breaking changes, and Docnav migration evidence before a toolkit boundary is accepted.
+Extracted script tooling MUST provide subrepository-level verification, local tooling readiness, Git revision or pin strategy, changelog entries for breaking changes, and Docnav migration evidence before a toolkit boundary is accepted.
 
-#### Scenario: Package and publishing readiness exist
+#### Scenario: Subrepository readiness exists
 
-- **WHEN** a toolkit is extracted into a package or repository
-- **THEN** it declares package metadata, public exports, README, runtime prerequisites, typecheck/lint/test commands, changelog or version policy, and release notes
+- **WHEN** a toolkit is extracted into one of the first-batch subrepositories
+- **THEN** it declares a private tooling manifest if needed, public source entrypoint, README, runtime prerequisites, typecheck/lint/test commands, changelog or Git revision policy, and delivery notes
 - **THEN** those checks run without requiring Docnav-specific docs, schemas, examples, OpenSpec changes, or release artifacts
 
 #### Scenario: Docnav migration evidence exists
 
 - **WHEN** Docnav adopts an extracted toolkit
 - **THEN** Docnav runs the relevant script typecheck, lint, focused script tests, workspace verifier, quality scan, release package test, or validator commands for the touched surface
-- **THEN** the recorded evidence compares migration-relevant command output, artifact paths, warning statuses, reports, release metadata, and exit behavior with the pre-extraction behavior
+- **THEN** the recorded evidence compares migration-relevant command output, artifact paths, warning statuses, reports, quality artifacts, and exit behavior with the pre-extraction behavior
