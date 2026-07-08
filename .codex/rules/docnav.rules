@@ -1,0 +1,102 @@
+# Docnav navigation and local CLI entrypoints.
+prefix_rule(pattern=["bun", "--silent", "run", "dnm"], decision="allow")
+prefix_rule(pattern=["bun", "run", "dnm"], decision="allow")
+prefix_rule(pattern=["bun", "run", "cli:dev"], decision="allow")
+prefix_rule(pattern=["bun", "run", "docnav"], decision="allow")
+
+# TypeScript script checks.
+prefix_rule(pattern=["bun", "run", "lint:scripts"], decision="allow")
+prefix_rule(pattern=["bun", "run", "typecheck:scripts"], decision="allow")
+prefix_rule(pattern=["bun", "run", "typecheck:scripts:tsc"], decision="allow")
+
+# Workspace verification, validation, and smoke checks.
+prefix_rule(pattern=["bun", "run", "verify:docnav-workspace"], decision="allow")
+prefix_rule(pattern=["bun", "run", "verify:docnav-workspace:required"], decision="allow")
+prefix_rule(pattern=["bun", "run", "verify:docnav-workspace:full"], decision="allow")
+prefix_rule(pattern=["bun", "run", "validate"], decision="allow")
+prefix_rule(pattern=["bun", "run", "validate:docs"], decision="allow")
+prefix_rule(pattern=["bun", "run", "validate:openspec"], decision="allow")
+prefix_rule(pattern=["bun", "run", "validate:diff"], decision="allow")
+prefix_rule(pattern=["bun", "run", "smoke:docnav"], decision="allow")
+prefix_rule(pattern=["bun", "run", "smoke:docnav-core:dev"], decision="allow")
+prefix_rule(pattern=["bun", "run", "smoke:docnav-package"], decision="allow")
+prefix_rule(pattern=["bun", "run", "verify:docnav-package"], decision="allow")
+prefix_rule(pattern=["bun", "run", "info:docnav-package"], decision="allow")
+
+# Focused script tests.
+prefix_rule(pattern=["bun", "test"], decision="allow")
+prefix_rule(pattern=["bun", "run", "test:workspace-verifier"], decision="allow")
+prefix_rule(pattern=["bun", "run", "test:validators"], decision="allow")
+prefix_rule(pattern=["bun", "run", "test:release-package-scripts"], decision="allow")
+
+# Quality observation scripts.
+prefix_rule(pattern=["bun", "run", "quality:check"], decision="allow")
+prefix_rule(pattern=["bun", "run", "quality:full-check"], decision="allow")
+prefix_rule(pattern=["bun", "run", "quality:scan"], decision="allow")
+prefix_rule(pattern=["bun", "run", "quality:test"], decision="allow")
+prefix_rule(pattern=["bun", "run", "quality:annotate"], decision="prompt")
+
+# Shared script toolkit subrepos.
+prefix_rule(pattern=["bun", "run", "toolkit:foundation:typecheck"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:foundation:lint"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:foundation:test"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:parallel:typecheck"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:parallel:lint"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:parallel:test"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:quality:typecheck"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:quality:lint"], decision="allow")
+prefix_rule(pattern=["bun", "run", "toolkit:quality:test"], decision="allow")
+
+# Package, dependency, and ad-hoc Bun commands that can change workspace state.
+prefix_rule(pattern=["bun", "run", "package:docnav"], decision="prompt")
+prefix_rule(pattern=["bun", "install"], decision="prompt")
+prefix_rule(pattern=["bun", "add"], decision="prompt")
+prefix_rule(pattern=["bun", "remove"], decision="prompt")
+prefix_rule(pattern=["bun", "update"], decision="prompt")
+prefix_rule(pattern=["bun", "x"], decision="prompt")
+prefix_rule(pattern=["bunx"], decision="prompt")
+prefix_rule(pattern=["pnpm", "install"], decision="prompt")
+prefix_rule(pattern=["pnpm", "add"], decision="prompt")
+prefix_rule(pattern=["pnpm", "remove"], decision="prompt")
+prefix_rule(pattern=["pnpm", "update"], decision="prompt")
+prefix_rule(pattern=["pnpm", "exec"], decision="prompt")
+prefix_rule(pattern=["pnpm", "dlx"], decision="prompt")
+
+# OpenSpec inspection and validation.
+prefix_rule(pattern=["openspec", "list"], decision="allow")
+prefix_rule(pattern=["openspec", "validate"], decision="allow")
+
+# Rust workspace inspection, build, formatting, linting, and tests.
+prefix_rule(pattern=["cargo", "--version"], decision="allow")
+prefix_rule(pattern=["cargo", "metadata"], decision="allow")
+prefix_rule(pattern=["cargo", "locate-project"], decision="allow")
+prefix_rule(pattern=["cargo", "tree"], decision="allow")
+prefix_rule(pattern=["cargo", "check"], decision="allow")
+prefix_rule(pattern=["cargo", "build"], decision="allow")
+prefix_rule(pattern=["cargo", "fmt"], decision="allow")
+prefix_rule(pattern=["cargo", "clippy"], decision="allow")
+prefix_rule(pattern=["cargo", "test"], decision="allow")
+prefix_rule(pattern=["cargo", "nextest"], decision="allow")
+prefix_rule(pattern=["cargo", "doc"], decision="allow")
+prefix_rule(pattern=["cargo", "run"], decision="allow")
+prefix_rule(pattern=["rustc", "--version"], decision="allow")
+prefix_rule(pattern=["rustfmt", "--version"], decision="allow")
+prefix_rule(pattern=["rustup", "show"], decision="allow")
+prefix_rule(pattern=["rustup", "target", "list"], decision="allow")
+prefix_rule(pattern=["rustup", "component", "list"], decision="allow")
+
+# Rust dependency, packaging, cleanup, and toolchain changes.
+prefix_rule(pattern=["cargo", "fetch"], decision="prompt")
+prefix_rule(pattern=["cargo", "add"], decision="prompt")
+prefix_rule(pattern=["cargo", "remove"], decision="prompt")
+prefix_rule(pattern=["cargo", "update"], decision="prompt")
+prefix_rule(pattern=["cargo", "install"], decision="prompt")
+prefix_rule(pattern=["cargo", "package"], decision="prompt")
+prefix_rule(pattern=["cargo", "publish"], decision="prompt")
+prefix_rule(pattern=["cargo", "clean"], decision="prompt")
+prefix_rule(pattern=["rustup", "component", "add"], decision="prompt")
+prefix_rule(pattern=["rustup", "component", "remove"], decision="prompt")
+prefix_rule(pattern=["rustup", "target", "add"], decision="prompt")
+prefix_rule(pattern=["rustup", "target", "remove"], decision="prompt")
+prefix_rule(pattern=["rustup", "toolchain"], decision="prompt")
+prefix_rule(pattern=["rustup", "update"], decision="prompt")
