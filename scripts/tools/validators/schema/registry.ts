@@ -1,7 +1,7 @@
 import { Ajv2020 } from "ajv/dist/2020.js";
 import type { AnySchema, ValidateFunction } from "ajv";
 
-import { isRecord } from "../../type-guards.ts";
+import { isRecord } from "../../foundation/src/type-guards.ts";
 import { assert } from "../assertions.ts";
 import { listSchemaJson, readJson } from "../json/files.ts";
 

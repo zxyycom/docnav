@@ -14,7 +14,7 @@ import {
 } from "../assertions.ts";
 import type { JsonRecord } from "../assertions.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
-import { toSlashPath } from "../../../../scripts/tools/path.ts";
+import { toSlashPath } from "../../../../scripts/tools/foundation/src/path.ts";
 
 export async function testConfigPathFlagsSelectConfigTargets() {
   const project = createProject("config-path-flags", {

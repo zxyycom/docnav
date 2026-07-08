@@ -847,7 +847,7 @@ flowchart LR
 
 ### AUX-PARALLEL-RUNNER-001 Parallel task runner 保持调度契约
 Status: implemented
-Code: `scripts/tools/parallel-task-runner/index.test.ts`
+Code: `scripts/tools/parallel-task-runner/test/index.test.ts`
 
 Proves:
 - task normalization、concurrency、mutex serialization、dependency ordering 和 nested task expansion 保持稳定。
@@ -873,7 +873,7 @@ flowchart LR
 
 ### AUX-QUALITY-PARSER-001 Quality scanner parser fixtures 稳定
 Status: implemented
-Code: `scripts/tools/quality/measurement/scanners.test.ts`
+Code: `scripts/tools/quality-core/src/measurement/scanners.test.ts`
 
 Proves:
 - scc 3.7 by-file CSV 解析 Provider path 和 `Complexity` decision-token value，并将未知 header 投影为 parser failure。
@@ -882,7 +882,7 @@ Proves:
 
 ### AUX-QUALITY-JSCPD-WRAPPER-001 Quality jscpd wrapper failure projection 稳定
 Status: implemented
-Code: `scripts/tools/quality/measurement/scanners.test.ts`, `scripts/tools/quality/measurement/scanners/jscpd/area-scans.test.ts`
+Code: `scripts/tools/quality-core/src/measurement/scanners.test.ts`, `scripts/tools/quality-core/src/measurement/scanners/jscpd/area-scans.test.ts`
 
 Proves:
 - jscpd wrapper 将 successful process without JSON report 映射为 `jscpd-report-failure` scan failure diagnostic，不把缺失或空 JSON 当作 successful empty duplicate-code result。
@@ -893,7 +893,7 @@ Proves:
 
 ### AUX-QUALITY-CACHE-001 Quality measurement cache identity 稳定
 Status: implemented
-Code: `scripts/tools/quality/measurement/cache.test.ts`
+Code: `scripts/tools/quality-core/src/measurement/cache.test.ts`
 
 Proves:
 - duplicate-code cache key changes for tested code area and input fingerprint differences, and cache lookup misses when tool version differs.
@@ -903,7 +903,7 @@ Proves:
 
 ### AUX-QUALITY-JSCPD-TASK-001 Quality jscpd task planning 稳定
 Status: implemented
-Code: `scripts/tools/quality/measurement/scanners/jscpd/area-scans.test.ts`
+Code: `scripts/tools/quality-core/src/measurement/scanners/jscpd/area-scans.test.ts`
 
 Proves:
 - jscpd 每个 code area 生成一个 scan task。
@@ -911,7 +911,7 @@ Proves:
 
 ### AUX-QUALITY-FINGERPRINT-001 Quality input fingerprint 稳定
 Status: implemented
-Code: `scripts/tools/quality/input/files.test.ts`
+Code: `scripts/tools/quality-core/src/input/files.test.ts`
 
 Proves:
 - quality input fingerprint 使用排序后的文件内容生成稳定 SHA-256。
@@ -919,7 +919,7 @@ Proves:
 
 ### AUX-QUALITY-GIT-PATHSPEC-001 Quality git pathspec 参数稳定
 Status: implemented
-Code: `scripts/tools/quality/input/files.test.ts`
+Code: `scripts/tools/quality-core/src/input/files.test.ts`
 
 Proves:
 - quality input git pathspec 参数使用显式 `--` 分隔并保留 glob pathspec magic。
@@ -927,14 +927,14 @@ Proves:
 
 ### AUX-QUALITY-CHANGED-FILES-001 Quality changed-file input explicit list failure 稳定
 Status: implemented
-Code: `scripts/tools/quality/input/files.test.ts`
+Code: `scripts/tools/quality-core/src/input/files.test.ts`
 
 Proves:
 - quality changed-file input 将 unreadable explicit `--changed-files` path 映射为 thrown diagnostic，错误文本保留 flag 名称和请求的文件路径。
 
 ### AUX-QUALITY-CODE-AREAS-001 Quality code area 分类稳定
 Status: implemented
-Code: `scripts/tools/quality/model/code-areas.test.ts`
+Code: `scripts/quality/config.test.ts`
 
 Proves:
 - smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `typescript-validation-smoke` 的广泛 globs 遮蔽。
@@ -943,7 +943,7 @@ Proves:
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
-Code: `scripts/tools/quality/output/report/markdown-report.test.ts`
+Code: `scripts/tools/quality-core/src/output/report/markdown-report.test.ts`
 
 Proves:
 - baseline unavailable 时 changed-file watchlist 仍按风险展示有用文件。
@@ -954,7 +954,7 @@ Proves:
 
 ### AUX-QUALITY-WARNINGS-001 Quality warning 阈值语义稳定
 Status: implemented
-Code: `scripts/tools/quality/output/warnings/generator.test.ts`
+Code: `scripts/tools/quality-core/src/output/warnings/generator.test.ts`
 
 Proves:
 - 文件大小 warning 使用 scc `Code` 代码行数，而不是包含注释和空行的总行数。
@@ -967,7 +967,7 @@ Proves:
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
 Status: implemented
-Code: `scripts/tools/quality/scan-command/index.test.ts`
+Code: `scripts/quality/args.test.ts`
 
 Proves:
 - quality scan 默认跳过 baseline，baseline generation 保持 opt-in。

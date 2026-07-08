@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { ensureDirForFile } from "../../../../scripts/tools/fs.ts";
-import { toSlashPath } from "../../../../scripts/tools/path.ts";
+import { ensureDirForFile } from "../../../../scripts/tools/foundation/src/fs.ts";
+import { toSlashPath } from "../../../../scripts/tools/foundation/src/path.ts";
 import { root, tempRoot } from "../config.ts";
 import { writeJson } from "./registry.ts";
 

@@ -42,3 +42,9 @@
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check。full profile 使用 full quality check 替代 quick quality check，并追加更宽验证；full profile 的 quality check 使用 verifier 输出，只在存在未带 `acceptedReason` 的 warning 时把 workspace verification 标记为 warning。profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
 
 验收标准：手写脚本可以通过 Bun 执行、被 `tsgo -p tsconfig.json` 覆盖，并且不依赖 Bun 运行时不会读取的 `tsconfig` 行为。
+
+## 共享脚本子仓库
+
+`scripts/tools/foundation/`、`scripts/tools/parallel-task-runner/` 和 `scripts/tools/quality-core/` 是私有 Git 子仓库形态的共享脚本工具边界。每个子仓库使用自己的 private `package.json`、`tsconfig.json`、README、CHANGELOG 和 DELIVERY notes 记录运行前置条件、public source entrypoint、验证脚本和 revision policy；这些 manifest 只服务本地 tooling，不是 npm publish contract。
+
+Docnav 通过源码 import 和当前 Git revision 或等价 pin 集成这些子仓库。Docnav-owned command entrypoints、callers、quality defaults、workspace profiles、release product config、validators 和 package scripts 仍留在 Docnav 侧，并通过 typed config、task definitions 或 explicit options 直接导入共享 source entrypoint，不保留旧 wrapper/re-export 层。

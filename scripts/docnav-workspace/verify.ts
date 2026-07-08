@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { errorMessage } from "../tools/errors.ts";
+import { errorMessage } from "../tools/foundation/src/errors.ts";
 import { parseArgs, resolveVerificationConcurrency } from "./verify/args.ts";
 import { printUsage } from "./verify/output.ts";
 import { runVerification } from "./verify/runner.ts";

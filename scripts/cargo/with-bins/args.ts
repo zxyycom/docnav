@@ -4,7 +4,7 @@ import {
   stringArrayOption,
   type ParsedScriptArgs,
   type ScriptArgToken
-} from "../../tools/args.ts";
+} from "../../tools/foundation/src/args.ts";
 import type { CargoBinarySpec } from "../../tools/cargo.ts";
 
 export type BinarySpec = CargoBinarySpec & {

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { runProcessSync } from "../tools/process.ts";
+import { runProcessSync } from "../tools/foundation/src/process.ts";
 import { parseWithBinsArgs } from "./with-bins/args.ts";
 import { buildCargoBins, environmentWithCargoBins } from "./with-bins/binaries.ts";
 

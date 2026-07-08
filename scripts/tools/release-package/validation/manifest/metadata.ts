@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { releaseComponents } from "../../config.ts";
 import type { ReleaseManifest, ReleaseProducer } from "../../config.ts";
-import { isRecord } from "../../../type-guards.ts";
+import { isRecord } from "../../../foundation/src/type-guards.ts";
 import {
   assert,
   assertNonEmptyString,

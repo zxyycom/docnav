@@ -1,5 +1,5 @@
 import { findCargoExecutable } from "../cargo.ts";
-import { isRecord } from "../type-guards.ts";
+import { isRecord } from "../foundation/src/type-guards.ts";
 import type { ReleaseProducer } from "./config.ts";
 import { runCommand } from "./io.ts";
 

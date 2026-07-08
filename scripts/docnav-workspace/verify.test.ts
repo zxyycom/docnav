@@ -76,7 +76,7 @@ describe("workspace verifier configuration", () => {
   it("filters workspace verifier script test package output", () => {
     const check = checkByLabel("workspace verifier script tests");
     const output = [
-      "$ bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/parallel-task-runner/index.test.ts",
+      "$ bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
       "bun test v1.3.14 (0d9b296a)",
       "",
       "scripts\\docnav-workspace\\verify.test.ts:",
@@ -178,13 +178,13 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("case catalog validator tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
     assert.ok(!requiredLabels.includes("cargo test"));
-    assert.ok(!requiredLabels.includes("quality internal script tests"));
+    assert.ok(!requiredLabels.includes("quality internal tests"));
     assert.ok(!requiredLabels.includes("docnav core development smoke"));
 
     assert.ok(fullLabels.includes("cargo fmt"));
     assert.ok(!fullLabels.includes("quality quick check"));
     assert.ok(fullLabels.includes("quality full check"));
-    assert.ok(fullLabels.includes("quality internal script tests"));
+    assert.ok(fullLabels.includes("quality internal tests"));
     assert.ok(!fullLabels.includes("quality report tests"));
     assert.ok(fullLabels.includes("cargo test"));
     assert.ok(fullLabels.includes("docnav development binaries"));

@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { errorMessage } from "../tools/errors.ts";
+import { errorMessage } from "../tools/foundation/src/errors.ts";
 import { renderGithubAnnotations } from "./annotate/github.ts";
 import { parseWarningsNdjson } from "./annotate/warnings.ts";
 

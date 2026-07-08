@@ -1,5 +1,5 @@
 import type { ReleaseProducer } from "../../config.ts";
-import { isRecord } from "../../../type-guards.ts";
+import { isRecord } from "../../../foundation/src/type-guards.ts";
 import {
   assert,
   assertPositiveInteger,

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { writeJsonFile, writeTextFile } from "../../../../scripts/tools/fs.ts";
+import { writeJsonFile, writeTextFile } from "../../../../scripts/tools/foundation/src/fs.ts";
 import type { SmokeProject } from "./project.ts";
 
 export function writeProjectConfig(project: SmokeProject, config: unknown) {

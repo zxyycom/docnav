@@ -18,7 +18,7 @@ import {
   createSchemaAjv,
   formatAjvErrors
 } from "./registry.ts";
-import { isRecord } from "../../type-guards.ts";
+import { isRecord } from "../../foundation/src/type-guards.ts";
 
 export {
   compileRegisteredSchema,

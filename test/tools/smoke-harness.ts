@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import type { ValidateFunction } from "ajv";
 
-import { runParallelTasks } from "../../scripts/tools/parallel-task-runner/index.ts";
-import { errorMessage } from "../../scripts/tools/errors.ts";
+import { runParallelTasks } from "../../scripts/tools/parallel-task-runner/src/index.ts";
+import { errorMessage } from "../../scripts/tools/foundation/src/errors.ts";
 import {
   compileRegisteredSchema,
   createSchemaAjv,

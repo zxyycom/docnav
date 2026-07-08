@@ -1,6 +1,6 @@
-import { isRecord } from "./type-guards.ts";
-import { processFailed, runProcessSync, writeProcessOutput } from "./process.ts";
-import type { ProcessResult } from "./process.ts";
+import { isRecord } from "./foundation/src/type-guards.ts";
+import { processFailed, runProcessSync, writeProcessOutput } from "./foundation/src/process.ts";
+import type { ProcessResult } from "./foundation/src/process.ts";
 
 export type CargoBinarySpec = {
   binName: string;

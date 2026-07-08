@@ -6,7 +6,7 @@ import {
   buildCargoExecutables,
   reportCargoExecutableBuildFailure
 } from "../tools/cargo.ts";
-import { runProcessSync } from "../tools/process.ts";
+import { runProcessSync } from "../tools/foundation/src/process.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const TOML_SECTION_HEADER_PATTERN = new RegExp("^\\[[^\\]]+\\]$");

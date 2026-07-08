@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { FILE_SYSTEM } from "../config.ts";
-import { walkFiles } from "../../fs.ts";
+import { walkFiles } from "../../foundation/src/fs.ts";
 
 const ignoredDirs = new Set(FILE_SYSTEM.ignoredDirs);
 

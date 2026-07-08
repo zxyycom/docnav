@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { toSlashPath } from "../../tools/path.ts";
+import { toSlashPath } from "../../tools/foundation/src/path.ts";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 export const logDir = path.join(root, ".log", "verify", "workspace");

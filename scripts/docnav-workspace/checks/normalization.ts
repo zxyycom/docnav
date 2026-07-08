@@ -1,6 +1,6 @@
-import { expandTasks } from "../../tools/parallel-task-runner/index.ts";
-import { isStringArray, isUnknownArray } from "../../tools/type-guards.ts";
-import type { NormalizedTask } from "../../tools/parallel-task-runner/index.ts";
+import { expandTasks } from "../../tools/parallel-task-runner/src/index.ts";
+import { isStringArray, isUnknownArray } from "../../tools/foundation/src/type-guards.ts";
+import type { NormalizedTask } from "../../tools/parallel-task-runner/src/index.ts";
 import type { CheckDefinition, CheckReportRef, CheckTask } from "./model.ts";
 
 export function defineChecks(checkList: readonly CheckDefinition[]): CheckTask[] {

@@ -1,5 +1,5 @@
 import { assert } from "../../assertions.ts";
-import { isRecord } from "../../../type-guards.ts";
+import { isRecord } from "../../../foundation/src/type-guards.ts";
 
 export function jsonObject(value: unknown, label: string): Record<string, unknown> {
   assert(isRecord(value), `${label} must be an object`);

@@ -1,7 +1,7 @@
 import { assert } from "../../assertions.ts";
 import { EXAMPLES, FIELDS, MARKDOWN_MANIFEST_EXPECTED } from "../../config.ts";
 import { readJson } from "../../json/files.ts";
-import { isRecord } from "../../../type-guards.ts";
+import { isRecord } from "../../../foundation/src/type-guards.ts";
 import { jsonArray, jsonObject } from "./json.ts";
 
 export function validateManifestSemantics() {

@@ -1,5 +1,5 @@
-import { processFailure, processFailureFromResult, runProcess } from "../../tools/process.ts";
-import type { ProcessFailure } from "../../tools/process.ts";
+import { processFailure, processFailureFromResult, runProcess } from "../../tools/foundation/src/process.ts";
+import type { ProcessFailure } from "../../tools/foundation/src/process.ts";
 import type { CheckStatus } from "../checks/index.ts";
 import type { CheckTask } from "../checks/index.ts";
 import type { CheckResult } from "../results.ts";

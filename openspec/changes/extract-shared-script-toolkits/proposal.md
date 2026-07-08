@@ -11,11 +11,11 @@ Docnav 当前的 TypeScript 脚本已经承担任务编排、进程执行、Git 
 ## What Changes
 
 - 新增 `shared-script-tooling` 能力，定义可提取的脚本工具内核、Docnav 专属留存边界和迁移门禁。
-- 首批物理成果固定为三个 Git 子仓库：`subrepos/script-foundation/`、`subrepos/script-parallel-task-runner/` 和 `subrepos/script-quality-core/`；这些子仓库不作为 npm package 发布，也不把 npm registry 作为集成路径。
-- 首批共享边界固定为 foundation helper、parallel task runner 和 quality core；workspace verifier、release helper、validators、Docnav quality defaults 和 CLI wrappers 不进入首批共享默认值。
+- 首批物理成果固定为三个 Git 子仓库：`scripts/tools/foundation/`、`scripts/tools/parallel-task-runner/` 和 `scripts/tools/quality-core/`；这些子仓库不作为 npm package 发布，也不把 npm registry 作为集成路径。
+- 首批共享边界固定为 foundation helper、parallel task runner 和 quality core；workspace verifier、release helper、validators、Docnav quality defaults 和 CLI command entrypoints 不进入首批共享默认值。
 - 每个子仓库通过 public source entrypoint 暴露一个能力面；Docnav 通过子仓库 revision/pin 和源码 import 集成。
 - 共享子仓库通过 typed config、task definitions、tool adapters 或 explicit options 接收差异，不读取 Docnav 固定目录、artifact path、OpenSpec layout 或 Cargo workspace shape。
-- Docnav wrappers 继续拥有 `scripts/docnav-*`、quality default config、workspace check definitions、release product config、protocol/schema/examples validators、OpenSpec/docs validators 和 `package.json` scripts。
+- Docnav command entrypoints、callers 和 config 继续拥有 `scripts/docnav-*`、quality default config、workspace check definitions、release product config、protocol/schema/examples validators、OpenSpec/docs validators 和 `package.json` scripts。
 - 每个子仓库必须具备交付准备：private tooling manifest、public source entrypoint、README、runtime prerequisites、typecheck/lint/test scripts、changelog、Git revision/pin 策略，以及 Docnav 侧回滚路径。
 
 ## Capabilities
@@ -30,6 +30,6 @@ Docnav 当前的 TypeScript 脚本已经承担任务编排、进程执行、Git 
 
 ## Impact
 
-- Affected script surface: 新增 `subrepos/script-foundation/`、`subrepos/script-parallel-task-runner/` 和 `subrepos/script-quality-core/` Git 子仓库；迁移 `scripts/tools/process/*`、`scripts/tools/git.ts`、`scripts/tools/fs.ts`、`scripts/tools/path.ts`、`scripts/tools/args.ts`、`scripts/tools/json/*`、`scripts/tools/type-guards.ts`、`scripts/tools/parallel-task-runner/*` 和 `scripts/tools/quality/*` 的通用内核。
-- Affected Docnav-owned wrappers: `scripts/docnav-*`、`scripts/quality/scan.ts`、`scripts/docnav-workspace/checks/*`、`scripts/release-package/*`、`scripts/tools/validators/*` 和 `package.json` scripts。
+- Affected script surface: 新增 `scripts/tools/foundation/`、`scripts/tools/parallel-task-runner/` 和 `scripts/tools/quality-core/` Git 子仓库；迁移 foundation helpers、parallel task runner 和 quality core 的通用内核。
+- Affected Docnav-owned callers: `scripts/docnav-*`、`scripts/quality/scan.ts`、`scripts/quality/config.ts`、`scripts/quality/args.ts`、`scripts/docnav-workspace/checks/*`、`scripts/release-package/*`、`scripts/tools/validators/*` 和 `package.json` scripts。
 - Affected validation: 每个子仓库的 typecheck/lint/tests、交付准备检查、Docnav 脚本迁移等价验证，以及迁移前后 command output、artifact path、warning/status、report 和 quality artifacts 对比。

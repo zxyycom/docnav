@@ -79,6 +79,7 @@ Rust tests 负责具有独立出错空间的自定义逻辑。每个用例应明
 - 包依赖不要求预先全局安装；TypeScript 脚本运行时要求环境提供 Bun，具体前置条件由 [工程工具链](tooling.md) 维护。
 - `bun run typecheck:scripts` 证明脚本模块 contract 和边界类型一致，不替代真实 CLI、schema 或 smoke 验证。
 - `bun run lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 和常见静态质量问题。
+- 共享脚本子仓库还必须运行各自 private manifest 中的 `typecheck`、`lint` 和 focused `test`，用于证明子仓库 public source entrypoint 可独立通过本地 tooling 检查。
 
 ## 统一验证入口
 

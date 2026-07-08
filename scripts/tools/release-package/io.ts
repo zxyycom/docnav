@@ -3,9 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { root } from "./config.ts";
-import { ensureDirForFile } from "../fs.ts";
-import { DEFAULT_PROCESS_MAX_BUFFER, processFailed, runProcessSync } from "../process.ts";
-import type { ProcessResult, RunProcessSyncOptions } from "../process.ts";
+import { ensureDirForFile } from "../foundation/src/fs.ts";
+import { DEFAULT_PROCESS_MAX_BUFFER, processFailed, runProcessSync } from "../foundation/src/process.ts";
+import type { ProcessResult, RunProcessSyncOptions } from "../foundation/src/process.ts";
 
 export type RunCommandOptions = Pick<
   RunProcessSyncOptions,

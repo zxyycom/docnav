@@ -6,7 +6,7 @@ import { OUTPUT_MODE_CONSISTENCY } from "../config.ts";
 import { readText } from "../document/markdown-docs.ts";
 import { readJson } from "../json/files.ts";
 import { toAbs } from "../repo/paths.ts";
-import { isRecord } from "../../type-guards.ts";
+import { isRecord } from "../../foundation/src/type-guards.ts";
 
 export function validateReadableConformanceFixtures(): void {
   const conformanceDir = OUTPUT_MODE_CONSISTENCY.conformanceDir;

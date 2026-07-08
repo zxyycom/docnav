@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { compareStrings } from "../config.ts";
 import type { ReleaseManifestFile } from "../config.ts";
-import { readTextFile } from "../../fs.ts";
+import { readTextFile } from "../../foundation/src/fs.ts";
 import { sha256File } from "../io.ts";
 import { assert, assertEqualLists } from "./assertions.ts";
 

@@ -1,5 +1,5 @@
-import { parseNdjson } from "../../tools/ndjson.ts";
-import { isRecord } from "../../tools/type-guards.ts";
+import { parseNdjson } from "../../tools/foundation/src/ndjson.ts";
+import { isRecord } from "../../tools/foundation/src/type-guards.ts";
 
 export type RenderableWarning = {
   baselineValue?: number | null;

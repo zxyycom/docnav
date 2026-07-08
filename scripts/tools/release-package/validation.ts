@@ -4,7 +4,7 @@ import {
   expectedBinaryName,
   releaseComponents,
 } from "./config.ts";
-import { readJsonFile } from "../fs.ts";
+import { readJsonFile } from "../foundation/src/fs.ts";
 import { sha256File } from "./io.ts";
 import { validateManifestFiles } from "./validation/manifest/files.ts";
 import {

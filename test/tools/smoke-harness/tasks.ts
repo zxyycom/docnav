@@ -1,5 +1,5 @@
-import { expandTasks } from "../../../scripts/tools/parallel-task-runner/index.ts";
-import type { NormalizedTask, TaskDefinition } from "../../../scripts/tools/parallel-task-runner/index.ts";
+import { expandTasks } from "../../../scripts/tools/parallel-task-runner/src/index.ts";
+import type { NormalizedTask, TaskDefinition } from "../../../scripts/tools/parallel-task-runner/src/index.ts";
 export {
   aggregateSmokeReports,
   formatTestResult,

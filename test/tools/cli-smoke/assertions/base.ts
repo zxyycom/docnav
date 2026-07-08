@@ -1,10 +1,10 @@
-import { errorMessage } from "../../../../scripts/tools/errors.ts";
-import { parseJsonValue } from "../../../../scripts/tools/json/value.ts";
+import { errorMessage } from "../../../../scripts/tools/foundation/src/errors.ts";
+import { parseJsonValue } from "../../../../scripts/tools/foundation/src/json/value.ts";
 import {
   isRecord,
   isStringArray,
   isUnknownArray
-} from "../../../../scripts/tools/type-guards.ts";
+} from "../../../../scripts/tools/foundation/src/type-guards.ts";
 import type { CommandRecord } from "../../smoke-harness.ts";
 
 export type JsonRecord = Record<string, unknown>;

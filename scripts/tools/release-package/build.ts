@@ -16,9 +16,9 @@ import {
   resolveProducerMetadata,
   resolveWorkspaceVersion,
 } from "./environment.ts";
-import { writeJsonFile, writeTextFile } from "../fs.ts";
+import { writeJsonFile, writeTextFile } from "../foundation/src/fs.ts";
 import { copyExecutable, sha256File } from "./io.ts";
-import { toSlashPath } from "../path.ts";
+import { toSlashPath } from "../foundation/src/path.ts";
 import { validateReleasePackage } from "./validation.ts";
 
 export type ReleasePackageBuildResult = PackageLayout & {

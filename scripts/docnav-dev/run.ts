@@ -1,4 +1,4 @@
-import { runProcessSync } from "../tools/process.ts";
+import { runProcessSync } from "../tools/foundation/src/process.ts";
 
 const binaries = new Map([
   ["docnav", process.env.DOCNAV_BIN],

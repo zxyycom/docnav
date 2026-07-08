@@ -1,4 +1,4 @@
-import { errorMessage } from "../../errors.ts";
+import { errorMessage } from "../../foundation/src/errors.ts";
 
 export type ProducerKind = "github-actions" | "local";
 

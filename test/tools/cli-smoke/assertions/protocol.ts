@@ -1,4 +1,4 @@
-import { isUnknownArray } from "../../../../scripts/tools/type-guards.ts";
+import { isUnknownArray } from "../../../../scripts/tools/foundation/src/type-guards.ts";
 import type { CommandRecord } from "../../smoke-harness.ts";
 import {
   expect,

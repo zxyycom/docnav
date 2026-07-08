@@ -1,4 +1,4 @@
-import { booleanOption, parsePositiveInteger, parseScriptArgs, stringOption } from "../../tools/args.ts";
+import { booleanOption, parsePositiveInteger, parseScriptArgs, stringOption } from "../../tools/foundation/src/args.ts";
 import { PROFILE_FULL, parseProfile } from "../checks/index.ts";
 import type { Profile } from "../checks/index.ts";
 

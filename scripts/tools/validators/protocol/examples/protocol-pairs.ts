@@ -1,7 +1,7 @@
 import { assert } from "../../assertions.ts";
 import { FIELDS, PROTOCOL_EXAMPLE_FILE } from "../../config.ts";
 import { readJson } from "../../json/files.ts";
-import { isRecord } from "../../../type-guards.ts";
+import { isRecord } from "../../../foundation/src/type-guards.ts";
 import { jsonObject } from "./json.ts";
 
 type ProtocolResultCheck = (result: Record<string, unknown>) => boolean;

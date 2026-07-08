@@ -7,8 +7,8 @@ import {
   reportCargoExecutableBuildFailure,
   type CargoBinarySpec
 } from "../tools/cargo.ts";
-import { booleanOption, parseScriptArgs, stringOption } from "../tools/args.ts";
-import { writeJsonFile } from "../tools/fs.ts";
+import { booleanOption, parseScriptArgs, stringOption } from "../tools/foundation/src/args.ts";
+import { writeJsonFile } from "../tools/foundation/src/fs.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 

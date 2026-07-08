@@ -1,5 +1,5 @@
-import { readJsonFile } from "../../tools/fs.ts";
-import { isRecord } from "../../tools/type-guards.ts";
+import { readJsonFile } from "../../tools/foundation/src/fs.ts";
+import { isRecord } from "../../tools/foundation/src/type-guards.ts";
 import type { CheckTask } from "../checks/index.ts";
 import { resolveWorkspacePath } from "./paths.ts";
 

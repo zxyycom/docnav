@@ -1,4 +1,4 @@
-import { parseScriptArgs, stringOption } from "../args.ts";
+import { parseScriptArgs, stringOption } from "../foundation/src/args.ts";
 import {
   normalizeParseArgsError,
   parseOptionalBoolean,

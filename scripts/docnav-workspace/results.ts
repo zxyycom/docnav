@@ -1,4 +1,4 @@
-import type { ProcessFailure } from "../tools/process.ts";
+import type { ProcessFailure } from "../tools/foundation/src/process.ts";
 import type { CheckReportRef, CheckStatus, CheckTask } from "./checks/index.ts";
 import { reportIdForCheck, reportLabelForCheck, visibleOutputLines } from "./checks/index.ts";
 

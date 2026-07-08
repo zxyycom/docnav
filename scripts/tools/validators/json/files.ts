@@ -1,9 +1,9 @@
 import fs from "node:fs";
 
 import { FILE_SYSTEM } from "../config.ts";
-import { readTextFile } from "../../fs.ts";
-import { parseJsonValue } from "../../json/value.ts";
-import type { JsonValue } from "../../json/value.ts";
+import { readTextFile } from "../../foundation/src/fs.ts";
+import { parseJsonValue } from "../../foundation/src/json/value.ts";
+import type { JsonValue } from "../../foundation/src/json/value.ts";
 import { walk } from "../repo/files.ts";
 import { toAbs, toRel } from "../repo/paths.ts";
 

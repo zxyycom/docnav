@@ -1,4 +1,4 @@
-import type { NormalizedTask } from "../../../scripts/tools/parallel-task-runner/index.ts";
+import type { NormalizedTask } from "../../../scripts/tools/parallel-task-runner/src/index.ts";
 
 export interface SmokeTestResult {
   commandCount: number;

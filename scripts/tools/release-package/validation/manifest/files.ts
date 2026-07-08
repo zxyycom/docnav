@@ -1,6 +1,6 @@
 import { compareStrings } from "../../config.ts";
 import type { ReleaseManifestFile } from "../../config.ts";
-import { isRecord } from "../../../type-guards.ts";
+import { isRecord } from "../../../foundation/src/type-guards.ts";
 import {
   assert,
   assertEqualLists,
