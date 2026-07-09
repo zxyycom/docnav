@@ -228,8 +228,11 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
   }
 
   async function runSmokeTasks(tasks: readonly SmokeTask[], taskOptions: SmokeTaskOptions = {}) {
+    const concurrencyValue = taskOptions.concurrency === undefined
+      ? process.env.DOCNAV_SMOKE_CONCURRENCY
+      : taskOptions.concurrency;
     const results = await runParallelTasks(tasks, {
-      concurrency: resolveSmokeConcurrency(taskOptions.concurrency),
+      concurrency: resolveSmokeConcurrency(concurrencyValue),
       prepareTasks: (taskList) => prepareSmokeTasks(taskList as readonly SmokeTask[]),
       execute: async (task) => withSmokeTaskMetadata(await runTest(task.label, () => task.run?.(task), { id: task.id }), task)
     });

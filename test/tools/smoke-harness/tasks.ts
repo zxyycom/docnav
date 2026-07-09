@@ -24,7 +24,7 @@ export function prepareSmokeTasks(tasks: readonly SmokeTask[]): NormalizedTask[]
 }
 
 export function resolveSmokeConcurrency(
-  value: string | number | null | undefined = process.env.DOCNAV_SMOKE_CONCURRENCY
+  value: string | number | null | undefined
 ): number | undefined {
   if (value === undefined || value === null || value === "") {
     return undefined;

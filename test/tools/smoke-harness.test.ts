@@ -114,6 +114,41 @@ describe("smoke harness task scheduling", () => {
     );
   });
 
+  it("uses DOCNAV_SMOKE_CONCURRENCY at the smoke scheduling boundary", async () => {
+    const state = createSmokeState();
+    const events: string[] = [];
+    const harness = createHarness(state, events);
+    const previous = process.env.DOCNAV_SMOKE_CONCURRENCY;
+    process.env.DOCNAV_SMOKE_CONCURRENCY = "1";
+
+    try {
+      await harness.runSmokeTasks([
+        {
+          id: "slow",
+          label: "slow task",
+          run: async () => {
+            events.push("start:slow");
+            await harness.runCli("slow command", ["slow"]);
+            events.push("end:slow");
+          }
+        },
+        {
+          id: "fast",
+          label: "fast task",
+          run: async () => {
+            events.push("start:fast");
+            await harness.runCli("fast command", ["fast"]);
+            events.push("end:fast");
+          }
+        }
+      ]);
+    } finally {
+      restoreEnv("DOCNAV_SMOKE_CONCURRENCY", previous);
+    }
+
+    assert.ok(events.indexOf("end:slow") < events.indexOf("start:fast"));
+  });
+
   it("records default runner stdout and stderr on command records", async () => {
     const state = createSmokeState();
     const harness = createSpawnHarness(state);
@@ -142,11 +177,18 @@ describe("smoke harness task scheduling", () => {
   });
 
   it("validates smoke concurrency values", () => {
-    assert.equal(resolveSmokeConcurrency(undefined), undefined);
-    assert.equal(resolveSmokeConcurrency(""), undefined);
-    assert.equal(resolveSmokeConcurrency("2"), 2);
-    assert.throws(() => resolveSmokeConcurrency("0"), /positive integer/);
-    assert.throws(() => resolveSmokeConcurrency("abc"), /positive integer/);
+    const previous = process.env.DOCNAV_SMOKE_CONCURRENCY;
+    process.env.DOCNAV_SMOKE_CONCURRENCY = "4";
+
+    try {
+      assert.equal(resolveSmokeConcurrency(undefined), undefined);
+      assert.equal(resolveSmokeConcurrency(""), undefined);
+      assert.equal(resolveSmokeConcurrency("2"), 2);
+      assert.throws(() => resolveSmokeConcurrency("0"), /positive integer/);
+      assert.throws(() => resolveSmokeConcurrency("abc"), /positive integer/);
+    } finally {
+      restoreEnv("DOCNAV_SMOKE_CONCURRENCY", previous);
+    }
   });
 
   it("cleans the core smoke temp root when the suite exits after failure", { timeout: 10_000 }, () => {
@@ -240,6 +282,14 @@ function delay(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function restoreEnv(key: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+  process.env[key] = value;
 }
 
 function childEnvProbeArgs(): string[] {

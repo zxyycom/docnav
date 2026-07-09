@@ -866,6 +866,7 @@ Code: `test/tools/smoke-harness.test.ts`
 Proves:
 - independent smoke tasks 可以并发运行，同时 command count 按 report 隔离。
 - failed task、nested task group、默认 runner 的 stdout/stderr command record、plain-text child environment 和 concurrency validation 保持预期 audit result shape。
+- `DOCNAV_SMOKE_CONCURRENCY` 只在 smoke scheduling boundary 作为默认并发输入生效；直接解析 `undefined` 不得隐式读取全局环境变量。
 - core smoke repository temp root 在运行前创建并在运行结束后清理；清理失败或残留不得改变 command output contract。
 
 ```mermaid
@@ -880,6 +881,9 @@ flowchart LR
   C --> H{"concurrency 参数"}
   H -->|"valid"| I["解析为并发上限"]
   H -->|"invalid"| J["抛出可诊断错误"]
+  H -->|"undefined"| N["保持未设置，不隐式读取全局 env"]
+  C --> O{"DOCNAV_SMOKE_CONCURRENCY"}
+  O -->|"调度入口默认值"| I
   K --> L["plain-text env 下 stdout/stderr 写入 CommandRecord 和 SmokeState"]
   E --> M["audit result shape 稳定"]
   F --> M
@@ -887,6 +891,7 @@ flowchart LR
   I --> M
   J --> M
   L --> M
+  N --> M
 ```
 
 ### AUX-SMOKE-HARNESS-002 Core smoke config fixture helper 保持配置/文档分层
