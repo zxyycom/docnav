@@ -43,6 +43,10 @@ required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality c
 
 验收标准：手写脚本可以通过 Bun 执行、被 `tsgo -p tsconfig.json` 覆盖，并且不依赖 Bun 运行时不会读取的 `tsconfig` 行为。
 
+## 子进程输出环境
+
+脚本启动子进程时默认使用 `scripts/tools/foundation` 的 process wrapper。该 wrapper 统一注入 plain-text output environment，覆盖 caller-provided color env，例如 `NO_COLOR=1`、`FORCE_COLOR=0`、`CLICOLOR=0`、`CLICOLOR_FORCE=0`、`TERM=dumb`、`CARGO_TERM_COLOR=never`、`PY_COLORS=0`、`UV_NO_COLOR=1`、`npm_config_color=false` 和 `PNPM_CONFIG_COLOR=false`。需要自定义 `spawn` 行为的工具必须复用同一 helper 生成 child env，避免验证日志、测试断言和命令记录依赖终端颜色探测。
+
 ## 共享脚本子仓库
 
 `scripts/tools/foundation/`、`scripts/tools/parallel-task-runner/` 和 `scripts/tools/quality-core/` 是私有 Git 子仓库形态的共享脚本工具边界。每个子仓库只保留一份极简 README 作为文档 owner，用于说明用途、public source entrypoint 和本地检查；private `package.json` 与 `tsconfig.json` 只服务 Bun、TypeScript、ESLint 和测试配置，不是 npm publish contract。Docnav 侧通过 `.gitmodules`、submodule revision 和父仓库提交记录持有 revision/pin 集成状态。

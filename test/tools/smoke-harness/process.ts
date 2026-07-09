@@ -1,6 +1,8 @@
 import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
 
+import { plainTextProcessEnv } from "../../../scripts/tools/foundation/src/process.ts";
+
 export const MAX_COMMAND_OUTPUT = 1024 * 1024 * 64;
 
 export interface SmokeCommandOptions {
@@ -38,7 +40,7 @@ export function createProcessOptions(
 ): SmokeCommandOptions {
   return {
     cwd,
-    env,
+    env: plainTextProcessEnv(env),
     stdin: commandOptions.stdin,
     maxBuffer: MAX_COMMAND_OUTPUT
   };

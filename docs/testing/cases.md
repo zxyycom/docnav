@@ -824,7 +824,7 @@ Code: `test/tools/smoke-harness.test.ts`
 
 Proves:
 - independent smoke tasks 可以并发运行，同时 command count 按 report 隔离。
-- failed task、nested task group、默认 runner 的 stdout/stderr command record 和 concurrency validation 保持预期 audit result shape。
+- failed task、nested task group、默认 runner 的 stdout/stderr command record、plain-text child environment 和 concurrency validation 保持预期 audit result shape。
 - core smoke repository temp root 在运行前创建并在运行结束后清理；清理失败或残留不得改变 command output contract。
 
 ```mermaid
@@ -839,7 +839,7 @@ flowchart LR
   C --> H{"concurrency 参数"}
   H -->|"valid"| I["解析为并发上限"]
   H -->|"invalid"| J["抛出可诊断错误"]
-  K --> L["stdout/stderr 写入 CommandRecord 和 SmokeState"]
+  K --> L["plain-text env 下 stdout/stderr 写入 CommandRecord 和 SmokeState"]
   E --> M["audit result shape 稳定"]
   F --> M
   G --> M
@@ -890,6 +890,13 @@ flowchart LR
   H --> J
   I --> J
 ```
+
+### AUX-WORKSPACE-PROCESS-001 Shared process wrapper plain-text environment 稳定
+Status: implemented
+Code: `scripts/tools/foundation/test/foundation.test.ts`
+
+Proves:
+- shared process wrapper 在 sync 和 async child process 入口覆盖 caller-provided color env，统一注入 plain-text output environment。
 
 ### AUX-QUALITY-PARSER-001 Quality scanner parser fixtures 稳定
 Status: implemented
