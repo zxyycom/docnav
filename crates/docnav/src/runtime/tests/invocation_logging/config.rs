@@ -116,8 +116,8 @@ fn invocation_log_config_type_error_is_blocking_core_config_error() {
     let error = load_context_for_project(context.project).unwrap_err();
     let details = error.diagnostic().details().to_value();
 
-    assert_eq!(details["field"], "config");
-    assert_eq!(details["reason"], "invalid_config_value");
+    assert_eq!(details["field"], "invocation_log.enabled");
+    assert_eq!(details["reason"], "type_mismatch");
     assert_eq!(
         details["config_issues"][0]["source_level"],
         Value::String("project".to_owned())

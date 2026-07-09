@@ -210,9 +210,22 @@ fn document_output_error_projects_primary_internal_diagnostic_when_possible() {
 
 #[test]
 fn output_mode_values_remain_unchanged() {
-    assert_eq!(OutputMode::ReadableView.as_str(), "readable-view");
-    assert_eq!(OutputMode::ReadableJson.as_str(), "readable-json");
-    assert_eq!(OutputMode::ProtocolJson.as_str(), "protocol-json");
+    assert_eq!(
+        OutputMode::ACCEPTED_VALUES,
+        &["readable-view", "readable-json", "protocol-json"]
+    );
+    assert_eq!(
+        "readable-view".parse::<OutputMode>(),
+        Ok(OutputMode::ReadableView)
+    );
+    assert_eq!(
+        "readable-json".parse::<OutputMode>(),
+        Ok(OutputMode::ReadableJson)
+    );
+    assert_eq!(
+        "protocol-json".parse::<OutputMode>(),
+        Ok(OutputMode::ProtocolJson)
+    );
 }
 
 fn test_cost() -> Cost {

@@ -7,7 +7,7 @@ use super::PipelineContext;
 
 pub(super) fn execute<T: DocnavRuntime>(
     command: ConfigCommand,
-    pipeline: &PipelineContext<'_, T>,
+    _pipeline: &PipelineContext<'_, T>,
 ) -> AppResult<CommandOutcome> {
-    crate::config::execute(command, pipeline.services().runtime())
+    crate::config::execute(command)
 }

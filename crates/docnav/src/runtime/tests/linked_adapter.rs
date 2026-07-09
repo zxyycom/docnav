@@ -64,7 +64,9 @@ fn core_linked_markdown_consumes_project_native_max_heading_level() {
         context.project.project_config_path(),
         json!({
             "options": {
-                "max_heading_level": 2
+                "docnav-markdown": {
+                    "max_heading_level": 2
+                }
             }
         }),
     );
@@ -133,22 +135,6 @@ fn core_linked_markdown_reports_user_native_option_source() {
     );
 }
 
-#[test]
-fn config_path_context_reports_automatic_discovery_adapter_source() {
-    let (_workspace, project_root) =
-        markdown_project("config-path-context-automatic-discovery-source", "# One\n");
-    let context = default_context(project_root);
-    let output = AdapterRuntime
-        .describe_document_context("docs/guide.md".to_owned(), None, &context.project)
-        .unwrap();
-
-    assert_eq!(output.adapter.selected.as_deref(), Some("docnav-markdown"));
-    assert_eq!(output.adapter.source, "automatic_discovery");
-    assert_ne!(output.adapter.source, "inferred");
-    assert_eq!(output.defaults.output.value, json!("readable-view"));
-    assert_eq!(output.defaults.output.source, "built_in");
-}
-
 fn assert_invalid_native_option_source(
     workspace_name: &str,
     project_option: Option<Value>,
@@ -176,7 +162,7 @@ fn assert_invalid_native_option_source(
     assert_eq!(exit_code, 2);
     assert_eq!(output["error"]["details"]["reason"], reason);
     assert_eq!(
-        output["error"]["details"]["option_issues"][0]["source"],
+        output["error"]["details"]["config_issues"][0]["source_level"],
         source
     );
 }

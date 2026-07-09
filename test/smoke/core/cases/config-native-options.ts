@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import {
   expect,
   expectExit,
@@ -8,7 +10,7 @@ import {
   parseJson
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
-import { configFixtureProject, mutableConfigFixtureProject } from "../fixtures.ts";
+import { configFixtureProject, mutableConfigFixtureProject, writeJson } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 
@@ -34,18 +36,13 @@ export async function assertProjectNativeOptionConfigAffectsOutline() {
 
 export async function assertUserNativeOptionConfigRejectedForRead() {
   const project = mutableConfigFixtureProject("empty", "user-native-option-read");
-  const setOption = await runCli("CORE-CONFIG-004 config set user options.max_heading_level", [
-    "config",
-    "set",
-    "options.max_heading_level",
-    "1",
-    "--user"
-  ], { project });
-  expectExit(setOption, 0);
-  expectStderrEmpty(setOption);
-  const setOptionJson = parseJson(setOption);
-  expect(setOption, setOptionJson.scope === "user", "user native option config set writes user scope");
-  expect(setOption, setOptionJson.value === 1, "user native option config set stores numeric value");
+  writeJson(path.join(project.root, ".user-config", "docnav.json"), {
+    options: {
+      "docnav-markdown": {
+        max_heading_level: 1
+      }
+    }
+  });
 
   const record = await runCli("CORE-CONFIG-004 read rejects config max heading level", [
     "read",

@@ -3,8 +3,8 @@ use std::fmt;
 
 use crate::field::{FieldDef, FieldDefBuilder};
 use crate::metadata::{
-    BuildError, FieldDuplicateIdentityError, FieldPath, ProcessingMetadataView, SchemaMetadataView,
-    ValueKind,
+    BuildError, FieldDuplicateIdentityError, FieldIdentity, FieldPath, ProcessingMetadataView,
+    SchemaMetadataView, ValueKind,
 };
 use crate::process_strategy::ProcessingInputKind;
 use crate::processing::ProcessingId;
@@ -13,7 +13,8 @@ mod errors;
 mod values;
 
 pub use errors::{
-    ExpectedFieldShape, FieldDefBuildFailure, FieldDefSetBuildError, FieldExtractionError,
+    ExpectedFieldShape, FieldDefBuildFailure, FieldDefSetBuildError,
+    FieldDuplicateProcessingPathError, FieldExtractionError,
 };
 pub use values::{FieldValidationErrors, FieldValues};
 
@@ -107,6 +108,11 @@ struct FieldDefSetBuilderEntry {
 struct FieldIdentityLocation {
     declaration_path: Option<Vec<String>>,
     path: FieldPath,
+}
+
+struct FieldProcessingPathLocation {
+    declaration_path: Option<Vec<String>>,
+    identity: FieldIdentity,
 }
 
 impl fmt::Debug for FieldDefSetBuilder {
@@ -228,6 +234,7 @@ impl FieldDefSetBuilder {
 
     pub fn build(self) -> Result<FieldDefSet, FieldDefSetBuildError> {
         let mut identities = BTreeMap::new();
+        let mut processing_paths = BTreeMap::new();
         let mut fields = Vec::new();
         for entry in self.entries {
             let FieldDefSetBuilderEntry {
@@ -257,6 +264,29 @@ impl FieldDefSetBuilder {
                     previous_declaration_path: previous.declaration_path,
                 }
                 .into());
+            }
+            for (processing_id, _) in definition.processing_input_kinds() {
+                let Some(metadata) = definition.processing_metadata(processing_id) else {
+                    continue;
+                };
+                let path_key = (processing_id.clone(), metadata.path.raw_segments().to_vec());
+                if let Some(previous) = processing_paths.insert(
+                    path_key,
+                    FieldProcessingPathLocation {
+                        declaration_path: declaration_path.clone(),
+                        identity: definition.identity().clone(),
+                    },
+                ) {
+                    return Err(FieldDuplicateProcessingPathError {
+                        processing_id: processing_id.clone(),
+                        path: metadata.path,
+                        previous_identity: previous.identity,
+                        previous_declaration_path: previous.declaration_path,
+                        current_identity: definition.identity().clone(),
+                        current_declaration_path: declaration_path,
+                    }
+                    .into());
+                }
             }
             fields.push(definition);
         }

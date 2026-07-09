@@ -86,6 +86,14 @@ impl NavigationAdapterRegistry for StubRegistry {
     }
 }
 
+pub(super) struct MultiAdapterRegistry;
+
+impl NavigationAdapterRegistry for MultiAdapterRegistry {
+    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
+        vec![adapter_ref(&StubAdapter), adapter_ref(&OtherAdapter)]
+    }
+}
+
 pub(super) struct UnsupportedRegistry;
 
 impl NavigationAdapterRegistry for UnsupportedRegistry {
@@ -112,7 +120,11 @@ fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
             )
             .process(
                 "config",
-                AdapterOptionProcessStrategy::json_path(["options", "max_heading_level"]),
+                AdapterOptionProcessStrategy::json_path([
+                    "options",
+                    "docnav-markdown",
+                    "max_heading_level",
+                ]),
             )
             .validation(
                 FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
@@ -126,7 +138,38 @@ fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
             .process("cli", AdapterOptionProcessStrategy::cli_flag("--payload"))
             .process(
                 "config",
-                AdapterOptionProcessStrategy::json_path(["options", "payload"]),
+                AdapterOptionProcessStrategy::json_path(["options", "docnav-markdown", "payload"]),
+            )
+            .validation(FieldValidation::json())
+            .build(),
+    ]
+}
+
+fn other_adapter_options() -> Vec<AdapterOptionSpec> {
+    vec![
+        AdapterOptionSpec::builder("docnav.adapters.docnav-other.options.max_heading_level")
+            .owner("docnav-other")
+            .operations(MAX_HEADING_LEVEL_OPERATIONS)
+            .path(["options", "max_heading_level"])
+            .process(
+                "config",
+                AdapterOptionProcessStrategy::json_path([
+                    "options",
+                    "docnav-other",
+                    "max_heading_level",
+                ]),
+            )
+            .validation(
+                FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
+            )
+            .build(),
+        AdapterOptionSpec::builder("docnav.adapters.docnav-other.options.payload")
+            .owner("docnav-other")
+            .operations(MAX_HEADING_LEVEL_OPERATIONS)
+            .path(["options", "payload"])
+            .process(
+                "config",
+                AdapterOptionProcessStrategy::json_path(["options", "docnav-other", "payload"]),
             )
             .validation(FieldValidation::json())
             .build(),
@@ -134,6 +177,8 @@ fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
 }
 
 struct StubAdapter;
+
+struct OtherAdapter;
 
 struct UnsupportedAdapter;
 
@@ -242,6 +287,79 @@ impl Adapter for StubAdapter {
         _arguments: &InfoArguments,
     ) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("stub-info-unimplemented"))
+    }
+}
+
+impl Adapter for OtherAdapter {
+    fn adapter_id(&self) -> &str {
+        "docnav-other"
+    }
+
+    fn manifest(&self) -> Manifest {
+        Manifest {
+            manifest_version: "0.1".to_owned(),
+            adapter: AdapterIdentity {
+                id: "docnav-other".to_owned(),
+                name: "Other".to_owned(),
+                version: "0.1.0".to_owned(),
+            },
+            formats: vec![FormatDescriptor {
+                id: "other".to_owned(),
+                extensions: vec![".other".to_owned()],
+                content_types: vec!["text/other".to_owned()],
+            }],
+        }
+    }
+
+    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
+        other_adapter_options()
+    }
+
+    fn probe(&self, path: &str) -> ProbeResult {
+        ProbeResult {
+            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
+            adapter_id: "docnav-other".to_owned(),
+            path: path.to_owned(),
+            supported: false,
+            format: None,
+            confidence: 0.0,
+            reasons: vec![ProbeReason {
+                code: ProbeReasonCode::ContentMatch,
+                detail: "other test probe rejected".to_owned(),
+            }],
+        }
+    }
+
+    fn outline(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &OutlineArguments,
+    ) -> AdapterResult<OutlineResult> {
+        Err(AdapterError::internal("other-outline-unreachable"))
+    }
+
+    fn read(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &ReadArguments,
+    ) -> AdapterResult<ReadResult> {
+        Err(AdapterError::internal("other-read-unreachable"))
+    }
+
+    fn find(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &FindArguments,
+    ) -> AdapterResult<FindResult> {
+        Err(AdapterError::internal("other-find-unreachable"))
+    }
+
+    fn info(
+        &self,
+        _request: &RequestEnvelope,
+        _arguments: &InfoArguments,
+    ) -> AdapterResult<InfoResult> {
+        Err(AdapterError::internal("other-info-unreachable"))
     }
 }
 

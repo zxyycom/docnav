@@ -43,13 +43,13 @@ Core CLI config inspection MUST treat `options.<adapter-id>.<option-key>` keys a
 
 #### Scenario: Adapter-id native option is inspected
 
-- **WHEN** a selected config file contains `options.markdown.max_heading_level`
-- **THEN** inspection resolves `markdown` through the adapter registry-backed metadata projection
+- **WHEN** a selected config file contains `options.docnav-markdown.max_heading_level`
+- **THEN** inspection resolves `docnav-markdown` through the adapter registry-backed metadata projection
 - **THEN** inspection validates that value through the Markdown adapter option declaration when metadata is available
 
 #### Scenario: Same option key in different adapters is deterministic
 
-- **WHEN** selected config sources contain `options.markdown.mode` and `options.other.mode`
+- **WHEN** selected config sources contain `options.docnav-markdown.mode` and `options.docnav-other.mode`
 - **THEN** config inspection keeps both paths distinct
 - **THEN** declarations from one adapter id do not validate or rewrite the other adapter id namespace
 
@@ -65,14 +65,14 @@ Core CLI config inspection MUST remain a source inspection command. The command 
 
 #### Scenario: Adapter-id option appears as source field
 
-- **WHEN** a selected config source contains `options.markdown.max_heading_level`
+- **WHEN** a selected config source contains `options.docnav-markdown.max_heading_level`
 - **AND** a caller runs `docnav config inspect`
 - **THEN** the output reports that path as a source field with validation facts and currently resolvable parameter facts when metadata is available
 - **THEN** no config file is modified
 
 #### Scenario: Inspect does not preview dispatch
 
-- **WHEN** a selected config source contains `options.markdown.max_heading_level`
+- **WHEN** a selected config source contains `options.docnav-markdown.max_heading_level`
 - **AND** a caller runs `docnav config inspect` without invoking a document operation
 - **THEN** the output reports source validation facts and any parameter facts currently resolvable from the selected sources
 - **THEN** the output does not claim that the value was dispatched to an adapter

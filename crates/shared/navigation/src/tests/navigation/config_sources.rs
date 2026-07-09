@@ -24,7 +24,9 @@ fn navigation_loads_project_and_user_config_sources_from_descriptors() {
         &project_config_path,
         json!({
             "options": {
-                "max_heading_level": 2
+                "docnav-markdown": {
+                    "max_heading_level": 2
+                }
             }
         }),
     );
@@ -32,7 +34,9 @@ fn navigation_loads_project_and_user_config_sources_from_descriptors() {
         &user_config_path,
         json!({
             "options": {
-                "max_heading_level": 1
+                "docnav-markdown": {
+                    "max_heading_level": 1
+                }
             }
         }),
     );
@@ -212,7 +216,9 @@ fn explicit_config_value_diagnostics_preserve_selected_source_path() {
         &project_config_path,
         json!({
             "options": {
-                "max_heading_level": 9
+                "docnav-markdown": {
+                    "max_heading_level": 9
+                }
             }
         }),
     );
@@ -242,7 +248,7 @@ fn explicit_config_value_diagnostics_preserve_selected_source_path() {
             "explicit_cli",
             &project_config_path,
             "range_invalid",
-            Some("options.max_heading_level"),
+            Some("options.docnav-markdown.max_heading_level"),
         ),
     );
     let _ = fs::remove_dir_all(workspace);
@@ -296,7 +302,9 @@ fn explicit_config_path_selection_preserves_parameter_priority() {
         &project_config_path,
         json!({
             "options": {
-                "max_heading_level": 2
+                "docnav-markdown": {
+                    "max_heading_level": 2
+                }
             }
         }),
     );
@@ -304,7 +312,9 @@ fn explicit_config_path_selection_preserves_parameter_priority() {
         &user_config_path,
         json!({
             "options": {
-                "max_heading_level": 1
+                "docnav-markdown": {
+                    "max_heading_level": 1
+                }
             }
         }),
     );

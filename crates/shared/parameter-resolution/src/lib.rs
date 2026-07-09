@@ -22,7 +22,9 @@ pub use construction::{
 };
 pub use field_helpers::{
     adapter_id_field, config_pagination_enabled_field, configurable_limit_field,
-    configurable_output_field, document_path_field, find_query_field, ids, limit_field, page_field,
+    configurable_output_field, document_path_field, find_query_field, ids,
+    invocation_log_content_capture_enabled_field, invocation_log_content_capture_root_field,
+    invocation_log_enabled_field, invocation_log_path_field, limit_field, page_field,
     pagination_enabled_field, read_ref_field, MAX_PAGINATION_LIMIT,
 };
 pub use path::{InvalidParameterPath, ParameterPath};

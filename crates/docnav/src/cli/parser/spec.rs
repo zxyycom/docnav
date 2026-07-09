@@ -1,6 +1,6 @@
 use clap::builder::{NonEmptyStringValueParser, Str};
 use clap::Id;
-use clap::{Arg, ArgAction, Command};
+use clap::{Arg, Command};
 use docnav_protocol::Operation;
 
 use super::ParserContext;
@@ -9,10 +9,7 @@ pub(in crate::cli) mod command_names {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
     pub(in crate::cli) const ADAPTER_LIST: &str = "list";
     pub(in crate::cli) const CONFIG: &str = "config";
-    pub(in crate::cli) const CONFIG_GET: &str = "get";
-    pub(in crate::cli) const CONFIG_LIST: &str = "list";
-    pub(in crate::cli) const CONFIG_SET: &str = "set";
-    pub(in crate::cli) const CONFIG_UNSET: &str = "unset";
+    pub(in crate::cli) const CONFIG_INSPECT: &str = "inspect";
     pub(in crate::cli) const DOCTOR: &str = "doctor";
     pub(in crate::cli) const FIND: &str = "find";
     pub(in crate::cli) const INFO: &str = "info";
@@ -26,9 +23,7 @@ pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const ADAPTER: &str = "adapter";
     pub(in crate::cli) const INVOCATION_LOG: &str = "invocation-log";
     pub(in crate::cli) const INVOCATION_LOG_CONTENT_ROOT: &str = "invocation-log-content-root";
-    pub(in crate::cli) const KEY: &str = "key";
     pub(in crate::cli) const LIMIT: &str = "limit";
-    pub(in crate::cli) const OPERATION: &str = "operation";
     pub(in crate::cli) const OUTPUT: &str = "output";
     pub(in crate::cli) const PAGE: &str = "page";
     pub(in crate::cli) const PAGINATION: &str = "pagination";
@@ -36,9 +31,7 @@ pub(in crate::cli) mod arg_ids {
     pub(in crate::cli) const PROJECT_CONFIG: &str = "project-config";
     pub(in crate::cli) const QUERY: &str = "query";
     pub(in crate::cli) const REF: &str = "ref";
-    pub(in crate::cli) const USER: &str = "user";
     pub(in crate::cli) const USER_CONFIG: &str = "user-config";
-    pub(in crate::cli) const VALUE: &str = "value";
 }
 
 pub(in crate::cli) mod defaults {
@@ -52,13 +45,6 @@ pub(in crate::cli) mod output_values {
     pub(in crate::cli) const PROTOCOL_JSON: &str = "protocol-json";
     pub(in crate::cli) const READABLE_JSON: &str = "readable-json";
     pub(in crate::cli) const READABLE_VIEW: &str = "readable-view";
-}
-
-pub(in crate::cli) mod operation_values {
-    pub(in crate::cli) const FIND: &str = "find";
-    pub(in crate::cli) const INFO: &str = "info";
-    pub(in crate::cli) const OUTLINE: &str = "outline";
-    pub(in crate::cli) const READ: &str = "read";
 }
 
 pub(in crate::cli) mod pagination_values {
@@ -150,11 +136,8 @@ fn paged_document_command(name: &'static str, about: &'static str) -> Command {
 
 fn config_command() -> Command {
     Command::new(command_names::CONFIG)
-        .about("Read and write docnav configuration")
-        .subcommand(config_get_command())
-        .subcommand(config_set_command())
-        .subcommand(config_unset_command())
-        .subcommand(config_list_command())
+        .about("Inspect docnav configuration sources")
+        .subcommand(config_inspect_command())
 }
 
 pub(in crate::cli) fn adapter_command() -> Command {
@@ -166,44 +149,9 @@ pub(in crate::cli) fn adapter_command() -> Command {
         )
 }
 
-pub(in crate::cli) fn config_get_command() -> Command {
+pub(in crate::cli) fn config_inspect_command() -> Command {
     with_config_path_args(
-        Command::new(command_names::CONFIG_GET)
-            .about("Read an effective configuration key")
-            .arg(key_arg())
-            .arg(user_arg()),
-        ConfigPathSupport::ProjectAndUser,
-    )
-}
-
-pub(in crate::cli) fn config_set_command() -> Command {
-    with_config_path_args(
-        Command::new(command_names::CONFIG_SET)
-            .about("Set a project or user configuration key")
-            .arg(key_arg())
-            .arg(positional_value_arg(arg_ids::VALUE, "value"))
-            .arg(user_arg()),
-        ConfigPathSupport::ProjectAndUser,
-    )
-}
-
-pub(in crate::cli) fn config_unset_command() -> Command {
-    with_config_path_args(
-        Command::new(command_names::CONFIG_UNSET)
-            .about("Remove a project or user configuration key")
-            .arg(key_arg())
-            .arg(user_arg()),
-        ConfigPathSupport::ProjectAndUser,
-    )
-}
-
-pub(in crate::cli) fn config_list_command() -> Command {
-    with_config_path_args(
-        Command::new(command_names::CONFIG_LIST)
-            .about("List effective configuration")
-            .arg(user_arg())
-            .arg(value_arg(arg_ids::PATH, "path", "path"))
-            .arg(operation_arg()),
+        Command::new(command_names::CONFIG_INSPECT).about("Inspect selected configuration sources"),
         ConfigPathSupport::ProjectAndUser,
     )
 }
@@ -223,10 +171,6 @@ fn path_arg() -> Arg {
         .value_name("path")
         .required(true)
         .value_parser(NonEmptyStringValueParser::new())
-}
-
-fn key_arg() -> Arg {
-    positional_value_arg(arg_ids::KEY, "key")
 }
 
 fn adapter_arg() -> Arg {
@@ -314,33 +258,11 @@ fn ref_arg() -> Arg {
     value_arg(arg_ids::REF, "ref", "ref").required(true)
 }
 
-fn operation_arg() -> Arg {
-    value_arg(arg_ids::OPERATION, "operation", "outline|read|find|info").value_parser([
-        operation_values::OUTLINE,
-        operation_values::READ,
-        operation_values::FIND,
-        operation_values::INFO,
-    ])
-}
-
-fn user_arg() -> Arg {
-    Arg::new(arg_ids::USER)
-        .long("user")
-        .action(ArgAction::SetTrue)
-}
-
 fn value_arg(id: impl Into<Id>, long: impl Into<Str>, value_name: &'static str) -> Arg {
     Arg::new(id)
         .long(long)
         .value_name(value_name)
         .num_args(1)
         .allow_hyphen_values(true)
-        .value_parser(NonEmptyStringValueParser::new())
-}
-
-fn positional_value_arg(id: &'static str, value_name: &'static str) -> Arg {
-    Arg::new(id)
-        .value_name(value_name)
-        .required(true)
         .value_parser(NonEmptyStringValueParser::new())
 }

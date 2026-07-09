@@ -22,13 +22,13 @@ Parameter aggregation MUST project adapter-owned persistent config paths with th
 #### Scenario: Same key in different adapters remains distinct
 
 - **WHEN** two adapters declare option key `mode` with different value kind or constraints
-- **AND** config inspection or source validation evaluates `options.markdown.mode`
-- **THEN** parameter aggregation uses only the declaration for adapter id `markdown`
+- **AND** config inspection or source validation evaluates `options.docnav-markdown.mode`
+- **THEN** parameter aggregation uses only the declaration for adapter id `docnav-markdown`
 - **THEN** declarations from other adapter ids do not affect that validation
 
 #### Scenario: Adapter-local conflict is rejected
 
-- **WHEN** one adapter declares the same config path `options.markdown.mode` with incompatible metadata for different operations
+- **WHEN** one adapter declares the same config path `options.docnav-markdown.mode` with incompatible metadata for different operations
 - **THEN** parameter aggregation does not choose one declaration implicitly
 - **THEN** the consuming config or navigation boundary reports an adapter-local declaration conflict before producing source validation results or dispatching the adapter
 

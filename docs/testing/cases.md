@@ -61,24 +61,26 @@ Proves:
 - document command 缺少本 operation 拥有的必需参数时返回稳定 input failure。
 - 该 smoke case 代表这一类外部 CLI 错误，不枚举所有 parser 组合。
 
-### BB-CORE-CONFIG-001 Config source 与 path context 可观察
+### BB-CORE-CONFIG-001 Config inspect source status 与参数事实可观察
 Status: implemented
-Existing smoke task: `CORE-CONFIG-001`
+Existing smoke task: `CORE-CONFIG-001`（从旧 config editor coverage 更新）
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- 真实 CLI 边界可通过 `config set --user` 存储 user `defaults.pagination.limit` 与 `defaults.pagination.enabled`。
-- `config list --path --operation outline` 会报告被选中文档路径对应的 adapter、project `defaults.output`、user pagination values 和 final defaults context。
-- disabled pagination 通过 CLI/config 命令可观察为 user config stored value 和 `config list --path` final context；携带显式 numeric `--limit` 的 `outline` 命令仍能成功进入 document command 链路。
+- `docnav config inspect` reports selected project/user config source scope、path、origin、exists/missing/load state 和 source-attributed validation summary without modifying either file。
+- Inspect uses the config-source projection produced from owner-provided parameter metadata to display currently resolvable facts for documented defaults, outline selector fields and adapter-id native option source fields.
+- Disabled pagination configured through direct config file edit remains observable through inspect source facts, while an `outline` command with explicit numeric `--limit` still follows document command resolution priority.
+- Inspect output is source inspection only: it does not construct a document operation request, call probe/dispatch, or claim adapter option dispatch.
 
-### BB-CORE-CONFIG-002 Removed defaults.output=text 通过 config set 被拒绝
+### BB-CORE-CONFIG-002 Invalid config value 通过 inspect/source validation 被拒绝
 Status: implemented
-Existing smoke task: `CORE-CONFIG-002`
+Existing smoke task: `CORE-CONFIG-002`（从旧 config editor coverage 更新）
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- `config set defaults.output text` 返回 input failure，并将 removed output mode 投影为 `INVALID_REQUEST`。
-- readable error payload 报告 `defaults.output`、received `text` 和 accepted output modes: `readable-view`、`readable-json`、`protocol-json`。
+- A selected config source containing `defaults.output: "text"` reports a source-attributed input failure through `docnav config inspect` and document operation config source loading.
+- The readable/protocol error projection reports `defaults.output`, received `text` and accepted output modes: `readable-view`、`readable-json`、`protocol-json`.
+- The failure is driven by shared owner-provided field facts, not a core config-command-only enum table.
 
 ### BB-CORE-CONFIG-003 Legacy defaults.limit 通过 config source diagnostic 被拒绝
 Status: implemented
@@ -91,23 +93,24 @@ Proves:
 
 ### BB-CORE-CONFIG-004 Native option config 按 selected operation declaration 生效
 Status: implemented
-Existing smoke task: `CORE-CONFIG-004`
+Existing smoke task: `CORE-CONFIG-004`（从旧裸 options coverage 更新）
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- project config 中的 `options.max_heading_level` 通过 selected Markdown declaration 影响 `outline` entries。
-- user config 中的 `options.max_heading_level` 可通过 `config set --user` 存储；当 `read` operation 不声明 native options 时，返回 structured `unsupported` / `option_issues` diagnostic 并保留 source level。
+- Project config 中的 `options.docnav-markdown.max_heading_level` 通过 selected Markdown declaration 影响 `outline` entries。
+- User config 中的 `options.docnav-markdown.max_heading_level` 通过 direct config file edit/read 参与 source priority；当 selected operation 不声明该 native option 时，返回 structured unsupported native option diagnostic 并保留 source level/path。
+- Bare `options.max_heading_level` is rejected as a normal unknown/invalid config path; it is not migrated, aliased or interpreted through document context.
 
 ### BB-CORE-CONFIG-PATH-001 Config path flags select CLI config targets
 Status: implemented
-Existing smoke task: `CORE-CONFIG-PATH-001`
+Existing smoke task: `CORE-CONFIG-PATH-001`（从旧 config editor coverage 更新）
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
 - 真实 document operation 通过 `--project-config <path>` 和 `--user-config <path>` 使用显式 selected config files，而不是 project context、`DOCNAV_CONFIG_DIR` 或平台默认路径。
-- `config set` 默认写 selected project config file，`config set --user` 写 selected user config file；`--user` 只选择 scope，文件路径由 `--project-config` / `--user-config` 或默认 resolution 选择。
-- `config list --path --operation` 使用 selected project/user config files 解析 document context。
-- `config set` 写入场景先复制 checked-in config fixture 到临时 selected config file，再把该临时文件传给 CLI。
+- `docnav config inspect --project-config <path> --user-config <path>` reports exactly those selected source paths and their origins without writing either file.
+- Document operations and `config inspect` share the same config source descriptor/path selection boundary, while document operation value resolution remains owned by navigation input resolution.
+- Legacy `config get|set|unset|list` with selected config path flags is rejected through the normal CLI parse/error boundary and does not modify selected files.
 
 ### BB-CORE-SELECT-001 显式 adapter 失败返回 selection diagnostic
 Status: implemented
@@ -238,25 +241,25 @@ Proves:
 - Project config path resolution uses `--project-config`, then the current project context's `.docnav/docnav.json`, without changing project context discovery.
 - Core descriptors preserve source level, resolved path and path origin for downstream navigation loading.
 
-### WB-CORE-CONFIG-SOURCE-001 Core config source store preserves navigation-owned fields
+### WB-CORE-CONFIG-SOURCE-001 Core config source validation preserves navigation-owned fields
 Status: implemented
 Code: `crates/docnav/src/config/store/tests.rs`
 
 Proves:
 - Core config source loading accepts documented navigation-owned `outline.mode_rules[]` and `outline.auto_full_read.thresholds[]` fields instead of rejecting them as unknown top-level config.
-- Core config source writeback preserves raw `outline` config while continuing to validate core-owned defaults and registry-declared native option config keys.
+- Core config source validation preserves raw `outline` config for inspection/read purposes while validating core-owned defaults and registry-declared adapter-id native option config keys.
+- `docnav config inspect` and document operation config loading report equivalent source paths, nested item paths, required member failures, unknown item keys and typed value failures for current outline selector fields.
 - Explicit CLI selected config paths report source-scoped `explicit_cli` / `missing_explicit_cli` diagnostics while default missing paths remain absent.
 
-### WB-CORE-CONFIG-PATH-002 Core config commands use selected config file paths
+### WB-CORE-CONFIG-PATH-002 Core config inspect uses selected config file paths
 Status: implemented
 Code: `crates/docnav/src/config/commands/tests.rs`
 
 Proves:
-- `config set` writes selected project config file, and `config set --user` writes selected user config file.
-- `config get` / `config list` reject explicitly selected missing config files when that source is needed, while default missing config paths remain absent.
-- `config get --user` and `config list --user` values read only the selected user config; project config source loading is deferred unless `config list --user --path` asks document context resolution to use the full selected descriptor set.
-- `config set` and `config unset` mutate core-owned keys without dropping navigation-owned `outline` config.
-- `config list --path --operation` passes selected project/user config files and origins into document context resolution.
+- `config inspect` reports selected project and user config file paths, origins, existence/load states and validation summaries without writing either file.
+- `config inspect` reports explicitly selected missing / invalid JSON / top-level non-object / not-file config source status and diagnostics when that source is selected for inspection; unreadable source loading is covered by lower-layer config loading / parameter-resolution tests. Default missing config paths remain absent/missing source facts as documented.
+- Legacy `config get|set|unset|list` are rejected as removed subcommands and cannot mutate selected project/user files.
+- `config inspect` can list currently resolvable source facts, but does not ask document context resolution to preview adapter dispatch.
 - `init --project-config` creates or preserves the selected project config file and rejects an existing directory at that selected file path.
 
 ### WB-CORE-INVOCATION-LOG-001 Core runtime invocation log 保持审计边界
@@ -281,7 +284,9 @@ Code: `crates/shared/navigation/src/tests/navigation/native_options.rs`
 Proves:
 - Navigation input resolution preserves source labels for explicit input and project config option issues.
 - Adapter descriptor native CLI flags enter parsing as native option sources instead of core-owned fields.
-- Selected adapter-owned declarations control native option typed validation/extraction; navigation registers, merges and resolves declared fields.
+- Selected adapter-owned declarations control native option typed validation/extraction; navigation registers, merges and resolves declared fields from CLI/input projection and config-source projection without redefining field semantics.
+- Config source projection uses `options.<adapter-id>.<option-key>`; equal option keys in different adapter id namespaces stay distinct, and bare `options.<option-key>` is a normal unknown/invalid config path.
+- Navigation consumes native option values only from the selected adapter namespace for the selected operation; other known adapter namespaces are not forwarded to the selected handler.
 - Built-in adapter defaults affect the resolved operation result when no explicit/project value is provided.
 
 ### WB-NAV-OUTLINE-MODE-001 Navigation outline_mode selectors and pre-dispatch stable
@@ -291,7 +296,8 @@ Code: `crates/shared/navigation/src/tests/navigation/outline_mode.rs`
 Proves:
 - path rules use deterministic source/order priority, can select unstructured full read, and can opt out to structured before cost thresholds run.
 - adapter-scoped cost thresholds filter by selected adapter, merge same-unit thresholds to the minimum value, request only declared units, and fall back to structured when measurement is missing or unavailable.
-- outline config source shape rejects an unregistered `outline.*` key and an unregistered `outline.mode_rules[]` item key before selector parsing and reports the source-scoped field path.
+- outline config source shape rejects an unregistered `outline.*` key, an unregistered `outline.mode_rules[]` item key, missing required members and invalid typed values before selector parsing and reports the source-scoped nested field path.
+- Current owner-specific outline validation preserves parity across config inspect source validation, direct config read and navigation resolution; typed-fields compound helper tests are only added if this parity cannot be proven.
 - unstructured full-read pre-dispatch skips the normal outline handler and returns either default UTF-8 content, adapter hook content with selector cost, or adapter hook result facts with stable `path_rule` / `cost_threshold` reasons.
 - path-triggered default full-read returns a controlled non-UTF-8 failure instead of producing lossy content.
 
@@ -552,10 +558,10 @@ Code: `crates/shared/parameter-resolution/src/tests.rs`
 
 Proves:
 - Navigation input resolution helper consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
-- Processing-specific metadata projection and navigation parameter bindings construct direct input, project config, user config and default sources before resolution.
+- Processing-specific metadata projection and navigation parameter bindings construct direct input, project config, user config and default sources before resolution, and expose config-source projection facts from the same owner-provided metadata.
 - Missing required values, invalid mapped values, optional mapped JSON null, static defaults and dynamic default source values all pass through typed-field validation and do not expose unsafe typed values.
 - Explicit or present invalid config sources return blocking config diagnostics while default missing config sources remain absent without diagnostics.
-- Unmapped public input returns source-scoped blocking diagnostics；owner-scoped native option sources are resolved through selected-adapter typed-field validation/extraction with source info preserved.
+- Unmapped public input returns source-scoped blocking diagnostics；adapter-id native option sources are resolved through selected-adapter typed-field validation/extraction with source info preserved.
 - Adapter option declarations preserve owner/namespace/type variants, including same option name across multiple owners or value kinds, and generic merge does not collapse them into a single core type.
 - Navigation input resolution hands off final native option values after selected-adapter typed-field filtering and validation/extraction.
 - Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
@@ -574,7 +580,8 @@ Code: `crates/shared/adapter-contracts/src/tests.rs`
 
 Proves:
 - `AdapterOptionSpec` wraps typed-field declaration, source bindings, validation and static default metadata without owning the use-site registration step.
-- Direct registration into a typed-field set preserves identity、`options.*` final arguments path、value kind、static default 和 operation applicability, so navigation does not reconstruct adapter-owned validation semantics.
+- Direct registration into a typed-field set preserves identity、`options.*` final arguments path、`options.<adapter-id>.<option-key>` config-source path、value kind、static default 和 operation applicability, so navigation/config consumers do not reconstruct adapter-owned validation semantics.
+- Adapter-id config-source projection keeps same option keys from different adapter ids distinct and surfaces adapter-local declaration conflicts deterministically.
 - `NativeOptionHandoff` preserves handler-facing identity、owner、namespace、key、source、type metadata 和 typed JSON value from resolved protocol options.
 
 ### WB-CONTRACTS-DEFINITION-001 Adapter definition validation 收敛 registry-facing facts
@@ -600,8 +607,9 @@ Code: `crates/shared/navigation/src/tests/navigation/config_sources.rs`
 
 Proves:
 - `docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。
-- Project config source values participate in selected adapter option resolution and dispatch, producing the expected protocol success result.
-- Nested non-object config source shapes at `defaults`、`defaults.pagination` 和 `options` return navigation-owned typed input errors.
+- Project config source values under `options.<selected-adapter-id>.<option-key>` participate in selected adapter option resolution and dispatch, producing the expected protocol success result.
+- Values under other known adapter id namespaces remain separate source facts and are not forwarded to the selected adapter handler.
+- Nested non-object config source shapes at `defaults`、`defaults.pagination`、`options` and selected adapter option namespace return navigation-owned typed input errors.
 
 ### WB-NAVIGATION-CONFIG-SOURCES-002 Navigation loads config sources with descriptor origin
 Status: implemented

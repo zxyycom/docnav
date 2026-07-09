@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import {
   configFixturePath,
-  copyConfigFixtureToProject,
   createProject,
+  writeJson,
 } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
@@ -9,18 +12,22 @@ import {
   expectExit,
   expectJsonObject,
   expectObjectArray,
+  expectNoJsonPayloadInStderr,
+  expectProtocolFailure,
   expectStderrEmpty,
   parseJson,
 } from "../assertions.ts";
 import type { JsonRecord } from "../assertions.ts";
+import { exitCodes } from "../config.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
-import { toSlashPath } from "../../../../scripts/tools/foundation/src/path.ts";
 
 export async function testConfigPathFlagsSelectConfigTargets() {
   const project = createProject("config-path-flags", {
     config: {
       options: {
-        max_heading_level: 3,
+        "docnav-markdown": {
+          max_heading_level: 3,
+        },
       },
     },
   });
@@ -50,15 +57,26 @@ export async function testConfigPathFlagsSelectConfigTargets() {
   expect(outline, entries.length === 1, "explicit project config fixture filters nested headings");
   expect(outline, entries[0]?.label === "Guide", "explicit project config fixture selects top heading");
 
-  const mutableProjectConfig = copyConfigFixtureToProject(project, "empty", "selected/project.json");
-  const mutableUserConfig = copyConfigFixtureToProject(project, "empty", "selected/user.json");
-  const setProject = await runCli(
-    "CORE-CONFIG-PATH-001 config set writes selected project config",
+  const mutableProjectConfig = path.join(project.root, "selected", "project.json");
+  const mutableUserConfig = path.join(project.root, "selected", "user.json");
+  writeJson(mutableProjectConfig, {
+    defaults: {
+      output: "readable-json",
+    },
+  });
+  writeJson(mutableUserConfig, {
+    defaults: {
+      pagination: {
+        limit: 321,
+      },
+    },
+  });
+
+  const inspect = await runCli(
+    "CORE-CONFIG-PATH-001 config inspect uses selected config files",
     [
       "config",
-      "set",
-      "defaults.output",
-      "readable-json",
+      "inspect",
       "--project-config",
       mutableProjectConfig,
       "--user-config",
@@ -66,71 +84,101 @@ export async function testConfigPathFlagsSelectConfigTargets() {
     ],
     { project },
   );
-  expectExit(setProject, 0);
-  expectStderrEmpty(setProject);
-  const setProjectJson = parseJson(setProject);
+  expectExit(inspect, 0);
+  expectStderrEmpty(inspect);
+  const inspectJson = parseJson(inspect);
+  const inspection = expectJsonObject(inspect, inspectJson.inspection, "config inspect reports inspection");
+  const projectSource = sourceFor(inspect, inspection, "project");
+  const userSource = sourceFor(inspect, inspection, "user");
+  expect(inspect, projectSource.origin === "explicit_cli", "config inspect reports selected project config origin");
+  expect(inspect, userSource.origin === "explicit_cli", "config inspect reports selected user config origin");
+  expect(inspect, projectSource.path === mutableProjectConfig, "config inspect reports selected project config path");
+  expect(inspect, userSource.path === mutableUserConfig, "config inspect reports selected user config path");
+  expect(inspect, parameterFact(inspect, inspection, "docnav.defaults.output").value === "readable-json", "config inspect reads selected project config");
+  expect(inspect, parameterFact(inspect, inspection, "docnav.defaults.pagination.limit").value === 321, "config inspect reads selected user config");
   expect(
-    setProject,
-    setProjectJson.path === toSlashPath(mutableProjectConfig),
-    "config set writes selected project config path",
+    inspect,
+    projectionHasPath(inspect, inspection, "defaults.pagination.limit"),
+    "config inspect exposes config-source projection for selected config fields",
   );
 
-  const setUser = await runCli(
-    "CORE-CONFIG-PATH-001 config set --user writes selected user config",
-    [
-      "config",
-      "set",
-      "defaults.pagination.limit",
-      "321",
-      "--user",
-      "--project-config",
-      mutableProjectConfig,
-      "--user-config",
-      mutableUserConfig,
-    ],
-    { project },
-  );
-  expectExit(setUser, 0);
-  expectStderrEmpty(setUser);
-  const setUserJson = parseJson(setUser);
-  expect(
-    setUser,
-    setUserJson.path === toSlashPath(mutableUserConfig),
-    "config set --user writes selected user config path",
-  );
-
-  const list = await runCli(
-    "CORE-CONFIG-PATH-001 config list uses selected config files",
-    [
-      "config",
-      "list",
-      "--path",
-      project.normalRelPath,
-      "--operation",
-      "outline",
-      "--project-config",
-      mutableProjectConfig,
-      "--user-config",
-      mutableUserConfig,
-    ],
-    { project },
-  );
-  expectExit(list, 0);
-  expectStderrEmpty(list);
-  const listJson = parseJson(list);
-  expect(list, listJson.project_config === toSlashPath(mutableProjectConfig), "config list reports selected project config");
-  expect(list, listJson.user_config === toSlashPath(mutableUserConfig), "config list reports selected user config");
-  expect(list, valueFor(list, listJson, "defaults.output").value === "readable-json", "config list reads selected project config");
-  expect(list, valueFor(list, listJson, "defaults.pagination.limit").value === 321, "config list reads selected user config");
-  const pathContext = expectJsonObject(list, listJson.path_context, "config list path_context is an object");
-  const defaults = expectJsonObject(list, pathContext.defaults, "selected path context defaults are an object");
-  const pagination = expectJsonObject(list, defaults.pagination, "selected path context pagination is an object");
-  const limit = expectJsonObject(list, pagination.limit, "selected path context limit is an object");
-  expect(list, limit.value === 321, "selected config files participate in document context");
+  const selectedConfigSnapshot = snapshotSelectedConfigFiles(mutableProjectConfig, mutableUserConfig);
+  for (const legacyCommand of legacyConfigCommands()) {
+    const legacy = await runCli(
+      `CORE-CONFIG-PATH-001 legacy config ${legacyCommand.subcommand} rejects selected config files`,
+      [
+        "config",
+        legacyCommand.subcommand,
+        ...legacyCommand.args,
+        "--project-config",
+        mutableProjectConfig,
+        "--user-config",
+        mutableUserConfig,
+        "--output",
+        "protocol-json",
+      ],
+      { project },
+    );
+    expectExit(legacy, exitCodes.input);
+    expectNoJsonPayloadInStderr(legacy);
+    const legacyJson = parseJson(legacy);
+    validateSchema(legacy, "protocolResponse", legacyJson);
+    const error = expectProtocolFailure(legacy, legacyJson, null, "INVALID_REQUEST");
+    expect(legacy, error.owner === "core_cli", "legacy config command is rejected at core CLI boundary");
+    const details = expectJsonObject(legacy, error.details, "legacy config command error details are an object");
+    expect(legacy, details.field === "config", "legacy config command reports config field");
+    expect(
+      legacy,
+      details.reason === `unknown config subcommand "${legacyCommand.subcommand}"`,
+      "legacy config command reports removed subcommand",
+    );
+    expectSelectedConfigFilesUnchanged(legacy, selectedConfigSnapshot);
+  }
 }
 
-function valueFor(record: CommandRecord, configListJson: JsonRecord, key: string): JsonRecord {
-  const values = expectObjectArray(record, configListJson.values, "config list values are objects");
-  const item = values.find((entry) => entry.key === key);
-  return expectJsonObject(record, item, `config list includes ${key}`);
+type SelectedConfigSnapshot = {
+  projectPath: string;
+  projectBytes: Buffer;
+  userPath: string;
+  userBytes: Buffer;
+};
+
+function snapshotSelectedConfigFiles(projectPath: string, userPath: string): SelectedConfigSnapshot {
+  return {
+    projectPath,
+    projectBytes: readFileSync(projectPath),
+    userPath,
+    userBytes: readFileSync(userPath),
+  };
+}
+
+function expectSelectedConfigFilesUnchanged(record: CommandRecord, snapshot: SelectedConfigSnapshot) {
+  expect(record, readFileSync(snapshot.projectPath).equals(snapshot.projectBytes), "selected project config is unchanged");
+  expect(record, readFileSync(snapshot.userPath).equals(snapshot.userBytes), "selected user config is unchanged");
+}
+
+function legacyConfigCommands() {
+  return [
+    { subcommand: "get", args: ["defaults.output"] },
+    { subcommand: "set", args: ["defaults.output", "protocol-json"] },
+    { subcommand: "unset", args: ["defaults.output"] },
+    { subcommand: "list", args: [] },
+  ] as const;
+}
+
+function sourceFor(record: CommandRecord, inspection: JsonRecord, scope: string): JsonRecord {
+  const sources = expectObjectArray(record, inspection.sources, "config inspect sources are objects");
+  const source = sources.find((entry) => entry.scope === scope);
+  return expectJsonObject(record, source, `config inspect includes ${scope} source`);
+}
+
+function parameterFact(record: CommandRecord, inspection: JsonRecord, identity: string): JsonRecord {
+  const facts = expectObjectArray(record, inspection.parameter_facts, "config inspect parameter facts are objects");
+  const fact = facts.find((entry) => entry.identity === identity);
+  return expectJsonObject(record, fact, `config inspect includes ${identity}`);
+}
+
+function projectionHasPath(record: CommandRecord, inspection: JsonRecord, fieldPath: string): boolean {
+  const projection = expectObjectArray(record, inspection.config_source_projection, "config inspect projection fields are objects");
+  return projection.some((field) => field.path === fieldPath);
 }

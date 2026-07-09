@@ -16,8 +16,7 @@ use native_options::NativeOptionCatalog;
 use spec::{cli_command, is_known_root_command};
 
 pub(super) use spec::{
-    arg_ids, command_names, config_get_command, config_list_command, config_set_command,
-    config_unset_command, document_clap_command, utility_clap_command,
+    arg_ids, command_names, config_inspect_command, document_clap_command, utility_clap_command,
 };
 
 #[derive(Clone, Debug, Default)]

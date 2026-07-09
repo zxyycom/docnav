@@ -37,9 +37,9 @@ Full-read cost measurement declaration SHOULD list the standard cost units the a
 
 `docnav-navigation` 接收 core 交出的 raw navigation command、config source descriptors/paths 和 adapter registry，加载 raw project/user config sources，完成 navigation input resolution，构造内部 operation request，并通过 selected adapter definition dispatch 对应 operation。Adapter 返回结构化业务结果或 adapter diagnostic。
 
-格式 adapter 在 definition 中声明格式原生 native options、内置默认值 metadata、adapter-owned option semantics 和 handler binding metadata。`docnav-navigation` 为当前 operation 构造 operation field set：通用 operation 字段由 `docnav-navigation` 声明并注册，selected adapter definition 暴露的 `AdapterOptionSpec` 由使用点注册进同一个 typed-field set。解析成功后，navigation 保留 external `OperationArguments.options` 作为 protocol-stable request facts，并额外交付 handler-facing `NativeOptionHandoff`。该 handoff 保留 identity、owner、namespace、key、source、type metadata 和 typed JSON value，供 adapter handler 消费；handler 不再接收 raw CLI argv、raw config JSON 或未校验 native option source value。Input resolution 规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
+格式 adapter 在 definition 中声明格式原生 native options、内置默认值 metadata、adapter-owned option semantics 和 handler binding metadata。`docnav-navigation` 为当前 operation 构造 operation field set：通用 operation 字段由 `docnav-navigation` 声明并注册，selected adapter definition 暴露的 `AdapterOptionSpec` 由使用点注册进同一个 typed-field set。参数汇总边界把同一份 owner-provided facts 投影为 CLI/input metadata 和 config-source metadata；adapter native option 的持久 config source path 由 registry adapter id 与 option key 组合为 `options.<adapter-id>.<option-key>`。解析成功后，navigation 保留 external `OperationArguments.options` 作为 protocol-stable request facts，并额外交付 handler-facing `NativeOptionHandoff`。该 handoff 保留 identity、owner、namespace、key、source、type metadata 和 typed JSON value，供 adapter handler 消费；handler 不再接收 raw CLI argv、raw config JSON 或未校验 native option source value。Input resolution 规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 
-Adapter 个性化参数使用 `AdapterOptionSpec` 包装 typed-field builder 声明。`path(...)` 声明该 option 注册后进入 `OperationArguments.options` 的 `options.*` 位置；`process(...)` 声明 CLI/config source binding，source path 由底层 typed-field processing metadata 提供，不作为 final arguments path 的隐含替代；`validation(...)` 和 `default_static(...)` 显式转发到底层 `docnav-typed-fields` 类型。典型形态：
+Adapter 个性化参数使用 `AdapterOptionSpec` 包装 typed-field builder 声明。`path(...)` 声明该 option 注册后进入 `OperationArguments.options` 的 `options.*` 位置；`process(...)` 声明 CLI/config source binding，config source binding 必须使用 adapter-id namespace，例如 `options.docnav-markdown.max_heading_level`。Source path 由底层 typed-field processing metadata 提供，不作为 final arguments path 的隐含替代；`validation(...)` 和 `default_static(...)` 显式转发到底层 `docnav-typed-fields` 类型。典型形态：
 
 ```rust
 AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_level")
@@ -49,7 +49,7 @@ AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_
     .process("cli", AdapterOptionProcessStrategy::cli_flag("--max-heading-level"))
     .process(
         "config",
-        AdapterOptionProcessStrategy::json_path(["options", "max_heading_level"]),
+        AdapterOptionProcessStrategy::json_path(["options", "docnav-markdown", "max_heading_level"]),
     )
     .validation(FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)))
     .default_static(3)
@@ -72,6 +72,10 @@ pub fn markdown_adapter_definition() -> AdapterDefinition<'static> {
 ```
 
 `markdown_manifest()`、`markdown_adapter_options()` 或其它 private helpers 只服务 adapter-private construction；registry-facing export 仍是一个 definition/factory。
+
+Adapter declarations 必须提供足够的 typed-field facts，让 registry/navigation aggregation 可以在 config-source projection 中校验 `options.<adapter-id>.<option-key>`。这些 facts 至少包括 owner identity、option key、operation applicability、value kind、constraints、static default when declared、source processing metadata 和 operation binding metadata。Adapter handler payload 不随该 config path migration 改变；handler 仍只接收 selected operation 的 typed values 和 `NativeOptionHandoff`。
+
+旧裸 `options.<option-key>` 不是 adapter contract 的兼容输入。Shared layers 不得为它推断 adapter id、迁移值或调用 adapter declaration；它只作为 consuming config/navigation boundary 的普通 unknown/invalid config path 处理。
 
 ## 适配器职责
 

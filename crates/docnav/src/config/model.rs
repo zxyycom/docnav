@@ -5,20 +5,6 @@ use serde_json::Value;
 
 use crate::project_context::ProjectContext;
 
-pub(super) const DEFAULT_LIMIT: u32 = 6000;
-pub(super) const DEFAULT_OUTPUT: &str = "readable-view";
-pub(super) const DEFAULT_PAGINATION_ENABLED: bool = true;
-pub(super) const SUPPORTED_CORE_KEYS: [&str; 8] = [
-    "defaults.adapter",
-    "defaults.pagination.enabled",
-    "defaults.pagination.limit",
-    "defaults.output",
-    "invocation_log.enabled",
-    "invocation_log.path",
-    "invocation_log.content_capture.enabled",
-    "invocation_log.content_capture.root",
-];
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConfigContext {
     pub project: ProjectContext,
@@ -96,20 +82,9 @@ impl NativeOptionsConfig {
         self.values.is_empty()
     }
 
+    #[cfg(test)]
     pub(crate) fn value_for_key(&self, key: &str) -> Option<&Value> {
         self.values.get(key)
-    }
-
-    pub(crate) fn insert(&mut self, key: impl Into<String>, value: Value) {
-        self.values.insert(key.into(), value);
-    }
-
-    pub(crate) fn remove(&mut self, key: &str) {
-        self.values.remove(key);
-    }
-
-    pub(crate) fn keys(&self) -> impl Iterator<Item = &str> {
-        self.values.keys().map(String::as_str)
     }
 }
 
@@ -122,6 +97,12 @@ impl InvocationLogConfig {
 impl ContentCaptureConfig {
     pub(crate) fn is_empty(&self) -> bool {
         self.enabled.is_none() && self.root.is_none()
+    }
+}
+
+impl PaginationConfig {
+    fn is_empty(&self) -> bool {
+        self.enabled.is_none() && self.limit.is_none()
     }
 }
 
@@ -146,57 +127,5 @@ mod tests {
             config.options.value_for_key("registered_elsewhere"),
             Some(&json!({ "raw": true }))
         );
-    }
-}
-
-impl PaginationConfig {
-    fn is_empty(&self) -> bool {
-        self.enabled.is_none() && self.limit.is_none()
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum ConfigSource {
-    Explicit,
-    Project,
-    User,
-    BuiltIn,
-    Unset,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct ResolvedValue {
-    pub value: Value,
-    pub source: String,
-}
-
-impl ResolvedValue {
-    pub fn explicit(value: Value) -> Self {
-        Self::new(value, ConfigSource::Explicit)
-    }
-
-    pub fn project(value: Value) -> Self {
-        Self::new(value, ConfigSource::Project)
-    }
-
-    pub fn user(value: Value) -> Self {
-        Self::new(value, ConfigSource::User)
-    }
-
-    pub fn built_in(value: Value) -> Self {
-        Self::new(value, ConfigSource::BuiltIn)
-    }
-
-    pub fn unset() -> Self {
-        Self::new(Value::Null, ConfigSource::Unset)
-    }
-
-    pub(super) fn new(value: Value, source: ConfigSource) -> Self {
-        let source = serde_json::to_value(source)
-            .ok()
-            .and_then(|value| value.as_str().map(str::to_owned))
-            .unwrap_or_else(|| "unknown".to_owned());
-        Self { value, source }
     }
 }

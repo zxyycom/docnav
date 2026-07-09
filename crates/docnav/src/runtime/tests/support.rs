@@ -33,7 +33,9 @@ pub(super) fn write_native_option_config(path: &Path, value: Value) {
         path,
         json!({
             "options": {
-                "max_heading_level": value
+                "docnav-markdown": {
+                    "max_heading_level": value
+                }
             }
         }),
     );

@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use docnav_navigation::validate_navigation_config_source_value;
 use docnav_parameter_resolution::{
     load_parameter_config_source, ConfigPathOrigin as ParameterConfigPathOrigin, ConfigSourceLevel,
     ParameterConfigSourceDescriptor,
@@ -15,21 +16,7 @@ use crate::registry::AdapterRegistry;
 use super::model::{ConfigContext, CoreConfig};
 
 mod diagnostics;
-mod outline;
-mod shape;
-mod values;
-
 use diagnostics::config_source_error;
-use shape::validate_config_shape;
-use values::validate_config_values;
-
-pub fn load_context(
-    project_config: Option<&str>,
-    user_config: Option<&str>,
-) -> AppResult<ConfigContext> {
-    let project = ProjectContext::discover_with_cli_config_paths(project_config, user_config)?;
-    load_context_for_project(project)
-}
 
 pub(crate) fn load_context_for_project(project: ProjectContext) -> AppResult<ConfigContext> {
     let registry = AdapterRegistry::load(&project)?;
@@ -89,10 +76,16 @@ fn read_config(
     let Some(value) = read_config_source_value(selection, source)? else {
         return Ok(CoreConfig::default());
     };
-    validate_config_shape(&value, path, registry, source, origin)?;
+    validate_navigation_config_source_value(
+        source.config_source_level(),
+        navigation_config_path_origin(origin),
+        path_string(path),
+        value.clone(),
+        registry,
+    )
+    .map_err(|error| AppError::new(error.into_diagnostic()))?;
     let config: CoreConfig = serde_json::from_value(value)
         .map_err(|_| config_source_error(path, source, origin, "invalid_config_value"))?;
-    validate_config_values(&config, path, registry, source, origin)?;
     Ok(config)
 }
 
@@ -102,18 +95,6 @@ pub(super) fn read_selected_config(
     source: ConfigFileSource,
 ) -> AppResult<CoreConfig> {
     read_config(selection, registry, source)
-}
-
-pub(super) fn read_config_for_update(
-    selection: &SelectedConfigPath,
-    registry: &AdapterRegistry,
-    source: ConfigFileSource,
-) -> AppResult<CoreConfig> {
-    if selection.path.exists() {
-        read_selected_config(selection, registry, source)
-    } else {
-        Ok(CoreConfig::default())
-    }
 }
 
 fn read_config_source_value(
@@ -145,6 +126,17 @@ fn parameter_config_path_origin(origin: ConfigPathOrigin) -> ParameterConfigPath
     match origin {
         ConfigPathOrigin::Default => ParameterConfigPathOrigin::Default,
         ConfigPathOrigin::ExplicitCli => ParameterConfigPathOrigin::ExplicitCli,
+    }
+}
+
+fn navigation_config_path_origin(
+    origin: ConfigPathOrigin,
+) -> docnav_navigation::NavigationConfigSourceOrigin {
+    match origin {
+        ConfigPathOrigin::Default => docnav_navigation::NavigationConfigSourceOrigin::Default,
+        ConfigPathOrigin::ExplicitCli => {
+            docnav_navigation::NavigationConfigSourceOrigin::ExplicitCli
+        }
     }
 }
 

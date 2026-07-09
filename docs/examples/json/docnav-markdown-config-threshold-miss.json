@@ -16,6 +16,8 @@
     }
   },
   "options": {
-    "max_heading_level": 3
+    "docnav-markdown": {
+      "max_heading_level": 3
+    }
   }
 }

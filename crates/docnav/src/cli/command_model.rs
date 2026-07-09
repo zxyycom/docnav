@@ -20,14 +20,6 @@ pub enum OutputMode {
 }
 
 impl OutputMode {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::ReadableView => "readable-view",
-            Self::ReadableJson => "readable-json",
-            Self::ProtocolJson => "protocol-json",
-        }
-    }
-
     /// Currently accepted output values for document --output.
     pub const ACCEPTED_VALUES: &'static [&'static str] =
         &["readable-view", "readable-json", "protocol-json"];
@@ -133,38 +125,10 @@ pub enum AdapterCommand {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ConfigCommand {
-    Get(ConfigGet),
-    Set(ConfigSet),
-    Unset(ConfigUnset),
-    List(ConfigList),
+    Inspect(ConfigInspect),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ConfigGet {
-    pub key: String,
-    pub user: bool,
-    pub config_paths: ConfigPathArgs,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ConfigSet {
-    pub key: String,
-    pub value: String,
-    pub user: bool,
-    pub config_paths: ConfigPathArgs,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ConfigUnset {
-    pub key: String,
-    pub user: bool,
-    pub config_paths: ConfigPathArgs,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ConfigList {
-    pub user: bool,
-    pub path: Option<String>,
-    pub operation: Option<Operation>,
+pub struct ConfigInspect {
     pub config_paths: ConfigPathArgs,
 }

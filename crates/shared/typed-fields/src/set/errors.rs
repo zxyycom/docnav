@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::metadata::{BuildError, FieldDuplicateIdentityError};
+use crate::metadata::{BuildError, FieldDuplicateIdentityError, FieldIdentity, FieldPath};
 use crate::{ProcessingId, ProcessingInputKind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,11 +58,28 @@ pub enum FieldDefSetBuildError {
         previous: ProcessingInputKind,
         current: ProcessingInputKind,
     },
+    DuplicateProcessingPath(Box<FieldDuplicateProcessingPathError>),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct FieldDuplicateProcessingPathError {
+    pub processing_id: ProcessingId,
+    pub path: FieldPath,
+    pub previous_identity: FieldIdentity,
+    pub previous_declaration_path: Option<Vec<String>>,
+    pub current_identity: FieldIdentity,
+    pub current_declaration_path: Option<Vec<String>>,
 }
 
 impl From<FieldDuplicateIdentityError> for FieldDefSetBuildError {
     fn from(value: FieldDuplicateIdentityError) -> Self {
         Self::DuplicateIdentity(value)
+    }
+}
+
+impl From<FieldDuplicateProcessingPathError> for FieldDefSetBuildError {
+    fn from(value: FieldDuplicateProcessingPathError) -> Self {
+        Self::DuplicateProcessingPath(Box::new(value))
     }
 }
 
@@ -90,11 +107,35 @@ impl fmt::Display for FieldDefSetBuildError {
                 formatter,
                 "processing {processing_id} has conflicting input kinds: {previous:?} and {current:?}"
             ),
+            Self::DuplicateProcessingPath(error) => write!(formatter, "{error}"),
         }
     }
 }
 
 impl std::error::Error for FieldDefSetBuildError {}
+
+impl fmt::Display for FieldDuplicateProcessingPathError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "processing {} path {} is declared by {} at {} and {} at {}",
+            self.processing_id,
+            self.path.raw_segments().join("."),
+            self.current_identity.as_str(),
+            display_declaration_path(&self.current_declaration_path),
+            self.previous_identity.as_str(),
+            display_declaration_path(&self.previous_declaration_path),
+        )
+    }
+}
+
+impl std::error::Error for FieldDuplicateProcessingPathError {}
+
+fn display_declaration_path(path: &Option<Vec<String>>) -> String {
+    path.as_ref()
+        .map(|path| path.join("."))
+        .unwrap_or_else(|| "<unknown>".to_owned())
+}
 
 #[derive(Debug, PartialEq)]
 pub enum FieldExtractionError {

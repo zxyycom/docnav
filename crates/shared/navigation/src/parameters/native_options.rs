@@ -17,6 +17,7 @@ pub(super) struct UnsupportedOptionContext<'a> {
     pub path_origin: Option<&'static str>,
     pub path: &'a str,
     pub owner: &'a str,
+    pub config_field: Option<String>,
     pub selected_native_options: &'a [AdapterOptionSpec],
 }
 
@@ -76,13 +77,16 @@ pub(super) fn unsupported_option(
         expected: Some(supported_option_keys(context.selected_native_options)),
         type_variant: None,
         config_source: context.path_origin.map(|path_origin| {
+            let field = context
+                .config_field
+                .unwrap_or_else(|| format!("options.{key}"));
             AdapterConfigSourceDetails::new(
                 context.source,
                 path_origin,
                 context.path,
                 "unsupported",
             )
-            .with_field(format!("options.{key}"))
+            .with_field(field)
         }),
     };
     AdapterError::native_option_invalid(

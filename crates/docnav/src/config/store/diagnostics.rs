@@ -10,8 +10,6 @@ use crate::project_context::ConfigPathOrigin;
 
 use super::{path_string, ConfigFileSource};
 
-const INVALID_CONFIG_OBJECT: &str = "invalid_config_object";
-
 pub(super) fn config_source_error(
     path: &Path,
     source: ConfigFileSource,
@@ -28,70 +26,6 @@ pub(super) fn config_source_error(
             accepted: None,
             summary: "Config file is invalid.",
             guidance: Some("Fix the config file so it is a readable JSON object.".to_owned()),
-        },
-    )
-}
-
-pub(super) fn unknown_config_field_error(
-    path: &Path,
-    source: ConfigFileSource,
-    origin: ConfigPathOrigin,
-    field: &str,
-    accepted: Option<&str>,
-) -> AppError {
-    config_error(
-        path,
-        source,
-        origin,
-        ConfigErrorSpec {
-            field,
-            reason_code: "unknown_config_field",
-            accepted,
-            summary: "Config file contains an unknown field.",
-            guidance: Some(match accepted {
-                Some(accepted) => format!("Rename {field} to {accepted}."),
-                None => format!("Remove unsupported config field {field}."),
-            }),
-        },
-    )
-}
-
-pub(super) fn invalid_config_object_error(
-    path: &Path,
-    source: ConfigFileSource,
-    origin: ConfigPathOrigin,
-    field: &str,
-) -> AppError {
-    config_error(
-        path,
-        source,
-        origin,
-        ConfigErrorSpec {
-            field,
-            reason_code: INVALID_CONFIG_OBJECT,
-            accepted: None,
-            summary: "Config file field must be an object.",
-            guidance: Some(format!("Use an object for config field {field}.")),
-        },
-    )
-}
-
-pub(super) fn invalid_config_array_error(
-    path: &Path,
-    source: ConfigFileSource,
-    origin: ConfigPathOrigin,
-    field: &str,
-) -> AppError {
-    config_error(
-        path,
-        source,
-        origin,
-        ConfigErrorSpec {
-            field,
-            reason_code: "invalid_config_array",
-            accepted: None,
-            summary: "Config file contains an invalid field value.",
-            guidance: Some(format!("Use an array for config field {field}.")),
         },
     )
 }

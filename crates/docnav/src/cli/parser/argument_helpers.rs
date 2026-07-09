@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use clap::parser::{ArgMatches, ValueSource};
 use docnav_cli_args::{KnownValueFlag as BoundaryKnownValueFlag, MissingValue, RejectedArg};
-use docnav_protocol::{Operation, PositiveInteger};
+use docnav_protocol::PositiveInteger;
 
 use crate::error::{AppError, AppResult};
 
@@ -16,7 +16,6 @@ pub(super) enum ValueFlag {
     InvocationLog,
     InvocationLogContentRoot,
     Limit,
-    Operation,
     Output,
     Page,
     Pagination,
@@ -35,7 +34,6 @@ const VALUE_FLAGS: &[(&str, ValueFlag)] = &[
         ValueFlag::InvocationLogContentRoot,
     ),
     (flags::LIMIT, ValueFlag::Limit),
-    (flags::OPERATION, ValueFlag::Operation),
     (flags::OUTPUT, ValueFlag::Output),
     (flags::PAGE, ValueFlag::Page),
     (flags::PAGINATION, ValueFlag::Pagination),
@@ -71,7 +69,6 @@ pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
         flags::INVOCATION_LOG => Some(ValueFlag::InvocationLog),
         flags::INVOCATION_LOG_CONTENT_ROOT => Some(ValueFlag::InvocationLogContentRoot),
         flags::LIMIT => Some(ValueFlag::Limit),
-        flags::OPERATION => Some(ValueFlag::Operation),
         flags::OUTPUT => Some(ValueFlag::Output),
         flags::PAGE => Some(ValueFlag::Page),
         flags::PAGINATION => Some(ValueFlag::Pagination),
@@ -276,15 +273,4 @@ pub(super) fn optional_explicit_positive(
 pub(super) fn positive_from_u32(value: u32, flag: &str) -> AppResult<PositiveInteger> {
     let parsed = value;
     NonZeroU32::new(parsed).ok_or_else(|| invalid_positive_value_error(flag, &parsed.to_string()))
-}
-
-pub(super) fn parse_operation(value: &str) -> AppResult<Operation> {
-    value.parse().map_err(|_| {
-        invalid_value_error(
-            "--operation",
-            value,
-            ["outline", "read", "find", "info"],
-            ["Use outline, read, find, or info for --operation."],
-        )
-    })
 }

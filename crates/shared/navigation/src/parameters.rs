@@ -9,11 +9,13 @@ use docnav_parameter_resolution::{
     ids, EntryPassthroughPolicy, ParameterResolution, ParameterResolutionPipeline,
 };
 use docnav_protocol::{Operation, Options, PositiveInteger};
-use docnav_typed_fields::FieldStringEnum;
+use docnav_typed_fields::{FieldStringEnum, ProcessingId};
+use serde_json::{json, Value};
 
 use crate::{
-    NavigationCommand, NavigationConfigSources, NavigationContextDefaults, NavigationError,
-    NavigationOutputMode, NavigationPaginationDefaults, NavigationResolvedValue,
+    NavigationAdapterRegistry, NavigationCommand, NavigationConfigSource, NavigationConfigSources,
+    NavigationContextDefaults, NavigationError, NavigationOutputMode, NavigationPaginationDefaults,
+    NavigationResolvedValue,
 };
 
 const DIRECT_PROCESSING: &str = "cli";
@@ -69,6 +71,7 @@ pub fn resolve_operation_input(
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
     selected_adapter: &AdapterDefinition<'_>,
+    registry: &(impl NavigationAdapterRegistry + ?Sized),
 ) -> Result<ResolvedNavigationInput, NavigationError> {
     let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
     let selected_native_options = operation_fields.adapter_options();
@@ -78,6 +81,7 @@ pub fn resolve_operation_input(
         selected_adapter_id,
         operation_fields.as_ref(),
         selected_native_options,
+        registry,
     )?;
 
     let resolution = resolve_with_fields(
@@ -103,6 +107,7 @@ pub fn resolve_context_defaults(
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
     selected_adapter: &AdapterDefinition<'_>,
+    registry: &(impl NavigationAdapterRegistry + ?Sized),
 ) -> Result<NavigationContextDefaults, NavigationError> {
     let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
     let selected_native_options = operation_fields.adapter_options();
@@ -112,6 +117,7 @@ pub fn resolve_context_defaults(
         selected_adapter_id,
         operation_fields.as_ref(),
         selected_native_options,
+        registry,
     )?;
 
     let resolution = resolve_with_fields(
@@ -130,6 +136,39 @@ pub fn resolve_context_defaults(
     )?;
 
     defaults_from_resolution(command.operation, &resolution)
+}
+
+pub(crate) fn validate_config_source_for_registry(
+    source: &NavigationConfigSource,
+    registry: &(impl NavigationAdapterRegistry + ?Sized),
+) -> Result<(), NavigationError> {
+    config::validate_config_source_for_registry(source, registry)
+}
+
+pub(crate) fn inspect_config_sources(
+    config_sources: &NavigationConfigSources,
+    registry: &(impl NavigationAdapterRegistry + ?Sized),
+) -> Result<Value, NavigationError> {
+    let field_set = fields::config_inspection_fields(registry)?;
+    let fields = field_set.as_ref();
+    let resolution = ParameterResolutionPipeline::new(fields)
+        .with_direct_input_processing_id(DIRECT_PROCESSING)
+        .with_config_processing_id(CONFIG_PROCESSING)
+        .with_loaded_project_config(config_sources.project.loaded.clone())
+        .with_loaded_user_config(config_sources.user.loaded.clone())
+        .with_passthrough_policy(EntryPassthroughPolicy::Discard)
+        .resolve(None)
+        .map_err(|_| NavigationError::internal("config-inspection-resolution-failed"))?;
+
+    Ok(json!({
+        "sources": [
+            inspect_source(&config_sources.project, registry),
+            inspect_source(&config_sources.user, registry),
+        ],
+        "config_source_projection": config_source_projection(fields),
+        "parameter_facts": parameter_facts(&resolution),
+        "parameter_diagnostics": parameter_diagnostics(&resolution),
+    }))
 }
 
 fn resolved_input_from_resolution(
@@ -210,6 +249,159 @@ fn resolve_with_fields(
         .with_passthrough_policy(EntryPassthroughPolicy::Discard)
         .resolve(input::direct_input(command, selected_native_options))
         .map_err(|_| NavigationError::internal(resolution_pipeline_error_id(context)))
+}
+
+fn inspect_source(
+    source: &NavigationConfigSource,
+    registry: &(impl NavigationAdapterRegistry + ?Sized),
+) -> Value {
+    let diagnostics = source_diagnostics(source, registry);
+    let load_state = load_state(source);
+    json!({
+        "scope": source.level,
+        "path": source.path,
+        "origin": source.origin,
+        "exists": std::path::Path::new(&source.path).exists(),
+        "load_state": load_state,
+        "summary": source.loaded.value().map(source_summary).unwrap_or_else(|| {
+            json!({
+                "top_level_fields": [],
+                "field_count": 0
+            })
+        }),
+        "diagnostics": diagnostics,
+    })
+}
+
+fn source_diagnostics(
+    source: &NavigationConfigSource,
+    registry: &(impl NavigationAdapterRegistry + ?Sized),
+) -> Vec<Value> {
+    let mut diagnostics = source
+        .loaded
+        .diagnostics()
+        .iter()
+        .filter_map(config_source_issue_json)
+        .collect::<Vec<_>>();
+    if diagnostics.is_empty() {
+        if let Err(error) = validate_config_source_for_registry(source, registry) {
+            diagnostics.push(diagnostic_json(error.diagnostic()));
+        }
+    }
+    diagnostics
+}
+
+fn load_state(source: &NavigationConfigSource) -> String {
+    if source.loaded.value().is_some() {
+        return "loaded".to_owned();
+    }
+    source
+        .loaded
+        .diagnostics()
+        .first()
+        .and_then(|diagnostic| diagnostic.as_config_source())
+        .map_or_else(|| "missing".to_owned(), |issue| issue.reason_code.clone())
+}
+
+fn source_summary(value: &Value) -> Value {
+    let fields = value
+        .as_object()
+        .map(|object| object.keys().cloned().collect::<Vec<_>>())
+        .unwrap_or_default();
+    json!({
+        "top_level_fields": fields,
+        "field_count": flatten_fields(value).len(),
+    })
+}
+
+fn flatten_fields(value: &Value) -> Vec<String> {
+    let mut fields = Vec::new();
+    flatten_value(value, String::new(), &mut fields);
+    fields
+}
+
+fn flatten_value(value: &Value, path: String, fields: &mut Vec<String>) {
+    match value {
+        Value::Object(object) => {
+            for (key, child) in object {
+                let child_path = if path.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{path}.{key}")
+                };
+                flatten_value(child, child_path, fields);
+            }
+        }
+        Value::Array(items) => {
+            for (index, child) in items.iter().enumerate() {
+                flatten_value(child, format!("{path}[{index}]"), fields);
+            }
+        }
+        _ if !path.is_empty() => fields.push(path),
+        _ => {}
+    }
+}
+
+fn config_source_projection(fields: &docnav_typed_fields::FieldDefSet) -> Vec<Value> {
+    fields
+        .processing_metadata(&ProcessingId::from(CONFIG_PROCESSING))
+        .into_iter()
+        .map(|metadata| {
+            json!({
+                "identity": metadata.identity.as_str(),
+                "path": metadata.path.segments().join("."),
+                "value_kind": format!("{:?}", metadata.value_kind),
+                "has_default": !matches!(metadata.default, docnav_typed_fields::DefaultMetadata::None),
+            })
+        })
+        .collect()
+}
+
+fn parameter_facts(resolution: &ParameterResolution) -> Vec<Value> {
+    resolution
+        .values()
+        .iter()
+        .map(|(identity, resolved)| {
+            json!({
+                "identity": identity.as_str(),
+                "source": values::source_label(resolved.source.kind),
+                "value": values::typed_value_to_json(&resolved.value),
+            })
+        })
+        .collect()
+}
+
+fn parameter_diagnostics(resolution: &ParameterResolution) -> Vec<Value> {
+    resolution
+        .diagnostics()
+        .iter()
+        .map(|diagnostic| {
+            diagnostic_json(&diagnostic.to_record_draft(
+                docnav_diagnostics::DiagnosticSource::with_stage(
+                    "docnav-navigation",
+                    "config-inspect",
+                ),
+            ))
+        })
+        .collect()
+}
+
+fn config_source_issue_json(
+    diagnostic: &docnav_parameter_resolution::ParameterResolutionHandoff,
+) -> Option<Value> {
+    diagnostic.as_config_source().map(|issue| {
+        json!({
+            "source_level": issue.source_level,
+            "path_origin": issue.path_origin,
+            "path": issue.path,
+            "field": issue.field,
+            "reason_code": issue.reason_code,
+        })
+    })
+}
+
+fn diagnostic_json(diagnostic: &docnav_diagnostics::DiagnosticRecordDraft) -> Value {
+    diagnostic.details().to_value()
 }
 
 fn resolution_pipeline_error_id(context: &str) -> &'static str {

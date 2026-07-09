@@ -349,6 +349,53 @@ fn set_build_rejects_same_processing_id_with_different_input_kind() {
 }
 
 #[test]
+fn set_build_rejects_duplicate_processing_path_for_different_identities() {
+    #[derive(Debug, FieldDefs)]
+    struct Params {
+        #[field(
+            FieldDef::builder("docnav.defaults.limit")
+                .process(
+                    "config",
+                    ProcessStrategy::json_path(["defaults", "value"])
+                )
+                .validation(limit_validation())
+        )]
+        limit: Option<i64>,
+
+        #[field(
+            FieldDef::builder("docnav.defaults.output")
+                .process(
+                    "config",
+                    ProcessStrategy::json_path(["defaults", "value"])
+                )
+                .validation(output_mode_validation())
+        )]
+        output: Option<OutputMode>,
+    }
+
+    let error = Params::field_defs().expect_err("duplicate processing path fails at set build");
+
+    let FieldDefSetBuildError::DuplicateProcessingPath(error) = error else {
+        panic!("expected duplicate processing path error");
+    };
+    let error = *error;
+    let FieldDuplicateProcessingPathError {
+        processing_id,
+        path,
+        previous_identity,
+        previous_declaration_path,
+        current_identity,
+        current_declaration_path,
+    } = error;
+    assert_eq!(processing_id.as_str(), "config");
+    assert_eq!(path.segments(), vec!["defaults", "value"]);
+    assert_eq!(previous_identity.as_str(), "docnav.defaults.limit");
+    assert_eq!(current_identity.as_str(), "docnav.defaults.output");
+    assert_eq!(previous_declaration_path, Some(vec!["limit".to_owned()]));
+    assert_eq!(current_declaration_path, Some(vec!["output".to_owned()]));
+}
+
+#[test]
 fn single_derive_extracts_typed_params_object_without_default() {
     #[derive(Debug, FieldDefs)]
     struct Params {

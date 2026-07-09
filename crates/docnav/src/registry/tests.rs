@@ -43,10 +43,6 @@ fn static_registry_exposes_full_native_option_specs() {
     let registry = AdapterRegistry { adapters: ADAPTERS };
     let native_options = registry.native_options_for(Operation::Outline);
 
-    assert!(registry.has_native_option_config_key("options.max_heading_level"));
-    assert!(registry
-        .native_option_config_keys()
-        .contains(&"options.max_heading_level".to_owned()));
     assert!(native_options.iter().any(|option| {
         option.owner == "docnav-markdown"
             && option.namespace() == "options"

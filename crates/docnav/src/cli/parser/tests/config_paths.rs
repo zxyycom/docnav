@@ -33,23 +33,19 @@ fn document_command_parses_config_file_paths_as_exact_values() {
 }
 
 #[test]
-fn config_set_parses_config_file_paths_and_scope_separately() {
+fn config_inspect_parses_selected_config_file_paths() {
     let parsed = parse([
         "config",
-        "set",
-        "defaults.output",
-        "readable-json",
-        "--user",
+        "inspect",
         "--project-config",
         "project.json",
         "--user-config",
         "user.json",
     ])
-    .expect("parse config set config paths");
+    .expect("parse config inspect config paths");
 
     match parsed.command {
-        CliCommand::Config(ConfigCommand::Set(command)) => {
-            assert!(command.user, "--user chooses scope only");
+        CliCommand::Config(ConfigCommand::Inspect(command)) => {
             assert_eq!(
                 command.config_paths.project_config.as_deref(),
                 Some("project.json")
@@ -59,41 +55,34 @@ fn config_set_parses_config_file_paths_and_scope_separately() {
                 Some("user.json")
             );
         }
-        command => panic!("expected config set command, got {command:?}"),
+        command => panic!("expected config inspect command, got {command:?}"),
     }
 }
 
 #[test]
-fn config_list_keeps_document_context_and_config_paths() {
-    let parsed = parse([
-        "config",
-        "list",
-        "--path",
-        "docs/guide.md",
-        "--operation",
-        "read",
-        "--project-config",
-        "project.json",
-        "--user-config",
-        "user.json",
-    ])
-    .expect("parse config list context paths");
+fn legacy_config_subcommands_are_rejected() {
+    for subcommand in ["get", "set", "unset", "list"] {
+        let error = parse(["config", subcommand]).expect_err("legacy config command should fail");
+        let details = error.diagnostic().details().to_value();
 
-    match parsed.command {
-        CliCommand::Config(ConfigCommand::List(command)) => {
-            assert_eq!(command.path.as_deref(), Some("docs/guide.md"));
-            assert_eq!(command.operation, Some(docnav_protocol::Operation::Read));
-            assert_eq!(
-                command.config_paths.project_config.as_deref(),
-                Some("project.json")
-            );
-            assert_eq!(
-                command.config_paths.user_config.as_deref(),
-                Some("user.json")
-            );
-        }
-        command => panic!("expected config list command, got {command:?}"),
+        assert_eq!(details["field"], "config");
+        assert!(
+            details["reason"]
+                .as_str()
+                .is_some_and(|reason| reason.contains("unknown config subcommand")),
+            "unexpected error details for {subcommand}: {details}"
+        );
     }
+}
+
+#[test]
+fn config_inspect_rejects_document_context_flags() {
+    let parsed = parse(["config", "inspect", "--path", "docs/guide.md"])
+        .expect_err("config inspect should not accept document context flags");
+    let details = parsed.diagnostic().details().to_value();
+
+    assert_eq!(details["field"], "--path");
+    assert_eq!(details["reason"], "unsupported_argument");
 }
 
 #[test]
@@ -129,29 +118,15 @@ fn init_and_doctor_parse_config_file_paths() {
 
 #[test]
 fn config_path_flag_before_known_flag_is_missing_value_input_error() {
-    let error = parse([
-        "config",
-        "set",
-        "defaults.output",
-        "readable-json",
-        "--project-config",
-        "--user-config",
-    ])
-    .expect_err("project config path should not consume user config flag");
+    let error = parse(["config", "inspect", "--project-config", "--user-config"])
+        .expect_err("project config path should not consume user config flag");
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "--project-config");
     assert_eq!(details["reason"], "missing_value");
 
-    let error = parse([
-        "config",
-        "set",
-        "defaults.output",
-        "readable-json",
-        "--user-config",
-        "--output",
-    ])
-    .expect_err("user config path should not consume known output flag");
+    let error = parse(["config", "inspect", "--user-config", "--output"])
+        .expect_err("user config path should not consume known output flag");
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "--user-config");
@@ -160,23 +135,17 @@ fn config_path_flag_before_known_flag_is_missing_value_input_error() {
 
 #[test]
 fn inline_config_path_value_can_start_with_known_flag_text() {
-    let parsed = parse([
-        "config",
-        "set",
-        "defaults.output",
-        "readable-json",
-        "--project-config=--user-config",
-    ])
-    .expect("inline exact path should allow known flag text");
+    let parsed = parse(["config", "inspect", "--project-config=--user-config"])
+        .expect("inline exact path should allow known flag text");
 
     match parsed.command {
-        CliCommand::Config(ConfigCommand::Set(command)) => {
+        CliCommand::Config(ConfigCommand::Inspect(command)) => {
             assert_eq!(
                 command.config_paths.project_config.as_deref(),
                 Some("--user-config")
             );
         }
-        command => panic!("expected config set command, got {command:?}"),
+        command => panic!("expected config inspect command, got {command:?}"),
     }
 }
 

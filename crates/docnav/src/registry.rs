@@ -48,38 +48,6 @@ impl AdapterRegistry {
             .flat_map(|record| record.native_options_for(operation))
             .collect()
     }
-
-    pub fn has_native_option_config_key(&self, key: &str) -> bool {
-        self.adapters
-            .iter()
-            .flat_map(|record| record.adapter_options())
-            .any(|option| native_option_config_key(&option).as_deref() == Some(key))
-    }
-
-    pub fn native_option_config_keys(&self) -> Vec<String> {
-        let mut keys = Vec::new();
-        for option in self
-            .adapters
-            .iter()
-            .flat_map(|record| record.adapter_options())
-        {
-            if let Some(key) = native_option_config_key(&option) {
-                if !keys.contains(&key) {
-                    keys.push(key);
-                }
-            }
-        }
-        keys
-    }
-}
-
-fn native_option_config_key(option: &AdapterOptionSpec) -> Option<String> {
-    let path = option.processing_path("config").ok().flatten()?;
-    if path.len() == 2 && path.first().is_some_and(|segment| segment == "options") {
-        Some(path.join("."))
-    } else {
-        None
-    }
 }
 
 impl NavigationAdapterRegistry for AdapterRegistry {

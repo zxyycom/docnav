@@ -38,17 +38,18 @@ impl ConfigKeyRegistry {
     ) -> Self {
         let processing_id = processing_id.into();
         let mut registry = Self::default();
-        for metadata in fields.processing_metadata(&processing_id) {
-            registry.register_leaf_path(
-                metadata
-                    .path
-                    .segments()
-                    .into_iter()
-                    .map(|segment| RegisteredPathSegment::Key(segment.to_owned()))
-                    .collect(),
-            );
-        }
+        registry.register_field_set(fields, &processing_id);
         registry
+    }
+
+    pub(super) fn field_set(
+        mut self,
+        fields: &FieldDefSet,
+        processing_id: impl Into<ProcessingId>,
+    ) -> Self {
+        let processing_id = processing_id.into();
+        self.register_field_set(fields, &processing_id);
+        self
     }
 
     pub(super) fn leaf_path<I, S>(mut self, path: I) -> Self
@@ -95,6 +96,19 @@ impl ConfigKeyRegistry {
             self.container_paths.insert(path[..end].to_vec());
         }
         self.leaf_paths.insert(path);
+    }
+
+    fn register_field_set(&mut self, fields: &FieldDefSet, processing_id: &ProcessingId) {
+        for metadata in fields.processing_metadata(processing_id) {
+            self.register_leaf_path(
+                metadata
+                    .path
+                    .segments()
+                    .into_iter()
+                    .map(|segment| RegisteredPathSegment::Key(segment.to_owned()))
+                    .collect(),
+            );
+        }
     }
 
     fn register_container_path(&mut self, path: Vec<RegisteredPathSegment>) {
@@ -224,8 +238,19 @@ impl ConfigValuePath {
         field
     }
 
+    pub(super) fn option_adapter_id(&self) -> Option<&str> {
+        if let [ConfigValuePathSegment::Key(namespace), ConfigValuePathSegment::Key(adapter_id), ..] =
+            self.0.as_slice()
+        {
+            if namespace == "options" {
+                return Some(adapter_id.as_str());
+            }
+        }
+        None
+    }
+
     pub(super) fn option_key(&self) -> Option<&str> {
-        if let [ConfigValuePathSegment::Key(namespace), ConfigValuePathSegment::Key(key), ..] =
+        if let [ConfigValuePathSegment::Key(namespace), ConfigValuePathSegment::Key(_adapter_id), ConfigValuePathSegment::Key(key), ..] =
             self.0.as_slice()
         {
             if namespace == "options" {

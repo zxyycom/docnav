@@ -26,13 +26,13 @@ Navigation MUST validate config source keys and declared values through the conf
 
 #### Scenario: Config native option fails selected declaration
 
-- **WHEN** a project config file contains `options.markdown.max_heading_level` with a value outside the Markdown adapter declaration range
+- **WHEN** a project config file contains `options.docnav-markdown.max_heading_level` with a value outside the Markdown adapter declaration range
 - **THEN** navigation reports a blocking typed validation diagnostic for that config source and field
 - **THEN** adapter dispatch does not occur
 
 #### Scenario: Config option unsupported by selected adapter
 
-- **WHEN** a user config file contains an `options.markdown.*` key not declared by the selected Markdown adapter operation
+- **WHEN** a user config file contains an `options.docnav-markdown.*` key not declared by the selected Markdown adapter operation
 - **THEN** navigation reports an unsupported native option diagnostic for that config source
 - **THEN** the raw option value is not forwarded to the adapter handler
 
@@ -48,7 +48,7 @@ When navigation constructs operation arguments for a selected adapter and operat
 
 #### Scenario: Selected adapter reads its own namespace
 
-- **WHEN** a config file contains `options.markdown.max_heading_level` and `options.other.max_heading_level`
-- **AND** navigation selects adapter id `markdown` for an outline operation
-- **THEN** navigation validates and consumes the value under `options.markdown.max_heading_level`
-- **THEN** the value under `options.other.max_heading_level` is not forwarded to the Markdown adapter handler or used to validate the Markdown selected operation
+- **WHEN** a config file contains `options.docnav-markdown.max_heading_level` and `options.docnav-other.max_heading_level`
+- **AND** navigation selects adapter id `docnav-markdown` for an outline operation
+- **THEN** navigation validates and consumes the value under `options.docnav-markdown.max_heading_level`
+- **THEN** the value under `options.docnav-other.max_heading_level` is not forwarded to the Markdown adapter handler or used to validate the Markdown selected operation

@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use docnav_typed_fields::{
-    DefaultMetadata, FieldNumericRange, ProcessingId, TypedValue, ValidationReason, ValueKind,
+    DefaultMetadata, FieldDefSetBuildError, FieldNumericRange, ProcessingId, TypedValue,
+    ValidationReason, ValueKind,
 };
 use serde_json::json;
 
@@ -95,23 +96,17 @@ struct ConflictingConfigPathParams {
 }
 
 #[test]
-fn catalog_derivation_rejects_conflicting_config_paths() {
-    let definitions = ConflictingConfigPathParams::field_defs().unwrap();
-
-    let error = derive_parameter_catalog(
-        &definitions,
-        &ProcessingId::from(DIRECT_PROCESSING),
-        &ProcessingId::from(CONFIG_PROCESSING),
-    )
-    .unwrap_err();
+fn catalog_derivation_conflicting_config_paths_are_rejected_by_field_set_build() {
+    let error = ConflictingConfigPathParams::field_defs()
+        .expect_err("typed-field set rejects duplicate config path");
 
     assert!(matches!(
         error,
-        ParameterCatalogError::Conflict {
-            kind: ParameterCatalogConflictKind::ConfigPath,
-            path: ref conflict_path,
-            ..
-        } if conflict_path.as_ref() == Some(&path(["defaults", "shared"]))
+        FieldDefSetBuildError::DuplicateProcessingPath(ref error)
+            if error.processing_id.as_str() == CONFIG_PROCESSING
+                && error.path.segments() == vec!["defaults", "shared"]
+                && error.previous_identity.as_str() == "docnav.defaults.left"
+                && error.current_identity.as_str() == "docnav.defaults.right"
     ));
 }
 

@@ -35,12 +35,19 @@ pub(super) fn validate_outline_config_sources(
     }
 
     for source in ordered_config_sources(config_sources) {
-        let Some(outline) = outline_config(source)? else {
-            continue;
-        };
-        let _ = mode_rules(source, outline)?;
-        let _ = thresholds(source, outline)?;
+        validate_outline_config_source(source)?;
     }
+    Ok(())
+}
+
+pub(super) fn validate_outline_config_source(
+    source: &NavigationConfigSource,
+) -> Result<(), NavigationError> {
+    let Some(outline) = outline_config(source)? else {
+        return Ok(());
+    };
+    let _ = mode_rules(source, outline)?;
+    let _ = thresholds(source, outline)?;
     Ok(())
 }
 

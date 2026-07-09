@@ -1,5 +1,7 @@
 {
   "options": {
-    "max_heading_level": 1
+    "docnav-markdown": {
+      "max_heading_level": 1
+    }
   }
 }

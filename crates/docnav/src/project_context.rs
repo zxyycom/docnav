@@ -100,11 +100,6 @@ impl ProjectContext {
         })
     }
 
-    pub fn discover_user_config_path(user_config: Option<&str>) -> AppResult<SelectedConfigPath> {
-        let cwd = discover_cwd()?;
-        selected_user_config_path(&cwd, user_config, |key| env::var_os(key))
-    }
-
     pub fn discover_with_cli_config_paths(
         project_config: Option<&str>,
         user_config: Option<&str>,
@@ -121,10 +116,12 @@ impl ProjectContext {
         })
     }
 
+    #[cfg(test)]
     pub fn project_config_path(&self) -> &Path {
         &self.config_paths.project.path
     }
 
+    #[cfg(test)]
     pub fn user_config_path(&self) -> &Path {
         &self.config_paths.user.path
     }

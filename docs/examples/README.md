@@ -24,7 +24,7 @@ Structured outline 示例使用 `kind: "structured"`、entries 和 page。非结
 
 默认 CLI `readable-view` 输出由 pretty JSON header 承载相同 readable 字段；structured outline 不产生 block section，unstructured outline 使用 `/content` block 承载全文。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
 
-protocol 请求显式传入 `page: 1`、`limit: 28` 和 `options.max_heading_level: 3`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
+protocol 请求显式传入 `page: 1`、`limit: 28` 和 request `arguments.options.max_heading_level: 3`。这是 operation request argument，不是持久 config source path；配置文件中的 Markdown native option 使用 `options.docnav-markdown.max_heading_level`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
 ## Ref 与 Read
 
@@ -73,7 +73,7 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 
 ## 配置示例
 
-- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 Markdown native option、document operation defaults 和 core-owned `invocation_log` section 的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
+- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 `options.docnav-markdown.max_heading_level` Markdown native option、document operation defaults 和 core-owned `invocation_log` section 的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
 - [docnav-markdown-config-path-unstructured.json](json/docnav-markdown-config-path-unstructured.json) 展示 `outline.mode_rules[]` path selector 和后写 rule 覆盖。
 - [docnav-markdown-config-cost-unstructured.json](json/docnav-markdown-config-cost-unstructured.json) 展示 adapter-scoped cost threshold selector。
 - [docnav-markdown-config-threshold-miss.json](json/docnav-markdown-config-threshold-miss.json) 展示 threshold candidate filtering 和不命中时保持 structured 的输入形状。

@@ -234,6 +234,35 @@ where
     )
 }
 
+pub fn inspect_navigation_config_sources<R>(
+    config_sources: NavigationConfigSourceDescriptors,
+    registry: &R,
+) -> Result<Value, NavigationError>
+where
+    R: NavigationAdapterRegistry + ?Sized,
+{
+    parameters::inspect_config_sources(&load_navigation_config_sources(config_sources), registry)
+}
+
+pub fn validate_navigation_config_source_value<R>(
+    level: ConfigSourceLevel,
+    origin: NavigationConfigSourceOrigin,
+    path: impl Into<String>,
+    value: Value,
+    registry: &R,
+) -> Result<(), NavigationError>
+where
+    R: NavigationAdapterRegistry + ?Sized,
+{
+    let source = NavigationConfigSource {
+        level: level.as_str(),
+        origin: origin.as_str(),
+        path: path.into(),
+        loaded: LoadedParameterConfigSource::from_value(value),
+    };
+    parameters::validate_config_source_for_registry(&source, registry)
+}
+
 fn execute_loaded_navigation_command<R>(
     command: NavigationCommand,
     config_sources: NavigationConfigSources,
@@ -245,7 +274,8 @@ where
     let mut trace = navigation_trace(command.operation);
     let adapter_intent = resolve_navigation_adapter_intent(&command, &config_sources, &mut trace)?;
     let selection = select_navigation_adapter(&command, &adapter_intent, registry, &mut trace)?;
-    let resolved = resolve_navigation_input(&command, &config_sources, &selection, &mut trace)?;
+    let resolved =
+        resolve_navigation_input(&command, &config_sources, &selection, registry, &mut trace)?;
     let prepared = prepare_navigation_request(command.operation, resolved, &mut trace)?;
     let response = dispatch_navigation_request(&config_sources, &selection, &prepared, &mut trace)?;
     let response = validate_navigation_response(response, &mut trace)?;
@@ -301,17 +331,22 @@ where
     Ok(selection)
 }
 
-fn resolve_navigation_input(
+fn resolve_navigation_input<R>(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selection: &AdapterSelection<'_>,
+    registry: &R,
     trace: &mut NavigationInvocationTrace,
-) -> Result<ResolvedNavigationInput, NavigationError> {
+) -> Result<ResolvedNavigationInput, NavigationError>
+where
+    R: NavigationAdapterRegistry + ?Sized,
+{
     resolve_operation_input(
         command,
         config_sources,
         selection.adapter.id(),
         &selection.adapter.definition,
+        registry,
     )
     .map_err(|error| error_with_trace(trace, NavigationFailureLayer::RequestConstruction, error))
 }
@@ -447,6 +482,7 @@ where
         &config_sources,
         selection.adapter.id(),
         &selection.adapter.definition,
+        registry,
     )?;
     let selection = NavigationContextSelection::from_selection(
         &selection,

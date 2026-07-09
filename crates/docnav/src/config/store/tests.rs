@@ -52,13 +52,15 @@ fn unknown_config_field_reports_structured_config_issue() {
 }
 
 #[test]
-fn registered_native_option_config_key_keeps_raw_value() {
-    let root = temp_root("registered-option");
+fn adapter_id_native_option_config_key_is_typed_validated() {
+    let root = temp_root("adapter-id-option");
     let path = write_project_config(
         &root,
         json!({
             "options": {
-                "max_heading_level": "wide"
+                "docnav-markdown": {
+                    "max_heading_level": 2
+                }
             }
         }),
     );
@@ -72,8 +74,67 @@ fn registered_native_option_config_key_keeps_raw_value() {
     .unwrap();
 
     assert_eq!(
-        config.options.value_for_key("max_heading_level"),
-        Some(&json!("wide"))
+        config.options.value_for_key("docnav-markdown"),
+        Some(&json!({"max_heading_level": 2}))
+    );
+}
+
+#[test]
+fn bare_native_option_config_path_is_unknown() {
+    let root = temp_root("bare-option-unknown");
+    let path = write_project_config(
+        &root,
+        json!({
+            "options": {
+                "max_heading_level": 2
+            }
+        }),
+    );
+    let registry = registry_for_root(&root);
+
+    let error = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap_err();
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(details["field"], "options.max_heading_level");
+    assert_eq!(details["reason"], "unknown_config_field");
+}
+
+#[test]
+fn invalid_adapter_id_native_option_value_is_rejected() {
+    let root = temp_root("invalid-adapter-id-option");
+    let path = write_project_config(
+        &root,
+        json!({
+            "options": {
+                "docnav-markdown": {
+                    "max_heading_level": 9
+                }
+            }
+        }),
+    );
+    let registry = registry_for_root(&root);
+
+    let error = read_selected_config(
+        &SelectedConfigPath::default(path),
+        &registry,
+        ConfigFileSource::Project,
+    )
+    .unwrap_err();
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(
+        details["field"],
+        "options.docnav-markdown.max_heading_level"
+    );
+    assert_eq!(details["reason"], "range_invalid");
+    assert_eq!(
+        details["config_issues"][0]["field"],
+        "options.docnav-markdown.max_heading_level"
     );
 }
 
@@ -145,7 +206,7 @@ fn direct_config_file_rejects_empty_invocation_log_path() {
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "invocation_log.path");
-    assert_eq!(details["reason"], "invocation log path must not be empty");
+    assert_eq!(details["reason"], "length_invalid");
 }
 
 #[test]
@@ -172,10 +233,7 @@ fn direct_config_file_rejects_empty_invocation_log_content_capture_root() {
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "invocation_log.content_capture.root");
-    assert_eq!(
-        details["reason"],
-        "invocation log content capture root must not be empty"
-    );
+    assert_eq!(details["reason"], "length_invalid");
 }
 
 #[test]

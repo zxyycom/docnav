@@ -57,6 +57,12 @@ pub(super) fn validate_outline_config_sources(
     config::validate_outline_config_sources(command, config_sources)
 }
 
+pub(super) fn validate_outline_config_source(
+    source: &crate::NavigationConfigSource,
+) -> Result<(), NavigationError> {
+    config::validate_outline_config_source(source)
+}
+
 pub(super) fn execute_unstructured_outline(
     adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,

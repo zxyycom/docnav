@@ -43,7 +43,7 @@ pub(super) fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool 
         ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
         ValueFlag::Ref => operation == Operation::Read,
         ValueFlag::Query => operation == Operation::Find,
-        ValueFlag::Operation | ValueFlag::Path => false,
+        ValueFlag::Path => false,
     }
 }
 

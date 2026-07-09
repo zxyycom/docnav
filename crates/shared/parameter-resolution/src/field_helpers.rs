@@ -5,6 +5,12 @@ use docnav_typed_fields::{
 
 pub mod ids {
     pub const ADAPTER: &str = "docnav.defaults.adapter";
+    pub const INVOCATION_LOG_CONTENT_CAPTURE_ENABLED: &str =
+        "docnav.invocation_log.content_capture.enabled";
+    pub const INVOCATION_LOG_CONTENT_CAPTURE_ROOT: &str =
+        "docnav.invocation_log.content_capture.root";
+    pub const INVOCATION_LOG_ENABLED: &str = "docnav.invocation_log.enabled";
+    pub const INVOCATION_LOG_PATH: &str = "docnav.invocation_log.path";
     pub const LIMIT: &str = "docnav.defaults.pagination.limit";
     pub const OUTPUT: &str = "docnav.defaults.output";
     pub const PAGE: &str = "docnav.document.page";
@@ -90,6 +96,46 @@ pub fn config_pagination_enabled_field(
             ProcessStrategy::json_path(["defaults", "pagination", "enabled"]),
         )
         .validation(FieldValidation::boolean())
+}
+
+pub fn invocation_log_enabled_field(config_processing_id: &'static str) -> FieldDefBuilder<bool> {
+    FieldDef::builder(ids::INVOCATION_LOG_ENABLED)
+        .process(
+            config_processing_id,
+            ProcessStrategy::json_path(["invocation_log", "enabled"]),
+        )
+        .validation(FieldValidation::boolean())
+}
+
+pub fn invocation_log_path_field(config_processing_id: &'static str) -> FieldDefBuilder<String> {
+    FieldDef::builder(ids::INVOCATION_LOG_PATH)
+        .process(
+            config_processing_id,
+            ProcessStrategy::json_path(["invocation_log", "path"]),
+        )
+        .validation(non_empty_string_validation())
+}
+
+pub fn invocation_log_content_capture_enabled_field(
+    config_processing_id: &'static str,
+) -> FieldDefBuilder<bool> {
+    FieldDef::builder(ids::INVOCATION_LOG_CONTENT_CAPTURE_ENABLED)
+        .process(
+            config_processing_id,
+            ProcessStrategy::json_path(["invocation_log", "content_capture", "enabled"]),
+        )
+        .validation(FieldValidation::boolean())
+}
+
+pub fn invocation_log_content_capture_root_field(
+    config_processing_id: &'static str,
+) -> FieldDefBuilder<String> {
+    FieldDef::builder(ids::INVOCATION_LOG_CONTENT_CAPTURE_ROOT)
+        .process(
+            config_processing_id,
+            ProcessStrategy::json_path(["invocation_log", "content_capture", "root"]),
+        )
+        .validation(non_empty_string_validation())
 }
 
 pub fn configurable_output_field<T>(

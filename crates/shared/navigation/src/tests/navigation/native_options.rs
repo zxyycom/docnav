@@ -3,7 +3,9 @@ use serde_json::{json, Value};
 
 use crate::{execute_loaded_navigation_command, NavigationNativeOptionInput, NavigationOutputMode};
 
-use super::super::support::{config_sources, navigation_command, StubRegistry};
+use super::super::support::{
+    config_sources, navigation_command, MultiAdapterRegistry, StubRegistry,
+};
 
 #[test]
 // @case WB-NAV-INPUT-RESOLUTION-001
@@ -20,12 +22,16 @@ fn navigation_resolves_selected_adapter_options_and_dispatches() {
                     "output": "protocol-json"
                 },
                 "options": {
-                    "max_heading_level": 2
+                    "docnav-markdown": {
+                        "max_heading_level": 2
+                    }
                 }
             }),
             json!({
                 "options": {
-                    "max_heading_level": 1
+                    "docnav-markdown": {
+                        "max_heading_level": 1
+                    }
                 }
             }),
         ),
@@ -72,7 +78,9 @@ fn navigation_resolves_json_native_option_through_typed_fields() {
         config_sources(
             json!({
                 "options": {
-                    "payload": {"source": "project"}
+                    "docnav-markdown": {
+                        "payload": {"source": "project"}
+                    }
                 }
             }),
             Value::Null,
@@ -99,7 +107,9 @@ fn navigation_accepts_config_option_applicable_to_operation() {
         config_sources(
             json!({
                 "options": {
-                    "max_heading_level": 2
+                    "docnav-markdown": {
+                        "max_heading_level": 2
+                    }
                 }
             }),
             Value::Null,
@@ -107,6 +117,117 @@ fn navigation_accepts_config_option_applicable_to_operation() {
         &StubRegistry,
     )
     .expect("applicable native option");
+
+    let ProtocolResponse::Success(success) = outcome.response else {
+        panic!("expected success");
+    };
+    let OperationResult::Outline(result) = success.result else {
+        panic!("expected outline result");
+    };
+    let result = result.as_structured().expect("structured outline result");
+    assert_eq!(result.entries[0].label, "Max 2");
+}
+
+#[test]
+fn navigation_does_not_forward_other_known_adapter_namespace() {
+    let outcome = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(
+            json!({
+                "options": {
+                    "docnav-markdown": {
+                        "max_heading_level": 2
+                    },
+                    "docnav-other": {
+                        "payload": {"source": "other"}
+                    }
+                }
+            }),
+            Value::Null,
+        ),
+        &MultiAdapterRegistry,
+    )
+    .expect("other adapter namespace remains non-selected source facts");
+
+    let ProtocolResponse::Success(success) = outcome.response else {
+        panic!("expected success");
+    };
+    let OperationResult::Outline(result) = success.result else {
+        panic!("expected outline result");
+    };
+    let result = result.as_structured().expect("structured outline result");
+    assert_eq!(result.entries[0].label, "Max 2");
+}
+
+#[test]
+fn navigation_reports_unknown_adapter_id_under_options_as_config_diagnostic() {
+    let error = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(
+            json!({
+                "options": {
+                    "docnav-unknown": {
+                        "max_heading_level": 2
+                    }
+                }
+            }),
+            Value::Null,
+        ),
+        &StubRegistry,
+    )
+    .expect_err("unknown adapter id should fail config validation");
+    let protocol_error = super::protocol_error(error.diagnostic());
+
+    assert_eq!(
+        protocol_error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("reason")
+            .and_then(Value::as_str),
+        Some("unknown_adapter_id")
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("field")
+            .and_then(Value::as_str),
+        Some("options.docnav-unknown")
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("config_issues")
+            .and_then(Value::as_array)
+            .and_then(|issues| issues.first())
+            .and_then(|issue| issue.get("field"))
+            .and_then(Value::as_str),
+        Some("options.docnav-unknown")
+    );
+}
+
+#[test]
+fn navigation_keeps_same_option_key_distinct_by_adapter_namespace() {
+    let outcome = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(
+            json!({
+                "options": {
+                    "docnav-markdown": {
+                        "max_heading_level": 2
+                    },
+                    "docnav-other": {
+                        "max_heading_level": 6
+                    }
+                }
+            }),
+            Value::Null,
+        ),
+        &MultiAdapterRegistry,
+    )
+    .expect("same option key in other adapter namespace should coexist");
 
     let ProtocolResponse::Success(success) = outcome.response else {
         panic!("expected success");
@@ -151,7 +272,9 @@ fn navigation_reports_typed_native_option_failure_with_source() {
         config_sources(
             json!({
                 "options": {
-                    "max_heading_level": 9
+                    "docnav-markdown": {
+                        "max_heading_level": 9
+                    }
                 }
             }),
             Value::Null,
@@ -173,18 +296,21 @@ fn navigation_reports_typed_native_option_failure_with_source() {
         Some("range_invalid")
     );
     assert_eq!(
-        super::first_option_issue_source(&protocol_error),
-        Some("project")
+        protocol_error
+            .details()
+            .get("field")
+            .and_then(Value::as_str),
+        Some("options.docnav-markdown.max_heading_level")
     );
     assert_eq!(
         protocol_error
             .details()
-            .get("option_issues")
+            .get("config_issues")
             .and_then(Value::as_array)
             .and_then(|issues| issues.first())
-            .and_then(|issue| issue.get("expected"))
+            .and_then(|issue| issue.get("source_level"))
             .and_then(Value::as_str),
-        Some("integer in range 1..6")
+        Some("project")
     );
 }
 
@@ -221,7 +347,9 @@ fn navigation_rejects_unknown_config_option_after_adapter_routing() {
         config_sources(
             json!({
                 "options": {
-                    "missing_option": true
+                    "docnav-markdown": {
+                        "missing_option": true
+                    }
                 }
             }),
             Value::Null,
@@ -232,8 +360,25 @@ fn navigation_rejects_unknown_config_option_after_adapter_routing() {
     let protocol_error = super::protocol_error(error.diagnostic());
 
     assert_eq!(
+        protocol_error
+            .details()
+            .get("field")
+            .and_then(Value::as_str),
+        Some("arguments.options.missing_option")
+    );
+    assert_eq!(
         super::first_option_issue_source(&protocol_error),
         Some("project")
+    );
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("config_issues")
+            .and_then(Value::as_array)
+            .and_then(|issues| issues.first())
+            .and_then(|issue| issue.get("field"))
+            .and_then(Value::as_str),
+        Some("options.docnav-markdown.missing_option")
     );
 }
 
@@ -248,7 +393,9 @@ fn navigation_rejects_config_option_not_applicable_to_operation() {
         config_sources(
             json!({
                 "options": {
-                    "max_heading_level": 2
+                    "docnav-markdown": {
+                        "max_heading_level": 2
+                    }
                 }
             }),
             Value::Null,
