@@ -1,4 +1,4 @@
-本 proposal 是 `create-universal-cli-config-crate` 的未审核临时说明：从 Docnav 现有 typed-fields 与 parameter-resolution 经验中抽象出可作为子仓库复用的 Rust CLI/config 解析底层 crate；当前文档只存在于 `openspec/changes/create-universal-cli-config-crate/`，不影响现有其它文档或主规范。
+本 proposal 是 `create-universal-cli-config-crate` 的 change-local 说明：从 Docnav 现有 typed-fields 与 parameter-resolution 经验中抽象出可作为子仓库复用的 Rust CLI/config 解析底层 crate；当前文档只存在于 `openspec/changes/create-universal-cli-config-crate/`，不影响主规范及现有其它文档。
 
 ## Why
 
@@ -9,10 +9,10 @@ Docnav 已经在 `typed-fields` 与 `parameter-resolution` 中沉淀了字段契
 ## What Changes
 
 - 新增通用 Rust CLI/config resolution 的 OpenSpec 能力，覆盖 typed option contract、source projection、multi-source resolution、merge strategy、provenance trace 和 final materialization。
-- 设计从 Docnav 当前 `typed-fields` 与 `parameter-resolution` 抽象可复用核心的迁移边界，保留 Docnav 专属 adapter、operation、protocol、diagnostic code 和 output ownership 在 Docnav 内。
+- 设计从 Docnav 当前 `typed-fields` 与 `parameter-resolution` 抽象可复用核心的 hard cutover 边界，保留 Docnav 专属 adapter、operation、protocol、diagnostic code 和 output ownership 在 Docnav 内。
 - 定义 CLI flag、env var、config file、dynamic/static defaults、custom source 的统一来源模型，并支持 deterministic priority 与 per-field merge strategy。
 - 定义 `explain` / trace 类输出所需的来源证据，便于用户理解最终配置值来自哪里、覆盖了什么。
-- 将新 crate 设计为可子仓库化的独立边界：先在当前 workspace 中形成可验证 crate，再按审计结果迁移或镜像到独立 repo、submodule 或 subtree，供其它 Rust CLI 项目复用。
+- 将新 crate 设计为可子仓库化的独立边界：先在当前 workspace 中形成可验证 crate，再按 release-readiness 审计迁移到独立 repository，供其它 Rust CLI 项目复用。
 - 非目标：本 change 不改变 Docnav 的 `outline -> ref -> read` 协议、不改变现有 adapter contract、不引入新的文档导航行为、不把 Docnav 的 operation/adapter 语义塞进通用库核心。
 
 ## Capabilities
@@ -28,7 +28,8 @@ Docnav 已经在 `typed-fields` 与 `parameter-resolution` 中沉淀了字段契
 ## Impact
 
 - 影响代码边界：`crates/shared/typed-fields`、`crates/shared/typed-fields-macros`、`crates/shared/parameter-resolution`、`crates/shared/cli-args`、`crates/docnav/src/cli/parser/native_options.rs`、`crates/shared/navigation/src/parameters/**`。
-- 新增或重组 crate 边界：候选 crate 名包括 `cli-config-resolution` / `typed-config-resolution`，并可配套 `*-clap`、`*-serde` feature 或 companion crate；最终命名由实现前审计确认。
-- 依赖影响：核心 crate 应尽量保持低依赖；`clap`、`serde_json`、`toml`、`figment` 类集成必须通过 feature 或 adapter 层隔离，避免核心库绑定某个 CLI/config 框架。
-- 验证影响：需要新增 crate-level unit tests、Docnav compatibility tests、merge strategy tests、source provenance tests、derive macro compile tests，以及后续子仓库化的 package/release 验证。
-- 发布影响：实现完成前不得发布外部 artifact；子仓库化方式、包名和 crate API 稳定性需通过实现前审计确认。
+- 新增 crate 边界：工作区实现使用 `cli-config-resolution` 作为 capability 与 crate/package 工作名；发现命名冲突、owner 冲突、public contract 风险任一问题时，先更新 `design.md` 决策再执行 crate 创建，已创建时同步重命名。
+- Docnav 集成影响：本 change 完成时 Docnav navigation input resolution 必须直接使用新 resolver；旧 fixed source resolver、运行时双路径和 fallback 不随实现完成状态保留。
+- 依赖影响：核心 crate 应尽量保持低依赖；`clap`、`serde_json`、`toml`、`figment` 类集成必须通过 companion crate 隔离，避免核心库绑定某个 CLI/config 框架。
+- 验证影响：需要新增 crate-level unit tests、Docnav hard cutover tests、merge strategy tests、source provenance tests、companion crate integration tests，以及后续子仓库化的 package/release 验证。
+- 发布影响：实现完成前不得发布外部 artifact；外部 package 名默认沿用 `cli-config-resolution`，独立 repository 迁移、发布节奏和 crate API 稳定性需在 release-readiness 决策门中确认并记录。
