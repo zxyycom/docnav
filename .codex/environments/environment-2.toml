@@ -9,5 +9,6 @@ git submodule update --init --recursive scripts/tools/foundation scripts/tools/p
 pnpm install --frozen-lockfile
 git restore --staged --worktree .
 git clean -fd
+codegraph init
 bun run verify:docnav-workspace
 '''
