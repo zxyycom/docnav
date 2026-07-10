@@ -5,10 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+cli-config-resolution.workspace = true
 docnav-adapter-contracts.workspace = true
 docnav-diagnostics.workspace = true
 docnav-protocol.workspace = true
-docnav-parameter-resolution.workspace = true
 docnav-typed-fields.workspace = true
 regex.workspace = true
 serde_json.workspace = true

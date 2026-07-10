@@ -2,12 +2,10 @@ mod config;
 mod fields;
 mod input;
 mod native_options;
+mod resolution;
 mod values;
 
 use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec, NativeOptionHandoff};
-use docnav_parameter_resolution::{
-    ids, EntryPassthroughPolicy, ParameterResolution, ParameterResolutionPipeline,
-};
 use docnav_protocol::{Operation, Options, PositiveInteger};
 use docnav_typed_fields::{FieldStringEnum, ProcessingId};
 use serde_json::{json, Value};
@@ -18,11 +16,29 @@ use crate::{
     NavigationResolvedValue,
 };
 
+pub(super) mod ids {
+    pub(super) const ADAPTER: &str = "docnav.defaults.adapter";
+    pub(super) const INVOCATION_LOG_CONTENT_CAPTURE_ENABLED: &str =
+        "docnav.invocation_log.content_capture.enabled";
+    pub(super) const INVOCATION_LOG_CONTENT_CAPTURE_ROOT: &str =
+        "docnav.invocation_log.content_capture.root";
+    pub(super) const INVOCATION_LOG_ENABLED: &str = "docnav.invocation_log.enabled";
+    pub(super) const INVOCATION_LOG_PATH: &str = "docnav.invocation_log.path";
+    pub(super) const LIMIT: &str = "docnav.defaults.pagination.limit";
+    pub(super) const OUTPUT: &str = "docnav.defaults.output";
+    pub(super) const PAGE: &str = "docnav.document.page";
+    pub(super) const PAGINATION_ENABLED: &str = "docnav.defaults.pagination.enabled";
+    pub(super) const PATH: &str = "docnav.document.path";
+    pub(super) const QUERY: &str = "docnav.document.query";
+    pub(super) const REF: &str = "docnav.document.ref";
+}
+
 const DIRECT_PROCESSING: &str = "cli";
 const CONFIG_PROCESSING: &str = "config";
 const DEFAULT_LIMIT: i64 = 6000;
 const DEFAULT_PAGE: i64 = 1;
 const DEFAULT_PAGINATION_ENABLED: bool = true;
+const MAX_PAGINATION_LIMIT: u32 = u32::MAX;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdapterIntent {
@@ -57,7 +73,8 @@ pub fn resolve_adapter_intent(
     config_sources: &NavigationConfigSources,
 ) -> Result<AdapterIntent, NavigationError> {
     let fields = fields::adapter_intent_fields()?;
-    let resolution = resolve_with_fields(&fields, command, config_sources, &[], "adapter-intent")?;
+    let resolution =
+        resolve_command_with_fields(&fields, command, config_sources, &[], "adapter-intent")?;
 
     config::first_resolution_error(&resolution, config_sources)?;
     Ok(AdapterIntent {
@@ -84,7 +101,7 @@ pub fn resolve_operation_input(
         registry,
     )?;
 
-    let resolution = resolve_with_fields(
+    let resolution = resolve_command_with_fields(
         operation_fields.as_ref(),
         command,
         config_sources,
@@ -120,7 +137,7 @@ pub fn resolve_context_defaults(
         registry,
     )?;
 
-    let resolution = resolve_with_fields(
+    let resolution = resolve_command_with_fields(
         operation_fields.as_ref(),
         command,
         config_sources,
@@ -151,14 +168,7 @@ pub(crate) fn inspect_config_sources(
 ) -> Result<Value, NavigationError> {
     let field_set = fields::config_inspection_fields(registry)?;
     let fields = field_set.as_ref();
-    let resolution = ParameterResolutionPipeline::new(fields)
-        .with_direct_input_processing_id(DIRECT_PROCESSING)
-        .with_config_processing_id(CONFIG_PROCESSING)
-        .with_loaded_project_config(config_sources.project.loaded.clone())
-        .with_loaded_user_config(config_sources.user.loaded.clone())
-        .with_passthrough_policy(EntryPassthroughPolicy::Discard)
-        .resolve(None)
-        .map_err(|_| NavigationError::internal("config-inspection-resolution-failed"))?;
+    let resolution = resolve_with_fields(fields, None, config_sources, "config-inspection")?;
 
     Ok(json!({
         "sources": [
@@ -173,7 +183,7 @@ pub(crate) fn inspect_config_sources(
 
 fn resolved_input_from_resolution(
     operation: Operation,
-    resolution: &ParameterResolution,
+    resolution: &resolution::ParameterResolution,
     selected_native_options: &[AdapterOptionSpec],
 ) -> Result<ResolvedNavigationInput, NavigationError> {
     let options = native_options::resolved_options(resolution, selected_native_options)?;
@@ -193,7 +203,7 @@ fn resolved_input_from_resolution(
 
 fn defaults_from_resolution(
     operation: Operation,
-    resolution: &ParameterResolution,
+    resolution: &resolution::ParameterResolution,
 ) -> Result<NavigationContextDefaults, NavigationError> {
     Ok(NavigationContextDefaults {
         adapter: resolved_value(resolution, ids::ADAPTER)
@@ -216,7 +226,7 @@ fn defaults_from_resolution(
 }
 
 fn required_resolved_value(
-    resolution: &ParameterResolution,
+    resolution: &resolution::ParameterResolution,
     identity: &str,
 ) -> Result<NavigationResolvedValue, NavigationError> {
     resolved_value(resolution, identity)
@@ -224,7 +234,7 @@ fn required_resolved_value(
 }
 
 fn resolved_value(
-    resolution: &ParameterResolution,
+    resolution: &resolution::ParameterResolution,
     identity: &str,
 ) -> Option<NavigationResolvedValue> {
     let value = resolution.value(&values::identity_key(identity).ok()?)?;
@@ -236,19 +246,27 @@ fn resolved_value(
 
 fn resolve_with_fields(
     fields: &docnav_typed_fields::FieldDefSet,
+    direct_input: Option<Value>,
+    config_sources: &NavigationConfigSources,
+    context: &str,
+) -> Result<resolution::ParameterResolution, NavigationError> {
+    resolution::resolve(fields, direct_input.as_ref(), config_sources)
+        .map_err(|_| NavigationError::internal(resolution_pipeline_error_id(context)))
+}
+
+fn resolve_command_with_fields(
+    fields: &docnav_typed_fields::FieldDefSet,
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_native_options: &[AdapterOptionSpec],
     context: &str,
-) -> Result<ParameterResolution, NavigationError> {
-    ParameterResolutionPipeline::new(fields)
-        .with_direct_input_processing_id(DIRECT_PROCESSING)
-        .with_config_processing_id(CONFIG_PROCESSING)
-        .with_loaded_project_config(config_sources.project.loaded.clone())
-        .with_loaded_user_config(config_sources.user.loaded.clone())
-        .with_passthrough_policy(EntryPassthroughPolicy::Discard)
-        .resolve(input::direct_input(command, selected_native_options))
-        .map_err(|_| NavigationError::internal(resolution_pipeline_error_id(context)))
+) -> Result<resolution::ParameterResolution, NavigationError> {
+    resolve_with_fields(
+        fields,
+        Some(input::direct_input(command, selected_native_options)),
+        config_sources,
+        context,
+    )
 }
 
 fn inspect_source(
@@ -281,7 +299,7 @@ fn source_diagnostics(
         .loaded
         .diagnostics()
         .iter()
-        .filter_map(config_source_issue_json)
+        .map(config_source_issue_json)
         .collect::<Vec<_>>();
     if diagnostics.is_empty() {
         if let Err(error) = validate_config_source_for_registry(source, registry) {
@@ -299,7 +317,6 @@ fn load_state(source: &NavigationConfigSource) -> String {
         .loaded
         .diagnostics()
         .first()
-        .and_then(|diagnostic| diagnostic.as_config_source())
         .map_or_else(|| "missing".to_owned(), |issue| issue.reason_code.clone())
 }
 
@@ -357,7 +374,7 @@ fn config_source_projection(fields: &docnav_typed_fields::FieldDefSet) -> Vec<Va
         .collect()
 }
 
-fn parameter_facts(resolution: &ParameterResolution) -> Vec<Value> {
+fn parameter_facts(resolution: &resolution::ParameterResolution) -> Vec<Value> {
     resolution
         .values()
         .iter()
@@ -371,7 +388,7 @@ fn parameter_facts(resolution: &ParameterResolution) -> Vec<Value> {
         .collect()
 }
 
-fn parameter_diagnostics(resolution: &ParameterResolution) -> Vec<Value> {
+fn parameter_diagnostics(resolution: &resolution::ParameterResolution) -> Vec<Value> {
     resolution
         .diagnostics()
         .iter()
@@ -387,16 +404,14 @@ fn parameter_diagnostics(resolution: &ParameterResolution) -> Vec<Value> {
 }
 
 fn config_source_issue_json(
-    diagnostic: &docnav_parameter_resolution::ParameterResolutionHandoff,
-) -> Option<Value> {
-    diagnostic.as_config_source().map(|issue| {
-        json!({
-            "source_level": issue.source_level,
-            "path_origin": issue.path_origin,
-            "path": issue.path,
-            "field": issue.field,
-            "reason_code": issue.reason_code,
-        })
+    diagnostic: &crate::config_source::NavigationConfigSourceIssue,
+) -> Value {
+    json!({
+        "source_level": diagnostic.source_level,
+        "path_origin": diagnostic.path_origin,
+        "path": diagnostic.path,
+        "field": diagnostic.field,
+        "reason_code": diagnostic.reason_code,
     })
 }
 

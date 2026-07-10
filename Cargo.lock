@@ -146,6 +146,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
+name = "cli-config-resolution"
+version = "0.1.0"
+
+[[package]]
+name = "cli-config-resolution-clap"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "cli-config-resolution",
+ "cli-config-resolution-serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cli-config-resolution-serde"
+version = "0.1.0"
+dependencies = [
+ "cli-config-resolution",
+ "serde_json",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -203,7 +225,6 @@ dependencies = [
  "docnav-markdown",
  "docnav-navigation",
  "docnav-output",
- "docnav-parameter-resolution",
  "docnav-protocol",
  "docnav-typed-fields",
  "serde",
@@ -257,9 +278,9 @@ dependencies = [
 name = "docnav-navigation"
 version = "0.1.0"
 dependencies = [
+ "cli-config-resolution",
  "docnav-adapter-contracts",
  "docnav-diagnostics",
- "docnav-parameter-resolution",
  "docnav-protocol",
  "docnav-typed-fields",
  "regex",
@@ -275,15 +296,6 @@ dependencies = [
  "docnav-protocol",
  "docnav-readable",
  "serde",
- "serde_json",
-]
-
-[[package]]
-name = "docnav-parameter-resolution"
-version = "0.1.0"
-dependencies = [
- "docnav-diagnostics",
- "docnav-typed-fields",
  "serde_json",
 ]
 

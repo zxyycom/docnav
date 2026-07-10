@@ -552,19 +552,51 @@ Proves:
 - `FieldDefs` derive 在编译期拒绝 leaf Rust field 类型与 `FieldDefBuilder<T>` 类型不一致的声明。
 - 缺少 field validation 或缺少 `#[field(...)]` attribute 的声明无法通过 trybuild compile-fail fixtures。
 
-### WB-PARAM-RESOLVE-001 Navigation input resolution helper 保持来源解析边界
+### WB-PARAM-FIELD-CONTRACT-001 Generic resolution field contracts preserve declaration invariants
 Status: implemented
-Code: `crates/shared/parameter-resolution/src/tests.rs`
+Code: `crates/shared/cli-config-resolution/src/tests.rs`
 
 Proves:
-- Navigation input resolution helper consumes typed-field metadata to produce typed runtime values with source info, using fixed `direct input > project config > user config > default` priority.
-- Processing-specific metadata projection and navigation parameter bindings construct direct input, project config, user config and default sources before resolution, and expose config-source projection facts from the same owner-provided metadata.
-- Missing required values, invalid mapped values, optional mapped JSON null, static defaults and dynamic default source values all pass through typed-field validation and do not expose unsafe typed values.
-- Explicit or present invalid config sources return blocking config diagnostics while default missing config sources remain absent without diagnostics.
-- Unmapped public input returns source-scoped blocking diagnostics；adapter-id native option sources are resolved through selected-adapter typed-field validation/extraction with source info preserved.
-- Adapter option declarations preserve owner/namespace/type variants, including same option name across multiple owners or value kinds, and generic merge does not collapse them into a single core type.
-- Navigation input resolution hands off final native option values after selected-adapter typed-field filtering and validation/extraction.
-- Operation argument binding records identity-to-arguments-path metadata while preserving the resolved source info; request construction remains outside the resolver.
+- Field and config-path builders preserve reusable identity、value kind、constraints、default、projection and merge metadata while rejecting empty paths、empty segments and incompatible source locators.
+- Field declarations enforce value-kind and merge-strategy compatibility.
+- Field sets reject invalid declarations、duplicate identities and duplicate projection locators.
+
+### WB-PARAM-SOURCE-EXTRACTION-001 Generic resolution core preserves normalized source facts
+Status: implemented
+Code: `crates/shared/cli-config-resolution/src/tests.rs`
+
+Proves:
+- Core extraction consumes normalized source facts without depending on CLI parsing；environment、config、default and custom sources preserve source-specific locators.
+- Present、invalid、explicit-absent、missing and static-default fallback facts retain distinct candidate states across source extractors.
+
+### WB-PARAM-RESOLVE-001 Generic resolution preserves one ordered resolution chain
+Status: implemented
+Code: `crates/shared/cli-config-resolution/src/tests.rs`
+
+Proves:
+- Explicit source priority and applicability select the highest applicable candidate deterministically；same-priority conflicts remain deterministic.
+- Required、optional and defaulted fields keep distinct presence semantics；valid explicit values outrank invalid defaults.
+- Scalar、list and map merge strategies preserve replace、append、recursive merge、null priority boundaries and conflict locators.
+- Resolution records selected、overridden、invalid、missing-required and merge-contributor trace facts with source-attributed diagnostics.
+- Explain and materialization consume the same resolution result；diagnostics block partial values and application hooks.
+
+### WB-PARAM-CLAP-001 clap projection and reads preserve explicit CLI candidate state
+Status: implemented
+Code: `crates/shared/cli-config-resolution-clap/src/lib.rs`
+
+Proves:
+- Field projections generate clap arguments and read scalar、list、map and boolean matches into typed CLI candidates with flag locators.
+- Typed read failures become invalid candidates；omitted flags remain missing rather than explicit values and do not override lower-priority sources.
+- Candidate extraction ignores non-CLI source specifications.
+
+### WB-PARAM-SERDE-001 serde config-path mapping preserves candidate facts
+Status: implemented
+Code: `crates/shared/cli-config-resolution-serde/src/lib.rs`
+
+Proves:
+- Nested JSON values map through declared config paths into present or missing core candidates with config-path locators.
+- JSON scalar、list and map shapes convert to core values without losing structure.
+- `JsonConfigSource` implements the core source-extractor contract.
 
 ### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影边界
 Status: implemented
@@ -613,13 +645,22 @@ Proves:
 
 ### WB-NAVIGATION-CONFIG-SOURCES-002 Navigation loads config sources with descriptor origin
 Status: implemented
-Code: `crates/shared/navigation/src/tests/navigation/config_sources.rs`, `crates/shared/parameter-resolution/src/tests/construction.rs`
+Code: `crates/shared/navigation/src/tests/navigation/config_sources.rs`
 
 Proves:
 - `docnav-navigation` loads project/user config sources from core-supplied descriptors that carry source level, resolved path and path origin.
 - Default-path missing project/user config sources are absent without diagnostics.
 - Explicit-path missing、unreadable、invalid JSON 和 top-level non-object config sources return blocking config source diagnostics with source level and selected config file path.
 - Selecting a config file through CLI flag does not promote values inside that file to direct argv source; parameter priority remains `explicit > project > user > built_in`.
+
+### WB-NAVIGATION-HARD-CUTOVER-001 Navigation hard cutover preserves resolver parity
+Status: implemented
+Code: `crates/shared/navigation/src/tests/navigation/hard_cutover.rs`
+
+Proves:
+- Explicit common fields and selected-adapter native options retain priority over project and user config after the generic resolver cutover.
+- Mixed invalid common and generic-constrained native-option inputs retain field declaration order when selecting the primary diagnostic.
+- Typed-only regex and unique-item constraint failures preserve the same primary-diagnostic ordering parity.
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented

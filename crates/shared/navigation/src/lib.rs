@@ -1,3 +1,4 @@
+mod config_source;
 mod context;
 mod error;
 mod outline_mode;
@@ -7,10 +8,7 @@ mod routing;
 
 use std::path::PathBuf;
 
-use docnav_parameter_resolution::{
-    load_parameter_config_source, ConfigPathOrigin, ConfigSourceLevel, LoadedParameterConfigSource,
-    ParameterConfigSourceDescriptor,
-};
+use config_source::{load_config_source, LoadedNavigationConfigSource};
 use docnav_protocol::{Operation, PositiveInteger, ProtocolResponse, RequestEnvelope};
 use serde_json::Value;
 
@@ -91,19 +89,26 @@ pub enum NavigationConfigSourceOrigin {
 }
 
 impl NavigationConfigSourceOrigin {
-    const fn to_parameter_origin(self) -> ConfigPathOrigin {
-        match self {
-            Self::Default => ConfigPathOrigin::Default,
-            Self::ExplicitCli => ConfigPathOrigin::ExplicitCli,
-            Self::Override => ConfigPathOrigin::Override,
-        }
-    }
-
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Default => "default",
             Self::ExplicitCli => "explicit_cli",
             Self::Override => "override",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NavigationConfigSourceLevel {
+    Project,
+    User,
+}
+
+impl NavigationConfigSourceLevel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Project => "project",
+            Self::User => "user",
         }
     }
 }
@@ -139,7 +144,7 @@ struct NavigationConfigSource {
     pub level: &'static str,
     pub origin: &'static str,
     pub path: String,
-    pub loaded: LoadedParameterConfigSource,
+    pub loaded: LoadedNavigationConfigSource,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -245,7 +250,7 @@ where
 }
 
 pub fn validate_navigation_config_source_value<R>(
-    level: ConfigSourceLevel,
+    level: NavigationConfigSourceLevel,
     origin: NavigationConfigSourceOrigin,
     path: impl Into<String>,
     value: Value,
@@ -258,7 +263,7 @@ where
         level: level.as_str(),
         origin: origin.as_str(),
         path: path.into(),
-        loaded: LoadedParameterConfigSource::from_value(value),
+        loaded: LoadedNavigationConfigSource::from_value(value),
     };
     parameters::validate_config_source_for_registry(&source, registry)
 }
@@ -500,30 +505,20 @@ fn load_navigation_config_sources(
     descriptors: NavigationConfigSourceDescriptors,
 ) -> NavigationConfigSources {
     NavigationConfigSources {
-        project: load_navigation_config_source(
-            "project",
-            ConfigSourceLevel::Project,
-            descriptors.project,
-        ),
-        user: load_navigation_config_source("user", ConfigSourceLevel::User, descriptors.user),
+        project: load_navigation_config_source("project", descriptors.project),
+        user: load_navigation_config_source("user", descriptors.user),
     }
 }
 
 fn load_navigation_config_source(
     level: &'static str,
-    source_level: ConfigSourceLevel,
     descriptor: NavigationConfigSourceDescriptor,
 ) -> NavigationConfigSource {
-    let parameter_descriptor = ParameterConfigSourceDescriptor::new(
-        source_level,
-        descriptor.origin.to_parameter_origin(),
-        descriptor.path.clone(),
-    );
     NavigationConfigSource {
         level,
         origin: descriptor.origin.as_str(),
         path: descriptor.path.display().to_string(),
-        loaded: load_parameter_config_source(&parameter_descriptor),
+        loaded: load_config_source(level, descriptor.origin, &descriptor.path),
     }
 }
 

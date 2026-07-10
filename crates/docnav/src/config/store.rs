@@ -1,11 +1,8 @@
 use std::fs;
+use std::io;
 use std::path::Path;
 
-use docnav_navigation::validate_navigation_config_source_value;
-use docnav_parameter_resolution::{
-    load_parameter_config_source, ConfigPathOrigin as ParameterConfigPathOrigin, ConfigSourceLevel,
-    ParameterConfigSourceDescriptor,
-};
+use docnav_navigation::{validate_navigation_config_source_value, NavigationConfigSourceLevel};
 use serde_json::Value;
 
 use crate::error::{AppError, AppResult};
@@ -50,10 +47,10 @@ impl ConfigFileSource {
         }
     }
 
-    fn config_source_level(self) -> ConfigSourceLevel {
+    fn config_source_level(self) -> NavigationConfigSourceLevel {
         match self {
-            Self::Project => ConfigSourceLevel::Project,
-            Self::User => ConfigSourceLevel::User,
+            Self::Project => NavigationConfigSourceLevel::Project,
+            Self::User => NavigationConfigSourceLevel::User,
         }
     }
 }
@@ -101,32 +98,70 @@ fn read_config_source_value(
     selection: &SelectedConfigPath,
     source: ConfigFileSource,
 ) -> AppResult<Option<Value>> {
-    let descriptor = ParameterConfigSourceDescriptor::new(
-        source.config_source_level(),
-        parameter_config_path_origin(selection.origin),
-        selection.path.clone(),
-    );
-    let loaded = load_parameter_config_source(&descriptor);
-    if let Some(issue) = loaded
-        .diagnostics()
-        .first()
-        .and_then(|diagnostic| diagnostic.as_config_source())
-    {
+    match fs::metadata(&selection.path) {
+        Ok(metadata) if !metadata.is_file() => {
+            return Err(config_source_error(
+                &selection.path,
+                source,
+                selection.origin,
+                "not_file",
+            ));
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            return match selection.origin {
+                ConfigPathOrigin::Default => Ok(None),
+                ConfigPathOrigin::ExplicitCli => Err(config_source_error(
+                    &selection.path,
+                    source,
+                    selection.origin,
+                    "missing_explicit_cli",
+                )),
+            };
+        }
+        Err(_) => {
+            return Err(config_source_error(
+                &selection.path,
+                source,
+                selection.origin,
+                "unreadable",
+            ));
+        }
+    }
+    let content = match fs::read_to_string(&selection.path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            return match selection.origin {
+                ConfigPathOrigin::Default => Ok(None),
+                ConfigPathOrigin::ExplicitCli => Err(config_source_error(
+                    &selection.path,
+                    source,
+                    selection.origin,
+                    "missing_explicit_cli",
+                )),
+            };
+        }
+        Err(_) => {
+            return Err(config_source_error(
+                &selection.path,
+                source,
+                selection.origin,
+                "unreadable",
+            ));
+        }
+    };
+    let value = serde_json::from_str::<Value>(&content).map_err(|_| {
+        config_source_error(&selection.path, source, selection.origin, "invalid_json")
+    })?;
+    if !value.is_object() {
         return Err(config_source_error(
             &selection.path,
             source,
             selection.origin,
-            &issue.reason_code,
+            "non_object",
         ));
     }
-    Ok(loaded.value().cloned())
-}
-
-fn parameter_config_path_origin(origin: ConfigPathOrigin) -> ParameterConfigPathOrigin {
-    match origin {
-        ConfigPathOrigin::Default => ParameterConfigPathOrigin::Default,
-        ConfigPathOrigin::ExplicitCli => ParameterConfigPathOrigin::ExplicitCli,
-    }
+    Ok(Some(value))
 }
 
 fn navigation_config_path_origin(

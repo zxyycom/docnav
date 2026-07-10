@@ -6,7 +6,6 @@ use docnav_adapter_contracts::{
     Adapter, AdapterDefinition, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec,
     AdapterResult, FieldBound, FieldValidation, NativeOptionHandoff,
 };
-use docnav_parameter_resolution::LoadedParameterConfigSource;
 use docnav_protocol::{
     positive_result, AdapterIdentity, Entry, FindArguments, FindResult, FormatDescriptor,
     InfoArguments, InfoResult, Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason,
@@ -15,8 +14,9 @@ use docnav_protocol::{
 use serde_json::Value;
 
 use crate::{
-    NavigationAdapterRef, NavigationAdapterRegistry, NavigationCommand, NavigationConfigSource,
-    NavigationConfigSources, NavigationNativeOptionInput,
+    config_source::LoadedNavigationConfigSource, NavigationAdapterRef, NavigationAdapterRegistry,
+    NavigationCommand, NavigationConfigSource, NavigationConfigSources,
+    NavigationNativeOptionInput,
 };
 
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline];
@@ -44,13 +44,13 @@ pub(super) fn config_sources(project: Value, user: Value) -> NavigationConfigSou
             level: "project",
             origin: "default",
             path: "project/.docnav/docnav.json".to_owned(),
-            loaded: LoadedParameterConfigSource::from_value(project),
+            loaded: LoadedNavigationConfigSource::from_value(project),
         },
         user: NavigationConfigSource {
             level: "user",
             origin: "default",
             path: "user/docnav.json".to_owned(),
-            loaded: LoadedParameterConfigSource::from_value(user),
+            loaded: LoadedNavigationConfigSource::from_value(user),
         },
     }
 }

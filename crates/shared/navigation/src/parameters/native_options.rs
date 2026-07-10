@@ -1,6 +1,5 @@
 use docnav_adapter_contracts::{AdapterError, AdapterOptionSpec, NativeOptionIssue};
 use docnav_diagnostics::AdapterConfigSourceDetails;
-use docnav_parameter_resolution::{ParameterResolution, ParameterSourceKind};
 use docnav_protocol::{OptionEntry, Options};
 use docnav_typed_fields::ValidationReason;
 use serde_json::Value;
@@ -9,6 +8,7 @@ use crate::{NavigationCommand, NavigationConfigSources, NavigationError};
 
 use super::{
     input::native_option_cli_value,
+    resolution::{ParameterResolution, ParameterSourceKind},
     values::{source_label, typed_value_to_json, validation_reason_code},
 };
 

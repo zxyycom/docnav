@@ -2,13 +2,10 @@ use std::collections::BTreeSet;
 
 use docnav_adapter_contracts::AdapterOptionSpec;
 use docnav_diagnostics::DiagnosticSource;
-use docnav_parameter_resolution::{
-    ids, ParameterResolution, ParameterResolutionHandoff, ParameterResolutionPipeline,
-    ParameterSourceKind, ParameterValidationIssue,
-};
 use docnav_typed_fields::{FieldDefSet, ProcessingId};
 use serde_json::Value;
 
+use crate::config_source::LoadedNavigationConfigSource;
 use crate::error::ConfigFieldError;
 use crate::{
     NavigationAdapterRegistry, NavigationCommand, NavigationConfigSource, NavigationConfigSources,
@@ -16,11 +13,15 @@ use crate::{
 };
 
 use super::{
-    fields,
+    fields, ids,
     input::native_option_cli_value,
     native_options::{
         native_option_validation_error, spec_for_identity, unsupported_option,
         UnsupportedOptionContext,
+    },
+    resolution::{
+        self, ParameterResolution, ParameterResolutionHandoff, ParameterSourceKind,
+        ParameterValidationIssue,
     },
     values::{validation_error_for_identity, validation_reason_code},
 };
@@ -122,8 +123,8 @@ fn first_config_source_error(
     config_sources: &NavigationConfigSources,
 ) -> Result<(), NavigationError> {
     for source in [&config_sources.project, &config_sources.user] {
-        if let Some(diagnostic) = source.loaded.diagnostics().first() {
-            return Err(handoff_error(diagnostic));
+        if let Some(issue) = source.loaded.diagnostics().first() {
+            return Err(config_source_error(issue));
         }
     }
     Ok(())
@@ -132,8 +133,8 @@ fn first_config_source_error(
 fn first_config_source_error_for_source(
     source: &NavigationConfigSource,
 ) -> Result<(), NavigationError> {
-    if let Some(diagnostic) = source.loaded.diagnostics().first() {
-        return Err(handoff_error(diagnostic));
+    if let Some(issue) = source.loaded.diagnostics().first() {
+        return Err(config_source_error(issue));
     }
     Ok(())
 }
@@ -254,18 +255,21 @@ fn validate_config_source_values(
     source: &NavigationConfigSource,
     context: &ConfigValidationContext<'_>,
 ) -> Result<(), NavigationError> {
-    let mut pipeline = ParameterResolutionPipeline::new(context.fields)
-        .with_direct_input_processing_id(super::DIRECT_PROCESSING)
-        .with_config_processing_id(super::CONFIG_PROCESSING)
-        .with_passthrough_policy(docnav_parameter_resolution::EntryPassthroughPolicy::Discard);
-    pipeline = match source.level {
-        "project" => pipeline.with_loaded_project_config(source.loaded.clone()),
-        "user" => pipeline.with_loaded_user_config(source.loaded.clone()),
-        _ => pipeline,
+    let config_sources = match source.level {
+        "project" => NavigationConfigSources {
+            project: source.clone(),
+            user: empty_config_source("user"),
+        },
+        "user" => NavigationConfigSources {
+            project: empty_config_source("project"),
+            user: source.clone(),
+        },
+        _ => NavigationConfigSources {
+            project: empty_config_source("project"),
+            user: empty_config_source("user"),
+        },
     };
-    let resolution = pipeline
-        .resolve(None)
-        .map_err(|_| NavigationError::internal("config-source-validation-resolution-failed"))?;
+    let resolution = resolution::resolve(context.fields, None, &config_sources)?;
 
     for diagnostic in resolution.diagnostics() {
         let ParameterResolutionHandoff::Validation(diagnostic) = diagnostic else {
@@ -296,6 +300,15 @@ fn validation_belongs_to_source(
         (Some(ParameterSourceKind::ProjectConfig), "project")
             | (Some(ParameterSourceKind::UserConfig), "user")
     )
+}
+
+fn empty_config_source(level: &'static str) -> NavigationConfigSource {
+    NavigationConfigSource {
+        level,
+        origin: "default",
+        path: String::new(),
+        loaded: LoadedNavigationConfigSource::default(),
+    }
 }
 
 fn config_key_issue_error(
@@ -402,6 +415,12 @@ fn handoff_error(diagnostic: &ParameterResolutionHandoff) -> NavigationError {
             issue.to_record_draft(DiagnosticSource::with_stage("docnav", "config")),
         ),
     }
+}
+
+fn config_source_error(
+    issue: &crate::config_source::NavigationConfigSourceIssue,
+) -> NavigationError {
+    NavigationError::new(issue.to_record_draft(DiagnosticSource::with_stage("docnav", "config")))
 }
 
 fn handoff_error_with_config_sources(

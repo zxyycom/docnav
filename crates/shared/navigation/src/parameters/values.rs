@@ -1,13 +1,16 @@
 use std::num::NonZeroU32;
 
-use docnav_parameter_resolution::{
-    ids, ParameterResolution, ParameterSourceKind, MAX_PAGINATION_LIMIT,
-};
 use docnav_protocol::{Operation, PositiveInteger};
 use docnav_typed_fields::{FieldIdentity, TypedValue, ValidationReason};
 use serde_json::{json, Value};
 
 use crate::{NavigationError, NavigationOutputMode};
+
+use super::{
+    ids,
+    resolution::{ParameterResolution, ParameterSourceKind},
+    MAX_PAGINATION_LIMIT,
+};
 
 pub(super) fn validation_error_for_identity(identity: &str) -> NavigationError {
     NavigationError::invalid_request(field_label(identity), validation_reason(identity))
