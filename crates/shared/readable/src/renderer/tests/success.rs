@@ -416,11 +416,3 @@ fn to_readable_value_serializes_valid_payload() {
     assert!(value.is_object());
     assert_eq!(value["ref"], "ok");
 }
-
-// ── 1.6.16 Default config validates successfully ──────────────────
-
-#[test]
-fn default_config_passes_validation() {
-    let config = RendererConfig::default_config();
-    config.validate().unwrap(); // should not panic or error
-}

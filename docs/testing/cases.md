@@ -11,7 +11,7 @@ Code: `test/smoke/core/cases/real-markdown.ts`
 
 Proves:
 - 真实 `docnav` 进程可以通过 Markdown adapter 完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info` 链路。
-- Core 不解析 adapter ref，用户可见 readable JSON 不包含 protocol envelope。
+- outline/find 返回的 adapter ref 可原样提交给 read，readable read 保留该 ref；用户可见 readable JSON 不包含 protocol envelope。
 
 决策说明:
 - 保留为一个 smoke case 是因为 `outline`/`find` 产生的 refs、后续 `read` 和 `info` 都复用同一个真实 Markdown project、adapter selection 和 readable-json 入口；拆分会重复 fixture 初始化和 ref 获取模板，而不会增加新的 owner 证明。
@@ -157,12 +157,12 @@ Proves:
 - `adapter list` 输出 core release static registry 内置 Markdown adapter metadata。
 
 ### BB-RELEASE-PACKAGE-001 发布包二进制 smoke
-Status: planned
+Status: implemented
+Code: `scripts/release-package/smoke.ts`
 
 Proves:
 - release package 内二进制可执行，manifest、文件集合、校验和和 host/target 选择保持一致。
 - package smoke 与 release script 参数解析分层。
-- 实现触发条件：release package artifact 生成和 package smoke 进入稳定验证入口后，将本 case 改为 `implemented` 并补 `Code:`/`@case`。
 
 ## White-box Cases
 
@@ -255,7 +255,6 @@ Proves:
 - Complete serialized-output goldens cover one valid selected project/user pair and one invalid-JSON project source. They lock source status、summaries、registry-backed config-source projection、resolved parameter facts、source-attributed diagnostics and top-level output shape while normalizing only runtime paths.
 - The valid golden proves adapter-id native option projection and project/user/built-in provenance without modifying either selected file. The invalid-load golden proves invalid JSON remains a successful inspection result with matching source and parameter diagnostics.
 - Explicit missing、top-level non-object and not-file source states retain focused equivalence checks；unreadable source loading remains owned by lower-layer config loading / parameter-resolution tests. Optional non-JSON config `null` suppresses its static default without creating a parameter fact.
-- `config inspect` can list currently resolvable source facts, but does not ask document context resolution to preview adapter dispatch.
 - `init --project-config` creates or preserves the selected project config file and rejects an existing directory at that selected file path.
 
 ### WB-CORE-INVOCATION-LOG-001 Core runtime invocation log 保持审计边界
@@ -395,7 +394,7 @@ Code: `crates/shared/readable/src/renderer/tests/success.rs`
 
 Proves:
 - readable-view header、block replacement、UTF-8 byte length、LF framing、extension fields 和 operation-specific block/no-block config 保持稳定。
-- readable error payload、header standalone JSON 和 default config success path 保持可还原。
+- readable error payload 和 header standalone JSON 保持可还原。
 
 决策说明:
 - 保留 block/framing 成功矩阵为一个 case 是因为这些断言共享 renderer config、readable value fixture 和可还原 readable-view 文本基底；拆分成按 operation 的 case 会重复 header/block parsing 模板。
@@ -456,11 +455,11 @@ Status: implemented
 Code: `crates/shared/protocol/src/tests/basic.rs`
 
 Proves:
-- Protocol diagnostic codes map to protocol error categories and their diagnostic projection rules expose the protocol code.
+- request、document、adapter-boundary 和 internal category 各有一个 protocol diagnostic code 代表，其 diagnostic projection rule 暴露对应 protocol code。
 - Navigation routing protocol errors expose static-registry guidance, and protocol errors round-trip through `DiagnosticRecord` projection while preserving guidance.
 - Invalid-request records with config issue details project protocol owner, location and received value from the diagnostic record.
 
-### WB-PROTO-DECODE-001 Protocol request decode 按阶段失败
+### WB-PROTO-DECODE-001 Protocol decode wrapper 返回可达阶段结果
 Status: implemented
 Code: `crates/shared/protocol/src/tests/decode.rs`
 
@@ -468,7 +467,7 @@ Proves:
 - Protocol request decoding runs schema/field-contract validation before raw typed decode.
 - Protocol request decoding rejects unmapped request arguments at the schema stage.
 - Protocol request decoding preserves defaultable empty arguments for operation-specific later resolution.
-- Generic decode reports schema-valid but typed-invalid input at `Deserialize` stage, and the manifest wrapper returns the current typed manifest shape.
+- Manifest wrapper returns the current typed manifest shape.
 - Probe result semantic validation and protocol response operation/result pairing remain semantic-stage failures.
 
 ### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema constraints 被实现测试消费
@@ -567,7 +566,7 @@ Code: `subrepos/cli-config-resolution/crates/cli-config-resolution/tests/canonic
 Proves:
 - Environment extraction queries only declared `EnvVar` locators；unknown environment entries are ignored and missing declared variables produce no candidate.
 - Decodable values become normalized candidates；decode failures retain raw input、reason、source id and environment locator and block when selected or merge-contributing.
-- `Source` preserves source kind、priority and candidate locator facts without depending on CLI or config parser types. CLI and structured-config extraction are proven by their companion cases.
+- `Source` exposes source kind、priority and candidate locator facts. CLI and structured-config extraction are proven by their companion cases.
 
 ### WB-PARAM-RESOLVE-001 Canonical resolution preserves one ordered merge chain
 Status: implemented
@@ -669,8 +668,7 @@ Code: `crates/adapters/markdown/src/markdown/refs/tests.rs`
 
 Proves:
 - canonical heading ref 由 line 和 level 结构字段构成。
-- parser 将前导零、非法 level、zero line、非数字字段、缺失/额外字段、错误 prefix 和 `doc:full` 映射到 grammar 外输入。
-- `doc:full` sentinel 的保留语义由 Markdown ref matching case 覆盖；本 case 只证明 grammar parser 不把它当作 heading ref。
+- parser 将一个非法字段、一个未知 ref 类型和一个前导零输入代表映射到 grammar 外输入；同类拼写和完整正则约束由 Markdown owner 的 Manual CR 维护。
 
 ### WB-MD-REF-MATCH-001 Markdown parsed ref 精确匹配 heading 坐标
 Status: implemented
@@ -679,7 +677,6 @@ Code: `crates/adapters/markdown/src/markdown/refs/tests.rs`
 Proves:
 - parsed heading ref 在 line 和 level 同时匹配时命中目标 heading。
 - matcher 的命中条件由 parsed ref 的 line 和 level 决定。
-- `FULL_DOCUMENT_REF` 保留 adapter-owned full document sentinel `doc:full`。
 
 ### WB-MD-PARSE-001 Markdown parser 忽略非 heading 结构
 Status: implemented
@@ -733,8 +730,6 @@ Code: `crates/adapters/markdown/src/markdown/tests.rs`
 
 Proves:
 - canonical ref 可解析到 heading，`doc:full` 可解析完整文档。
-- 符合 canonical grammar 但缺少匹配项的 ref 返回 `REF_NOT_FOUND`。
-- grammar 外输入返回 `REF_INVALID`。
 
 ### WB-MD-LINK-001 Markdown outline/find ref 可通过 read roundtrip
 Status: implemented
@@ -742,15 +737,14 @@ Code: `crates/adapters/markdown/src/markdown/tests.rs`
 
 Proves:
 - Markdown navigation 生成的 outline entry ref 可以直接传给 read。
-- find 生成的 ref 也可通过同一本地 parser/formatter 路径解析。
+- find 生成的 ref 也可直接提交给 read 并成功解析。
 
 ### WB-MD-REF-001 Markdown 重复标题生成唯一可读 ref
 Status: implemented
 Code: `crates/adapters/markdown/tests/adapter/outline_ref.rs`
 
 Proves:
-- 重复 heading path 会生成唯一 ref，且每个 ref 都能读取目标 section。
-- Markdown ref generation 和 read lookup 仍由 adapter 拥有。
+- 位于不同结构坐标的重复 heading 会生成唯一 ref，且每个 ref 都能读取对应 section。
 
 ### WB-MD-REF-002 Markdown ref 错误区分 invalid 和 not-found
 Status: implemented
@@ -837,11 +831,9 @@ Code: `scripts/docnav-workspace/verify.test.ts`
 
 Proves:
 - required 和 full verifier profile 保持区分。
-- profile membership、check label、arguments、dependencies、mutex 和 report counting 由 verifier tests 明确证明。
+- profile membership 和 report counting 由 verifier tests 明确证明。
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
-- required profile 持续对 `subrepos/cli-config-resolution/Cargo.toml` 运行 nested workspace fmt；full profile 持续覆盖该 workspace 的 clippy、all-target tests、doc-tests 和 runnable example。
-- Codex environment setup 文件声明使用递归 submodule 初始化命令；本 case 不把 setup 文本检查扩大为环境执行顺序证明。
 - full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
 - completion line 和 summary 可区分 passed、warning 和 failed。
 - 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
@@ -852,10 +844,9 @@ flowchart LR
   B --> C{"profile"}
   C -->|"required"| D["选择 required checks"]
   C -->|"full"| E["选择 full checks"]
-  D --> F["构建 task graph"]
+  D --> F["形成 required check list"]
   E --> F
-  F --> G["应用 dependencies / mutexes"]
-  G --> H["执行 checks 并过滤终端可见输出"]
+  F --> H["接收 check result 并过滤终端可见输出"]
   H --> I{"result status"}
   I -->|"passed / warning / failed"| J["输出 completion lines"]
   J --> K["输出允许显示的诊断"]
@@ -870,7 +861,7 @@ Proves:
 - independent smoke tasks 可以并发运行，同时 command count 按 report 隔离。
 - failed task、nested task group、默认 runner 的 stdout/stderr command record、plain-text child environment 和 concurrency validation 保持预期 audit result shape。
 - `DOCNAV_SMOKE_CONCURRENCY` 只在 smoke scheduling boundary 作为默认并发输入生效；直接解析 `undefined` 不得隐式读取全局环境变量。
-- core smoke repository temp root 在运行前创建并在运行结束后清理；清理失败或残留不得改变 command output contract。
+- core smoke 在 caller-owned base 下创建唯一 run child；失败 task 执行时 project cwd 已存在，结束后只删除 owned child 并保留 caller-owned base。
 
 ```mermaid
 flowchart LR
@@ -1016,8 +1007,8 @@ Code: `scripts/quality/config.test.ts`
 Proves:
 - smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `typescript-validation-smoke` 的广泛 globs 遮蔽。
 - smoke harness 和 validator infrastructure 仍归入 `typescript-validation-smoke`。
-- quality scan input globs 和 submodule-aware worktree file discovery 同时覆盖根 workspace 与 `subrepos/cli-config-resolution/crates/**` 的 Rust source，以及 TypeScript scripts 和 tests；根仓库 gitlink 不会吞掉 nested sources。
-- Nested Rust production、tests 和 benches 沿用既有 Rust code areas；examples/fixtures 沿用 `fixtures-examples`，nested `target` 继续由统一 exclude rule 排除。
+- quality current scan 的实际文件发现同时包含根 workspace 与 `subrepos/cli-config-resolution/crates/**` 的 Rust source，以及 TypeScript scripts 和 tests；根仓库 gitlink 不会吞掉 nested sources。
+- Nested Rust production、tests 和 benches 沿用既有 Rust code areas；examples/fixtures 沿用 `fixtures-examples`。
 - TypeScript code area globs 继续将 production scripts 与 validation/smoke TypeScript 分开。
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定

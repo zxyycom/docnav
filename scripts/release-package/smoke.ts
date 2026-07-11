@@ -9,6 +9,7 @@ import {
   validateReleasePackage,
 } from "../tools/release-package/index.ts";
 
+// @case BB-RELEASE-PACKAGE-001
 const selection = parseManifestArgs(process.argv.slice(2));
 const manifestPath = resolvePackageManifestPath(selection);
 const { expectProducerKind, expectSourceDirty } = selection;

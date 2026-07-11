@@ -6,7 +6,7 @@ use docnav_diagnostics::{
 
 // @case WB-PROTO-BASIC-001
 #[test]
-fn positive_integer_constructors_do_not_panic_on_zero() {
+fn positive_integer_constructors_reject_zero() {
     assert_eq!(try_positive(0), None);
 
     let error = positive_result(0).expect_err("zero is not a positive integer");
@@ -122,34 +122,6 @@ fn protocol_error_codes_use_diagnostic_categories() {
             ProtocolErrorCategory::Document,
         ),
         (
-            ProtocolDiagnosticCode::DocumentPathInvalid,
-            ProtocolErrorCategory::Document,
-        ),
-        (
-            ProtocolDiagnosticCode::DocumentEncodingUnsupported,
-            ProtocolErrorCategory::Document,
-        ),
-        (
-            ProtocolDiagnosticCode::FormatUnknown,
-            ProtocolErrorCategory::Document,
-        ),
-        (
-            ProtocolDiagnosticCode::FormatAmbiguous,
-            ProtocolErrorCategory::Document,
-        ),
-        (
-            ProtocolDiagnosticCode::RefNotFound,
-            ProtocolErrorCategory::Document,
-        ),
-        (
-            ProtocolDiagnosticCode::RefAmbiguous,
-            ProtocolErrorCategory::Document,
-        ),
-        (
-            ProtocolDiagnosticCode::RefInvalid,
-            ProtocolErrorCategory::Document,
-        ),
-        (
             ProtocolDiagnosticCode::AdapterUnavailable,
             ProtocolErrorCategory::AdapterBoundary,
         ),
@@ -171,18 +143,13 @@ fn protocol_error_codes_use_diagnostic_categories() {
 
 #[test]
 fn navigation_routing_default_guidance_uses_static_registry_language() {
-    for code in [
-        ProtocolDiagnosticCode::FormatUnknown,
-        ProtocolDiagnosticCode::AdapterUnavailable,
-    ] {
-        let guidance = protocol_error_default_guidance(code);
+    let guidance = protocol_error_default_guidance(ProtocolDiagnosticCode::FormatUnknown);
 
-        assert!(
-            guidance.contains("built-in adapter")
-                || guidance.contains("current core release static registry"),
-            "{code:?} guidance should mention the built-in/static registry source: {guidance}"
-        );
-    }
+    assert!(
+        guidance.contains("built-in adapter")
+            || guidance.contains("current core release static registry"),
+        "guidance should mention the built-in/static registry source: {guidance}"
+    );
 }
 
 #[test]

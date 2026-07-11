@@ -239,9 +239,11 @@ Markdown adapter 测试必须覆盖本页拥有的行为语义：
 - 静态 descriptor 暴露的默认 `pagination.enabled`、`limit`、`max_heading_level` 和 page 从 `1` 开始的分页规则。
 - Core CLI config source descriptor/path handoff、path context、navigation-owned default config absence、invalid config failure、`defaults.output`、navigation input resolution native option handoff 和 Markdown adapter 对 `options.docnav-markdown.max_heading_level` 的 outline/find 可观察行为。
 - Unicode 字符预算、超长 item facts 截断、ref 完整保留和分页前进。
-- 重复 heading、重复路径、`doc:full`、`REF_INVALID` 和 `REF_NOT_FOUND` 边界。
+- 重复 heading、`doc:full`、`REF_INVALID` 和 `REF_NOT_FOUND` 边界。Grammar-invalid 自动化按非法字段、未知 ref 类型和前导零三种 owner-defined 类型各保留一个代表，不枚举同类拼写。
 
 测试层级、smoke case 组织和跨入口覆盖目标见 [测试策略](../testing.md) 与 [覆盖矩阵](../testing/coverage.md)。
+
+Manual CR: 修改 canonical heading ref 正则或字段约束时，reviewer 同步核对本页 grammar 表、`markdown/refs.rs` parser 和三类 grammar-invalid 代表；`doc:full` / `HEAD:leading` 继续由各自 read 行为验证，不在 heading parser 中建立 sentinel 字符串矩阵。
 
 ## 验证入口
 

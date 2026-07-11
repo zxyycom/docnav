@@ -24,43 +24,11 @@ fn parse_canonical_heading_ref() {
 }
 
 #[test]
-fn parse_rejects_leading_zeros() {
-    for ref_id in ["H:L01:H2", "H:L1:H02"] {
-        assert_eq!(ParsedRef::parse(ref_id), None, "{ref_id}");
-    }
-}
-
-#[test]
-fn parse_rejects_invalid_level() {
-    for ref_id in ["H:L1:H0", "H:L1:H7"] {
-        assert_eq!(ParsedRef::parse(ref_id), None, "{ref_id}");
-    }
-}
-
-#[test]
-fn parse_rejects_zero_line() {
-    assert_eq!(ParsedRef::parse("H:L0:H1"), None);
-}
-
-#[test]
-fn parse_rejects_non_numeric_fields() {
-    for ref_id in ["H:Lx:H1", "H:L1:Hx"] {
-        assert_eq!(ParsedRef::parse(ref_id), None, "{ref_id}");
-    }
-}
-
-#[test]
-fn parse_rejects_missing_or_wrong_prefix() {
+fn parse_rejects_one_representative_per_invalid_grammar_type() {
     for ref_id in [
-        // 缺少字段
-        "H:L1",
-        "H:L1:",
-        // 额外字段
-        "H:L1:H1:extra",
-        // 其他类型
-        "X:L1:H1",
-        "doc:full",
-        "",
+        "H:Lx:H1",  // 非法字段
+        "X:L1:H1",  // 未知 ref 类型
+        "H:L01:H1", // 前导零
     ] {
         assert_eq!(ParsedRef::parse(ref_id), None, "{ref_id}");
     }
@@ -107,9 +75,4 @@ fn matches_rejects_level_mismatch() {
     };
     let parsed = ParsedRef::parse("H:L7:H1").unwrap();
     assert!(!parsed.matches(&heading));
-}
-
-#[test]
-fn doc_full_is_preserved() {
-    assert_eq!(FULL_DOCUMENT_REF, "doc:full");
 }

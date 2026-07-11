@@ -18,7 +18,7 @@ describe("core smoke fixture projects", () => {
   it("uses semantic config fixtures with the shared Markdown document", () => {
     const project = configFixtureProject("project-native-option-outline");
 
-    assert.equal(project.root.includes(tempRoot), true);
+    assert.equal(path.dirname(project.root), tempRoot);
     assert.equal(fs.existsSync(path.join(project.docnavDir, "docnav.json")), true);
     assert.equal(fs.existsSync(project.normalPath), true);
     assert.equal(project.normalPath, path.join(root, "test", "smoke", "core", "fixtures", "normal.md"));
@@ -42,7 +42,7 @@ describe("core smoke fixture projects", () => {
     assert.equal(fs.readFileSync(copiedConfig, "utf8"), sourceContents);
     fs.writeFileSync(copiedConfig, "{}\n", "utf8");
 
-    assert.equal(project.root.includes(tempRoot), true);
+    assert.equal(path.dirname(project.root), tempRoot);
     assert.equal(fs.readFileSync(sourceConfig, "utf8"), sourceContents);
     assert.notEqual(fs.readFileSync(copiedConfig, "utf8"), sourceContents);
   });

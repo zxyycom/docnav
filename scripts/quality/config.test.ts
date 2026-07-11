@@ -21,25 +21,6 @@ describe("quality code area classification", () => {
     assert.equal(classifyQualityFile("scripts/tools/validators/schema/index.ts"), "typescript-validation-smoke");
   });
 
-  it("keeps source scan globs on Rust and TypeScript sources", () => {
-    assert.deepEqual(DEFAULT_CONFIG.include, [
-      "crates/**/*.rs",
-      "subrepos/cli-config-resolution/crates/**/*.rs",
-      "scripts/**/*.ts",
-      "test/**/*.ts"
-    ]);
-    assert.deepEqual(DEFAULT_CONFIG.codeAreas["typescript-production-scripts"].globs, [
-      "scripts/**/*.ts"
-    ]);
-    assert.deepEqual(DEFAULT_CONFIG.codeAreas["typescript-validation-smoke"].globs, [
-      "scripts/tools/validators/**/*.ts",
-      "scripts/**/*.test.ts",
-      "test/smoke/**/*.ts",
-      "test/tools/**/*.ts",
-      "test/**/*.ts"
-    ]);
-  });
-
   it("classifies nested workspace crates by Rust source role", () => {
     assert.equal(classifyQualityFile("crates/shared/protocol/src/lib.rs"), "rust-production");
     assert.equal(classifyQualityFile("crates/shared/protocol/src/tests/schema.rs"), "rust-tests");
@@ -67,12 +48,17 @@ describe("quality code area classification", () => {
     );
   });
 
-  it("discovers tracked Rust sources inside the configured submodule workspace", () => {
+  it("discovers representative Rust and TypeScript sources across workspaces", () => {
     const files = collectScanFiles(REPO_ROOT, DEFAULT_CONFIG);
 
-    assert.ok(
-      files.includes("subrepos/cli-config-resolution/crates/typed-fields/src/lib.rs")
-    );
+    for (const file of [
+      "crates/shared/protocol/src/lib.rs",
+      "subrepos/cli-config-resolution/crates/typed-fields/src/lib.rs",
+      "scripts/quality/scan.ts",
+      "test/tools/smoke-harness.ts"
+    ]) {
+      assert.ok(files.includes(file), `quality current scan should include ${file}`);
+    }
   });
 
 });

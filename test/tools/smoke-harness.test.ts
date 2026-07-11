@@ -191,14 +191,18 @@ describe("smoke harness task scheduling", () => {
     }
   });
 
-  it("cleans only the owned core smoke run directory after failure", { timeout: 10_000 }, () => {
+  it("creates and cleans only the owned core smoke run directory after task failure", { timeout: 10_000 }, () => {
     const tempBase = path.join(
       os.tmpdir(),
       `docnav-core-smoke-cleanup-${process.pid}-${Date.now()}`
     );
     const markerPath = path.join(tempBase, "caller-owned-marker");
+    const probePath = path.join(tempBase, "fake-docnav-cwds.txt");
     fs.mkdirSync(tempBase, { recursive: true });
     fs.writeFileSync(markerPath, "cleanup fixture");
+    fs.writeFileSync(probePath, "");
+    const fakeBinary = createFailingDocnavBinary(tempBase, probePath);
+    const callerOwnedEntries = fs.readdirSync(tempBase).sort();
 
     try {
       const result = spawnSync(process.execPath, ["test/docnav-core-smoke.ts"], {
@@ -206,18 +210,25 @@ describe("smoke harness task scheduling", () => {
         encoding: "utf8",
         env: {
           ...process.env,
-          DOCNAV_BIN: path.join(tempBase, "missing-docnav"),
-          DOCNAV_CORE_SMOKE_TEMP_ROOT: tempBase
+          DOCNAV_BIN: fakeBinary,
+          DOCNAV_CORE_SMOKE_TEMP_ROOT: tempBase,
+          DOCNAV_SMOKE_PROBE_PATH: probePath
         },
         timeout: 10_000
       });
 
       assert.notEqual(result.status, 0, "fixture should exercise the failing smoke path");
-      assert.match(result.stderr, /docnav binary not found:/);
+      const observedProjectCwds = fs.readFileSync(probePath, "utf8").trim().split(/\r?\n/u).filter(Boolean);
+      assert.ok(observedProjectCwds.length > 0, "fake binary should run after smoke projects are created");
+      for (const projectCwd of observedProjectCwds) {
+        const relative = path.relative(tempBase, projectCwd);
+        assert.ok(relative && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+        assert.equal(fs.existsSync(projectCwd), false, "owned smoke project should be removed after failure");
+      }
       assert.equal(fs.readFileSync(markerPath, "utf8"), "cleanup fixture");
       assert.deepEqual(
-        fs.readdirSync(tempBase),
-        ["caller-owned-marker"],
+        fs.readdirSync(tempBase).sort(),
+        callerOwnedEntries,
         "smoke cleanup should remove its run directory and preserve the caller-owned base"
       );
     } finally {
@@ -271,6 +282,34 @@ function createSpawnHarness(state: SmokeState) {
     resolveCwd: () => process.cwd(),
     safeArgPattern: /^[A-Za-z0-9_./:=@+-]+$/
   });
+}
+
+function createFailingDocnavBinary(tempBase: string, probePath: string): string {
+  const scriptPath = path.join(tempBase, "fake-docnav.cjs");
+  fs.writeFileSync(
+    scriptPath,
+    [
+      `#!${process.execPath}`,
+      'const fs = require("node:fs");',
+      `fs.appendFileSync(${JSON.stringify(probePath)}, process.cwd() + "\\n");`,
+      'process.stderr.write("intentional docnav smoke failure\\n");',
+      "process.exit(7);"
+    ].join("\n"),
+    "utf8"
+  );
+
+  if (process.platform !== "win32") {
+    fs.chmodSync(scriptPath, 0o755);
+    return scriptPath;
+  }
+
+  const commandPath = path.join(tempBase, "fake-docnav.cmd");
+  fs.writeFileSync(
+    commandPath,
+    `@echo off\r\n"${process.execPath}" "${scriptPath}" %*\r\n`,
+    "utf8"
+  );
+  return commandPath;
 }
 
 function expect(record: CommandRecord, condition: unknown, summary: string) {

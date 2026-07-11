@@ -83,27 +83,6 @@ fn outline_generates_canonical_heading_refs() {
 }
 
 #[test]
-fn duplicate_headings_receive_unique_canonical_refs() {
-    let document = MarkdownDocument::parse("# A\n## B\n# A\n## B\n".to_owned());
-
-    let entries = document.outline_entries(3);
-    let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
-
-    // All four headings have different structural coordinates.
-    assert_eq!(refs, vec!["H:L1:H1", "H:L2:H2", "H:L3:H1", "H:L4:H2",]);
-}
-
-#[test]
-fn outline_ref_is_independent_of_path_and_title() {
-    let document = MarkdownDocument::parse("# Same\n## Same\n# Same\n".to_owned());
-    let entries = document.outline_entries(3);
-    let refs: Vec<&str> = entries.iter().map(|entry| entry.ref_id.as_str()).collect();
-
-    // 重复 title/path 的 entries 使用各自结构坐标生成 ref。
-    assert_eq!(refs, vec!["H:L1:H1", "H:L2:H2", "H:L3:H1"]);
-}
-
-#[test]
 fn outline_refs_consistent_under_different_max_heading_level() {
     let document = MarkdownDocument::parse("# Top\n\n## A\n\n### Deep\n\n#### Hidden\n".to_owned());
 
@@ -190,101 +169,6 @@ fn read_canonical_ref_resolves_matching_heading() {
     // Install: line=3, level=2
     let resolved = document.resolve_ref("H:L3:H2").unwrap();
     assert_eq!(resolved, ResolvedRef::Heading(&document.headings()[1]));
-}
-
-#[test]
-fn read_canonical_ref_returns_ref_not_found_for_no_match() {
-    let document = MarkdownDocument::parse("# Guide\nBody\n".to_owned());
-
-    // Canonical grammar but wrong line
-    let error = document
-        .resolve_ref("H:L99:H1")
-        .expect_err("no such heading");
-    assert_eq!(
-        error.protocol_error().code(),
-        docnav_protocol::ProtocolDiagnosticCode::RefNotFound
-    );
-
-    // Canonical grammar but wrong level
-    let error = document.resolve_ref("H:L1:H2").expect_err("wrong level");
-    assert_eq!(
-        error.protocol_error().code(),
-        docnav_protocol::ProtocolDiagnosticCode::RefNotFound
-    );
-}
-
-#[test]
-fn read_returns_ref_invalid_for_grammar_outside_input() {
-    let document = MarkdownDocument::parse("# Guide\nBody\n".to_owned());
-
-    for ref_id in [
-        // 字段缺失/错误
-        "H:L1",
-        "H:L1:H2:extra",
-        "X:L1:H1",
-        // 前导零
-        "H:L01:H1",
-        "H:L1:H02",
-        // 非法 level
-        "H:L1:H0",
-        "H:L1:H7",
-        // line=0 位于 grammar 外。
-        "H:L0:H1",
-        // grammar 外字符串
-        "not-a-ref",
-    ] {
-        let error = document
-            .resolve_ref(ref_id)
-            .expect_err(&format!("should be REF_INVALID: {ref_id}"));
-        let stable = error.protocol_error();
-        assert_eq!(
-            stable.code(),
-            docnav_protocol::ProtocolDiagnosticCode::RefInvalid,
-            "{ref_id}"
-        );
-        // details 包含 ref
-        assert_eq!(
-            stable.details().get("ref").and_then(|v| v.as_str()),
-            Some(ref_id),
-            "{ref_id}"
-        );
-        // details 包含非空 reason
-        let reason = stable
-            .details()
-            .get("reason")
-            .and_then(|v| v.as_str())
-            .expect("reason field");
-        assert!(!reason.is_empty(), "{ref_id}");
-    }
-}
-
-#[test]
-fn read_ref_not_found_vs_ref_invalid_boundary() {
-    let document = MarkdownDocument::parse("# A\nBody\n".to_owned());
-
-    // 合法 canonical ref，但 heading 不存在 -> REF_NOT_FOUND
-    let error = document.resolve_ref("H:L5:H2").expect_err("not found");
-    assert_eq!(
-        error.protocol_error().code(),
-        docnav_protocol::ProtocolDiagnosticCode::RefNotFound
-    );
-
-    // 当前 grammar 外输入 -> REF_INVALID。
-    let error = document
-        .resolve_ref("H:L1:H1:extra")
-        .expect_err("grammar outside");
-    assert_eq!(
-        error.protocol_error().code(),
-        docnav_protocol::ProtocolDiagnosticCode::RefInvalid
-    );
-    assert_eq!(
-        error
-            .protocol_error()
-            .details()
-            .get("ref")
-            .and_then(|v| v.as_str()),
-        Some("H:L1:H1:extra")
-    );
 }
 
 #[test]

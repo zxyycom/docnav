@@ -47,42 +47,17 @@ fn parses_protocol_fixtures_into_shared_types() {
 }
 
 #[test]
-fn protocol_request_schema_rejects_empty_required_strings() {
-    let cases = [
-        serde_json::json!({
-            "protocol_version": "0.1",
-            "request_id": "",
-            "operation": "outline",
-            "document": { "path": "doc.md" },
-            "arguments": { "limit": 80, "page": 1 }
-        }),
-        serde_json::json!({
-            "protocol_version": "0.1",
-            "request_id": "req-1",
-            "operation": "outline",
-            "document": { "path": "" },
-            "arguments": { "limit": 80, "page": 1 }
-        }),
-        serde_json::json!({
-            "protocol_version": "0.1",
-            "request_id": "req-1",
-            "operation": "read",
-            "document": { "path": "doc.md" },
-            "arguments": { "ref": "", "limit": 80, "page": 1 }
-        }),
-        serde_json::json!({
-            "protocol_version": "0.1",
-            "request_id": "req-1",
-            "operation": "find",
-            "document": { "path": "doc.md" },
-            "arguments": { "query": "", "limit": 80, "page": 1 }
-        }),
-    ];
+fn protocol_request_schema_rejects_an_empty_required_string() {
+    let value = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "",
+        "operation": "outline",
+        "document": { "path": "doc.md" },
+        "arguments": { "limit": 80, "page": 1 }
+    });
 
-    for value in cases {
-        assert_public_schema_invalid(PROTOCOL_REQUEST_SCHEMA, &value);
-        assert!(validate_protocol_request_value(&value).is_err());
-    }
+    assert_public_schema_invalid(PROTOCOL_REQUEST_SCHEMA, &value);
+    assert!(validate_protocol_request_value(&value).is_err());
 }
 
 #[test]

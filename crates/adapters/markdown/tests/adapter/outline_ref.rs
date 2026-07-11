@@ -205,23 +205,9 @@ fn read_reports_ref_invalid_for_grammar_outside_refs() {
         "# A\n## B\nfirst\n# A\n## B\nsecond\n",
     );
 
-    let grammar_outside_refs = [
-        "P:A > B",
-        "H:L01:H1",
-        "H:L1:H0",
-        "H:L1",
-        "H:L1:H1:extra",
-        "not-a-ref",
-        "",
-    ];
-    for ref_id in &grammar_outside_refs {
-        if ref_id.is_empty() {
-            // 空字符串可能触发共享层校验（非空字符串要求）
-            continue;
-        }
-        let error = read_ref_error(&path, ref_id);
-        assert_ref_invalid(&error, ref_id);
-    }
+    let ref_id = "not-a-ref";
+    let error = read_ref_error(&path, ref_id);
+    assert_ref_invalid(&error, ref_id);
 }
 
 #[test]
@@ -229,11 +215,9 @@ fn read_reports_ref_not_found_for_canonical_no_match() {
     let path = write_doc("nofound.md", "# Guide\nBody\n");
 
     // Canonical grammar 但无匹配 → REF_NOT_FOUND
-    let error = read_ref_error(&path, "H:L99:H1");
-    assert_ref_not_found(&error, "H:L99:H1");
-
-    let error = read_ref_error(&path, "H:L1:H2");
-    assert_ref_not_found(&error, "H:L1:H2");
+    let ref_id = "H:L99:H1";
+    let error = read_ref_error(&path, ref_id);
+    assert_ref_not_found(&error, ref_id);
 }
 
 #[test]

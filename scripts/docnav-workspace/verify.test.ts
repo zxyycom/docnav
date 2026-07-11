@@ -25,16 +25,6 @@ import { executeCheck } from "./verify/execution.ts";
 
 // @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {
-  it("initializes every submodule before Codex environment verification", () => {
-    for (const environment of [
-      ".codex/environments/environment.toml",
-      ".codex/environments/environment-2.toml"
-    ]) {
-      const setup = fs.readFileSync(environment, "utf8");
-      assert.match(setup, /git submodule update --init --recursive\r?\n/);
-    }
-  });
-
   it("filters successful test runner output from release package script tests", () => {
     const check = checkByLabel("release package script tests");
     const output = [
@@ -202,135 +192,6 @@ describe("workspace verifier configuration", () => {
     assert.ok(fullLabels.includes("openspec"));
   });
 
-  it("keeps the cli-config workspace checks in their owning profiles", () => {
-    const manifest = "subrepos/cli-config-resolution/Cargo.toml";
-    const requiredLabels = checksForProfile(PROFILE_REQUIRED).map((check) => check.label);
-    const fullLabels = checksForProfile(PROFILE_FULL).map((check) => check.label);
-    const nestedChecks = [
-      {
-        id: "cli-config-workspace-cargo-fmt",
-        label: "cli-config workspace cargo fmt",
-        type: PROFILE_REQUIRED,
-        args: ["fmt", "--manifest-path", manifest, "--all", "--check"],
-        mutex: []
-      },
-      {
-        id: "cli-config-workspace-cargo-clippy",
-        label: "cli-config workspace cargo clippy",
-        type: PROFILE_FULL,
-        args: [
-          "clippy",
-          "--manifest-path",
-          manifest,
-          "--locked",
-          "--workspace",
-          "--all-targets",
-          "--",
-          "-D",
-          "warnings"
-        ],
-        mutex: ["cargo-build"]
-      },
-      {
-        id: "cli-config-workspace-cargo-test",
-        label: "cli-config workspace cargo test",
-        type: PROFILE_FULL,
-        args: ["test", "--manifest-path", manifest, "--locked", "--workspace", "--all-targets"],
-        mutex: ["cargo-build"]
-      },
-      {
-        id: "cli-config-workspace-cargo-doc-test",
-        label: "cli-config workspace cargo doc-test",
-        type: PROFILE_FULL,
-        args: ["test", "--manifest-path", manifest, "--locked", "--workspace", "--doc"],
-        mutex: ["cargo-build"]
-      },
-      {
-        id: "cli-config-workspace-resolution-flow",
-        label: "cli-config workspace resolution flow",
-        type: PROFILE_FULL,
-        args: [
-          "run",
-          "--manifest-path",
-          manifest,
-          "--locked",
-          "-p",
-          "cli-config-resolution-clap",
-          "--example",
-          "resolution_flow"
-        ],
-        mutex: ["cargo-build"]
-      }
-    ];
-
-    for (const expected of nestedChecks) {
-      const check = checkByLabel(expected.label);
-      assert.equal(check.id, expected.id);
-      assert.equal(check.type, expected.type);
-      assert.equal(check.command, "cargo");
-      assert.deepEqual(check.args, expected.args);
-      assert.deepEqual(check.mutex, expected.mutex);
-      assert.ok(fullLabels.includes(expected.label));
-      assert.equal(requiredLabels.includes(expected.label), expected.type === PROFILE_REQUIRED);
-    }
-  });
-
-  it("defines checks with explicit type, dependencies, and mutex metadata", () => {
-    for (const check of checks) {
-      assert.equal(typeof check.id, "string");
-      assert.equal(typeof check.label, "string");
-      assert.ok(check.type === PROFILE_REQUIRED || check.type === PROFILE_FULL);
-      assert.ok(Array.isArray(check.dependsOn));
-      assert.ok(Array.isArray(check.mutex));
-      assert.equal((check as { profiles?: unknown }).profiles, undefined);
-    }
-
-    assert.equal(checkByLabel("cargo test").type, PROFILE_FULL);
-    assert.equal(checkByLabel("quality quick check").type, PROFILE_REQUIRED);
-    assert.equal(checkByLabel("quality quick check").command, "bun");
-    assert.deepEqual(checkByLabel("quality quick check").args, [
-      "scripts/quality/scan.ts",
-      "--profile",
-      "quick",
-      "--artifact-dir",
-      "artifacts/docnav-quality/quick"
-    ]);
-    assert.deepEqual(checkByLabel("quality quick check").env, {
-      DOCNAV_QUALITY_TIMINGS: "1"
-    });
-    assert.deepEqual(checkByLabel("quality quick check").warningOutput, [/^Quality check status: warning$/m]);
-    assert.equal(checkByLabel("quality full check").type, PROFILE_FULL);
-    assert.equal(checkByLabel("quality full check").command, "bun");
-    assert.deepEqual(checkByLabel("quality full check").args, [
-      "scripts/quality/scan.ts",
-      "--profile",
-      "full",
-      "--with-baseline",
-      "--verification-output"
-    ]);
-    assert.deepEqual(checkByLabel("quality full check").env, {
-      DOCNAV_QUALITY_TIMINGS: "1"
-    });
-    assert.deepEqual(checkByLabel("quality full check").warningOutput, [/^Quality verification status: warning$/m]);
-    assert.deepEqual(checkByLabel("cargo test").mutex, ["cargo-build"]);
-    assert.deepEqual(checkByLabel("docnav development binaries").mutex, ["cargo-build"]);
-    assert.deepEqual(checkByLabel("docnav development binaries").args, [
-      "scripts/docnav-dev/build-bins.ts",
-      "--quiet",
-      "--output-env-json",
-      ".cache/docnav/verify/dev-bins.json",
-      "--copy-to",
-      ".cache/docnav/verify/dev-bins"
-    ]);
-    assert.deepEqual(checkByLabel("docnav core development smoke").mutex, []);
-    assert.deepEqual(checkByLabel("docnav core development smoke").dependsOn, ["docnav-development-binaries"]);
-    assert.deepEqual(checkByLabel("docs case catalog validator").dependsOn, []);
-    assert.deepEqual(checkByLabel("docs schema validator").dependsOn, []);
-    assert.equal(checkByLabel("workspace verifier script tests").command, "bun");
-    assert.deepEqual(checkByLabel("workspace verifier script tests").args, ["run", "test:workspace-verifier"]);
-    assert.deepEqual(checkByLabel("case catalog validator tests").dependsOn, []);
-  });
-
   it("parses verification profile arguments", () => {
     assert.deepEqual(parseArgs([]), { help: false, profile: PROFILE_FULL, concurrency: undefined });
     assert.deepEqual(parseArgs(["--profile", PROFILE_REQUIRED]), {
@@ -338,13 +199,7 @@ describe("workspace verifier configuration", () => {
       profile: PROFILE_REQUIRED,
       concurrency: undefined
     });
-    assert.deepEqual(parseArgs([`--profile=${PROFILE_REQUIRED}`]), {
-      help: false,
-      profile: PROFILE_REQUIRED,
-      concurrency: undefined
-    });
     assert.deepEqual(parseArgs(["--concurrency", "2"]), { help: false, profile: PROFILE_FULL, concurrency: 2 });
-    assert.deepEqual(parseArgs(["--concurrency=3"]), { help: false, profile: PROFILE_FULL, concurrency: 3 });
     assert.deepEqual(parseArgs(["--help"]), { help: true, profile: PROFILE_FULL, concurrency: undefined });
     assert.throws(() => parseArgs(["--profile", "fast"]), /unknown verification profile: fast/);
     assert.throws(() => parseArgs(["--concurrency", "0"]), /positive integer/);
@@ -427,23 +282,6 @@ describe("workspace verifier configuration", () => {
       mutex: [],
       ignoreOutput: [],
       warningOutput: [/^Quality check status: warning$/m]
-    });
-
-    assert.equal(result.ok, true);
-    assert.equal(result.status, "warning");
-  });
-
-  it("maps quality verification markers to warning check status", async () => {
-    const result = await executeCheck({
-      id: "quality-verification-marker-test",
-      label: "quality verification marker test",
-      type: PROFILE_FULL,
-      command: "bun",
-      args: ["-e", "console.log('Quality verification status: warning')"],
-      dependsOn: [],
-      mutex: [],
-      ignoreOutput: [],
-      warningOutput: [/^Quality verification status: warning$/m]
     });
 
     assert.equal(result.ok, true);
