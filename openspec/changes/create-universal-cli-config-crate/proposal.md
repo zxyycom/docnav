@@ -30,8 +30,8 @@
 
 ## Impact
 
-- Canonical 参数模型：`crates/shared/typed-fields`、`crates/shared/typed-fields-macros`。
-- Resolution 与 extractor：`crates/shared/cli-config-resolution`、`crates/shared/cli-config-resolution-clap`、`crates/shared/cli-config-resolution-serde`。
+- Canonical 参数模型：`subrepos/cli-config-resolution/crates/typed-fields`、`subrepos/cli-config-resolution/crates/typed-fields-macros`。
+- Resolution 与 extractor：`subrepos/cli-config-resolution/crates/cli-config-resolution`、`subrepos/cli-config-resolution/crates/cli-config-resolution-clap`、`subrepos/cli-config-resolution/crates/cli-config-resolution-serde`。
 - Docnav 集成：`crates/shared/navigation/src/parameters/**` 及必要的 CLI/native-option 映射层。
 - API 调整：删除或内部化重复的 `FieldContract` / `FieldSet`、重复 value/constraint/default/validation 类型和独立 merge declaration；把 `MergeStrategy` 直接纳入 canonical `FieldDef` metadata，公开 resolution 所需的 canonical metadata view，并整理 source/extractor/resolver 的主要使用路径。
 - Repository 调整：建立可独立 checkout、build 和 test 的 Cargo workspace 子仓库边界，并以 `.gitmodules` 与 gitlink 固定 Docnav 的消费 revision；该 workspace 不依赖 Docnav protocol、adapter contracts、navigation、output 或 Markdown adapter crates。
