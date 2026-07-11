@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import { DEFAULT_CONFIG } from "./config.ts";
-import { classifyFile, isExcluded } from "../tools/quality-core/src/model/code-areas.ts";
+import { classifyFile } from "../tools/quality-core/src/model/code-areas.ts";
 
 // @case AUX-QUALITY-CODE-AREAS-001
 describe("quality code area classification", () => {
@@ -19,7 +19,6 @@ describe("quality code area classification", () => {
   it("keeps source scan globs on Rust and TypeScript sources", () => {
     assert.deepEqual(DEFAULT_CONFIG.include, [
       "crates/**/*.rs",
-      "subrepos/cli-config-resolution/crates/**/*.rs",
       "scripts/**/*.ts",
       "test/**/*.ts"
     ]);
@@ -41,31 +40,6 @@ describe("quality code area classification", () => {
     assert.equal(classifyQualityFile("crates/adapters/markdown/tests/adapter.rs"), "rust-tests");
   });
 
-  it("classifies reusable nested workspace crates by Rust source role", () => {
-    assert.deepEqual([
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/src/lib.rs"),
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/src/tests/processing.rs"),
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/tests/canonical_parameters.rs"),
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/benches/resolution.rs")
-    ], ["rust-production", "rust-tests", "rust-tests", "rust-tests"]);
-
-    assert.equal(
-      classifyQualityFile("subrepos/cli-config-resolution/crates/cli-config-resolution-clap/examples/resolution_flow.rs"),
-      "fixtures-examples"
-    );
-    assert.equal(
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/tests/fixtures/invalid.rs"),
-      "fixtures-examples"
-    );
-    assert.equal(
-      isExcluded(
-        "subrepos/cli-config-resolution/crates/typed-fields/target/debug/build/generated.rs",
-        DEFAULT_CONFIG.excludeDirs,
-        DEFAULT_CONFIG.generatedFiles
-      ),
-      true
-    );
-  });
 });
 
 function classifyQualityFile(filePath: string): string {
