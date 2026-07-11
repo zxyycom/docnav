@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { errorMessage } from "../tools/foundation/src/errors.ts";
 import { isStringArray } from "../tools/foundation/src/type-guards.ts";
 import type { QualityConfig } from "../tools/quality-core/src/model/schema.ts";
+import { ACCEPTED_WARNINGS } from "./accepted-warnings.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const JSCPD_BIN_NAME = process.platform === "win32" ? "jscpd.cmd" : "jscpd";
@@ -42,7 +43,7 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.8.5",
+  version: "0.8.6",
 
   include: [
     "crates/**/*.rs",
@@ -213,7 +214,7 @@ export const DEFAULT_CONFIG = Object.freeze({
     }
   },
 
-  acceptedWarnings: Object.freeze([]),
+  acceptedWarnings: ACCEPTED_WARNINGS,
 
   report: {
     title: "Docnav Code Quality Snapshot",
