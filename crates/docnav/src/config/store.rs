@@ -98,59 +98,80 @@ fn read_config_source_value(
     selection: &SelectedConfigPath,
     source: ConfigFileSource,
 ) -> AppResult<Option<Value>> {
-    match fs::metadata(&selection.path) {
-        Ok(metadata) if !metadata.is_file() => {
-            return Err(config_source_error(
-                &selection.path,
-                source,
-                selection.origin,
-                "not_file",
-            ));
-        }
-        Ok(_) => {}
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            return match selection.origin {
-                ConfigPathOrigin::Default => Ok(None),
-                ConfigPathOrigin::ExplicitCli => Err(config_source_error(
-                    &selection.path,
-                    source,
-                    selection.origin,
-                    "missing_explicit_cli",
-                )),
-            };
-        }
-        Err(_) => {
-            return Err(config_source_error(
-                &selection.path,
-                source,
-                selection.origin,
-                "unreadable",
-            ));
-        }
+    if !config_source_file_exists(selection, source)? {
+        return Ok(None);
     }
-    let content = match fs::read_to_string(&selection.path) {
-        Ok(content) => content,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            return match selection.origin {
-                ConfigPathOrigin::Default => Ok(None),
-                ConfigPathOrigin::ExplicitCli => Err(config_source_error(
-                    &selection.path,
-                    source,
-                    selection.origin,
-                    "missing_explicit_cli",
-                )),
-            };
-        }
-        Err(_) => {
-            return Err(config_source_error(
-                &selection.path,
-                source,
-                selection.origin,
-                "unreadable",
-            ));
-        }
+    let Some(content) = read_config_source_content(selection, source)? else {
+        return Ok(None);
     };
-    let value = serde_json::from_str::<Value>(&content).map_err(|_| {
+    decode_config_source_object(selection, source, &content).map(Some)
+}
+
+fn config_source_file_exists(
+    selection: &SelectedConfigPath,
+    source: ConfigFileSource,
+) -> AppResult<bool> {
+    match fs::metadata(&selection.path) {
+        Ok(metadata) if metadata.is_file() => Ok(true),
+        Ok(_) => Err(config_source_error(
+            &selection.path,
+            source,
+            selection.origin,
+            "not_file",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            handle_missing_config_source(selection, source)?;
+            Ok(false)
+        }
+        Err(_) => Err(config_source_error(
+            &selection.path,
+            source,
+            selection.origin,
+            "unreadable",
+        )),
+    }
+}
+
+fn read_config_source_content(
+    selection: &SelectedConfigPath,
+    source: ConfigFileSource,
+) -> AppResult<Option<String>> {
+    match fs::read_to_string(&selection.path) {
+        Ok(content) => Ok(Some(content)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            handle_missing_config_source(selection, source)?;
+            Ok(None)
+        }
+        Err(_) => Err(config_source_error(
+            &selection.path,
+            source,
+            selection.origin,
+            "unreadable",
+        )),
+    }
+}
+
+fn handle_missing_config_source(
+    selection: &SelectedConfigPath,
+    source: ConfigFileSource,
+) -> AppResult<()> {
+    match selection.origin {
+        ConfigPathOrigin::Default => Ok(()),
+        ConfigPathOrigin::ExplicitCli => Err(config_source_error(
+            &selection.path,
+            source,
+            selection.origin,
+            "missing_explicit_cli",
+        )),
+    }
+}
+
+fn decode_config_source_object(
+    selection: &SelectedConfigPath,
+    source: ConfigFileSource,
+    content: &str,
+) -> AppResult<Value> {
+    let value = serde_json::from_str::<Value>(content).map_err(|_| {
         config_source_error(&selection.path, source, selection.origin, "invalid_json")
     })?;
     if !value.is_object() {
@@ -161,7 +182,7 @@ fn read_config_source_value(
             "non_object",
         ));
     }
-    Ok(Some(value))
+    Ok(value)
 }
 
 fn navigation_config_path_origin(

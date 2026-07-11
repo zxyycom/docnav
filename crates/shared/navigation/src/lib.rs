@@ -141,8 +141,8 @@ pub struct NavigationConfigSourceDescriptors {
 
 #[derive(Clone, Debug, PartialEq)]
 struct NavigationConfigSource {
-    pub level: &'static str,
-    pub origin: &'static str,
+    pub level: NavigationConfigSourceLevel,
+    pub origin: NavigationConfigSourceOrigin,
     pub path: String,
     pub loaded: LoadedNavigationConfigSource,
 }
@@ -260,8 +260,8 @@ where
     R: NavigationAdapterRegistry + ?Sized,
 {
     let source = NavigationConfigSource {
-        level: level.as_str(),
-        origin: origin.as_str(),
+        level,
+        origin,
         path: path.into(),
         loaded: LoadedNavigationConfigSource::from_value(value),
     };
@@ -505,18 +505,21 @@ fn load_navigation_config_sources(
     descriptors: NavigationConfigSourceDescriptors,
 ) -> NavigationConfigSources {
     NavigationConfigSources {
-        project: load_navigation_config_source("project", descriptors.project),
-        user: load_navigation_config_source("user", descriptors.user),
+        project: load_navigation_config_source(
+            NavigationConfigSourceLevel::Project,
+            descriptors.project,
+        ),
+        user: load_navigation_config_source(NavigationConfigSourceLevel::User, descriptors.user),
     }
 }
 
 fn load_navigation_config_source(
-    level: &'static str,
+    level: NavigationConfigSourceLevel,
     descriptor: NavigationConfigSourceDescriptor,
 ) -> NavigationConfigSource {
     NavigationConfigSource {
         level,
-        origin: descriptor.origin.as_str(),
+        origin: descriptor.origin,
         path: descriptor.path.display().to_string(),
         loaded: load_config_source(level, descriptor.origin, &descriptor.path),
     }

@@ -83,8 +83,8 @@ pub(super) fn thresholds(
     };
     let Some(auto_full_read) = auto_full_read.as_object() else {
         return Err(NavigationError::config_invalid_object(
-            source.level,
-            source.origin,
+            source.level.as_str(),
+            source.origin.as_str(),
             &source.path,
             "outline.auto_full_read",
         ));
@@ -136,7 +136,12 @@ pub(super) fn outline_config(
         return Ok(None);
     };
     outline.as_object().map(Some).ok_or_else(|| {
-        NavigationError::config_invalid_object(source.level, source.origin, &source.path, "outline")
+        NavigationError::config_invalid_object(
+            source.level.as_str(),
+            source.origin.as_str(),
+            &source.path,
+            "outline",
+        )
     })
 }
 
@@ -154,8 +159,8 @@ fn mode_rule(
     let field = |name: &str| format!("outline.mode_rules[{index}].{name}");
     let Some(object) = value.as_object() else {
         return Err(NavigationError::config_invalid_object(
-            source.level,
-            source.origin,
+            source.level.as_str(),
+            source.origin.as_str(),
             &source.path,
             &format!("outline.mode_rules[{index}]"),
         ));
@@ -195,8 +200,8 @@ fn threshold(
     let field = |name: &str| format!("outline.auto_full_read.thresholds[{index}].{name}");
     let Some(object) = value.as_object() else {
         return Err(NavigationError::config_invalid_object(
-            source.level,
-            source.origin,
+            source.level.as_str(),
+            source.origin.as_str(),
             &source.path,
             &format!("outline.auto_full_read.thresholds[{index}]"),
         ));
@@ -219,8 +224,8 @@ fn required_string(
     let key = field.rsplit('.').next().unwrap_or(field);
     let Some(value) = object.get(key) else {
         return Err(NavigationError::config_missing_field(
-            source.level,
-            source.origin,
+            source.level.as_str(),
+            source.origin.as_str(),
             &source.path,
             field,
         ));
@@ -247,8 +252,8 @@ fn required_positive_u64(
     let key = field.rsplit('.').next().unwrap_or(field);
     let Some(value) = object.get(key) else {
         return Err(NavigationError::config_missing_field(
-            source.level,
-            source.origin,
+            source.level.as_str(),
+            source.origin.as_str(),
             &source.path,
             field,
         ));

@@ -8,7 +8,7 @@ use docnav_diagnostics::{
 };
 use serde_json::Value;
 
-use crate::NavigationConfigSourceOrigin;
+use crate::{NavigationConfigSourceLevel, NavigationConfigSourceOrigin};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct LoadedNavigationConfigSource {
@@ -116,7 +116,7 @@ impl ConfigSourceSkipReason {
 }
 
 pub(crate) fn load_config_source(
-    level: &'static str,
+    level: NavigationConfigSourceLevel,
     origin: NavigationConfigSourceOrigin,
     path: &Path,
 ) -> LoadedNavigationConfigSource {
@@ -133,7 +133,7 @@ pub(crate) fn load_config_source(
 }
 
 fn read_config_source(
-    level: &'static str,
+    level: NavigationConfigSourceLevel,
     origin: NavigationConfigSourceOrigin,
     path: &Path,
 ) -> LoadedNavigationConfigSource {
@@ -155,7 +155,7 @@ fn read_config_source(
 }
 
 fn missing_source(
-    level: &'static str,
+    level: NavigationConfigSourceLevel,
     origin: NavigationConfigSourceOrigin,
     path: &Path,
 ) -> LoadedNavigationConfigSource {
@@ -174,13 +174,13 @@ fn missing_source(
 }
 
 fn skipped(
-    level: &'static str,
+    level: NavigationConfigSourceLevel,
     origin: NavigationConfigSourceOrigin,
     path: &Path,
     reason: ConfigSourceSkipReason,
 ) -> LoadedNavigationConfigSource {
     let issue = NavigationConfigSourceIssue::new(
-        level,
+        level.as_str(),
         origin.as_str(),
         path.display().to_string(),
         reason.as_str(),

@@ -15,8 +15,8 @@ use serde_json::Value;
 
 use crate::{
     config_source::LoadedNavigationConfigSource, NavigationAdapterRef, NavigationAdapterRegistry,
-    NavigationCommand, NavigationConfigSource, NavigationConfigSources,
-    NavigationNativeOptionInput,
+    NavigationCommand, NavigationConfigSource, NavigationConfigSourceLevel,
+    NavigationConfigSourceOrigin, NavigationConfigSources, NavigationNativeOptionInput,
 };
 
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline];
@@ -41,14 +41,14 @@ pub(super) fn navigation_command(
 pub(super) fn config_sources(project: Value, user: Value) -> NavigationConfigSources {
     NavigationConfigSources {
         project: NavigationConfigSource {
-            level: "project",
-            origin: "default",
+            level: NavigationConfigSourceLevel::Project,
+            origin: NavigationConfigSourceOrigin::Default,
             path: "project/.docnav/docnav.json".to_owned(),
             loaded: LoadedNavigationConfigSource::from_value(project),
         },
         user: NavigationConfigSource {
-            level: "user",
-            origin: "default",
+            level: NavigationConfigSourceLevel::User,
+            origin: NavigationConfigSourceOrigin::Default,
             path: "user/docnav.json".to_owned(),
             loaded: LoadedNavigationConfigSource::from_value(user),
         },

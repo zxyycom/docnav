@@ -180,8 +180,8 @@ fn option_config_source_issue(
         .unwrap_or_else(|| format!("options.{}", spec.key()));
     Some(
         AdapterConfigSourceDetails::new(
-            config_source.level,
-            config_source.origin,
+            config_source.level.as_str(),
+            config_source.origin.as_str(),
             &config_source.path,
             reason_code,
         )

@@ -1,15 +1,14 @@
 use std::collections::BTreeSet;
 
-use cli_config_resolution::{ResolutionDiagnostic, ResolutionResult, SourceLocator};
+use cli_config_resolution::{ResolutionDiagnostic, ResolutionResult};
 use docnav_adapter_contracts::AdapterOptionSpec;
-use docnav_diagnostics::DiagnosticSource;
-use docnav_typed_fields::{FieldDefSet, ProcessingId};
+use docnav_typed_fields::FieldDefSet;
 use serde_json::Value;
 
 use crate::config_source::LoadedNavigationConfigSource;
-use crate::error::ConfigFieldError;
 use crate::{
-    NavigationAdapterRegistry, NavigationCommand, NavigationConfigSource, NavigationConfigSources,
+    NavigationAdapterRegistry, NavigationCommand, NavigationConfigSource,
+    NavigationConfigSourceLevel, NavigationConfigSourceOrigin, NavigationConfigSources,
     NavigationError,
 };
 
@@ -24,9 +23,14 @@ use super::{
     values::{diagnostic_source_label, resolution_reason_code, validation_error_for_identity},
 };
 
+mod errors;
 mod key_registry;
 
-use key_registry::{ConfigKeyIssue, ConfigKeyRegistry};
+use errors::{
+    config_key_issue_error, config_source_error, config_validation_error_for_source,
+    resolution_error_with_config_sources,
+};
+use key_registry::ConfigKeyRegistry;
 
 struct ConfigValidationContext<'a> {
     selected_adapter_id: Option<&'a str>,
@@ -40,10 +44,11 @@ pub(super) fn validate_navigation_sources(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    fields: &FieldDefSet,
-    selected_native_options: &[AdapterOptionSpec],
+    operation_fields: &fields::OperationFieldSet,
     registry: &(impl NavigationAdapterRegistry + ?Sized),
 ) -> Result<(), NavigationError> {
+    let fields = operation_fields.as_ref();
+    let selected_native_options = operation_fields.adapter_options();
     first_config_source_error(config_sources)?;
     validate_explicit_native_options(command, selected_adapter_id, selected_native_options)?;
     let known_adapter_fields = fields::config_inspection_fields(registry)?;
@@ -231,8 +236,8 @@ fn validate_selected_adapter_options(
         }
         return Err(unsupported_option(
             UnsupportedOptionContext {
-                source: source.level,
-                path_origin: Some(source.origin),
+                source: source.level.as_str(),
+                path_origin: Some(source.origin.as_str()),
                 path: &source.path,
                 owner: selected_adapter_id,
                 config_field: Some(format!("options.{selected_adapter_id}.{key}")),
@@ -251,17 +256,13 @@ fn validate_config_source_values(
     context: &ConfigValidationContext<'_>,
 ) -> Result<(), NavigationError> {
     let config_sources = match source.level {
-        "project" => NavigationConfigSources {
+        NavigationConfigSourceLevel::Project => NavigationConfigSources {
             project: source.clone(),
-            user: empty_config_source("user"),
+            user: empty_config_source(NavigationConfigSourceLevel::User),
         },
-        "user" => NavigationConfigSources {
-            project: empty_config_source("project"),
+        NavigationConfigSourceLevel::User => NavigationConfigSources {
+            project: empty_config_source(NavigationConfigSourceLevel::Project),
             user: source.clone(),
-        },
-        _ => NavigationConfigSources {
-            project: empty_config_source("project"),
-            user: empty_config_source("user"),
         },
     };
     let resolution = resolution::resolve(context.fields, None, &config_sources)?;
@@ -287,91 +288,15 @@ fn validation_belongs_to_source(
     diagnostic
         .source_id
         .as_ref()
-        .is_some_and(|source_id| source_id.as_str() == source.level)
+        .is_some_and(|source_id| source_id.as_str() == source.level.as_str())
 }
 
-fn empty_config_source(level: &'static str) -> NavigationConfigSource {
+fn empty_config_source(level: NavigationConfigSourceLevel) -> NavigationConfigSource {
     NavigationConfigSource {
         level,
-        origin: "default",
+        origin: NavigationConfigSourceOrigin::Default,
         path: String::new(),
         loaded: LoadedNavigationConfigSource::default(),
-    }
-}
-
-fn config_key_issue_error(
-    source: &NavigationConfigSource,
-    root: &Value,
-    context: &ConfigValidationContext<'_>,
-    issue: ConfigKeyIssue,
-) -> NavigationError {
-    match issue {
-        ConfigKeyIssue::ExpectedObject { path } => {
-            let field = path.field();
-            invalid_nested_object(source, &field)
-        }
-        ConfigKeyIssue::UnregisteredField { path } => {
-            if let Some(adapter_id) = path.option_adapter_id() {
-                if !context.known_adapter_ids.contains(adapter_id) {
-                    let field = path.field();
-                    let reason = if path.value(root).is_some_and(Value::is_object) {
-                        "unknown_adapter_id"
-                    } else {
-                        "unknown_config_field"
-                    };
-                    return NavigationError::config_invalid_field(ConfigFieldError::invalid(
-                        source,
-                        field,
-                        reason,
-                        "Use a registered adapter id under options.<adapter-id>.",
-                    ));
-                }
-            }
-            if let (Some(selected_adapter_id), Some(adapter_id), Some(key)) = (
-                context.selected_adapter_id,
-                path.option_adapter_id(),
-                path.option_key(),
-            ) {
-                if adapter_id == selected_adapter_id {
-                    return unsupported_option(
-                        UnsupportedOptionContext {
-                            source: source.level,
-                            path_origin: Some(source.origin),
-                            path: &source.path,
-                            owner: selected_adapter_id,
-                            config_field: Some(path.field()),
-                            selected_native_options: context.selected_native_options,
-                        },
-                        key,
-                        path.value(root).cloned().unwrap_or(Value::Null),
-                    )
-                    .into();
-                }
-            }
-            if let Some(key) = path.option_key() {
-                return unsupported_option(
-                    UnsupportedOptionContext {
-                        source: source.level,
-                        path_origin: Some(source.origin),
-                        path: &source.path,
-                        owner: path.option_adapter_id().unwrap_or("options"),
-                        config_field: Some(path.field()),
-                        selected_native_options: context.selected_native_options,
-                    },
-                    key,
-                    path.value(root).cloned().unwrap_or(Value::Null),
-                )
-                .into();
-            }
-            let field = path.field();
-            NavigationError::config_unknown_field(
-                source.level,
-                source.origin,
-                &source.path,
-                field.as_str(),
-                accepted_config_field(field.as_str()),
-            )
-        }
     }
 }
 
@@ -381,90 +306,4 @@ fn known_adapter_ids(registry: &(impl NavigationAdapterRegistry + ?Sized)) -> BT
         .into_iter()
         .map(|adapter| adapter.id().to_owned())
         .collect()
-}
-
-fn accepted_config_field(field: &str) -> Option<&'static str> {
-    match field {
-        "defaults.limit" => Some("defaults.pagination.limit"),
-        _ => None,
-    }
-}
-
-fn invalid_nested_object(source: &NavigationConfigSource, field: &str) -> NavigationError {
-    NavigationError::config_invalid_object(source.level, source.origin, &source.path, field)
-}
-
-fn config_source_error(
-    issue: &crate::config_source::NavigationConfigSourceIssue,
-) -> NavigationError {
-    NavigationError::new(issue.to_record_draft(DiagnosticSource::with_stage("docnav", "config")))
-}
-
-fn resolution_error_with_config_sources(
-    diagnostic: &ResolutionDiagnostic,
-    config_sources: &NavigationConfigSources,
-) -> NavigationError {
-    config_validation_error(diagnostic, config_sources)
-        .unwrap_or_else(|| validation_error_for_identity(diagnostic.field.as_str()))
-}
-
-fn config_validation_error(
-    diagnostic: &ResolutionDiagnostic,
-    config_sources: &NavigationConfigSources,
-) -> Option<NavigationError> {
-    let source = config_source_for_validation(diagnostic.source_id.as_ref()?, config_sources)?;
-    let field = config_field_from_diagnostic(diagnostic)?;
-    let reason_code = resolution_reason_code(diagnostic);
-    Some(NavigationError::config_invalid_field(
-        ConfigFieldError::invalid(
-            source,
-            field.clone(),
-            reason_code,
-            format!("Use a valid value for config field {field}."),
-        ),
-    ))
-}
-
-fn config_validation_error_for_source(
-    diagnostic: &ResolutionDiagnostic,
-    source: &NavigationConfigSource,
-    fields: &FieldDefSet,
-) -> Option<NavigationError> {
-    let field = config_field_from_diagnostic(diagnostic)
-        .or_else(|| config_field_for_identity(diagnostic.field.as_str(), fields))?;
-    let reason_code = resolution_reason_code(diagnostic);
-    Some(NavigationError::config_invalid_field(
-        ConfigFieldError::invalid(
-            source,
-            field.clone(),
-            reason_code,
-            format!("Use a valid value for config field {field}."),
-        ),
-    ))
-}
-
-fn config_source_for_validation<'a>(
-    source_id: &cli_config_resolution::SourceId,
-    config_sources: &'a NavigationConfigSources,
-) -> Option<&'a NavigationConfigSource> {
-    match source_id.as_str() {
-        "project" => Some(&config_sources.project),
-        "user" => Some(&config_sources.user),
-        _ => None,
-    }
-}
-
-fn config_field_from_diagnostic(diagnostic: &ResolutionDiagnostic) -> Option<String> {
-    match diagnostic.locator.as_ref()? {
-        SourceLocator::ConfigPath(path) => Some(path.segments().join(".")),
-        _ => None,
-    }
-}
-
-fn config_field_for_identity(identity: &str, fields: &FieldDefSet) -> Option<String> {
-    fields
-        .processing_metadata(&ProcessingId::from(super::CONFIG_PROCESSING))
-        .into_iter()
-        .find(|metadata| metadata.identity.as_str() == identity)
-        .map(|metadata| metadata.path.segments().join("."))
 }

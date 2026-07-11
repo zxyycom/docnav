@@ -1,15 +1,21 @@
 use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec};
 use docnav_protocol::Operation;
-use docnav_typed_fields::{
-    ExpectedFieldShape, FieldBound, FieldDef, FieldDefBuilder, FieldDefSet, FieldDefSetBuilder,
-    FieldLength, FieldStringEnum, FieldValidation, ProcessStrategy,
-};
+use docnav_typed_fields::{ExpectedFieldShape, FieldDefBuilder, FieldDefSet, FieldDefSetBuilder};
 
 use crate::{NavigationAdapterRegistry, NavigationError, NavigationOutputMode};
 
 use super::{
-    ids, values::uses_document_window, CONFIG_PROCESSING, DEFAULT_LIMIT, DEFAULT_PAGE,
+    values::uses_document_window, CONFIG_PROCESSING, DEFAULT_LIMIT, DEFAULT_PAGE,
     DEFAULT_PAGINATION_ENABLED, DIRECT_PROCESSING,
+};
+
+mod definitions;
+
+use definitions::{
+    adapter_id_field, configurable_limit_field, configurable_output_field, document_path_field,
+    find_query_field, invocation_log_content_capture_enabled_field,
+    invocation_log_content_capture_root_field, invocation_log_enabled_field,
+    invocation_log_path_field, pagination_enabled_field, read_ref_field, standard_page_field,
 };
 
 const ADAPTER_OPTION_DECLARATION_ERROR_ID: &str = "adapter-option-field-declaration-invalid";
@@ -255,152 +261,4 @@ fn is_adapter_option_config_path(path: &[String], adapter_id: &str, option_key: 
 
 fn invalid_adapter_option_declaration() -> NavigationError {
     NavigationError::internal(ADAPTER_OPTION_DECLARATION_ERROR_ID)
-}
-
-fn document_path_field(processing_id: &'static str) -> FieldDefBuilder<String> {
-    direct_string_field(ids::PATH, processing_id, ["path"])
-}
-
-fn read_ref_field(processing_id: &'static str) -> FieldDefBuilder<String> {
-    direct_string_field(ids::REF, processing_id, ["ref"])
-}
-
-fn find_query_field(processing_id: &'static str) -> FieldDefBuilder<String> {
-    direct_string_field(ids::QUERY, processing_id, ["query"])
-}
-
-fn adapter_id_field(
-    direct_processing_id: &'static str,
-    config_processing_id: &'static str,
-) -> FieldDefBuilder<String> {
-    FieldDef::builder(ids::ADAPTER)
-        .process(
-            direct_processing_id,
-            ProcessStrategy::json_path(["adapter"]),
-        )
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["defaults", "adapter"]),
-        )
-        .validation(non_empty_string_validation())
-}
-
-fn standard_page_field(processing_id: &'static str) -> FieldDefBuilder<i64> {
-    direct_positive_u32_field(ids::PAGE, processing_id, ["page"])
-}
-
-fn configurable_limit_field(
-    direct_processing_id: &'static str,
-    config_processing_id: &'static str,
-) -> FieldDefBuilder<i64> {
-    FieldDef::builder(ids::LIMIT)
-        .process(direct_processing_id, ProcessStrategy::json_path(["limit"]))
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["defaults", "pagination", "limit"]),
-        )
-        .validation(positive_u32_int_validation())
-}
-
-fn pagination_enabled_field(
-    direct_processing_id: &'static str,
-    config_processing_id: &'static str,
-) -> FieldDefBuilder<bool> {
-    FieldDef::builder(ids::PAGINATION_ENABLED)
-        .process(
-            direct_processing_id,
-            ProcessStrategy::json_path(["pagination"]),
-        )
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["defaults", "pagination", "enabled"]),
-        )
-        .validation(FieldValidation::boolean())
-}
-
-fn invocation_log_enabled_field(config_processing_id: &'static str) -> FieldDefBuilder<bool> {
-    FieldDef::builder(ids::INVOCATION_LOG_ENABLED)
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["invocation_log", "enabled"]),
-        )
-        .validation(FieldValidation::boolean())
-}
-
-fn invocation_log_path_field(config_processing_id: &'static str) -> FieldDefBuilder<String> {
-    FieldDef::builder(ids::INVOCATION_LOG_PATH)
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["invocation_log", "path"]),
-        )
-        .validation(non_empty_string_validation())
-}
-
-fn invocation_log_content_capture_enabled_field(
-    config_processing_id: &'static str,
-) -> FieldDefBuilder<bool> {
-    FieldDef::builder(ids::INVOCATION_LOG_CONTENT_CAPTURE_ENABLED)
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["invocation_log", "content_capture", "enabled"]),
-        )
-        .validation(FieldValidation::boolean())
-}
-
-fn invocation_log_content_capture_root_field(
-    config_processing_id: &'static str,
-) -> FieldDefBuilder<String> {
-    FieldDef::builder(ids::INVOCATION_LOG_CONTENT_CAPTURE_ROOT)
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["invocation_log", "content_capture", "root"]),
-        )
-        .validation(non_empty_string_validation())
-}
-
-fn configurable_output_field<T>(
-    direct_processing_id: &'static str,
-    config_processing_id: &'static str,
-) -> FieldDefBuilder<T>
-where
-    T: FieldStringEnum,
-{
-    FieldDef::builder(ids::OUTPUT)
-        .process(direct_processing_id, ProcessStrategy::json_path(["output"]))
-        .process(
-            config_processing_id,
-            ProcessStrategy::config_path(["defaults", "output"]),
-        )
-        .validation(FieldValidation::string_enum::<T>())
-}
-
-fn direct_string_field<const N: usize>(
-    identity: &str,
-    processing_id: &'static str,
-    direct_path: [&str; N],
-) -> FieldDefBuilder<String> {
-    FieldDef::builder(identity)
-        .process(processing_id, ProcessStrategy::json_path(direct_path))
-        .validation(non_empty_string_validation())
-}
-
-fn direct_positive_u32_field<const N: usize>(
-    identity: &str,
-    processing_id: &'static str,
-    direct_path: [&str; N],
-) -> FieldDefBuilder<i64> {
-    FieldDef::builder(identity)
-        .process(processing_id, ProcessStrategy::json_path(direct_path))
-        .validation(positive_u32_int_validation())
-}
-
-fn non_empty_string_validation() -> FieldValidation<String> {
-    FieldValidation::string().length(FieldLength::min(FieldBound::closed(1)))
-}
-
-fn positive_u32_int_validation() -> FieldValidation<i64> {
-    FieldValidation::int().between(
-        FieldBound::closed(1),
-        FieldBound::closed(i64::from(super::MAX_PAGINATION_LIMIT)),
-    )
 }

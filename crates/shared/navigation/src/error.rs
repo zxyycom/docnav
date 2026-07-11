@@ -34,8 +34,8 @@ impl<'a> ConfigFieldError<'a> {
         guidance: impl Into<String>,
     ) -> Self {
         Self {
-            source_level: source.level,
-            path_origin: source.origin,
+            source_level: source.level.as_str(),
+            path_origin: source.origin.as_str(),
             path: &source.path,
             field: field.into(),
             reason_code,
