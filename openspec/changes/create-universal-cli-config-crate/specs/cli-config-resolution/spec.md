@@ -218,6 +218,12 @@ Docnav MUST consume the canonical parameter set through the same extraction and 
 - **THEN** resolution matches Docnav's documented priority behavior
 - **THEN** Docnav remains the owner of adapter applicability, request construction, diagnostic-code mapping, and output projection
 
+#### Scenario: Map pre-parsed input through a consumer-owned source adapter
+
+- **WHEN** Docnav already holds parsed direct or native CLI input before resolution
+- **THEN** a Docnav-private source adapter may traverse canonical processing metadata and emit public `Source` / `SourceCandidate` values
+- **THEN** the adapter does not maintain a parallel locator table or copy field type, constraint, default, validation, or merge metadata
+
 #### Scenario: Complete cutover removes compatibility paths
 
 - **WHEN** the canonical resolution path passes Docnav equivalence tests

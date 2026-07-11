@@ -97,7 +97,13 @@ Env/config 中未声明的 key 默认静默忽略。当前 public API 不增加 
 
 Docnav 的 existing `FieldDefSet` 直接传给 extractor/resolver。Explicit input、project config、user config、built-in defaults 和 selected adapter native options 映射到通用 source model；adapter applicability、handler binding、request construction 和 diagnostic-code mapping 继续由 Docnav 拥有。
 
-第一轮 `generic_field_set` 和手工 `SourceCandidate` 拼装只能作为迁移输入，不属于完成后的 runtime path。完成状态以 Docnav 使用与独立 workspace 示例相同的 canonical public path 为准。
+第一轮 `generic_field_set`、手工字段 metadata 转换和第二套 resolver 只能作为迁移输入，不属于完成后的 runtime path。完成状态以 Docnav 使用与独立 workspace 示例相同的 canonical `Source` / `SourceCandidate` / `Resolver` public contract 为准；已解析或 custom input 的 consumer-owned adapter 由 Decision 15 约束。
+
+### Decision 15: 已解析与 custom input 使用 consumer-owned source adapter
+
+当 consumer 在进入 resolution 前已经拥有解析后的 application input 时，不强制重新构造 framework object 或使用不匹配的 companion。Consumer 可以实现私有 source adapter，但该 adapter 必须只遍历 canonical `FieldDefSet` 的 processing metadata，把已存在的输入映射为公共 `Source` / `SourceCandidate`；它不得维护平行 locator table，也不得复制 field identity、value kind、constraint、default、validation 或 merge metadata。
+
+存在原始 clap matches、environment key/value iterator 或 structured config document 时，仍优先使用对应 public extractor。Docnav 的 direct/native CLI adapter 保留在 `docnav-navigation` 内，只拥有 already-parsed input 到 candidate 的 application mapping，不进入通用 workspace，也不改变 source priority、adapter applicability、diagnostic mapping 或 request construction owner。
 
 ## Risks / Trade-offs
 
@@ -106,6 +112,7 @@ Docnav 的 existing `FieldDefSet` 直接传给 extractor/resolver。Explicit inp
 - [Risk] 非法低优先级输入是否阻断存在歧义 → Mitigation: `Replace` 只阻断 selected candidate 的 decode failure，被覆盖的非法 candidate 仅进入 trace；`Append`、`MapMerge` 和 `DenyConflict` 所需 contributors 任一 decode failure 都阻断，最终 merged value 始终再经 canonical validation。
 - [Risk] 子仓库化同时移动 typed-fields 与 companions 会扩大改动面 → Mitigation: 以 Cargo workspace 为原子边界，先通过独立 checkout tests，再切换 Docnav dependency source；不保留第二套兼容 wrapper。
 - [Risk] hard cutover 放大参数解析回归影响 → Mitigation: 以 CLI + env + config + default 的端到端示例和 Docnav 等价测试作为删除转换层的前置门。
+- [Risk] consumer-owned source adapter 可能重新引入 locator 或字段事实复制 → Mitigation: adapter 只接受 canonical processing metadata 与已解析 input，测试固定 canonical `ProcessStrategy` authoring，并用残留审计拒绝平行 source declaration state。
 
 ## Implementation Plan
 
@@ -113,10 +120,10 @@ Docnav 的 existing `FieldDefSet` 直接传给 extractor/resolver。Explicit inp
 2. 删除或内部化 duplicate `FieldContract` / `FieldSet` 及平行 value/constraint/default/validation/merge model；把默认 `Replace` 的四项 `MergeStrategy` public surface 直接加入 canonical `FieldDef` metadata。
 3. 在 existing processing contract 上增加 CLI/env/config 的显式 extraction strategy，并让 clap、env、serde/config extractor 产出统一 candidates。
 4. 整理 resolver，固定 higher-priority/later-registration winner 与 low-to-high merge order，并按 selected/contributing/overridden 规则处理 decode failure；最终 merged value 复用 canonical validation 与 typed-fields materialization。
-5. 让 Docnav 删除 `generic_field_set` 与手工字段 metadata 转换，使用同一 public extractor/resolver path 完成 hard cutover。
+5. 让 Docnav 删除 `generic_field_set` 与手工字段 metadata 转换；framework inputs 使用 public extractor，已解析/custom inputs 使用 Decision 15 限定的私有 source adapter，再进入同一 public resolver path。
 6. 把 typed-fields/macros、resolution core 和 companions 组织为独立 Cargo workspace 子仓库，并验证独立 checkout 与 Docnav consumer。
 7. 更新 example、README、tests 和验证记录；所有新任务完成后再恢复 change 的完成状态。
 
 ## Open Questions
 
-无。Canonical 字段模型与 merge metadata owner、priority/tie/merge ordering、validation timing、抽取策略 owner、未知输入默认行为、Docnav hard cutover 和独立 Cargo workspace 边界均已由 Decisions 3、9-14 收敛。
+无。Canonical 字段模型与 merge metadata owner、priority/tie/merge ordering、validation timing、抽取策略 owner、未知输入默认行为、Docnav hard cutover、consumer-owned source adapter 和独立 Cargo workspace 边界均已由 Decisions 3、9-15 收敛。

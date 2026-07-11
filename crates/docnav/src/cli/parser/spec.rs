@@ -225,7 +225,7 @@ fn add_native_option_args(
     context: &ParserContext,
 ) -> Command {
     for arg_id in context.native_options().arg_ids_for_operation(operation) {
-        command = command.arg(value_arg(*arg_id, *arg_id, "value"));
+        command = command.arg(value_arg(arg_id.clone(), arg_id.clone(), "value"));
     }
     command
 }

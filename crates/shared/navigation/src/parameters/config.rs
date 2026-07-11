@@ -150,7 +150,7 @@ fn validate_explicit_native_options(
     for option in &command.native_options {
         if selected_native_options
             .iter()
-            .any(|spec| spec.cli_flag() == Some(option.flag.as_str()))
+            .any(|spec| spec.cli_flag().as_deref() == Some(option.flag.as_str()))
         {
             continue;
         }

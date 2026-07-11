@@ -1,33 +1,22 @@
 use docnav_protocol::Operation;
 use docnav_typed_fields::{
     BuildError, ExpectedFieldShape, FieldDef, FieldDefBuilder, FieldDefDeclaration,
-    FieldValidation, FieldValue, ProcessStrategy as FieldProcessStrategy, ProcessingId,
-    SchemaMetadataView, ValueKind,
+    FieldValidation, FieldValue, ProcessStrategy, ProcessingId, SchemaMetadataView, ValueKind,
 };
 
 use super::descriptions::{expected_value_description, value_kind_name};
 use super::spec_error::AdapterOptionSpecError;
+
+const CLI_PROCESSING: &str = "cli";
+
+pub type AdapterOptionProcessStrategy = ProcessStrategy;
 
 #[derive(Clone, Debug)]
 pub struct AdapterOptionSpec {
     pub identity: String,
     pub owner: String,
     pub operations: Vec<Operation>,
-    sources: Vec<AdapterOptionSource>,
     field: FieldDefDeclaration,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct AdapterOptionSource {
-    processing_id: String,
-    strategy: AdapterOptionProcessStrategy,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum AdapterOptionProcessStrategy {
-    JsonPath(Vec<String>),
-    CliFlag { flag: &'static str },
-    ConfigPath(Vec<String>),
 }
 
 #[derive(Debug)]
@@ -38,7 +27,6 @@ pub struct AdapterOptionSpecBuilder<T = ()> {
     field: FieldDefBuilder<T>,
     declaration_path: Option<Vec<String>>,
     expected: ExpectedFieldShape,
-    sources: Vec<AdapterOptionSource>,
 }
 
 impl AdapterOptionSpec {
@@ -51,7 +39,6 @@ impl AdapterOptionSpec {
             operations: Vec::new(),
             declaration_path: None,
             expected: ExpectedFieldShape::optional(),
-            sources: Vec::new(),
         }
     }
 
@@ -73,15 +60,17 @@ impl AdapterOptionSpec {
             .unwrap_or("")
     }
 
-    pub fn cli_flag(&self) -> Option<&'static str> {
-        self.sources
-            .iter()
-            .find_map(|source| source.strategy.as_cli_flag())
+    pub fn cli_flag(&self) -> Option<String> {
+        self.field
+            .processing_metadata(&ProcessingId::from(CLI_PROCESSING))
+            .ok()
+            .flatten()
+            .and_then(|metadata| metadata.locator.cli_flag().map(str::to_owned))
     }
 
-    pub fn cli_arg_id(&self) -> Option<&'static str> {
+    pub fn cli_arg_id(&self) -> Option<String> {
         self.cli_flag()
-            .map(|flag| flag.strip_prefix("--").unwrap_or(flag))
+            .map(|flag| flag.strip_prefix("--").unwrap_or(&flag).to_owned())
     }
 
     pub fn cli_input_path(&self) -> Option<Vec<String>> {
@@ -153,43 +142,6 @@ impl AdapterOptionSpec {
     }
 }
 
-impl AdapterOptionProcessStrategy {
-    pub fn json_path<I, S>(segments: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        Self::JsonPath(segments.into_iter().map(Into::into).collect())
-    }
-
-    pub fn cli_flag(flag: &'static str) -> Self {
-        Self::CliFlag { flag }
-    }
-
-    pub fn config_path<I, S>(segments: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        Self::ConfigPath(segments.into_iter().map(Into::into).collect())
-    }
-
-    fn as_cli_flag(&self) -> Option<&'static str> {
-        match self {
-            Self::CliFlag { flag } => Some(*flag),
-            Self::JsonPath(_) | Self::ConfigPath(_) => None,
-        }
-    }
-
-    fn field_process(&self) -> FieldProcessStrategy {
-        match self {
-            Self::JsonPath(path) => FieldProcessStrategy::json_path(path.clone()),
-            Self::CliFlag { flag } => FieldProcessStrategy::cli_flag(*flag),
-            Self::ConfigPath(path) => FieldProcessStrategy::config_path(path.clone()),
-        }
-    }
-}
-
 impl<T> AdapterOptionSpecBuilder<T> {
     pub fn owner(mut self, owner: impl Into<String>) -> Self {
         self.owner = owner.into();
@@ -210,24 +162,8 @@ impl<T> AdapterOptionSpecBuilder<T> {
         self
     }
 
-    pub fn process(
-        mut self,
-        processing_id: impl Into<String>,
-        strategy: AdapterOptionProcessStrategy,
-    ) -> Self {
-        let processing_id = processing_id.into();
-        if let Some(existing) = self
-            .sources
-            .iter_mut()
-            .find(|source| source.processing_id == processing_id)
-        {
-            existing.strategy = strategy;
-        } else {
-            self.sources.push(AdapterOptionSource {
-                processing_id,
-                strategy,
-            });
-        }
+    pub fn process(mut self, processing_id: impl Into<String>, strategy: ProcessStrategy) -> Self {
+        self.field = self.field.process(processing_id, strategy);
         self
     }
 
@@ -249,21 +185,13 @@ impl<T> AdapterOptionSpecBuilder<T> {
         T: 'static,
     {
         let declaration_path = self.declaration_path.unwrap_or_default();
-        let mut field = self.field;
-        for source in &self.sources {
-            field = field.process(
-                source.processing_id.clone(),
-                source.strategy.field_process(),
-            );
-        }
         AdapterOptionSpec {
             identity: self.identity,
             owner: self.owner,
             operations: self.operations,
-            sources: self.sources,
             field: FieldDefDeclaration::with_declaration_path(
                 declaration_path,
-                field,
+                self.field,
                 self.expected,
             ),
         }
@@ -279,7 +207,6 @@ impl AdapterOptionSpecBuilder<()> {
             field: self.field.validation(validation),
             declaration_path: self.declaration_path,
             expected: self.expected,
-            sources: self.sources,
         }
     }
 }

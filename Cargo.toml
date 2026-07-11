@@ -34,7 +34,7 @@ license = "MIT"
 version = "0.1.0"
 
 [workspace.dependencies]
-clap = { version = "4.5.40", default-features = false, features = ["std", "help", "usage"] }
+clap = { version = "4.5.40", default-features = false, features = ["std", "help", "usage", "string"] }
 cli-config-resolution = { path = "subrepos/cli-config-resolution/crates/cli-config-resolution" }
 cli-config-resolution-clap = { path = "subrepos/cli-config-resolution/crates/cli-config-resolution-clap" }
 cli-config-resolution-serde = { path = "subrepos/cli-config-resolution/crates/cli-config-resolution-serde" }

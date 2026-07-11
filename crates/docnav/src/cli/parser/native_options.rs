@@ -30,7 +30,7 @@ impl NativeOptionCatalog {
             .unwrap_or(&[])
     }
 
-    pub(super) fn arg_ids_for_operation(&self, operation: Operation) -> &[&'static str] {
+    pub(super) fn arg_ids_for_operation(&self, operation: Operation) -> &[String] {
         self.entry(operation)
             .map(|entry| entry.arg_ids.as_slice())
             .unwrap_or(&[])
@@ -69,7 +69,7 @@ impl Default for NativeOptionCatalog {
 struct OperationNativeOptions {
     operation: Operation,
     options: Vec<NativeOptionCliMetadata>,
-    arg_ids: Vec<&'static str>,
+    arg_ids: Vec<String>,
 }
 
 impl OperationNativeOptions {
@@ -94,18 +94,18 @@ impl OperationNativeOptions {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct NativeOptionCliMetadata {
-    flag: &'static str,
-    arg_id: &'static str,
+    flag: String,
+    arg_id: String,
     operations: Vec<Operation>,
 }
 
 impl NativeOptionCliMetadata {
-    pub(super) fn flag(&self) -> &'static str {
-        self.flag
+    pub(super) fn flag(&self) -> &str {
+        &self.flag
     }
 
-    pub(super) fn arg_id(&self) -> &'static str {
-        self.arg_id
+    pub(super) fn arg_id(&self) -> &str {
+        &self.arg_id
     }
 
     pub(super) fn applies_to(&self, operation: Operation) -> bool {
@@ -136,7 +136,7 @@ fn push_unique_by_flag(
     options.push(metadata);
 }
 
-fn push_unique_arg_id(arg_ids: &mut Vec<&'static str>, arg_id: &'static str) {
+fn push_unique_arg_id(arg_ids: &mut Vec<String>, arg_id: String) {
     if arg_ids.contains(&arg_id) {
         return;
     }

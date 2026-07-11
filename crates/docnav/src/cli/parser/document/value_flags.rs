@@ -9,7 +9,7 @@ use super::super::ParserContext;
 pub(super) fn document_value_flags(
     operation: Operation,
     context: &ParserContext,
-) -> Vec<KnownValueFlag<'static>> {
+) -> Vec<KnownValueFlag<'_>> {
     let mut flags = boundary_value_flags(|flag| document_uses_flag(operation, flag));
     for option in context.native_options().all_document_options() {
         let flag = option.flag();

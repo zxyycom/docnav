@@ -65,7 +65,7 @@ fn native_option_input(
     for option in &command.native_options {
         let Some(spec) = selected_native_options
             .iter()
-            .find(|spec| spec.cli_flag() == Some(option.flag.as_str()))
+            .find(|spec| spec.cli_flag().as_deref() == Some(option.flag.as_str()))
         else {
             continue;
         };

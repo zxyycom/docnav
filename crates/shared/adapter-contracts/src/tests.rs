@@ -109,17 +109,10 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
             .owner("docnav-markdown")
             .operations(&[Operation::Outline])
             .path(["options", "max_heading_level"])
-            .process(
-                "cli",
-                AdapterOptionProcessStrategy::cli_flag("--max-heading-level"),
-            )
+            .process("cli", ProcessStrategy::cli_flag("--max-heading-level"))
             .process(
                 "config",
-                AdapterOptionProcessStrategy::config_path([
-                    "options",
-                    "docnav-markdown",
-                    "max_heading_level",
-                ]),
+                ProcessStrategy::config_path(["options", "docnav-markdown", "max_heading_level"]),
             )
             .validation(
                 FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
@@ -180,7 +173,10 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
             if path.segments()
                 == vec!["options", "docnav-markdown", "max_heading_level"]
     ));
-    assert_eq!(outline_only.cli_arg_id(), Some("max-heading-level"));
+    assert_eq!(
+        outline_only.cli_arg_id(),
+        Some("max-heading-level".to_owned())
+    );
     assert_eq!(outline_only.processing_path("cli").unwrap(), None);
     assert_eq!(
         outline_only.cli_input_path().unwrap(),
