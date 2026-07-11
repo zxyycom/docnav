@@ -1,90 +1,122 @@
-本 design 是 `create-universal-cli-config-crate` 的 change-local 技术方案：说明如何从 Docnav 当前实现抽象出可子仓库化复用的 Rust CLI/config resolution crate；当前文档只存在于 `openspec/changes/create-universal-cli-config-crate/`，不影响主规范及现有其它文档。
+本 design 是 `create-universal-cli-config-crate` 的 change-local 技术方案：说明如何以 Docnav 现有 `FieldDef` / `FieldDefSet` 为 canonical 标准参数模型，形成可独立维护的 Rust CLI/config resolution Cargo workspace。当前文档只存在于 `openspec/changes/create-universal-cli-config-crate/`，不直接修改主规范。
 
 ## Context
 
-Docnav 当前已经有两个可抽象基础：`typed-fields` 拥有字段 identity、路径投影、类型、约束、默认值和校验事实；`parameter-resolution` 拥有 direct/project/user/default 来源优先级、默认值 fallback、diagnostic handoff 和 passthrough。
+Docnav 的 `docnav-typed-fields` 已经拥有字段 identity、processing metadata、类型、约束、静态默认值、校验事实、set 构建检查和 typed materialization；`parameter-resolution` 及第一轮 `cli-config-resolution` 实现则证明了 ordered sources、merge 与 provenance 的需求。
 
-当前限制是这些能力还带有 Docnav 的角色命名和固定来源集合，CLI flag、env、config file、dynamic default、custom source 不能作为同一套 source/projection contract 被外部 Rust CLI 复用。Docnav 的 adapter、operation、protocol、readable output 和 diagnostic code identity 必须继续留在 Docnav owner 内，不能进入通用库核心。
+第一轮实现完成并通过验证，但同时建立了 `FieldContract` / `FieldSet` 以及平行的 value、constraint、default 和 validation 类型。Docnav 因而需要先把 canonical typed-fields metadata 转成第二套字段模型，再手工生成 candidates。该路径能运行，却没有兑现“复用现有标准参数对象”的主要目标，也让 companion crate 的正常使用路径比必要的更复杂。
+
+本轮允许微调 API 和实现任务。收敛后的边界是：typed-fields 拥有参数定义、类型、约束、默认值、merge strategy、校验和 materialization；resolution 拥有来源、优先级、merge 执行语义与 provenance；source-specific extractor 拥有 CLI/env/config locator 到 canonical field identity 的映射。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 从现有 `typed-fields` 与 `parameter-resolution` 中抽象通用字段契约、来源投影、来源抽取、优先级合并、merge strategy、来源追踪和最终 typed materialization。
-- 形成可在当前 workspace 中验证、后续迁移为独立 repository 的 crate 边界。
-- 让 Docnav 当前 navigation input resolution 在本 change 内 hard cutover 到新库，并保持现有 public protocol、CLI 行为、adapter contract、readable output 和 protocol output 不变。
-- 支持 CLI flag、env var、config document、static/dynamic default 和 custom source 的统一来源模型。
-- 为 explain/debug 输出保留 deterministic provenance trace，而不是只返回最终值。
+- 让现有 `FieldDef` / `FieldDefSet` 直接成为 canonical `Parameter` / `ParameterSet`，并由每个 `FieldDef` 直接声明 `MergeStrategy`，不要求消费者维护第二套 field contract 或 merge policy table。
+- 通过现有 processing 机制显式声明 CLI flag、env var 和 config path extraction strategy。
+- 为 CLI、env、config、default 和 custom inputs 提供统一 candidate/source contract，并按确定 priority 与 field-level merge policy 解析。
+- 复用 canonical 类型、约束和默认值完成输入校验与最终 typed materialization，同时保留 deterministic provenance trace。
+- 让 Docnav 通过同一 public API 完成 hard cutover，不再构造 `generic_field_set` 或手工复制字段 metadata。
+- 建立可独立 checkout、build 和 test 的 Cargo workspace 子仓库，供其它 Rust CLI 复用。
 
 **Non-Goals:**
 
-- 不实现新的 Docnav 文档导航能力。
-- 不改变 `outline -> ref -> read` 协议、request/response schema、adapter native option semantics 和 output modes。
-- 不把 `clap`、TOML、JSON、Figment 等具体框架绑定进核心 crate；这些只能通过 companion crate 进入。
-- 不在未经审计前发布外部 crate，也不改写现有主规范。
+- 不实现新的 Docnav 文档导航能力，也不改变 protocol、adapter、operation、diagnostic code 或 output behavior。
+- 不为 env/config 未声明项增加全量扫描、unused-key diagnostics 或通用 unknown-input policy。
+- 不把 clap 或 structured-config framework 依赖放进 framework-independent resolution core。
+- 不扩展与当前来源、校验、合并和 provenance 主流程无关的状态模型。
+- 不在本 change 中执行 crates.io 发布。
 
 ## Decisions
 
+Decisions 1-8 记录第一轮实现时的选择和验证背景。Decision 9 及之后是 2026-07-10 用户确认后的当前执行契约；发生冲突时，以编号更后的 Decision 为准。
+
 ### Decision 1: Workspace-first 的通用 crate 边界
 
-本 change 新增 `cli-config-resolution` capability，拥有通用 Rust CLI/config resolution 的长期契约。实现阶段先在当前 workspace 中建立独立 crate 边界，确保 tests、docs 和 Docnav hard cutover validation 能复用当前验证链路；release-readiness 通过后迁移到独立 repository。
+第一轮先在 Docnav workspace 中建立 `cli-config-resolution`、`cli-config-resolution-clap` 和 `cli-config-resolution-serde` package，确保 tests、docs 和 Docnav hard cutover validation 能复用当前验证链路；长期目标是迁移到独立 repository。
 
-### Decision 2: 字段事实与 source policy 分层
+### Decision 2: 字段事实与 source policy 分层（由 Decision 9 收敛）
 
-字段定义继续围绕 stable identity、value kind、constraint、default、projection path 和 validation failure facts。通用库不让字段核心拥有 CLI/config/public diagnostic 语义，而是在上层 resolution crate 中声明 source projection 和 merge behavior。
+第一轮把 stable identity、value kind、constraint、default、projection path 和 validation failure facts 复制到新的 `FieldContract`。分层方向保留，但复制字段模型的实现选择由 Decision 9 取代。
 
 ### Decision 3: 将 fixed source slots 改为 ordered source collection
 
-现有 `DirectInput / ProjectConfig / UserConfig / Default` 模型应泛化为 ordered `SourceSpec` / `SourceId` 集合。每个 source 保留 kind、priority、locator、explicitness 和 load/parse 状态；resolver 只根据 source policy 处理 source candidates，不硬编码 Docnav 的四层优先级。
+现有 `DirectInput / ProjectConfig / UserConfig / Default` 模型泛化为 ordered sources。Priority 数值越大优先级越高；同 priority 时，后注册 source 的 candidate 获胜。`Append` 与 `MapMerge` 从低 priority 到高 priority 应用，同 priority 内按 source 注册顺序应用；因此后应用的 map value 覆盖同名 key。Resolver 执行这套固定顺序，不硬编码 Docnav 的四层命名。
 
-### Decision 4: resolution 返回最终值和 provenance trace
+### Decision 4: Resolution 返回最终值和 provenance trace
 
-Resolver 必须返回 materialized typed values，同时保留 selected candidate、被覆盖 candidates、validation diagnostics、merge path 和 source locator。`explain()` API 从 trace 派生，不从最终 struct 反推。
+Resolver 返回 resolved values、diagnostics 和 provenance facts。Trace 至少保留 selected source、overridden 或 merge contributors、default fallback 和 source locator；readable explain 从 trace 派生，不从最终 struct 反推。
 
-### Decision 5: merge strategy 属于 field-level resolution policy
+### Decision 5: Merge strategy 属于 field-level resolution policy（由 Decision 9 收敛）
 
-每个字段声明一个 merge strategy。MVP 至少支持 scalar replace、list append、list replace、map merge、map replace 和 deny-conflict；默认策略必须 deterministic，并可被测试直接断言。
+第一轮把 merge policy 作为 resolution-owned、按 field identity 关联的声明。Field-level 方向保留，但 metadata owner 和 public surface 已由 Decision 9 收敛：声明直接进入 canonical `FieldDef`，resolver 只负责执行。
 
-### Decision 6: framework integrations 保持 companion crate 层
+### Decision 6: Framework integrations 保持 companion crate 层（由 Decision 12 补充）
 
-核心 crate 只定义 field contract、source value、resolver、trace 和 diagnostics。`clap` arg 生成/读取进入 `cli-config-resolution-clap` companion crate；serde-compatible structured config source 进入 `cli-config-resolution-serde` companion crate；derive macro convenience 不进入首批实现。companion crates 不能反向污染核心 API。
+Clap arg 生成/读取进入 `cli-config-resolution-clap`；structured config 抽取进入 `cli-config-resolution-serde`。Core 不依赖单一 CLI/config framework，derive convenience 不在本轮新增。
 
 ### Decision 7: Docnav 集成通过 hard cutover 一步切换
 
-Docnav 集成采用 hard cutover。实现阶段先用 tests 和 fixture 对比证明新 resolver 覆盖现有 navigation input resolution 行为，然后在同一 change 内把 Docnav 调用链切到新 resolver，并删除旧 fixed source resolver 的运行时路径。实现完成状态不得保留新旧 resolver 双路径、runtime feature flag、fallback 开关或兼容 wrapper。回滚方式是代码级 revert，不是运行时切换。
+Docnav 保持 hard cutover。实现完成状态不保留旧 resolver 运行路径、runtime feature flag 或 fallback 开关；回滚方式是代码级 revert。
 
 ### Decision 8: 审计出口与 release-readiness 决策门
 
-Artifact 审计出口是 proposal、design、spec delta 和 tasks 围绕同一核心句展开：从 Docnav typed-fields 和 parameter-resolution 抽象出可子仓库化复用的 Rust CLI/config resolution crate。工作区实现使用 `cli-config-resolution` 作为 capability 与 crate/package 工作名；实现审计发现命名冲突、owner 冲突、public contract 风险任一问题时，必须先更新本 design 的决策再执行 crate 创建，已创建时同步重命名。
+工作区 package 名继续使用 `cli-config-resolution`、`cli-config-resolution-clap` 和 `cli-config-resolution-serde`。Canonical public repository 已确认为 `https://github.com/zxyycom/cli-config-resolution`；外部发布前仍需重新确认 package 名。许可证选择、version 和发布顺序继续作为独立 release decisions，不阻塞本 change 建立并验证独立 Cargo workspace 子仓库。
 
-已定默认路径：工作区 crate 名为 `cli-config-resolution`，Docnav 集成使用 hard cutover，framework integrations 使用 companion crates，derive macro 延后到核心 API 稳定后的独立 change，外部发布目标为独立 repository。8.x release-readiness 前只确认外部 package 名可用性、发布节奏和 repository metadata；发现外部包名冲突、仓库策略冲突、发布渠道风险任一问题时，执行者必须主动向用户提问。任何会改变 capability ID、Docnav public behavior、外部 package 名和发布渠道的变更，都必须同步更新 proposal、design、相关 spec delta 和 tasks 后再继续。
+### Decision 9: `FieldDef` / `FieldDefSet` 是唯一 canonical 参数模型
+
+`docnav-typed-fields::FieldDef` 与 `FieldDefSet` 直接承载标准参数的 identity、类型、约束、默认值、`MergeStrategy`、校验和 typed materialization。`MergeStrategy` 的 public surface 固定为 `Replace`、`Append`、`MapMerge`、`DenyConflict`：`Replace` 同时适用于 scalar、list 和 map，并是未显式声明时的默认值。`cli-config-resolution` 依赖并 re-export canonical types，允许提供 `Parameter` / `ParameterSet` 薄别名或 convenience constructors，但不得复制状态或建立需要同步的第二套 field/value/constraint/default/validation/merge model。
+
+为 resolution 暴露 metadata 时，把现有 `SchemaMetadataView` / `ProcessingMetadataView`、field merge strategy 和必要 accessor 调整为稳定 public API。Resolver 只读取 `FieldDef` 上的 merge metadata 并执行，不拥有独立声明入口，也不按 field identity 维护第二份 policy table。
+
+### Decision 10: 复用 processing 机制声明显式 extraction strategy
+
+`ProcessStrategy` 继续作为字段的 extraction metadata owner，并整理出显式的 CLI flag、env var 和 config path constructors/variants。每个 strategy 记录 source-local locator，并通过 existing `ProcessingId` 选择一组抽取规则；config path 可以复用现有 JSON path 表达，不新增平行 projection graph。
+
+Extractor 只遍历 `FieldDefSet` 对相应 processing/source 声明的 metadata，将存在或非法的输入映射为统一 candidate，并保留 field identity、source id/kind 和 locator。输入缺失可以由“没有 candidate”表达；只有 trace 或错误契约确实需要时才保留额外状态。
+
+### Decision 11: Resolution 协调 canonical validation、merge 与 materialization
+
+Resolution core 拥有 ordered source collection、priority、merge execution、diagnostic facts 和 provenance。CLI/env 字符串及 structured config value 保留其 decode 成功或失败事实；resolver 根据 `FieldDef` 声明的策略确定 selected、contributors 和 overridden candidates。Selected 或 contributing candidate 只要解码失败就阻断该 field resolution；被 `Replace` 覆盖的非法 candidate 只进入 trace，不阻断更高优先级的有效 selected candidate。合并完成后，resolver 必须使用同一 canonical `FieldDef` validation metadata 再校验最终值。静态默认值从 `FieldDef` metadata 生成最低优先级 fallback，不要求消费者手工声明 default source candidate。
+
+Typed materialization 继续复用 `FieldDefSet` / derive 支持。Resolution 只提供完成 materialization 所需的 canonical field values 和 trace，不再实现一套独立 typed-output contract。
+
+### Decision 12: Source-specific adapter 与未知输入策略保持简单
+
+`cli-config-resolution-clap` 根据 CLI extraction strategy 注册或读取 clap arguments；未注册 flag 的拒绝沿用 clap 原生行为。Env extractor 接收 `IntoIterator<Item = (String, String)>` 或等价可测试输入，只查询声明过的 env name。Config companion 首批以当前 `serde_json::Value` structured document 为事实边界，只查询声明过的 config path。
+
+Env/config 中未声明的 key 默认静默忽略。当前 public API 不增加 `UnknownPolicy`、全量 key 扫描或 unused-key diagnostics；以后有明确消费者需求时再通过独立 change 增加 strict mode。
+
+### Decision 13: 独立子仓库是 Cargo workspace
+
+目标子仓库不是单一 core package，而是一个可独立 checkout、build 和 test 的 Cargo workspace。它可以包含 typed-fields、typed-fields macros、resolution core、clap companion 和 serde/config companion；workspace root 统一 version、edition、repository 和 shared dependencies。当前未选择 license，package metadata 有意不声明 license；license selection 延后到 release decision。`cli-config-resolution` 是主要消费者入口，re-export canonical 参数类型，companion crates 依赖该入口。
+
+该 workspace 不依赖 Docnav protocol、adapter contracts、navigation、output 或 Markdown adapter crates。Docnav-specific mapping 和 hard-cutover tests 保留在 Docnav repository。公开 GitHub 托管已确认；crates.io 发布和 license selection 仍是单独的 release decisions。
+
+### Decision 14: Docnav 集成使用 canonical metadata，不再复制字段声明
+
+Docnav 的 existing `FieldDefSet` 直接传给 extractor/resolver。Explicit input、project config、user config、built-in defaults 和 selected adapter native options 映射到通用 source model；adapter applicability、handler binding、request construction 和 diagnostic-code mapping 继续由 Docnav 拥有。
+
+第一轮 `generic_field_set` 和手工 `SourceCandidate` 拼装只能作为迁移输入，不属于完成后的 runtime path。完成状态以 Docnav 使用与独立 workspace 示例相同的 canonical public path 为准。
 
 ## Risks / Trade-offs
 
-- [Risk] 抽象过宽导致第一版 API 难以稳定 → Mitigation: MVP 只覆盖已由 Docnav 需求证明的 source/value/trace/merge 行为，外部扩展通过 custom source 与 companion crates 补充。
-- [Risk] 子仓库化过早导致验证链路丢失 → Mitigation: 先在 workspace 内完成 crate 边界和 Docnav hard cutover validation，再执行独立 repository 迁移步骤。
-- [Risk] provenance trace 设计复杂，拖慢 resolver 实现 → Mitigation: trace 先记录 selected/overridden/diagnostic/source locator 的最小闭包，human-readable explain 可以后置。
-- [Risk] merge semantics 与 source priority 组合产生歧义 → Mitigation: 每个 merge strategy 必须有 deterministic ordering tests，并在 diagnostics 中保留参与 merge 的 source ids。
-- [Risk] 现有 `typed-fields` macro 与新 projection 模型不匹配 → Mitigation: 首批实现只提供 builder API；derive macro 由后续独立 change 基于稳定 metadata 增量设计。
-- [Risk] hard cutover 放大 Docnav 参数解析回归影响 → Mitigation: 切换前用等价测试覆盖 common navigation fields、outline mode config、adapter native options、unknown config keys 和 invalid typed values；验证未通过时不得删除旧 resolver，也不得将双路径作为完成状态。
+- [Risk] typed-fields public metadata 目前偏向 crate-internal 使用 → Mitigation: 只公开 resolver/extractor 必需的 immutable views 和 validation entry points，用 consumer compile tests 固定最小 surface。
+- [Risk] 把 source locator 直接塞进 `ProcessStrategy` 可能让 typed-fields 感知来源名 → Mitigation: strategy 只描述 extraction locator，不拥有 source priority、merge、framework object 或 application behavior；这些继续由 resolution/companion 拥有。
+- [Risk] 非法低优先级输入是否阻断存在歧义 → Mitigation: `Replace` 只阻断 selected candidate 的 decode failure，被覆盖的非法 candidate 仅进入 trace；`Append`、`MapMerge` 和 `DenyConflict` 所需 contributors 任一 decode failure 都阻断，最终 merged value 始终再经 canonical validation。
+- [Risk] 子仓库化同时移动 typed-fields 与 companions 会扩大改动面 → Mitigation: 以 Cargo workspace 为原子边界，先通过独立 checkout tests，再切换 Docnav dependency source；不保留第二套兼容 wrapper。
+- [Risk] hard cutover 放大参数解析回归影响 → Mitigation: 以 CLI + env + config + default 的端到端示例和 Docnav 等价测试作为删除转换层的前置门。
 
 ## Implementation Plan
 
-1. 在当前 workspace 中新增通用 crate 边界和最小 public API，不先删除现有 Docnav resolver。
-2. 把 `parameter-resolution` 的 fixed source slots 替换为动态 source collection，保持 Docnav direct/project/user/default 行为。
-3. 增加 CLI/env/config/default/custom source extraction 的最小实现和测试。
-4. 增加 merge strategy 与 provenance trace 测试，覆盖 scalar、list、map、conflict、missing required 和 invalid source value。
-5. 将 Docnav navigation input resolution 调用链 hard cutover 到新 resolver，并运行现有 Docnav 参数解析、配置、adapter native option 和 workspace 验证。
-6. 完成 Docnav hard cutover validation 与工作区验证后，在 8.x release-readiness 决策门中确认独立 repository 迁移和外部 crate 发布边界。
-7. 删除旧 fixed source resolver 的运行时路径；验证失败时停止并修复新 resolver，不保留运行时 fallback 作为完成状态。
+1. 公开 `FieldDef` / `FieldDefSet` resolution 所需的最小 metadata 和 validation API，并由 `cli-config-resolution` re-export canonical 类型。
+2. 删除或内部化 duplicate `FieldContract` / `FieldSet` 及平行 value/constraint/default/validation/merge model；把默认 `Replace` 的四项 `MergeStrategy` public surface 直接加入 canonical `FieldDef` metadata。
+3. 在 existing processing contract 上增加 CLI/env/config 的显式 extraction strategy，并让 clap、env、serde/config extractor 产出统一 candidates。
+4. 整理 resolver，固定 higher-priority/later-registration winner 与 low-to-high merge order，并按 selected/contributing/overridden 规则处理 decode failure；最终 merged value 复用 canonical validation 与 typed-fields materialization。
+5. 让 Docnav 删除 `generic_field_set` 与手工字段 metadata 转换，使用同一 public extractor/resolver path 完成 hard cutover。
+6. 把 typed-fields/macros、resolution core 和 companions 组织为独立 Cargo workspace 子仓库，并验证独立 checkout 与 Docnav consumer。
+7. 更新 example、README、tests 和验证记录；所有新任务完成后再恢复 change 的完成状态。
 
-## Decision Triggers
+## Open Questions
 
-无需要用户立即决策的开放问题。
-
-已收敛：
-
-- `cli-config-resolution` 是 capability ID，也是工作区 crate/package 工作名；发现命名、owner 和 public contract 风险时按 Decision 8 更新。
-- Docnav 集成采用 hard cutover；实现完成状态不得保留旧 resolver 运行路径、runtime feature flag、fallback 开关和兼容 wrapper。
-- 外部 package 名默认沿用 `cli-config-resolution`，子仓库化默认迁移到独立 repository；包名不可用、仓库策略冲突和发布渠道风险需要用户决策。
-- derive macro 不进入首批实现；framework integrations 使用 companion crates。
+无。Canonical 字段模型与 merge metadata owner、priority/tie/merge ordering、validation timing、抽取策略 owner、未知输入默认行为、Docnav hard cutover 和独立 Cargo workspace 边界均已由 Decisions 3、9-14 收敛。

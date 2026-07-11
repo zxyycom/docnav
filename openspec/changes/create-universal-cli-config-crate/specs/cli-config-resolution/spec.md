@@ -1,169 +1,247 @@
-本 spec delta 是 `cli-config-resolution` 的 change-local 新增能力规范：定义通用 Rust CLI/config resolution crate 必须提供的字段契约、来源投影、合并、追踪和子仓库化边界；当前文档只存在于 `openspec/changes/create-universal-cli-config-crate/`，不影响主规范及现有其它文档。
+本 delta spec 定义 `cli-config-resolution` 的目标契约：复用现有 typed-fields 参数模型，显式抽取 CLI/env/config 输入，并统一完成来源优先级、校验、合并、materialization 协调和 provenance。
 
 ## ADDED Requirements
 
-### Requirement: Field Contract Projection
+### Requirement: Canonical Standard Parameter Model
 
-The CLI/config resolution library MUST define reusable field contracts with stable identity, value kind, constraints, default metadata, projection metadata, and validation failure facts without owning application-specific CLI commands, config file layout, protocol envelopes, adapter semantics, and diagnostic code identity.
+The CLI/config resolution library MUST use the existing `docnav-typed-fields` `FieldDef` and `FieldDefSet` model as the canonical standard parameter definition, including identity, value kind, constraints, defaults, merge strategy, validation, set construction checks, and typed materialization support. Each `FieldDef` MUST directly own its `MergeStrategy`, defaulting to `Replace`. The library MAY re-export these types or provide thin `Parameter` / `ParameterSet` aliases, but it MUST NOT require a second field or merge-policy model that copies or associates the same facts by field identity.
 
-#### Scenario: Build reusable field contract
+#### Scenario: Register canonical parameter definitions once
 
-- **WHEN** a consumer registers a field for resolution
-- **THEN** the library records the field identity, value kind, constraints, default metadata, and projection metadata
-- **THEN** the consumer remains responsible for mapping that field into application-specific public behavior
+- **WHEN** a consumer builds a `FieldDefSet` with field types, constraints, defaults, merge strategies, and processing metadata
+- **THEN** the same set can be passed to source extractors and resolution without translating it into another field set
+- **THEN** field identity, validation rules, default metadata, and merge strategy have one canonical owner
 
-#### Scenario: Reject duplicate field identity
+#### Scenario: Expose only resolution-required metadata
 
-- **WHEN** two registered fields use the same stable identity in one field set
-- **THEN** field set construction fails deterministically
-- **THEN** no resolver run receives ambiguous field facts
+- **WHEN** an extractor or resolver inspects a canonical field
+- **THEN** it uses public immutable metadata views or validation entry points provided by typed-fields
+- **THEN** the resolution crate does not recreate value-kind, constraint, default, merge-strategy, or validation types
 
-### Requirement: Source Projection Model
+#### Scenario: Default merge strategy is replace
 
-The CLI/config resolution library MUST model CLI flags, environment variables, config document paths, static defaults, dynamic defaults, and custom inputs as source projections that map source-local locators to stable field identities.
+- **WHEN** a canonical scalar, list, or map field does not explicitly declare a merge strategy
+- **THEN** its `FieldDef` metadata reports `Replace`
+- **THEN** no resolution-owned default policy table is required
 
-#### Scenario: Extract from multiple source kinds
+### Requirement: Explicit Source Extraction Strategies
 
-- **WHEN** a field declares projections for a CLI flag, an environment variable, and a config path
-- **THEN** each source extractor can produce a candidate value for the same field identity
-- **THEN** resolver behavior is based on field identity and source policy rather than source-local names
+The canonical parameter model MUST support explicit extraction strategies for CLI flags, environment variables, and structured config paths through its processing metadata. Each strategy MUST map a source-local locator to a stable canonical field identity without owning source priority or application behavior.
 
-#### Scenario: Preserve source locator
+#### Scenario: Declare CLI, env, and config locators
 
-- **WHEN** a source extractor produces a candidate value
-- **THEN** the candidate records the source id, source kind, and locator such as `--limit`, `APP_LIMIT`, and `read.limit`
-- **THEN** diagnostics and explain output can identify where the candidate came from
+- **WHEN** one canonical field declares a CLI flag locator, an environment variable locator, and a config path locator
+- **THEN** each source-specific extractor can locate input for the same field identity
+- **THEN** the consumer does not repeat the field type, constraints, or default in adapter-specific declarations
+
+#### Scenario: Preserve source locator facts
+
+- **WHEN** an extractor produces a candidate from `--limit`, `APP_LIMIT`, or `read.limit`
+- **THEN** the candidate records the canonical field identity, source identity and kind, and the matching source locator
+- **THEN** diagnostics and provenance can identify the original input location
+
+### Requirement: Declared Input Extraction Behavior
+
+Source extractors MUST inspect only locators declared by the canonical parameter set. A missing declared input MUST not override another source, and undeclared env or config entries MUST be ignored by default without requiring a general unknown-input policy.
+
+#### Scenario: Missing declared input produces no effective candidate
+
+- **WHEN** a declared CLI flag, env var, or config path is absent from one source
+- **THEN** that absence does not override a value from another source
+- **THEN** resolution proceeds without requiring an explicit missing candidate for every field and source pair
+
+#### Scenario: Ignore undeclared env and config entries
+
+- **WHEN** an environment or config document contains keys that have no declared extraction strategy
+- **THEN** the extractor ignores those keys
+- **THEN** the consumer is not required to configure `UnknownPolicy`, unused-key diagnostics, or a full input scan
+
+#### Scenario: Preserve clap unknown-argument behavior
+
+- **WHEN** a consumer builds or augments a clap command from declared CLI strategies and the invocation contains an unregistered flag
+- **THEN** clap applies its native unknown-argument rejection
+- **THEN** the resolution core does not implement a second unknown-flag policy
 
 ### Requirement: Ordered Source Resolution
 
-The CLI/config resolution library MUST resolve values from an ordered collection of source specs instead of hard-coding application-specific source slots.
+The CLI/config resolution library MUST resolve candidates from an ordered collection of sources instead of hard-coding application-specific source slots. A larger numeric priority MUST mean higher priority, and for equal priority a source registered later MUST have higher precedence.
 
-#### Scenario: Highest priority source wins for replace strategy
+#### Scenario: Highest-priority source wins for replace strategy
 
-- **WHEN** the same scalar field appears in multiple sources using replace strategy
-- **THEN** the resolver selects the candidate from the highest-priority applicable source
+- **WHEN** the same field has valid candidates from multiple sources using replace strategy
+- **THEN** the resolver selects the candidate with the largest source priority
 - **THEN** the result records lower-priority candidates as overridden
 
-#### Scenario: Custom source participates in resolution
+#### Scenario: Resolve equal-priority sources deterministically
 
-- **WHEN** a consumer registers a custom source with a deterministic priority
-- **THEN** that source participates in resolution according to the same ordering rules as built-in CLI, env, config, and default sources
-- **THEN** the resolver does not require code changes for the new source kind
+- **WHEN** multiple sources with equal priority provide candidates for one field
+- **THEN** the candidate from the source registered later has higher precedence
+- **THEN** repeated resolution with the same declarations produces the same value and trace
+
+#### Scenario: Add a custom source
+
+- **WHEN** a consumer registers a custom source with an identity and deterministic priority
+- **THEN** its candidates participate in the same ordering rules as CLI, env, config, and default sources
+- **THEN** the resolver does not require a new hard-coded source slot
 
 ### Requirement: Field-Level Merge Strategy
 
-The CLI/config resolution library MUST allow field-level merge strategy so scalar, list, map, optional, and conflict-sensitive fields can resolve according to their declared semantics.
+Each canonical `FieldDef` MUST directly declare one of four public merge strategies: `Replace`, `Append`, `MapMerge`, or `DenyConflict`. `Replace` MUST apply to scalar, list, and map fields and MUST be the default. The resolver MUST only execute the strategy stored in canonical field metadata; it MUST NOT own a separate merge declaration keyed by field identity.
+
+#### Scenario: Replace a scalar, list, or map value
+
+- **WHEN** a scalar, list, or map field uses `Replace` and more than one source provides a candidate
+- **THEN** only the candidate with the largest priority, or the later registration at equal priority, is selected
+- **THEN** provenance identifies the overridden candidates
 
 #### Scenario: Append list values across sources
 
-- **WHEN** a list field declares append merge strategy and multiple sources provide list candidates
-- **THEN** the resolver combines candidates in deterministic source order
-- **THEN** the trace records every source that contributed to the final list
+- **WHEN** a canonical list field uses `Append` and multiple sources provide list candidates
+- **THEN** the resolver appends candidates from lower priority to higher priority
+- **THEN** equal-priority candidates are appended in source registration order
+- **THEN** provenance records every contributing source
+
+#### Scenario: Merge map values across sources
+
+- **WHEN** a canonical map field uses `MapMerge` and multiple sources provide map candidates
+- **THEN** the resolver applies candidates from lower priority to higher priority and equal-priority candidates in source registration order
+- **THEN** a value applied later replaces an earlier value for the same map key
+- **THEN** provenance records the contributing sources
 
 #### Scenario: Deny conflicting values
 
-- **WHEN** a field declares deny-conflict strategy and more than one applicable source provides incompatible values
-- **THEN** resolution reports a diagnostic instead of silently selecting one value
+- **WHEN** a field uses `DenyConflict` and multiple applicable sources provide incompatible values
+- **THEN** resolution reports a conflict diagnostic instead of silently selecting one value
 - **THEN** the diagnostic identifies the conflicting source locators
 
-### Requirement: Defaults Remain Fallback Sources
+### Requirement: Canonical Validation and Typed Materialization
 
-The CLI/config resolution library MUST treat static and dynamic defaults as fallback candidates that apply only when explicit higher-priority sources do not provide an applicable value, unless a field's merge strategy explicitly includes defaults.
+Candidate decoding, final merged-value validation, and typed materialization MUST reuse canonical `FieldDef` metadata and validation behavior. A decode failure MUST block resolution when the candidate is selected by `Replace` or is required as a contributor by `Append`, `MapMerge`, or `DenyConflict`. A decode failure in a candidate overridden by `Replace` MUST be retained in trace but MUST NOT by itself block a valid selected candidate. Every merged or selected final value MUST be validated again by its canonical `FieldDef` before materialization.
 
-#### Scenario: Default fills absent value
+#### Scenario: Selected candidate decode failure blocks replace
 
-- **WHEN** no non-default source provides an optional field value and a static default is declared
-- **THEN** the resolver materializes the default value
-- **THEN** the trace identifies the selected source as default
+- **WHEN** the candidate selected by `Replace` cannot be decoded for its canonical field
+- **THEN** resolution for that field fails with source and locator facts
+- **THEN** the resolver does not fall back to a lower-precedence candidate
 
-#### Scenario: Explicit source overrides default
+#### Scenario: Contributing candidate decode failure blocks merge
 
-- **WHEN** a non-default source provides a valid value for a field with a static default
+- **WHEN** any candidate required by `Append`, `MapMerge`, or `DenyConflict` cannot be decoded for its canonical field
+- **THEN** resolution for that field fails with deterministic field, source, locator, received-value, and decode-reason facts
+- **THEN** no partial merge result is returned as successful
+
+#### Scenario: Overridden invalid candidate remains trace-only
+
+- **WHEN** a lower-precedence candidate under `Replace` cannot be decoded and a higher-precedence selected candidate is valid
+- **THEN** the invalid overridden candidate and its decode failure are retained in provenance trace
+- **THEN** that overridden failure does not by itself block the valid selected result
+
+#### Scenario: Validate the final selected or merged value
+
+- **WHEN** candidate selection or merge produces a final value for a canonical field
+- **THEN** the final value is validated again by that field's canonical type and constraints
+- **THEN** only a successful canonical validation can proceed to existing `FieldDefSet` typed materialization
+
+#### Scenario: Block materialization on invalid resolution
+
+- **WHEN** required fields are missing or final values fail canonical validation
+- **THEN** typed materialization fails with deterministic diagnostics
+- **THEN** no partially invalid application object is returned as a successful result
+
+### Requirement: Defaults Remain Canonical Fallbacks
+
+Static defaults declared by canonical fields MUST participate as lowest-priority fallback values without requiring consumers to manually construct default source candidates. Dynamic defaults MAY be supplied through an explicit default source when required by a consumer.
+
+#### Scenario: Static default fills an absent value
+
+- **WHEN** no explicit source provides a field value and the canonical field declares a static default
+- **THEN** the resolver materializes that default
+- **THEN** provenance identifies the selected value as a default fallback
+
+#### Scenario: Explicit source overrides a static default
+
+- **WHEN** an explicit source provides a valid field value and the canonical field also declares a static default
 - **THEN** the explicit source value is selected according to source priority
-- **THEN** the default candidate is recorded as fallback rather than as an equal explicit source
+- **THEN** the default remains a fallback fact rather than an equal explicit source
 
 ### Requirement: Provenance Trace
 
-The CLI/config resolution library MUST return provenance facts for resolved values, validation diagnostics, overridden candidates, merge contributors, and missing required fields.
+The CLI/config resolution library MUST retain enough provenance to explain selected values, overridden candidates, merge contributors, default fallbacks, invalid source inputs, and missing required fields.
 
-#### Scenario: Explain selected value
+#### Scenario: Explain a selected value
 
 - **WHEN** a consumer asks why a resolved value was selected
-- **THEN** the library can report the selected source locator, selected value, overridden candidates, and default fallback facts
-- **THEN** the explanation is derived from stored trace data rather than reconstructed from the final typed struct
+- **THEN** the trace reports its canonical field identity, selected source locator, and relevant overridden or contributing candidates
+- **THEN** readable explain output is derived from stored trace facts rather than reconstructed from a typed object
 
-#### Scenario: Invalid candidate retains source facts
+#### Scenario: Keep trace model minimal
 
-- **WHEN** a source candidate violates the field's declared type/constraint rules
-- **THEN** the resolver reports a validation diagnostic with field identity, source id, source locator, received value kind, and constraint reason
-- **THEN** invalid raw input is not materialized into the final typed value
-
-### Requirement: Typed Materialization
-
-The CLI/config resolution library MUST materialize resolved values into typed output while preserving access to the resolution result and diagnostics.
-
-#### Scenario: Materialize final struct
-
-- **WHEN** all required fields resolve successfully and unresolved optional fields are absent
-- **THEN** the consumer can materialize an application-owned typed struct from the resolved values
-- **THEN** the consumer can still inspect the underlying resolution trace
-
-#### Scenario: Block materialization on diagnostics
-
-- **WHEN** resolution contains diagnostics for missing required fields, failed validation, and mixed failure cases
-- **THEN** materialization fails with deterministic diagnostics
-- **THEN** no partially invalid application struct is returned as a successful result
+- **WHEN** source load, explicitness, missing-input, and candidate state can be represented by source presence, candidate presence, or a diagnostic
+- **THEN** the public trace uses those existing facts
+- **THEN** it does not require parallel public state enums that do not affect resolution behavior
 
 ### Requirement: Framework Adapter Boundary
 
-The CLI/config resolution library MUST keep framework integrations such as `clap`, env loading, and serde-compatible config parsing behind companion adapter crates, while the core resolver remains independent of any single framework. Derive macro convenience is outside the first implementation slice.
+Framework-specific extraction MUST remain outside the framework-independent resolution core. The Cargo workspace MUST provide a clap companion for CLI strategies and a structured-config companion for config-path strategies; environment extraction MAY remain in the core because it requires no external framework.
 
-#### Scenario: Use clap companion crate without changing core resolver
+#### Scenario: Use clap companion with canonical parameters
 
-- **WHEN** a consumer uses the `cli-config-resolution-clap` companion crate
-- **THEN** the companion crate can generate and read CLI arguments from field projections
-- **THEN** the core resolver API remains usable without `clap`
+- **WHEN** a consumer passes a canonical `FieldDefSet` containing CLI strategies to `cli-config-resolution-clap`
+- **THEN** the companion can register or read the declared clap arguments and return candidates for canonical field identities
+- **THEN** it does not require `FieldContract`, `FieldSet`, or duplicated validation metadata
 
-#### Scenario: Use config document adapter without changing core resolver
+#### Scenario: Use structured config companion with canonical parameters
 
-- **WHEN** a consumer uses the serde-compatible config companion crate
-- **THEN** the companion crate maps document paths to source candidates
-- **THEN** the core resolver receives source candidates through the same source model used by CLI and env sources
+- **WHEN** a consumer passes a structured config document and a canonical `FieldDefSet` containing config-path strategies to the config companion
+- **THEN** the companion returns candidates for declared canonical field identities
+- **THEN** the resolution core receives them through the same candidate/source model used by CLI and env extraction
+
+#### Scenario: Extract environment variables without ambient global state
+
+- **WHEN** a consumer passes an iterable collection of environment key/value pairs and a canonical parameter set to the env extractor
+- **THEN** the extractor reads only declared environment locators
+- **THEN** tests and consumers can supply input without requiring the extractor to own process-global environment access
 
 ### Requirement: Docnav Hard Cutover Boundary
 
-The CLI/config resolution library MUST support Docnav hard cutover through application-owned integration code that preserves existing Docnav CLI, config, adapter, protocol, diagnostic, and output behavior without retaining the old fixed source resolver as a runtime fallback.
+Docnav MUST consume the canonical parameter set through the same extraction and resolution API intended for external consumers, while preserving existing Docnav CLI, config, adapter, protocol, diagnostic, and output behavior without a runtime fallback to the old resolver.
+
+#### Scenario: Remove parallel field-set conversion
+
+- **WHEN** Docnav resolves navigation fields and selected adapter native options
+- **THEN** it passes existing canonical typed-fields metadata directly to extractors and resolution
+- **THEN** the runtime path does not build a parallel generic field set or copy field type and constraint metadata
 
 #### Scenario: Preserve Docnav source priority
 
-- **WHEN** Docnav maps explicit input, project config, user config, and built-in defaults into the generic source model
-- **THEN** the resulting resolution behavior matches Docnav's documented priority order
-- **THEN** Docnav remains the owner of navigation-specific diagnostics and protocol projection
+- **WHEN** Docnav maps explicit input, project config, user config, and built-in defaults into ordered sources
+- **THEN** resolution matches Docnav's documented priority behavior
+- **THEN** Docnav remains the owner of adapter applicability, request construction, diagnostic-code mapping, and output projection
 
-#### Scenario: Complete cutover removes old runtime path
+#### Scenario: Complete cutover removes compatibility paths
 
-- **WHEN** Docnav navigation input resolution is switched to the generic resolver
-- **THEN** the old fixed source resolver is not reachable from the runtime command path
+- **WHEN** the canonical resolution path passes Docnav equivalence tests
+- **THEN** old resolver paths, runtime feature flags, fallback switches, and field-model compatibility wrappers are absent from the runtime command path
 - **THEN** rollback requires reverting the code change rather than toggling a runtime fallback
 
-#### Scenario: Keep adapter semantics outside core library
+### Requirement: Independent Cargo Workspace Repository
 
-- **WHEN** Docnav resolves selected adapter native options through the generic resolver
-- **THEN** the core library validates field values and returns source trace facts
-- **THEN** Docnav navigation remains responsible for selected-adapter semantics, operation applicability, handler binding, protocol envelope construction, and output projection
+The reusable library MUST be organized as an independently checkoutable Cargo workspace repository. The workspace MAY contain typed-fields, typed-fields macros, resolution core, clap companion, and structured-config companion packages, and `cli-config-resolution` MUST be the primary consumer entry that re-exports the canonical parameter types.
 
-### Requirement: Sub-Repository Readiness
+#### Scenario: Build the independent workspace
 
-The CLI/config resolution library MUST be structured so its core crate can move to an independent repository without requiring Docnav-specific runtime dependencies.
+- **WHEN** the sub-repository is checked out without the Docnav workspace
+- **THEN** its package metadata, libraries, tests, documentation, and end-to-end example build and run from its own workspace root
+- **THEN** no package requires Docnav protocol, adapter contracts, navigation, output, or Markdown adapter crates
 
-#### Scenario: Verify independent crate boundary
+#### Scenario: Consume the workspace from Docnav
 
-- **WHEN** the implementation reaches the sub-repository readiness checkpoint
-- **THEN** the core crate builds and tests without depending on Docnav protocol, adapter contracts, navigation, output, and Markdown adapter crates
-- **THEN** Docnav-specific integration remains in Docnav-owned cutover code
+- **WHEN** Docnav depends on the independent workspace packages
+- **THEN** Docnav resolves canonical parameters through `cli-config-resolution` and its companions
+- **THEN** repository placement or dependency-source changes do not alter runtime parameter semantics
 
-#### Scenario: Preserve release validation evidence
+#### Scenario: Keep external publication separately approved
 
-- **WHEN** the crate is prepared for external reuse
-- **THEN** package metadata, package boundaries, examples, and release validation tests demonstrate the reusable API surface
-- **THEN** no external release artifact is treated as approved until the implementation audit confirms the crate boundary
+- **WHEN** the independent Cargo workspace is complete but no external release has been approved
+- **THEN** local or approved dependency-source consumption can still be verified
+- **THEN** crates.io publication, license selection, version, and release order remain separate release decisions
