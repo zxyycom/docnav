@@ -182,13 +182,19 @@ The CLI/config resolution library MUST retain enough provenance to explain selec
 
 ### Requirement: Framework Adapter Boundary
 
-Framework-specific extraction MUST remain outside the framework-independent resolution core. The Cargo workspace MUST provide a clap companion for CLI strategies and a structured-config companion for config-path strategies; environment extraction MAY remain in the core because it requires no external framework.
+Framework-specific extraction MUST remain outside the framework-independent resolution core. The Cargo workspace MUST provide a clap companion for supported CLI strategies and a structured-config companion for config-path strategies; environment extraction MAY remain in the core because it requires no external framework. The clap companion MUST support string, integer, finite-number, `SetTrue` boolean, repeated-string array, and repeated `key=value` object projections. It MUST reject `ValueKind::Json` CLI projections with `ClapProjectionError::UnsupportedValueKind` and MUST NOT decode a raw CLI string as arbitrary JSON.
 
 #### Scenario: Use clap companion with canonical parameters
 
-- **WHEN** a consumer passes a canonical `FieldDefSet` containing CLI strategies to `cli-config-resolution-clap`
+- **WHEN** a consumer passes a canonical `FieldDefSet` containing supported CLI strategies to `cli-config-resolution-clap`
 - **THEN** the companion can register or read the declared clap arguments and return candidates for canonical field identities
 - **THEN** it does not require `FieldContract`, `FieldSet`, or duplicated validation metadata
+
+#### Scenario: Reject arbitrary JSON CLI decoding
+
+- **WHEN** a canonical field combines a CLI flag processing locator with `ValueKind::Json`
+- **THEN** `cli-config-resolution-clap` rejects the projection with `ClapProjectionError::UnsupportedValueKind`
+- **THEN** it does not interpret the raw CLI string as an arbitrary JSON candidate
 
 #### Scenario: Use structured config companion with canonical parameters
 

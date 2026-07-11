@@ -11,12 +11,12 @@
 - 复用 `docnav-typed-fields` 的 `FieldDef` / `FieldDefSet` 及其类型、约束、默认值、`MergeStrategy`、校验和 typed materialization；每个 field 直接声明 merge strategy，默认 `Replace`。允许为通用命名提供 re-export 或薄别名，但不复制字段模型或另建按 identity 关联的 merge declaration。
 - 微调现有 processing API，显式声明 CLI flag、env var 和 config path 抽取策略；每种 extractor 只读取 `FieldDefSet` 已声明的 locator，并把结果映射到统一 source candidate。
 - `cli-config-resolution` 负责 ordered sources、deterministic priority、执行 field 声明的 merge strategy、最终校验协调、diagnostics facts 和 provenance trace。Priority 数值越大优先级越高；同 priority 后注册 source 获胜。`Append` / `MapMerge` 按低 priority 到高 priority 应用，同级按注册顺序应用，`MapMerge` 的后值覆盖同名 key。
-- `cli-config-resolution-clap` 负责从声明生成或读取已注册的 clap arguments；未知 flag 继续由 clap 原生拒绝。
+- `cli-config-resolution-clap` 负责从声明生成或读取它明确支持的 clap arguments：string、integer、finite number、`SetTrue` boolean、repeated string array 和 repeated `key=value` object。`ValueKind::Json` 不定义 CLI string syntax，companion 必须以 `UnsupportedValueKind` 拒绝，不得把 flag value 解码为任意 JSON；未知 flag 继续由 clap 原生拒绝。
 - env 与 config 抽取只查询声明过的 locator，未声明输入默认静默忽略；本 change 不增加全量扫描、unused-key diagnostics 或通用 `UnknownPolicy`。
 - Docnav hard cutover 直接消费 canonical `FieldDefSet`，移除 `generic_field_set` 一类平行字段转换。
 - 独立子仓库以 Cargo workspace 为单位，可以包含 typed-fields、typed-fields macros、resolution core、clap companion 和 serde/config companion；`cli-config-resolution` 是主要消费者入口并 re-export canonical 参数类型。Docnav 通过固定 revision 的 Git submodule 消费该 workspace。
 
-非目标：本 change 不改变 Docnav 的 `outline -> ref -> read` 协议、adapter contract、operation 语义、protocol envelope、diagnostic code 或 output behavior；不为未知 env/config 输入建立复杂兜底策略；不要求在本 change 中发布 crates.io artifact。
+非目标：本 change 不改变 Docnav 的 `outline -> ref -> read` 协议、adapter contract、operation 语义、protocol envelope、diagnostic code 或 output behavior；不为未知 env/config 输入建立复杂兜底策略；不定义通过 CLI string 传递或解码任意 JSON 的通用语法；不要求在本 change 中发布 crates.io artifact。
 
 ## Capabilities
 
