@@ -4,6 +4,7 @@ import type { CheckDefinition } from "./model.ts";
 
 const DEV_BIN_COPY_DIR = ".cache/docnav/verify/dev-bins";
 const DEV_BIN_ENV_FILE = ".cache/docnav/verify/dev-bins.json";
+const CLI_CONFIG_WORKSPACE_MANIFEST = "subrepos/cli-config-resolution/Cargo.toml";
 
 const testRunnerSuccessOutput = [
   /^bun test v\d+\.\d+\.\d+ \([0-9a-f]+\)$/,
@@ -53,6 +54,12 @@ export const checks = defineChecks([
         label: "cargo fmt",
         command: "cargo",
         args: ["fmt", "--all", "--check"]
+      },
+      {
+        id: "cli-config-workspace-cargo-fmt",
+        label: "cli-config workspace cargo fmt",
+        command: "cargo",
+        args: ["fmt", "--manifest-path", CLI_CONFIG_WORKSPACE_MANIFEST, "--all", "--check"]
       },
       {
         id: "typecheck-scripts",
@@ -234,6 +241,93 @@ export const checks = defineChecks([
           /^running \d+ tests?$/,
           /^test .* \.\.\. ok$/,
           /^test result: ok\..*$/
+        ]
+      },
+      {
+        id: "cli-config-workspace-cargo-clippy",
+        label: "cli-config workspace cargo clippy",
+        command: "cargo",
+        args: [
+          "clippy",
+          "--manifest-path",
+          CLI_CONFIG_WORKSPACE_MANIFEST,
+          "--locked",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        mutex: ["cargo-build"],
+        ignoreOutput: [
+          ...cargoProgressOutput
+        ]
+      },
+      {
+        id: "cli-config-workspace-cargo-test",
+        label: "cli-config workspace cargo test",
+        command: "cargo",
+        args: [
+          "test",
+          "--manifest-path",
+          CLI_CONFIG_WORKSPACE_MANIFEST,
+          "--locked",
+          "--workspace",
+          "--all-targets"
+        ],
+        mutex: ["cargo-build"],
+        ignoreOutput: [
+          ...cargoProgressOutput,
+          /^\s*Running unittests .*$/,
+          /^\s*Running tests[\\/].*$/,
+          /^\s*Doc-tests .*$/,
+          /^running \d+ tests?$/,
+          /^test .* \.\.\. ok$/,
+          /^test result: ok\..*$/
+        ]
+      },
+      {
+        id: "cli-config-workspace-cargo-doc-test",
+        label: "cli-config workspace cargo doc-test",
+        command: "cargo",
+        args: [
+          "test",
+          "--manifest-path",
+          CLI_CONFIG_WORKSPACE_MANIFEST,
+          "--locked",
+          "--workspace",
+          "--doc"
+        ],
+        mutex: ["cargo-build"],
+        ignoreOutput: [
+          ...cargoProgressOutput,
+          /^\s*Running unittests .*$/,
+          /^\s*Running tests[\\/].*$/,
+          /^\s*Doc-tests .*$/,
+          /^running \d+ tests?$/,
+          /^test .* \.\.\. ok$/,
+          /^test result: ok\..*$/
+        ]
+      },
+      {
+        id: "cli-config-workspace-resolution-flow",
+        label: "cli-config workspace resolution flow",
+        command: "cargo",
+        args: [
+          "run",
+          "--manifest-path",
+          CLI_CONFIG_WORKSPACE_MANIFEST,
+          "--locked",
+          "-p",
+          "cli-config-resolution-clap",
+          "--example",
+          "resolution_flow"
+        ],
+        mutex: ["cargo-build"],
+        ignoreOutput: [
+          ...cargoProgressOutput,
+          /^\s*Running `.*resolution_flow(?:\.exe)?`$/,
+          /^resolved limit=12 replace_list=\["cli-list"\] replace_map=\{"cli":"only"\} append_items=\["config-a","env-a","cli-a"\] format=readable$/
         ]
       },
       {

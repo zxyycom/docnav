@@ -7,7 +7,7 @@ import { walk } from "../repo/files.ts";
 import { toAbs, toRel } from "../repo/paths.ts";
 import { collectionFromEntries, type CaseIdCollection } from "./case-id-index.ts";
 
-const SOURCE_ROOTS = ["test", "crates", "scripts"];
+const SOURCE_ROOTS = ["test", "crates", "scripts", "subrepos/cli-config-resolution"];
 const SOURCE_EXTENSIONS = new Set([".rs", ".ts"]);
 const CASE_ID_SOURCE = "(?:BB|WB|AUX)(?:-[A-Z0-9]+){2,}-\\d{3}";
 const CASE_MARKER_PATTERN = /^\s*(?:(?:\/\/)|#)\s*@case\s+(\S+)/gmu;

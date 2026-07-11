@@ -256,9 +256,9 @@ Status: implemented
 Code: `crates/docnav/src/config/commands/tests.rs`
 
 Proves:
-- `config inspect` reports selected project and user config file paths, origins, existence/load states and validation summaries without writing either file.
-- `config inspect` reports explicitly selected missing / invalid JSON / top-level non-object / not-file config source status and diagnostics when that source is selected for inspection; unreadable source loading is covered by lower-layer config loading / parameter-resolution tests. Default missing config paths remain absent/missing source facts as documented.
-- Legacy `config get|set|unset|list` are rejected as removed subcommands and cannot mutate selected project/user files.
+- Complete serialized-output goldens cover one valid selected project/user pair and one invalid-JSON project source. They lock source status、summaries、registry-backed config-source projection、resolved parameter facts、source-attributed diagnostics and top-level output shape while normalizing only runtime paths.
+- The valid golden proves adapter-id native option projection and project/user/built-in provenance without modifying either selected file. The invalid-load golden proves invalid JSON remains a successful inspection result with matching source and parameter diagnostics.
+- Explicit missing、top-level non-object and not-file source states retain focused equivalence checks；unreadable source loading remains owned by lower-layer config loading / parameter-resolution tests. Optional non-JSON config `null` suppresses its static default without creating a parameter fact.
 - `config inspect` can list currently resolvable source facts, but does not ask document context resolution to preview adapter dispatch.
 - `init --project-config` creates or preserves the selected project config file and rejects an existing directory at that selected file path.
 
@@ -288,6 +288,8 @@ Proves:
 - Config source projection uses `options.<adapter-id>.<option-key>`; equal option keys in different adapter id namespaces stay distinct, and bare `options.<option-key>` is a normal unknown/invalid config path.
 - Navigation consumes native option values only from the selected adapter namespace for the selected operation; other known adapter namespaces are not forwarded to the selected handler.
 - Built-in adapter defaults affect the resolved operation result when no explicit/project value is provided.
+- Optional non-JSON CLI/config `null` suppresses the static default without entering handler handoff, while a declared JSON native option preserves an explicit JSON `null` as its selected value.
+- Unknown adapter namespaces、unknown selected options、operation-inapplicable options and invalid typed values remain blocking source-attributed diagnostics.
 
 ### WB-NAV-OUTLINE-MODE-001 Navigation outline_mode selectors and pre-dispatch stable
 Status: implemented
@@ -483,7 +485,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-001 Typed field definition core 保持字段级不变量
 Status: implemented
-Code: `crates/shared/typed-fields/src/tests/field_model.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_model.rs`
 
 Proves:
 - Builder 生成 field identity、processing strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON value 校验为 typed value。
@@ -492,7 +494,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PRESENCE-001 Typed field declaration presence policy 稳定
 Status: implemented
-Code: `crates/shared/typed-fields/src/tests/field_presence.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_presence.rs`
 
 Proves:
 - `T` / `Option<T>` field declaration 分别投影为 required/non-nullable 和 optional/nullable schema metadata。
@@ -502,7 +504,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-METADATA-001 Typed field metadata build invariants 稳定
 Status: implemented
-Code: `crates/shared/typed-fields/src/tests/field_metadata.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_metadata.rs`
 
 Proves:
 - duplicate field identity 在 definition set build 阶段失败，并保留 previous/current declaration path 和 processing path。
@@ -510,7 +512,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-CONSTRAINTS-001 Typed field string/array constraints 稳定
 Status: implemented
-Code: `crates/shared/typed-fields/src/tests/constraints.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/constraints.rs`
 
 Proves:
 - String regex、closed minimum length 和 open maximum length 对 present value 产生稳定 validation failure reason。
@@ -519,7 +521,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-RANGES-001 Typed field numeric ranges and defaults 稳定
 Status: implemented
-Code: `crates/shared/typed-fields/src/tests/field_ranges.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_ranges.rs`
 
 Proves:
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
@@ -527,7 +529,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PROCESSING-001 Typed field processing build 稳定
 Status: implemented
-Code: `crates/shared/typed-fields/src/tests/processing.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/processing.rs`
 
 Proves:
 - Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
@@ -536,7 +538,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PROJECTION-001 Typed field definition set projection 稳定
 Status: implemented
-Code: `crates/shared/typed-fields/src/tests/set_projection.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/set_projection.rs`
 
 Proves:
 - FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象。
@@ -546,57 +548,59 @@ Proves:
 
 ### WB-TYPED-FIELDS-COMPILE-001 FieldDefs derive 拒绝非法声明
 Status: implemented
-Code: `crates/shared/typed-fields/tests/field_defs_compile.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/tests/field_defs_compile.rs`
 
 Proves:
 - `FieldDefs` derive 在编译期拒绝 leaf Rust field 类型与 `FieldDefBuilder<T>` 类型不一致的声明。
 - 缺少 field validation 或缺少 `#[field(...)]` attribute 的声明无法通过 trybuild compile-fail fixtures。
 
-### WB-PARAM-FIELD-CONTRACT-001 Generic resolution field contracts preserve declaration invariants
+### WB-PARAM-FIELD-CONTRACT-001 Canonical FieldDefSet preserves parameter declaration invariants
 Status: implemented
-Code: `crates/shared/cli-config-resolution/src/tests.rs`
+Code: `subrepos/cli-config-resolution/crates/typed-fields/tests/canonical_parameters.rs`
 
 Proves:
-- Field and config-path builders preserve reusable identity、value kind、constraints、default、projection and merge metadata while rejecting empty paths、empty segments and incompatible source locators.
-- Field declarations enforce value-kind and merge-strategy compatibility.
-- Field sets reject invalid declarations、duplicate identities and duplicate projection locators.
+- One `FieldDefSet` exposes declared CLI flag、environment variable and config path locators from canonical processing metadata.
+- Definition-set build rejects duplicate processing locators、empty locator values and invalid dotted identities with public errors.
+- `MergeStrategy` is canonical `FieldDef` metadata, defaults to `Replace`, and rejects strategies incompatible with the declared value kind.
+- Canonical field lookup performs final value validation；derived definition sets materialize complete typed values and reject missing required or non-finite values.
 
-### WB-PARAM-SOURCE-EXTRACTION-001 Generic resolution core preserves normalized source facts
+### WB-PARAM-SOURCE-EXTRACTION-001 Resolution core preserves normalized source facts
 Status: implemented
-Code: `crates/shared/cli-config-resolution/src/tests.rs`
+Code: `subrepos/cli-config-resolution/crates/cli-config-resolution/tests/canonical_core.rs`
 
 Proves:
-- Core extraction consumes normalized source facts without depending on CLI parsing；environment、config、default and custom sources preserve source-specific locators.
-- Present、invalid、explicit-absent、missing and static-default fallback facts retain distinct candidate states across source extractors.
+- Environment extraction queries only declared `EnvVar` locators；unknown environment entries are ignored and missing declared variables produce no candidate.
+- Decodable values become normalized candidates；decode failures retain raw input、reason、source id and environment locator and block when selected or merge-contributing.
+- `Source` preserves source kind、priority and candidate locator facts without depending on CLI or config parser types. CLI and structured-config extraction are proven by their companion cases.
 
-### WB-PARAM-RESOLVE-001 Generic resolution preserves one ordered resolution chain
+### WB-PARAM-RESOLVE-001 Canonical resolution preserves one ordered merge chain
 Status: implemented
-Code: `crates/shared/cli-config-resolution/src/tests.rs`
+Code: `subrepos/cli-config-resolution/crates/cli-config-resolution/tests/canonical_core.rs`
 
 Proves:
-- Explicit source priority and applicability select the highest applicable candidate deterministically；same-priority conflicts remain deterministic.
-- Required、optional and defaulted fields keep distinct presence semantics；valid explicit values outrank invalid defaults.
-- Scalar、list and map merge strategies preserve replace、append、recursive merge、null priority boundaries and conflict locators.
-- Resolution records selected、overridden、invalid、missing-required and merge-contributor trace facts with source-attributed diagnostics.
-- Explain and materialization consume the same resolution result；diagnostics block partial values and application hooks.
+- Higher priority wins；at equal priority, the later registered source wins deterministically. Static defaults automatically fall back, while an explicit dynamic-default source remains an ordinary source fact.
+- `Replace`、`Append`、`MapMerge` and `DenyConflict` apply in deterministic low-to-high source order；append/map contributors and all deny-conflict locators remain observable in provenance/diagnostics.
+- Canonical constraints are applied to the final merged value. Selected or merge-contributing invalid candidates block materialization, while an overridden invalid replacement remains trace-only.
+- Missing required values and final validation failures return diagnostics and prevent partial `FieldValueMap` materialization.
 
-### WB-PARAM-CLAP-001 clap projection and reads preserve explicit CLI candidate state
+### WB-PARAM-CLAP-001 Canonical FieldDefSet clap projection preserves CLI candidate facts
 Status: implemented
-Code: `crates/shared/cli-config-resolution-clap/src/lib.rs`
+Code: `subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/tests.rs`
 
 Proves:
-- Field projections generate clap arguments and read scalar、list、map and boolean matches into typed CLI candidates with flag locators.
-- Typed read failures become invalid candidates；omitted flags remain missing rather than explicit values and do not override lower-priority sources.
-- Candidate extraction ignores non-CLI source specifications.
+- `FieldDefSet` `CliFlag` processing metadata registers string、integer、number、boolean、array and object clap arguments and extracts present matches into typed CLI candidates with source and flag-locator facts.
+- clap rejects unregistered flags with its native `UnknownArgument` error；omitted set-true defaults produce no candidate.
+- CLI decode failures preserve the raw input、reason and `CliFlag` locator in an invalid candidate.
+- Non-CLI processing locators、unsupported JSON value kinds、argument conflicts and mismatched match sets return explicit `ClapProjectionError` results.
 
 ### WB-PARAM-SERDE-001 serde config-path mapping preserves candidate facts
 Status: implemented
-Code: `crates/shared/cli-config-resolution-serde/src/lib.rs`
+Code: `subrepos/cli-config-resolution/crates/cli-config-resolution-serde/src/lib.rs`
 
 Proves:
-- Nested JSON values map through declared config paths into present or missing core candidates with config-path locators.
-- JSON scalar、list and map shapes convert to core values without losing structure.
-- `JsonConfigSource` implements the core source-extractor contract.
+- Only `ConfigPath` metadata declared by the canonical `FieldDefSet` is queried；extra config entries and missing paths produce no candidate.
+- Present `null`、`false`、empty array and empty object values each remain present candidates with their JSON structure and config-path locator intact.
+- A non-object intermediate behaves as an absent declared path；using a non-config processing locator returns a public `ConfigExtractionError` instead of panicking.
 
 ### WB-CONTRACTS-ERROR-001 Adapter contracts error mapping 保持 protocol 投影边界
 Status: implemented
@@ -611,8 +615,8 @@ Status: implemented
 Code: `crates/shared/adapter-contracts/src/tests.rs`
 
 Proves:
-- `AdapterOptionSpec` wraps typed-field declaration, source bindings, validation and static default metadata without owning the use-site registration step.
-- Direct registration into a typed-field set preserves identity、`options.*` final arguments path、`options.<adapter-id>.<option-key>` config-source path、value kind、static default 和 operation applicability, so navigation/config consumers do not reconstruct adapter-owned validation semantics.
+- `AdapterOptionSpec` is an adapter-owned declaration adapter that produces a canonical `FieldDefDeclaration`; the use-site remains responsible for registering it into the operation field set.
+- Registration into a canonical `FieldDefSet` preserves identity、CLI/config processing locators、`options.*` final arguments path、`options.<adapter-id>.<option-key>` config path、value kind、validation、static default and operation applicability, so navigation/config consumers do not reconstruct adapter semantics.
 - Adapter-id config-source projection keeps same option keys from different adapter ids distinct and surfaces adapter-local declaration conflicts deterministically.
 - `NativeOptionHandoff` preserves handler-facing identity、owner、namespace、key、source、type metadata 和 typed JSON value from resolved protocol options.
 
@@ -658,9 +662,10 @@ Status: implemented
 Code: `crates/shared/navigation/src/tests/navigation/hard_cutover.rs`
 
 Proves:
-- Explicit common fields and selected-adapter native options retain priority over project and user config after the generic resolver cutover.
-- Mixed invalid common and generic-constrained native-option inputs retain field declaration order when selecting the primary diagnostic.
-- Typed-only regex and unique-item constraint failures preserve the same primary-diagnostic ordering parity.
+- Explicit common fields and selected-adapter native options retain priority over project and user values through the canonical resolver, and the public protocol output mode/result remains unchanged.
+- Native-option identities sharing a prefix with a common field cannot overwrite that common direct input during source staging.
+- A valid higher-priority explicit value does not hide an invalid project/user config candidate；the blocking diagnostic retains source level、selected config path and reason.
+- Mixed invalid common and canonical native-option inputs retain field declaration order when selecting the primary diagnostic, including regex and unique-item constraints.
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
@@ -839,6 +844,7 @@ Proves:
 - profile membership、check label、arguments、dependencies、mutex 和 report counting 由 verifier tests 明确证明。
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
+- required profile 持续对 `subrepos/cli-config-resolution/Cargo.toml` 运行 nested workspace fmt；full profile 持续覆盖该 workspace 的 clippy、all-target tests、doc-tests 和 runnable example。
 - full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
 - completion line 和 summary 可区分 passed、warning 和 failed。
 - 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
@@ -1012,7 +1018,9 @@ Code: `scripts/quality/config.test.ts`
 Proves:
 - smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `typescript-validation-smoke` 的广泛 globs 遮蔽。
 - smoke harness 和 validator infrastructure 仍归入 `typescript-validation-smoke`。
-- quality scan input globs 覆盖 Rust source、TypeScript scripts 和 TypeScript tests；code area globs 将 production scripts 与 validation/smoke TypeScript 分开。
+- quality scan input globs 同时覆盖根 workspace 与 `subrepos/cli-config-resolution/crates/**` 的 Rust source，以及 TypeScript scripts 和 tests。
+- Nested Rust production、tests 和 benches 沿用既有 Rust code areas；examples/fixtures 沿用 `fixtures-examples`，nested `target` 继续由统一 exclude rule 排除。
+- TypeScript code area globs 继续将 production scripts 与 validation/smoke TypeScript 分开。
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
 Status: implemented
@@ -1075,6 +1083,7 @@ Code: `scripts/tools/validators/case-catalog/index.test.ts`
 
 Proves:
 - case catalog validator accepts implemented cases with matching markers and planned cases without markers.
+- filesystem discovery includes the owned `subrepos/cli-config-resolution` workspace and maps its moved `@case` markers to normalized nested paths.
 - case catalog validator reports duplicate documented IDs、duplicate source markers、invalid marker IDs、invalid `Status:`、implemented case without `Code:`、documented implemented cases missing markers、undocumented source markers、planned cases with markers and `Code:` path drift.
 - 真实仓库由 `bun run validate:docs cases` 作为集成验证。
 

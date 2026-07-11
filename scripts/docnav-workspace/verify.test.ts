@@ -192,6 +192,79 @@ describe("workspace verifier configuration", () => {
     assert.ok(fullLabels.includes("openspec"));
   });
 
+  it("keeps the cli-config workspace checks in their owning profiles", () => {
+    const manifest = "subrepos/cli-config-resolution/Cargo.toml";
+    const requiredLabels = checksForProfile(PROFILE_REQUIRED).map((check) => check.label);
+    const fullLabels = checksForProfile(PROFILE_FULL).map((check) => check.label);
+    const nestedChecks = [
+      {
+        id: "cli-config-workspace-cargo-fmt",
+        label: "cli-config workspace cargo fmt",
+        type: PROFILE_REQUIRED,
+        args: ["fmt", "--manifest-path", manifest, "--all", "--check"],
+        mutex: []
+      },
+      {
+        id: "cli-config-workspace-cargo-clippy",
+        label: "cli-config workspace cargo clippy",
+        type: PROFILE_FULL,
+        args: [
+          "clippy",
+          "--manifest-path",
+          manifest,
+          "--locked",
+          "--workspace",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        mutex: ["cargo-build"]
+      },
+      {
+        id: "cli-config-workspace-cargo-test",
+        label: "cli-config workspace cargo test",
+        type: PROFILE_FULL,
+        args: ["test", "--manifest-path", manifest, "--locked", "--workspace", "--all-targets"],
+        mutex: ["cargo-build"]
+      },
+      {
+        id: "cli-config-workspace-cargo-doc-test",
+        label: "cli-config workspace cargo doc-test",
+        type: PROFILE_FULL,
+        args: ["test", "--manifest-path", manifest, "--locked", "--workspace", "--doc"],
+        mutex: ["cargo-build"]
+      },
+      {
+        id: "cli-config-workspace-resolution-flow",
+        label: "cli-config workspace resolution flow",
+        type: PROFILE_FULL,
+        args: [
+          "run",
+          "--manifest-path",
+          manifest,
+          "--locked",
+          "-p",
+          "cli-config-resolution-clap",
+          "--example",
+          "resolution_flow"
+        ],
+        mutex: ["cargo-build"]
+      }
+    ];
+
+    for (const expected of nestedChecks) {
+      const check = checkByLabel(expected.label);
+      assert.equal(check.id, expected.id);
+      assert.equal(check.type, expected.type);
+      assert.equal(check.command, "cargo");
+      assert.deepEqual(check.args, expected.args);
+      assert.deepEqual(check.mutex, expected.mutex);
+      assert.ok(fullLabels.includes(expected.label));
+      assert.equal(requiredLabels.includes(expected.label), expected.type === PROFILE_REQUIRED);
+    }
+  });
+
   it("defines checks with explicit type, dependencies, and mutex metadata", () => {
     for (const check of checks) {
       assert.equal(typeof check.id, "string");
@@ -373,7 +446,7 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredChecks.some((check) => check.label === "docs case catalog validator"));
     assert.ok(requiredChecks.some((check) => check.label === "docs schema validator"));
     assert.ok(!requiredChecks.some((check) => check.label === "docs validators"));
-    assert.equal(reportCountForChecks(requiredChecks), 9);
+    assert.equal(reportCountForChecks(requiredChecks), 10);
   });
 
 });

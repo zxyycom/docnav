@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
+import { caseSourceFiles, collectCaseMarkers } from "./source-markers.ts";
 import { validateCaseCatalogSnapshot } from "./validator.ts";
 
 // @case AUX-CASE-CATALOG-001
@@ -15,6 +16,14 @@ describe("case catalog validator", () => {
     });
 
     assert.deepEqual(failures, []);
+  });
+
+  it("discovers case markers in the nested cli-config workspace", () => {
+    const markers = collectCaseMarkers(caseSourceFiles());
+
+    assert.deepEqual(markers.byId.get("WB-PARAM-FIELD-CONTRACT-001"), [
+      "subrepos/cli-config-resolution/crates/typed-fields/tests/canonical_parameters.rs"
+    ]);
   });
 
   it("reports status, planned marker, duplicate marker, and path drift", () => {
