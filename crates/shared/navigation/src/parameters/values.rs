@@ -1,16 +1,15 @@
 use std::num::NonZeroU32;
 
+use cli_config_resolution::{
+    CandidateInvalidReason, DiagnosticReason, FieldDefSet, FieldIdentity, FieldResolution,
+    ResolutionDiagnostic, ResolutionResult, TypedValue, ValidationReason, ValueKind,
+};
 use docnav_protocol::{Operation, PositiveInteger};
-use docnav_typed_fields::{FieldIdentity, TypedValue, ValidationReason};
 use serde_json::{json, Value};
 
 use crate::{NavigationError, NavigationOutputMode};
 
-use super::{
-    ids,
-    resolution::{ParameterResolution, ParameterSourceKind},
-    MAX_PAGINATION_LIMIT,
-};
+use super::{ids, resolution, MAX_PAGINATION_LIMIT};
 
 pub(super) fn validation_error_for_identity(identity: &str) -> NavigationError {
     NavigationError::invalid_request(field_label(identity), validation_reason(identity))
@@ -18,24 +17,26 @@ pub(super) fn validation_error_for_identity(identity: &str) -> NavigationError {
 
 pub(super) fn optional_document_positive(
     operation: Operation,
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
     identity: &str,
 ) -> Result<Option<PositiveInteger>, NavigationError> {
     if !uses_document_window(operation) {
         return Ok(None);
     }
-    Ok(Some(required_positive_value(resolution, identity)?))
+    Ok(Some(required_positive_value(fields, result, identity)?))
 }
 
 pub(super) fn optional_document_limit(
     operation: Operation,
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
 ) -> Result<Option<PositiveInteger>, NavigationError> {
     if !uses_document_window(operation) {
         return Ok(None);
     }
-    let enabled = required_bool_value(resolution, ids::PAGINATION_ENABLED)?;
-    let limit = required_positive_value(resolution, ids::LIMIT)?;
+    let enabled = required_bool_value(fields, result, ids::PAGINATION_ENABLED)?;
+    let limit = required_positive_value(fields, result, ids::LIMIT)?;
     Ok(Some(if enabled {
         limit
     } else {
@@ -48,21 +49,23 @@ pub(super) fn uses_document_window(operation: Operation) -> bool {
 }
 
 pub(super) fn required_string_value(
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
     identity: &str,
 ) -> Result<String, NavigationError> {
-    optional_string_value(resolution, identity)?
+    optional_string_value(fields, result, identity)?
         .ok_or_else(|| NavigationError::internal("missing-resolved-parameter"))
 }
 
 pub(super) fn optional_string_value(
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
     identity: &str,
 ) -> Result<Option<String>, NavigationError> {
-    let Some(value) = resolution.value(&identity_key(identity)?) else {
+    let Some(value) = resolved_value(fields, result, identity)? else {
         return Ok(None);
     };
-    match &value.value {
+    match value {
         TypedValue::String(value) => Ok(Some(value.clone())),
         TypedValue::Null => Ok(None),
         _ => Err(NavigationError::internal("unexpected-parameter-type")),
@@ -70,33 +73,56 @@ pub(super) fn optional_string_value(
 }
 
 pub(super) fn required_output_value(
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
 ) -> Result<NavigationOutputMode, NavigationError> {
-    let output = required_string_value(resolution, ids::OUTPUT)?;
+    let output = required_string_value(fields, result, ids::OUTPUT)?;
     NavigationOutputMode::parse(&output).map_err(|_| validation_error_for_identity(ids::OUTPUT))
 }
 
 pub(super) fn resolved_source_label(
-    resolution: &ParameterResolution,
+    result: &ResolutionResult,
     identity: &str,
 ) -> Option<&'static str> {
-    resolution
-        .value(&identity_key(identity).ok()?)
-        .map(|value| source_label(value.source.kind))
+    let field = result.fields().get(&identity_key(identity).ok()?)?;
+    field_source_label(field)
+}
+
+pub(super) fn field_source_label(field: &FieldResolution) -> Option<&'static str> {
+    let candidate = field
+        .trace()
+        .selected
+        .as_ref()
+        .or(field.trace().default_fallback.as_ref())?;
+    Some(resolution::source_label(
+        &candidate.source_id,
+        &candidate.source_kind,
+    ))
+}
+
+pub(super) fn diagnostic_source_label(diagnostic: &ResolutionDiagnostic) -> Option<&'static str> {
+    Some(resolution::source_label(
+        diagnostic.source_id.as_ref()?,
+        diagnostic.source_kind.as_ref()?,
+    ))
+}
+
+pub(super) fn resolution_reason_code(diagnostic: &ResolutionDiagnostic) -> &'static str {
+    match &diagnostic.reason {
+        DiagnosticReason::InvalidCandidate(CandidateInvalidReason::Decode(_))
+        | DiagnosticReason::InvalidCandidate(CandidateInvalidReason::Shape { .. }) => {
+            "type_mismatch"
+        }
+        DiagnosticReason::InvalidCandidate(CandidateInvalidReason::Validation(failure))
+        | DiagnosticReason::FinalValidation(failure)
+        | DiagnosticReason::MissingRequired(failure) => validation_reason_code(&failure.reason),
+        DiagnosticReason::MergeConflict(_) => "conflict",
+    }
 }
 
 pub(super) fn identity_key(identity: &str) -> Result<FieldIdentity, NavigationError> {
     FieldIdentity::new(identity)
         .map_err(|_| NavigationError::internal("invalid-parameter-identity"))
-}
-
-pub(super) fn source_label(source: ParameterSourceKind) -> &'static str {
-    match source {
-        ParameterSourceKind::DirectInput => "explicit",
-        ParameterSourceKind::ProjectConfig => "project",
-        ParameterSourceKind::UserConfig => "user",
-        ParameterSourceKind::Default => "built_in",
-    }
 }
 
 pub(super) fn typed_value_to_json(value: &TypedValue) -> Value {
@@ -109,6 +135,26 @@ pub(super) fn typed_value_to_json(value: &TypedValue) -> Value {
         TypedValue::Object(value) => Value::Object(value.clone()),
         TypedValue::Json(value) => value.clone(),
         TypedValue::Null => Value::Null,
+    }
+}
+
+pub(super) fn projected_field_value<'a>(
+    fields: &FieldDefSet,
+    identity: &FieldIdentity,
+    resolved: &'a FieldResolution,
+) -> Option<&'a TypedValue> {
+    let value = resolved.value()?;
+    let field = fields
+        .field(identity)
+        .expect("resolution fields belong to the canonical field set");
+    let metadata = field.schema_metadata();
+    if matches!(value, TypedValue::Null)
+        && !metadata.constraints.required
+        && metadata.value_kind != ValueKind::Json
+    {
+        None
+    } else {
+        Some(value)
     }
 }
 
@@ -127,30 +173,42 @@ pub(super) fn validation_reason_code(reason: &ValidationReason) -> &'static str 
     }
 }
 
+fn resolved_value<'a>(
+    fields: &FieldDefSet,
+    result: &'a ResolutionResult,
+    identity: &str,
+) -> Result<Option<&'a TypedValue>, NavigationError> {
+    let identity = identity_key(identity)?;
+    Ok(result
+        .fields()
+        .get(&identity)
+        .and_then(|resolved| projected_field_value(fields, &identity, resolved)))
+}
+
 fn required_bool_value(
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
     identity: &str,
 ) -> Result<bool, NavigationError> {
-    let value = resolution
-        .value(&identity_key(identity)?)
+    let value = resolved_value(fields, result, identity)?
         .ok_or_else(|| NavigationError::internal("missing-resolved-parameter"))?;
-    let TypedValue::Boolean(value) = value.value else {
+    let TypedValue::Boolean(value) = value else {
         return Err(NavigationError::internal("unexpected-parameter-type"));
     };
-    Ok(value)
+    Ok(*value)
 }
 
 fn required_positive_value(
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
     identity: &str,
 ) -> Result<PositiveInteger, NavigationError> {
-    let value = resolution
-        .value(&identity_key(identity)?)
+    let value = resolved_value(fields, result, identity)?
         .ok_or_else(|| NavigationError::internal("missing-resolved-parameter"))?;
-    let TypedValue::Integer(value) = value.value else {
+    let TypedValue::Integer(value) = value else {
         return Err(NavigationError::internal("unexpected-parameter-type"));
     };
-    u32::try_from(value)
+    u32::try_from(*value)
         .ok()
         .and_then(NonZeroU32::new)
         .ok_or_else(|| validation_error_for_identity(identity))

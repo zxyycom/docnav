@@ -5,6 +5,7 @@ mod native_options;
 mod resolution;
 mod values;
 
+use cli_config_resolution::{FieldDefSet, ResolutionResult};
 use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec, NativeOptionHandoff};
 use docnav_protocol::{Operation, Options, PositiveInteger};
 use docnav_typed_fields::{FieldStringEnum, ProcessingId};
@@ -33,7 +34,7 @@ pub(super) mod ids {
     pub(super) const REF: &str = "docnav.document.ref";
 }
 
-const DIRECT_PROCESSING: &str = "cli";
+const DIRECT_PROCESSING: &str = "direct";
 const CONFIG_PROCESSING: &str = "config";
 const DEFAULT_LIMIT: i64 = 6000;
 const DEFAULT_PAGE: i64 = 1;
@@ -78,7 +79,7 @@ pub fn resolve_adapter_intent(
 
     config::first_resolution_error(&resolution, config_sources)?;
     Ok(AdapterIntent {
-        adapter_id: values::optional_string_value(&resolution, ids::ADAPTER)?,
+        adapter_id: values::optional_string_value(&fields, &resolution, ids::ADAPTER)?,
         source: values::resolved_source_label(&resolution, ids::ADAPTER).unwrap_or("built_in"),
     })
 }
@@ -116,7 +117,12 @@ pub fn resolve_operation_input(
         selected_native_options,
     )?;
 
-    resolved_input_from_resolution(command.operation, &resolution, selected_native_options)
+    resolved_input_from_resolution(
+        command.operation,
+        operation_fields.as_ref(),
+        &resolution,
+        selected_native_options,
+    )
 }
 
 pub fn resolve_context_defaults(
@@ -152,7 +158,7 @@ pub fn resolve_context_defaults(
         selected_native_options,
     )?;
 
-    defaults_from_resolution(command.operation, &resolution)
+    defaults_from_resolution(command.operation, operation_fields.as_ref(), &resolution)
 }
 
 pub(crate) fn validate_config_source_for_registry(
@@ -176,26 +182,27 @@ pub(crate) fn inspect_config_sources(
             inspect_source(&config_sources.user, registry),
         ],
         "config_source_projection": config_source_projection(fields),
-        "parameter_facts": parameter_facts(&resolution),
-        "parameter_diagnostics": parameter_diagnostics(&resolution),
+        "parameter_facts": parameter_facts(fields, &resolution),
+        "parameter_diagnostics": parameter_diagnostics(&resolution, config_sources),
     }))
 }
 
 fn resolved_input_from_resolution(
     operation: Operation,
-    resolution: &resolution::ParameterResolution,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
     selected_native_options: &[AdapterOptionSpec],
 ) -> Result<ResolvedNavigationInput, NavigationError> {
-    let options = native_options::resolved_options(resolution, selected_native_options)?;
+    let options = native_options::resolved_options(fields, resolution, selected_native_options)?;
     let native_option_handoff =
         NativeOptionHandoff::from_options((!options.is_empty()).then_some(&options));
     Ok(ResolvedNavigationInput {
-        document_path: values::required_string_value(resolution, ids::PATH)?,
-        ref_id: values::optional_string_value(resolution, ids::REF)?,
-        query: values::optional_string_value(resolution, ids::QUERY)?,
-        page: values::optional_document_positive(operation, resolution, ids::PAGE)?,
-        limit: values::optional_document_limit(operation, resolution)?,
-        output: values::required_output_value(resolution)?,
+        document_path: values::required_string_value(fields, resolution, ids::PATH)?,
+        ref_id: values::optional_string_value(fields, resolution, ids::REF)?,
+        query: values::optional_string_value(fields, resolution, ids::QUERY)?,
+        page: values::optional_document_positive(operation, fields, resolution, ids::PAGE)?,
+        limit: values::optional_document_limit(operation, fields, resolution)?,
+        output: values::required_output_value(fields, resolution)?,
         options: (!options.is_empty()).then_some(options),
         native_options: native_option_handoff,
     })
@@ -203,22 +210,23 @@ fn resolved_input_from_resolution(
 
 fn defaults_from_resolution(
     operation: Operation,
-    resolution: &resolution::ParameterResolution,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
 ) -> Result<NavigationContextDefaults, NavigationError> {
     Ok(NavigationContextDefaults {
-        adapter: resolved_value(resolution, ids::ADAPTER)
+        adapter: resolved_value(fields, resolution, ids::ADAPTER)
             .unwrap_or_else(|| NavigationResolvedValue::new(serde_json::Value::Null, "unset")),
         pagination: if values::uses_document_window(operation) {
             Some(NavigationPaginationDefaults {
-                enabled: required_resolved_value(resolution, ids::PAGINATION_ENABLED)?,
-                limit: required_resolved_value(resolution, ids::LIMIT)?,
+                enabled: required_resolved_value(fields, resolution, ids::PAGINATION_ENABLED)?,
+                limit: required_resolved_value(fields, resolution, ids::LIMIT)?,
             })
         } else {
             None
         },
-        output: required_resolved_value(resolution, ids::OUTPUT)?,
+        output: required_resolved_value(fields, resolution, ids::OUTPUT)?,
         page: if values::uses_document_window(operation) {
-            Some(required_resolved_value(resolution, ids::PAGE)?)
+            Some(required_resolved_value(fields, resolution, ids::PAGE)?)
         } else {
             None
         },
@@ -226,30 +234,34 @@ fn defaults_from_resolution(
 }
 
 fn required_resolved_value(
-    resolution: &resolution::ParameterResolution,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
     identity: &str,
 ) -> Result<NavigationResolvedValue, NavigationError> {
-    resolved_value(resolution, identity)
+    resolved_value(fields, resolution, identity)
         .ok_or_else(|| NavigationError::internal("missing-resolved-navigation-parameter"))
 }
 
 fn resolved_value(
-    resolution: &resolution::ParameterResolution,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
     identity: &str,
 ) -> Option<NavigationResolvedValue> {
-    let value = resolution.value(&values::identity_key(identity).ok()?)?;
+    let identity = values::identity_key(identity).ok()?;
+    let value = resolution.fields().get(&identity)?;
+    let typed = values::projected_field_value(fields, &identity, value)?;
     Some(NavigationResolvedValue::new(
-        values::typed_value_to_json(&value.value),
-        values::source_label(value.source.kind),
+        values::typed_value_to_json(typed),
+        values::field_source_label(value).unwrap_or("built_in"),
     ))
 }
 
 fn resolve_with_fields(
     fields: &docnav_typed_fields::FieldDefSet,
-    direct_input: Option<Value>,
+    direct_input: Option<input::DirectInput>,
     config_sources: &NavigationConfigSources,
     context: &str,
-) -> Result<resolution::ParameterResolution, NavigationError> {
+) -> Result<ResolutionResult, NavigationError> {
     resolution::resolve(fields, direct_input.as_ref(), config_sources)
         .map_err(|_| NavigationError::internal(resolution_pipeline_error_id(context)))
 }
@@ -260,7 +272,7 @@ fn resolve_command_with_fields(
     config_sources: &NavigationConfigSources,
     selected_native_options: &[AdapterOptionSpec],
     context: &str,
-) -> Result<resolution::ParameterResolution, NavigationError> {
+) -> Result<ResolutionResult, NavigationError> {
     resolve_with_fields(
         fields,
         Some(input::direct_input(command, selected_native_options)),
@@ -374,33 +386,52 @@ fn config_source_projection(fields: &docnav_typed_fields::FieldDefSet) -> Vec<Va
         .collect()
 }
 
-fn parameter_facts(resolution: &resolution::ParameterResolution) -> Vec<Value> {
+fn parameter_facts(fields: &FieldDefSet, resolution: &ResolutionResult) -> Vec<Value> {
     resolution
-        .values()
+        .fields()
         .iter()
-        .map(|(identity, resolved)| {
-            json!({
+        .filter_map(|(identity, resolved)| {
+            let value = values::projected_field_value(fields, identity, resolved)?;
+            Some(json!({
                 "identity": identity.as_str(),
-                "source": values::source_label(resolved.source.kind),
-                "value": values::typed_value_to_json(&resolved.value),
-            })
+                "source": values::field_source_label(resolved).unwrap_or("built_in"),
+                "value": values::typed_value_to_json(value),
+            }))
         })
         .collect()
 }
 
-fn parameter_diagnostics(resolution: &resolution::ParameterResolution) -> Vec<Value> {
-    resolution
+fn parameter_diagnostics(
+    resolution: &ResolutionResult,
+    config_sources: &NavigationConfigSources,
+) -> Vec<Value> {
+    let mut diagnostics = resolution
         .diagnostics()
         .iter()
         .map(|diagnostic| {
-            diagnostic_json(&diagnostic.to_record_draft(
+            diagnostic_json(&resolution::diagnostic_record(
+                diagnostic,
                 docnav_diagnostics::DiagnosticSource::with_stage(
                     "docnav-navigation",
                     "config-inspect",
                 ),
             ))
         })
-        .collect()
+        .collect::<Vec<_>>();
+    diagnostics.extend(
+        [&config_sources.project, &config_sources.user]
+            .into_iter()
+            .flat_map(|source| source.loaded.diagnostics())
+            .map(|issue| {
+                diagnostic_json(&issue.to_record_draft(
+                    docnav_diagnostics::DiagnosticSource::with_stage(
+                        "docnav-navigation",
+                        "config-inspect",
+                    ),
+                ))
+            }),
+    );
+    diagnostics
 }
 
 fn config_source_issue_json(

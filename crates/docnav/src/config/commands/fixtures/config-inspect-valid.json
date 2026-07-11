@@ -1,0 +1,115 @@
+{
+  "project_root": "<project-root>",
+  "inspection": {
+    "sources": [
+      {
+        "scope": "project",
+        "path": "<project-config>",
+        "origin": "explicit_cli",
+        "exists": true,
+        "load_state": "loaded",
+        "summary": {
+          "top_level_fields": [
+            "defaults",
+            "options"
+          ],
+          "field_count": 2
+        },
+        "diagnostics": []
+      },
+      {
+        "scope": "user",
+        "path": "<user-config>",
+        "origin": "explicit_cli",
+        "exists": true,
+        "load_state": "loaded",
+        "summary": {
+          "top_level_fields": [
+            "defaults"
+          ],
+          "field_count": 1
+        },
+        "diagnostics": []
+      }
+    ],
+    "config_source_projection": [
+      {
+        "identity": "docnav.defaults.adapter",
+        "path": "defaults.adapter",
+        "value_kind": "String",
+        "has_default": false
+      },
+      {
+        "identity": "docnav.defaults.output",
+        "path": "defaults.output",
+        "value_kind": "String",
+        "has_default": true
+      },
+      {
+        "identity": "docnav.defaults.pagination.enabled",
+        "path": "defaults.pagination.enabled",
+        "value_kind": "Boolean",
+        "has_default": true
+      },
+      {
+        "identity": "docnav.defaults.pagination.limit",
+        "path": "defaults.pagination.limit",
+        "value_kind": "Integer",
+        "has_default": true
+      },
+      {
+        "identity": "docnav.invocation_log.enabled",
+        "path": "invocation_log.enabled",
+        "value_kind": "Boolean",
+        "has_default": false
+      },
+      {
+        "identity": "docnav.invocation_log.path",
+        "path": "invocation_log.path",
+        "value_kind": "String",
+        "has_default": false
+      },
+      {
+        "identity": "docnav.invocation_log.content_capture.enabled",
+        "path": "invocation_log.content_capture.enabled",
+        "value_kind": "Boolean",
+        "has_default": false
+      },
+      {
+        "identity": "docnav.invocation_log.content_capture.root",
+        "path": "invocation_log.content_capture.root",
+        "value_kind": "String",
+        "has_default": false
+      },
+      {
+        "identity": "docnav.adapters.docnav-markdown.options.max_heading_level",
+        "path": "options.docnav-markdown.max_heading_level",
+        "value_kind": "Integer",
+        "has_default": true
+      }
+    ],
+    "parameter_facts": [
+      {
+        "identity": "docnav.adapters.docnav-markdown.options.max_heading_level",
+        "source": "project",
+        "value": 2
+      },
+      {
+        "identity": "docnav.defaults.output",
+        "source": "project",
+        "value": "readable-json"
+      },
+      {
+        "identity": "docnav.defaults.pagination.enabled",
+        "source": "built_in",
+        "value": true
+      },
+      {
+        "identity": "docnav.defaults.pagination.limit",
+        "source": "user",
+        "value": 321
+      }
+    ],
+    "parameter_diagnostics": []
+  }
+}

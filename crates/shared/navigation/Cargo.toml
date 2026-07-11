@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 cli-config-resolution.workspace = true
+cli-config-resolution-serde.workspace = true
 docnav-adapter-contracts.workspace = true
 docnav-diagnostics.workspace = true
 docnav-protocol.workspace = true

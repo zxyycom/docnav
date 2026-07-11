@@ -1,15 +1,14 @@
+use cli_config_resolution::{FieldDefSet, ResolutionResult};
 use docnav_adapter_contracts::{AdapterError, AdapterOptionSpec, NativeOptionIssue};
 use docnav_diagnostics::AdapterConfigSourceDetails;
 use docnav_protocol::{OptionEntry, Options};
-use docnav_typed_fields::ValidationReason;
 use serde_json::Value;
 
 use crate::{NavigationCommand, NavigationConfigSources, NavigationError};
 
 use super::{
     input::native_option_cli_value,
-    resolution::{ParameterResolution, ParameterSourceKind},
-    values::{source_label, typed_value_to_json, validation_reason_code},
+    values::{field_source_label, projected_field_value, typed_value_to_json},
 };
 
 pub(super) struct UnsupportedOptionContext<'a> {
@@ -22,22 +21,22 @@ pub(super) struct UnsupportedOptionContext<'a> {
 }
 
 pub(super) fn resolved_options(
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
     selected_native_options: &[AdapterOptionSpec],
 ) -> Result<Options, NavigationError> {
-    options_from_resolution(resolution, selected_native_options)
+    options_from_resolution(fields, resolution, selected_native_options)
 }
 
 pub(super) fn native_option_validation_error(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     spec: &AdapterOptionSpec,
-    source: Option<ParameterSourceKind>,
-    reason: &ValidationReason,
+    source: Option<&str>,
+    reason_code: &str,
 ) -> AdapterError {
-    let source = source.map(source_label).unwrap_or("explicit");
+    let source = source.unwrap_or("explicit");
     let value = raw_native_option_value_for_source(command, config_sources, spec, source);
-    let reason_code = validation_reason_code(reason);
     let issue = NativeOptionIssue {
         owner: spec.owner.clone(),
         namespace: spec.namespace().to_owned(),
@@ -107,11 +106,15 @@ pub(super) fn spec_for_identity<'a>(
 }
 
 fn options_from_resolution(
-    resolution: &ParameterResolution,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
     selected_native_options: &[AdapterOptionSpec],
 ) -> Result<Options, NavigationError> {
     let mut options = Options::new();
-    for (identity, resolved) in resolution.values() {
+    for (identity, resolved) in resolution.fields() {
+        let Some(value) = projected_field_value(fields, identity, resolved) else {
+            continue;
+        };
         let Some(spec) = spec_for_identity(selected_native_options, identity.as_str()) else {
             continue;
         };
@@ -120,9 +123,11 @@ fn options_from_resolution(
             owner: spec.owner.clone(),
             namespace: spec.namespace().to_owned(),
             key: spec.key().to_owned(),
-            source: source_label(resolved.source.kind).to_owned(),
+            source: field_source_label(resolved)
+                .unwrap_or("built_in")
+                .to_owned(),
             type_variant: spec.value_kind_name().to_owned(),
-            value: typed_value_to_json(&resolved.value),
+            value: typed_value_to_json(value),
         });
     }
     Ok(options)

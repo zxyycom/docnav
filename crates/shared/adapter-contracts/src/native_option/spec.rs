@@ -27,6 +27,7 @@ struct AdapterOptionSource {
 pub enum AdapterOptionProcessStrategy {
     JsonPath(Vec<String>),
     CliFlag { flag: &'static str },
+    ConfigPath(Vec<String>),
 }
 
 #[derive(Debug)]
@@ -85,9 +86,7 @@ impl AdapterOptionSpec {
 
     pub fn cli_input_path(&self) -> Option<Vec<String>> {
         self.cli_flag()?;
-        self.processing_path(ProcessingId::from("cli"))
-            .ok()
-            .flatten()
+        Some(self.declaration_path().to_vec())
     }
 
     pub fn processing_path(
@@ -97,13 +96,11 @@ impl AdapterOptionSpec {
         self.field
             .processing_metadata(&processing_id.into())
             .map(|metadata| {
-                metadata.map(|metadata| {
+                metadata.and_then(|metadata| {
                     metadata
-                        .path
-                        .segments()
-                        .into_iter()
-                        .map(str::to_owned)
-                        .collect()
+                        .locator
+                        .json_path()
+                        .map(|path| path.segments().into_iter().map(str::to_owned).collect())
                 })
             })
     }
@@ -169,17 +166,26 @@ impl AdapterOptionProcessStrategy {
         Self::CliFlag { flag }
     }
 
+    pub fn config_path<I, S>(segments: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self::ConfigPath(segments.into_iter().map(Into::into).collect())
+    }
+
     fn as_cli_flag(&self) -> Option<&'static str> {
         match self {
             Self::CliFlag { flag } => Some(*flag),
-            Self::JsonPath(_) => None,
+            Self::JsonPath(_) | Self::ConfigPath(_) => None,
         }
     }
 
-    fn field_process(&self, declaration_path: &[String]) -> FieldProcessStrategy {
+    fn field_process(&self) -> FieldProcessStrategy {
         match self {
             Self::JsonPath(path) => FieldProcessStrategy::json_path(path.clone()),
-            Self::CliFlag { .. } => FieldProcessStrategy::json_path(declaration_path.to_vec()),
+            Self::CliFlag { flag } => FieldProcessStrategy::cli_flag(*flag),
+            Self::ConfigPath(path) => FieldProcessStrategy::config_path(path.clone()),
         }
     }
 }
@@ -247,7 +253,7 @@ impl<T> AdapterOptionSpecBuilder<T> {
         for source in &self.sources {
             field = field.process(
                 source.processing_id.clone(),
-                source.strategy.field_process(&declaration_path),
+                source.strategy.field_process(),
             );
         }
         AdapterOptionSpec {

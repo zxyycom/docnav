@@ -120,7 +120,7 @@ fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
             )
             .process(
                 "config",
-                AdapterOptionProcessStrategy::json_path([
+                AdapterOptionProcessStrategy::config_path([
                     "options",
                     "docnav-markdown",
                     "max_heading_level",
@@ -138,7 +138,11 @@ fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
             .process("cli", AdapterOptionProcessStrategy::cli_flag("--payload"))
             .process(
                 "config",
-                AdapterOptionProcessStrategy::json_path(["options", "docnav-markdown", "payload"]),
+                AdapterOptionProcessStrategy::config_path([
+                    "options",
+                    "docnav-markdown",
+                    "payload",
+                ]),
             )
             .validation(FieldValidation::json())
             .build(),
@@ -153,7 +157,7 @@ fn other_adapter_options() -> Vec<AdapterOptionSpec> {
             .path(["options", "max_heading_level"])
             .process(
                 "config",
-                AdapterOptionProcessStrategy::json_path([
+                AdapterOptionProcessStrategy::config_path([
                     "options",
                     "docnav-other",
                     "max_heading_level",
@@ -169,7 +173,7 @@ fn other_adapter_options() -> Vec<AdapterOptionSpec> {
             .path(["options", "payload"])
             .process(
                 "config",
-                AdapterOptionProcessStrategy::json_path(["options", "docnav-other", "payload"]),
+                AdapterOptionProcessStrategy::config_path(["options", "docnav-other", "payload"]),
             )
             .validation(FieldValidation::json())
             .build(),

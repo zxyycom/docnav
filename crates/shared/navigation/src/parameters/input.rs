@@ -1,12 +1,29 @@
+use std::collections::BTreeMap;
+
 use docnav_adapter_contracts::AdapterOptionSpec;
 use serde_json::{json, Map, Value};
 
 use crate::NavigationCommand;
 
+pub(super) struct DirectInput {
+    common: Value,
+    native: BTreeMap<String, Value>,
+}
+
+impl DirectInput {
+    pub(super) fn common(&self) -> &Value {
+        &self.common
+    }
+
+    pub(super) fn native_value(&self, identity: &str) -> Option<&Value> {
+        self.native.get(identity)
+    }
+}
+
 pub(super) fn direct_input(
     command: &NavigationCommand,
     selected_native_options: &[AdapterOptionSpec],
-) -> Value {
+) -> DirectInput {
     let mut input = Map::new();
     input.insert("path".to_owned(), json!(command.document_path));
     insert_optional_string(&mut input, "adapter", command.adapter.as_deref());
@@ -24,11 +41,10 @@ pub(super) fn direct_input(
     if let Some(output) = command.output {
         input.insert("output".to_owned(), json!(output.as_str()));
     }
-    let options = native_option_input(command, selected_native_options);
-    for (key, value) in options {
-        input.insert(key, value);
+    DirectInput {
+        common: Value::Object(input),
+        native: native_option_input(command, selected_native_options),
     }
-    Value::Object(input)
 }
 
 pub(super) fn native_option_cli_value(value: &str) -> Value {
@@ -44,8 +60,8 @@ fn insert_optional_string(input: &mut Map<String, Value>, key: &str, value: Opti
 fn native_option_input(
     command: &NavigationCommand,
     selected_native_options: &[AdapterOptionSpec],
-) -> Map<String, Value> {
-    let mut input = Map::new();
+) -> BTreeMap<String, Value> {
+    let mut input = BTreeMap::new();
     for option in &command.native_options {
         let Some(spec) = selected_native_options
             .iter()
@@ -53,29 +69,10 @@ fn native_option_input(
         else {
             continue;
         };
-        let Some(path) = spec.cli_input_path() else {
-            continue;
-        };
-        insert_at_path(&mut input, &path, native_option_cli_value(&option.value));
+        input.insert(
+            spec.identity.clone(),
+            native_option_cli_value(&option.value),
+        );
     }
     input
-}
-
-fn insert_at_path(root: &mut Map<String, Value>, path: &[String], value: Value) {
-    let Some((first, rest)) = path.split_first() else {
-        return;
-    };
-    if rest.is_empty() {
-        root.insert(first.clone(), value);
-        return;
-    }
-    let child = root
-        .entry(first.clone())
-        .or_insert_with(|| Value::Object(Map::new()));
-    if !child.is_object() {
-        *child = Value::Object(Map::new());
-    }
-    if let Some(child) = child.as_object_mut() {
-        insert_at_path(child, rest, value);
-    }
 }

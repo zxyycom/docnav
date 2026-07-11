@@ -69,6 +69,56 @@ fn navigation_includes_adapter_native_option_default() {
 }
 
 #[test]
+fn optional_non_json_cli_null_suppresses_default_and_handoff() {
+    let outcome = execute_loaded_navigation_command(
+        navigation_command(vec![NavigationNativeOptionInput {
+            flag: "--max-heading-level".to_owned(),
+            value: "null".to_owned(),
+        }]),
+        config_sources(Value::Null, Value::Null),
+        &StubRegistry,
+    )
+    .expect("optional non-JSON null suppresses the default without entering handoff");
+
+    let ProtocolResponse::Success(success) = outcome.response else {
+        panic!("expected success");
+    };
+    let OperationResult::Outline(result) = success.result else {
+        panic!("expected outline result");
+    };
+    let result = result.as_structured().expect("structured outline result");
+    assert_eq!(result.entries[0].label, "Stub");
+}
+
+#[test]
+fn optional_non_json_config_null_suppresses_default_and_handoff() {
+    let outcome = execute_loaded_navigation_command(
+        navigation_command(Vec::new()),
+        config_sources(
+            json!({
+                "options": {
+                    "docnav-markdown": {
+                        "max_heading_level": null
+                    }
+                }
+            }),
+            Value::Null,
+        ),
+        &StubRegistry,
+    )
+    .expect("config null suppresses the default without entering handoff");
+
+    let ProtocolResponse::Success(success) = outcome.response else {
+        panic!("expected success");
+    };
+    let OperationResult::Outline(result) = success.result else {
+        panic!("expected outline result");
+    };
+    let result = result.as_structured().expect("structured outline result");
+    assert_eq!(result.entries[0].label, "Stub");
+}
+
+#[test]
 fn navigation_resolves_json_native_option_through_typed_fields() {
     let outcome = execute_loaded_navigation_command(
         navigation_command(vec![NavigationNativeOptionInput {

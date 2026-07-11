@@ -41,6 +41,8 @@ Full-read cost measurement declaration SHOULD list the standard cost units the a
 
 Adapter 个性化参数使用 `AdapterOptionSpec` 包装 typed-field builder 声明。`path(...)` 声明该 option 注册后进入 `OperationArguments.options` 的 `options.*` 位置；`process(...)` 声明 CLI/config source binding，config source binding 必须使用 adapter-id namespace，例如 `options.docnav-markdown.max_heading_level`。Source path 由底层 typed-field processing metadata 提供，不作为 final arguments path 的隐含替代；`validation(...)` 和 `default_static(...)` 显式转发到底层 `docnav-typed-fields` 类型。典型形态：
 
+`cli_flag(...)` 必须生成 canonical `CliFlag` locator，`config_path(...)` 必须生成 canonical `ConfigPath` locator；两者分别描述抽取来源，不替代 `path(...)` 定义的 final arguments / handler binding，也不得为同一 source 额外注册兼容 `JsonPath` locator。
+
 ```rust
 AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_level")
     .owner("docnav-markdown")
@@ -49,7 +51,7 @@ AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_
     .process("cli", AdapterOptionProcessStrategy::cli_flag("--max-heading-level"))
     .process(
         "config",
-        AdapterOptionProcessStrategy::json_path(["options", "docnav-markdown", "max_heading_level"]),
+        AdapterOptionProcessStrategy::config_path(["options", "docnav-markdown", "max_heading_level"]),
     )
     .validation(FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)))
     .default_static(3)

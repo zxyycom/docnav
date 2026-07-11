@@ -8,6 +8,10 @@ use super::*;
 use crate::cli::{ConfigInspect, ConfigPathArgs};
 use crate::output::{write_outcome, CommandOutcome};
 
+const VALID_INSPECTION_GOLDEN: &str = include_str!("fixtures/config-inspect-valid.json");
+const INVALID_JSON_INSPECTION_GOLDEN: &str =
+    include_str!("fixtures/config-inspect-invalid-json.json");
+
 #[test]
 // @case WB-CORE-CONFIG-PATH-002
 fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing() {
@@ -44,31 +48,47 @@ fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing()
         config_paths: config_paths(&project_config, &user_config),
     }))
     .expect("config inspect");
+    let mut output = outcome_json(output);
+    normalize_dynamic_paths(&mut output, &project_config, &user_config);
+    assert_json_golden(&output, VALID_INSPECTION_GOLDEN);
+    assert_eq!(fs::read_to_string(&project_config).unwrap(), project_before);
+    assert_eq!(fs::read_to_string(&user_config).unwrap(), user_before);
+
+    let _ = fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn config_inspect_omits_optional_non_json_null_parameter_fact() {
+    let workspace = temp_workspace("config-inspect-null-parameter-fact");
+    let project_config = workspace.join("project.json");
+    let user_config = workspace.join("user.json");
+    write_json(
+        &project_config,
+        json!({
+            "options": {
+                "docnav-markdown": {
+                    "max_heading_level": null
+                }
+            }
+        }),
+    );
+    write_json(&user_config, json!({}));
+
+    let output = execute(ConfigCommand::Inspect(ConfigInspect {
+        config_paths: config_paths(&project_config, &user_config),
+    }))
+    .expect("config inspect");
     let output = outcome_json(output);
     let inspection = &output["inspection"];
 
-    assert_eq!(inspection["sources"][0]["scope"], "project");
-    assert_eq!(
-        inspection["sources"][0]["path"],
-        project_config.display().to_string()
-    );
-    assert_eq!(inspection["sources"][0]["origin"], "explicit_cli");
-    assert_eq!(inspection["sources"][0]["load_state"], "loaded");
-    assert_eq!(inspection["sources"][0]["diagnostics"], json!([]));
-    assert!(
-        projection_has_path(inspection, "options.docnav-markdown.max_heading_level"),
-        "adapter-id config path should be projected: {inspection}"
-    );
     assert!(
         parameter_fact(
             inspection,
             "docnav.adapters.docnav-markdown.options.max_heading_level"
         )
-        .is_some_and(|fact| fact["value"] == json!(2) && fact["source"] == "project"),
-        "inspect should expose resolved adapter option fact: {inspection}"
+        .is_none(),
+        "optional non-JSON null should suppress its default without becoming a fact: {inspection}"
     );
-    assert_eq!(fs::read_to_string(&project_config).unwrap(), project_before);
-    assert_eq!(fs::read_to_string(&user_config).unwrap(), user_before);
 
     let _ = fs::remove_dir_all(workspace);
 }
@@ -119,10 +139,6 @@ fn config_inspect_reports_explicit_source_load_status_without_failing() {
         "missing_explicit_cli",
     );
 
-    let invalid_json = workspace.join("invalid-project.json");
-    write_raw(&invalid_json, "{invalid");
-    assert_inspect_project_source_status(&invalid_json, &user_config, true, "invalid_json");
-
     let non_object = workspace.join("non-object-project.json");
     write_raw(&non_object, "[]");
     assert_inspect_project_source_status(&non_object, &user_config, true, "non_object");
@@ -130,6 +146,25 @@ fn config_inspect_reports_explicit_source_load_status_without_failing() {
     let not_file = workspace.join("not-file-project.json");
     fs::create_dir_all(&not_file).unwrap();
     assert_inspect_project_source_status(&not_file, &user_config, true, "not_file");
+
+    let _ = fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn config_inspect_serializes_complete_invalid_json_load_status() {
+    let workspace = temp_workspace("config-inspect-invalid-json-golden");
+    let project_config = workspace.join("invalid-project.json");
+    let user_config = workspace.join("user.json");
+    write_raw(&project_config, "{invalid");
+    write_json(&user_config, json!({}));
+
+    let output = execute(ConfigCommand::Inspect(ConfigInspect {
+        config_paths: config_paths(&project_config, &user_config),
+    }))
+    .expect("inspect should serialize invalid source status");
+    let mut output = outcome_json(output);
+    normalize_dynamic_paths(&mut output, &project_config, &user_config);
+    assert_json_golden(&output, INVALID_JSON_INSPECTION_GOLDEN);
 
     let _ = fs::remove_dir_all(workspace);
 }
@@ -191,12 +226,6 @@ fn init_rejects_selected_project_config_directory() {
     let _ = fs::remove_dir_all(workspace);
 }
 
-fn projection_has_path(inspection: &Value, path: &str) -> bool {
-    inspection["config_source_projection"]
-        .as_array()
-        .is_some_and(|fields| fields.iter().any(|field| field["path"] == path))
-}
-
 fn parameter_fact<'a>(inspection: &'a Value, identity: &str) -> Option<&'a Value> {
     inspection["parameter_facts"]
         .as_array()?
@@ -236,6 +265,45 @@ fn assert_inspect_project_source_status(
     assert_eq!(diagnostics[0]["path"], project_config.display().to_string());
     assert_eq!(diagnostics[0]["field"], Value::Null);
     assert_eq!(diagnostics[0]["reason_code"], reason_code);
+}
+
+fn normalize_dynamic_paths(output: &mut Value, project_config: &Path, user_config: &Path) {
+    let current_dir = std::env::current_dir().expect("config inspect test current directory");
+    let expected_project_root =
+        path_string(&crate::project_context::find_project_root(&current_dir));
+    assert_eq!(
+        output["project_root"], expected_project_root,
+        "config inspect must report the ProjectContext owner root"
+    );
+    output["project_root"] = json!("<project-root>");
+    replace_exact_string(
+        output,
+        &project_config.display().to_string(),
+        "<project-config>",
+    );
+    replace_exact_string(output, &user_config.display().to_string(), "<user-config>");
+}
+
+fn replace_exact_string(value: &mut Value, before: &str, after: &str) {
+    match value {
+        Value::String(current) if current == before => *current = after.to_owned(),
+        Value::Array(values) => {
+            for value in values {
+                replace_exact_string(value, before, after);
+            }
+        }
+        Value::Object(values) => {
+            for value in values.values_mut() {
+                replace_exact_string(value, before, after);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn assert_json_golden(actual: &Value, golden: &str) {
+    let expected: Value = serde_json::from_str(golden).expect("valid config inspect golden");
+    assert_eq!(actual, &expected);
 }
 
 fn config_paths(project_config: &Path, user_config: &Path) -> ConfigPathArgs {

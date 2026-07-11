@@ -5,6 +5,7 @@ use docnav_protocol::{
     ProbeResult, ProtocolDiagnosticCode, ReadArguments, ReadResult, RequestEnvelope,
     MANIFEST_VERSION, PROBE_VERSION,
 };
+use docnav_typed_fields::{FieldDef, ProcessingInputKind, ProcessingLocator};
 
 // @case WB-CONTRACTS-ERROR-001
 #[test]
@@ -77,7 +78,7 @@ fn adapter_options_keep_same_target_key_with_distinct_identity_and_owner() {
         .path(["options", "shared"])
         .process(
             "config",
-            AdapterOptionProcessStrategy::json_path(["options", "shared"]),
+            AdapterOptionProcessStrategy::config_path(["options", "integer-adapter", "shared"]),
         )
         .validation(FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(3)))
         .build();
@@ -87,7 +88,7 @@ fn adapter_options_keep_same_target_key_with_distinct_identity_and_owner() {
         .path(["options", "shared"])
         .process(
             "config",
-            AdapterOptionProcessStrategy::json_path(["options", "shared"]),
+            AdapterOptionProcessStrategy::config_path(["options", "string-adapter", "shared"]),
         )
         .validation(FieldValidation::string())
         .build();
@@ -114,7 +115,11 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
             )
             .process(
                 "config",
-                AdapterOptionProcessStrategy::json_path(["options", "max_heading_level"]),
+                AdapterOptionProcessStrategy::config_path([
+                    "options",
+                    "docnav-markdown",
+                    "max_heading_level",
+                ]),
             )
             .validation(
                 FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
@@ -127,12 +132,17 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
         .path(["options", "read_mode"])
         .process(
             "config",
-            AdapterOptionProcessStrategy::json_path(["options", "read_mode"]),
+            AdapterOptionProcessStrategy::config_path(["options", "docnav-markdown", "read_mode"]),
         )
         .validation(FieldValidation::string())
         .build();
 
-    let mut builder = FieldDefSet::builder();
+    let mut builder = FieldDefSet::builder().field(
+        FieldDef::builder("docnav.defaults.pagination.limit")
+            .process("direct", ProcessStrategy::json_path(["limit"]))
+            .validation(FieldValidation::int()),
+        ExpectedFieldShape::required(),
+    );
     for option in [&outline_only, &read_only]
         .into_iter()
         .filter(|option| option.applies_to(Operation::Outline))
@@ -146,26 +156,43 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
     let fields = builder.build().expect("adapter option field defs");
 
     let explicit = fields.processing_metadata(&ProcessingId::from("cli"));
+    let config = fields.processing_metadata(&ProcessingId::from("config"));
+    let direct = fields.processing_metadata(&ProcessingId::from("direct"));
 
+    assert_eq!(direct.len(), 1);
+    assert_eq!(direct[0].input_kind, ProcessingInputKind::JsonValue);
     assert_eq!(explicit.len(), 1);
+    assert_eq!(explicit[0].input_kind, ProcessingInputKind::CliArguments);
     assert_eq!(
         explicit[0].identity.as_str(),
         "docnav.adapters.markdown.options.max_heading_level"
     );
     assert_eq!(
-        explicit[0].path.segments(),
-        vec!["options", "max_heading_level"]
+        explicit[0].locator,
+        ProcessingLocator::CliFlag("--max-heading-level".to_owned())
     );
     assert_eq!(explicit[0].value_kind, ValueKind::Integer);
     assert_eq!(explicit[0].default, DefaultMetadata::Static(3.into()));
+    assert_eq!(config.len(), 1);
+    assert!(matches!(
+        &config[0].locator,
+        ProcessingLocator::ConfigPath(path)
+            if path.segments()
+                == vec!["options", "docnav-markdown", "max_heading_level"]
+    ));
     assert_eq!(outline_only.cli_arg_id(), Some("max-heading-level"));
+    assert_eq!(outline_only.processing_path("cli").unwrap(), None);
     assert_eq!(
         outline_only.cli_input_path().unwrap(),
         vec!["options", "max_heading_level"]
     );
     assert_eq!(
         outline_only.processing_path("config").unwrap().unwrap(),
-        vec!["options".to_owned(), "max_heading_level".to_owned()]
+        vec![
+            "options".to_owned(),
+            "docnav-markdown".to_owned(),
+            "max_heading_level".to_owned(),
+        ]
     );
     assert_eq!(
         outline_only.expected_value_description(),
@@ -181,7 +208,11 @@ fn adapter_option_field_declaration_rejects_invalid_path() {
         .path(["markdown", "max_heading_level"])
         .process(
             "config",
-            AdapterOptionProcessStrategy::json_path(["options", "max_heading_level"]),
+            AdapterOptionProcessStrategy::config_path([
+                "options",
+                "docnav-markdown",
+                "max_heading_level",
+            ]),
         )
         .validation(FieldValidation::int())
         .build();

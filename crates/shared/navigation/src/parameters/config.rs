@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use cli_config_resolution::{ResolutionDiagnostic, ResolutionResult, SourceLocator};
 use docnav_adapter_contracts::AdapterOptionSpec;
 use docnav_diagnostics::DiagnosticSource;
 use docnav_typed_fields::{FieldDefSet, ProcessingId};
@@ -13,17 +14,14 @@ use crate::{
 };
 
 use super::{
-    fields, ids,
+    fields,
     input::native_option_cli_value,
     native_options::{
         native_option_validation_error, spec_for_identity, unsupported_option,
         UnsupportedOptionContext,
     },
-    resolution::{
-        self, ParameterResolution, ParameterResolutionHandoff, ParameterSourceKind,
-        ParameterValidationIssue,
-    },
-    values::{validation_error_for_identity, validation_reason_code},
+    resolution,
+    values::{diagnostic_source_label, resolution_reason_code, validation_error_for_identity},
 };
 
 mod key_registry;
@@ -78,11 +76,12 @@ pub(super) fn validate_config_source_for_registry(
 }
 
 pub(super) fn first_resolution_error(
-    resolution: &ParameterResolution,
+    resolution: &ResolutionResult,
     config_sources: &NavigationConfigSources,
 ) -> Result<(), NavigationError> {
+    first_config_source_error(config_sources)?;
     if let Some(diagnostic) = resolution.diagnostics().first() {
-        return Err(handoff_error_with_config_sources(
+        return Err(resolution_error_with_config_sources(
             diagnostic,
             config_sources,
         ));
@@ -91,27 +90,23 @@ pub(super) fn first_resolution_error(
 }
 
 pub(super) fn first_operation_resolution_error(
-    resolution: &ParameterResolution,
+    resolution: &ResolutionResult,
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_native_options: &[AdapterOptionSpec],
 ) -> Result<(), NavigationError> {
     if let Some(diagnostic) = resolution.diagnostics().first() {
-        if let ParameterResolutionHandoff::Validation(diagnostic) = diagnostic {
-            if let Some(spec) =
-                spec_for_identity(selected_native_options, diagnostic.identity.as_str())
-            {
-                return Err(native_option_validation_error(
-                    command,
-                    config_sources,
-                    spec,
-                    diagnostic.source.as_ref().map(|source| source.kind),
-                    &diagnostic.failure.reason,
-                )
-                .into());
-            }
+        if let Some(spec) = spec_for_identity(selected_native_options, diagnostic.field.as_str()) {
+            return Err(native_option_validation_error(
+                command,
+                config_sources,
+                spec,
+                diagnostic_source_label(diagnostic),
+                resolution_reason_code(diagnostic),
+            )
+            .into());
         }
-        return Err(handoff_error_with_config_sources(
+        return Err(resolution_error_with_config_sources(
             diagnostic,
             config_sources,
         ));
@@ -272,9 +267,6 @@ fn validate_config_source_values(
     let resolution = resolution::resolve(context.fields, None, &config_sources)?;
 
     for diagnostic in resolution.diagnostics() {
-        let ParameterResolutionHandoff::Validation(diagnostic) = diagnostic else {
-            continue;
-        };
         if !validation_belongs_to_source(diagnostic, source) {
             continue;
         }
@@ -282,24 +274,20 @@ fn validate_config_source_values(
         {
             return Err(error);
         }
-        return Err(validation_error_for_identity(diagnostic.identity.as_str()));
+        return Err(validation_error_for_identity(diagnostic.field.as_str()));
     }
 
     Ok(())
 }
 
 fn validation_belongs_to_source(
-    diagnostic: &ParameterValidationIssue,
+    diagnostic: &ResolutionDiagnostic,
     source: &NavigationConfigSource,
 ) -> bool {
-    matches!(
-        (
-            diagnostic.source.as_ref().map(|source| source.kind),
-            source.level
-        ),
-        (Some(ParameterSourceKind::ProjectConfig), "project")
-            | (Some(ParameterSourceKind::UserConfig), "user")
-    )
+    diagnostic
+        .source_id
+        .as_ref()
+        .is_some_and(|source_id| source_id.as_str() == source.level)
 }
 
 fn empty_config_source(level: &'static str) -> NavigationConfigSource {
@@ -406,60 +394,27 @@ fn invalid_nested_object(source: &NavigationConfigSource, field: &str) -> Naviga
     NavigationError::config_invalid_object(source.level, source.origin, &source.path, field)
 }
 
-fn handoff_error(diagnostic: &ParameterResolutionHandoff) -> NavigationError {
-    match diagnostic {
-        ParameterResolutionHandoff::Validation(diagnostic) => {
-            validation_error_for_identity(diagnostic.identity.as_str())
-        }
-        ParameterResolutionHandoff::ConfigSource(issue) => NavigationError::new(
-            issue.to_record_draft(DiagnosticSource::with_stage("docnav", "config")),
-        ),
-    }
-}
-
 fn config_source_error(
     issue: &crate::config_source::NavigationConfigSourceIssue,
 ) -> NavigationError {
     NavigationError::new(issue.to_record_draft(DiagnosticSource::with_stage("docnav", "config")))
 }
 
-fn handoff_error_with_config_sources(
-    diagnostic: &ParameterResolutionHandoff,
+fn resolution_error_with_config_sources(
+    diagnostic: &ResolutionDiagnostic,
     config_sources: &NavigationConfigSources,
 ) -> NavigationError {
-    match diagnostic {
-        ParameterResolutionHandoff::Validation(diagnostic) => {
-            config_validation_error(diagnostic, config_sources)
-                .unwrap_or_else(|| validation_error_for_identity(diagnostic.identity.as_str()))
-        }
-        ParameterResolutionHandoff::ConfigSource(_) => handoff_error(diagnostic),
-    }
+    config_validation_error(diagnostic, config_sources)
+        .unwrap_or_else(|| validation_error_for_identity(diagnostic.field.as_str()))
 }
 
 fn config_validation_error(
-    diagnostic: &ParameterValidationIssue,
+    diagnostic: &ResolutionDiagnostic,
     config_sources: &NavigationConfigSources,
 ) -> Option<NavigationError> {
-    let source = config_source_for_validation(diagnostic.source.as_ref()?.kind, config_sources)?;
-    let field = legacy_config_field_for_identity(diagnostic.identity.as_str())?;
-    let reason_code = validation_reason_code(&diagnostic.failure.reason);
-    Some(NavigationError::config_invalid_field(
-        ConfigFieldError::invalid(
-            source,
-            field,
-            reason_code,
-            format!("Use a valid value for config field {field}."),
-        ),
-    ))
-}
-
-fn config_validation_error_for_source(
-    diagnostic: &ParameterValidationIssue,
-    source: &NavigationConfigSource,
-    fields: &FieldDefSet,
-) -> Option<NavigationError> {
-    let field = config_field_for_identity(diagnostic.identity.as_str(), fields)?;
-    let reason_code = validation_reason_code(&diagnostic.failure.reason);
+    let source = config_source_for_validation(diagnostic.source_id.as_ref()?, config_sources)?;
+    let field = config_field_from_diagnostic(diagnostic)?;
+    let reason_code = resolution_reason_code(diagnostic);
     Some(NavigationError::config_invalid_field(
         ConfigFieldError::invalid(
             source,
@@ -470,13 +425,38 @@ fn config_validation_error_for_source(
     ))
 }
 
-fn config_source_for_validation(
-    source: ParameterSourceKind,
-    config_sources: &NavigationConfigSources,
-) -> Option<&NavigationConfigSource> {
-    match source {
-        ParameterSourceKind::ProjectConfig => Some(&config_sources.project),
-        ParameterSourceKind::UserConfig => Some(&config_sources.user),
+fn config_validation_error_for_source(
+    diagnostic: &ResolutionDiagnostic,
+    source: &NavigationConfigSource,
+    fields: &FieldDefSet,
+) -> Option<NavigationError> {
+    let field = config_field_from_diagnostic(diagnostic)
+        .or_else(|| config_field_for_identity(diagnostic.field.as_str(), fields))?;
+    let reason_code = resolution_reason_code(diagnostic);
+    Some(NavigationError::config_invalid_field(
+        ConfigFieldError::invalid(
+            source,
+            field.clone(),
+            reason_code,
+            format!("Use a valid value for config field {field}."),
+        ),
+    ))
+}
+
+fn config_source_for_validation<'a>(
+    source_id: &cli_config_resolution::SourceId,
+    config_sources: &'a NavigationConfigSources,
+) -> Option<&'a NavigationConfigSource> {
+    match source_id.as_str() {
+        "project" => Some(&config_sources.project),
+        "user" => Some(&config_sources.user),
+        _ => None,
+    }
+}
+
+fn config_field_from_diagnostic(diagnostic: &ResolutionDiagnostic) -> Option<String> {
+    match diagnostic.locator.as_ref()? {
+        SourceLocator::ConfigPath(path) => Some(path.segments().join(".")),
         _ => None,
     }
 }
@@ -487,14 +467,4 @@ fn config_field_for_identity(identity: &str, fields: &FieldDefSet) -> Option<Str
         .into_iter()
         .find(|metadata| metadata.identity.as_str() == identity)
         .map(|metadata| metadata.path.segments().join("."))
-}
-
-fn legacy_config_field_for_identity(identity: &str) -> Option<&'static str> {
-    match identity {
-        ids::ADAPTER => Some("defaults.adapter"),
-        ids::OUTPUT => Some("defaults.output"),
-        ids::PAGINATION_ENABLED => Some("defaults.pagination.enabled"),
-        ids::LIMIT => Some("defaults.pagination.limit"),
-        _ => None,
-    }
 }

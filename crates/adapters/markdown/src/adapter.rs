@@ -267,7 +267,7 @@ fn markdown_adapter_options() -> Vec<AdapterOptionSpec> {
         )
         .process(
             "config",
-            AdapterOptionProcessStrategy::json_path([
+            AdapterOptionProcessStrategy::config_path([
                 NATIVE_OPTIONS_NAMESPACE,
                 ADAPTER_ID,
                 MAX_HEADING_LEVEL_OPTION,

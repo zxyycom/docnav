@@ -280,7 +280,7 @@ fn adapter_id_field(
         )
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["defaults", "adapter"]),
+            ProcessStrategy::config_path(["defaults", "adapter"]),
         )
         .validation(non_empty_string_validation())
 }
@@ -297,7 +297,7 @@ fn configurable_limit_field(
         .process(direct_processing_id, ProcessStrategy::json_path(["limit"]))
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["defaults", "pagination", "limit"]),
+            ProcessStrategy::config_path(["defaults", "pagination", "limit"]),
         )
         .validation(positive_u32_int_validation())
 }
@@ -313,7 +313,7 @@ fn pagination_enabled_field(
         )
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["defaults", "pagination", "enabled"]),
+            ProcessStrategy::config_path(["defaults", "pagination", "enabled"]),
         )
         .validation(FieldValidation::boolean())
 }
@@ -322,7 +322,7 @@ fn invocation_log_enabled_field(config_processing_id: &'static str) -> FieldDefB
     FieldDef::builder(ids::INVOCATION_LOG_ENABLED)
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["invocation_log", "enabled"]),
+            ProcessStrategy::config_path(["invocation_log", "enabled"]),
         )
         .validation(FieldValidation::boolean())
 }
@@ -331,7 +331,7 @@ fn invocation_log_path_field(config_processing_id: &'static str) -> FieldDefBuil
     FieldDef::builder(ids::INVOCATION_LOG_PATH)
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["invocation_log", "path"]),
+            ProcessStrategy::config_path(["invocation_log", "path"]),
         )
         .validation(non_empty_string_validation())
 }
@@ -342,7 +342,7 @@ fn invocation_log_content_capture_enabled_field(
     FieldDef::builder(ids::INVOCATION_LOG_CONTENT_CAPTURE_ENABLED)
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["invocation_log", "content_capture", "enabled"]),
+            ProcessStrategy::config_path(["invocation_log", "content_capture", "enabled"]),
         )
         .validation(FieldValidation::boolean())
 }
@@ -353,7 +353,7 @@ fn invocation_log_content_capture_root_field(
     FieldDef::builder(ids::INVOCATION_LOG_CONTENT_CAPTURE_ROOT)
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["invocation_log", "content_capture", "root"]),
+            ProcessStrategy::config_path(["invocation_log", "content_capture", "root"]),
         )
         .validation(non_empty_string_validation())
 }
@@ -369,7 +369,7 @@ where
         .process(direct_processing_id, ProcessStrategy::json_path(["output"]))
         .process(
             config_processing_id,
-            ProcessStrategy::json_path(["defaults", "output"]),
+            ProcessStrategy::config_path(["defaults", "output"]),
         )
         .validation(FieldValidation::string_enum::<T>())
 }
