@@ -845,6 +845,7 @@ Proves:
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
 - required profile 持续对 `subrepos/cli-config-resolution/Cargo.toml` 运行 nested workspace fmt；full profile 持续覆盖该 workspace 的 clippy、all-target tests、doc-tests 和 runnable example。
+- Codex environment setup 在运行 workspace verifier 前无路径过滤地递归初始化 `.gitmodules` 中的全部 submodule，避免新增 gitlink 后 bootstrap 列表漂移。
 - full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
 - completion line 和 summary 可区分 passed、warning 和 failed。
 - 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。

@@ -25,6 +25,16 @@ import { executeCheck } from "./verify/execution.ts";
 
 // @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {
+  it("initializes every submodule before Codex environment verification", () => {
+    for (const environment of [
+      ".codex/environments/environment.toml",
+      ".codex/environments/environment-2.toml"
+    ]) {
+      const setup = fs.readFileSync(environment, "utf8");
+      assert.match(setup, /git submodule update --init --recursive\r?\n/);
+    }
+  });
+
   it("filters successful test runner output from release package script tests", () => {
     const check = checkByLabel("release package script tests");
     const output = [

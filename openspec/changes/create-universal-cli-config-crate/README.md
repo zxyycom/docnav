@@ -14,7 +14,7 @@
 - `FieldDef` 直接拥有 `MergeStrategy::{Replace, Append, MapMerge, DenyConflict}` metadata，默认 `Replace`；不存在 resolution-owned merge policy table 或单独 `ListReplace` / `MapReplace` public variants。
 - `FieldDefSet` 可直接驱动 CLI/env/config extraction、固定 priority/tie/merge ordering、canonical validation 和 typed materialization。
 - Selected/contributing decode failure、overridden-invalid trace-only 和 final merged-value validation 都有可执行测试证明。
-- Docnav runtime 不再构造 `generic_field_set` 或手工复制 canonical field metadata。
+- Docnav runtime 不再构造 `generic_field_set`、平行 locator table 或手工复制 canonical field metadata；已解析/custom input 只允许由读取 canonical processing metadata 的私有 source adapter 映射。
 - 独立 Cargo workspace 在独立 checkout 中通过 package tests、doc-tests 和 runnable example，并由 Docnav 通过 revision/pin 或等价 dependency source 消费。
 - `openspec instructions apply --change create-universal-cli-config-crate --json` 只有在 9-14 节任务全部完成后才能重新返回 `all_done`。
 
@@ -70,6 +70,14 @@
 - Review/remediation：三轮 bounded challenge 均未发现 valid issue，formal review 结论为 `Approve`；没有遗留的 review finding 需要在本次记账前继续 remediation。
 - 本 slice 只完成并记账 12.1 与 12.2，当前进度为 65/75。D3 golden/smoke/workspace verification 尚未完成，因此 12.3、13.x 和 14.x 保持未完成。
 
+## Post-acceptance remediation (2026-07-11)
+
+- Completion audit 发现 `AdapterOptionSpec` 仍同时保留 adapter-local source/locator state 与 canonical field declaration。Remediation 删除 `AdapterOptionSource` 和平行 strategy enum；`process(...)` 直接接收 canonical `ProcessStrategy`，`AdapterOptionProcessStrategy` 只保留为无状态类型别名，CLI metadata 从 `FieldDefDeclaration` processing metadata 派生。
+- Decision 15 与 delta scenario 明确：已经解析或 custom input 可以通过 consumer-owned private source adapter 进入公共 `Source` / `SourceCandidate` / `Resolver` contract，但 adapter 只能读取 canonical processing metadata，不得维护平行 locator table 或复制类型、约束、默认值、校验和 merge facts。
+- 两个 Codex environment setup 改为无路径过滤的 `git submodule update --init --recursive`，workspace verifier tests 固定“初始化全部 gitlink 后再验证”的 bootstrap 不变量。
+- TDD evidence：canonical `ProcessStrategy` consumer test 与 environment bootstrap test 均先按预期失败；修复后 adapter-contracts 11 tests、navigation 47 tests、Docnav 94 tests、workspace verifier tests 20 tests、docs validation、strict OpenSpec validation 和 affected clippy 全部通过。
+- Fresh full workspace verification：19 checks 中 18 passed、1 个既有 nonblocking quality warning、0 failed；48 smoke cases、root/nested Rust tests、nested doc-tests 和 runnable example 全部通过，quality 为 8 warnings、0 changed、0 regressions。
+
 ## Final acceptance and repository status (2026-07-11)
 
 - Hard-cutover baseline（D3）：golden、case ledger、owner docs 和 48 个 smoke cases 均已完成；D3 formal review 在唯一 Low 关闭后为 `Approve`。
@@ -78,7 +86,7 @@
 - Independent checkout：fresh clone `.tmp/cli-config-resolution-checkout-1b739a3` 的 `HEAD` 精确等于 `S`。五包 metadata、repository exactness、tree audit、fmt、build、clippy（0 warnings）、76 tests、doc-tests、rustdoc 和 runnable example 全部通过，checkout 保持 clean。
 - Docnav integration/automation（E3）：required/full verifier 和 exact-root case validator 覆盖新边界，case catalog 为 101 documented / 101 source markers；E3 review 为 `Approve`。Fresh navigation 47 tests、config commands 7 tests、四个 consumer no-run compile 均通过；full verifier 为 19 checks（18 passed、1 nonblocking quality warning、0 failed），其中 nested workspace 5 checks、48 smoke cases 和 OpenSpec validation 全部通过。
 - Fresh root quality snapshot 为 `all=8`、`changed=0`、`regressions=0`。Quality baseline 只扫描 Docnav parent repository 自身跟踪的源码；submodule 由独立 workspace 的 fmt、clippy、tests、doc-tests 和 runnable example 门禁负责，不为非阻断指标复制跨仓库文件发现逻辑。8 条 root warning 均为既有未增长项，详细 owner 与后续处理边界保留在 `artifacts/docnav-quality/report.md`。Root/nested lock hashes 在验证前后相同；implementation worktree 在本 OpenSpec 记账前保持 clean。
-- Final structure audit 为 `Approve`：没有第二套 field/value/merge model、旧 resolver 或 Docnav conversion path，也没有把 Docnav-specific semantics 泄漏进 nested workspace。
+- Final structure audit 为 `Approve`：没有第二套 field/value/merge model、平行 locator table、旧 resolver 或 Docnav field-metadata conversion path；Docnav-private source adapter 只映射已解析 input，也没有把 Docnav-specific semantics 泄漏进 nested workspace。
 - License selection 按用户批准延后到 release decision；当前五包 metadata `license = null` 且 repository 内没有独立 `LICENSE` 正文，这是 14.2 的完成状态，不代表已经选择发布 license。
 - Pin/rollback：Docnav runtime 通过固定 gitlink 消费 submodule path。首次 clone 或清理后的工作区运行 `git submodule update --init --recursive`；若新 revision 有问题，则将 gitlink 恢复到 last-known good `S` 后再次运行该命令。回滚只改变 submodule revision，不会恢复旧 resolver、compatibility wrapper 或 runtime fallback。
 - Final OpenSpec gate：strict change validation 通过，`openspec instructions apply` 返回 `state=all_done`、75/75 complete、0 remaining；本 change 已满足归档前完成条件。
