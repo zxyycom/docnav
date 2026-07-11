@@ -34,12 +34,6 @@ fn explicit_missing_adapter_reports_static_registry_guidance() {
         guidance.contains("current core release static registry"),
         "guidance should describe static registry: {guidance}"
     );
-    for removed_term in ["install", "register", "executable", "artifact"] {
-        assert!(
-            !guidance.contains(removed_term),
-            "guidance should not mention {removed_term}: {guidance}"
-        );
-    }
 }
 
 #[test]

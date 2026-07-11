@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -8,6 +8,10 @@ import {
   mutableConfigFixtureProject
 } from "./project.ts";
 import { root, tempRoot } from "../config.ts";
+
+after(() => {
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
 
 // @case AUX-SMOKE-HARNESS-002
 describe("core smoke fixture projects", () => {
@@ -33,10 +37,13 @@ describe("core smoke fixture projects", () => {
       "config-precedence-base.json"
     );
     const copiedConfig = path.join(project.docnavDir, "docnav.json");
+    const sourceContents = fs.readFileSync(sourceConfig, "utf8");
 
+    assert.equal(fs.readFileSync(copiedConfig, "utf8"), sourceContents);
     fs.writeFileSync(copiedConfig, "{}\n", "utf8");
 
     assert.equal(project.root.includes(tempRoot), true);
-    assert.notEqual(fs.readFileSync(copiedConfig, "utf8"), fs.readFileSync(sourceConfig, "utf8"));
+    assert.equal(fs.readFileSync(sourceConfig, "utf8"), sourceContents);
+    assert.notEqual(fs.readFileSync(copiedConfig, "utf8"), sourceContents);
   });
 });

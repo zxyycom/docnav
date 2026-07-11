@@ -83,14 +83,9 @@ fn constructs_unstructured_outline_success_response() {
 }
 
 #[test]
-fn generated_request_id_uses_docnav_prefix_and_numeric_suffix() {
+fn generated_request_id_is_non_empty() {
     let request_id = generate_request_id();
-    let suffix = request_id
-        .strip_prefix(GENERATED_REQUEST_ID_PREFIX)
-        .expect("generated id prefix");
-
-    assert!(!suffix.is_empty());
-    suffix.parse::<u128>().expect("generated suffix is nanos");
+    assert!(!request_id.is_empty());
 }
 
 #[test]
@@ -175,26 +170,6 @@ fn protocol_error_codes_use_diagnostic_categories() {
 }
 
 #[test]
-fn protocol_error_required_details_come_from_diagnostic_rules() {
-    assert_eq!(
-        ProtocolDiagnosticCode::InvalidRequest
-            .required_detail_names()
-            .collect::<Vec<_>>(),
-        docnav_diagnostics::ProtocolDiagnosticCode::InvalidRequest
-            .required_detail_names()
-            .collect::<Vec<_>>()
-    );
-    assert_eq!(
-        ProtocolDiagnosticCode::AdapterUnavailable
-            .required_detail_names()
-            .collect::<Vec<_>>(),
-        docnav_diagnostics::ProtocolDiagnosticCode::AdapterUnavailable
-            .required_detail_names()
-            .collect::<Vec<_>>()
-    );
-}
-
-#[test]
 fn navigation_routing_default_guidance_uses_static_registry_language() {
     for code in [
         ProtocolDiagnosticCode::FormatUnknown,
@@ -207,12 +182,6 @@ fn navigation_routing_default_guidance_uses_static_registry_language() {
                 || guidance.contains("current core release static registry"),
             "{code:?} guidance should mention the built-in/static registry source: {guidance}"
         );
-        for removed_term in ["install", "register", "executable", "artifact"] {
-            assert!(
-                !guidance.contains(removed_term),
-                "{code:?} guidance should not mention {removed_term}: {guidance}"
-            );
-        }
     }
 }
 

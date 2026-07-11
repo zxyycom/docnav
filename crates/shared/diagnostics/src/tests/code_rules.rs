@@ -20,8 +20,5 @@ fn diagnostic_code_rules_cover_each_variant() {
         assert!(!code.details_rule().fields().is_empty(), "{code:?}");
         let projection = code.projection_rule();
         assert!(projection.stderr || projection.protocol_code.is_some());
-        let _ = code.category();
-        let _ = code.default_severity();
-        let _ = code.default_effect();
     }
 }

@@ -36,13 +36,17 @@ describe("case catalog validator", () => {
         implementedCase("WB-CORE-DUP-001", "crates/dup.rs"),
         plannedCase("AUX-CASE-FUTURE-001"),
         implementedCase("WB-CORE-PATH-001", "crates/expected.rs"),
-        implementedCase("WB-CORE-MISSING-001", "crates/missing.rs")
+        implementedCase("WB-CORE-MISSING-001", "crates/missing.rs"),
+        missingProvesCase("WB-CORE-NOPROVES-001", "crates/no-proves.rs"),
+        multipleCodeCase("WB-CORE-MULTICODE-001", "crates/multi.rs", "crates/extra.rs")
       ]),
       markers: [
         { id: "WB-CORE-GOOD-001", relPath: "crates/good.rs" },
         { id: "WB-CORE-GOOD-001", relPath: "crates/good.rs" },
         { id: "AUX-CASE-FUTURE-001", relPath: "scripts/future.test.ts" },
         { id: "WB-CORE-PATH-001", relPath: "crates/actual.rs" },
+        { id: "WB-CORE-NOPROVES-001", relPath: "crates/no-proves.rs" },
+        { id: "WB-CORE-MULTICODE-001", relPath: "crates/multi.rs" },
         { id: "WB-CORE-EXTRA-001", relPath: "crates/extra.rs" },
         { id: "NOT-A-CASE", relPath: "crates/bad.rs" }
       ]
@@ -57,6 +61,8 @@ describe("case catalog validator", () => {
     assertFailure(failures, "source @case markers missing from docs/testing/cases.md");
     assertFailure(failures, "planned cases must not have source @case markers yet");
     assertFailure(failures, "documented Code paths must match source @case marker paths");
+    assertFailure(failures, "documented cases must include non-empty Proves");
+    assertFailure(failures, "documented cases must declare exactly one Code path");
   });
 });
 
@@ -81,6 +87,21 @@ function plannedCase(id: string): string {
 
 function invalidStatusCase(id: string): string {
   return [`### ${id} Invalid status`, "Status: done", "", "Proves:", "- invalid status"].join("\n");
+}
+
+function missingProvesCase(id: string, codePath: string): string {
+  return [`### ${id} Missing proves`, "Status: implemented", `Code: \`${codePath}\``].join("\n");
+}
+
+function multipleCodeCase(id: string, codePath: string, extraPath: string): string {
+  return [
+    `### ${id} Multiple code paths`,
+    "Status: implemented",
+    `Code: \`${codePath}\`, \`${extraPath}\``,
+    "",
+    "Proves:",
+    "- malformed code declaration"
+  ].join("\n");
 }
 
 function assertFailure(failures: readonly string[], label: string): void {

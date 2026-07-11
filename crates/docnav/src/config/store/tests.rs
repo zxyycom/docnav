@@ -1,11 +1,12 @@
 use std::fs;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
 
 // @case WB-CORE-CONFIG-SOURCE-001
-use super::{read_selected_config, write_config, ConfigFileSource};
+use super::{read_selected_config, ConfigFileSource};
 use crate::project_context::{
     ConfigPathOrigin, ProjectContext, SelectedConfigPath, SelectedConfigPaths,
 };
@@ -139,7 +140,7 @@ fn invalid_adapter_id_native_option_value_is_rejected() {
 }
 
 #[test]
-fn navigation_owned_outline_config_is_accepted_and_preserved() {
+fn navigation_owned_outline_config_is_accepted() {
     let root = temp_root("outline-preserve");
     let outline = json!({
         "mode_rules": [
@@ -176,12 +177,6 @@ fn navigation_owned_outline_config_is_accepted_and_preserved() {
     )
     .unwrap();
     assert_eq!(config.outline.as_ref(), Some(&outline));
-
-    let rewritten = root.join(".docnav").join("rewritten.json");
-    write_config(&rewritten, &config).unwrap();
-    let value: Value = serde_json::from_str(&fs::read_to_string(&rewritten).unwrap()).unwrap();
-    assert_eq!(value["outline"], outline);
-    assert_eq!(value["defaults"]["output"], "readable-json");
 }
 
 #[test]
@@ -339,10 +334,30 @@ fn registry_for_root(root: &Path) -> AdapterRegistry {
     .unwrap()
 }
 
-fn temp_root(name: &str) -> PathBuf {
+struct TempRoot {
+    path: PathBuf,
+}
+
+impl Deref for TempRoot {
+    type Target = Path;
+
+    fn deref(&self) -> &Self::Target {
+        &self.path
+    }
+}
+
+impl Drop for TempRoot {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+fn temp_root(name: &str) -> TempRoot {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    std::env::temp_dir().join(format!("docnav-config-store-{name}-{nonce}"))
+    TempRoot {
+        path: std::env::temp_dir().join(format!("docnav-config-store-{name}-{nonce}")),
+    }
 }

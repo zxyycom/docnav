@@ -54,6 +54,42 @@ fn decode_protocol_request_preserves_defaultable_arguments() {
 }
 
 #[test]
+fn generic_decode_reports_typed_deserialization_failure() {
+    let error = decode_value::<u32, std::convert::Infallible>(
+        serde_json::json!("not-a-number"),
+        |_| Ok(()),
+        |_| Ok(()),
+    )
+    .expect_err("schema-valid value should report typed deserialization failure");
+
+    assert_eq!(error.stage(), DecodePipelineStage::Deserialize);
+    assert!(matches!(error, DecodePipelineError::Deserialize(_)));
+}
+
+#[test]
+fn decode_manifest_returns_the_typed_current_manifest() {
+    let manifest = serde_json::json!({
+        "manifest_version": "0.1",
+        "adapter": {
+            "id": "stub",
+            "name": "Stub",
+            "version": "0.1.0"
+        },
+        "formats": [
+            {
+                "id": "stub",
+                "extensions": [".stub"],
+                "content_types": ["text/stub"]
+            }
+        ]
+    });
+
+    let decoded = decode_manifest_value(manifest).expect("current manifest decodes");
+    assert_eq!(decoded.adapter.id, "stub");
+    assert_eq!(decoded.formats[0].extensions, [".stub"]);
+}
+
+#[test]
 fn decode_probe_result_returns_semantic_error_with_typed_value() {
     let semantic_invalid = serde_json::json!({
         "probe_version": "0.1",

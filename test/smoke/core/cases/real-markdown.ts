@@ -1,4 +1,4 @@
-import { configFixtureProject, createProject } from "../fixtures.ts";
+import { createProject } from "../fixtures.ts";
 import type { SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
@@ -106,7 +106,6 @@ async function testRealMarkdownRefInvalidProtocol() {
 // @case BB-CORE-MD-OPTIONS-001
 async function assertMaxHeadingLevelBehavior(project: SmokeProject) {
   await assertMaxHeadingLevelCliOption(project);
-  await assertMaxHeadingLevelConfigOption();
   await assertMaxHeadingLevelAdapterValidation(project);
 }
 
@@ -126,24 +125,6 @@ async function assertMaxHeadingLevelCliOption(project: SmokeProject) {
   const result = expectJsonObject(record, json.result, "outline result is an object");
   const entries = expectObjectArray(record, result.entries, "outline entries are objects");
   expect(record, entries.length === 1, "max heading level filters nested Markdown headings");
-}
-
-async function assertMaxHeadingLevelConfigOption() {
-  const project = configFixtureProject("real-markdown-config-native-option");
-
-  const record = await runCli("CORE-LINK-001 outline config max heading level native option", [
-    "outline",
-    project.normalRelPath,
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, 0);
-  expectNoJsonPayloadInStderr(record);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  const result = expectJsonObject(record, json.result, "outline result is an object");
-  const entries = expectObjectArray(record, result.entries, "outline entries are objects");
-  expect(record, entries.length === 1, "config max heading level filters nested Markdown headings");
 }
 
 async function assertMaxHeadingLevelAdapterValidation(project: SmokeProject) {

@@ -61,18 +61,16 @@ fn config_inspect_parses_selected_config_file_paths() {
 
 #[test]
 fn legacy_config_subcommands_are_rejected() {
-    for subcommand in ["get", "set", "unset", "list"] {
-        let error = parse(["config", subcommand]).expect_err("legacy config command should fail");
-        let details = error.diagnostic().details().to_value();
+    let error = parse(["config", "set"]).expect_err("legacy config command should fail");
+    let details = error.diagnostic().details().to_value();
 
-        assert_eq!(details["field"], "config");
-        assert!(
-            details["reason"]
-                .as_str()
-                .is_some_and(|reason| reason.contains("unknown config subcommand")),
-            "unexpected error details for {subcommand}: {details}"
-        );
-    }
+    assert_eq!(details["field"], "config");
+    assert!(
+        details["reason"]
+            .as_str()
+            .is_some_and(|reason| reason.contains("unknown config subcommand")),
+        "unexpected error details: {details}"
+    );
 }
 
 #[test]

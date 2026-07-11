@@ -2,10 +2,12 @@ import { type CaseIdCollection, duplicateIds } from "./case-id-index.ts";
 import { CASE_CATALOG_DOC, type DocumentedCaseIndex } from "./documented-cases.ts";
 import {
   formatInvalidDocumentedCases,
+  formatInvalidCaseCode,
   formatInvalidMarkers,
   formatList,
   formatMarkerPathMismatches,
   formatMissingCaseCode,
+  formatMissingCaseProves,
   formatMissingDocs,
   formatMissingMarkers,
   formatPlannedMarkers
@@ -27,7 +29,20 @@ export function collectCaseCatalogFailures(
     formatList("duplicate source @case markers", duplicateMarkerIds),
     formatInvalidMarkers(invalidMarkers),
     formatInvalidDocumentedCases(documented.invalid),
-    formatMissingCaseCode(documented.implemented.entries.filter((entry) => entry.codePath === null)),
+    formatMissingCaseCode(
+      documented.implemented.entries.filter((entry) => entry.codeDeclarations === 0)
+    ),
+    formatInvalidCaseCode(
+      documented.implemented.entries.filter(
+        (entry) => entry.codeDeclarations > 0 &&
+          (entry.codeDeclarations !== 1 || entry.invalidCode)
+      )
+    ),
+    formatMissingCaseProves(
+      [...documented.implemented.entries, ...documented.planned.entries].filter(
+        (entry) => entry.provesDeclarations === 0 || !entry.provesContent
+      )
+    ),
     formatMissingMarkers(
       documented.implemented.ids.filter((id) => !markerSet.has(id)),
       documented.implemented

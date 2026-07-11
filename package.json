@@ -20,7 +20,7 @@
     "smoke:docnav": "bun scripts/docnav-dev/smoke.ts",
     "verify:docnav-package": "bun scripts/release-package/verify.ts",
     "smoke:docnav-package": "bun scripts/release-package/smoke.ts",
-    "test:workspace-verifier": "bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
+    "test:workspace-verifier": "bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/foundation/test/foundation.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
     "test:validators": "bun test scripts/tools/validators",
     "test:release-package-scripts": "bun test scripts/tools/release-package/args.test.ts",
     "verify:docnav-workspace": "bun scripts/docnav-workspace/verify.ts",

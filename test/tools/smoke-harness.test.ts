@@ -191,35 +191,38 @@ describe("smoke harness task scheduling", () => {
     }
   });
 
-  it("cleans the core smoke temp root when the suite exits after failure", { timeout: 10_000 }, () => {
-    const tempRoot = path.join(
+  it("cleans only the owned core smoke run directory after failure", { timeout: 10_000 }, () => {
+    const tempBase = path.join(
       os.tmpdir(),
       `docnav-core-smoke-cleanup-${process.pid}-${Date.now()}`
     );
-    fs.mkdirSync(tempRoot, { recursive: true });
-    fs.writeFileSync(path.join(tempRoot, "marker"), "cleanup fixture");
+    const markerPath = path.join(tempBase, "caller-owned-marker");
+    fs.mkdirSync(tempBase, { recursive: true });
+    fs.writeFileSync(markerPath, "cleanup fixture");
 
-    const result = spawnSync(process.execPath, ["test/docnav-core-smoke.ts"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        DOCNAV_BIN: path.join(tempRoot, "missing-docnav"),
-        DOCNAV_CORE_SMOKE_TEMP_ROOT: tempRoot
-      },
-      timeout: 10_000
-    });
+    try {
+      const result = spawnSync(process.execPath, ["test/docnav-core-smoke.ts"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          DOCNAV_BIN: path.join(tempBase, "missing-docnav"),
+          DOCNAV_CORE_SMOKE_TEMP_ROOT: tempBase
+        },
+        timeout: 10_000
+      });
 
-    const tempRootExists = fs.existsSync(tempRoot);
-    fs.rmSync(tempRoot, { recursive: true, force: true });
-
-    assert.notEqual(result.status, 0, "fixture should exercise the failing smoke path");
-    assert.match(result.stderr, /docnav binary not found:/);
-    assert.equal(
-      tempRootExists,
-      false,
-      `temp root should be cleaned after failure\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`
-    );
+      assert.notEqual(result.status, 0, "fixture should exercise the failing smoke path");
+      assert.match(result.stderr, /docnav binary not found:/);
+      assert.equal(fs.readFileSync(markerPath, "utf8"), "cleanup fixture");
+      assert.deepEqual(
+        fs.readdirSync(tempBase),
+        ["caller-owned-marker"],
+        "smoke cleanup should remove its run directory and preserve the caller-owned base"
+      );
+    } finally {
+      fs.rmSync(tempBase, { recursive: true, force: true });
+    }
   });
 });
 

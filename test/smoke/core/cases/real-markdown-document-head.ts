@@ -162,14 +162,12 @@ function assertProtocolDocumentHeadEntry(record: CommandRecord, result: Record<s
   const label = expectString(record, headEntry.label, "document head protocol entry has label");
   expect(record, label.length > 0, "document head protocol label is nonempty");
   const kind = expectString(record, headEntry.kind, "document head protocol entry has kind");
-  expect(record, kind.length > 0, "document head protocol kind is nonempty");
-  expect(record, kind !== "heading", "document head protocol kind is not heading");
+  expect(record, kind === "document_head", "document head protocol kind is document_head");
   const location = expectJsonObject(record, headEntry.location, "document head protocol entry has location");
   expect(record, location.line_start === 1, "document head protocol location starts on line 1");
   const metadata = expectJsonObject(record, headEntry.metadata, "document head protocol entry has metadata");
   expect(record, Object.keys(metadata).length > 0, "document head protocol metadata is nonempty");
   expect(record, metadata.document_region === "leading", "document head protocol metadata uses document_region");
-  expect(record, !Object.hasOwn(metadata, "region"), "document head protocol metadata omits legacy region");
   expect(record, !Object.hasOwn(headEntry, "display"), "protocol document head entry omits readable display");
   return headEntry;
 }

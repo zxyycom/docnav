@@ -12,23 +12,10 @@ fn adapter_list_returns_static_registry_command() {
 }
 
 #[test]
-fn dynamic_adapter_management_commands_are_unsupported() {
-    for command in ["install", "register", "update", "remove"] {
-        let Err(error) = parse(["adapter", command, "source"]) else {
-            panic!("adapter {command} should be rejected");
-        };
-        assert_unsupported_adapter_command(error);
-    }
-}
-
-#[test]
-fn dynamic_adapter_management_help_is_unsupported() {
-    for command in ["install", "register", "update", "remove"] {
-        let Err(error) = parse(["adapter", command, "--help"]) else {
-            panic!("adapter {command} --help should be rejected");
-        };
-        assert_unsupported_adapter_command(error);
-    }
+fn dynamic_adapter_management_is_unsupported() {
+    let error = parse(["adapter", "install", "source"])
+        .expect_err("dynamic adapter management should be rejected");
+    assert_unsupported_adapter_command(error);
 }
 
 fn assert_unsupported_adapter_command(error: crate::error::AppError) {

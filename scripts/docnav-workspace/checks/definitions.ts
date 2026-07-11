@@ -111,7 +111,7 @@ export const checks = defineChecks([
         command: "bun",
         args: ["run", "test:workspace-verifier"],
         ignoreOutput: [
-          /^\$ bun test scripts\/docnav-workspace\/verify\.test\.ts test\/tools\/smoke-harness\.test\.ts test\/smoke\/core\/fixtures\/project\.test\.ts scripts\/tools\/parallel-task-runner\/test\/index\.test\.ts$/,
+          /^\$ bun test scripts\/docnav-workspace\/verify\.test\.ts test\/tools\/smoke-harness\.test\.ts test\/smoke\/core\/fixtures\/project\.test\.ts scripts\/tools\/foundation\/test\/foundation\.test\.ts scripts\/tools\/parallel-task-runner\/test\/index\.test\.ts$/,
           ...testRunnerSuccessOutput
         ]
       },

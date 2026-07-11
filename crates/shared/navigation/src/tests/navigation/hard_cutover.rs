@@ -255,10 +255,41 @@ fn hard_cutover_preserves_field_declaration_order_for_primary_diagnostic() {
 
 #[test]
 fn hard_cutover_preserves_declaration_order_for_typed_only_constraints() {
-    for (constraint, invalid_options) in [
-        ("regex", json!({ "pattern": "invalid" })),
-        ("unique_items", json!({ "tags": ["same", "same"] })),
+    for (constraint, invalid_options, expected_field) in [
+        (
+            "regex",
+            json!({ "pattern": "invalid" }),
+            "options.docnav-markdown.pattern",
+        ),
+        (
+            "unique_items",
+            json!({ "tags": ["same", "same"] }),
+            "options.docnav-markdown.tags",
+        ),
     ] {
+        let constraint_error = execute_loaded_navigation_command(
+            navigation_command(Vec::new()),
+            config_sources(
+                json!({
+                    "options": {
+                        "docnav-markdown": invalid_options.clone()
+                    }
+                }),
+                Value::Null,
+            ),
+            &TypedOnlyConstraintRegistry,
+        )
+        .expect_err("typed-only native option constraint should reject invalid input");
+        let constraint_protocol_error = super::protocol_error(constraint_error.diagnostic());
+        assert_eq!(
+            constraint_protocol_error
+                .details()
+                .get("field")
+                .and_then(Value::as_str),
+            Some(expected_field),
+            "typed-only {constraint} constraint should report its config field"
+        );
+
         let error = execute_loaded_navigation_command(
             navigation_command(Vec::new()),
             config_sources(

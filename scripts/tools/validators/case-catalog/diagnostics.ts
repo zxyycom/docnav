@@ -42,6 +42,26 @@ export function formatMissingCaseCode(entries: readonly DocumentedCase[]): strin
   ].join("\n");
 }
 
+export function formatInvalidCaseCode(entries: readonly DocumentedCase[]): string | null {
+  if (entries.length === 0) {
+    return null;
+  }
+  return [
+    "documented cases must declare exactly one Code path:",
+    ...entries.map((entry) => `  - ${entry.id} at ${entry.relPath}:${entry.line}`)
+  ].join("\n");
+}
+
+export function formatMissingCaseProves(entries: readonly DocumentedCase[]): string | null {
+  if (entries.length === 0) {
+    return null;
+  }
+  return [
+    "documented cases must include non-empty Proves:",
+    ...entries.map((entry) => `  - ${entry.id} at ${entry.relPath}:${entry.line}`)
+  ].join("\n");
+}
+
 export function formatMissingDocs(ids: readonly string[], markers: CaseIdCollection): string | null {
   if (ids.length === 0) {
     return null;

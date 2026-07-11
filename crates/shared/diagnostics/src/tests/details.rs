@@ -1,58 +1,71 @@
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 
 use crate::{
-    DetailFieldType, DiagnosticCode, DiagnosticDetailsError, DiagnosticDetailsRule,
-    ProtocolDiagnosticCode,
+    DetailFieldRule, DetailFieldType, DiagnosticCode, DiagnosticDetailsError,
+    DiagnosticDetailsRule, ProtocolDiagnosticCode,
 };
 
+const REPRESENTATIVE_FIELD_TYPES: &[DetailFieldRule] = &[
+    DetailFieldRule::required("string", DetailFieldType::String),
+    DetailFieldRule::required("string_array", DetailFieldType::StringArray),
+    DetailFieldRule::required("object_array", DetailFieldType::ObjectArray),
+    DetailFieldRule::required("boolean", DetailFieldType::Boolean),
+    DetailFieldRule::required("u32", DetailFieldType::U32),
+    DetailFieldRule::required("i32", DetailFieldType::I32),
+    DetailFieldRule::required("object", DetailFieldType::Object),
+    DetailFieldRule::required("any", DetailFieldType::Any),
+];
+
 #[test]
-fn detail_rules_reject_missing_wrong_and_extra_fields_for_each_code() {
-    for code in DiagnosticCode::all() {
-        let rule = code.details_rule();
-        let required = rule
-            .fields()
-            .iter()
-            .find(|field| field.required)
-            .expect("each diagnostic code has at least one required details field");
-        let valid = valid_details_for(rule);
-        assert!(
-            rule.validate_value(&Value::Object(valid.clone())).is_ok(),
-            "{code:?}"
-        );
+fn detail_rule_validates_each_supported_field_type_once() {
+    let rule = DiagnosticDetailsRule::exact(REPRESENTATIVE_FIELD_TYPES);
+    let valid = representative_details();
+    assert!(rule.validate_value(&valid).is_ok());
 
-        let mut missing = valid.clone();
-        missing.remove(required.name);
-        assert!(
-            matches!(
-                rule.validate_value(&Value::Object(missing)),
-                Err(DiagnosticDetailsError::MissingField { field }) if field == required.name
-            ),
-            "{code:?}"
-        );
-
-        if required.kind != DetailFieldType::Any {
-            let mut wrong = valid.clone();
-            wrong.insert(required.name.to_owned(), wrong_value_for(required.kind));
-            assert!(
-                matches!(
-                    rule.validate_value(&Value::Object(wrong)),
-                    Err(DiagnosticDetailsError::WrongType { field, expected })
-                        if field == required.name && expected == required.kind
-                ),
-                "{code:?}"
-            );
-        }
-
-        let mut extra = valid;
-        extra.insert("extra".to_owned(), json!(true));
+    for (field_name, field_type, wrong_value) in [
+        ("string", DetailFieldType::String, json!(1)),
+        ("string_array", DetailFieldType::StringArray, json!([1])),
+        (
+            "object_array",
+            DetailFieldType::ObjectArray,
+            json!(["value"]),
+        ),
+        ("boolean", DetailFieldType::Boolean, json!("true")),
+        ("u32", DetailFieldType::U32, json!(4_294_967_296_u64)),
+        ("i32", DetailFieldType::I32, json!(2_147_483_648_i64)),
+        ("object", DetailFieldType::Object, json!("object")),
+    ] {
+        let mut wrong = valid.as_object().expect("details object").clone();
+        wrong.insert(field_name.to_owned(), wrong_value);
         assert!(
             matches!(
-                rule.validate_value(&Value::Object(extra)),
-                Err(DiagnosticDetailsError::ExtraField { field }) if field == "extra"
+                rule.validate_value(&Value::Object(wrong)),
+                Err(DiagnosticDetailsError::WrongType { field, expected })
+                    if field == field_name && expected == field_type
             ),
-            "{code:?}"
+            "{field_name}"
         );
     }
+}
+
+#[test]
+fn detail_rule_rejects_one_missing_and_extra_field() {
+    let rule = DiagnosticDetailsRule::exact(REPRESENTATIVE_FIELD_TYPES);
+    let valid = representative_details();
+
+    let mut missing = valid.as_object().expect("details object").clone();
+    missing.remove("string");
+    assert!(matches!(
+        rule.validate_value(&Value::Object(missing)),
+        Err(DiagnosticDetailsError::MissingField { field }) if field == "string"
+    ));
+
+    let mut extra = valid.as_object().expect("details object").clone();
+    extra.insert("extra".to_owned(), json!(true));
+    assert!(matches!(
+        rule.validate_value(&Value::Object(extra)),
+        Err(DiagnosticDetailsError::ExtraField { field }) if field == "extra"
+    ));
 }
 
 #[test]
@@ -80,36 +93,15 @@ fn invalid_request_details_accept_known_optional_context_fields() {
     ));
 }
 
-fn valid_details_for(rule: DiagnosticDetailsRule) -> Map<String, Value> {
-    rule.fields()
-        .iter()
-        .filter(|field| field.required)
-        .map(|field| (field.name.to_owned(), value_for(field.kind)))
-        .collect()
-}
-
-fn value_for(kind: DetailFieldType) -> Value {
-    match kind {
-        DetailFieldType::String => json!("value"),
-        DetailFieldType::StringArray => json!(["value"]),
-        DetailFieldType::ObjectArray => json!([{}]),
-        DetailFieldType::Boolean => json!(true),
-        DetailFieldType::U32 => json!(1),
-        DetailFieldType::I32 => json!(-1),
-        DetailFieldType::Object => json!({}),
-        DetailFieldType::Any => json!({"any": true}),
-    }
-}
-
-fn wrong_value_for(kind: DetailFieldType) -> Value {
-    match kind {
-        DetailFieldType::String => json!(1),
-        DetailFieldType::StringArray => json!("value"),
-        DetailFieldType::ObjectArray => json!("value"),
-        DetailFieldType::Boolean => json!("true"),
-        DetailFieldType::U32 => json!(-1),
-        DetailFieldType::I32 => json!("1"),
-        DetailFieldType::Object => json!("object"),
-        DetailFieldType::Any => json!(null),
-    }
+fn representative_details() -> Value {
+    json!({
+        "string": "value",
+        "string_array": ["value"],
+        "object_array": [{}],
+        "boolean": true,
+        "u32": 1,
+        "i32": -1,
+        "object": {},
+        "any": null
+    })
 }

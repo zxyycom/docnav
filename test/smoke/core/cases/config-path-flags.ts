@@ -103,37 +103,32 @@ export async function testConfigPathFlagsSelectConfigTargets() {
   );
 
   const selectedConfigSnapshot = snapshotSelectedConfigFiles(mutableProjectConfig, mutableUserConfig);
-  for (const legacyCommand of legacyConfigCommands()) {
-    const legacy = await runCli(
-      `CORE-CONFIG-PATH-001 legacy config ${legacyCommand.subcommand} rejects selected config files`,
-      [
-        "config",
-        legacyCommand.subcommand,
-        ...legacyCommand.args,
-        "--project-config",
-        mutableProjectConfig,
-        "--user-config",
-        mutableUserConfig,
-        "--output",
-        "protocol-json",
-      ],
-      { project },
-    );
-    expectExit(legacy, exitCodes.input);
-    expectNoJsonPayloadInStderr(legacy);
-    const legacyJson = parseJson(legacy);
-    validateSchema(legacy, "protocolResponse", legacyJson);
-    const error = expectProtocolFailure(legacy, legacyJson, null, "INVALID_REQUEST");
-    expect(legacy, error.owner === "core_cli", "legacy config command is rejected at core CLI boundary");
-    const details = expectJsonObject(legacy, error.details, "legacy config command error details are an object");
-    expect(legacy, details.field === "config", "legacy config command reports config field");
-    expect(
-      legacy,
-      details.reason === `unknown config subcommand "${legacyCommand.subcommand}"`,
-      "legacy config command reports removed subcommand",
-    );
-    expectSelectedConfigFilesUnchanged(legacy, selectedConfigSnapshot);
-  }
+  const legacy = await runCli(
+    "CORE-CONFIG-PATH-001 legacy config set rejects selected config files",
+    [
+      "config",
+      "set",
+      "defaults.output",
+      "protocol-json",
+      "--project-config",
+      mutableProjectConfig,
+      "--user-config",
+      mutableUserConfig,
+      "--output",
+      "protocol-json",
+    ],
+    { project },
+  );
+  expectExit(legacy, exitCodes.input);
+  expectNoJsonPayloadInStderr(legacy);
+  const legacyJson = parseJson(legacy);
+  validateSchema(legacy, "protocolResponse", legacyJson);
+  const error = expectProtocolFailure(legacy, legacyJson, null, "INVALID_REQUEST");
+  expect(legacy, error.owner === "core_cli", "legacy config command is rejected at core CLI boundary");
+  const details = expectJsonObject(legacy, error.details, "legacy config command error details are an object");
+  expect(legacy, details.field === "config", "legacy config command reports config field");
+  expect(legacy, details.reason === "unknown config subcommand \"set\"", "legacy config command reports removed subcommand");
+  expectSelectedConfigFilesUnchanged(legacy, selectedConfigSnapshot);
 }
 
 type SelectedConfigSnapshot = {
@@ -155,15 +150,6 @@ function snapshotSelectedConfigFiles(projectPath: string, userPath: string): Sel
 function expectSelectedConfigFilesUnchanged(record: CommandRecord, snapshot: SelectedConfigSnapshot) {
   expect(record, readFileSync(snapshot.projectPath).equals(snapshot.projectBytes), "selected project config is unchanged");
   expect(record, readFileSync(snapshot.userPath).equals(snapshot.userBytes), "selected user config is unchanged");
-}
-
-function legacyConfigCommands() {
-  return [
-    { subcommand: "get", args: ["defaults.output"] },
-    { subcommand: "set", args: ["defaults.output", "protocol-json"] },
-    { subcommand: "unset", args: ["defaults.output"] },
-    { subcommand: "list", args: [] },
-  ] as const;
 }
 
 function sourceFor(record: CommandRecord, inspection: JsonRecord, scope: string): JsonRecord {

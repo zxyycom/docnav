@@ -43,7 +43,7 @@ export const {
   safeArgPattern: /^[A-Za-z0-9_./:=@+\-\\]+$/
 });
 
-export const { runProtocolResponseCase, runSuccessfulJsonCase } = createCliSmokeCases({
+export const { runSuccessfulJsonCase } = createCliSmokeCases({
   runCli,
   validateSchema
 });

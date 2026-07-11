@@ -26,12 +26,6 @@ export {
   looksLikeJson
 } from "./assertions/protocol.ts";
 export {
-  expectFindResultsEquivalent,
-  expectInfoResultsEquivalent,
-  expectOutlineResultsEquivalent,
-  expectReadResultsEquivalent
-} from "./assertions/result-equivalence.ts";
-export {
   expectNoReadableViewBlocks,
   expectReadableViewBlockRestoresField,
   expectReadableViewFieldValue,

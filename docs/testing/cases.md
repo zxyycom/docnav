@@ -1,5 +1,7 @@
 # 测试用例编号账本
 
+本账本索引稳定语义 case 及其主要验证入口，不枚举 supporting unit tests、fixture helpers 或仅用于重构信心的测试函数。归属和 Manual CR 规则见 [测试用例维护](case-maintenance.md)。
+
 ## Black-box Cases
 
 ### BB-CORE-LINK-001 Core 原样传递真实 Markdown ref
@@ -20,7 +22,7 @@ Existing smoke task: `CORE-LINK-001`
 Code: `test/smoke/core/cases/real-markdown.ts`
 
 Proves:
-- Markdown `max_heading_level` 可以从 CLI flag 和 project config 影响 `outline` 可见粒度；越界值作为 adapter-owned option validation error 投影。
+- Markdown `max_heading_level` 可以从 CLI flag 影响 `outline` 可见粒度；越界值作为 adapter-owned option validation error 投影。Project config source 的同类型证明由 `BB-CORE-CONFIG-004` 承担。
 
 ### BB-CORE-MD-DOCHEAD-001 Markdown document head 通过真实 CLI 输出模式可观察
 Status: implemented
@@ -29,7 +31,7 @@ Code: `test/smoke/core/cases/real-markdown-document-head.ts`
 
 Proves:
 - 真实 CLI fixture 包含 YAML frontmatter、普通前导正文和可见 heading 时，structured outline 在 heading entries 前暴露 `HEAD:leading`。
-- `protocol-json` 验证 raw document head entry facts：非空 `label`、非 heading `kind`、`location.line_start`、`metadata.document_region = leading` 和缺少 readable-only `display`。
+- `protocol-json` 验证 raw document head entry facts：非空 `label`、`kind = document_head`、`location.line_start`、`metadata.document_region = leading` 和缺少 readable-only `display`。
 - `readable-json` 和 `readable-view` 验证 display、成本摘要和 read content block 由输出层从 raw facts 与 read result 派生。
 - 通过 `HEAD:leading` 执行 read 返回 document head 原文，`content_type` 为 `text/markdown`，并保留 frontmatter delimiter 与普通前导正文。
 
@@ -67,10 +69,9 @@ Existing smoke task: `CORE-CONFIG-001`（从旧 config editor coverage 更新）
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- `docnav config inspect` reports selected project/user config source scope、path、origin、exists/missing/load state 和 source-attributed validation summary without modifying either file。
-- Inspect uses the config-source projection produced from owner-provided parameter metadata to display currently resolvable facts for documented defaults, outline selector fields and adapter-id native option source fields.
-- Disabled pagination configured through direct config file edit remains observable through inspect source facts, while an `outline` command with explicit numeric `--limit` still follows document command resolution priority.
-- Inspect output is source inspection only: it does not construct a document operation request, call probe/dispatch, or claim adapter option dispatch.
+- `docnav config inspect` reports selected project/user source scope、origin、load state、source diagnostics and current adapter/output/pagination parameter facts without modifying either selected file。
+- Inspect output includes the config-source projection entry for the observed pagination field.
+- Disabled pagination configured through direct config file edit remains observable through inspect facts；an `outline` command with an explicit numeric `--limit` returns the complete three-entry fixture outline with `page: null`.
 
 ### BB-CORE-CONFIG-002 Invalid config value 通过 inspect/source validation 被拒绝
 Status: implemented
@@ -78,9 +79,7 @@ Existing smoke task: `CORE-CONFIG-002`（从旧 config editor coverage 更新）
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- A selected config source containing `defaults.output: "text"` reports a source-attributed input failure through `docnav config inspect` and document operation config source loading.
-- The readable/protocol error projection reports `defaults.output`, received `text` and accepted output modes: `readable-view`、`readable-json`、`protocol-json`.
-- The failure is driven by shared owner-provided field facts, not a core config-command-only enum table.
+- A selected config source containing `defaults.output: "text"` appears in `docnav config inspect` source diagnostics as field `defaults.output` with reason `enum_invalid`.
 
 ### BB-CORE-CONFIG-003 Legacy defaults.limit 通过 config source diagnostic 被拒绝
 Status: implemented
@@ -99,7 +98,6 @@ Code: `test/smoke/core/cases/config-management.ts`
 Proves:
 - Project config 中的 `options.docnav-markdown.max_heading_level` 通过 selected Markdown declaration 影响 `outline` entries。
 - User config 中的 `options.docnav-markdown.max_heading_level` 通过 direct config file edit/read 参与 source priority；当 selected operation 不声明该 native option 时，返回 structured unsupported native option diagnostic 并保留 source level/path。
-- Bare `options.max_heading_level` is rejected as a normal unknown/invalid config path; it is not migrated, aliased or interpreted through document context.
 
 ### BB-CORE-CONFIG-PATH-001 Config path flags select CLI config targets
 Status: implemented
@@ -110,7 +108,7 @@ Proves:
 - 真实 document operation 通过 `--project-config <path>` 和 `--user-config <path>` 使用显式 selected config files，而不是 project context、`DOCNAV_CONFIG_DIR` 或平台默认路径。
 - `docnav config inspect --project-config <path> --user-config <path>` reports exactly those selected source paths and their origins without writing either file.
 - Document operations and `config inspect` share the same config source descriptor/path selection boundary, while document operation value resolution remains owned by navigation input resolution.
-- Legacy `config get|set|unset|list` with selected config path flags is rejected through the normal CLI parse/error boundary and does not modify selected files.
+- Representative mutating legacy command `config set` with selected config path flags is rejected through the normal CLI parse/error boundary and does not modify selected files; the removed command names form one parser equivalence class.
 
 ### BB-CORE-SELECT-001 显式 adapter 失败返回 selection diagnostic
 Status: implemented
@@ -230,16 +228,13 @@ Code: `crates/docnav/src/cli/parser/tests/document_arguments.rs`
 Proves:
 - Unknown document flags、extra document positionals and operation-inapplicable known arguments produce parser diagnostics whose protocol-json error projection preserves reason、received token、expected context and repair guidance.
 
-### WB-CORE-CONFIG-PATH-001 Core parser and resolver select config file paths
+### WB-CORE-CONFIG-PATH-001 Core parser accepts config file path flags
 Status: implemented
 Code: `crates/docnav/src/cli/parser/tests/config_paths.rs`
 
 Proves:
 - Core parser accepts `--project-config <path>` and `--user-config <path>` on document operations, `config`, and `doctor`; accepts `--project-config <path>` on `init`; and rejects missing values or use on undocumented commands before reading config sources or dispatching operations.
-- Config path resolution treats explicit values as exact config JSON file paths, not directories.
-- User config path resolution uses `--user-config`, then `DOCNAV_CONFIG_DIR/docnav.json`, then the platform user default under `.docnav/docnav.json`.
-- Project config path resolution uses `--project-config`, then the current project context's `.docnav/docnav.json`, without changing project context discovery.
-- Core descriptors preserve source level, resolved path and path origin for downstream navigation loading.
+- Parsed document/config/doctor commands preserve both selected path flag values, while init preserves the supported project path value only.
 
 ### WB-CORE-CONFIG-SOURCE-001 Core config source validation preserves navigation-owned fields
 Status: implemented
@@ -248,8 +243,9 @@ Code: `crates/docnav/src/config/store/tests.rs`
 Proves:
 - Core config source loading accepts documented navigation-owned `outline.mode_rules[]` and `outline.auto_full_read.thresholds[]` fields instead of rejecting them as unknown top-level config.
 - Core config source validation preserves raw `outline` config for inspection/read purposes while validating core-owned defaults and registry-declared adapter-id native option config keys.
-- `docnav config inspect` and document operation config loading report equivalent source paths, nested item paths, required member failures, unknown item keys and typed value failures for current outline selector fields.
-- Explicit CLI selected config paths report source-scoped `explicit_cli` / `missing_explicit_cli` diagnostics while default missing paths remain absent.
+- Bare `options.max_heading_level` is rejected as an ordinary `unknown_config_field`; it is not migrated or interpreted as an adapter-id native option source path.
+- Invalid adapter-id native option values and nested non-object fields produce structured source-attributed config issues.
+- Default missing config paths remain absent, while explicit missing paths report `missing_explicit_cli` with explicit path origin.
 
 ### WB-CORE-CONFIG-PATH-002 Core config inspect uses selected config file paths
 Status: implemented
@@ -335,7 +331,7 @@ Code: `crates/shared/navigation/src/tests/navigation/adapter_source.rs`
 Proves:
 - 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
 - diagnostic owner 来自 `docnav-navigation` routing，而不是 core routing。
-- guidance 指向 current core release static registry，且不提示 install/register/executable/artifact 旧动态入口。
+- guidance 指向 current core release static registry。
 - Automatic discovery 全部候选失败时返回 `FORMAT_UNKNOWN`，并把 routing-owned probe failure reason 投影到 primary details 的 `candidate_failures`。
 - 本 case 不证明 discovery 顺序、extension metadata 排序或 manifest metadata 与 candidate failure 的关系。
 
@@ -345,7 +341,7 @@ Code: `crates/shared/diagnostics/src/tests/code_rules.rs`
 
 Proves:
 - `DiagnosticCode::all()` exposes the current diagnostic registry, including representative protocol and boundary diagnostic codes.
-- Each registry code exposes a non-empty unique stable string, details rule, category, severity, effect and declared diagnostic projection route.
+- Each registry code exposes a non-empty unique stable string、non-empty details rule 和可用的 diagnostic projection route。
 
 ### WB-DIAG-RECORD-001 Diagnostic record construction validates typed details
 Status: implemented
@@ -452,7 +448,7 @@ Status: implemented
 Code: `crates/shared/protocol/src/tests/basic.rs`
 
 Proves:
-- positive integer、generated request id、success response 和 failure operation preservation 保持协议基础不变量。
+- positive integer、non-empty generated request id、success response 和 failure operation preservation 保持协议基础不变量。
 - outline success response coverage includes structured and unstructured discriminator branches, including the unstructured no entries/ref/page/continuation boundary.
 
 ### WB-PROTO-DIAGNOSTICS-001 Protocol diagnostic mapping and projection 保持稳定
@@ -461,7 +457,6 @@ Code: `crates/shared/protocol/src/tests/basic.rs`
 
 Proves:
 - Protocol diagnostic codes map to protocol error categories and their diagnostic projection rules expose the protocol code.
-- Protocol error required details stay aligned with diagnostic typed-code rules.
 - Navigation routing protocol errors expose static-registry guidance, and protocol errors round-trip through `DiagnosticRecord` projection while preserving guidance.
 - Invalid-request records with config issue details project protocol owner, location and received value from the diagnostic record.
 
@@ -473,6 +468,7 @@ Proves:
 - Protocol request decoding runs schema/field-contract validation before raw typed decode.
 - Protocol request decoding rejects unmapped request arguments at the schema stage.
 - Protocol request decoding preserves defaultable empty arguments for operation-specific later resolution.
+- Generic decode reports schema-valid but typed-invalid input at `Deserialize` stage, and the manifest wrapper returns the current typed manifest shape.
 - Probe result semantic validation and protocol response operation/result pairing remain semantic-stage failures.
 
 ### WB-PROTO-SCHEMA-001 Protocol fixtures 和 schema constraints 被实现测试消费
@@ -845,7 +841,7 @@ Proves:
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
 - required profile 持续对 `subrepos/cli-config-resolution/Cargo.toml` 运行 nested workspace fmt；full profile 持续覆盖该 workspace 的 clippy、all-target tests、doc-tests 和 runnable example。
-- Codex environment setup 在运行 workspace verifier 前无路径过滤地递归初始化 `.gitmodules` 中的全部 submodule，避免新增 gitlink 后 bootstrap 列表漂移。
+- Codex environment setup 文件声明使用递归 submodule 初始化命令；本 case 不把 setup 文本检查扩大为环境执行顺序证明。
 - full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
 - completion line 和 summary 可区分 passed、warning 和 failed。
 - 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
@@ -962,14 +958,13 @@ Proves:
 
 ### AUX-QUALITY-JSCPD-WRAPPER-001 Quality jscpd wrapper failure projection 稳定
 Status: implemented
-Code: `scripts/tools/quality-core/src/measurement/scanners.test.ts`, `scripts/tools/quality-core/src/measurement/scanners/jscpd/area-scans.test.ts`
+Code: `scripts/tools/quality-core/src/measurement/scanners.test.ts`
 
 Proves:
 - jscpd wrapper 将 successful process without JSON report 映射为 `jscpd-report-failure` scan failure diagnostic，不把缺失或空 JSON 当作 successful empty duplicate-code result。
 - jscpd wrapper 使用真实 `jscpd` duplicate scan 证明发现重复代码时仍解析 JSON 并生成 `DuplicateCodeFragment`，不让第三方 threshold 决定扫描失败。
 - jscpd tool availability check 将 missing dependency 或 unavailable binary 映射为 `tool-unavailable`。
 - jscpd wrapper 将 non-zero execution 映射为 `jscpd-execution-error`，不把执行失败标成 skipped scan。
-- current revision jscpd area scan 将 execution/report/parse failure 记录为 `fatalIssues` 的 `current-scan` failure channel，不静默降级为空 duplicate result。
 
 ### AUX-QUALITY-CACHE-001 Quality measurement cache identity 稳定
 Status: implemented
@@ -988,6 +983,7 @@ Code: `scripts/tools/quality-core/src/measurement/scanners/jscpd/area-scans.test
 Proves:
 - jscpd 每个 code area 生成一个 scan task。
 - task id 和文件排序保持可复现。
+- current revision area scan 将 execution/report/parse failure 记录为 `fatalIssues` 的 `current-scan` failure channel，不静默降级为空 duplicate result。
 
 ### AUX-QUALITY-FINGERPRINT-001 Quality input fingerprint 稳定
 Status: implemented
@@ -1005,12 +1001,13 @@ Proves:
 - quality input git pathspec 参数使用显式 `--` 分隔并保留 glob pathspec magic。
 - 空 pathspec 可按调用方需要保留 `--` 或完全省略。
 
-### AUX-QUALITY-CHANGED-FILES-001 Quality changed-file input explicit list failure 稳定
+### AUX-QUALITY-CHANGED-FILES-001 Quality revision inputs 保持 current/changed/baseline 一致
 Status: implemented
 Code: `scripts/tools/quality-core/src/input/files.test.ts`
 
 Proves:
 - quality changed-file input 将 unreadable explicit `--changed-files` path 映射为 thrown diagnostic，错误文本保留 flag 名称和请求的文件路径。
+- 一个本地 submodule 代表证明 current scan 收集 tracked 与 untracked nested files、committed 与 working-tree changes 返回 nested file paths，并且 materialized baseline 使用 selected superproject revision 记录的 gitlink 内容。
 
 ### AUX-QUALITY-CODE-AREAS-001 Quality code area 分类稳定
 Status: implemented
@@ -1019,7 +1016,7 @@ Code: `scripts/quality/config.test.ts`
 Proves:
 - smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `typescript-validation-smoke` 的广泛 globs 遮蔽。
 - smoke harness 和 validator infrastructure 仍归入 `typescript-validation-smoke`。
-- quality scan input globs 同时覆盖根 workspace 与 `subrepos/cli-config-resolution/crates/**` 的 Rust source，以及 TypeScript scripts 和 tests。
+- quality scan input globs 和 submodule-aware worktree file discovery 同时覆盖根 workspace 与 `subrepos/cli-config-resolution/crates/**` 的 Rust source，以及 TypeScript scripts 和 tests；根仓库 gitlink 不会吞掉 nested sources。
 - Nested Rust production、tests 和 benches 沿用既有 Rust code areas；examples/fixtures 沿用 `fixtures-examples`，nested `target` 继续由统一 exclude rule 排除。
 - TypeScript code area globs 继续将 production scripts 与 validation/smoke TypeScript 分开。
 
@@ -1085,7 +1082,7 @@ Code: `scripts/tools/validators/case-catalog/index.test.ts`
 Proves:
 - case catalog validator accepts implemented cases with matching markers and planned cases without markers.
 - filesystem discovery includes the owned `subrepos/cli-config-resolution` workspace and maps its moved `@case` markers to normalized nested paths.
-- case catalog validator reports duplicate documented IDs、duplicate source markers、invalid marker IDs、invalid `Status:`、implemented case without `Code:`、documented implemented cases missing markers、undocumented source markers、planned cases with markers and `Code:` path drift.
+- case catalog validator reports duplicate documented IDs、duplicate source markers、invalid marker IDs、invalid `Status:`、implemented case without exactly one `Code:` path、missing/empty `Proves:`、documented implemented cases missing markers、undocumented source markers、planned cases with markers and `Code:` path drift.
 - 真实仓库由 `bun run validate:docs cases` 作为集成验证。
 
 决策说明:

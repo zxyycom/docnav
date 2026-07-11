@@ -44,6 +44,11 @@ fn navigation_resolves_selected_adapter_options_and_dispatches() {
         ProtocolResponse::Success(success) => {
             assert_eq!(success.operation, docnav_protocol::Operation::Outline);
             assert!(success.ok);
+            let OperationResult::Outline(result) = success.result else {
+                panic!("expected outline result");
+            };
+            let result = result.as_structured().expect("structured outline result");
+            assert_eq!(result.entries[0].label, "Max 4");
         }
         ProtocolResponse::Failure(failure) => panic!("expected success, got {failure:?}"),
     }

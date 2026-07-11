@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import {
@@ -111,6 +112,10 @@ async function testNativeOptionConfigBehavior() {
 }
 
 async function assertConfigInspectSourceAndFacts(project: SmokeProject, adapterId: string) {
+  const projectConfigPath = path.join(project.docnavDir, "docnav.json");
+  const userConfigPath = path.join(project.root, ".user-config", "docnav.json");
+  const projectConfigBefore = fs.readFileSync(projectConfigPath, "utf8");
+  const userConfigBefore = fs.readFileSync(userConfigPath, "utf8");
   const record = await runCli("CORE-CONFIG-001 config inspect reports source facts", [
     "config",
     "inspect"
@@ -136,6 +141,8 @@ async function assertConfigInspectSourceAndFacts(project: SmokeProject, adapterI
     projectionHasPath(record, inspection, "defaults.pagination.limit"),
     "config inspect exposes config-source projection",
   );
+  expect(record, fs.readFileSync(projectConfigPath, "utf8") === projectConfigBefore, "config inspect does not modify project config");
+  expect(record, fs.readFileSync(userConfigPath, "utf8") === userConfigBefore, "config inspect does not modify user config");
 }
 
 async function assertRemovedTextOutputInspectDiagnostic(project: SmokeProject) {
@@ -167,6 +174,10 @@ async function assertPaginationDisabledSuccess(project: SmokeProject) {
   expectStderrEmpty(record);
   const json = parseJson(record);
   expect(record, json.ok === true, "disabled pagination still dispatches through built-in adapter");
+  const result = expectJsonObject(record, json.result, "disabled pagination outline result is an object");
+  const entries = expectObjectArray(record, result.entries, "disabled pagination outline entries are objects");
+  expect(record, entries.length === 3, "disabled pagination returns the complete outline despite the numeric limit");
+  expect(record, result.page === null, "disabled pagination has no continuation page");
 }
 
 async function assertLegacyDefaultsLimitConfigFails() {

@@ -36,7 +36,8 @@ export async function assertProjectNativeOptionConfigAffectsOutline() {
 
 export async function assertUserNativeOptionConfigRejectedForRead() {
   const project = mutableConfigFixtureProject("empty", "user-native-option-read");
-  writeJson(path.join(project.root, ".user-config", "docnav.json"), {
+  const userConfigPath = path.join(project.root, ".user-config", "docnav.json");
+  writeJson(userConfigPath, {
     options: {
       "docnav-markdown": {
         max_heading_level: 1
@@ -54,16 +55,29 @@ export async function assertUserNativeOptionConfigRejectedForRead() {
   ], { project });
   expectExit(record, exitCodes.input);
   expectStderrEmpty(record);
-  expectUnsupportedNativeOptionErrorShape(record, "read", "user", "1", "no native options");
+  expectUnsupportedNativeOptionErrorShape(
+    record,
+    {
+      operation: "read",
+      source: "user",
+      received: "1",
+      expected: "no native options",
+      configPath: userConfigPath
+    }
+  );
 }
 
 function expectUnsupportedNativeOptionErrorShape(
   record: CommandRecord,
-  operation: string,
-  source: string,
-  received: string,
-  expected: string
+  expectation: {
+    configPath: string;
+    expected: string;
+    operation: string;
+    received: string;
+    source: string;
+  }
 ) {
+  const { configPath, expected, operation, received, source } = expectation;
   const json = parseJson(record);
   validateSchema(record, "protocolResponse", json);
   const error = expectProtocolFailure(record, json, operation, "INVALID_REQUEST");
@@ -73,6 +87,14 @@ function expectUnsupportedNativeOptionErrorShape(
   expect(record, details.reason === "unsupported", "unsupported native option reports stable reason");
   expect(record, error.received === received, "unsupported native option reports received value");
   expect(record, error.expected === expected, "unsupported native option reports expected value");
+
+  const configIssues = expectObjectArray(record, details.config_issues, "unsupported native option has config issues");
+  const configIssue = expectJsonObject(record, configIssues[0], "unsupported native option config issue is an object");
+  expect(record, configIssue.field === "options.docnav-markdown.max_heading_level", "config issue reports source field");
+  expect(record, configIssue.source_level === source, "config issue reports source level");
+  expect(record, configIssue.path === configPath, "config issue reports selected config path");
+  expect(record, configIssue.path_origin === "default", "config issue reports default path origin");
+  expect(record, configIssue.reason_code === "unsupported", "config issue reports stable reason code");
 
   const issues = expectObjectArray(record, details.option_issues, "unsupported native option has option issues");
   const issue = expectJsonObject(record, issues[0], "unsupported native option issue is an object");

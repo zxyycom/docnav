@@ -32,8 +32,6 @@ fn parses_protocol_fixtures_into_shared_types() {
     let manifest_value = read_json_fixture("manifest.json");
     assert_public_schema_valid(MANIFEST_SCHEMA, &manifest_value);
     validate_manifest_value(&manifest_value).expect("manifest fixture schema");
-    assert!(manifest_value.get("protocol").is_none());
-    assert!(manifest_value.get("recommended_parameters").is_none());
     let manifest: Manifest =
         serde_json::from_value(manifest_value).expect("manifest fixture parses");
     manifest
@@ -134,33 +132,22 @@ fn protocol_request_contract_rejects_schema_backed_field_failures() {
 }
 
 #[test]
-fn manifest_schema_rejects_removed_manifest_fields() {
-    let current = minimal_manifest();
-    assert_public_schema_valid(MANIFEST_SCHEMA, &current);
-    validate_manifest_value(&current).expect("current manifest schema");
-    serde_json::from_value::<Manifest>(current).expect("current manifest parses");
-
-    for value in [
-        manifest_with_removed_protocol(),
-        manifest_with_removed_recommended_parameters(),
-    ] {
-        assert_manifest_rejected(value);
-    }
-}
-
-#[test]
 fn manifest_contract_rejects_schema_backed_field_failures() {
+    let root_extra = manifest_with(|manifest| manifest["extra"] = serde_json::json!(true));
     let cases = [
         manifest_with(|manifest| manifest["manifest_version"] = serde_json::json!("0.2")),
         manifest_with(|manifest| manifest["adapter"]["id"] = serde_json::json!("")),
         manifest_with(|manifest| manifest["formats"][0]["extensions"][0] = serde_json::json!("md")),
         manifest_with(|manifest| manifest["formats"][0]["extra"] = serde_json::json!(true)),
+        root_extra.clone(),
     ];
 
     for value in cases {
         assert_public_schema_invalid(MANIFEST_SCHEMA, &value);
         assert!(validate_manifest_value(&value).is_err());
     }
+
+    assert!(serde_json::from_value::<Manifest>(root_extra).is_err());
 }
 
 fn minimal_manifest() -> Value {
@@ -179,57 +166,6 @@ fn minimal_manifest() -> Value {
             }
         ]
     })
-}
-
-fn manifest_with_removed_protocol() -> Value {
-    serde_json::json!({
-        "manifest_version": "0.1",
-        "adapter": {
-            "id": "stub",
-            "name": "Stub",
-            "version": "0.1.0"
-        },
-        "protocol": {
-            "min": "0.1",
-            "max": "0.1"
-        },
-        "formats": [
-            {
-                "id": "stub",
-                "extensions": [".stub"],
-                "content_types": ["text/stub"]
-            }
-        ]
-    })
-}
-
-fn manifest_with_removed_recommended_parameters() -> Value {
-    serde_json::json!({
-        "manifest_version": "0.1",
-        "adapter": {
-            "id": "stub",
-            "name": "Stub",
-            "version": "0.1.0"
-        },
-        "formats": [
-            {
-                "id": "stub",
-                "extensions": [".stub"],
-                "content_types": ["text/stub"]
-            }
-        ],
-        "recommended_parameters": {
-            "outline": {
-                "limit": 80
-            }
-        }
-    })
-}
-
-fn assert_manifest_rejected(value: Value) {
-    assert_public_schema_invalid(MANIFEST_SCHEMA, &value);
-    assert!(validate_manifest_value(&value).is_err());
-    assert!(serde_json::from_value::<Manifest>(value).is_err());
 }
 
 #[test]

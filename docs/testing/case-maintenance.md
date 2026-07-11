@@ -1,6 +1,6 @@
 # 测试用例维护
 
-本文定义测试函数、smoke case、fixture 证明目标与源码 `@case` 标记变更时的维护流程。[测试用例编号账本](cases.md) 只保存最终 case 条目；本文拥有编号规则、case 归属判断和账本更新规则。
+本文定义测试函数、smoke case、fixture 证明目标与源码 `@case` 标记变更时的维护流程。[测试用例编号账本](cases.md) 只保存稳定语义 case，不是测试函数清单；本文拥有编号规则、case 归属判断和账本更新规则。
 
 ## 使用时机
 
@@ -32,13 +32,16 @@
 4. 判断本次变更是否仍属于现有 case 的同一责任边界或同一行为链路。
 5. 证明目标属于现有 case 时，在同一 patch 更新该 case 的 `Proves:` 或 Mermaid 叶子断言；嵌入已有 case 的新增断言必须共享该 case 的责任边界，并指向明文 owner 语义。
 6. 证明目标不同且需要独立的可执行证明时，新增或拆分 case，并添加源码 `@case` 标记。
-7. 新增、拆分或扩展测试断言前，先写出“owner 明确承诺的语义 -> 可观察结果”的证明目标；涉及 strict public input、primary `DiagnosticRecord` 或 success payload shape 时，证明目标必须指向对应 input owner、protocol/output owner、schema/example 或覆盖矩阵。涉及 diagnostic code/details helper、surface 投影、schema/example/fixture 校验或消费方行为时，证明目标必须区分 helper 不变量和 public surface owner。历史回归、默认不存在或“没有发生某事”只能作为输入选择或风险说明，不能替代证明目标，除非 owner 文档、schema、示例或覆盖矩阵明文要求校验该否定边界。
-8. Config source、`docnav config inspect` 或 adapter native option namespace 的测试变更必须先绑定到 owner 文档中的 source inspection、parameter aggregation projection、`options.<adapter-id>.<option-key>`、selected adapter namespace、direct edit/read 或 protocol/readable non-regression 语义；旧 `config get|set|unset|list` 只能作为 breaking legacy rejection 的负向证明目标。
+7. 新增、拆分或扩展测试断言前，先写出“owner 明确承诺的语义 -> 当前可观察结果”的证明目标；证明只描述当前输入、行为和结果，不描述测试可以防止什么未来回归，也不反向推断实现采用了哪条内部路径。涉及 strict public input、primary `DiagnosticRecord` 或 success payload shape 时，证明目标必须指向对应 input owner、protocol/output owner、schema/example 或覆盖矩阵。涉及 diagnostic code/details helper、surface 投影、schema/example/fixture 校验或消费方行为时，证明目标必须区分 helper 自身可观察行为和 public surface owner。历史回归、默认不存在或“没有发生某事”只能作为输入选择或风险说明，不能替代证明目标，除非 owner 文档、schema、示例或覆盖矩阵明文要求校验该否定边界。
+8. Config source、`docnav config inspect` 或 adapter native option namespace 的测试变更必须先绑定到 owner 文档中的 source inspection、parameter aggregation projection、`options.<adapter-id>.<option-key>`、selected adapter namespace、direct edit/read 或 protocol/readable 行为隔离语义；旧 `config get|set|unset|list` 只作为同一 breaking legacy rejection 等价类，选择一个有写入风险的代表。
 9. 只提升重构信心的改动使用现有测试、局部验证命令或代码审查证明。
+10. Owner 明确承诺的行为需要自动化时，断言调用方可观察结果；owner 未承诺或当前层级无法观察时，缩小 `Proves:`，不补防御性断言。
+11. 同一语义类型或等价类只选一个代表。语法写法、枚举字面量和同类非法值不单独扩展 case，除非它们进入不同的 owner-defined 分支。
+12. 自动化需要复制实现、测试专用观测接口或高成本脆弱环境时，可以不建测试；在 owner 验证说明或变更审查记录中留下 `Manual CR:`、审查对象和判定条件，不创建空测试或假 implemented case。
 
 ## Case 归属规则
 
-每个 `@case` 标记绑定一个测试用例；多个测试函数可以共享同一 case，前提是它们证明同一责任边界或同一行为链路。
+每个 `@case` 标记绑定一个稳定语义 case 的主要验证入口；多个测试函数可以共享同一 case，前提是它们证明同一责任边界或同一行为链路。只服务局部实现、测试 helper 或重构信心的 supporting tests 可以没有 `@case`，case catalog validator 也不枚举测试函数来要求逐项登记。
 
 否定性断言只在 owner 文档把该行为定义为稳定契约、安全边界、诊断投影或输出通道边界时进入测试。该限制同时适用于新增 case、拆分 case、为已有 case 增加分支，以及在已有正向行为链路中增加辅助断言。
 
@@ -57,7 +60,7 @@ CLI smoke case 以外部链路类型作为归属基座：
 
 拆分 case 的条件：
 
-1. 变更证明了新的 owner 边界、外部入口、内部不变量或等价类。
+1. 变更证明了新的 owner 边界、观察入口、可观察行为类型或等价类。
 2. 存在清晰且稳定的共享基座、fixture builder 或状态获取函数。
 3. 拆分后能降低审计范围和维护成本。
 
@@ -66,7 +69,7 @@ CLI smoke case 以外部链路类型作为归属基座：
 新增或调整账本条目时：
 
 1. 在 [测试用例编号账本](cases.md) 新增或更新一个 `### CASE-ID ...` entry，并填写 `Status:` 和 `Proves:`。
-2. `Status: implemented` 必须填写 `Code:`，并在负责该测试语义的入口位置添加唯一 `@case CASE-ID` 标记。
+2. `Status: implemented` 必须填写单个主要验证入口 `Code:`，并在负责该测试语义的入口位置添加唯一 `@case CASE-ID` 标记。Supporting files 不重复登记 `Code:` 或 marker；只有出现独立 owner 语义时才拆成新 case。
 3. `Status: planned` 可先不填写 `Code:`，也不得提前添加源码 `@case` 标记；实现时改为 `implemented`。
 4. 标记位置优先放在入口处：smoke task object、`describe(...)`、测试文件入口、Rust `mod tests` 内的 case 段落开头，或同一语义分组的第一个测试前。
 5. 默认按单一路径描述 case：输入或触发 -> 被测行为 -> 可观察结果。

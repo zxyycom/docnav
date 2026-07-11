@@ -1,6 +1,5 @@
 import {
   expectExit,
-  expectProtocolSuccess,
   expectStderrEmpty,
   parseJson
 } from "./assertions.ts";
@@ -15,14 +14,6 @@ interface SuccessfulJsonCaseOptions {
   checkStderr?: StderrCheck;
   commandOptions?: SmokeCommandOptions;
   schema: string;
-}
-
-interface ProtocolResponseCaseOptions {
-  check?: JsonCaseCheck;
-  checkStderr?: StderrCheck;
-  commandOptions?: SmokeCommandOptions;
-  operation: string;
-  schema?: string;
 }
 
 interface CliSmokeCaseFactoryOptions {
@@ -47,18 +38,5 @@ export function createCliSmokeCases({ runCli, validateSchema }: CliSmokeCaseFact
     return { record, json };
   }
 
-  async function runProtocolResponseCase(name: string, args: string[], options: ProtocolResponseCaseOptions) {
-    const schema = options.schema ?? "protocolResponse";
-    return runSuccessfulJsonCase(name, args, {
-      commandOptions: options.commandOptions,
-      checkStderr: options.checkStderr,
-      schema,
-      check: (record, json) => {
-        expectProtocolSuccess(record, json, options.operation);
-        options.check?.(record, json);
-      }
-    });
-  }
-
-  return { runProtocolResponseCase, runSuccessfulJsonCase };
+  return { runSuccessfulJsonCase };
 }

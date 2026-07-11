@@ -2,20 +2,7 @@
 use super::*;
 
 #[test]
-fn canonical_heading_ref_format() {
-    let heading = Heading {
-        index: 3,
-        level: 2,
-        title: "Install".into(),
-        start: 0,
-        end: 0,
-        line: 5,
-    };
-    assert_eq!(heading_ref(&heading), "H:L5:H2");
-}
-
-#[test]
-fn canonical_ref_uses_structural_coordinates() {
+fn canonical_heading_ref_uses_structural_coordinates() {
     let heading = Heading {
         index: 1,
         level: 1,
