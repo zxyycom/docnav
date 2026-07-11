@@ -1,6 +1,7 @@
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AdapterOptionSpecError {
     InvalidDeclarationPath { identity: String, path: Vec<String> },
+    InvalidFieldDeclaration { identity: String, reason: String },
 }
 
 impl std::fmt::Display for AdapterOptionSpecError {
@@ -10,6 +11,10 @@ impl std::fmt::Display for AdapterOptionSpecError {
                 formatter,
                 "adapter option {identity} declaration path must be options.<key>, got {}",
                 display_path(path)
+            ),
+            Self::InvalidFieldDeclaration { identity, reason } => write!(
+                formatter,
+                "adapter option {identity} field declaration is invalid: {reason}"
             ),
         }
     }

@@ -101,19 +101,25 @@ impl AdapterOptionSpec {
 
     pub fn validate_declaration(&self) -> Result<(), AdapterOptionSpecError> {
         let declaration_path = self.declaration_path();
-        if declaration_path.len() == 2
+        if !(declaration_path.len() == 2
             && declaration_path
                 .first()
                 .is_some_and(|segment| segment == "options")
             && declaration_path
                 .get(1)
-                .is_some_and(|segment| !segment.is_empty())
+                .is_some_and(|segment| !segment.is_empty()))
         {
-            return Ok(());
+            return Err(AdapterOptionSpecError::InvalidDeclarationPath {
+                identity: self.identity.clone(),
+                path: declaration_path.to_vec(),
+            });
         }
-        Err(AdapterOptionSpecError::InvalidDeclarationPath {
-            identity: self.identity.clone(),
-            path: declaration_path.to_vec(),
+
+        self.schema_metadata().map(|_| ()).map_err(|error| {
+            AdapterOptionSpecError::InvalidFieldDeclaration {
+                identity: self.identity.clone(),
+                reason: error.to_string(),
+            }
         })
     }
 
