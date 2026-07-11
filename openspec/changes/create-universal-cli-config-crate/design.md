@@ -91,7 +91,7 @@ Env/config 中未声明的 key 默认静默忽略。当前 public API 不增加 
 
 目标子仓库不是单一 core package，而是一个可独立 checkout、build 和 test 的 Cargo workspace。它可以包含 typed-fields、typed-fields macros、resolution core、clap companion 和 serde/config companion；workspace root 统一 version、edition、repository 和 shared dependencies。当前未选择 license，package metadata 有意不声明 license；license selection 延后到 release decision。`cli-config-resolution` 是主要消费者入口，re-export canonical 参数类型，companion crates 依赖该入口。
 
-该 workspace 不依赖 Docnav protocol、adapter contracts、navigation、output 或 Markdown adapter crates。Docnav-specific mapping 和 hard-cutover tests 保留在 Docnav repository。公开 GitHub 托管已确认；crates.io 发布和 license selection 仍是单独的 release decisions。
+该 workspace 不依赖 Docnav protocol、adapter contracts、navigation、output 或 Markdown adapter crates。Docnav-specific mapping 和 hard-cutover tests 保留在 Docnav repository。Docnav 通过 `subrepos/cli-config-resolution` Git submodule 接入公开仓库，并由父仓库 gitlink 固定已验证 revision；首次 clone 运行 `git submodule update --init --recursive`。crates.io 发布和 license selection 仍是单独的 release decisions。
 
 ### Decision 14: Docnav 集成使用 canonical metadata，不再复制字段声明
 

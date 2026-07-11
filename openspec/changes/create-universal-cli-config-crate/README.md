@@ -1,6 +1,6 @@
 # create-universal-cli-config-crate
 
-状态：2026-07-10 重新打开。第一轮 46/46 实现和验证证据保留在下文，但不再代表当前契约的最终验收。
+状态：2026-07-11 已完成重新打开后的最终验收（75/75）。第一轮 46/46 实现和验证证据保留在下文，但不再代表当前契约的最终验收。
 
 当前主承诺是：直接复用 `docnav-typed-fields::FieldDef` / `FieldDefSet` 作为 canonical 标准参数对象，由每个 `FieldDef` 直接声明默认 `Replace` 的 `MergeStrategy`，显式声明 CLI/env/config extraction strategies，并由 `cli-config-resolution` 统一执行来源优先级、merge、校验协调和 provenance。`Parameter` / `ParameterSet` 若出现，只能是 canonical 类型的 re-export、薄别名或 convenience API。
 
@@ -70,13 +70,14 @@
 - Review/remediation：三轮 bounded challenge 均未发现 valid issue，formal review 结论为 `Approve`；没有遗留的 review finding 需要在本次记账前继续 remediation。
 - 本 slice 只完成并记账 12.1 与 12.2，当前进度为 65/75。D3 golden/smoke/workspace verification 尚未完成，因此 12.3、13.x 和 14.x 保持未完成。
 
-## Current verification and repository status (2026-07-11)
+## Final acceptance and repository status (2026-07-11)
 
-- Hard-cutover baseline（D3）：golden、case ledger、owner docs、48 个 smoke cases 和当时的 workspace gate 均已完成；D3 formal review 在唯一 Low 关闭后为 `Approve`。
-- E1 repository boundary：`subrepos/cli-config-resolution/` 已形成包含 `docnav-typed-fields`、`docnav-typed-fields-macros`、resolution core、clap companion 和 structured-config companion 的五包 nested Cargo workspace。Docnav root workspace 排除这些 nested members，并通过 path dependencies 消费；root/nested 两份 lockfile 均存在，source uniqueness audit 只发现一份 owner source。`cli-config-resolution` 是 re-export canonical 参数类型的主要入口，nested packages 不依赖 Docnav protocol、adapter、navigation、output 或 Markdown crates；E1 review 为 `Approve`。
-- E2 package readiness：workspace/package README 与 metadata 已把 canonical single-declaration 写成 normal path。Nested metadata、build、clippy、76 tests、doc-tests、rustdoc 和 runnable example 均通过，E2 review 为 `Approve`。Canonical public repository 已确认为 `https://github.com/zxyycom/cli-config-resolution`，五个 package 统一继承该 repository metadata；用户明确将 license selection 延后到 release decision，因此当前 metadata 为 `license = null`，且不增加 `LICENSE` 文件。
-- E3 automation：required/full verifier 均指向 nested manifest；quality scan 覆盖 nested production/tests/examples/fixtures/benches 并排除 nested `target`；case validator 扫描精确 nested root，结果为 101 documented / 101 source markers。E3 review 为 `Approve`；fresh full workspace verifier 共 19 checks，18 passed、1 warning、0 failed。
-- Fresh raw quality snapshot 为 `all=24`、`changed=18`、`regressions=18`，仍是非阻断观测。新增的 3 条 regression 是移动后的 path-key 断裂：`resolution.rs` 515 vs old 647、clap `lib.rs` 414 vs old 434、`source.rs` 304 vs old 487；`all` 增加的 1 条是拆出的 clap `tests.rs` 334。该 raw 结果不支持把 18 条 regression 全部声称为真实增长；没有新增 `acceptedReason`，既有 owner 与 follow-up 边界继续如下：
+- Hard-cutover baseline（D3）：golden、case ledger、owner docs 和 48 个 smoke cases 均已完成；D3 formal review 在唯一 Low 关闭后为 `Approve`。
+- Workspace/package boundary（E1/E2）：`subrepos/cli-config-resolution/` 是包含 `docnav-typed-fields`、`docnav-typed-fields-macros`、resolution core、clap companion 和 structured-config companion 的五包 Cargo workspace。Docnav root workspace 排除 nested members 并通过 path dependencies 消费；root/nested lockfile、single owner source、canonical re-export 入口及无 Docnav runtime dependency 均已审计。Workspace/package README 与 metadata 只展示 canonical single-declaration normal path；E1、E2 review 均为 `Approve`。
+- Repository strategy/pin：public repository 为 `https://github.com/zxyycom/cli-config-resolution`，通过 Git submodule 接入，path 为 `subrepos/cli-config-resolution`，`.gitmodules` URL 为该公开仓库。Gitlink 和 remote `main` 均固定到 revision `S = 1b739a3698f57e8a692089aaa0bc9edab0c3b0fb`；clone 后运行 `git submodule update --init --recursive` 即可恢复完整源码树。
+- Independent checkout：fresh clone `.tmp/cli-config-resolution-checkout-1b739a3` 的 `HEAD` 精确等于 `S`。五包 metadata、repository exactness、tree audit、fmt、build、clippy（0 warnings）、76 tests、doc-tests、rustdoc 和 runnable example 全部通过，checkout 保持 clean。
+- Docnav integration/automation（E3）：required/full verifier、nested quality scan 和 exact-root case validator 均覆盖新边界，case catalog 为 101 documented / 101 source markers；E3 review 为 `Approve`。Fresh navigation 47 tests、config commands 7 tests、四个 consumer no-run compile 均通过；full verifier 为 19 checks（18 passed、1 nonblocking quality warning、0 failed），其中 nested workspace 5 checks、48 smoke cases 和 OpenSpec validation 全部通过。
+- Fresh quality snapshot 为 `all=24`、`changed=0`、`regressions=0`。Root/nested lock hashes 在验证前后相同；implementation worktree 在本 OpenSpec 记账前保持 clean。24 条 all-scope warning 继续沿用既有 owner 与 follow-up 边界：
 
 | Owner | 当前保留原因 | 后续处理边界 |
 | --- | --- | --- |
@@ -86,9 +87,10 @@
 | Docnav `config-inspect` | 当前 projection surface 已由 hard-cutover golden 固定，没有新增独立输出职责。 | 扩展 `config-inspect` 时拆出 projection 模块。 |
 
 - Test/example 超阈值、实现净删除和既有未增长项继续按 D3 分类保留；后续只在上表的职责扩张条件触发时拆分，不隐藏 warning。
-- Final structure audit 为 `Approve`，完成 14.4：没有第二套 field/value/merge model、旧 resolver 或 Docnav conversion path，也没有把 Docnav-specific semantics 泄漏进 nested workspace。
-- Remaining E4：公开仓库 `https://github.com/zxyycom/cli-config-resolution` 已建立，owner 为 `zxyycom`，公开可见性与 GitHub 操作授权已确认。实际 source push、submodule 采用记录、真实 revision pin 和独立 checkout 验证尚未完成，因此 13.1、13.3、13.4 保持未完成。License selection 已明确延后，不在本轮代选；14.2 等待 Git 结果与最终文档审计后统一记账，14.5 继续依赖全部任务完成。
-- 本轮完成并记账 13.2、14.1、14.4；当前进度为 70/75。
+- Final structure audit 为 `Approve`：没有第二套 field/value/merge model、旧 resolver 或 Docnav conversion path，也没有把 Docnav-specific semantics 泄漏进 nested workspace。
+- License selection 按用户批准延后到 release decision；当前五包 metadata `license = null` 且 repository 内没有独立 `LICENSE` 正文，这是 14.2 的完成状态，不代表已经选择发布 license。
+- Pin/rollback：Docnav runtime 通过固定 gitlink 消费 submodule path。首次 clone 或清理后的工作区运行 `git submodule update --init --recursive`；若新 revision 有问题，则将 gitlink 恢复到 last-known good `S` 后再次运行该命令。回滚只改变 submodule revision，不会恢复旧 resolver、compatibility wrapper 或 runtime fallback。
+- Final OpenSpec gate：strict change validation 通过，`openspec instructions apply` 返回 `state=all_done`、75/75 complete、0 remaining；本 change 已满足归档前完成条件。
 
 ## First-round implementation record
 

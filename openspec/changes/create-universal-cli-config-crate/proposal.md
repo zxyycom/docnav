@@ -14,7 +14,7 @@
 - `cli-config-resolution-clap` 负责从声明生成或读取已注册的 clap arguments；未知 flag 继续由 clap 原生拒绝。
 - env 与 config 抽取只查询声明过的 locator，未声明输入默认静默忽略；本 change 不增加全量扫描、unused-key diagnostics 或通用 `UnknownPolicy`。
 - Docnav hard cutover 直接消费 canonical `FieldDefSet`，移除 `generic_field_set` 一类平行字段转换。
-- 独立子仓库以 Cargo workspace 为单位，可以包含 typed-fields、typed-fields macros、resolution core、clap companion 和 serde/config companion；`cli-config-resolution` 是主要消费者入口并 re-export canonical 参数类型。
+- 独立子仓库以 Cargo workspace 为单位，可以包含 typed-fields、typed-fields macros、resolution core、clap companion 和 serde/config companion；`cli-config-resolution` 是主要消费者入口并 re-export canonical 参数类型。Docnav 通过固定 revision 的 Git submodule 消费该 workspace。
 
 非目标：本 change 不改变 Docnav 的 `outline -> ref -> read` 协议、adapter contract、operation 语义、protocol envelope、diagnostic code 或 output behavior；不为未知 env/config 输入建立复杂兜底策略；不要求在本 change 中发布 crates.io artifact。
 
@@ -34,6 +34,6 @@
 - Resolution 与 extractor：`crates/shared/cli-config-resolution`、`crates/shared/cli-config-resolution-clap`、`crates/shared/cli-config-resolution-serde`。
 - Docnav 集成：`crates/shared/navigation/src/parameters/**` 及必要的 CLI/native-option 映射层。
 - API 调整：删除或内部化重复的 `FieldContract` / `FieldSet`、重复 value/constraint/default/validation 类型和独立 merge declaration；把 `MergeStrategy` 直接纳入 canonical `FieldDef` metadata，公开 resolution 所需的 canonical metadata view，并整理 source/extractor/resolver 的主要使用路径。
-- Repository 调整：建立可独立 checkout、build 和 test 的 Cargo workspace 子仓库边界；该 workspace 不依赖 Docnav protocol、adapter contracts、navigation、output 或 Markdown adapter crates。
+- Repository 调整：建立可独立 checkout、build 和 test 的 Cargo workspace 子仓库边界，并以 `.gitmodules` 与 gitlink 固定 Docnav 的消费 revision；该 workspace 不依赖 Docnav protocol、adapter contracts、navigation、output 或 Markdown adapter crates。
 - 验证：需要 canonical model reuse、CLI/env/config extraction、明确的 priority/tie/merge ordering、selected/contributing 与 overridden-invalid validation timing、materialization、provenance、Docnav hard cutover 和独立 workspace 的测试与示例。
 - 历史状态：此前 46/46 任务和验证证据继续保留为第一轮实现记录，但不再代表本次收敛后的最终验收。

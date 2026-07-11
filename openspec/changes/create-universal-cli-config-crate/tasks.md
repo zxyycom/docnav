@@ -104,15 +104,15 @@
 
 ## 13. 独立 Cargo workspace 子仓库
 
-- [ ] 13.1 建立可独立 checkout 的 Git 子仓库/Cargo workspace，包含 canonical typed-fields、typed-fields macros、resolution core、clap companion 和 structured-config companion；workspace root 统一 package metadata 与 shared dependencies。
+- [x] 13.1 建立可独立 checkout 的 Git 子仓库/Cargo workspace，包含 canonical typed-fields、typed-fields macros、resolution core、clap companion 和 structured-config companion；workspace root 统一 package metadata 与 shared dependencies。
 - [x] 13.2 以 `cli-config-resolution` 作为主要消费者入口并 re-export canonical 参数类型；验证整个子仓库不依赖 Docnav protocol、adapter contracts、navigation、output 或 Markdown adapter crates。
-- [ ] 13.3 记录并验证 Docnav 的 submodule revision 或等价 Git pin/dependency source、回滚路径和 lockfile 更新；仓库位置切换不得恢复旧 resolver 或改变参数语义。
-- [ ] 13.4 在独立 checkout 中运行 metadata、build、tests、doc-tests 和 runnable example，再从 Docnav consumer 运行对应 integration tests。
+- [x] 13.3 记录并验证 Docnav 的 `.gitmodules` URL、gitlink revision、初始化命令、回滚路径和 lockfile 更新；仓库位置切换不得恢复旧 resolver 或改变参数语义。
+- [x] 13.4 在独立 checkout 中运行 metadata、build、tests、doc-tests 和 runnable example，再从 Docnav consumer 运行对应 integration tests。
 
 ## 14. 最终验收与记账
 
 - [x] 14.1 运行受影响 packages 的 `cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`、unit/integration/doc tests 和 API compile tests。
-- [ ] 14.2 更新 package README、workspace README、package matrix、repository metadata 和 example，使正常使用路径只出现 canonical 参数声明；显式记录 license selection 延后到 release decision。
+- [x] 14.2 更新 package README、workspace README、package matrix、repository metadata 和 example，使正常使用路径只出现 canonical 参数声明；显式记录 license selection 延后到 release decision。
 - [x] 14.3 更新测试 case ledger，并运行 `bun run verify:docnav-workspace`；任何非阻断 warning 记录 owner、原因和后续处理边界。
 - [x] 14.4 用局部 diff 审计 duplicate field model 与 Docnav conversion path 已移除，且改动没有把 Docnav-specific semantics 泄漏到子仓库。
-- [ ] 14.5 更新本 README 的 fresh verification evidence，运行 strict OpenSpec validation，并确认 `openspec instructions apply` 返回全部重新打开任务完成后才能归档。
+- [x] 14.5 更新本 README 的 fresh verification evidence，运行 strict OpenSpec validation，并确认 `openspec instructions apply` 返回全部重新打开任务完成后才能归档。
