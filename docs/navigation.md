@@ -52,7 +52,7 @@ OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change na
 | `protocol-contract` | [原始协议](protocol.md) | raw protocol envelope、operation/result pairing、page 和 protocol failure |
 | `output-contract` | [输出模式](output.md) | output modes、readable-view、readable-json、renderer config 和 output channels |
 | `diagnostics-contract` | [架构](architecture.md) | DiagnosticCode、DiagnosticRecord、canonical details 和 primary projection |
-| `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar 和 roundtrip |
+| `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar 和 outline/find 到 read 的原样传递流程 |
 | `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown parser/probe/ref/outline/read/find/info/native options |
 | `typed-fields` | [架构](architecture.md) | typed field identity、constraint metadata、schema metadata projection 和 duplicate guard |
 | `contract-validation` | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | schema/example validation、runtime validation parity 和 drift checks |

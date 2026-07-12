@@ -33,10 +33,11 @@ Each adapter MUST own ref grammar, uniqueness strategy, structural snapshot sema
 - **THEN** the adapter reports the adapter-owned invalid-ref diagnostic
 - **THEN** shared layers project the diagnostic without reinterpreting the grammar
 
-### Requirement: Find and outline refs must roundtrip to read
-Refs returned by outline or find MUST be valid read inputs for the same document state and selected adapter, unless the adapter explicitly reports that the referenced region is no longer available.
+### Requirement: Find and outline refs use the shared pass-through flow
+Refs returned by outline or find MUST be non-empty opaque strings. When a caller submits the same path and ref to read, shared layers MUST validate only the shared ref input shape and MUST pass the exact string unchanged to the selected adapter. This pass-through requirement MUST NOT be interpreted as a guarantee that the adapter accepts the ref, resolves it uniquely, or returns a successful read.
 
-#### Scenario: Find match
-- **WHEN** find returns a match ref
-- **THEN** read with that ref returns content containing or corresponding to the match
-- **THEN** the same adapter owns any stale or unmatched ref diagnostic
+#### Scenario: Outline or find ref is passed unchanged to read
+- **WHEN** outline or find returns a non-empty ref
+- **AND** the caller submits the same path and ref to read
+- **THEN** shared layers pass the exact ref unchanged to the selected adapter
+- **THEN** the selected adapter applies its own grammar, matching, structural snapshot, and error contract
