@@ -1,0 +1,7 @@
+interface:
+  display_name: "Minimal Implementation"
+  short_description: "选择最小正确方案，并对 diff 或指定代码范围执行复杂度审查"
+  default_prompt: "Use $minimal-implementation to choose the smallest correct solution, then implement or review the requested scope."
+
+policy:
+  allow_implicit_invocation: true
