@@ -13,6 +13,10 @@ Outline heading 识别范围排除：
 - frontmatter。
 - 代码围栏内的伪 heading。
 
+## Probe
+
+Markdown probe 将扩展名和编码组合为支持判定：path 扩展名按 ASCII 大小写不敏感匹配 `.md` 或 `.markdown`，并且移除可选 UTF-8 BOM 后的文件内容必须是有效 UTF-8。只有编码有效但扩展名不匹配，或只有扩展名匹配但内容不是有效 UTF-8，都返回 `supported: false` 并提供 reason；probe 不解析 heading、ref 或其它 navigation payload。
+
 ## Outline
 
 本节定义 Markdown adapter 正常结构化 outline handler 的行为。若 navigation 标准 `outline_mode` 已解析为 `unstructured_full`，core-mediated navigation 在调用 linked Markdown adapter 的正常 outline handler 前直接返回整篇 Markdown 原文，`content_type` 为 `text/markdown`，且结果不包含 heading entries、`doc:full`、ref、page 或 continuation。`outline_mode` 不是 Markdown adapter-owned native option。
