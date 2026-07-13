@@ -121,7 +121,9 @@ fn flatten_value(value: &Value, path: String, fields: &mut Vec<String>) {
 
 fn config_source_projection(fields: &FieldDefSet) -> Vec<Value> {
     fields
-        .processing_metadata(&ProcessingId::from(CONFIG_PROCESSING))
+        .processing_metadata(
+            &ProcessingId::new(CONFIG_PROCESSING).expect("config processing id is valid"),
+        )
         .into_iter()
         .map(|metadata| {
             json!({

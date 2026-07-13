@@ -32,23 +32,14 @@ enum RegisteredPathSegment {
 }
 
 impl ConfigKeyRegistry {
-    pub(super) fn from_field_set(
-        fields: &FieldDefSet,
-        processing_id: impl Into<ProcessingId>,
-    ) -> Self {
-        let processing_id = processing_id.into();
+    pub(super) fn from_field_set(fields: &FieldDefSet, processing_id: &ProcessingId) -> Self {
         let mut registry = Self::default();
-        registry.register_field_set(fields, &processing_id);
+        registry.register_field_set(fields, processing_id);
         registry
     }
 
-    pub(super) fn field_set(
-        mut self,
-        fields: &FieldDefSet,
-        processing_id: impl Into<ProcessingId>,
-    ) -> Self {
-        let processing_id = processing_id.into();
-        self.register_field_set(fields, &processing_id);
+    pub(super) fn field_set(mut self, fields: &FieldDefSet, processing_id: &ProcessingId) -> Self {
+        self.register_field_set(fields, processing_id);
         self
     }
 

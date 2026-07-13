@@ -83,9 +83,12 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
     }
     let fields = builder.build().expect("adapter option field defs");
 
-    let explicit = fields.processing_metadata(&ProcessingId::from("cli"));
-    let config = fields.processing_metadata(&ProcessingId::from("config"));
-    let direct = fields.processing_metadata(&ProcessingId::from("direct"));
+    let explicit =
+        fields.processing_metadata(&ProcessingId::new("cli").expect("valid processing id"));
+    let config =
+        fields.processing_metadata(&ProcessingId::new("config").expect("valid processing id"));
+    let direct =
+        fields.processing_metadata(&ProcessingId::new("direct").expect("valid processing id"));
 
     assert_eq!(direct.len(), 1);
     assert_eq!(direct[0].input_kind, ProcessingInputKind::JsonValue);

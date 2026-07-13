@@ -27,4 +27,5 @@ fn read_json_fixture(name: &str) -> Value {
 
 mod basic;
 mod decode;
+mod options;
 mod schema;

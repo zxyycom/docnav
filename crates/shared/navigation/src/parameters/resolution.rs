@@ -107,7 +107,9 @@ fn extract_direct_candidates(
     root: &Value,
 ) -> Result<Vec<SourceCandidate>, NavigationError> {
     let mut candidates = Vec::new();
-    for metadata in fields.processing_metadata(&ProcessingId::from(DIRECT_PROCESSING)) {
+    for metadata in fields.processing_metadata(
+        &ProcessingId::new(DIRECT_PROCESSING).expect("direct processing id is valid"),
+    ) {
         let ProcessingLocator::JsonPath(path) = metadata.locator else {
             return Err(NavigationError::internal(
                 "navigation-direct-processing-locator-invalid",
@@ -130,7 +132,9 @@ fn extract_native_cli_candidates(
     input: &DirectInput,
 ) -> Result<Vec<SourceCandidate>, NavigationError> {
     let mut candidates = Vec::new();
-    for metadata in fields.processing_metadata(&ProcessingId::from(CLI_PROCESSING)) {
+    for metadata in fields.processing_metadata(
+        &ProcessingId::new(CLI_PROCESSING).expect("CLI processing id is valid"),
+    ) {
         let ProcessingLocator::CliFlag(flag) = metadata.locator else {
             return Err(NavigationError::internal(
                 "navigation-cli-processing-locator-invalid",
@@ -157,7 +161,7 @@ fn config_source(
     extract_config(
         root,
         fields,
-        &ProcessingId::from(CONFIG_PROCESSING),
+        &ProcessingId::new(CONFIG_PROCESSING).expect("config processing id is valid"),
         source_id(id)?,
         priority,
     )

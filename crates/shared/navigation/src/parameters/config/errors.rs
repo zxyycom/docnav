@@ -208,7 +208,9 @@ fn config_field_from_diagnostic(diagnostic: &ResolutionDiagnostic) -> Option<Str
 
 fn config_field_for_identity(identity: &str, fields: &FieldDefSet) -> Option<String> {
     fields
-        .processing_metadata(&ProcessingId::from(CONFIG_PROCESSING))
+        .processing_metadata(
+            &ProcessingId::new(CONFIG_PROCESSING).expect("config processing id is valid"),
+        )
         .into_iter()
         .find(|metadata| metadata.identity.as_str() == identity)
         .map(|metadata| metadata.path.segments().join("."))

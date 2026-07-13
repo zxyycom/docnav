@@ -29,6 +29,7 @@ impl Options {
     }
 
     pub fn insert_entry(&mut self, entry: OptionEntry) -> Option<Value> {
+        self.entries.retain(|existing| existing.key != entry.key);
         let previous = self.values.insert(entry.key.clone(), entry.value.clone());
         self.entries.push(entry);
         previous

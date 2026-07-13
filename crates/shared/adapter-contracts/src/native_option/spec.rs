@@ -62,7 +62,9 @@ impl AdapterOptionSpec {
 
     pub fn cli_flag(&self) -> Option<String> {
         self.field
-            .processing_metadata(&ProcessingId::from(CLI_PROCESSING))
+            .processing_metadata(
+                &ProcessingId::new(CLI_PROCESSING).expect("CLI processing id is valid"),
+            )
             .ok()
             .flatten()
             .and_then(|metadata| metadata.locator.cli_flag().map(str::to_owned))
@@ -80,10 +82,12 @@ impl AdapterOptionSpec {
 
     pub fn processing_path(
         &self,
-        processing_id: impl Into<ProcessingId>,
+        processing_id: impl AsRef<str>,
     ) -> Result<Option<Vec<String>>, BuildError> {
+        let processing_id =
+            ProcessingId::new(processing_id.as_ref()).map_err(|_| BuildError::EmptyProcessingId)?;
         self.field
-            .processing_metadata(&processing_id.into())
+            .processing_metadata(&processing_id)
             .map(|metadata| {
                 metadata.and_then(|metadata| {
                     metadata

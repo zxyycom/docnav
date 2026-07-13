@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
 
-use docnav_typed_fields::{FieldDefSet, FieldDefSetBuildError, JsonFieldSet};
+use docnav_typed_fields::{FieldDefSet, FieldDefSetBuildError, JsonFieldSet, ProcessingId};
 
 use super::formatting::{
     json_pointer, push_field_extraction_errors, push_owned_field_extraction_errors,
@@ -13,6 +13,10 @@ pub(super) use super::value_helpers::{
 use super::{JSON_CONTRACT_PROCESSING, VALUE_FIELD};
 
 pub(super) type FieldSetBuilder = fn() -> Result<FieldDefSet, FieldDefSetBuildError>;
+
+fn json_contract_processing() -> ProcessingId {
+    ProcessingId::new(JSON_CONTRACT_PROCESSING).expect("JSON contract processing id is valid")
+}
 
 #[derive(Clone, Copy)]
 pub(super) struct ObjectArraySpec {
@@ -35,7 +39,8 @@ pub(super) fn validate_field_set(
 ) {
     match build() {
         Ok(fields) => {
-            if let Err(error) = JsonFieldSet::new(&fields).validate(JSON_CONTRACT_PROCESSING, value)
+            if let Err(error) =
+                JsonFieldSet::new(&fields).validate(json_contract_processing(), value)
             {
                 push_field_extraction_errors(errors, prefix, error);
             }
@@ -153,7 +158,8 @@ fn validate_field_set_with_owned_prefix(
 ) {
     match build() {
         Ok(fields) => {
-            if let Err(error) = JsonFieldSet::new(&fields).validate(JSON_CONTRACT_PROCESSING, value)
+            if let Err(error) =
+                JsonFieldSet::new(&fields).validate(json_contract_processing(), value)
             {
                 push_owned_field_extraction_errors(errors, prefix, error);
             }
@@ -192,7 +198,8 @@ fn validate_wrapped_value_field(
 ) {
     match build() {
         Ok(fields) => {
-            if let Err(error) = JsonFieldSet::new(&fields).validate(JSON_CONTRACT_PROCESSING, value)
+            if let Err(error) =
+                JsonFieldSet::new(&fields).validate(json_contract_processing(), value)
             {
                 push_wrapped_value_errors(errors, prefix, error);
             }
@@ -234,7 +241,7 @@ fn reject_unknown_fields_with_owned_prefix(check: StrictObjectCheck<'_>, errors:
     match (check.build)() {
         Ok(fields) => {
             match JsonFieldSet::new(&fields).unused_fields(
-                JSON_CONTRACT_PROCESSING,
+                json_contract_processing(),
                 check.value,
                 check.path.iter().copied(),
             ) {

@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use cli_config_resolution::{ResolutionDiagnostic, ResolutionResult};
 use docnav_adapter_contracts::AdapterOptionSpec;
-use docnav_typed_fields::FieldDefSet;
+use docnav_typed_fields::{FieldDefSet, ProcessingId};
 use serde_json::Value;
 
 use crate::config_source::LoadedNavigationConfigSource;
@@ -194,8 +194,10 @@ fn validate_config_source(
 }
 
 fn config_key_registry(context: &ConfigValidationContext<'_>) -> ConfigKeyRegistry {
-    ConfigKeyRegistry::from_field_set(context.fields, super::CONFIG_PROCESSING)
-        .field_set(context.known_adapter_fields, super::CONFIG_PROCESSING)
+    let processing_id =
+        ProcessingId::new(super::CONFIG_PROCESSING).expect("config processing id is valid");
+    ConfigKeyRegistry::from_field_set(context.fields, &processing_id)
+        .field_set(context.known_adapter_fields, &processing_id)
         .leaf_path(["defaults", "adapter"])
         .leaf_path(["defaults", "output"])
         .leaf_path(["defaults", "pagination", "enabled"])
