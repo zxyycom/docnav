@@ -174,6 +174,7 @@ Proves:
 - Core output assembly 分离 protocol JSON、readable JSON、readable view、stdout、stderr 和 exit code 职责。
 - 内部编排覆盖 core 文档输出 smoke 中观察到的分支。
 - Core document output facade can render an unstructured outline success through readable-view with `/content` block framing while preserving the stable reason and omitting entries/page.
+- readable-view renderer 无法生成 valid payload 时 stdout 为空，stderr 诊断有界，并使用内部错误退出码。
 
 决策说明:
 - 保留为一个多分支 case 是因为所有断言都进入 `write_outcome` / `write_error` 输出编排入口，并共享 stdout/stderr/exit-code projection 基底；拆分会重复构造相同 `CommandOutcome` / `AppError` fixture。
@@ -314,6 +315,14 @@ Proves:
 - Core static registry 包含 release 内置 Markdown adapter descriptor metadata。
 - Core static registry exposes Markdown native option config keys and outline native option specs.
 - Adapter layer check 从 adapter definition 读取 metadata，并把 core-owned implementation source 保留为 static registry fact。
+
+### WB-CORE-DOCTOR-001 Doctor 聚合 typed check 退出码
+Status: implemented
+Code: `crates/docnav/src/config/doctor.rs`
+
+Proves:
+- selected config file 失败使用其 typed input error 退出码。
+- adapter layer failure 使用 adapter/protocol 退出码，并在多个失败同时存在时按严重度决定 doctor 退出码。
 
 ### WB-CORE-ADAPTER-SURFACE-001 Core adapter command surface 保持静态注册表边界
 Status: implemented

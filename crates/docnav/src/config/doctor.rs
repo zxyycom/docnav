@@ -8,6 +8,42 @@ use crate::registry::{self, AdapterRegistry};
 
 use super::store::{path_string, read_selected_config, ConfigFileSource};
 
+#[derive(Debug)]
+pub(crate) struct DoctorCheck {
+    value: Value,
+    failure_exit_code: Option<DocnavExitCode>,
+}
+
+impl DoctorCheck {
+    pub(crate) fn pass(value: Value) -> Self {
+        Self {
+            value,
+            failure_exit_code: None,
+        }
+    }
+
+    pub(crate) fn failure(value: Value, exit_code: DocnavExitCode) -> Self {
+        debug_assert_ne!(exit_code, DocnavExitCode::Success);
+        Self {
+            value,
+            failure_exit_code: Some(exit_code),
+        }
+    }
+
+    pub(crate) const fn failure_exit_code(&self) -> Option<DocnavExitCode> {
+        self.failure_exit_code
+    }
+
+    #[cfg(test)]
+    pub(crate) fn value(&self) -> &Value {
+        &self.value
+    }
+
+    fn into_value(self) -> Value {
+        self.value
+    }
+}
+
 pub fn doctor(config_paths: ConfigPathArgs) -> AppResult<CommandOutcome> {
     let project = ProjectContext::discover_with_cli_config_paths(
         config_paths.project_config.as_deref(),
@@ -31,6 +67,10 @@ pub fn doctor(config_paths: ConfigPathArgs) -> AppResult<CommandOutcome> {
     checks.extend(registry::adapter_layer_checks(&registry));
 
     let exit_code = most_severe_exit(&checks);
+    let checks = checks
+        .into_iter()
+        .map(DoctorCheck::into_value)
+        .collect::<Vec<_>>();
 
     Ok(CommandOutcome::json_with_exit(
         json!({
@@ -46,56 +86,43 @@ fn check_config_file(
     selection: &SelectedConfigPath,
     registry: &AdapterRegistry,
     source: ConfigFileSource,
-) -> Value {
+) -> DoctorCheck {
     match read_selected_config(selection, registry, source) {
-        Ok(_) if selection.path.exists() => json!({
+        Ok(_) if selection.path.exists() => DoctorCheck::pass(json!({
             "name": name,
             "status": "pass",
             "path": path_string(&selection.path),
             "message": "config file is readable"
-        }),
-        Ok(_) => json!({
+        })),
+        Ok(_) => DoctorCheck::pass(json!({
             "name": name,
             "status": "pass",
             "path": path_string(&selection.path),
             "message": "config file is absent; built-in defaults apply"
-        }),
+        })),
         Err(error) => {
+            let exit_code = error.exit_code();
             let diagnostic = error.diagnostic();
-            json!({
-                "name": name,
-                "status": "fail",
-                "path": path_string(&selection.path),
-                "message": diagnostic.summary(),
-                "details": diagnostic.details().to_value(),
-            })
+            DoctorCheck::failure(
+                json!({
+                    "name": name,
+                    "status": "fail",
+                    "path": path_string(&selection.path),
+                    "message": diagnostic.summary(),
+                    "details": diagnostic.details().to_value(),
+                }),
+                exit_code,
+            )
         }
     }
 }
 
-fn most_severe_exit(checks: &[Value]) -> DocnavExitCode {
+fn most_severe_exit(checks: &[DoctorCheck]) -> DocnavExitCode {
     checks
         .iter()
-        .filter(|check| check.get("status").and_then(Value::as_str) == Some("fail"))
-        .filter_map(|check| check.get("exit_code").and_then(Value::as_i64))
-        .map(|code| match code {
-            4 => DocnavExitCode::AdapterOrProtocolError,
-            3 => DocnavExitCode::DocumentError,
-            2 => DocnavExitCode::InputError,
-            1 => DocnavExitCode::InternalError,
-            _ => DocnavExitCode::InternalError,
-        })
+        .filter_map(DoctorCheck::failure_exit_code)
         .max_by_key(|code| severity(*code))
-        .unwrap_or_else(|| {
-            if checks
-                .iter()
-                .any(|check| check.get("status").and_then(Value::as_str) == Some("fail"))
-            {
-                DocnavExitCode::InputError
-            } else {
-                DocnavExitCode::Success
-            }
-        })
+        .unwrap_or(DocnavExitCode::Success)
 }
 
 fn severity(code: DocnavExitCode) -> u8 {
@@ -119,6 +146,7 @@ mod tests {
     use super::*;
     use crate::output::write_outcome;
 
+    // @case WB-CORE-DOCTOR-001
     #[test]
     fn doctor_reports_explicit_missing_config_as_failure() {
         let workspace = temp_workspace("doctor-explicit-missing");
@@ -141,6 +169,25 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn adapter_layer_failure_dominates_multiple_doctor_failures() {
+        let registry = AdapterRegistry { adapters: &[] };
+        let mut checks = vec![DoctorCheck::failure(
+            json!({
+                "name": "project_config",
+                "status": "fail",
+                "message": "config input failed",
+            }),
+            DocnavExitCode::InputError,
+        )];
+        checks.extend(registry::adapter_layer_checks(&registry));
+
+        assert_eq!(
+            most_severe_exit(&checks),
+            DocnavExitCode::AdapterOrProtocolError
+        );
     }
 
     fn check_by_name<'a>(output: &'a Value, name: &str) -> &'a Value {

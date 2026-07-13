@@ -13,6 +13,8 @@ use crate::cli::OutputMode;
 use crate::error::{exit_code_for_diagnostic, AppError, AppResult, DocnavExitCode};
 use crate::invocation_log::DocumentInvocationLog;
 
+const MAX_FATAL_DIAGNOSTIC_CHARS: usize = 512;
+
 pub struct CommandOutcome {
     output: CommandOutput,
     exit_code: DocnavExitCode,
@@ -195,6 +197,10 @@ fn write_document_output_error<W: Write, E: Write>(
     stdout: &mut W,
     stderr: &mut E,
 ) -> i32 {
+    if matches!(&error, DocumentOutputError::ReadableViewRender(_)) {
+        return write_bounded_fatal_diagnostic(&error, stderr);
+    }
+
     if !error.can_project_as_primary_diagnostic() {
         return write_io_error(io::Error::other(error), stderr);
     }
@@ -207,6 +213,16 @@ fn write_document_output_error<W: Write, E: Write>(
         stdout,
         stderr,
     })
+}
+
+fn write_bounded_fatal_diagnostic<E: Write>(error: &DocumentOutputError, stderr: &mut E) -> i32 {
+    let message = format!("failed to write docnav output: {error}");
+    let bounded = message
+        .chars()
+        .take(MAX_FATAL_DIAGNOSTIC_CHARS)
+        .collect::<String>();
+    let _ = writeln!(stderr, "{bounded}");
+    DocnavExitCode::InternalError.code()
 }
 
 fn write_plain_text<W: Write>(text: &str, stdout: &mut W) -> io::Result<()> {

@@ -25,7 +25,7 @@ fn static_registry_contains_built_in_markdown_adapter() {
 fn adapter_layer_check_reports_definition_metadata_and_core_source() {
     let registry = AdapterRegistry { adapters: ADAPTERS };
     let checks = adapter_layer_checks(&registry);
-    let check = checks.first().expect("adapter layer check");
+    let check = checks.first().expect("adapter layer check").value();
 
     assert_eq!(check.get("status").and_then(Value::as_str), Some("pass"));
     assert_eq!(

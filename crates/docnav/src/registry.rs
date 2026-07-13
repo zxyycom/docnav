@@ -5,7 +5,8 @@ use docnav_protocol::{Manifest, Operation};
 use serde_json::{json, Value};
 
 use crate::cli::AdapterCommand;
-use crate::error::AppResult;
+use crate::config::DoctorCheck;
+use crate::error::{AppResult, DocnavExitCode};
 use crate::output::CommandOutcome;
 use crate::project_context::ProjectContext;
 
@@ -121,22 +122,25 @@ pub fn adapter_list() -> AppResult<CommandOutcome> {
     })))
 }
 
-pub fn registry_check(registry: &AdapterRegistry) -> Value {
-    json!({
+pub fn registry_check(registry: &AdapterRegistry) -> DoctorCheck {
+    DoctorCheck::pass(json!({
         "name": "core_static_adapter_registry",
         "status": "pass",
         "message": "core release static adapter registry is available",
         "adapter_count": registry.len(),
-    })
+    }))
 }
 
-pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<Value> {
+pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {
     if registry.is_empty() {
-        return vec![json!({
-            "name": "adapter_layer",
-            "status": "fail",
-            "message": "core release static adapter registry has no adapters",
-        })];
+        return vec![DoctorCheck::failure(
+            json!({
+                "name": "adapter_layer",
+                "status": "fail",
+                "message": "core release static adapter registry has no adapters",
+            }),
+            DocnavExitCode::AdapterOrProtocolError,
+        )];
     }
 
     registry
@@ -150,7 +154,7 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<Value> {
             } else {
                 "fail"
             };
-            json!({
+            let value = json!({
                 "name": "adapter_layer",
                 "status": status,
                 "adapter_id": id,
@@ -162,7 +166,12 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<Value> {
                 } else {
                     "built-in adapter layer metadata is invalid"
                 },
-            })
+            });
+            if status == "pass" {
+                DoctorCheck::pass(value)
+            } else {
+                DoctorCheck::failure(value, DocnavExitCode::AdapterOrProtocolError)
+            }
         })
         .collect()
 }

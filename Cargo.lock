@@ -220,6 +220,7 @@ dependencies = [
  "docnav-navigation",
  "docnav-output",
  "docnav-protocol",
+ "docnav-readable",
  "docnav-typed-fields",
  "serde",
  "serde_json",

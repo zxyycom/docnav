@@ -208,6 +208,30 @@ fn document_output_error_projects_primary_internal_diagnostic_when_possible() {
     assert_eq!(output["operation"], "read");
 }
 
+#[test]
+fn readable_view_renderer_fatal_uses_bounded_stderr_with_empty_stdout() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit = write_document_output_error(
+        DocumentOutputError::ReadableViewRender(docnav_readable::RenderError::new(
+            "x".repeat(2_000),
+        )),
+        DocumentOutputMode::ReadableView,
+        Some(Operation::Read),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, DocnavExitCode::InternalError.code());
+    assert!(stdout.is_empty());
+    let diagnostic = String::from_utf8(stderr).unwrap();
+    assert!(diagnostic.contains("readable_view_render_failed"));
+    assert!(
+        diagnostic.trim_end().chars().count() <= MAX_FATAL_DIAGNOSTIC_CHARS,
+        "{diagnostic}"
+    );
+}
+
 fn test_cost() -> Cost {
     Cost {
         measurements: vec![

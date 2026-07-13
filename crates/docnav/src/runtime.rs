@@ -70,13 +70,7 @@ impl DocnavRuntime for AdapterRuntime {
                 return Err(AppError::new(error.into_diagnostic()));
             }
         };
-        let output = match output_mode(outcome.output) {
-            Ok(output) => output,
-            Err(error) => {
-                logger.record_app_error(&log_context, &error, "operation", started.elapsed());
-                return Err(error);
-            }
-        };
+        let output = output_mode(outcome.output);
         let invocation_log = DocumentInvocationLog::new(logger, log_context, started);
         outcome_for_response(outcome, output, Some(invocation_log))
     }
@@ -116,11 +110,12 @@ fn navigation_output_mode(output: OutputMode) -> NavigationOutputMode {
     }
 }
 
-fn output_mode(output: NavigationOutputMode) -> AppResult<OutputMode> {
-    output
-        .as_str()
-        .parse()
-        .map_err(|_| AppError::internal("navigation-output-mode-invalid"))
+fn output_mode(output: NavigationOutputMode) -> OutputMode {
+    match output {
+        NavigationOutputMode::ReadableView => OutputMode::ReadableView,
+        NavigationOutputMode::ReadableJson => OutputMode::ReadableJson,
+        NavigationOutputMode::ProtocolJson => OutputMode::ProtocolJson,
+    }
 }
 
 impl DocumentRequest {
