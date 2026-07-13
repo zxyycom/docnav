@@ -11,7 +11,7 @@
 3. Python 工具使用 `uv`。
 4. Rust 工具使用 Cargo workspace 命令或验证脚本封装的 Cargo 调用。
 
-根目录 `rust-toolchain.toml` 固定本地开发、验证和发布使用的 Rust 工具链与必要组件；GitHub Actions 的 Rust setup 使用同一精确版本，不跟随浮动 `stable`。该固定版本用于保证工程验证可复现，不声明 crate 的最低支持 Rust 版本；升级时应同步工具链文件与全部 workflow setup，并重跑 workspace verification 和 release package 验证。
+根目录 `rust-toolchain.toml` 固定本地开发、验证和发布使用的 Rust 工具链与必要组件；GitHub Actions 的 Rust setup 使用同一精确版本，不跟随浮动 `stable`。验证工具链包含 `rust-src`，确保 trybuild 涉及标准库类型或 trait 时，本地与 CI 都能渲染相同的标准库诊断片段。该固定版本用于保证工程验证可复现，不声明 crate 的最低支持 Rust 版本；升级时应同步工具链文件与全部 workflow setup，并重跑 workspace verification 和 release package 验证。
 
 质量观测的 duplicate-code scanner 使用当前仓库 devDependency 中的 `jscpd`，wrapper 通过当前仓库 `node_modules/.bin/jscpd`（Windows 为 `jscpd.cmd`）运行扫描；不要求 baseline materialized repo 安装 `jscpd`，也不要求全局 `jscpd`、`cpd`、Java 或 PMD 安装。当前 `jscpd` 5.x launcher 委托仓库依赖中的 Rust binary，`--version` 实际输出可以使用 `cpd <version>` 前缀；wrapper 接受该版本文本不表示支持全局 `cpd` 命令。CI 可以保留 `pnpm exec jscpd --version` 作为依赖安装 smoke，但扫描 wrapper 不通过 baseline cwd 解析依赖。
 
