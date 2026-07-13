@@ -2,6 +2,7 @@ import { parseNdjson } from "../../tools/foundation/src/ndjson.ts";
 import { isRecord } from "../../tools/foundation/src/type-guards.ts";
 
 export type RenderableWarning = {
+  acceptedReason?: string;
   baselineValue?: number | null;
   comparisonBasis?: string;
   deltaValue?: number | null;
@@ -12,6 +13,10 @@ export type RenderableWarning = {
   ruleId: string;
   suggestion?: string;
 };
+
+export function selectAnnotationWarnings(warnings: readonly RenderableWarning[]): RenderableWarning[] {
+  return warnings.filter((warning) => warning.level !== "info" && !warning.acceptedReason);
+}
 
 export function parseWarningsNdjson(content: string): { diagnostics: string[]; warnings: RenderableWarning[] } {
   const warnings: RenderableWarning[] = [];

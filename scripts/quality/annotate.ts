@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 /**
- * Render quality warning records as non-blocking GitHub Actions annotations.
+ * Render unaccepted quality warning records as non-blocking GitHub Actions annotations.
  *
  * Input is the full warnings-all.ndjson produced by scripts/quality/scan.ts.
  * This script never fails the job for metric values; malformed warning records
@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 
 import { errorMessage } from "../tools/foundation/src/errors.ts";
 import { renderGithubAnnotations } from "./annotate/github.ts";
-import { parseWarningsNdjson } from "./annotate/warnings.ts";
+import { parseWarningsNdjson, selectAnnotationWarnings } from "./annotate/warnings.ts";
 
 export { renderGithubAnnotations } from "./annotate/github.ts";
 export { parseWarningsNdjson } from "./annotate/warnings.ts";
@@ -28,7 +28,7 @@ function main() {
     for (const diagnostic of diagnostics) {
       console.log(`Quality warning annotation skipped: ${diagnostic}`);
     }
-    const renderedWarnings = warnings.filter((warning) => warning.level !== "info");
+    const renderedWarnings = selectAnnotationWarnings(warnings);
     for (const annotation of renderGithubAnnotations(renderedWarnings.slice(0, limit))) {
       console.log(annotation);
     }

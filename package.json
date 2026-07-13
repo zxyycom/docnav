@@ -34,7 +34,7 @@
     "quality:full-check": "bun scripts/quality/scan.ts --profile full --with-baseline",
     "quality:scan": "bun scripts/quality/scan.ts",
     "quality:annotate": "bun scripts/quality/annotate.ts",
-    "quality:test": "bun test scripts/tools/quality-core scripts/quality/args.test.ts scripts/quality/config.test.ts",
+    "quality:test": "bun test scripts/tools/quality-core scripts/quality/args.test.ts scripts/quality/config.test.ts scripts/quality/annotate/warnings.test.ts",
     "toolkit:foundation:typecheck": "bun run --cwd scripts/tools/foundation typecheck",
     "toolkit:foundation:lint": "bun run --cwd scripts/tools/foundation lint",
     "toolkit:foundation:test": "bun run --cwd scripts/tools/foundation test",

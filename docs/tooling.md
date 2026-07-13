@@ -13,6 +13,8 @@
 
 根目录 `rust-toolchain.toml` 固定本地开发、验证和发布使用的 Rust 工具链与必要组件；GitHub Actions 的 Rust setup 使用同一精确版本，不跟随浮动 `stable`。验证工具链包含 `rust-src`，确保 trybuild 涉及标准库类型或 trait 时，本地与 CI 都能渲染相同的标准库诊断片段。该固定版本用于保证工程验证可复现，不声明 crate 的最低支持 Rust 版本；升级时应同步工具链文件与全部 workflow setup，并重跑 workspace verification 和 release package 验证。
 
+GitHub Actions 依赖固定到可追溯的完整 commit SHA；有正式 release 的 action 在同一行保留 release 注释，`dtolnay/rust-toolchain` 按其使用约定固定 `master` commit，并通过 workflow input 声明精确 Rust 版本。其他工具和运行时版本也继续显式声明。`.github/dependabot.yml` 每周检查 GitHub Actions 更新并通过 PR 提交，避免 workflow 依赖随可移动 tag 静默变化。
+
 质量观测的 duplicate-code scanner 使用当前仓库 devDependency 中的 `jscpd`，wrapper 通过当前仓库 `node_modules/.bin/jscpd`（Windows 为 `jscpd.cmd`）运行扫描；不要求 baseline materialized repo 安装 `jscpd`，也不要求全局 `jscpd`、`cpd`、Java 或 PMD 安装。当前 `jscpd` 5.x launcher 委托仓库依赖中的 Rust binary，`--version` 实际输出可以使用 `cpd <version>` 前缀；wrapper 接受该版本文本不表示支持全局 `cpd` 命令。CI 可以保留 `pnpm exec jscpd --version` 作为依赖安装 smoke，但扫描 wrapper 不通过 baseline cwd 解析依赖。
 
 ## TypeScript 脚本
@@ -39,7 +41,7 @@
 
 ## 验证入口集成
 
-`typecheck:scripts`、`lint:scripts` 和 `quality:check` 是脚本模块与质量观测的快速验证入口。前者证明脚本类型、模块边界和共享状态一致；`lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题；`quality:check` 运行 quick quality profile 并在出现 warning records 时输出前几个 warning、报告路径和“当前不是全量质检”的提示。质量扫描配置可以给已知可接受 warning 填充 `acceptedReason`；单独运行质量扫描时这些 warning 仍保持可见，并在对应 warning 旁展示原因。它们不替代真实 CLI、schema、进程 smoke、Rust tests、release package 验证或 `quality:full-check`。
+`typecheck:scripts`、`lint:scripts` 和 `quality:check` 是脚本模块与质量观测的快速验证入口。前者证明脚本类型、模块边界和共享状态一致；`lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题；`quality:check` 运行 quick quality profile 并在出现 warning records 时输出前几个 warning、报告路径和“当前不是全量质检”的提示。质量扫描配置可以给已知可接受 warning 填充 `acceptedReason`；单独运行质量扫描时这些 warning 仍保持可见，并在对应 warning 旁展示原因。GitHub annotation 只投影未带 `acceptedReason` 的非 info warning，完整 warning records 和报告仍保留已接受记录。它们不替代真实 CLI、schema、进程 smoke、Rust tests、release package 验证或 `quality:full-check`。
 
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check。full profile 使用 full quality check 替代 quick quality check，并追加更宽验证；full profile 的 quality check 使用 verifier 输出，只在存在未带 `acceptedReason` 的 warning 时把 workspace verification 标记为 warning。profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
 

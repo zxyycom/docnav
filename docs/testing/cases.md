@@ -1042,6 +1042,7 @@ Proves:
 - 函数 warning 使用复杂度感知的代码密度阈值：普通复杂度函数超过 50 行触发，CC < 5 的简单函数超过 150 行才触发。
 - 函数代码密度 warning record 的 rule id、metric 和 message 反映组合阈值语义，不再输出单纯函数代码行数规则。
 - 配置的已知可接受 warning 保留在 all/changed/regression warning records 中，并通过 `acceptedReason` 字段携带原因。
+- GitHub annotation selection 跳过带 `acceptedReason` 的 warning 和 info records，只投影未接受的 warning；完整机器记录保持不变。
 - 配置的 accepted warning 匹配不依赖重复片段行号；匹配不到任何 generated warning 的 accepted rule 会生成 `quality-accepted-warning-unmatched` warning。
 
 ### AUX-QUALITY-SCAN-CLI-001 Quality scan CLI 默认值稳定
