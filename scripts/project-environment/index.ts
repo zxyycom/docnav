@@ -1,10 +1,22 @@
+import { spawnSync } from "node:child_process";
 import { devNull } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { processFailed, runProcessSync } from "../tools/foundation/src/process.ts";
-
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const PROCESS_MAX_BUFFER = 64 * 1024 * 1024;
+const PLAIN_TEXT_ENV = {
+  CARGO_TERM_COLOR: "never",
+  CLICOLOR: "0",
+  CLICOLOR_FORCE: "0",
+  FORCE_COLOR: "0",
+  NO_COLOR: "1",
+  PNPM_CONFIG_COLOR: "false",
+  PY_COLORS: "0",
+  TERM: "dumb",
+  UV_NO_COLOR: "1",
+  npm_config_color: "false"
+} satisfies NodeJS.ProcessEnv;
 const MISE_ENV = {
   ...process.env,
   MISE_GLOBAL_CONFIG_FILE: devNull
@@ -116,16 +128,24 @@ function run(
   capture = false,
   env: NodeJS.ProcessEnv = process.env
 ): string {
-  const result = runProcessSync(command, args, {
+  const result = spawnSync(command, args, {
     cwd: REPO_ROOT,
-    env,
-    stdio: capture ? "pipe" : "inherit"
+    encoding: "utf8",
+    env: { ...env, ...PLAIN_TEXT_ENV },
+    maxBuffer: PROCESS_MAX_BUFFER,
+    stdio: capture ? "pipe" : "inherit",
+    windowsHide: true
   });
-  if (processFailed(result)) {
-    const diagnostic = result.stderr.trim() || result.stdout.trim() || `exit ${result.status ?? "unknown"}`;
+  const stderr = typeof result.stderr === "string" ? result.stderr : "";
+  const stdout = typeof result.stdout === "string" ? result.stdout : "";
+  if (result.error || result.status !== 0) {
+    const diagnostic = stderr.trim()
+      || stdout.trim()
+      || result.error?.message
+      || `exit ${result.status ?? "unknown"}`;
     throw new Error(`${command} ${args.join(" ")} failed: ${diagnostic}`);
   }
-  return result.stdout;
+  return stdout;
 }
 
 function parseAction(value: string | undefined): Action {
