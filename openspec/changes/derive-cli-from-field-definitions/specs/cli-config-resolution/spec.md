@@ -4,19 +4,25 @@
 
 Framework-specific extraction MUST remain outside the framework-independent resolution core. The Cargo workspace MUST provide a Clap companion for CLI strategies and a structured-config companion for config-path strategies; environment extraction MAY remain in core.
 
-The Clap companion MUST consume a projection derived from a canonical `FieldDefSet` and consumer-owned extension metadata. The field declaration MUST remain the authoring source; a runtime projection view MAY combine canonical identity、locator、value kind、constraints/default display and presentation.
+The Clap companion MUST own and consume a framework-facing `ClapFieldSpec` projection input. A consumer MAY derive that input from a canonical `FieldDefSet` and consumer-owned extension metadata, but the companion MUST NOT depend on or interpret the consumer's extension payload type. The field declaration MUST remain the authoring source; the runtime input MAY combine canonical identity、locator、value kind、cardinality、accepted/default display and presentation facts. Accepted/default facts in this input are generated-help metadata only.
 
-The companion MUST derive argument identity、locator、cardinality、capture/decoding behavior and canonical candidate facts from that projection. A present value that cannot be decoded MUST become an invalid `SourceCandidate` retaining field identity、locator、raw input and reason; it MUST NOT abort extraction of unrelated projected fields. Omitted inputs and canonical defaults MUST NOT become explicit CLI candidates.
+The companion MUST derive argument registration、capture/decoding behavior and canonical candidate facts only from `ClapFieldSpec`. A present value that cannot be decoded MUST become an invalid `SourceCandidate` retaining field identity、locator、raw input and reason; it MUST NOT abort extraction of unrelated projected fields. Enum、range、pattern、required/default and other canonical semantic constraints MUST NOT be installed as Clap value validation; they remain selected-field resolver responsibilities. Omitted inputs and canonical defaults MUST NOT become explicit CLI candidates.
 
-Clap MUST reject command-shape failures such as unknown flags、duplicate single-value arguments and missing values. Projection/extension mismatch、match storage mismatch、source construction failure and declaration conflict MUST remain structural errors. Canonical constraints、source priority、merge、materialization、owner applicability and final diagnostic visibility remain consumer/resolver responsibilities.
+Clap MUST reject command-shape failures such as unknown flags、duplicate single-value arguments and missing values. Invalid `ClapFieldSpec`、match storage mismatch、source construction failure and declaration conflict MUST remain structural errors. Consumer extension mismatch MUST fail while deriving the project view before the framework bridge. Canonical constraints、source priority、merge、materialization、owner applicability and final diagnostic visibility remain consumer/resolver responsibilities.
 
 Supported CLI projections MUST include string、integer、finite number、Boolean、repeated-string array and repeated `key=value` object. `ValueKind::Json` CLI projection MUST be rejected, and raw strings MUST NOT be interpreted as arbitrary JSON.
 
 #### Scenario: Generate CLI behavior from an extended canonical field
 
 - **WHEN** a consumer declares canonical field facts and attaches its CLI extension through a project builder
-- **THEN** the consumer extractor derives one companion projection from that field
-- **THEN** argument registration、help metadata and candidate identity use that projection
+- **THEN** the consumer derives one project view and maps it to the companion-owned `ClapFieldSpec`
+- **THEN** argument registration、help metadata and candidate identity use that companion input
+
+#### Scenario: Keep the framework bridge outside declarations
+
+- **WHEN** a consumer uses a project-owned projection type that the Clap companion does not know
+- **THEN** a higher integration layer maps it to `ClapFieldSpec`
+- **THEN** the companion does not depend on the project crate or inspect the project's extension payload
 
 #### Scenario: Preserve field-local decoding failure
 
@@ -24,9 +30,15 @@ Supported CLI projections MUST include string、integer、finite number、Boolea
 - **THEN** extraction returns an invalid candidate with raw input and reason
 - **THEN** unrelated projected fields remain available for later selected-field filtering
 
+#### Scenario: Do not validate canonical semantics during command parsing
+
+- **WHEN** a registered string value is outside its canonical enum or pattern constraint
+- **THEN** Clap captures the value without turning the semantic mismatch into a command-shape failure
+- **THEN** only a selected field's canonical resolution can report that mismatch
+
 #### Scenario: Keep structural failure separate
 
-- **WHEN** command shape or projection/match/extension structure is invalid
+- **WHEN** command shape or companion projection/match structure is invalid
 - **THEN** Clap or the companion returns the corresponding structural error
 - **THEN** the failure is not represented as a caller field candidate
 
@@ -55,13 +67,13 @@ Supported CLI projections MUST include string、integer、finite number、Boolea
 
 ### Requirement: Docnav Hard Cutover Boundary
 
-Docnav MUST declare CLI presentation through project-specific typed-field builder extensions and consume the resulting projection through the extraction and resolution APIs intended for library consumers. Its command path MUST preserve documented source priority and materialization while using a single authoritative integration; migrated legacy extraction paths MUST NOT remain as runtime fallbacks.
+Docnav MUST declare CLI presentation through project-specific typed-field builder extensions, map the resulting project view to the companion-owned input through one mechanical core bridge, and consume the extraction and resolution APIs intended for library consumers. Its command path MUST preserve documented source priority and materialization while using a single authoritative integration; migrated legacy extraction paths MUST NOT remain as runtime fallbacks.
 
 #### Scenario: Common fields use project builder extensions
 
 - **WHEN** Docnav declares a projected common or routing CLI field
 - **THEN** its project builder attaches presentation to the canonical declaration
-- **THEN** the companion receives a projection derived from that declaration
+- **THEN** core maps the derived project view to the companion-owned input without re-authoring field facts
 
 #### Scenario: Remove compatibility paths
 
