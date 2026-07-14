@@ -1,0 +1,16 @@
+[settings]
+idiomatic_version_file_enable_tools = ["rust"]
+lockfile = true
+
+[settings.npm]
+package_manager = "npm"
+
+[tools]
+node = "24"
+bun = "1.3.14"
+pnpm = "11.1.3"
+uv = "0.11.28"
+go = "1.25"
+"pipx:lizard" = { version = "1.23.0", depends = ["uv"] }
+"go:github.com/boyter/scc/v3" = { version = "v3.7.0", depends = ["go"] }
+"npm:@colbymchenry/codegraph" = { version = "1.4.1", depends = ["node"] }

@@ -89,7 +89,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
 | 测试函数变更时的 case 归属、账本更新和源码 `@case` 标记维护流程 | [测试用例维护](testing/case-maintenance.md) |
 | 最终 case 条目、证明目标和源码 `@case` 标记映射 | [测试用例编号账本](testing/cases.md) |
-| 脚本语言、包管理、TypeScript 脚本运行方式和脚本类型检查验证入口 | [工程工具链](tooling.md) |
+| 工具版本、项目环境配置与检测、包管理、TypeScript 脚本运行方式和脚本类型检查验证入口 | [工程工具链](tooling.md) |
 | typed field definition core 的共享 crate owner、字段事实源、校验归属和 schema metadata view 边界 | [架构](architecture.md) |
 | JSON 字段形状和示例语义校验 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) |
 

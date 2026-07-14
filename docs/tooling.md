@@ -4,18 +4,61 @@
 
 ## 脚本语言与包管理
 
-工具链按生态分成包依赖和运行时前置条件：包依赖由项目声明和 lockfile 管理，运行时由本地环境或 CI setup 提供。
+工具链按生态管理：包依赖由项目声明和 `pnpm-lock.yaml` 管理，Rust 由 `rust-toolchain.toml` 管理，其余运行时与独立质量工具由 `mise.toml` 和 `mise.lock` 管理。
 
 1. TypeScript 脚本包依赖使用 `pnpm`；项目脚本通过 `bun run <script>` 执行。
-2. TypeScript 脚本运行时使用 Bun；执行这些入口前，环境中必须能解析到 `bun` 可执行文件。
+2. TypeScript 脚本运行时使用 Bun；执行项目脚本前，环境中必须能解析到 `bun` 可执行文件。
 3. Python 工具使用 `uv`。
 4. Rust 工具使用 Cargo workspace 命令或验证脚本封装的 Cargo 调用。
 
-根目录 `rust-toolchain.toml` 固定本地开发、验证和发布使用的 Rust 工具链与必要组件；GitHub Actions 的 Rust setup 使用同一精确版本，不跟随浮动 `stable`。验证工具链包含 `rust-src`，确保 trybuild 涉及标准库类型或 trait 时，本地与 CI 都能渲染相同的标准库诊断片段。该固定版本用于保证工程验证可复现，不声明 crate 的最低支持 Rust 版本；升级时应同步工具链文件与全部 workflow setup，并重跑 workspace verification 和 release package 验证。
+根目录 `mise.toml` 声明 Node.js、Bun、pnpm、uv、Go、质量工具和 CodeGraph 的版本范围，`mise.lock` 固定当前解析出的跨平台版本和下载校验。Rust 继续由原生 `rust-toolchain.toml` 固定版本、`minimal` profile 以及 `clippy`、`rustfmt`、`rust-src` components；mise 读取该文件安装同一工具链。`rust-src` 确保 trybuild 涉及标准库类型或 trait 时能稳定渲染标准库诊断片段。以上固定版本用于可复现验证，不声明 crate 的最低支持 Rust 版本。
 
-GitHub Actions 依赖固定到可追溯的完整 commit SHA；有正式 release 的 action 在同一行保留 release 注释，`dtolnay/rust-toolchain` 按其使用约定固定 `master` commit，并通过 workflow input 声明精确 Rust 版本。其他工具和运行时版本也继续显式声明。`.github/dependabot.yml` 每周检查 GitHub Actions 更新并通过 PR 提交，避免 workflow 依赖随可移动 tag 静默变化。
+GitHub Actions 依赖固定到可追溯的完整 commit SHA；有正式 release 的 action 在同一行保留 release 注释。主 CI 用 `jdx/mise-action` bootstrap mise 与 Bun，再调用仓库的完整环境配置；release matrix 只安装打包需要的 Bun、Node.js、pnpm 和 Rust。`.github/dependabot.yml` 每周检查 GitHub Actions 更新并通过 PR 提交。
 
-质量观测的 duplicate-code scanner 使用当前仓库 devDependency 中的 `jscpd`，wrapper 通过当前仓库 `node_modules/.bin/jscpd`（Windows 为 `jscpd.cmd`）运行扫描；不要求 baseline materialized repo 安装 `jscpd`，也不要求全局 `jscpd`、`cpd`、Java 或 PMD 安装。当前 `jscpd` 5.x launcher 委托仓库依赖中的 Rust binary，`--version` 实际输出可以使用 `cpd <version>` 前缀；wrapper 接受该版本文本不表示支持全局 `cpd` 命令。CI 可以保留 `pnpm exec jscpd --version` 作为依赖安装 smoke，但扫描 wrapper 不通过 baseline cwd 解析依赖。
+质量观测的 duplicate-code scanner 使用当前仓库 devDependency 中的 `jscpd`，wrapper 通过当前仓库 `node_modules/.bin/jscpd`（Windows 为 `jscpd.cmd`）运行扫描；不要求 baseline materialized repo 安装 `jscpd`，也不要求全局 `jscpd`、`cpd`、Java 或 PMD 安装。当前 `jscpd` 5.x launcher 委托仓库依赖中的 Rust binary，`--version` 实际输出可以使用 `cpd <version>` 前缀；wrapper 接受该版本文本不表示支持全局 `cpd` 命令。Lizard 和 scc 由 mise 的 `pipx` / `go` backend 提供；临时诊断可以通过 `DOCNAV_LIZARD_CMD`、`DOCNAV_LIZARD_ARGS`、`DOCNAV_SCC_CMD` 和 `DOCNAV_SCC_ARGS` 覆盖命令与参数。扫描 wrapper 不通过 baseline cwd 解析依赖。
+
+## 项目环境配置与检测
+
+运行项目环境入口前，调用方需要提供可执行的 Bun 和 mise。
+
+### 配置环境
+
+首次检出仓库或工具版本更新后，运行：
+
+```bash
+bun run env:setup
+```
+
+运行前应审阅 `mise.toml`；该命令随后执行以下配置：
+
+1. 信任仓库的 mise 配置。
+2. 初始化递归 Git submodule。
+3. 按 lockfile 安装工具和根包依赖。
+4. 预取根 Cargo workspace 与 `subrepos/cli-config-resolution/` 的锁定依赖。
+5. 初始化或同步 CodeGraph 索引。
+
+### 检查环境
+
+只检查当前环境时，运行：
+
+```bash
+bun run env:check
+```
+
+检测满足以下条件时通过：
+
+1. 锁定工具和本地包命令可用。
+2. 递归 submodule 位于父仓库固定 revision。
+3. 根 Cargo workspace 与 `subrepos/cli-config-resolution/` 可按 lockfile 离线解析。
+4. CodeGraph 索引存在且与工作区同步。
+
+该命令不执行 trust 或安装。submodule 在固定 revision 上的本地改动不属于环境失败。
+
+### 命令环境边界
+
+1. `env:setup` 和 `env:check` 只读取仓库的 mise 配置，不叠加用户全局配置。
+2. `verify:docnav-workspace*`、`package:docnav` 和 `info:docnav-package` 使用顶层 mise 环境；它们的子命令直接继承该环境。
+3. 其它命令保持普通 `bun run` 入口。日常 shell 应激活 mise 或使用其 shim；未激活时可以显式运行 `mise exec -- bun run <script>`。
 
 ## TypeScript 脚本
 

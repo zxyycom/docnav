@@ -236,11 +236,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   /** 工具可用性：如何发现 lizard/scc/jscpd 命令 */
   tools: {
     lizard: {
-      /** Python 解释器（优先使用 DOCNAV_LIZARD_CMD 环境变量，其次 'python3' 或 'python'（Windows）） */
-      command: process.env.DOCNAV_LIZARD_CMD || (
-        process.platform === "win32" ? "python" : "python3"
-      ),
-      args: ["-m", "lizard"]
+      /** mise 提供的 lizard 命令；环境变量允许 CI 或诊断场景覆盖。 */
+      command: process.env.DOCNAV_LIZARD_CMD || "lizard",
+      args: readJsonStringArrayEnv("DOCNAV_LIZARD_ARGS")
     },
     scc: {
       /** scc 3.7.0 的命令名或路径；wrapper 依赖该版本的 Provider/ULOC CSV header */

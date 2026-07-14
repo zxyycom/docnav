@@ -111,7 +111,7 @@ export const checks = defineChecks([
         command: "bun",
         args: ["run", "test:workspace-verifier"],
         ignoreOutput: [
-          /^\$ bun test scripts\/docnav-workspace\/verify\.test\.ts test\/tools\/smoke-harness\.test\.ts test\/smoke\/core\/fixtures\/project\.test\.ts scripts\/tools\/foundation\/test\/foundation\.test\.ts scripts\/tools\/parallel-task-runner\/test\/index\.test\.ts$/,
+          /^\$ bun test scripts\/docnav-workspace\/verify\.test\.ts scripts\/project-environment\/workspaces\.test\.ts test\/tools\/smoke-harness\.test\.ts test\/smoke\/core\/fixtures\/project\.test\.ts scripts\/tools\/foundation\/test\/foundation\.test\.ts scripts\/tools\/parallel-task-runner\/test\/index\.test\.ts$/,
           ...testRunnerSuccessOutput
         ]
       },
@@ -152,7 +152,7 @@ export const checks = defineChecks([
         command: "bun",
         args: ["run", "quality:test"],
         ignoreOutput: [
-          /^\$ bun test scripts\/tools\/quality-core scripts\/quality\/args\.test\.ts scripts\/quality\/config\.test\.ts$/,
+          /^\$ bun test scripts\/tools\/quality-core scripts\/quality\/args\.test\.ts scripts\/quality\/config\.test\.ts scripts\/quality\/annotate\/warnings\.test\.ts$/,
           ...testRunnerSuccessOutput
         ]
       },
@@ -333,9 +333,10 @@ export const checks = defineChecks([
       {
         id: "openspec",
         label: "openspec",
-        command: "openspec",
-        args: ["validate", "--all", "--strict"],
+        command: "bun",
+        args: ["run", "validate:openspec"],
         ignoreOutput: [
+          /^\$ bun run openspec validate --all --strict$/,
           /^✓ /,
           /^Totals: \d+ passed, 0 failed .*$/,
           /^- Validating\.\.\.$/
