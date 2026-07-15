@@ -921,7 +921,8 @@ Status: implemented
 Code: `scripts/tools/parallel-task-runner/test/index.test.ts`
 
 Proves:
-- task normalization、concurrency、mutex serialization、dependency ordering 和 nested task expansion 保持稳定。
+- task normalization、concurrency、mutex serialization、dependency completion ordering 和 nested task expansion 保持稳定。
+- resolved result 对 scheduler 保持 opaque；consumer status field 不阻塞 dependent，且 dependent 在 `onComplete` 完成后启动。
 - prepare strategy、invalid list metadata、duplicate id 和 unknown dependency failure 保持可诊断。
 
 决策说明:
@@ -936,7 +937,7 @@ flowchart LR
   E --> F{"scheduler constraint"}
   F -->|"concurrency"| G["限制 active task 数量"]
   F -->|"mutex"| H["序列化共享 mutex task"]
-  F -->|"dependsOn"| I["按拓扑依赖启动"]
+  F -->|"dependsOn"| I["依赖 execute 和 onComplete 完成后启动"]
   G --> J["completion result 顺序和 onComplete 语义稳定"]
   H --> J
   I --> J
