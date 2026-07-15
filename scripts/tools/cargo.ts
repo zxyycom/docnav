@@ -73,6 +73,7 @@ export function buildCargoExecutables({
   const packages = [...new Set(binaries.map((binary) => binary.packageName))];
   const cargoArgs = [
     "build",
+    "--locked",
     ...packages.flatMap((packageName) => ["-p", packageName]),
     ...binaries.flatMap((binary) => ["--bin", binary.binName]),
     "--message-format=json"

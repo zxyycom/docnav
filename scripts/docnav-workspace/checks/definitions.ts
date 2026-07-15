@@ -270,7 +270,7 @@ export const checks = defineChecks([
         id: "cargo-clippy",
         label: "cargo clippy",
         command: "cargo",
-        args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],
+        args: ["clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"],
         mutex: ["cargo-build"],
         ignoreOutput: [
           ...cargoProgressOutput
@@ -280,7 +280,7 @@ export const checks = defineChecks([
         id: "cargo-test",
         label: "cargo test",
         command: "cargo",
-        args: ["test", "--workspace"],
+        args: ["test", "--locked", "--workspace"],
         mutex: ["cargo-build"],
         ignoreOutput: [
           ...cargoTestSuccessOutput
