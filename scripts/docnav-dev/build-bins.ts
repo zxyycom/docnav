@@ -4,19 +4,14 @@ import { fileURLToPath } from "node:url";
 
 import {
   buildCargoExecutables,
-  reportCargoExecutableBuildFailure,
-  type CargoBinarySpec
+  reportCargoExecutableBuildFailure
 } from "../tools/cargo.ts";
 import { booleanOption, parseScriptArgs, stringOption } from "../tools/foundation/src/args.ts";
 import { writeJsonFile } from "../tools/foundation/src/fs.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-const binaries: Array<CargoBinarySpec & { envName: string }> = [
-  { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" }
-];
-
-export type DevBinarySpec = CargoBinarySpec & { envName: string };
+const docnavBinary = { packageName: "docnav", binName: "docnav" };
 
 type DevBinOptions = {
   cleanup: boolean;
@@ -67,7 +62,7 @@ function parseArgs(args: string[]): DevBinOptions {
 }
 
 function buildDevBins(options: DevBinOptions): Record<string, string> {
-  const result = buildCargoExecutables({ binaries, cwd: root });
+  const result = buildCargoExecutables({ binaries: [docnavBinary], cwd: root });
 
   if (!result.ok) {
     process.exit(reportCargoExecutableBuildFailure(result));
@@ -77,26 +72,30 @@ function buildDevBins(options: DevBinOptions): Record<string, string> {
     process.stderr.write(result.stderr);
   }
 
+  const executable = result.executables.get(docnavBinary.binName);
+  if (!executable) {
+    console.error("cargo build did not report a docnav executable");
+    process.exit(1);
+  }
+
   return prepareDevBinEnv({
-    binaries,
     copyTo: options.copyTo ? path.resolve(root, options.copyTo) : null,
-    executables: result.executables
+    docnavExecutable: executable
   });
 }
 
 export function prepareDevBinEnv({
-  binaries,
   copyTo,
-  executables
+  docnavExecutable
 }: {
-  binaries: readonly DevBinarySpec[];
   copyTo?: string | null;
-  executables: ReadonlyMap<string, string>;
-}): Record<string, string> {
-  const resolvedExecutables = copyTo ? copyDevBinExecutables(binaries, executables, copyTo) : executables;
-  return Object.fromEntries(
-    binaries.map((binary) => [binary.envName, executablePathFor(resolvedExecutables, binary)])
-  );
+  docnavExecutable: string;
+}): { DOCNAV_BIN: string } {
+  return {
+    DOCNAV_BIN: copyTo
+      ? copyDevBinExecutable(docnavExecutable, copyTo)
+      : docnavExecutable
+  };
 }
 
 export function cleanupDevBinArtifacts({
@@ -111,32 +110,16 @@ export function cleanupDevBinArtifacts({
   }
 }
 
-function copyDevBinExecutables(
-  binaries: readonly DevBinarySpec[],
-  executables: ReadonlyMap<string, string>,
+function copyDevBinExecutable(
+  sourcePath: string,
   copyRoot: string
-): Map<string, string> {
+): string {
   fs.mkdirSync(copyRoot, { recursive: true });
   const runDir = fs.mkdtempSync(path.join(copyRoot, "run-"));
-  const copied = new Map<string, string>();
-
-  for (const binary of binaries) {
-    const sourcePath = executablePathFor(executables, binary);
-    const destPath = path.join(runDir, path.basename(sourcePath));
-    fs.copyFileSync(sourcePath, destPath);
-    fs.chmodSync(destPath, fs.statSync(sourcePath).mode);
-    copied.set(binary.binName, destPath);
-  }
-
-  return copied;
-}
-
-function executablePathFor(executables: ReadonlyMap<string, string>, binary: DevBinarySpec): string {
-  const executable = executables.get(binary.binName);
-  if (!executable) {
-    throw new Error(`missing built executable for ${binary.binName}`);
-  }
-  return executable;
+  const destPath = path.join(runDir, path.basename(sourcePath));
+  fs.copyFileSync(sourcePath, destPath);
+  fs.chmodSync(destPath, fs.statSync(sourcePath).mode);
+  return destPath;
 }
 
 function usage(message: string): never {

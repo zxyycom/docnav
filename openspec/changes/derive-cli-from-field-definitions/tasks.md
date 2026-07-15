@@ -37,5 +37,5 @@
 ## 6. 验收
 
 - [ ] 6.1 运行子仓库独立验证，以及主仓库 fmt、targeted Rust tests、case consistency、CLI/process smoke 和 clippy `-D warnings`。
-- [ ] 6.2 运行 `bun run verify:docnav-workspace:full` 和 `openspec validate derive-cli-from-field-definitions --type change --strict --no-interactive`，要求 0 failed。
+- [ ] 6.2 运行 `bun run verify:docnav-workspace` 和 `openspec validate derive-cli-from-field-definitions --type change --strict --no-interactive`，要求 0 failed。
 - [ ] 6.3 按 5.1 的删除清单搜索 legacy 残留，确认 selected-set filtering 未引入 usage-accounting state、stage boundary 不暴露 projection 外 diagnostics、consumer extension 未演化为 replace/mutation/lifecycle framework、touched quality acceptance 已移除，并检查局部 diff 仅包含目标范围。

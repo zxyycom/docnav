@@ -6,8 +6,7 @@ import path from "node:path";
 
 import {
   cleanupDevBinArtifacts,
-  prepareDevBinEnv,
-  type DevBinarySpec
+  prepareDevBinEnv
 } from "../docnav-dev/build-bins.ts";
 import {
   PROFILE_FULL,
@@ -198,15 +197,9 @@ describe("workspace verifier configuration", () => {
       const docnavSource = path.join(sourceDir, executableName("docnav"));
       fs.writeFileSync(docnavSource, "docnav");
 
-      const specs: DevBinarySpec[] = [
-        { packageName: "docnav", binName: "docnav", envName: "DOCNAV_BIN" }
-      ];
       const env = prepareDevBinEnv({
-        binaries: specs,
         copyTo: copyRoot,
-        executables: new Map([
-          ["docnav", docnavSource]
-        ])
+        docnavExecutable: docnavSource
       });
 
       assert.notEqual(env.DOCNAV_BIN, docnavSource);

@@ -140,14 +140,12 @@ Manual CR: 修改 workspace verifier 的 check definitions、命令参数、depe
 | 命令 | 用途 |
 | --- | --- |
 | `bun run verify:docnav-workspace:required` | 快速验证，只跑必需检查 |
-| `bun run verify:docnav-workspace:full` | 完整验证，显式运行 full profile |
 | `bun run quality:check` | 快速质量检查，生成 quick profile 报告 |
 | `bun run quality:full-check` | 全量质量检查，包含 baseline comparison |
 | `bun run smoke:docnav` | 对当前开发构建运行 core CLI smoke |
-| `bun run cli:dev -- <args>` | 构建并运行当前开发版 `docnav` |
 | `bun --silent run dnm <args>` | 运行当前开发版 `docnav`，只保留命令结果和失败诊断 |
 
-局部改动仍可先运行范围更小的命令或 required profile；跨 Rust、文档、OpenSpec、schema、示例或输出层边界的交付，最终应运行 `bun run verify:docnav-workspace` 或 `bun run verify:docnav-workspace:full`。具体检查项和输出过滤规则由验证脚本维护，本节只定义 profile 用途和交付要求。
+局部改动仍可先运行范围更小的命令或 required profile；跨 Rust、文档、OpenSpec、schema、示例或输出层边界的交付，最终应运行 `bun run verify:docnav-workspace`。具体检查项和输出过滤规则由验证脚本维护，本节只定义 profile 用途和交付要求。
 
 ## 一致性审计
 
