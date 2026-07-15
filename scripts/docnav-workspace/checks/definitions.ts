@@ -1,12 +1,12 @@
 import { defineChecks } from "./normalization.ts";
 import { PROFILE_FULL, PROFILE_REQUIRED } from "./model.ts";
-import type { CheckDefinition } from "./model.ts";
 
 const DEV_BIN_COPY_DIR = ".cache/docnav/verify/dev-bins";
 const DEV_BIN_ENV_FILE = ".cache/docnav/verify/dev-bins.json";
 const CLI_CONFIG_WORKSPACE_MANIFEST = "subrepos/cli-config-resolution/Cargo.toml";
 
 const testRunnerSuccessOutput = [
+  /^\$ bun test(?: .*)?$/,
   /^bun test v\d+\.\d+\.\d+ \([0-9a-f]+\)$/,
   /^.*\.test\.ts:$/,
   /^\(pass\) .+ \[[\d.]+(?:ms|s)\]$/,
@@ -20,6 +20,16 @@ const cargoProgressOutput = [
   /^\s*(Checking|Compiling) .*$/,
   /^\s*Blocking waiting for file lock on .+$/,
   /^\s*Finished `.*` profile .*$/
+];
+
+const cargoTestSuccessOutput = [
+  ...cargoProgressOutput,
+  /^\s*Running unittests .*$/,
+  /^\s*Running tests[\\/].*$/,
+  /^\s*Doc-tests .*$/,
+  /^running \d+ tests?$/,
+  /^test .* \.\.\. ok$/,
+  /^test result: ok\..*$/
 ];
 
 const qualityWarningOutput = [
@@ -103,7 +113,23 @@ export const checks = defineChecks([
       {
         id: "docs-validators",
         label: "docs validators",
-        tasks: docsValidatorChecks()
+        command: "bun",
+        args: ["run", "validate:docs"],
+        ignoreOutput: [
+          /^\$ bun scripts\/docs\/validate\.ts$/,
+          /^test case catalog ok:/,
+          /^json syntax ok:/,
+          /^schema strict compile ok:/,
+          /^schema ok:/,
+          /^protocol response operation\/result binding ok$/,
+          /^protocol response error details shape ok$/,
+          /^readable error details shape ok$/,
+          /^protocol\/readable mapping ok:/,
+          /^error details ok:/,
+          /^manifest example consistency ok:/,
+          /^document output mode consistency ok:/,
+          /^markdown links ok:/
+        ]
       },
       {
         id: "workspace-verifier-script-tests",
@@ -111,22 +137,29 @@ export const checks = defineChecks([
         command: "bun",
         args: ["run", "test:workspace-verifier"],
         ignoreOutput: [
-          /^\$ bun test scripts\/docnav-workspace\/verify\.test\.ts scripts\/project-environment\/workspaces\.test\.ts test\/tools\/smoke-harness\.test\.ts test\/smoke\/core\/fixtures\/project\.test\.ts scripts\/tools\/foundation\/test\/foundation\.test\.ts scripts\/tools\/parallel-task-runner\/test\/index\.test\.ts$/,
           ...testRunnerSuccessOutput
         ]
       },
       {
         id: "validator-script-tests",
         label: "validator script tests",
-        tasks: scriptTestChecks([
-          ["case-catalog-validator-tests", "case catalog validator tests", "scripts/tools/validators/case-catalog/index.test.ts"]
-        ])
+        tasks: [
+          {
+            id: "case-catalog-validator-tests",
+            label: "case catalog validator tests",
+            command: "bun",
+            args: ["run", "test:validators"],
+            ignoreOutput: [
+              ...testRunnerSuccessOutput
+            ]
+          }
+        ]
       },
       {
         id: "release-package-script-tests",
         label: "release package script tests",
         command: "bun",
-        args: ["test", "scripts/tools/release-package/args.test.ts"],
+        args: ["run", "test:release-package-scripts"],
         ignoreOutput: [
           ...testRunnerSuccessOutput
         ]
@@ -152,7 +185,6 @@ export const checks = defineChecks([
         command: "bun",
         args: ["run", "quality:test"],
         ignoreOutput: [
-          /^\$ bun test scripts\/tools\/quality-core scripts\/quality\/args\.test\.ts scripts\/quality\/config\.test\.ts scripts\/quality\/annotate\/warnings\.test\.ts$/,
           ...testRunnerSuccessOutput
         ]
       },
@@ -214,6 +246,23 @@ export const checks = defineChecks([
                 ]
               }
             ]
+          },
+          {
+            id: "docnav-development-artifacts-cleanup",
+            label: "docnav development artifacts cleanup",
+            command: "bun",
+            args: [
+              "scripts/docnav-dev/build-bins.ts",
+              "--cleanup",
+              "--output-env-json",
+              DEV_BIN_ENV_FILE,
+              "--copy-to",
+              DEV_BIN_COPY_DIR
+            ],
+            dependsOn: ["docnav-development-smoke-execution"],
+            ignoreOutput: [
+              /^dev binary artifacts cleaned$/
+            ]
           }
         ]
       },
@@ -234,13 +283,7 @@ export const checks = defineChecks([
         args: ["test", "--workspace"],
         mutex: ["cargo-build"],
         ignoreOutput: [
-          ...cargoProgressOutput,
-          /^\s*Running unittests .*$/,
-          /^\s*Running tests[\\/].*$/,
-          /^\s*Doc-tests .*$/,
-          /^running \d+ tests?$/,
-          /^test .* \.\.\. ok$/,
-          /^test result: ok\..*$/
+          ...cargoTestSuccessOutput
         ]
       },
       {
@@ -277,13 +320,7 @@ export const checks = defineChecks([
         ],
         mutex: ["cargo-build"],
         ignoreOutput: [
-          ...cargoProgressOutput,
-          /^\s*Running unittests .*$/,
-          /^\s*Running tests[\\/].*$/,
-          /^\s*Doc-tests .*$/,
-          /^running \d+ tests?$/,
-          /^test .* \.\.\. ok$/,
-          /^test result: ok\..*$/
+          ...cargoTestSuccessOutput
         ]
       },
       {
@@ -300,13 +337,7 @@ export const checks = defineChecks([
         ],
         mutex: ["cargo-build"],
         ignoreOutput: [
-          ...cargoProgressOutput,
-          /^\s*Running unittests .*$/,
-          /^\s*Running tests[\\/].*$/,
-          /^\s*Doc-tests .*$/,
-          /^running \d+ tests?$/,
-          /^test .* \.\.\. ok$/,
-          /^test result: ok\..*$/
+          ...cargoTestSuccessOutput
         ]
       },
       {
@@ -345,68 +376,6 @@ export const checks = defineChecks([
     ]
   }
 ]);
-
-function docsValidatorChecks(): CheckDefinition[] {
-  return [
-    docsValidatorCheck("docs-case-catalog-validator", "docs case catalog validator", "cases", [
-      /^test case catalog ok:/
-    ]),
-    docsValidatorCheck("docs-json-validator", "docs json validator", "json", [
-      /^json syntax ok:/
-    ]),
-    docsValidatorCheck("docs-schema-validator", "docs schema validator", "schema", [
-      /^schema strict compile ok:/,
-      /^schema ok:/,
-      /^protocol response operation\/result binding ok$/,
-      /^protocol response error details shape ok$/,
-      /^readable error details shape ok$/
-    ]),
-    docsValidatorCheck(
-      "docs-example-consistency-validator",
-      "docs example consistency validator",
-      "examples",
-      [
-        /^protocol\/readable mapping ok:/,
-        /^error details ok:/,
-        /^manifest example consistency ok:/,
-        /^document output mode consistency ok:/
-      ]
-    ),
-    docsValidatorCheck("docs-links-validator", "docs links validator", "links", [
-      /^markdown links ok:/
-    ])
-  ];
-}
-
-function docsValidatorCheck(
-  id: string,
-  label: string,
-  target: string,
-  successOutput: readonly RegExp[]
-): CheckDefinition {
-  return {
-    id,
-    label,
-    command: "bun",
-    args: ["run", "validate:docs", target],
-    ignoreOutput: [
-      new RegExp(`^\\$ bun scripts\\/docs\\/validate\\.ts "?${target}"?$`),
-      ...successOutput
-    ]
-  };
-}
-
-function scriptTestChecks(testTargets: readonly [id: string, label: string, targetPath: string][]): CheckDefinition[] {
-  return testTargets.map(([id, label, targetPath]) => ({
-    id,
-    label,
-    command: "bun",
-    args: ["test", targetPath],
-    ignoreOutput: [
-      ...testRunnerSuccessOutput
-    ]
-  }));
-}
 
 function smokeSuccessOutput(title: string, logPath: string): RegExp[] {
   return [

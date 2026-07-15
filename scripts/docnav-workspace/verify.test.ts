@@ -4,11 +4,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { prepareDevBinEnv, type DevBinarySpec } from "../docnav-dev/build-bins.ts";
+import {
+  cleanupDevBinArtifacts,
+  prepareDevBinEnv,
+  type DevBinarySpec
+} from "../docnav-dev/build-bins.ts";
 import {
   PROFILE_FULL,
   PROFILE_REQUIRED,
-  createReportCompletionTracker,
   checks,
   checksForProfile,
   formatCompletionLine,
@@ -17,8 +20,6 @@ import {
   printCompletionResult,
   reportCountForChecks,
   resolveVerificationConcurrency,
-  type CheckResult,
-  visibleOutputForCheck,
   visibleOutputLines
 } from "./verify.ts";
 import { executeCheck } from "./verify/execution.ts";
@@ -67,8 +68,8 @@ describe("workspace verifier configuration", () => {
     );
   });
 
-  it("filters docs schema validator success details", () => {
-    const check = checkByLabel("docs schema validator");
+  it("filters docs validator success details", () => {
+    const check = checkByLabel("docs validators");
 
     assert.deepEqual(visibleOutputLines(check, "readable error details shape ok", "passed"), []);
   });
@@ -117,34 +118,6 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
   });
 
-  it("carries visible child output into report completions", () => {
-    const catalogCheck = checkByLabel("docs case catalog validator");
-    const schemaCheck = checkByLabel("docs schema validator");
-    const completeReport = createReportCompletionTracker([catalogCheck, schemaCheck]);
-
-    assert.equal(
-      completeReport(checkResult(catalogCheck, {
-        stdout: [
-          "test case catalog ok: 70 implemented, 1 planned",
-          "catalog diagnostic"
-        ].join("\n")
-      })),
-      null
-    );
-
-    const report = completeReport(checkResult(schemaCheck, {
-      stderr: [
-        "schema ok: docs/schemas/readable-read.schema.json",
-        "schema diagnostic"
-      ].join("\n")
-    }));
-
-    assert.ok(report);
-    assert.equal(report.check.label, "docs validators");
-    assert.equal(report.visibleOutput, "catalog diagnostic\nschema diagnostic");
-    assert.equal(report.combinedOutput, report.visibleOutput);
-  });
-
   it("prints visible report output immediately after completion lines", () => {
     const lines: string[] = [];
 
@@ -172,8 +145,9 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredLabels.includes("TypeScript script typecheck"));
     assert.ok(requiredLabels.includes("TypeScript script lint"));
     assert.ok(requiredLabels.includes("quality quick check"));
-    assert.ok(requiredLabels.includes("docs case catalog validator"));
-    assert.ok(requiredLabels.includes("docs schema validator"));
+    assert.ok(requiredLabels.includes("docs validators"));
+    assert.ok(!requiredLabels.includes("docs case catalog validator"));
+    assert.ok(!requiredLabels.includes("docs schema validator"));
     assert.ok(requiredLabels.includes("workspace verifier script tests"));
     assert.ok(requiredLabels.includes("case catalog validator tests"));
     assert.ok(requiredLabels.includes("git diff whitespace"));
@@ -241,6 +215,24 @@ describe("workspace verifier configuration", () => {
     }
   });
 
+  it("removes copied development binary artifacts", () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-dev-bins-cleanup-"));
+    try {
+      const copyRoot = path.join(tempRoot, "copies");
+      const envFile = path.join(tempRoot, "dev-bins.json");
+      fs.mkdirSync(path.join(copyRoot, "run-example"), { recursive: true });
+      fs.writeFileSync(envFile, "{}");
+
+      cleanupDevBinArtifacts({ copyTo: copyRoot, outputEnvJson: envFile });
+
+      assert.equal(fs.existsSync(copyRoot), false);
+      assert.equal(fs.existsSync(envFile), false);
+      assert.equal(fs.existsSync(tempRoot), true);
+    } finally {
+      fs.rmSync(tempRoot, { force: true, recursive: true });
+    }
+  });
+
   it("formats completion lines and durations for streaming output", () => {
     assert.equal(formatDurationMs(234), "234ms");
     assert.equal(formatDurationMs(1250), "1.3s");
@@ -288,12 +280,36 @@ describe("workspace verifier configuration", () => {
     assert.equal(result.status, "warning");
   });
 
-  it("counts top-level report groups separately from executable leaf checks", () => {
-    const requiredChecks = checksForProfile(PROFILE_REQUIRED);
+  it("reports environment setup errors as failed check results", async () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-check-setup-error-"));
+    try {
+      const result = await executeCheck({
+        id: "missing-env-file-test",
+        label: "missing env file test",
+        type: PROFILE_REQUIRED,
+        command: "bun",
+        args: ["-e", "process.exit(0)"],
+        dependsOn: [],
+        envFile: path.join(tempRoot, "missing.json"),
+        mutex: [],
+        ignoreOutput: [],
+        warningOutput: []
+      });
 
-    assert.ok(requiredChecks.some((check) => check.label === "docs case catalog validator"));
-    assert.ok(requiredChecks.some((check) => check.label === "docs schema validator"));
-    assert.ok(!requiredChecks.some((check) => check.label === "docs validators"));
+      assert.equal(result.ok, false);
+      assert.equal(result.status, "failed");
+      assert.equal(result.exitCode, 1);
+      assert.match(result.error?.message ?? "", /ENOENT/);
+    } finally {
+      fs.rmSync(tempRoot, { force: true, recursive: true });
+    }
+  });
+
+  it("schedules docs validation through one executable check", () => {
+    const requiredChecks = checksForProfile(PROFILE_REQUIRED);
+    const docsChecks = requiredChecks.filter((check) => check.id.startsWith("docs-"));
+
+    assert.deepEqual(docsChecks.map((check) => check.label), ["docs validators"]);
     assert.equal(reportCountForChecks(requiredChecks), 10);
   });
 
@@ -307,27 +323,4 @@ function checkByLabel(label: string) {
 
 function executableName(binaryName: string): string {
   return process.platform === "win32" ? `${binaryName}.exe` : binaryName;
-}
-
-type TestCheckTask = (typeof checks)[number];
-
-function checkResult(
-  check: TestCheckTask,
-  { stdout = "", stderr = "" }: { stdout?: string; stderr?: string }
-): CheckResult {
-  const combinedOutput = [stdout, stderr].filter(Boolean).join("\n");
-  return {
-    check,
-    ok: true,
-    exitCode: 0,
-    error: null,
-    status: "passed",
-    stdout,
-    stderr,
-    combinedOutput,
-    visibleOutput: visibleOutputForCheck(check, combinedOutput),
-    durationMs: 1,
-    startedAtMs: 1,
-    endedAtMs: 2
-  };
 }

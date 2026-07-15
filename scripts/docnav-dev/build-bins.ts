@@ -19,6 +19,7 @@ const binaries: Array<CargoBinarySpec & { envName: string }> = [
 export type DevBinarySpec = CargoBinarySpec & { envName: string };
 
 type DevBinOptions = {
+  cleanup: boolean;
   copyTo: string | null;
   outputEnvJson: string | null;
   quiet: boolean;
@@ -26,14 +27,20 @@ type DevBinOptions = {
 
 if (isMainModule()) {
   const options = parseArgs(process.argv.slice(2));
-  const env = buildDevBins(options);
+  cleanupDevBinArtifacts(options);
 
-  if (options.outputEnvJson) {
-    const envFile = path.resolve(root, options.outputEnvJson);
-    writeJsonFile(envFile, env);
+  if (options.cleanup) {
+    console.log("dev binary artifacts cleaned");
+  } else {
+    const env = buildDevBins(options);
+
+    if (options.outputEnvJson) {
+      const envFile = path.resolve(root, options.outputEnvJson);
+      writeJsonFile(envFile, env);
+    }
+
+    console.log(`dev binaries ok: ${Object.keys(env).join(", ")}`);
   }
-
-  console.log(`dev binaries ok: ${Object.keys(env).join(", ")}`);
 }
 
 function parseArgs(args: string[]): DevBinOptions {
@@ -41,6 +48,7 @@ function parseArgs(args: string[]): DevBinOptions {
     const parsed = parseScriptArgs({
       args,
       options: {
+        cleanup: { type: "boolean" },
         "copy-to": { type: "string" },
         quiet: { type: "boolean" },
         "output-env-json": { type: "string" }
@@ -48,6 +56,7 @@ function parseArgs(args: string[]): DevBinOptions {
     });
 
     return {
+      cleanup: booleanOption(parsed.values, "cleanup"),
       copyTo: stringOption(parsed.values, "copy-to") ?? null,
       outputEnvJson: stringOption(parsed.values, "output-env-json") ?? null,
       quiet: booleanOption(parsed.values, "quiet")
@@ -90,6 +99,18 @@ export function prepareDevBinEnv({
   );
 }
 
+export function cleanupDevBinArtifacts({
+  copyTo,
+  outputEnvJson
+}: Pick<DevBinOptions, "copyTo" | "outputEnvJson">): void {
+  if (outputEnvJson) {
+    fs.rmSync(path.resolve(root, outputEnvJson), { force: true });
+  }
+  if (copyTo) {
+    fs.rmSync(path.resolve(root, copyTo), { force: true, recursive: true });
+  }
+}
+
 function copyDevBinExecutables(
   binaries: readonly DevBinarySpec[],
   executables: ReadonlyMap<string, string>,
@@ -120,7 +141,7 @@ function executablePathFor(executables: ReadonlyMap<string, string>, binary: Dev
 
 function usage(message: string): never {
   console.error(message);
-  console.error("usage: bun scripts/docnav-dev/build-bins.ts [--quiet] [--output-env-json <path>] [--copy-to <dir>]");
+  console.error("usage: bun scripts/docnav-dev/build-bins.ts [--cleanup] [--quiet] [--output-env-json <path>] [--copy-to <dir>]");
   process.exit(2);
 }
 

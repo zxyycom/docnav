@@ -22,24 +22,38 @@ interface CheckExecutionData {
 
 export async function executeCheck(check: CheckTask): Promise<CheckResult> {
   const startedAtMs = Date.now();
-  const result = await runProcess({
-    args: check.args,
-    command: check.command,
-    cwd: root,
-    env: environmentForCheck(check),
-    maxBuffer: MAX_BUFFER
-  });
-  const failure = processFailureFromResult(result);
-  return buildCheckResult(check, {
-    ok: failure === null,
-    exitCode: failure === null ? 0 : normalizeExitCode(failure),
-    stdout: result.stdout,
-    stderr: result.stderr,
-    error: failure ?? undefined,
-    status: statusForExecution(check, failure === null, result.stdout, result.stderr),
-    startedAtMs,
-    endedAtMs: Date.now()
-  });
+  try {
+    const result = await runProcess({
+      args: check.args,
+      command: check.command,
+      cwd: root,
+      env: environmentForCheck(check),
+      maxBuffer: MAX_BUFFER
+    });
+    const failure = processFailureFromResult(result);
+    return buildCheckResult(check, {
+      ok: failure === null,
+      exitCode: failure === null ? 0 : normalizeExitCode(failure),
+      stdout: result.stdout,
+      stderr: result.stderr,
+      error: failure ?? undefined,
+      status: statusForExecution(check, failure === null, result.stdout, result.stderr),
+      startedAtMs,
+      endedAtMs: Date.now()
+    });
+  } catch (error: unknown) {
+    const failure = processFailure(error);
+    return buildCheckResult(check, {
+      ok: false,
+      exitCode: normalizeExitCode(failure),
+      stdout: "",
+      stderr: failure.message,
+      error: failure,
+      status: "failed",
+      startedAtMs,
+      endedAtMs: Date.now()
+    });
+  }
 }
 
 function buildCheckResult(check: CheckTask, data: CheckExecutionData): CheckResult {
