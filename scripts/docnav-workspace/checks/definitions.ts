@@ -143,16 +143,10 @@ export const checks = defineChecks([
       {
         id: "validator-script-tests",
         label: "validator script tests",
-        tasks: [
-          {
-            id: "case-catalog-validator-tests",
-            label: "case catalog validator tests",
-            command: "bun",
-            args: ["run", "test:validators"],
-            ignoreOutput: [
-              ...testRunnerSuccessOutput
-            ]
-          }
+        command: "bun",
+        args: ["run", "test:validators"],
+        ignoreOutput: [
+          ...testRunnerSuccessOutput
         ]
       },
       {

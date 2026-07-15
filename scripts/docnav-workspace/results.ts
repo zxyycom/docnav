@@ -46,11 +46,15 @@ export function formatDurationMs(durationMs: number): string {
     return `${Math.max(0, Math.round(durationMs))}ms`;
   }
   const totalSeconds = durationMs / 1000;
-  if (totalSeconds < 60) {
-    return `${totalSeconds.toFixed(totalSeconds < 10 ? 1 : 0)}s`;
+  if (totalSeconds < 10) {
+    return `${totalSeconds.toFixed(1)}s`;
   }
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.round(totalSeconds % 60).toString().padStart(2, "0");
+  const roundedSeconds = Math.round(totalSeconds);
+  if (roundedSeconds < 60) {
+    return `${roundedSeconds}s`;
+  }
+  const minutes = Math.floor(roundedSeconds / 60);
+  const seconds = (roundedSeconds % 60).toString().padStart(2, "0");
   return `${minutes}m ${seconds}s`;
 }
 

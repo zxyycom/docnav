@@ -845,7 +845,9 @@ Proves:
 - required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
 - full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
 - completion line 和 summary 可区分 passed、warning 和 failed。
+- completion duration 在秒数进位时输出规范化的分钟与秒，不产生 `60s` 余数。
 - 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
+- check definition normalization 要求 leaf 提供非空 command，并拒绝同时提供 command 和 tasks 的 group。
 
 ```mermaid
 flowchart LR

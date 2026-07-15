@@ -22,12 +22,14 @@ import {
   resolveVerificationConcurrency,
   visibleOutputLines
 } from "./verify.ts";
+import { defineChecks } from "./checks/normalization.ts";
+import type { CheckDefinition } from "./checks/model.ts";
 import { executeCheck } from "./verify/execution.ts";
 
 // @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {
   it("filters successful test runner output from release package script tests", () => {
-    const check = checkByLabel("release package script tests");
+    const check = checkById("release-package-script-tests");
     const output = [
       "bun test v1.3.14 (0d9b296a)",
       "",
@@ -45,7 +47,7 @@ describe("workspace verifier configuration", () => {
   });
 
   it("keeps actionable output after filtering known success noise", () => {
-    const check = checkByLabel("release package script tests");
+    const check = checkById("release-package-script-tests");
     const output = [
       "(pass) package selection accepts a target [0.23ms]",
       "unexpected diagnostic"
@@ -55,8 +57,8 @@ describe("workspace verifier configuration", () => {
   });
 
   it("filters package manager echoes from successful script checks", () => {
-    const typecheck = checkByLabel("TypeScript script typecheck");
-    const lint = checkByLabel("TypeScript script lint");
+    const typecheck = checkById("typecheck-scripts");
+    const lint = checkById("lint-scripts");
 
     assert.deepEqual(visibleOutputLines(typecheck, "$ tsgo -p tsconfig.json"), []);
     assert.deepEqual(
@@ -69,13 +71,13 @@ describe("workspace verifier configuration", () => {
   });
 
   it("filters docs validator success details", () => {
-    const check = checkByLabel("docs validators");
+    const check = checkById("docs-validators");
 
     assert.deepEqual(visibleOutputLines(check, "readable error details shape ok", "passed"), []);
   });
 
   it("filters workspace verifier script test package output", () => {
-    const check = checkByLabel("workspace verifier script tests");
+    const check = checkById("workspace-verifier-script-tests");
     const output = [
       "$ bun test scripts/docnav-workspace/verify.test.ts scripts/project-environment/workspaces.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/foundation/test/foundation.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
       "bun test v1.3.14 (0d9b296a)",
@@ -92,7 +94,7 @@ describe("workspace verifier configuration", () => {
   });
 
   it("filters quality timing details from terminal-visible output", () => {
-    const check = checkByLabel("quality full check");
+    const check = checkById("quality-full-check");
     const output = [
       "Quality verification status: passed",
       "",
@@ -105,7 +107,7 @@ describe("workspace verifier configuration", () => {
   });
 
   it("filters cargo trybuild success noise from successful cargo test output", () => {
-    const check = checkByLabel("cargo test");
+    const check = checkById("cargo-test");
     const output = [
       "running 1 test",
       "test \u001b[0m\u001b[1mtests/ui/field_defs_type_mismatch.rs\u001b[0m ... \u001b[0m\u001b[32mok",
@@ -138,32 +140,32 @@ describe("workspace verifier configuration", () => {
   });
 
   it("separates required and full verification profiles", () => {
-    const requiredLabels = checksForProfile(PROFILE_REQUIRED).map((check) => check.label);
-    const fullLabels = checksForProfile(PROFILE_FULL).map((check) => check.label);
+    const requiredIds = checksForProfile(PROFILE_REQUIRED).map((check) => check.id);
+    const fullIds = checksForProfile(PROFILE_FULL).map((check) => check.id);
 
-    assert.ok(requiredLabels.includes("cargo fmt"));
-    assert.ok(requiredLabels.includes("TypeScript script typecheck"));
-    assert.ok(requiredLabels.includes("TypeScript script lint"));
-    assert.ok(requiredLabels.includes("quality quick check"));
-    assert.ok(requiredLabels.includes("docs validators"));
-    assert.ok(!requiredLabels.includes("docs case catalog validator"));
-    assert.ok(!requiredLabels.includes("docs schema validator"));
-    assert.ok(requiredLabels.includes("workspace verifier script tests"));
-    assert.ok(requiredLabels.includes("case catalog validator tests"));
-    assert.ok(requiredLabels.includes("git diff whitespace"));
-    assert.ok(!requiredLabels.includes("cargo test"));
-    assert.ok(!requiredLabels.includes("quality internal tests"));
-    assert.ok(!requiredLabels.includes("docnav core development smoke"));
+    assert.ok(requiredIds.includes("cargo-fmt"));
+    assert.ok(requiredIds.includes("typecheck-scripts"));
+    assert.ok(requiredIds.includes("lint-scripts"));
+    assert.ok(requiredIds.includes("quality-quick-check"));
+    assert.ok(requiredIds.includes("docs-validators"));
+    assert.ok(!requiredIds.includes("docs-case-catalog-validator"));
+    assert.ok(!requiredIds.includes("docs-schema-validator"));
+    assert.ok(requiredIds.includes("workspace-verifier-script-tests"));
+    assert.ok(requiredIds.includes("validator-script-tests"));
+    assert.ok(requiredIds.includes("git-diff-whitespace"));
+    assert.ok(!requiredIds.includes("cargo-test"));
+    assert.ok(!requiredIds.includes("quality-internal-tests"));
+    assert.ok(!requiredIds.includes("docnav-core-development-smoke"));
 
-    assert.ok(fullLabels.includes("cargo fmt"));
-    assert.ok(!fullLabels.includes("quality quick check"));
-    assert.ok(fullLabels.includes("quality full check"));
-    assert.ok(fullLabels.includes("quality internal tests"));
-    assert.ok(!fullLabels.includes("quality report tests"));
-    assert.ok(fullLabels.includes("cargo test"));
-    assert.ok(fullLabels.includes("docnav development binaries"));
-    assert.ok(fullLabels.includes("docnav core development smoke"));
-    assert.ok(fullLabels.includes("openspec"));
+    assert.ok(fullIds.includes("cargo-fmt"));
+    assert.ok(!fullIds.includes("quality-quick-check"));
+    assert.ok(fullIds.includes("quality-full-check"));
+    assert.ok(fullIds.includes("quality-internal-tests"));
+    assert.ok(!fullIds.includes("quality-report-tests"));
+    assert.ok(fullIds.includes("cargo-test"));
+    assert.ok(fullIds.includes("docnav-development-binaries"));
+    assert.ok(fullIds.includes("docnav-core-development-smoke"));
+    assert.ok(fullIds.includes("openspec"));
   });
 
   it("parses verification profile arguments", () => {
@@ -237,6 +239,8 @@ describe("workspace verifier configuration", () => {
     assert.equal(formatDurationMs(234), "234ms");
     assert.equal(formatDurationMs(1250), "1.3s");
     assert.equal(formatDurationMs(65_000), "1m 05s");
+    assert.equal(formatDurationMs(59_800), "1m 00s");
+    assert.equal(formatDurationMs(119_800), "2m 00s");
     assert.equal(
       formatCompletionLine({
         status: "passed",
@@ -305,19 +309,36 @@ describe("workspace verifier configuration", () => {
     }
   });
 
+  it("rejects invalid leaf and group check definitions", () => {
+    const missingCommand = { id: "missing-command" } as unknown as CheckDefinition;
+    assert.throws(
+      () => defineChecks([missingCommand]),
+      /check missing-command leaf must define a non-empty command/
+    );
+
+    const groupWithCommand = {
+      id: "group-with-command",
+      command: "bun",
+      tasks: [{ id: "child", command: "bun" }]
+    } as unknown as CheckDefinition;
+    assert.throws(
+      () => defineChecks([groupWithCommand]),
+      /check group-with-command group must not define command/
+    );
+  });
+
   it("schedules docs validation through one executable check", () => {
     const requiredChecks = checksForProfile(PROFILE_REQUIRED);
     const docsChecks = requiredChecks.filter((check) => check.id.startsWith("docs-"));
 
-    assert.deepEqual(docsChecks.map((check) => check.label), ["docs validators"]);
+    assert.deepEqual(docsChecks.map((check) => check.id), ["docs-validators"]);
     assert.equal(reportCountForChecks(requiredChecks), 10);
   });
-
 });
 
-function checkByLabel(label: string) {
-  const check = checks.find((candidate) => candidate.label === label);
-  assert.ok(check, `expected check ${label}`);
+function checkById(id: string) {
+  const check = checks.find((candidate) => candidate.id === id);
+  assert.ok(check, `expected check ${id}`);
   return check;
 }
 
