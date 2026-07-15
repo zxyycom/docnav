@@ -2,29 +2,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { errorMessage } from "../tools/foundation/src/errors.ts";
-import { parseArgs, resolveVerificationConcurrency } from "./verify/args.ts";
+import { parseArgs } from "./verify/args.ts";
 import { printUsage } from "./verify/output.ts";
 import { runVerification } from "./verify/runner.ts";
-
-export {
-  PROFILE_FULL,
-  PROFILE_REQUIRED,
-  checks,
-  checksForProfile,
-  profiles,
-  reportCountForChecks,
-  visibleOutputLines,
-  isIgnoredOutput
-} from "./checks/index.ts";
-export {
-  createReportCompletionTracker,
-  formatCompletionLine,
-  formatDurationMs,
-  visibleOutputForCheck
-} from "./results.ts";
-export type { CheckResult, CompletionResult } from "./results.ts";
-export { parseArgs, resolveVerificationConcurrency };
-export { printCompletionResult } from "./verify/output.ts";
 
 if (isMainModule()) {
   void main();

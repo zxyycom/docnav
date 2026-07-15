@@ -13,17 +13,15 @@ import {
   PROFILE_REQUIRED,
   checks,
   checksForProfile,
-  formatCompletionLine,
-  formatDurationMs,
-  parseArgs,
-  printCompletionResult,
   reportCountForChecks,
-  resolveVerificationConcurrency,
   visibleOutputLines
-} from "./verify.ts";
-import { defineChecks } from "./checks/normalization.ts";
+} from "./checks/index.ts";
 import type { CheckDefinition } from "./checks/model.ts";
+import { defineChecks } from "./checks/normalization.ts";
+import { formatCompletionLine, formatDurationMs } from "./results.ts";
+import { parseArgs, resolveVerificationConcurrency } from "./verify/args.ts";
 import { executeCheck } from "./verify/execution.ts";
+import { printCompletionResult } from "./verify/output.ts";
 
 // @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {

@@ -15,10 +15,6 @@ import { errorMessage } from "../tools/foundation/src/errors.ts";
 import { renderGithubAnnotations } from "./annotate/github.ts";
 import { parseWarningsNdjson, selectAnnotationWarnings } from "./annotate/warnings.ts";
 
-export { renderGithubAnnotations } from "./annotate/github.ts";
-export { parseWarningsNdjson } from "./annotate/warnings.ts";
-export type { RenderableWarning } from "./annotate/warnings.ts";
-
 function main() {
   const warningsPath = process.argv[2] || "artifacts/docnav-quality/warnings-all.ndjson";
   const limit = parseAnnotationLimit(process.argv[3] ?? "5");
