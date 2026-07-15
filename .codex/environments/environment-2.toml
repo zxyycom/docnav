@@ -5,10 +5,8 @@ name = "clear"
 [setup]
 script = '''
 cd "$CODEX_WORKTREE_PATH"
-git submodule update --init --recursive
-pnpm install --frozen-lockfile
 git restore --staged --worktree .
 git clean -fd
-codegraph init
+bun run env:setup
 bun run verify:docnav-workspace
 '''

@@ -5,8 +5,6 @@ name = "docnav"
 [setup]
 script = '''
 cd "$CODEX_WORKTREE_PATH"
-git submodule update --init --recursive
-pnpm install --frozen-lockfile
-codegraph init
+bun run env:setup
 bun run verify:docnav-workspace
 '''
