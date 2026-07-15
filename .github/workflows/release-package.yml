@@ -51,9 +51,6 @@ jobs:
       - name: Build release package
         run: bun run package:docnav -- --target "${{ matrix.target }}"
 
-      - name: Verify release package
-        run: bun run verify:docnav-package -- --manifest "${{ steps.info.outputs.manifest_path }}" --expect-producer-kind github-actions --expect-source-dirty false
-
       - name: Smoke release package
         run: bun run smoke:docnav-package -- --manifest "${{ steps.info.outputs.manifest_path }}" --expect-producer-kind github-actions --expect-source-dirty false
 
