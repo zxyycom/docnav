@@ -1,27 +1,15 @@
 import { runProcessSync } from "../tools/foundation/src/process.ts";
 
-const binaries = new Map([
-  ["docnav", process.env.DOCNAV_BIN],
-]);
-const args = process.argv.slice(2);
-
-if (args.length === 0) {
-  for (const [name, binaryPath] of binaries) {
-    assertBinaryPath(name, binaryPath);
-    console.log(`${name}: ${binaryPath}`);
-  }
-  process.exit(0);
+const binaryPath = process.env.DOCNAV_BIN;
+if (!binaryPath) {
+  console.error("docnav binary path is unavailable");
+  process.exit(1);
 }
 
-const firstArg = args[0];
-const requestedBinary: string = firstArg && binaries.has(firstArg) ? args.shift()! : "docnav";
-const binaryPath = binaries.get(requestedBinary);
-assertBinaryPath(requestedBinary, binaryPath);
-
-const result = runProcessSync(binaryPath, args, {
+const result = runProcessSync(binaryPath, process.argv.slice(2), {
   cwd: process.cwd(),
   env: process.env,
-  stdio: "inherit",
+  stdio: "inherit"
 });
 
 if (result.error) {
@@ -30,10 +18,3 @@ if (result.error) {
 }
 
 process.exit(result.status ?? 1);
-
-function assertBinaryPath(name: string, binaryPath: string | undefined): asserts binaryPath is string {
-  if (!binaryPath) {
-    console.error(`${name} binary path is unavailable`);
-    process.exit(1);
-  }
-}
