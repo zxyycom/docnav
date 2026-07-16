@@ -2,7 +2,7 @@
 
 Framework-independent source extraction and resolution for canonical Rust CLI/config parameters.
 `docnav-typed-fields::FieldDef` and `FieldDefSet` remain the single parameter model; this crate
-re-exports them as well as the stateless `Parameter` and `ParameterSet` aliases.
+re-exports them alongside source extraction and resolution functions.
 
 The companion packages live beside this crate under `crates/shared` and participate in Docnav's
 root Rust workspace.
@@ -11,13 +11,13 @@ root Rust workspace.
 
 ```rust
 use cli_config_resolution::{
-    extract_env, ExpectedFieldShape, FieldValidation, Parameter, ParameterSet, ProcessStrategy,
-    ProcessingId, Resolver, SourceId, TypedValue,
+    extract_env, resolve, ExpectedFieldShape, FieldDef, FieldDefSet, FieldValidation,
+    ProcessStrategy, ProcessingId, SourceId, TypedValue,
 };
 
-let parameters = ParameterSet::builder()
+let parameters = FieldDefSet::builder()
     .field(
-        Parameter::builder("limit")
+        FieldDef::builder("limit")
             .process("env", ProcessStrategy::env_var("APP_LIMIT"))
             .validation(FieldValidation::int())
             .default_static(20),
@@ -34,7 +34,7 @@ let env = extract_env(
     [("APP_LIMIT", "42")],
 )
 .expect("environment source");
-let result = Resolver::resolve(&parameters, &[env]).expect("valid resolver input");
+let result = resolve(&parameters, &[env]).expect("valid resolver input");
 let values = result.materialize().expect("valid configuration");
 
 assert_eq!(

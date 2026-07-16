@@ -1,7 +1,7 @@
 use cli_config_resolution::{
-    CandidateInvalidReason, DiagnosticReason, FieldDefSet, FieldPath, ProcessingId,
-    ProcessingLocator, ResolutionDiagnostic, ResolutionResult, Resolver, Source, SourceCandidate,
-    SourceId, SourceKind, SourceLocator,
+    resolve as resolve_fields, CandidateInvalidReason, DiagnosticReason, FieldDefSet, FieldPath,
+    ProcessingId, ProcessingLocator, ResolutionDiagnostic, ResolutionResult, Source,
+    SourceCandidate, SourceId, SourceKind, SourceLocator,
 };
 use cli_config_resolution_serde::extract_config;
 use docnav_diagnostics::{
@@ -44,7 +44,7 @@ pub(super) fn resolve(
         sources.push(config_source(user, fields, USER_SOURCE_ID, USER_PRIORITY)?);
     }
 
-    Resolver::resolve(fields, &sources)
+    resolve_fields(fields, &sources)
         .map_err(|_| NavigationError::internal("cli-config-resolution-input-invalid"))
 }
 

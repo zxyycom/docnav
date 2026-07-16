@@ -19,13 +19,10 @@ pub use docnav_typed_fields::{
     ValueKind,
 };
 pub use resolution::{
-    CandidateTrace, FieldResolution, FieldTrace, MaterializationError, ResolutionInputError,
-    ResolutionResult, Resolver,
+    resolve, CandidateTrace, FieldResolution, FieldTrace, MaterializationError,
+    ResolutionInputError, ResolutionResult,
 };
 pub use source::{
     extract_env, CandidateInput, Source, SourceCandidate, SourceError, SourceId, SourceKind,
     SourceLocator,
 };
-
-pub type Parameter = FieldDef;
-pub type ParameterSet = FieldDefSet;

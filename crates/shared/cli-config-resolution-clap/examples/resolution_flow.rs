@@ -2,8 +2,9 @@ use std::error::Error;
 
 use clap::Command;
 use cli_config_resolution::{
-    extract_env, FieldBound, FieldDef, FieldDefSet, FieldIdentity, FieldLength, FieldValidation,
-    MergeStrategy, ProcessStrategy, ProcessingId, ResolutionResult, Resolver, SourceId, SourceKind,
+    extract_env, resolve, FieldBound, FieldDef, FieldDefSet, FieldIdentity, FieldLength,
+    FieldValidation, MergeStrategy, ProcessStrategy, ProcessingId, ResolutionResult, SourceId,
+    SourceKind,
 };
 use cli_config_resolution_clap::{augment_command, extract_cli};
 use cli_config_resolution_serde::extract_config;
@@ -216,7 +217,7 @@ fn resolve_flow(
         vec![10, 20, 30],
         "priority increases from config to env to CLI",
     );
-    Resolver::resolve(fields, &sources).map_err(Into::into)
+    resolve(fields, &sources).map_err(Into::into)
 }
 
 #[cfg(test)]

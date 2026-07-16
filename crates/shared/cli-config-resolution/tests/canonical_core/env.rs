@@ -1,7 +1,7 @@
 use cli_config_resolution::{
-    extract_env, CandidateInput, CandidateInvalidReason, DiagnosticReason, ExpectedFieldShape,
-    FieldDef, FieldDefSet, FieldValidation, JsonValue, ProcessStrategy, ProcessingId, Resolver,
-    SourceId, SourceKind, SourceLocator,
+    extract_env, resolve, CandidateInput, CandidateInvalidReason, DiagnosticReason,
+    ExpectedFieldShape, FieldDef, FieldDefSet, FieldValidation, JsonValue, ProcessStrategy,
+    ProcessingId, SourceId, SourceKind, SourceLocator,
 };
 use serde_json::json;
 
@@ -71,7 +71,7 @@ fn selected_invalid_env_value_preserves_diagnostic_facts() {
     )
     .expect("env extraction");
 
-    let result = Resolver::resolve(&fields, &[env]).expect("valid resolver input");
+    let result = resolve(&fields, &[env]).expect("valid resolver input");
     let error = result
         .materialize()
         .expect_err("selected invalid env blocks");

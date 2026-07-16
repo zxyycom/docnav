@@ -1,5 +1,5 @@
 use cli_config_resolution::{
-    Resolver, Source, SourceCandidate, SourceId, SourceKind, SourceLocator, TypedValue,
+    resolve, Source, SourceCandidate, SourceId, SourceKind, SourceLocator, TypedValue,
 };
 use serde_json::json;
 
@@ -7,7 +7,7 @@ use crate::support::{identity, mode_field_set};
 
 #[test]
 fn static_default_fills_a_missing_source_value() {
-    let defaults = Resolver::resolve(&mode_field_set(), &[]).expect("valid input");
+    let defaults = resolve(&mode_field_set(), &[]).expect("valid input");
     assert_eq!(
         defaults.materialize().expect("static default")[&identity("mode")],
         TypedValue::String("default".to_owned())
@@ -38,8 +38,7 @@ fn dynamic_default_remains_an_observable_source_fact() {
         )],
     )
     .expect("dynamic default source");
-    let dynamic =
-        Resolver::resolve(&fields, &[dynamic_default]).expect("valid dynamic default input");
+    let dynamic = resolve(&fields, &[dynamic_default]).expect("valid dynamic default input");
     assert_eq!(
         dynamic.materialize().expect("dynamic default")[&identity("mode")],
         TypedValue::String("dynamic".to_owned())

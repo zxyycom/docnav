@@ -1,6 +1,6 @@
 use cli_config_resolution::{
-    CandidateInvalidReason, DiagnosticReason, ExpectedFieldShape, FieldDef, FieldDefSet,
-    FieldValidation, MergeStrategy, ProcessStrategy, Resolver, SourceId, SourceLocator, TypedValue,
+    resolve, CandidateInvalidReason, DiagnosticReason, ExpectedFieldShape, FieldDef, FieldDefSet,
+    FieldValidation, MergeStrategy, ProcessStrategy, SourceId, SourceLocator, TypedValue,
 };
 use serde_json::json;
 
@@ -15,8 +15,7 @@ fn overridden_invalid_candidate_is_trace_only() {
         [invalid_candidate("mode", json!("bad"), "cannot decode")],
     );
     let valid_high = source("valid-high", 20, [candidate("mode", json!("ok"))]);
-    let result =
-        Resolver::resolve(&replace_fields, &[invalid_low, valid_high]).expect("valid input");
+    let result = resolve(&replace_fields, &[invalid_low, valid_high]).expect("valid input");
     assert_eq!(
         result
             .materialize()
@@ -39,8 +38,7 @@ fn selected_invalid_candidate_blocks_materialization() {
         20,
         [invalid_candidate("mode", json!("bad"), "cannot decode")],
     );
-    let result =
-        Resolver::resolve(&replace_fields, &[valid_low, invalid_high]).expect("valid input");
+    let result = resolve(&replace_fields, &[valid_low, invalid_high]).expect("valid input");
     assert!(result.materialize().is_err());
     assert_eq!(
         result
@@ -73,7 +71,7 @@ fn invalid_append_contributor_blocks_with_observable_provenance() {
         20,
         [invalid_candidate("items", json!("bad"), "not an array")],
     );
-    let result = Resolver::resolve(&append_fields, &[valid, invalid]).expect("valid input");
+    let result = resolve(&append_fields, &[valid, invalid]).expect("valid input");
     assert!(result.materialize().is_err());
     let trace = result.trace(&identity("items")).expect("trace");
     let invalid_contributor = trace

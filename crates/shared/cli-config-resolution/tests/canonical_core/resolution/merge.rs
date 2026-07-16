@@ -1,7 +1,7 @@
 use cli_config_resolution::{
-    DiagnosticReason, ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldLength,
-    FieldValidation, MergeStrategy, ProcessStrategy, Resolver, Source, SourceCandidate, SourceId,
-    SourceKind, SourceLocator, TypedValue,
+    resolve, DiagnosticReason, ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldLength,
+    FieldValidation, MergeStrategy, ProcessStrategy, Source, SourceCandidate, SourceId, SourceKind,
+    SourceLocator, TypedValue,
 };
 use serde_json::json;
 
@@ -15,8 +15,8 @@ fn append_merge_preserves_source_order_and_provenance() {
         source("same-earlier", 20, [candidate("items", json!(["earlier"]))]);
     let same_priority_later = source("same-later", 20, [candidate("items", json!(["later"]))]);
 
-    let result = Resolver::resolve(&fields, &[low, same_priority_earlier, same_priority_later])
-        .expect("valid input");
+    let result =
+        resolve(&fields, &[low, same_priority_earlier, same_priority_later]).expect("valid input");
     let values = result.materialize().expect("valid merge");
     assert_eq!(
         values[&identity("items")],
@@ -51,7 +51,7 @@ fn append_applies_canonical_constraints_only_after_merging_contributors() {
     let low = source("low", 10, [candidate("items", json!(["low"]))]);
     let high = source("high", 20, [candidate("items", json!(["high"]))]);
 
-    let result = Resolver::resolve(&fields, &[low, high]).expect("valid input");
+    let result = resolve(&fields, &[low, high]).expect("valid input");
 
     assert_eq!(
         result
@@ -71,7 +71,7 @@ fn merged_value_is_revalidated() {
     let low = source("low", 10, [candidate("items", json!(["same"]))]);
     let high = source("high", 20, [candidate("items", json!(["same"]))]);
 
-    let result = Resolver::resolve(&fields, &[low, high]).expect("valid input");
+    let result = resolve(&fields, &[low, high]).expect("valid input");
     assert!(result.materialize().is_err());
     assert!(result.diagnostics().iter().any(|diagnostic| {
         diagnostic.field.as_str() == "items"
@@ -109,7 +109,7 @@ fn deny_conflict_reports_all_source_locators() {
     )
     .expect("high source");
 
-    let result = Resolver::resolve(&fields, &[low, high]).expect("valid input");
+    let result = resolve(&fields, &[low, high]).expect("valid input");
     assert!(result.materialize().is_err());
     let conflict = result
         .diagnostics()
@@ -142,7 +142,7 @@ fn map_merge_preserves_source_order() {
         [candidate("map", json!({"same": "high", "high": true}))],
     );
 
-    let values = Resolver::resolve(&fields, &[low, high])
+    let values = resolve(&fields, &[low, high])
         .expect("valid input")
         .materialize()
         .expect("valid map merge");
@@ -165,7 +165,7 @@ fn deny_conflict_accepts_equal_values() {
     let low = source("low", 10, [candidate("mode", json!("same"))]);
     let high = source("high", 20, [candidate("mode", json!("same"))]);
 
-    let values = Resolver::resolve(&fields, &[low, high])
+    let values = resolve(&fields, &[low, high])
         .expect("valid input")
         .materialize()
         .expect("equal values do not conflict");

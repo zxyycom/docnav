@@ -1,7 +1,7 @@
 use cli_config_resolution::{
-    extract_env, DefaultMetadata, ExpectedFieldShape, FieldBound, FieldDef, FieldLength,
-    FieldStringEnum, FieldValidation, JsonValue, MergeStrategy, Parameter, ParameterSet,
-    ProcessStrategy, ProcessingId, Resolver, SourceId, TypedValue,
+    extract_env, resolve, DefaultMetadata, ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet,
+    FieldLength, FieldStringEnum, FieldValidation, JsonValue, MergeStrategy, ProcessStrategy,
+    ProcessingId, SourceId, TypedValue,
 };
 use serde_json::json;
 
@@ -28,9 +28,9 @@ impl FieldStringEnum for FacadeMode {
 
 #[test]
 fn primary_facade_builds_constrained_canonical_parameters() {
-    let parameters = ParameterSet::builder()
+    let parameters = FieldDefSet::builder()
         .field(
-            Parameter::builder("items")
+            FieldDef::builder("items")
                 .process("env", ProcessStrategy::env_var("APP_ITEMS"))
                 .validation(FieldValidation::array().length(FieldLength::between(
                     FieldBound::closed(1),
@@ -41,7 +41,7 @@ fn primary_facade_builds_constrained_canonical_parameters() {
             ExpectedFieldShape::optional(),
         )
         .field(
-            Parameter::builder("mode")
+            FieldDef::builder("mode")
                 .process("env", ProcessStrategy::env_var("APP_MODE"))
                 .validation(FieldValidation::string_enum::<FacadeMode>())
                 .default_static(FacadeMode::Readable),
@@ -68,9 +68,9 @@ fn primary_facade_builds_constrained_canonical_parameters() {
 
 #[test]
 fn canonical_parameter_set_drives_env_resolution() {
-    let canonical = ParameterSet::builder()
+    let canonical = FieldDefSet::builder()
         .field(
-            Parameter::builder("limit")
+            FieldDef::builder("limit")
                 .process("env", ProcessStrategy::env_var("APP_LIMIT"))
                 .validation(FieldValidation::int())
                 .default_static(20),
@@ -79,10 +79,6 @@ fn canonical_parameter_set_drives_env_resolution() {
         .build()
         .expect("canonical definitions");
     let _: &FieldDef = canonical.field(&identity("limit")).expect("parameter");
-    let _: &Parameter = canonical
-        .field(&identity("limit"))
-        .expect("parameter alias");
-
     let env = extract_env(
         &canonical,
         &ProcessingId::new("env").expect("valid processing id"),
@@ -91,7 +87,7 @@ fn canonical_parameter_set_drives_env_resolution() {
         [("APP_LIMIT".to_owned(), "42".to_owned())],
     )
     .expect("env source");
-    let result = Resolver::resolve(&canonical, &[env]).expect("valid resolver input");
+    let result = resolve(&canonical, &[env]).expect("valid resolver input");
 
     assert_eq!(
         result.materialize().expect("canonical values")[&identity("limit")],

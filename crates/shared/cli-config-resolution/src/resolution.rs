@@ -173,45 +173,41 @@ impl fmt::Display for ResolutionInputError {
 
 impl std::error::Error for ResolutionInputError {}
 
-pub struct Resolver;
-
-impl Resolver {
-    pub fn resolve(
-        fields: &FieldDefSet,
-        sources: &[Source],
-    ) -> Result<ResolutionResult, ResolutionInputError> {
-        let mut source_ids = BTreeSet::new();
-        let mut by_field = BTreeMap::<FieldIdentity, Vec<EffectiveCandidate>>::new();
-        for (source_order, source) in sources.iter().enumerate() {
-            if !source_ids.insert(source.id().clone()) {
-                return Err(ResolutionInputError::DuplicateSourceId(source.id().clone()));
-            }
-            for candidate in source.candidates() {
-                if fields.field(candidate.field()).is_none() {
-                    return Err(ResolutionInputError::UnknownField {
-                        source_id: source.id().clone(),
-                        field: candidate.field().clone(),
-                    });
-                }
-                by_field.entry(candidate.field().clone()).or_default().push(
-                    EffectiveCandidate::from_source(source, source_order, candidate),
-                );
-            }
+pub fn resolve(
+    fields: &FieldDefSet,
+    sources: &[Source],
+) -> Result<ResolutionResult, ResolutionInputError> {
+    let mut source_ids = BTreeSet::new();
+    let mut by_field = BTreeMap::<FieldIdentity, Vec<EffectiveCandidate>>::new();
+    for (source_order, source) in sources.iter().enumerate() {
+        if !source_ids.insert(source.id().clone()) {
+            return Err(ResolutionInputError::DuplicateSourceId(source.id().clone()));
         }
-
-        let mut diagnostics = Vec::new();
-        let mut resolved = BTreeMap::new();
-        for metadata in fields.schema_metadata() {
-            let field = fields
-                .field(&metadata.identity)
-                .expect("schema metadata belongs to the canonical field set");
-            let candidates = by_field.remove(&metadata.identity).unwrap_or_default();
-            let resolution = resolve_field(field, &metadata, candidates, &mut diagnostics);
-            resolved.insert(metadata.identity, resolution);
+        for candidate in source.candidates() {
+            if fields.field(candidate.field()).is_none() {
+                return Err(ResolutionInputError::UnknownField {
+                    source_id: source.id().clone(),
+                    field: candidate.field().clone(),
+                });
+            }
+            by_field.entry(candidate.field().clone()).or_default().push(
+                EffectiveCandidate::from_source(source, source_order, candidate),
+            );
         }
-        Ok(ResolutionResult {
-            fields: resolved,
-            diagnostics,
-        })
     }
+
+    let mut diagnostics = Vec::new();
+    let mut resolved = BTreeMap::new();
+    for metadata in fields.schema_metadata() {
+        let field = fields
+            .field(&metadata.identity)
+            .expect("schema metadata belongs to the canonical field set");
+        let candidates = by_field.remove(&metadata.identity).unwrap_or_default();
+        let resolution = resolve_field(field, &metadata, candidates, &mut diagnostics);
+        resolved.insert(metadata.identity, resolution);
+    }
+    Ok(ResolutionResult {
+        fields: resolved,
+        diagnostics,
+    })
 }

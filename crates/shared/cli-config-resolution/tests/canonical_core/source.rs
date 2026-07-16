@@ -1,5 +1,5 @@
 use cli_config_resolution::{
-    ResolutionInputError, Resolver, Source, SourceCandidate, SourceId, SourceKind, SourceLocator,
+    resolve, ResolutionInputError, Source, SourceCandidate, SourceId, SourceKind, SourceLocator,
 };
 use serde_json::json;
 
@@ -25,7 +25,7 @@ fn resolver_rejects_an_unknown_field_candidate() {
     let fields = custom_field_set("required", true);
     let unknown = source("custom", 10, [candidate("unknown", json!("value"))]);
     assert!(matches!(
-        Resolver::resolve(&fields, &[unknown]),
+        resolve(&fields, &[unknown]),
         Err(ResolutionInputError::UnknownField { .. })
     ));
 }
