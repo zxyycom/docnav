@@ -1,0 +1,12 @@
+[package]
+name = "cli-config-resolution-serde"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "serde_json config integration for cli-config-resolution"
+readme = "README.md"
+
+[dependencies]
+cli-config-resolution.workspace = true
+serde_json.workspace = true
