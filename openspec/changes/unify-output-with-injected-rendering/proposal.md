@@ -32,5 +32,5 @@
 
 - 影响 `docnav-output`、默认 readable renderer、core CLI output field/composition、primary diagnostic projection 和相关 tests。
 - 影响 `docs/output.md`、`docs/cli.md`、对应 schema/example/fixture/golden 索引以及 invocation logging、release smoke 和 workspace validation。
-- `derive-cli-from-field-definitions`、`interactive-outline-selection`、`implement-docnav-mcp-bridge`、`add-outline-preview-skim-pack`、`add-obvious-result-auto-read` 和 `explore-operation-composition` 含有旧三模式假设，实现前需要重基或暂停。
+- `derive-document-cli-options-from-fields` 只投影 canonical output field，本 change 只修改该 field 的 owner facts；两者无实施顺序依赖，后合并的一方按当前 declaration 处理普通代码冲突。`interactive-outline-selection`、`implement-docnav-mcp-bridge`、`add-outline-preview-skim-pack`、`add-obvious-result-auto-read` 和 `explore-operation-composition` 含有旧三模式假设，实现前需要重基或暂停。
 - `protocol-contract`、adapter operation contract、ref、pagination、routing 和 parsing ownership 保持不变。

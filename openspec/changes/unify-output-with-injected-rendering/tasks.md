@@ -6,7 +6,7 @@
 - [ ] 1.2 审计 owner 边界：output composition 注入 renderer，adapter/navigation 只产出 outcome，core/CLI 只选择 mode 和映射 process behavior。
 - [ ] 1.3 审计 `RenderInput` 未形成 serialized shadow contract，`ProtocolJson` 完全绕过 renderer，renderer failure 无 partial stdout 或隐式 renderer 切换。
 - [ ] 1.4 确认当前 change 只包含未审核临时 artifacts，旧 `add-adapter-readable-view-rendering` 已删除，主 specs、docs、schema、examples 和实现尚未在提案阶段修改。
-- [ ] 1.5 重基或暂停 `derive-cli-from-field-definitions`、`interactive-outline-selection`、`implement-docnav-mcp-bridge`、`add-outline-preview-skim-pack`、`add-obvious-result-auto-read` 和 `explore-operation-composition` 中的旧三模式假设。
+- [ ] 1.5 与 `derive-document-cli-options-from-fields` 保持 owner 边界：本 change 修改 canonical output field facts，对方只投影这些 facts；两者不建立实施顺序门禁，后合并的一方处理普通代码冲突。重基或暂停 `interactive-outline-selection`、`implement-docnav-mcp-bridge`、`add-outline-preview-skim-pack`、`add-obvious-result-auto-read` 和 `explore-operation-composition` 中的旧三模式假设。
 - [ ] 1.6 确认 capability mapping 完整、`## Open Questions` 无待确认项；1.1-1.5 完成前不得执行后续实现任务。
 
 ## 2. Owner 文档与验证材料
