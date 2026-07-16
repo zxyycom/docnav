@@ -1,12 +1,9 @@
-use std::num::NonZeroU32;
-
 use clap::parser::{ArgMatches, ValueSource};
 use docnav_cli_args::{KnownValueFlag as BoundaryKnownValueFlag, MissingValue, RejectedArg};
-use docnav_protocol::PositiveInteger;
 
 use crate::error::{AppError, AppResult};
 
-use super::super::command_model::{ConfigPathArgs, OutputMode};
+use super::super::command_model::ConfigPathArgs;
 use super::super::flags;
 use super::arg_ids;
 
@@ -48,7 +45,6 @@ const UNKNOWN_ARGUMENT: &str = "unknown_argument";
 const EXTRA_POSITIONAL: &str = "extra_positional";
 const UNSUPPORTED_ARGUMENT: &str = "unsupported_argument";
 const MISSING_VALUE: &str = "missing_value";
-const INVALID_VALUE: &str = "invalid_value";
 
 pub(super) fn boundary_value_flags(
     uses_flag: impl Fn(ValueFlag) -> bool,
@@ -60,25 +56,6 @@ pub(super) fn boundary_value_flags(
             used: uses_flag(*value_flag),
         })
         .collect()
-}
-
-pub(super) fn known_value_flag(token: &str) -> Option<ValueFlag> {
-    let (flag, _value) = split_equals(token);
-    match flag {
-        flags::ADAPTER => Some(ValueFlag::Adapter),
-        flags::INVOCATION_LOG => Some(ValueFlag::InvocationLog),
-        flags::INVOCATION_LOG_CONTENT_ROOT => Some(ValueFlag::InvocationLogContentRoot),
-        flags::LIMIT => Some(ValueFlag::Limit),
-        flags::OUTPUT => Some(ValueFlag::Output),
-        flags::PAGE => Some(ValueFlag::Page),
-        flags::PAGINATION => Some(ValueFlag::Pagination),
-        flags::PATH => Some(ValueFlag::Path),
-        flags::PROJECT_CONFIG => Some(ValueFlag::ProjectConfig),
-        flags::QUERY => Some(ValueFlag::Query),
-        flags::REF => Some(ValueFlag::Ref),
-        flags::USER_CONFIG => Some(ValueFlag::UserConfig),
-        _ => None,
-    }
 }
 
 pub(super) fn error_from_rejected_arg(rejected: RejectedArg) -> AppError {
@@ -129,42 +106,6 @@ pub(super) fn missing_value_flag_error(flag: &str) -> AppError {
         [format!("{flag} <value>"), format!("{flag}=<value>")],
         [format!(
             "Provide a value after {flag} or use {flag}=<value>."
-        )],
-    )
-}
-
-pub(super) fn invalid_value_error(
-    field: impl Into<String>,
-    received: impl Into<String>,
-    accepted: impl IntoIterator<Item = impl Into<String>>,
-    guidance: impl IntoIterator<Item = impl Into<String>>,
-) -> AppError {
-    AppError::invalid_request_with_input_context(
-        field,
-        INVALID_VALUE,
-        Some(received.into()),
-        accepted,
-        guidance,
-    )
-}
-
-pub(super) fn invalid_positive_value_error(flag: &str, value: &str) -> AppError {
-    invalid_value_error(
-        flag,
-        value,
-        ["positive integer"],
-        [format!("Provide a positive integer value for {flag}.")],
-    )
-}
-
-pub(super) fn invalid_output_value_error(value: &str) -> AppError {
-    invalid_value_error(
-        flags::OUTPUT,
-        value,
-        OutputMode::ACCEPTED_VALUES.iter().copied(),
-        [format!(
-            "Use one of these output modes: {}.",
-            OutputMode::ACCEPTED_VALUES.join(", ")
         )],
     )
 }
@@ -243,34 +184,4 @@ pub(super) fn project_config_path_args(matches: &ArgMatches) -> ConfigPathArgs {
         project_config: optional_explicit_string(matches, arg_ids::PROJECT_CONFIG),
         user_config: None,
     }
-}
-
-pub(super) fn optional_explicit_output(matches: &ArgMatches) -> AppResult<Option<OutputMode>> {
-    optional_explicit_string(matches, arg_ids::OUTPUT)
-        .map(|value| {
-            value
-                .parse()
-                .map_err(|_reason: String| invalid_output_value_error(&value))
-        })
-        .transpose()
-}
-
-pub(super) fn optional_explicit_positive(
-    matches: &ArgMatches,
-    id: &str,
-    flag: &str,
-) -> AppResult<Option<PositiveInteger>> {
-    if !is_command_line(matches, id) {
-        return Ok(None);
-    }
-    let parsed = matches
-        .get_one::<u32>(id)
-        .copied()
-        .ok_or_else(|| missing_value_flag_error(flag))?;
-    positive_from_u32(parsed, flag).map(Some)
-}
-
-pub(super) fn positive_from_u32(value: u32, flag: &str) -> AppResult<PositiveInteger> {
-    let parsed = value;
-    NonZeroU32::new(parsed).ok_or_else(|| invalid_positive_value_error(flag, &parsed.to_string()))
 }

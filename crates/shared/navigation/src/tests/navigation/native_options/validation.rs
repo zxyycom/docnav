@@ -1,9 +1,11 @@
 use docnav_protocol::ProtocolDiagnosticCode;
 use serde_json::{json, Value};
 
-use crate::{execute_loaded_navigation_command, NavigationNativeOptionInput};
+use crate::execute_loaded_navigation_command;
 
-use super::super::super::support::{config_sources, navigation_command, StubRegistry};
+use super::super::super::support::{
+    cli_invalid_candidate, cli_value_candidate, config_sources, navigation_command, StubRegistry,
+};
 use super::super::{first_option_issue_source, protocol_error};
 
 #[test]
@@ -58,10 +60,12 @@ fn navigation_reports_unknown_adapter_id_under_options_as_config_diagnostic() {
 #[test]
 fn navigation_reports_explicit_native_option_type_failure() {
     let error = execute_loaded_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--max-heading-level".to_owned(),
-            value: "wide".to_owned(),
-        }]),
+        navigation_command(vec![cli_invalid_candidate(
+            "docnav.adapters.docnav-markdown.options.max_heading_level",
+            "--max-heading-level",
+            json!("wide"),
+            "expected an integer",
+        )]),
         config_sources(Value::Null, Value::Null),
         &StubRegistry,
     )
@@ -128,12 +132,13 @@ fn navigation_reports_typed_native_option_failure_with_source() {
 }
 
 #[test]
-fn navigation_rejects_unknown_explicit_native_option_after_adapter_routing() {
+fn navigation_rejects_unselected_explicit_candidate_after_adapter_routing() {
     let error = execute_loaded_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--missing-option".to_owned(),
-            value: "true".to_owned(),
-        }]),
+        navigation_command(vec![cli_value_candidate(
+            "docnav.adapters.docnav-other.options.payload",
+            "--other-payload",
+            json!("known-other-adapter-value"),
+        )]),
         config_sources(Value::Null, Value::Null),
         &StubRegistry,
     )

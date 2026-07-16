@@ -30,13 +30,32 @@ fn definition_declares_metadata_handlers_native_option_and_full_read_group() {
         .operation_handlers()
         .operations()
         .contains(&Operation::Outline));
-    assert!(definition
+    let option = definition
         .native_options()
         .iter()
-        .any(|option| option.key() == "max_heading_level"
-            && option.owner == "docnav-markdown"
-            && option.applies_to(Operation::Outline)
-            && option.applies_to(Operation::Find)));
+        .find(|option| {
+            option.key() == "max_heading_level"
+                && option.owner == "docnav-markdown"
+                && option.applies_to(Operation::Outline)
+                && option.applies_to(Operation::Find)
+        })
+        .expect("max heading level declaration");
+    let cli = option
+        .field_declaration()
+        .expect("valid max heading level declaration")
+        .processing_metadata(
+            &docnav_adapter_contracts::ProcessingId::new("cli").expect("valid CLI processing id"),
+        )
+        .expect("valid max heading level field")
+        .expect("max heading level CLI processing metadata");
+    assert_eq!(cli.locator.cli_flag(), Some("--max-heading-level"));
+    let cli = cli.cli.expect("max heading level CLI presentation");
+    assert_eq!(
+        cli.help.as_deref(),
+        Some("Set the maximum Markdown heading level")
+    );
+    assert_eq!(cli.value_name.as_deref(), Some("value"));
+    assert_eq!(cli.boolean_encoding, None);
 
     let full_read = definition
         .full_read_capability_group()

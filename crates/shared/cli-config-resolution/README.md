@@ -4,6 +4,10 @@ Framework-independent source extraction and resolution for canonical Rust CLI/co
 `docnav-typed-fields::FieldDef` and `FieldDefSet` remain the single parameter model; this crate
 re-exports them alongside source extraction and resolution functions.
 
+## Document CLI integration status
+
+- **Current:** core hands one normalized typed/invalid document CLI `Source` to navigation. Navigation selects the adapter/current-operation field set, rejects explicit candidates outside it, and passes selected candidates with project/user sources to this resolver. The resolver owns priority、merge、static-default fallback、provenance、diagnostics、canonical validation and all-or-nothing materialization; its framework-independent public source/resolution model remains unchanged.
+
 The companion packages live beside this crate under `crates/shared` and participate in Docnav's
 root Rust workspace.
 

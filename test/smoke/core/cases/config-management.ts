@@ -256,8 +256,9 @@ async function testInitVersionAndHelp() {
   expectStdoutIncludes(help, "--output");
   expectStdoutIncludes(help, "--pagination");
   expectStdoutIncludes(help, "--limit");
-  expectStdoutIncludes(help, "--output <readable-view|readable-json|protocol-json>");
-  expectStdoutIncludes(help, "[possible values: readable-view, readable-json, protocol-json]");
+  expectStdoutIncludes(help, "--output <mode>");
+  expectStdoutIncludes(help, "possible values: readable-view, readable-json, protocol-json");
+  expectStdoutIncludes(help, "default: readable-view");
 }
 
 async function testAdapterManagementCommands() {

@@ -1,9 +1,9 @@
 use clap::error::ErrorKind;
 use clap::{Arg, Command};
 use cli_config_resolution::{
-    CandidateInput, ExpectedFieldShape, FieldDef, FieldDefSet, FieldValidation, JsonValue,
-    ProcessStrategy, ProcessingId, ProcessingLocator, SourceId, SourceKind, SourceLocator,
-    ValueKind,
+    CandidateInput, CliBooleanEncoding, CliProcessingMetadata, ExpectedFieldShape, FieldDef,
+    FieldDefSet, FieldStringEnum, FieldValidation, JsonValue, ProcessStrategy, ProcessingId,
+    ProcessingLocator, SourceId, SourceKind, SourceLocator, ValueKind,
 };
 use serde_json::json;
 
@@ -36,7 +36,14 @@ fn canonical_fields() -> FieldDefSet {
         )
         .field(
             FieldDef::builder("verbose")
-                .process("cli", ProcessStrategy::cli_flag("--verbose"))
+                .process(
+                    "cli",
+                    ProcessStrategy::cli_flag("--verbose").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .help("Enable verbose output")
+                            .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue),
+                    ),
+                )
                 .validation(FieldValidation::boolean()),
             ExpectedFieldShape::optional(),
         )
@@ -54,6 +61,226 @@ fn canonical_fields() -> FieldDefSet {
         )
         .build()
         .expect("canonical fields")
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum HelpMode {
+    Fast,
+    Safe,
+}
+
+impl FieldStringEnum for HelpMode {
+    fn variants() -> &'static [Self] {
+        &[Self::Fast, Self::Safe]
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Fast => "fast",
+            Self::Safe => "safe",
+        }
+    }
+}
+
+#[test]
+fn authored_and_canonical_facts_generate_help_and_use_canonical_identity() {
+    let fields = FieldDefSet::builder()
+        .field(
+            FieldDef::builder("output.mode")
+                .process(
+                    "cli",
+                    ProcessStrategy::cli_flag("--mode").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .help("Select output mode")
+                            .value_name("MODE"),
+                    ),
+                )
+                .validation(FieldValidation::string_enum::<HelpMode>())
+                .default_static(HelpMode::Fast),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+        .expect("help field");
+    let command = augment_command(Command::new("demo"), &fields, &id("cli")).expect("command");
+    let argument = command
+        .get_arguments()
+        .find(|argument| argument.get_long() == Some("mode"))
+        .expect("generated argument");
+    assert_eq!(argument.get_id().as_str(), "output.mode");
+    assert!(argument.get_default_values().is_empty());
+
+    let help = command.clone().render_long_help().to_string();
+    assert!(help.contains("--mode <MODE>"));
+    assert!(help.contains("Select output mode"));
+    assert!(help.contains("possible values: fast, safe"));
+    assert!(help.contains("default: fast"));
+
+    let omitted = command
+        .clone()
+        .try_get_matches_from(["demo"])
+        .expect("omitted static default remains structural absence");
+    let omitted_source = extract_cli(
+        &omitted,
+        &fields,
+        &id("cli"),
+        SourceId::new("cli").expect("source id"),
+        40,
+    )
+    .expect("source");
+    assert!(omitted_source.candidates().is_empty());
+
+    let matches = command
+        .try_get_matches_from(["demo", "--mode", "safe"])
+        .expect("explicit mode");
+    let source = extract_cli(
+        &matches,
+        &fields,
+        &id("cli"),
+        SourceId::new("cli").expect("source id"),
+        40,
+    )
+    .expect("source");
+    assert_candidate(&source, "output.mode", json!("safe"));
+    assert_eq!(
+        candidate(&source, "output.mode").locator(),
+        &SourceLocator::CliFlag("--mode".to_owned())
+    );
+}
+
+#[test]
+fn presence_and_explicit_boolean_encodings_extract_typed_values() {
+    let fields = boolean_fields();
+    let command = augment_command(Command::new("demo"), &fields, &id("cli")).expect("command");
+    let matches = command
+        .try_get_matches_from(["demo", "--verbose", "--pagination", "disabled"])
+        .expect("Boolean encodings parse structurally");
+    let source = extract_cli(
+        &matches,
+        &fields,
+        &id("cli"),
+        SourceId::new("cli").expect("source id"),
+        40,
+    )
+    .expect("source");
+
+    assert_candidate(&source, "verbose", json!(true));
+    assert_candidate(&source, "pagination", json!(false));
+}
+
+#[test]
+fn invalid_boolean_token_is_field_local_and_unrelated_candidate_continues() {
+    let fields = FieldDefSet::builder()
+        .field(
+            FieldDef::builder("pagination")
+                .process(
+                    "cli",
+                    ProcessStrategy::cli_flag("--pagination").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .value_name("STATE")
+                            .boolean_encoding(CliBooleanEncoding::explicit("enabled", "disabled")),
+                    ),
+                )
+                .validation(FieldValidation::boolean()),
+            ExpectedFieldShape::optional(),
+        )
+        .field(
+            FieldDef::builder("name")
+                .process("cli", ProcessStrategy::cli_flag("--name"))
+                .validation(FieldValidation::string()),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+        .expect("fields");
+    let command = augment_command(Command::new("demo"), &fields, &id("cli")).expect("command");
+    let matches = command
+        .try_get_matches_from(["demo", "--pagination", "maybe", "--name", "docs"])
+        .expect("token mismatch remains structurally valid");
+    let source = extract_cli(
+        &matches,
+        &fields,
+        &id("cli"),
+        SourceId::new("cli").expect("source id"),
+        40,
+    )
+    .expect("field-local invalid candidate");
+
+    assert_eq!(
+        candidate(&source, "pagination").input(),
+        &CandidateInput::Invalid {
+            raw: json!("maybe"),
+            reason: "expected Boolean CLI token \"enabled\" or \"disabled\"".to_owned(),
+        }
+    );
+    assert_candidate(&source, "name", json!("docs"));
+}
+
+#[test]
+fn clap_owns_duplicate_single_value_and_missing_value_errors() {
+    let fields = single_string_field("--name");
+    let command = augment_command(Command::new("demo"), &fields, &id("cli")).expect("command");
+    let duplicate = command
+        .clone()
+        .try_get_matches_from(["demo", "--name", "one", "--name", "two"])
+        .expect_err("duplicate single value is structural");
+    assert_eq!(duplicate.kind(), ErrorKind::ArgumentConflict);
+
+    let missing = command
+        .try_get_matches_from(["demo", "--name"])
+        .expect_err("missing value is structural");
+    assert!(matches!(
+        missing.kind(),
+        ErrorKind::InvalidValue | ErrorKind::MissingRequiredArgument
+    ));
+}
+
+#[test]
+fn existing_canonical_argument_identity_is_a_static_conflict() {
+    let fields = FieldDefSet::builder()
+        .field(
+            FieldDef::builder("output.mode")
+                .process("cli", ProcessStrategy::cli_flag("--mode"))
+                .validation(FieldValidation::string()),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+        .expect("field");
+    let command = Command::new("demo").arg(Arg::new("output.mode").long("legacy-mode"));
+    assert!(matches!(
+        augment_command(command, &fields, &id("cli")),
+        Err(ClapProjectionError::ArgumentConflict { field, flag })
+            if field.as_str() == "output.mode" && flag == "--mode"
+    ));
+}
+
+fn boolean_fields() -> FieldDefSet {
+    FieldDefSet::builder()
+        .field(
+            FieldDef::builder("verbose")
+                .process(
+                    "cli",
+                    ProcessStrategy::cli_flag("--verbose").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue),
+                    ),
+                )
+                .validation(FieldValidation::boolean()),
+            ExpectedFieldShape::optional(),
+        )
+        .field(
+            FieldDef::builder("pagination")
+                .process(
+                    "cli",
+                    ProcessStrategy::cli_flag("--pagination").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .value_name("STATE")
+                            .boolean_encoding(CliBooleanEncoding::explicit("enabled", "disabled")),
+                    ),
+                )
+                .validation(FieldValidation::boolean()),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+        .expect("Boolean fields")
 }
 
 #[test]
@@ -109,11 +336,17 @@ fn canonical_metadata_registers_and_extracts_supported_cli_values() {
 }
 
 #[test]
-fn omitted_set_true_flag_does_not_produce_a_candidate() {
+fn omitted_presence_flag_does_not_produce_a_candidate() {
     let fields = FieldDefSet::builder()
         .field(
             FieldDef::builder("verbose")
-                .process("cli", ProcessStrategy::cli_flag("--verbose"))
+                .process(
+                    "cli",
+                    ProcessStrategy::cli_flag("--verbose").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue),
+                    ),
+                )
                 .validation(FieldValidation::boolean()),
             ExpectedFieldShape::optional(),
         )
@@ -251,10 +484,22 @@ fn mismatched_match_set_returns_an_adapter_error() {
 }
 
 #[test]
-fn implicit_group_flag_conflict_is_an_adapter_error() {
+fn group_id_matching_flag_locator_is_allowed() {
     let flag = "--shared";
     let fields = single_string_field(flag);
     let command = Command::new("demo").arg(Arg::new("mode").long("mode").group("shared"));
+
+    let command = augment_command(command, &fields, &id("cli")).expect("distinct canonical id");
+    command
+        .try_get_matches_from(["demo", flag, "docs"])
+        .expect("flag locator does not become the argument id");
+}
+
+#[test]
+fn group_id_matching_canonical_identity_is_an_adapter_error() {
+    let flag = "--shared";
+    let fields = single_string_field(flag);
+    let command = Command::new("demo").arg(Arg::new("mode").long("mode").group("value"));
 
     assert!(matches!(
         augment_command(command, &fields, &id("cli")),

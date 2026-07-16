@@ -23,10 +23,7 @@ fn document_command_parses_config_file_paths_as_exact_values() {
                 command.config_paths.user_config.as_deref(),
                 Some("./fixtures/user.json")
             );
-            assert!(
-                command.native_options.is_empty(),
-                "config path flags must not become adapter native options"
-            );
+            assert!(command.cli_source.candidates().is_empty());
         }
         command => panic!("expected document command, got {command:?}"),
     }

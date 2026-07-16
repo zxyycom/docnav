@@ -1,7 +1,9 @@
 use docnav_typed_fields::{
-    ActualValueKind, ExpectedFieldShape, FieldDef, FieldDefSet, FieldDefs, FieldIdentity,
-    FieldValidation, FieldValueMap, MergeStrategy, ProcessStrategy, ProcessingId,
-    ProcessingInputKind, ProcessingLocator, TypedValue, ValidationReason,
+    ActualValueKind, BuildError, CliBooleanEncoding, CliProcessingMetadata, DefaultMetadata,
+    ExpectedFieldShape, FieldDef, FieldDefBuildFailure, FieldDefBuilder, FieldDefDeclaration,
+    FieldDefSet, FieldDefSetBuildError, FieldDefs, FieldIdentity, FieldValidation, FieldValueMap,
+    MergeStrategy, ProcessStrategy, ProcessingId, ProcessingInputKind, ProcessingLocator,
+    TypedValue, ValidationReason, ValueKind,
 };
 use serde_json::json;
 
@@ -50,6 +52,194 @@ fn canonical_processing_metadata_exposes_source_locators() {
             docnav_typed_fields::FieldPath::new(["read", "limit"]).expect("path")
         )
     );
+}
+
+#[test]
+fn cli_metadata_survives_clone_type_erasure_build_and_aggregation() {
+    let cli = ProcessingId::new("cli").expect("valid processing id");
+    let mapped_builder = FieldDef::builder("pagination")
+        .process(
+            "cli",
+            ProcessStrategy::cli_flag("--pagination").cli_metadata(
+                CliProcessingMetadata::new()
+                    .help("Enable or disable pagination")
+                    .value_name("STATE")
+                    .boolean_encoding(CliBooleanEncoding::explicit("enabled", "disabled")),
+            ),
+        )
+        .validation(FieldValidation::boolean())
+        .default_static(true);
+    let declaration =
+        FieldDefDeclaration::new(mapped_builder.clone(), ExpectedFieldShape::optional());
+
+    let erased = declaration
+        .processing_metadata(&cli)
+        .expect("type-erased declaration builds")
+        .expect("CLI processing exists");
+    let fields = FieldDefSet::builder()
+        .field_declaration(declaration)
+        .field(
+            FieldDef::builder("verbose")
+                .process(
+                    "cli",
+                    ProcessStrategy::cli_flag("--verbose").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .help("Enable verbose output")
+                            .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue),
+                    ),
+                )
+                .validation(FieldValidation::boolean()),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+        .expect("CLI metadata declarations build");
+    let aggregated = fields.processing_metadata(&cli);
+
+    assert_eq!(aggregated.len(), 2);
+    assert_eq!(aggregated[0], erased);
+    assert_eq!(aggregated[0].value_kind, ValueKind::Boolean);
+    assert_eq!(aggregated[0].default, DefaultMetadata::Static(json!(true)));
+    assert_eq!(aggregated[0].merge_strategy, MergeStrategy::Replace);
+    assert_eq!(
+        aggregated[0].cli,
+        Some(
+            CliProcessingMetadata::new()
+                .help("Enable or disable pagination")
+                .value_name("STATE")
+                .boolean_encoding(CliBooleanEncoding::explicit("enabled", "disabled"))
+        )
+    );
+    assert_eq!(
+        aggregated[1].cli,
+        Some(
+            CliProcessingMetadata::new()
+                .help("Enable verbose output")
+                .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue)
+        )
+    );
+}
+
+#[test]
+fn config_only_field_builds_without_cli_metadata() {
+    let fields = FieldDefSet::builder()
+        .field(
+            FieldDef::builder("theme")
+                .process("config", ProcessStrategy::config_path(["theme"]))
+                .validation(FieldValidation::string()),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+        .expect("config-only field builds");
+
+    assert!(fields
+        .processing_metadata(&ProcessingId::new("cli").expect("valid processing id"))
+        .is_empty());
+    assert_eq!(
+        fields.processing_metadata(&ProcessingId::new("config").expect("valid processing id"))[0]
+            .cli,
+        None
+    );
+}
+
+#[test]
+fn field_build_rejects_invalid_cli_metadata_declarations() {
+    let invalid_attachment = FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["parameters", "theme"],
+            FieldDef::builder("theme")
+                .process(
+                    "config",
+                    ProcessStrategy::config_path(["theme"])
+                        .cli_metadata(CliProcessingMetadata::new().help("Theme")),
+                )
+                .validation(FieldValidation::string()),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+        .expect_err("CLI metadata on config processing fails");
+    assert_eq!(
+        invalid_attachment,
+        FieldDefSetBuildError::Field(FieldDefBuildFailure {
+            declaration_path: Some(vec!["parameters".to_owned(), "theme".to_owned()]),
+            error: BuildError::CliMetadataRequiresCliFlag,
+        })
+    );
+
+    let duplicate = canonical_build_error(
+        FieldDef::builder("theme")
+            .process(
+                "cli",
+                ProcessStrategy::cli_flag("--theme")
+                    .cli_metadata(CliProcessingMetadata::new().help("Theme"))
+                    .cli_metadata(CliProcessingMetadata::new().value_name("THEME")),
+            )
+            .validation(FieldValidation::string()),
+    );
+    assert_eq!(duplicate, BuildError::DuplicateCliMetadata);
+
+    let incompatible = canonical_build_error(
+        FieldDef::builder("theme")
+            .process(
+                "cli",
+                ProcessStrategy::cli_flag("--theme").cli_metadata(
+                    CliProcessingMetadata::new()
+                        .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue),
+                ),
+            )
+            .validation(FieldValidation::string()),
+    );
+    assert_eq!(
+        incompatible,
+        BuildError::IncompatibleCliBooleanEncoding {
+            value_kind: ValueKind::String,
+        }
+    );
+
+    let incomplete = canonical_build_error(
+        FieldDef::builder("pagination")
+            .process(
+                "cli",
+                ProcessStrategy::cli_flag("--pagination").cli_metadata(
+                    CliProcessingMetadata::new().boolean_encoding(CliBooleanEncoding::Explicit {
+                        true_token: Some("enabled".to_owned()),
+                        false_token: None,
+                    }),
+                ),
+            )
+            .validation(FieldValidation::boolean()),
+    );
+    assert_eq!(incomplete, BuildError::IncompleteCliBooleanMapping);
+
+    let ambiguous = canonical_build_error(
+        FieldDef::builder("pagination")
+            .process(
+                "cli",
+                ProcessStrategy::cli_flag("--pagination").cli_metadata(
+                    CliProcessingMetadata::new().boolean_encoding(CliBooleanEncoding::Explicit {
+                        true_token: Some("enabled".to_owned()),
+                        false_token: Some("enabled".to_owned()),
+                    }),
+                ),
+            )
+            .validation(FieldValidation::boolean()),
+    );
+    assert_eq!(
+        ambiguous,
+        BuildError::AmbiguousCliBooleanMapping {
+            token: "enabled".to_owned(),
+        }
+    );
+}
+
+fn canonical_build_error<T: 'static>(builder: FieldDefBuilder<T>) -> BuildError {
+    match FieldDefSet::builder()
+        .field(builder, ExpectedFieldShape::optional())
+        .build()
+        .expect_err("invalid canonical field declaration fails")
+    {
+        FieldDefSetBuildError::Field(FieldDefBuildFailure { error, .. }) => error,
+        error => panic!("expected canonical field build failure, got {error:?}"),
+    }
 }
 
 #[test]

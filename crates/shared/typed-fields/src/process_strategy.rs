@@ -1,4 +1,4 @@
-use crate::metadata::{BuildError, FieldPath};
+use crate::metadata::{BuildError, FieldPath, ValueKind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProcessingInputKind {
@@ -50,6 +50,77 @@ impl ProcessingLocator {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProcessStrategy {
     kind: ProcessStrategyKind,
+    cli_metadata: Vec<CliProcessingMetadata>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct CliProcessingMetadata {
+    pub help: Option<String>,
+    pub value_name: Option<String>,
+    pub boolean_encoding: Option<CliBooleanEncoding>,
+}
+
+impl CliProcessingMetadata {
+    pub const fn new() -> Self {
+        Self {
+            help: None,
+            value_name: None,
+            boolean_encoding: None,
+        }
+    }
+
+    pub fn help(mut self, help: impl Into<String>) -> Self {
+        self.help = Some(help.into());
+        self
+    }
+
+    pub fn value_name(mut self, value_name: impl Into<String>) -> Self {
+        self.value_name = Some(value_name.into());
+        self
+    }
+
+    pub fn boolean_encoding(mut self, encoding: CliBooleanEncoding) -> Self {
+        self.boolean_encoding = Some(encoding);
+        self
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CliBooleanEncoding {
+    PresenceMeansTrue,
+    Explicit {
+        true_token: Option<String>,
+        false_token: Option<String>,
+    },
+}
+
+impl CliBooleanEncoding {
+    pub fn explicit(true_token: impl Into<String>, false_token: impl Into<String>) -> Self {
+        Self::Explicit {
+            true_token: Some(true_token.into()),
+            false_token: Some(false_token.into()),
+        }
+    }
+
+    fn validate(&self, value_kind: ValueKind) -> Result<(), BuildError> {
+        if value_kind != ValueKind::Boolean {
+            return Err(BuildError::IncompatibleCliBooleanEncoding { value_kind });
+        }
+        match self {
+            Self::PresenceMeansTrue => Ok(()),
+            Self::Explicit {
+                true_token: Some(true_token),
+                false_token: Some(false_token),
+            } if true_token == false_token => Err(BuildError::AmbiguousCliBooleanMapping {
+                token: true_token.clone(),
+            }),
+            Self::Explicit {
+                true_token: Some(_),
+                false_token: Some(_),
+            } => Ok(()),
+            Self::Explicit { .. } => Err(BuildError::IncompleteCliBooleanMapping),
+        }
+    }
 }
 
 impl ProcessStrategy {
@@ -58,21 +129,17 @@ impl ProcessStrategy {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        Self {
-            kind: ProcessStrategyKind::JsonPath(segments.into_iter().map(Into::into).collect()),
-        }
+        Self::new(ProcessStrategyKind::JsonPath(
+            segments.into_iter().map(Into::into).collect(),
+        ))
     }
 
     pub fn cli_flag(flag: impl Into<String>) -> Self {
-        Self {
-            kind: ProcessStrategyKind::CliFlag(flag.into()),
-        }
+        Self::new(ProcessStrategyKind::CliFlag(flag.into()))
     }
 
     pub fn env_var(name: impl Into<String>) -> Self {
-        Self {
-            kind: ProcessStrategyKind::EnvVar(name.into()),
-        }
+        Self::new(ProcessStrategyKind::EnvVar(name.into()))
     }
 
     pub fn config_path<I, S>(segments: I) -> Self
@@ -80,25 +147,40 @@ impl ProcessStrategy {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        Self {
-            kind: ProcessStrategyKind::ConfigPath(segments.into_iter().map(Into::into).collect()),
-        }
+        Self::new(ProcessStrategyKind::ConfigPath(
+            segments.into_iter().map(Into::into).collect(),
+        ))
     }
 
     pub fn rust_field() -> Self {
-        Self {
-            kind: ProcessStrategyKind::RustField,
-        }
+        Self::new(ProcessStrategyKind::RustField)
+    }
+
+    pub fn cli_metadata(mut self, metadata: CliProcessingMetadata) -> Self {
+        self.cli_metadata.push(metadata);
+        self
     }
 
     pub(crate) fn build(self) -> Result<BuiltProcessStrategy, crate::metadata::BuildError> {
-        match self.kind {
+        let Self {
+            kind,
+            mut cli_metadata,
+        } = self;
+        if cli_metadata.len() > 1 {
+            return Err(BuildError::DuplicateCliMetadata);
+        }
+        let cli_metadata = cli_metadata.pop();
+        if cli_metadata.is_some() && !matches!(&kind, ProcessStrategyKind::CliFlag(_)) {
+            return Err(BuildError::CliMetadataRequiresCliFlag);
+        }
+        match kind {
             ProcessStrategyKind::JsonPath(segments) => {
                 Ok(BuiltProcessStrategy::JsonPath(FieldPath::new(segments)?))
             }
-            ProcessStrategyKind::CliFlag(flag) => {
-                Ok(BuiltProcessStrategy::CliFlag(validate_cli_flag(flag)?))
-            }
+            ProcessStrategyKind::CliFlag(flag) => Ok(BuiltProcessStrategy::CliFlag {
+                flag: validate_cli_flag(flag)?,
+                metadata: cli_metadata,
+            }),
             ProcessStrategyKind::EnvVar(name) => {
                 Ok(BuiltProcessStrategy::EnvVar(validate_env_var(name)?))
             }
@@ -106,6 +188,13 @@ impl ProcessStrategy {
                 Ok(BuiltProcessStrategy::ConfigPath(FieldPath::new(segments)?))
             }
             ProcessStrategyKind::RustField => Ok(BuiltProcessStrategy::RustField),
+        }
+    }
+
+    fn new(kind: ProcessStrategyKind) -> Self {
+        Self {
+            kind,
+            cli_metadata: Vec::new(),
         }
     }
 }
@@ -122,7 +211,10 @@ enum ProcessStrategyKind {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum BuiltProcessStrategy {
     JsonPath(FieldPath),
-    CliFlag(String),
+    CliFlag {
+        flag: String,
+        metadata: Option<CliProcessingMetadata>,
+    },
     EnvVar(String),
     ConfigPath(FieldPath),
     RustField,
@@ -132,7 +224,7 @@ impl BuiltProcessStrategy {
     pub(crate) fn input_kind(&self) -> ProcessingInputKind {
         match self {
             Self::JsonPath(_) | Self::ConfigPath(_) => ProcessingInputKind::JsonValue,
-            Self::CliFlag(_) => ProcessingInputKind::CliArguments,
+            Self::CliFlag { .. } => ProcessingInputKind::CliArguments,
             Self::EnvVar(_) => ProcessingInputKind::EnvironmentVariables,
             Self::RustField => ProcessingInputKind::RustField,
         }
@@ -141,18 +233,35 @@ impl BuiltProcessStrategy {
     pub(crate) fn json_path(&self) -> Option<&FieldPath> {
         match self {
             Self::JsonPath(path) | Self::ConfigPath(path) => Some(path),
-            Self::CliFlag(_) | Self::EnvVar(_) | Self::RustField => None,
+            Self::CliFlag { .. } | Self::EnvVar(_) | Self::RustField => None,
         }
     }
 
     pub(crate) fn locator(&self) -> ProcessingLocator {
         match self {
             Self::JsonPath(path) => ProcessingLocator::JsonPath(path.clone()),
-            Self::CliFlag(flag) => ProcessingLocator::CliFlag(flag.clone()),
+            Self::CliFlag { flag, .. } => ProcessingLocator::CliFlag(flag.clone()),
             Self::EnvVar(name) => ProcessingLocator::EnvVar(name.clone()),
             Self::ConfigPath(path) => ProcessingLocator::ConfigPath(path.clone()),
             Self::RustField => ProcessingLocator::RustField,
         }
+    }
+
+    pub(crate) fn cli_metadata(&self) -> Option<&CliProcessingMetadata> {
+        match self {
+            Self::CliFlag { metadata, .. } => metadata.as_ref(),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn validate_cli_metadata(&self, value_kind: ValueKind) -> Result<(), BuildError> {
+        let Some(encoding) = self
+            .cli_metadata()
+            .and_then(|metadata| metadata.boolean_encoding.as_ref())
+        else {
+            return Ok(());
+        };
+        encoding.validate(value_kind)
     }
 }
 

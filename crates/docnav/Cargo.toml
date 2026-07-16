@@ -10,6 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
+cli-config-resolution.workspace = true
+cli-config-resolution-clap.workspace = true
 docnav-adapter-contracts.workspace = true
 docnav-cli-args.workspace = true
 docnav-diagnostics.workspace = true

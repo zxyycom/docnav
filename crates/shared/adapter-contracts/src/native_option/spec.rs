@@ -7,8 +7,6 @@ use docnav_typed_fields::{
 use super::descriptions::{expected_value_description, value_kind_name};
 use super::spec_error::AdapterOptionSpecError;
 
-const CLI_PROCESSING: &str = "cli";
-
 pub type AdapterOptionProcessStrategy = ProcessStrategy;
 
 #[derive(Clone, Debug)]
@@ -58,26 +56,6 @@ impl AdapterOptionSpec {
             .get(1)
             .map(String::as_str)
             .unwrap_or("")
-    }
-
-    pub fn cli_flag(&self) -> Option<String> {
-        self.field
-            .processing_metadata(
-                &ProcessingId::new(CLI_PROCESSING).expect("CLI processing id is valid"),
-            )
-            .ok()
-            .flatten()
-            .and_then(|metadata| metadata.locator.cli_flag().map(str::to_owned))
-    }
-
-    pub fn cli_arg_id(&self) -> Option<String> {
-        self.cli_flag()
-            .map(|flag| flag.strip_prefix("--").unwrap_or(&flag).to_owned())
-    }
-
-    pub fn cli_input_path(&self) -> Option<Vec<String>> {
-        self.cli_flag()?;
-        Some(self.declaration_path().to_vec())
     }
 
     pub fn processing_path(

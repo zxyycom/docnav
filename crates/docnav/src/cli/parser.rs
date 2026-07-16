@@ -2,7 +2,6 @@ mod adapter_command;
 mod argument_helpers;
 mod config_command;
 mod document;
-mod native_options;
 mod spec;
 mod utility_command;
 
@@ -12,40 +11,28 @@ use crate::error::{AppError, AppResult};
 
 use super::command_model::{CliCommand, ConfigPathArgs, ParsedCli};
 
-use native_options::NativeOptionCatalog;
 use spec::{cli_command, is_known_root_command};
 
 pub(super) use spec::{
     arg_ids, command_names, config_inspect_command, document_clap_command, utility_clap_command,
 };
 
-#[derive(Clone, Debug, Default)]
-pub(super) struct ParserContext {
-    native_options: NativeOptionCatalog,
-}
-
-impl ParserContext {
-    fn native_options(&self) -> &NativeOptionCatalog {
-        &self.native_options
-    }
-}
-
 pub fn parse<I, S>(args: I) -> AppResult<ParsedCli>
 where
     I: IntoIterator<Item = S>,
     S: Into<String>,
 {
-    let context = ParserContext::default();
-    parse_with_context(args, &context)
+    parse_with_registry(args, &crate::registry::AdapterRegistry::builtin())
 }
 
-fn parse_with_context<I, S>(args: I, context: &ParserContext) -> AppResult<ParsedCli>
+fn parse_with_registry<I, S, R>(args: I, registry: &R) -> AppResult<ParsedCli>
 where
     I: IntoIterator<Item = S>,
     S: Into<String>,
+    R: docnav_navigation::NavigationAdapterRegistry + ?Sized,
 {
     let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    if let Some(help) = help_text(&args, context) {
+    if let Some(help) = help_text(&args, registry)? {
         return Ok(ParsedCli::new(CliCommand::Help(help)));
     }
 
@@ -53,7 +40,7 @@ where
         return Err(AppError::invalid_request("command", "missing command"));
     };
 
-    if !is_known_root_command(command, context) {
+    if !is_known_root_command(command) {
         return Err(AppError::invalid_request(
             "command",
             format!("unknown command {command:?}"),
@@ -62,11 +49,11 @@ where
 
     match command.as_str() {
         command_names::OUTLINE => {
-            document::parse_document_command(Operation::Outline, rest, context)
+            document::parse_document_command(Operation::Outline, rest, registry)
         }
-        command_names::READ => document::parse_document_command(Operation::Read, rest, context),
-        command_names::FIND => document::parse_document_command(Operation::Find, rest, context),
-        command_names::INFO => document::parse_document_command(Operation::Info, rest, context),
+        command_names::READ => document::parse_document_command(Operation::Read, rest, registry),
+        command_names::FIND => document::parse_document_command(Operation::Find, rest, registry),
+        command_names::INFO => document::parse_document_command(Operation::Info, rest, registry),
         command_names::ADAPTER => adapter_command::parse_adapter_command(rest),
         command_names::CONFIG => config_command::parse_config_command(rest),
         command_names::INIT => utility_command::parse_utility_command(
@@ -88,27 +75,44 @@ where
     }
 }
 
-fn help_text(args: &[String], context: &ParserContext) -> Option<String> {
+fn help_text<R>(args: &[String], registry: &R) -> AppResult<Option<String>>
+where
+    R: docnav_navigation::NavigationAdapterRegistry + ?Sized,
+{
     if !args.iter().any(|arg| is_help_flag(arg)) {
-        return None;
+        return Ok(None);
     }
-    let mut root = cli_command(context);
+    let mut root = cli_command();
     let Some(first) = args.first().map(String::as_str) else {
-        return Some(root.render_long_help().to_string());
+        return Ok(Some(root.render_long_help().to_string()));
     };
     if is_help_flag(first) {
-        return Some(root.render_long_help().to_string());
+        return Ok(Some(root.render_long_help().to_string()));
+    }
+    if let Some(operation) = document_operation(first) {
+        let (mut command, _) = document_clap_command(operation, registry)?;
+        return Ok(Some(command.render_long_help().to_string()));
     }
     let Some(command) = root.find_subcommand_mut(first) else {
-        return Some(root.render_long_help().to_string());
+        return Ok(Some(root.render_long_help().to_string()));
     };
     if let Some(second) = nested_help_subcommand(first, args) {
         if let Some(subcommand) = command.find_subcommand_mut(second) {
-            return Some(subcommand.render_long_help().to_string());
+            return Ok(Some(subcommand.render_long_help().to_string()));
         }
-        return None;
+        return Ok(None);
     }
-    Some(command.render_long_help().to_string())
+    Ok(Some(command.render_long_help().to_string()))
+}
+
+fn document_operation(command: &str) -> Option<Operation> {
+    match command {
+        command_names::OUTLINE => Some(Operation::Outline),
+        command_names::READ => Some(Operation::Read),
+        command_names::FIND => Some(Operation::Find),
+        command_names::INFO => Some(Operation::Info),
+        _ => None,
+    }
 }
 
 fn nested_help_subcommand<'a>(first: &str, args: &'a [String]) -> Option<&'a str> {

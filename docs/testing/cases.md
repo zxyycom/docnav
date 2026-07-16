@@ -203,8 +203,10 @@ Status: implemented
 Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
-- `--help` 和 operation help 返回 typed help command，并展示当前支持的 document output mode。
-- help/version 命令保持非 document command，不携带 document output mode。
+- `--help` 和 operation help 返回 typed help command；document operation help 由 operation-scoped field projection 展示当前 common/native flags 与支持的 output modes。
+- root help、version、config、adapter、init 和 doctor 保持 static surface，不触发 document field projection。
+- generated flag 与 static document flag 冲突时，declaration failure 保留 adapter owner 与 canonical field attribution。
+- Current operation projection failure 保持 blocking；其它 operation 的 projection failure 不阻断 current command parsing。
 
 ### WB-CORE-OUTPUTMODE-001 Core parser document output mode 解析稳定
 Status: implemented
@@ -219,7 +221,9 @@ Status: implemented
 Code: `crates/docnav/src/cli/parser/tests/document_arguments.rs`
 
 Proves:
-- operation-owned 参数保持严格校验，例如 `outline --page 0` 会暴露 page 边界错误。
+- generated operation-owned 参数保留 canonical identity、CLI locator 与 normalized typed/invalid candidate，selected validation 继续负责 field-local 约束。
+- generated valueless Boolean switch 与 value flags 都从 current static/generated Clap shape 派生 lexical facts，并由 Clap 捕获 normalized candidate。
+- Clap 拥有 unknown、missing value 和 duplicate single-value structural failures；lexical compatibility boundary 只使用同源 cardinality facts 保持 positional 与 operation-inapplicable diagnostics。
 - 未被当前 operation 使用的 known argument 不会被抢先 typed 解析，而是在 parser 边界返回 input diagnostic。
 
 ### WB-CORE-ARGS-REPAIR-001 Core parser input diagnostics expose protocol repair context
@@ -279,12 +283,13 @@ Code: `crates/shared/navigation/src/tests/navigation/native_options.rs`
 
 Proves:
 - Navigation input resolution preserves source labels for explicit input and project config option issues.
-- Adapter descriptor native CLI flags enter parsing as native option sources instead of core-owned fields.
-- Selected adapter-owned declarations control native option typed validation/extraction; navigation registers, merges and resolves declared fields from CLI/input projection and config-source projection without redefining field semantics.
+- Navigation receives normalized CLI candidates with canonical identity/locator/source facts；selected-set members enter canonical resolution, while an explicit candidate outside the selected adapter/current-operation set fails before request construction and dispatch.
+- Selected adapter-owned declarations control native option typed validation/extraction；navigation registers、merges and resolves declared fields from CLI/input projection and config-source projection without redefining field semantics.
+- Common `adapter`、`page`、`limit`、`pagination` and `output` declarations author CLI locator、help and value-name facts；pagination maps `enabled|disabled` explicitly to Boolean values, while output accepted/default facts remain canonical constraints/default metadata.
 - Config source projection uses `options.<adapter-id>.<option-key>`; equal option keys in different adapter id namespaces stay distinct, and bare `options.<option-key>` is a normal unknown/invalid config path.
 - Navigation consumes native option values only from the selected adapter namespace for the selected operation; other known adapter namespaces are not forwarded to the selected handler.
 - Built-in adapter defaults affect the resolved operation result when no explicit/project value is provided.
-- Optional non-JSON CLI/config `null` suppresses the static default without entering handler handoff, while a declared JSON native option preserves an explicit JSON `null` as its selected value.
+- Optional non-JSON config `null` suppresses the static default without entering handler handoff, while a declared JSON native option preserves a structured project-config value as its selected typed value.
 - Unknown adapter namespaces、unknown selected options、operation-inapplicable options and invalid typed values remain blocking source-attributed diagnostics.
 
 ### WB-NAV-OUTLINE-MODE-001 Navigation outline_mode selectors and pre-dispatch stable
@@ -304,8 +309,9 @@ Status: implemented
 Code: `crates/docnav/src/cli/preflight/tests.rs`
 
 Proves:
-- Core preflight 可以在解析失败前识别空格分隔和等号形式的 `--output protocol-json`。
-- 该识别只服务错误输出模式选择，不替代正式 parser。
+- Core preflight 从 current document command 的 canonical projection 获取 output locator/cardinality，并在解析失败前识别空格分隔和等号形式的 protocol-json intent。
+- Structural document failure 使用 projected output intent 选择 protocol failure framing。
+- Root 与 non-document commands 不触发 document projection；preflight 只服务错误输出模式选择，不替代正式 parser。
 
 ### WB-CORE-ADAPTER-001 Core 校验 adapter contract 对齐
 Status: implemented
@@ -563,8 +569,8 @@ Status: implemented
 Code: `crates/shared/typed-fields/tests/canonical_parameters.rs`
 
 Proves:
-- One `FieldDefSet` exposes declared CLI flag、environment variable and config path locators from canonical processing metadata.
-- Definition-set build rejects duplicate processing locators、empty locator values and invalid dotted identities with public errors.
+- One `FieldDefSet` exposes declared CLI flag、environment variable and config path locators from canonical processing metadata；optional CLI help、value name and Boolean encoding survive builder clone、declaration type erasure and aggregation beside canonical field facts.
+- Definition-set build rejects duplicate processing locators、empty locator values、invalid dotted identities、invalid/duplicate CLI metadata attachments and incompatible、incomplete or ambiguous Boolean encodings with public errors；config-only fields remain valid without CLI metadata.
 - `MergeStrategy` is canonical `FieldDef` metadata, defaults to `Replace`, and rejects strategies incompatible with the declared value kind.
 - Canonical field lookup performs final value validation；derived definition sets materialize complete typed values and reject missing required or non-finite values.
 
@@ -592,10 +598,10 @@ Status: implemented
 Code: `crates/shared/cli-config-resolution-clap/src/tests.rs`
 
 Proves:
-- `FieldDefSet` `CliFlag` processing metadata registers string、integer、number、boolean、array and object clap arguments and extracts present matches into typed CLI candidates with source and flag-locator facts.
-- clap rejects unregistered flags with its native `UnknownArgument` error；omitted set-true defaults produce no candidate.
-- CLI decode failures preserve the raw input、reason and `CliFlag` locator in an invalid candidate.
-- Non-CLI processing locators、unsupported JSON value kinds、argument conflicts and mismatched match sets return explicit `ClapProjectionError` results.
+- One `FieldDefSet` projection derives canonical argument identity、flag、authored help/value name、canonical accepted/default display、capture cardinality and typed/invalid candidates without installing clap value parsers or defaults.
+- Present matches extract string、integer、finite number、valueless or explicitly token-mapped Boolean、repeated string array and repeated `key=value` object values with source and flag-locator facts；omitted/default inputs produce no explicit candidate.
+- CLI decode failures preserve canonical field identity、raw input、reason and `CliFlag` locator while unrelated candidates remain available.
+- clap owns unknown、duplicate single-value and missing-value structural failures；non-CLI locators、unsupported JSON value kinds、static argument conflicts and mismatched match sets return explicit `ClapProjectionError` results.
 
 ### WB-PARAM-SERDE-001 serde config-path mapping preserves candidate facts
 Status: implemented
@@ -620,7 +626,7 @@ Code: `crates/shared/adapter-contracts/src/tests.rs`
 
 Proves:
 - `AdapterOptionSpec` is an adapter-owned declaration adapter that produces a canonical `FieldDefDeclaration`; the use-site remains responsible for registering it into the operation field set.
-- Registration into a canonical `FieldDefSet` preserves identity、CLI/config processing locators、`options.*` final arguments path、`options.<adapter-id>.<option-key>` config path、value kind、validation、static default and operation applicability, so navigation/config consumers do not reconstruct adapter semantics.
+- Registration into a canonical `FieldDefSet` preserves identity、CLI/config processing locators、optional CLI presentation metadata、`options.*` final arguments path、`options.<adapter-id>.<option-key>` config path、value kind、validation、static default and operation applicability, so navigation/config consumers do not reconstruct adapter semantics；config-only options declare no public CLI processing metadata.
 - Adapter-id config-source projection keeps same option keys from different adapter ids distinct and surfaces adapter-local declaration conflicts deterministically.
 - `NativeOptionHandoff` preserves handler-facing identity、owner、namespace、key、source、type metadata 和 typed JSON value from resolved protocol options.
 
@@ -666,10 +672,19 @@ Status: implemented
 Code: `crates/shared/navigation/src/tests/navigation/hard_cutover.rs`
 
 Proves:
-- Explicit common fields and selected-adapter native options retain priority over project and user values through the canonical resolver, and the public protocol output mode/result remains unchanged.
+- Normalized explicit `Source` carries canonical common/native candidates into navigation；selected fields retain priority over project and user values through the canonical resolver, and the public protocol output mode/result remains unchanged.
 - Native-option identities sharing a prefix with a common field cannot overwrite that common direct input during source staging.
 - A valid higher-priority explicit value does not hide an invalid project/user config candidate；the blocking diagnostic retains source level、selected config path and reason.
 - Mixed invalid common and canonical native-option inputs retain field declaration order when selecting the primary diagnostic, including regex and unique-item constraints.
+
+### WB-NAVIGATION-FIELD-SETS-001 Registry and selected field sets preserve declaration parity
+Status: implemented
+Code: `crates/shared/navigation/src/parameters/fields/tests.rs`
+
+Proves:
+- Outline、Read、Find and Info registry/selected projections independently include the selected operation's applicable native identity and exclude inapplicable or other-adapter identities before comparing canonical field facts.
+- Registry and selected projections preserve identity、locator、value kind、constraints、default and CLI metadata；the public registry projection retains navigation/adapter owner、declaration path and adapter id attribution.
+- Duplicate CLI locators report both declarations with their owner attribution and retain the typed field-set error；malformed adapter config locators fail both registry and selected projection boundaries.
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
@@ -815,7 +830,7 @@ Code: `crates/adapters/markdown/tests/adapter/meta.rs`
 Proves:
 - manifest 声明 Markdown v0 identity 和 format metadata，probe 返回 format evidence 而不泄漏 navigation payload。
 - info 返回 Markdown summary。
-- Markdown registry-facing definition exposes metadata、required operation handlers、`max_heading_level` native option declaration 和 full-read capability group.
+- Markdown registry-facing definition exposes metadata、required operation handlers、`max_heading_level` native option declaration with authored CLI help/value name 和 full-read capability group.
 
 ### WB-MD-ERROR-001 Markdown adapter document error 稳定
 Status: implemented

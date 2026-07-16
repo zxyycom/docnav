@@ -16,7 +16,7 @@ pub(crate) fn inspect_config_sources(
 ) -> Result<Value, NavigationError> {
     let field_set = fields::config_inspection_fields(registry)?;
     let fields = field_set.as_ref();
-    let resolution = resolve_with_fields(fields, None, config_sources, "config-inspection")?;
+    let resolution = resolve_with_fields(fields, None, None, config_sources, "config-inspection")?;
 
     Ok(json!({
         "sources": [

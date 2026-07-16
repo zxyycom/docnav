@@ -1,32 +1,48 @@
-use docnav_cli_args::{scan_arg_boundaries, ArgBoundaryScan};
+use cli_config_resolution::{ProcessingId, SourceId};
+use cli_config_resolution_clap::extract_cli;
+use docnav_cli_args::{scan_arg_boundaries, ArgBoundaryScan, RejectedArg};
+use docnav_navigation::{
+    NavigationAdapterRegistry, DOCUMENT_CLI_SOURCE_ID, DOCUMENT_CLI_SOURCE_PRIORITY,
+};
 use docnav_protocol::Operation;
 
 use crate::error::AppResult;
 
-use super::super::command_model::{CliCommand, DocumentCommand, NativeOptionCliInput, ParsedCli};
-use super::super::flags;
+use super::super::command_model::{CliCommand, DocumentCommand, ParsedCli};
 use super::argument_helpers::{
-    clap_argv, config_path_args, error_from_rejected_arg, missing_value_error,
-    optional_explicit_output, optional_explicit_positive, optional_explicit_string,
-    required_string,
+    clap_argv, config_path_args, error_from_rejected_arg, optional_explicit_string, required_string,
 };
-use super::{arg_ids, document_clap_command, ParserContext};
+use super::{arg_ids, document_clap_command};
 
 mod errors;
 mod value_flags;
 
-pub(super) fn parse_document_command(
+pub(super) fn parse_document_command<R>(
     operation: Operation,
     args: &[String],
-    context: &ParserContext,
-) -> AppResult<ParsedCli> {
-    let BoundaryDocumentArgs { clap_args } = collect_document_args(operation, args, context)?;
-    let matches = document_clap_command(operation, context)
+    registry: &R,
+) -> AppResult<ParsedCli>
+where
+    R: NavigationAdapterRegistry + ?Sized,
+{
+    let (command, fields) = document_clap_command(operation, registry)?;
+    let value_flags = value_flags::DocumentValueFlags::new(operation, registry, &command);
+    let BoundaryDocumentArgs { clap_args } = collect_document_args(operation, args, &value_flags)?;
+    let matches = command
         .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
-        .map_err(|_| errors::document_parse_error(operation, args, context))?;
+        .map_err(|error| errors::document_parse_error(operation, args, &value_flags, &error))?;
+    let processing_id = ProcessingId::new("cli").expect("document CLI processing id is valid");
+    let cli_source = extract_cli(
+        &matches,
+        fields.fields(),
+        &processing_id,
+        SourceId::new(DOCUMENT_CLI_SOURCE_ID).expect("document CLI source id is valid"),
+        DOCUMENT_CLI_SOURCE_PRIORITY,
+    )
+    .map_err(|error| super::spec::document_projection_error(operation, &fields, error))?;
 
     Ok(ParsedCli::new(CliCommand::Document(
-        document_command_from_matches(operation, &matches, context)?,
+        document_command_from_matches(operation, &matches, cli_source)?,
     )))
 }
 
@@ -37,14 +53,31 @@ struct BoundaryDocumentArgs {
 fn collect_document_args(
     operation: Operation,
     args: &[String],
-    context: &ParserContext,
+    value_flags: &value_flags::DocumentValueFlags,
 ) -> AppResult<BoundaryDocumentArgs> {
-    let known_value_flags = value_flags::document_value_flags(operation, context);
-    let scan = scan_arg_boundaries(
+    let known_value_flags = value_flags.known_value_flags();
+    let known_switch_flags = value_flags.known_switch_flags();
+    let scan = match scan_arg_boundaries(
         args,
-        &ArgBoundaryScan::new(operation.as_str(), 1, &known_value_flags),
-    )
-    .map_err(missing_value_error)?;
+        &ArgBoundaryScan::new(operation.as_str(), 1, &known_value_flags)
+            .with_known_switch_flags(&known_switch_flags),
+    ) {
+        Ok(scan) => scan,
+        Err(_) => {
+            return Ok(BoundaryDocumentArgs {
+                clap_args: args.to_vec(),
+            })
+        }
+    };
+    if scan
+        .rejected
+        .iter()
+        .any(|rejected| matches!(rejected, RejectedArg::UnknownFlag { .. }))
+    {
+        return Ok(BoundaryDocumentArgs {
+            clap_args: args.to_vec(),
+        });
+    }
     if let Some(rejected) = scan.rejected.into_iter().next() {
         return Err(error_from_rejected_arg(rejected));
     }
@@ -57,19 +90,14 @@ fn collect_document_args(
 fn document_command_from_matches(
     operation: Operation,
     matches: &clap::parser::ArgMatches,
-    context: &ParserContext,
+    cli_source: cli_config_resolution::Source,
 ) -> AppResult<DocumentCommand> {
     Ok(DocumentCommand {
         operation,
         path: required_string(matches, arg_ids::PATH, "path")?,
         ref_id: parse_ref_id(operation, matches),
         query: parse_query(operation, matches),
-        page: parse_page(operation, matches)?,
-        pagination_enabled: parse_pagination_enabled(operation, matches)?,
-        limit: parse_limit(operation, matches)?,
-        native_options: parse_native_options(operation, matches, context),
-        output: optional_explicit_output(matches)?,
-        adapter: optional_explicit_string(matches, arg_ids::ADAPTER),
+        cli_source: Box::new(cli_source),
         invocation_log: optional_explicit_string(matches, arg_ids::INVOCATION_LOG),
         invocation_log_content_root: optional_explicit_string(
             matches,
@@ -89,61 +117,4 @@ fn parse_query(operation: Operation, matches: &clap::parser::ArgMatches) -> Opti
     (operation == Operation::Find)
         .then(|| optional_explicit_string(matches, arg_ids::QUERY))
         .flatten()
-}
-
-fn parse_page(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-) -> AppResult<Option<docnav_protocol::PositiveInteger>> {
-    if operation == Operation::Info {
-        return Ok(None);
-    }
-    optional_explicit_positive(matches, arg_ids::PAGE, flags::PAGE)
-}
-
-fn parse_limit(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-) -> AppResult<Option<docnav_protocol::PositiveInteger>> {
-    if operation == Operation::Info {
-        return Ok(None);
-    }
-    optional_explicit_positive(matches, arg_ids::LIMIT, flags::LIMIT)
-}
-
-fn parse_pagination_enabled(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-) -> AppResult<Option<bool>> {
-    if operation == Operation::Info {
-        return Ok(None);
-    }
-    optional_explicit_string(matches, arg_ids::PAGINATION)
-        .map(|value| pagination_enabled_from_cli(&value))
-        .transpose()
-}
-
-fn pagination_enabled_from_cli(value: &str) -> AppResult<bool> {
-    match value {
-        super::spec::pagination_values::ENABLED => Ok(true),
-        super::spec::pagination_values::DISABLED => Ok(false),
-        _ => Err(errors::invalid_pagination_value_error(value)),
-    }
-}
-
-fn parse_native_options(
-    operation: Operation,
-    matches: &clap::parser::ArgMatches,
-    context: &ParserContext,
-) -> Vec<NativeOptionCliInput> {
-    let mut inputs = Vec::new();
-    for option in context.native_options().for_operation(operation) {
-        if let Some(value) = optional_explicit_string(matches, option.arg_id()) {
-            inputs.push(NativeOptionCliInput {
-                flag: option.flag().to_owned(),
-                value,
-            });
-        }
-    }
-    inputs
 }

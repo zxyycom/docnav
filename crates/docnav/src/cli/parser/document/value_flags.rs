@@ -1,71 +1,99 @@
+use clap::Command;
 use docnav_cli_args::KnownValueFlag;
+use docnav_navigation::NavigationAdapterRegistry;
 use docnav_protocol::Operation;
 
-use super::super::argument_helpers::{
-    boundary_value_flags, known_value_flag, split_equals, ValueFlag,
-};
-use super::super::ParserContext;
+use super::super::argument_helpers::split_equals;
+use super::super::document_clap_command;
 
-pub(super) fn document_value_flags(
-    operation: Operation,
-    context: &ParserContext,
-) -> Vec<KnownValueFlag<'_>> {
-    let mut flags = boundary_value_flags(|flag| document_uses_flag(operation, flag));
-    for option in context.native_options().all_document_options() {
-        let flag = option.flag();
-        let used = option.applies_to(operation);
-        if flags.iter().any(|existing| existing.flag == flag) {
-            continue;
+const DOCUMENT_OPERATIONS: [Operation; 4] = [
+    Operation::Outline,
+    Operation::Read,
+    Operation::Find,
+    Operation::Info,
+];
+
+pub(super) struct DocumentValueFlags {
+    flags: Vec<DocumentFlag>,
+}
+
+struct DocumentFlag {
+    flag: String,
+    used: bool,
+    takes_value: bool,
+}
+
+impl DocumentValueFlags {
+    pub(super) fn new<R>(operation: Operation, registry: &R, command: &Command) -> Self
+    where
+        R: NavigationAdapterRegistry + ?Sized,
+    {
+        let mut flags = Vec::new();
+        add_flags(&mut flags, command, true);
+        for candidate_operation in DOCUMENT_OPERATIONS {
+            if candidate_operation == operation {
+                continue;
+            }
+            if let Ok((command, _)) = document_clap_command(candidate_operation, registry) {
+                add_flags(&mut flags, &command, false);
+            }
         }
-        flags.push(KnownValueFlag { flag, used });
+        Self { flags }
     }
-    flags
-}
 
-pub(super) fn is_known_document_value_flag(
-    operation: Operation,
-    token: &str,
-    context: &ParserContext,
-) -> bool {
-    let (flag, _value) = split_equals(token);
-    document_value_flags(operation, context)
-        .iter()
-        .any(|known| known.flag == flag)
-}
+    pub(super) fn known_value_flags(&self) -> Vec<KnownValueFlag<'_>> {
+        self.flags
+            .iter()
+            .filter(|flag| flag.takes_value)
+            .map(|flag| KnownValueFlag {
+                flag: &flag.flag,
+                used: flag.used,
+            })
+            .collect()
+    }
 
-pub(super) fn document_uses_flag(operation: Operation, flag: ValueFlag) -> bool {
-    match flag {
-        ValueFlag::Adapter
-        | ValueFlag::InvocationLog
-        | ValueFlag::InvocationLogContentRoot
-        | ValueFlag::Output => true,
-        ValueFlag::ProjectConfig | ValueFlag::UserConfig => true,
-        ValueFlag::Page | ValueFlag::Pagination | ValueFlag::Limit => operation != Operation::Info,
-        ValueFlag::Ref => operation == Operation::Read,
-        ValueFlag::Query => operation == Operation::Find,
-        ValueFlag::Path => false,
+    pub(super) fn known_switch_flags(&self) -> Vec<&str> {
+        self.flags
+            .iter()
+            .filter(|flag| !flag.takes_value)
+            .map(|flag| flag.flag.as_str())
+            .collect()
+    }
+
+    pub(super) fn contains(&self, token: &str) -> bool {
+        self.flag(token).is_some()
+    }
+
+    pub(super) fn takes_value(&self, token: &str) -> Option<bool> {
+        self.flag(token).map(|flag| flag.takes_value)
+    }
+
+    pub(super) fn is_unused(&self, token: &str) -> bool {
+        self.flag(token).is_some_and(|flag| !flag.used)
+    }
+
+    fn flag(&self, token: &str) -> Option<&DocumentFlag> {
+        let (flag, _) = split_equals(token);
+        self.flags.iter().find(|known| known.flag == flag)
     }
 }
 
-#[derive(Clone, Copy)]
-pub(super) struct ValueFlagOccurrence<'a> {
-    pub(super) flag: ValueFlag,
-    pub(super) flag_token: &'a str,
-    pub(super) value: Option<&'a str>,
-    pub(super) consumed: usize,
-}
-
-pub(super) fn value_flag_occurrence(
-    args: &[String],
-    index: usize,
-) -> Option<ValueFlagOccurrence<'_>> {
-    let token = &args[index];
-    let flag = known_value_flag(token)?;
-    let (flag_token, inline_value) = split_equals(token);
-    Some(ValueFlagOccurrence {
-        flag,
-        flag_token,
-        value: inline_value.or_else(|| args.get(index + 1).map(String::as_str)),
-        consumed: if inline_value.is_some() { 1 } else { 2 },
-    })
+fn add_flags(flags: &mut Vec<DocumentFlag>, command: &Command, used: bool) {
+    for argument in command.get_arguments() {
+        let flag_tokens = [
+            argument.get_long().map(|long| format!("--{long}")),
+            argument.get_short().map(|short| format!("-{short}")),
+        ];
+        for flag in flag_tokens.into_iter().flatten() {
+            if let Some(existing) = flags.iter_mut().find(|known| known.flag == flag) {
+                existing.used |= used;
+            } else {
+                flags.push(DocumentFlag {
+                    flag,
+                    used,
+                    takes_value: argument.get_action().takes_values(),
+                });
+            }
+        }
+    }
 }

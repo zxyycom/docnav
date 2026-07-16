@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde_json::Value;
 
-use crate::process_strategy::{ProcessingInputKind, ProcessingLocator};
+use crate::process_strategy::{CliProcessingMetadata, ProcessingInputKind, ProcessingLocator};
 use crate::processing::ProcessingId;
 use crate::range::{FieldBound, FieldLength, FieldNumericBound, FieldNumericRange};
 
@@ -136,6 +136,7 @@ pub struct ProcessingMetadataView {
     pub constraints: FieldConstraints,
     pub default: DefaultMetadata,
     pub merge_strategy: MergeStrategy,
+    pub cli: Option<CliProcessingMetadata>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -160,6 +161,15 @@ pub enum BuildError {
     InvalidEnumValue(ValidationFailure),
     InvalidDefault(ValidationFailure),
     InvalidCliFlag,
+    CliMetadataRequiresCliFlag,
+    DuplicateCliMetadata,
+    IncompatibleCliBooleanEncoding {
+        value_kind: ValueKind,
+    },
+    IncompleteCliBooleanMapping,
+    AmbiguousCliBooleanMapping {
+        token: String,
+    },
     InvalidEnvVar,
     IncompatibleMergeStrategy {
         value_kind: ValueKind,
@@ -200,6 +210,27 @@ impl fmt::Display for BuildError {
             Self::InvalidEnumValue(error) => write!(formatter, "enum value is invalid: {error}"),
             Self::InvalidDefault(error) => write!(formatter, "default value is invalid: {error}"),
             Self::InvalidCliFlag => write!(formatter, "CLI flag locator is invalid"),
+            Self::CliMetadataRequiresCliFlag => {
+                write!(
+                    formatter,
+                    "CLI metadata requires a CLI flag processing strategy"
+                )
+            }
+            Self::DuplicateCliMetadata => {
+                write!(formatter, "CLI metadata is declared more than once")
+            }
+            Self::IncompatibleCliBooleanEncoding { value_kind } => write!(
+                formatter,
+                "CLI Boolean encoding is incompatible with value kind {value_kind:?}"
+            ),
+            Self::IncompleteCliBooleanMapping => write!(
+                formatter,
+                "CLI Boolean token mapping must declare true and false tokens"
+            ),
+            Self::AmbiguousCliBooleanMapping { token } => write!(
+                formatter,
+                "CLI Boolean token mapping assigns {token:?} to both true and false"
+            ),
             Self::InvalidEnvVar => write!(formatter, "environment variable locator is invalid"),
             Self::IncompatibleMergeStrategy {
                 value_kind,

@@ -41,7 +41,11 @@ fn adapter_layer_check_reports_definition_metadata_and_core_source() {
 #[test]
 fn static_registry_exposes_full_native_option_specs() {
     let registry = AdapterRegistry { adapters: ADAPTERS };
-    let native_options = registry.native_options_for(Operation::Outline);
+    let native_options = registry
+        .adapters()
+        .into_iter()
+        .flat_map(|adapter| adapter.definition.native_options().to_vec())
+        .collect::<Vec<_>>();
 
     assert!(native_options.iter().any(|option| {
         option.owner == "docnav-markdown"

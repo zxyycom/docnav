@@ -11,12 +11,12 @@ mod source;
 
 pub use diagnostics::{CandidateInvalidReason, DiagnosticReason, ResolutionDiagnostic};
 pub use docnav_typed_fields::{
-    ActualValueKind, BuildError, DefaultMetadata, ExpectedFieldShape, FieldBound, FieldDef,
-    FieldDefBuilder, FieldDefDeclaration, FieldDefSet, FieldDefSetBuildError, FieldDefSetBuilder,
-    FieldIdentity, FieldLength, FieldPath, FieldStringEnum, FieldValidation, FieldValidationErrors,
-    FieldValueMap, JsonValue, MergeStrategy, ProcessStrategy, ProcessingId, ProcessingInputKind,
-    ProcessingLocator, SchemaMetadataView, TypedValue, ValidationFailure, ValidationReason,
-    ValueKind,
+    ActualValueKind, BuildError, CliBooleanEncoding, CliProcessingMetadata, DefaultMetadata,
+    ExpectedFieldShape, FieldBound, FieldDef, FieldDefBuilder, FieldDefDeclaration, FieldDefSet,
+    FieldDefSetBuildError, FieldDefSetBuilder, FieldIdentity, FieldLength, FieldPath,
+    FieldStringEnum, FieldValidation, FieldValidationErrors, FieldValueMap, JsonValue,
+    MergeStrategy, ProcessStrategy, ProcessingId, ProcessingInputKind, ProcessingLocator,
+    SchemaMetadataView, TypedValue, ValidationFailure, ValidationReason, ValueKind,
 };
 pub use resolution::{
     resolve, CandidateTrace, FieldResolution, FieldTrace, MaterializationError,

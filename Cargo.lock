@@ -223,6 +223,8 @@ name = "docnav"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "cli-config-resolution",
+ "cli-config-resolution-clap",
  "docnav-adapter-contracts",
  "docnav-cli-args",
  "docnav-diagnostics",

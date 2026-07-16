@@ -7,11 +7,12 @@ use serde_json::{json, Value};
 use crate::{
     execute_loaded_navigation_command, execute_navigation_command,
     NavigationConfigSourceDescriptor, NavigationConfigSourceDescriptors,
-    NavigationConfigSourceOrigin, NavigationNativeOptionInput,
+    NavigationConfigSourceOrigin,
 };
 
 use super::super::support::{
-    config_sources, navigation_command, temp_workspace_path, write_config_file, StubRegistry,
+    cli_value_candidate, config_sources, navigation_command, temp_workspace_path,
+    write_config_file, StubRegistry,
 };
 
 // @case WB-NAVIGATION-DISPATCH-001
@@ -320,10 +321,11 @@ fn explicit_config_path_selection_preserves_parameter_priority() {
     );
 
     let explicit_outcome = execute_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--max-heading-level".to_owned(),
-            value: "4".to_owned(),
-        }]),
+        navigation_command(vec![cli_value_candidate(
+            "docnav.adapters.docnav-markdown.options.max_heading_level",
+            "--max-heading-level",
+            json!(4),
+        )]),
         NavigationConfigSourceDescriptors {
             project: NavigationConfigSourceDescriptor::explicit_cli(project_config_path.clone()),
             user: NavigationConfigSourceDescriptor::explicit_cli(user_config_path.clone()),

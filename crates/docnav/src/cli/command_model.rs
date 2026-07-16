@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
-use docnav_protocol::{Operation, PositiveInteger};
+use cli_config_resolution::{CandidateInput, Source};
+use docnav_protocol::Operation;
+
+pub(crate) const DOCUMENT_OUTPUT_FIELD_ID: &str = "docnav.defaults.output";
 use serde::{Deserialize, Serialize};
 
 /// Document output mode.
@@ -52,7 +55,7 @@ impl ParsedCli {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CliCommand {
     Document(DocumentCommand),
     Adapter(AdapterCommand),
@@ -76,9 +79,9 @@ impl CliCommand {
         }
     }
 
-    pub const fn output_mode(&self) -> Option<OutputMode> {
+    pub fn output_mode(&self) -> Option<OutputMode> {
         match self {
-            Self::Document(command) => command.output,
+            Self::Document(command) => command.output_mode(),
             Self::Adapter(_)
             | Self::Config(_)
             | Self::Init(_)
@@ -95,27 +98,36 @@ pub struct ConfigPathArgs {
     pub user_config: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DocumentCommand {
     pub operation: Operation,
     pub path: String,
     pub ref_id: Option<String>,
     pub query: Option<String>,
-    pub page: Option<PositiveInteger>,
-    pub pagination_enabled: Option<bool>,
-    pub limit: Option<PositiveInteger>,
-    pub native_options: Vec<NativeOptionCliInput>,
-    pub output: Option<OutputMode>,
-    pub adapter: Option<String>,
+    pub cli_source: Box<Source>,
     pub invocation_log: Option<String>,
     pub invocation_log_content_root: Option<String>,
     pub config_paths: ConfigPathArgs,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct NativeOptionCliInput {
-    pub flag: String,
-    pub value: String,
+impl DocumentCommand {
+    pub(crate) fn cli_candidate(
+        &self,
+        identity: &str,
+    ) -> Option<&cli_config_resolution::SourceCandidate> {
+        self.cli_source
+            .candidates()
+            .iter()
+            .find(|candidate| candidate.field().as_str() == identity)
+    }
+
+    fn output_mode(&self) -> Option<OutputMode> {
+        self.cli_candidate(DOCUMENT_OUTPUT_FIELD_ID)
+            .and_then(|candidate| match candidate.input() {
+                CandidateInput::Value(serde_json::Value::String(value)) => value.parse().ok(),
+                CandidateInput::Value(_) | CandidateInput::Invalid { .. } => None,
+            })
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

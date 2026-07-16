@@ -3,20 +3,21 @@ mod validation;
 use docnav_protocol::{OperationResult, ProtocolResponse};
 use serde_json::{json, Value};
 
-use crate::{execute_loaded_navigation_command, NavigationNativeOptionInput, NavigationOutputMode};
+use crate::{execute_loaded_navigation_command, NavigationOutputMode};
 
 use super::super::support::{
-    config_sources, navigation_command, MultiAdapterRegistry, StubRegistry,
+    cli_value_candidate, config_sources, navigation_command, MultiAdapterRegistry, StubRegistry,
 };
 
 #[test]
 // @case WB-NAV-INPUT-RESOLUTION-001
 fn navigation_resolves_selected_adapter_options_and_dispatches() {
     let outcome = execute_loaded_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--max-heading-level".to_owned(),
-            value: "4".to_owned(),
-        }]),
+        navigation_command(vec![cli_value_candidate(
+            "docnav.adapters.docnav-markdown.options.max_heading_level",
+            "--max-heading-level",
+            json!(4),
+        )]),
         config_sources(
             json!({
                 "defaults": {
@@ -76,28 +77,6 @@ fn navigation_includes_adapter_native_option_default() {
 }
 
 #[test]
-fn optional_non_json_cli_null_suppresses_default_and_handoff() {
-    let outcome = execute_loaded_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--max-heading-level".to_owned(),
-            value: "null".to_owned(),
-        }]),
-        config_sources(Value::Null, Value::Null),
-        &StubRegistry,
-    )
-    .expect("optional non-JSON null suppresses the default without entering handoff");
-
-    let ProtocolResponse::Success(success) = outcome.response else {
-        panic!("expected success");
-    };
-    let OperationResult::Outline(result) = success.result else {
-        panic!("expected outline result");
-    };
-    let result = result.as_structured().expect("structured outline result");
-    assert_eq!(result.entries[0].label, "Stub");
-}
-
-#[test]
 fn optional_non_json_config_null_suppresses_default_and_handoff() {
     let outcome = execute_loaded_navigation_command(
         navigation_command(Vec::new()),
@@ -128,10 +107,7 @@ fn optional_non_json_config_null_suppresses_default_and_handoff() {
 #[test]
 fn navigation_resolves_json_native_option_through_typed_fields() {
     let outcome = execute_loaded_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--payload".to_owned(),
-            value: "null".to_owned(),
-        }]),
+        navigation_command(Vec::new()),
         config_sources(
             json!({
                 "options": {
@@ -154,7 +130,7 @@ fn navigation_resolves_json_native_option_through_typed_fields() {
     };
     let result = result.as_structured().expect("structured outline result");
 
-    assert_eq!(result.entries[0].label, "Payload null");
+    assert_eq!(result.entries[0].label, "Payload {\"source\":\"project\"}");
 }
 
 #[test]

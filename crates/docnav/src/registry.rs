@@ -1,7 +1,7 @@
-use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec};
+use docnav_adapter_contracts::AdapterDefinition;
 use docnav_markdown::markdown_adapter_definition;
 use docnav_navigation::{NavigationAdapterRef, NavigationAdapterRegistry};
-use docnav_protocol::{Manifest, Operation};
+use docnav_protocol::Manifest;
 use serde_json::{json, Value};
 
 use crate::cli::AdapterCommand;
@@ -42,13 +42,6 @@ impl AdapterRegistry {
     pub fn is_empty(&self) -> bool {
         self.adapters.is_empty()
     }
-
-    pub fn native_options_for(&self, operation: Operation) -> Vec<AdapterOptionSpec> {
-        self.adapters
-            .iter()
-            .flat_map(|record| record.native_options_for(operation))
-            .collect()
-    }
 }
 
 impl NavigationAdapterRegistry for AdapterRegistry {
@@ -58,10 +51,6 @@ impl NavigationAdapterRegistry for AdapterRegistry {
             .map(|record| NavigationAdapterRef::new(record.definition()))
             .collect()
     }
-}
-
-pub fn native_options_for(operation: Operation) -> Vec<AdapterOptionSpec> {
-    AdapterRegistry::builtin().native_options_for(operation)
 }
 
 impl AdapterRecord {
@@ -79,17 +68,6 @@ impl AdapterRecord {
 
     pub fn implementation_source(&self) -> &'static str {
         self.implementation_source
-    }
-
-    pub fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
-        self.definition().native_options().to_vec()
-    }
-
-    pub fn native_options_for(&self, operation: Operation) -> Vec<AdapterOptionSpec> {
-        self.adapter_options()
-            .into_iter()
-            .filter(|option| option.applies_to(operation))
-            .collect()
     }
 }
 

@@ -58,6 +58,7 @@ impl FieldDef {
             constraints: self.constraints.clone(),
             default: self.default.clone(),
             merge_strategy: self.merge_strategy,
+            cli: process.cli_metadata().cloned(),
         })
     }
 
@@ -237,6 +238,9 @@ impl<T> FieldDefBuilder<T> {
         let validation = self.validation.ok_or(BuildError::MissingValidation)?;
         let (value_kind, mut constraints) = validation.into_parts();
         constraints.nullable = !constraints.required;
+        for process in processes.values() {
+            process.validate_cli_metadata(value_kind)?;
+        }
         validate_merge_strategy(value_kind, self.merge_strategy)?;
         validate_numeric_range(&constraints)?;
         validate_length_range(&constraints)?;

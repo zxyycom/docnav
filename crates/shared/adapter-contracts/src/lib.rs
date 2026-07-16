@@ -9,9 +9,9 @@ use docnav_protocol::{
     ProtocolError, ReadArguments, ReadResult, RequestEnvelope,
 };
 pub use docnav_typed_fields::{
-    DefaultMetadata, ExpectedFieldShape, FieldBound, FieldDefBuilder, FieldDefDeclaration,
-    FieldDefSet, FieldDefSetBuilder, FieldValidation, FieldValue, ProcessStrategy, ProcessingId,
-    ValueKind,
+    CliBooleanEncoding, CliProcessingMetadata, DefaultMetadata, ExpectedFieldShape, FieldBound,
+    FieldDefBuilder, FieldDefDeclaration, FieldDefSet, FieldDefSetBuilder, FieldValidation,
+    FieldValue, ProcessStrategy, ProcessingId, ValueKind,
 };
 
 mod definition;

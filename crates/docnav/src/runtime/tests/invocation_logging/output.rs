@@ -1,6 +1,5 @@
 use super::super::super::{AdapterRuntime, DocnavRuntime, DocumentRequest};
 use super::super::support::*;
-use crate::cli::OutputMode;
 use crate::output::write_outcome;
 
 #[test]
@@ -79,7 +78,12 @@ fn invocation_readable_json_stdout_stays_single_readable_value() {
     let context = default_context(project_root.clone());
     let log_path = project_root.join(".log").join("readable-json.jsonl");
     let mut command = outline_command(None, None);
-    command.output = Some(OutputMode::ReadableJson);
+    set_cli_value(
+        &mut command,
+        "docnav.defaults.output",
+        "--output",
+        serde_json::json!("readable-json"),
+    );
     command.invocation_log = Some(".log/readable-json.jsonl".to_owned());
     let request = DocumentRequest::from_config_context(command, context);
 
@@ -108,7 +112,12 @@ fn invocation_readable_view_stdout_stays_free_of_log_events() {
     let context = default_context(project_root.clone());
     let log_path = project_root.join(".log").join("readable-view.jsonl");
     let mut command = outline_command(None, None);
-    command.output = Some(OutputMode::ReadableView);
+    set_cli_value(
+        &mut command,
+        "docnav.defaults.output",
+        "--output",
+        serde_json::json!("readable-view"),
+    );
     command.invocation_log = Some(".log/readable-view.jsonl".to_owned());
     let request = DocumentRequest::from_config_context(command, context);
 

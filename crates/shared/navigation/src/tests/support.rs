@@ -2,40 +2,64 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use cli_config_resolution::{
+    FieldIdentity, Source, SourceCandidate, SourceId, SourceKind, SourceLocator,
+};
 use docnav_adapter_contracts::{
     Adapter, AdapterDefinition, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec,
     AdapterResult, FieldBound, FieldValidation, NativeOptionHandoff,
 };
 use docnav_protocol::{
-    positive_result, AdapterIdentity, Entry, FindArguments, FindResult, FormatDescriptor,
-    InfoArguments, InfoResult, Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason,
-    ProbeReasonCode, ProbeResult, ReadArguments, ReadResult, RequestEnvelope,
+    AdapterIdentity, Entry, FindArguments, FindResult, FormatDescriptor, InfoArguments, InfoResult,
+    Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode,
+    ProbeResult, ReadArguments, ReadResult, RequestEnvelope,
 };
 use serde_json::Value;
 
 use crate::{
     config_source::LoadedNavigationConfigSource, NavigationAdapterRef, NavigationAdapterRegistry,
     NavigationCommand, NavigationConfigSource, NavigationConfigSourceLevel,
-    NavigationConfigSourceOrigin, NavigationConfigSources, NavigationNativeOptionInput,
+    NavigationConfigSourceOrigin, NavigationConfigSources,
 };
 
 const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline];
 
-pub(super) fn navigation_command(
-    native_options: Vec<NavigationNativeOptionInput>,
-) -> NavigationCommand {
+pub(super) fn navigation_command(candidates: Vec<SourceCandidate>) -> NavigationCommand {
     NavigationCommand {
         operation: Operation::Outline,
         document_path: "docs/guide.stub".to_owned(),
         ref_id: None,
         query: None,
-        page: Some(positive_result(1).unwrap()),
-        pagination_enabled: None,
-        limit: None,
-        output: None,
-        adapter: None,
-        native_options,
+        cli_source: Source::new(
+            SourceId::new("explicit").unwrap(),
+            SourceKind::Cli,
+            400,
+            candidates,
+        )
+        .unwrap(),
     }
+}
+
+pub(super) fn cli_value_candidate(identity: &str, flag: &str, value: Value) -> SourceCandidate {
+    SourceCandidate::value(
+        FieldIdentity::new(identity).unwrap(),
+        SourceLocator::CliFlag(flag.to_owned()),
+        value,
+    )
+}
+
+pub(super) fn cli_invalid_candidate(
+    identity: &str,
+    flag: &str,
+    raw: Value,
+    reason: &str,
+) -> SourceCandidate {
+    SourceCandidate::invalid(
+        FieldIdentity::new(identity).unwrap(),
+        SourceLocator::CliFlag(flag.to_owned()),
+        raw,
+        reason,
+    )
 }
 
 pub(super) fn config_sources(project: Value, user: Value) -> NavigationConfigSources {

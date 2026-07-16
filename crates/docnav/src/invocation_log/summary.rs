@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use cli_config_resolution::CandidateInput;
 use docnav_navigation::NavigationFailureLayer;
 use docnav_protocol::ProtocolDiagnosticCode;
 use serde_json::{json, Value};
@@ -37,11 +38,16 @@ pub(super) fn document_summary(
 
 pub(super) fn arguments_summary(command: &DocumentCommand) -> Value {
     let mut value = serde_json::Map::new();
-    if let Some(page) = command.page {
-        value.insert("page".to_owned(), json!(page.get()));
-    }
-    if let Some(limit) = command.limit {
-        value.insert("limit".to_owned(), json!(limit.get()));
+    for (identity, label) in [
+        ("docnav.document.page", "page"),
+        ("docnav.defaults.pagination.limit", "limit"),
+    ] {
+        let Some(candidate) = command.cli_candidate(identity) else {
+            continue;
+        };
+        if let CandidateInput::Value(raw) = candidate.input() {
+            value.insert(label.to_owned(), raw.clone());
+        }
     }
     if let Some(ref_id) = &command.ref_id {
         value.insert("ref".to_owned(), bounded_input_summary(ref_id));

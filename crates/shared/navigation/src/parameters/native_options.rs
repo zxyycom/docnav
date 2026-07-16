@@ -6,10 +6,7 @@ use serde_json::Value;
 
 use crate::{NavigationCommand, NavigationConfigSources, NavigationError};
 
-use super::{
-    input::native_option_cli_value,
-    values::{field_source_label, projected_field_value, typed_value_to_json},
-};
+use super::values::{field_source_label, projected_field_value, typed_value_to_json};
 
 pub(super) struct UnsupportedOptionContext<'a> {
     pub source: &'static str,
@@ -140,13 +137,12 @@ fn raw_native_option_value_for_source(
     source: &str,
 ) -> Option<Value> {
     match source {
-        "explicit" => spec.cli_flag().and_then(|cli_flag| {
-            command
-                .native_options
-                .iter()
-                .find(|option| option.flag == cli_flag)
-                .map(|option| native_option_cli_value(&option.value))
-        }),
+        "explicit" => command
+            .cli_source
+            .candidates()
+            .iter()
+            .find(|candidate| candidate.field().as_str() == spec.identity)
+            .map(|candidate| candidate.input().raw().clone()),
         "project" => spec
             .processing_path(super::CONFIG_PROCESSING)
             .ok()

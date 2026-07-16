@@ -1,30 +1,24 @@
+use clap::error::ErrorKind;
 use docnav_protocol::Operation;
 
-use crate::cli::command_model::OutputMode;
 use crate::error::AppError;
 
 use super::super::super::flags;
 use super::super::argument_helpers::{
-    invalid_output_value_error, invalid_positive_value_error, invalid_value_error, is_flag,
-    missing_value_flag_error, split_equals, ValueFlag,
+    error_from_rejected_arg, is_flag, missing_value_flag_error, split_equals,
 };
-use super::super::{spec, ParserContext};
-use super::value_flags::{
-    document_uses_flag, is_known_document_value_flag, value_flag_occurrence, ValueFlagOccurrence,
-};
-
-const PAGINATION_ACCEPTED_VALUES: [&str; 2] = [
-    spec::pagination_values::ENABLED,
-    spec::pagination_values::DISABLED,
-];
-const PAGINATION_GUIDANCE: [&str; 1] = ["Use --pagination enabled or --pagination disabled."];
+use super::value_flags::DocumentValueFlags;
 
 pub(super) fn document_parse_error(
     operation: Operation,
     args: &[String],
-    context: &ParserContext,
+    value_flags: &DocumentValueFlags,
+    clap_error: &clap::Error,
 ) -> AppError {
-    if !has_path_candidate(operation, args, context) {
+    if clap_error.kind() == ErrorKind::UnknownArgument {
+        return unknown_or_unused_argument(operation, args, value_flags);
+    }
+    if !has_path_candidate(args, value_flags) {
         return AppError::invalid_request(
             "path",
             format!("{} requires <path>", operation.as_str()),
@@ -37,27 +31,57 @@ pub(super) fn document_parse_error(
         Operation::Find if !has_value_flag(args, flags::QUERY) => {
             AppError::invalid_request(flags::QUERY, "find requires --query <text>")
         }
-        _ => first_invalid_used_flag(operation, args)
-            .unwrap_or_else(|| AppError::invalid_request("argv", "invalid command line arguments")),
+        _ => missing_value_arg(args, value_flags).map_or_else(
+            || AppError::invalid_request("argv", "invalid command line arguments"),
+            missing_value_flag_error,
+        ),
     }
 }
 
-pub(super) fn invalid_pagination_value_error(value: &str) -> AppError {
-    invalid_value_error(
-        flags::PAGINATION,
-        value,
-        PAGINATION_ACCEPTED_VALUES,
-        PAGINATION_GUIDANCE,
-    )
+fn unknown_or_unused_argument(
+    operation: Operation,
+    args: &[String],
+    value_flags: &DocumentValueFlags,
+) -> AppError {
+    let token = args
+        .iter()
+        .find(|token| {
+            value_flags.is_unused(token) || (is_flag(token) && !value_flags.contains(token))
+        })
+        .cloned()
+        .unwrap_or_else(|| "--unknown".to_owned());
+    if value_flags.is_unused(&token) {
+        return error_from_rejected_arg(docnav_cli_args::RejectedArg::UnusedValueFlag {
+            flag: token,
+            value: None,
+            command: operation.as_str().to_owned(),
+        });
+    }
+    error_from_rejected_arg(docnav_cli_args::RejectedArg::UnknownFlag { token })
 }
 
-fn has_path_candidate(operation: Operation, args: &[String], context: &ParserContext) -> bool {
+fn missing_value_arg<'a>(args: &'a [String], value_flags: &DocumentValueFlags) -> Option<&'a str> {
+    args.iter().enumerate().find_map(|(index, token)| {
+        let (flag, inline_value) = split_equals(token);
+        (inline_value.is_none()
+            && value_flags.takes_value(flag) == Some(true)
+            && !value_flags.is_unused(flag)
+            && args.get(index + 1).is_none_or(|next| is_flag(next)))
+        .then_some(flag)
+    })
+}
+
+fn has_path_candidate(args: &[String], value_flags: &DocumentValueFlags) -> bool {
     let mut index = 0;
     while index < args.len() {
         let token = &args[index];
-        if is_known_document_value_flag(operation, token, context) {
-            let (_flag, inline_value) = split_equals(token);
-            index += if inline_value.is_some() { 1 } else { 2 };
+        if let Some(takes_value) = value_flags.takes_value(token) {
+            let (_, inline_value) = split_equals(token);
+            index += if takes_value && inline_value.is_none() {
+                2
+            } else {
+                1
+            };
         } else if is_flag(token) {
             index += 1;
         } else {
@@ -74,72 +98,4 @@ fn has_value_flag(args: &[String], expected: &str) -> bool {
     }) || args
         .windows(2)
         .any(|window| window.first().is_some_and(|token| token == expected))
-}
-
-fn first_invalid_used_flag(operation: Operation, args: &[String]) -> Option<AppError> {
-    let mut index = 0;
-    while index < args.len() {
-        let Some(occurrence) = value_flag_occurrence(args, index) else {
-            index += 1;
-            continue;
-        };
-        if document_uses_flag(operation, occurrence.flag) {
-            if let Some(error) = value_flag_error(occurrence) {
-                return Some(error);
-            }
-        }
-        index += occurrence.consumed;
-    }
-    None
-}
-
-fn value_flag_error(occurrence: ValueFlagOccurrence<'_>) -> Option<AppError> {
-    match (occurrence.flag, occurrence.value) {
-        (_, None) => Some(missing_value_flag_error(occurrence.flag_token)),
-        (ValueFlag::Page, Some(value)) => positive_flag_error(flags::PAGE, value),
-        (ValueFlag::Limit, Some(value)) => positive_flag_error(flags::LIMIT, value),
-        (ValueFlag::Pagination, Some(value)) => pagination_flag_error(value),
-        (ValueFlag::Output, Some(value)) => output_flag_error(value),
-        (ValueFlag::Ref, Some("")) => Some(empty_value_error(flags::REF)),
-        (ValueFlag::Query, Some("")) => Some(empty_value_error(flags::QUERY)),
-        _ => None,
-    }
-}
-
-fn pagination_flag_error(value: &str) -> Option<AppError> {
-    if matches!(
-        value,
-        spec::pagination_values::ENABLED | spec::pagination_values::DISABLED
-    ) {
-        return None;
-    }
-    Some(invalid_pagination_value_error(value))
-}
-
-fn positive_flag_error(flag: &str, value: &str) -> Option<AppError> {
-    if value
-        .parse::<u32>()
-        .ok()
-        .filter(|value| *value > 0)
-        .is_some()
-    {
-        return None;
-    }
-    Some(invalid_positive_value_error(flag, value))
-}
-
-fn output_flag_error(value: &str) -> Option<AppError> {
-    value
-        .parse::<OutputMode>()
-        .err()
-        .map(|_reason| invalid_output_value_error(value))
-}
-
-fn empty_value_error(flag: &str) -> AppError {
-    invalid_value_error(
-        flag,
-        "",
-        [format!("non-empty value for {flag}")],
-        [format!("Provide a non-empty value for {flag}.")],
-    )
 }

@@ -18,7 +18,10 @@ pub use metadata::{
     FieldIdentity, FieldPath, MergeStrategy, ProcessingMetadataView, SchemaMetadataView,
     TypedValue, ValidationFailure, ValidationReason, ValueKind,
 };
-pub use process_strategy::{ProcessStrategy, ProcessingInputKind, ProcessingLocator};
+pub use process_strategy::{
+    CliBooleanEncoding, CliProcessingMetadata, ProcessStrategy, ProcessingInputKind,
+    ProcessingLocator,
+};
 pub use processing::{
     InvalidProcessingId, ProcessedExtraction, ProcessedValue, ProcessingBuild, ProcessingId,
 };

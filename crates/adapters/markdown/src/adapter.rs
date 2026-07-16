@@ -1,7 +1,7 @@
 use docnav_adapter_contracts::{
     Adapter, AdapterDefinition, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec,
-    AdapterResult, FieldBound, FieldValidation, NativeOptionHandoff, UnstructuredFullRead,
-    UnstructuredFullReadCapabilities,
+    AdapterResult, CliProcessingMetadata, FieldBound, FieldValidation, NativeOptionHandoff,
+    UnstructuredFullRead, UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
     AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoAdapter, InfoArguments,
@@ -263,7 +263,11 @@ fn markdown_adapter_options() -> Vec<AdapterOptionSpec> {
         .path([NATIVE_OPTIONS_NAMESPACE, MAX_HEADING_LEVEL_OPTION])
         .process(
             "cli",
-            AdapterOptionProcessStrategy::cli_flag("--max-heading-level"),
+            AdapterOptionProcessStrategy::cli_flag("--max-heading-level").cli_metadata(
+                CliProcessingMetadata::new()
+                    .help("Set the maximum Markdown heading level")
+                    .value_name("value"),
+            ),
         )
         .process(
             "config",

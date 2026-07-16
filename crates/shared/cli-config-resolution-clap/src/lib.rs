@@ -7,8 +7,9 @@ use std::fmt;
 use clap::parser::ValueSource;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use cli_config_resolution::{
-    FieldDefSet, FieldIdentity, JsonValue, ProcessingId, ProcessingLocator, Source,
-    SourceCandidate, SourceError, SourceId, SourceKind, SourceLocator, ValueKind,
+    CliBooleanEncoding, CliProcessingMetadata, DefaultMetadata, FieldDefSet, FieldIdentity,
+    JsonValue, ProcessingId, ProcessingLocator, Source, SourceCandidate, SourceError, SourceId,
+    SourceKind, SourceLocator, ValueKind,
 };
 
 /// Adds the CLI arguments declared for `processing_id` to `command`.
@@ -22,7 +23,7 @@ pub fn augment_command(
     collision_view.build();
 
     for projection in projections {
-        if command_conflicts(&collision_view, &projection.flag) {
+        if command_conflicts(&collision_view, &projection) {
             return Err(ClapProjectionError::ArgumentConflict {
                 field: projection.field,
                 flag: projection.flag.raw,
@@ -137,6 +138,9 @@ struct CliProjection {
     field: FieldIdentity,
     flag: FlagSpec,
     value_kind: ValueKind,
+    accepted_values: Option<Vec<JsonValue>>,
+    default: DefaultMetadata,
+    cli: CliProcessingMetadata,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -148,7 +152,6 @@ enum FlagKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct FlagSpec {
     raw: String,
-    id: String,
     kind: FlagKind,
 }
 
@@ -164,7 +167,6 @@ impl FlagSpec {
                 let long = long.to_owned();
                 return Ok(Self {
                     raw: flag,
-                    id: long.clone(),
                     kind: FlagKind::Long(long),
                 });
             }
@@ -178,7 +180,6 @@ impl FlagSpec {
                 {
                     return Ok(Self {
                         raw: flag,
-                        id: value.to_string(),
                         kind: FlagKind::Short(value),
                     });
                 }
@@ -196,7 +197,7 @@ fn cli_projections(
     fields: &FieldDefSet,
     processing_id: &ProcessingId,
 ) -> Result<Vec<CliProjection>, ClapProjectionError> {
-    let mut argument_ids = BTreeSet::new();
+    let mut locators = BTreeSet::new();
     fields
         .processing_metadata(processing_id)
         .into_iter()
@@ -214,7 +215,7 @@ fn cli_projections(
                     value_kind: metadata.value_kind,
                 });
             }
-            if !argument_ids.insert(flag.id.clone()) {
+            if !locators.insert(flag.raw.clone()) {
                 return Err(ClapProjectionError::ArgumentConflict {
                     field,
                     flag: flag.raw,
@@ -224,26 +225,53 @@ fn cli_projections(
                 field,
                 flag,
                 value_kind: metadata.value_kind,
+                accepted_values: metadata.constraints.enum_values,
+                default: metadata.default,
+                cli: metadata.cli.unwrap_or_default(),
             })
         })
         .collect()
 }
 
 fn argument_from_projection(projection: &CliProjection) -> Result<Arg, ClapProjectionError> {
-    let mut argument = Arg::new(projection.flag.id.clone());
+    let mut argument = Arg::new(projection.field.as_str().to_owned());
     argument = match &projection.flag.kind {
         FlagKind::Long(flag) => argument.long(flag.clone()),
         FlagKind::Short(flag) => argument.short(*flag),
     };
-    match projection.value_kind {
-        ValueKind::Boolean => Ok(argument.action(ArgAction::SetTrue)),
-        ValueKind::Array | ValueKind::Object => Ok(argument.action(ArgAction::Append).num_args(1)),
-        ValueKind::String => Ok(argument.action(ArgAction::Set).num_args(1)),
-        ValueKind::Integer | ValueKind::Number => Ok(argument
+    if let Some(help) = projection.help() {
+        argument = argument.help(help);
+    }
+
+    let takes_value = !matches!(
+        (&projection.value_kind, &projection.cli.boolean_encoding),
+        (
+            ValueKind::Boolean,
+            None | Some(CliBooleanEncoding::PresenceMeansTrue)
+        )
+    );
+    if takes_value {
+        if let Some(value_name) = &projection.cli.value_name {
+            argument = argument.value_name(value_name.clone());
+        }
+    }
+
+    match (&projection.value_kind, &projection.cli.boolean_encoding) {
+        (ValueKind::Boolean, None | Some(CliBooleanEncoding::PresenceMeansTrue)) => {
+            Ok(argument.action(ArgAction::SetTrue))
+        }
+        (ValueKind::Boolean, Some(CliBooleanEncoding::Explicit { .. })) => {
+            Ok(argument.action(ArgAction::Set).num_args(1))
+        }
+        (ValueKind::Array | ValueKind::Object, _) => {
+            Ok(argument.action(ArgAction::Append).num_args(1))
+        }
+        (ValueKind::String, _) => Ok(argument.action(ArgAction::Set).num_args(1)),
+        (ValueKind::Integer | ValueKind::Number, _) => Ok(argument
             .action(ArgAction::Set)
             .num_args(1)
             .allow_negative_numbers(true)),
-        ValueKind::Json => Err(ClapProjectionError::UnsupportedValueKind {
+        (ValueKind::Json, _) => Err(ClapProjectionError::UnsupportedValueKind {
             field: projection.field.clone(),
             value_kind: projection.value_kind,
         }),
@@ -254,23 +282,54 @@ fn candidate_from_matches(
     matches: &ArgMatches,
     projection: &CliProjection,
 ) -> Result<Option<SourceCandidate>, ClapProjectionError> {
+    let argument_id = projection.field.as_str().to_owned();
     matches
-        .try_contains_id(&projection.flag.id)
+        .try_contains_id(&argument_id)
         .map_err(|error| match_read_error(projection, error.to_string()))?;
-    if matches.value_source(&projection.flag.id) != Some(ValueSource::CommandLine) {
+    if matches.value_source(&argument_id) != Some(ValueSource::CommandLine) {
         return Ok(None);
     }
 
     let locator = SourceLocator::CliFlag(projection.flag.raw.clone());
     let candidate = match projection.value_kind {
-        ValueKind::Boolean => {
-            let value = matches
-                .try_get_one::<bool>(&projection.flag.id)
-                .map_err(|error| match_read_error(projection, error.to_string()))?
-                .copied()
-                .ok_or_else(|| match_read_error(projection, "explicit flag has no value"))?;
-            SourceCandidate::value(projection.field.clone(), locator, JsonValue::Bool(value))
-        }
+        ValueKind::Boolean => match &projection.cli.boolean_encoding {
+            None | Some(CliBooleanEncoding::PresenceMeansTrue) => {
+                let value = matches
+                    .try_get_one::<bool>(&argument_id)
+                    .map_err(|error| match_read_error(projection, error.to_string()))?
+                    .copied()
+                    .ok_or_else(|| match_read_error(projection, "explicit flag has no value"))?;
+                SourceCandidate::value(projection.field.clone(), locator, JsonValue::Bool(value))
+            }
+            Some(CliBooleanEncoding::Explicit {
+                true_token: Some(true_token),
+                false_token: Some(false_token),
+            }) => {
+                let raw = read_one_string(matches, projection)?;
+                if raw == *true_token {
+                    SourceCandidate::value(projection.field.clone(), locator, JsonValue::Bool(true))
+                } else if raw == *false_token {
+                    SourceCandidate::value(
+                        projection.field.clone(),
+                        locator,
+                        JsonValue::Bool(false),
+                    )
+                } else {
+                    SourceCandidate::invalid(
+                        projection.field.clone(),
+                        locator,
+                        JsonValue::String(raw),
+                        format!("expected Boolean CLI token {true_token:?} or {false_token:?}"),
+                    )
+                }
+            }
+            Some(CliBooleanEncoding::Explicit { .. }) => {
+                return Err(match_read_error(
+                    projection,
+                    "canonical Boolean CLI token mapping is incomplete",
+                ));
+            }
+        },
         ValueKind::String => {
             let raw = read_one_string(matches, projection)?;
             SourceCandidate::value(projection.field.clone(), locator, JsonValue::String(raw))
@@ -353,7 +412,7 @@ fn read_strings(
     projection: &CliProjection,
 ) -> Result<Vec<String>, ClapProjectionError> {
     let values = matches
-        .try_get_many::<String>(&projection.flag.id)
+        .try_get_many::<String>(projection.field.as_str())
         .map_err(|error| match_read_error(projection, error.to_string()))?
         .ok_or_else(|| match_read_error(projection, "explicit argument has no value"))?;
     let values = values.cloned().collect::<Vec<_>>();
@@ -390,7 +449,9 @@ fn match_read_error(projection: &CliProjection, reason: impl Into<String>) -> Cl
     }
 }
 
-fn command_conflicts(command: &Command, flag: &FlagSpec) -> bool {
+fn command_conflicts(command: &Command, projection: &CliProjection) -> bool {
+    let flag = &projection.flag;
+    let argument_id = projection.field.as_str();
     let automatic_flag_conflicts = match &flag.kind {
         FlagKind::Long(value) => {
             (!command.is_disable_help_flag_set() && value == "help")
@@ -404,7 +465,7 @@ fn command_conflicts(command: &Command, flag: &FlagSpec) -> bool {
     automatic_flag_conflicts
         || command
             .get_groups()
-            .any(|group| group.get_id().as_str() == flag.id)
+            .any(|group| group.get_id().as_str() == argument_id)
         || command
             .get_subcommands()
             .any(|subcommand| match &flag.kind {
@@ -422,7 +483,7 @@ fn command_conflicts(command: &Command, flag: &FlagSpec) -> bool {
                 }
             })
         || command.get_arguments().any(|argument| {
-            argument.get_id().as_str() == flag.id
+            argument.get_id().as_str() == argument_id
                 || match &flag.kind {
                     FlagKind::Long(value) => {
                         argument.get_long() == Some(value)
@@ -438,6 +499,39 @@ fn command_conflicts(command: &Command, flag: &FlagSpec) -> bool {
                     }
                 }
         })
+}
+
+impl CliProjection {
+    fn help(&self) -> Option<String> {
+        let mut canonical_facts = Vec::new();
+        if let Some(accepted_values) = &self.accepted_values {
+            canonical_facts.push(format!(
+                "possible values: {}",
+                accepted_values
+                    .iter()
+                    .map(display_json_value)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+        if let DefaultMetadata::Static(value) = &self.default {
+            canonical_facts.push(format!("default: {}", display_json_value(value)));
+        }
+
+        match (&self.cli.help, canonical_facts.is_empty()) {
+            (Some(help), true) => Some(help.clone()),
+            (Some(help), false) => Some(format!("{help} [{}]", canonical_facts.join("; "))),
+            (None, false) => Some(format!("[{}]", canonical_facts.join("; "))),
+            (None, true) => None,
+        }
+    }
+}
+
+fn display_json_value(value: &JsonValue) -> String {
+    match value {
+        JsonValue::String(value) => value.clone(),
+        value => value.to_string(),
+    }
 }
 
 #[cfg(test)]

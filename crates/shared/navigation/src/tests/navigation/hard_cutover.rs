@@ -1,15 +1,17 @@
 use docnav_adapter_contracts::{
     AdapterDefinition, AdapterOptionProcessStrategy, AdapterOptionSpec, FieldBound, FieldValidation,
 };
-use docnav_protocol::{positive_result, Operation, OperationResult, ProtocolResponse};
+use docnav_protocol::{Operation, OperationResult, ProtocolResponse};
 use serde_json::{json, Value};
 
 use crate::{
     execute_loaded_navigation_command, NavigationAdapterRef, NavigationAdapterRegistry,
-    NavigationNativeOptionInput, NavigationOutputMode,
+    NavigationOutputMode,
 };
 
-use super::super::support::{config_sources, navigation_command, StubRegistry};
+use super::super::support::{
+    cli_value_candidate, config_sources, navigation_command, StubRegistry,
+};
 
 struct TypedOnlyConstraintRegistry;
 
@@ -106,12 +108,15 @@ fn typed_only_constraint_options() -> Vec<AdapterOptionSpec> {
 // @case WB-NAVIGATION-HARD-CUTOVER-001
 #[test]
 fn hard_cutover_preserves_common_and_native_option_source_priority() {
-    let mut command = navigation_command(vec![NavigationNativeOptionInput {
-        flag: "--max-heading-level".to_owned(),
-        value: "4".to_owned(),
-    }]);
-    command.limit = Some(positive_result(42).unwrap());
-    command.output = Some(NavigationOutputMode::ProtocolJson);
+    let command = navigation_command(vec![
+        cli_value_candidate(
+            "docnav.adapters.docnav-markdown.options.max_heading_level",
+            "--max-heading-level",
+            json!(4),
+        ),
+        cli_value_candidate("docnav.defaults.pagination.limit", "--limit", json!(42)),
+        cli_value_candidate("docnav.defaults.output", "--output", json!("protocol-json")),
+    ]);
 
     let outcome = execute_loaded_navigation_command(
         command,
@@ -153,10 +158,11 @@ fn hard_cutover_preserves_common_and_native_option_source_priority() {
 #[test]
 fn native_identity_prefix_does_not_overwrite_common_direct_input() {
     let outcome = execute_loaded_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--max-heading-level".to_owned(),
-            value: "4".to_owned(),
-        }]),
+        navigation_command(vec![cli_value_candidate(
+            "path.native",
+            "--max-heading-level",
+            json!(4),
+        )]),
         config_sources(Value::Null, Value::Null),
         &NativeIdentityCollisionRegistry,
     )
@@ -174,8 +180,11 @@ fn native_identity_prefix_does_not_overwrite_common_direct_input() {
 
 #[test]
 fn valid_explicit_common_value_does_not_hide_invalid_project_config() {
-    let mut command = navigation_command(Vec::new());
-    command.output = Some(NavigationOutputMode::ProtocolJson);
+    let command = navigation_command(vec![cli_value_candidate(
+        "docnav.defaults.output",
+        "--output",
+        json!("protocol-json"),
+    )]);
 
     let error = execute_loaded_navigation_command(
         command,
@@ -198,10 +207,11 @@ fn valid_explicit_common_value_does_not_hide_invalid_project_config() {
 #[test]
 fn valid_explicit_native_value_does_not_hide_invalid_user_config() {
     let error = execute_loaded_navigation_command(
-        navigation_command(vec![NavigationNativeOptionInput {
-            flag: "--max-heading-level".to_owned(),
-            value: "4".to_owned(),
-        }]),
+        navigation_command(vec![cli_value_candidate(
+            "docnav.adapters.docnav-markdown.options.max_heading_level",
+            "--max-heading-level",
+            json!(4),
+        )]),
         config_sources(
             Value::Null,
             json!({

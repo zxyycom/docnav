@@ -8,8 +8,9 @@ mod routing;
 
 use std::path::PathBuf;
 
+use cli_config_resolution::Source;
 use config_source::{load_config_source, LoadedNavigationConfigSource};
-use docnav_protocol::{Operation, PositiveInteger, ProtocolResponse, RequestEnvelope};
+use docnav_protocol::{Operation, ProtocolResponse, RequestEnvelope};
 use serde_json::Value;
 
 pub use context::{select_navigation_context, NavigationContextSelection};
@@ -18,6 +19,10 @@ use outline_mode::{execute_unstructured_outline, resolve_outline_mode, OutlineMo
 use parameters::{
     resolve_adapter_intent, resolve_context_defaults, resolve_operation_input, AdapterIntent,
     ResolvedNavigationInput,
+};
+pub use parameters::{
+    DocumentCliFieldAttribution, DocumentCliFieldOwner, DocumentCliFieldSet,
+    DocumentCliFieldSetBuildError,
 };
 pub use protocol::{
     execute_operation, execute_protocol_request, protocol_request, NavigationInputError,
@@ -28,6 +33,16 @@ pub use routing::{
     select_adapter, AdapterSelectionRequest, CandidateEvidence, NavigationAdapterRef,
     NavigationAdapterRegistry,
 };
+
+/// Builds the canonical CLI field set for a document operation from registered declarations.
+///
+/// Declaration conflicts retain their field and owner attribution in the returned build error.
+pub fn document_cli_field_set(
+    operation: Operation,
+    registry: &(impl NavigationAdapterRegistry + ?Sized),
+) -> Result<DocumentCliFieldSet, DocumentCliFieldSetBuildError> {
+    parameters::registry_cli_fields(operation, registry)
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NavigationOutputMode {
@@ -61,24 +76,18 @@ impl NavigationOutputMode {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// Canonical identity used for invocation-local document CLI candidates.
+pub const DOCUMENT_CLI_SOURCE_ID: &str = "explicit";
+/// Source priority for invocation-local document CLI candidates.
+pub const DOCUMENT_CLI_SOURCE_PRIORITY: i32 = 400;
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct NavigationCommand {
     pub operation: Operation,
     pub document_path: String,
     pub ref_id: Option<String>,
     pub query: Option<String>,
-    pub page: Option<PositiveInteger>,
-    pub pagination_enabled: Option<bool>,
-    pub limit: Option<PositiveInteger>,
-    pub output: Option<NavigationOutputMode>,
-    pub adapter: Option<String>,
-    pub native_options: Vec<NavigationNativeOptionInput>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct NavigationNativeOptionInput {
-    pub flag: String,
-    pub value: String,
+    pub cli_source: Source,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

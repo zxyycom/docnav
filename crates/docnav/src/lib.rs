@@ -2,7 +2,6 @@ mod cli;
 mod config;
 mod error;
 mod invocation_log;
-mod navigation_defaults;
 mod output;
 mod pipeline;
 mod project_context;

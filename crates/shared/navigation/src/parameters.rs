@@ -6,7 +6,7 @@ mod native_options;
 mod resolution;
 mod values;
 
-use cli_config_resolution::{FieldDefSet, ResolutionResult};
+use cli_config_resolution::{FieldDefSet, ResolutionResult, Source};
 use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec, NativeOptionHandoff};
 use docnav_protocol::{Operation, Options, PositiveInteger};
 use docnav_typed_fields::FieldStringEnum;
@@ -17,6 +17,11 @@ use crate::{
     NavigationResolvedValue,
 };
 
+pub(crate) use fields::registry_cli_fields;
+pub use fields::{
+    DocumentCliFieldAttribution, DocumentCliFieldOwner, DocumentCliFieldSet,
+    DocumentCliFieldSetBuildError,
+};
 pub(crate) use inspection::inspect_config_sources;
 
 pub(super) mod ids {
@@ -76,8 +81,15 @@ pub fn resolve_adapter_intent(
     config_sources: &NavigationConfigSources,
 ) -> Result<AdapterIntent, NavigationError> {
     let fields = fields::adapter_intent_fields()?;
-    let resolution =
-        resolve_command_with_fields(&fields, command, config_sources, &[], "adapter-intent")?;
+    let cli_source = input::cli_source_for_fields(&command.cli_source, &fields)
+        .map_err(|_| NavigationError::internal("adapter-intent-cli-source-invalid"))?;
+    let resolution = resolve_with_fields(
+        &fields,
+        Some(input::direct_input(command)),
+        Some(&cli_source),
+        config_sources,
+        "adapter-intent",
+    )?;
 
     config::first_resolution_error(&resolution, config_sources)?;
     Ok(AdapterIntent {
@@ -107,7 +119,6 @@ pub fn resolve_operation_input(
         operation_fields.as_ref(),
         command,
         config_sources,
-        selected_native_options,
         "operation-input",
     )?;
 
@@ -147,7 +158,6 @@ pub fn resolve_context_defaults(
         operation_fields.as_ref(),
         command,
         config_sources,
-        selected_native_options,
         "context-defaults",
     )?;
 
@@ -240,10 +250,11 @@ fn resolved_value(
 fn resolve_with_fields(
     fields: &docnav_typed_fields::FieldDefSet,
     direct_input: Option<input::DirectInput>,
+    cli_source: Option<&Source>,
     config_sources: &NavigationConfigSources,
     context: &str,
 ) -> Result<ResolutionResult, NavigationError> {
-    resolution::resolve(fields, direct_input.as_ref(), config_sources)
+    resolution::resolve(fields, direct_input.as_ref(), cli_source, config_sources)
         .map_err(|_| NavigationError::internal(resolution_pipeline_error_id(context)))
 }
 
@@ -251,12 +262,12 @@ fn resolve_command_with_fields(
     fields: &docnav_typed_fields::FieldDefSet,
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
-    selected_native_options: &[AdapterOptionSpec],
     context: &str,
 ) -> Result<ResolutionResult, NavigationError> {
     resolve_with_fields(
         fields,
-        Some(input::direct_input(command, selected_native_options)),
+        Some(input::direct_input(command)),
+        Some(&command.cli_source),
         config_sources,
         context,
     )

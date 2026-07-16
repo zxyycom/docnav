@@ -1,9 +1,14 @@
 use docnav_typed_fields::{
-    FieldBound, FieldDef, FieldDefBuilder, FieldLength, FieldStringEnum, FieldValidation,
-    ProcessStrategy,
+    CliBooleanEncoding, CliProcessingMetadata, FieldBound, FieldDef, FieldDefBuilder, FieldLength,
+    FieldStringEnum, FieldValidation, ProcessStrategy,
 };
 
 use super::super::{ids, MAX_PAGINATION_LIMIT};
+
+const CLI_PROCESSING: &str = "cli";
+
+#[cfg(test)]
+mod tests;
 
 pub(super) fn document_path_field(processing_id: &'static str) -> FieldDefBuilder<String> {
     direct_string_field(ids::PATH, processing_id, ["path"])
@@ -30,11 +35,26 @@ pub(super) fn adapter_id_field(
             config_processing_id,
             ProcessStrategy::config_path(["defaults", "adapter"]),
         )
+        .process(
+            CLI_PROCESSING,
+            ProcessStrategy::cli_flag("--adapter").cli_metadata(
+                CliProcessingMetadata::new()
+                    .help("Select the adapter for this document")
+                    .value_name("adapter-id"),
+            ),
+        )
         .validation(non_empty_string_validation())
 }
 
 pub(super) fn standard_page_field(processing_id: &'static str) -> FieldDefBuilder<i64> {
-    direct_positive_u32_field(ids::PAGE, processing_id, ["page"])
+    direct_positive_u32_field(ids::PAGE, processing_id, ["page"]).process(
+        CLI_PROCESSING,
+        ProcessStrategy::cli_flag("--page").cli_metadata(
+            CliProcessingMetadata::new()
+                .help("Select the result page")
+                .value_name("positive integer"),
+        ),
+    )
 }
 
 pub(super) fn configurable_limit_field(
@@ -46,6 +66,14 @@ pub(super) fn configurable_limit_field(
         .process(
             config_processing_id,
             ProcessStrategy::config_path(["defaults", "pagination", "limit"]),
+        )
+        .process(
+            CLI_PROCESSING,
+            ProcessStrategy::cli_flag("--limit").cli_metadata(
+                CliProcessingMetadata::new()
+                    .help("Set the result page size")
+                    .value_name("positive integer"),
+            ),
         )
         .validation(positive_u32_int_validation())
 }
@@ -62,6 +90,15 @@ pub(super) fn pagination_enabled_field(
         .process(
             config_processing_id,
             ProcessStrategy::config_path(["defaults", "pagination", "enabled"]),
+        )
+        .process(
+            CLI_PROCESSING,
+            ProcessStrategy::cli_flag("--pagination").cli_metadata(
+                CliProcessingMetadata::new()
+                    .help("Enable or disable pagination")
+                    .value_name("enabled|disabled")
+                    .boolean_encoding(CliBooleanEncoding::explicit("enabled", "disabled")),
+            ),
         )
         .validation(FieldValidation::boolean())
 }
@@ -122,6 +159,14 @@ where
         .process(
             config_processing_id,
             ProcessStrategy::config_path(["defaults", "output"]),
+        )
+        .process(
+            CLI_PROCESSING,
+            ProcessStrategy::cli_flag("--output").cli_metadata(
+                CliProcessingMetadata::new()
+                    .help("Select the document output mode")
+                    .value_name("mode"),
+            ),
         )
         .validation(FieldValidation::string_enum::<T>())
 }

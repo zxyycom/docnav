@@ -42,7 +42,7 @@ Runtime invocation log 是第三类独立审计 sink，不属于 document output
 - 维护 core release 内置 adapter static registry；registry 记录 core-owned implementation source，并注册 adapter definition/factory；`adapter list` 展示该 registry 中的 adapter metadata。
 - 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的只读 `config inspect` 命令入口；config path flag、`config`/`init`/`doctor` target 语义见 [CLI](cli.md)，navigation command 的 config source descriptor/path handoff、raw source loading 和参数解析规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 - 解析命令类型；非 navigation 命令由 core 自己处理。
-- 对 navigation 命令把 raw command、config source descriptors/paths 和 adapter registry 交给 `docnav-navigation`。
+- 对 navigation 命令把 operation、固定 positional/path facts、normalized document CLI source、config source descriptors/paths 和 adapter registry 交给 `docnav-navigation`。
 - 统一处理输出模式和错误映射。
 - 校验 adapter operation 结果，并转换为默认 readable-view、结构化 readable-json 或完整 protocol 输出。
 - 拥有 runtime invocation logging orchestration：按 [CLI](cli.md) 解析显式启用、日志 sink/path 和可选 content capture root，围绕 navigation-owned adapter selection、request construction、selected adapter dispatch、结果校验和输出投影边界记录 metadata-only JSONL 事件，并保证未启用或日志写入失败时不改变 document operation outcome。
@@ -75,11 +75,11 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 - `docnav-text-cost`：共享 text cost helper owner，提供只接收纯文本并返回 protocol-compatible `Measurement` 的 `line_cost`、`byte_cost` 和 `token_cost`。调用方拥有文本选择、helper function 集合选择、measurement 顺序、scope 附加、输出暴露和分页预算语义；本 crate 不解析格式、ref、path、operation、adapter policy 或 readable 输出。
 - `docnav-diagnostics`：diagnostic/error model primitives helper crate，提供 typed diagnostic code、record draft/record、details validation 和 projection helper materials。它不拥有 operation outcome、surface output format、exit behavior、adapter selection、strict input routing、protocol envelope、readable wrapping 或 CLI surface；这些规则由对应 owner 文档定义。
 - `docnav-cli-args`：直接 CLI strict argv token classification owner；输入由调用方提供 command context 和 known value flag metadata。业务参数解析、默认值合并、request 构造和最终 exit behavior 仍由调用方负责；该 crate 不适用于 protocol JSON request decoding。
-- `docnav-typed-fields`：标准参数定义和字段级事实的唯一 owner。`FieldDef` / `FieldDefSet` 承接 field identity、CLI flag / environment variable / config path processing locator、value kind、字段级 constraints、static default、merge strategy、validation attribution、typed value 和 materialization；definition set build 同时校验 declaration 与 processing locator 冲突。来源优先级、具体输入解析、operation binding、public diagnostic、protocol/readable output 和应用 config layout 仍由 consumer owner 定义。
+- `docnav-typed-fields`：标准参数定义和字段级事实的唯一 owner。`FieldDef` / `FieldDefSet` 承接 field identity、CLI flag / environment variable / config path processing locator、optional CLI help/value name/Boolean encoding、value kind、字段级 constraints、static default、merge strategy、validation attribution、typed value 和 materialization；definition set build 同时校验 declaration、CLI metadata compatibility 与 processing locator 冲突。来源优先级、具体输入解析、operation binding、public diagnostic、protocol/readable output 和应用 config layout 仍由 consumer owner 定义。
 - `cli-config-resolution`：framework-independent resolution core owner，直接消费 canonical `FieldDefSet` 和 normalized `Source` candidates，执行 source priority、field merge、static default fallback、provenance trace、resolution diagnostics、最终 canonical validation 和 all-or-nothing typed materialization。应用 command structure、config layout、adapter/operation/protocol/output 语义仍由 consumer owner 定义。
-- `cli-config-resolution-clap` 与 `cli-config-resolution-serde`：canonical `FieldDefSet` 的 input companion。前者从 CLI flag processing metadata 注册 `clap` arguments 并提取 CLI source candidates，支持 string、integer、finite number、`SetTrue` boolean、repeated string array 和 repeated `key=value` object projection；`ValueKind::Json` CLI projection 必须返回 `UnsupportedValueKind`，不得把 raw CLI string 解码为任意 JSON。后者只从 `serde_json::Value` 提取已声明 config paths 的 source candidates。未知 CLI argument 由 `clap` 正常拒绝；应用是否严格拒绝额外 config 字段、字段 applicability 和 public diagnostic mapping 由 consumer owner 决定。
+- `cli-config-resolution-clap` 与 `cli-config-resolution-serde`：canonical `FieldDefSet` 的 input companion。前者从 CLI flag processing metadata 注册 `clap` arguments 并提取 CLI source candidates，支持 string、integer、finite number、valueless/explicit-token Boolean、repeated string array 和 repeated `key=value` object projection；`ValueKind::Json` CLI projection 必须返回 `UnsupportedValueKind`，不得把 raw CLI string 解码为任意 JSON。后者只从 `serde_json::Value` 提取已声明 config paths 的 source candidates。未知 CLI argument 由 `clap` 正常拒绝；应用是否严格拒绝额外 config 字段、字段 applicability 和 public diagnostic mapping 由 consumer owner 决定。
 
-Parameter aggregation 是上述 existing pieces 对 canonical field metadata 的协作关系。Core CLI 继续拥有 public argv surface；`AdapterOptionSpec` 贡献 adapter-owned canonical field declaration；`docnav-navigation` 把通用字段和 selected adapter declarations 组成一个 `FieldDefSet`，通过只读取 canonical processing metadata 的私有 source adapter 映射已经解析的 Docnav direct/native input、通过 config companion 提取 project/user candidates，再把同一 definition set 与 sources 交给 resolver。私有 source adapter 可以构造公共 candidate，但不得维护平行 locator table 或复制 field type、constraint、default、validation、merge metadata。Docnav-owned strict config shape/applicability validation、diagnostic projection 和 request construction 保留在 navigation boundary；`config inspect` 与 document operation 复用同一 canonical metadata，不在 core command 中复制 output enum、positive integer、adapter option range/default 或 outline selector 语义。
+Parameter aggregation 是上述 existing pieces 对 canonical field metadata 的协作关系。Core CLI 继续拥有 static argv surface；`AdapterOptionSpec` 贡献 adapter-owned canonical field declaration；`docnav-navigation` 分别聚合 operation-scoped registry CLI field set 和 selected adapter/current-operation field set。Core 用 registry projection 生成 public named options并提取 normalized CLI source；navigation 只映射 fixed positional input、按 selected field identity 检查该 source，并通过 config companion 提取 project/user candidates，再把 selected definition set 与 sources 交给 resolver。任何层都不得维护平行 locator table 或复制 field type、constraint、default、validation、merge metadata。Docnav-owned strict config shape/applicability validation、diagnostic projection 和 request construction 保留在 navigation boundary；`config inspect` 与 document operation 复用同一 canonical metadata，不在 core command 中复制 output enum、positive integer、adapter option range/default 或 outline selector 语义。
 
 除上述 owner 明确承接的职责外，共享库不定义格式展示字段、格式原生 options 语义、ref 策略、项目配置命令、process runtime、path display normalization 或跨格式 outline 模型。新增共享 crate 或调整共享库边界时，先同步 owner 文档、schema、examples 和 testing 文档中的边界与验收说明。
 
@@ -97,6 +97,28 @@ caller
 ```
 
 默认文档操作通过当前 core release 编译进来的 workspace adapter crates 和 static registry 选择 adapter implementation source。
+
+### Document named option 派生状态
+
+以下状态只描述 document named option 的实现链路；命令拓扑、固定 positional、config path 与 invocation logging 等 core-owned static surface 不在该派生范围内。
+
+**Current：** runtime document named option 已采用单一 field-derived 路径：
+
+```text
+owning field declaration
+  -> operation-scoped registry CLI FieldDefSet
+  -> cli-config-resolution-clap arguments + normalized candidates
+  -> adapter selection
+  -> selected adapter/current-operation FieldDefSet
+  -> canonical resolution/materialization
+  -> request construction + typed handler handoff
+```
+
+Common declarations author `adapter`、`page`、`limit`、`pagination` 和 `output` 的 canonical identity、CLI/config locator、help/value name、type、constraints 和 default；adapter definition 中的 `AdapterOptionSpec` author native option 的同类 facts、operation applicability、final `options.*` path 和 handler binding。Core 只把 static document command shape 与 operation-scoped registry projection 组合，并通过 `cli-config-resolution-clap` 生成 arguments、help 和 normalized typed/invalid candidates；lexical boundary 与 output preflight 也读取同一 generated command shape 的 locator/cardinality facts。
+
+Navigation 先使用 routing inputs 选择 adapter，再以 selected adapter/current-operation projection 检查 candidate identity。Selected candidates 进入 canonical priority、merge、validation 和 materialization；unselected explicit candidates 在 request construction 前失败。最终 resolution 同时生成 `OperationArguments.options` 与 `NativeOptionHandoff`，再由 selected definition dispatch typed handler。
+
+同一 document operation 的 registry public flags 保持全局唯一，declaration conflict 在 argv parsing 前保留 owner/field attribution。具体 CLI static/generated 分界由 [CLI](cli.md) 拥有；registry/selected field set 与 candidate applicability 由 [Navigation Input Resolution](navigation-input-resolution.md) 拥有；native declaration 与 handoff 由 [适配器契约](adapter-contract.md) 拥有。Typed-fields、Clap companion、core parser、navigation field-set/input-resolution 和 adapter typed-handoff tests 共同证明该 Current 链路。
 
 Invocation logging 的插桩点跟随同一调用链，但不改变链路输入输出：可记录 core CLI invocation metadata、navigation adapter selection outcome、`RequestEnvelope` 构造状态、selected adapter dispatch outcome、operation/output status、duration、响应大小摘要和 bounded diagnostic summary。日志事件使用 JSON Lines / NDJSON，一行一个独立 JSON event；事件字段 shape 由 [JSON Schema 索引](schemas/json-schema.md) 中的 invocation log schema 校验，字段语义和启用语义仍由本文件、[CLI](cli.md)、[Navigation Input Resolution](navigation-input-resolution.md)、[输出模式](output.md) 和 [原始协议](protocol.md) 分别拥有。
 

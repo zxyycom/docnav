@@ -6,7 +6,13 @@
 
 每个默认适配器作为 core release 内置 workspace crate 暴露一个 registry-facing adapter definition 或 definition factory，并由 `docnav` static registry 注册。该 definition 是 adapter 作者对 shared layers 的单一 authoring surface：identity、manifest metadata、format descriptors、adapter-owned native option declarations、必需 operation handler handles 和 optional capability groups 都必须从同一个 definition/factory 可达。Adapter-private helper/module 可以拆分 construction，但不得成为 registry、core、CLI、navigation 或 dispatch 的第二个声明入口。
 
-当前实现仍保留 `docnav-adapter-contracts::Adapter` handle 作为受控过渡 dispatch target。过渡层由 `docnav-adapter-contracts` / core registry / `docnav-navigation` 拥有，从 adapter definition 派生当前 handler dispatch path；移除条件是 static registry、CLI native option catalog、adapter inspection、navigation declaration registration、full-read pre-dispatch 和 operation dispatch 都只消费 selected definition 中的 adapter-owned facts。Adapter implementation source 不是 adapter-owned fact，仍由 core static registry 记录。
+当前实现仍保留 `docnav-adapter-contracts::Adapter` handle 作为受控过渡 dispatch target。过渡层由 `docnav-adapter-contracts` / core registry / `docnav-navigation` 拥有；static registry、CLI field projection、adapter inspection、navigation declaration registration、full-read pre-dispatch 和 operation dispatch 都从 adapter definition 消费 adapter-owned facts，definition 内部仍通过该 handle 调用格式实现。移除条件是 definition-owned operation/capability handler 不再委托给兼容 handle。Adapter implementation source 不是 adapter-owned fact，仍由 core static registry 记录。
+
+Document native option declaration 状态：
+
+- **Current：** `AdapterOptionSpec` 是 native option 的 canonical declaration wrapper，保留 identity、owner、operation applicability、final `options.*` binding path、CLI/config processing locator、optional framework-neutral CLI help/value name/Boolean encoding、value kind、constraints 和 static default。Public flag registration、help、candidate identity 和 selected validation 从 registry/selected `FieldDefSet` 投影；config-only option 可以不声明 CLI metadata。`OperationArguments.options`、`NativeOptionHandoff` 与 selected definition dispatch 继续从同一 declaration/resolution result 派生。Adapter-contracts declaration/definition tests、navigation field-set/dispatch tests、core parser tests 和 adapter typed-handoff tests 提供现有证明。
+
+同一 document operation 的 registry public flags 保持全局唯一；冲突由 aggregation/projection 在 argv parsing 前报告 owner/field attribution。跨 adapter 复用同名 public flag 当前不受支持。
 
 当前最小 interface 使用 operation handler 粒度：
 
@@ -35,7 +41,7 @@ Full-read cost measurement declaration SHOULD list the standard cost units the a
 
 `manifest` 和 `probe` 是 adapter definition 暴露的 metadata/support facts。默认 adapter layer 的必需文档操作集合为 `outline`、`read`、`find` 和 `info`；进入默认 adapter layer 的 adapter definition 必须全部声明这些 handler。缺少任一 handler 属于 adapter definition invalid 或 release validation 问题，单次 adapter selection 只处理 registry lookup 和 probe outcome。
 
-`docnav-navigation` 接收 core 交出的 raw navigation command、config source descriptors/paths 和 adapter registry，加载 raw project/user config sources，完成 navigation input resolution，构造内部 operation request，并通过 selected adapter definition dispatch 对应 operation。Adapter 返回结构化业务结果或 adapter diagnostic。
+`docnav-navigation` 接收 core 交出的 fixed command facts、normalized document CLI source、config source descriptors/paths 和 adapter registry，加载 raw project/user config sources，完成 navigation input resolution，构造内部 operation request，并通过 selected adapter definition dispatch 对应 operation。Adapter 返回结构化业务结果或 adapter diagnostic。
 
 格式 adapter 在 definition 中声明格式原生 native options、内置默认值 metadata、adapter-owned option semantics 和 handler binding metadata。`docnav-navigation` 为当前 operation 构造 operation field set：通用 operation 字段由 `docnav-navigation` 声明并注册，selected adapter definition 暴露的 `AdapterOptionSpec` 由使用点注册进同一个 typed-field set。参数汇总边界把同一份 owner-provided facts 投影为 CLI/input metadata 和 config-source metadata；adapter native option 的持久 config source path 由 registry adapter id 与 option key 组合为 `options.<adapter-id>.<option-key>`。解析成功后，navigation 保留 external `OperationArguments.options` 作为 protocol-stable request facts，并额外交付 handler-facing `NativeOptionHandoff`。该 handoff 保留 identity、owner、namespace、key、source、type metadata 和 typed JSON value，供 adapter handler 消费；handler 不再接收 raw CLI argv、raw config JSON 或未校验 native option source value。Input resolution 规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 

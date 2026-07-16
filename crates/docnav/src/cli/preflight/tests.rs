@@ -1,5 +1,6 @@
 // @case WB-CORE-PREFLIGHT-001
 use super::*;
+use docnav_navigation::{NavigationAdapterRef, NavigationAdapterRegistry};
 
 fn strings(args: &[&str]) -> Vec<String> {
     args.iter().map(|arg| (*arg).to_owned()).collect()
@@ -19,4 +20,95 @@ fn detects_equals_protocol_json_output() {
 
     assert_eq!(context.output_mode, OutputMode::ProtocolJson);
     assert_eq!(context.operation, Some(Operation::Read));
+}
+
+#[test]
+fn non_document_output_context_does_not_evaluate_document_projection() {
+    for args in [
+        vec!["--help"],
+        vec!["version"],
+        vec!["config", "inspect"],
+        vec!["adapter", "list"],
+        vec!["init"],
+        vec!["doctor"],
+    ] {
+        let context = output_context_with_registry(&strings(&args), &PanickingRegistry);
+        assert_eq!(context.output_mode, OutputMode::ReadableView);
+        assert_eq!(context.operation, None);
+    }
+}
+
+#[test]
+fn non_document_protocol_json_hint_does_not_evaluate_document_projection() {
+    let context = output_context_with_registry(
+        &strings(&[
+            "config",
+            "set",
+            "defaults.output",
+            "protocol-json",
+            "--output",
+            "protocol-json",
+        ]),
+        &PanickingRegistry,
+    );
+
+    assert_eq!(context.output_mode, OutputMode::ProtocolJson);
+    assert_eq!(context.operation, None);
+}
+
+#[test]
+fn legacy_config_failure_uses_protocol_json_framing() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit = crate::run(
+        [
+            "config",
+            "set",
+            "defaults.output",
+            "protocol-json",
+            "--output",
+            "protocol-json",
+        ],
+        std::io::empty(),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, crate::error::DocnavExitCode::InputError.code());
+    assert!(stderr.is_empty());
+    let output: serde_json::Value = serde_json::from_slice(&stdout).expect("protocol failure");
+    assert_eq!(output["operation"], serde_json::Value::Null);
+    assert_eq!(output["error"]["details"]["field"], "config");
+}
+
+#[test]
+fn projected_output_locator_frames_document_structural_failure() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit = crate::run(
+        [
+            "outline",
+            "docs/navigation.md",
+            "--future",
+            "--output",
+            "protocol-json",
+        ],
+        std::io::empty(),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, crate::error::DocnavExitCode::InputError.code());
+    assert!(stderr.is_empty());
+    let output: serde_json::Value = serde_json::from_slice(&stdout).expect("protocol failure");
+    assert_eq!(output["operation"], "outline");
+    assert_eq!(output["error"]["details"]["reason"], "unknown_argument");
+}
+
+struct PanickingRegistry;
+
+impl NavigationAdapterRegistry for PanickingRegistry {
+    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
+        panic!("non-document preflight evaluated the document projection")
+    }
 }

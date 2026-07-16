@@ -1,6 +1,7 @@
 use crate::{
-    AdapterOptionProcessStrategy, AdapterOptionSpec, DefaultMetadata, ExpectedFieldShape,
-    FieldBound, FieldDefSet, FieldValidation, ProcessStrategy, ProcessingId, ValueKind,
+    AdapterOptionProcessStrategy, AdapterOptionSpec, CliProcessingMetadata, DefaultMetadata,
+    ExpectedFieldShape, FieldBound, FieldDefSet, FieldValidation, ProcessStrategy, ProcessingId,
+    ValueKind,
 };
 use docnav_protocol::Operation;
 use docnav_typed_fields::{FieldDef, ProcessingInputKind, ProcessingLocator};
@@ -44,7 +45,14 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
             .owner("docnav-markdown")
             .operations(&[Operation::Outline])
             .path(["options", "max_heading_level"])
-            .process("cli", ProcessStrategy::cli_flag("--max-heading-level"))
+            .process(
+                "cli",
+                ProcessStrategy::cli_flag("--max-heading-level").cli_metadata(
+                    CliProcessingMetadata::new()
+                        .help("Set the maximum Markdown heading level")
+                        .value_name("value"),
+                ),
+            )
             .process(
                 "config",
                 ProcessStrategy::config_path(["options", "docnav-markdown", "max_heading_level"]),
@@ -104,6 +112,14 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
     );
     assert_eq!(explicit[0].value_kind, ValueKind::Integer);
     assert_eq!(explicit[0].default, DefaultMetadata::Static(3.into()));
+    assert_eq!(
+        explicit[0].cli,
+        Some(
+            CliProcessingMetadata::new()
+                .help("Set the maximum Markdown heading level")
+                .value_name("value")
+        )
+    );
     assert_eq!(config.len(), 1);
     assert!(matches!(
         &config[0].locator,
@@ -111,15 +127,7 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
             if path.segments()
                 == vec!["options", "docnav-markdown", "max_heading_level"]
     ));
-    assert_eq!(
-        outline_only.cli_arg_id(),
-        Some("max-heading-level".to_owned())
-    );
     assert_eq!(outline_only.processing_path("cli").unwrap(), None);
-    assert_eq!(
-        outline_only.cli_input_path().unwrap(),
-        vec!["options", "max_heading_level"]
-    );
     assert_eq!(
         outline_only.processing_path("config").unwrap().unwrap(),
         vec![
@@ -132,6 +140,18 @@ fn adapter_option_builder_wraps_typed_field_declaration_and_bindings() {
         outline_only.expected_value_description(),
         "integer in range 1..6"
     );
+
+    let config_only_fields = FieldDefSet::builder()
+        .field_declaration(
+            read_only
+                .field_declaration()
+                .expect("valid config-only adapter option declaration"),
+        )
+        .build()
+        .expect("config-only adapter option field defs");
+    assert!(config_only_fields
+        .processing_metadata(&ProcessingId::new("cli").expect("valid processing id"))
+        .is_empty());
 }
 
 #[test]

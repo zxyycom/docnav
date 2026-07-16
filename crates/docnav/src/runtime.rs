@@ -1,6 +1,6 @@
 use docnav_navigation::{
     execute_navigation_command, NavigationCommand, NavigationConfigSourceDescriptors,
-    NavigationNativeOptionInput, NavigationOutputMode,
+    NavigationOutputMode,
 };
 use std::time::Instant;
 
@@ -82,31 +82,7 @@ fn navigation_command(command: &DocumentCommand, document_path: String) -> Navig
         document_path,
         ref_id: command.ref_id.clone(),
         query: command.query.clone(),
-        page: command.page,
-        pagination_enabled: command.pagination_enabled,
-        limit: command.limit,
-        output: command.output.map(navigation_output_mode),
-        adapter: command.adapter.clone(),
-        native_options: navigation_native_options(command),
-    }
-}
-
-fn navigation_native_options(command: &DocumentCommand) -> Vec<NavigationNativeOptionInput> {
-    command
-        .native_options
-        .iter()
-        .map(|input| NavigationNativeOptionInput {
-            flag: input.flag.clone(),
-            value: input.value.clone(),
-        })
-        .collect()
-}
-
-fn navigation_output_mode(output: OutputMode) -> NavigationOutputMode {
-    match output {
-        OutputMode::ReadableView => NavigationOutputMode::ReadableView,
-        OutputMode::ReadableJson => NavigationOutputMode::ReadableJson,
-        OutputMode::ProtocolJson => NavigationOutputMode::ProtocolJson,
+        cli_source: command.cli_source.as_ref().clone(),
     }
 }
 

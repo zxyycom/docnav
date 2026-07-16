@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
 
-use cli_config_resolution::{ResolutionDiagnostic, ResolutionResult};
+use cli_config_resolution::{
+    ResolutionDiagnostic, ResolutionResult, SourceCandidate, SourceLocator,
+};
 use docnav_adapter_contracts::AdapterOptionSpec;
 use docnav_typed_fields::{FieldDefSet, ProcessingId};
 use serde_json::Value;
@@ -14,7 +16,6 @@ use crate::{
 
 use super::{
     fields,
-    input::native_option_cli_value,
     native_options::{
         native_option_validation_error, spec_for_identity, unsupported_option,
         UnsupportedOptionContext,
@@ -50,7 +51,12 @@ pub(super) fn validate_navigation_sources(
     let fields = operation_fields.as_ref();
     let selected_native_options = operation_fields.adapter_options();
     first_config_source_error(config_sources)?;
-    validate_explicit_native_options(command, selected_adapter_id, selected_native_options)?;
+    validate_explicit_cli_candidates(
+        command,
+        selected_adapter_id,
+        fields,
+        selected_native_options,
+    )?;
     let known_adapter_fields = fields::config_inspection_fields(registry)?;
     let context = ConfigValidationContext {
         selected_adapter_id: Some(selected_adapter_id),
@@ -147,19 +153,17 @@ fn validate_config_sources(
     validate_config_source(&config_sources.user, context)
 }
 
-fn validate_explicit_native_options(
+fn validate_explicit_cli_candidates(
     command: &NavigationCommand,
     selected_adapter_id: &str,
+    fields: &FieldDefSet,
     selected_native_options: &[AdapterOptionSpec],
 ) -> Result<(), NavigationError> {
-    for option in &command.native_options {
-        if selected_native_options
-            .iter()
-            .any(|spec| spec.cli_flag().as_deref() == Some(option.flag.as_str()))
-        {
+    for candidate in command.cli_source.candidates() {
+        if fields.field(candidate.field()).is_some() {
             continue;
         }
-        let key = option.flag.strip_prefix("--").unwrap_or(&option.flag);
+        let key = cli_candidate_key(candidate);
         return Err(unsupported_option(
             UnsupportedOptionContext {
                 source: "explicit",
@@ -169,12 +173,19 @@ fn validate_explicit_native_options(
                 config_field: None,
                 selected_native_options,
             },
-            key,
-            native_option_cli_value(&option.value),
+            &key,
+            candidate.input().raw().clone(),
         )
         .into());
     }
     Ok(())
+}
+
+fn cli_candidate_key(candidate: &SourceCandidate) -> String {
+    match candidate.locator() {
+        SourceLocator::CliFlag(flag) => flag.strip_prefix("--").unwrap_or(flag).to_owned(),
+        _ => candidate.field().as_str().to_owned(),
+    }
 }
 
 fn validate_config_source(
@@ -267,7 +278,7 @@ fn validate_config_source_values(
             user: source.clone(),
         },
     };
-    let resolution = resolution::resolve(context.fields, None, &config_sources)?;
+    let resolution = resolution::resolve(context.fields, None, None, &config_sources)?;
 
     for diagnostic in resolution.diagnostics() {
         if !validation_belongs_to_source(diagnostic, source) {

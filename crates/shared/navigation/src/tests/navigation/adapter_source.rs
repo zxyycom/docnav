@@ -4,14 +4,17 @@ use serde_json::Value;
 use crate::{execute_loaded_navigation_command, NavigationFailureLayer};
 
 use super::super::support::{
-    config_sources, navigation_command, StubRegistry, UnsupportedRegistry,
+    cli_value_candidate, config_sources, navigation_command, StubRegistry, UnsupportedRegistry,
 };
 
 #[test]
 // @case WB-NAV-ADAPTER-SOURCE-001
 fn explicit_missing_adapter_reports_static_registry_guidance() {
-    let mut command = navigation_command(Vec::new());
-    command.adapter = Some("custom-local-adapter".to_owned());
+    let command = navigation_command(vec![cli_value_candidate(
+        "docnav.defaults.adapter",
+        "--adapter",
+        Value::String("custom-local-adapter".to_owned()),
+    )]);
 
     let error = execute_loaded_navigation_command(
         command,
@@ -38,8 +41,11 @@ fn explicit_missing_adapter_reports_static_registry_guidance() {
 
 #[test]
 fn explicit_missing_adapter_error_carries_invocation_failure_layer() {
-    let mut command = navigation_command(Vec::new());
-    command.adapter = Some("custom-local-adapter".to_owned());
+    let command = navigation_command(vec![cli_value_candidate(
+        "docnav.defaults.adapter",
+        "--adapter",
+        Value::String("custom-local-adapter".to_owned()),
+    )]);
 
     let error = execute_loaded_navigation_command(
         command,
