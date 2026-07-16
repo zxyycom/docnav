@@ -243,24 +243,24 @@ Docnav MUST consume the canonical parameter set through the same extraction and 
 - **THEN** old resolver paths, runtime feature flags, fallback switches, and field-model compatibility wrappers are absent from the runtime command path
 - **THEN** rollback requires reverting the code change rather than toggling a runtime fallback
 
-### Requirement: Independent Cargo Workspace Repository
+### Requirement: Root Cargo Workspace Membership
 
-The reusable library MUST be organized as an independently checkoutable Cargo workspace repository. The workspace MAY contain typed-fields, typed-fields macros, resolution core, clap companion, and structured-config companion packages, and `cli-config-resolution` MUST be the primary consumer entry that re-exports the canonical parameter types.
+The typed-field and CLI/config resolution packages MUST be ordinary members of the Docnav root Cargo workspace under `crates/shared/` and MUST use the root workspace dependency metadata, lockfile, build, test, lint, and documentation surfaces. The root workspace MUST provide separate typed-fields, typed-fields macros, resolution core, clap companion, and structured-config companion packages with their existing package names, and `cli-config-resolution` MUST remain the primary resolution entry that re-exports canonical parameter types. An independently checkoutable workspace repository MUST NOT be required.
 
-#### Scenario: Build the independent workspace
+#### Scenario: 从根 workspace 构建全部 packages
 
-- **WHEN** the sub-repository is checked out without the Docnav workspace
-- **THEN** its package metadata, libraries, tests, documentation, and end-to-end example build and run from its own workspace root
-- **THEN** no package requires Docnav protocol, adapter contracts, navigation, output, or Markdown adapter crates
+- **WHEN** a maintainer checks out Docnav and runs the root Cargo workspace checks
+- **THEN** typed-fields, its proc-macro, resolution core, clap companion, and structured-config companion resolve from `crates/shared/`
+- **THEN** they use the root lockfile without a nested workspace checkout or dependency-prefetch path
 
-#### Scenario: Consume the workspace from Docnav
+#### Scenario: Docnav 使用内部 resolution packages
 
-- **WHEN** Docnav depends on the independent workspace packages
-- **THEN** Docnav resolves canonical parameters through `cli-config-resolution` and its companions
-- **THEN** repository placement or dependency-source changes do not alter runtime parameter semantics
+- **WHEN** Docnav protocol, adapter contracts, navigation, or core consumes canonical fields or resolution behavior
+- **THEN** Cargo resolves the packages as root-workspace path dependencies
+- **THEN** repository placement changes do not alter the runtime parameter semantics owned by the other requirements in this capability
 
-#### Scenario: Keep external publication separately approved
+#### Scenario: 外部发布仍需独立批准
 
-- **WHEN** the independent Cargo workspace is complete but no external release has been approved
-- **THEN** local or approved dependency-source consumption can still be verified
-- **THEN** crates.io publication, license selection, version, and release order remain separate release decisions
+- **WHEN** the packages build successfully inside the Docnav root workspace
+- **THEN** workspace membership creates no external publication or compatibility contract
+- **THEN** any future external consumer or publication requires a separate change

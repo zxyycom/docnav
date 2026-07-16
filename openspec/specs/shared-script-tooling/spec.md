@@ -19,24 +19,6 @@ Shared script tooling MUST expose reusable execution, task, and quality primitiv
 - **THEN** Docnav passes repository root, artifact paths, task definitions, quality config, release components, output filters, and validation rules through a documented API
 - **THEN** the shared toolkit does not infer those values by inspecting the Docnav repository layout
 
-### Requirement: 共享脚本工具必须使用 Git 子仓库边界
-
-Shared script tooling MUST use multiple Git toolkit repository boundaries for the first extraction. The first extraction MUST separate foundation helpers, parallel task scheduling, and quality core into three distinct toolkit repositories by domain, maturity, dependency set, and release cadence, and npm package publication MUST NOT be required for Docnav integration.
-
-#### Scenario: 首批能力拆成多个子仓库
-
-- **WHEN** foundation helpers, parallel task scheduling, and quality observability core are extracted
-- **THEN** foundation helpers are placed under `scripts/tools/foundation/`
-- **THEN** parallel task scheduling is placed under `scripts/tools/parallel-task-runner/`
-- **THEN** quality observability core is placed under `scripts/tools/quality-core/`
-- **THEN** each toolkit repository exposes its own public source entrypoint and records its dependencies, tests, minimal README owner, and Git revision or pin policy
-
-#### Scenario: 首批不覆盖所有脚本
-
-- **WHEN** only a subset of Docnav script tooling has a clear reusable boundary
-- **THEN** Docnav extracts only that subset
-- **THEN** workspace verifier profiles, release product config, validators, Docnav quality defaults, and CLI command entrypoints remain in Docnav scripts
-
 ### Requirement: 共享脚本工具必须通过 typed config 接收可变策略
 
 Shared script tooling MUST represent configurable behavior through typed configuration, explicit task definitions, adapter objects, or function parameters. Shared code MUST NOT implicitly depend on Docnav repository root discovery, fixed glob sets, fixed artifact directories, fixed Cargo workspace shape, fixed package manager scripts, fixed OpenSpec layout, or fixed protocol/schema/example files.
@@ -70,18 +52,34 @@ Docnav callers and command entrypoints MUST preserve existing command names, scr
 - **THEN** Docnav `docnav` CLI operations, adapter routing, protocol envelopes, readable output, schemas, and examples remain unchanged
 - **THEN** script extraction does not add fields, flags, adapter payloads, or output modes to Docnav product contracts
 
-### Requirement: 提取必须具备交付准备和验证证据
+### Requirement: 共享脚本工具必须使用单仓库内部边界
 
-Extracted script tooling MUST provide toolkit-repository-level verification, local tooling readiness, a minimal README owner, Git revision or pin strategy, and Docnav migration evidence before a toolkit boundary is accepted.
+Foundation helpers, parallel task scheduling, and quality engine code MUST be stored as ordinary tracked source inside the Docnav repository under `scripts/tools/foundation/`, `scripts/tools/parallel-task-runner/`, and `scripts/tools/quality-core/`. These directories MUST be available after a normal clone and MUST NOT require Git submodule initialization, gitlink revision pins, or independently checkoutable toolkit repositories. The three domain directories, existing source APIs, and focused tests MUST remain available, and the focused tests MUST be covered by the root validation chain.
 
-#### Scenario: Subrepository readiness exists
+#### Scenario: 普通 clone 包含全部脚本源码
 
-- **WHEN** a toolkit is extracted into one of the first-batch toolkit repositories
-- **THEN** it declares a private tooling manifest if needed, public source entrypoint, minimal README, runtime prerequisites, typecheck/lint/test commands, and Git revision or pin strategy
-- **THEN** those checks run without requiring Docnav-specific docs, schemas, examples, OpenSpec changes, or release artifacts
+- **WHEN** a maintainer clones the Docnav repository without recursive submodule options
+- **THEN** foundation, parallel task runner, and quality engine source and tests are present
+- **THEN** root tooling can typecheck, lint, test, and execute them without fetching another repository
 
-#### Scenario: Docnav migration evidence exists
+#### Scenario: 领域目录是内部边界
 
-- **WHEN** Docnav adopts an extracted toolkit
-- **THEN** Docnav runs the relevant script typecheck, lint, focused script tests, workspace verifier, quality scan, release package test, or validator commands for the touched surface
-- **THEN** the recorded evidence compares migration-relevant command output, artifact paths, warning statuses, reports, quality artifacts, and exit behavior with the pre-extraction behavior
+- **WHEN** root tooling imports one of the three script domains
+- **THEN** the import uses a repository-owned internal path
+- **THEN** the directory does not require an independent checkout or revision pin
+
+### Requirement: 内部工具必须纳入根验证链路
+
+Internal script tooling MUST be verified through the Docnav root package, TypeScript, ESLint, test, workspace verifier, quality, and release-package surfaces that cover its current responsibilities. A local manifest, configuration file, README, or focused command MAY remain when it serves a current in-repository caller or focused maintenance workflow. Root validation MUST cover the applicable source and tests but need not invoke every local command. Separate toolkit-repository readiness, Git revision strategy, isolated checkout verification, and standalone repository evidence MUST NOT be required. Observable behavior remains governed by the existing `Docnav 集成层必须保持既有可观察行为` requirement.
+
+#### Scenario: 根配置证明内部模块
+
+- **WHEN** a maintainer runs the documented root script checks
+- **THEN** foundation, scheduler, and quality engine source participate in the applicable typecheck, lint, and focused tests
+- **THEN** no nested package installation or submodule checkout is required
+
+#### Scenario: 局部维护入口仍有仓库内用途
+
+- **WHEN** a local manifest, configuration, README, or focused command serves a current in-repository caller or maintenance workflow
+- **THEN** it may remain as a local entrypoint while root validation covers the applicable source and tests
+- **THEN** retaining it does not create an independent checkout, release, or compatibility contract

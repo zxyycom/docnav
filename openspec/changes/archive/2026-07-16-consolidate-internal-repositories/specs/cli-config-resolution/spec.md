@@ -2,8 +2,8 @@
 
 ## RENAMED Requirements
 
-- FROM: `Independent Cargo Workspace Repository`
-- TO: `Root Cargo Workspace Membership`
+- FROM: `### Requirement: Independent Cargo Workspace Repository`
+- TO: `### Requirement: Root Cargo Workspace Membership`
 
 ## MODIFIED Requirements
 

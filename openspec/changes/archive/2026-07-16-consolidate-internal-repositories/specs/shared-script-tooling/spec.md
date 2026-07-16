@@ -2,10 +2,10 @@
 
 ## RENAMED Requirements
 
-- FROM: `共享脚本工具必须使用 Git 子仓库边界`
-- TO: `共享脚本工具必须使用单仓库内部边界`
-- FROM: `提取必须具备交付准备和验证证据`
-- TO: `内部工具必须纳入根验证链路`
+- FROM: `### Requirement: 共享脚本工具必须使用 Git 子仓库边界`
+- TO: `### Requirement: 共享脚本工具必须使用单仓库内部边界`
+- FROM: `### Requirement: 提取必须具备交付准备和验证证据`
+- TO: `### Requirement: 内部工具必须纳入根验证链路`
 
 ## MODIFIED Requirements
 
