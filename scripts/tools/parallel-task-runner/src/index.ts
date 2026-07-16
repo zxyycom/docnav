@@ -12,13 +12,11 @@ export {
   normalizeTask,
   type NormalizedTask,
   type StringList,
-  type TaskDefinition,
-  type TaskEnv
+  type TaskDefinition
 } from "./tasks/planning.ts";
 export { validateTaskGraph } from "./tasks/graph.ts";
 
 interface RunParallelTaskOptions<TResult> {
-  prepareTasks?: (taskList: readonly TaskDefinition[]) => NormalizedTask[];
   execute?: (task: NormalizedTask) => TResult | Promise<TResult>;
   onStart?: (task: NormalizedTask) => unknown | Promise<unknown>;
   onComplete?: (result: TResult, task: NormalizedTask) => unknown | Promise<unknown>;
@@ -29,7 +27,8 @@ export async function runParallelTasks<TResult = unknown>(
   taskList: readonly TaskDefinition[],
   options: RunParallelTaskOptions<TResult> = {}
 ): Promise<TResult[]> {
-  const pending = prepareTaskQueue(taskList, options.prepareTasks);
+  const pending = normalizeTaskList(taskList);
+  validateTaskGraph(pending);
   const concurrency = resolveConcurrency(options.concurrency, pending.length);
 
   return runTaskScheduler({
@@ -39,15 +38,6 @@ export async function runParallelTasks<TResult = unknown>(
     onStart: options.onStart ?? noop,
     onComplete: options.onComplete ?? noop
   });
-}
-
-function prepareTaskQueue(
-  taskList: readonly TaskDefinition[],
-  prepareTasks: ((taskList: readonly TaskDefinition[]) => NormalizedTask[]) | undefined
-): NormalizedTask[] {
-  const pending = (prepareTasks ?? normalizeTaskList)(taskList);
-  validateTaskGraph(pending);
-  return pending;
 }
 
 function resolveConcurrency(value: string | number | null | undefined, taskCount: number): number {

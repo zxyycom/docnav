@@ -219,19 +219,14 @@ export const checks = defineChecks([
             ]
           },
           {
-            id: "docnav-development-smoke-execution",
+            id: "docnav-core-development-smoke",
+            label: "docnav core development smoke",
             dependsOn: ["docnav-development-binaries"],
             envFile: DEV_BIN_ENV_FILE,
-            tasks: [
-              {
-                id: "docnav-core-development-smoke",
-                label: "docnav core development smoke",
-                command: "bun",
-                args: ["test/docnav-core-smoke.ts"],
-                ignoreOutput: [
-                  ...smokeSuccessOutput("Docnav Core Development Smoke", ".log/smoke/core/latest.log")
-                ]
-              }
+            command: "bun",
+            args: ["test/docnav-core-smoke.ts"],
+            ignoreOutput: [
+              ...smokeSuccessOutput("Docnav Core Development Smoke", ".log/smoke/core/latest.log")
             ]
           },
           {
@@ -246,7 +241,7 @@ export const checks = defineChecks([
               "--copy-to",
               DEV_BIN_COPY_DIR
             ],
-            dependsOn: ["docnav-development-smoke-execution"],
+            dependsOn: ["docnav-core-development-smoke"],
             ignoreOutput: [
               /^dev binary artifacts cleaned$/
             ]

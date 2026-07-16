@@ -1,5 +1,3 @@
-export type TaskEnv = Record<string, string | undefined>;
-
 export type StringList = string | readonly string[] | undefined;
 
 export interface TaskDefinition {
@@ -8,8 +6,6 @@ export interface TaskDefinition {
   type?: string;
   mutex?: StringList;
   dependsOn?: StringList;
-  env?: TaskEnv;
-  envFile?: string;
   tasks?: readonly TaskDefinition[];
   run?: (task: NormalizedTask) => unknown | Promise<unknown>;
   [key: string]: unknown;

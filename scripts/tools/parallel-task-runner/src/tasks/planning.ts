@@ -8,17 +8,15 @@ import {
   assertTaskObject,
   registerTaskId
 } from "./definition/validation.ts";
-import type { NormalizedTask, TaskDefinition, TaskEnv } from "./definition/types.ts";
+import type { NormalizedTask, TaskDefinition } from "./definition/types.ts";
 
 export { normalizeTask, normalizeTaskList } from "./definition/normalization.ts";
-export type { NormalizedTask, StringList, TaskDefinition, TaskEnv } from "./definition/types.ts";
+export type { NormalizedTask, StringList, TaskDefinition } from "./definition/types.ts";
 
 interface InheritedTaskState {
   type: string;
   mutex: string[];
   dependsOn: string[];
-  env?: TaskEnv;
-  envFile?: string;
 }
 
 interface ExpandTaskState {
@@ -30,9 +28,7 @@ interface ExpandTaskState {
 const DEFAULT_INHERITED_TASK_STATE: InheritedTaskState = {
   type: "default",
   mutex: [],
-  dependsOn: [],
-  env: undefined,
-  envFile: undefined
+  dependsOn: []
 };
 
 export function expandTasks(taskList: readonly TaskDefinition[]): NormalizedTask[] {
@@ -75,9 +71,7 @@ function inheritedTaskState(task: TaskDefinition, inherited: InheritedTaskState)
   return {
     type: task.type ?? inherited.type,
     mutex: [...inherited.mutex, ...taskMutex],
-    dependsOn: [...inherited.dependsOn, ...taskDependsOn],
-    env: mergeEnv(inherited.env, task.env),
-    envFile: task.envFile ?? inherited.envFile
+    dependsOn: [...inherited.dependsOn, ...taskDependsOn]
   };
 }
 
@@ -103,8 +97,6 @@ function expandTaskGroup(
 function leafTaskDefinition(task: TaskDefinition, inherited: InheritedTaskState): TaskDefinition {
   const {
     dependsOn: _dependsOn,
-    env: _env,
-    envFile: _envFile,
     mutex: _mutex,
     tasks: _tasks,
     type: _type,
@@ -116,26 +108,7 @@ function leafTaskDefinition(task: TaskDefinition, inherited: InheritedTaskState)
     mutex: inherited.mutex,
     dependsOn: inherited.dependsOn
   };
-  if (inherited.env !== undefined) {
-    leaf.env = inherited.env;
-  }
-  if (inherited.envFile !== undefined) {
-    leaf.envFile = inherited.envFile;
-  }
   return leaf;
-}
-
-function mergeEnv(parentEnv: TaskEnv | undefined, taskEnv: TaskEnv | undefined): TaskEnv | undefined {
-  if (parentEnv === undefined) {
-    return taskEnv;
-  }
-  if (taskEnv === undefined) {
-    return parentEnv;
-  }
-  return {
-    ...parentEnv,
-    ...taskEnv
-  };
 }
 
 function resolveGroupDependencies(dependsOn: readonly string[], groupLeafIds: Map<string, string[]>, taskId: string): string[] {

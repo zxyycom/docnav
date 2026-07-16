@@ -1,7 +1,6 @@
 import type {
   NormalizedTask,
-  StringList,
-  TaskEnv
+  StringList
 } from "../../tools/parallel-task-runner/src/index.ts";
 
 export const PROFILE_REQUIRED = "required";
@@ -23,8 +22,6 @@ export const profiles = Object.freeze({
 
 type CheckDefinitionBase = {
   dependsOn?: StringList;
-  env?: TaskEnv;
-  envFile?: string;
   id: string;
   label?: string;
   mutex?: StringList;
@@ -35,6 +32,8 @@ type CheckLeafDefinition = CheckDefinitionBase & {
   allowOutput?: RegExp[];
   args?: string[];
   command: string;
+  env?: NodeJS.ProcessEnv;
+  envFile?: string;
   ignoreOutput?: RegExp[];
   tasks?: never;
   warningOutput?: RegExp[];
@@ -44,6 +43,8 @@ type CheckGroupDefinition = CheckDefinitionBase & {
   allowOutput?: never;
   args?: never;
   command?: never;
+  env?: never;
+  envFile?: never;
   ignoreOutput?: never;
   tasks: readonly [CheckDefinition, ...CheckDefinition[]];
   warningOutput?: never;
@@ -55,6 +56,8 @@ export interface CheckTask extends NormalizedTask {
   allowOutput?: RegExp[];
   args: string[];
   command: string;
+  env?: NodeJS.ProcessEnv;
+  envFile?: string;
   ignoreOutput: RegExp[];
   reportId?: string;
   reportLabel?: string;
