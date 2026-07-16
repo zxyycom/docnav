@@ -13,18 +13,13 @@ import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 import {
   gitCommitDate,
   gitHeadSha,
+  parseGitStatusPaths,
   processFailed,
   runGit,
   runProcessSync,
+  splitGitFileList,
   toSlashPath
 } from "../../../foundation/src/index.ts";
-import {
-  collectRevisionChanges,
-  collectWorkingTreeChanges,
-  submoduleHistoryPaths,
-  uniqueSortedPaths
-} from "./revision-tree.ts";
-import { materializeRevisionGitlinks } from "./revision-materialization.ts";
 
 type BaselineCommitResult =
   | { date: string | null; ok: true; reason: string; sha: string }
@@ -63,11 +58,7 @@ export function locateBaselineCommit({
     return { ok: false, error: "no-baseline-commit: repository has only one commit" };
   }
 
-  const historyPaths = [
-    ...scanInputPaths,
-    ...submoduleHistoryPaths(cwd, headSha, scanInputPaths)
-  ];
-  const patternArgs = gitGlobPathspecArgs([...new Set(historyPaths)], { omitWhenEmpty: true });
+  const patternArgs = gitGlobPathspecArgs(scanInputPaths, { omitWhenEmpty: true });
 
   const headModifiedScanInputs = commitModifiesScanInputs({
     cwd,
@@ -130,21 +121,6 @@ export function materializeBaselineRevision({
     };
   }
 
-  const submoduleError = materializeRevisionGitlinks({
-    archiveDir: baselineWorkDir,
-    archiveIndex: { value: 0 },
-    repository: cwd,
-    revision: commitSha,
-    targetDir: untarDir
-  });
-  if (submoduleError) {
-    return {
-      ok: false,
-      error: submoduleError,
-      reason: "baseline-materialization-failed"
-    };
-  }
-
   return { ok: true, workDir: untarDir };
 }
 
@@ -176,12 +152,13 @@ export function detectScanInputChange({
 // ── Helpers ───────────────────────────────────────────────────────────
 
 export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]): string[] {
-  return uniqueSortedPaths(collectWorkingTreeChanges({
-    prefix: "",
-    repository: cwd,
-    revision: "HEAD",
-    scanInputPaths
-  }));
+  const result = runGit(["status", "--porcelain", "--untracked-files=all"], {
+    cwd,
+    maxBuffer: 1024 * 1024 * 64
+  });
+  return processFailed(result)
+    ? []
+    : filterScanInputFiles(parseGitStatusPaths(result.stdout), scanInputPaths);
 }
 
 export function getRevisionChangedFiles(
@@ -190,13 +167,38 @@ export function getRevisionChangedFiles(
   toRevision: string,
   scanInputPaths: string[] | readonly string[]
 ): string[] {
-  return uniqueSortedPaths(collectRevisionChanges({
-    fromRevision,
-    prefix: "",
-    repository: cwd,
-    scanInputPaths,
-    toRevision
-  }));
+  const result = runGit(["diff", "--name-only", `${fromRevision}..${toRevision}`], {
+    cwd,
+    maxBuffer: 1024 * 1024 * 64
+  });
+  const files = processFailed(result)
+    ? filesAtRevision(cwd, toRevision)
+    : splitGitFileList(result.stdout);
+  return filterScanInputFiles(files, scanInputPaths);
+}
+
+function filesAtRevision(cwd: string, revision: string): string[] {
+  const result = runGit(["ls-tree", "-r", "--name-only", revision], {
+    cwd,
+    maxBuffer: 1024 * 1024 * 64
+  });
+  return processFailed(result) ? [] : splitGitFileList(result.stdout);
+}
+
+function filterScanInputFiles(
+  files: readonly string[],
+  scanInputPaths: readonly string[]
+): string[] {
+  return uniqueSortedPaths(
+    files
+      .map(toSlashPath)
+      .filter((file) => scanInputPaths.length === 0
+        || scanInputPaths.some((pattern) => fileMatchesPattern(file, pattern)))
+  );
+}
+
+function uniqueSortedPaths(files: readonly string[]): string[] {
+  return [...new Set(files)].sort();
 }
 
 function hasParentCommit(cwd: string, headSha: string): boolean {

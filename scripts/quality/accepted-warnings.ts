@@ -4,7 +4,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "scc-file-code-lines",
     sourceTool: "scc",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/lib.rs",
+    path: "crates/shared/cli-config-resolution-clap/src/lib.rs",
     codeArea: "rust-production",
     metric: "code-lines",
     value: 414,
@@ -14,7 +14,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "lizard-function-code-density",
     sourceTool: "lizard",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/lib.rs",
+    path: "crates/shared/cli-config-resolution-clap/src/lib.rs",
     codeArea: "rust-production",
     metric: "function-code-density",
     value: 82,
@@ -25,7 +25,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "lizard-cyclomatic-complexity",
     sourceTool: "lizard",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/lib.rs",
+    path: "crates/shared/cli-config-resolution-clap/src/lib.rs",
     codeArea: "rust-production",
     metric: "cyclomatic-complexity",
     value: 16,
@@ -36,7 +36,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "lizard-cyclomatic-complexity",
     sourceTool: "lizard",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/lib.rs",
+    path: "crates/shared/cli-config-resolution-clap/src/lib.rs",
     codeArea: "rust-production",
     metric: "cyclomatic-complexity",
     value: 16,
@@ -47,7 +47,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "lizard-cyclomatic-complexity",
     sourceTool: "lizard",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/lib.rs",
+    path: "crates/shared/cli-config-resolution-clap/src/lib.rs",
     codeArea: "rust-production",
     metric: "cyclomatic-complexity",
     value: 12,
@@ -58,7 +58,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "scc-file-code-lines",
     sourceTool: "scc",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/tests.rs",
+    path: "crates/shared/cli-config-resolution-clap/src/tests.rs",
     codeArea: "rust-tests",
     metric: "code-lines",
     value: 319,
@@ -68,7 +68,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "lizard-function-code-density",
     sourceTool: "lizard",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/examples/resolution_flow.rs",
+    path: "crates/shared/cli-config-resolution-clap/examples/resolution_flow.rs",
     codeArea: "fixtures-examples",
     metric: "function-code-density",
     value: 73,
@@ -79,7 +79,7 @@ export const ACCEPTED_WARNINGS = Object.freeze([
   {
     ruleId: "lizard-function-code-density",
     sourceTool: "lizard",
-    path: "subrepos/cli-config-resolution/crates/cli-config-resolution-clap/examples/resolution_flow.rs",
+    path: "crates/shared/cli-config-resolution-clap/examples/resolution_flow.rs",
     codeArea: "fixtures-examples",
     metric: "function-code-density",
     value: 54,

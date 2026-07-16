@@ -98,7 +98,7 @@ Manual CR: 修改 protocol、manifest 或 probe 的 schema 与 Rust typed shape 
 - 包依赖不要求预先全局安装；TypeScript 脚本运行时要求环境提供 Bun，具体前置条件由 [工程工具链](tooling.md) 维护。
 - `bun run typecheck:scripts` 证明脚本模块 contract 和边界类型一致，不替代真实 CLI、schema 或 smoke 验证。
 - `bun run lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 和常见静态质量问题。
-- 共享脚本子仓库的 private manifest 提供局部 `typecheck`、`lint` 和 focused `test` 入口；full profile 运行其中证明独立 public semantics 的 focused tests。private manifest 是本地聚焦入口，不要求为每个 package 或测试函数建立额外账本项。
+- 共享脚本内部模块的 private manifest 提供局部 `typecheck`、`lint` 和 focused `test` 入口；full profile 运行其中证明 public semantics 的 focused tests。private manifest 是本地聚焦入口，不形成独立 workspace 或发布边界，也不要求为每个 package 或测试函数建立额外账本项。
 
 ## 统一验证入口
 

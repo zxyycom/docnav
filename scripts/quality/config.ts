@@ -43,11 +43,10 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.8.6",
+  version: "0.8.7",
 
   include: [
     "crates/**/*.rs",
-    "subrepos/cli-config-resolution/crates/**/*.rs",
     "scripts/**/*.ts",
     "test/**/*.ts"
   ],
@@ -77,10 +76,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   codeAreas: Object.freeze({
     "rust-production": {
       description: "Rust production code (non-test, non-fixture, non-generated)",
-      globs: [
-        "crates/**/src/**/*.rs",
-        "subrepos/cli-config-resolution/crates/**/src/**/*.rs"
-      ],
+      globs: ["crates/**/src/**/*.rs"],
       excludeGlobs: [
         "**/src/**/tests/**",
         "**/tests.rs",
@@ -95,9 +91,6 @@ export const DEFAULT_CONFIG = Object.freeze({
         "crates/**/tests/**/*.rs",
         "crates/**/src/**/tests/**/*.rs",
         "crates/**/benches/**/*.rs",
-        "subrepos/cli-config-resolution/crates/**/tests/**/*.rs",
-        "subrepos/cli-config-resolution/crates/**/src/**/tests/**/*.rs",
-        "subrepos/cli-config-resolution/crates/**/benches/**/*.rs",
         "**/tests.rs"
       ],
       excludeGlobs: ["**/fixtures/**", "**/generated/**"],

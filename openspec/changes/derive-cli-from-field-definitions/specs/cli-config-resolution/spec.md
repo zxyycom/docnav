@@ -2,7 +2,7 @@
 
 ### Requirement: Framework Adapter Boundary
 
-Framework-specific extraction MUST remain outside the framework-independent resolution core. The Cargo workspace MUST provide a Clap companion for CLI strategies and a structured-config companion for config-path strategies; environment extraction MAY remain in core.
+Framework-specific extraction MUST remain outside the framework-independent resolution core. The root Cargo workspace MUST provide a Clap companion for CLI strategies and a structured-config companion for config-path strategies; environment extraction MAY remain in core.
 
 The Clap companion MUST own and consume a framework-facing `ClapFieldSpec` projection input. A consumer MAY derive that input from a canonical `FieldDefSet` and consumer-owned extension metadata, but the companion MUST NOT depend on or interpret the consumer's extension payload type. The field declaration MUST remain the authoring source; the runtime input MAY combine canonical identity、locator、value kind、cardinality、accepted/default display and presentation facts. Accepted/default facts in this input are generated-help metadata only.
 

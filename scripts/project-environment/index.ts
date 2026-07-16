@@ -32,28 +32,14 @@ const MISE_TOOLS = [
   "go:github.com/boyter/scc/v3",
   "npm:@colbymchenry/codegraph"
 ] as const;
-const CARGO_WORKSPACE_MANIFESTS = [
-  "Cargo.toml",
-  "subrepos/cli-config-resolution/Cargo.toml"
-] as const;
 
 type Action = "check" | "setup";
 
-export function submoduleStatusFailures(output: string): string[] {
-  return output
-    .split(/\r?\n/u)
-    .filter((line) => line.length > 0 && !line.startsWith(" "));
-}
-
 function setupEnvironment(): void {
   runMise(["trust", "mise.toml"]);
-  run("git", ["submodule", "update", "--init", "--recursive"]);
   runMise(["install", "--locked", ...MISE_TOOLS]);
   runInMise("pnpm", ["install", "--frozen-lockfile"]);
-
-  for (const manifestPath of CARGO_WORKSPACE_MANIFESTS) {
-    runInMise("cargo", ["fetch", "--locked", "--manifest-path", manifestPath]);
-  }
+  runInMise("cargo", ["fetch", "--locked"]);
 
   runInMise("codegraph", ["init", "."]);
   runInMise("codegraph", ["sync", "--quiet", "."]);
@@ -61,7 +47,7 @@ function setupEnvironment(): void {
 
 function checkEnvironment(): void {
   runMise(["install", "--dry-run-code", "--locked", ...MISE_TOOLS]);
-  checkWorkspaces();
+  checkWorkspace();
   runMise(["ls", "--current", ...MISE_TOOLS]);
   runInMise("lizard", ["--version"]);
   runInMise("scc", ["--version"]);
@@ -71,34 +57,16 @@ function checkEnvironment(): void {
   runInMise("codegraph", ["status", "."]);
 }
 
-function checkWorkspaces(): void {
-  const submoduleOutput = run("git", ["submodule", "status", "--recursive"], true);
-  const submoduleLines = submoduleOutput.split(/\r?\n/u).filter((line) => line.length > 0);
-  if (submoduleLines.length === 0) {
-    throw new Error("git submodule status returned no entries");
-  }
-
-  const submoduleFailures = submoduleStatusFailures(submoduleOutput);
-  if (submoduleFailures.length > 0) {
-    throw new Error(
-      `submodules are unavailable or not at the pinned revision:\n${submoduleFailures.join("\n")}\nRun bun run env:setup.`
-    );
-  }
-  console.log(`submodule check ok: ${submoduleLines.length} pinned checkouts`);
-
-  for (const manifestPath of CARGO_WORKSPACE_MANIFESTS) {
-    const metadata = JSON.parse(runInMise("cargo", [
-      "metadata",
-      "--locked",
-      "--offline",
-      "--format-version",
-      "1",
-      "--manifest-path",
-      manifestPath
-    ], true)) as unknown;
-    const workspaceMembers = workspaceMemberCount(metadata, manifestPath);
-    console.log(`cargo workspace ok: ${manifestPath} (${workspaceMembers} members)`);
-  }
+function checkWorkspace(): void {
+  const metadata = JSON.parse(runInMise("cargo", [
+    "metadata",
+    "--locked",
+    "--offline",
+    "--format-version",
+    "1"
+  ], true)) as unknown;
+  const workspaceMembers = workspaceMemberCount(metadata, "Cargo.toml");
+  console.log(`cargo workspace ok: Cargo.toml (${workspaceMembers} members)`);
 }
 
 function workspaceMemberCount(metadata: unknown, manifestPath: string): number {

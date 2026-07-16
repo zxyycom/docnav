@@ -21,39 +21,39 @@ describe("quality code area classification", () => {
     assert.equal(classifyQualityFile("scripts/tools/validators/schema/index.ts"), "typescript-validation-smoke");
   });
 
-  it("classifies nested workspace crates by Rust source role", () => {
+  it("classifies root workspace crates by Rust source role", () => {
     assert.equal(classifyQualityFile("crates/shared/protocol/src/lib.rs"), "rust-production");
     assert.equal(classifyQualityFile("crates/shared/protocol/src/tests/schema.rs"), "rust-tests");
     assert.equal(classifyQualityFile("crates/shared/readable/src/renderer/tests/success.rs"), "rust-tests");
     assert.equal(classifyQualityFile("crates/adapters/markdown/tests/adapter.rs"), "rust-tests");
     assert.equal(
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/src/lib.rs"),
+      classifyQualityFile("crates/shared/typed-fields/src/lib.rs"),
       "rust-production"
     );
     assert.equal(
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/src/tests/constraints.rs"),
+      classifyQualityFile("crates/shared/typed-fields/src/tests/constraints.rs"),
       "rust-tests"
     );
     assert.equal(
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/tests/canonical_parameters.rs"),
+      classifyQualityFile("crates/shared/typed-fields/tests/canonical_parameters.rs"),
       "rust-tests"
     );
     assert.equal(
-      classifyQualityFile("subrepos/cli-config-resolution/crates/typed-fields/benches/resolution.rs"),
+      classifyQualityFile("crates/shared/typed-fields/benches/resolution.rs"),
       "rust-tests"
     );
     assert.equal(
-      classifyQualityFile("subrepos/cli-config-resolution/crates/cli-config-resolution-clap/examples/resolution_flow.rs"),
+      classifyQualityFile("crates/shared/cli-config-resolution-clap/examples/resolution_flow.rs"),
       "fixtures-examples"
     );
   });
 
-  it("discovers representative Rust and TypeScript sources across workspaces", () => {
+  it("discovers representative Rust and TypeScript sources in the root workspace", () => {
     const files = collectScanFiles(REPO_ROOT, DEFAULT_CONFIG);
 
     for (const file of [
       "crates/shared/protocol/src/lib.rs",
-      "subrepos/cli-config-resolution/crates/typed-fields/src/lib.rs",
+      "crates/shared/typed-fields/src/lib.rs",
       "scripts/quality/scan.ts",
       "test/tools/smoke-harness.ts"
     ]) {

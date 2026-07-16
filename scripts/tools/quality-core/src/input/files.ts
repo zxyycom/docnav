@@ -8,7 +8,6 @@ import { createHash } from "node:crypto";
 import { minimatch } from "minimatch";
 
 import { buildFingerprint, isExcluded } from "../model/code-areas.ts";
-import { collectSubmoduleWorktreeFiles } from "./revision-tree.ts";
 import { getRevisionChangedFiles, getWorkingTreeChangedFiles } from "./revisions.ts";
 import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 import { processFailed, runGit, splitGitFileList, toSlashPath, walkFiles } from "../../../foundation/src/index.ts";
@@ -39,10 +38,7 @@ export function collectScanFiles(rootDir: string, config: ScanInputConfig): stri
     return collectFilesFallback(rootDir, config);
   }
 
-  return normalizeAndFilterFiles([
-    ...splitGitFileList(result.stdout),
-    ...collectSubmoduleWorktreeFiles(rootDir, config.include)
-  ], config, rootDir);
+  return normalizeAndFilterFiles(splitGitFileList(result.stdout), config, rootDir);
 }
 
 export function collectBaselineFiles(workDir: string, config: ScanInputConfig): string[] {
@@ -59,10 +55,7 @@ export function collectBaselineFiles(workDir: string, config: ScanInputConfig): 
   });
 
   if (!processFailed(result) && result.stdout.trim()) {
-    return normalizeAndFilterFiles([
-      ...splitGitFileList(result.stdout),
-      ...collectSubmoduleWorktreeFiles(workDir, config.include)
-    ], config, workDir);
+    return normalizeAndFilterFiles(splitGitFileList(result.stdout), config, workDir);
   }
 
   return collectBaselineFilesFallback(workDir, config);

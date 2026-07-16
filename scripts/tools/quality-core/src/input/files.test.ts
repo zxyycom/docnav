@@ -58,43 +58,27 @@ describe("quality changed file input", () => {
     );
   });
 
-  it("keeps current, changed, and baseline submodule files aligned", { timeout: 20_000 }, () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-submodule-"));
-    const submoduleOrigin = join(tempDir, "submodule-origin");
+  it("keeps current, changed, and baseline repository files aligned", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-repository-"));
     const repository = join(tempDir, "repository");
-    const submodulePath = join(repository, "modules", "tool");
-    const committedPath = "modules/tool/src/committed.ts";
-    const untrackedPath = "modules/tool/src/untracked.ts";
-    const workingPath = "modules/tool/src/working.ts";
+    const committedPath = "src/committed.ts";
+    const untrackedPath = "src/untracked.ts";
+    const workingPath = "src/working.ts";
     const config = {
       excludeDirs: [".git"],
       generatedFiles: [],
-      include: ["modules/tool/**/*.ts"]
+      include: ["src/**/*.ts"]
     } satisfies ScanInputConfig;
 
     try {
-      initializeRepository(submoduleOrigin);
-      writeFixtureFile(submoduleOrigin, "src/committed.ts", "export const committed = 1;\n");
-      writeFixtureFile(submoduleOrigin, "src/working.ts", "export const working = 1;\n");
-      const baselineSubmoduleSha = commitAll(submoduleOrigin, "baseline");
-      writeFixtureFile(submoduleOrigin, "src/committed.ts", "export const committed = 2;\n");
-      const currentSubmoduleSha = commitAll(submoduleOrigin, "current");
-
       initializeRepository(repository);
-      git(repository, [
-        "-c",
-        "protocol.file.allow=always",
-        "submodule",
-        "add",
-        submoduleOrigin,
-        "modules/tool"
-      ]);
-      git(submodulePath, ["checkout", "--detach", baselineSubmoduleSha]);
-      const baselineRootSha = commitAll(repository, "baseline submodule");
-      git(submodulePath, ["checkout", "--detach", currentSubmoduleSha]);
-      commitAll(repository, "current submodule");
-      writeFixtureFile(submodulePath, "src/working.ts", "export const working = 2;\n");
-      writeFixtureFile(submodulePath, "src/untracked.ts", "export const untracked = true;\n");
+      writeFixtureFile(repository, committedPath, "export const committed = 1;\n");
+      writeFixtureFile(repository, workingPath, "export const working = 1;\n");
+      const baselineSha = commitAll(repository, "baseline");
+      writeFixtureFile(repository, committedPath, "export const committed = 2;\n");
+      commitAll(repository, "current");
+      writeFixtureFile(repository, workingPath, "export const working = 2;\n");
+      writeFixtureFile(repository, untrackedPath, "export const untracked = true;\n");
 
       assert.deepEqual(
         collectScanFiles(repository, config),
@@ -102,7 +86,7 @@ describe("quality changed file input", () => {
       );
 
       const scope = detectScanInputChange({
-        baselineSha: baselineRootSha,
+        baselineSha,
         cwd: repository,
         scanInputPaths: config.include
       });
@@ -115,7 +99,7 @@ describe("quality changed file input", () => {
 
       const materialized = materializeBaselineRevision({
         baselineWorkDir: join(tempDir, "materialized"),
-        commitSha: baselineRootSha,
+        commitSha: baselineSha,
         cwd: repository
       });
       assert.equal(materialized.ok, true, materialized.ok ? undefined : materialized.error);

@@ -489,7 +489,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-001 Typed field definition core 保持字段级不变量
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_model.rs`
+Code: `crates/shared/typed-fields/src/tests/field_model.rs`
 
 Proves:
 - Builder 生成 field identity、processing strategy-backed structured path、`FieldValidation<T>`、typed default metadata 和 schema metadata view，并能把合法 JSON value 校验为 typed value。
@@ -498,7 +498,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PRESENCE-001 Typed field declaration presence policy 稳定
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_presence.rs`
+Code: `crates/shared/typed-fields/src/tests/field_presence.rs`
 
 Proves:
 - `T` / `Option<T>` field declaration 分别投影为 required/non-nullable 和 optional/nullable schema metadata。
@@ -508,7 +508,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-METADATA-001 Typed field metadata build invariants 稳定
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_metadata.rs`
+Code: `crates/shared/typed-fields/src/tests/field_metadata.rs`
 
 Proves:
 - duplicate field identity 在 definition set build 阶段失败，并保留 previous/current declaration path 和 processing path。
@@ -516,7 +516,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-CONSTRAINTS-001 Typed field string/array constraints 稳定
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/constraints.rs`
+Code: `crates/shared/typed-fields/src/tests/constraints.rs`
 
 Proves:
 - String regex、closed minimum length 和 open maximum length 对 present value 产生稳定 validation failure reason。
@@ -525,7 +525,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-RANGES-001 Typed field numeric ranges and defaults 稳定
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/field_ranges.rs`
+Code: `crates/shared/typed-fields/src/tests/field_ranges.rs`
 
 Proves:
 - Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
@@ -533,7 +533,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PROCESSING-001 Typed field processing build 稳定
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/processing.rs`
+Code: `crates/shared/typed-fields/src/tests/processing.rs`
 
 Proves:
 - Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
@@ -542,7 +542,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-PROJECTION-001 Typed field definition set projection 稳定
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/src/tests/set_projection.rs`
+Code: `crates/shared/typed-fields/src/tests/set_projection.rs`
 
 Proves:
 - FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象。
@@ -552,7 +552,7 @@ Proves:
 
 ### WB-TYPED-FIELDS-COMPILE-001 FieldDefs derive 拒绝非法声明
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/tests/field_defs_compile.rs`
+Code: `crates/shared/typed-fields/tests/field_defs_compile.rs`
 
 Proves:
 - `FieldDefs` derive 在编译期拒绝 leaf Rust field 类型与 `FieldDefBuilder<T>` 类型不一致的声明。
@@ -560,7 +560,7 @@ Proves:
 
 ### WB-PARAM-FIELD-CONTRACT-001 Canonical FieldDefSet preserves parameter declaration invariants
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/typed-fields/tests/canonical_parameters.rs`
+Code: `crates/shared/typed-fields/tests/canonical_parameters.rs`
 
 Proves:
 - One `FieldDefSet` exposes declared CLI flag、environment variable and config path locators from canonical processing metadata.
@@ -570,7 +570,7 @@ Proves:
 
 ### WB-PARAM-SOURCE-EXTRACTION-001 Resolution core preserves normalized source facts
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/cli-config-resolution/tests/canonical_core.rs`
+Code: `crates/shared/cli-config-resolution/tests/canonical_core.rs`
 
 Proves:
 - Environment extraction queries only declared `EnvVar` locators；unknown environment entries are ignored and missing declared variables produce no candidate.
@@ -579,7 +579,7 @@ Proves:
 
 ### WB-PARAM-RESOLVE-001 Canonical resolution preserves one ordered merge chain
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/cli-config-resolution/tests/canonical_core.rs`
+Code: `crates/shared/cli-config-resolution/tests/canonical_core.rs`
 
 Proves:
 - Higher priority wins；at equal priority, the later registered source wins deterministically. Static defaults automatically fall back, while an explicit dynamic-default source remains an ordinary source fact.
@@ -589,7 +589,7 @@ Proves:
 
 ### WB-PARAM-CLAP-001 Canonical FieldDefSet clap projection preserves CLI candidate facts
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/cli-config-resolution-clap/src/tests.rs`
+Code: `crates/shared/cli-config-resolution-clap/src/tests.rs`
 
 Proves:
 - `FieldDefSet` `CliFlag` processing metadata registers string、integer、number、boolean、array and object clap arguments and extracts present matches into typed CLI candidates with source and flag-locator facts.
@@ -599,7 +599,7 @@ Proves:
 
 ### WB-PARAM-SERDE-001 serde config-path mapping preserves candidate facts
 Status: implemented
-Code: `subrepos/cli-config-resolution/crates/cli-config-resolution-serde/src/lib.rs`
+Code: `crates/shared/cli-config-resolution-serde/src/lib.rs`
 
 Proves:
 - Only `ConfigPath` metadata declared by the canonical `FieldDefSet` is queried；extra config entries and missing paths produce no candidate.
@@ -1010,7 +1010,7 @@ Code: `scripts/tools/quality-core/src/input/files.test.ts`
 
 Proves:
 - quality changed-file input 将 unreadable explicit `--changed-files` path 映射为 thrown diagnostic，错误文本保留 flag 名称和请求的文件路径。
-- 一个本地 submodule 代表证明 current scan 收集 tracked 与 untracked nested files、committed 与 working-tree changes 返回 nested file paths，并且 materialized baseline 使用 selected superproject revision 记录的 gitlink 内容。
+- 一个普通本地仓库代表证明 current scan 收集 tracked 与 untracked files，committed 与 working-tree changes 返回同一组根相对路径，并且 materialized baseline 使用 selected repository revision 的文件内容。
 
 ### AUX-QUALITY-CODE-AREAS-001 Quality code area 分类稳定
 Status: implemented
@@ -1019,8 +1019,8 @@ Code: `scripts/quality/config.test.ts`
 Proves:
 - smoke case 和 fixture 文件归入 `fixtures-examples`，不被 `typescript-validation-smoke` 的广泛 globs 遮蔽。
 - smoke harness 和 validator infrastructure 仍归入 `typescript-validation-smoke`。
-- quality current scan 的实际文件发现同时包含根 workspace 与 `subrepos/cli-config-resolution/crates/**` 的 Rust source，以及 TypeScript scripts 和 tests；根仓库 gitlink 不会吞掉 nested sources。
-- Nested Rust production、tests 和 benches 沿用既有 Rust code areas；examples/fixtures 沿用 `fixtures-examples`。
+- quality current scan 的实际文件发现包含根 workspace 下原有与迁入 `crates/shared/**` 的 Rust source，以及 TypeScript scripts 和 tests。
+- Rust production、tests 和 benches 沿用既有 Rust code areas；examples/fixtures 沿用 `fixtures-examples`。
 - TypeScript code area globs 继续将 production scripts 与 validation/smoke TypeScript 分开。
 
 ### AUX-QUALITY-REPORT-001 Quality report 排名和 changed-file 摘要稳定
@@ -1085,7 +1085,7 @@ Code: `scripts/tools/validators/case-catalog/index.test.ts`
 
 Proves:
 - case catalog validator accepts implemented cases with matching markers and planned cases without markers.
-- filesystem discovery includes the owned `subrepos/cli-config-resolution` workspace and maps its moved `@case` markers to normalized nested paths.
+- filesystem discovery includes the root workspace shared crates and maps their `@case` markers to normalized root-relative paths.
 - case catalog validator reports duplicate documented IDs、duplicate source markers、invalid marker IDs、invalid `Status:`、implemented case without exactly one `Code:` path、missing/empty `Proves:`、documented implemented cases missing markers、undocumented source markers、planned cases with markers and `Code:` path drift.
 - 真实仓库由 `bun run validate:docs cases` 作为集成验证。
 

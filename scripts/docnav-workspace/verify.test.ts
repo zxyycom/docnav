@@ -76,7 +76,7 @@ describe("workspace verifier configuration", () => {
   it("filters workspace verifier script test package output", () => {
     const check = checkById("workspace-verifier-script-tests");
     const output = [
-      "$ bun test scripts/docnav-workspace/verify.test.ts scripts/project-environment/workspaces.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/foundation/test/foundation.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
+      "$ bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/foundation/test/foundation.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
       "bun test v1.3.14 (0d9b296a)",
       "",
       "scripts\\docnav-workspace\\verify.test.ts:",
@@ -323,7 +323,7 @@ describe("workspace verifier configuration", () => {
     const docsChecks = requiredChecks.filter((check) => check.id.startsWith("docs-"));
 
     assert.deepEqual(docsChecks.map((check) => check.id), ["docs-validators"]);
-    assert.equal(reportCountForChecks(requiredChecks), 10);
+    assert.equal(reportCountForChecks(requiredChecks), 9);
   });
 });
 

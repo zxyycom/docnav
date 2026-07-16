@@ -6,9 +6,11 @@ TypeScript foundation helpers for script tooling.
 
 Import from `src/index.ts`.
 
-This repository provides process, Git, path, fs, JSON, CSV, NDJSON, argument, error, and type-guard helpers. Consumers use a pinned source checkout; this is not an npm package contract.
+This internal module provides process, Git, path, fs, JSON, CSV, NDJSON, argument, error, and type-guard helpers. Consumers import its source directly inside the Docnav repository; this is not an npm package contract.
 
-## Checks
+## Focused checks
+
+Run these commands from this directory:
 
 - `bun run typecheck`
 - `bun run lint`

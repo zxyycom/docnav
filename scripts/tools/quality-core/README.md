@@ -6,9 +6,11 @@ Quality scanning core for TypeScript script tooling.
 
 Import from `src/index.ts`.
 
-This repository provides quality schema/types, code-area classification, scanner adapters, metrics aggregation, warnings, reports, baseline/cache primitives, and `runQualityScan`. Callers provide repository-specific paths, globs, thresholds, tools, and scan options through typed config.
+This internal module provides quality schema/types, code-area classification, scanner adapters, metrics aggregation, warnings, reports, baseline/cache primitives, and `runQualityScan`. Callers provide repository-specific paths, globs, thresholds, tools, and scan options through typed config.
 
-## Checks
+## Focused checks
+
+Run these commands from this directory:
 
 - `bun run typecheck`
 - `bun run lint`

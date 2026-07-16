@@ -10,7 +10,7 @@
 - [ ] 2.2 新增不依赖 Clap 的 `docnav-field-authoring` shared crate，提供 `DocnavCliPresentation`、`FieldDefBuilder` 项目扩展和 framework-neutral `DocnavFieldProjection`；adapter contracts 与 navigation 通过该 crate 在声明处添加 help、value name、display order 与 Boolean switch/token-map encoding，projection 同时读取 canonical identity、CLI locator、value kind、constraints 和 default。
 - [ ] 2.3 让 `cli-config-resolution-clap` 拥有 consumer-neutral `ClapFieldSpec` input，并由 Docnav core 提供 `DocnavFieldProjection -> ClapFieldSpec` 的一对一 bridge；覆盖 string、integer、finite number、Boolean、repeated string array 和 repeated `key=value` object，`ValueKind::Json` 继续拒绝；accepted/default 仅用于 help，enum/range/pattern/required/default 等 canonical semantics 不装入 Clap value validation。
 - [ ] 2.4 从 matching projection 和 successful `ArgMatches` 构造 normalized CLI `Source`；成功 decode 生成 typed candidate，失败生成保留 raw value/reason 的 invalid candidate，extension/projection mismatch、match storage mismatch、source construction failure 和 declaration conflict 返回 structural error。
-- [ ] 2.5 添加 typed-fields/field-authoring/core-bridge/companion/resolver contract tests，覆盖 immutable extension preservation、same-type duplicate、missing retrieval、CLI locator 与 extension 双向匹配、config-only field 无 extension、bridge exact mapping、Boolean encodings、decode/semantic invalid candidate facts、unselected/overridden invalid non-blocking、selected/merge contributor invalid blocking 及 structural failures；运行子仓库 fmt、clippy、all-target tests、doc tests 和 example。
+- [ ] 2.5 添加 typed-fields/field-authoring/core-bridge/companion/resolver contract tests，覆盖 immutable extension preservation、same-type duplicate、missing retrieval、CLI locator 与 extension 双向匹配、config-only field 无 extension、bridge exact mapping、Boolean encodings、decode/semantic invalid candidate facts、unselected/overridden invalid non-blocking、selected/merge contributor invalid blocking 及 structural failures；从仓库根运行 `cargo fmt --all --check`，并对相关 package 运行锁定的 clippy、all-target tests、doc tests 和 example。
 - [ ] 2.6 将 `cli-config-resolution-clap` 的 projection validation、command augmentation 和 candidate extraction 拆成独立 owner 模块，保持 public contract；同步拆分 touched tests，并删除 `scripts/quality/accepted-warnings.ts` 中被本次 CLI parsing refactor 触发的 acceptance。
 
 ## 3. Navigation registry projection 与 selected field set
@@ -36,6 +36,6 @@
 
 ## 6. 验收
 
-- [ ] 6.1 运行子仓库独立验证，以及主仓库 fmt、targeted Rust tests、case consistency、CLI/process smoke 和 clippy `-D warnings`。
+- [ ] 6.1 从仓库根运行 `cargo fmt --all --check`、相关 package 的锁定 tests/doc/example，以及 targeted Rust tests、case consistency、CLI/process smoke 和 clippy `-D warnings`。
 - [ ] 6.2 运行 `bun run verify:docnav-workspace` 和 `openspec validate derive-cli-from-field-definitions --type change --strict --no-interactive`，要求 0 failed。
 - [ ] 6.3 按 5.1 的删除清单搜索 legacy 残留，确认 selected-set filtering 未引入 usage-accounting state、stage boundary 不暴露 projection 外 diagnostics、consumer extension 未演化为 replace/mutation/lifecycle framework、touched quality acceptance 已移除，并检查局部 diff 仅包含目标范围。

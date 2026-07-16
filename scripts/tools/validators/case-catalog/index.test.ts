@@ -18,11 +18,11 @@ describe("case catalog validator", () => {
     assert.deepEqual(failures, []);
   });
 
-  it("discovers case markers in the nested cli-config workspace", () => {
+  it("discovers case markers in root workspace shared crates", () => {
     const markers = collectCaseMarkers(caseSourceFiles());
 
     assert.deepEqual(markers.byId.get("WB-PARAM-FIELD-CONTRACT-001"), [
-      "subrepos/cli-config-resolution/crates/typed-fields/tests/canonical_parameters.rs"
+      "crates/shared/typed-fields/tests/canonical_parameters.rs"
     ]);
   });
 

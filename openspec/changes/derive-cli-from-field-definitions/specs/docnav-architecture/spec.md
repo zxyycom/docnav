@@ -20,8 +20,8 @@ Adapter contracts and navigation MAY depend on the project authoring layer to de
 - **THEN** core maps the Docnav view to the companion-owned input and the companion performs Clap-specific work
 - **THEN** `docnav-field-authoring` and adapter contracts remain framework-neutral
 
-#### Scenario: Independent companion does not depend on Docnav
+#### Scenario: Consumer-neutral companion does not depend on Docnav
 
-- **WHEN** the `cli-config-resolution` workspace builds and tests independently
+- **WHEN** the `cli-config-resolution` packages build and test as members of the root workspace
 - **THEN** its Clap companion accepts its own consumer-neutral projection input
-- **THEN** no package in that workspace depends on `docnav-field-authoring` or other main-workspace crates
+- **THEN** none of the `cli-config-resolution*` or `docnav-typed-fields*` packages depend on `docnav-field-authoring` or other Docnav-specific crates

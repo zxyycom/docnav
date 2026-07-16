@@ -9,7 +9,7 @@ Document CLI 的通用参数和 adapter native options 目前在字段声明、C
 ## What Changes
 
 - 为 typed-fields 增加 immutable、type-indexed consumer extension metadata，使其跨 declaration / `FieldDefSet` aggregation 保留并可从 built `FieldDef` typed retrieval，而不解释 payload 语义。
-- 新增 framework-neutral 的 `docnav-field-authoring` shared crate，集中定义 Docnav field builder 扩展与 projection；CLI presentation 在字段声明处补充，canonical constraints/defaults 继续由字段本身拥有。Docnav core 把该 view 机械映射为 Clap companion 自己拥有的 projection input，避免主仓库与子仓库反向依赖。
+- 新增 framework-neutral 的 `docnav-field-authoring` shared crate，集中定义 Docnav field builder 扩展与 projection；CLI presentation 在字段声明处补充，canonical constraints/defaults 继续由字段本身拥有。Docnav core 把该 view 机械映射为 Clap companion 自己拥有的 projection input，保持 crate 依赖方向单向。
 - 按 document operation 从声明生成 registry CLI projection，并用它扩展唯一的 authoritative Clap command tree。Clap 处理 command shape，companion 把已注册输入转换为 typed 或 field-local invalid candidates。
 - Navigation 在 adapter selection 后重组 current-operation `FieldDefSet`；只有所选字段进入 resolution、request construction 与 dispatch。
 - 普通 document invocation 按阶段读取配置：core-owned logging、routing、outline policy 和 selected operation 各自只校验当前 projection；其它内容不产生本次调用的诊断。`docnav config inspect` 使用 registry-wide projection 检查完整 source。
@@ -42,8 +42,8 @@ Document CLI 的通用参数和 adapter native options 目前在字段声明、C
 
 ## Impact
 
-- 主仓库：新增 `crates/shared/field-authoring/`，修改 `crates/docnav/src/cli/**`、`crates/shared/navigation/src/parameters/**`、`crates/shared/adapter-contracts/src/native_option/**`、built-in adapter declarations，以及删除 `crates/shared/cli-args/`。
-- 子仓库：`subrepos/cli-config-resolution/crates/typed-fields/**` 与 `crates/cli-config-resolution-clap/**` 的 extension metadata、projection、candidate extraction、errors、tests、README 和 example。
+- Docnav 集成层：新增 `crates/shared/field-authoring/`，修改 `crates/docnav/src/cli/**`、`crates/shared/navigation/src/parameters/**`、`crates/shared/adapter-contracts/src/native_option/**`、built-in adapter declarations，以及删除 `crates/shared/cli-args/`。
+- 共享 crate：`crates/shared/typed-fields/**` 与 `crates/shared/cli-config-resolution-clap/**` 的 extension metadata、projection、candidate extraction、errors、tests、README 和 example。
 - 验证：typed-fields/CLI/navigation/adapter/output owner docs、CLI 与 config inspection tests、companion contract tests、process smoke、case 账本、workspace verifier 和 OpenSpec strict validation。
 
 ## Non-Goals
