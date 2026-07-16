@@ -35,30 +35,14 @@ export function collectScanFiles(rootDir: string, config: ScanInputConfig): stri
 
   if (processFailed(result)) {
     console.log("  ⚠️  git ls-files failed, using fallback file collection");
-    return collectFilesFallback(rootDir, config);
+    return collectFilesByWalking(rootDir, config);
   }
 
   return normalizeAndFilterFiles(splitGitFileList(result.stdout), config, rootDir);
 }
 
 export function collectBaselineFiles(workDir: string, config: ScanInputConfig): string[] {
-  const pathspecArgs = gitGlobPathspecArgs(config.include);
-  const result = runGit([
-    "ls-files",
-    "--cached",
-    "--others",
-    "--exclude-standard",
-    ...pathspecArgs
-  ], {
-    cwd: workDir,
-    maxBuffer: 1024 * 1024 * 64
-  });
-
-  if (!processFailed(result) && result.stdout.trim()) {
-    return normalizeAndFilterFiles(splitGitFileList(result.stdout), config, workDir);
-  }
-
-  return collectBaselineFilesFallback(workDir, config);
+  return collectFilesByWalking(workDir, config);
 }
 
 export function getChangedFileList(opts: ChangedFilesOptions, rootDir: string): string[] {
@@ -111,22 +95,10 @@ function normalizeFingerprintText(content: string): string {
   return content.replace(/\r\n?/g, "\n");
 }
 
-function collectFilesFallback(rootDir: string, config: ScanInputConfig): string[] {
+function collectFilesByWalking(rootDir: string, config: ScanInputConfig): string[] {
   const files: string[] = [];
 
   for (const relPath of walkFiles(rootDir, { ignoredDirs: config.excludeDirs })) {
-    if (isScanInputFile(relPath, config)) {
-      files.push(relPath);
-    }
-  }
-
-  return uniqueSorted(files);
-}
-
-function collectBaselineFilesFallback(workDir: string, config: ScanInputConfig): string[] {
-  const files: string[] = [];
-
-  for (const relPath of walkFiles(workDir, { ignoredDirs: config.excludeDirs })) {
     if (isScanInputFile(relPath, config)) {
       files.push(relPath);
     }
