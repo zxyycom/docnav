@@ -1,5 +1,3 @@
-本 delta 的目标是定义 `ProtocolJson` 与 `Rendered(RenderStrategy)` 两条 document output 路径；当前文档只在 `openspec/changes/unify-output-with-injected-rendering/` 下形成未审核临时文档，不影响现有其它文档或主规范。
-
 ## RENAMED Requirements
 
 - FROM: `Readable-view and readable-json share one payload source`
@@ -11,7 +9,7 @@
 
 ### Requirement: Document output modes are fixed
 
-Document operations MUST expose exactly the output modes `readable-view` and `protocol-json`. Omitted output or `readable-view` MUST construct `Rendered(RenderStrategy)` with the renderer supplied by linked code composition; the default core composition MUST supply the built-in `readable-view` renderer. `protocol-json` MUST construct `ProtocolJson` and bypass rendering.
+Document operations MUST expose exactly the output modes `readable-view` and `protocol-json`. Core CLI MUST map omitted output and `readable-view` to `Rendered(RenderStrategy)` with the built-in `readable-view` renderer. A direct linked caller MAY construct `Rendered` with a custom renderer without adding another public output value. `protocol-json` MUST construct `ProtocolJson` and bypass rendering.
 
 #### Scenario: Omitted output uses the default renderer
 
@@ -22,7 +20,7 @@ Document operations MUST expose exactly the output modes `readable-view` and `pr
 #### Scenario: Explicit readable-view selects rendered output
 
 - **WHEN** a caller requests `readable-view`
-- **THEN** output orchestration receives a `Rendered` plan with one code-supplied renderer
+- **THEN** core composition supplies a `Rendered` plan with the built-in `readable-view` renderer
 
 #### Scenario: Protocol JSON bypasses rendering
 
@@ -61,7 +59,7 @@ The selected renderer MUST return one complete UTF-8 text value or `RenderFailur
 
 ### Requirement: Output orchestration is above rendering
 
-Document output orchestration MUST choose the output path、invoke the selected renderer for `Rendered`、serialize the protocol envelope for `ProtocolJson`、control stdout/stderr and map render failure before writing process output. A selected custom renderer MUST remain the only presentation owner for that invocation. `RenderFailure` MUST leave stdout empty and surface through the stable output diagnostic and CLI exit mapping.
+Document output orchestration MUST choose the output path、invoke the selected renderer for `Rendered`、serialize the protocol envelope for `ProtocolJson`、control stdout/stderr and map render failure before writing process output. A selected custom renderer MUST remain the only presentation owner for that invocation. A returned `RenderFailure` MUST leave stdout empty, surface as the output-owned `output_render_failed` diagnostic through the CLI internal-failure mapping, and MUST NOT trigger another renderer.
 
 #### Scenario: Protocol output remains independent
 
@@ -78,7 +76,7 @@ Document output orchestration MUST choose the output path、invoke the selected 
 
 - **WHEN** a custom renderer returns `RenderFailure`
 - **THEN** stdout remains empty
-- **THEN** output orchestration reports the stable render diagnostic
+- **THEN** output orchestration reports `output_render_failed`
 - **THEN** no second renderer is invoked
 
 #### Scenario: Non-document output remains owner-specific
@@ -100,10 +98,16 @@ The built-in `readable-view` renderer MUST represent declared unstructured outli
 
 ### Requirement: Renderer dependency is resolved by linked code
 
-Each `Rendered` plan MUST contain one renderer function or trait value selected by linked code before output orchestration begins. Public CLI and configuration inputs MUST select only documented output modes; renderer implementation identity MUST remain outside those input contracts.
+Each `Rendered` plan MUST contain one renderer function or trait value selected by linked code before output orchestration begins. Public CLI and configuration inputs MUST select only documented output modes; core CLI `readable-view` MUST use the built-in renderer. A direct linked caller MAY supply a custom renderer through the shared output API, and its implementation identity MUST remain outside public input and serialized metadata contracts.
 
-#### Scenario: Public input selects mode only
+#### Scenario: Public input selects the built-in renderer
 
 - **WHEN** CLI or configuration input selects `readable-view`
-- **THEN** the input selects the rendered path
-- **THEN** linked code supplies the renderer implementation
+- **THEN** core composition constructs the rendered path with the built-in renderer
+- **THEN** the input does not identify a renderer implementation
+
+#### Scenario: Linked code supplies a custom renderer
+
+- **WHEN** a linked caller directly constructs a `Rendered` plan with a custom renderer
+- **THEN** output orchestration uses that renderer for the invocation
+- **THEN** no new CLI/config output value or serialized strategy id is created

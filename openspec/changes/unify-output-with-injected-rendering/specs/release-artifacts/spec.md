@@ -1,5 +1,3 @@
-本 delta 的目标是让 release package 验收 protocol output 与默认 rendered output，而不改变运行时语义；当前文档只在 `openspec/changes/unify-output-with-injected-rendering/` 下形成未审核临时文档，不影响现有其它文档或主规范。
-
 ## MODIFIED Requirements
 
 ### Requirement: 统一制品目录不得改变运行时输出协议

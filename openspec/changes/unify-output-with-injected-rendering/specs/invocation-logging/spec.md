@@ -1,5 +1,3 @@
-本 delta 的目标是保持 invocation logging 与 protocol、renderer 和 adapter handler boundaries 隔离；当前文档只在 `openspec/changes/unify-output-with-injected-rendering/` 下形成未审核临时文档，不影响现有其它文档或主规范。
-
 ## MODIFIED Requirements
 
 ### Requirement: 调用日志不得污染 stdout 或协议输出
