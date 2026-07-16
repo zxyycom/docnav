@@ -65,11 +65,11 @@ function checkWorkspace(): void {
     "--format-version",
     "1"
   ], true)) as unknown;
-  const workspaceMembers = workspaceMemberCount(metadata, "Cargo.toml");
+  const workspaceMembers = workspaceMemberCount(metadata);
   console.log(`cargo workspace ok: Cargo.toml (${workspaceMembers} members)`);
 }
 
-function workspaceMemberCount(metadata: unknown, manifestPath: string): number {
+function workspaceMemberCount(metadata: unknown): number {
   if (
     typeof metadata !== "object"
     || metadata === null
@@ -77,7 +77,7 @@ function workspaceMemberCount(metadata: unknown, manifestPath: string): number {
     || !Array.isArray(metadata.workspace_members)
     || metadata.workspace_members.length === 0
   ) {
-    throw new Error(`cargo metadata returned no workspace members for ${manifestPath}`);
+    throw new Error("cargo metadata returned no workspace members for Cargo.toml");
   }
   return metadata.workspace_members.length;
 }
@@ -87,19 +87,10 @@ function runInMise(command: string, args: string[], capture = false): string {
 }
 
 function runMise(args: string[], capture = false): string {
-  return run("mise", args, capture, MISE_ENV);
-}
-
-function run(
-  command: string,
-  args: string[],
-  capture = false,
-  env: NodeJS.ProcessEnv = process.env
-): string {
-  const result = spawnSync(command, args, {
+  const result = spawnSync("mise", args, {
     cwd: REPO_ROOT,
     encoding: "utf8",
-    env: { ...env, ...PLAIN_TEXT_ENV },
+    env: { ...MISE_ENV, ...PLAIN_TEXT_ENV },
     maxBuffer: PROCESS_MAX_BUFFER,
     stdio: capture ? "pipe" : "inherit",
     windowsHide: true
@@ -111,7 +102,7 @@ function run(
       || stdout.trim()
       || result.error?.message
       || `exit ${result.status ?? "unknown"}`;
-    throw new Error(`${command} ${args.join(" ")} failed: ${diagnostic}`);
+    throw new Error(`mise ${args.join(" ")} failed: ${diagnostic}`);
   }
   return stdout;
 }
