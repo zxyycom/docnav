@@ -90,14 +90,14 @@ Proves:
 - project config 中的 legacy `defaults.limit` 会在真实 `outline` CLI 链路中返回 config-owned `INVALID_REQUEST`。
 - structured `unknown_config_field` / `config_issues` diagnostic 报告字段、source level、path origin 和 config path。
 
-### BB-CORE-CONFIG-004 Native option config 按 selected operation declaration 生效
+### BB-CORE-CONFIG-004 Adapter-scoped config 按 catalog operation applicability 生效
 Status: implemented
 Existing smoke task: `CORE-CONFIG-004`（从旧裸 options coverage 更新）
 Code: `test/smoke/core/cases/config-management.ts`
 
 Proves:
-- Project config 中的 `options.docnav-markdown.max_heading_level` 通过 selected Markdown declaration 影响 `outline` entries。
-- User config 中的 `options.docnav-markdown.max_heading_level` 通过 direct config file edit/read 参与 source priority；当 selected operation 不声明该 native option 时，返回 structured unsupported native option diagnostic 并保留 source level/path。
+- Project config 中的 `options.docnav-markdown.max_heading_level` 通过 core-authored Markdown-scoped catalog entry 影响 `outline` entries。
+- User config 中的 `options.docnav-markdown.max_heading_level` 通过 direct config file edit/read 参与 source priority；当 catalog 不把该参数绑定到 selected operation 时，返回 structured unsupported diagnostic 并保留 source level/path。
 
 ### BB-CORE-CONFIG-PATH-001 Config path flags select CLI config targets
 Status: implemented
@@ -203,10 +203,9 @@ Status: implemented
 Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
-- `--help` 和 operation help 返回 typed help command；document operation help 由 operation-scoped field projection 展示当前 common/native flags 与支持的 output modes。
-- root help、version、config、adapter、init 和 doctor 保持 static surface，不触发 document field projection。
-- generated flag 与 static document flag 冲突时，declaration failure 保留 adapter owner 与 canonical field attribution。
-- Current operation projection failure 保持 blocking；其它 operation 的 projection failure 不阻断 current command parsing。
+- `--help` 和 operation help 返回 typed help command，并展示当前支持的 output modes。
+- Operation help 按 core catalog binding 展示当前 operation 可用的参数；例如 outline 展示 `--max-heading-level`，read 不展示。
+- root help、version、config、adapter、init 和 doctor 保持各自的 static surface，不进入 document output mode。
 
 ### WB-CORE-OUTPUTMODE-001 Core parser document output mode 解析稳定
 Status: implemented
@@ -247,7 +246,7 @@ Code: `crates/docnav/src/config/store/tests.rs`
 
 Proves:
 - Core config source loading accepts documented navigation-owned `outline.mode_rules[]` and `outline.auto_full_read.thresholds[]` fields instead of rejecting them as unknown top-level config.
-- Core config source validation preserves raw `outline` config for inspection/read purposes while validating core-owned defaults and registry-declared adapter-id native option config keys.
+- Core config source validation preserves raw `outline` config for inspection/read purposes while validating core-authored defaults and adapter-scoped catalog config keys.
 - Bare `options.max_heading_level` is rejected as an ordinary `unknown_config_field`; it is not migrated or interpreted as an adapter-id native option source path.
 - Invalid adapter-id native option values and nested non-object fields produce structured source-attributed config issues.
 - Default missing config paths remain absent, while explicit missing paths report `missing_explicit_cli` with explicit path origin.
@@ -283,13 +282,12 @@ Code: `crates/shared/navigation/src/tests/navigation/native_options.rs`
 
 Proves:
 - Navigation input resolution preserves source labels for explicit input and project config option issues.
-- Navigation receives normalized CLI candidates with canonical identity/locator/source facts；selected-set members enter canonical resolution, while an explicit candidate outside the selected adapter/current-operation set fails before request construction and dispatch.
-- Selected adapter-owned declarations control native option typed validation/extraction；navigation registers、merges and resolves declared fields from CLI/input projection and config-source projection without redefining field semantics.
-- Common `adapter`、`page`、`limit`、`pagination` and `output` declarations author CLI locator、help and value-name facts；pagination maps `enabled|disabled` explicitly to Boolean values, while output accepted/default facts remain canonical constraints/default metadata.
+- Navigation receives normalized CLI candidates with canonical identity/locator/source facts；selected catalog members enter canonical resolution, while a parameter absent from the core catalog fails before request construction and dispatch.
+- The core-authored catalog controls adapter scope、operation applicability、typed validation and static defaults；navigation resolves selected fields without reconstructing those facts.
 - Config source projection uses `options.<adapter-id>.<option-key>`; equal option keys in different adapter id namespaces stay distinct, and bare `options.<option-key>` is a normal unknown/invalid config path.
-- Navigation consumes native option values only from the selected adapter namespace for the selected operation; other known adapter namespaces are not forwarded to the selected handler.
-- Built-in adapter defaults affect the resolved operation result when no explicit/project value is provided.
-- Optional non-JSON config `null` suppresses the static default without entering handler handoff, while a declared JSON native option preserves a structured project-config value as its selected typed value.
+- Navigation consumes adapter-scoped values only from the selected adapter namespace for the selected operation; other known adapter namespaces are not forwarded to the selected strategy.
+- Static catalog defaults affect the resolved operation result when no explicit/project value is provided.
+- Protocol `OperationArguments` and closed `StandardOperationInput` are sibling projections of the same resolved values；optional config `null` suppresses both default projections.
 - Unknown adapter namespaces、unknown selected options、operation-inapplicable options and invalid typed values remain blocking source-attributed diagnostics.
 
 ### WB-NAV-OUTLINE-MODE-001 Navigation outline_mode selectors and pre-dispatch stable
@@ -319,8 +317,8 @@ Code: `crates/docnav/src/registry/tests.rs`
 
 Proves:
 - Core static registry 包含 release 内置 Markdown adapter descriptor metadata。
-- Core static registry exposes Markdown native option config keys and outline native option specs.
 - Adapter layer check 从 adapter definition 读取 metadata，并把 core-owned implementation source 保留为 static registry fact。
+- `adapter list` preserves the same static-registry id and implementation-source projection.
 
 ### WB-CORE-DOCTOR-001 Doctor 聚合 typed check 退出码
 Status: implemented
@@ -502,41 +500,6 @@ Proves:
 - Field metadata validation 区分 missing optional、wrong type 和 range violation，并保留 field identity、field path 和 machine-readable reason。
 - Required enum field declaration 使用 Rust enum metadata 校验 allowed value，missing required 和 disallowed enum value 返回可诊断 validation failure。
 
-### WB-TYPED-FIELDS-PRESENCE-001 Typed field declaration presence policy 稳定
-Status: implemented
-Code: `crates/shared/typed-fields/src/tests/field_presence.rs`
-
-Proves:
-- `T` / `Option<T>` field declaration 分别投影为 required/non-nullable 和 optional/nullable schema metadata。
-- missing required 和 null required 分别返回 `MissingRequired` 与 typed wrong-null failure。
-- optional field 在 missing、null 和 present 三种输入下分别产生 `None`、`None` 和 typed value。
-- 手动 field shape 可表达 required-but-nullable contract field，missing 仍失败，present null 可通过。
-
-### WB-TYPED-FIELDS-METADATA-001 Typed field metadata build invariants 稳定
-Status: implemented
-Code: `crates/shared/typed-fields/src/tests/field_metadata.rs`
-
-Proves:
-- duplicate field identity 在 definition set build 阶段失败，并保留 previous/current declaration path 和 processing path。
-- String enum metadata 由真实 Rust enum metadata 驱动：空 enum metadata 在 build 阶段失败，重复 enum string alias 在有效 metadata 中去重，typed extraction 返回 enum value。
-
-### WB-TYPED-FIELDS-CONSTRAINTS-001 Typed field string/array constraints 稳定
-Status: implemented
-Code: `crates/shared/typed-fields/src/tests/constraints.rs`
-
-Proves:
-- String regex、closed minimum length 和 open maximum length 对 present value 产生稳定 validation failure reason。
-- Array length 和 unique-items constraints 对 present value 生效。
-- Invalid regex metadata 在 definition set build 阶段失败。
-
-### WB-TYPED-FIELDS-RANGES-001 Typed field numeric ranges and defaults 稳定
-Status: implemented
-Code: `crates/shared/typed-fields/src/tests/field_ranges.rs`
-
-Proves:
-- Numeric range 按字段 Rust value type 绑定：`int()` 使用 integer bound 并覆盖大整数精度边界，`num()` 使用 finite floating bound；open/closed empty range 在 build 阶段失败。
-- Static default metadata 通过 field validation；invalid default、non-finite default、non-finite range 和 empty range 在 build 阶段失败。
-
 ### WB-TYPED-FIELDS-PROCESSING-001 Typed field processing build 稳定
 Status: implemented
 Code: `crates/shared/typed-fields/src/tests/processing.rs`
@@ -546,24 +509,6 @@ Proves:
 - Empty processing id 在 build 阶段失败。
 - Field set build rejects a leaf declaration without a processing strategy and preserves the declaration path in the build error.
 
-### WB-TYPED-FIELDS-PROJECTION-001 Typed field definition set projection 稳定
-Status: implemented
-Code: `crates/shared/typed-fields/src/tests/set_projection.rs`
-
-Proves:
-- FieldDefSet 汇总字段定义，`#[derive(FieldDefs)]` 的 Rust struct 生成 typed values object shape，`#[field(group)]` 表达嵌套对象。
-- JSON helper 组合 FieldDefSet metadata/validation，在同一 processing id 下返回 extraction result 和 processing result；即使 extraction result 为 validation error，processing result 仍可交给 caller，未配置 passthrough processing 时保留原始 JSON，并可按 declared JSON path 计算当前 object 的未消费键。
-- 处理入口和投影 API 产出同形 typed values object、value kind view、typed default values object 和 schema metadata view；`process_with_static_defaults(processing, json)` 只用 static default 填补缺失输入，`default_values()` 对缺少 static default 的 leaf 返回 `None`，`to_builder()` 支持静态覆盖 leaf builder 后重新 build，动态 identity-string field lookup 不属于 API。
-- Field builder 可以按 processing id 声明处理策略且不再支持 `.path(...)` 兼容入口；同一 definition set 内相同 processing id 必须使用相同 input kind，JSON path processing strategy 可以产出同形 typed values object。
-
-### WB-TYPED-FIELDS-COMPILE-001 FieldDefs derive 拒绝非法声明
-Status: implemented
-Code: `crates/shared/typed-fields/tests/field_defs_compile.rs`
-
-Proves:
-- `FieldDefs` derive 在编译期拒绝 leaf Rust field 类型与 `FieldDefBuilder<T>` 类型不一致的声明。
-- 缺少 field validation 或缺少 `#[field(...)]` attribute 的声明无法通过 trybuild compile-fail fixtures。
-
 ### WB-PARAM-FIELD-CONTRACT-001 Canonical FieldDefSet preserves parameter declaration invariants
 Status: implemented
 Code: `crates/shared/typed-fields/tests/canonical_parameters.rs`
@@ -572,7 +517,7 @@ Proves:
 - One `FieldDefSet` exposes declared CLI flag、environment variable and config path locators from canonical processing metadata；optional CLI help、value name and Boolean encoding survive builder clone、declaration type erasure and aggregation beside canonical field facts.
 - Definition-set build rejects duplicate processing locators、empty locator values、invalid dotted identities、invalid/duplicate CLI metadata attachments and incompatible、incomplete or ambiguous Boolean encodings with public errors；config-only fields remain valid without CLI metadata.
 - `MergeStrategy` is canonical `FieldDef` metadata, defaults to `Replace`, and rejects strategies incompatible with the declared value kind.
-- Canonical field lookup performs final value validation；derived definition sets materialize complete typed values and reject missing required or non-finite values.
+- Canonical field lookup performs final value validation and returns a typed value or a stable wrong-type failure.
 
 ### WB-PARAM-SOURCE-EXTRACTION-001 Resolution core preserves normalized source facts
 Status: implemented
@@ -593,16 +538,6 @@ Proves:
 - Canonical constraints are applied to the final merged value. Selected or merge-contributing invalid candidates block materialization, while an overridden invalid replacement remains trace-only.
 - Missing required values and final validation failures return diagnostics and prevent partial `FieldValueMap` materialization.
 
-### WB-PARAM-CLAP-001 Canonical FieldDefSet clap projection preserves CLI candidate facts
-Status: implemented
-Code: `crates/shared/cli-config-resolution-clap/src/tests.rs`
-
-Proves:
-- One `FieldDefSet` projection derives canonical argument identity、flag、authored help/value name、canonical accepted/default display、capture cardinality and typed/invalid candidates without installing clap value parsers or defaults.
-- Present matches extract string、integer、finite number、valueless or explicitly token-mapped Boolean、repeated string array and repeated `key=value` object values with source and flag-locator facts；omitted/default inputs produce no explicit candidate.
-- CLI decode failures preserve canonical field identity、raw input、reason and `CliFlag` locator while unrelated candidates remain available.
-- clap owns unknown、duplicate single-value and missing-value structural failures；non-CLI locators、unsupported JSON value kinds、static argument conflicts and mismatched match sets return explicit `ClapProjectionError` results.
-
 ### WB-PARAM-SERDE-001 serde config-path mapping preserves candidate facts
 Status: implemented
 Code: `crates/shared/cli-config-resolution-serde/src/lib.rs`
@@ -620,24 +555,13 @@ Proves:
 - Adapter document errors project to protocol error code, owner, location and default guidance through `AdapterError::protocol_error()`.
 - Adapter-owned native option errors project issue metadata to invalid-request received, expected, details and guidance fields.
 
-### WB-CONTRACTS-NATIVE-001 Adapter contracts 声明 native option typed fields
+### WB-CONTRACTS-DEFINITION-001 Adapter definition validation 收敛 full-read capability facts
 Status: implemented
 Code: `crates/shared/adapter-contracts/src/tests.rs`
 
 Proves:
-- `AdapterOptionSpec` is an adapter-owned declaration adapter that produces a canonical `FieldDefDeclaration`; the use-site remains responsible for registering it into the operation field set.
-- Registration into a canonical `FieldDefSet` preserves identity、CLI/config processing locators、optional CLI presentation metadata、`options.*` final arguments path、`options.<adapter-id>.<option-key>` config path、value kind、validation、static default and operation applicability, so navigation/config consumers do not reconstruct adapter semantics；config-only options declare no public CLI processing metadata.
-- Adapter-id config-source projection keeps same option keys from different adapter ids distinct and surfaces adapter-local declaration conflicts deterministically.
-- `NativeOptionHandoff` preserves handler-facing identity、owner、namespace、key、source、type metadata 和 typed JSON value from resolved protocol options.
-
-### WB-CONTRACTS-DEFINITION-001 Adapter definition validation 收敛 registry-facing facts
-Status: implemented
-Code: `crates/shared/adapter-contracts/src/tests.rs`
-
-Proves:
-- Adapter definition validation rejects missing required operation handlers before registry/navigation dispatch.
-- Adapter definition validation rejects invalid native option paths, duplicate native option declarations and duplicate native option paths.
-- Adapter definition validation rejects duplicate handler declarations, duplicate full-read capability groups and unsupported empty full-read capability groups.
+- Adapter definition validation rejects a declared but empty unstructured full-read capability set.
+- Adapter definition validation rejects blank or duplicate cost measurement units.
 
 ### WB-CONTRACTS-UNSTRUCTURED-001 Adapter contracts unstructured full-read hook defaults 稳定
 Status: implemented
@@ -653,9 +577,9 @@ Code: `crates/shared/navigation/src/tests/navigation/config_sources.rs`
 
 Proves:
 - `docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。
-- Project config source values under `options.<selected-adapter-id>.<option-key>` participate in selected adapter option resolution and dispatch, producing the expected protocol success result.
-- Values under other known adapter id namespaces remain separate source facts and are not forwarded to the selected adapter handler.
-- Nested non-object config source shapes at `defaults`、`defaults.pagination`、`options` and selected adapter option namespace return navigation-owned typed input errors.
+- Project config source values under `options.<selected-adapter-id>.<option-key>` participate in selected catalog resolution and closed-input dispatch, producing the expected protocol success result.
+- Values under other known adapter id namespaces remain separate source facts and are not forwarded to the selected strategy.
+- Nested non-object config source shapes at `defaults`、`defaults.pagination` and `options` return navigation-owned typed input errors.
 
 ### WB-NAVIGATION-CONFIG-SOURCES-002 Navigation loads config sources with descriptor origin
 Status: implemented
@@ -667,24 +591,22 @@ Proves:
 - Explicit-path missing、unreadable、invalid JSON 和 top-level non-object config sources return blocking config source diagnostics with source level and selected config file path.
 - Selecting a config file through CLI flag does not promote values inside that file to direct argv source; parameter priority remains `explicit > project > user > built_in`.
 
-### WB-NAVIGATION-HARD-CUTOVER-001 Navigation hard cutover preserves resolver parity
+### WB-NAVIGATION-HARD-CUTOVER-001 Core catalog cutover preserves resolver parity
 Status: implemented
 Code: `crates/shared/navigation/src/tests/navigation/hard_cutover.rs`
 
 Proves:
-- Normalized explicit `Source` carries canonical common/native candidates into navigation；selected fields retain priority over project and user values through the canonical resolver, and the public protocol output mode/result remains unchanged.
-- Native-option identities sharing a prefix with a common field cannot overwrite that common direct input during source staging.
-- A valid higher-priority explicit value does not hide an invalid project/user config candidate；the blocking diagnostic retains source level、selected config path and reason.
-- Mixed invalid common and canonical native-option inputs retain field declaration order when selecting the primary diagnostic, including regex and unique-item constraints.
+- Normalized explicit `Source` carries core-catalog common and adapter-scoped candidates into navigation；explicit values retain priority over project and user values through the canonical resolver, and the public output mode/result remains unchanged.
+- A valid higher-priority explicit common or adapter-scoped value does not hide an invalid project/user config candidate；the blocking diagnostic retains source level、selected config path and reason.
+- Mixed invalid common and adapter-scoped catalog inputs retain catalog field order when selecting the primary diagnostic.
 
-### WB-NAVIGATION-FIELD-SETS-001 Registry and selected field sets preserve declaration parity
+### WB-NAVIGATION-FIELD-SETS-001 Selected field set follows closed catalog applicability
 Status: implemented
 Code: `crates/shared/navigation/src/parameters/fields/tests.rs`
 
 Proves:
-- Outline、Read、Find and Info registry/selected projections independently include the selected operation's applicable native identity and exclude inapplicable or other-adapter identities before comparing canonical field facts.
-- Registry and selected projections preserve identity、locator、value kind、constraints、default and CLI metadata；the public registry projection retains navigation/adapter owner、declaration path and adapter id attribution.
-- Duplicate CLI locators report both declarations with their owner attribution and retain the typed field-set error；malformed adapter config locators fail both registry and selected projection boundaries.
+- The selected operation field set combines fixed operation inputs with the core-authored parameter catalog projection.
+- Adapter-scoped catalog fields are included only for the selected adapter；fields scoped to another adapter are excluded.
 
 ### WB-MD-REF-GRAMMAR-001 Markdown ref grammar 稳定
 Status: implemented
@@ -813,15 +735,14 @@ Proves:
 - find display 保留匹配片段且 ref 不受 display 内容影响。
 - document head 命中到 `HEAD:leading` 的语义由 `WB-MD-DOCHEAD-002` 覆盖。
 
-### WB-MD-OPTIONS-001 Markdown typed option 控制可见粒度
+### WB-MD-OPTIONS-001 Markdown standard input 控制可见粒度
 Status: implemented
 Code: `crates/adapters/markdown/tests/adapter/options_error_display.rs`
 
 Proves:
-- `max_heading_level` options 同时影响 outline 和 find 的 visible heading granularity。
-- `max_heading_level` 通过 Markdown definition 中的 `AdapterOptionSpec` declaration、selected adapter declaration registration 和 typed-field validation/extraction 进入 request construction，options shape 保持 adapter-owned，不上移为 core-owned 字段。
-- Markdown outline handler consumes the typed `NativeOptionHandoff` for `max_heading_level`, including source and type metadata, instead of raw CLI/config values.
-- Markdown adapter 只证明已校验 typed option value 对 outline/find visible heading granularity 的业务效果；default、type、range 和 unsupported validation 由 `docnav-navigation` 在 handler dispatch 前完成。
+- Closed `OutlineInput` / `FindInput` 中的 `max_heading_level` 同时影响 outline 和 find 的 visible heading granularity。
+- Markdown strategy 不为缺失的 `max_heading_level` 重复提供 catalog default。
+- Markdown adapter owns the `1..6` semantic range check at its strategy boundary and returns an adapter-option diagnostic for out-of-range standard input.
 
 ### WB-MD-META-001 Markdown manifest/probe/info 元数据稳定
 Status: implemented
@@ -830,7 +751,7 @@ Code: `crates/adapters/markdown/tests/adapter/meta.rs`
 Proves:
 - manifest 声明 Markdown v0 identity 和 format metadata，probe 返回 format evidence 而不泄漏 navigation payload。
 - info 返回 Markdown summary。
-- Markdown registry-facing definition exposes metadata、required operation handlers、`max_heading_level` native option declaration with authored CLI help/value name 和 full-read capability group.
+- Markdown registry-facing definition exposes manifest identity、linked strategy and the declared full-read capability set.
 
 ### WB-MD-ERROR-001 Markdown adapter document error 稳定
 Status: implemented

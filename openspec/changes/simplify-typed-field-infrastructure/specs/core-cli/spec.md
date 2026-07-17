@@ -2,7 +2,7 @@
 
 ### Requirement: Core release owns a closed document-operation parameter catalog
 
-Core MUST provide one closed catalog for every caller-configurable document-operation parameter accepted by the release. The catalog MUST include common and adapter-scoped fields and own canonical identity, applicable CLI/env/config locators, standard value kind, defaults, merge strategy, operation binding, an optional exact static adapter-id marker, and standard-input binding. An untagged entry MUST be common; a tagged entry MUST apply only when its marker equals the selected adapter id. A standard-input binding MUST target a compile-time field, typed accessor, or closed variant in the shared operation contract. An env locator MUST mean that env is enabled for that field; without one, no env candidate is accepted for the field. Adding or removing an env locator is an observable product-input change. The catalog MUST also own whichever context-independent validation rules core executes before dispatch; it is not required to encode every adapter algorithm precondition. Catalog construction MUST reject duplicate or incompatible entries, unknown adapter ids, and missing standard-input bindings. Core code is the only authoring path for catalog entries.
+Core MUST provide one closed catalog for every caller-configurable document-operation parameter accepted by the release. The catalog MUST include common and adapter-scoped fields and own canonical identity, applicable CLI/env/config locators, standard value kind, defaults, merge strategy, operation binding, an optional exact static adapter-id marker, and a closed compile-time consumer binding. Every entry MUST target one compatible closed consumer; only strategy-visible values MUST target a compile-time field, typed accessor, or closed variant through the shared `StandardInputBinding`, while core/navigation-only controls MUST target navigation/core-owned closed variants and MUST NOT appear in adapter input. The catalog inventory for this change MUST be `page`, `limit`, `pagination.enabled`, `output`, and Markdown `max_heading_level`; adapter routing, document path/ref/query, `invocation_log`, and config-path selection flags MUST remain outside it. `pagination.enabled` and `limit` MUST normalize to the effective limit, while `output` MUST populate only `PreparedNavigationRequest` / core output projection. An untagged entry MUST be common; a tagged entry MUST apply only when its marker equals the selected adapter id. An env locator MUST mean that env is enabled for that field; without one, no env candidate is accepted for the field. Adding or removing an env locator is an observable product-input change. The catalog MUST also own whichever context-independent validation rules core executes before dispatch; it is not required to encode every adapter algorithm precondition. Catalog construction MUST reject duplicate or incompatible entries, unknown adapter ids, and missing or incompatible consumer bindings. Core code is the only authoring path for catalog entries.
 
 #### Scenario: Core declares a Markdown-scoped parameter
 
@@ -28,7 +28,7 @@ Core MUST provide one closed catalog for every caller-configurable document-oper
 #### Scenario: Core defers context-dependent validation
 
 - **WHEN** an adapter-scoped parameter has semantics that depend on document content or an algorithm-specific combination
-- **THEN** core catalog still defines whether the parameter exists, its source locators, standard value kind, exact adapter-id marker when scoped, operation binding, default/merge behavior, and standard-input binding
+- **THEN** core catalog still defines whether the parameter exists, its source locators, standard value kind, exact adapter-id marker when scoped, operation binding, default/merge behavior, and closed consumer binding
 - **THEN** core may perform only the validation needed to construct that standard value
 - **THEN** the selected adapter strategy validates the remaining semantic precondition without declaring a new parameter
 
@@ -40,7 +40,7 @@ Core MUST provide one closed catalog for every caller-configurable document-oper
 
 #### Scenario: Catalog binding is invalid
 
-- **WHEN** an adapter-scoped entry references an unknown adapter id or has no standard operation-input binding
+- **WHEN** an entry references an unknown adapter id or has a missing or incompatible closed consumer binding
 - **THEN** core catalog construction fails deterministically
 - **THEN** the invalid release definition cannot reach CLI parsing or navigation dispatch
 
@@ -103,8 +103,9 @@ Core CLI config inspection MUST validate config source keys and values through t
 
 #### Scenario: Inspect reports nested shape failure
 
-- **WHEN** a selected config file contains an invalid `outline.mode_rules[]` item shape
-- **THEN** `docnav config inspect` validates the nested config source shape through the current owner validation path or core catalog projection for that supported subset
+- **WHEN** a selected config file contains an invalid `outline.mode_rules[]` or `outline.thresholds` compound shape
+- **THEN** `docnav config inspect` combines the full scalar catalog projection with the current owner-specific compound validator
+- **THEN** the compound algorithm is not required to become ordinary scalar catalog fields
 - **THEN** the output identifies the nested config path and source path
 
 #### Scenario: Inspect reports only its validation coverage

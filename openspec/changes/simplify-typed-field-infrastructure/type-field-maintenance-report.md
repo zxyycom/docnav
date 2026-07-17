@@ -59,9 +59,9 @@
 | `AdapterOperationHandlers`、`REQUIRED_OPERATIONS`、builder handler registration 与 dispatch `supports()` | `Adapter` trait 已静态要求 outline/read/find/info；required list 与 trait 完全相同，dispatch 在检查后仍对同一 enum 做 match | 删除 parallel handler declaration、duplicate/missing-handler errors 与 runtime support check；strategy interface 是唯一 handler contract |
 | `AdapterDefinitionBuilder`、`transition_from_adapter`、trait 上的 id/manifest/options/capability metadata methods | Production definition 只有 static Markdown factory；transition helper 只有 test caller，且 builder 的动态集合主要服务将被删除的 options/handlers | 用直接 checked `AdapterDefinition` constructor；trait 只保留 strategy/probe/hooks，manifest/capabilities 只在 definition 表示 |
 | `FullReadCapabilityGroup` | 只包装一个 `UnstructuredFullReadCapabilities`，额外方法仅转发且 `has_cost_measurement_unit` 无 caller | Definition 直接保存 optional capabilities 并继续执行现有 capability validation |
-| `OperationFieldSet` / `adapter_options` | 去掉 adapter declaration injection 后只剩一个 `FieldDefSet` | Navigation 直接返回和消费按 tag/operation 过滤后的 `FieldDefSet` |
+| `OperationFieldSet` 的 `adapter_options` / `all_adapter_options` side channel | 去掉 adapter declaration injection 后，`OperationFieldSet` 仍作为 selected-operation attribution wrapper | 仅删除 adapter-option side channel；保留 attribution wrapper，并携带按 tag/operation 过滤后的 `FieldDefSet` |
 | protocol `Options.entries` / `OptionEntry` 与 `NativeOptionHandoff` / `NativeOptionValue` | `Options.entries` 不序列化；handoff 又把同一 identity/type/source/value metadata 复制一次；standard input 可直接从 resolution 构造 | `Options` 收窄为原有 values object；删除 metadata sidecar 与 native-option handoff/value，保留 wire shape 和 diagnostic parity |
-| `NativeOptionIssue` / `AdapterError::native_option_invalid` | Production construction 位于 navigation 的旧 native-option path；adapter-contracts 只把它再投影为通用 field/config/`option_issues` diagnostic details | 由 core catalog/resolution diagnostic mapping 直接保留 observable details，删除 adapter-contracts 中的 native-option-specific diagnostic ownership |
+| spec-derived `NativeOptionIssue` glue | `NativeOptionIssue` 与 `AdapterError::native_option_invalid` helper 仍被 strategy semantic validation / diagnostic mapping 实际消费；可删除范围仅是旧 option-spec-derived glue | 保留 issue/helper 及 observable details，只删除 spec-derived glue |
 | `NavigationAdapterRef` | 只包装一个 `AdapterDefinition` 并转发 `id()` | Routing/selection 直接携带 `AdapterDefinition`；保留有 production/test value 的 registry trait |
 | `AdapterRecord`、`AdapterRegistry::load(ProjectContext)` 与 per-record `implementation_source` | 删除 source 字段后 record 只包装一个 definition factory；`load` 忽略 project 且只返回 `builtin()`；所有 built-ins 与 registry output 都是 `core_static` | Registry 直接保存 definition factories；core 直接使用 static registry；implementation source 作为 registry-level fact，不在每条 record 重复 |
 | `SourceKind::Custom(String)` / `SourceLocator::Custom(String)` | 唯一 production 用途是 navigation 的预解析 direct input；其余命中为 tests | 用固定 `Direct` source kind 与 typed direct path locator，删除未使用的开放式 source-name 扩展和相关 string validation |
@@ -77,9 +77,26 @@
 
 ## Baseline Status
 
-已完成的 typed-fields、resolution companions 与 navigation baseline 记录到一个变更前异常：`processing_id_compile` trybuild snapshot mismatch。后续验证必须将它作为 pre-existing failure 单独报告，不能归因于本 change，也不能用它掩盖新增失败。
+Task 1.3 已完成 typed-fields、resolution companions 与 navigation baseline，并记录一个变更前异常：`processing_id_compile` trybuild snapshot mismatch。后续验证必须将它作为 pre-existing failure 单独报告，不能归因于本 change，也不能用它掩盖新增失败。
 
-Adapter-contracts、Markdown、docnav CLI、protocol contract validation 与完整 workspace dependency baseline 仍由 task 1.4 补充。
+Task 1.4 的 baseline 固定在 commit `0a56f5f3176242d1ef2e90523cb276c6f4c3600b`，使用 `rustc 1.97.0 (2d8144b78 2026-07-07)` 与 `cargo 1.97.0 (c980f4866 2026-06-30)`；执行前后工作树均为 clean。
+
+| Surface | Reproducible command | Baseline result |
+| --- | --- | --- |
+| Adapter contracts | `cargo test --locked -p docnav-adapter-contracts --quiet` | PASS：12 passed，0 failed；doc tests 0。 |
+| Markdown adapter | `cargo test --locked -p docnav-markdown --quiet` | PASS：crate tests 21 passed，integration tests 27 passed，合计 48 passed、0 failed；doc tests 0。 |
+| Docnav CLI/core | `cargo test --locked -p docnav --quiet` | PASS：103 passed，0 failed；其它 test targets 与 doc tests 为 0。 |
+| Protocol contract validation | `cargo test --locked -p docnav-protocol --quiet` | PASS：24 passed，0 failed；其中 request/response/manifest/probe 的 contract、decode 与 public-schema 代表测试均通过；doc tests 0。测试清单可用 `cargo test --locked -p docnav-protocol -- --list` 重放。 |
+| Workspace dependencies | `cargo tree --locked --workspace --edges all --prefix depth` | PASS：完整 workspace normal/build/dev dependency 与 feature graph 可解析，lockfile 无漂移。 |
+
+Dependency baseline 的 change-relevant normal edges 另用 `cargo tree --locked --workspace --edges normal --invert <package> --prefix none` 核对：
+
+- `cli-config-resolution-clap` 的 normal consumer 只有 `docnav`。
+- `docnav-typed-fields-macros` 的直接 normal consumer 是 `docnav-typed-fields`；后者继续被 resolution、protocol、adapter-contracts、navigation 与 docnav 路径消费。
+- `cli-config-resolution-serde` 的直接 normal consumer 是 `docnav-navigation`，并经 navigation 进入 `docnav`。
+- `docnav-protocol` 继续依赖 `docnav-typed-fields`；`docnav-adapter-contracts` 继续依赖 protocol 与 typed-fields；Markdown 继续依赖 adapter-contracts 与 protocol；docnav 继续组合这些 runtime crates。
+
+Task 1.4 的五个 focused baseline 全部通过，没有新增失败。Task 1.3 已记录的 `processing_id_compile` trybuild snapshot mismatch 不在本组 focused command 的执行范围内，本 slice 未重跑、修复或重新归类该既有异常。
 
 ## Alternatives
 

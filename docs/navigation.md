@@ -48,12 +48,12 @@ OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change na
 | `docnav-architecture` | [架构](architecture.md) | 组件职责、调用链、运行边界和跨层不变量 |
 | `core-cli` | [CLI](cli.md) | `docnav` 命令、argv、path/config、static registry 和退出行为 |
 | `navigation-input-resolution` | [Navigation Input Resolution](navigation-input-resolution.md) | config source、adapter selection、typed extraction、request construction 和 dispatch |
-| `adapter-contract` | [适配器契约](adapter-contract.md) | linked adapter interface、manifest/probe、native option declaration 和 handler result |
+| `adapter-contract` | [适配器契约](adapter-contract.md) | linked adapter strategy interface、manifest/probe、closed standard input 和 strategy result |
 | `protocol-contract` | [原始协议](protocol.md) | raw protocol envelope、operation/result pairing、page 和 protocol failure |
 | `output-contract` | [输出模式](output.md) | output modes、readable-view、readable-json、renderer config 和 output channels |
 | `diagnostics-contract` | [架构](architecture.md) | DiagnosticCode、DiagnosticRecord、canonical details 和 primary projection |
 | `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar 和 outline/find 到 read 的原样传递流程 |
-| `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown parser/probe/ref/outline/read/find/info/native options |
+| `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown parser/probe/ref/outline/read/find/info、typed strategy input semantics |
 | `typed-fields` | [架构](architecture.md) | typed field identity、constraint metadata、schema metadata projection 和 duplicate guard |
 | `contract-validation` | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | schema/example validation、runtime validation parity 和 drift checks |
 | `release-artifacts` | [发布包验证](testing/release.md) | package layout、manifest/checksum 和 release artifact verification |
@@ -80,7 +80,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | 组件职责、输出分层、调用链、运行边界 | [架构](architecture.md) |
 | adapter library interface、manifest metadata、probe、adapter 选择、internal discovery failure list、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
-| navigation command 的 raw command、config source descriptors/paths 和 registry 交接、routing 必需输入解析、adapter selection 调用、通用字段声明与 selected adapter declarations 注册合并、explicit/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、`RequestEnvelope` / `OperationArguments` 构造和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
+| navigation command 的 raw command、config source descriptors/paths、core parameter catalog 和 registry 交接、routing 必需输入解析、full config validation、adapter selection、selected-operation catalog filtering、explicit/conditional env/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、protocol/closed strategy/core output projections 和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
 | 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
 | protocol envelope、operation、紧凑结果、page、protocol failure envelope、protocol error fields、code/details 规则和 primary diagnostic projection | [原始协议](protocol.md) |
 | diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |

@@ -2,7 +2,7 @@
 
 ### Requirement: Core catalog owns adapter-scoped parameter facts
 
-Navigation MUST obtain common and adapter-scoped parameter identity, extraction metadata, standard value kind, defaults, merge strategy, core validation facts when present, operation binding, an optional exact static adapter-id marker, and standard-input binding from the core-owned closed catalog. An entry without an adapter-id marker is common. An entry with a marker MUST participate in selected-operation resolution only when that marker equals the selected adapter id. Full config validation MUST use the complete catalog projection without making every catalog entry part of the selected operation; navigation MUST apply the exact-id filter and then the operation binding before candidate extraction, resolution, and request construction for that operation. Adapter definitions provide strategy and behavior facts rather than catalog entries. Adapter-side semantic checks MAY consume standard values but MUST NOT contribute parameter facts.
+Navigation MUST obtain common and adapter-scoped parameter identity, extraction metadata, standard value kind, defaults, merge strategy, core validation facts when present, operation binding, an optional exact static adapter-id marker, and closed compile-time consumer binding from the core-owned closed catalog. Every entry MUST have one compatible closed consumer target. Only strategy-visible values MUST target the shared `StandardInputBinding`; pagination/output controls MUST target navigation/core-owned closed variants and MUST NOT appear in adapter input. An entry without an adapter-id marker is common. An entry with a marker MUST participate in selected-operation resolution only when that marker equals the selected adapter id. Full config validation MUST use the complete catalog projection without making every catalog entry part of the selected operation; navigation MUST apply the exact-id filter and then the operation binding before candidate extraction, resolution, and request construction for that operation. Adapter definitions provide strategy and behavior facts rather than catalog entries. Adapter-side semantic checks MAY consume standard values but MUST NOT contribute parameter facts.
 
 #### Scenario: Selected Markdown adapter
 
@@ -68,7 +68,7 @@ Navigation MUST select the adapter using routing inputs and registry facts befor
 
 ### Requirement: Config sources are inputs, not semantic owners
 
-Project and user config files MUST be treated as input sources. Core catalog MUST own caller-configurable document-operation parameter identity, paths, standard types, defaults, merge strategy, optional exact adapter-id marker, operation/standard-input bindings, and the static validation selected for core execution. Navigation MUST own source resolution and standard-input construction. An adapter MAY own how a standard adapter-scoped value affects format behavior and MAY validate algorithmic semantics before use.
+Project and user config files MUST be treated as input sources. Core catalog MUST own caller-configurable document-operation parameter identity, paths, standard types, defaults, merge strategy, optional exact adapter-id marker, operation/closed-consumer bindings, and the static validation selected for core execution. Navigation MUST own source resolution and consumer-specific projection construction. An adapter MAY own how a standard adapter-scoped value affects format behavior and MAY validate algorithmic semantics before use.
 
 #### Scenario: Markdown-scoped parameter in config
 
@@ -80,11 +80,11 @@ Project and user config files MUST be treated as input sources. Core catalog MUS
 
 ### Requirement: Request construction consumes typed resolution results
 
-Navigation MUST construct protocol operation arguments/request envelopes and strategy-facing standard operation input as separate projections of the same typed resolution result. Standard input MUST be the closed operation-specific Rust contract shared by navigation and adapter strategies. Core-defined bindings MUST populate strategy-visible values through compile-time fields, typed accessors, or closed enum variants rather than a generic parameter lookup surface. Standard input MUST represent completed source resolution and type materialization; it MUST NOT claim that all adapter semantic validation has completed. Protocol `Options` MUST retain its stable serialized values shape. Raw argv strings, raw config JSON, declaration metadata, display output, protocol envelopes, and serialized protocol representation MUST remain outside the strategy-input projection.
+Navigation MUST construct protocol operation arguments/request envelopes, strategy-facing standard operation input, and `PreparedNavigationRequest` / core output projection as consumer-specific projections of the same typed resolution result. Standard input MUST be the closed operation-specific Rust contract shared by navigation and adapter strategies. Core-defined bindings MUST populate only strategy-visible values through compile-time fields, typed accessors, or closed enum variants rather than a generic parameter lookup surface. `pagination.enabled` MUST combine with `limit` to normalize the effective limit before dispatch; `output` MUST populate only `PreparedNavigationRequest` / core output projection and MUST NOT enter adapter input. Standard input MUST represent completed source resolution and type materialization; it MUST NOT claim that all adapter semantic validation has completed. Protocol `Options` MUST retain its stable serialized values shape. Raw argv strings, raw config JSON, declaration metadata, display output, protocol envelopes, and serialized protocol representation MUST remain outside the strategy-input projection.
 
 #### Scenario: Read request
 
-- **WHEN** typed resolution produces document path, ref, page, and limit
+- **WHEN** core/navigation has normalized document path and ref, and catalog resolution produces page and limit
 - **THEN** navigation constructs read operation arguments
 - **THEN** adapter dispatch receives those normalized facts through the closed typed read input
 
@@ -126,12 +126,12 @@ After successful input resolution, standard type materialization, and configured
 
 ### Requirement: Navigation exposes parameter aggregation projections
 
-Navigation MUST expose parameter projections derived from the core-owned catalog, including common navigation fields, outline mode fields, and adapter-id namespaced fields. These projections MUST preserve processing paths, field identity, the optional exact adapter-id marker, operation binding, standard value kind, core validation facts when present, defaults, merge strategy, current owner-specific shape-validation handoff when applicable, and source binding facts. The full config-validation projection MUST cover catalog membership and declared static validation across known namespaces. The selected-operation field set MUST apply exact adapter-id and operation filters before candidate extraction and resolution. Both MUST derive from the same catalog facts; strategy validation remains outside those projections.
+Navigation MUST expose scalar parameter projections derived from the core-owned catalog for `page`, `limit`, `pagination.enabled`, `output`, and adapter-namespaced Markdown `max_heading_level`. These projections MUST preserve processing paths, field identity, the optional exact adapter-id marker, operation binding, standard value kind, core validation facts when present, defaults, merge strategy, and closed consumer binding facts. The full config-validation projection MUST combine those scalar catalog facts with the current owner-specific compound validator for `outline.mode_rules` / `outline.thresholds`; those compound algorithms MUST NOT be required to become ordinary scalar catalog fields. The selected-operation field set MUST apply exact adapter-id and operation filters before candidate extraction and resolution. Both catalog views MUST derive from the same scalar facts; strategy validation remains outside those projections.
 
 #### Scenario: Config-source projection includes common fields
 
 - **WHEN** navigation builds the config-source projection for document operation inputs
-- **THEN** metadata for `defaults.pagination.enabled`, `defaults.pagination.limit`, `defaults.output`, and declared outline mode fields comes from core catalog
+- **THEN** metadata for `page`, `defaults.pagination.enabled`, `defaults.pagination.limit`, and `defaults.output` comes from core catalog
 - **THEN** consumers validate config source values without redefining those field facts
 
 #### Scenario: Config-source projection includes adapter-scoped fields

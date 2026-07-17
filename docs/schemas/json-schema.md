@@ -36,7 +36,7 @@ operation readable schema 只描述 successful document payload 和该 output mo
 
 | Schema | 用途 |
 | --- | --- |
-| [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | `docnav` 配置 source 中 `options.docnav-markdown.max_heading_level` Markdown native option、document operation defaults、navigation-owned outline selector 和 core-owned `invocation_log` section 的字段形状和示例校验；selected adapter declarations 的参数语义、selector priority、path matching、threshold comparison 和 invocation logging enablement 不由 config schema 拥有 |
+| [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | `docnav` 配置 source 中 `options.docnav-markdown.max_heading_level` Markdown native option、document operation defaults、navigation-owned outline selector 和 core-owned `invocation_log` section 的字段形状和示例校验；core catalog 与 selected-operation view 的参数语义、selector priority、path matching、threshold comparison 和 invocation logging enablement 不由 config schema 拥有 |
 
 配置 schema 只描述文档化的 JSON 文件形状，可用于示例校验和编辑器提示。配置文件发现、字段映射、来源合并、strict unmapped field failure、错误归属和 adapter-specific 字段语义由 [Navigation Input Resolution](../navigation-input-resolution.md)、[适配器契约](../adapter-contract.md) 和对应 adapter 文档拥有。
 

@@ -58,8 +58,8 @@ Rust tests 负责无需启动真实 CLI 即可直接观察的 owner 行为。每
 - core 配置 source descriptor/path 解析与 handoff，包括 explicit exact file path、user config fallback、project context fallback、source level、resolved path 和 path origin。
 - core config inspect command 的 read-only source inspection 边界，包括旧 config 子命令移除、selected source loading status、source summary、validation diagnostic projection、参数事实展示和不构造 document operation request。
 - parameter aggregation projection parity：CLI/input projection 与 config-source projection 复用同一 owner-provided facts，core config command 不重新定义 output enum、positive integer、adapter option value kind/range/default 或 outline selector 语义。
-- navigation-owned raw config source 读取、default missing absence、explicit missing/unreadable/invalid/non-object failure、navigation input resolution 来源合并、通用字段声明与 selected adapter declarations 注册、adapter option handoff、adapter-id native option namespace 和 config failure 边界。
-- adapter-id option namespace：`options.<adapter-id>.<option-key>` 在不同 adapter id 下保持 deterministic，裸 `options.<option-key>` 按普通 unknown/invalid config path 处理，navigation 只 forward selected adapter namespace 的 declared operation option。
+- navigation-owned raw config source 读取、default missing absence、explicit missing/unreadable/invalid/non-object failure、navigation input resolution 来源合并、core parameter catalog 的 full-config / selected-operation views、closed standard input construction、adapter-id native option namespace 和 config failure 边界。
+- adapter-id option namespace：`options.<adapter-id>.<option-key>` 在不同 adapter id 下保持 deterministic，裸 `options.<option-key>` 按普通 unknown/invalid config path 处理，navigation 只 forward core catalog 中匹配 selected adapter 和 operation 的参数。
 - `outline.mode_rules[]` 和 `outline.auto_full_read.thresholds[]` 的 owner-specific config validation parity，包括 source path、unknown item key、required member、typed value、matcher/threshold diagnostics 和 navigation resolution diagnostics。只有 parity 不足时才新增 typed-fields compound helper tests。
 - operation 参数所有权。
 - Markdown 解析、ref 生成和定位。

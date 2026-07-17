@@ -22,7 +22,7 @@
 2. `WB`: 白盒测试，从 owner 边界、函数、fixture 或 conformance 入口证明内部语义。
 3. `AUX`: 辅助脚本语义 case，证明测试、验证、质量观测、打包或调度链路的当前工具链 contract。
 
-责任域当前使用 `CORE`、`NAV`、`MD`、`PROTO`、`READABLE`、`ADAPTER`、`DIAG`、`CLIARGS`、`JSONIO`、`OUTPUT`、`PARAM`、`WORKSPACE`、`SMOKE`、`PARALLEL`、`QUALITY`、`RELEASE`、`CASE`。`NAV` 覆盖 `docnav-navigation` 的 routing、adapter selection、navigation input resolution、request construction 和 adapter dispatch owner 边界。`SDK` 仅保留为历史 case id 兼容标签；新 case 涉及 linked adapter contract、descriptor、source-level native option registry、selected adapter declaration/option semantics 或 handler dispatch 时使用 `ADAPTER`。新增责任域时，先在本文登记责任域，再同步账本条目和源码 `@case` 标记。
+责任域当前使用 `CORE`、`NAV`、`MD`、`PROTO`、`READABLE`、`ADAPTER`、`DIAG`、`CLIARGS`、`JSONIO`、`OUTPUT`、`PARAM`、`WORKSPACE`、`SMOKE`、`PARALLEL`、`QUALITY`、`RELEASE`、`CASE`。`NAV` 覆盖 `docnav-navigation` 的 routing、adapter selection、navigation input resolution、request construction 和 adapter dispatch owner 边界。`SDK` 仅保留为历史 case id 兼容标签；新 case 涉及 linked adapter strategy contract、descriptor、capability 或 adapter strategy semantic validation 时使用 `ADAPTER`，core catalog、source resolution 和 closed input construction 则按 `CORE` / `NAV` owner 归类。新增责任域时，先在本文登记责任域，再同步账本条目和源码 `@case` 标记。
 
 ## 测试变更流程
 

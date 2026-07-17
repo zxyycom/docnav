@@ -6,10 +6,15 @@ re-exports them alongside source extraction and resolution functions.
 
 ## Document CLI integration status
 
-- **Current:** core hands one normalized typed/invalid document CLI `Source` to navigation. Navigation selects the adapter/current-operation field set, rejects explicit candidates outside it, and passes selected candidates with project/user sources to this resolver. The resolver owns priority、merge、static-default fallback、provenance、diagnostics、canonical validation and all-or-nothing materialization; its framework-independent public source/resolution model remains unchanged.
+- **Current:** core hands one normalized typed/invalid document CLI `Source` to navigation.
+  Navigation selects the adapter/current-operation field set, rejects explicit candidates outside
+  it, and passes selected candidates with project/user sources to this resolver. The resolver owns
+  priority, merge, static/runtime-default fallback, provenance, diagnostics, layered canonical
+  validation, and all-or-nothing materialization.
 
-The companion packages live beside this crate under `crates/shared` and participate in Docnav's
-root Rust workspace.
+The retained [`cli-config-resolution-serde`](../cli-config-resolution-serde/README.md) companion
+extracts structured config candidates. Environment extraction remains available as `extract_env`
+from this core facade.
 
 ## Usage
 
@@ -49,9 +54,13 @@ assert_eq!(
 
 `Source` owns its id, kind, priority, and candidates. A missing CLI/env/config value simply does
 not create a candidate. Extractor decode failures retain raw input, locator, and reason. Resolution
-uses higher numeric priority, then later source registration for ties; `Append` and `MapMerge`
-apply candidates from low to high precedence. Static field defaults are automatic fallbacks, while
-runtime defaults can be supplied as an explicit `SourceKind::Default` source.
+uses higher numeric priority, then later source registration for ties.
+`MergeStrategy::{Replace, Append, MapMerge, DenyConflict}` preserves per-candidate provenance;
+multi-value strategies apply candidates from low to high precedence. Candidate validation occurs
+before merge, final validation occurs after merge, and materialization succeeds only when the
+resolved set is valid. Static field defaults are automatic fallbacks, while runtime defaults can
+be supplied as an explicit `SourceKind::Default` source. Pre-parsed input uses the fixed
+`SourceKind::Direct` and typed `SourceLocator::DirectPath`.
 
 ## Workspace validation
 
