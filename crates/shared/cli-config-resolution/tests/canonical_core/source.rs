@@ -1,9 +1,9 @@
 use cli_config_resolution::{
-    resolve, ResolutionInputError, Source, SourceCandidate, SourceId, SourceKind, SourceLocator,
+    resolve, ResolutionInputError, Source, SourceCandidate, SourceId, SourceKind,
 };
 use serde_json::json;
 
-use super::support::{candidate, custom_field_set, identity, source};
+use super::support::{candidate, custom_field_set, direct_locator, identity, source};
 
 #[test]
 fn source_rejects_locator_kind_mismatch() {
@@ -13,7 +13,7 @@ fn source_rejects_locator_kind_mismatch() {
         10,
         vec![SourceCandidate::value(
             identity("required"),
-            SourceLocator::Custom("required".to_owned()),
+            direct_locator("required"),
             json!("value"),
         )],
     );

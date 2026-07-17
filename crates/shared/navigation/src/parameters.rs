@@ -1,3 +1,4 @@
+mod catalog;
 mod config;
 mod fields;
 mod input;
@@ -7,21 +8,23 @@ mod resolution;
 mod values;
 
 use cli_config_resolution::{FieldDefSet, ResolutionResult, Source};
-use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec, NativeOptionHandoff};
-use docnav_protocol::{Operation, Options, PositiveInteger};
+use docnav_adapter_contracts::{
+    FindInput, InfoInput, OutlineInput, ReadInput, StandardInputBinding, StandardOperationInput,
+};
+use docnav_protocol::{Operation, Options, PagedOperation, PositiveInteger};
 use docnav_typed_fields::FieldStringEnum;
 
 use crate::{
-    NavigationAdapterRegistry, NavigationCommand, NavigationConfigSource, NavigationConfigSources,
-    NavigationContextDefaults, NavigationError, NavigationOutputMode, NavigationPaginationDefaults,
-    NavigationResolvedValue,
+    NavigationCommand, NavigationConfigSource, NavigationConfigSources, NavigationContextDefaults,
+    NavigationError, NavigationOutputMode, NavigationPaginationDefaults, NavigationResolvedValue,
 };
 
-pub(crate) use fields::registry_cli_fields;
-pub use fields::{
-    DocumentCliFieldAttribution, DocumentCliFieldOwner, DocumentCliFieldSet,
-    DocumentCliFieldSetBuildError,
+pub use catalog::{
+    DocumentParameterBinding, DocumentParameterCatalog, DocumentParameterCatalogBuildError,
+    DocumentParameterEntry,
 };
+pub(crate) use fields::adapter_routing_fields;
+pub use fields::{DocumentCliFieldAttribution, DocumentCliFieldSet, DocumentCliFieldSetBuildError};
 pub(crate) use inspection::inspect_config_sources;
 
 pub(super) mod ids {
@@ -43,9 +46,6 @@ pub(super) mod ids {
 
 const DIRECT_PROCESSING: &str = "direct";
 const CONFIG_PROCESSING: &str = "config";
-const DEFAULT_LIMIT: i64 = 6000;
-const DEFAULT_PAGE: i64 = 1;
-const DEFAULT_PAGINATION_ENABLED: bool = true;
 const MAX_PAGINATION_LIMIT: u32 = u32::MAX;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -63,7 +63,7 @@ pub struct ResolvedNavigationInput {
     pub limit: Option<PositiveInteger>,
     pub output: NavigationOutputMode,
     pub options: Option<Options>,
-    pub native_options: NativeOptionHandoff,
+    pub standard_input: StandardOperationInput,
 }
 
 impl FieldStringEnum for NavigationOutputMode {
@@ -102,17 +102,16 @@ pub fn resolve_operation_input(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_adapter: &AdapterDefinition<'_>,
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
+    catalog: &DocumentParameterCatalog,
 ) -> Result<ResolvedNavigationInput, NavigationError> {
-    let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
-    let selected_native_options = operation_fields.adapter_options();
+    let operation_fields =
+        fields::operation_fields(command.operation, selected_adapter_id, catalog)?;
     config::validate_navigation_sources(
         command,
         config_sources,
         selected_adapter_id,
         &operation_fields,
-        registry,
+        catalog,
     )?;
 
     let resolution = resolve_command_with_fields(
@@ -124,16 +123,18 @@ pub fn resolve_operation_input(
 
     config::first_operation_resolution_error(
         &resolution,
-        command,
         config_sources,
-        selected_native_options,
+        selected_adapter_id,
+        command.operation,
+        catalog,
     )?;
 
     resolved_input_from_resolution(
         command.operation,
+        selected_adapter_id,
+        catalog,
         operation_fields.as_ref(),
         &resolution,
-        selected_native_options,
     )
 }
 
@@ -141,17 +142,16 @@ pub fn resolve_context_defaults(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
-    selected_adapter: &AdapterDefinition<'_>,
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
+    catalog: &DocumentParameterCatalog,
 ) -> Result<NavigationContextDefaults, NavigationError> {
-    let operation_fields = fields::operation_fields(command.operation, selected_adapter)?;
-    let selected_native_options = operation_fields.adapter_options();
+    let operation_fields =
+        fields::operation_fields(command.operation, selected_adapter_id, catalog)?;
     config::validate_navigation_sources(
         command,
         config_sources,
         selected_adapter_id,
         &operation_fields,
-        registry,
+        catalog,
     )?;
 
     let resolution = resolve_command_with_fields(
@@ -163,40 +163,345 @@ pub fn resolve_context_defaults(
 
     config::first_operation_resolution_error(
         &resolution,
-        command,
         config_sources,
-        selected_native_options,
+        selected_adapter_id,
+        command.operation,
+        catalog,
     )?;
 
     defaults_from_resolution(command.operation, operation_fields.as_ref(), &resolution)
 }
 
-pub(crate) fn validate_config_source_for_registry(
+pub(crate) fn validate_config_source_for_catalog(
     source: &NavigationConfigSource,
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
+    catalog: &DocumentParameterCatalog,
 ) -> Result<(), NavigationError> {
-    config::validate_config_source_for_registry(source, registry)
+    config::validate_config_source_for_catalog(source, catalog)
 }
 
 fn resolved_input_from_resolution(
     operation: Operation,
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
     fields: &FieldDefSet,
     resolution: &ResolutionResult,
-    selected_native_options: &[AdapterOptionSpec],
 ) -> Result<ResolvedNavigationInput, NavigationError> {
-    let options = native_options::resolved_options(fields, resolution, selected_native_options)?;
-    let native_option_handoff =
-        NativeOptionHandoff::from_options((!options.is_empty()).then_some(&options));
+    let output = required_output_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::OutputMode(operation),
+    )?;
+
+    match operation {
+        Operation::Outline => {
+            resolved_outline_input(selected_adapter_id, catalog, fields, resolution, output)
+        }
+        Operation::Read => {
+            resolved_read_input(selected_adapter_id, catalog, fields, resolution, output)
+        }
+        Operation::Find => {
+            resolved_find_input(selected_adapter_id, catalog, fields, resolution, output)
+        }
+        Operation::Info => resolved_info_input(fields, resolution, output),
+    }
+}
+
+fn resolved_outline_input(
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    output: NavigationOutputMode,
+) -> Result<ResolvedNavigationInput, NavigationError> {
+    let document_path = values::required_string_value(fields, resolution, ids::PATH)?;
+    let page = required_positive_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::StandardInput(StandardInputBinding::OutlinePage),
+    )?;
+    let raw_limit = required_positive_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::StandardInput(StandardInputBinding::OutlineLimit),
+    )?;
+    let pagination_enabled = required_bool_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::PaginationEnabled(PagedOperation::Outline),
+    )?;
+    let limit = effective_limit(raw_limit, pagination_enabled);
+    let max_heading_binding = StandardInputBinding::OutlineMaxHeadingLevel;
+    let max_heading_level = optional_adapter_integer_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        max_heading_binding,
+    )?;
+    let options = protocol_options(max_heading_binding, max_heading_level);
+    let standard_input = StandardOperationInput::Outline(OutlineInput {
+        document_path: document_path.clone(),
+        page,
+        limit,
+        max_heading_level,
+    });
+
     Ok(ResolvedNavigationInput {
-        document_path: values::required_string_value(fields, resolution, ids::PATH)?,
-        ref_id: values::optional_string_value(fields, resolution, ids::REF)?,
-        query: values::optional_string_value(fields, resolution, ids::QUERY)?,
-        page: values::optional_document_positive(operation, fields, resolution, ids::PAGE)?,
-        limit: values::optional_document_limit(operation, fields, resolution)?,
-        output: values::required_output_value(fields, resolution)?,
-        options: (!options.is_empty()).then_some(options),
-        native_options: native_option_handoff,
+        document_path,
+        ref_id: None,
+        query: None,
+        page: Some(page),
+        limit: Some(limit),
+        output,
+        options,
+        standard_input,
     })
+}
+
+fn resolved_read_input(
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    output: NavigationOutputMode,
+) -> Result<ResolvedNavigationInput, NavigationError> {
+    let document_path = values::required_string_value(fields, resolution, ids::PATH)?;
+    let ref_id = values::required_string_value(fields, resolution, ids::REF)?;
+    let page = required_positive_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::StandardInput(StandardInputBinding::ReadPage),
+    )?;
+    let raw_limit = required_positive_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::StandardInput(StandardInputBinding::ReadLimit),
+    )?;
+    let pagination_enabled = required_bool_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::PaginationEnabled(PagedOperation::Read),
+    )?;
+    let limit = effective_limit(raw_limit, pagination_enabled);
+    let standard_input = StandardOperationInput::Read(ReadInput {
+        document_path: document_path.clone(),
+        ref_id: ref_id.clone(),
+        page,
+        limit,
+    });
+
+    Ok(ResolvedNavigationInput {
+        document_path,
+        ref_id: Some(ref_id),
+        query: None,
+        page: Some(page),
+        limit: Some(limit),
+        output,
+        options: None,
+        standard_input,
+    })
+}
+
+fn resolved_find_input(
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    output: NavigationOutputMode,
+) -> Result<ResolvedNavigationInput, NavigationError> {
+    let document_path = values::required_string_value(fields, resolution, ids::PATH)?;
+    let query = values::required_string_value(fields, resolution, ids::QUERY)?;
+    let page = required_positive_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::StandardInput(StandardInputBinding::FindPage),
+    )?;
+    let raw_limit = required_positive_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::StandardInput(StandardInputBinding::FindLimit),
+    )?;
+    let pagination_enabled = required_bool_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        DocumentParameterBinding::PaginationEnabled(PagedOperation::Find),
+    )?;
+    let limit = effective_limit(raw_limit, pagination_enabled);
+    let max_heading_binding = StandardInputBinding::FindMaxHeadingLevel;
+    let max_heading_level = optional_adapter_integer_binding(
+        selected_adapter_id,
+        catalog,
+        fields,
+        resolution,
+        max_heading_binding,
+    )?;
+    let options = protocol_options(max_heading_binding, max_heading_level);
+    let standard_input = StandardOperationInput::Find(FindInput {
+        document_path: document_path.clone(),
+        query: query.clone(),
+        page,
+        limit,
+        max_heading_level,
+    });
+
+    Ok(ResolvedNavigationInput {
+        document_path,
+        ref_id: None,
+        query: Some(query),
+        page: Some(page),
+        limit: Some(limit),
+        output,
+        options,
+        standard_input,
+    })
+}
+
+fn resolved_info_input(
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    output: NavigationOutputMode,
+) -> Result<ResolvedNavigationInput, NavigationError> {
+    let document_path = values::required_string_value(fields, resolution, ids::PATH)?;
+    let standard_input = StandardOperationInput::Info(InfoInput {
+        document_path: document_path.clone(),
+    });
+
+    Ok(ResolvedNavigationInput {
+        document_path,
+        ref_id: None,
+        query: None,
+        page: None,
+        limit: None,
+        output,
+        options: None,
+        standard_input,
+    })
+}
+
+fn required_positive_binding(
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    binding: DocumentParameterBinding,
+) -> Result<PositiveInteger, NavigationError> {
+    let identity = required_binding_identity(selected_adapter_id, catalog, binding)?;
+    values::required_positive_value(fields, resolution, identity)
+}
+
+fn required_bool_binding(
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    binding: DocumentParameterBinding,
+) -> Result<bool, NavigationError> {
+    let identity = required_binding_identity(selected_adapter_id, catalog, binding)?;
+    values::required_bool_value(fields, resolution, identity)
+}
+
+fn required_output_binding(
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    binding: DocumentParameterBinding,
+) -> Result<NavigationOutputMode, NavigationError> {
+    let identity = required_binding_identity(selected_adapter_id, catalog, binding)?;
+    values::required_output_value_for_identity(fields, resolution, identity)
+}
+
+fn optional_adapter_integer_binding(
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
+    fields: &FieldDefSet,
+    resolution: &ResolutionResult,
+    binding: StandardInputBinding,
+) -> Result<Option<i64>, NavigationError> {
+    let Some(identity) = selected_adapter_binding_identity(selected_adapter_id, catalog, binding)
+    else {
+        return Ok(None);
+    };
+    values::optional_integer_value(fields, resolution, identity)
+}
+
+fn protocol_options(binding: StandardInputBinding, value: Option<i64>) -> Option<Options> {
+    let key = protocol_option_key(binding)?;
+    value.map(|value| Options::from_iter([(key.to_owned(), value.into())]))
+}
+
+fn protocol_option_key(binding: StandardInputBinding) -> Option<&'static str> {
+    match binding {
+        StandardInputBinding::OutlineMaxHeadingLevel
+        | StandardInputBinding::FindMaxHeadingLevel => Some("max_heading_level"),
+        StandardInputBinding::OutlinePage
+        | StandardInputBinding::OutlineLimit
+        | StandardInputBinding::ReadPage
+        | StandardInputBinding::ReadLimit
+        | StandardInputBinding::FindPage
+        | StandardInputBinding::FindLimit => None,
+    }
+}
+
+fn required_binding_identity<'a>(
+    selected_adapter_id: &'a str,
+    catalog: &'a DocumentParameterCatalog,
+    binding: DocumentParameterBinding,
+) -> Result<&'a str, NavigationError> {
+    selected_binding_identity(selected_adapter_id, catalog, binding)
+        .ok_or_else(|| NavigationError::internal("missing-parameter-binding"))
+}
+
+fn selected_binding_identity<'a>(
+    selected_adapter_id: &'a str,
+    catalog: &'a DocumentParameterCatalog,
+    binding: DocumentParameterBinding,
+) -> Option<&'a str> {
+    catalog
+        .selected_operation_parameters(selected_adapter_id, binding.operation())
+        .find_map(|(_, entry, candidate)| (candidate == binding).then(|| entry.identity().as_str()))
+}
+
+fn selected_adapter_binding_identity<'a>(
+    selected_adapter_id: &'a str,
+    catalog: &'a DocumentParameterCatalog,
+    binding: StandardInputBinding,
+) -> Option<&'a str> {
+    catalog
+        .selected_operation_parameters(selected_adapter_id, binding.operation())
+        .find_map(|(_, entry, candidate)| {
+            (entry.adapter_id() == Some(selected_adapter_id)
+                && candidate == DocumentParameterBinding::StandardInput(binding))
+            .then(|| entry.identity().as_str())
+        })
+}
+
+fn effective_limit(limit: PositiveInteger, pagination_enabled: bool) -> PositiveInteger {
+    if pagination_enabled {
+        limit
+    } else {
+        values::max_pagination_limit()
+    }
 }
 
 fn defaults_from_resolution(

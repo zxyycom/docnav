@@ -1,8 +1,8 @@
 use std::fmt;
 
-use crate::field::FieldDefBuilder;
+use crate::field::{FieldDef, FieldDefBuilder};
 
-use super::declaration::{FieldDefDeclaration, FieldDefSetBuilderEntry};
+use super::declaration::FieldDefSetBuilderEntry;
 use super::{ExpectedFieldShape, FieldDefSet, FieldDefSetBuildError};
 
 mod registry;
@@ -24,7 +24,8 @@ impl FieldDefSetBuilder {
     where
         T: 'static,
     {
-        self = self.field_declaration(FieldDefDeclaration::new(builder, expected));
+        self.entries
+            .push(FieldDefSetBuilderEntry::new(None, builder, expected));
         self
     }
 
@@ -39,16 +40,11 @@ impl FieldDefSetBuilder {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self = self.field_declaration(FieldDefDeclaration::with_declaration_path(
-            declaration_path,
+        self.entries.push(FieldDefSetBuilderEntry::new(
+            Some(declaration_path.into_iter().map(Into::into).collect()),
             builder,
             expected,
         ));
-        self
-    }
-
-    pub fn field_declaration(mut self, declaration: FieldDefDeclaration) -> Self {
-        self.entries.push(declaration.into_entry());
         self
     }
 
@@ -59,6 +55,26 @@ impl FieldDefSetBuilder {
         }
         definitions.finish()
     }
+}
+
+pub(super) fn extend_with_built_fields<'a>(
+    base: &FieldDefSet,
+    fields: impl IntoIterator<Item = &'a FieldDef>,
+) -> Result<FieldDefSet, FieldDefSetBuildError> {
+    let mut definitions = DefinitionRegistry::default();
+    for definition in &base.fields {
+        definitions.register(super::declaration::BuiltFieldDeclaration {
+            declaration_path: None,
+            definition: definition.clone(),
+        })?;
+    }
+    for definition in fields {
+        definitions.register(super::declaration::BuiltFieldDeclaration {
+            declaration_path: None,
+            definition: definition.clone(),
+        })?;
+    }
+    definitions.finish()
 }
 
 impl fmt::Debug for FieldDefSetBuilder {

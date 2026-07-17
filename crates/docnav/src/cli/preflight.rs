@@ -11,16 +11,9 @@ pub struct CliOutputContext {
 }
 
 pub fn output_context(args: &[String]) -> CliOutputContext {
-    output_context_with_registry(args, &crate::registry::AdapterRegistry::builtin())
-}
-
-fn output_context_with_registry<R>(args: &[String], registry: &R) -> CliOutputContext
-where
-    R: docnav_navigation::NavigationAdapterRegistry + ?Sized,
-{
     let operation = args.first().and_then(|command| operation(command));
     let output_argument = match operation {
-        Some(operation) => projected_output_argument(operation, registry),
+        Some(operation) => projected_output_argument(operation),
         None => Some(core_output_argument()),
     };
     CliOutputContext {
@@ -36,12 +29,10 @@ struct OutputArgument {
     takes_value: bool,
 }
 
-fn projected_output_argument<R>(operation: Operation, registry: &R) -> Option<OutputArgument>
-where
-    R: docnav_navigation::NavigationAdapterRegistry + ?Sized,
-{
-    let (command, _) = document_clap_command(operation, registry).ok()?;
-    let argument = command
+fn projected_output_argument(operation: Operation) -> Option<OutputArgument> {
+    let spec = document_clap_command(operation).ok()?;
+    let argument = spec
+        .command
         .get_arguments()
         .find(|argument| argument.get_id().as_str() == DOCUMENT_OUTPUT_FIELD_ID)?;
     let flag = argument

@@ -49,18 +49,16 @@ pub fn doctor(config_paths: ConfigPathArgs) -> AppResult<CommandOutcome> {
         config_paths.project_config.as_deref(),
         config_paths.user_config.as_deref(),
     )?;
-    let registry = AdapterRegistry::load(&project)?;
+    let registry = AdapterRegistry::builtin();
     let mut checks = Vec::new();
     checks.push(check_config_file(
         "project_config",
         ConfigFileSource::Project.selected_path(&project),
-        &registry,
         ConfigFileSource::Project,
     ));
     checks.push(check_config_file(
         "user_config",
         ConfigFileSource::User.selected_path(&project),
-        &registry,
         ConfigFileSource::User,
     ));
     checks.push(registry::registry_check(&registry));
@@ -84,10 +82,9 @@ pub fn doctor(config_paths: ConfigPathArgs) -> AppResult<CommandOutcome> {
 fn check_config_file(
     name: &str,
     selection: &SelectedConfigPath,
-    registry: &AdapterRegistry,
     source: ConfigFileSource,
 ) -> DoctorCheck {
-    match read_selected_config(selection, registry, source) {
+    match read_selected_config(selection, source) {
         Ok(_) if selection.path.exists() => DoctorCheck::pass(json!({
             "name": name,
             "status": "pass",

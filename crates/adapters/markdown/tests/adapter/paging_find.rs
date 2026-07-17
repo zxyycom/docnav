@@ -6,38 +6,24 @@ fn read_paginates_unicode_without_splitting_characters() {
     let selected = "# A\n界界界abc\n";
     let path = write_doc("unicode.md", selected);
     let ref_id = "H:L1:H1";
-    let arguments = ReadArguments {
+    let input = ReadInput {
+        document_path: path_string(&path),
         ref_id: ref_id.to_owned(),
         limit: positive(5),
         page: positive(1),
-        options: None,
     };
-    let request = make_request(
-        &path,
-        Operation::Read,
-        OperationArguments::Read(arguments.clone()),
-    );
 
-    let first = MarkdownAdapter
-        .read(&request, &arguments)
-        .expect("first page");
+    let first = MarkdownAdapter.read(&input).expect("first page");
     assert_eq!(first.ref_id, ref_id);
     assert_eq!(first.content, "# A\n界");
     assert_cost_measurements(&first.cost, "selection", selected);
     assert_eq!(first.page, Some(positive(2)));
 
-    let second_arguments = ReadArguments {
+    let second_input = ReadInput {
         page: positive(2),
-        ..arguments
+        ..input
     };
-    let second_request = make_request(
-        &path,
-        Operation::Read,
-        OperationArguments::Read(second_arguments.clone()),
-    );
-    let second = MarkdownAdapter
-        .read(&second_request, &second_arguments)
-        .expect("second page");
+    let second = MarkdownAdapter.read(&second_input).expect("second page");
     assert!(second.content.starts_with("界界"));
 }
 
@@ -48,9 +34,8 @@ fn find_ref_targets_current_visible_region_and_read_contains_match() {
         "find-current-region.md",
         "# Current\nintro\n\n#### Hidden\ntarget\n\n# Next\nother\n",
     );
-    let arguments = find_args("target", 6000, 1, Some(3));
-
-    let result = find_result(&path, &arguments);
+    let input = find_input(&path, "target", 6000, 1, Some(3));
+    let result = find_result(&input);
 
     assert_eq!(result.matches.len(), 1);
     // target 在 H4 "Hidden" 下，但 Hidden 不 visible (max=3)，
@@ -68,9 +53,8 @@ fn find_ref_targets_current_visible_region_and_read_contains_match() {
 #[test]
 fn find_match_before_first_visible_heading_uses_document_head_ref() {
     let path = write_doc("find-before-heading.md", "target before\n\n# Later\nbody\n");
-    let arguments = find_args("target before", 6000, 1, Some(3));
-
-    let result = find_result(&path, &arguments);
+    let input = find_input(&path, "target before", 6000, 1, Some(3));
+    let result = find_result(&input);
 
     assert_eq!(result.matches.len(), 1);
     assert_eq!(result.matches[0].ref_id, "HEAD:leading");
@@ -84,9 +68,8 @@ fn find_match_before_first_visible_heading_uses_document_head_ref() {
 #[test]
 fn find_falls_back_to_full_document_when_no_heading_is_visible() {
     let path = write_doc("fallback-find.md", "target before\n\n#### Deep\nbody\n");
-    let arguments = find_args("target", 6000, 1, Some(3));
-
-    let result = find_result(&path, &arguments);
+    let input = find_input(&path, "target", 6000, 1, Some(3));
+    let result = find_result(&input);
 
     assert_eq!(result.matches.len(), 1);
     assert_eq!(result.matches[0].ref_id, "doc:full");
@@ -134,33 +117,32 @@ fn read_document_head_preserves_yaml_delimiters_and_leading_text() {
 #[test]
 fn outline_paginates_with_response_page_until_end_and_past_end() {
     let path = write_doc("outline-pages.md", "# A\none\n# B\ntwo\n# C\nthree\n");
-    let first_arguments = outline_args(10, 1, Some(3));
-
-    let first = outline_result(&path, &first_arguments);
+    let first_input = outline_input(&path, 10, 1, Some(3));
+    let first = outline_result(&first_input);
     assert_eq!(entry_refs(&first.entries), vec!["H:L1:H1"]);
     let second_page = first.page.expect("second page");
 
-    let second_arguments = OutlineArguments {
+    let second_input = OutlineInput {
         page: second_page,
-        ..first_arguments.clone()
+        ..first_input.clone()
     };
-    let second = outline_result(&path, &second_arguments);
+    let second = outline_result(&second_input);
     assert_eq!(entry_refs(&second.entries), vec!["H:L3:H1"]);
     let third_page = second.page.expect("third page");
 
-    let third_arguments = OutlineArguments {
+    let third_input = OutlineInput {
         page: third_page,
-        ..first_arguments.clone()
+        ..first_input.clone()
     };
-    let third = outline_result(&path, &third_arguments);
+    let third = outline_result(&third_input);
     assert_eq!(entry_refs(&third.entries), vec!["H:L5:H1"]);
     assert_eq!(third.page, None);
 
-    let past_end_arguments = OutlineArguments {
+    let past_end_input = OutlineInput {
         page: positive(4),
-        ..first_arguments
+        ..first_input
     };
-    let past_end = outline_result(&path, &past_end_arguments);
+    let past_end = outline_result(&past_end_input);
     assert!(past_end.entries.is_empty());
     assert_eq!(past_end.page, None);
 }
@@ -171,33 +153,32 @@ fn find_paginates_with_response_page_until_end_and_past_end() {
         "find-pages.md",
         "# A\ntarget 1\n# B\ntarget 2\n# C\ntarget 3\n",
     );
-    let first_arguments = find_args("target", 10, 1, Some(3));
-
-    let first = find_result(&path, &first_arguments);
+    let first_input = find_input(&path, "target", 10, 1, Some(3));
+    let first = find_result(&first_input);
     assert_eq!(entry_refs(&first.matches), vec!["H:L1:H1"]);
     let second_page = first.page.expect("second page");
 
-    let second_arguments = FindArguments {
+    let second_input = FindInput {
         page: second_page,
-        ..first_arguments.clone()
+        ..first_input.clone()
     };
-    let second = find_result(&path, &second_arguments);
+    let second = find_result(&second_input);
     assert_eq!(entry_refs(&second.matches), vec!["H:L3:H1"]);
     let third_page = second.page.expect("third page");
 
-    let third_arguments = FindArguments {
+    let third_input = FindInput {
         page: third_page,
-        ..first_arguments.clone()
+        ..first_input.clone()
     };
-    let third = find_result(&path, &third_arguments);
+    let third = find_result(&third_input);
     assert_eq!(entry_refs(&third.matches), vec!["H:L5:H1"]);
     assert_eq!(third.page, None);
 
-    let past_end_arguments = FindArguments {
+    let past_end_input = FindInput {
         page: positive(4),
-        ..first_arguments
+        ..first_input
     };
-    let past_end = find_result(&path, &past_end_arguments);
+    let past_end = find_result(&past_end_input);
     assert!(past_end.matches.is_empty());
     assert_eq!(past_end.page, None);
 }

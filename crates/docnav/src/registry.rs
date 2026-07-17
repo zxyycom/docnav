@@ -1,38 +1,23 @@
 use docnav_adapter_contracts::AdapterDefinition;
 use docnav_markdown::markdown_adapter_definition;
-use docnav_navigation::{NavigationAdapterRef, NavigationAdapterRegistry};
-use docnav_protocol::Manifest;
+use docnav_navigation::NavigationAdapterRegistry;
 use serde_json::{json, Value};
 
 use crate::cli::AdapterCommand;
 use crate::config::DoctorCheck;
 use crate::error::{AppResult, DocnavExitCode};
 use crate::output::CommandOutcome;
-use crate::project_context::ProjectContext;
 
-static ADAPTERS: &[AdapterRecord] = &[AdapterRecord {
-    definition: markdown_adapter_definition,
-    implementation_source: "core_static",
-}];
+static ADAPTERS: &[fn() -> AdapterDefinition<'static>] = &[markdown_adapter_definition];
 
 #[derive(Clone, Copy)]
 pub struct AdapterRegistry {
-    pub adapters: &'static [AdapterRecord],
-}
-
-#[derive(Clone, Copy)]
-pub struct AdapterRecord {
-    definition: fn() -> AdapterDefinition<'static>,
-    implementation_source: &'static str,
+    pub adapters: &'static [fn() -> AdapterDefinition<'static>],
 }
 
 impl AdapterRegistry {
     pub fn builtin() -> Self {
         Self { adapters: ADAPTERS }
-    }
-
-    pub fn load(_project: &ProjectContext) -> AppResult<Self> {
-        Ok(Self::builtin())
     }
 
     pub fn len(&self) -> usize {
@@ -45,39 +30,11 @@ impl AdapterRegistry {
 }
 
 impl NavigationAdapterRegistry for AdapterRegistry {
-    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
+    fn adapters(&self) -> Vec<AdapterDefinition<'_>> {
         self.adapters
             .iter()
-            .map(|record| NavigationAdapterRef::new(record.definition()))
+            .map(|definition| definition())
             .collect()
-    }
-}
-
-impl AdapterRecord {
-    pub fn id(&self) -> String {
-        self.definition().id().to_owned()
-    }
-
-    pub fn definition(&self) -> AdapterDefinition<'static> {
-        (self.definition)()
-    }
-
-    pub fn manifest(&self) -> Manifest {
-        self.definition().manifest().clone()
-    }
-
-    pub fn implementation_source(&self) -> &'static str {
-        self.implementation_source
-    }
-}
-
-impl std::fmt::Debug for AdapterRecord {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter
-            .debug_struct("AdapterRecord")
-            .field("id", &self.id())
-            .field("implementation_source", &self.implementation_source)
-            .finish_non_exhaustive()
     }
 }
 
@@ -88,11 +45,11 @@ pub fn execute(command: AdapterCommand) -> AppResult<CommandOutcome> {
 }
 
 pub fn adapter_list() -> AppResult<CommandOutcome> {
-    let registry = AdapterRegistry { adapters: ADAPTERS };
+    let registry = AdapterRegistry::builtin();
     let adapters = registry
         .adapters
         .iter()
-        .map(adapter_metadata)
+        .map(|definition| adapter_metadata(definition()))
         .collect::<Vec<_>>();
     Ok(CommandOutcome::json(json!({
         "registry": "core_static",
@@ -124,7 +81,8 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {
     registry
         .adapters
         .iter()
-        .map(|adapter| {
+        .map(|definition| {
+            let adapter = definition();
             let manifest = adapter.manifest();
             let id = adapter.id();
             let status = if manifest.adapter.id == id && manifest.validate_semantics().is_ok() {
@@ -136,7 +94,7 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {
                 "name": "adapter_layer",
                 "status": status,
                 "adapter_id": id,
-                "implementation_source": adapter.implementation_source(),
+                "implementation_source": "core_static",
                 "version": manifest.adapter.version,
                 "formats": manifest.formats,
                 "message": if status == "pass" {
@@ -154,13 +112,13 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {
         .collect()
 }
 
-fn adapter_metadata(adapter: &AdapterRecord) -> Value {
+fn adapter_metadata(adapter: AdapterDefinition<'_>) -> Value {
     let manifest = adapter.manifest();
     json!({
         "id": manifest.adapter.id,
         "name": manifest.adapter.name,
         "version": manifest.adapter.version,
-        "implementation_source": adapter.implementation_source(),
+        "implementation_source": "core_static",
         "formats": manifest.formats,
     })
 }

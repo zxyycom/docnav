@@ -1,13 +1,17 @@
 use docnav_protocol::{
     positive_result, Operation, OperationArguments, OperationResult, OutlineResult,
-    ProtocolResponse, SuccessResponse, PROTOCOL_VERSION,
+    ProtocolDiagnosticCode, ProtocolResponse, SuccessResponse, PROTOCOL_VERSION,
 };
 use serde_json::Value;
 
+use docnav_adapter_contracts::{InfoInput, StandardOperationInput};
+
 use crate::{
-    protocol_request, validate_navigation_response, NavigationFailureLayer,
-    NavigationInvocationTrace, OperationInput,
+    execute_protocol_request, protocol_request, validate_navigation_response,
+    NavigationAdapterRegistry, NavigationFailureLayer, NavigationInvocationTrace, OperationInput,
 };
+
+use super::support::StubRegistry;
 
 #[test]
 fn protocol_request_maps_core_inputs_to_operation_arguments() {
@@ -60,6 +64,83 @@ fn protocol_request_rejects_missing_read_ref() {
 
     assert_eq!(error.field(), "ref");
     assert_eq!(error.reason(), "read requires ref");
+}
+
+#[test]
+fn protocol_request_maps_read_and_find_operation_shapes() {
+    let read = protocol_request(OperationInput {
+        operation: Operation::Read,
+        document_path: "docs/guide.md".to_owned(),
+        ref_id: Some("H:L1:H1".to_owned()),
+        query: None,
+        page: Some(positive_result(2).unwrap()),
+        limit: Some(positive_result(40).unwrap()),
+        options: None,
+    })
+    .expect("read request");
+    let OperationArguments::Read(read) = read.arguments else {
+        panic!("expected read arguments");
+    };
+    assert_eq!(read.ref_id, "H:L1:H1");
+    assert_eq!(read.page.get(), 2);
+    assert_eq!(read.limit.get(), 40);
+    assert!(read.options.is_none());
+
+    let find = protocol_request(OperationInput {
+        operation: Operation::Find,
+        document_path: "docs/guide.md".to_owned(),
+        ref_id: None,
+        query: Some("needle".to_owned()),
+        page: Some(positive_result(3).unwrap()),
+        limit: Some(positive_result(20).unwrap()),
+        options: Some(docnav_protocol::Options::from_iter([(
+            "max_heading_level".to_owned(),
+            5.into(),
+        )])),
+    })
+    .expect("find request");
+    let OperationArguments::Find(find) = find.arguments else {
+        panic!("expected find arguments");
+    };
+    assert_eq!(find.query, "needle");
+    assert_eq!(find.page.get(), 3);
+    assert_eq!(find.limit.get(), 20);
+    assert_eq!(
+        find.options
+            .as_ref()
+            .and_then(|options| options.get("max_heading_level"))
+            .and_then(Value::as_i64),
+        Some(5)
+    );
+}
+
+#[test]
+fn protocol_dispatch_rejects_request_and_standard_input_operation_mismatch() {
+    let request = protocol_request(OperationInput {
+        operation: Operation::Outline,
+        document_path: "docs/guide.stub".to_owned(),
+        ref_id: None,
+        query: None,
+        page: Some(positive_result(1).unwrap()),
+        limit: Some(positive_result(80).unwrap()),
+        options: None,
+    })
+    .expect("outline request");
+    let adapter = StubRegistry
+        .adapters()
+        .into_iter()
+        .next()
+        .expect("stub adapter");
+    let standard_input = StandardOperationInput::Info(InfoInput {
+        document_path: "docs/guide.stub".to_owned(),
+    });
+
+    let response = execute_protocol_request(&adapter, &request, &standard_input);
+    let ProtocolResponse::Failure(failure) = response else {
+        panic!("operation mismatch must fail");
+    };
+
+    assert_eq!(failure.error.code(), ProtocolDiagnosticCode::InvalidRequest);
 }
 
 #[test]

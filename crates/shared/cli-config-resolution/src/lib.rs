@@ -3,7 +3,6 @@
 //!
 //! Parameter declarations, validation, merge metadata, and typed materialization
 //! are owned by [`docnav_typed_fields`] and re-exported from this crate.
-//! Consumers using the `FieldDefs` derive should depend on that canonical crate directly.
 
 mod diagnostics;
 mod resolution;
@@ -12,11 +11,11 @@ mod source;
 pub use diagnostics::{CandidateInvalidReason, DiagnosticReason, ResolutionDiagnostic};
 pub use docnav_typed_fields::{
     ActualValueKind, BuildError, CliBooleanEncoding, CliProcessingMetadata, DefaultMetadata,
-    ExpectedFieldShape, FieldBound, FieldDef, FieldDefBuilder, FieldDefDeclaration, FieldDefSet,
-    FieldDefSetBuildError, FieldDefSetBuilder, FieldIdentity, FieldLength, FieldPath,
-    FieldStringEnum, FieldValidation, FieldValidationErrors, FieldValueMap, JsonValue,
-    MergeStrategy, ProcessStrategy, ProcessingId, ProcessingInputKind, ProcessingLocator,
-    SchemaMetadataView, TypedValue, ValidationFailure, ValidationReason, ValueKind,
+    ExpectedFieldShape, FieldBound, FieldDef, FieldDefBuilder, FieldDefSet, FieldDefSetBuildError,
+    FieldDefSetBuilder, FieldIdentity, FieldLength, FieldPath, FieldStringEnum, FieldValidation,
+    FieldValidationErrors, FieldValueMap, JsonValue, MergeStrategy, ProcessStrategy, ProcessingId,
+    ProcessingInputKind, ProcessingLocator, SchemaMetadataView, TypedValue, ValidationFailure,
+    ValidationReason, ValueKind,
 };
 pub use resolution::{
     resolve, CandidateTrace, FieldResolution, FieldTrace, MaterializationError,

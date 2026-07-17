@@ -2,21 +2,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use docnav_adapter_contracts::{Adapter, NativeOptionHandoff};
+use docnav_adapter_contracts::{Adapter, FindInput, InfoInput, OutlineInput, ReadInput};
 use docnav_markdown::{markdown_adapter_definition, MarkdownAdapter};
 use docnav_protocol::{
-    positive_result, Document, FindArguments, FindResult, InfoArguments, Operation,
-    OperationArguments, OptionEntry, Options, OutlineArguments, ProtocolDiagnosticCode,
-    ProtocolError, ReadArguments, RequestEnvelope, StructuredOutlineResult, PROTOCOL_VERSION,
+    positive_result, FindResult, ProtocolDiagnosticCode, ProtocolError, StructuredOutlineResult,
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
-const ADAPTER_ID: &str = "docnav-markdown";
-const NATIVE_OPTIONS_NAMESPACE: &str = "options";
-const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
-const MAX_HEADING_LEVEL_IDENTITY: &str =
-    "docnav.adapters.docnav-markdown.options.max_heading_level";
-const DEFAULT_MAX_HEADING_LEVEL: u8 = 3;
+const DEFAULT_MAX_HEADING_LEVEL: i64 = 3;
 
 fn positive(value: u32) -> docnav_protocol::PositiveInteger {
     positive_result(value).expect("positive test integer")
@@ -43,79 +36,46 @@ fn path_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-fn make_request(
+fn outline_input(
     path: &Path,
-    operation: Operation,
-    arguments: OperationArguments,
-) -> RequestEnvelope {
-    RequestEnvelope {
-        protocol_version: PROTOCOL_VERSION.to_owned(),
-        request_id: "test-request".to_owned(),
-        operation,
-        document: Document {
-            path: path_string(path),
-        },
-        arguments,
-    }
-}
-
-fn outline_args(limit: u32, page: u32, max_heading_level: Option<u8>) -> OutlineArguments {
-    OutlineArguments {
+    limit: u32,
+    page: u32,
+    max_heading_level: Option<i64>,
+) -> OutlineInput {
+    OutlineInput {
+        document_path: path_string(path),
         limit: positive(limit),
         page: positive(page),
-        options: Some(max_heading_level_options(
-            max_heading_level.unwrap_or(DEFAULT_MAX_HEADING_LEVEL),
-        )),
+        max_heading_level: Some(max_heading_level.unwrap_or(DEFAULT_MAX_HEADING_LEVEL)),
     }
 }
 
-fn find_args(query: &str, limit: u32, page: u32, max_heading_level: Option<u8>) -> FindArguments {
-    FindArguments {
+fn find_input(
+    path: &Path,
+    query: &str,
+    limit: u32,
+    page: u32,
+    max_heading_level: Option<i64>,
+) -> FindInput {
+    FindInput {
+        document_path: path_string(path),
         query: query.to_owned(),
         limit: positive(limit),
         page: positive(page),
-        options: Some(max_heading_level_options(
-            max_heading_level.unwrap_or(DEFAULT_MAX_HEADING_LEVEL),
-        )),
+        max_heading_level: Some(max_heading_level.unwrap_or(DEFAULT_MAX_HEADING_LEVEL)),
     }
 }
 
-fn max_heading_level_options(level: u8) -> Options {
-    let mut options = Options::new();
-    options.insert_entry(OptionEntry {
-        identity: MAX_HEADING_LEVEL_IDENTITY.to_owned(),
-        owner: ADAPTER_ID.to_owned(),
-        namespace: NATIVE_OPTIONS_NAMESPACE.to_owned(),
-        key: MAX_HEADING_LEVEL_OPTION.to_owned(),
-        source: "explicit".to_owned(),
-        type_variant: "integer".to_owned(),
-        value: serde_json::Value::from(level),
-    });
-    options
-}
-
-fn outline_result(path: &Path, arguments: &OutlineArguments) -> StructuredOutlineResult {
-    let request = make_request(
-        path,
-        Operation::Outline,
-        OperationArguments::Outline(arguments.clone()),
-    );
+fn outline_result(input: &OutlineInput) -> StructuredOutlineResult {
     MarkdownAdapter
-        .outline(&request, arguments)
+        .outline(input)
         .expect("outline result")
         .into_structured()
         .expect("structured outline result")
 }
 
-fn find_result(path: &Path, arguments: &FindArguments) -> FindResult {
-    let request = make_request(
-        path,
-        Operation::Find,
-        OperationArguments::Find(arguments.clone()),
-    );
-    MarkdownAdapter
-        .find(&request, arguments)
-        .expect("find result")
+fn find_result(input: &FindInput) -> FindResult {
+    MarkdownAdapter.find(input).expect("find result")
 }
 
 fn entry_refs(entries: &[docnav_protocol::Entry]) -> Vec<&str> {
@@ -132,19 +92,14 @@ fn read_ref_with_page(
     limit: u32,
     page: u32,
 ) -> docnav_protocol::ReadResult {
-    let arguments = ReadArguments {
+    let input = ReadInput {
+        document_path: path_string(path),
         ref_id: ref_id.to_owned(),
         limit: positive(limit),
         page: positive(page),
-        options: None,
     };
-    let request = make_request(
-        path,
-        Operation::Read,
-        OperationArguments::Read(arguments.clone()),
-    );
     MarkdownAdapter
-        .read(&request, &arguments)
+        .read(&input)
         .unwrap_or_else(|_| panic!("read ref: {ref_id}"))
 }
 
@@ -165,21 +120,13 @@ fn assert_cost_measurements(cost: &docnav_protocol::Cost, scope: &str, text: &st
 }
 
 fn read_ref_error(path: &Path, ref_id: &str) -> ProtocolError {
-    let arguments = ReadArguments {
+    let input = ReadInput {
+        document_path: path_string(path),
         ref_id: ref_id.to_owned(),
         limit: positive(6000),
         page: positive(1),
-        options: None,
     };
-    let request = make_request(
-        path,
-        Operation::Read,
-        OperationArguments::Read(arguments.clone()),
-    );
-    MarkdownAdapter
-        .read(&request, &arguments)
-        .unwrap_err()
-        .protocol_error()
+    MarkdownAdapter.read(&input).unwrap_err().protocol_error()
 }
 
 fn assert_ref_not_found(error: &ProtocolError, ref_id: &str) {

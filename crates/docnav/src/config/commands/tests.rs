@@ -51,6 +51,14 @@ fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing()
     let mut output = outcome_json(output);
     normalize_dynamic_paths(&mut output, &project_config, &user_config);
     assert_json_golden(&output, VALID_INSPECTION_GOLDEN);
+    assert!(
+        parameter_fact(
+            &output["inspection"],
+            crate::parameter_catalog::PAGE_IDENTITY
+        )
+        .is_none(),
+        "CLI-only page must not appear in config parameter facts"
+    );
     assert_eq!(fs::read_to_string(&project_config).unwrap(), project_before);
     assert_eq!(fs::read_to_string(&user_config).unwrap(), user_before);
 
@@ -121,6 +129,40 @@ fn config_inspect_reports_validation_diagnostics_without_failing() {
 
     assert_eq!(diagnostics[0]["field"], "defaults.pagination.limit");
     assert_eq!(diagnostics[0]["reason"], "range_invalid");
+
+    let _ = fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn config_inspect_reports_catalog_adapter_range_with_exact_source() {
+    let workspace = temp_workspace("config-inspect-catalog-adapter-range");
+    let project_config = workspace.join("project.json");
+    let user_config = workspace.join("user.json");
+    write_json(
+        &project_config,
+        json!({
+            "options": {
+                "docnav-markdown": {
+                    "max_heading_level": 7
+                }
+            }
+        }),
+    );
+    write_json(&user_config, json!({}));
+
+    let output = execute(ConfigCommand::Inspect(ConfigInspect {
+        config_paths: config_paths(&project_config, &user_config),
+    }))
+    .expect("inspect should report, not fail");
+    let output = outcome_json(output);
+    let diagnostic = &output["inspection"]["sources"][0]["diagnostics"][0];
+
+    assert_eq!(
+        diagnostic["field"],
+        "options.docnav-markdown.max_heading_level"
+    );
+    assert_eq!(diagnostic["reason"], "range_invalid");
+    assert_eq!(diagnostic["path"], path_string(&project_config));
 
     let _ = fs::remove_dir_all(workspace);
 }

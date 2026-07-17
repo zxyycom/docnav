@@ -1,18 +1,16 @@
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec,
-    AdapterResult, CliProcessingMetadata, FieldBound, FieldValidation, NativeOptionHandoff,
-    UnstructuredFullRead, UnstructuredFullReadCapabilities,
+    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
+    ReadInput, UnstructuredFullRead, UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
-    AdapterIdentity, FindArguments, FindResult, FormatDescriptor, InfoAdapter, InfoArguments,
-    InfoDocument, InfoResult, Manifest, Measurement, Operation, OutlineArguments, OutlineResult,
-    ProbeReason, ProbeReasonCode, ProbeResult, ReadArguments, ReadResult, RequestEnvelope,
-    MANIFEST_VERSION, PROBE_VERSION,
+    AdapterIdentity, FindResult, FormatDescriptor, InfoAdapter, InfoDocument, InfoResult, Manifest,
+    Measurement, OutlineResult, ProbeReason, ProbeReasonCode, ProbeResult, ReadResult,
+    RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION,
 };
 use serde_json::json;
 
 use crate::markdown::{
-    cost_for, is_markdown_extension, is_utf8_markdown_candidate, max_heading_level_from_handoff,
+    cost_for, is_markdown_extension, is_utf8_markdown_candidate, max_heading_level,
     MarkdownDocument, ResolvedRef,
 };
 use crate::paging::{paginate_entries, paginate_text};
@@ -21,34 +19,11 @@ pub const ADAPTER_ID: &str = "docnav-markdown";
 pub const ADAPTER_NAME: &str = "Docnav Markdown Adapter";
 pub const FORMAT_ID_MARKDOWN: &str = "markdown";
 pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
-// Markdown adapter 原生 option key，来自 adapter 契约；核心 CLI 只原样传递。
-pub const NATIVE_OPTIONS_NAMESPACE: &str = "options";
-pub const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
-const DEFAULT_MAX_HEADING_LEVEL_VALUE: i64 = 3;
-pub const MAX_HEADING_LEVEL_IDENTITY: &str =
-    "docnav.adapters.docnav-markdown.options.max_heading_level";
-const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline, Operation::Find];
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MarkdownAdapter;
 
 impl Adapter for MarkdownAdapter {
-    fn adapter_id(&self) -> &str {
-        ADAPTER_ID
-    }
-
-    fn manifest(&self) -> Manifest {
-        markdown_manifest()
-    }
-
-    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
-        markdown_adapter_options()
-    }
-
-    fn unstructured_full_read_capabilities(&self) -> UnstructuredFullReadCapabilities {
-        markdown_full_read_capabilities()
-    }
-
     fn probe(&self, path: &str) -> ProbeResult {
         let extension_match = is_markdown_extension(path);
         let mut reasons = Vec::new();
@@ -92,44 +67,26 @@ impl Adapter for MarkdownAdapter {
         }
     }
 
-    fn outline(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
-        let native_options = NativeOptionHandoff::from_options(arguments.options.as_ref());
-        self.outline_with_native_options(request, arguments, &native_options)
-    }
-
-    fn outline_with_native_options(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &OutlineArguments,
-        native_options: &NativeOptionHandoff,
-    ) -> AdapterResult<OutlineResult> {
-        let document = MarkdownDocument::load(&request.document.path)?;
-        let max_heading_level = max_heading_level_from_handoff(native_options)?;
+    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        let document = MarkdownDocument::load(&input.document_path)?;
+        let max_heading_level = max_heading_level(input.max_heading_level)?;
         let entries = document.outline_entries(max_heading_level);
-        let (entries, page) = paginate_entries(&entries, arguments.page, arguments.limit);
+        let (entries, page) = paginate_entries(&entries, input.page, input.limit);
         Ok(OutlineResult::structured(entries, page))
     }
 
-    fn read(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult> {
-        let document = MarkdownDocument::load(&request.document.path)?;
-        let resolved = document.resolve_ref(&arguments.ref_id)?;
+    fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult> {
+        let document = MarkdownDocument::load(&input.document_path)?;
+        let resolved = document.resolve_ref(&input.ref_id)?;
         let content = match resolved {
             ResolvedRef::FullDocument => document.source(),
             ResolvedRef::DocumentHead => document.document_head_content(),
             ResolvedRef::Heading(heading) => document.section_content(heading),
         };
-        let (content_page, page) = paginate_text(content, arguments.page, arguments.limit);
+        let (content_page, page) = paginate_text(content, input.page, input.limit);
 
         Ok(ReadResult {
-            ref_id: arguments.ref_id.clone(),
+            ref_id: input.ref_id.clone(),
             content: content_page,
             content_type: CONTENT_TYPE_MARKDOWN.to_owned(),
             cost: cost_for(content),
@@ -137,42 +94,24 @@ impl Adapter for MarkdownAdapter {
         })
     }
 
-    fn find(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &FindArguments,
-    ) -> AdapterResult<FindResult> {
-        let native_options = NativeOptionHandoff::from_options(arguments.options.as_ref());
-        self.find_with_native_options(request, arguments, &native_options)
-    }
-
-    fn find_with_native_options(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &FindArguments,
-        native_options: &NativeOptionHandoff,
-    ) -> AdapterResult<FindResult> {
-        if arguments.query.is_empty() {
+    fn find(&self, input: &FindInput) -> AdapterResult<FindResult> {
+        if input.query.is_empty() {
             return Err(AdapterError::invalid_request(
                 "arguments.query",
                 "query must not be empty",
             ));
         }
 
-        let document = MarkdownDocument::load(&request.document.path)?;
-        let max_heading_level = max_heading_level_from_handoff(native_options)?;
-        let matches = document.find_entries(&arguments.query, max_heading_level);
-        let (matches, page) = paginate_entries(&matches, arguments.page, arguments.limit);
+        let document = MarkdownDocument::load(&input.document_path)?;
+        let max_heading_level = max_heading_level(input.max_heading_level)?;
+        let matches = document.find_entries(&input.query, max_heading_level);
+        let (matches, page) = paginate_entries(&matches, input.page, input.limit);
 
         Ok(FindResult { matches, page })
     }
 
-    fn info(
-        &self,
-        request: &RequestEnvelope,
-        _arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult> {
-        let document = MarkdownDocument::load(&request.document.path)?;
+    fn info(&self, input: &InfoInput) -> AdapterResult<InfoResult> {
+        let document = MarkdownDocument::load(&input.document_path)?;
         Ok(InfoResult {
             document: Some(InfoDocument {
                 content_type: Some(CONTENT_TYPE_MARKDOWN.to_owned()),
@@ -222,14 +161,12 @@ impl Adapter for MarkdownAdapter {
 }
 
 pub fn markdown_adapter_definition() -> AdapterDefinition<'static> {
-    AdapterDefinition::builder(ADAPTER_ID)
-        .adapter(&MarkdownAdapter)
-        .manifest(markdown_manifest())
-        .required_operation_handlers()
-        .native_options(markdown_adapter_options())
-        .full_read_capability_group(markdown_full_read_capabilities())
-        .build()
-        .expect("Markdown adapter definition is valid")
+    AdapterDefinition::new(
+        markdown_manifest(),
+        &MarkdownAdapter,
+        Some(markdown_full_read_capabilities()),
+    )
+    .expect("Markdown adapter definition is valid")
 }
 
 fn markdown_manifest() -> Manifest {
@@ -254,32 +191,6 @@ fn markdown_full_read_capabilities() -> UnstructuredFullReadCapabilities {
         cost_measurement_units: vec!["lines".to_owned(), "bytes".to_owned(), "tokens".to_owned()],
         result_facts_hook: false,
     }
-}
-
-fn markdown_adapter_options() -> Vec<AdapterOptionSpec> {
-    vec![AdapterOptionSpec::builder(MAX_HEADING_LEVEL_IDENTITY)
-        .owner(ADAPTER_ID)
-        .operations(MAX_HEADING_LEVEL_OPERATIONS)
-        .path([NATIVE_OPTIONS_NAMESPACE, MAX_HEADING_LEVEL_OPTION])
-        .process(
-            "cli",
-            AdapterOptionProcessStrategy::cli_flag("--max-heading-level").cli_metadata(
-                CliProcessingMetadata::new()
-                    .help("Set the maximum Markdown heading level")
-                    .value_name("value"),
-            ),
-        )
-        .process(
-            "config",
-            AdapterOptionProcessStrategy::config_path([
-                NATIVE_OPTIONS_NAMESPACE,
-                ADAPTER_ID,
-                MAX_HEADING_LEVEL_OPTION,
-            ]),
-        )
-        .validation(FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)))
-        .default_static(DEFAULT_MAX_HEADING_LEVEL_VALUE)
-        .build()]
 }
 
 fn probe(

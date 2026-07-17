@@ -4,18 +4,6 @@ use serde_json::{Map, Value};
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Options {
     values: Map<String, Value>,
-    entries: Vec<OptionEntry>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct OptionEntry {
-    pub identity: String,
-    pub owner: String,
-    pub namespace: String,
-    pub key: String,
-    pub source: String,
-    pub type_variant: String,
-    pub value: Value,
 }
 
 impl Options {
@@ -24,15 +12,7 @@ impl Options {
     }
 
     pub fn insert(&mut self, key: String, value: Value) -> Option<Value> {
-        self.entries.retain(|entry| entry.key != key);
         self.values.insert(key, value)
-    }
-
-    pub fn insert_entry(&mut self, entry: OptionEntry) -> Option<Value> {
-        self.entries.retain(|existing| existing.key != entry.key);
-        let previous = self.values.insert(entry.key.clone(), entry.value.clone());
-        self.entries.push(entry);
-        previous
     }
 
     pub fn get(&self, key: &str) -> Option<&Value> {
@@ -49,20 +29,6 @@ impl Options {
 
     pub fn len(&self) -> usize {
         self.values.len()
-    }
-
-    pub fn entries(&self) -> &[OptionEntry] {
-        &self.entries
-    }
-
-    pub fn entry_for(&self, owner: &str, namespace: &str, key: &str) -> Option<&OptionEntry> {
-        self.entries
-            .iter()
-            .find(|entry| entry.owner == owner && entry.namespace == namespace && entry.key == key)
-    }
-
-    pub fn entry_for_key(&self, key: &str) -> Option<&OptionEntry> {
-        self.entries.iter().find(|entry| entry.key == key)
     }
 }
 
@@ -91,9 +57,6 @@ impl<'de> Deserialize<'de> for Options {
         D: Deserializer<'de>,
     {
         let values = Map::<String, Value>::deserialize(deserializer)?;
-        Ok(Self {
-            values,
-            entries: Vec::new(),
-        })
+        Ok(Self { values })
     }
 }

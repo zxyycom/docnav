@@ -6,8 +6,8 @@ use serde_json::json;
 use crate::cli::{ConfigCommand, ConfigInspect, ConfigPathArgs};
 use crate::error::{AppError, AppResult};
 use crate::output::CommandOutcome;
+use crate::parameter_catalog::document_parameter_catalog;
 use crate::project_context::ProjectContext;
-use crate::registry::AdapterRegistry;
 
 use super::model::CoreConfig;
 use super::store::{path_string, write_config};
@@ -53,12 +53,14 @@ fn config_inspect(command: ConfigInspect) -> AppResult<CommandOutcome> {
         command.config_paths.project_config.as_deref(),
         command.config_paths.user_config.as_deref(),
     )?;
-    let registry = AdapterRegistry::load(&project)?;
-    let inspection = inspect_navigation_config_sources(
-        project.navigation_config_source_descriptors(),
-        &registry,
-    )
-    .map_err(|error| AppError::new(error.into_diagnostic()))?;
+    let catalog = document_parameter_catalog().map_err(|error| {
+        AppError::internal(format!(
+            "document-parameter-catalog-build-failed:config-inspect:{error}"
+        ))
+    })?;
+    let inspection =
+        inspect_navigation_config_sources(project.navigation_config_source_descriptors(), &catalog)
+            .map_err(|error| AppError::new(error.into_diagnostic()))?;
 
     Ok(CommandOutcome::json(json!({
         "project_root": path_string(&project.project_root),

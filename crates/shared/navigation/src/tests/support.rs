@@ -6,23 +6,34 @@ use cli_config_resolution::{
     FieldIdentity, Source, SourceCandidate, SourceId, SourceKind, SourceLocator,
 };
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterOptionProcessStrategy, AdapterOptionSpec,
-    AdapterResult, FieldBound, FieldValidation, NativeOptionHandoff,
+    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
+    ReadInput, StandardInputBinding, UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
-    AdapterIdentity, Entry, FindArguments, FindResult, FormatDescriptor, InfoArguments, InfoResult,
-    Manifest, Operation, OutlineArguments, OutlineResult, ProbeReason, ProbeReasonCode,
-    ProbeResult, ReadArguments, ReadResult, RequestEnvelope,
+    AdapterIdentity, Entry, FindResult, FormatDescriptor, InfoResult, Manifest, Operation,
+    OutlineResult, PagedOperation, ProbeReason, ProbeReasonCode, ProbeResult, ReadResult,
+};
+use docnav_typed_fields::{
+    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldValidation, MergeStrategy,
+    ProcessStrategy,
 };
 use serde_json::Value;
 
 use crate::{
-    config_source::LoadedNavigationConfigSource, NavigationAdapterRef, NavigationAdapterRegistry,
-    NavigationCommand, NavigationConfigSource, NavigationConfigSourceLevel,
-    NavigationConfigSourceOrigin, NavigationConfigSources,
+    config_source::LoadedNavigationConfigSource, DocumentParameterBinding,
+    DocumentParameterCatalog, DocumentParameterEntry, NavigationAdapterRegistry, NavigationCommand,
+    NavigationConfigSource, NavigationConfigSourceLevel, NavigationConfigSourceOrigin,
+    NavigationConfigSources, NavigationOutputMode,
 };
 
-const MAX_HEADING_LEVEL_OPERATIONS: &[Operation] = &[Operation::Outline];
+const PAGE_IDENTITY: &str = "docnav.document.page";
+const LIMIT_IDENTITY: &str = "docnav.defaults.pagination.limit";
+const PAGINATION_ENABLED_IDENTITY: &str = "docnav.defaults.pagination.enabled";
+const OUTPUT_IDENTITY: &str = "docnav.defaults.output";
+const MARKDOWN_MAX_HEADING_LEVEL_IDENTITY: &str =
+    "docnav.adapters.docnav-markdown.options.max_heading_level";
+const OTHER_MAX_HEADING_LEVEL_IDENTITY: &str =
+    "docnav.adapters.docnav-other.options.max_heading_level";
 
 pub(super) fn navigation_command(candidates: Vec<SourceCandidate>) -> NavigationCommand {
     NavigationCommand {
@@ -79,6 +90,159 @@ pub(super) fn config_sources(project: Value, user: Value) -> NavigationConfigSou
     }
 }
 
+pub(super) fn document_parameter_catalog() -> DocumentParameterCatalog {
+    let fields = FieldDefSet::builder()
+        .field(
+            FieldDef::builder(PAGE_IDENTITY)
+                .process("cli", ProcessStrategy::cli_flag("--page"))
+                .validation(FieldValidation::int().between(
+                    FieldBound::closed(1),
+                    FieldBound::closed(i64::from(u32::MAX)),
+                ))
+                .default_static(1)
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::required(),
+        )
+        .field(
+            FieldDef::builder(LIMIT_IDENTITY)
+                .process("cli", ProcessStrategy::cli_flag("--limit"))
+                .process(
+                    "config",
+                    ProcessStrategy::config_path(["defaults", "pagination", "limit"]),
+                )
+                .validation(FieldValidation::int().between(
+                    FieldBound::closed(1),
+                    FieldBound::closed(i64::from(u32::MAX)),
+                ))
+                .default_static(6000)
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::required(),
+        )
+        .field(
+            FieldDef::builder(PAGINATION_ENABLED_IDENTITY)
+                .process("cli", ProcessStrategy::cli_flag("--pagination"))
+                .process(
+                    "config",
+                    ProcessStrategy::config_path(["defaults", "pagination", "enabled"]),
+                )
+                .validation(FieldValidation::boolean())
+                .default_static(true)
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::required(),
+        )
+        .field(
+            FieldDef::builder(OUTPUT_IDENTITY)
+                .process("cli", ProcessStrategy::cli_flag("--output"))
+                .process(
+                    "config",
+                    ProcessStrategy::config_path(["defaults", "output"]),
+                )
+                .validation(FieldValidation::string_enum::<NavigationOutputMode>())
+                .default_static(NavigationOutputMode::ReadableView)
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::required(),
+        )
+        .field(
+            FieldDef::builder(MARKDOWN_MAX_HEADING_LEVEL_IDENTITY)
+                .process("cli", ProcessStrategy::cli_flag("--max-heading-level"))
+                .process(
+                    "config",
+                    ProcessStrategy::config_path([
+                        "options",
+                        "docnav-markdown",
+                        "max_heading_level",
+                    ]),
+                )
+                .validation(
+                    FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
+                )
+                .default_static(3)
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::optional(),
+        )
+        .field(
+            FieldDef::builder(OTHER_MAX_HEADING_LEVEL_IDENTITY)
+                .process(
+                    "config",
+                    ProcessStrategy::config_path(["options", "docnav-other", "max_heading_level"]),
+                )
+                .validation(
+                    FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
+                )
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::optional(),
+        );
+    let entries = vec![
+        DocumentParameterEntry::new(
+            FieldIdentity::new(PAGE_IDENTITY).expect("test field identity must be valid"),
+            None,
+            vec![
+                DocumentParameterBinding::StandardInput(StandardInputBinding::OutlinePage),
+                DocumentParameterBinding::StandardInput(StandardInputBinding::ReadPage),
+                DocumentParameterBinding::StandardInput(StandardInputBinding::FindPage),
+            ],
+        ),
+        DocumentParameterEntry::new(
+            FieldIdentity::new(LIMIT_IDENTITY).expect("test field identity must be valid"),
+            None,
+            vec![
+                DocumentParameterBinding::StandardInput(StandardInputBinding::OutlineLimit),
+                DocumentParameterBinding::StandardInput(StandardInputBinding::ReadLimit),
+                DocumentParameterBinding::StandardInput(StandardInputBinding::FindLimit),
+            ],
+        ),
+        DocumentParameterEntry::new(
+            FieldIdentity::new(PAGINATION_ENABLED_IDENTITY)
+                .expect("test field identity must be valid"),
+            None,
+            vec![
+                DocumentParameterBinding::PaginationEnabled(PagedOperation::Outline),
+                DocumentParameterBinding::PaginationEnabled(PagedOperation::Read),
+                DocumentParameterBinding::PaginationEnabled(PagedOperation::Find),
+            ],
+        ),
+        DocumentParameterEntry::new(
+            FieldIdentity::new(OUTPUT_IDENTITY).expect("test field identity must be valid"),
+            None,
+            vec![
+                DocumentParameterBinding::OutputMode(Operation::Outline),
+                DocumentParameterBinding::OutputMode(Operation::Read),
+                DocumentParameterBinding::OutputMode(Operation::Find),
+                DocumentParameterBinding::OutputMode(Operation::Info),
+            ],
+        ),
+        DocumentParameterEntry::new(
+            FieldIdentity::new(MARKDOWN_MAX_HEADING_LEVEL_IDENTITY)
+                .expect("test field identity must be valid"),
+            Some("docnav-markdown".to_owned()),
+            vec![
+                DocumentParameterBinding::StandardInput(
+                    StandardInputBinding::OutlineMaxHeadingLevel,
+                ),
+                DocumentParameterBinding::StandardInput(StandardInputBinding::FindMaxHeadingLevel),
+            ],
+        ),
+        DocumentParameterEntry::new(
+            FieldIdentity::new(OTHER_MAX_HEADING_LEVEL_IDENTITY)
+                .expect("test field identity must be valid"),
+            Some("docnav-other".to_owned()),
+            vec![
+                DocumentParameterBinding::StandardInput(
+                    StandardInputBinding::OutlineMaxHeadingLevel,
+                ),
+                DocumentParameterBinding::StandardInput(StandardInputBinding::FindMaxHeadingLevel),
+            ],
+        ),
+    ];
+
+    DocumentParameterCatalog::new(
+        ["docnav-markdown", "docnav-other", "docnav-unsupported"],
+        fields,
+        entries,
+    )
+    .expect("test document parameter catalog must be valid")
+}
+
 pub(super) fn write_config_file(path: &Path, value: Value) {
     fs::create_dir_all(path.parent().expect("config parent")).unwrap();
     fs::write(path, serde_json::to_string_pretty(&value).unwrap()).unwrap();
@@ -105,103 +269,40 @@ pub(super) fn temp_workspace_path(name: &str) -> PathBuf {
 pub(super) struct StubRegistry;
 
 impl NavigationAdapterRegistry for StubRegistry {
-    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
-        vec![adapter_ref(&StubAdapter)]
+    fn adapters(&self) -> Vec<AdapterDefinition<'_>> {
+        vec![adapter_definition(&StubAdapter, stub_manifest(), None)]
     }
 }
 
 pub(super) struct MultiAdapterRegistry;
 
 impl NavigationAdapterRegistry for MultiAdapterRegistry {
-    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
-        vec![adapter_ref(&StubAdapter), adapter_ref(&OtherAdapter)]
+    fn adapters(&self) -> Vec<AdapterDefinition<'_>> {
+        vec![
+            adapter_definition(&StubAdapter, stub_manifest(), None),
+            adapter_definition(&OtherAdapter, other_manifest(), None),
+        ]
     }
 }
 
 pub(super) struct UnsupportedRegistry;
 
 impl NavigationAdapterRegistry for UnsupportedRegistry {
-    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
-        vec![adapter_ref(&UnsupportedAdapter)]
+    fn adapters(&self) -> Vec<AdapterDefinition<'_>> {
+        vec![adapter_definition(
+            &UnsupportedAdapter,
+            unsupported_manifest(),
+            None,
+        )]
     }
 }
 
-fn adapter_ref(adapter: &dyn Adapter) -> NavigationAdapterRef<'_> {
-    NavigationAdapterRef::new(
-        AdapterDefinition::transition_from_adapter(adapter).expect("valid test adapter definition"),
-    )
-}
-
-fn stub_adapter_options() -> Vec<AdapterOptionSpec> {
-    vec![
-        AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.max_heading_level")
-            .owner("docnav-markdown")
-            .operations(MAX_HEADING_LEVEL_OPERATIONS)
-            .path(["options", "max_heading_level"])
-            .process(
-                "cli",
-                AdapterOptionProcessStrategy::cli_flag("--max-heading-level"),
-            )
-            .process(
-                "config",
-                AdapterOptionProcessStrategy::config_path([
-                    "options",
-                    "docnav-markdown",
-                    "max_heading_level",
-                ]),
-            )
-            .validation(
-                FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
-            )
-            .default_static(3)
-            .build(),
-        AdapterOptionSpec::builder("docnav.adapters.docnav-markdown.options.payload")
-            .owner("docnav-markdown")
-            .operations(MAX_HEADING_LEVEL_OPERATIONS)
-            .path(["options", "payload"])
-            .process("cli", AdapterOptionProcessStrategy::cli_flag("--payload"))
-            .process(
-                "config",
-                AdapterOptionProcessStrategy::config_path([
-                    "options",
-                    "docnav-markdown",
-                    "payload",
-                ]),
-            )
-            .validation(FieldValidation::json())
-            .build(),
-    ]
-}
-
-fn other_adapter_options() -> Vec<AdapterOptionSpec> {
-    vec![
-        AdapterOptionSpec::builder("docnav.adapters.docnav-other.options.max_heading_level")
-            .owner("docnav-other")
-            .operations(MAX_HEADING_LEVEL_OPERATIONS)
-            .path(["options", "max_heading_level"])
-            .process(
-                "config",
-                AdapterOptionProcessStrategy::config_path([
-                    "options",
-                    "docnav-other",
-                    "max_heading_level",
-                ]),
-            )
-            .validation(
-                FieldValidation::int().between(FieldBound::closed(1), FieldBound::closed(6)),
-            )
-            .build(),
-        AdapterOptionSpec::builder("docnav.adapters.docnav-other.options.payload")
-            .owner("docnav-other")
-            .operations(MAX_HEADING_LEVEL_OPERATIONS)
-            .path(["options", "payload"])
-            .process(
-                "config",
-                AdapterOptionProcessStrategy::config_path(["options", "docnav-other", "payload"]),
-            )
-            .validation(FieldValidation::json())
-            .build(),
-    ]
+fn adapter_definition(
+    adapter: &dyn Adapter,
+    manifest: Manifest,
+    capabilities: Option<UnstructuredFullReadCapabilities>,
+) -> AdapterDefinition<'_> {
+    AdapterDefinition::new(manifest, adapter, capabilities).expect("valid test adapter definition")
 }
 
 struct StubAdapter;
@@ -210,31 +311,23 @@ struct OtherAdapter;
 
 struct UnsupportedAdapter;
 
+fn stub_manifest() -> Manifest {
+    Manifest {
+        manifest_version: "0.1".to_owned(),
+        adapter: AdapterIdentity {
+            id: "docnav-markdown".to_owned(),
+            name: "Stub".to_owned(),
+            version: "0.1.0".to_owned(),
+        },
+        formats: vec![FormatDescriptor {
+            id: "stub".to_owned(),
+            extensions: vec![".stub".to_owned()],
+            content_types: vec!["text/stub".to_owned()],
+        }],
+    }
+}
+
 impl Adapter for StubAdapter {
-    fn adapter_id(&self) -> &str {
-        "docnav-markdown"
-    }
-
-    fn manifest(&self) -> Manifest {
-        Manifest {
-            manifest_version: "0.1".to_owned(),
-            adapter: AdapterIdentity {
-                id: "docnav-markdown".to_owned(),
-                name: "Stub".to_owned(),
-                version: "0.1.0".to_owned(),
-            },
-            formats: vec![FormatDescriptor {
-                id: "stub".to_owned(),
-                extensions: vec![".stub".to_owned()],
-                content_types: vec!["text/stub".to_owned()],
-            }],
-        }
-    }
-
-    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
-        stub_adapter_options()
-    }
-
     fn probe(&self, path: &str) -> ProbeResult {
         ProbeResult {
             probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
@@ -250,29 +343,10 @@ impl Adapter for StubAdapter {
         }
     }
 
-    fn outline(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
-        let native_options = NativeOptionHandoff::from_options(arguments.options.as_ref());
-        self.outline_with_native_options(request, arguments, &native_options)
-    }
-
-    fn outline_with_native_options(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &OutlineArguments,
-        native_options: &NativeOptionHandoff,
-    ) -> AdapterResult<OutlineResult> {
-        let label = native_options
-            .get_key("payload")
-            .map(|value| format!("Payload {}", value.value))
-            .or_else(|| {
-                native_options
-                    .get_key("max_heading_level")
-                    .map(|value| format!("Max {}", value.value))
-            })
+    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        let label = input
+            .max_heading_level
+            .map(|value| format!("Max {value}"))
             .unwrap_or_else(|| "Stub".to_owned());
         Ok(OutlineResult::structured(
             vec![Entry {
@@ -290,59 +364,39 @@ impl Adapter for StubAdapter {
         ))
     }
 
-    fn read(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult> {
+    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::ref_not_found("missing"))
     }
 
-    fn find(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &FindArguments,
-    ) -> AdapterResult<FindResult> {
+    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::invalid_request(
             "arguments.query",
             "query is not indexed",
         ))
     }
 
-    fn info(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult> {
+    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("stub-info-unimplemented"))
     }
 }
 
+fn other_manifest() -> Manifest {
+    Manifest {
+        manifest_version: "0.1".to_owned(),
+        adapter: AdapterIdentity {
+            id: "docnav-other".to_owned(),
+            name: "Other".to_owned(),
+            version: "0.1.0".to_owned(),
+        },
+        formats: vec![FormatDescriptor {
+            id: "other".to_owned(),
+            extensions: vec![".other".to_owned()],
+            content_types: vec!["text/other".to_owned()],
+        }],
+    }
+}
+
 impl Adapter for OtherAdapter {
-    fn adapter_id(&self) -> &str {
-        "docnav-other"
-    }
-
-    fn manifest(&self) -> Manifest {
-        Manifest {
-            manifest_version: "0.1".to_owned(),
-            adapter: AdapterIdentity {
-                id: "docnav-other".to_owned(),
-                name: "Other".to_owned(),
-                version: "0.1.0".to_owned(),
-            },
-            formats: vec![FormatDescriptor {
-                id: "other".to_owned(),
-                extensions: vec![".other".to_owned()],
-                content_types: vec!["text/other".to_owned()],
-            }],
-        }
-    }
-
-    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
-        other_adapter_options()
-    }
-
     fn probe(&self, path: &str) -> ProbeResult {
         ProbeResult {
             probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
@@ -358,60 +412,40 @@ impl Adapter for OtherAdapter {
         }
     }
 
-    fn outline(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
+    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
         Err(AdapterError::internal("other-outline-unreachable"))
     }
 
-    fn read(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult> {
+    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("other-read-unreachable"))
     }
 
-    fn find(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &FindArguments,
-    ) -> AdapterResult<FindResult> {
+    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::internal("other-find-unreachable"))
     }
 
-    fn info(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult> {
+    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("other-info-unreachable"))
     }
 }
 
+fn unsupported_manifest() -> Manifest {
+    Manifest {
+        manifest_version: "0.1".to_owned(),
+        adapter: AdapterIdentity {
+            id: "docnav-unsupported".to_owned(),
+            name: "Unsupported".to_owned(),
+            version: "0.1.0".to_owned(),
+        },
+        formats: vec![FormatDescriptor {
+            id: "unsupported".to_owned(),
+            extensions: vec![".unsupported".to_owned()],
+            content_types: vec!["application/x-unsupported".to_owned()],
+        }],
+    }
+}
+
 impl Adapter for UnsupportedAdapter {
-    fn adapter_id(&self) -> &str {
-        "docnav-unsupported"
-    }
-
-    fn manifest(&self) -> Manifest {
-        Manifest {
-            manifest_version: "0.1".to_owned(),
-            adapter: AdapterIdentity {
-                id: "docnav-unsupported".to_owned(),
-                name: "Unsupported".to_owned(),
-                version: "0.1.0".to_owned(),
-            },
-            formats: vec![FormatDescriptor {
-                id: "unsupported".to_owned(),
-                extensions: vec![".unsupported".to_owned()],
-                content_types: vec!["application/x-unsupported".to_owned()],
-            }],
-        }
-    }
-
     fn probe(&self, path: &str) -> ProbeResult {
         ProbeResult {
             probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
@@ -427,35 +461,19 @@ impl Adapter for UnsupportedAdapter {
         }
     }
 
-    fn outline(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
+    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
         Err(AdapterError::internal("unsupported-outline-unreachable"))
     }
 
-    fn read(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult> {
+    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("unsupported-read-unreachable"))
     }
 
-    fn find(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &FindArguments,
-    ) -> AdapterResult<FindResult> {
+    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::internal("unsupported-find-unreachable"))
     }
 
-    fn info(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult> {
+    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("unsupported-info-unreachable"))
     }
 }

@@ -1,18 +1,14 @@
 use std::fmt;
 
-use docnav_adapter_contracts::{AdapterDefinition, AdapterOptionSpec};
 use docnav_protocol::Operation;
 use docnav_typed_fields::{
-    ExpectedFieldShape, FieldDefBuilder, FieldDefDeclaration, FieldDefSet, FieldDefSetBuildError,
+    ExpectedFieldShape, FieldDef, FieldDefBuilder, FieldDefSet, FieldDefSetBuildError,
     FieldDefSetBuilder, FieldIdentity,
 };
 
-use crate::{NavigationAdapterRegistry, NavigationError, NavigationOutputMode};
+use crate::NavigationError;
 
-use super::{
-    values::uses_document_window, CONFIG_PROCESSING, DEFAULT_LIMIT, DEFAULT_PAGE,
-    DEFAULT_PAGINATION_ENABLED, DIRECT_PROCESSING,
-};
+use super::{catalog::DocumentParameterCatalog, CONFIG_PROCESSING, DIRECT_PROCESSING};
 
 mod definitions;
 
@@ -20,43 +16,24 @@ mod definitions;
 mod tests;
 
 use definitions::{
-    adapter_id_field, configurable_limit_field, configurable_output_field, document_path_field,
-    find_query_field, invocation_log_content_capture_enabled_field,
-    invocation_log_content_capture_root_field, invocation_log_enabled_field,
-    invocation_log_path_field, pagination_enabled_field, read_ref_field, standard_page_field,
+    adapter_id_field, document_path_field, find_query_field,
+    invocation_log_content_capture_enabled_field, invocation_log_content_capture_root_field,
+    invocation_log_enabled_field, invocation_log_path_field, read_ref_field,
 };
-
-const ADAPTER_OPTION_DECLARATION_ERROR_ID: &str = "adapter-option-field-declaration-invalid";
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DocumentCliFieldOwner {
-    Navigation,
-    Adapter,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DocumentCliFieldAttribution {
-    owner: DocumentCliFieldOwner,
     identity: FieldIdentity,
     declaration_path: Option<Vec<String>>,
-    adapter_id: Option<String>,
 }
 
 impl DocumentCliFieldAttribution {
-    pub fn owner(&self) -> DocumentCliFieldOwner {
-        self.owner
-    }
-
     pub fn identity(&self) -> &FieldIdentity {
         &self.identity
     }
 
     pub fn declaration_path(&self) -> Option<&[String]> {
         self.declaration_path.as_deref()
-    }
-
-    pub fn adapter_id(&self) -> Option<&str> {
-        self.adapter_id.as_deref()
     }
 }
 
@@ -84,10 +61,6 @@ impl DocumentCliFieldSet {
 
 #[derive(Debug, PartialEq)]
 pub enum DocumentCliFieldSetBuildError {
-    InvalidAdapterOption {
-        attribution: DocumentCliFieldAttribution,
-        reason: String,
-    },
     DuplicateField {
         previous: Box<DocumentCliFieldAttribution>,
         current: Box<DocumentCliFieldAttribution>,
@@ -101,15 +74,6 @@ pub enum DocumentCliFieldSetBuildError {
 impl fmt::Display for DocumentCliFieldSetBuildError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidAdapterOption {
-                attribution,
-                reason,
-            } => write!(
-                formatter,
-                "adapter field {} at {} is invalid: {reason}",
-                attribution.identity.as_str(),
-                display_declaration_path(attribution.declaration_path())
-            ),
             Self::DuplicateField {
                 previous,
                 current,
@@ -131,12 +95,11 @@ impl std::error::Error for DocumentCliFieldSetBuildError {
             Self::DuplicateField { source, .. } | Self::FieldSet { source } => {
                 Some(source.as_ref())
             }
-            Self::InvalidAdapterOption { .. } => None,
         }
     }
 }
 
-pub(super) fn adapter_intent_fields() -> Result<FieldDefSet, NavigationError> {
+pub(crate) fn adapter_routing_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     FieldDefSet::builder()
         .field_with_declaration_path(
             ["adapter"],
@@ -144,22 +107,36 @@ pub(super) fn adapter_intent_fields() -> Result<FieldDefSet, NavigationError> {
             ExpectedFieldShape::optional(),
         )
         .build()
+}
+
+pub(crate) fn invocation_log_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field(
+            invocation_log_enabled_field(CONFIG_PROCESSING),
+            ExpectedFieldShape::optional(),
+        )
+        .field(
+            invocation_log_path_field(CONFIG_PROCESSING),
+            ExpectedFieldShape::optional(),
+        )
+        .field(
+            invocation_log_content_capture_enabled_field(CONFIG_PROCESSING),
+            ExpectedFieldShape::optional(),
+        )
+        .field(
+            invocation_log_content_capture_root_field(CONFIG_PROCESSING),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn adapter_intent_fields() -> Result<FieldDefSet, NavigationError> {
+    adapter_routing_fields()
         .map_err(|_| NavigationError::internal("adapter-intent-fields-build-failed"))
 }
 
 pub(super) struct OperationFieldSet {
     projection: DocumentCliFieldSet,
-    adapter_options: Vec<AdapterOptionSpec>,
-}
-
-impl OperationFieldSet {
-    pub(super) fn adapter_options(&self) -> &[AdapterOptionSpec] {
-        &self.adapter_options
-    }
-
-    fn into_projection(self) -> DocumentCliFieldSet {
-        self.projection
-    }
 }
 
 impl AsRef<FieldDefSet> for OperationFieldSet {
@@ -170,16 +147,14 @@ impl AsRef<FieldDefSet> for OperationFieldSet {
 
 struct OperationFieldSetBuilder {
     builder: FieldDefSetBuilder,
-    adapter_options: Vec<AdapterOptionSpec>,
-    attributions: Vec<DocumentCliFieldAttribution>,
+    declaration_paths: Vec<Option<Vec<String>>>,
 }
 
 impl OperationFieldSetBuilder {
     fn new() -> Self {
         Self {
             builder: FieldDefSet::builder(),
-            adapter_options: Vec::new(),
-            attributions: Vec::new(),
+            declaration_paths: Vec::new(),
         }
     }
 
@@ -198,108 +173,55 @@ impl OperationFieldSetBuilder {
             .into_iter()
             .map(Into::into)
             .collect::<Vec<_>>();
-        let declaration =
-            FieldDefDeclaration::with_declaration_path(declaration_path, builder, expected);
-        let identity = declaration
-            .schema_metadata()
-            .expect("navigation-owned field declarations are valid")
-            .identity;
-        self.attributions.push(DocumentCliFieldAttribution {
-            owner: DocumentCliFieldOwner::Navigation,
-            identity,
-            declaration_path: declaration.declaration_path().map(<[String]>::to_vec),
-            adapter_id: None,
-        });
-        self.builder = self.builder.field_declaration(declaration);
+        self.declaration_paths.push(Some(declaration_path.clone()));
+        self.builder =
+            self.builder
+                .field_with_declaration_path(declaration_path, builder, expected);
         self
     }
 
-    fn adapter_options(
-        mut self,
-        adapter_id: &str,
-        options: &[AdapterOptionSpec],
-        operation: Option<Operation>,
-    ) -> Result<Self, DocumentCliFieldSetBuildError> {
-        for option in options {
-            if operation.is_some_and(|operation| !option.applies_to(operation)) {
-                continue;
-            }
-            let declaration = option
-                .field_declaration()
-                .expect("adapter definition validates native option declarations");
-            let attribution = adapter_field_attribution(adapter_id, &declaration);
-            validate_adapter_option_config_path(option, &attribution)?;
-            self.builder = self.builder.field_declaration(declaration);
-            self.adapter_options.push(option.clone());
-            self.attributions.push(attribution);
-        }
-        Ok(self)
-    }
-
-    fn all_adapter_options(
-        mut self,
-        registry: &(impl NavigationAdapterRegistry + ?Sized),
-    ) -> Result<Self, NavigationError> {
-        for adapter in registry.adapters() {
-            self = self
-                .adapter_options(
-                    adapter.definition.id(),
-                    adapter.definition.native_options(),
-                    None,
-                )
-                .map_err(|_| invalid_adapter_option_declaration())?;
-        }
-        Ok(self)
-    }
-
-    fn build(self) -> Result<OperationFieldSet, DocumentCliFieldSetBuildError> {
+    fn build<'a>(
+        self,
+        catalog_fields: impl IntoIterator<Item = &'a FieldDef>,
+    ) -> Result<OperationFieldSet, DocumentCliFieldSetBuildError> {
         let Self {
             builder,
-            adapter_options,
-            attributions,
+            declaration_paths,
         } = self;
-        let fields = builder
-            .build()
+        let base_fields =
+            builder
+                .build()
+                .map_err(|source| DocumentCliFieldSetBuildError::FieldSet {
+                    source: Box::new(source),
+                })?;
+        let attributions = base_fields
+            .schema_metadata()
+            .into_iter()
+            .zip(declaration_paths)
+            .map(|(metadata, declaration_path)| DocumentCliFieldAttribution {
+                identity: metadata.identity().clone(),
+                declaration_path,
+            })
+            .collect::<Vec<_>>();
+        let fields = base_fields
+            .with_fields(catalog_fields)
             .map_err(|source| attributed_field_set_error(source, &attributions))?;
         Ok(OperationFieldSet {
             projection: DocumentCliFieldSet {
                 fields,
                 attributions,
             },
-            adapter_options,
         })
     }
 }
 
-pub(crate) fn registry_cli_fields(
-    operation: Operation,
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
-) -> Result<DocumentCliFieldSet, DocumentCliFieldSetBuildError> {
-    let mut builder = common_operation_fields(operation);
-    for adapter in registry.adapters() {
-        builder = builder.adapter_options(
-            adapter.definition.id(),
-            adapter.definition.native_options(),
-            Some(operation),
-        )?;
-    }
-    builder.build().map(OperationFieldSet::into_projection)
-}
-
 pub(super) fn operation_fields(
     operation: Operation,
-    selected_adapter: &AdapterDefinition<'_>,
+    selected_adapter_id: &str,
+    catalog: &DocumentParameterCatalog,
 ) -> Result<OperationFieldSet, NavigationError> {
-    let builder = common_operation_fields(operation)
-        .adapter_options(
-            selected_adapter.id(),
-            selected_adapter.native_options(),
-            Some(operation),
-        )
-        .map_err(|_| invalid_adapter_option_declaration())?;
-
-    builder
-        .build()
+    common_operation_fields(operation)
+        .build(catalog.selected_operation_fields(selected_adapter_id, operation))
         .map_err(|_| NavigationError::internal("operation-fields-build-failed"))
 }
 
@@ -314,12 +236,6 @@ fn common_operation_fields(operation: Operation) -> OperationFieldSetBuilder {
             ["adapter"],
             adapter_id_field(DIRECT_PROCESSING, CONFIG_PROCESSING),
             ExpectedFieldShape::optional(),
-        )
-        .field_with_declaration_path(
-            ["output"],
-            configurable_output_field::<NavigationOutputMode>(DIRECT_PROCESSING, CONFIG_PROCESSING)
-                .default_static(NavigationOutputMode::ReadableView),
-            ExpectedFieldShape::required(),
         );
 
     builder = match operation {
@@ -336,134 +252,7 @@ fn common_operation_fields(operation: Operation) -> OperationFieldSetBuilder {
         Operation::Outline | Operation::Info => builder,
     };
 
-    if uses_document_window(operation) {
-        builder = builder
-            .field_with_declaration_path(
-                ["pagination"],
-                pagination_enabled_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
-                    .default_static(DEFAULT_PAGINATION_ENABLED),
-                ExpectedFieldShape::required(),
-            )
-            .field_with_declaration_path(
-                ["page"],
-                standard_page_field(DIRECT_PROCESSING).default_static(DEFAULT_PAGE),
-                ExpectedFieldShape::required(),
-            )
-            .field_with_declaration_path(
-                ["limit"],
-                configurable_limit_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
-                    .default_static(DEFAULT_LIMIT),
-                ExpectedFieldShape::required(),
-            );
-    }
-
     builder
-}
-
-pub(super) fn config_inspection_fields(
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
-) -> Result<OperationFieldSet, NavigationError> {
-    OperationFieldSetBuilder::new()
-        .field_with_declaration_path(
-            ["adapter"],
-            adapter_id_field(DIRECT_PROCESSING, CONFIG_PROCESSING),
-            ExpectedFieldShape::optional(),
-        )
-        .field_with_declaration_path(
-            ["output"],
-            configurable_output_field::<NavigationOutputMode>(DIRECT_PROCESSING, CONFIG_PROCESSING)
-                .default_static(NavigationOutputMode::ReadableView),
-            ExpectedFieldShape::required(),
-        )
-        .field_with_declaration_path(
-            ["pagination"],
-            pagination_enabled_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
-                .default_static(DEFAULT_PAGINATION_ENABLED),
-            ExpectedFieldShape::required(),
-        )
-        .field_with_declaration_path(
-            ["limit"],
-            configurable_limit_field(DIRECT_PROCESSING, CONFIG_PROCESSING)
-                .default_static(DEFAULT_LIMIT),
-            ExpectedFieldShape::required(),
-        )
-        .field_with_declaration_path(
-            ["invocation_log", "enabled"],
-            invocation_log_enabled_field(CONFIG_PROCESSING),
-            ExpectedFieldShape::optional(),
-        )
-        .field_with_declaration_path(
-            ["invocation_log", "path"],
-            invocation_log_path_field(CONFIG_PROCESSING),
-            ExpectedFieldShape::optional(),
-        )
-        .field_with_declaration_path(
-            ["invocation_log", "content_capture", "enabled"],
-            invocation_log_content_capture_enabled_field(CONFIG_PROCESSING),
-            ExpectedFieldShape::optional(),
-        )
-        .field_with_declaration_path(
-            ["invocation_log", "content_capture", "root"],
-            invocation_log_content_capture_root_field(CONFIG_PROCESSING),
-            ExpectedFieldShape::optional(),
-        )
-        .all_adapter_options(registry)?
-        .build()
-        .map_err(|_| NavigationError::internal("config-inspection-fields-build-failed"))
-}
-
-fn validate_adapter_option_config_path(
-    option: &AdapterOptionSpec,
-    attribution: &DocumentCliFieldAttribution,
-) -> Result<(), DocumentCliFieldSetBuildError> {
-    let Some(path) = option
-        .processing_path(CONFIG_PROCESSING)
-        .expect("adapter definition validates native option processing metadata")
-    else {
-        return Ok(());
-    };
-    let adapter_id = attribution
-        .adapter_id()
-        .expect("adapter field attribution has an adapter id");
-    if is_adapter_option_config_path(&path, adapter_id, option.key()) {
-        Ok(())
-    } else {
-        Err(DocumentCliFieldSetBuildError::InvalidAdapterOption {
-            attribution: attribution.clone(),
-            reason: format!(
-                "config locator {} must be options.{adapter_id}.{}",
-                path.join("."),
-                option.key()
-            ),
-        })
-    }
-}
-
-fn is_adapter_option_config_path(path: &[String], adapter_id: &str, option_key: &str) -> bool {
-    path.len() == 3
-        && path.first().is_some_and(|segment| segment == "options")
-        && path.get(1).is_some_and(|segment| segment == adapter_id)
-        && path.get(2).is_some_and(|segment| segment == option_key)
-}
-
-fn invalid_adapter_option_declaration() -> NavigationError {
-    NavigationError::internal(ADAPTER_OPTION_DECLARATION_ERROR_ID)
-}
-
-fn adapter_field_attribution(
-    adapter_id: &str,
-    declaration: &FieldDefDeclaration,
-) -> DocumentCliFieldAttribution {
-    let identity = declaration
-        .schema_metadata()
-        .expect("adapter definition validates native option declarations")
-        .identity;
-    DocumentCliFieldAttribution {
-        owner: DocumentCliFieldOwner::Adapter,
-        identity,
-        declaration_path: declaration.declaration_path().map(<[String]>::to_vec),
-        adapter_id: Some(adapter_id.to_owned()),
-    }
 }
 
 fn attributed_field_set_error(
@@ -538,15 +327,8 @@ fn find_attribution_index(
 }
 
 fn display_attribution(attribution: &DocumentCliFieldAttribution) -> String {
-    let owner = match attribution.owner {
-        DocumentCliFieldOwner::Navigation => "navigation".to_owned(),
-        DocumentCliFieldOwner::Adapter => format!(
-            "adapter {}",
-            attribution.adapter_id.as_deref().unwrap_or("<unknown>")
-        ),
-    };
     format!(
-        "{owner} field {} at {}",
+        "field {} at {}",
         attribution.identity.as_str(),
         display_declaration_path(attribution.declaration_path())
     )

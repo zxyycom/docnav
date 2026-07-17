@@ -1,4 +1,4 @@
-use crate::{AdapterError, NativeOptionHandoff, NativeOptionIssue};
+use crate::{AdapterError, NativeOptionIssue};
 use docnav_protocol::ProtocolDiagnosticCode;
 
 #[test]
@@ -60,31 +60,4 @@ fn adapter_error_constructors_project_protocol_error_details() {
         invalid.guidance().unwrap()[0],
         "Use --max-heading-level between 1 and 6."
     );
-}
-
-#[test]
-fn native_option_handoff_preserves_handler_facing_typed_metadata() {
-    let mut options = docnav_protocol::Options::new();
-    options.insert_entry(docnav_protocol::OptionEntry {
-        identity: "docnav.adapters.no-hook.options.max".to_owned(),
-        owner: "no-hook".to_owned(),
-        namespace: "options".to_owned(),
-        key: "max".to_owned(),
-        source: "project".to_owned(),
-        type_variant: "integer".to_owned(),
-        value: serde_json::json!(4),
-    });
-
-    let handoff = NativeOptionHandoff::from_options(Some(&options));
-    let value = handoff
-        .get("no-hook", "options", "max")
-        .expect("typed option value");
-
-    assert_eq!(value.identity, "docnav.adapters.no-hook.options.max");
-    assert_eq!(value.owner, "no-hook");
-    assert_eq!(value.namespace, "options");
-    assert_eq!(value.key, "max");
-    assert_eq!(value.source, "project");
-    assert_eq!(value.type_variant, "integer");
-    assert_eq!(value.value, serde_json::json!(4));
 }

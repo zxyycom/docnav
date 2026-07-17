@@ -2,13 +2,15 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-use docnav_navigation::{validate_navigation_config_source_value, NavigationConfigSourceLevel};
+use docnav_navigation::{
+    validate_navigation_config_source_value, DocumentParameterCatalog, NavigationConfigSourceLevel,
+};
 use serde_json::Value;
 
 use crate::error::{AppError, AppResult};
+use crate::parameter_catalog::document_parameter_catalog;
 use crate::project_context::{ConfigPathOrigin, ProjectContext, SelectedConfigPath};
 use crate::project_paths::path_to_slash;
-use crate::registry::AdapterRegistry;
 
 use super::model::{ConfigContext, CoreConfig};
 
@@ -16,9 +18,9 @@ mod diagnostics;
 use diagnostics::config_source_error;
 
 pub(crate) fn load_context_for_project(project: ProjectContext) -> AppResult<ConfigContext> {
-    let registry = AdapterRegistry::load(&project)?;
-    let project_config = read_context_config(&project, &registry, ConfigFileSource::Project)?;
-    let user_config = read_context_config(&project, &registry, ConfigFileSource::User)?;
+    let catalog = config_parameter_catalog()?;
+    let project_config = read_context_config(&project, &catalog, ConfigFileSource::Project)?;
+    let user_config = read_context_config(&project, &catalog, ConfigFileSource::User)?;
     Ok(ConfigContext {
         project,
         project_config,
@@ -57,15 +59,15 @@ impl ConfigFileSource {
 
 fn read_context_config(
     project: &ProjectContext,
-    registry: &AdapterRegistry,
+    catalog: &DocumentParameterCatalog,
     source: ConfigFileSource,
 ) -> AppResult<CoreConfig> {
-    read_selected_config(source.selected_path(project), registry, source)
+    read_config(source.selected_path(project), catalog, source)
 }
 
 fn read_config(
     selection: &SelectedConfigPath,
-    registry: &AdapterRegistry,
+    catalog: &DocumentParameterCatalog,
     source: ConfigFileSource,
 ) -> AppResult<CoreConfig> {
     let path = &selection.path;
@@ -78,7 +80,7 @@ fn read_config(
         navigation_config_path_origin(origin),
         path_string(path),
         value.clone(),
-        registry,
+        catalog,
     )
     .map_err(|error| AppError::new(error.into_diagnostic()))?;
     let config: CoreConfig = serde_json::from_value(value)
@@ -88,10 +90,17 @@ fn read_config(
 
 pub(super) fn read_selected_config(
     selection: &SelectedConfigPath,
-    registry: &AdapterRegistry,
     source: ConfigFileSource,
 ) -> AppResult<CoreConfig> {
-    read_config(selection, registry, source)
+    read_config(selection, &config_parameter_catalog()?, source)
+}
+
+fn config_parameter_catalog() -> AppResult<DocumentParameterCatalog> {
+    document_parameter_catalog().map_err(|error| {
+        AppError::internal(format!(
+            "document-parameter-catalog-build-failed:config-pre-read:{error}"
+        ))
+    })
 }
 
 fn read_config_source_value(

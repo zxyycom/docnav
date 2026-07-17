@@ -1,107 +1,41 @@
+//! Linked adapter strategy contract for Docnav navigation.
+//!
+//! [`AdapterDefinition`] combines manifest identity, declared capabilities, and one strategy.
+//! Strategies receive closed operation-specific input and retain probe, navigation, and optional
+//! unstructured full-read hooks. Parameter declaration and source resolution remain outside this
+//! crate.
+
 use docnav_diagnostics::{
     typed_codes, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails, InternalDetails,
     PathDetails, PathEncodingDetails, PathReasonDetails, RefDetails, RefReasonDetails,
 };
 use docnav_protocol::{
     normalize_protocol_diagnostic, protocol_error_record_draft,
-    protocol_error_record_draft_with_summary, Cost, FindArguments, FindResult, InfoArguments,
-    InfoResult, Manifest, OutlineArguments, OutlineResult, ProbeResult, ProtocolDiagnosticFallback,
-    ProtocolError, ReadArguments, ReadResult, RequestEnvelope,
+    protocol_error_record_draft_with_summary, Cost, FindResult, InfoResult, OutlineResult,
+    ProbeResult, ProtocolDiagnosticFallback, ProtocolError, ReadResult, RequestEnvelope,
 };
-pub use docnav_typed_fields::{
-    CliBooleanEncoding, CliProcessingMetadata, DefaultMetadata, ExpectedFieldShape, FieldBound,
-    FieldDefBuilder, FieldDefDeclaration, FieldDefSet, FieldDefSetBuilder, FieldValidation,
-    FieldValue, ProcessStrategy, ProcessingId, ValueKind,
-};
-
 mod definition;
 mod native_option;
+mod operation_input;
 
-pub use definition::{
-    AdapterDefinition, AdapterDefinitionBuilder, AdapterDefinitionError, AdapterOperationHandlers,
-    FullReadCapabilityGroup,
-};
-pub use native_option::{
-    AdapterOptionProcessStrategy, AdapterOptionSpec, AdapterOptionSpecBuilder,
-    AdapterOptionSpecError, NativeOptionHandoff, NativeOptionIssue, NativeOptionValue,
+pub use definition::{AdapterDefinition, AdapterDefinitionError};
+pub use native_option::NativeOptionIssue;
+pub use operation_input::{
+    FindInput, InfoInput, OutlineInput, ReadInput, StandardInputBinding, StandardOperationInput,
 };
 
 pub type AdapterResult<T> = Result<T, AdapterError>;
 
 pub trait Adapter: Sync {
-    fn adapter_id(&self) -> &str;
-
-    fn manifest(&self) -> Manifest;
-
-    fn adapter_options(&self) -> Vec<AdapterOptionSpec> {
-        Vec::new()
-    }
-
-    fn unstructured_full_read_capabilities(&self) -> UnstructuredFullReadCapabilities {
-        UnstructuredFullReadCapabilities::default()
-    }
-
     fn probe(&self, path: &str) -> ProbeResult;
 
-    fn outline(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult>;
+    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult>;
 
-    fn outline_with_native_options(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &OutlineArguments,
-        _native_options: &NativeOptionHandoff,
-    ) -> AdapterResult<OutlineResult> {
-        self.outline(request, arguments)
-    }
+    fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult>;
 
-    fn read(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult>;
+    fn find(&self, input: &FindInput) -> AdapterResult<FindResult>;
 
-    fn read_with_native_options(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &ReadArguments,
-        _native_options: &NativeOptionHandoff,
-    ) -> AdapterResult<ReadResult> {
-        self.read(request, arguments)
-    }
-
-    fn find(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &FindArguments,
-    ) -> AdapterResult<FindResult>;
-
-    fn find_with_native_options(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &FindArguments,
-        _native_options: &NativeOptionHandoff,
-    ) -> AdapterResult<FindResult> {
-        self.find(request, arguments)
-    }
-
-    fn info(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult>;
-
-    fn info_with_native_options(
-        &self,
-        request: &RequestEnvelope,
-        arguments: &InfoArguments,
-        _native_options: &NativeOptionHandoff,
-    ) -> AdapterResult<InfoResult> {
-        self.info(request, arguments)
-    }
+    fn info(&self, input: &InfoInput) -> AdapterResult<InfoResult>;
 
     fn unstructured_full_read(
         &self,

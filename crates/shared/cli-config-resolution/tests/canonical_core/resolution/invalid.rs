@@ -1,10 +1,12 @@
 use cli_config_resolution::{
     resolve, CandidateInvalidReason, DiagnosticReason, ExpectedFieldShape, FieldDef, FieldDefSet,
-    FieldValidation, MergeStrategy, ProcessStrategy, SourceId, SourceLocator, TypedValue,
+    FieldValidation, MergeStrategy, ProcessStrategy, SourceId, TypedValue,
 };
 use serde_json::json;
 
-use crate::support::{candidate, custom_field_set, identity, invalid_candidate, source};
+use crate::support::{
+    candidate, custom_field_set, direct_locator, identity, invalid_candidate, source,
+};
 
 #[test]
 fn overridden_invalid_candidate_is_trace_only() {
@@ -79,10 +81,7 @@ fn invalid_append_contributor_blocks_with_observable_provenance() {
         .iter()
         .find(|contributor| contributor.source_id.as_str() == "invalid")
         .expect("invalid merge contributor");
-    assert_eq!(
-        invalid_contributor.locator,
-        SourceLocator::Custom("items".to_owned())
-    );
+    assert_eq!(invalid_contributor.locator, direct_locator("items"));
     assert_eq!(invalid_contributor.raw, json!("bad"));
     assert!(matches!(
         invalid_contributor.invalid_reason,
@@ -90,7 +89,7 @@ fn invalid_append_contributor_blocks_with_observable_provenance() {
     ));
     assert!(result.diagnostics().iter().any(|diagnostic| {
         diagnostic.source_id.as_ref().map(SourceId::as_str) == Some("invalid")
-            && diagnostic.locator == Some(SourceLocator::Custom("items".to_owned()))
+            && diagnostic.locator == Some(direct_locator("items"))
             && diagnostic.raw == Some(json!("bad"))
             && matches!(
                 diagnostic.reason,

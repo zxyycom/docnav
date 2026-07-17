@@ -3,6 +3,7 @@ mod config;
 mod error;
 mod invocation_log;
 mod output;
+mod parameter_catalog;
 mod pipeline;
 mod project_context;
 mod project_paths;

@@ -4,7 +4,6 @@ members = [
   "crates/adapters/markdown",
   "crates/shared/adapter-contracts",
   "crates/shared/cli-config-resolution",
-  "crates/shared/cli-config-resolution-clap",
   "crates/shared/cli-config-resolution-serde",
   "crates/shared/cli-args",
   "crates/shared/diagnostics",
@@ -14,8 +13,7 @@ members = [
   "crates/shared/protocol",
   "crates/shared/readable",
   "crates/shared/text-cost",
-  "crates/shared/typed-fields",
-  "crates/shared/typed-fields-macros"
+  "crates/shared/typed-fields"
 ]
 resolver = "2"
 
@@ -35,7 +33,6 @@ version = "0.1.0"
 [workspace.dependencies]
 clap = { version = "4.5.40", default-features = false, features = ["std", "help", "usage", "string"] }
 cli-config-resolution = { path = "crates/shared/cli-config-resolution" }
-cli-config-resolution-clap = { path = "crates/shared/cli-config-resolution-clap" }
 cli-config-resolution-serde = { path = "crates/shared/cli-config-resolution-serde" }
 docnav-protocol = { path = "crates/shared/protocol" }
 docnav-adapter-contracts = { path = "crates/shared/adapter-contracts" }
@@ -48,7 +45,6 @@ docnav-output = { path = "crates/shared/output" }
 docnav-readable = { path = "crates/shared/readable" }
 docnav-text-cost = { path = "crates/shared/text-cost" }
 docnav-typed-fields = { path = "crates/shared/typed-fields" }
-docnav-typed-fields-macros = { path = "crates/shared/typed-fields-macros" }
 jsonschema = { version = "0.46.5", default-features = false }
 pulldown-cmark = "0.13.4"
 regex = "1.11"

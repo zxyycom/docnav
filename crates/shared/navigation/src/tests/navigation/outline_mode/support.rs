@@ -2,18 +2,17 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, UnstructuredFullRead,
-    UnstructuredFullReadCapabilities, UnstructuredFullReadFacts,
+    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
+    ReadInput, UnstructuredFullRead, UnstructuredFullReadCapabilities, UnstructuredFullReadFacts,
 };
 use docnav_protocol::{
-    AdapterIdentity, Cost, Entry, FindArguments, FindResult, FormatDescriptor, InfoArguments,
-    InfoResult, Manifest, Measurement, OperationResult, OutlineArguments, OutlineResult,
-    ProbeReason, ProbeReasonCode, ProbeResult, ProtocolResponse, ReadArguments, ReadResult,
-    RequestEnvelope,
+    AdapterIdentity, Cost, Entry, FindResult, FormatDescriptor, InfoResult, Manifest, Measurement,
+    OperationResult, OutlineResult, ProbeReason, ProbeReasonCode, ProbeResult, ProtocolResponse,
+    ReadResult, RequestEnvelope,
 };
 use serde_json::{json, Value};
 
-use crate::{NavigationAdapterRef, NavigationAdapterRegistry};
+use crate::NavigationAdapterRegistry;
 
 use super::super::super::support::navigation_command;
 
@@ -64,11 +63,13 @@ impl<'a> SingleRegistry<'a> {
 }
 
 impl NavigationAdapterRegistry for SingleRegistry<'_> {
-    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
-        vec![NavigationAdapterRef::new(
-            AdapterDefinition::transition_from_adapter(self.adapter)
-                .expect("valid recording adapter definition"),
-        )]
+    fn adapters(&self) -> Vec<AdapterDefinition<'_>> {
+        vec![AdapterDefinition::new(
+            recording_manifest(),
+            self.adapter,
+            self.adapter.full_read_capabilities(),
+        )
+        .expect("valid recording adapter definition")]
     }
 }
 
@@ -115,39 +116,36 @@ impl RecordingAdapter {
             ..Self::default()
         }
     }
-}
 
-impl Adapter for RecordingAdapter {
-    fn adapter_id(&self) -> &str {
-        "docnav-markdown"
-    }
-
-    fn manifest(&self) -> Manifest {
-        Manifest {
-            manifest_version: docnav_protocol::MANIFEST_VERSION.to_owned(),
-            adapter: AdapterIdentity {
-                id: "docnav-markdown".to_owned(),
-                name: "Recording".to_owned(),
-                version: "0.1.0".to_owned(),
-            },
-            formats: vec![FormatDescriptor {
-                id: "stub".to_owned(),
-                extensions: vec![".stub".to_owned()],
-                content_types: vec!["text/stub".to_owned()],
-            }],
-        }
-    }
-
-    fn unstructured_full_read_capabilities(&self) -> UnstructuredFullReadCapabilities {
-        UnstructuredFullReadCapabilities {
+    fn full_read_capabilities(&self) -> Option<UnstructuredFullReadCapabilities> {
+        let capabilities = UnstructuredFullReadCapabilities {
             content_hook: self.content_hook.load(Ordering::SeqCst)
                 || self.capabilities.content_hook,
             cost_measurement_units: self.capabilities.cost_measurement_units.clone(),
             result_facts_hook: self.result_facts_hook.load(Ordering::SeqCst)
                 || self.capabilities.result_facts_hook,
-        }
+        };
+        (capabilities != UnstructuredFullReadCapabilities::default()).then_some(capabilities)
     }
+}
 
+fn recording_manifest() -> Manifest {
+    Manifest {
+        manifest_version: docnav_protocol::MANIFEST_VERSION.to_owned(),
+        adapter: AdapterIdentity {
+            id: "docnav-markdown".to_owned(),
+            name: "Recording".to_owned(),
+            version: "0.1.0".to_owned(),
+        },
+        formats: vec![FormatDescriptor {
+            id: "stub".to_owned(),
+            extensions: vec![".stub".to_owned()],
+            content_types: vec!["text/stub".to_owned()],
+        }],
+    }
+}
+
+impl Adapter for RecordingAdapter {
     fn probe(&self, path: &str) -> ProbeResult {
         ProbeResult {
             probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
@@ -163,11 +161,7 @@ impl Adapter for RecordingAdapter {
         }
     }
 
-    fn outline(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &OutlineArguments,
-    ) -> AdapterResult<OutlineResult> {
+    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
         self.outline_calls.fetch_add(1, Ordering::SeqCst);
         if self.fail_outline.load(Ordering::SeqCst) {
             return Err(AdapterError::internal("outline-should-not-run"));
@@ -188,27 +182,15 @@ impl Adapter for RecordingAdapter {
         ))
     }
 
-    fn read(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &ReadArguments,
-    ) -> AdapterResult<ReadResult> {
+    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("read-unimplemented"))
     }
 
-    fn find(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &FindArguments,
-    ) -> AdapterResult<FindResult> {
+    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::internal("find-unimplemented"))
     }
 
-    fn info(
-        &self,
-        _request: &RequestEnvelope,
-        _arguments: &InfoArguments,
-    ) -> AdapterResult<InfoResult> {
+    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("info-unimplemented"))
     }
 

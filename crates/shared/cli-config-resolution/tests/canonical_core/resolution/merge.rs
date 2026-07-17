@@ -1,11 +1,11 @@
 use cli_config_resolution::{
     resolve, DiagnosticReason, ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldLength,
     FieldValidation, MergeStrategy, ProcessStrategy, Source, SourceCandidate, SourceId, SourceKind,
-    SourceLocator, TypedValue,
+    TypedValue,
 };
 use serde_json::json;
 
-use crate::support::{candidate, identity, merge_field_set, source};
+use crate::support::{candidate, direct_locator, identity, merge_field_set, source};
 
 #[test]
 fn append_merge_preserves_source_order_and_provenance() {
@@ -88,22 +88,22 @@ fn deny_conflict_reports_all_source_locators() {
     );
     let low = Source::new(
         SourceId::new("low").expect("source id"),
-        SourceKind::Custom("test".to_owned()),
+        SourceKind::Direct,
         10,
         vec![SourceCandidate::value(
             identity("mode"),
-            SourceLocator::Custom("low-mode".to_owned()),
+            direct_locator("low-mode"),
             json!("a"),
         )],
     )
     .expect("low source");
     let high = Source::new(
         SourceId::new("high").expect("source id"),
-        SourceKind::Custom("test".to_owned()),
+        SourceKind::Direct,
         20,
         vec![SourceCandidate::value(
             identity("mode"),
-            SourceLocator::Custom("high-mode".to_owned()),
+            direct_locator("high-mode"),
             json!("b"),
         )],
     )
@@ -121,15 +121,12 @@ fn deny_conflict_reports_all_source_locators() {
     };
     assert_eq!(
         locators,
-        &vec![
-            SourceLocator::Custom("low-mode".to_owned()),
-            SourceLocator::Custom("high-mode".to_owned()),
-        ]
+        &vec![direct_locator("low-mode"), direct_locator("high-mode"),]
     );
 }
 
 #[test]
-fn map_merge_preserves_source_order() {
+fn map_merge_preserves_source_order_and_provenance() {
     let fields = merge_field_set("map", FieldValidation::object(), MergeStrategy::MapMerge);
     let low = source(
         "low",
@@ -142,16 +139,24 @@ fn map_merge_preserves_source_order() {
         [candidate("map", json!({"same": "high", "high": true}))],
     );
 
-    let values = resolve(&fields, &[low, high])
-        .expect("valid input")
-        .materialize()
-        .expect("valid map merge");
+    let result = resolve(&fields, &[low, high]).expect("valid input");
+    let values = result.materialize().expect("valid map merge");
     assert_eq!(
         values[&identity("map")],
         TypedValue::Object(
             serde_json::from_value(json!({"same": "high", "low": true, "high": true}))
                 .expect("object")
         )
+    );
+    assert_eq!(
+        result
+            .trace(&identity("map"))
+            .expect("map trace")
+            .contributors
+            .iter()
+            .map(|candidate| candidate.source_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["low", "high"]
     );
 }
 

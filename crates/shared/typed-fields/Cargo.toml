@@ -8,7 +8,6 @@ description = "Canonical field definitions, validation, and typed materializatio
 readme = "README.md"
 
 [dependencies]
-docnav-typed-fields-macros.workspace = true
 regex.workspace = true
 serde_json.workspace = true
 

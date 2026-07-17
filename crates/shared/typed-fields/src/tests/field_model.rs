@@ -19,12 +19,12 @@ fn builder_exposes_schema_metadata_and_validates_values() {
     let field = limit_field();
 
     let schema = field.schema_metadata();
-    assert_eq!(schema.identity.as_str(), "docnav.defaults.limit");
+    assert_eq!(schema.identity().as_str(), "docnav.defaults.limit");
     assert_eq!(schema.path.segments(), ["defaults", "limit"]);
-    assert_eq!(schema.value_kind, ValueKind::Integer);
-    assert_eq!(schema.default, DefaultMetadata::Static(json!(20_000)));
+    assert_eq!(schema.value_kind(), ValueKind::Integer);
+    assert_eq!(schema.default(), &DefaultMetadata::Static(json!(20_000)));
     assert_eq!(
-        schema.constraints.numeric_range,
+        schema.constraints().numeric_range,
         FieldNumericRange::Integer(FieldRange::between(
             FieldBound::closed(1),
             FieldBound::closed(100_000),
@@ -46,7 +46,7 @@ fn json_validation_accepts_any_json_value_including_null() {
         .expect("json field builds");
     let schema = field.schema_metadata();
 
-    assert_eq!(schema.value_kind, ValueKind::Json);
+    assert_eq!(schema.value_kind(), ValueKind::Json);
     assert_eq!(
         schema
             .validate_optional_value(Some(&json!({"mode": "wide"})))
@@ -101,42 +101,35 @@ fn validation_failures_keep_field_attribution() {
 
 #[test]
 fn required_and_enum_constraints_are_driven_by_field_declarations() {
-    #[derive(Debug, FieldDefs)]
-    struct Params {
-        #[field(group)]
-        defaults: RequiredEnumDefaults,
-    }
-
-    #[derive(Debug, FieldDefs)]
-    struct RequiredEnumDefaults {
-        #[field(
+    let fields = FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["defaults", "output"],
             FieldDef::builder("docnav.defaults.output")
                 .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
-                .validation(FieldValidation::string_enum::<OutputMode>())
-        )]
-        output: OutputMode,
-    }
+                .validation(FieldValidation::string_enum::<OutputMode>()),
+            ExpectedFieldShape::required(),
+        )
+        .build()
+        .expect("required enum field builds");
+    let json_fields = JsonFieldSet::new(&fields);
 
-    let fields = Params::field_defs().expect("required enum field builds");
-
-    let error = fields
-        .extract(CONFIG_PROCESSING, &json!({"defaults": {}}))
+    let error = json_fields
+        .validate(CONFIG_PROCESSING, &json!({"defaults": {}}))
         .expect_err("missing required field fails");
     assert_eq!(
         validation_failures(&error)[0].reason,
         ValidationReason::MissingRequired
     );
 
-    let params = fields
-        .extract(
+    json_fields
+        .validate(
             CONFIG_PROCESSING,
             &json!({"defaults": {"output": "readable-json"}}),
         )
         .expect("allowed enum value passes");
-    assert_eq!(params.defaults.output, OutputMode::ReadableJson);
 
-    let error = fields
-        .extract(CONFIG_PROCESSING, &json!({"defaults": {"output": "xml"}}))
+    let error = json_fields
+        .validate(CONFIG_PROCESSING, &json!({"defaults": {"output": "xml"}}))
         .expect_err("disallowed enum value fails");
     assert!(matches!(
         validation_failures(&error)[0].reason,

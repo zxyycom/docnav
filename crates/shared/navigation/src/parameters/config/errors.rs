@@ -48,7 +48,7 @@ fn unknown_adapter_error(
     path: &ConfigValuePath,
 ) -> Option<NavigationError> {
     let adapter_id = path.option_adapter_id()?;
-    if context.known_adapter_ids.contains(adapter_id) {
+    if context.catalog.is_known_adapter_id(adapter_id) {
         return None;
     }
     let field = path.field();
@@ -106,7 +106,8 @@ fn unsupported_option_error(
                 path: &source.path,
                 owner,
                 config_field: Some(path.field()),
-                selected_native_options: context.selected_native_options,
+                operation: context.operation,
+                catalog: context.catalog,
             },
             key,
             path.value(root).cloned().unwrap_or(Value::Null),
@@ -212,6 +213,6 @@ fn config_field_for_identity(identity: &str, fields: &FieldDefSet) -> Option<Str
             &ProcessingId::new(CONFIG_PROCESSING).expect("config processing id is valid"),
         )
         .into_iter()
-        .find(|metadata| metadata.identity.as_str() == identity)
+        .find(|metadata| metadata.identity().as_str() == identity)
         .map(|metadata| metadata.path.segments().join("."))
 }

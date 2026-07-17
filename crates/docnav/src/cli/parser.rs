@@ -22,17 +22,8 @@ where
     I: IntoIterator<Item = S>,
     S: Into<String>,
 {
-    parse_with_registry(args, &crate::registry::AdapterRegistry::builtin())
-}
-
-fn parse_with_registry<I, S, R>(args: I, registry: &R) -> AppResult<ParsedCli>
-where
-    I: IntoIterator<Item = S>,
-    S: Into<String>,
-    R: docnav_navigation::NavigationAdapterRegistry + ?Sized,
-{
     let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    if let Some(help) = help_text(&args, registry)? {
+    if let Some(help) = help_text(&args)? {
         return Ok(ParsedCli::new(CliCommand::Help(help)));
     }
 
@@ -48,12 +39,10 @@ where
     }
 
     match command.as_str() {
-        command_names::OUTLINE => {
-            document::parse_document_command(Operation::Outline, rest, registry)
-        }
-        command_names::READ => document::parse_document_command(Operation::Read, rest, registry),
-        command_names::FIND => document::parse_document_command(Operation::Find, rest, registry),
-        command_names::INFO => document::parse_document_command(Operation::Info, rest, registry),
+        command_names::OUTLINE => document::parse_document_command(Operation::Outline, rest),
+        command_names::READ => document::parse_document_command(Operation::Read, rest),
+        command_names::FIND => document::parse_document_command(Operation::Find, rest),
+        command_names::INFO => document::parse_document_command(Operation::Info, rest),
         command_names::ADAPTER => adapter_command::parse_adapter_command(rest),
         command_names::CONFIG => config_command::parse_config_command(rest),
         command_names::INIT => utility_command::parse_utility_command(
@@ -75,10 +64,7 @@ where
     }
 }
 
-fn help_text<R>(args: &[String], registry: &R) -> AppResult<Option<String>>
-where
-    R: docnav_navigation::NavigationAdapterRegistry + ?Sized,
-{
+fn help_text(args: &[String]) -> AppResult<Option<String>> {
     if !args.iter().any(|arg| is_help_flag(arg)) {
         return Ok(None);
     }
@@ -90,8 +76,8 @@ where
         return Ok(Some(root.render_long_help().to_string()));
     }
     if let Some(operation) = document_operation(first) {
-        let (mut command, _) = document_clap_command(operation, registry)?;
-        return Ok(Some(command.render_long_help().to_string()));
+        let mut spec = document_clap_command(operation)?;
+        return Ok(Some(spec.command.render_long_help().to_string()));
     }
     let Some(command) = root.find_subcommand_mut(first) else {
         return Ok(Some(root.render_long_help().to_string()));

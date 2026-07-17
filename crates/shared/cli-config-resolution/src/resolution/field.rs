@@ -11,11 +11,11 @@ use super::{FieldResolution, FieldTrace};
 
 pub(super) fn resolve_field(
     field: &FieldDef,
-    metadata: &SchemaMetadataView,
+    metadata: &SchemaMetadataView<'_>,
     candidates: Vec<EffectiveCandidate>,
     diagnostics: &mut Vec<ResolutionDiagnostic>,
 ) -> FieldResolution {
-    let mut trace = FieldTrace::new(metadata.identity.clone());
+    let mut trace = FieldTrace::new(metadata.identity().clone());
     let (explicit, mut defaults) = partition_candidates(candidates);
     add_static_default(metadata, &mut defaults);
     defaults.sort_by(high_precedence);
@@ -42,10 +42,10 @@ fn partition_candidates(
         .partition(|candidate| candidate.source_kind != SourceKind::Default)
 }
 
-fn add_static_default(metadata: &SchemaMetadataView, defaults: &mut Vec<EffectiveCandidate>) {
-    if let DefaultMetadata::Static(value) = &metadata.default {
+fn add_static_default(metadata: &SchemaMetadataView<'_>, defaults: &mut Vec<EffectiveCandidate>) {
+    if let DefaultMetadata::Static(value) = metadata.default() {
         defaults.push(EffectiveCandidate::static_default(
-            &metadata.identity,
+            metadata.identity(),
             value.clone(),
         ));
     }
@@ -72,14 +72,14 @@ fn record_default_fallback(
 }
 
 fn resolve_missing(
-    metadata: &SchemaMetadataView,
+    metadata: &SchemaMetadataView<'_>,
     mut trace: FieldTrace,
     diagnostics: &mut Vec<ResolutionDiagnostic>,
 ) -> FieldResolution {
     if let Err(failure) = metadata.validate_optional_value(None) {
         trace.missing_required = true;
         diagnostics.push(ResolutionDiagnostic {
-            field: metadata.identity.clone(),
+            field: metadata.identity().clone(),
             source_id: None,
             source_kind: None,
             locator: None,

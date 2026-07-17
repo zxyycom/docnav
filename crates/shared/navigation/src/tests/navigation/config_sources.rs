@@ -48,6 +48,7 @@ fn navigation_loads_project_and_user_config_sources_from_descriptors() {
             project: NavigationConfigSourceDescriptor::default(project_config_path),
             user: NavigationConfigSourceDescriptor::default(user_config_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect("navigation outcome");
@@ -76,6 +77,7 @@ fn default_missing_config_sources_are_absent_without_diagnostics() {
             project: NavigationConfigSourceDescriptor::default(project_config_path),
             user: NavigationConfigSourceDescriptor::default(user_config_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect("missing default config sources should be absent");
@@ -96,6 +98,7 @@ fn explicit_missing_config_source_is_blocking_diagnostic() {
             project: NavigationConfigSourceDescriptor::explicit_cli(project_config_path.clone()),
             user: NavigationConfigSourceDescriptor::default(user_config_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("missing explicit config source should fail");
@@ -129,6 +132,7 @@ fn override_missing_config_source_preserves_override_diagnostic() {
             ),
             user: NavigationConfigSourceDescriptor::default(user_config_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("missing override config source should fail");
@@ -160,6 +164,7 @@ fn explicit_invalid_json_config_source_is_blocking_diagnostic() {
             project: NavigationConfigSourceDescriptor::explicit_cli(invalid_json_path.clone()),
             user: NavigationConfigSourceDescriptor::default(default_missing_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("invalid JSON explicit config source should fail");
@@ -190,6 +195,7 @@ fn explicit_config_field_diagnostics_preserve_selected_source_path() {
             project: NavigationConfigSourceDescriptor::explicit_cli(project_config_path.clone()),
             user: NavigationConfigSourceDescriptor::default(user_config_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("invalid config field should fail");
@@ -230,6 +236,7 @@ fn explicit_config_value_diagnostics_preserve_selected_source_path() {
             project: NavigationConfigSourceDescriptor::explicit_cli(project_config_path.clone()),
             user: NavigationConfigSourceDescriptor::default(user_config_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("invalid config value should fail");
@@ -277,6 +284,7 @@ fn explicit_default_config_value_diagnostics_preserve_selected_source_path() {
             project: NavigationConfigSourceDescriptor::explicit_cli(project_config_path.clone()),
             user: NavigationConfigSourceDescriptor::default(default_missing_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("invalid project config limit should fail");
@@ -330,6 +338,7 @@ fn explicit_config_path_selection_preserves_parameter_priority() {
             project: NavigationConfigSourceDescriptor::explicit_cli(project_config_path.clone()),
             user: NavigationConfigSourceDescriptor::explicit_cli(user_config_path.clone()),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect("direct argv should preserve highest priority");
@@ -344,6 +353,7 @@ fn explicit_config_path_selection_preserves_parameter_priority() {
             ),
             user: NavigationConfigSourceDescriptor::explicit_cli(user_config_path),
         },
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect("project config should outrank user config");
@@ -365,6 +375,7 @@ fn navigation_rejects_nested_non_object_config_shapes() {
         let error = execute_loaded_navigation_command(
             navigation_command(Vec::new()),
             config_sources(project_config, Value::Null),
+            &crate::tests::support::document_parameter_catalog(),
             &StubRegistry,
         )
         .expect_err("nested non-object should fail");

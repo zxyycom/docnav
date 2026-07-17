@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use serde_json::{Map, Value};
 
 use crate::process_strategy::ProcessingInputKind;
-use crate::processing::{ProcessedExtraction, ProcessedValue, ProcessingBuild, ProcessingId};
-use crate::set::{FieldDefSet, FieldExtractionError, FieldValidationErrors, FieldValues};
+use crate::processing::{ProcessedExtraction, ProcessedValue, ProcessingId};
+use crate::set::{FieldDefSet, FieldExtractionError, FieldValidationErrors};
 use crate::JsonPassthroughProcessing;
 
 #[derive(Clone, Copy, Debug)]
@@ -22,7 +22,7 @@ impl<'a> JsonFieldSet<'a> {
         processing_id: impl Into<ProcessingId>,
         root: &Value,
     ) -> Result<(), FieldExtractionError> {
-        extract_values(self.fields, processing_id.into(), root).map(|_| ())
+        validate_processing_values(self.fields, processing_id.into(), root)
     }
 
     pub fn validate_with_passthrough(
@@ -31,14 +31,15 @@ impl<'a> JsonFieldSet<'a> {
         root: &Value,
         passthrough_processing: Option<&JsonPassthroughProcessing<'_>>,
     ) -> ProcessedExtraction<Result<(), FieldExtractionError>, Value> {
-        let processed = extract_values_with_passthrough(
-            self.fields,
-            processing_id,
-            root,
-            passthrough_processing,
-        );
-        let (values, processing) = processed.into_parts();
-        ProcessedExtraction::new(values.map(|_| ()), processing)
+        let processing_id = passthrough_processing
+            .map(|processing| processing.id().clone())
+            .unwrap_or_else(|| processing_id.into());
+        let validation = validate_processing_values(self.fields, processing_id.clone(), root);
+        let processing = match passthrough_processing {
+            Some(processing) => processing.process(root.clone()),
+            None => ProcessedValue::new(processing_id, root.clone()),
+        };
+        ProcessedExtraction::new(validation, processing)
     }
 
     pub fn unused_fields<I, S>(
@@ -81,106 +82,25 @@ impl<'a> JsonFieldSet<'a> {
     }
 }
 
-pub(crate) fn extract_values(
+fn validate_processing_values(
     fields: &FieldDefSet,
     processing_id: ProcessingId,
     root: &Value,
-) -> Result<FieldValues, FieldExtractionError> {
+) -> Result<(), FieldExtractionError> {
     fields.require_processing_input_kind(&processing_id, ProcessingInputKind::JsonValue)?;
-    extract_processing_values(fields, &processing_id, root, JsonExtractionDefaults::Absent)
-}
-
-pub(crate) fn extract_values_with_static_defaults(
-    fields: &FieldDefSet,
-    processing_id: ProcessingId,
-    root: &Value,
-) -> Result<FieldValues, FieldExtractionError> {
-    fields.require_processing_input_kind(&processing_id, ProcessingInputKind::JsonValue)?;
-    extract_processing_values(fields, &processing_id, root, JsonExtractionDefaults::Static)
-}
-
-pub(crate) fn process_values<O>(
-    fields: &FieldDefSet,
-    processing: &ProcessingBuild<'_, Value, O>,
-    root: &Value,
-) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-    process_values_with_defaults(fields, processing, root, JsonExtractionDefaults::Absent)
-}
-
-pub(crate) fn process_values_with_static_defaults<O>(
-    fields: &FieldDefSet,
-    processing: &ProcessingBuild<'_, Value, O>,
-    root: &Value,
-) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-    process_values_with_defaults(fields, processing, root, JsonExtractionDefaults::Static)
-}
-
-pub(crate) fn extract_values_with_passthrough(
-    fields: &FieldDefSet,
-    processing_id: impl Into<ProcessingId>,
-    root: &Value,
-    passthrough_processing: Option<&JsonPassthroughProcessing<'_>>,
-) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, Value> {
-    let processing_id = passthrough_processing
-        .map(|processing| processing.id().clone())
-        .unwrap_or_else(|| processing_id.into());
-    let values = fields
-        .require_processing_input_kind(&processing_id, ProcessingInputKind::JsonValue)
-        .and_then(|()| {
-            extract_processing_values(fields, &processing_id, root, JsonExtractionDefaults::Absent)
-        });
-    let processing = match passthrough_processing {
-        Some(processing) => processing.process(root.clone()),
-        None => ProcessedValue::new(processing_id, root.clone()),
-    };
-    ProcessedExtraction::new(values, processing)
-}
-
-fn process_values_with_defaults<O>(
-    fields: &FieldDefSet,
-    processing: &ProcessingBuild<'_, Value, O>,
-    root: &Value,
-    defaults: JsonExtractionDefaults,
-) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-    let values = fields
-        .require_processing_input_kind(processing.id(), ProcessingInputKind::JsonValue)
-        .and_then(|()| extract_processing_values(fields, processing.id(), root, defaults));
-    ProcessedExtraction::new(values, processing.process(root.clone()))
-}
-
-fn extract_processing_values(
-    fields: &FieldDefSet,
-    processing_id: &ProcessingId,
-    root: &Value,
-    defaults: JsonExtractionDefaults,
-) -> Result<FieldValues, FieldExtractionError> {
-    let mut values = Vec::with_capacity(fields.fields().len());
     let mut errors = Vec::new();
     for definition in fields.fields() {
-        let decoded = match defaults {
-            JsonExtractionDefaults::Absent => definition.decode_json_process(processing_id, root),
-            JsonExtractionDefaults::Static => {
-                definition.decode_json_process_with_static_default(processing_id, root)
-            }
-        };
-        match decoded {
-            Ok(value) => values.push(value),
-            Err(error) => errors.push(error),
+        if let Err(error) = definition.decode_json_process(&processing_id, root) {
+            errors.push(error);
         }
     }
     if errors.is_empty() {
-        Ok(FieldValues { values })
+        Ok(())
     } else {
         Err(FieldExtractionError::Validation(
             FieldValidationErrors::new(errors),
         ))
     }
-}
-
-#[derive(Clone, Copy)]
-enum JsonExtractionDefaults {
-    Absent,
-    Static,
 }
 
 fn value_at_owned_path<'a>(root: &'a Value, path: &[String]) -> Option<&'a Value> {
@@ -206,56 +126,5 @@ fn direct_child_key(path: Vec<&str>, object_path: &[String]) -> Option<String> {
         Some(path[object_path.len()].to_string())
     } else {
         None
-    }
-}
-
-#[doc(hidden)]
-pub mod __private {
-    use crate::{
-        FieldDefSet, FieldExtractionError, JsonPassthroughProcessing, JsonValue,
-        ProcessedExtraction, ProcessingBuild, ProcessingId,
-    };
-
-    use super::FieldValues;
-
-    pub fn extract_values(
-        fields: &FieldDefSet,
-        processing_id: ProcessingId,
-        root: &JsonValue,
-    ) -> Result<FieldValues, FieldExtractionError> {
-        super::extract_values(fields, processing_id, root)
-    }
-
-    pub fn extract_values_with_static_defaults(
-        fields: &FieldDefSet,
-        processing_id: ProcessingId,
-        root: &JsonValue,
-    ) -> Result<FieldValues, FieldExtractionError> {
-        super::extract_values_with_static_defaults(fields, processing_id, root)
-    }
-
-    pub fn process_values<O>(
-        fields: &FieldDefSet,
-        processing: &ProcessingBuild<'_, JsonValue, O>,
-        root: &JsonValue,
-    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-        super::process_values(fields, processing, root)
-    }
-
-    pub fn process_values_with_static_defaults<O>(
-        fields: &FieldDefSet,
-        processing: &ProcessingBuild<'_, JsonValue, O>,
-        root: &JsonValue,
-    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, O> {
-        super::process_values_with_static_defaults(fields, processing, root)
-    }
-
-    pub fn extract_values_with_passthrough(
-        fields: &FieldDefSet,
-        processing_id: impl Into<ProcessingId>,
-        root: &JsonValue,
-        passthrough_processing: Option<&JsonPassthroughProcessing<'_>>,
-    ) -> ProcessedExtraction<Result<FieldValues, FieldExtractionError>, JsonValue> {
-        super::extract_values_with_passthrough(fields, processing_id, root, passthrough_processing)
     }
 }

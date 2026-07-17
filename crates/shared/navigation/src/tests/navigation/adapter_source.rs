@@ -19,6 +19,7 @@ fn explicit_missing_adapter_reports_static_registry_guidance() {
     let error = execute_loaded_navigation_command(
         command,
         config_sources(Value::Null, Value::Null),
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("missing adapter");
@@ -50,6 +51,7 @@ fn explicit_missing_adapter_error_carries_invocation_failure_layer() {
     let error = execute_loaded_navigation_command(
         command,
         config_sources(Value::Null, Value::Null),
+        &crate::tests::support::document_parameter_catalog(),
         &StubRegistry,
     )
     .expect_err("missing adapter");
@@ -67,6 +69,7 @@ fn automatic_discovery_all_fail_projects_candidate_failures() {
     let error = execute_loaded_navigation_command(
         navigation_command(Vec::new()),
         config_sources(Value::Null, Value::Null),
+        &crate::tests::support::document_parameter_catalog(),
         &UnsupportedRegistry,
     )
     .expect_err("all adapter candidates should fail");

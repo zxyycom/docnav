@@ -8,25 +8,10 @@ use serde_json::{json, Value};
 
 use crate::NavigationError;
 
-#[derive(Clone)]
-pub struct NavigationAdapterRef<'a> {
-    pub definition: AdapterDefinition<'a>,
-}
-
-impl<'a> NavigationAdapterRef<'a> {
-    pub fn new(definition: AdapterDefinition<'a>) -> Self {
-        Self { definition }
-    }
-
-    pub fn id(&self) -> &str {
-        self.definition.id()
-    }
-}
-
 pub trait NavigationAdapterRegistry {
-    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>>;
+    fn adapters(&self) -> Vec<AdapterDefinition<'_>>;
 
-    fn find_adapter(&self, adapter_id: &str) -> Option<NavigationAdapterRef<'_>> {
+    fn find_adapter(&self, adapter_id: &str) -> Option<AdapterDefinition<'_>> {
         self.adapters()
             .into_iter()
             .find(|adapter| adapter.id() == adapter_id)
@@ -35,7 +20,7 @@ pub trait NavigationAdapterRegistry {
 
 #[derive(Clone, Debug)]
 pub struct AdapterSelection<'a> {
-    pub adapter: NavigationAdapterRef<'a>,
+    pub adapter: AdapterDefinition<'a>,
     pub evidence: Vec<CandidateEvidence>,
 }
 
@@ -112,7 +97,7 @@ where
 }
 
 enum CandidateResult<'a> {
-    Selected(NavigationAdapterRef<'a>),
+    Selected(AdapterDefinition<'a>),
     Continue(CandidateEvidence),
 }
 
@@ -137,10 +122,10 @@ where
 }
 
 fn evaluate_candidate<'a>(
-    adapter: NavigationAdapterRef<'a>,
+    adapter: AdapterDefinition<'a>,
     document_path: &str,
 ) -> CandidateResult<'a> {
-    let probe = adapter.definition.probe(document_path);
+    let probe = adapter.probe(document_path);
     if let Err(candidate) = probe_is_valid(&adapter, document_path, &probe) {
         return CandidateResult::Continue(candidate);
     }
@@ -158,7 +143,7 @@ fn evaluate_candidate<'a>(
 }
 
 fn probe_is_valid(
-    adapter: &NavigationAdapterRef<'_>,
+    adapter: &AdapterDefinition<'_>,
     document_path: &str,
     probe: &ProbeResult,
 ) -> Result<(), CandidateEvidence> {
@@ -260,7 +245,7 @@ impl SelectionState {
         self.attempted.contains(adapter_id)
     }
 
-    fn into_selection<'a>(self, selected: NavigationAdapterRef<'a>) -> AdapterSelection<'a> {
+    fn into_selection<'a>(self, selected: AdapterDefinition<'a>) -> AdapterSelection<'a> {
         AdapterSelection {
             adapter: selected,
             evidence: self.evidence,
@@ -284,14 +269,5 @@ impl SelectionState {
             .with_candidate_failures(candidates),
             DiagnosticSource::with_stage("docnav-navigation", "routing"),
         ))
-    }
-}
-
-impl std::fmt::Debug for NavigationAdapterRef<'_> {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter
-            .debug_struct("NavigationAdapterRef")
-            .field("id", &self.id())
-            .finish_non_exhaustive()
     }
 }

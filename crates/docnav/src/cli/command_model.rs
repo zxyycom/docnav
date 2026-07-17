@@ -3,7 +3,7 @@ use std::str::FromStr;
 use cli_config_resolution::{CandidateInput, Source};
 use docnav_protocol::Operation;
 
-pub(crate) const DOCUMENT_OUTPUT_FIELD_ID: &str = "docnav.defaults.output";
+pub(crate) const DOCUMENT_OUTPUT_FIELD_ID: &str = crate::parameter_catalog::OUTPUT_IDENTITY;
 use serde::{Deserialize, Serialize};
 
 /// Document output mode.

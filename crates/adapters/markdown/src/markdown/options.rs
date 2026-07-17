@@ -1,39 +1,34 @@
-use docnav_adapter_contracts::{
-    AdapterError, AdapterResult, NativeOptionHandoff, NativeOptionValue,
-};
+use docnav_adapter_contracts::{AdapterError, AdapterResult, NativeOptionIssue};
 
-use crate::adapter::{
-    ADAPTER_ID, MAX_HEADING_LEVEL_IDENTITY, MAX_HEADING_LEVEL_OPTION, NATIVE_OPTIONS_NAMESPACE,
-};
+use crate::adapter::ADAPTER_ID;
 
-pub fn max_heading_level_from_handoff(native_options: &NativeOptionHandoff) -> AdapterResult<u8> {
-    let value = native_options
-        .get(
-            ADAPTER_ID,
-            NATIVE_OPTIONS_NAMESPACE,
-            MAX_HEADING_LEVEL_OPTION,
-        )
-        .ok_or_else(|| AdapterError::internal("markdown-max-heading-level-missing"))?;
-    validate_max_heading_level_identity(value)?;
+const OPTION_NAMESPACE: &str = "options";
+const MAX_HEADING_LEVEL_OPTION: &str = "max_heading_level";
 
-    let level = value
-        .value
-        .as_u64()
-        .and_then(|value| u8::try_from(value).ok())
+pub fn max_heading_level(value: Option<i64>) -> AdapterResult<u8> {
+    let value =
+        value.ok_or_else(|| AdapterError::internal("markdown-max-heading-level-missing"))?;
+    u8::try_from(value)
+        .ok()
         .filter(|value| (1..=6).contains(value))
-        .ok_or_else(|| AdapterError::internal("markdown-max-heading-level-invalid"))?;
-
-    Ok(level)
-}
-
-fn validate_max_heading_level_identity(value: &NativeOptionValue) -> AdapterResult<()> {
-    if value.identity != MAX_HEADING_LEVEL_IDENTITY
-        || value.type_variant != "integer"
-        || value.source.is_empty()
-    {
-        return Err(AdapterError::internal(
-            "markdown-max-heading-level-identity-mismatch",
-        ));
-    }
-    Ok(())
+        .ok_or_else(|| {
+            AdapterError::native_option_invalid(
+                "Native option value is invalid.",
+                NativeOptionIssue {
+                    owner: ADAPTER_ID.to_owned(),
+                    namespace: OPTION_NAMESPACE.to_owned(),
+                    key: MAX_HEADING_LEVEL_OPTION.to_owned(),
+                    source: "standard_input".to_owned(),
+                    reason_code: "range_invalid".to_owned(),
+                    field: format!("arguments.options.{MAX_HEADING_LEVEL_OPTION}"),
+                    received: Some(value.to_string()),
+                    expected: Some("integer in range 1..6".to_owned()),
+                    type_variant: Some("integer".to_owned()),
+                    config_source: None,
+                },
+                [format!(
+                    "Use integer in range 1..6 for option {MAX_HEADING_LEVEL_OPTION}."
+                )],
+            )
+        })
 }

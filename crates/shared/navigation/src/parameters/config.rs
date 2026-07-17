@@ -1,27 +1,25 @@
-use std::collections::BTreeSet;
-
 use cli_config_resolution::{
     ResolutionDiagnostic, ResolutionResult, SourceCandidate, SourceLocator,
 };
-use docnav_adapter_contracts::AdapterOptionSpec;
+use docnav_protocol::Operation;
 use docnav_typed_fields::{FieldDefSet, ProcessingId};
 use serde_json::Value;
 
 use crate::config_source::LoadedNavigationConfigSource;
 use crate::{
-    NavigationAdapterRegistry, NavigationCommand, NavigationConfigSource,
-    NavigationConfigSourceLevel, NavigationConfigSourceOrigin, NavigationConfigSources,
-    NavigationError,
+    NavigationCommand, NavigationConfigSource, NavigationConfigSourceLevel,
+    NavigationConfigSourceOrigin, NavigationConfigSources, NavigationError,
 };
 
 use super::{
+    catalog::DocumentParameterCatalog,
     fields,
     native_options::{
-        native_option_validation_error, spec_for_identity, unsupported_option,
-        UnsupportedOptionContext,
+        catalog_option_for_identity, native_option_validation_error,
+        selected_adapter_supports_option, unsupported_option, UnsupportedOptionContext,
     },
     resolution,
-    values::{diagnostic_source_label, resolution_reason_code, validation_error_for_identity},
+    values::validation_error_for_identity,
 };
 
 mod errors;
@@ -35,10 +33,11 @@ use key_registry::ConfigKeyRegistry;
 
 struct ConfigValidationContext<'a> {
     selected_adapter_id: Option<&'a str>,
-    fields: &'a FieldDefSet,
-    selected_native_options: &'a [AdapterOptionSpec],
-    known_adapter_ids: BTreeSet<String>,
-    known_adapter_fields: &'a FieldDefSet,
+    operation: Option<Operation>,
+    selected_fields: Option<&'a FieldDefSet>,
+    catalog: &'a DocumentParameterCatalog,
+    routing_fields: &'a FieldDefSet,
+    invocation_log_fields: &'a FieldDefSet,
 }
 
 pub(super) fn validate_navigation_sources(
@@ -46,41 +45,43 @@ pub(super) fn validate_navigation_sources(
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
     operation_fields: &fields::OperationFieldSet,
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
+    catalog: &DocumentParameterCatalog,
 ) -> Result<(), NavigationError> {
-    let fields = operation_fields.as_ref();
-    let selected_native_options = operation_fields.adapter_options();
+    let selected_fields = operation_fields.as_ref();
     first_config_source_error(config_sources)?;
-    validate_explicit_cli_candidates(
-        command,
-        selected_adapter_id,
-        fields,
-        selected_native_options,
-    )?;
-    let known_adapter_fields = fields::config_inspection_fields(registry)?;
+    validate_explicit_cli_candidates(command, selected_adapter_id, selected_fields, catalog)?;
+    let routing_fields = fields::adapter_routing_fields()
+        .map_err(|_| NavigationError::internal("config-routing-fields-build-failed"))?;
+    let invocation_log_fields = fields::invocation_log_fields()
+        .map_err(|_| NavigationError::internal("config-invocation-log-fields-build-failed"))?;
     let context = ConfigValidationContext {
         selected_adapter_id: Some(selected_adapter_id),
-        fields,
-        selected_native_options,
-        known_adapter_ids: known_adapter_ids(registry),
-        known_adapter_fields: known_adapter_fields.as_ref(),
+        operation: Some(command.operation),
+        selected_fields: Some(selected_fields),
+        catalog,
+        routing_fields: &routing_fields,
+        invocation_log_fields: &invocation_log_fields,
     };
     validate_config_sources(config_sources, &context)?;
     crate::outline_mode::validate_outline_config_sources(command, config_sources)
 }
 
-pub(super) fn validate_config_source_for_registry(
+pub(super) fn validate_config_source_for_catalog(
     source: &NavigationConfigSource,
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
+    catalog: &DocumentParameterCatalog,
 ) -> Result<(), NavigationError> {
     first_config_source_error_for_source(source)?;
-    let known_adapter_fields = fields::config_inspection_fields(registry)?;
+    let routing_fields = fields::adapter_routing_fields()
+        .map_err(|_| NavigationError::internal("config-routing-fields-build-failed"))?;
+    let invocation_log_fields = fields::invocation_log_fields()
+        .map_err(|_| NavigationError::internal("config-invocation-log-fields-build-failed"))?;
     let context = ConfigValidationContext {
         selected_adapter_id: None,
-        fields: known_adapter_fields.as_ref(),
-        selected_native_options: &[],
-        known_adapter_ids: known_adapter_ids(registry),
-        known_adapter_fields: known_adapter_fields.as_ref(),
+        operation: None,
+        selected_fields: None,
+        catalog,
+        routing_fields: &routing_fields,
+        invocation_log_fields: &invocation_log_fields,
     };
     validate_config_source(source, &context)?;
     crate::outline_mode::validate_outline_config_source(source)
@@ -102,20 +103,21 @@ pub(super) fn first_resolution_error(
 
 pub(super) fn first_operation_resolution_error(
     resolution: &ResolutionResult,
-    command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
-    selected_native_options: &[AdapterOptionSpec],
+    selected_adapter_id: &str,
+    operation: Operation,
+    catalog: &DocumentParameterCatalog,
 ) -> Result<(), NavigationError> {
     if let Some(diagnostic) = resolution.diagnostics().first() {
-        if let Some(spec) = spec_for_identity(selected_native_options, diagnostic.field.as_str()) {
-            return Err(native_option_validation_error(
-                command,
-                config_sources,
-                spec,
-                diagnostic_source_label(diagnostic),
-                resolution_reason_code(diagnostic),
-            )
-            .into());
+        if let Some((field, entry)) = catalog_option_for_identity(
+            catalog,
+            selected_adapter_id,
+            operation,
+            diagnostic.field.as_str(),
+        ) {
+            return Err(
+                native_option_validation_error(config_sources, field, entry, diagnostic).into(),
+            );
         }
         return Err(resolution_error_with_config_sources(
             diagnostic,
@@ -157,7 +159,7 @@ fn validate_explicit_cli_candidates(
     command: &NavigationCommand,
     selected_adapter_id: &str,
     fields: &FieldDefSet,
-    selected_native_options: &[AdapterOptionSpec],
+    catalog: &DocumentParameterCatalog,
 ) -> Result<(), NavigationError> {
     for candidate in command.cli_source.candidates() {
         if fields.field(candidate.field()).is_some() {
@@ -171,7 +173,8 @@ fn validate_explicit_cli_candidates(
                 path: "command",
                 owner: selected_adapter_id,
                 config_field: None,
-                selected_native_options,
+                operation: Some(command.operation),
+                catalog,
             },
             &key,
             candidate.input().raw().clone(),
@@ -199,38 +202,48 @@ fn validate_config_source(
     if let Some(issue) = issue {
         return Err(config_key_issue_error(source, value, context, issue));
     }
-    validate_selected_adapter_options(source, value, context)?;
-    validate_config_source_values(source, context)?;
+    validate_selected_adapter_option_values(source, value, context)?;
+    if let Some(selected_fields) = context.selected_fields {
+        validate_config_source_values(source, selected_fields)?;
+    }
+    for fields in [
+        context.routing_fields,
+        context.catalog.fields(),
+        context.invocation_log_fields,
+    ] {
+        validate_config_source_values(source, fields)?;
+    }
     Ok(())
 }
 
 fn config_key_registry(context: &ConfigValidationContext<'_>) -> ConfigKeyRegistry {
     let processing_id =
         ProcessingId::new(super::CONFIG_PROCESSING).expect("config processing id is valid");
-    ConfigKeyRegistry::from_field_set(context.fields, &processing_id)
-        .field_set(context.known_adapter_fields, &processing_id)
+    let registry = ConfigKeyRegistry::from_field_set(context.routing_fields, &processing_id)
+        .field_set(context.catalog.fields(), &processing_id)
+        .field_set(context.invocation_log_fields, &processing_id)
         .leaf_path(["defaults", "adapter"])
-        .leaf_path(["defaults", "output"])
-        .leaf_path(["defaults", "pagination", "enabled"])
-        .leaf_path(["defaults", "pagination", "limit"])
-        .leaf_path(["invocation_log", "enabled"])
-        .leaf_path(["invocation_log", "path"])
-        .leaf_path(["invocation_log", "content_capture", "enabled"])
-        .leaf_path(["invocation_log", "content_capture", "root"])
         .container_path(["options"])
         .array_item_leaf_path(["outline", "mode_rules"], "path")
         .array_item_leaf_path(["outline", "mode_rules"], "mode")
         .array_item_leaf_path(["outline", "auto_full_read", "thresholds"], "adapter")
         .array_item_leaf_path(["outline", "auto_full_read", "thresholds"], "unit")
-        .array_item_leaf_path(["outline", "auto_full_read", "thresholds"], "value")
+        .array_item_leaf_path(["outline", "auto_full_read", "thresholds"], "value");
+    match context.selected_fields {
+        Some(selected_fields) => registry.field_set(selected_fields, &processing_id),
+        None => registry,
+    }
 }
 
-fn validate_selected_adapter_options(
+fn validate_selected_adapter_option_values(
     source: &NavigationConfigSource,
     root: &Value,
     context: &ConfigValidationContext<'_>,
 ) -> Result<(), NavigationError> {
     let Some(selected_adapter_id) = context.selected_adapter_id else {
+        return Ok(());
+    };
+    let Some(operation) = context.operation else {
         return Ok(());
     };
     let Some(options) = root.get("options").and_then(Value::as_object) else {
@@ -240,11 +253,7 @@ fn validate_selected_adapter_options(
         return Ok(());
     };
     for (key, value) in selected_options {
-        if context
-            .selected_native_options
-            .iter()
-            .any(|spec| spec.key() == key)
-        {
+        if selected_adapter_supports_option(context.catalog, selected_adapter_id, operation, key) {
             continue;
         }
         return Err(unsupported_option(
@@ -254,7 +263,8 @@ fn validate_selected_adapter_options(
                 path: &source.path,
                 owner: selected_adapter_id,
                 config_field: Some(format!("options.{selected_adapter_id}.{key}")),
-                selected_native_options: context.selected_native_options,
+                operation: Some(operation),
+                catalog: context.catalog,
             },
             key,
             value.clone(),
@@ -266,7 +276,7 @@ fn validate_selected_adapter_options(
 
 fn validate_config_source_values(
     source: &NavigationConfigSource,
-    context: &ConfigValidationContext<'_>,
+    fields: &FieldDefSet,
 ) -> Result<(), NavigationError> {
     let config_sources = match source.level {
         NavigationConfigSourceLevel::Project => NavigationConfigSources {
@@ -278,14 +288,13 @@ fn validate_config_source_values(
             user: source.clone(),
         },
     };
-    let resolution = resolution::resolve(context.fields, None, None, &config_sources)?;
+    let resolution = resolution::resolve(fields, None, None, &config_sources)?;
 
     for diagnostic in resolution.diagnostics() {
         if !validation_belongs_to_source(diagnostic, source) {
             continue;
         }
-        if let Some(error) = config_validation_error_for_source(diagnostic, source, context.fields)
-        {
+        if let Some(error) = config_validation_error_for_source(diagnostic, source, fields) {
             return Err(error);
         }
         return Err(validation_error_for_identity(diagnostic.field.as_str()));
@@ -311,12 +320,4 @@ fn empty_config_source(level: NavigationConfigSourceLevel) -> NavigationConfigSo
         path: String::new(),
         loaded: LoadedNavigationConfigSource::default(),
     }
-}
-
-fn known_adapter_ids(registry: &(impl NavigationAdapterRegistry + ?Sized)) -> BTreeSet<String> {
-    registry
-        .adapters()
-        .into_iter()
-        .map(|adapter| adapter.id().to_owned())
-        .collect()
 }

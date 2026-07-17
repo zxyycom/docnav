@@ -73,7 +73,9 @@ fn requested_threshold_units(
     effective: &EffectiveThresholds,
     adapter: &AdapterDefinition<'_>,
 ) -> Vec<String> {
-    let capabilities = adapter.unstructured_full_read_capabilities();
+    let Some(capabilities) = adapter.unstructured_full_read_capabilities() else {
+        return Vec::new();
+    };
     effective
         .keys()
         .filter(|unit| capabilities.has_cost_measurement_unit(unit))
@@ -115,13 +117,13 @@ fn unstructured_full_read(
     selector_cost: Cost,
 ) -> AdapterResult<UnstructuredFullRead> {
     let capabilities = adapter.unstructured_full_read_capabilities();
-    let mut result = if capabilities.content_hook {
+    let mut result = if capabilities.is_some_and(|capabilities| capabilities.content_hook) {
         adapter.unstructured_full_read(request)?
     } else {
         default_utf8_full_read(request)?
     };
 
-    if capabilities.result_facts_hook {
+    if capabilities.is_some_and(|capabilities| capabilities.result_facts_hook) {
         let facts = adapter.unstructured_full_read_facts(request)?;
         if result.facts.cost.is_none() {
             result.facts.cost = facts.cost;

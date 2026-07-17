@@ -154,17 +154,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cli-config-resolution-clap"
-version = "0.1.0"
-dependencies = [
- "clap",
- "cli-config-resolution",
- "cli-config-resolution-serde",
- "docnav-typed-fields",
- "serde_json",
-]
-
-[[package]]
 name = "cli-config-resolution-serde"
 version = "0.1.0"
 dependencies = [
@@ -224,7 +213,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "cli-config-resolution",
- "cli-config-resolution-clap",
  "docnav-adapter-contracts",
  "docnav-cli-args",
  "docnav-diagnostics",
@@ -339,19 +327,9 @@ dependencies = [
 name = "docnav-typed-fields"
 version = "0.1.0"
 dependencies = [
- "docnav-typed-fields-macros",
  "regex",
  "serde_json",
  "trybuild",
-]
-
-[[package]]
-name = "docnav-typed-fields-macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

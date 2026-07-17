@@ -1,3 +1,9 @@
+//! Source resolution, multi-adapter routing, and strategy dispatch for Docnav.
+//!
+//! Registries expose adapter definitions directly. Navigation probes and selects among all
+//! registered adapters, constructs closed operation input, and dispatches through the selected
+//! strategy while preserving adapter-owned capabilities and full-read hooks.
+
 mod config_source;
 mod context;
 mod error;
@@ -10,6 +16,7 @@ use std::path::PathBuf;
 
 use cli_config_resolution::Source;
 use config_source::{load_config_source, LoadedNavigationConfigSource};
+use docnav_adapter_contracts::{AdapterDefinition, StandardOperationInput};
 use docnav_protocol::{Operation, ProtocolResponse, RequestEnvelope};
 use serde_json::Value;
 
@@ -21,8 +28,9 @@ use parameters::{
     ResolvedNavigationInput,
 };
 pub use parameters::{
-    DocumentCliFieldAttribution, DocumentCliFieldOwner, DocumentCliFieldSet,
-    DocumentCliFieldSetBuildError,
+    DocumentCliFieldAttribution, DocumentCliFieldSet, DocumentCliFieldSetBuildError,
+    DocumentParameterBinding, DocumentParameterCatalog, DocumentParameterCatalogBuildError,
+    DocumentParameterEntry,
 };
 pub use protocol::{
     execute_operation, execute_protocol_request, protocol_request, NavigationInputError,
@@ -30,18 +38,13 @@ pub use protocol::{
 };
 use routing::AdapterSelection;
 pub use routing::{
-    select_adapter, AdapterSelectionRequest, CandidateEvidence, NavigationAdapterRef,
-    NavigationAdapterRegistry,
+    select_adapter, AdapterSelectionRequest, CandidateEvidence, NavigationAdapterRegistry,
 };
 
-/// Builds the canonical CLI field set for a document operation from registered declarations.
-///
-/// Declaration conflicts retain their field and owner attribution in the returned build error.
-pub fn document_cli_field_set(
-    operation: Operation,
-    registry: &(impl NavigationAdapterRegistry + ?Sized),
-) -> Result<DocumentCliFieldSet, DocumentCliFieldSetBuildError> {
-    parameters::registry_cli_fields(operation, registry)
+/// Builds the adapter-routing CLI projection independently from product parameters.
+pub fn document_adapter_routing_fields(
+) -> Result<docnav_typed_fields::FieldDefSet, docnav_typed_fields::FieldDefSetBuildError> {
+    parameters::adapter_routing_fields()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -236,6 +239,7 @@ impl NavigationResolvedValue {
 pub fn execute_navigation_command<R>(
     command: NavigationCommand,
     config_sources: NavigationConfigSourceDescriptors,
+    catalog: &DocumentParameterCatalog,
     registry: &R,
 ) -> Result<NavigationCommandOutcome, NavigationError>
 where
@@ -244,42 +248,38 @@ where
     execute_loaded_navigation_command(
         command,
         load_navigation_config_sources(config_sources),
+        catalog,
         registry,
     )
 }
 
-pub fn inspect_navigation_config_sources<R>(
+pub fn inspect_navigation_config_sources(
     config_sources: NavigationConfigSourceDescriptors,
-    registry: &R,
-) -> Result<Value, NavigationError>
-where
-    R: NavigationAdapterRegistry + ?Sized,
-{
-    parameters::inspect_config_sources(&load_navigation_config_sources(config_sources), registry)
+    catalog: &DocumentParameterCatalog,
+) -> Result<Value, NavigationError> {
+    parameters::inspect_config_sources(&load_navigation_config_sources(config_sources), catalog)
 }
 
-pub fn validate_navigation_config_source_value<R>(
+pub fn validate_navigation_config_source_value(
     level: NavigationConfigSourceLevel,
     origin: NavigationConfigSourceOrigin,
     path: impl Into<String>,
     value: Value,
-    registry: &R,
-) -> Result<(), NavigationError>
-where
-    R: NavigationAdapterRegistry + ?Sized,
-{
+    catalog: &DocumentParameterCatalog,
+) -> Result<(), NavigationError> {
     let source = NavigationConfigSource {
         level,
         origin,
         path: path.into(),
         loaded: LoadedNavigationConfigSource::from_value(value),
     };
-    parameters::validate_config_source_for_registry(&source, registry)
+    parameters::validate_config_source_for_catalog(&source, catalog)
 }
 
 fn execute_loaded_navigation_command<R>(
     command: NavigationCommand,
     config_sources: NavigationConfigSources,
+    catalog: &DocumentParameterCatalog,
     registry: &R,
 ) -> Result<NavigationCommandOutcome, NavigationError>
 where
@@ -289,7 +289,7 @@ where
     let adapter_intent = resolve_navigation_adapter_intent(&command, &config_sources, &mut trace)?;
     let selection = select_navigation_adapter(&command, &adapter_intent, registry, &mut trace)?;
     let resolved =
-        resolve_navigation_input(&command, &config_sources, &selection, registry, &mut trace)?;
+        resolve_navigation_input(&command, &config_sources, &selection, catalog, &mut trace)?;
     let prepared = prepare_navigation_request(command.operation, resolved, &mut trace)?;
     let response = dispatch_navigation_request(&config_sources, &selection, &prepared, &mut trace)?;
     let response = validate_navigation_response(response, &mut trace)?;
@@ -304,7 +304,7 @@ where
 struct PreparedNavigationRequest {
     request: RequestEnvelope,
     output: NavigationOutputMode,
-    native_options: docnav_adapter_contracts::NativeOptionHandoff,
+    standard_input: StandardOperationInput,
 }
 
 fn navigation_trace(operation: Operation) -> NavigationInvocationTrace {
@@ -345,24 +345,16 @@ where
     Ok(selection)
 }
 
-fn resolve_navigation_input<R>(
+fn resolve_navigation_input(
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
     selection: &AdapterSelection<'_>,
-    registry: &R,
+    catalog: &DocumentParameterCatalog,
     trace: &mut NavigationInvocationTrace,
-) -> Result<ResolvedNavigationInput, NavigationError>
-where
-    R: NavigationAdapterRegistry + ?Sized,
-{
-    resolve_operation_input(
-        command,
-        config_sources,
-        selection.adapter.id(),
-        &selection.adapter.definition,
-        registry,
+) -> Result<ResolvedNavigationInput, NavigationError> {
+    resolve_operation_input(command, config_sources, selection.adapter.id(), catalog).map_err(
+        |error| error_with_trace(trace, NavigationFailureLayer::RequestConstruction, error),
     )
-    .map_err(|error| error_with_trace(trace, NavigationFailureLayer::RequestConstruction, error))
 }
 
 fn prepare_navigation_request(
@@ -370,22 +362,32 @@ fn prepare_navigation_request(
     resolved: ResolvedNavigationInput,
     trace: &mut NavigationInvocationTrace,
 ) -> Result<PreparedNavigationRequest, NavigationError> {
+    let ResolvedNavigationInput {
+        document_path,
+        ref_id,
+        query,
+        page,
+        limit,
+        output,
+        options,
+        standard_input,
+    } = resolved;
     let request = protocol_request(OperationInput {
         operation,
-        document_path: resolved.document_path,
-        ref_id: resolved.ref_id,
-        query: resolved.query,
-        page: resolved.page,
-        limit: resolved.limit,
-        options: resolved.options,
+        document_path,
+        ref_id,
+        query,
+        page,
+        limit,
+        options,
     })
     .map_err(|error| input_error_with_trace(trace, error))?;
     trace.request_id = Some(request.request_id.clone());
 
     Ok(PreparedNavigationRequest {
         request,
-        output: resolved.output,
-        native_options: resolved.native_options,
+        output,
+        standard_input,
     })
 }
 
@@ -399,7 +401,7 @@ fn dispatch_navigation_request(
         config_sources,
         &selection.adapter,
         &prepared.request,
-        &prepared.native_options,
+        &prepared.standard_input,
     )
     .map_err(|error| error_with_trace(trace, NavigationFailureLayer::AdapterDispatch, error))?;
     if matches!(response, ProtocolResponse::Failure(_)) {
@@ -438,32 +440,25 @@ fn validate_navigation_response(
 
 fn execute_navigation_request(
     config_sources: &NavigationConfigSources,
-    adapter: &NavigationAdapterRef<'_>,
+    adapter: &AdapterDefinition<'_>,
     request: &RequestEnvelope,
-    native_options: &docnav_adapter_contracts::NativeOptionHandoff,
+    standard_input: &StandardOperationInput,
 ) -> Result<ProtocolResponse, NavigationError> {
     if request.operation == Operation::Outline {
         if let OutlineMode::UnstructuredFull(unstructured) =
-            resolve_outline_mode(config_sources, adapter.id(), &adapter.definition, request)?
+            resolve_outline_mode(config_sources, adapter.id(), adapter, request)?
         {
-            return Ok(execute_unstructured_outline(
-                &adapter.definition,
-                request,
-                unstructured,
-            ));
+            return Ok(execute_unstructured_outline(adapter, request, unstructured));
         }
     }
 
-    Ok(execute_protocol_request(
-        &adapter.definition,
-        request,
-        native_options,
-    ))
+    Ok(execute_protocol_request(adapter, request, standard_input))
 }
 
 pub fn resolve_navigation_context<R>(
     command: NavigationCommand,
     config_sources: NavigationConfigSourceDescriptors,
+    catalog: &DocumentParameterCatalog,
     registry: &R,
 ) -> Result<NavigationContextOutcome, NavigationError>
 where
@@ -472,6 +467,7 @@ where
     resolve_loaded_navigation_context(
         command,
         load_navigation_config_sources(config_sources),
+        catalog,
         registry,
     )
 }
@@ -479,6 +475,7 @@ where
 fn resolve_loaded_navigation_context<R>(
     command: NavigationCommand,
     config_sources: NavigationConfigSources,
+    catalog: &DocumentParameterCatalog,
     registry: &R,
 ) -> Result<NavigationContextOutcome, NavigationError>
 where
@@ -491,13 +488,8 @@ where
         preselected_adapter_id: adapter_intent.adapter_id.as_deref(),
         preselected_adapter_source: adapter_intent.source,
     })?;
-    let defaults = resolve_context_defaults(
-        &command,
-        &config_sources,
-        selection.adapter.id(),
-        &selection.adapter.definition,
-        registry,
-    )?;
+    let defaults =
+        resolve_context_defaults(&command, &config_sources, selection.adapter.id(), catalog)?;
     let selection = NavigationContextSelection::from_selection(
         &selection,
         adapter_intent.adapter_id.as_deref(),

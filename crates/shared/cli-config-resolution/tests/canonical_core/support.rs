@@ -1,6 +1,7 @@
 use cli_config_resolution::{
-    ExpectedFieldShape, FieldDef, FieldDefSet, FieldIdentity, FieldValidation, JsonValue,
-    MergeStrategy, ProcessStrategy, Source, SourceCandidate, SourceId, SourceKind, SourceLocator,
+    ExpectedFieldShape, FieldDef, FieldDefSet, FieldIdentity, FieldPath, FieldValidation,
+    JsonValue, MergeStrategy, ProcessStrategy, Source, SourceCandidate, SourceId, SourceKind,
+    SourceLocator,
 };
 
 pub(super) fn identity(value: &str) -> FieldIdentity {
@@ -8,20 +9,11 @@ pub(super) fn identity(value: &str) -> FieldIdentity {
 }
 
 pub(super) fn candidate(field: &str, value: JsonValue) -> SourceCandidate {
-    SourceCandidate::value(
-        identity(field),
-        SourceLocator::Custom(field.to_owned()),
-        value,
-    )
+    SourceCandidate::value(identity(field), direct_locator(field), value)
 }
 
 pub(super) fn invalid_candidate(field: &str, raw: JsonValue, reason: &str) -> SourceCandidate {
-    SourceCandidate::invalid(
-        identity(field),
-        SourceLocator::Custom(field.to_owned()),
-        raw,
-        reason,
-    )
+    SourceCandidate::invalid(identity(field), direct_locator(field), raw, reason)
 }
 
 pub(super) fn source(
@@ -31,11 +23,17 @@ pub(super) fn source(
 ) -> Source {
     Source::new(
         SourceId::new(id).expect("source id"),
-        SourceKind::Custom("test".to_owned()),
+        SourceKind::Direct,
         priority,
         candidates.into_iter().collect(),
     )
     .expect("valid source")
+}
+
+pub(super) fn direct_locator(path: &str) -> SourceLocator {
+    SourceLocator::DirectPath(
+        FieldPath::new(path.split('.')).expect("direct source path must be valid"),
+    )
 }
 
 pub(super) fn custom_field_set(identity: &str, required: bool) -> FieldDefSet {

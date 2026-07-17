@@ -1,6 +1,5 @@
 use clap::Command;
 use docnav_cli_args::KnownValueFlag;
-use docnav_navigation::NavigationAdapterRegistry;
 use docnav_protocol::Operation;
 
 use super::super::argument_helpers::split_equals;
@@ -24,18 +23,15 @@ struct DocumentFlag {
 }
 
 impl DocumentValueFlags {
-    pub(super) fn new<R>(operation: Operation, registry: &R, command: &Command) -> Self
-    where
-        R: NavigationAdapterRegistry + ?Sized,
-    {
+    pub(super) fn new(operation: Operation, command: &Command) -> Self {
         let mut flags = Vec::new();
         add_flags(&mut flags, command, true);
         for candidate_operation in DOCUMENT_OPERATIONS {
             if candidate_operation == operation {
                 continue;
             }
-            if let Ok((command, _)) = document_clap_command(candidate_operation, registry) {
-                add_flags(&mut flags, &command, false);
+            if let Ok(spec) = document_clap_command(candidate_operation) {
+                add_flags(&mut flags, &spec.command, false);
             }
         }
         Self { flags }

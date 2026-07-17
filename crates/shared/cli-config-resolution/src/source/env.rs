@@ -24,15 +24,17 @@ where
         .processing_metadata(processing_id)
         .into_iter()
         .filter_map(|metadata| {
+            let identity = metadata.identity().clone();
+            let value_kind = metadata.value_kind();
             let ProcessingLocator::EnvVar(name) = metadata.locator else {
                 return None;
             };
             let raw = variables.get(&name)?;
             let locator = SourceLocator::EnvVar(name);
-            Some(match decode_env_value(raw, metadata.value_kind) {
-                Ok(value) => SourceCandidate::value(metadata.identity, locator, value),
+            Some(match decode_env_value(raw, value_kind) {
+                Ok(value) => SourceCandidate::value(identity, locator, value),
                 Err(reason) => SourceCandidate::invalid(
-                    metadata.identity,
+                    identity,
                     locator,
                     JsonValue::String(raw.clone()),
                     reason,

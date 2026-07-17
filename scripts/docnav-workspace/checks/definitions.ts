@@ -269,25 +269,6 @@ export const checks = defineChecks([
         ]
       },
       {
-        id: "cli-config-resolution-flow",
-        label: "cli-config resolution flow",
-        command: "cargo",
-        args: [
-          "run",
-          "--locked",
-          "-p",
-          "cli-config-resolution-clap",
-          "--example",
-          "resolution_flow"
-        ],
-        mutex: ["cargo-build"],
-        ignoreOutput: [
-          ...cargoProgressOutput,
-          /^\s*Running `.*resolution_flow(?:\.exe)?`$/,
-          /^resolved limit=12 replace_list=\["cli-list"\] replace_map=\{"cli":"only"\} append_items=\["config-a","env-a","cli-a"\] format=readable$/
-        ]
-      },
-      {
         id: "openspec",
         label: "openspec",
         command: "bun",

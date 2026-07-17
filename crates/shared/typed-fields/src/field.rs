@@ -35,29 +35,41 @@ impl FieldDef {
         &self.identity
     }
 
-    pub fn schema_metadata(&self) -> SchemaMetadataView {
+    pub fn path(&self) -> &FieldPath {
+        &self.path
+    }
+
+    pub fn value_kind(&self) -> ValueKind {
+        self.value_kind
+    }
+
+    pub fn constraints(&self) -> &FieldConstraints {
+        &self.constraints
+    }
+
+    pub fn default(&self) -> &DefaultMetadata {
+        &self.default
+    }
+
+    pub fn schema_metadata(&self) -> SchemaMetadataView<'_> {
         self.schema_metadata_with_path(self.path.clone())
     }
 
     pub fn processing_metadata(
         &self,
         processing_id: &ProcessingId,
-    ) -> Option<ProcessingMetadataView> {
+    ) -> Option<ProcessingMetadataView<'_>> {
         let process = self.processes.get(processing_id)?;
         let path = process
             .json_path()
             .cloned()
             .unwrap_or_else(|| identity_path(&self.identity));
         Some(ProcessingMetadataView {
-            identity: self.identity.clone(),
+            field: self,
             processing_id: processing_id.clone(),
             path,
             input_kind: process.input_kind(),
             locator: process.locator(),
-            value_kind: self.value_kind,
-            constraints: self.constraints.clone(),
-            default: self.default.clone(),
-            merge_strategy: self.merge_strategy,
             cli: process.cli_metadata().cloned(),
         })
     }
@@ -70,21 +82,8 @@ impl FieldDef {
         self.schema_metadata().validate_value(value)
     }
 
-    fn schema_metadata_with_path(&self, path: FieldPath) -> SchemaMetadataView {
-        SchemaMetadataView {
-            identity: self.identity.clone(),
-            path,
-            value_kind: self.value_kind,
-            constraints: self.constraints.clone(),
-            default: self.default.clone(),
-            merge_strategy: self.merge_strategy,
-        }
-    }
-
-    pub(crate) fn static_default_value(&self) -> Option<TypedValue> {
-        self.schema_metadata()
-            .static_default_value()
-            .expect("static default metadata is validated during field build")
+    fn schema_metadata_with_path(&self, path: FieldPath) -> SchemaMetadataView<'_> {
+        SchemaMetadataView { field: self, path }
     }
 
     pub(crate) fn apply_declaration_presence(&mut self, required: bool, nullable: bool) {
@@ -108,37 +107,19 @@ impl FieldDef {
         let Some(process) = self.processes.get(processing_id) else {
             return self.schema_metadata().validate_optional_value(None);
         };
-        self.validate_json_process_value(process, root, false)
-    }
-
-    pub(crate) fn decode_json_process_with_static_default(
-        &self,
-        processing_id: &ProcessingId,
-        root: &Value,
-    ) -> Result<Option<TypedValue>, ValidationFailure> {
-        let Some(process) = self.processes.get(processing_id) else {
-            return self
-                .schema_metadata()
-                .validate_optional_value_with_static_default(None);
-        };
-        self.validate_json_process_value(process, root, true)
+        self.validate_json_process_value(process, root)
     }
 
     fn validate_json_process_value(
         &self,
         process: &BuiltProcessStrategy,
         root: &Value,
-        use_static_default: bool,
     ) -> Result<Option<TypedValue>, ValidationFailure> {
         let Some(path) = process.json_path() else {
             return self.schema_metadata().validate_optional_value(None);
         };
         let metadata = self.schema_metadata_with_path(path.clone());
-        if use_static_default {
-            metadata.validate_optional_value_with_static_default(value_at_path(root, path))
-        } else {
-            metadata.validate_optional_value(value_at_path(root, path))
-        }
+        metadata.validate_optional_value(value_at_path(root, path))
     }
 }
 

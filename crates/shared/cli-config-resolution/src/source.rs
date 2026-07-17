@@ -34,7 +34,7 @@ pub enum SourceKind {
     Env,
     Config,
     Default,
-    Custom(String),
+    Direct,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -43,7 +43,7 @@ pub enum SourceLocator {
     EnvVar(String),
     ConfigPath(FieldPath),
     Default(String),
-    Custom(String),
+    DirectPath(FieldPath),
 }
 
 impl SourceLocator {
@@ -51,8 +51,8 @@ impl SourceLocator {
         match self {
             Self::CliFlag(flag) => flag.clone(),
             Self::EnvVar(name) => name.clone(),
-            Self::ConfigPath(path) => path.segments().join("."),
-            Self::Default(label) | Self::Custom(label) => label.clone(),
+            Self::ConfigPath(path) | Self::DirectPath(path) => path.segments().join("."),
+            Self::Default(label) => label.clone(),
         }
     }
 }
@@ -65,9 +65,8 @@ impl TryFrom<ProcessingLocator> for SourceLocator {
             ProcessingLocator::CliFlag(flag) => Ok(Self::CliFlag(flag)),
             ProcessingLocator::EnvVar(name) => Ok(Self::EnvVar(name)),
             ProcessingLocator::ConfigPath(path) => Ok(Self::ConfigPath(path)),
-            ProcessingLocator::JsonPath(_) | ProcessingLocator::RustField => {
-                Err(SourceError::UnsupportedProcessingLocator(locator))
-            }
+            ProcessingLocator::JsonPath(path) => Ok(Self::DirectPath(path)),
+            ProcessingLocator::RustField => Err(SourceError::UnsupportedProcessingLocator(locator)),
         }
     }
 }
@@ -146,7 +145,6 @@ impl Source {
         priority: i32,
         candidates: Vec<SourceCandidate>,
     ) -> Result<Self, SourceError> {
-        validate_source_kind(&kind)?;
         let mut fields = BTreeSet::new();
         for candidate in &candidates {
             validate_locator(&kind, candidate.locator())?;
@@ -182,7 +180,6 @@ impl Source {
 #[derive(Clone, Debug, PartialEq)]
 pub enum SourceError {
     EmptySourceId,
-    EmptyCustomKind,
     EmptyLocator,
     DuplicateCandidate(FieldIdentity),
     IncompatibleLocator {
@@ -196,7 +193,6 @@ impl fmt::Display for SourceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::EmptySourceId => formatter.write_str("source id is empty"),
-            Self::EmptyCustomKind => formatter.write_str("custom source kind is empty"),
             Self::EmptyLocator => formatter.write_str("source locator is empty"),
             Self::DuplicateCandidate(field) => write!(
                 formatter,
@@ -222,21 +218,12 @@ impl fmt::Display for SourceError {
 
 impl std::error::Error for SourceError {}
 
-fn validate_source_kind(kind: &SourceKind) -> Result<(), SourceError> {
-    if matches!(kind, SourceKind::Custom(name) if name.trim().is_empty()) {
-        Err(SourceError::EmptyCustomKind)
-    } else {
-        Ok(())
-    }
-}
-
 fn validate_locator(kind: &SourceKind, locator: &SourceLocator) -> Result<(), SourceError> {
     let label = match locator {
         SourceLocator::CliFlag(label)
         | SourceLocator::EnvVar(label)
-        | SourceLocator::Default(label)
-        | SourceLocator::Custom(label) => Some(label),
-        SourceLocator::ConfigPath(_) => None,
+        | SourceLocator::Default(label) => Some(label),
+        SourceLocator::ConfigPath(_) | SourceLocator::DirectPath(_) => None,
     };
     if label.is_some_and(|value| value.trim().is_empty()) {
         return Err(SourceError::EmptyLocator);
@@ -247,7 +234,7 @@ fn validate_locator(kind: &SourceKind, locator: &SourceLocator) -> Result<(), So
             | (SourceKind::Env, SourceLocator::EnvVar(_))
             | (SourceKind::Config, SourceLocator::ConfigPath(_))
             | (SourceKind::Default, SourceLocator::Default(_))
-            | (SourceKind::Custom(_), SourceLocator::Custom(_))
+            | (SourceKind::Direct, SourceLocator::DirectPath(_))
     );
     if matches {
         Ok(())

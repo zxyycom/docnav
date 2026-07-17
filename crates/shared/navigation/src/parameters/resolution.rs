@@ -58,7 +58,7 @@ pub(super) fn source_label(source_id: &SourceId, source_kind: &SourceKind) -> &'
         USER_SOURCE_ID => "user",
         _ => match source_kind {
             SourceKind::Default => "built_in",
-            SourceKind::Cli | SourceKind::Custom(_) => "explicit",
+            SourceKind::Cli | SourceKind::Direct => "explicit",
             SourceKind::Config => "config",
             SourceKind::Env => "env",
         },
@@ -89,7 +89,7 @@ fn extract_direct_source(
     } else {
         Ok(Some(source(
             EXPLICIT_FIXED_SOURCE_ID,
-            SourceKind::Custom("docnav-direct".to_owned()),
+            SourceKind::Direct,
             crate::DOCUMENT_CLI_SOURCE_PRIORITY,
             direct_candidates,
         )?))
@@ -104,6 +104,7 @@ fn extract_direct_candidates(
     for metadata in fields.processing_metadata(
         &ProcessingId::new(DIRECT_PROCESSING).expect("direct processing id is valid"),
     ) {
+        let identity = metadata.identity().clone();
         let ProcessingLocator::JsonPath(path) = metadata.locator else {
             return Err(NavigationError::internal(
                 "navigation-direct-processing-locator-invalid",
@@ -113,8 +114,8 @@ fn extract_direct_candidates(
             continue;
         };
         candidates.push(SourceCandidate::value(
-            metadata.identity,
-            SourceLocator::Custom(path.segments().join(".")),
+            identity,
+            SourceLocator::DirectPath(path),
             value.clone(),
         ));
     }

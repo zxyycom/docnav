@@ -3,18 +3,18 @@ use super::*;
 // @case WB-CORE-ADAPTER-001
 #[test]
 fn static_registry_contains_built_in_markdown_adapter() {
-    let registry = AdapterRegistry { adapters: ADAPTERS };
-    let record = registry
+    let registry = AdapterRegistry::builtin();
+    let definition = registry
         .adapters
         .iter()
-        .find(|adapter| adapter.id() == "docnav-markdown")
+        .map(|definition| definition())
+        .find(|definition| definition.id() == "docnav-markdown")
         .expect("built-in markdown adapter");
 
-    let manifest = record.manifest();
+    let manifest = definition.manifest();
 
-    assert_eq!(record.id(), "docnav-markdown");
+    assert_eq!(definition.id(), "docnav-markdown");
     assert_eq!(manifest.adapter.id, "docnav-markdown");
-    assert_eq!(record.implementation_source(), "core_static");
     assert!(manifest
         .formats
         .iter()
@@ -23,7 +23,7 @@ fn static_registry_contains_built_in_markdown_adapter() {
 
 #[test]
 fn adapter_layer_check_reports_definition_metadata_and_core_source() {
-    let registry = AdapterRegistry { adapters: ADAPTERS };
+    let registry = AdapterRegistry::builtin();
     let checks = adapter_layer_checks(&registry);
     let check = checks.first().expect("adapter layer check").value();
 
@@ -39,17 +39,35 @@ fn adapter_layer_check_reports_definition_metadata_and_core_source() {
 }
 
 #[test]
-fn static_registry_exposes_full_native_option_specs() {
-    let registry = AdapterRegistry { adapters: ADAPTERS };
-    let native_options = registry
-        .adapters()
-        .into_iter()
-        .flat_map(|adapter| adapter.definition.native_options().to_vec())
-        .collect::<Vec<_>>();
+fn adapter_list_preserves_static_registry_projection() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = crate::output::write_outcome(
+        adapter_list().expect("adapter list"),
+        &mut stdout,
+        &mut stderr,
+    );
+    let output: Value = serde_json::from_slice(&stdout).expect("adapter list json");
+    let adapters = output
+        .get("adapters")
+        .and_then(Value::as_array)
+        .expect("adapters");
 
-    assert!(native_options.iter().any(|option| {
-        option.owner == "docnav-markdown"
-            && option.namespace() == "options"
-            && option.key() == "max_heading_level"
-    }));
+    assert_eq!(exit_code, 0);
+    assert!(stderr.is_empty());
+    assert_eq!(
+        output.get("registry").and_then(Value::as_str),
+        Some("core_static")
+    );
+    assert_eq!(adapters.len(), 1);
+    assert_eq!(
+        adapters[0].get("id").and_then(Value::as_str),
+        Some("docnav-markdown")
+    );
+    assert_eq!(
+        adapters[0]
+            .get("implementation_source")
+            .and_then(Value::as_str),
+        Some("core_static")
+    );
 }

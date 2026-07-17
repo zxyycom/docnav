@@ -1,9 +1,8 @@
 use docnav_typed_fields::{
-    ActualValueKind, BuildError, CliBooleanEncoding, CliProcessingMetadata, DefaultMetadata,
-    ExpectedFieldShape, FieldDef, FieldDefBuildFailure, FieldDefBuilder, FieldDefDeclaration,
-    FieldDefSet, FieldDefSetBuildError, FieldDefs, FieldIdentity, FieldValidation, FieldValueMap,
-    MergeStrategy, ProcessStrategy, ProcessingId, ProcessingInputKind, ProcessingLocator,
-    TypedValue, ValidationReason, ValueKind,
+    ActualValueKind, BuildError, CliBooleanEncoding, CliProcessingMetadata, ExpectedFieldShape,
+    FieldDef, FieldDefBuildFailure, FieldDefBuilder, FieldDefSet, FieldDefSetBuildError,
+    FieldIdentity, FieldValidation, MergeStrategy, ProcessStrategy, ProcessingId,
+    ProcessingInputKind, ProcessingLocator, TypedValue, ValidationReason, ValueKind,
 };
 use serde_json::json;
 
@@ -50,71 +49,6 @@ fn canonical_processing_metadata_exposes_source_locators() {
         config[0].locator,
         ProcessingLocator::ConfigPath(
             docnav_typed_fields::FieldPath::new(["read", "limit"]).expect("path")
-        )
-    );
-}
-
-#[test]
-fn cli_metadata_survives_clone_type_erasure_build_and_aggregation() {
-    let cli = ProcessingId::new("cli").expect("valid processing id");
-    let mapped_builder = FieldDef::builder("pagination")
-        .process(
-            "cli",
-            ProcessStrategy::cli_flag("--pagination").cli_metadata(
-                CliProcessingMetadata::new()
-                    .help("Enable or disable pagination")
-                    .value_name("STATE")
-                    .boolean_encoding(CliBooleanEncoding::explicit("enabled", "disabled")),
-            ),
-        )
-        .validation(FieldValidation::boolean())
-        .default_static(true);
-    let declaration =
-        FieldDefDeclaration::new(mapped_builder.clone(), ExpectedFieldShape::optional());
-
-    let erased = declaration
-        .processing_metadata(&cli)
-        .expect("type-erased declaration builds")
-        .expect("CLI processing exists");
-    let fields = FieldDefSet::builder()
-        .field_declaration(declaration)
-        .field(
-            FieldDef::builder("verbose")
-                .process(
-                    "cli",
-                    ProcessStrategy::cli_flag("--verbose").cli_metadata(
-                        CliProcessingMetadata::new()
-                            .help("Enable verbose output")
-                            .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue),
-                    ),
-                )
-                .validation(FieldValidation::boolean()),
-            ExpectedFieldShape::optional(),
-        )
-        .build()
-        .expect("CLI metadata declarations build");
-    let aggregated = fields.processing_metadata(&cli);
-
-    assert_eq!(aggregated.len(), 2);
-    assert_eq!(aggregated[0], erased);
-    assert_eq!(aggregated[0].value_kind, ValueKind::Boolean);
-    assert_eq!(aggregated[0].default, DefaultMetadata::Static(json!(true)));
-    assert_eq!(aggregated[0].merge_strategy, MergeStrategy::Replace);
-    assert_eq!(
-        aggregated[0].cli,
-        Some(
-            CliProcessingMetadata::new()
-                .help("Enable or disable pagination")
-                .value_name("STATE")
-                .boolean_encoding(CliBooleanEncoding::explicit("enabled", "disabled"))
-        )
-    );
-    assert_eq!(
-        aggregated[1].cli,
-        Some(
-            CliProcessingMetadata::new()
-                .help("Enable verbose output")
-                .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue)
         )
     );
 }
@@ -357,10 +291,10 @@ fn merge_strategy_is_canonical_field_metadata() {
         .expect("merge metadata builds");
 
     let metadata = fields.schema_metadata();
-    assert_eq!(metadata[0].merge_strategy, MergeStrategy::Replace);
-    assert_eq!(metadata[1].merge_strategy, MergeStrategy::Append);
-    assert_eq!(metadata[2].merge_strategy, MergeStrategy::MapMerge);
-    assert_eq!(metadata[3].merge_strategy, MergeStrategy::DenyConflict);
+    assert_eq!(metadata[0].merge_strategy(), MergeStrategy::Replace);
+    assert_eq!(metadata[1].merge_strategy(), MergeStrategy::Append);
+    assert_eq!(metadata[2].merge_strategy(), MergeStrategy::MapMerge);
+    assert_eq!(metadata[3].merge_strategy(), MergeStrategy::DenyConflict);
 
     let incompatible = FieldDefSet::builder()
         .field(
@@ -404,161 +338,6 @@ fn field_lookup_uses_canonical_final_value_validation() {
         ValidationReason::WrongType {
             expected: docnav_typed_fields::ValueKind::Integer,
             actual: ActualValueKind::String,
-        }
-    );
-}
-
-#[derive(Debug, PartialEq, FieldDefs)]
-struct MaterializedParameters {
-    #[field(
-        FieldDef::builder("z_limit")
-            .process("config", ProcessStrategy::config_path(["limit"]))
-            .validation(FieldValidation::int())
-    )]
-    limit: i64,
-
-    #[field(
-        FieldDef::builder("a_mode")
-            .process("config", ProcessStrategy::config_path(["mode"]))
-            .validation(FieldValidation::string())
-    )]
-    mode: Option<String>,
-}
-
-#[test]
-fn derived_field_set_materializes_canonical_typed_values() {
-    let fields = MaterializedParameters::field_defs().expect("field definitions build");
-    let values = FieldValueMap::from([
-        (
-            FieldIdentity::new("z_limit").expect("identity"),
-            TypedValue::Integer(25),
-        ),
-        (
-            FieldIdentity::new("a_mode").expect("identity"),
-            TypedValue::String("fast".to_owned()),
-        ),
-    ]);
-    assert_eq!(
-        fields
-            .materialize(&values)
-            .expect("canonical typed values materialize"),
-        MaterializedParameters {
-            limit: 25,
-            mode: Some("fast".to_owned()),
-        }
-    );
-
-    let invalid = FieldValueMap::from([(
-        FieldIdentity::new("z_limit").expect("identity"),
-        TypedValue::String("25".to_owned()),
-    )]);
-    let failures = fields
-        .materialize(&invalid)
-        .expect_err("materialization revalidates final values");
-    assert!(failures.failures().iter().any(|failure| {
-        failure.field.as_str() == "z_limit"
-            && matches!(
-                failure.reason,
-                ValidationReason::WrongType {
-                    expected: docnav_typed_fields::ValueKind::Integer,
-                    actual: ActualValueKind::String
-                }
-            )
-    }));
-
-    let missing = FieldValueMap::new();
-    let failures = fields
-        .materialize(&missing)
-        .expect_err("missing required canonical value fails materialization");
-    assert!(failures.failures().iter().any(|failure| {
-        failure.field.as_str() == "z_limit"
-            && matches!(failure.reason, ValidationReason::MissingRequired)
-    }));
-}
-
-#[derive(Debug, PartialEq, FieldDefs)]
-struct MaterializedNumbers {
-    #[field(
-        FieldDef::builder("required_number")
-            .process("config", ProcessStrategy::config_path(["required_number"]))
-            .validation(FieldValidation::num())
-    )]
-    required: f64,
-
-    #[field(
-        FieldDef::builder("optional_number")
-            .process("config", ProcessStrategy::config_path(["optional_number"]))
-            .validation(FieldValidation::num())
-    )]
-    optional: Option<f64>,
-}
-
-#[test]
-fn materialization_rejects_non_finite_numbers_for_optional_and_required_fields() {
-    let fields = MaterializedNumbers::field_defs().expect("field definitions build");
-    let non_finite = f64::NAN;
-
-    let optional_values = FieldValueMap::from([
-        (
-            FieldIdentity::new("required_number").expect("identity"),
-            TypedValue::Number(1.0),
-        ),
-        (
-            FieldIdentity::new("optional_number").expect("identity"),
-            TypedValue::Number(non_finite),
-        ),
-    ]);
-    let failures = fields
-        .materialize(&optional_values)
-        .expect_err("non-finite optional number must not become an absent value");
-    assert!(failures
-        .failures()
-        .iter()
-        .any(|failure| failure.field.as_str() == "optional_number"));
-
-    let required_values = FieldValueMap::from([(
-        FieldIdentity::new("required_number").expect("identity"),
-        TypedValue::Number(non_finite),
-    )]);
-    let failures = fields
-        .materialize(&required_values)
-        .expect_err("non-finite required number must fail canonical validation");
-    assert!(failures
-        .failures()
-        .iter()
-        .any(|failure| failure.field.as_str() == "required_number"));
-}
-
-#[derive(Debug, PartialEq, FieldDefs)]
-struct NestedMaterializedParameters {
-    #[field(group)]
-    nested: NestedMaterializedValues,
-}
-
-#[derive(Debug, PartialEq, FieldDefs)]
-struct NestedMaterializedValues {
-    #[field(
-        FieldDef::builder("nested.value")
-            .process("config", ProcessStrategy::config_path(["nested", "value"]))
-            .validation(FieldValidation::int())
-    )]
-    value: i64,
-}
-
-#[test]
-fn derived_field_set_materializes_nested_groups() {
-    let fields = NestedMaterializedParameters::field_defs().expect("field definitions build");
-    let values = FieldValueMap::from([(
-        FieldIdentity::new("nested.value").expect("identity"),
-        TypedValue::Integer(7),
-    )]);
-
-    assert_eq!(
-        fields
-            .materialize(&values)
-            .expect("nested group materializes"),
-        NestedMaterializedParameters {
-            nested: NestedMaterializedValues { value: 7 },
         }
     );
 }

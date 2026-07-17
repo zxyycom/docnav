@@ -7,10 +7,7 @@ use serde_json::{json, Value};
 
 // @case WB-CORE-CONFIG-SOURCE-001
 use super::{read_selected_config, ConfigFileSource};
-use crate::project_context::{
-    ConfigPathOrigin, ProjectContext, SelectedConfigPath, SelectedConfigPaths,
-};
-use crate::registry::AdapterRegistry;
+use crate::project_context::{ConfigPathOrigin, SelectedConfigPath};
 
 #[test]
 fn unknown_config_field_reports_structured_config_issue() {
@@ -23,11 +20,8 @@ fn unknown_config_field_reports_structured_config_issue() {
             }
         }),
     );
-    let registry = registry_for_root(&root);
-
     let error = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap_err();
@@ -65,11 +59,8 @@ fn adapter_id_native_option_config_key_is_typed_validated() {
             }
         }),
     );
-    let registry = registry_for_root(&root);
-
     let config = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap();
@@ -91,11 +82,8 @@ fn bare_native_option_config_path_is_unknown() {
             }
         }),
     );
-    let registry = registry_for_root(&root);
-
     let error = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap_err();
@@ -118,11 +106,8 @@ fn invalid_adapter_id_native_option_value_is_rejected() {
             }
         }),
     );
-    let registry = registry_for_root(&root);
-
     let error = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap_err();
@@ -168,11 +153,8 @@ fn navigation_owned_outline_config_is_accepted() {
             "outline": outline.clone()
         }),
     );
-    let registry = registry_for_root(&root);
-
     let config = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap();
@@ -190,11 +172,8 @@ fn direct_config_file_rejects_empty_invocation_log_path() {
             }
         }),
     );
-    let registry = registry_for_root(&root);
-
     let error = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap_err();
@@ -217,11 +196,8 @@ fn direct_config_file_rejects_empty_invocation_log_content_capture_root() {
             }
         }),
     );
-    let registry = registry_for_root(&root);
-
     let error = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap_err();
@@ -242,11 +218,8 @@ fn nested_non_object_config_field_reports_structured_config_issue() {
             }
         }),
     );
-    let registry = registry_for_root(&root);
-
     let error = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap_err();
@@ -269,12 +242,10 @@ fn nested_non_object_config_field_reports_structured_config_issue() {
 #[test]
 fn default_missing_config_path_is_absent() {
     let root = temp_root("default-missing");
-    let registry = registry_for_root(&root);
     let path = root.join(".docnav").join("missing.json");
 
     let config = read_selected_config(
         &SelectedConfigPath::default(path),
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap();
@@ -285,7 +256,6 @@ fn default_missing_config_path_is_absent() {
 #[test]
 fn explicit_missing_config_path_reports_blocking_issue() {
     let root = temp_root("explicit-missing");
-    let registry = registry_for_root(&root);
     let path = root.join("selected-project.json");
 
     let error = read_selected_config(
@@ -293,7 +263,6 @@ fn explicit_missing_config_path_reports_blocking_issue() {
             path,
             origin: ConfigPathOrigin::ExplicitCli,
         },
-        &registry,
         ConfigFileSource::Project,
     )
     .unwrap_err();
@@ -320,18 +289,6 @@ fn write_project_config(root: &Path, value: Value) -> PathBuf {
     fs::create_dir_all(path.parent().expect("config parent")).unwrap();
     fs::write(&path, serde_json::to_string_pretty(&value).unwrap()).unwrap();
     path
-}
-
-fn registry_for_root(root: &Path) -> AdapterRegistry {
-    AdapterRegistry::load(&ProjectContext {
-        cwd: root.to_owned(),
-        project_root: root.to_owned(),
-        config_paths: SelectedConfigPaths {
-            project: SelectedConfigPath::default(root.join(".docnav").join("docnav.json")),
-            user: SelectedConfigPath::default(root.join(".user-config").join("docnav.json")),
-        },
-    })
-    .unwrap()
 }
 
 struct TempRoot {

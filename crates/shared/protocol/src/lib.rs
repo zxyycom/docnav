@@ -44,7 +44,7 @@ pub use operation_result::{
     OperationResult, OutlineResult, ReadResult, StructuredOutlineResult, UnstructuredOutlineReason,
     UnstructuredOutlineResult,
 };
-pub use options::{OptionEntry, Options};
+pub use options::Options;
 pub use positive_integer::{positive_result, try_positive, PositiveIntegerError};
 pub use probe::{ProbeReason, ProbeReasonCode, ProbeResult, ProbeValidationError};
 pub use request_context::{

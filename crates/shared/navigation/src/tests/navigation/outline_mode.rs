@@ -41,6 +41,7 @@ fn project_path_rule_overrides_user_rule_and_uses_default_utf8_fallback() {
                 }
             }),
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&adapter),
     )
     .expect("path rule outcome");
@@ -77,6 +78,7 @@ fn later_structured_path_rule_opts_out_of_cost_threshold() {
             }),
             Value::Null,
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&adapter),
     )
     .expect("structured opt-out outcome");
@@ -115,6 +117,7 @@ fn threshold_filtering_and_unit_merge_keep_structured_when_minimum_not_met() {
                 }
             }),
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&adapter),
     )
     .expect("threshold miss outcome");
@@ -144,6 +147,7 @@ fn threshold_adapter_mismatch_does_not_request_cost_measurements() {
             }),
             Value::Null,
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&adapter),
     )
     .expect("adapter mismatch threshold outcome");
@@ -159,6 +163,7 @@ fn threshold_missing_measurement_and_runtime_unavailable_fall_back_to_structured
     let missing_outcome = execute_loaded_navigation_command(
         navigation_command(Vec::new()),
         config_sources(threshold_config("tokens", 100), Value::Null),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&missing),
     )
     .expect("missing measurement outcome");
@@ -172,6 +177,7 @@ fn threshold_missing_measurement_and_runtime_unavailable_fall_back_to_structured
     let unavailable_outcome = execute_loaded_navigation_command(
         navigation_command(Vec::new()),
         config_sources(threshold_config("tokens", 100), Value::Null),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&unavailable),
     )
     .expect("runtime unavailable outcome");
@@ -191,6 +197,7 @@ fn cost_threshold_triggers_hook_full_read_and_preserves_selector_cost() {
     let outcome = execute_loaded_navigation_command(
         navigation_command(Vec::new()),
         config_sources(threshold_config("tokens", 100), Value::Null),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&adapter),
     )
     .expect("cost-triggered full read outcome");
@@ -226,6 +233,7 @@ fn path_triggered_hook_result_facts_are_used() {
             }),
             Value::Null,
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&adapter),
     )
     .expect("path-triggered hook outcome");
@@ -258,6 +266,7 @@ fn path_triggered_default_fallback_reports_non_utf8_failure() {
             }),
             Value::Null,
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&adapter),
     )
     .expect("non-utf8 outcome");
@@ -287,6 +296,7 @@ fn invalid_path_rule_returns_source_scoped_diagnostic() {
             }),
             Value::Null,
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&RecordingAdapter::default()),
     )
     .expect_err("invalid rule should fail");
@@ -324,6 +334,7 @@ fn unregistered_outline_config_key_returns_source_scoped_diagnostic() {
             }),
             Value::Null,
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&RecordingAdapter::default()),
     )
     .expect_err("unregistered outline config key should fail");
@@ -363,6 +374,7 @@ fn unregistered_outline_rule_key_is_rejected_before_rule_parsing() {
             }),
             Value::Null,
         ),
+        &crate::tests::support::document_parameter_catalog(),
         &SingleRegistry::new(&RecordingAdapter::default()),
     )
     .expect_err("unregistered outline rule key should fail before regex parsing");

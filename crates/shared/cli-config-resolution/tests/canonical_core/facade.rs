@@ -53,16 +53,16 @@ fn primary_facade_builds_constrained_canonical_parameters() {
     let field = parameters.field(&identity("items")).expect("parameter");
     assert_eq!(field.merge_strategy(), MergeStrategy::Append);
     assert!(matches!(
-        field.schema_metadata().default,
-        DefaultMetadata::Static(_)
+        field.schema_metadata().default(),
+        &DefaultMetadata::Static(_)
     ));
     assert!(matches!(
         parameters
             .field(&identity("mode"))
             .expect("enum parameter")
             .schema_metadata()
-            .default,
-        DefaultMetadata::Static(JsonValue::String(ref value)) if value == "readable"
+            .default(),
+        &DefaultMetadata::Static(JsonValue::String(ref value)) if value == "readable"
     ));
 }
 

@@ -9,6 +9,7 @@ use crate::config::{ConfigContext, CoreConfig};
 use crate::error::{AppError, AppResult};
 use crate::invocation_log::{DocumentInvocationLog, InvocationLogger};
 use crate::output::{outcome_for_response, CommandOutcome};
+use crate::parameter_catalog::document_parameter_catalog;
 use crate::project_context::ProjectContext;
 use crate::project_paths::normalize_document_path;
 use crate::registry::AdapterRegistry;
@@ -52,9 +53,13 @@ impl DocnavRuntime for AdapterRuntime {
             &request.project,
             Some(&document.absolute_path),
         );
-        let registry = match AdapterRegistry::load(&request.project) {
-            Ok(registry) => registry,
+        let registry = AdapterRegistry::builtin();
+        let catalog = match document_parameter_catalog() {
+            Ok(catalog) => catalog,
             Err(error) => {
+                let error = AppError::internal(format!(
+                    "document-parameter-catalog-build-failed:runtime:{error}"
+                ));
                 logger.record_app_error(&log_context, &error, "operation", started.elapsed());
                 return Err(error);
             }
@@ -62,6 +67,7 @@ impl DocnavRuntime for AdapterRuntime {
         let outcome = match execute_navigation_command(
             navigation_command(&request.command, document.adapter_path),
             request.config_source_descriptors,
+            &catalog,
             &registry,
         ) {
             Ok(outcome) => outcome,

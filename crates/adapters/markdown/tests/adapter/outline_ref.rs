@@ -7,18 +7,8 @@ fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
         "nested.md",
         "# Guide\nIntro\n\n```md\n## Fake\n```\n\n## Install\nBody\n\n#### Hidden\nDeep\n",
     );
-    let arguments = outline_args(6000, 1, None);
-    let request = make_request(
-        &path,
-        Operation::Outline,
-        OperationArguments::Outline(arguments.clone()),
-    );
-
-    let result = MarkdownAdapter
-        .outline(&request, &arguments)
-        .expect("outline result")
-        .into_structured()
-        .expect("structured outline result");
+    let input = outline_input(&path, 6000, 1, None);
+    let result = outline_result(&input);
 
     assert_eq!(result.entries.len(), 2);
     // Guide: line 1, level 1
@@ -47,32 +37,18 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
         "Lead text.\n\n#### Deep\nBody\n",
     ] {
         let path = write_doc("fallback.md", content);
-        let arguments = outline_args(6000, 1, Some(3));
-        let request = make_request(
-            &path,
-            Operation::Outline,
-            OperationArguments::Outline(arguments.clone()),
-        );
-        let outline = MarkdownAdapter
-            .outline(&request, &arguments)
-            .expect("outline result")
-            .into_structured()
-            .expect("structured outline result");
+        let input = outline_input(&path, 6000, 1, Some(3));
+        let outline = outline_result(&input);
         assert_eq!(outline.entries[0].ref_id, "doc:full");
 
-        let read_arguments = ReadArguments {
+        let read_input = ReadInput {
+            document_path: path_string(&path),
             ref_id: outline.entries[0].ref_id.clone(),
             limit: positive(6000),
             page: positive(1),
-            options: None,
         };
-        let read_request = make_request(
-            &path,
-            Operation::Read,
-            OperationArguments::Read(read_arguments.clone()),
-        );
         let read = MarkdownAdapter
-            .read(&read_request, &read_arguments)
+            .read(&read_input)
             .expect("read full document");
         assert_eq!(read.content, content);
         assert_eq!(read.content_type, "text/markdown");
@@ -86,9 +62,8 @@ fn outline_exposes_document_head_before_visible_headings_when_nonblank() {
         "document-head.md",
         "---\ntitle: Sample\n---\n\nLead text.\n\n# Real\nBody\n",
     );
-    let arguments = outline_args(6000, 1, Some(3));
-
-    let outline = outline_result(&path, &arguments);
+    let input = outline_input(&path, 6000, 1, Some(3));
+    let outline = outline_result(&input);
 
     assert_eq!(
         entry_refs(&outline.entries),
@@ -109,9 +84,8 @@ fn outline_exposes_document_head_for_frontmatter_only_or_plain_lead() {
         ("Lead text only.\n\n# Real\nBody\n", "H:L3:H1"),
     ] {
         let path = write_doc("document-head-variants.md", content);
-        let arguments = outline_args(6000, 1, Some(3));
-
-        let outline = outline_result(&path, &arguments);
+        let input = outline_input(&path, 6000, 1, Some(3));
+        let outline = outline_result(&input);
 
         assert_eq!(
             entry_refs(&outline.entries),
@@ -124,9 +98,8 @@ fn outline_exposes_document_head_for_frontmatter_only_or_plain_lead() {
 fn outline_omits_document_head_for_empty_or_whitespace_only_prefix() {
     for content in ["# Real\nBody\n", "\n \t\n# Real\nBody\n"] {
         let path = write_doc("empty-head.md", content);
-        let arguments = outline_args(6000, 1, Some(3));
-
-        let outline = outline_result(&path, &arguments);
+        let input = outline_input(&path, 6000, 1, Some(3));
+        let outline = outline_result(&input);
 
         assert!(!entry_refs(&outline.entries).contains(&"HEAD:leading"));
         assert_eq!(outline.entries.len(), 1);
@@ -140,9 +113,8 @@ fn outline_keeps_frontmatter_pseudo_heading_fence_pseudo_heading_and_hr_in_docum
         "document-head-boundaries.md",
         "---\ntitle: Sample\n# not a heading\n---\n\n---\nLead.\n\n```md\n# not a heading\n```\n\n# Real\nBody\n",
     );
-    let arguments = outline_args(6000, 1, Some(3));
-
-    let outline = outline_result(&path, &arguments);
+    let input = outline_input(&path, 6000, 1, Some(3));
+    let outline = outline_result(&input);
 
     assert_eq!(
         entry_refs(&outline.entries),
@@ -154,18 +126,8 @@ fn outline_keeps_frontmatter_pseudo_heading_fence_pseudo_heading_and_hr_in_docum
 #[test]
 fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
     let path = write_doc("duplicates.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
-    let arguments = outline_args(6000, 1, Some(3));
-    let request = make_request(
-        &path,
-        Operation::Outline,
-        OperationArguments::Outline(arguments.clone()),
-    );
-
-    let outline = MarkdownAdapter
-        .outline(&request, &arguments)
-        .expect("outline result")
-        .into_structured()
-        .expect("structured outline result");
+    let input = outline_input(&path, 6000, 1, Some(3));
+    let outline = outline_result(&input);
 
     let all_refs: Vec<String> = outline
         .entries
@@ -223,8 +185,8 @@ fn read_reports_ref_not_found_for_canonical_no_match() {
 #[test]
 fn structure_snapshot_ref_is_evaluated_against_current_document() {
     let path1 = write_doc("snap1.md", "# A\nBody\n## B\nMore\n");
-    let arguments = outline_args(6000, 1, Some(3));
-    let outline1 = outline_result(&path1, &arguments);
+    let input = outline_input(&path1, 6000, 1, Some(3));
+    let outline1 = outline_result(&input);
     let ref_a = &outline1.entries[0].ref_id;
 
     // 原文档中可以正常读取

@@ -57,6 +57,7 @@ pub fn extract_config(
 ) -> Result<Source, ConfigExtractionError> {
     let mut candidates = Vec::new();
     for metadata in fields.processing_metadata(processing_id) {
+        let identity = metadata.identity().clone();
         let ProcessingLocator::ConfigPath(path) = metadata.locator else {
             return Err(ConfigExtractionError::UnsupportedLocator {
                 processing_id: metadata.processing_id,
@@ -67,7 +68,7 @@ pub fn extract_config(
             continue;
         };
         candidates.push(SourceCandidate::value(
-            metadata.identity,
+            identity,
             SourceLocator::ConfigPath(path),
             value.clone(),
         ));

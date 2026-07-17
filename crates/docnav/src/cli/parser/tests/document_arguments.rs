@@ -1,13 +1,8 @@
-use super::super::{parse, parse_with_registry};
+use super::super::parse;
 use crate::cli::{CliCommand, OutputMode};
 use crate::error::{AppError, DocnavExitCode};
 use crate::output::{write_error, ErrorOutput};
 use cli_config_resolution::{CandidateInput, SourceLocator};
-use docnav_adapter_contracts::{
-    AdapterDefinition, AdapterOptionSpec, CliBooleanEncoding, CliProcessingMetadata,
-    FieldValidation, ProcessStrategy,
-};
-use docnav_navigation::{NavigationAdapterRef, NavigationAdapterRegistry};
 use docnav_protocol::Operation;
 use serde_json::{json, Value};
 
@@ -43,88 +38,53 @@ fn explicit_pagination_value_is_parsed() {
 }
 
 #[test]
-fn explicit_max_heading_level_value_is_parsed_for_outline() {
-    let parsed =
-        parse(["outline", "doc.md", "--max-heading-level", "2"]).expect("parse max heading level");
-
-    match parsed.command {
-        CliCommand::Document(command) => {
-            let candidate = candidate(
-                &command,
-                "docnav.adapters.docnav-markdown.options.max_heading_level",
-            );
-            assert_eq!(
-                candidate.locator(),
-                &SourceLocator::CliFlag("--max-heading-level".to_owned())
-            );
-            assert_eq!(candidate.input(), &CandidateInput::Value(json!(2)));
-        }
-        command => panic!("expected document command, got {command:?}"),
-    }
-}
-
-#[test]
-fn generated_short_value_flag_reaches_canonical_candidate() {
-    let parsed = parse_with_registry(["outline", "doc.md", "-x", "2"], &ShortOptionRegistry)
-        .expect("generated short value flag parses");
-    let CliCommand::Document(command) = parsed.command else {
-        panic!("expected document command");
-    };
-    let candidate = candidate(&command, SHORT_VALUE_IDENTITY);
-
-    assert_eq!(
-        candidate.locator(),
-        &SourceLocator::CliFlag("-x".to_owned())
-    );
-    assert_eq!(candidate.input(), &CandidateInput::Value(json!(2)));
-}
-
-#[test]
-fn generated_short_presence_switch_reaches_canonical_candidate() {
-    let parsed = parse_with_registry(["outline", "doc.md", "-v"], &ShortOptionRegistry)
-        .expect("generated short presence switch parses");
-    let CliCommand::Document(command) = parsed.command else {
-        panic!("expected document command");
-    };
-    let candidate = candidate(&command, SHORT_SWITCH_IDENTITY);
-
-    assert_eq!(
-        candidate.locator(),
-        &SourceLocator::CliFlag("-v".to_owned())
-    );
-    assert_eq!(candidate.input(), &CandidateInput::Value(json!(true)));
-}
-
-#[test]
-fn generated_short_options_are_rejected_for_other_operation() {
-    for (args, flag) in [
-        (vec!["read", "doc.md", "--ref", "doc:full", "-x", "2"], "-x"),
-        (vec!["read", "doc.md", "--ref", "doc:full", "-v"], "-v"),
+fn explicit_max_heading_level_value_is_parsed_for_supported_operations() {
+    for args in [
+        vec!["outline", "doc.md", "--max-heading-level", "2"],
+        vec![
+            "find",
+            "doc.md",
+            "--query",
+            "needle",
+            "--max-heading-level",
+            "2",
+        ],
     ] {
-        let error = parse_with_registry(args, &ShortOptionRegistry)
-            .expect_err("outline-only short option must be rejected for read");
-        let details = error.diagnostic().details().to_value();
+        let parsed = parse(args).expect("parse max heading level");
 
-        assert_eq!(details.get("field").and_then(Value::as_str), Some(flag));
-        assert_eq!(
-            details.get("reason").and_then(Value::as_str),
-            Some("unsupported_argument")
-        );
+        match parsed.command {
+            CliCommand::Document(command) => {
+                let candidate = candidate(
+                    &command,
+                    "docnav.adapters.docnav-markdown.options.max_heading_level",
+                );
+                assert_eq!(
+                    candidate.locator(),
+                    &SourceLocator::CliFlag("--max-heading-level".to_owned())
+                );
+                assert_eq!(candidate.input(), &CandidateInput::Value(json!(2)));
+            }
+            command => panic!("expected document command, got {command:?}"),
+        }
     }
 }
 
 #[test]
-fn max_heading_level_is_rejected_for_read() {
-    let error = parse([
-        "read",
-        "doc.md",
-        "--ref",
-        "doc:full",
-        "--max-heading-level",
-        "2",
-    ])
-    .expect_err("read should not accept max heading level");
-    assert_diagnostic(error, "--max-heading-level", "unsupported_argument");
+fn max_heading_level_is_rejected_for_unsupported_operations() {
+    for args in [
+        vec![
+            "read",
+            "doc.md",
+            "--ref",
+            "doc:full",
+            "--max-heading-level",
+            "2",
+        ],
+        vec!["info", "doc.md", "--max-heading-level", "2"],
+    ] {
+        let error = parse(args).expect_err("operation should not accept max heading level");
+        assert_diagnostic(error, "--max-heading-level", "unsupported_argument");
+    }
 }
 
 #[test]
@@ -274,54 +234,6 @@ fn candidate<'a>(
         .iter()
         .find(|candidate| candidate.field().as_str() == identity)
         .unwrap_or_else(|| panic!("missing candidate {identity}"))
-}
-
-const SHORT_VALUE_IDENTITY: &str = "docnav.adapters.docnav-markdown.options.short_heading_level";
-const SHORT_SWITCH_IDENTITY: &str = "docnav.adapters.docnav-markdown.options.short_verbose";
-
-struct ShortOptionRegistry;
-
-impl NavigationAdapterRegistry for ShortOptionRegistry {
-    fn adapters(&self) -> Vec<NavigationAdapterRef<'_>> {
-        let base = docnav_markdown::markdown_adapter_definition();
-        let short_value = AdapterOptionSpec::builder(SHORT_VALUE_IDENTITY)
-            .owner("docnav-markdown")
-            .operations(&[Operation::Outline])
-            .path(["options", "short_heading_level"])
-            .process(
-                "cli",
-                ProcessStrategy::cli_flag("-x").cli_metadata(
-                    CliProcessingMetadata::new()
-                        .help("Set a short heading level")
-                        .value_name("level"),
-                ),
-            )
-            .validation(FieldValidation::int())
-            .build();
-        let short_switch = AdapterOptionSpec::builder(SHORT_SWITCH_IDENTITY)
-            .owner("docnav-markdown")
-            .operations(&[Operation::Outline])
-            .path(["options", "short_verbose"])
-            .process(
-                "cli",
-                ProcessStrategy::cli_flag("-v").cli_metadata(
-                    CliProcessingMetadata::new()
-                        .help("Enable short verbose output")
-                        .boolean_encoding(CliBooleanEncoding::PresenceMeansTrue),
-                ),
-            )
-            .validation(FieldValidation::boolean())
-            .build();
-        let definition = AdapterDefinition::builder(base.id())
-            .adapter(base.adapter())
-            .manifest(base.manifest().clone())
-            .required_operation_handlers()
-            .native_option(short_value)
-            .native_option(short_switch)
-            .build()
-            .expect("short-option adapter definition");
-        vec![NavigationAdapterRef::new(definition)]
-    }
 }
 
 fn protocol_error_output(error: &AppError, operation: Operation) -> Value {

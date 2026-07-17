@@ -199,12 +199,11 @@ pub fn resolve(
     let mut diagnostics = Vec::new();
     let mut resolved = BTreeMap::new();
     for metadata in fields.schema_metadata() {
-        let field = fields
-            .field(&metadata.identity)
-            .expect("schema metadata belongs to the canonical field set");
-        let candidates = by_field.remove(&metadata.identity).unwrap_or_default();
+        let field = metadata.field();
+        let identity = field.identity().clone();
+        let candidates = by_field.remove(&identity).unwrap_or_default();
         let resolution = resolve_field(field, &metadata, candidates, &mut diagnostics);
-        resolved.insert(metadata.identity, resolution);
+        resolved.insert(identity, resolution);
     }
     Ok(ResolutionResult {
         fields: resolved,

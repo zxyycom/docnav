@@ -2,6 +2,7 @@ use std::fmt;
 
 use serde_json::Value;
 
+use crate::field::FieldDef;
 use crate::process_strategy::{CliProcessingMetadata, ProcessingInputKind, ProcessingLocator};
 use crate::processing::ProcessingId;
 use crate::range::{FieldBound, FieldLength, FieldNumericBound, FieldNumericRange};
@@ -115,28 +116,98 @@ pub struct FieldConstraints {
     pub unique_items: bool,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct SchemaMetadataView {
-    pub identity: FieldIdentity,
+#[derive(Clone, Debug)]
+pub struct SchemaMetadataView<'a> {
+    pub(crate) field: &'a FieldDef,
     pub path: FieldPath,
-    pub value_kind: ValueKind,
-    pub constraints: FieldConstraints,
-    pub default: DefaultMetadata,
-    pub merge_strategy: MergeStrategy,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct ProcessingMetadataView {
-    pub identity: FieldIdentity,
+impl SchemaMetadataView<'_> {
+    pub fn field(&self) -> &FieldDef {
+        self.field
+    }
+
+    pub fn identity(&self) -> &FieldIdentity {
+        self.field.identity()
+    }
+
+    pub fn value_kind(&self) -> ValueKind {
+        self.field.value_kind()
+    }
+
+    pub fn constraints(&self) -> &FieldConstraints {
+        self.field.constraints()
+    }
+
+    pub fn default(&self) -> &DefaultMetadata {
+        self.field.default()
+    }
+
+    pub fn merge_strategy(&self) -> MergeStrategy {
+        self.field.merge_strategy()
+    }
+}
+
+impl PartialEq for SchemaMetadataView<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity() == other.identity()
+            && self.path == other.path
+            && self.value_kind() == other.value_kind()
+            && self.constraints() == other.constraints()
+            && self.default() == other.default()
+            && self.merge_strategy() == other.merge_strategy()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ProcessingMetadataView<'a> {
+    pub(crate) field: &'a FieldDef,
     pub processing_id: ProcessingId,
     pub path: FieldPath,
     pub input_kind: ProcessingInputKind,
     pub locator: ProcessingLocator,
-    pub value_kind: ValueKind,
-    pub constraints: FieldConstraints,
-    pub default: DefaultMetadata,
-    pub merge_strategy: MergeStrategy,
     pub cli: Option<CliProcessingMetadata>,
+}
+
+impl ProcessingMetadataView<'_> {
+    pub fn field(&self) -> &FieldDef {
+        self.field
+    }
+
+    pub fn identity(&self) -> &FieldIdentity {
+        self.field.identity()
+    }
+
+    pub fn value_kind(&self) -> ValueKind {
+        self.field.value_kind()
+    }
+
+    pub fn constraints(&self) -> &FieldConstraints {
+        self.field.constraints()
+    }
+
+    pub fn default(&self) -> &DefaultMetadata {
+        self.field.default()
+    }
+
+    pub fn merge_strategy(&self) -> MergeStrategy {
+        self.field.merge_strategy()
+    }
+}
+
+impl PartialEq for ProcessingMetadataView<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity() == other.identity()
+            && self.processing_id == other.processing_id
+            && self.path == other.path
+            && self.input_kind == other.input_kind
+            && self.locator == other.locator
+            && self.value_kind() == other.value_kind()
+            && self.constraints() == other.constraints()
+            && self.default() == other.default()
+            && self.merge_strategy() == other.merge_strategy()
+            && self.cli == other.cli
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

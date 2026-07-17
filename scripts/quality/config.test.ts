@@ -42,10 +42,6 @@ describe("quality code area classification", () => {
       classifyQualityFile("crates/shared/typed-fields/benches/resolution.rs"),
       "rust-tests"
     );
-    assert.equal(
-      classifyQualityFile("crates/shared/cli-config-resolution-clap/examples/resolution_flow.rs"),
-      "fixtures-examples"
-    );
   });
 
   it("discovers representative Rust and TypeScript sources in the root workspace", () => {

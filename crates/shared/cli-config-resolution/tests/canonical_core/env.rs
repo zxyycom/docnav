@@ -1,10 +1,14 @@
 use cli_config_resolution::{
     extract_env, resolve, CandidateInput, CandidateInvalidReason, DiagnosticReason,
     ExpectedFieldShape, FieldDef, FieldDefSet, FieldValidation, JsonValue, ProcessStrategy,
-    ProcessingId, SourceId, SourceKind, SourceLocator,
+    ProcessingId, SourceId, SourceKind, SourceLocator, TypedValue,
 };
 use serde_json::json;
 
+use crate::support::identity;
+
+// Proves: extract_env emits only present values from declared EnvVar locators;
+// missing, unknown, and fields without an EnvVar locator do not add candidates.
 #[test]
 fn env_extractor_reads_declared_values_only_and_omits_missing_values() {
     let fields = FieldDefSet::builder()
@@ -20,6 +24,13 @@ fn env_extractor_reads_declared_values_only_and_omits_missing_values() {
                 .validation(FieldValidation::string()),
             ExpectedFieldShape::optional(),
         )
+        .field(
+            FieldDef::builder("without_env")
+                .process("custom", ProcessStrategy::rust_field())
+                .validation(FieldValidation::string())
+                .default_static("built-in"),
+            ExpectedFieldShape::optional(),
+        )
         .build()
         .expect("field set");
 
@@ -30,6 +41,7 @@ fn env_extractor_reads_declared_values_only_and_omits_missing_values() {
         20,
         [
             ("APP_LIMIT".to_owned(), "7".to_owned()),
+            ("APP_WITHOUT_ENV".to_owned(), "ignored".to_owned()),
             ("UNKNOWN".to_owned(), "ignored".to_owned()),
         ],
     )
@@ -49,6 +61,12 @@ fn env_extractor_reads_declared_values_only_and_omits_missing_values() {
         limit.input(),
         CandidateInput::Value(JsonValue::Number(number)) if number.as_i64() == Some(7)
     ));
+
+    let result = resolve(&fields, &[env]).expect("valid resolver input");
+    assert_eq!(
+        result.materialize().expect("resolved defaults")[&identity("without_env")],
+        TypedValue::String("built-in".to_owned())
+    );
 }
 
 #[test]
@@ -78,6 +96,7 @@ fn selected_invalid_env_value_preserves_diagnostic_facts() {
     assert!(error.diagnostics().iter().any(|diagnostic| {
         diagnostic.field.as_str() == "enabled"
             && diagnostic.source_id.as_ref().map(SourceId::as_str) == Some("env")
+            && diagnostic.source_kind == Some(SourceKind::Env)
             && matches!(diagnostic.locator, Some(SourceLocator::EnvVar(ref name)) if name == "APP_ENABLED")
             && diagnostic.raw == Some(json!("not-a-bool"))
             && matches!(diagnostic.reason, DiagnosticReason::InvalidCandidate(

@@ -15,35 +15,6 @@ pub(super) fn validation_error_for_identity(identity: &str) -> NavigationError {
     NavigationError::invalid_request(field_label(identity), validation_reason(identity))
 }
 
-pub(super) fn optional_document_positive(
-    operation: Operation,
-    fields: &FieldDefSet,
-    result: &ResolutionResult,
-    identity: &str,
-) -> Result<Option<PositiveInteger>, NavigationError> {
-    if !uses_document_window(operation) {
-        return Ok(None);
-    }
-    Ok(Some(required_positive_value(fields, result, identity)?))
-}
-
-pub(super) fn optional_document_limit(
-    operation: Operation,
-    fields: &FieldDefSet,
-    result: &ResolutionResult,
-) -> Result<Option<PositiveInteger>, NavigationError> {
-    if !uses_document_window(operation) {
-        return Ok(None);
-    }
-    let enabled = required_bool_value(fields, result, ids::PAGINATION_ENABLED)?;
-    let limit = required_positive_value(fields, result, ids::LIMIT)?;
-    Ok(Some(if enabled {
-        limit
-    } else {
-        max_pagination_limit()
-    }))
-}
-
 pub(super) fn uses_document_window(operation: Operation) -> bool {
     operation != Operation::Info
 }
@@ -72,12 +43,28 @@ pub(super) fn optional_string_value(
     }
 }
 
-pub(super) fn required_output_value(
+pub(super) fn required_output_value_for_identity(
     fields: &FieldDefSet,
     result: &ResolutionResult,
+    identity: &str,
 ) -> Result<NavigationOutputMode, NavigationError> {
-    let output = required_string_value(fields, result, ids::OUTPUT)?;
-    NavigationOutputMode::parse(&output).map_err(|_| validation_error_for_identity(ids::OUTPUT))
+    let output = required_string_value(fields, result, identity)?;
+    NavigationOutputMode::parse(&output).map_err(|_| validation_error_for_identity(identity))
+}
+
+pub(super) fn optional_integer_value(
+    fields: &FieldDefSet,
+    result: &ResolutionResult,
+    identity: &str,
+) -> Result<Option<i64>, NavigationError> {
+    let Some(value) = resolved_value(fields, result, identity)? else {
+        return Ok(None);
+    };
+    match value {
+        TypedValue::Integer(value) => Ok(Some(*value)),
+        TypedValue::Null => Ok(None),
+        _ => Err(NavigationError::internal("unexpected-parameter-type")),
+    }
 }
 
 pub(super) fn resolved_source_label(
@@ -147,10 +134,9 @@ pub(super) fn projected_field_value<'a>(
     let field = fields
         .field(identity)
         .expect("resolution fields belong to the canonical field set");
-    let metadata = field.schema_metadata();
     if matches!(value, TypedValue::Null)
-        && !metadata.constraints.required
-        && metadata.value_kind != ValueKind::Json
+        && !field.constraints().required
+        && field.value_kind() != ValueKind::Json
     {
         None
     } else {
@@ -185,7 +171,7 @@ fn resolved_value<'a>(
         .and_then(|resolved| projected_field_value(fields, &identity, resolved)))
 }
 
-fn required_bool_value(
+pub(super) fn required_bool_value(
     fields: &FieldDefSet,
     result: &ResolutionResult,
     identity: &str,
@@ -198,7 +184,7 @@ fn required_bool_value(
     Ok(*value)
 }
 
-fn required_positive_value(
+pub(super) fn required_positive_value(
     fields: &FieldDefSet,
     result: &ResolutionResult,
     identity: &str,
@@ -214,7 +200,7 @@ fn required_positive_value(
         .ok_or_else(|| validation_error_for_identity(identity))
 }
 
-fn max_pagination_limit() -> PositiveInteger {
+pub(super) fn max_pagination_limit() -> PositiveInteger {
     NonZeroU32::new(MAX_PAGINATION_LIMIT).expect("u32::MAX is a positive integer")
 }
 

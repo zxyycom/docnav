@@ -2,13 +2,8 @@
 
 use super::*;
 
-mod constraints;
-mod field_metadata;
 mod field_model;
-mod field_presence;
-mod field_ranges;
 mod processing;
-mod set_projection;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum OutputMode {

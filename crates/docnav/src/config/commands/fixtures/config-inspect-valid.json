@@ -40,9 +40,9 @@
         "has_default": false
       },
       {
-        "identity": "docnav.defaults.output",
-        "path": "defaults.output",
-        "value_kind": "String",
+        "identity": "docnav.defaults.pagination.limit",
+        "path": "defaults.pagination.limit",
+        "value_kind": "Integer",
         "has_default": true
       },
       {
@@ -52,8 +52,14 @@
         "has_default": true
       },
       {
-        "identity": "docnav.defaults.pagination.limit",
-        "path": "defaults.pagination.limit",
+        "identity": "docnav.defaults.output",
+        "path": "defaults.output",
+        "value_kind": "String",
+        "has_default": true
+      },
+      {
+        "identity": "docnav.adapters.docnav-markdown.options.max_heading_level",
+        "path": "options.docnav-markdown.max_heading_level",
         "value_kind": "Integer",
         "has_default": true
       },
@@ -80,12 +86,6 @@
         "path": "invocation_log.content_capture.root",
         "value_kind": "String",
         "has_default": false
-      },
-      {
-        "identity": "docnav.adapters.docnav-markdown.options.max_heading_level",
-        "path": "options.docnav-markdown.max_heading_level",
-        "value_kind": "Integer",
-        "has_default": true
       }
     ],
     "parameter_facts": [
