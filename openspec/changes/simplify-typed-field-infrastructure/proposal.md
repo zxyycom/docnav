@@ -1,19 +1,23 @@
 ## Why
 
-Typed-fields 与 CLI/config resolution 已提供 typed validation、selected applicability 和 source provenance，但部分通用能力尚未获得生产消费者。需要建立一个渐进优化入口，让维护面按消费者证据逐片收缩，同时保持现有可观察行为。
+本 change 首先是一次参数 ownership 与执行链路调整，typed-field support surface 清理只是后续工作。
 
-核心句：采用 B′“薄共享契约 + 受控分散”，每次只处理一个可独立验证、可独立回滚的维护面。
+Docnav 的 adapter 与 core 一同静态链接、发布和注册，但当前参数链路仍由 adapter 提供调用方参数声明，再由 core 各层发现、转换和回传。这个设计让 adapter 看起来能够扩展输入契约，实际上任何新参数仍必须随 core release 协调发布。
 
-> 状态：本 change 只在当前目录形成未审核临时 artifacts；阻塞审计完成并明确首个 slice 前不修改实现。
+目标模型直接承认这一事实：core 定义本 release 接受的全部调用方参数，并通过 typed-field 处理输入；adapter 只实现接收 standard operation input 的格式策略。Adapter 可以执行算法所需的语义校验，但不能借校验重新获得参数声明权。
 
 ## What Changes
 
-- 保留 adapter-owned option facts、typed validation、selected applicability、source priority/provenance，以及既有 protocol、diagnostic 和 output behavior。
-- 将共享层限制在多个生产 owner 实际复用的字段语义与 resolution 语义；source-specific extraction 和领域行为留在对应 owner。
-- 一次只激活一个 optimization slice，依次完成消费者审计、行为基线、最小实现、验证和 checkpoint。
-- 首个 slice 从无生产消费者、无 public behavior 变化且可独立回滚的叶子维护面中选择。
+- 建立 core-owned closed parameter catalog，覆盖文档操作参数的 identity、CLI/env/config locators、standard value kind、default、merge strategy、operation binding、可选的精确 adapter-id 标记，以及 core 需要执行的静态校验规则。无标记参数属于通用输入；带标记参数只属于该 static adapter。
+- 从同一 catalog 派生完整 config-validation projection 和 selected-operation field set；navigation 选择 adapter 后，仅让无标记参数和精确匹配 selected adapter id/operation 的参数进入 typed-field resolution。
+- 由 core 定义 operation-specific closed typed input；navigation 从 resolution result 构造它，selected adapter 只通过策略函数消费该输入。
+- 采用分层校验：core 必须拒绝无法 materialize 为标准类型的输入；adapter-specific 语义可以只由 adapter 校验，也可以由 core 提前校验并在 adapter 中防御性重复。
+- 将 Markdown `max_heading_level` 的 public input definition 和 standard-input binding 移入 catalog；Markdown 保留格式算法及其语义安全检查。
+- 让 adapter definition 只提供 routing、capability 与 strategy facts，并在等价验证后收敛为唯一 catalog → typed-field → standard input → strategy runtime 路径。
+- 主路径独立通过后，再执行维护证据支持的次要基础设施清理；该清理不得改变 catalog、standard input、source precedence、merge semantics 或 observable behavior。
 
-本 change 保持现有 CLI、config、protocol、schema 和 output contract；新的输入类型或复杂 merge 需求由独立 change 承接。
+Catalog 只覆盖调用方可配置的文档操作参数；protocol/manifest/probe contract-validation fields、result facts 与 adapter-private algorithm state 继续由各自 owner 定义。
+Env locator 是逐字段 source activation fact；本 change 定义统一接入规则，不为现有产品字段新增 env surface。
 
 ## Capabilities
 
@@ -23,12 +27,18 @@ Typed-fields 与 CLI/config resolution 已提供 typed validation、selected app
 
 ### Modified Capabilities
 
-- `typed-fields`：明确共享 core 只拥有当前生产消费者共同依赖的字段语义。
-- `cli-config-resolution`：明确内部简化必须保持 precedence、validation、fallback 与 provenance。
+- `docnav-architecture`：明确 core parameter authoring、navigation resolution 与 adapter behavior ownership。
+- `core-cli`：增加 closed parameter catalog，并使 static adapter registry 只提供 adapter behavior facts。
+- `navigation-input-resolution`：从 catalog 过滤、解析和绑定参数，构造 standard operation input。
+- `adapter-contract`：strategy 只接收 standard operation input；adapter definition 不提供参数声明，但策略可校验标准值。
+- `markdown-adapter`：继续使用 `max_heading_level`，但不再定义其 public input。
+- `typed-fields`：保留 canonical field mechanics 和分层校验能力，收窄 construction surface 并去重 projections。
+- `cli-config-resolution`：保留 multi-source resolution、Serde 与 env extraction，并将 framework-specific projection 收窄到实际消费者。
 
 ## Impact
 
-- 候选代码：`crates/shared/typed-fields*` 与 `crates/shared/cli-config-resolution*` 中被当前 slice 选中的范围。
-- 保护边界：`navigation`、`protocol`、`adapter-contracts`、`docnav` 和 adapters 的可观察行为。
-- 规划材料：proposal、design、delta specs、tasks 和 `type-field-maintenance-report.md`。
-- 回滚：每个 slice 独立提交；失败时回退该 slice，不引入 runtime fallback。
+- 代码范围：`crates/docnav`、navigation、adapter-contracts、Markdown adapter、typed-fields、CLI/config resolution 与 workspace manifests。
+- 契约材料：architecture、adapter contract、navigation input resolution、Markdown adapter、typed-field/resolution docs、schemas/examples 与 case ledger。
+- 产品兼容性：既有 CLI flags、config paths、source precedence、merge behavior、accepted value domain、diagnostics、protocol/readable output、adapter results、refs 与 pagination 保持不变；内部校验可以发生在 core、adapter 或两处。
+- Rust API compatibility：adapter parameter authoring 与经消费者审计确认冗余的 support APIs 不保留兼容层；具体删除项和验证 gate 由 `tasks.md` 与维护证据负责。
+- 有意代价：新增 adapter-scoped 参数需要在同一 core release 中协调 catalog 与 adapter consumer；未来 runtime plugins 或 independently published adapter SDK 需要独立 change。

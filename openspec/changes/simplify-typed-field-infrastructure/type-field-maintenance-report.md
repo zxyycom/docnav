@@ -1,230 +1,97 @@
-# Typed Fields 维护成本评估
+# Core-only 参数与 Typed Fields 维护证据
 
-## 文档角色
+## Document Role
 
-- 用途：为保留、收缩或回退 field-derived document option 路径提供架构决策证据。
-- 读者：准备维护 typed-fields、CLI/config resolution、navigation 或 adapter option contract 的工程师。
-- 证据 owner：本 OpenSpec change；当前产品契约仍由 `docs/` 中的 owner 文档和已实现代码、测试拥有。
-- 状态：实现后评估。本文推荐 B′，但不记录已确认 Decision，也不授权应用代码迁移。
-- 调查日期：2026-07-17。
+本文保存支持本 change 取舍的现状证据，不定义产品契约或实施顺序。技术决策由 [`design.md`](design.md) 负责，可验证契约由 [`specs/`](specs/) 负责，执行出口由 [`tasks.md`](tasks.md) 负责。除 OpenSpec 必需的 `REMOVED` 条目外，旧类型、旧调用链和具体删除名称只在本文与任务清单中出现；长期文档只保留目标状态。
 
-阅读架构结论时先看“决策摘要”“关键发现”和“推荐边界”；复核实验或来源时再看附录。
+证据日期：2026-07-17。
 
-## 决策摘要
+## Static Deployment Evidence
 
-当前证据支持以下处理方向：
+- `crates/docnav/src/registry.rs` 的 built-in registry 当前只注册 `markdown_adapter_definition`。
+- Adapter implementation source 是 `core_static`；adapter definition 与 core release 一同编译和发布。
+- `enable-local-core-adapter-service-mode` 明确不发现、启动或回退到外部 adapter executable。
+- Core CLI、config docs/schema 与 navigation 已经需要知道 public parameter 的 observable shape。
 
-1. 暂停扩大完整 type-field：不把 root flags、schema、outline compound config 或 invocation logging 纳入同一通用字段系统。
-2. 保留已经证明有价值的共享语义：adapter-owned option facts、typed validation、selected applicability、source resolution 和 provenance。
-3. 将候选目标定义为 B′“薄共享契约 + 受控分散”：继续从 owner spec 投影 CLI help 和 config facts，同时按真实消费者收缩通用 derive、env、复杂 merge 和 companion 能力。
-4. 不直接 revert `95281ae`。若确认采用 B′，新建 OpenSpec change，明确保留边界、迁移顺序和回滚验证。
+这些事实说明 adapter source 目前不能独立扩展 release 接受的参数；参数 authoring 放在 adapter 侧并不形成独立部署边界。
 
-核心依据如下：
+## Current Parameter Chain
 
-| 判断面 | 已确认事实 | 对决策的影响 |
+当前唯一 production native option 是 Markdown `max_heading_level`：
+
+| Stage | Surface | Additional work |
 | --- | --- | --- |
-| 边际维护 | A/B 新增同一整数 option 都净增 80 行生产代码；A 少一个 core 文件和一个 help 定义点。 | 集中式有边界收益，但本实验没有证明 LOC 收益。 |
-| 前置投入 | `95281ae` 相对父提交涉及 67 个文件、`+3147/-1226`；当前只有一个生产 native option 完整摊销链路。 | 评估回本必须同时计算基础设施和边际收益。 |
-| 正确性 | typed validation、selected applicability、source attribution 和 protocol validation 已有生产用途。 | 完全分散会重新引入关键 resolver 与验证责任。 |
-| 未使用能力 | env extraction、三种复杂 merge、derive/materialization 等没有生产消费者。 | 收缩应从无消费者能力开始，而不是拆除共享语义。 |
-| 外部实践 | 10 个成熟 CLI 都按稳定领域集中 schema、resolver 或 provider，没有全局描述符统一所有 surface。 | B′ 比“全量集中”或“自由散落”更接近成熟边界。 |
+| Adapter authoring | `AdapterOptionSpec` / builder | 声明 field facts、owner 与 operations |
+| Definition/registry | `AdapterDefinition::native_options`、registry aggregation | 向 core 暴露声明 |
+| CLI | `NativeOptionCatalog` | 重建 operation/flag metadata |
+| Navigation | `OperationFieldSet::adapter_options` / `all_adapter_options` | 将声明注册进 canonical `FieldDefSet` |
+| Request/dispatch | protocol `Options` / `OptionEntry`、`NativeOptionHandoff` | 复制 metadata 并构造第二次 handoff |
+| Adapter | `*_with_native_options` + key lookup | 查找值并再次检查 identity/type/range/missing |
 
-## 结论强度与边界
+`NativeOptionValue` 仍携带 `serde_json::Value` 与 identity/type/source metadata，而不是最终 operation-specific Rust value。Markdown 因此会重复部分基础校验。Canonical resolution 已有足够事实直接构造 protocol projection 与 standard typed accessor。
 
-- 已确认：相关 OpenSpec 21/21 完成；当前复杂度不是剩余任务导致；A/B 的边际指标、验证结果和 owner 差异已由独立 reviewer 复核。
-- 推荐：B′ 是当前证据下维护面更小、且能保留关键 contract 的候选方向。
-- 尚未确认：Boolean presence/reset、array/object、keyed merge 和多个 adapter 大规模增长时，完整 processing abstraction 是否会产生更高收益。
-- 不可外推：本实验不能证明实现速度、runtime 性能、完整回本周期或可直接删除的净代码量。
+这里的冗余是 parameter declaration、metadata copy 和 handoff 链路，不是“adapter 中出现校验”本身。目标模型允许 adapter strategy 对 standard value 执行算法语义校验或防御性重复校验；它只是不再通过校验代码向 core 声明参数、source 或 merge facts。
 
-## 证据与方法
+## Typed-Field and Resolution Consumers
 
-### 外部项目调查
+- Navigation 使用 `FieldDef` / `FieldDefSet`、processing locators、constraints、defaults、validation 与 typed materialization。
+- CLI/config resolution 使用 ordered `Source` / `SourceCandidate`、四种 merge strategy、priority/tie-break、defaults 与 provenance。
+- Protocol contract validation 大量使用 direct `FieldDefSetBuilder` 验证 request、response、manifest 与 probe fields。
+- Navigation 生产路径使用 `cli-config-resolution-serde`。
+- Env extraction 已有独立 contract，且产品字段将陆续接入。
 
-调查覆盖 Cargo、uv、ripgrep、Starship、Zellij、GitHub CLI、kubectl、Terraform、AWS CLI 和 Docker Compose。每个结论均以官方文档或固定 commit 的官方源码核对；样本用于比较成熟实现模式，不作流行度排名。
+因此证据支持保留 typed-fields、resolution core、Serde companion 和 env extractor；core-only 参数 ownership 不等于删除这些基础。
 
-### Docnav 内部审计
+## Redundant Surface Evidence
 
-审计基于当前提交 `95281aec632d3d36618409d92eefc62fc37df294`、其直接父提交 `9892a925d24a97cd8f5011b560509ce511c49f0e`、相关 OpenSpec artifacts、代码、测试和调用点搜索。
+- `FieldDefDeclaration` 的跨 crate production consumer 主要是 adapter option declaration；protocol 与 navigation 已可直接使用 builders。
+- `SchemaMetadataView` 与 `ProcessingMetadataView` 同时保存 identity、path、value kind、constraints、default 与 merge strategy；processing view 独有事实主要是 processing id、input kind 与 locator。
+- `FieldDefs` derive/trait glue 没有 production consumer，调用点位于 typed-fields tests。
+- `cli-config-resolution-clap` 没有 production consumer；Docnav core CLI 已有自己的 parser/mapping。
+- `cli-config-resolution-serde` 有 production consumer，不能随 Clap companion 删除。
 
-### A/B 实验
+这些删除候选都需要在实施时再次通过 workspace dependency search 和 focused tests；“当前未发现 production consumer”不是跳过验证的授权。
 
-两个实现代理在隔离 detached worktree 中完成相同的 `min_heading_level` 行为和 RED→GREEN 证明；第三个只读 reviewer 对称复核 diff、真实 CLI 输出和比较口径。实验 diff 不提交，结论固化后清理。
+## Secondary Cleanup Evidence
 
-B 已有 adapter spec、config projection 和 resolver，只保留旧 CLI candidate bridge。因此本实验比较 current centralized 与 legacy hybrid 的边际成本，不代表 centralized 与完全手写实现的差异。
-
-## 关键发现
-
-### 成熟 CLI 集中稳定领域，而非所有 surface
-
-| 模式 | 项目 | 可复用判断 |
+| Current surface | Static evidence | Change decision |
 | --- | --- | --- |
-| 集中 merge、provider 或 provenance | [Cargo](https://doc.rust-lang.org/cargo/reference/config.html)、[uv](https://docs.astral.sh/uv/concepts/configuration-files/)、[AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#configuration-and-credentials-precedence) | CLI、config、env 结构分开；解析后的语义、来源和优先级集中。 |
-| 稳定领域内局部集中 | [GitHub CLI](https://github.com/cli/cli/blob/2af8c115be240a8018add33bf5c7a9ba5070a62c/internal/config/config.go#L587-L700)、[kubectl](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/) | 持久配置项、kubeconfig model 或共享 flags 有 owner；命令参数仍由命令维护。 |
-| 复用 argv 或有序 collector | [ripgrep](https://github.com/BurntSushi/ripgrep/blob/0d7054d8e466d6aa0a6bb6cf121e87225d26df44/GUIDE.md#L540-L624)、[Terraform](https://developer.hashicorp.com/terraform/cli/config/environment-variables#tf_cli_args-and-tf_cli_args_name) | 通过收缩配置语言复用 parser，适合平坦参数面。 |
-| Typed model + 专用 merge | [Docker Compose](https://docs.docker.com/reference/compose-file/merge/) | mapping、sequence、unique resource 和 reset 使用不同规则。 |
-| 收缩输入源 | [Starship](https://starship.rs/config/#config-file-location) | 从产品层减少逐字段多源覆盖。 |
-| 共享 struct + 显式边界代码 | [Zellij](https://github.com/zellij-org/zellij/blob/0871f5d2b6f2fed36c6818bc9871bbbb5703dabe/zellij-utils/src/input/options.rs#L447-L578) | derive Clap/Serde 后仍手工维护 merge 与 KDL parse/serialize。 |
+| `AdapterOperationHandlers`、`REQUIRED_OPERATIONS`、builder handler registration 与 dispatch `supports()` | `Adapter` trait 已静态要求 outline/read/find/info；required list 与 trait 完全相同，dispatch 在检查后仍对同一 enum 做 match | 删除 parallel handler declaration、duplicate/missing-handler errors 与 runtime support check；strategy interface 是唯一 handler contract |
+| `AdapterDefinitionBuilder`、`transition_from_adapter`、trait 上的 id/manifest/options/capability metadata methods | Production definition 只有 static Markdown factory；transition helper 只有 test caller，且 builder 的动态集合主要服务将被删除的 options/handlers | 用直接 checked `AdapterDefinition` constructor；trait 只保留 strategy/probe/hooks，manifest/capabilities 只在 definition 表示 |
+| `FullReadCapabilityGroup` | 只包装一个 `UnstructuredFullReadCapabilities`，额外方法仅转发且 `has_cost_measurement_unit` 无 caller | Definition 直接保存 optional capabilities 并继续执行现有 capability validation |
+| `OperationFieldSet` / `adapter_options` | 去掉 adapter declaration injection 后只剩一个 `FieldDefSet` | Navigation 直接返回和消费按 tag/operation 过滤后的 `FieldDefSet` |
+| protocol `Options.entries` / `OptionEntry` 与 `NativeOptionHandoff` / `NativeOptionValue` | `Options.entries` 不序列化；handoff 又把同一 identity/type/source/value metadata 复制一次；standard input 可直接从 resolution 构造 | `Options` 收窄为原有 values object；删除 metadata sidecar 与 native-option handoff/value，保留 wire shape 和 diagnostic parity |
+| `NativeOptionIssue` / `AdapterError::native_option_invalid` | Production construction 位于 navigation 的旧 native-option path；adapter-contracts 只把它再投影为通用 field/config/`option_issues` diagnostic details | 由 core catalog/resolution diagnostic mapping 直接保留 observable details，删除 adapter-contracts 中的 native-option-specific diagnostic ownership |
+| `NavigationAdapterRef` | 只包装一个 `AdapterDefinition` 并转发 `id()` | Routing/selection 直接携带 `AdapterDefinition`；保留有 production/test value 的 registry trait |
+| `AdapterRecord`、`AdapterRegistry::load(ProjectContext)` 与 per-record `implementation_source` | 删除 source 字段后 record 只包装一个 definition factory；`load` 忽略 project 且只返回 `builtin()`；所有 built-ins 与 registry output 都是 `core_static` | Registry 直接保存 definition factories；core 直接使用 static registry；implementation source 作为 registry-level fact，不在每条 record 重复 |
+| `SourceKind::Custom(String)` / `SourceLocator::Custom(String)` | 唯一 production 用途是 navigation 的预解析 direct input；其余命中为 tests | 用固定 `Direct` source kind 与 typed direct path locator，删除未使用的开放式 source-name 扩展和相关 string validation |
 
-这些项目共同支持三条规则：
+上述项目不是新的架构主线；它们是 core-only 决策成立后可直接消失的第二份表示。实施仍以 parameter catalog → typed resolution → standard operation input → strategy 为主路径。
 
-1. 集中 canonical model、provider chain、precedence、provenance 或一个 owner 的 field facts；不同 surface 在明确边界归一化。
-2. 把 absent、empty、false 和 reset 视为独立 public contract；复杂列表、互斥字段和结构 merge 使用专用 resolver 或语法。
-3. 用 owner-local generation、schema validation、precedence/reset tests 和 effective-config inspection 控制漂移，不依赖全局 DSL 或单纯文档提醒。
+### Retained Boundaries
 
-### Docnav 已获得局部集中收益，但尚未充分摊销
+- 保留 `Adapter` strategy trait：它是多个静态 adapter 实现共享的固定行为契约，不再承担 metadata authoring。
+- 保留 `NavigationAdapterRegistry` 和 routing：多 adapter 选择、probe 与测试替身是真实消费者；只删除一字段 ref wrapper 与假动态加载。
+- 保留 `FieldDef` / `FieldDefSet` direct builders、四种 merge strategy、processing locators、Serde/env extraction、materialization 与 provenance；这些都有 production behavior 或 contract-validation consumer。
+- 不因当前只有 Markdown 就把 registry、format selection 或 capability validation 硬编码到单一 adapter。
 
-| 观察面 | 已确认状态 | 含义 |
+## Baseline Status
+
+已完成的 typed-fields、resolution companions 与 navigation baseline 记录到一个变更前异常：`processing_id_compile` trybuild snapshot mismatch。后续验证必须将它作为 pre-existing failure 单独报告，不能归因于本 change，也不能用它掩盖新增失败。
+
+Adapter-contracts、Markdown、docnav CLI、protocol contract validation 与完整 workspace dependency baseline 仍由 task 1.4 补充。
+
+## Alternatives
+
+| Option | Evidence-based result | Decision support |
 | --- | --- | --- |
-| Change 状态 | `derive-document-cli-options-from-fields` 21/21 完成。 | 当前复杂度主要来自既定边界和抽象，不是最后几项未实现。 |
-| 已用收益 | owner declaration 投影 CLI/help/config/default/constraint/applicability；resolver 保留 typed candidate、selection 与 attribution。 | document option projection 的重复确实减少。 |
-| 当前消费者 | 只有 Markdown `max_heading_level` 一个 native option 完整使用链路。 | 通用基础设施的经济性尚未由规模证明。 |
-| 未使用能力 | `env_var`/`extract_env`、`Append`、`MapMerge`、`DenyConflict`、derive/materialization 等无生产消费者。 | 可优先做 consumer-driven 收缩审计。 |
-| 维护面 | 5 个基础包约 5,408 行生产代码、3,874 行测试；另有 27 个生产文件直接依赖相关契约。 | 删除量不能视为净收益，但理解和验证成本已经存在。 |
-| 事实源边界 | Serde config model、合法路径、JSON Schema、runtime/output 映射仍有独立 owner。 | 当前路径不是“所有产品事实只写一次”。 |
+| 保持 adapter-owned declarations | 仍需随 core 发布，且保留完整转换链 | 不形成有效扩展边界 |
+| Core catalog + standard adapter input | 与 release owner 对齐，可删除 declaration/discovery/handoff，并保留 strategy semantic validation | 支持 Checkpoint A |
+| 删除全部 typed-field/resolution | 会失去已有 protocol validation、merge、multi-source、env 与 provenance 能力 | 证据不支持 |
+| 在 core-only 切换后清理冗余 support surface | 删除候选有独立消费者证据和验证 gate | 支持独立 Checkpoint B |
 
-原 proposal 只承诺 document named options。Config/source priority、diagnostic projection、protocol/readable shape、ref、pagination 和 adapter format behavior 本就保留原 owner；不应再用“统一所有东西”作为当前实现的验收标准。
+## Evidence Limits
 
-### A/B 实验只证明了有限但真实的边际收益
+本审计能证明当前 static release model 中没有独立 adapter parameter authoring boundary，也能识别现有生产消费者和删除候选。
 
-实验新增一个非 no-op 的 Markdown `min_heading_level` integer option。完整契约见附录。
-
-| 指标 | A：centralized | B：legacy hybrid |
-| --- | ---: | ---: |
-| Production files | 4 | 5 |
-| Production numstat | `+127/-47`，net `+80` | `+124/-44`，net `+80` |
-| Test files | 6 | 6 |
-| Test numstat | `+247/-1`，net `+246` | `+235/-9`，net `+226` |
-| Production owners | 1：Markdown adapter | 2：Markdown adapter + core CLI parser |
-| Field fact authoring sites | 1：adapter declaration | 2：adapter declaration + core help mapping |
-| Common domain diff | `+64/-20` | `+64/-20` |
-| Help default | 自动显示 `[default: 1]` | 不显示 |
-| Golden/docs/schema sync | 手工 | 手工 |
-
-实验支持以下判断：
-
-- A 不修改 core production；B 需要一处 arg-id 到 help 的手工映射。
-- A 从 owning declaration 投影 flag、help、config、range、default、applicability、candidate identity 和单字段 diagnostic。
-- A/B 的生产净增相同，adapter handoff、整数转换、outline/find 领域行为和长期材料同步也相同。
-- A 的基础设施已经由 `95281ae` 预付；本次实验只能衡量新增一个简单 integer/Replace option 的边际成本。
-
-两边满足冻结的最低契约，但并非 byte-for-byte 等价：A 自动展示 default；两名实现代理采用不同 declaration order，导致 sibling projection 顺序和多错误时的 primary diagnostic 不同。后者不在冻结契约内，属于实验混杂，不能用作架构优劣证据。
-
-## 推荐边界：B′ 薄共享契约 + 受控分散
-
-### 责任分配
-
-| 责任 | 保留方式 | Owner |
-| --- | --- | --- |
-| Adapter option facts | Plain option spec 保存 identity、type、constraint、default、operations、CLI help/value name 和 config path。 | Adapter |
-| Source resolution | 统一处理 precedence、presence、candidate selection、typed validation 和 provenance。 | Navigation |
-| 共享验证原语 | 保留 protocol、navigation 和 adapter contract 实际复用的 value/constraint primitives。 | Shared validation core |
-| CLI projection | 直接消费 owner spec，生成 flag、help 和 candidate。 | Core CLI |
-| Config projection | 直接消费 owner spec，生成 config path facts 和 candidates。 | Navigation config-source boundary |
-| Handoff 与领域效果 | 转换为 adapter 私有类型并实现 format-specific behavior。 | Adapter |
-| 特殊 merge/reset | 使用命名明确的 field-specific resolver；真实复用出现后再抽象。 | Owning domain |
-
-### 收缩候选
-
-按消费者证据依次评估：
-
-1. derive/materialization 和无独立 contract 的 passthrough API；
-2. 尚未进入产品输入契约的 env extraction；
-3. 无生产消费者的复杂 merge strategies；
-4. 为未来 value kinds 预建、但当前 owner surface 不需要的 companion 分支。
-
-每次收缩都必须先核对 protocol、adapter-contracts、navigation、CLI/config 和测试调用方。本报告中的 LOC 只表示审计范围，不表示可删除净代码量。
-
-### 必须保留的防漂移机制
-
-- CLI/config/default/operation applicability 从同一个 adapter option spec 投影；
-- precedence 只由 navigation input resolution 拥有；
-- absent、explicit false/empty 和 reset 有明确类型或 resolver contract；
-- source attribution、selected applicability、protocol validation 有可执行证明；
-- docs、schema、examples、case materials 标明 owner 和验证命令；
-- 对最终值与来源保留可观察 inspection/trace。
-
-## 方案比较
-
-| 方案 | 适用条件 | 当前判断 |
-| --- | --- | --- |
-| A：继续扩大完整 type-field | 近期会出现大量同构 adapter options，且更多 value kinds/merge 已有真实消费者。 | 当前证据不足，不扩大范围。 |
-| B′：薄共享契约 + 受控分散 | 需要保留 single-site projection、typed resolution 和 provenance，同时减少未使用通用能力。 | 当前推荐，尚未成为 Decision。 |
-| C：完全分散 | 调用方愿意分别重建 validation、selection、provenance 和 protocol mapping。 | 当前收益不足以覆盖 contract 漂移风险。 |
-
-## 进入新 OpenSpec change 的门槛
-
-只有以下条件同时满足，才把 B′ 推进为实施 change：
-
-1. 完成 macro、env、merge、companions 和 passthrough API 的生产消费者清单，删除候选均有直接证据。
-2. 薄 option spec 能继续单点 author flag、help/default、config path、constraint 和 operation applicability；core 不新增逐字段表。
-3. 明确保留 protocol validation、selected applicability、source attribution 和现有 error mapping 的实现边界与测试。
-4. 若未来需求包含 Boolean presence/reset 或 repeated/list input，先用一个最小 spike 判断是否需要通用 processing abstraction。
-5. Proposal 写清迁移 slices、rollback、owner docs、schema/examples/case materials 和 `bun run verify:docnav-workspace` 验收。
-
-满足门槛后创建新的 OpenSpec change，以分阶段迁移和明确 rollback 保持可逆；当前已完成 change 的 Decisions 继续作为历史记录。
-
-## 附录 A：A/B 冻结契约
-
-实验 option：Markdown `min_heading_level`。
-
-- identity：`docnav.adapters.docnav-markdown.options.min_heading_level`；
-- CLI：`--min-heading-level <value>`；
-- config：`options.docnav-markdown.min_heading_level`；
-- operations：`outline`、`find`；
-- range/default：`1..=6`、built-in `1`；
-- priority：`explicit > project > user > built_in`；
-- effect：只有 `min <= heading.level <= max` 的 heading 可见；
-- `min > max`：不增加 cross-field diagnostic，沿用 `doc:full` fallback；
-- `read`、`info`：不声明、不展示、不接受；
-- explicit `0`：`INVALID_REQUEST`，field `arguments.options.min_heading_level`，reason `range_invalid`，source `explicit`。
-
-显式 `2` 会过滤 H1；实验不改变 ref、pagination、protocol 或 output shape。
-
-## 附录 B：实验验证
-
-两边均完成真实 RED，并通过：
-
-- `cargo test -p docnav-markdown --all-targets`：各 49 passed；
-- core parser、linked runtime、navigation focused tests；
-- `cargo check -p docnav-markdown -p docnav-navigation -p docnav`；
-- `cargo fmt --all --check`、`git diff --check`；
-- built-in/user/project/explicit、outline/find、invalid values、duplicate flag、`min > max`、read/info 的真实 CLI replay。
-
-`cargo test -p docnav --lib`：
-
-- A：105 passed，2 failed；
-- B：92 passed，2 failed。
-
-两边失败均为同两份 config-inspect golden 未包含新 option 的 config projection 与 built-in fact。实验刻意不更新长期材料，因此两个 diff 都不可合并；该失败不是 A/B 差异。
-
-## 附录 C：测量与来源快照
-
-内部审计和基线核对使用：
-
-```bash
-git show --stat --oneline 95281ae
-cargo metadata --format-version 1
-rg -n 'docnav_typed_fields|cli_config_resolution|FieldDefSet|SourceCandidate|AdapterOptionSpec' crates
-```
-
-外部源码固定 commit：
-
-- Cargo `31476f8bc7633ae05fde9f8ea7c40155f3d47d29`
-- uv `d046cdd10625bd0cb95549b5d47ff376ef160056`
-- ripgrep `0d7054d8e466d6aa0a6bb6cf121e87225d26df44`
-- Starship `8eb25b8130d1b7bf0c98c71d6f978224814b5208`
-- Zellij `0871f5d2b6f2fed36c6818bc9871bbbb5703dabe`
-- GitHub CLI `2af8c115be240a8018add33bf5c7a9ba5070a62c`
-- Kubernetes `6d5610685c55faf1eab630ed7f6cd9f6d4accd13`
-- Terraform `c07e79c1c88935d75bfbff52c0eab9ac9f84f688`
-- AWS CLI `699c16c7377dcdb9bbb62c0fd7ab58c8a7ddece1`、Botocore `91a4146fe194857c4f8cf91c16838644f0fa4ce7`
-- Docker Compose `5bf5a21687107138629baa30be97f0bd9a0c55b2`、compose-go `0670a1c375c19defea19147bd82eb126a7c33b29`
-
-## 附录 D：实验清理
-
-2026-07-17，在证据固化并通过验证后，已删除两个 detached worktree 及其未提交实验 diff：
-
-- `/tmp/docnav-type-field-ab-iLaWCt/A-centralized`
-- `/tmp/docnav-type-field-ab-iLaWCt/B-legacy`
-
-随后运行 `git worktree prune` 并删除空父目录 `/tmp/docnav-type-field-ab-iLaWCt`。实验 working diff 不作为长期 artifact 保留。
+它不能证明未来永远不需要 runtime plugins、外部 adapter SDK、新 value kind 或新的 merge semantics。若产品选择这些方向，应由新的 deployment/compatibility capability 提供扩展边界，而不是让当前 change 预留未被使用的动态链路。
