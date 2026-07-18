@@ -200,7 +200,7 @@ fn render_failure_happens_before_stdout_and_strategy_runs_once() {
         error,
         DocumentOutputError::Render(ref failure) if failure.to_string() == "boom"
     ));
-    assert_eq!(error.primary_error_id(), "readable_view_render_failed");
+    assert_eq!(error.to_string(), "render failed: boom");
     assert!(stdout.is_empty());
     assert_eq!(FAILING_RENDERER_CALLS.load(Ordering::SeqCst), 1);
 }

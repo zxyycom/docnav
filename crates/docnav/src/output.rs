@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 
+use docnav_diagnostics::BoundaryDiagnosticCode;
 use docnav_json_io::write_json_value_pretty;
 use docnav_navigation::NavigationCommandOutcome;
 use docnav_output::{
@@ -111,8 +112,8 @@ pub fn write_outcome<W: Write, E: Write>(
                 outcome.exit_code.code()
             }
             Err(error) => {
-                let error_code = error.primary_error_id().to_owned();
-                let error_summary = error.to_string();
+                let error_code = document_output_error_id(&error).to_owned();
+                let error_summary = document_output_error_summary(&error);
                 let exit_code = write_document_output_error(error, stderr);
                 if let Some(invocation_log) = invocation_log.as_ref() {
                     invocation_log.record_output_projection_error(
@@ -173,6 +174,25 @@ fn document_output_plan(mode: OutputMode) -> OutputPlan {
     }
 }
 
+fn document_output_error_id(error: &DocumentOutputError) -> &'static str {
+    match error {
+        DocumentOutputError::Render(_) => BoundaryDiagnosticCode::ReadableViewRenderFailed.as_str(),
+        DocumentOutputError::StdoutJson(_) => "stdout-json-write-failed",
+        DocumentOutputError::StdoutWrite(_) => "stdout-write-failed",
+    }
+}
+
+fn document_output_error_summary(error: &DocumentOutputError) -> String {
+    match error {
+        DocumentOutputError::Render(failure) => {
+            format!("{}: {failure}", document_output_error_id(error))
+        }
+        DocumentOutputError::StdoutJson(_) | DocumentOutputError::StdoutWrite(_) => {
+            error.to_string()
+        }
+    }
+}
+
 fn write_document_output_error<E: Write>(error: DocumentOutputError, stderr: &mut E) -> i32 {
     if matches!(&error, DocumentOutputError::Render(_)) {
         return write_bounded_fatal_diagnostic(&error, stderr);
@@ -182,7 +202,10 @@ fn write_document_output_error<E: Write>(error: DocumentOutputError, stderr: &mu
 }
 
 fn write_bounded_fatal_diagnostic<E: Write>(error: &DocumentOutputError, stderr: &mut E) -> i32 {
-    let message = format!("failed to write docnav output: {error}");
+    let message = format!(
+        "failed to write docnav output: {}",
+        document_output_error_summary(error)
+    );
     let bounded = message
         .chars()
         .take(MAX_FATAL_DIAGNOSTIC_CHARS)

@@ -24,8 +24,6 @@ pub struct RenderFailure {
 }
 
 impl RenderFailure {
-    pub const ERROR_ID: &'static str = "readable_view_render_failed";
-
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -58,22 +56,10 @@ pub enum DocumentOutputError {
     StdoutWrite(io::Error),
 }
 
-impl DocumentOutputError {
-    pub fn primary_error_id(&self) -> &'static str {
-        match self {
-            Self::Render(_) => RenderFailure::ERROR_ID,
-            Self::StdoutJson(_) => "stdout-json-write-failed",
-            Self::StdoutWrite(_) => "stdout-write-failed",
-        }
-    }
-}
-
 impl fmt::Display for DocumentOutputError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Render(error) => {
-                write!(formatter, "readable_view_render_failed: {error}")
-            }
+            Self::Render(error) => write!(formatter, "render failed: {error}"),
             Self::StdoutJson(error) => write!(formatter, "failed to write JSON output: {error}"),
             Self::StdoutWrite(error) => write!(formatter, "failed to write output: {error}"),
         }

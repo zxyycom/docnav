@@ -204,6 +204,21 @@ fn rendered_writer_failure_stays_an_io_failure() {
     assert!(!diagnostic.contains("readable_view_render_failed"));
 }
 
+#[test]
+fn built_in_render_failure_uses_existing_core_error_id() {
+    let error =
+        DocumentOutputError::Render(docnav_output::RenderFailure::new("renderer rejected input"));
+
+    assert_eq!(
+        document_output_error_id(&error),
+        "readable_view_render_failed"
+    );
+    assert_eq!(
+        document_output_error_summary(&error),
+        "readable_view_render_failed: renderer rejected input"
+    );
+}
+
 fn test_cost() -> Cost {
     Cost {
         measurements: vec![
