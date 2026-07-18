@@ -257,9 +257,9 @@ Markdown adapter 的开发期快捷命令通过 core CLI 验证：
 bun --silent run dnm outline <path>
 bun --silent run dnm read <path> --ref "<ref>"
 bun --silent run dnm find <path> --query "<text>"
-bun --silent run dnm outline <path> --output readable-json
+bun --silent run dnm outline <path> --output protocol-json
 ```
 
-省略 `--output` 时使用 `readable-view`；需要结构化阅读结果时显式使用 `readable-json`，需要完整协议 envelope 时使用 `protocol-json`。
+省略 `--output` 或显式使用 `readable-view` 时获得阅读文本；需要稳定结构化结果或完整协议 envelope 时使用 `protocol-json`。
 
 交付前综合验证入口见 [测试策略](../testing.md)。

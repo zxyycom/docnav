@@ -1,6 +1,6 @@
 {
   "defaults": {
     "adapter": "docnav-markdown",
-    "output": "readable-json"
+    "output": "readable-view"
   }
 }

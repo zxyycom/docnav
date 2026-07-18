@@ -1,15 +1,33 @@
-use std::io::Write;
-
 use docnav_protocol::{
     protocol_error_default_guidance, Cost, Entry, InfoResult, Measurement, OperationResult,
-    OutlineResult, ProtocolError,
+    OutlineResult, ProtocolError, ProtocolResponse,
 };
 use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind};
 use serde_json::{json, Map, Value};
 
-use crate::DocumentOutputError;
+use crate::RenderFailure;
 
-pub fn readable_payload(result: &OperationResult) -> Result<Value, DocumentOutputError> {
+pub fn render_readable_response(response: &ProtocolResponse) -> Result<String, RenderFailure> {
+    let (value, kind) = match response {
+        ProtocolResponse::Success(success) => (
+            readable_payload(&success.result)?,
+            view_kind_for_result(&success.result),
+        ),
+        ProtocolResponse::Failure(failure) => (
+            protocol_error_readable(&failure.error),
+            ReadableViewKind::Error,
+        ),
+    };
+
+    render_readable_view(
+        &value,
+        kind,
+        &docnav_readable::RendererConfig::default_config(),
+    )
+    .map_err(RenderFailure::from)
+}
+
+fn readable_payload(result: &OperationResult) -> Result<Value, RenderFailure> {
     let value = match result {
         OperationResult::Outline(result) => readable_outline_payload(result),
         OperationResult::Read(result) => json!({
@@ -27,7 +45,7 @@ pub fn readable_payload(result: &OperationResult) -> Result<Value, DocumentOutpu
             "display": info_display(result),
         }),
     };
-    to_readable_value(&value).map_err(DocumentOutputError::ReadablePayload)
+    to_readable_value(&value).map_err(RenderFailure::from)
 }
 
 fn readable_outline_payload(result: &OutlineResult) -> Value {
@@ -47,7 +65,7 @@ fn readable_outline_payload(result: &OutlineResult) -> Value {
     }
 }
 
-pub fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
+fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
     match result {
         OperationResult::Outline(OutlineResult::Structured(_)) => ReadableViewKind::Outline,
         OperationResult::Outline(OutlineResult::Unstructured(_)) => {
@@ -59,7 +77,7 @@ pub fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
     }
 }
 
-pub fn protocol_error_readable(error: &ProtocolError) -> Value {
+fn protocol_error_readable(error: &ProtocolError) -> Value {
     let mut value = Map::new();
     value.insert("code".to_owned(), json!(error.code().protocol_code()));
     value.insert("error".to_owned(), json!(error.message()));
@@ -232,20 +250,4 @@ fn measurement_summary(measurement: &Measurement) -> String {
         }
         unit => format!("{} {}", measurement.value, unit),
     }
-}
-
-pub(crate) fn write_readable_view_value<W: Write>(
-    value: Value,
-    kind: ReadableViewKind,
-    stdout: &mut W,
-) -> Result<(), DocumentOutputError> {
-    let rendered = render_readable_view(
-        &value,
-        kind,
-        &docnav_readable::RendererConfig::default_config(),
-    )
-    .map_err(DocumentOutputError::ReadableViewRender)?;
-    stdout
-        .write_all(rendered.as_bytes())
-        .map_err(DocumentOutputError::StdoutWrite)
 }

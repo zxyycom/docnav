@@ -50,13 +50,13 @@ description: >-
 - **Identifier/read path**：generated identifiers、lookup/parsing、selected region、body boundaries。
 - **Pagination/limits**：page/limit arguments、continuation metadata、truncation、repeated content、multibyte boundaries。
 - **Schema/examples/generated fixtures**：field names、versions、warnings、errors、schema validation and generated material。
-- **Output modes**：readable-view framing、readable-json structure、protocol-json contract data，以及非文档 PlainText 通道。
+- **Output modes**：`readable-view` framing、`protocol-json` contract data，以及非文档 PlainText 通道。
 - **Platform paths**：drive letters、backslashes、spaces、quotes、cwd-relative paths、absolute normalization。
 
 ## Debugging Flow
 
 1. **Reproduce**：找到仍会失败的最小命令或 test，保留触发失败的关键属性。
-2. **Localize**：比较相邻层，例如 direct implementation vs CLI/API wrapper、core vs adapter、`readable-view` vs `readable-json` vs `protocol-json`。
+2. **Localize**：比较相邻层，例如 direct implementation vs CLI/API wrapper、core vs adapter、`readable-view` text vs `protocol-json` contract data。
 3. **Isolate input**：缩小 source input、identifier/ref、page、limit、request JSON、path form 或 fixture，直到 bug 边界清楚。
 4. **Fix root cause**：在拥有缺陷的层修复；外层 wrapper 只调用 owning implementation，formatting 不掩盖 parser/domain 缺陷。
 5. **Choose validation evidence**：用离 bug 最近的验证表达当前缺口；已有验证足够时复用并重放，manual replay 足够时记录 replay path，新增自动化测试只用于稳定 contract、自定义不变量、等价类或当前 owner 明确承诺的可观察语义。
@@ -79,7 +79,7 @@ description: >-
 
 按 touched boundary 运行最小相关验证。只有当失败跨越公开契约、输出层、schema/example、subprocess 或 workspace-level contract 时，才扩大到仓库约定的 smoke/workspace verification。
 
-对 navigation、selection 或 identifier 行为偏移，要重放原始 user-visible path，并按风险检查 readable-view、readable-json 和 protocol-json；非文档 help/version 可单独检查 PlainText。跨语言/runtime、CLI/API behavior、contract、schemas、examples、generated fixtures、docs 或 smoke coverage 时，优先运行仓库约定的 workspace verification。
+对 navigation、selection 或 identifier 行为偏移，要重放原始 user-visible path，并按风险检查 `readable-view` 和 `protocol-json`；非文档 help/version 可单独检查 PlainText。跨语言/runtime、CLI/API behavior、contract、schemas、examples、generated fixtures、docs 或 smoke coverage 时，优先运行仓库约定的 workspace verification。
 
 ## 完成标准
 

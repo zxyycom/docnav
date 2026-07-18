@@ -13,24 +13,11 @@
 
 ## 阅读输出
 
-| Schema | 用途 |
-| --- | --- |
-| [readable-outline.schema.json](readable-outline.schema.json) | CLI `readable-json` outline |
-| [readable-read.schema.json](readable-read.schema.json) | CLI `readable-json` read |
-| [readable-find.schema.json](readable-find.schema.json) | CLI `readable-json` find |
-| [readable-info.schema.json](readable-info.schema.json) | CLI `readable-json` info |
-| [readable-error.schema.json](readable-error.schema.json) | CLI 精简错误 |
-| [readable-common.schema.json](readable-common.schema.json) | readable schema 共享 `$defs` |
+`readable-view` 是文本输出 contract，不发布独立 JSON Schema。其 header、block reference、framing、payload 还原和 error presentation 由 [输出模式](../output.md) 定义，并由 built-in renderer conformance vectors 验证。
 
-`readable-view` 和 `readable-json` 从同一 typed readable payload 派生。readable schema 只校验 CLI `readable-json`。`readable-view` 不使用 readable JSON schema 校验；framing、header block refs 和 payload 还原的验收边界见 [输出模式](../output.md) 和 readable-view conformance vectors。protocol schema 保持独立。`readable-outline.schema.json` 校验 `kind: "structured"` entries/page branch 和 `kind: "unstructured"` content/content_type/cost/reason branch。
+`protocol-response.schema.json` 只校验 protocol envelope 和 typed operation result，不作为 readable-view header schema。它使用响应 `operation` 校验成功 result 类型，并按 [原始协议](../protocol.md#协议错误对象) 中的 primary diagnostic projection 校验错误字段和 details；protocol envelope 和投影字段由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验材料，用于示例、fixture、CI drift check 和第三方对齐；production runtime decode path 的字段级校验由 `docnav-typed-fields` contract validation 承接。
 
-原始协议和阅读输出不得互相使用对方 schema。`protocol-response.schema.json` 使用响应 `operation` 校验成功 result 类型，并按 [原始协议](../protocol.md#协议错误对象) 中的 primary diagnostic projection 校验错误字段和 details；protocol envelope 和投影字段由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验材料，用于示例、fixture、CI drift check 和第三方对齐；production runtime decode path 的字段级校验由 `docnav-typed-fields` contract validation 承接。阅读输出 schema 用于文档示例和实现自测，不表示 readable 输出是长期机器解析协议。
-
-protocol response 示例应证明 outline/find item facts、read `cost.measurements[]` 和 info `document`/`adapter`/`metadata` 的 raw shape；readable 示例应证明由这些 facts 派生的 `display`、成本摘要和精简 info display。任一 schema 都不能接受对方层独有字段作为成功 result 的替代形态。
-
-operation readable schema 只描述 successful document payload 和该 output mode 拥有的结构。Rejected public input、invalid config、explicit adapter/ref failure 和 automatic discovery all-failed candidate lists 由 [readable-error.schema.json](readable-error.schema.json) 校验 primary `DiagnosticRecord` readable projection；successful readable schema 不承载被拒绝输入或失败候选信息。
-
-`readable-common.schema.json` 提供 readable 复用的 `entry`、`page` 和 diagnostic projection 定义。operation readable schema 可通过同目录 `$ref` 复用这些定义。
+protocol response 示例证明 outline/find item facts、read `cost.measurements[]` 和 info `document`/`adapter`/`metadata` 的 raw shape。Readable-view presentation 从同一个 protocol response 派生，但不以另一组 JSON examples 或 schema 形成机器 contract。
 
 ## 配置参考层
 
@@ -44,7 +31,7 @@ operation readable schema 只描述 successful document payload 和该 output mo
 
 文件系统边界、ref 唯一性、真实分页一致性和配置优先级不属于 JSON Schema 校验范围，应由对应 owner 文档下的实现级业务测试覆盖。
 
-`docnav-json-io` 拥有低层 serialization、newline writing 和 write failure plumbing。protocol request/response、manifest、probe 和 readable schema 的字段 shape 仍由本目录维护；语义校验、错误归属、诊断投影和通道承载由对应 owner 文档与实现测试验收。
+`docnav-json-io` 拥有低层 serialization、newline writing 和 write failure plumbing。protocol request/response、manifest 和 probe 的字段 shape 仍由本目录维护；语义校验、错误归属、诊断投影和通道承载由对应 owner 文档与实现测试验收。
 
 ## Runtime invocation log
 

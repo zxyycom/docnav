@@ -89,27 +89,6 @@ function validateProtocolResponseErrorDetailsSchema() {
   console.log("protocol response error details shape ok");
 }
 
-function validateReadableErrorDetailsSchema() {
-  const ajv = createSchemaAjv();
-  const validate = compileRegisteredSchema(ajv, SCHEMAS.readableError);
-  const validError = readJson(EXAMPLES.readableError);
-  assert(
-    validate(validError),
-    `readable error schema must accept documented readable error: ${formatAjvErrors(validate)}`
-  );
-
-  const missingDetails = structuredClone(validError);
-  assert(isRecord(missingDetails), `${EXAMPLES.readableError} must be an object`);
-  delete missingDetails[FIELDS.details];
-
-  assert(
-    !validate(missingDetails),
-    "readable error schema must reject errors without details"
-  );
-
-  console.log("readable error details shape ok");
-}
-
 export function validateJsonSyntax() {
   const jsonFiles = walk(toAbs(FILE_SYSTEM.docsDir), (filePath) =>
     filePath.endsWith(FILE_SYSTEM.jsonExtension)
@@ -150,26 +129,6 @@ export function validateSchemas() {
     {
       schema: SCHEMAS.probeResult,
       data: [EXAMPLES.probeResult]
-    },
-    {
-      schema: SCHEMAS.readableOutline,
-      data: listExampleJson(/^readable-outline(?:-[a-z-]+)?\.json$/)
-    },
-    {
-      schema: SCHEMAS.readableRead,
-      data: [EXAMPLES.readableRead]
-    },
-    {
-      schema: SCHEMAS.readableFind,
-      data: [EXAMPLES.readableFind]
-    },
-    {
-      schema: SCHEMAS.readableInfo,
-      data: [EXAMPLES.readableInfo]
-    },
-    {
-      schema: SCHEMAS.readableError,
-      data: [EXAMPLES.readableError]
     }
   ];
 
@@ -178,5 +137,4 @@ export function validateSchemas() {
   }
   validateProtocolResponseBindingSchema();
   validateProtocolResponseErrorDetailsSchema();
-  validateReadableErrorDetailsSchema();
 }

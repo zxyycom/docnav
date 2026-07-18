@@ -1,9 +1,0 @@
-{
-  "kind": "unstructured",
-  "reason": "path_rule",
-  "content": "# Raw Note\n\nShort operational note with no useful headings.\n",
-  "content_type": "text/markdown",
-  "cost": {
-    "measurements": []
-  }
-}

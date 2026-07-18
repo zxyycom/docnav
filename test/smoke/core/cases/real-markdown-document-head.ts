@@ -3,6 +3,7 @@ import {
   expect,
   expectExit,
   expectJsonObject,
+  expectNoProtocolEnvelope,
   expectObjectArray,
   expectProtocolSuccess,
   expectReadableViewBlockRestoresField,
@@ -15,7 +16,6 @@ import {
 import { copyDocumentFixture } from "../fixtures.ts";
 import type { SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
-import { runReadableJsonCase } from "./readable-output.ts";
 
 const DOCUMENT_HEAD_FIXTURE = "document-head.md";
 const DOCUMENT_HEAD_REF = "HEAD:leading";
@@ -35,19 +35,6 @@ const DOCUMENT_HEAD_CONTENT = [
 export async function assertDocumentHeadOutputModes(project: SmokeProject) {
   const documentPath = copyDocumentFixture(project, DOCUMENT_HEAD_FIXTURE, "docs/document-head.md");
 
-  const readableOutline = await runReadableJsonCase(
-    project,
-    "CORE-LINK-001 document head outline readable-json",
-    [
-      "outline",
-      documentPath,
-      "--output",
-      "readable-json"
-    ],
-    "readableOutline"
-  );
-  const readableHeadEntry = assertReadableDocumentHeadEntry(readableOutline.record, readableOutline.json);
-
   const protocolOutline = await runCli("CORE-LINK-001 document head outline protocol-json", [
     "outline",
     documentPath,
@@ -65,12 +52,6 @@ export async function assertDocumentHeadOutputModes(project: SmokeProject) {
     "document head protocol outline result is an object"
   );
   const protocolHeadEntry = assertProtocolDocumentHeadEntry(protocolOutline, protocolOutlineResult);
-  assertDocumentHeadDisplayUsesProtocolFacts(
-    readableOutline.record,
-    readableHeadEntry,
-    protocolHeadEntry,
-    "document head readable-json derives display from protocol facts"
-  );
 
   const readableViewOutline = await runCli("CORE-LINK-001 document head outline readable-view", [
     "outline",
@@ -81,6 +62,7 @@ export async function assertDocumentHeadOutputModes(project: SmokeProject) {
   expectExit(readableViewOutline, 0);
   expectStderrEmpty(readableViewOutline);
   const readableViewHeader = parseReadableViewHeader(readableViewOutline);
+  expectNoProtocolEnvelope(readableViewOutline, readableViewHeader);
   const readableViewHeadEntry = assertReadableDocumentHeadEntry(readableViewOutline, readableViewHeader);
   assertDocumentHeadDisplayUsesProtocolFacts(
     readableViewOutline,
@@ -88,21 +70,6 @@ export async function assertDocumentHeadOutputModes(project: SmokeProject) {
     protocolHeadEntry,
     "document head readable-view derives display from protocol facts"
   );
-
-  const readableRead = await runReadableJsonCase(
-    project,
-    "CORE-LINK-001 document head read readable-json",
-    [
-      "read",
-      documentPath,
-      "--ref",
-      DOCUMENT_HEAD_REF,
-      "--output",
-      "readable-json"
-    ],
-    "readableRead"
-  );
-  assertDocumentHeadReadPayload(readableRead.record, readableRead.json);
 
   const protocolRead = await runCli("CORE-LINK-001 document head read protocol-json", [
     "read",
@@ -134,6 +101,7 @@ export async function assertDocumentHeadOutputModes(project: SmokeProject) {
   ], { project });
   expectExit(readableViewRead, 0);
   expectStderrEmpty(readableViewRead);
+  expectNoProtocolEnvelope(readableViewRead, parseReadableViewHeader(readableViewRead));
   expectReadableViewFieldValue(readableViewRead, readableViewRead.stdout, "/ref", DOCUMENT_HEAD_REF);
   expectReadableViewFieldValue(readableViewRead, readableViewRead.stdout, "/content_type", "text/markdown");
   expectReadableViewBlockRestoresField(readableViewRead, readableViewRead.stdout, "/content", DOCUMENT_HEAD_CONTENT);

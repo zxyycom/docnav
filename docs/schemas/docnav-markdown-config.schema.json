@@ -26,7 +26,6 @@
         "output": {
           "enum": [
             "readable-view",
-            "readable-json",
             "protocol-json"
           ],
           "description": "Default core CLI output mode for document operations."

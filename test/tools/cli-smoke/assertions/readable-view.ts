@@ -88,7 +88,7 @@ function expectReadableViewBlockPayload(
   const payloadStart = start + startMarkerBytes.length;
   const payloadEnd = payloadStart + expectedBytes;
   const payload = outputBytes.subarray(payloadStart, payloadEnd).toString("utf8");
-  expect(record, payload === expectedPayload, `readable-view block ${pointer} restores readable-json payload`);
+  expect(record, payload === expectedPayload, `readable-view block ${pointer} restores expected payload`);
 
   const markerStart = expectReadableViewBlockFraming(record, outputBytes, payloadEnd, pointer, expectedPayload);
   const endMarkerBytes = Buffer.from(`[endblock ${pointer}]\n`, "utf8");

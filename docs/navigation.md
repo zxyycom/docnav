@@ -50,7 +50,7 @@ OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change na
 | `navigation-input-resolution` | [Navigation Input Resolution](navigation-input-resolution.md) | config source、adapter selection、typed extraction、request construction 和 dispatch |
 | `adapter-contract` | [适配器契约](adapter-contract.md) | linked adapter strategy interface、manifest/probe、closed standard input 和 strategy result |
 | `protocol-contract` | [原始协议](protocol.md) | raw protocol envelope、operation/result pairing、page 和 protocol failure |
-| `output-contract` | [输出模式](output.md) | output modes、readable-view、readable-json、renderer config 和 output channels |
+| `output-contract` | [输出模式](output.md) | public output modes、统一 `ProtocolResponse` 输入、`ProtocolJson` / `Rendered(RenderStrategy)`、renderer contract 和 output channels |
 | `diagnostics-contract` | [架构](architecture.md) | DiagnosticCode、DiagnosticRecord、canonical details 和 primary projection |
 | `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar 和 outline/find 到 read 的原样传递流程 |
 | `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown parser/probe/ref/outline/read/find/info、typed strategy input semantics |
@@ -81,7 +81,7 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | adapter library interface、manifest metadata、probe、adapter 选择、internal discovery failure list、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
 | navigation command 的 raw command、config source descriptors/paths、core parameter catalog 和 registry 交接、routing 必需输入解析、full config validation、adapter selection、selected-operation catalog filtering、explicit/conditional env/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、protocol/closed strategy/core output projections 和 adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
-| 输出模式、document success payload shape、primary failure projection、readable-view framing、readable-json shape、阅读文案配置、输出通道 | [输出模式](output.md) |
+| public output modes、两条 document output paths 共同消费 `ProtocolResponse` 的编排规则、renderer selection、readable-view framing、阅读文案配置和输出通道 | [输出模式](output.md) |
 | protocol envelope、operation、紧凑结果、page、protocol failure envelope、protocol error fields、code/details 规则和 primary diagnostic projection | [原始协议](protocol.md) |
 | diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |
 | ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
@@ -105,5 +105,5 @@ OpenSpec 用于按 change 规划和审计较大 PR；小功能可以直接修改
 | document | Docnav 操作的输入文件，由 path 定位并用于 adapter 选择。 |
 | `outline -> ref -> read` | 标准导航流程：先取结构条目，再把 adapter 生成的 ref 原样传回读取。 |
 | ref | adapter 生成和解析的非空 opaque string；共享层只原样传递。 |
-| readable output | 面向人类和 AI 的阅读输出，包括 `readable-view` 和 `readable-json`；规则见 [输出模式](output.md)。 |
+| readable output | 面向人类和 AI 的 `readable-view` 文本；CLI 使用内置 renderer，linked caller 可以通过 shared output API 注入自定义 renderer。规则见 [输出模式](output.md)。 |
 | protocol output | 面向脚本、调试和兼容校验的稳定 envelope；协议语义见 [原始协议](protocol.md)，CLI 模式见 [输出模式](output.md)。 |

@@ -16,12 +16,7 @@ export const logPaths = [
 ];
 
 export const schemaPaths = {
-  protocolResponse: "docs/schemas/protocol-response.schema.json",
-  readableOutline: "docs/schemas/readable-outline.schema.json",
-  readableRead: "docs/schemas/readable-read.schema.json",
-  readableFind: "docs/schemas/readable-find.schema.json",
-  readableInfo: "docs/schemas/readable-info.schema.json",
-  readableError: "docs/schemas/readable-error.schema.json"
+  protocolResponse: "docs/schemas/protocol-response.schema.json"
 };
 
 export const exitCodes = Object.freeze({

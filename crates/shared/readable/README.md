@@ -6,7 +6,7 @@ Readable payload and readable-view rendering helpers for the Docnav document nav
 
 This crate provides:
 
-- **Single-path typed payload → `serde_json::Value`** — `readable-json` and `readable-view` derive from the same complete JSON value.
+- **Typed presentation value conversion** — converts serializable renderer payloads into private `serde_json::Value` inputs.
 - **Repo-internal renderer config** — declares which JSON Pointer fields are block-eligible per view kind.
 - **Readable-view renderer** — emits a pretty JSON header followed by length-delimited `[block …]` / `[endblock …]` sections with platform-independent LF framing.
 - **Committed conformance vectors** — cross-implementation acceptance material for verifying renderer correctness.
@@ -100,7 +100,7 @@ The following are **NOT** part of the stable semantic contract and MUST NOT be a
 
 ## Architecture boundary
 
-This crate owns readable payload/value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, adapter selection, document parsing, or CLI wiring. Those responsibilities stay with their existing crates.
+This crate owns private readable value conversion, renderer config, `ReadableViewKind`, readable-view block framing, and conformance vectors. It does NOT own output mode dispatch, protocol envelopes, built-in `ProtocolResponse` presentation, adapter selection, document parsing, or CLI wiring. Those responsibilities stay with their existing crates.
 
 ## Testing
 

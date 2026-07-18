@@ -68,7 +68,7 @@ Measure-Command { <core-cli> outline <large-fixture.md> | Out-Null }
 
 ```powershell
 hyperfine --warmup 3 '<core-cli> outline <large-fixture.md> --output protocol-json --limit-chars 8000'
-hyperfine --warmup 3 '<adapter-cli> find <large-fixture.md> --query "navigation" --output readable-json'
+hyperfine --warmup 3 '<adapter-cli> find <large-fixture.md> --query "navigation" --output readable-view'
 ```
 
 没有 `hyperfine` 时使用 PowerShell：

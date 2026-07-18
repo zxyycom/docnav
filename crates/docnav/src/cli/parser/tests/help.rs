@@ -16,7 +16,7 @@ fn help_returns_typed_help_command() {
 }
 
 #[test]
-fn help_text_shows_three_output_modes() {
+fn help_text_shows_only_public_output_modes() {
     let parsed = parse(["outline", "--help"]).expect("parse help");
 
     match parsed.command {
@@ -26,15 +26,15 @@ fn help_text_shows_three_output_modes() {
                 "help should list readable-view; got:\n{text}"
             );
             assert!(
-                text.contains("readable-json"),
-                "help should list readable-json; got:\n{text}"
+                !text.contains("readable-json"),
+                "help should not list removed readable-json; got:\n{text}"
             );
             assert!(
                 text.contains("protocol-json"),
                 "help should list protocol-json; got:\n{text}"
             );
             assert!(
-                !text.contains("text|readable-json|protocol-json"),
+                !text.contains("text|protocol-json"),
                 "help should not show legacy 'text' output value"
             );
         }

@@ -2,8 +2,8 @@
 //!
 //! This crate provides:
 //!
-//! - A **single-path** typed-payload → `serde_json::Value` API so that
-//!   `readable-json` and `readable-view` derive from the same complete value.
+//! - A typed-payload → `serde_json::Value` helper for private readable
+//!   presentation values.
 //! - A **repo-internal renderer config** that declares which JSON Pointer
 //!   fields should be rendered as out-of-band blocks per view kind.
 //! - A **readable-view renderer** that emits a pretty JSON header followed
@@ -12,10 +12,11 @@
 //!
 //! # Architecture boundary
 //!
-//! This crate owns readable payload/value conversion, renderer config,
+//! This crate owns private readable value conversion, renderer config,
 //! `ReadableViewKind`, readable-view block framing, and conformance vectors.
-//! It does **not** own output mode dispatch, protocol envelopes, adapter
-//! routing, document parsing, or CLI wiring.
+//! It does **not** own output mode dispatch, protocol envelopes, built-in
+//! `ProtocolResponse` presentation, adapter routing, document parsing, or CLI
+//! wiring.
 
 pub mod conformance;
 pub mod error;

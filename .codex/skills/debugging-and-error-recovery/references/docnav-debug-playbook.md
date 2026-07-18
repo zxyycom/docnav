@@ -15,7 +15,7 @@
 Markdown adapter 行为直接重放 operation：
 
 ```bash
-<adapter-cli> info path/to/file.md --output readable-json
+<adapter-or-core-cli> info path/to/file.md --output readable-view
 <adapter-cli> outline path/to/file.md --output protocol-json --limit-chars 1000
 <adapter-cli> read path/to/file.md --ref "<ref-from-outline>" --page 1 --limit-chars 1000 --output protocol-json
 <adapter-cli> find path/to/file.md --query "needle" --output protocol-json
@@ -27,8 +27,7 @@ Markdown adapter 行为直接重放 operation：
 ## Adjacent-Layer Comparisons
 
 - Direct adapter 通过、core CLI 失败：检查 routing、config、adapter discovery、process invocation、path resolution、output mapping。
-- `text` 不同但 JSON modes 一致：按 display formatting 处理。
-- `readable-json` 与 `protocol-json` 不同：检查 envelope/wrapper、schema fields、warnings、errors、page metadata。
+- `protocol-json` facts 正确但 `readable-view` 异常：检查 built-in mapping、header fields 和 block framing；raw facts 异常时检查 protocol envelope、schema fields、errors 和 page metadata。
 - `outline` 正确但 `read` 错误：检查 ref generation、ref parsing、region lookup、slicing、pagination。
 - `probe` 与直接命令不一致：检查 manifest registration、extension/content sniffing、unsupported-format behavior、core routing。
 
@@ -51,7 +50,6 @@ Markdown adapter 行为直接重放 operation：
 
 ```bash
 <adapter-or-core-cli> outline path/to/file.md --output readable-view
-<adapter-or-core-cli> outline path/to/file.md --output readable-json
 <adapter-or-core-cli> outline path/to/file.md --output protocol-json
 <adapter-or-core-cli> read path/to/file.md --ref "<ref-from-outline>" --output readable-view
 ```

@@ -11,10 +11,10 @@ Code: `test/smoke/core/cases/real-markdown.ts`
 
 Proves:
 - 真实 `docnav` 进程可以通过 Markdown adapter 完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info` 链路。
-- outline/find 返回的 adapter ref 可原样提交给 read，readable read 保留该 ref；用户可见 readable JSON 不包含 protocol envelope。
+- outline/find 返回的 adapter ref 可原样提交给 read，`readable-view` read 保留该 ref；用户可见阅读文本不包含 protocol envelope。
 
 决策说明:
-- 保留为一个 smoke case 是因为 `outline`/`find` 产生的 refs、后续 `read` 和 `info` 都复用同一个真实 Markdown project、adapter selection 和 readable-json 入口；拆分会重复 fixture 初始化和 ref 获取模板，而不会增加新的 owner 证明。
+- 保留为一个 smoke case 是因为 `outline`/`find` 产生的 refs、后续 `read` 和 `info` 都复用同一个真实 Markdown project、adapter selection 和 `readable-view` 入口；拆分会重复 fixture 初始化和 ref 获取模板，而不会增加新的 owner 证明。
 
 ### BB-CORE-MD-OPTIONS-001 Markdown max_heading_level option 通过真实 CLI 生效
 Status: implemented
@@ -32,7 +32,7 @@ Code: `test/smoke/core/cases/real-markdown-document-head.ts`
 Proves:
 - 真实 CLI fixture 包含 YAML frontmatter、普通前导正文和可见 heading 时，structured outline 在 heading entries 前暴露 `HEAD:leading`。
 - `protocol-json` 验证 raw document head entry facts：非空 `label`、`kind = document_head`、`location.line_start`、`metadata.document_region = leading` 和缺少 readable-only `display`。
-- `readable-json` 和 `readable-view` 验证 display、成本摘要和 read content block 由输出层从 raw facts 与 read result 派生。
+- `readable-view` 验证 display、成本摘要和 read content block 由内置 renderer 从同一 `ProtocolResponse` 的 raw facts 与 read result 派生。
 - 通过 `HEAD:leading` 执行 read 返回 document head 原文，`content_type` 为 `text/markdown`，并保留 frontmatter delimiter 与普通前导正文。
 
 ### BB-CORE-REF-001 Adapter ref 错误穿过 Core
@@ -50,9 +50,10 @@ Existing smoke task: `CORE-OUTPUT-001`
 Code: `test/smoke/core/cases/outputs.ts`
 
 Proves:
-- `readable-json`、显式/默认 `readable-view` 和 `protocol-json` 通过各自包装表达同一文档结果。
-- readable success output 只包含对应 operation success payload；failure guidance 通过 readable/protocol error projection 表达。
-- Unstructured outline selected by config renders through real CLI in readable-json、readable-view 和 protocol-json, preserving content/reason/cost facts while omitting entries/ref/page/continuation.
+- 省略 output 和显式 `readable-view` 产生相同的 built-in readable-view text contract；`protocol-json` 对同一文档结果输出完整 protocol envelope。
+- Readable text 与 protocol JSON 保持隔离：presentation-only display/cost/framing 不进入 protocol raw result，success/failure 仍分别保留当前 owner 的可观察语义。
+- CLI 或 config 使用已删除的 `readable-json` 时走普通 invalid-value boundary，不产生 alias、fallback 或 document output。
+- Unstructured outline selected by config 在 `readable-view` 中作为 content block、在 `protocol-json` 中作为 raw result 可观察，并且不虚构 entries/ref/page/continuation。
 
 ### BB-CORE-ARGS-001 Core 拒绝缺失的 operation 参数
 Status: implemented
@@ -171,13 +172,13 @@ Status: implemented
 Code: `crates/docnav/src/output/tests.rs`
 
 Proves:
-- Core output assembly 分离 protocol JSON、readable JSON、readable view、stdout、stderr 和 exit code 职责。
-- 内部编排覆盖 core 文档输出 smoke 中观察到的分支。
-- Core document output facade can render an unstructured outline success through readable-view with `/content` block framing while preserving the stable reason and omitting entries/page.
-- readable-view renderer 无法生成 valid payload 时 stdout 为空，stderr 诊断有界，并使用内部错误退出码。
+- Core 把 document success 和提前发生的 document failure 统一表示为 `ProtocolResponse` 后再执行 output plan。
+- 省略 output 或显式 `readable-view` 构造携带内置 renderer 的 `Rendered`；`protocol-json` 构造 `ProtocolJson`，non-document output 保持 owner-specific。
+- 内置 renderer failure 沿用现有 output failure/exit mapping：stdout 为空、stderr 诊断有界，不切换 plan 或 renderer。
+- Core document output composition 保持 stdout、stderr 和 exit code 职责，并覆盖真实 CLI smoke 中观察到的两个 public document output modes。
 
 决策说明:
-- 保留为一个多分支 case 是因为所有断言都进入 `write_outcome` / `write_error` 输出编排入口，并共享 stdout/stderr/exit-code projection 基底；拆分会重复构造相同 `CommandOutcome` / `AppError` fixture。
+- 保留为一个多分支 case 是因为所有断言都进入同一个 core output composition 边界，并共享 document response、stdout/stderr 和 exit-code fixture；拆分会重复相同的 core mapping 基底。
 
 ```mermaid
 flowchart LR
@@ -186,16 +187,15 @@ flowchart LR
   C --> C1["stdout 写文本"]
   B --> D["非文档 JSON"]
   D --> D1["stdout JSON payload"]
-  B --> E["文档 response / error"]
-  E --> F{"输出模式"}
-  F --> G["readable-view"]
-  G --> G1["shared readable payload -> block renderer -> stdout"]
-  F --> H["readable-json"]
-  H --> H1["shared readable payload -> stdout"]
-  F --> I["protocol-json"]
+  B --> E["文档 success / failure"]
+  E --> F["ProtocolResponse"]
+  F --> G{"OutputPlan"}
+  G --> H["Rendered + built-in renderer"]
+  H --> H1["完整 readable-view text -> stdout"]
+  G --> I["ProtocolJson"]
   I --> I1["protocol envelope -> stdout"]
-  E --> J["错误分支"]
-  J --> J1["稳定 exit code + primary readable/protocol error shape"]
+  F --> J["失败映射"]
+  J --> J1["稳定 exit code + 当前 readable/protocol failure contract"]
 ```
 
 ### WB-CORE-HELP-001 Core parser help/version 不进入 document output mode
@@ -203,7 +203,7 @@ Status: implemented
 Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
-- `--help` 和 operation help 返回 typed help command，并展示当前支持的 output modes。
+- `--help` 和 operation help 返回 typed help command，并且 document output 只展示 `readable-view` 与 `protocol-json`。
 - Operation help 按 core catalog binding 展示当前 operation 可用的参数；例如 outline 展示 `--max-heading-level`，read 不展示。
 - root help、version、config、adapter、init 和 doctor 保持各自的 static surface，不进入 document output mode。
 
@@ -213,7 +213,7 @@ Code: `crates/docnav/src/cli/parser/tests.rs`
 
 Proves:
 - 未显式传入 `--output` 时 parser 不抢先解析默认值，由 document request/config chain 决定。
-- `readable-view`、`readable-json`、`protocol-json` 可解析，合法值集合之外的 output value 返回可诊断错误。
+- `readable-view` 与 `protocol-json` 可解析；已删除的 `readable-json` 与其它合法值集合之外的 output value 返回普通可诊断 invalid-value error。
 
 ### WB-CORE-ARGS-001 Core parser 保持 operation 参数所有权
 Status: implemented
@@ -385,13 +385,12 @@ Status: implemented
 Code: `crates/shared/output/src/tests.rs`
 
 Proves:
-- readable JSON success 不带 protocol envelope，protocol JSON success 只输出 protocol envelope。
-- readable-view read 使用 block renderer，readable error 保留 primary diagnostic code、owner、details 和 guidance。
-- readable read 的成本摘要由 `cost.measurements[]` 派生，并保留对非 bytes/lines measurement unit 的通用摘要。
-- outline readable output covers the structured discriminator and the unstructured branch across readable-json、readable-view and protocol-json, including stable reason, stable cost facts and absence of entries/ref/page/continuation.
+- `ProtocolJson` 与 `Rendered(RenderStrategy)` 共同消费 success/failure `ProtocolResponse`；protocol path 不调用 renderer，rendered path 只调用 plan 携带的 renderer。
+- Custom renderer 成功时 stdout 精确等于其返回的完整 UTF-8 text，不由 output facade 追加 framing 或换行。
+- `RenderFailure` 发生在第一次 stdout write 前，保持 stdout 为空且不调用 fallback renderer；渲染成功后的 writer failure 保持独立 I/O failure。
 
 决策说明:
-- 保留为一个 facade case 是因为 success/error、readable/protocol 和 structured/unstructured 分支都复用 `docnav-output` document facade 和同一 result/diagnostic projection helpers；这里证明输出矩阵，不重新证明 navigation selector 或 adapter behavior。
+- 保留为一个 facade case 是因为 success/failure response、两个 output plans、custom renderer invocation 和 writer boundary 都复用 `docnav-output` document facade；这里证明输出编排，不重新证明内置 mapping、protocol 字段、navigation selector 或 adapter behavior。
 
 ### WB-TEXT-COST-001 Shared text cost helper 保持纯文本边界
 Status: implemented
@@ -401,21 +400,21 @@ Proves:
 - shared text cost helper functions 只接收纯文本并返回 unscoped protocol-compatible `Measurement`。
 - `line_cost`、`byte_cost` 和 `token_cost` 分别固定 `lines`、`bytes`、`tokens` unit，并覆盖空文本、Unicode bytes、换行和 plain-text `o200k_base` token counting。
 
-### WB-READABLE-RENDERER-001 Readable renderer success path block/framing 规则
+### WB-READABLE-RENDERER-001 内置 readable renderer private block/framing 规则
 Status: implemented
 Code: `crates/shared/readable/src/renderer/tests/success.rs`
 
 Proves:
-- readable-view header、block replacement、UTF-8 byte length、LF framing、extension fields 和 operation-specific block/no-block config 保持稳定。
-- readable error payload 和 header standalone JSON 保持可还原。
+- 内置 renderer 的 private presentation helper 保持 readable-view header、block replacement、UTF-8 byte length、LF framing、extension fields 和 operation-specific block/no-block config。
+- Private readable error value 和 header standalone JSON 可还原为最终 readable-view text；该 helper value 不形成 public output mode 或 schema。
 
 决策说明:
-- 保留 block/framing 成功矩阵为一个 case 是因为这些断言共享 renderer config、readable value fixture 和可还原 readable-view 文本基底；拆分成按 operation 的 case 会重复 header/block parsing 模板。
-- `to_readable_value` 当前证明目标限定为有效 typed payload -> readable JSON value。serialization failure 需要人工构造 failing `Serialize` 才能触发，不登记为独立证明目标；若 production readable payload 引入非平凡序列化失败风险，再新增窄单测覆盖该分支。
+- 保留 block/framing 成功矩阵为一个 case 是因为这些断言共享 renderer config、private presentation fixture 和可还原 readable-view 文本基底；拆分成按 operation 的 case 会重复 header/block parsing 模板。
+- Private value conversion 当前证明目标限定为有效 typed presentation -> internal value。Serialization failure 需要人工构造 failing `Serialize` 才能触发，不登记为独立证明目标；若 production helper 引入非平凡序列化失败风险，再新增窄单测覆盖该分支。
 
 ```mermaid
 flowchart LR
-  A["输入：readable JSON value + view kind"] --> B["解析 renderer config"]
+  A["输入：private presentation value + view kind"] --> B["解析 renderer config"]
   B --> C{"是否声明 block 字段"}
   C -->|"否"| D["输出 header-only JSON"]
   C -->|"是"| E["读取 string 字段"]
@@ -425,7 +424,7 @@ flowchart LR
   H --> I["可还原的 readable-view text"]
 ```
 
-### WB-READABLE-RENDERER-002 Readable renderer config/error 边界稳定
+### WB-READABLE-RENDERER-002 内置 readable renderer private config/error 边界稳定
 Status: implemented
 Code: `crates/shared/readable/src/renderer/tests/errors.rs`
 
@@ -435,7 +434,7 @@ Proves:
 
 ```mermaid
 flowchart LR
-  A["输入：renderer config + readable JSON value"] --> B{"config / value 边界"}
+  A["输入：renderer config + private presentation value"] --> B{"config / value 边界"}
   B -->|"missing pointer"| C["RenderError"]
   B -->|"non-string target"| C
   B -->|"duplicate pointer"| C
@@ -443,17 +442,17 @@ flowchart LR
   C --> D["稳定 error id 和可诊断 message"]
 ```
 
-### WB-READABLE-VIEW-001 Readable-view conformance vectors 被测试消费
+### WB-READABLE-VIEW-001 内置 readable-view 从 ProtocolResponse 派生
 Status: implemented
-Code: `crates/shared/readable/tests/conformance_tests.rs`
+Code: `crates/shared/output/src/tests.rs`
 
 Proves:
-- readable-view conformance fixture set 由测试执行，保持 fixture 与 renderer contract 同步。
-- renderer framing、block extraction、readable error projection 和 extension-field case 由 fixture-driven assertions 覆盖。
-- fixture coverage includes unstructured outline `/content` block rendering while keeping kind、reason and empty cost facts in the readable-view header.
+- Typed success `ProtocolResponse` representatives 覆盖 structured outline、unstructured outline、read、find 和 info 到 built-in readable-view 的 mapping；failure response 覆盖 readable failure presentation。
+- Structured outline/find 的 `display`、read 的成本摘要、info summary、unstructured raw facts 和 failure fields 都从 response 语义派生。
+- Block assertions 按 JSON `Value` 比较 header 语义，并精确验证 LF separator、block start marker、UTF-8 byte length、payload、end marker 和唯一尾部 LF；header member order 不属于断言。
 
 决策说明:
-- 保留为一个 conformance-vector case 是因为 fixture harness 已把不同 vectors 统一为同一 header/block/payload assertion model；拆分会重复 harness 调度，且不会改变 owner 边界。
+- 这些 operation representatives 共享 `docnav-output` 拥有的 `ProtocolResponse` 到 built-in `RenderStrategy` mapping；低层 private readable `Value`、config 和 framing conformance 继续由 `WB-READABLE-RENDERER-001` 承接，不在本 case 复制 fixture matrix。
 
 ### WB-PROTO-BASIC-001 Protocol 基础类型和 envelope 规则稳定
 Status: implemented
@@ -488,7 +487,7 @@ Status: implemented
 Code: `crates/shared/protocol/src/tests/schema.rs`
 
 Proves:
-- 已文档化的 protocol fixtures 仍能通过 public JSON Schema、runtime typed contract validation，并 deserialize 为共享 protocol types。
+- 作为两条 output paths 统一输入的 success/failure `ProtocolResponse` fixtures 通过既有 public JSON Schema、runtime typed contract validation，并 deserialize 为共享 protocol types。
 - protocol request、protocol response、manifest 和 probe 的 unknown fields、missing required fields、wrong types、version constants、field constraints 和 semantic boundary 被实现测试消费。
 
 ### WB-TYPED-FIELDS-001 Typed field definition core 保持字段级不变量

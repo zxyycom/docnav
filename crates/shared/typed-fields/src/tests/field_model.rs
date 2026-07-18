@@ -103,10 +103,10 @@ fn validation_failures_keep_field_attribution() {
 fn required_and_enum_constraints_are_driven_by_field_declarations() {
     let fields = FieldDefSet::builder()
         .field_with_declaration_path(
-            ["defaults", "output"],
-            FieldDef::builder("docnav.defaults.output")
-                .process(CONFIG_PROCESSING, config_json_path(["defaults", "output"]))
-                .validation(FieldValidation::string_enum::<OutputMode>()),
+            ["defaults", "mode"],
+            FieldDef::builder("docnav.defaults.mode")
+                .process(CONFIG_PROCESSING, config_json_path(["defaults", "mode"]))
+                .validation(FieldValidation::string_enum::<ExampleMode>()),
             ExpectedFieldShape::required(),
         )
         .build()
@@ -122,14 +122,14 @@ fn required_and_enum_constraints_are_driven_by_field_declarations() {
     );
 
     json_fields
-        .validate(
-            CONFIG_PROCESSING,
-            &json!({"defaults": {"output": "readable-json"}}),
-        )
+        .validate(CONFIG_PROCESSING, &json!({"defaults": {"mode": "compact"}}))
         .expect("allowed enum value passes");
 
     let error = json_fields
-        .validate(CONFIG_PROCESSING, &json!({"defaults": {"output": "xml"}}))
+        .validate(
+            CONFIG_PROCESSING,
+            &json!({"defaults": {"mode": "unsupported"}}),
+        )
         .expect_err("disallowed enum value fails");
     assert!(matches!(
         validation_failures(&error)[0].reason,

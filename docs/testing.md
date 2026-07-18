@@ -13,7 +13,7 @@
 
 | 层级 | 核心目标 |
 | --- | --- |
-| schema | 原始协议、manifest、probe 和各 operation readable 输出分别通过独立 schema；readable schema 用于示例和工具输出校验，不作为完整机器协议 |
+| schema | 原始协议、manifest 和 probe 通过各自 public schema；`readable-view` 最终文本通过 conformance vectors 和 text assertions 验证，不建立第二套 readable machine schema |
 | 单元 | parser、ref、默认值、分页、diagnostic record/projection helper 等可直接调用并观察的模块行为 |
 | 集成 | `docnav` 配置优先级、static registry adapter 选择、adapter inspection、protocol request dispatch、输出模式和真实 CLI 通道 |
 | 端到端 | 真实 CLI、release package、协议映射、精简输出和 continuation 链路 |
@@ -37,13 +37,13 @@
 CLI smoke 从发布给用户的可执行入口验证外部契约。覆盖范围按以下维度评估：
 
 - 所有命令族的代表性路径，以及关键成功和失败场景。
-- `readable-view`、`readable-json` 和 `protocol-json` 三种输出模式。
+- 省略 output、显式 `readable-view` 和 `protocol-json` 的代表路径，以及已删除 `readable-json` 的普通 invalid-value migration boundary。
 - 退出码、`stdout`、`stderr` 及其相互约束。
 - strict failure/error 投影的承载位置、stdout/stderr 边界和 schema 校验。
 - static registry adapter source boundary、`adapter list` metadata inspection 和 adapter command surface。
 - protocol raw result facts 到 readable `display`、成本摘要和 info 摘要的跨层映射。
 - 分页、continuation 和终止行为。
-- Markdown document head 的真实 CLI 链路：fixture 同时包含 frontmatter、普通前导正文和 heading，并在 `protocol-json` 中验证 raw entry facts 不包含 readable-only `display`，在 `readable-json` / `readable-view` 中验证 display 和 content block 为输出层派生。
+- Markdown document head 的真实 CLI 链路：fixture 同时包含 frontmatter、普通前导正文和 heading，并在 `protocol-json` 中验证 raw entry facts 不包含 presentation-only `display`，在 `readable-view` 中验证 display 和 content block 由内置 renderer 派生。
 - core 和 release package 的真实 CLI 链路。
 
 配置场景使用 `test/smoke/core/fixtures/configs/` 下长期保留、按语义命名的 JSON fixture。CLI smoke 可以把 fixture 安装为临时 project 的 `.docnav/docnav.json` 来验证默认 project context，也可以把只读 fixture 直接通过 `--project-config` / `--user-config` 传给真实 CLI。长期 public config CLI 只保留只读 `docnav config inspect`：config command proof 必须覆盖 selected project/user source status、explicit missing / invalid JSON / top-level non-object / not-file config source status、source-attributed validation diagnostics、当前可解析参数事实展示、一个有写入风险的旧 config editor subcommand 经 parser/error boundary 拒绝且不修改文件，以及 inspect 不修改 config file。真实 CLI smoke 保留 selected source、参数事实、source-attributed diagnostic、legacy rejection 和 read-only 边界的代表；其余 load state 可以由直接执行 config command 并校验 serialized output 的 Rust tests 证明，不在进程层重复。`get|set|unset|list` 属于同一 removed-subcommand 等价类，不建立名称矩阵。Explicit unreadable source loading 归属 lower-layer config loading / parameter-resolution 或 navigation-owned raw config source tests，不要求 command-level smoke 复测。需要证明 direct edit/read 的场景应通过 fixture 或临时 config file 内容准备，不通过 config editor command 写入。
@@ -67,8 +67,11 @@ Rust tests 负责无需启动真实 CLI 即可直接观察的 owner 行为。每
 - Markdown document head read/find：frontmatter delimiter 和普通前导正文原文保留，`HEAD:leading` 返回 `text/markdown`，find 命中 document head 后可用返回 ref 继续 read，Unicode 分页不拆分字符。
 - Unicode 字符预算、分页和终止规则。
 - protocol、manifest 和 probe decode wrapper 只按实际可达行为选择 schema、typed result 或 semantic failure 代表；无法从具体 wrapper 构造的 generic deserialize fallback 不使用假 schema gate 建立测试。
-- DiagnosticCode details、primary `DiagnosticRecord` 投影、从属 details 语义、core CLI argv strictness、document output orchestration、低层 JSON writer 和 paging helper 的可观察行为边界。
-- protocol/readable 行为隔离：config inspect 和 config-source validation 的当前行为不改变 document operation `protocol-json`、`readable-json`、`readable-view` stdout 或 linked adapter handler payload。
+- DiagnosticCode details、primary `DiagnosticRecord` 投影、从属 details 语义、core CLI argv strictness、低层 JSON writer 和 paging helper 的可观察行为边界。
+- Shared document output：同一个 success/failure `ProtocolResponse` 分别进入 `ProtocolJson` 与 `Rendered(RenderStrategy)`；覆盖 built-in/custom renderer、exact returned text、`RenderFailure` before stdout、no fallback 和独立 writer failure。
+- Core CLI output composition：省略 output 与显式 `readable-view` 注入内置 renderer，`protocol-json` 绕过 renderer，提前发生的 document failure 先形成 `ProtocolResponse::Failure`，`readable-json` CLI/config value 按普通 invalid-value boundary 拒绝。
+- Built-in readable conformance 与 protocol isolation：conformance 从 `ProtocolResponse` 验证最终 `readable-view` text；protocol integration 验证同一 response 的 envelope/schema 保持原始协议 contract，且 renderer availability 不影响 `ProtocolJson`。
+- protocol/readable 行为隔离：config inspect 和 config-source validation 的当前行为不改变 document operation `protocol-json`、`readable-view` stdout 或 linked adapter handler payload。
 
 Manual CR: 修改 `DiagnosticCode -> details rule` 的完整字段表时，reviewer 同步核对 typed details payload、`code/details.rs` 和 protocol schema/example。自动化测试只为每种 details field type 保留一个验证代表，并验证具有独立 public projection 的具体 code；不维护一份由被测规则复制出来的全量 expected table。
 
@@ -79,7 +82,7 @@ Manual CR: 修改 protocol、manifest 或 probe 的 schema 与 Rust typed shape 
 - `clap` 自带的解析行为，例如简单缺少必填参数。
 - 无自定义分支的字段透传、转换和输出模式枚举选择。
 - 同一校验规则下的多个等价非法值。
-- `readable-view` block framing、stdout/stderr 分流和用户可观察输出边界。
+- 真实 CLI 的 `readable-view` block framing、stdout/stderr 分流和用户可观察输出边界；内置 renderer 的 exact text 与 failure branches 由 shared output/conformance tests 证明，不在 core parser tests 建重复矩阵。
 
 ### 代码组织
 
@@ -154,7 +157,7 @@ Manual CR: 修改 workspace verifier 的 check definitions、命令参数、depe
 1. 新增、删除或修改测试能追溯到 [文档导航](navigation.md#规则所有权) 指向的 owner 文档。
 2. 测试函数变更已按 [测试用例维护](testing/case-maintenance.md) 判断证明目标、case 归属和账本更新范围。
 3. 测试文档只记录覆盖目标和验收边界，不重新定义稳定字段、错误码、DiagnosticCode details 规则或命令语义。
-4. schema、示例和 fixture 只校验 protocol raw shape、readable 输出投影和二者的 documented mapping，不成为新的业务语义或 code/details 规则来源。
+4. schema、示例和 fixture 只校验 protocol raw shape、`readable-view` 最终文本和二者的 documented mapping，不成为新的业务语义或 code/details 规则来源；private readable helper value 不形成 public schema。
 5. OpenSpec change 只作为变更依据、验收和审计历史，不作为日常实现主入口。
 6. 当测试暴露规范缺口时，先更新 owner 文档，再同步 schema、示例、实现和验证脚本。
 7. 涉及共享 helper 的改动必须覆盖可观察外部行为：core CLI strict failure placement、protocol-json stdout purity、primary readable/protocol error projection、protocol raw facts 到 readable display/cost/info projection、static registry adapter inspection、core config descriptor/path handoff、selected config file target behavior、navigation-owned raw config source loading 与 navigation input resolution 边界、Markdown pagination mechanics 和 schema/decode/semantic invalid paths。

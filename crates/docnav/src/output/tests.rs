@@ -7,8 +7,8 @@ use docnav_navigation::{
     NavigationCommandOutcome, NavigationInvocationTrace, NavigationOutputMode,
 };
 use docnav_protocol::{
-    protocol_error_record_draft_with_summary, Cost, Entry, Measurement, OperationResult,
-    OutlineResult, ProtocolResponse, ReadResult, UnstructuredOutlineReason,
+    protocol_error_record_draft_with_summary, Cost, Measurement, OperationResult, OutlineResult,
+    ProtocolResponse, ReadResult, UnstructuredOutlineReason,
 };
 use serde_json::{json, Value};
 
@@ -56,35 +56,6 @@ fn document_readable_view_uses_shared_output_facade() {
     let output = String::from_utf8(stdout).unwrap();
     assert!(output.contains("\"$block\": \"/content\""));
     assert!(output.contains("[block /content bytes=4]"));
-}
-
-#[test]
-fn document_readable_json_uses_success_payload_without_protocol_envelope() {
-    let response = ProtocolResponse::success(
-        PROTOCOL_VERSION,
-        "request-1",
-        OperationResult::Outline(OutlineResult::structured(
-            vec![Entry {
-                ref_id: "R1".into(),
-                label: "Test".into(),
-                kind: None,
-                location: None,
-                summary: None,
-                excerpt: None,
-                rank: None,
-                cost: None,
-                metadata: None,
-            }],
-            None,
-        )),
-    );
-    let outcome = document_outcome(response, OutputMode::ReadableJson);
-    let (stdout, stderr) = write_success(outcome);
-    assert!(stderr.is_empty());
-    let value: Value = serde_json::from_slice(&stdout).unwrap();
-    assert_eq!(value["kind"], "structured");
-    assert_eq!(value["entries"][0]["ref"], "R1");
-    assert!(value.get("protocol_version").is_none());
 }
 
 #[test]
@@ -150,6 +121,7 @@ fn readable_error_uses_document_facade_and_exit_policy_stays_local() {
         stderr: &mut stderr,
     });
     assert_eq!(exit, DocnavExitCode::DocumentError.code());
+    assert!(stderr.is_empty());
     let output = String::from_utf8(stdout).unwrap();
     assert!(output.contains("[block /error bytes="));
     assert!(output.contains("\"code\": \"REF_NOT_FOUND\""));
@@ -186,50 +158,50 @@ fn app_error_normalizes_non_protocol_diagnostic_before_document_output() {
 }
 
 #[test]
-fn document_output_error_projects_primary_internal_diagnostic_when_possible() {
-    let mut stdout = Vec::new();
+fn readable_view_renderer_fatal_uses_bounded_stderr_and_internal_exit() {
     let mut stderr = Vec::new();
     let exit = write_document_output_error(
-        DocumentOutputError::DiagnosticProjection,
-        DocumentOutputMode::ProtocolJson,
-        Some(Operation::Read),
-        &mut stdout,
+        DocumentOutputError::Render(docnav_output::RenderFailure::new("x".repeat(2_000))),
         &mut stderr,
     );
 
     assert_eq!(exit, DocnavExitCode::InternalError.code());
-    assert!(stderr.is_empty());
-    let output: Value = serde_json::from_slice(&stdout).unwrap();
-    assert_eq!(output["error"]["code"], "INTERNAL_ERROR");
-    assert_eq!(
-        output["error"]["details"]["error_id"],
-        "diagnostic-projection-failed"
-    );
-    assert_eq!(output["operation"], "read");
-}
-
-#[test]
-fn readable_view_renderer_fatal_uses_bounded_stderr_with_empty_stdout() {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-    let exit = write_document_output_error(
-        DocumentOutputError::ReadableViewRender(docnav_readable::RenderError::new(
-            "x".repeat(2_000),
-        )),
-        DocumentOutputMode::ReadableView,
-        Some(Operation::Read),
-        &mut stdout,
-        &mut stderr,
-    );
-
-    assert_eq!(exit, DocnavExitCode::InternalError.code());
-    assert!(stdout.is_empty());
     let diagnostic = String::from_utf8(stderr).unwrap();
     assert!(diagnostic.contains("readable_view_render_failed"));
     assert!(
         diagnostic.trim_end().chars().count() <= MAX_FATAL_DIAGNOSTIC_CHARS,
         "{diagnostic}"
     );
+}
+
+#[test]
+fn rendered_writer_failure_stays_an_io_failure() {
+    struct FailingWriter;
+
+    impl std::io::Write for FailingWriter {
+        fn write(&mut self, _buffer: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::Error::other("stdout closed"))
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "request-1",
+        OperationResult::Outline(OutlineResult::structured(vec![], None)),
+    );
+    let outcome = document_outcome(response, OutputMode::ReadableView);
+    let mut stdout = FailingWriter;
+    let mut stderr = Vec::new();
+    let exit = write_outcome(outcome, &mut stdout, &mut stderr);
+
+    assert_eq!(exit, DocnavExitCode::InternalError.code());
+    let diagnostic = String::from_utf8(stderr).unwrap();
+    assert!(diagnostic.contains("stdout closed"));
+    assert!(!diagnostic.contains("readable_view_render_failed"));
 }
 
 fn test_cost() -> Cost {
@@ -250,10 +222,12 @@ fn test_cost() -> Cost {
 }
 
 fn document_outcome(response: ProtocolResponse, output: OutputMode) -> CommandOutcome {
-    let operation = response_operation(&response).unwrap_or(Operation::Outline);
+    let operation = match &response {
+        ProtocolResponse::Success(success) => success.operation,
+        ProtocolResponse::Failure(failure) => failure.operation.unwrap_or(Operation::Outline),
+    };
     let navigation_output = match output {
         OutputMode::ReadableView => NavigationOutputMode::ReadableView,
-        OutputMode::ReadableJson => NavigationOutputMode::ReadableJson,
         OutputMode::ProtocolJson => NavigationOutputMode::ProtocolJson,
     };
     outcome_for_response(

@@ -61,7 +61,7 @@ export async function testConfigPathFlagsSelectConfigTargets() {
   const mutableUserConfig = path.join(project.root, "selected", "user.json");
   writeJson(mutableProjectConfig, {
     defaults: {
-      output: "readable-json",
+      output: "readable-view",
     },
   });
   writeJson(mutableUserConfig, {
@@ -94,7 +94,7 @@ export async function testConfigPathFlagsSelectConfigTargets() {
   expect(inspect, userSource.origin === "explicit_cli", "config inspect reports selected user config origin");
   expect(inspect, projectSource.path === mutableProjectConfig, "config inspect reports selected project config path");
   expect(inspect, userSource.path === mutableUserConfig, "config inspect reports selected user config path");
-  expect(inspect, parameterFact(inspect, inspection, "docnav.defaults.output").value === "readable-json", "config inspect reads selected project config");
+  expect(inspect, parameterFact(inspect, inspection, "docnav.defaults.output").value === "readable-view", "config inspect reads selected project config");
   expect(inspect, parameterFact(inspect, inspection, "docnav.defaults.pagination.limit").value === 321, "config inspect reads selected user config");
   expect(
     inspect,

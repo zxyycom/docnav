@@ -148,7 +148,7 @@ fn navigation_owned_outline_config_is_accepted() {
         &root,
         json!({
             "defaults": {
-                "output": "readable-json"
+                "output": "readable-view"
             },
             "outline": outline.clone()
         }),

@@ -76,7 +76,7 @@ fn invalid_request_details_accept_known_optional_context_fields() {
         "reason": "invalid output mode",
         "path": ".docnav/docnav.json",
         "received": "text",
-        "accepted": ["readable-view", "readable-json", "protocol-json"]
+        "accepted": ["compact", "expanded", "detailed"]
     });
 
     assert!(rule.validate_value(&valid).is_ok());
@@ -84,7 +84,7 @@ fn invalid_request_details_accept_known_optional_context_fields() {
     let wrong_accepted = json!({
         "field": "defaults.output",
         "reason": "invalid output mode",
-        "accepted": "readable-view"
+        "accepted": "compact"
     });
     assert!(matches!(
         rule.validate_value(&wrong_accepted),

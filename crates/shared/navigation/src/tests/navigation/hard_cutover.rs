@@ -1,4 +1,4 @@
-use docnav_protocol::{OperationResult, ProtocolResponse};
+use docnav_protocol::{OperationResult, ProtocolDiagnosticCode, ProtocolResponse};
 use serde_json::{json, Value};
 
 use crate::{execute_loaded_navigation_command, NavigationOutputMode};
@@ -26,7 +26,7 @@ fn hard_cutover_preserves_common_and_native_option_source_priority() {
             json!({
                 "defaults": {
                     "pagination": { "limit": 120 },
-                    "output": "readable-json"
+                    "output": "readable-view"
                 },
                 "options": {
                     "docnav-markdown": { "max_heading_level": 2 }
@@ -69,7 +69,7 @@ fn valid_explicit_common_value_does_not_hide_invalid_project_config() {
     let error = execute_loaded_navigation_command(
         command,
         config_sources(
-            json!({"defaults": {"output": "invalid-output"}}),
+            json!({"defaults": {"output": "readable-json"}}),
             Value::Null,
         ),
         &crate::tests::support::document_parameter_catalog(),
@@ -82,6 +82,37 @@ fn valid_explicit_common_value_does_not_hide_invalid_project_config() {
         "enum_invalid",
         "project",
         "project/.docnav/docnav.json",
+    );
+}
+
+#[test]
+fn removed_readable_json_cli_value_is_rejected_by_canonical_resolution() {
+    let error = execute_loaded_navigation_command(
+        navigation_command(vec![cli_value_candidate(
+            "docnav.defaults.output",
+            "--output",
+            json!("readable-json"),
+        )]),
+        config_sources(Value::Null, Value::Null),
+        &crate::tests::support::document_parameter_catalog(),
+        &StubRegistry,
+    )
+    .expect_err("removed readable-json output must be rejected");
+    let protocol_error = super::protocol_error(error.diagnostic());
+
+    assert_eq!(
+        protocol_error.code(),
+        ProtocolDiagnosticCode::InvalidRequest
+    );
+    assert!(
+        protocol_error
+            .details()
+            .get("reason")
+            .and_then(Value::as_str)
+            .is_some_and(|reason| {
+                reason.contains("accepted values: readable-view, protocol-json")
+            }),
+        "{protocol_error:?}"
     );
 }
 

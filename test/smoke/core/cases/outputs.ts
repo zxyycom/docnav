@@ -8,21 +8,22 @@ import {
   expect,
   expectExit,
   expectJsonObject,
+  expectNoProtocolEnvelope,
   expectObjectArray,
+  expectProtocolFailure,
   expectProtocolSuccess,
   expectReadableFailure,
   expectReadableViewBlockRestoresField,
   expectStderrEmpty,
   expectString,
-  expectStdoutIncludes,
   parseJson,
   parseReadableViewHeader
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
-import { runReadableJsonCase } from "./readable-output.ts";
 
-interface ReadableDocumentOutput {
+interface ProtocolDocumentOutput {
   content: string;
+  contentType: string;
   ref: string;
 }
 
@@ -40,63 +41,91 @@ export function createDocumentOutputBoundaryTasks() {
 async function testDocumentOutputBoundary() {
   const project = createProject("output-boundary");
 
-  const readable = await readDocumentReadableJson(project, await readFirstOutlineRef(project));
-  await assertReadableViewDocumentOutput(project, readable);
-  await assertDefaultDocumentOutput(project, readable.ref);
-  await assertProtocolJsonMatchesReadableOutput(project, readable);
-  await assertReadableJsonFailureOutput(project);
+  const protocol = await readDocumentProtocolJson(project, await readFirstOutlineRef(project));
+  const readableViewText = await assertReadableViewDocumentOutput(project, protocol);
+  await assertDefaultDocumentOutput(project, protocol.ref, readableViewText);
+  await assertEarlyDocumentFailureOutputModes(project);
+  await assertRemovedReadableJsonCliRejected(project);
   await assertUnstructuredOutlineOutputModes();
   await assertCostThresholdUnstructuredOutline();
 }
 
 async function readFirstOutlineRef(project: SmokeProject): Promise<string> {
-  const { record, json } = await runReadableJsonCase(project, "CORE-OUTPUT-001 outline readable-json ref source", [
+  const record = await runCli("CORE-OUTPUT-001 outline protocol-json ref source", [
     "outline",
     project.normalRelPath,
     "--output",
-    "readable-json"
-  ], "readableOutline");
-  const entries = expectObjectArray(record, json.entries, "outline entries are objects");
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  expectProtocolSuccess(record, json, "outline");
+  const result = expectJsonObject(record, json.result, "outline result is an object");
+  const entries = expectObjectArray(record, result.entries, "outline entries are objects");
   expect(record, entries.length > 0, "outline returns entries");
   const ref = expectString(record, entries[0]?.ref, "outline exposes a ref");
   expect(record, ref.length > 0, "outline exposes a nonempty ref");
   return ref;
 }
 
-async function readDocumentReadableJson(project: SmokeProject, outlineRef: string): Promise<ReadableDocumentOutput> {
-  const { record, json } = await runReadableJsonCase(project, "CORE-OUTPUT-001 read readable-json output", [
+async function readDocumentProtocolJson(
+  project: SmokeProject,
+  outlineRef: string
+): Promise<ProtocolDocumentOutput> {
+  const record = await runCli("CORE-OUTPUT-001 read protocol-json output", [
     "read",
     project.normalRelPath,
     "--ref",
     outlineRef,
     "--output",
-    "readable-json"
-  ], "readableRead");
-  const ref = expectString(record, json.ref, "read readable-json ref is a string");
-  const content = expectString(record, json.content, "read readable-json content is a string");
-  expect(record, json.content_type === "text/markdown", "read readable-json preserves content_type");
-  return { content, ref };
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  expectProtocolSuccess(record, json, "read");
+  const result = expectJsonObject(record, json.result, "protocol read result is an object");
+  const ref = expectString(record, result.ref, "protocol read ref is a string");
+  const content = expectString(record, result.content, "protocol read content is a string");
+  const contentType = expectString(record, result.content_type, "protocol read content_type is a string");
+  expect(record, contentType === "text/markdown", "protocol read preserves content_type");
+  expectJsonObject(record, result.cost, "protocol read preserves raw cost facts");
+  expect(record, !Object.hasOwn(result, "display"), "protocol read omits presentation-only display");
+  return { content, contentType, ref };
 }
 
-async function assertReadableViewDocumentOutput(project: SmokeProject, readable: ReadableDocumentOutput) {
+async function assertReadableViewDocumentOutput(
+  project: SmokeProject,
+  protocol: ProtocolDocumentOutput
+): Promise<string> {
   const readableView = await runCli("CORE-OUTPUT-001 read readable-view output", [
     "read",
     project.normalRelPath,
     "--ref",
-    readable.ref,
+    protocol.ref,
     "--output",
     "readable-view"
   ], { project });
   expectExit(readableView, 0);
   expectStderrEmpty(readableView);
   expect(readableView, readableView.stdout.trimStart().startsWith("{"), "readable-view stdout starts with JSON header");
-  expect(readableView, !readableView.stdout.includes("\"protocol_version\""), "readable-view omits protocol envelope");
-  expectStdoutIncludes(readableView, "\"$block\": \"/content\"");
-  parseReadableViewHeader(readableView);
-  expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", readable.content);
+  const header = parseReadableViewHeader(readableView);
+  expectNoProtocolEnvelope(readableView, header);
+  expect(readableView, header.ref === protocol.ref, "readable-view preserves protocol ref");
+  expect(readableView, header.content_type === protocol.contentType, "readable-view preserves protocol content_type");
+  expect(readableView, typeof header.cost === "string", "readable-view derives presentation cost text");
+  expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", protocol.content);
+  return readableView.stdout;
 }
 
-async function assertDefaultDocumentOutput(project: SmokeProject, readableRef: string) {
+async function assertDefaultDocumentOutput(
+  project: SmokeProject,
+  readableRef: string,
+  explicitReadableViewText: string
+) {
   const defaultOutput = await runCli("CORE-OUTPUT-001 read default output is readable-view", [
     "read",
     project.normalRelPath,
@@ -105,46 +134,73 @@ async function assertDefaultDocumentOutput(project: SmokeProject, readableRef: s
   ], { project });
   expectExit(defaultOutput, 0);
   expectStderrEmpty(defaultOutput);
-  expect(defaultOutput, defaultOutput.stdout.trimStart().startsWith("{"), "default output is readable-view JSON header");
-  expectStdoutIncludes(defaultOutput, "[block /content bytes=");
-  parseReadableViewHeader(defaultOutput);
+  expect(
+    defaultOutput,
+    defaultOutput.stdout === explicitReadableViewText,
+    "omitted output matches explicit readable-view text"
+  );
 }
 
-async function assertProtocolJsonMatchesReadableOutput(project: SmokeProject, readable: ReadableDocumentOutput) {
-  const protocol = await runCli("CORE-OUTPUT-001 read protocol-json output", [
+async function assertEarlyDocumentFailureOutputModes(project: SmokeProject) {
+  const missingPath = "docs/missing-output-boundary.md";
+  const protocol = await runCli("CORE-OUTPUT-001 early failure protocol-json", [
     "read",
-    project.normalRelPath,
+    missingPath,
     "--ref",
-    readable.ref,
+    "H:L1:H1",
     "--output",
     "protocol-json"
   ], { project });
-  expectExit(protocol, 0);
+  expectExit(protocol, exitCodes.documentRefFormat);
   expectStderrEmpty(protocol);
   const protocolJson = parseJson(protocol);
   validateSchema(protocol, "protocolResponse", protocolJson);
-  expectProtocolSuccess(protocol, protocolJson, "read");
-  const protocolResult = expectJsonObject(protocol, protocolJson.result, "protocol result is an object");
-  expect(protocol, protocolResult.ref === readable.ref, "protocol-json result preserves ref");
-  expect(protocol, protocolResult.content === readable.content, "protocol-json result matches readable-json content");
+  const protocolError = expectProtocolFailure(protocol, protocolJson, "read", "DOCUMENT_NOT_FOUND");
+  const protocolDetails = expectJsonObject(protocol, protocolError.details, "protocol early failure details is an object");
+  const protocolMessage = expectString(protocol, protocolError.message, "protocol early failure message is a string");
+  expect(protocol, !protocol.stdout.includes("[block "), "protocol early failure has no readable block framing");
+
+  const readable = await runCli("CORE-OUTPUT-001 early failure readable-view", [
+    "read",
+    missingPath,
+    "--ref",
+    "H:L1:H1",
+    "--output",
+    "readable-view"
+  ], { project });
+  expectExit(readable, exitCodes.documentRefFormat);
+  expectStderrEmpty(readable);
+  const readableHeader = parseReadableViewHeader(readable);
+  const readableError = expectReadableFailure(readable, readableHeader, "DOCUMENT_NOT_FOUND");
+  const readableDetails = expectJsonObject(readable, readableError.details, "readable early failure details is an object");
+  expect(
+    readable,
+    readableDetails.path === protocolDetails.path,
+    "early failure preserves the same path fact across protocol and readable output"
+  );
+  expectReadableViewBlockRestoresField(readable, readable.stdout, "/error", protocolMessage);
 }
 
-async function assertReadableJsonFailureOutput(project: SmokeProject) {
-  const failure = await runCli("CORE-OUTPUT-001 read readable-json ref failure", [
-    "read",
+async function assertRemovedReadableJsonCliRejected(project: SmokeProject) {
+  const failure = await runCli("CORE-OUTPUT-001 removed readable-json CLI value is rejected", [
+    "outline",
     project.normalRelPath,
-    "--ref",
-    "bad:ref",
     "--output",
     "readable-json"
   ], { project });
-  expectExit(failure, exitCodes.documentRefFormat);
+  expectExit(failure, exitCodes.input);
   expectStderrEmpty(failure);
-  const json = parseJson(failure);
-  validateSchema(failure, "readableError", json);
-  const error = expectReadableFailure(failure, json, "REF_INVALID");
-  const details = expectJsonObject(failure, error.details, "readable failure details is an object");
-  expect(failure, details.ref === "bad:ref", "readable failure preserves ref in details");
+  const header = parseReadableViewHeader(failure);
+  const error = expectReadableFailure(failure, header, "INVALID_REQUEST");
+  const details = expectJsonObject(failure, error.details, "removed output diagnostic details is an object");
+  const reason = expectString(failure, details.reason, "removed output diagnostic reason is a string");
+  expect(failure, details.field === "--output", "removed output diagnostic reports --output");
+  expect(
+    failure,
+    reason === "invalid --output: accepted values: readable-view, protocol-json",
+    "removed output diagnostic reports the two accepted values"
+  );
+  expectReadableViewBlockRestoresField(failure, failure.stdout, "/error", reason);
 }
 
 async function assertUnstructuredOutlineOutputModes() {
@@ -160,44 +216,6 @@ async function assertUnstructuredOutlineOutputModes() {
   });
   const rawRelPath = "docs/raw.md";
   fs.writeFileSync(path.join(project.root, rawRelPath), content, "utf8");
-
-  const readable = await runReadableJsonCase(project, "CORE-OUTPUT-001 outline unstructured readable-json", [
-    "outline",
-    rawRelPath,
-    "--output",
-    "readable-json"
-  ], "readableOutline");
-  const readableJson = readable.json;
-  expect(readable.record, readableJson.kind === "unstructured", "readable-json outline uses unstructured kind");
-  expect(readable.record, readableJson.reason === "path_rule", "readable-json outline preserves path_rule reason");
-  expect(readable.record, readableJson.content === content, "readable-json outline contains full content");
-  expect(readable.record, readableJson.content_type === "text/markdown", "readable-json outline preserves Markdown content_type");
-  const readableCost = expectJsonObject(readable.record, readableJson.cost, "readable-json unstructured cost is an object");
-  const readableMeasurements = expectObjectArray(
-    readable.record,
-    readableCost.measurements,
-    "readable-json unstructured cost measurements are objects"
-  );
-  expect(readable.record, readableMeasurements.length > 0, "readable-json unstructured cost facts are non-empty for Markdown hook");
-  expect(readable.record, !Object.hasOwn(readableJson, "entries"), "readable-json unstructured outline omits entries");
-  expect(readable.record, !Object.hasOwn(readableJson, "ref"), "readable-json unstructured outline omits ref");
-  expect(readable.record, !Object.hasOwn(readableJson, "page"), "readable-json unstructured outline omits page");
-  expect(readable.record, !Object.hasOwn(readableJson, "continuation"), "readable-json unstructured outline omits continuation");
-
-  const readableView = await runCli("CORE-OUTPUT-001 outline unstructured readable-view", [
-    "outline",
-    rawRelPath,
-    "--output",
-    "readable-view"
-  ], { project });
-  expectExit(readableView, 0);
-  expectStderrEmpty(readableView);
-  const header = parseReadableViewHeader(readableView);
-  expect(readableView, header.kind === "unstructured", "readable-view outline uses unstructured kind");
-  expect(readableView, header.reason === "path_rule", "readable-view outline preserves path_rule reason");
-  expect(readableView, !Object.hasOwn(header, "entries"), "readable-view unstructured outline omits entries");
-  expect(readableView, !Object.hasOwn(header, "page"), "readable-view unstructured outline omits page");
-  expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", content);
 
   const protocol = await runCli("CORE-OUTPUT-001 outline unstructured protocol-json", [
     "outline",
@@ -222,10 +240,41 @@ async function assertUnstructuredOutlineOutputModes() {
     "protocol unstructured cost measurements are objects"
   );
   expect(protocol, protocolMeasurements.length > 0, "protocol unstructured cost facts are non-empty for Markdown hook");
+  expect(protocol, !Object.hasOwn(protocolResult, "display"), "protocol-json unstructured outline omits readable display");
   expect(protocol, !Object.hasOwn(protocolResult, "entries"), "protocol-json unstructured outline omits entries");
   expect(protocol, !Object.hasOwn(protocolResult, "ref"), "protocol-json unstructured outline omits ref");
   expect(protocol, !Object.hasOwn(protocolResult, "page"), "protocol-json unstructured outline omits page");
   expect(protocol, !Object.hasOwn(protocolResult, "continuation"), "protocol-json unstructured outline omits continuation");
+
+  const readableView = await runCli("CORE-OUTPUT-001 outline unstructured readable-view", [
+    "outline",
+    rawRelPath,
+    "--output",
+    "readable-view"
+  ], { project });
+  expectExit(readableView, 0);
+  expectStderrEmpty(readableView);
+  const header = parseReadableViewHeader(readableView);
+  expectNoProtocolEnvelope(readableView, header);
+  expect(readableView, header.kind === "unstructured", "readable-view outline uses unstructured kind");
+  expect(readableView, header.reason === "path_rule", "readable-view outline preserves path_rule reason");
+  expect(readableView, header.content_type === protocolResult.content_type, "readable-view preserves raw content_type");
+  const readableCost = expectJsonObject(readableView, header.cost, "readable-view unstructured cost is an object");
+  const readableMeasurements = expectObjectArray(
+    readableView,
+    readableCost.measurements,
+    "readable-view unstructured cost measurements are objects"
+  );
+  expect(
+    readableView,
+    readableMeasurements.length === protocolMeasurements.length,
+    "readable-view derives cost facts from the protocol result"
+  );
+  expect(readableView, !Object.hasOwn(header, "entries"), "readable-view unstructured outline omits entries");
+  expect(readableView, !Object.hasOwn(header, "ref"), "readable-view unstructured outline omits ref");
+  expect(readableView, !Object.hasOwn(header, "page"), "readable-view unstructured outline omits page");
+  expect(readableView, !Object.hasOwn(header, "continuation"), "readable-view unstructured outline omits continuation");
+  expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", content);
 }
 
 async function assertCostThresholdUnstructuredOutline() {
@@ -244,23 +293,26 @@ async function assertCostThresholdUnstructuredOutline() {
   const rawRelPath = "docs/small.md";
   fs.writeFileSync(path.join(project.root, rawRelPath), content, "utf8");
 
-  const readable = await runReadableJsonCase(project, "CORE-OUTPUT-001 outline unstructured cost-threshold readable-json", [
+  const readable = await runCli("CORE-OUTPUT-001 outline unstructured cost-threshold readable-view", [
     "outline",
     rawRelPath,
     "--output",
-    "readable-json"
-  ], "readableOutline");
-  const readableJson = readable.json;
-  expect(readable.record, readableJson.kind === "unstructured", "cost-threshold readable-json outline uses unstructured kind");
-  expect(readable.record, readableJson.reason === "cost_threshold", "cost-threshold readable-json outline preserves cost_threshold reason");
-  expect(readable.record, readableJson.content === content, "cost-threshold readable-json outline contains full content");
-  const readableCost = expectJsonObject(readable.record, readableJson.cost, "cost-threshold readable-json cost is an object");
+    "readable-view"
+  ], { project });
+  expectExit(readable, 0);
+  expectStderrEmpty(readable);
+  const header = parseReadableViewHeader(readable);
+  expectNoProtocolEnvelope(readable, header);
+  expect(readable, header.kind === "unstructured", "cost-threshold readable-view outline uses unstructured kind");
+  expect(readable, header.reason === "cost_threshold", "cost-threshold readable-view preserves cost_threshold reason");
+  const readableCost = expectJsonObject(readable, header.cost, "cost-threshold readable-view cost is an object");
   const readableMeasurements = expectObjectArray(
-    readable.record,
+    readable,
     readableCost.measurements,
-    "cost-threshold readable-json cost measurements are objects"
+    "cost-threshold readable-view cost measurements are objects"
   );
-  expect(readable.record, readableMeasurements.length > 0, "cost-threshold readable-json cost facts are non-empty");
-  expect(readable.record, !Object.hasOwn(readableJson, "entries"), "cost-threshold readable-json unstructured outline omits entries");
-  expect(readable.record, !Object.hasOwn(readableJson, "page"), "cost-threshold readable-json unstructured outline omits page");
+  expect(readable, readableMeasurements.length > 0, "cost-threshold readable-view cost facts are non-empty");
+  expect(readable, !Object.hasOwn(header, "entries"), "cost-threshold readable-view unstructured outline omits entries");
+  expect(readable, !Object.hasOwn(header, "page"), "cost-threshold readable-view unstructured outline omits page");
+  expectReadableViewBlockRestoresField(readable, readable.stdout, "/content", content);
 }

@@ -6,11 +6,11 @@
 
 - `protocol-json` 返回包含 operation 的完整 protocol envelope。
 - `docnav` 是识别格式、选择 adapter 和映射输出的核心 CLI。
-- CLI 默认阅读命令使用 `readable-view`；需要结构化消费或示例 JSON 校验时显式使用 `--output readable-json`；需要完整协议 envelope 时使用 `--output protocol-json`。
-- protocol outline 是扁平 entries，entry 使用 `ref`、`label` 和可选结构化 facts；readable outline 只保留 `ref` 和派生 `display`。
-- protocol find 是扁平 matches，match 使用同一 entry fact shape；readable find 只保留 `ref` 和派生 `display`。
+- CLI 默认阅读命令使用 `readable-view`；需要稳定结构化消费或示例 JSON 校验时使用 `--output protocol-json`。
+- protocol outline 是扁平 entries，entry 使用 `ref`、`label` 和可选结构化 facts。
+- protocol find 是扁平 matches，match 使用同一 entry fact shape。
 - ref 从 outline 原样交给 read。
-- protocol read 使用 `cost.measurements[]`；readable read 保留 `content_type` 并把成本派生为摘要字符串。
+- protocol read 使用 `cost.measurements[]`。
 - 分页结果返回下一页 page；null 表示没有更多信息。
 
 ## Outline
@@ -18,11 +18,10 @@
 | 边界 | 请求 | 响应 |
 | --- | --- | --- |
 | protocol-json | [protocol-outline-request.json](json/protocol-outline-request.json) | [protocol-outline-response.json](json/protocol-outline-response.json) |
-| readable JSON | 不适用 | [readable-outline.json](json/readable-outline.json) |
 
-Structured outline 示例使用 `kind: "structured"`、entries 和 page。非结构化全文 outline 示例包括 path selector 触发的 [protocol-outline-unstructured-path-response.json](json/protocol-outline-unstructured-path-response.json) / [readable-outline-unstructured-path.json](json/readable-outline-unstructured-path.json)，cost threshold 触发的 [protocol-outline-unstructured-cost-response.json](json/protocol-outline-unstructured-cost-response.json) / [readable-outline-unstructured-cost.json](json/readable-outline-unstructured-cost.json)，以及 threshold 不命中后保持 structured 的 [protocol-outline-threshold-miss-response.json](json/protocol-outline-threshold-miss-response.json) / [readable-outline-threshold-miss.json](json/readable-outline-threshold-miss.json)。
+Structured outline 示例使用 `kind: "structured"`、entries 和 page。非结构化全文 outline 示例包括 path selector 触发的 [protocol-outline-unstructured-path-response.json](json/protocol-outline-unstructured-path-response.json)、cost threshold 触发的 [protocol-outline-unstructured-cost-response.json](json/protocol-outline-unstructured-cost-response.json)，以及 threshold 不命中后保持 structured 的 [protocol-outline-threshold-miss-response.json](json/protocol-outline-threshold-miss-response.json)。
 
-默认 CLI `readable-view` 输出由 pretty JSON header 承载相同 readable 字段；structured outline 不产生 block section，unstructured outline 使用 `/content` block 承载全文。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
+默认 CLI `readable-view` 输出由 built-in renderer 从同一个 protocol response 派生；structured outline 不产生 block section，unstructured outline 使用 `/content` block 承载全文。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
 
 protocol 请求显式传入 `page: 1`、`limit: 28` 和 request `arguments.options.max_heading_level: 3`。这是 operation request argument，不是持久 config source path；配置文件中的 Markdown native option 使用 `options.docnav-markdown.max_heading_level`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
@@ -39,9 +38,8 @@ H:L4:H2
 | 边界 | 请求 | 响应 |
 | --- | --- | --- |
 | protocol-json | [protocol-read-request.json](json/protocol-read-request.json) | [protocol-read-response.json](json/protocol-read-response.json) |
-| readable JSON | 不适用 | [readable-read.json](json/readable-read.json) |
 
-默认 CLI `readable-view` read 输出将 `/content` 外置为 block，header 中保留 `ref`、`content_type`、由 `cost.measurements[]` 派生的 `cost` 摘要和 `page`。需要直接解析 `content` 字符串的示例和工具应使用 `--output readable-json`。
+默认 CLI `readable-view` read 输出将 `/content` 外置为 block，header 中保留 `ref`、`content_type`、由 `cost.measurements[]` 派生的 `cost` 摘要和 `page`。需要直接解析稳定结构化 `content` 字段的工具应使用 `--output protocol-json`。
 
 read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保留 `content_type: text/markdown`。保持 path、ref 和 limit 不变并请求第二页即可继续读取。
 
@@ -62,14 +60,13 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 - [error-explicit-adapter-failure.json](json/error-explicit-adapter-failure.json)
 - [error-explicit-config-failure.json](json/error-explicit-config-failure.json)
 - [error-unknown-config-field.json](json/error-unknown-config-field.json)
-- [readable-error.json](json/readable-error.json)
 
-错误示例只展示 protocol/readable surface 投影。Protocol 错误 code、canonical details 和 primary diagnostic 字段由 [原始协议](../protocol.md#协议错误对象) 拥有；readable failure projection 由 [输出模式](../output.md) 拥有。本目录不作为 code/details 规则来源。
+错误示例展示 protocol surface 投影。Protocol 错误 code、canonical details 和 primary diagnostic 字段由 [原始协议](../protocol.md#协议错误对象) 拥有；readable-view failure presentation 由 [输出模式](../output.md) 拥有。本目录不作为 code/details 规则来源。
 
 `find` 与 `info` 能力示例：
 
-- [protocol-find-request.json](json/protocol-find-request.json) / [response](json/protocol-find-response.json) / [readable](json/readable-find.json)
-- [protocol-info-request.json](json/protocol-info-request.json) / [response](json/protocol-info-response.json) / [readable](json/readable-info.json)
+- [protocol-find-request.json](json/protocol-find-request.json) / [response](json/protocol-find-response.json)
+- [protocol-info-request.json](json/protocol-info-request.json) / [response](json/protocol-info-response.json)
 
 ## 配置示例
 
@@ -92,6 +89,6 @@ Invocation log 示例只证明 [invocation-log-event.schema.json](../schemas/inv
 
 ## Schema
 
-原始协议和阅读输出由不同 schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。protocol 示例证明 raw 结构化字段；readable 示例证明从 raw facts 派生出的 `display`、成本摘要和错误投影形态。
+原始协议由 protocol schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。Protocol 示例证明 raw 结构化字段；readable-view 的最终文本由 built-in renderer conformance 承接，不发布另一组 JSON examples。
 
-示例只证明 protocol/readable、manifest、probe、配置文件示例和 invocation log event 的 documented shape 与投影结果。Core CLI strict failure、primary diagnostic projection、protocol-json stdout purity、adapter inspection 边界、配置读取行为、invocation logging side-effect 边界和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。
+示例只证明 protocol、manifest、probe、配置文件示例和 invocation log event 的 documented shape 与投影结果。Core CLI strict failure、primary diagnostic projection、protocol-json stdout purity、readable-view presentation、adapter inspection 边界、配置读取行为、invocation logging side-effect 边界和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。

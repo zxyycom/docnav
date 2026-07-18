@@ -221,7 +221,6 @@ dependencies = [
  "docnav-navigation",
  "docnav-output",
  "docnav-protocol",
- "docnav-readable",
  "docnav-typed-fields",
  "serde",
  "serde_json",
@@ -288,11 +287,9 @@ dependencies = [
 name = "docnav-output"
 version = "0.1.0"
 dependencies = [
- "docnav-diagnostics",
  "docnav-json-io",
  "docnav-protocol",
  "docnav-readable",
- "serde",
  "serde_json",
 ]
 

@@ -22,7 +22,7 @@ fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing()
         &project_config,
         json!({
             "defaults": {
-                "output": "readable-json"
+                "output": "protocol-json"
             },
             "options": {
                 "docnav-markdown": {
@@ -228,7 +228,7 @@ fn init_creates_and_preserves_selected_project_config_file() {
 
     fs::write(
         &project_config,
-        "{\"defaults\":{\"output\":\"readable-json\"}}\n",
+        "{\"defaults\":{\"output\":\"readable-view\"}}\n",
     )
     .unwrap();
     let preserved =
@@ -236,7 +236,7 @@ fn init_creates_and_preserves_selected_project_config_file() {
     assert_eq!(preserved["created"], false);
     assert_eq!(
         fs::read_to_string(&project_config).unwrap(),
-        "{\"defaults\":{\"output\":\"readable-json\"}}\n"
+        "{\"defaults\":{\"output\":\"readable-view\"}}\n"
     );
 
     let _ = fs::remove_dir_all(workspace);

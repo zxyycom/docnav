@@ -6,22 +6,22 @@ mod field_model;
 mod processing;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum OutputMode {
-    ReadableView,
-    ReadableJson,
-    ProtocolJson,
+enum ExampleMode {
+    Compact,
+    Expanded,
+    Detailed,
 }
 
-impl FieldStringEnum for OutputMode {
+impl FieldStringEnum for ExampleMode {
     fn variants() -> &'static [Self] {
-        &[Self::ReadableView, Self::ReadableJson, Self::ProtocolJson]
+        &[Self::Compact, Self::Expanded, Self::Detailed]
     }
 
     fn as_str(&self) -> &'static str {
         match self {
-            Self::ReadableView => "readable-view",
-            Self::ReadableJson => "readable-json",
-            Self::ProtocolJson => "protocol-json",
+            Self::Compact => "compact",
+            Self::Expanded => "expanded",
+            Self::Detailed => "detailed",
         }
     }
 }

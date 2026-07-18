@@ -27,13 +27,7 @@ export const SCHEMAS = {
   protocolRequest: "docs/schemas/protocol-request.schema.json",
   protocolResponse: "docs/schemas/protocol-response.schema.json",
   docnavMarkdownConfig: "docs/schemas/docnav-markdown-config.schema.json",
-  invocationLogEvent: "docs/schemas/invocation-log-event.schema.json",
-  readableError: "docs/schemas/readable-error.schema.json",
-  readableFind: "docs/schemas/readable-find.schema.json",
-  readableInfo: "docs/schemas/readable-info.schema.json",
-  readableOutline: "docs/schemas/readable-outline.schema.json",
-  readableCommon: "docs/schemas/readable-common.schema.json",
-  readableRead: "docs/schemas/readable-read.schema.json"
+  invocationLogEvent: "docs/schemas/invocation-log-event.schema.json"
 };
 
 export const EXAMPLES = {
@@ -41,12 +35,7 @@ export const EXAMPLES = {
   manifest: "docs/examples/json/manifest.json",
   probeResult: "docs/examples/json/probe-result.json",
   protocolReadResponse: "docs/examples/json/protocol-read-response.json",
-  errorInvalidRequest: "docs/examples/json/error-invalid-request.json",
-  readableError: "docs/examples/json/readable-error.json",
-  readableFind: "docs/examples/json/readable-find.json",
-  readableInfo: "docs/examples/json/readable-info.json",
-  readableOutline: "docs/examples/json/readable-outline.json",
-  readableRead: "docs/examples/json/readable-read.json"
+  errorInvalidRequest: "docs/examples/json/error-invalid-request.json"
 };
 
 export const OPERATION_NAMES = {
@@ -60,16 +49,8 @@ export const OPERATIONS = Object.values(OPERATION_NAMES);
 
 export const DOCUMENT_OUTPUT_MODES = [
   "readable-view",
-  "readable-json",
   "protocol-json"
 ];
-
-export const READABLE_SCHEMA_BY_OPERATION = {
-  [OPERATION_NAMES.outline]: SCHEMAS.readableOutline,
-  [OPERATION_NAMES.read]: SCHEMAS.readableRead,
-  [OPERATION_NAMES.find]: SCHEMAS.readableFind,
-  [OPERATION_NAMES.info]: SCHEMAS.readableInfo
-};
 
 export const OUTPUT_MODE_CONSISTENCY = {
   conformanceDir: "crates/shared/readable/tests/fixtures/conformance",
@@ -97,11 +78,7 @@ export const PROTOCOL_EXAMPLE_FILE = {
   responseName: (operation: string) => `protocol-${operation}-response.json`
 };
 
-export const READABLE_EXAMPLE_FILE = {
-  result: (operation: string) => `docs/examples/json/readable-${operation}.json`
-};
-
-// 协议与 readable 示例中反复出现的字段名，集中后避免局部拼写漂移。
+// 协议示例中反复出现的字段名，集中后避免局部拼写漂移。
 export const FIELDS = {
   adapter: "adapter",
   arguments: "arguments",

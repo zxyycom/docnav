@@ -1,41 +1,34 @@
-// @case WB-OUTPUT-DOCUMENT-001
-use super::*;
-use docnav_diagnostics::{
-    typed_codes, DiagnosticRecord, DiagnosticRecordDraft, DiagnosticSource, RefDetails,
-};
-use docnav_protocol::{
-    Cost, Entry, Measurement, Operation, OperationResult, OutlineResult, ProtocolResponse,
-    ReadResult, UnstructuredOutlineReason, PROTOCOL_VERSION,
-};
-use serde_json::Value;
+use std::io::{self, Write};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-fn ref_not_found_record() -> DiagnosticRecord {
-    DiagnosticRecordDraft::new::<typed_codes::protocol::RefNotFound>(
-        "No content found for ref `R99`",
-        RefDetails::new("R99"),
-        DiagnosticSource::with_stage("test", "output"),
-    )
-    .with_guidance(["Run outline first."])
-    .into_record()
-    .unwrap()
-}
+use super::*;
+use docnav_protocol::{
+    positive_result, validate_protocol_response_value, Cost, Entry, FindResult, InfoAdapter,
+    InfoDocument, InfoResult, Location, Measurement, Operation, OperationResult, OutlineResult,
+    ProtocolResponse, ReadResult, UnstructuredOutlineReason, PROTOCOL_VERSION,
+};
+use serde_json::{json, Value};
+
+static FAILING_RENDERER_CALLS: AtomicUsize = AtomicUsize::new(0);
 
 fn read_result() -> OperationResult {
     OperationResult::Read(ReadResult {
         ref_id: "R1".into(),
-        content: "body".into(),
+        content: "正文".into(),
         content_type: "text/plain".into(),
         cost: test_cost(),
         page: None,
     })
 }
 
-fn unstructured_outline_result(cost: Cost) -> OperationResult {
+fn unstructured_outline_result() -> OperationResult {
     OperationResult::Outline(OutlineResult::unstructured(
         UnstructuredOutlineReason::PathRule,
         "full body\n",
         "text/markdown",
-        cost,
+        Cost {
+            measurements: Vec::new(),
+        },
     ))
 }
 
@@ -49,7 +42,7 @@ fn test_cost() -> Cost {
             },
             Measurement {
                 unit: "bytes".to_owned(),
-                value: 4,
+                value: 6,
                 scope: Some("selection".to_owned()),
             },
             Measurement {
@@ -61,276 +54,368 @@ fn test_cost() -> Cost {
     }
 }
 
-fn empty_cost() -> Cost {
-    Cost {
-        measurements: Vec::new(),
+fn success_response() -> ProtocolResponse {
+    ProtocolResponse::success(PROTOCOL_VERSION, "request-1", read_result())
+}
+
+fn failure_response() -> ProtocolResponse {
+    ProtocolResponse::failure(
+        PROTOCOL_VERSION,
+        "request-1",
+        Some(Operation::Read),
+        docnav_protocol::ProtocolError::ref_not_found("R99"),
+    )
+}
+
+fn render_custom_success(response: &ProtocolResponse) -> Result<String, RenderFailure> {
+    let ProtocolResponse::Success(success) = response else {
+        panic!("custom success renderer received a failure response");
+    };
+    assert_eq!(success.request_id, "request-1");
+    assert!(matches!(success.result, OperationResult::Read(_)));
+    Ok("custom success text".to_owned())
+}
+
+fn render_custom_failure(response: &ProtocolResponse) -> Result<String, RenderFailure> {
+    let ProtocolResponse::Failure(failure) = response else {
+        panic!("custom failure renderer received a success response");
+    };
+    assert_eq!(failure.request_id, "request-1");
+    assert_eq!(failure.operation, Some(Operation::Read));
+    assert_eq!(failure.error.code().protocol_code(), "REF_NOT_FOUND");
+    Ok("custom failure text".to_owned())
+}
+
+fn render_failure(_: &ProtocolResponse) -> Result<String, RenderFailure> {
+    FAILING_RENDERER_CALLS.fetch_add(1, Ordering::SeqCst);
+    Err(RenderFailure::new("boom"))
+}
+
+fn render_for_writer_failure(_: &ProtocolResponse) -> Result<String, RenderFailure> {
+    Ok("rendered before writer failure".to_owned())
+}
+
+#[derive(Default)]
+struct FailingWriter;
+
+impl Write for FailingWriter {
+    fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+        Err(io::Error::other("writer failed"))
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 
+fn assert_single_trailing_lf(output: &str) -> &str {
+    let without_trailing_lf = output
+        .strip_suffix('\n')
+        .expect("readable-view text must end with LF");
+    assert!(
+        !without_trailing_lf.ends_with('\n'),
+        "readable-view text must have exactly one trailing LF"
+    );
+    without_trailing_lf
+}
+
+fn assert_readable_header(output: &str, expected_header: Value) {
+    let header = assert_single_trailing_lf(output);
+    assert!(
+        !header.contains("\n\n"),
+        "header-only readable-view text must not contain a block separator"
+    );
+    let actual_header: Value = serde_json::from_str(header).unwrap();
+    assert_eq!(actual_header, expected_header);
+}
+
+fn assert_readable_block(output: &str, expected_header: Value, pointer: &str, payload: &str) {
+    let output = assert_single_trailing_lf(output);
+    let (header, block) = output
+        .split_once("\n\n")
+        .expect("block readable-view text must contain one LF separator");
+    let actual_header: Value = serde_json::from_str(header).unwrap();
+    assert_eq!(actual_header, expected_header);
+
+    let utf8_byte_len = payload.len();
+    let start_marker = format!("[block {pointer} bytes={utf8_byte_len}]\n");
+    let block = block
+        .strip_prefix(&start_marker)
+        .expect("block start marker must include the UTF-8 byte length");
+    let end_marker = format!("[endblock {pointer}]");
+    let payload_with_framing = block
+        .strip_suffix(&end_marker)
+        .expect("block must end with the matching end marker");
+    if payload.ends_with('\n') {
+        assert_eq!(payload_with_framing, payload);
+    } else {
+        assert_eq!(payload_with_framing.strip_suffix('\n'), Some(payload));
+    }
+}
+
+// @case WB-OUTPUT-DOCUMENT-001
 #[test]
-fn readable_json_success_omits_diagnostics_without_protocol_envelope() {
-    let result = OperationResult::Outline(OutlineResult::structured(
-        vec![Entry {
-            ref_id: "R1".into(),
-            label: "Intro".into(),
-            kind: None,
-            location: None,
-            summary: None,
-            excerpt: None,
-            rank: None,
-            cost: None,
-            metadata: None,
-        }],
-        None,
-    ));
+fn custom_renderer_receives_success_response_and_controls_exact_text() {
+    let response = success_response();
     let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
 
-    write_document_result(
-        &result,
-        "request-1",
-        DocumentOutputMode::ReadableJson,
-        &mut stdout,
-        &mut stderr,
-    )
-    .unwrap();
-
-    assert!(stderr.is_empty());
-    let value: Value = serde_json::from_slice(&stdout).unwrap();
-    assert_eq!(value["kind"], "structured");
-    assert_eq!(value["entries"][0]["ref"], "R1");
-    assert!(value.get("protocol_version").is_none());
-}
-
-#[test]
-fn protocol_json_success_writes_protocol_envelope_with_empty_stderr() {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    write_document_result(
-        &read_result(),
-        "request-1",
-        DocumentOutputMode::ProtocolJson,
-        &mut stdout,
-        &mut stderr,
-    )
-    .unwrap();
-
-    let stdout: Value = serde_json::from_slice(&stdout).unwrap();
-    assert_eq!(stdout["request_id"], "request-1");
-    let stderr = String::from_utf8(stderr).unwrap();
-    assert!(stderr.is_empty());
-}
-
-#[test]
-fn readable_view_read_uses_block_renderer() {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    write_document_result(
-        &read_result(),
-        "request-1",
-        DocumentOutputMode::ReadableView,
-        &mut stdout,
-        &mut stderr,
-    )
-    .unwrap();
-
-    assert!(stderr.is_empty());
-    let output = String::from_utf8(stdout).unwrap();
-    assert!(output.contains("\"$block\": \"/content\""));
-    assert!(output.contains("[block /content bytes=4]"));
-    assert!(output.contains("body"));
-}
-
-#[test]
-fn readable_json_read_cost_is_derived_from_measurements() {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    write_document_result(
-        &read_result(),
-        "request-1",
-        DocumentOutputMode::ReadableJson,
-        &mut stdout,
-        &mut stderr,
-    )
-    .unwrap();
-
-    assert!(stderr.is_empty());
-    let value: Value = serde_json::from_slice(&stdout).unwrap();
-    assert_eq!(value["cost"], "1 line | 0.0 KB | 8 tokens");
-}
-
-#[test]
-fn readable_json_unstructured_outline_preserves_content_cost_and_reason() {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    write_document_result(
-        &unstructured_outline_result(empty_cost()),
-        "request-1",
-        DocumentOutputMode::ReadableJson,
-        &mut stdout,
-        &mut stderr,
-    )
-    .unwrap();
-
-    assert!(stderr.is_empty());
-    let value: Value = serde_json::from_slice(&stdout).unwrap();
-    assert_eq!(value["kind"], "unstructured");
-    assert_eq!(value["reason"], "path_rule");
-    assert_eq!(value["content"], "full body\n");
-    assert_eq!(value["content_type"], "text/markdown");
-    assert_eq!(value["cost"]["measurements"].as_array().unwrap().len(), 0);
-    assert!(value.get("entries").is_none());
-    assert!(value.get("ref").is_none());
-    assert!(value.get("page").is_none());
-    assert!(value.get("continuation").is_none());
-}
-
-#[test]
-fn readable_view_unstructured_outline_uses_content_block() {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    write_document_result(
-        &unstructured_outline_result(test_cost()),
-        "request-1",
-        DocumentOutputMode::ReadableView,
-        &mut stdout,
-        &mut stderr,
-    )
-    .unwrap();
-
-    assert!(stderr.is_empty());
-    let output = String::from_utf8(stdout).unwrap();
-    assert!(output.contains("\"kind\": \"unstructured\""));
-    assert!(output.contains("\"reason\": \"path_rule\""));
-    assert!(output.contains("\"$block\": \"/content\""));
-    assert!(output.contains("[block /content bytes=10]"));
-    assert!(output.contains("full body\n"));
-    assert!(output.contains("\"measurements\""));
-    assert!(!output.contains("\"entries\""));
-    assert!(!output.contains("\"page\""));
-}
-
-#[test]
-fn protocol_json_unstructured_outline_uses_union_branch_without_navigation_fields() {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    write_document_result(
-        &unstructured_outline_result(empty_cost()),
-        "request-1",
-        DocumentOutputMode::ProtocolJson,
-        &mut stdout,
-        &mut stderr,
-    )
-    .unwrap();
-
-    assert!(stderr.is_empty());
-    let value: Value = serde_json::from_slice(&stdout).unwrap();
-    let result = &value["result"];
-    assert_eq!(value["operation"], "outline");
-    assert_eq!(result["kind"], "unstructured");
-    assert_eq!(result["reason"], "path_rule");
-    assert_eq!(result["content"], "full body\n");
-    assert_eq!(result["cost"]["measurements"].as_array().unwrap().len(), 0);
-    assert!(result.get("entries").is_none());
-    assert!(result.get("ref").is_none());
-    assert!(result.get("page").is_none());
-    assert!(result.get("continuation").is_none());
-}
-
-#[test]
-fn readable_error_keeps_code_details_and_guidance() {
-    let error = ProtocolError::new::<typed_codes::protocol::RefNotFound>(
-        "not found",
-        RefDetails::new("R99"),
-    )
-    .with_guidance(["Run outline first."]);
-    let value = protocol_error_readable(&error);
-    assert_eq!(value["code"], "REF_NOT_FOUND");
-    assert_eq!(value["owner"], "adapter");
-    assert_eq!(value["location"]["ref"], "R99");
-    assert_eq!(value["details"]["ref"], "R99");
-    assert_eq!(value["guidance"][0], "Run outline first.");
-}
-
-#[test]
-fn diagnostic_record_error_projects_readable_and_protocol_surfaces() {
-    let error_record = ref_not_found_record();
-    let mut readable_stdout = Vec::new();
-    let mut readable_stderr = Vec::new();
-
-    write_document_diagnostic_error(
-        &error_record,
-        ProtocolOutputContext::new(PROTOCOL_VERSION, "request-1", Some(Operation::Read)),
-        DocumentOutputMode::ReadableJson,
-        &mut readable_stdout,
-        &mut readable_stderr,
-    )
-    .unwrap();
-
-    assert!(readable_stderr.is_empty());
-    let readable: Value = serde_json::from_slice(&readable_stdout).unwrap();
-    assert_eq!(readable["code"], "REF_NOT_FOUND");
-    assert_eq!(readable["owner"], "test_output");
-    assert_eq!(readable["location"]["ref"], "R99");
-    assert_eq!(readable["details"]["ref"], "R99");
-    assert_eq!(readable["guidance"][0], "Run outline first.");
-
-    let mut protocol_stdout = Vec::new();
-    let mut protocol_stderr = Vec::new();
-    write_document_diagnostic_error(
-        &error_record,
-        ProtocolOutputContext::new(PROTOCOL_VERSION, "request-1", Some(Operation::Read)),
-        DocumentOutputMode::ProtocolJson,
-        &mut protocol_stdout,
-        &mut protocol_stderr,
-    )
-    .unwrap();
-
-    assert!(protocol_stderr.is_empty());
-    let protocol: Value = serde_json::from_slice(&protocol_stdout).unwrap();
-    assert_eq!(protocol["error"]["code"], "REF_NOT_FOUND");
-    assert_eq!(protocol["error"]["owner"], "test_output");
-    assert_eq!(protocol["error"]["location"]["ref"], "R99");
-    assert_eq!(protocol["error"]["details"]["ref"], "R99");
-    assert_eq!(protocol["error"]["guidance"][0], "Run outline first.");
-}
-
-#[test]
-fn response_failure_returns_failure_status() {
-    let error = ProtocolError::ref_not_found("R99");
-    let response =
-        ProtocolResponse::failure(PROTOCOL_VERSION, "request-1", Some(Operation::Read), error);
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-
-    let status = write_document_response(
+    write_document_response(
         &response,
-        DocumentOutputMode::ReadableJson,
+        OutputPlan::Rendered(render_custom_success),
         &mut stdout,
-        &mut stderr,
     )
     .unwrap();
 
-    assert!(matches!(status, DocumentOutputStatus::Failure(_)));
-    let value: Value = serde_json::from_slice(&stdout).unwrap();
-    assert_eq!(value["code"], "REF_NOT_FOUND");
-    assert_eq!(value["owner"], "adapter");
-    assert_eq!(
-        value["guidance"][0],
-        "Run outline again and use a returned ref."
+    assert_eq!(stdout, b"custom success text");
+}
+
+#[test]
+fn custom_renderer_receives_failure_response() {
+    let response = failure_response();
+    let mut stdout = Vec::new();
+
+    write_document_response(
+        &response,
+        OutputPlan::Rendered(render_custom_failure),
+        &mut stdout,
+    )
+    .unwrap();
+
+    assert_eq!(stdout, b"custom failure text");
+}
+
+#[test]
+fn render_failure_happens_before_stdout_and_strategy_runs_once() {
+    FAILING_RENDERER_CALLS.store(0, Ordering::SeqCst);
+    let mut stdout = Vec::new();
+
+    let error = write_document_response(
+        &success_response(),
+        OutputPlan::Rendered(render_failure),
+        &mut stdout,
+    )
+    .unwrap_err();
+
+    assert!(matches!(
+        error,
+        DocumentOutputError::Render(ref failure) if failure.to_string() == "boom"
+    ));
+    assert_eq!(error.primary_error_id(), "readable_view_render_failed");
+    assert!(stdout.is_empty());
+    assert_eq!(FAILING_RENDERER_CALLS.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn writer_failure_after_rendering_stays_a_writer_error() {
+    let mut stdout = FailingWriter;
+
+    let error = write_document_response(
+        &success_response(),
+        OutputPlan::Rendered(render_for_writer_failure),
+        &mut stdout,
+    )
+    .unwrap_err();
+
+    assert!(matches!(error, DocumentOutputError::StdoutWrite(_)));
+}
+
+#[test]
+fn protocol_json_serializes_success_and_failure_responses_without_rendering() {
+    for response in [success_response(), failure_response()] {
+        let mut stdout = Vec::new();
+
+        write_document_response(&response, OutputPlan::ProtocolJson, &mut stdout).unwrap();
+
+        let actual: Value = serde_json::from_slice(&stdout).unwrap();
+        validate_protocol_response_value(&actual).unwrap();
+        assert_eq!(actual, serde_json::to_value(&response).unwrap());
+    }
+}
+
+// @case WB-READABLE-VIEW-001
+#[test]
+fn built_in_renderer_maps_structured_outline_response() {
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "request-1",
+        OperationResult::Outline(OutlineResult::structured(
+            vec![Entry {
+                ref_id: "H:L1:H2".into(),
+                label: "Intro".into(),
+                kind: Some("heading".into()),
+                location: None,
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: Some(test_cost()),
+                metadata: Some(serde_json::Map::from_iter([(
+                    "heading_level".into(),
+                    json!(2),
+                )])),
+            }],
+            None,
+        )),
+    );
+    let output = render_readable_response(&response).unwrap();
+
+    assert_readable_header(
+        &output,
+        json!({
+            "kind": "structured",
+            "entries": [{
+                "ref": "H:L1:H2",
+                "display": "H2 Intro | 1 line | 0.0 KB | 8 tokens",
+            }],
+            "page": null,
+        }),
     );
 }
 
 #[test]
-fn readable_view_render_error_uses_stable_primary_error_id() {
-    let error = DocumentOutputError::ReadableViewRender(docnav_readable::RenderError::new("boom"));
+fn built_in_renderer_maps_find_response() {
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "request-1",
+        OperationResult::Find(FindResult {
+            matches: vec![Entry {
+                ref_id: "M1".into(),
+                label: "needle".into(),
+                kind: Some("match".into()),
+                location: Some(Location {
+                    line_start: positive_result(7).unwrap(),
+                    line_end: None,
+                }),
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: None,
+                metadata: None,
+            }],
+            page: None,
+        }),
+    );
+    let output = render_readable_response(&response).unwrap();
 
-    assert!(error.can_project_as_primary_diagnostic());
-    assert_eq!(error.primary_error_id(), "readable_view_render_failed");
+    assert_readable_header(
+        &output,
+        json!({
+            "matches": [{
+                "ref": "M1",
+                "display": "L7: needle",
+            }],
+            "page": null,
+        }),
+    );
+}
+
+#[test]
+fn built_in_renderer_maps_info_response() {
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "request-1",
+        OperationResult::Info(InfoResult {
+            document: Some(InfoDocument {
+                content_type: Some("text/markdown".into()),
+                encoding: Some("utf-8".into()),
+                size: Some(Measurement {
+                    unit: "bytes".into(),
+                    value: 1536,
+                    scope: None,
+                }),
+            }),
+            adapter: Some(InfoAdapter {
+                id: Some("docnav-markdown".into()),
+                format: Some("markdown".into()),
+            }),
+            metadata: Some(serde_json::Map::from_iter([(
+                "heading_count".into(),
+                json!(2),
+            )])),
+        }),
+    );
+    let output = render_readable_response(&response).unwrap();
+
+    assert_readable_header(
+        &output,
+        json!({
+            "display": "Markdown | text/markdown | 2 headings | 1.5 KB",
+        }),
+    );
+}
+
+#[test]
+fn built_in_renderer_maps_read_response_and_preserves_block_framing() {
+    let content = "正文";
+    let output = render_readable_response(&success_response()).unwrap();
+
+    assert_readable_block(
+        &output,
+        json!({
+            "content": {
+                "$block": "/content",
+                "bytes": content.len(),
+            },
+            "content_type": "text/plain",
+            "cost": "1 line | 0.0 KB | 8 tokens",
+            "page": null,
+            "ref": "R1",
+        }),
+        "/content",
+        content,
+    );
+}
+
+#[test]
+fn built_in_renderer_maps_failure_response_and_preserves_block_framing() {
+    let error_text = "Ref was not found.";
+    let output = render_readable_response(&failure_response()).unwrap();
+
+    assert_readable_block(
+        &output,
+        json!({
+            "code": "REF_NOT_FOUND",
+            "details": {
+                "ref": "R99",
+            },
+            "error": {
+                "$block": "/error",
+                "bytes": error_text.len(),
+            },
+            "guidance": [
+                "Run outline again and use a returned ref.",
+            ],
+            "location": {
+                "ref": "R99",
+            },
+            "owner": "adapter",
+        }),
+        "/error",
+        error_text,
+    );
+}
+
+#[test]
+fn built_in_renderer_maps_unstructured_outline_response_and_preserves_block_framing() {
+    let content = "full body\n";
+    let response =
+        ProtocolResponse::success(PROTOCOL_VERSION, "request-1", unstructured_outline_result());
+    let output = render_readable_response(&response).unwrap();
+
+    assert_readable_block(
+        &output,
+        json!({
+            "content": {
+                "$block": "/content",
+                "bytes": content.len(),
+            },
+            "content_type": "text/markdown",
+            "cost": {
+                "measurements": [],
+            },
+            "kind": "unstructured",
+            "reason": "path_rule",
+        }),
+        "/content",
+        content,
+    );
 }

@@ -95,7 +95,6 @@ fn navigation_command(command: &DocumentCommand, document_path: String) -> Navig
 fn output_mode(output: NavigationOutputMode) -> OutputMode {
     match output {
         NavigationOutputMode::ReadableView => OutputMode::ReadableView,
-        NavigationOutputMode::ReadableJson => OutputMode::ReadableJson,
         NavigationOutputMode::ProtocolJson => OutputMode::ProtocolJson,
     }
 }

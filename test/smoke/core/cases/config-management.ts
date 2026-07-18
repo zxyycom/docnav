@@ -39,7 +39,7 @@ export function createConfigContextTasks() {
     // @case BB-CORE-CONFIG-002
     {
       id: "CORE-CONFIG-002",
-      label: "CORE-CONFIG-002 removed defaults.output value rejected",
+      label: "CORE-CONFIG-002 removed readable-json config value rejected",
       run: testRemovedOutputConfigRejected
     },
     // @case BB-CORE-CONFIG-003
@@ -99,11 +99,11 @@ async function testRemovedOutputConfigRejected() {
   const project = createProject("removed-output-mode", {
     config: {
       defaults: {
-        output: "text"
+        output: "readable-json"
       }
     }
   });
-  await assertRemovedTextOutputInspectDiagnostic(project);
+  await assertRemovedReadableJsonOutputInspectDiagnostic(project);
 }
 
 async function testNativeOptionConfigBehavior() {
@@ -133,7 +133,7 @@ async function assertConfigInspectSourceAndFacts(project: SmokeProject, adapterI
   expect(record, expectObjectArray(record, projectSource.diagnostics, "project diagnostics are objects").length === 0, "project config has no inspect diagnostics");
   expect(record, expectObjectArray(record, userSource.diagnostics, "user diagnostics are objects").length === 0, "user config has no inspect diagnostics");
   expect(record, parameterFact(record, inspection, "docnav.defaults.adapter").value === adapterId, "config inspect reports adapter fact from project config");
-  expect(record, parameterFact(record, inspection, "docnav.defaults.output").value === "readable-json", "config inspect reports output fact from project config");
+  expect(record, parameterFact(record, inspection, "docnav.defaults.output").value === "readable-view", "config inspect reports output fact from project config");
   expect(record, parameterFact(record, inspection, "docnav.defaults.pagination.enabled").value === false, "config inspect reports pagination enabled fact from user config");
   expect(record, parameterFact(record, inspection, "docnav.defaults.pagination.limit").value === 321, "config inspect reports pagination limit fact from user config");
   expect(
@@ -145,8 +145,8 @@ async function assertConfigInspectSourceAndFacts(project: SmokeProject, adapterI
   expect(record, fs.readFileSync(userConfigPath, "utf8") === userConfigBefore, "config inspect does not modify user config");
 }
 
-async function assertRemovedTextOutputInspectDiagnostic(project: SmokeProject) {
-  const record = await runCli("CORE-CONFIG-002 config inspect reports invalid defaults.output", [
+async function assertRemovedReadableJsonOutputInspectDiagnostic(project: SmokeProject) {
+  const record = await runCli("CORE-CONFIG-002 config inspect rejects removed readable-json", [
     "config",
     "inspect"
   ], { project });
@@ -257,7 +257,7 @@ async function testInitVersionAndHelp() {
   expectStdoutIncludes(help, "--pagination");
   expectStdoutIncludes(help, "--limit");
   expectStdoutIncludes(help, "--output <mode>");
-  expectStdoutIncludes(help, "possible values: readable-view, readable-json, protocol-json");
+  expectStdoutIncludes(help, "possible values: readable-view, protocol-json");
   expectStdoutIncludes(help, "default: readable-view");
 }
 

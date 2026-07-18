@@ -37,8 +37,6 @@ macro_rules! load_vector {
 // Each test loads its fixture at compile time via `include_str!` so the
 // vector file is a committed, auditable acceptance artifact, not an ad-hoc
 // in-test construction.
-// @case WB-READABLE-VIEW-001
-
 #[test]
 fn conformance_01_no_block_outline() {
     run_vector(&load_vector!(

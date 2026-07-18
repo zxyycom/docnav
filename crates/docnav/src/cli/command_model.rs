@@ -16,16 +16,13 @@ use serde::{Deserialize, Serialize};
 pub enum OutputMode {
     /// Human/AI-readable view with JSON header and block-framed content.
     ReadableView,
-    /// Structured JSON output without protocol envelope (documented shape).
-    ReadableJson,
     /// Full protocol response envelope (stable machine format).
     ProtocolJson,
 }
 
 impl OutputMode {
     /// Currently accepted output values for document --output.
-    pub const ACCEPTED_VALUES: &'static [&'static str] =
-        &["readable-view", "readable-json", "protocol-json"];
+    pub const ACCEPTED_VALUES: &'static [&'static str] = &["readable-view", "protocol-json"];
 }
 
 impl FromStr for OutputMode {
@@ -34,7 +31,6 @@ impl FromStr for OutputMode {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "readable-view" => Ok(Self::ReadableView),
-            "readable-json" => Ok(Self::ReadableJson),
             "protocol-json" => Ok(Self::ProtocolJson),
             _ => Err(format!(
                 "invalid output value {value:?}, accepted values: {}",

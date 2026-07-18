@@ -6,17 +6,27 @@ import {
   expectExit,
   expectJsonObject,
   expectNoJsonPayloadInStderr,
+  expectNoProtocolEnvelope,
   expectObjectArray,
   expectProtocolFailure,
+  expectProtocolSuccess,
+  expectStderrEmpty,
   expectString,
-  parseJson
+  parseJson,
+  parseReadableViewHeader
 } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
 import { assertDocumentHeadOutputModes } from "./real-markdown-document-head.ts";
-import {
-  assertReadableReadRefHandoff,
-  runReadableJsonCase
-} from "./readable-output.ts";
+
+interface ReadableViewRefHandoffExpectation {
+  contentIncludes: string;
+  contentIncludesSummary: string;
+  contentType?: {
+    summary: string;
+    value: string;
+  };
+  refSummary: string;
+}
 
 export function createRealMarkdownLinkTasks() {
   return [
@@ -46,15 +56,14 @@ async function testRealMarkdownRefHandoffChain() {
   await assertMaxHeadingLevelBehavior(project);
   await assertDocumentHeadOutputModes(project);
   const outlineRef = await readFirstOutlineRef(project);
-  await assertReadableReadRefHandoff(
+  await assertReadableViewReadRefHandoff(
     project,
-    "CORE-LINK-001 read outline ref readable-json",
+    "CORE-LINK-001 read outline ref readable-view",
     project.normalRelPath,
     outlineRef,
     {
       contentIncludes: "# Guide",
       contentIncludesSummary: "read content includes Markdown heading",
-      contentSummary: "outline read content is a string",
       contentType: {
         summary: "read preserves content_type",
         value: "text/markdown"
@@ -64,20 +73,54 @@ async function testRealMarkdownRefHandoffChain() {
   );
 
   const findRef = await readFirstFindRef(project);
-  await assertReadableReadRefHandoff(
+  await assertReadableViewReadRefHandoff(
     project,
-    "CORE-LINK-001 read find ref readable-json",
+    "CORE-LINK-001 read find ref readable-view",
     project.normalRelPath,
     findRef,
     {
       contentIncludes: "## Install",
       contentIncludesSummary: "read content includes Install heading",
-      contentSummary: "find read content is a string",
       refSummary: "read preserves find ref"
     }
   );
 
   await assertInfoReadableOutput(project);
+}
+
+async function assertReadableViewReadRefHandoff(
+  project: SmokeProject,
+  name: string,
+  documentPath: string,
+  ref: string,
+  expectation: ReadableViewRefHandoffExpectation
+) {
+  const record = await runCli(name, [
+    "read",
+    documentPath,
+    "--ref",
+    ref,
+    "--output",
+    "readable-view"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const header = parseReadableViewHeader(record);
+  expectNoProtocolEnvelope(record, header);
+  expect(record, header.ref === ref, expectation.refSummary);
+  expect(record, record.stdout.includes("[block /content bytes="), "readable-view read has a content block");
+  expect(
+    record,
+    record.stdout.includes(expectation.contentIncludes),
+    expectation.contentIncludesSummary
+  );
+  if (expectation.contentType) {
+    expect(
+      record,
+      header.content_type === expectation.contentType.value,
+      expectation.contentType.summary
+    );
+  }
 }
 
 async function testRealMarkdownRefInvalidProtocol() {
@@ -204,13 +247,19 @@ function createRegisteredRealMarkdownProject(name: string) {
 }
 
 async function readFirstOutlineRef(project: SmokeProject) {
-  const { record, json } = await runReadableJsonCase(project, "CORE-LINK-001 outline real markdown readable-json", [
+  const record = await runCli("CORE-LINK-001 outline real markdown protocol-json", [
     "outline",
     project.normalRelPath,
     "--output",
-    "readable-json"
-  ], "readableOutline");
-  const entries = expectObjectArray(record, json.entries, "outline entries are objects");
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  expectProtocolSuccess(record, json, "outline");
+  const result = expectJsonObject(record, json.result, "outline result is an object");
+  const entries = expectObjectArray(record, result.entries, "outline entries are objects");
   expect(record, entries.length > 0, "outline returns entries");
   const ref = expectString(record, entries[0]?.ref, "outline exposes a ref");
   expect(record, ref.length > 0, "outline exposes a nonempty ref");
@@ -218,15 +267,21 @@ async function readFirstOutlineRef(project: SmokeProject) {
 }
 
 async function readFirstFindRef(project: SmokeProject) {
-  const { record, json } = await runReadableJsonCase(project, "CORE-LINK-001 find real markdown readable-json", [
+  const record = await runCli("CORE-LINK-001 find real markdown protocol-json", [
     "find",
     project.normalRelPath,
     "--query",
     "Install",
     "--output",
-    "readable-json"
-  ], "readableFind");
-  const matches = expectObjectArray(record, json.matches, "find matches are objects");
+    "protocol-json"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const json = parseJson(record);
+  validateSchema(record, "protocolResponse", json);
+  expectProtocolSuccess(record, json, "find");
+  const result = expectJsonObject(record, json.result, "find result is an object");
+  const matches = expectObjectArray(record, result.matches, "find matches are objects");
   expect(record, matches.length > 0, "find returns matches");
   const ref = expectString(record, matches[0]?.ref, "find match exposes a ref");
   expect(record, ref.length > 0, "find match exposes a nonempty ref");
@@ -234,12 +289,16 @@ async function readFirstFindRef(project: SmokeProject) {
 }
 
 async function assertInfoReadableOutput(project: SmokeProject) {
-  const { record, json } = await runReadableJsonCase(project, "CORE-LINK-001 info real markdown readable-json", [
+  const record = await runCli("CORE-LINK-001 info real markdown readable-view", [
     "info",
     project.normalRelPath,
     "--output",
-    "readable-json"
-  ], "readableInfo");
-  const display = expectString(record, json.display, "info display is a string");
+    "readable-view"
+  ], { project });
+  expectExit(record, 0);
+  expectStderrEmpty(record);
+  const header = parseReadableViewHeader(record);
+  expectNoProtocolEnvelope(record, header);
+  const display = expectString(record, header.display, "info display is a string");
   expect(record, display.includes("Markdown | text/markdown"), "info readable result has Markdown display");
 }

@@ -18,7 +18,7 @@ docnav adapter list
 docnav version
 ```
 
-Document operation common flags: `[--project-config <path>] [--user-config <path>] [--adapter <adapter-id>] [--invocation-log <path>] [--invocation-log-content-root <path>] [--output readable-view|readable-json|protocol-json]`.
+Document operation common flags: `[--project-config <path>] [--user-config <path>] [--adapter <adapter-id>] [--invocation-log <path>] [--invocation-log-content-root <path>] [--output readable-view|protocol-json]`.
 
 `outline`、`read`、`find` 和 `info` 是 document operation。`init`、`doctor`、`config`、`adapter list` 和 `version` 是 core CLI 命令，不产生 document operation request。
 
@@ -35,11 +35,15 @@ Document operation 按以下顺序执行：
 7. 对 `outline` 解析 navigation-owned `outline_mode` selectors。
 8. 构造内部 document operation request。
 9. 调用选定 adapter 的 operation handler，或在 `outline_mode = "unstructured_full"` 时进入 navigation pre-dispatch full-read path。
-10. 输出结果，并映射进程退出码。
+10. 把 document success 或 failure 表示为 `ProtocolResponse`，执行选定 output plan，并映射进程退出码。
 
 非法 CLI 输入必须在 adapter 选择和 document operation handler 调用前失败。未知 argv、多余 positional、当前 operation 不使用的已知参数、缺少必需 path/ref/query、非法 page、非法 limit 或非法 output 都是 input failure；当前 operation 不使用的参数不触发其它 operation 的 eager validation。
 
 路径不存在、不可读或无法规范化时返回文档路径错误，不能调用 adapter layer。
+
+Document output 的 public accepted values 恰好是 `readable-view` 和 `protocol-json`。省略 output 或解析得到 `readable-view` 时，core 构造携带内置 renderer 的 `Rendered`；解析得到 `protocol-json` 时构造 `ProtocolJson`。CLI argv 或 config 提供 `readable-json` 时走普通 invalid-value diagnostic，不构造 alias、fallback 或 output plan。需要稳定结构化输出的旧 caller 迁移到 `protocol-json`；只需要阅读文本的 caller 使用默认输出或 `readable-view`。
+
+Document success 和 failure 在 output plan 执行前都形成 `ProtocolResponse`。在 navigation 返回 response 之前发生的 document failure 使用既有 protocol error projection 构造成 `ProtocolResponse::Failure`；`ProtocolJson` 序列化该 response，`Rendered` 把它交给内置 renderer。Help、version 和其它 non-document success output 保持对应命令 owner 的现有行为。
 
 ## Invocation logging
 
@@ -76,7 +80,7 @@ Document named option 的 static/generated 分界：
 - **Generated surface：** `adapter` 的 routing field 由 navigation 提供；`page`、`limit`、`pagination`、`output` 与 adapter-scoped public flags 来自 core-authored parameter catalog 的 operation projection。Core 直接从这些 canonical processing facts 构造 `clap` arguments/help，并把 explicit matches 提取为保留 identity、locator、raw/reason 和 source attribution 的 normalized typed/invalid candidates。
 - **Lexical/preflight：** strict argv boundary 的 document flag/cardinality facts 和 output preflight locator 都从当前 operation 的 static/generated command shape 读取；help、missing value、duplicate single-value、unknown flag 和 operation-inapplicable input 不维护第二份 document option 定义。
 
-每个 generated flag 在 argv parsing 前唯一映射到 canonical field identity；generated-to-static 或 generated-to-generated conflict 在 dispatch 前确定性失败并保留 owner/field attribution。Core args/help/preflight tests 证明该 Current 边界。完整调用关系见 [架构](architecture.md#document-named-option-派生状态)，candidate applicability 见 [Navigation Input Resolution](navigation-input-resolution.md#参数汇总-projection)。
+Generated `output` 的 enum 和 help 只展示 `readable-view` 与 `protocol-json`。每个 generated flag 在 argv parsing 前唯一映射到 canonical field identity；generated-to-static 或 generated-to-generated conflict 在 dispatch 前确定性失败并保留 owner/field attribution。Core args/help/preflight tests 证明该 Current 边界。完整调用关系见 [架构](architecture.md#document-named-option-派生状态)，candidate applicability 见 [Navigation Input Resolution](navigation-input-resolution.md#参数汇总-projection)。
 
 Root help 和子命令 help 只输出 help 文本，不执行项目解析、配置读取、adapter 选择或 document operation。
 
@@ -156,4 +160,4 @@ CLI 使用以下进程退出码：
 - protocol 或 adapter layer 错误退出 `4`。
 - 内部错误退出 `1`。
 
-Invocation logging 写入失败、content capture root 不可写或单条 event serialization/append 失败不得改变原 document operation 的退出码。若需要报告日志失败诊断，只能使用不会污染 machine-readable stdout 的 bounded 通道；`protocol-json` 和 `readable-json` stdout 仍必须只包含对应 document output JSON 值。
+Invocation logging 写入失败、content capture root 不可写或单条 event serialization/append 失败不得改变原 document operation 的退出码。若需要报告日志失败诊断，只能使用不会污染 machine-readable stdout 的 bounded 通道；`protocol-json` stdout 仍必须只包含对应 document output JSON 值。

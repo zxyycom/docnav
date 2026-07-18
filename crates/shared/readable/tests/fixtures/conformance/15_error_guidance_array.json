@@ -14,7 +14,7 @@
     "guidance": [
       "Verify the document is valid Markdown.",
       "Check for unclosed fenced code blocks.",
-      "Try `docnav outline --output readable-json` to inspect document structure."
+      "Try `docnav outline --output protocol-json` to inspect document structure."
     ]
   },
   "assertions": [
@@ -25,7 +25,7 @@
     {"type": "header_contains", "text": "\"guidance\": ["},
     {"type": "header_contains", "text": "Verify the document is valid Markdown"},
     {"type": "header_contains", "text": "Check for unclosed fenced code blocks"},
-    {"type": "header_contains", "text": "Try `docnav outline --output readable-json`"},
+    {"type": "header_contains", "text": "Try `docnav outline --output protocol-json`"},
     {"type": "header_contains", "text": "\"$block\": \"/error\""},
     {"type": "output_not_contains", "text": "[block /guidance"},
     {"type": "no_cr_in_framing"}

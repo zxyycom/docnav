@@ -1,17 +1,12 @@
 import { assert } from "../../assertions.ts";
-import {
-  EXAMPLES,
-  FIELDS,
-  OPERATIONS
-} from "../../config.ts";
+import { FIELDS, OPERATIONS } from "../../config.ts";
 import { listExampleJson, readJson } from "../../json/files.ts";
 import { jsonObject } from "./json.ts";
 
 export function validateErrorDetails() {
   const errorFiles = listExampleJson(/^error-.*\.json$/);
   validateProtocolErrorResponses(errorFiles);
-  validateReadableErrorDetails();
-  console.log(`error details ok: ${errorFiles.length + 1} file(s)`);
+  console.log(`error details ok: ${errorFiles.length} file(s)`);
 }
 
 function validateProtocolErrorResponses(errorFiles: string[]) {
@@ -45,20 +40,4 @@ function validateProtocolErrorResponses(errorFiles: string[]) {
     );
     assert(Object.keys(details).length > 0, `${errorRelPath} error details must not be empty`);
   }
-}
-
-function validateReadableErrorDetails() {
-  const readableError = jsonObject(readJson(EXAMPLES.readableError), EXAMPLES.readableError);
-  const readableErrorCode = readableError[FIELDS.code];
-  assert(typeof readableErrorCode === "string", "readable-error.json code must be a string");
-  assert(
-    typeof readableError.owner === "string" && readableError.owner.length > 0,
-    "readable-error.json owner must be a non-empty string",
-  );
-  assert(
-    Array.isArray(readableError.guidance) && readableError.guidance.length > 0,
-    "readable-error.json guidance must be a non-empty array",
-  );
-  const details = jsonObject(readableError[FIELDS.details] ?? {}, "readable-error.json details");
-  assert(Object.keys(details).length > 0, `${EXAMPLES.readableError} details must not be empty`);
 }

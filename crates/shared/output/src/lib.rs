@@ -2,50 +2,66 @@ use std::fmt;
 use std::io;
 
 use docnav_json_io::JsonIoError;
-use docnav_protocol::{Operation, ProtocolError};
-use docnav_readable::RenderError;
+use docnav_protocol::ProtocolResponse;
 
 mod readable;
 mod writer;
 
-pub use readable::{protocol_error_readable, readable_payload, view_kind_for_result};
-pub use writer::{
-    write_document_diagnostic_error, write_document_error, write_document_response,
-    write_document_result,
-};
+pub use readable::render_readable_response;
+pub use writer::write_document_response;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DocumentOutputMode {
-    ReadableView,
-    ReadableJson,
+pub type RenderStrategy = fn(&ProtocolResponse) -> Result<String, RenderFailure>;
+
+#[derive(Clone, Copy, Debug)]
+pub enum OutputPlan {
     ProtocolJson,
+    Rendered(RenderStrategy),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DocumentOutputStatus {
-    Success,
-    Failure(ProtocolError),
+pub struct RenderFailure {
+    message: String,
 }
+
+impl RenderFailure {
+    pub const ERROR_ID: &'static str = "readable_view_render_failed";
+
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+impl From<docnav_readable::RenderError> for RenderFailure {
+    fn from(error: docnav_readable::RenderError) -> Self {
+        Self::new(error.to_string())
+    }
+}
+
+impl fmt::Display for RenderFailure {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for RenderFailure {}
 
 #[derive(Debug)]
 pub enum DocumentOutputError {
-    DiagnosticProjection,
-    ReadablePayload(RenderError),
-    ReadableViewRender(RenderError),
+    Render(RenderFailure),
     StdoutJson(JsonIoError),
     StdoutWrite(io::Error),
 }
 
 impl DocumentOutputError {
-    pub fn can_project_as_primary_diagnostic(&self) -> bool {
-        !matches!(self, Self::StdoutJson(_) | Self::StdoutWrite(_))
-    }
-
     pub fn primary_error_id(&self) -> &'static str {
         match self {
-            Self::DiagnosticProjection => "diagnostic-projection-failed",
-            Self::ReadablePayload(_) => "readable-payload-failed",
-            Self::ReadableViewRender(_) => RenderError::ERROR_ID,
+            Self::Render(_) => RenderFailure::ERROR_ID,
             Self::StdoutJson(_) => "stdout-json-write-failed",
             Self::StdoutWrite(_) => "stdout-write-failed",
         }
@@ -55,11 +71,7 @@ impl DocumentOutputError {
 impl fmt::Display for DocumentOutputError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::DiagnosticProjection => {
-                formatter.write_str("failed to project diagnostic output")
-            }
-            Self::ReadablePayload(error) => write!(formatter, "readable payload failed: {error}"),
-            Self::ReadableViewRender(error) => {
+            Self::Render(error) => {
                 write!(formatter, "readable_view_render_failed: {error}")
             }
             Self::StdoutJson(error) => write!(formatter, "failed to write JSON output: {error}"),
@@ -71,30 +83,9 @@ impl fmt::Display for DocumentOutputError {
 impl std::error::Error for DocumentOutputError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::DiagnosticProjection => None,
-            Self::ReadablePayload(error) | Self::ReadableViewRender(error) => Some(error),
+            Self::Render(error) => Some(error),
             Self::StdoutJson(error) => Some(error),
             Self::StdoutWrite(error) => Some(error),
-        }
-    }
-}
-
-pub struct ProtocolOutputContext<'a> {
-    pub protocol_version: &'a str,
-    pub request_id: &'a str,
-    pub operation: Option<Operation>,
-}
-
-impl<'a> ProtocolOutputContext<'a> {
-    pub const fn new(
-        protocol_version: &'a str,
-        request_id: &'a str,
-        operation: Option<Operation>,
-    ) -> Self {
-        Self {
-            protocol_version,
-            request_id,
-            operation,
         }
     }
 }

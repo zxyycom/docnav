@@ -3,10 +3,11 @@ use std::io::{self, Write};
 use docnav_json_io::write_json_value_pretty;
 use docnav_navigation::NavigationCommandOutcome;
 use docnav_output::{
-    write_document_diagnostic_error, write_document_response, DocumentOutputError,
-    DocumentOutputMode, ProtocolOutputContext,
+    render_readable_response, write_document_response, DocumentOutputError, OutputPlan,
 };
-use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, PROTOCOL_VERSION};
+use docnav_protocol::{
+    generate_request_id, Operation, ProtocolError, ProtocolResponse, PROTOCOL_VERSION,
+};
 use serde_json::Value;
 
 use crate::cli::OutputMode;
@@ -25,7 +26,7 @@ enum CommandOutput {
     Json(Value),
     DocumentResponse {
         outcome: Box<NavigationCommandOutcome>,
-        mode: DocumentOutputMode,
+        plan: OutputPlan,
         invocation_log: Option<DocumentInvocationLog>,
     },
 }
@@ -64,7 +65,7 @@ impl CommandOutcome {
         Self {
             output: CommandOutput::DocumentResponse {
                 outcome: Box::new(outcome),
-                mode: document_output_mode(mode),
+                plan: document_output_plan(mode),
                 invocation_log,
             },
             exit_code,
@@ -100,33 +101,29 @@ pub fn write_outcome<W: Write, E: Write>(
         },
         CommandOutput::DocumentResponse {
             outcome: navigation_outcome,
-            mode,
+            plan,
             invocation_log,
-        } => {
-            let operation = response_operation(&navigation_outcome.response);
-            match write_document_response(&navigation_outcome.response, mode, stdout, stderr) {
-                Ok(_) => {
-                    if let Some(invocation_log) = invocation_log {
-                        invocation_log.record_outcome(&navigation_outcome);
-                    }
-                    outcome.exit_code.code()
+        } => match write_document_response(&navigation_outcome.response, plan, stdout) {
+            Ok(()) => {
+                if let Some(invocation_log) = invocation_log {
+                    invocation_log.record_outcome(&navigation_outcome);
                 }
-                Err(error) => {
-                    let error_code = error.primary_error_id().to_owned();
-                    let error_summary = error.to_string();
-                    let exit_code =
-                        write_document_output_error(error, mode, operation, stdout, stderr);
-                    if let Some(invocation_log) = invocation_log.as_ref() {
-                        invocation_log.record_output_projection_error(
-                            &navigation_outcome,
-                            &error_code,
-                            error_summary,
-                        );
-                    }
-                    exit_code
-                }
+                outcome.exit_code.code()
             }
-        }
+            Err(error) => {
+                let error_code = error.primary_error_id().to_owned();
+                let error_summary = error.to_string();
+                let exit_code = write_document_output_error(error, stderr);
+                if let Some(invocation_log) = invocation_log.as_ref() {
+                    invocation_log.record_output_projection_error(
+                        &navigation_outcome,
+                        &error_code,
+                        error_summary,
+                    );
+                }
+                exit_code
+            }
+        },
     }
 }
 
@@ -142,20 +139,22 @@ pub fn write_error<W: Write, E: Write>(request: ErrorOutput<'_, W, E>) -> i32 {
         Ok(record) => record,
         Err(error) => return write_io_error(io::Error::other(error), stderr),
     };
+    let protocol_error = match ProtocolError::from_diagnostic_record(&error_record) {
+        Some(error) => error,
+        None => {
+            return write_io_error(
+                io::Error::other("failed to project docnav diagnostic into protocol error"),
+                stderr,
+            )
+        }
+    };
     let request_id = generate_request_id();
-    let protocol = ProtocolOutputContext::new(PROTOCOL_VERSION, &request_id, operation);
-    let result = write_document_diagnostic_error(
-        &error_record,
-        protocol,
-        document_output_mode(output_mode),
-        stdout,
-        stderr,
-    )
-    .map_err(io::Error::other);
+    let response =
+        ProtocolResponse::failure(PROTOCOL_VERSION, request_id, operation, protocol_error);
 
-    match result {
+    match write_document_response(&response, document_output_plan(output_mode), stdout) {
         Ok(()) => error.exit_code().code(),
-        Err(io_error) => write_io_error(io_error, stderr),
+        Err(output_error) => write_document_output_error(output_error, stderr),
     }
 }
 
@@ -167,52 +166,19 @@ pub struct ErrorOutput<'a, W: Write, E: Write> {
     pub stderr: &'a mut E,
 }
 
-fn document_output_mode(mode: OutputMode) -> DocumentOutputMode {
+fn document_output_plan(mode: OutputMode) -> OutputPlan {
     match mode {
-        OutputMode::ReadableView => DocumentOutputMode::ReadableView,
-        OutputMode::ReadableJson => DocumentOutputMode::ReadableJson,
-        OutputMode::ProtocolJson => DocumentOutputMode::ProtocolJson,
+        OutputMode::ReadableView => OutputPlan::Rendered(render_readable_response),
+        OutputMode::ProtocolJson => OutputPlan::ProtocolJson,
     }
 }
 
-fn cli_output_mode(mode: DocumentOutputMode) -> OutputMode {
-    match mode {
-        DocumentOutputMode::ReadableView => OutputMode::ReadableView,
-        DocumentOutputMode::ReadableJson => OutputMode::ReadableJson,
-        DocumentOutputMode::ProtocolJson => OutputMode::ProtocolJson,
-    }
-}
-
-fn response_operation(response: &ProtocolResponse) -> Option<Operation> {
-    match response {
-        ProtocolResponse::Success(success) => Some(success.operation),
-        ProtocolResponse::Failure(failure) => failure.operation,
-    }
-}
-
-fn write_document_output_error<W: Write, E: Write>(
-    error: DocumentOutputError,
-    mode: DocumentOutputMode,
-    operation: Option<Operation>,
-    stdout: &mut W,
-    stderr: &mut E,
-) -> i32 {
-    if matches!(&error, DocumentOutputError::ReadableViewRender(_)) {
+fn write_document_output_error<E: Write>(error: DocumentOutputError, stderr: &mut E) -> i32 {
+    if matches!(&error, DocumentOutputError::Render(_)) {
         return write_bounded_fatal_diagnostic(&error, stderr);
     }
 
-    if !error.can_project_as_primary_diagnostic() {
-        return write_io_error(io::Error::other(error), stderr);
-    }
-
-    let app_error = AppError::internal(error.primary_error_id());
-    write_error(ErrorOutput {
-        error: &app_error,
-        output_mode: cli_output_mode(mode),
-        operation,
-        stdout,
-        stderr,
-    })
+    write_io_error(io::Error::other(error), stderr)
 }
 
 fn write_bounded_fatal_diagnostic<E: Write>(error: &DocumentOutputError, stderr: &mut E) -> i32 {

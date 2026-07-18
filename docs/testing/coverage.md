@@ -14,7 +14,9 @@
 
 | 维度 | 最低覆盖要求 | 主要测试层 |
 | --- | --- | --- |
-| 输出层 | `readable-view`、`readable-json` 和 `protocol-json` 至少各有代表性外部入口断言；schema/readable 映射由验证脚本覆盖。 | CLI smoke、schema/docs validators、Rust renderer tests |
+| Shared output 编排 | 从 success/failure `ProtocolResponse` 覆盖 `ProtocolJson` 与 `Rendered(RenderStrategy)`；rendered path 覆盖 built-in/custom renderer、exact text、`RenderFailure` before stdout、no fallback 和独立 writer failure。 | Rust output/renderer tests |
+| CLI output mapping 与 migration | 省略 output、显式 `readable-view`、`protocol-json` 和提前 document failure 各保留代表；已删除 `readable-json` 以 CLI/config 普通 invalid-value 等价类代表，不建立旧值矩阵。 | CLI smoke、Rust core/parser/config tests |
+| Protocol/rendered isolation | `ProtocolJson` 不受 renderer availability/behavior 影响并继续符合原始协议 schema；built-in conformance 从同一 `ProtocolResponse` 验证最终 `readable-view` text。 | CLI smoke、protocol integration、readable conformance tests |
 | 命令族 | 每个正式命令族至少覆盖一个成功路径、一个代表性失败或 help 边界；不为参数组合建立笛卡尔积。 | CLI smoke、Rust parser/config tests |
 | 文档能力 | `outline`、`read`、`find`、`info` 覆盖 core CLI、static registry adapter dispatch 和 protocol/readable 输出中的代表路径。 | CLI smoke、Rust adapter/protocol tests |
 | adapter inspection | descriptor metadata、static registry membership 和 `adapter list` 覆盖 static registry metadata、linked handler availability 和 adapter layer 可用性；manifest/probe-shaped JSON 只作为 schema/example contract material。 | CLI smoke、schema/docs validators、Rust core/adapter tests |
@@ -27,8 +29,8 @@
 ## 层级选择
 
 - CLI smoke：证明真实 core CLI 入口、stdout/stderr、exit code、strict failure/error 投影承载位置和 package 可执行性。
-- Rust tests：证明 parser、ref、分页、decode stage、diagnostic record/code/details/投影 helper、renderer 和内部状态转换等自定义逻辑不变量。
-- schema/docs validators：证明字段形状、示例链路、schema 投影映射和文档化 fixture 与当前 owner 文档一致，且 schema/example/fixture 不成为 code/details 规则来源。
+- Rust tests：证明 parser、ref、分页、decode stage、diagnostic record/code/details/投影 helper、shared output plans、renderer 和内部状态转换等自定义逻辑不变量。
+- schema/docs validators：证明 protocol 字段形状、示例链路、schema 投影映射和文档化 fixture 与当前 owner 文档一致；`readable-view` 由 conformance text 验证，schema/example/fixture 不成为 code/details 规则来源。
 - 测试用例维护：定义测试函数变更时的 case 归属、账本更新和 `@case` 标记维护流程。
 - 测试用例编号账本：保存最终 case 条目、证明目标和源码 `@case` 标记映射，不替代测试实现或覆盖矩阵。
 

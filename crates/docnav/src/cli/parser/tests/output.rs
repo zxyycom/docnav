@@ -36,8 +36,8 @@ fn parse_explicit_protocol_json() {
 }
 
 #[test]
-fn invalid_output_value_remains_a_canonical_candidate() {
-    let parsed = parse(["outline", "doc.md", "--output", "text"])
+fn removed_output_value_remains_a_canonical_candidate_for_navigation_validation() {
+    let parsed = parse(["outline", "doc.md", "--output", "readable-json"])
         .expect("enum validation belongs to selected canonical resolution");
     let CliCommand::Document(command) = parsed.command else {
         panic!("expected document command");
@@ -49,6 +49,6 @@ fn invalid_output_value_remains_a_canonical_candidate() {
             .iter()
             .find(|candidate| candidate.field().as_str() == "docnav.defaults.output")
             .map(|candidate| candidate.input()),
-        Some(&CandidateInput::Value(serde_json::json!("text")))
+        Some(&CandidateInput::Value(serde_json::json!("readable-json")))
     );
 }

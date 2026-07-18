@@ -73,40 +73,6 @@ fn invocation_output_write_failure_logs_output_projection_without_completion() {
 }
 
 #[test]
-fn invocation_readable_json_stdout_stays_single_readable_value() {
-    let (_workspace, project_root) = markdown_project("invocation-readable-json", "# One\n");
-    let context = default_context(project_root.clone());
-    let log_path = project_root.join(".log").join("readable-json.jsonl");
-    let mut command = outline_command(None, None);
-    set_cli_value(
-        &mut command,
-        "docnav.defaults.output",
-        "--output",
-        serde_json::json!("readable-json"),
-    );
-    command.invocation_log = Some(".log/readable-json.jsonl".to_owned());
-    let request = DocumentRequest::from_config_context(command, context);
-
-    let outcome = AdapterRuntime.execute_document(request).unwrap();
-    let (exit_code, stdout, stderr) = write_outcome_text_with_exit(outcome);
-    let output = parse_single_json_value(&stdout);
-    let events = read_jsonl_events(&log_path);
-
-    assert_eq!(exit_code, 0);
-    assert_eq!(stderr, "");
-    assert_eq!(output["kind"], "structured");
-    assert!(
-        output.get("ok").is_none(),
-        "readable-json leaked protocol envelope"
-    );
-    assert_no_invocation_event_text(&stdout);
-    assert_eq!(
-        event_named(&events, "operation_completed")["event"],
-        "operation_completed"
-    );
-}
-
-#[test]
 fn invocation_readable_view_stdout_stays_free_of_log_events() {
     let (_workspace, project_root) = markdown_project("invocation-readable-view", "# One\n");
     let context = default_context(project_root.clone());

@@ -135,7 +135,7 @@ fn unused_known_argument_value_is_rejected_before_execution() {
         "--page",
         "nope",
         "--output",
-        "readable-json",
+        "readable-view",
     ])
     .expect_err("unused page should fail info");
 

@@ -22,6 +22,14 @@ fn detects_equals_protocol_json_output() {
 }
 
 #[test]
+fn document_without_output_defaults_to_readable_view() {
+    let context = output_context(&strings(&["read", "doc.md", "--ref", "R1"]));
+
+    assert_eq!(context.output_mode, OutputMode::ReadableView);
+    assert_eq!(context.operation, Some(Operation::Read));
+}
+
+#[test]
 fn non_document_output_context_keeps_plain_command_semantics() {
     for args in [
         vec!["--help"],

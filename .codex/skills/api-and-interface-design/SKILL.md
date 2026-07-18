@@ -15,7 +15,7 @@ description: >-
 
 本 skill 不替代具体产品规范。项目专属 ownership、文档入口和验证材料只在对应 scope 内读取。
 
-Docnav document output mode 当前只包含 `readable-view`、`readable-json` 和 `protocol-json`；非文档 help/version 纯文本通道使用 PlainText 或等价明确名称，不并入 document output mode。
+Docnav document output mode 当前只包含 `readable-view` 和 `protocol-json`；非文档 help/version 纯文本通道使用 PlainText 或等价明确名称，不并入 document output mode。
 
 ## 读取策略
 

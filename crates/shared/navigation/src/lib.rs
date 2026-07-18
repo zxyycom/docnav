@@ -49,18 +49,15 @@ pub fn document_adapter_routing_fields(
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NavigationOutputMode {
     ReadableView,
-    ReadableJson,
     ProtocolJson,
 }
 
 impl NavigationOutputMode {
-    pub const ACCEPTED_VALUES: &'static [&'static str] =
-        &["readable-view", "readable-json", "protocol-json"];
+    pub const ACCEPTED_VALUES: &'static [&'static str] = &["readable-view", "protocol-json"];
 
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::ReadableView => "readable-view",
-            Self::ReadableJson => "readable-json",
             Self::ProtocolJson => "protocol-json",
         }
     }
@@ -68,7 +65,6 @@ impl NavigationOutputMode {
     pub fn parse(value: &str) -> Result<Self, String> {
         match value {
             "readable-view" => Ok(Self::ReadableView),
-            "readable-json" => Ok(Self::ReadableJson),
             "protocol-json" => Ok(Self::ProtocolJson),
             _ => Err(format!(
                 "invalid output value {value:?}, accepted values: {}",

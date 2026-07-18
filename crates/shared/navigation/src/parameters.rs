@@ -67,7 +67,7 @@ pub struct ResolvedNavigationInput {
 
 impl FieldStringEnum for NavigationOutputMode {
     fn variants() -> &'static [Self] {
-        &[Self::ReadableView, Self::ReadableJson, Self::ProtocolJson]
+        &[Self::ReadableView, Self::ProtocolJson]
     }
 
     fn as_str(&self) -> &'static str {

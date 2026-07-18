@@ -97,7 +97,7 @@
       {
         "identity": "docnav.defaults.output",
         "source": "project",
-        "value": "readable-json"
+        "value": "protocol-json"
       },
       {
         "identity": "docnav.defaults.pagination.enabled",
