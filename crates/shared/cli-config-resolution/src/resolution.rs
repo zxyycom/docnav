@@ -1,9 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use docnav_typed_fields::{
-    FieldDefSet, FieldIdentity, FieldValidationErrors, FieldValueMap, TypedValue, ValidationFailure,
-};
+use docnav_typed_fields::{FieldDefSet, FieldIdentity, FieldValueMap, TypedValue};
 
 use crate::diagnostics::ResolutionDiagnostic;
 use crate::source::{Source, SourceId, SourceKind, SourceLocator};
@@ -38,7 +36,6 @@ impl ResolutionResult {
         if !self.diagnostics.is_empty() {
             return Err(MaterializationError {
                 diagnostics: self.diagnostics.clone(),
-                validation_failures: Vec::new(),
             });
         }
         Ok(self
@@ -52,32 +49,16 @@ impl ResolutionResult {
             })
             .collect())
     }
-
-    pub fn materialize_with<T, F>(&self, materialize: F) -> Result<T, MaterializationError>
-    where
-        F: FnOnce(&FieldValueMap) -> Result<T, FieldValidationErrors>,
-    {
-        let values = self.materialize()?;
-        materialize(&values).map_err(|errors| MaterializationError {
-            diagnostics: Vec::new(),
-            validation_failures: errors.into_failures(),
-        })
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MaterializationError {
     diagnostics: Vec<ResolutionDiagnostic>,
-    validation_failures: Vec<ValidationFailure>,
 }
 
 impl MaterializationError {
     pub fn diagnostics(&self) -> &[ResolutionDiagnostic] {
         &self.diagnostics
-    }
-
-    pub fn validation_failures(&self) -> &[ValidationFailure] {
-        &self.validation_failures
     }
 }
 
@@ -85,9 +66,8 @@ impl fmt::Display for MaterializationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "resolution has {} diagnostic(s) and {} materialization validation failure(s)",
-            self.diagnostics.len(),
-            self.validation_failures.len()
+            "resolution has {} diagnostic(s)",
+            self.diagnostics.len()
         )
     }
 }

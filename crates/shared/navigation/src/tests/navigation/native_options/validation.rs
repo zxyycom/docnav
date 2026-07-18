@@ -1,7 +1,7 @@
 use docnav_protocol::ProtocolDiagnosticCode;
 use serde_json::{json, Value};
 
-use crate::execute_loaded_navigation_command;
+use crate::{execute_loaded_navigation_command, NavigationFailureLayer};
 
 use super::super::super::support::{
     cli_invalid_candidate, cli_value_candidate, config_sources, navigation_command,
@@ -87,8 +87,6 @@ fn navigation_reports_explicit_native_option_type_failure() {
 
 #[test]
 fn navigation_blocks_dispatch_when_native_option_type_cannot_materialize() {
-    // StubAdapter returns a successful outline if invoked, so this full-command error proves
-    // materialization stops before dispatch.
     let error = execute_loaded_navigation_command(
         navigation_command(vec![cli_value_candidate(
             "docnav.adapters.docnav-markdown.options.max_heading_level",
@@ -100,6 +98,10 @@ fn navigation_blocks_dispatch_when_native_option_type_cannot_materialize() {
         &StubRegistry,
     )
     .expect_err("type invalid");
+    assert_eq!(
+        error.failure_layer(),
+        Some(NavigationFailureLayer::RequestConstruction)
+    );
     let protocol_error = protocol_error(error.diagnostic());
 
     assert_eq!(

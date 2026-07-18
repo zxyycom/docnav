@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-use docnav_typed_fields::{FieldIdentity, FieldPath, JsonValue, ProcessingLocator};
+use docnav_typed_fields::{FieldIdentity, FieldPath, JsonValue};
 
 mod env;
 
@@ -53,20 +53,6 @@ impl SourceLocator {
             Self::EnvVar(name) => name.clone(),
             Self::ConfigPath(path) | Self::DirectPath(path) => path.segments().join("."),
             Self::Default(label) => label.clone(),
-        }
-    }
-}
-
-impl TryFrom<ProcessingLocator> for SourceLocator {
-    type Error = SourceError;
-
-    fn try_from(locator: ProcessingLocator) -> Result<Self, Self::Error> {
-        match locator {
-            ProcessingLocator::CliFlag(flag) => Ok(Self::CliFlag(flag)),
-            ProcessingLocator::EnvVar(name) => Ok(Self::EnvVar(name)),
-            ProcessingLocator::ConfigPath(path) => Ok(Self::ConfigPath(path)),
-            ProcessingLocator::JsonPath(path) => Ok(Self::DirectPath(path)),
-            ProcessingLocator::RustField => Err(SourceError::UnsupportedProcessingLocator(locator)),
         }
     }
 }
@@ -186,7 +172,6 @@ pub enum SourceError {
         source_kind: SourceKind,
         locator: SourceLocator,
     },
-    UnsupportedProcessingLocator(ProcessingLocator),
 }
 
 impl fmt::Display for SourceError {
@@ -206,12 +191,6 @@ impl fmt::Display for SourceError {
                 formatter,
                 "source locator {locator:?} is incompatible with source kind {source_kind:?}"
             ),
-            Self::UnsupportedProcessingLocator(locator) => {
-                write!(
-                    formatter,
-                    "processing locator {locator:?} is not a source locator"
-                )
-            }
         }
     }
 }

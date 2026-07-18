@@ -21,27 +21,10 @@ pub(crate) fn inspect_config_sources(
         .map_err(|_| NavigationError::internal("config-routing-fields-build-failed"))?;
     let invocation_log_fields = fields::invocation_log_fields()
         .map_err(|_| NavigationError::internal("config-invocation-log-fields-build-failed"))?;
-    let routing_resolution = resolve_with_fields(
-        &routing_fields,
-        None,
-        None,
-        config_sources,
-        "config-inspection-routing",
-    )?;
-    let catalog_resolution = resolve_with_fields(
-        catalog.fields(),
-        None,
-        None,
-        config_sources,
-        "config-inspection-catalog",
-    )?;
-    let invocation_log_resolution = resolve_with_fields(
-        &invocation_log_fields,
-        None,
-        None,
-        config_sources,
-        "config-inspection-invocation-log",
-    )?;
+    let routing_resolution = resolve_with_fields(&routing_fields, None, None, config_sources)?;
+    let catalog_resolution = resolve_with_fields(catalog.fields(), None, None, config_sources)?;
+    let invocation_log_resolution =
+        resolve_with_fields(&invocation_log_fields, None, None, config_sources)?;
     let scalar_fields = [&routing_fields, catalog.fields(), &invocation_log_fields];
     let resolved_fields = [
         (&routing_fields, &routing_resolution),

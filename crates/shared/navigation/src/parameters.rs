@@ -24,7 +24,6 @@ pub use catalog::{
     DocumentParameterEntry,
 };
 pub(crate) use fields::adapter_routing_fields;
-pub use fields::{DocumentCliFieldAttribution, DocumentCliFieldSet, DocumentCliFieldSetBuildError};
 pub(crate) use inspection::inspect_config_sources;
 
 pub(super) mod ids {
@@ -88,7 +87,6 @@ pub fn resolve_adapter_intent(
         Some(input::direct_input(command)),
         Some(&cli_source),
         config_sources,
-        "adapter-intent",
     )?;
 
     config::first_resolution_error(&resolution, config_sources)?;
@@ -114,12 +112,8 @@ pub fn resolve_operation_input(
         catalog,
     )?;
 
-    let resolution = resolve_command_with_fields(
-        operation_fields.as_ref(),
-        command,
-        config_sources,
-        "operation-input",
-    )?;
+    let resolution =
+        resolve_command_with_fields(operation_fields.as_ref(), command, config_sources)?;
 
     config::first_operation_resolution_error(
         &resolution,
@@ -154,12 +148,8 @@ pub fn resolve_context_defaults(
         catalog,
     )?;
 
-    let resolution = resolve_command_with_fields(
-        operation_fields.as_ref(),
-        command,
-        config_sources,
-        "context-defaults",
-    )?;
+    let resolution =
+        resolve_command_with_fields(operation_fields.as_ref(), command, config_sources)?;
 
     config::first_operation_resolution_error(
         &resolution,
@@ -557,32 +547,19 @@ fn resolve_with_fields(
     direct_input: Option<input::DirectInput>,
     cli_source: Option<&Source>,
     config_sources: &NavigationConfigSources,
-    context: &str,
 ) -> Result<ResolutionResult, NavigationError> {
     resolution::resolve(fields, direct_input.as_ref(), cli_source, config_sources)
-        .map_err(|_| NavigationError::internal(resolution_pipeline_error_id(context)))
 }
 
 fn resolve_command_with_fields(
     fields: &docnav_typed_fields::FieldDefSet,
     command: &NavigationCommand,
     config_sources: &NavigationConfigSources,
-    context: &str,
 ) -> Result<ResolutionResult, NavigationError> {
     resolve_with_fields(
         fields,
         Some(input::direct_input(command)),
         Some(&command.cli_source),
         config_sources,
-        context,
     )
-}
-
-fn resolution_pipeline_error_id(context: &str) -> &'static str {
-    match context {
-        "adapter-intent" => "adapter-intent-resolution-failed",
-        "operation-input" => "operation-input-resolution-failed",
-        "context-defaults" => "context-defaults-resolution-failed",
-        _ => "parameter-resolution-failed",
-    }
 }
