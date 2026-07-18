@@ -1,9 +1,9 @@
 ## RENAMED Requirements
 
-- FROM: `Readable-view and readable-json share one payload source`
-- TO: `Rendered output consumes the protocol response`
-- FROM: `Renderer config owns readable-view framing`
-- TO: `Selected renderer owns presentation text`
+- FROM: `### Requirement: Readable-view and readable-json share one payload source`
+- TO: `### Requirement: Rendered output consumes the protocol response`
+- FROM: `### Requirement: Renderer config owns readable-view framing`
+- TO: `### Requirement: Selected renderer owns presentation text`
 
 ## MODIFIED Requirements
 
