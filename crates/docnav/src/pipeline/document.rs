@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::cli::DocumentCommand;
+use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::{load_context_for_project, ConfigContext};
 use crate::error::AppResult;
 use crate::invocation_log::InvocationLogger;
@@ -13,8 +13,14 @@ use super::PipelineContext;
 pub(super) fn execute<T: DocnavRuntime>(
     command: DocumentCommand,
     pipeline: &PipelineContext<'_, T>,
+    error_output_mode: &mut OutputMode,
 ) -> AppResult<CommandOutcome> {
     let context = DocumentPipelineContext::from_command(command)?;
+    // Navigation owns the final output mode; this hint only preserves config
+    // precedence when execution fails before navigation returns an outcome.
+    if let Some(output_mode) = context.error_output_mode() {
+        *error_output_mode = output_mode;
+    }
     pipeline
         .services()
         .runtime()
@@ -50,7 +56,29 @@ impl DocumentPipelineContext {
         })
     }
 
+    fn error_output_mode(&self) -> Option<OutputMode> {
+        if let Some(output_mode) = self.command.output_mode() {
+            return Some(output_mode);
+        }
+        if self.command.has_output_candidate() {
+            return None;
+        }
+        configured_output_mode(&self.context)
+    }
+
     fn into_request(self) -> DocumentRequest {
         DocumentRequest::from_config_context_started(self.command, self.context, self.started)
     }
+}
+
+fn configured_output_mode(context: &ConfigContext) -> Option<OutputMode> {
+    if let Some(value) = context.project_config.defaults.output.as_deref() {
+        return value.parse().ok();
+    }
+    context
+        .user_config
+        .defaults
+        .output
+        .as_deref()
+        .and_then(|value| value.parse().ok())
 }

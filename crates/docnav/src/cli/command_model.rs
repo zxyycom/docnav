@@ -117,12 +117,16 @@ impl DocumentCommand {
             .find(|candidate| candidate.field().as_str() == identity)
     }
 
-    fn output_mode(&self) -> Option<OutputMode> {
+    pub(crate) fn output_mode(&self) -> Option<OutputMode> {
         self.cli_candidate(DOCUMENT_OUTPUT_FIELD_ID)
             .and_then(|candidate| match candidate.input() {
                 CandidateInput::Value(serde_json::Value::String(value)) => value.parse().ok(),
                 CandidateInput::Value(_) | CandidateInput::Invalid { .. } => None,
             })
+    }
+
+    pub(crate) fn has_output_candidate(&self) -> bool {
+        self.cli_candidate(DOCUMENT_OUTPUT_FIELD_ID).is_some()
     }
 }
 

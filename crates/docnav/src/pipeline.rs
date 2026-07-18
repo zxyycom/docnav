@@ -4,7 +4,9 @@ mod document;
 mod meta;
 mod project;
 
-use crate::cli::{AdapterCommand, CliCommand, ConfigCommand, ConfigPathArgs, DocumentCommand};
+use crate::cli::{
+    AdapterCommand, CliCommand, ConfigCommand, ConfigPathArgs, DocumentCommand, OutputMode,
+};
 use crate::error::AppResult;
 use crate::output::CommandOutcome;
 use crate::runtime::DocnavRuntime;
@@ -12,8 +14,9 @@ use crate::runtime::DocnavRuntime;
 pub(crate) fn execute<T: DocnavRuntime>(
     command: CliCommand,
     runtime: &T,
+    error_output_mode: &mut OutputMode,
 ) -> AppResult<CommandOutcome> {
-    PipelineContext::from_runtime(runtime).execute(command)
+    PipelineContext::from_runtime(runtime).execute(command, error_output_mode)
 }
 
 struct PipelineContext<'a, T: DocnavRuntime> {
@@ -27,9 +30,13 @@ impl<'a, T: DocnavRuntime> PipelineContext<'a, T> {
         }
     }
 
-    fn execute(&self, command: CliCommand) -> AppResult<CommandOutcome> {
+    fn execute(
+        &self,
+        command: CliCommand,
+        error_output_mode: &mut OutputMode,
+    ) -> AppResult<CommandOutcome> {
         match CommandFamily::from(command) {
-            CommandFamily::Document(command) => document::execute(command, self),
+            CommandFamily::Document(command) => document::execute(command, self, error_output_mode),
             CommandFamily::Config(command) => configuration::execute(command, self),
             CommandFamily::Adapter(command) => adapter::execute(command),
             CommandFamily::Project(command) => project::execute(command),

@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { createProject } from "../fixtures.ts";
-import type { SmokeProject } from "../fixtures.ts";
+import { createProject, type SmokeProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
+import { assertConfiguredProtocolEarlyFailure } from "./output-config.ts";
 import {
   expect,
   expectExit,
@@ -70,10 +70,7 @@ async function readFirstOutlineRef(project: SmokeProject): Promise<string> {
   return ref;
 }
 
-async function readDocumentProtocolJson(
-  project: SmokeProject,
-  outlineRef: string
-): Promise<ProtocolDocumentOutput> {
+async function readDocumentProtocolJson(project: SmokeProject, outlineRef: string): Promise<ProtocolDocumentOutput> {
   const record = await runCli("CORE-OUTPUT-001 read protocol-json output", [
     "read",
     project.normalRelPath,
@@ -179,6 +176,7 @@ async function assertEarlyDocumentFailureOutputModes(project: SmokeProject) {
     "early failure preserves the same path fact across protocol and readable output"
   );
   expectReadableViewBlockRestoresField(readable, readable.stdout, "/error", protocolMessage);
+  await assertConfiguredProtocolEarlyFailure(missingPath);
 }
 
 async function assertRemovedReadableJsonCliRejected(project: SmokeProject) {

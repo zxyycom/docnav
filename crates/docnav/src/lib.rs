@@ -118,10 +118,10 @@ impl CliInvocation {
     fn execute<T: DocnavRuntime>(self, runtime: &T) -> InvocationExecution {
         let Self {
             command,
-            output_context,
+            mut output_context,
         } = self;
         InvocationExecution {
-            result: pipeline::execute(command, runtime),
+            result: pipeline::execute(command, runtime, &mut output_context.output_mode),
             output_context,
         }
     }
