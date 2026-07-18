@@ -4,12 +4,15 @@
 Define document navigation input resolution: core-supplied command facts, config source descriptors and paths, registry handoff, config source loading, routing input extraction, adapter selection, selected adapter typed-field declarations, source priority, typed validation/extraction, operation argument binding, request construction, pre-dispatch policy, and linked adapter dispatch.
 ## Requirements
 ### Requirement: Core hands raw navigation inputs to navigation
-Core CLI MUST hand document operation command facts, normalized path facts, config source descriptors/paths, and the static adapter registry to navigation without pre-owning adapter options or operation arguments.
+
+Core CLI MUST hand document operation command facts, normalized path facts, config source descriptors/paths, the static adapter registry, and the core-owned closed parameter catalog to navigation without resolving operation arguments. The selected adapter definition contributes capability and linked strategy facts to this handoff; parameter facts come from the catalog.
 
 #### Scenario: Outline handoff
+
 - **WHEN** core parses `docnav outline <path>`
 - **THEN** it identifies the operation and path facts
-- **THEN** navigation receives the raw navigation input package for resolution
+- **THEN** navigation receives the raw navigation input package and uses the core catalog for resolution
+- **THEN** the selected adapter definition supplies behavior facts only
 
 ### Requirement: Navigation loads config sources with origin-aware absence
 Navigation MUST load config sources from core-provided descriptor paths and preserve whether each source is explicit, default, absent, present invalid, or present valid.
@@ -25,42 +28,21 @@ Navigation MUST load config sources from core-provided descriptor paths and pres
 - **THEN** fallback behavior remains available only for absent default sources
 
 ### Requirement: Navigation selects adapter before adapter parameter extraction
-Navigation MUST select the adapter using routing inputs and registry facts before extracting selected adapter native options. The selected registry entry MUST expose an adapter definition, and navigation MUST consume native option declarations and capability declarations from that selected definition.
+
+Navigation MUST select the adapter using routing inputs and registry facts before filtering adapter-scoped entries for selected-operation candidate extraction and resolution. Full catalog config validation is a separate projection and MUST NOT be treated as adapter parameter extraction. The selected registry entry MUST expose an adapter definition for capability and linked strategy facts. Document-operation parameter declarations MUST come from the core catalog rather than that definition.
 
 #### Scenario: Multiple adapters exist
+
 - **WHEN** registry contains multiple candidate adapters
 - **THEN** navigation selects the adapter according to selection rules
-- **THEN** only the selected adapter's native declarations are used for extraction
-- **THEN** declarations from unselected adapter definitions remain outside the operation field set
+- **THEN** only core catalog entries applicable to the selected adapter and operation participate in resolution
+- **THEN** entries scoped to unselected adapters remain outside the operation field set
 
 #### Scenario: Selected definition provides capability facts
+
 - **WHEN** navigation has selected an adapter
-- **THEN** navigation reads optional capability declarations from the selected adapter definition
-- **THEN** pre-dispatch policy uses only those declared support facts
-
-#### Scenario: Navigation receives selected definition as the fact source
-- **WHEN** core registry returns a selected adapter entry
-- **THEN** the selected entry provides the adapter definition used for declaration registration, full-read pre-dispatch, and dispatch
-- **THEN** navigation uses definition-provided adapter-owned native option and capability semantics
-
-### Requirement: Selected adapter declarations own parameter facts
-Selected adapter typed-field declarations MUST provide adapter-owned option identity, extraction metadata, defaults, validation facts, operation applicability, and internal typed handoff/accessor binding metadata used during navigation resolution. These declarations MUST come from the selected adapter definition. The same declaration MUST drive extraction and handler binding for request construction and dispatch.
-
-#### Scenario: Selected Markdown adapter
-- **WHEN** Markdown is selected
-- **THEN** Markdown native option declarations are registered for extraction from the selected adapter definition
-- **THEN** non-Markdown option declarations remain outside the selected declaration set
-- **THEN** resolved Markdown option values can be handed to the Markdown handler as typed native option values through the internal dispatch boundary
-
-#### Scenario: Selected adapter declaration binds typed handoff
-- **WHEN** a selected adapter declaration includes typed handoff or accessor binding metadata
-- **THEN** navigation uses that metadata after validation and extraction
-- **THEN** request construction or dispatch prepares the adapter-specific typed option value for the handler
-
-#### Scenario: Selected declaration binds dispatch
-- **WHEN** navigation has validated a selected adapter native option
-- **THEN** the handler binding comes from the same selected declaration used for extraction
-- **THEN** request construction uses that declaration as the adapter-owned mapping for that option
+- **THEN** it reads optional capability declarations and the linked strategy from the selected adapter definition
+- **THEN** it reads parameter facts from the core catalog
 
 ### Requirement: Source priority is explicit over project over user over built-in
 Navigation MUST merge input sources in the priority order explicit, project config, user config, then built-in defaults. A narrower source boundary is valid only when its owner capability states the exception.
@@ -71,46 +53,39 @@ Navigation MUST merge input sources in the priority order explicit, project conf
 - **THEN** source attribution records that explicit source
 
 ### Requirement: Config sources are inputs, not semantic owners
-Project and user config files MUST be treated as input sources. The semantic owner of each field remains core, navigation, adapter, output, or another declared capability.
 
-#### Scenario: Adapter option in config
-- **WHEN** a config file provides a Markdown native option
+Project and user config files MUST be treated as input sources. Core catalog MUST own caller-configurable document-operation parameter identity, paths, standard types, defaults, merge strategy, optional exact adapter-id marker, operation/closed-consumer bindings, and the static validation selected for core execution. Navigation MUST own source resolution and consumer-specific projection construction. An adapter MAY own how a standard adapter-scoped value affects format behavior and MAY validate algorithmic semantics before use.
+
+#### Scenario: Markdown-scoped parameter in config
+
+- **WHEN** a config file provides `options.docnav-markdown.max_heading_level`
 - **THEN** navigation attributes the source to that config
-- **THEN** Markdown remains the owner of the option semantics
-
-### Requirement: Adapter native options are owner-scoped
-Navigation MUST validate and extract native options only when they are declared by the selected adapter definition. Undeclared owner-scoped options MUST fail strictly. Declared native options MUST be resolved into typed values before dispatch, and handlers receive those typed values or accessors for native-option consumption.
-
-#### Scenario: Unknown native option
-- **WHEN** a caller provides an option not declared by the selected adapter
-- **THEN** navigation reports a strict input diagnostic
-- **THEN** dispatch stops before that option reaches an adapter handler
-
-#### Scenario: Declared native option becomes typed handoff
-- **WHEN** a caller provides a declared native option value
-- **THEN** navigation validates the value through the selected adapter declaration
-- **THEN** navigation records source attribution for diagnostics and logging
-- **THEN** the selected handler receives the typed native option value or accessor result
+- **THEN** core catalog provides the document-operation parameter facts
+- **THEN** Markdown owns the value's effect on its outline/find algorithm and may defensively validate it
+- **THEN** Markdown does not become the parameter declaration owner
 
 ### Requirement: Request construction consumes typed resolution results
-Navigation MUST construct operation arguments, request envelopes, and handler-facing adapter input from typed resolution results. Raw argv strings, raw config JSON, and display output are inputs to earlier owners. Request construction or dispatch MUST preserve an internal typed selected-adapter native option handoff/accessor for the operation while protocol output wrappers and external JSON shapes remain under their existing owners.
+
+Navigation MUST construct protocol operation arguments/request envelopes, strategy-facing standard operation input, and `PreparedNavigationRequest` / core output projection as consumer-specific projections of the same typed resolution result. Standard input MUST be the closed operation-specific Rust contract shared by navigation and adapter strategies. Core-defined bindings MUST populate only strategy-visible values through compile-time fields, typed accessors, or closed enum variants rather than a generic parameter lookup surface. `pagination.enabled` MUST combine with `limit` to normalize the effective limit before dispatch; `output` MUST populate only `PreparedNavigationRequest` / core output projection and MUST NOT enter adapter input. Standard input MUST represent completed source resolution and type materialization; it MUST NOT claim that all adapter semantic validation has completed. Protocol `Options` MUST retain its stable serialized values shape. Raw argv strings, raw config JSON, declaration metadata, display output, protocol envelopes, and serialized protocol representation MUST remain outside the strategy-input projection.
 
 #### Scenario: Read request
-- **WHEN** typed resolution produces document path, ref, page, and limit
+
+- **WHEN** core/navigation has normalized document path and ref, and catalog resolution produces page and limit
 - **THEN** navigation constructs read operation arguments
-- **THEN** adapter dispatch receives typed operation input
+- **THEN** adapter dispatch receives those normalized facts through the closed typed read input
 
-#### Scenario: Operation includes selected adapter options
-- **WHEN** typed resolution produces selected adapter native option values
-- **THEN** request construction or dispatch binds those values to the selected adapter input through an internal handoff
-- **THEN** the protocol/readable output wrapper remains owned by the output and protocol capabilities
-- **THEN** raw config JSON is not forwarded as handler input
+#### Scenario: Operation includes an adapter-scoped value
 
-#### Scenario: Protocol-stable options remain separate from handler input
+- **WHEN** typed resolution produces core-defined adapter-scoped values
+- **THEN** request construction binds them according to core catalog operation bindings
+- **THEN** the selected strategy receives those values through compile-time standard-input fields or typed accessors
+
+#### Scenario: Protocol-stable options remain compatible
+
 - **WHEN** protocol request construction includes `OperationArguments.options`
-- **THEN** navigation constructs that protocol-stable object from typed resolution results
-- **THEN** handler-facing typed native option handoff/accessor remains the dispatch contract for declared typed bindings
-- **THEN** protocol output wrapper shape remains separate from adapter handler input typing
+- **THEN** navigation constructs the existing protocol object from typed resolution results
+- **THEN** it constructs standard strategy input directly from the same resolution result
+- **THEN** the external protocol shape remains separate from internal parameter authoring ownership
 
 ### Requirement: Diagnostics preserve owner and source
 Navigation diagnostics MUST preserve the owner boundary, input source, field identity, and reason needed for protocol/readable projection.
@@ -155,69 +130,125 @@ Navigation MUST run the unstructured full-read pre-dispatch check before normal 
 - **THEN** navigation bases that decision on the selected adapter definition's full-read capability group
 
 ### Requirement: Navigation dispatches linked adapter handlers
-After successful input resolution and pre-dispatch checks, navigation MUST dispatch to the selected linked adapter handler and return structured result or diagnostic facts to the owning output/protocol layer. Dispatch MUST use the selected adapter definition's operation handler and prepared internal typed native option handoff/accessor for the selected operation.
+
+After successful input resolution, standard type materialization, and configured core pre-dispatch checks, navigation MUST dispatch the closed standard operation input to the selected linked adapter strategy and return structured result or diagnostic facts to the owning output/protocol layer. The strategy reference and capability context MUST come from the selected adapter definition; applicable operation-specific typed fields or accessors MUST be built from core-catalog resolution. The selected strategy MUST NOT require a second caller-data argument or generic parameter handoff. It MAY return semantic validation diagnostics for conditions not guaranteed by core or MAY repeat a core check defensively.
 
 #### Scenario: Dispatch succeeds
-- **WHEN** navigation has prepared typed operation input
-- **THEN** it calls the selected adapter handler
+
+- **WHEN** navigation has constructed standard typed operation input
+- **THEN** it calls the selected adapter strategy
 - **THEN** it preserves the returned structured result facts for projection
 
-#### Scenario: Dispatch uses selected definition handler
-- **WHEN** navigation dispatches a selected operation
-- **THEN** the operation handler comes from the selected adapter definition
-- **THEN** typed native option values correspond to declarations from the same selected adapter definition
+#### Scenario: Dispatch returns adapter semantic diagnostic
 
-#### Scenario: Dispatch preserves single-definition ownership
-- **WHEN** navigation calls a selected operation handler
-- **THEN** the handler handle, capability context, and native option handoff all originate from the selected adapter definition
-- **THEN** navigation dispatch uses a coherent selected definition for handler handles and native option declarations
+- **WHEN** standard input is well-typed but violates a selected strategy precondition
+- **THEN** the strategy returns a diagnostic before running the unsafe or invalid algorithm path
+- **THEN** navigation preserves that diagnostic for normal protocol/readable projection
+
+#### Scenario: Dispatch combines separate core facts
+
+- **WHEN** navigation dispatches a selected operation
+- **THEN** the strategy implementation comes from the selected adapter definition
+- **THEN** adapter-scoped typed values come from entries applicable to that adapter and operation in core catalog
+- **THEN** routing/strategy facts and parameter facts remain owned by their separate sources
 
 ### Requirement: Navigation exposes parameter aggregation projections
 
-Navigation MUST participate in a parameter aggregation boundary derived from common navigation typed fields, outline mode config fields, and adapter-id namespaced typed-field declarations. The aggregation MUST preserve processing paths, field identity, owner, adapter id when applicable, value kind, constraints, defaults, current owner-specific shape validation handoff when applicable, and source binding facts, and MUST be able to produce CLI/input and config-source projections without taking ownership of adapter-native option semantics or actual source attribution policy.
+Navigation MUST expose scalar parameter projections derived from the core-owned catalog for `page`, `limit`, `pagination.enabled`, `output`, and adapter-namespaced Markdown `max_heading_level`. These projections MUST preserve processing paths, field identity, the optional exact adapter-id marker, operation binding, standard value kind, core validation facts when present, defaults, merge strategy, and closed consumer binding facts. The full config-validation projection MUST combine those scalar catalog facts with the current owner-specific compound validator for `outline.mode_rules` / `outline.thresholds`; those compound algorithms MUST NOT be required to become ordinary scalar catalog fields. The selected-operation field set MUST apply exact adapter-id and operation filters before candidate extraction and resolution. Both catalog views MUST derive from the same scalar facts; strategy validation remains outside those projections.
 
 #### Scenario: Config-source projection includes common fields
 
 - **WHEN** navigation builds the config-source projection for document operation inputs
-- **THEN** metadata for `defaults.pagination.enabled`, `defaults.pagination.limit`, `defaults.output`, and declared outline mode config fields is derived from the same field facts used by navigation resolution
-- **THEN** consumers can validate config source values without redefining those field facts
+- **THEN** metadata for `page`, `defaults.pagination.enabled`, `defaults.pagination.limit`, and `defaults.output` comes from core catalog
+- **THEN** consumers validate config source values without redefining those field facts
 
-#### Scenario: Config-source projection includes adapter-id options
+#### Scenario: Config-source projection includes adapter-scoped fields
 
-- **WHEN** navigation builds config-source metadata from the adapter registry
-- **THEN** native option declarations are projected under `options.<adapter-id>.<option-key>`
-- **THEN** equal option keys from different adapter ids remain distinct config paths
+- **WHEN** navigation builds config-source metadata
+- **THEN** core catalog entries are projected under `options.<adapter-id>.<parameter-key>`
+- **THEN** equal keys for different adapter ids remain distinct config paths
 
 ### Requirement: Config source validation uses the config-source projection
 
-Navigation MUST validate config source keys and declared values through the config-source projection before constructing operation arguments when those fields are consumed for the selected operation. Unknown fields, unknown adapter ids, selected-adapter `options.<adapter-id>.*` fields not declared for the selected operation, owner-specific object/array shape failures in the supported subset, and typed validation failures MUST produce blocking diagnostics with config source attribution. Known adapter-id namespaces for adapters other than the selected adapter MAY remain valid source facts but MUST NOT affect selected operation argument construction.
+Navigation MUST validate config source keys and declared static values through the full core-catalog config projection before constructing operation arguments. Unknown fields, unknown adapter ids, values that cannot be materialized as the catalog standard type, owner-specific object/array shape failures in the supported subset, and configured core validation failures MUST produce blocking diagnostics with config source attribution. A known valid field for another adapter MAY remain a valid source fact, but only the selected-operation field set may contribute candidates to resolution or standard input. Within the selected adapter namespace, a known field not bound to the selected operation MUST continue to produce the existing unsupported-parameter diagnostic. A well-typed selected value whose remaining semantics are deliberately deferred MAY reach the selected strategy.
 
-#### Scenario: Config native option fails selected declaration
+#### Scenario: Config adapter-scoped value fails validation
 
-- **WHEN** a project config file contains `options.docnav-markdown.max_heading_level` with a value outside the Markdown adapter declaration range
-- **THEN** navigation reports a blocking typed validation diagnostic for that config source and field
+- **WHEN** a project config file contains `options.docnav-markdown.max_heading_level` outside `1..=6`
+- **THEN** navigation reports a blocking typed validation diagnostic using core catalog facts
+- **THEN** its public code, owner labels, field/source details, expected/received facts, and guidance remain compatible with the existing adapter-scoped diagnostic contract
 - **THEN** adapter dispatch does not occur
 
-#### Scenario: Config option unsupported by selected adapter
+#### Scenario: Config value requires adapter semantics
 
-- **WHEN** a user config file contains an `options.docnav-markdown.*` key not declared by the selected Markdown adapter operation
-- **THEN** navigation reports an unsupported native option diagnostic for that config source
-- **THEN** the raw option value is not forwarded to the adapter handler
+- **WHEN** a known adapter-scoped config value can be materialized and passes configured core checks but requires document or algorithm context
+- **THEN** navigation constructs standard input with source attribution
+- **THEN** the selected strategy performs the remaining semantic validation
+- **THEN** a semantic failure is returned through the normal diagnostic contract
+
+#### Scenario: Config parameter is not applicable to selected operation
+
+- **WHEN** a user config file contains a known path in the selected adapter namespace that is not bound to the selected operation
+- **THEN** navigation reports an unsupported parameter diagnostic for that config source
+- **THEN** adapter dispatch does not occur for that invalid operation input
+
+#### Scenario: Config contains a known field for another adapter
+
+- **WHEN** a config source contains a well-typed catalog path for an adapter other than the selected adapter
+- **THEN** full config validation accepts the known source fact
+- **THEN** selected-operation resolution does not extract, merge, validate as selected input, or forward that value
 
 #### Scenario: Unknown adapter namespace is blocking
 
 - **WHEN** a config source contains `options.unknown_adapter.max_heading_level`
-- **THEN** navigation reports an unknown adapter id diagnostic with config source attribution
+- **THEN** navigation reports an unknown adapter id or unknown catalog path diagnostic with config source attribution
 - **THEN** adapter dispatch does not occur
 
 ### Requirement: Navigation consumes selected adapter namespace
 
-When navigation constructs operation arguments for a selected adapter and operation, it MUST consume native option values from that selected adapter's `options.<adapter-id>.*` namespace and validate them against the selected operation field set. Values stored under other known adapter ids MUST remain separate source facts and MUST NOT be forwarded to the selected adapter handler.
+When navigation constructs operation arguments for a selected adapter and operation, it MUST consume adapter-scoped values only from untagged core catalog entries or entries whose exact adapter-id marker matches the selected adapter, and only when their operation binding matches. Values stored under other known adapter ids MUST remain separate source facts and MUST NOT be forwarded to the selected adapter strategy.
 
 #### Scenario: Selected adapter reads its own namespace
 
-- **WHEN** a config file contains `options.docnav-markdown.max_heading_level` and `options.docnav-other.max_heading_level`
-- **AND** navigation selects adapter id `docnav-markdown` for an outline operation
-- **THEN** navigation validates and consumes the value under `options.docnav-markdown.max_heading_level`
-- **THEN** the value under `options.docnav-other.max_heading_level` is not forwarded to the Markdown adapter handler or used to validate the Markdown selected operation
+- **WHEN** config contains `options.docnav-markdown.max_heading_level` and `options.docnav-other.max_heading_level`
+- **AND** navigation selects `docnav-markdown` for outline
+- **THEN** full config validation recognizes both catalog paths
+- **THEN** selected-operation resolution applies the core-defined validation policy and consumes only the Markdown path
+- **THEN** the other adapter path is not forwarded to Markdown or used as Markdown operation input
+
+### Requirement: Core catalog owns adapter-scoped parameter facts
+
+Navigation MUST obtain common and adapter-scoped parameter identity, extraction metadata, standard value kind, defaults, merge strategy, core validation facts when present, operation binding, an optional exact static adapter-id marker, and closed compile-time consumer binding from the core-owned closed catalog. Every entry MUST have one compatible closed consumer target. Only strategy-visible values MUST target the shared `StandardInputBinding`; pagination/output controls MUST target navigation/core-owned closed variants and MUST NOT appear in adapter input. An entry without an adapter-id marker is common. An entry with a marker MUST participate in selected-operation resolution only when that marker equals the selected adapter id. Full config validation MUST use the complete catalog projection without making every catalog entry part of the selected operation; navigation MUST apply the exact-id filter and then the operation binding before candidate extraction, resolution, and request construction for that operation. Adapter definitions provide strategy and behavior facts rather than catalog entries. Adapter-side semantic checks MAY consume standard values but MUST NOT contribute parameter facts.
+
+#### Scenario: Selected Markdown adapter
+
+- **WHEN** Markdown is selected for outline
+- **THEN** navigation includes untagged outline parameters and core entries tagged exactly `docnav-markdown`
+- **THEN** core-defined parameters for other adapters or operations remain outside that operation field set
+- **THEN** resolved values are bound to standard Markdown operation input
+
+#### Scenario: Adapter tag does not match
+
+- **WHEN** a catalog entry is tagged for an adapter id different from the selected adapter
+- **THEN** navigation may recognize and validate its config path through the full catalog projection
+- **THEN** navigation excludes that entry from selected candidate extraction and resolution
+- **THEN** the selected strategy cannot observe the field or its source values
+
+#### Scenario: Unknown adapter-scoped parameter
+
+- **WHEN** caller input contains an adapter-scoped path absent from the full catalog, or selected direct input is not bound to the selected adapter and operation
+- **THEN** navigation reports a strict caller-input diagnostic
+- **THEN** dispatch stops before the value reaches the adapter
+
+#### Scenario: Adapter definition contributes behavior facts
+
+- **WHEN** a selected adapter definition is loaded
+- **THEN** navigation reads strategy and capability facts from that definition
+- **THEN** navigation reads all caller-configurable parameter facts from the core catalog
+
+#### Scenario: Adapter validates a standard value
+
+- **WHEN** navigation dispatches a materialized adapter-scoped value whose remaining semantics were not guaranteed by core validation
+- **THEN** the selected strategy may validate the standard value
+- **THEN** the strategy returns a diagnostic or result without changing catalog membership or source behavior
 

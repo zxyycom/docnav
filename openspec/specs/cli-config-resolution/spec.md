@@ -6,9 +6,7 @@ Define the reusable Rust CLI/config resolution contract that maps canonical `Fie
 declarations across CLI, environment, structured config, defaults, and custom sources into
 deterministic, validated typed values with provenance, while keeping framework adapters and
 Docnav-specific behavior outside the framework-independent core.
-
 ## Requirements
-
 ### Requirement: Canonical Standard Parameter Model
 
 The CLI/config resolution library MUST use the existing `docnav-typed-fields` `FieldDef` and `FieldDefSet` model as the canonical standard parameter definition, including identity, value kind, constraints, defaults, merge strategy, validation, set construction checks, and typed materialization support. Each `FieldDef` MUST directly own its `MergeStrategy`, defaulting to `Replace`. The library MAY re-export these types or provide thin `Parameter` / `ParameterSet` aliases, but it MUST NOT require a second field or merge-policy model that copies or associates the same facts by field identity.
@@ -189,78 +187,93 @@ The CLI/config resolution library MUST retain enough provenance to explain selec
 
 ### Requirement: Framework Adapter Boundary
 
-Framework-specific extraction MUST remain outside the framework-independent resolution core. The Cargo workspace MUST provide a clap companion for supported CLI strategies and a structured-config companion for config-path strategies; environment extraction MAY remain in the core because it requires no external framework. The clap companion MUST support string, integer, finite-number, `SetTrue` boolean, repeated-string array, and repeated `key=value` object projections. It MUST reject `ValueKind::Json` CLI projections with `ClapProjectionError::UnsupportedValueKind` and MUST NOT decode a raw CLI string as arbitrary JSON.
+Framework-specific extraction MUST remain outside the framework-independent resolution core. The workspace MUST retain the structured-config companion; environment extraction MAY remain in the core because it requires no external framework. Docnav core CLI MUST own a private, bounded mapping for the flags and value kinds used by its closed catalog. Core CLI, direct input, structured-config, env, and defaults MUST all emit candidates through the same resolution source model.
 
-#### Scenario: Use clap companion with canonical parameters
+#### Scenario: Core CLI maps its closed catalog
 
-- **WHEN** a consumer passes a canonical `FieldDefSet` containing supported CLI strategies to `cli-config-resolution-clap`
-- **THEN** the companion can register or read the declared clap arguments and return candidates for canonical field identities
-- **THEN** it does not require `FieldContract`, `FieldSet`, or duplicated validation metadata
-
-#### Scenario: Reject arbitrary JSON CLI decoding
-
-- **WHEN** a canonical field combines a CLI flag processing locator with `ValueKind::Json`
-- **THEN** `cli-config-resolution-clap` rejects the projection with `ClapProjectionError::UnsupportedValueKind`
-- **THEN** it does not interpret the raw CLI string as an arbitrary JSON candidate
+- **WHEN** core CLI registers or reads document arguments
+- **THEN** it maps only fields from the core-owned document-operation parameter catalog
+- **THEN** it emits canonical candidates for those fields
+- **THEN** it implements only projections required by catalog entries in the release
 
 #### Scenario: Use structured config companion with canonical parameters
 
-- **WHEN** a consumer passes a structured config document and a canonical `FieldDefSet` containing config-path strategies to the config companion
+- **WHEN** navigation passes a structured config document and the core-owned `FieldDefSet` containing config-path strategies to the structured-config companion
 - **THEN** the companion returns candidates for declared canonical field identities
-- **THEN** the resolution core receives them through the same candidate/source model used by CLI and env extraction
+- **THEN** the resolution core receives them through the same candidate/source model used by direct input and env extraction
 
 #### Scenario: Extract environment variables without ambient global state
 
 - **WHEN** a consumer passes an iterable collection of environment key/value pairs and a canonical parameter set to the env extractor
 - **THEN** the extractor reads only declared environment locators
-- **THEN** tests and consumers can supply input without requiring the extractor to own process-global environment access
+- **THEN** tests and core-owned consumers can supply input without requiring the extractor to own process-global environment access
+
+#### Scenario: Environment locator activates extraction
+
+- **WHEN** a catalog field has no environment locator
+- **THEN** the env extractor emits no candidate for that field even if a similarly named environment key exists
+
+#### Scenario: Enabled environment locator emits a candidate
+
+- **WHEN** an owner change adds an environment locator to a catalog field
+- **THEN** the extractor may emit the declared env candidate through the canonical source model
 
 ### Requirement: Docnav Hard Cutover Boundary
 
-Docnav MUST consume the canonical parameter set through the same extraction and resolution API intended for external consumers, while preserving existing Docnav CLI, config, adapter, protocol, diagnostic, and output behavior without a runtime fallback to the old resolver.
+Docnav MUST consume exactly one core-owned closed parameter catalog through canonical typed-field extraction and resolution APIs while preserving existing Docnav CLI, config, merge, accepted-value, adapter behavior, protocol, diagnostic, and output behavior. Resolution MUST produce the standard typed values and provenance needed to construct operation input. Core MAY execute catalog-selected static validation before dispatch; adapter strategies MAY execute or repeat semantic validation after dispatch. The catalog MUST be the only caller-configurable document-operation parameter definition source.
 
-#### Scenario: Remove parallel field-set conversion
+#### Scenario: Resolve common and adapter-scoped core fields
 
-- **WHEN** Docnav resolves navigation fields and selected adapter native options
-- **THEN** it passes existing canonical typed-fields metadata directly to extractors and resolution
-- **THEN** the runtime path does not build a parallel generic field set or copy field type and constraint metadata
+- **WHEN** Docnav resolves navigation fields and a selected adapter's applicable parameters
+- **THEN** it keeps untagged entries plus entries whose exact adapter-id marker matches the selected adapter, then applies the operation binding
+- **THEN** it passes those canonical field definitions directly to extraction and resolution
+- **THEN** it materializes the values needed for core-defined standard operation input
 
-#### Scenario: Preserve Docnav source priority
+#### Scenario: Preserve Docnav source priority and merge behavior
 
-- **WHEN** Docnav maps explicit input, project config, user config, and built-in defaults into ordered sources
-- **THEN** resolution matches Docnav's documented priority behavior
-- **THEN** Docnav remains the owner of adapter applicability, request construction, diagnostic-code mapping, and output projection
+- **WHEN** Docnav maps explicit input, project config, user config, built-in defaults, and any currently enabled sources into ordered sources
+- **THEN** resolution matches Docnav's documented priority behavior and each canonical field's merge strategy
+- **THEN** a field with an enabled env locator uses `explicit > env > project > user > built_in`
+- **THEN** a field without an env locator emits no env candidate and retains `explicit > project > user > built_in`
+- **THEN** Docnav remains the owner of request construction, diagnostic-code mapping, and output projection
 
-#### Scenario: Map pre-parsed input through a consumer-owned source adapter
+#### Scenario: Map pre-parsed input through a core-owned source adapter
 
-- **WHEN** Docnav already holds parsed direct or native CLI input before resolution
-- **THEN** a Docnav-private source adapter may traverse canonical processing metadata and emit public `Source` / `SourceCandidate` values
-- **THEN** the adapter does not maintain a parallel locator table or copy field type, constraint, default, validation, or merge metadata
+- **WHEN** Docnav already holds parsed direct CLI input before resolution
+- **THEN** a Docnav-private source adapter may traverse core catalog processing metadata and emit public `Source` / `SourceCandidate` values
+- **THEN** it uses a bounded direct-input source representation derived from catalog metadata
+- **THEN** field type, core constraint, default, validation, and merge metadata continue to come from the catalog
 
-#### Scenario: Complete cutover removes compatibility paths
+#### Scenario: Resolution leaves adapter semantics to the strategy
 
-- **WHEN** the canonical resolution path passes Docnav equivalence tests
-- **THEN** old resolver paths, runtime feature flags, fallback switches, and field-model compatibility wrappers are absent from the runtime command path
-- **THEN** rollback requires reverting the code change rather than toggling a runtime fallback
+- **WHEN** a core-owned adapter-scoped field has been resolved and materialized but its remaining validity depends on adapter or document context
+- **THEN** resolution preserves the typed value and provenance needed by standard operation input
+- **THEN** it does not require the adapter semantic rule to become a foreign field declaration
+
+#### Scenario: Runtime uses one catalog path
+
+- **WHEN** the core catalog path passes Docnav equivalence tests
+- **THEN** every document operation resolves caller-configurable parameters through that catalog
+- **THEN** no alternative parameter-definition source participates in runtime resolution
 
 ### Requirement: Root Cargo Workspace Membership
 
-The typed-field and CLI/config resolution packages MUST be ordinary members of the Docnav root Cargo workspace under `crates/shared/` and MUST use the root workspace dependency metadata, lockfile, build, test, lint, and documentation surfaces. The root workspace MUST provide separate typed-fields, typed-fields macros, resolution core, clap companion, and structured-config companion packages with their existing package names, and `cli-config-resolution` MUST remain the primary resolution entry that re-exports canonical parameter types. An independently checkoutable workspace repository MUST NOT be required.
+Typed-fields, resolution core, and the structured-config companion MUST remain ordinary members of the Docnav root Cargo workspace under `crates/shared/`, using the root dependency metadata, lockfile, and validation surfaces. `cli-config-resolution` MUST remain the primary resolution entry for canonical parameter types. Shared packages and facade exports MUST correspond to retained production capabilities and consumers.
 
-#### Scenario: 从根 workspace 构建全部 packages
+#### Scenario: Build retained packages from the root workspace
 
 - **WHEN** a maintainer checks out Docnav and runs the root Cargo workspace checks
-- **THEN** typed-fields, its proc-macro, resolution core, clap companion, and structured-config companion resolve from `crates/shared/`
+- **THEN** typed-fields, resolution core, and the structured-config companion resolve from `crates/shared/`
 - **THEN** they use the root lockfile without a nested workspace checkout or dependency-prefetch path
 
-#### Scenario: Docnav 使用内部 resolution packages
+#### Scenario: Workspace contains the retained package set
 
-- **WHEN** Docnav protocol, adapter contracts, navigation, or core consumes canonical fields or resolution behavior
-- **THEN** Cargo resolves the packages as root-workspace path dependencies
-- **THEN** repository placement changes do not alter the runtime parameter semantics owned by the other requirements in this capability
+- **WHEN** workspace metadata and package dependencies are inspected
+- **THEN** each retained shared package has a production capability or consumer identified by this change
+- **THEN** facade exports match that retained package set
 
-#### Scenario: 外部发布仍需独立批准
+#### Scenario: External publication still requires separate approval
 
-- **WHEN** the packages build successfully inside the Docnav root workspace
+- **WHEN** the retained packages build successfully inside the Docnav root workspace
 - **THEN** workspace membership creates no external publication or compatibility contract
 - **THEN** any future external consumer or publication requires a separate change

@@ -91,14 +91,6 @@ Markdown outline, read, and find MUST apply the active pagination budget to sele
 - **THEN** read returns bounded content
 - **THEN** it exposes the next page value
 
-### Requirement: Markdown native options are declared adapter inputs
-Markdown native options MUST be declared through adapter-owned metadata and consumed by navigation input resolution. Markdown option schema and examples are validation material, not independent semantic owners.
-
-#### Scenario: Markdown option is configured
-- **WHEN** a project config provides a declared Markdown option
-- **THEN** navigation attributes that source
-- **THEN** Markdown receives the typed option value
-
 ### Requirement: Markdown supports declared unstructured full-read outline
 Markdown unstructured full-read outline support MUST be declared through adapter hook metadata before navigation can use it. Normal structured outline behavior MUST remain unchanged when the policy does not apply.
 
@@ -162,4 +154,28 @@ Markdown adapter 主文档、adapter tests、case ledger 和 smoke tests MUST �
 - **WHEN** Markdown adapter tests 或 smoke tests 读取包含 frontmatter、普通前导正文和 heading 的 fixture
 - **THEN** 测试覆盖 outline 到 `HEAD:leading` read 的 roundtrip
 - **THEN** 测试覆盖空或纯空白 document head、无可见 heading fallback、find 命中 document head 和 Unicode 分页边界
+
+### Requirement: Markdown consumes core-defined adapter-scoped parameters
+
+Markdown adapter MUST implement the fixed adapter strategy interface and consume the closed operation-specific input defined by the shared operation contract and populated from core catalog resolution. For `max_heading_level`, core MUST own its public flag/config path, standard integer type, public range `1..=6`, default `3`, source resolution, outline/find binding, exact `docnav-markdown` marker, pre-dispatch validation policy, and compile-time standard-input binding. Markdown MUST receive the resolved integer through the typed input field/accessor rather than generic parameter or protocol lookup. Markdown MUST own how that integer filters headings and MAY repeat the range check or perform additional algorithmic semantic validation before use. Markdown schema, examples, and strategy checks remain validation material rather than independent parameter declarations.
+
+#### Scenario: Markdown parameter is configured
+
+- **WHEN** project or user config provides valid `options.docnav-markdown.max_heading_level`
+- **THEN** navigation resolves the source through core catalog
+- **THEN** Markdown receives the standard integer accessor without parsing protocol `Options`
+- **THEN** outline/find apply that value through the standard strategy input
+
+#### Scenario: Core rejects the current public range
+
+- **WHEN** caller input provides `max_heading_level` outside `1..=6`
+- **THEN** core-owned input resolution reports the diagnostic before dispatch
+- **THEN** the existing caller-visible behavior remains compatible
+
+#### Scenario: Markdown defensively repeats a semantic check
+
+- **WHEN** a well-typed standard input reaches Markdown through an internal or deliberately deferred validation path
+- **THEN** Markdown may validate `max_heading_level` before applying the heading strategy
+- **THEN** rejection maps to a compatible diagnostic
+- **THEN** the check does not declare the parameter or participate in source resolution
 
