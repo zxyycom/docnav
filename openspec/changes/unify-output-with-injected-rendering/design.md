@@ -1,29 +1,25 @@
 ## Context
 
-当前 `readable-view` 与 `readable-json` 从同一 serialized readable payload 派生。该 payload 同时是 renderer input、public schema 和 bridge/composition dependency，因此 output owner 实际维护 protocol envelope 与 readable DTO 两套 machine-readable contract。
+当前 document pipeline 的完成结果已经是 `ProtocolResponse`。Output layer 收到该结构后，`protocol-json` 直接序列化它，而两个 readable mode 先把其中的 result/error 转成另一套 readable JSON payload。
 
-目标链路为：
+本 change 删除这套 public readable JSON contract，并把 output flow 收敛为：
 
 ```text
-completed operation outcome or primary diagnostic
+ProtocolResponse
   -> OutputPlan::ProtocolJson
-       -> existing protocol envelope -> stdout
+       -> protocol JSON
   -> OutputPlan::Rendered(RenderStrategy)
-       -> complete UTF-8 text -> stdout
+       -> complete UTF-8 text
 ```
-
-Core CLI 将省略 output 或 `readable-view` 映射到带内置 renderer 的 `Rendered`；`protocol-json` 映射到 `ProtocolJson`。其它 linked code caller 可以直接构造带自定义 renderer 的 `Rendered`，但不会把该实现注册为 public output mode。
 
 ## Ownership
 
 | Concern | Owner | 本 change 的作用 |
 | --- | --- | --- |
-| Operation success outcome、adapter facts、ref 与 pagination | Navigation + adapter contracts | 保持 typed facts，不增加 presentation responsibility |
-| Primary diagnostic identity 与 canonical details | Diagnostics owner | 同一 record 供 protocol serializer 或 renderer 消费 |
-| Protocol envelope 与 machine compatibility | Protocol + output owner | `ProtocolJson` 直接序列化既有 contract |
-| Renderer selection 与 presentation text | Linked composition caller + selected renderer | Core CLI 注入内置 renderer；direct caller 可注入自定义实现 |
-| Path selection、atomic write、render failure 与 channels | `docnav-output` | 编排两个 output paths 并映射 `output_render_failed` |
-| CLI output value 与 process exit | Core CLI | 只映射 mode，不暴露 renderer identity |
+| `ProtocolResponse`、result/error、ref 与 pagination | Protocol + existing operation owners | 保持结构和语义不变 |
+| Output path、renderer invocation 与 document channels | `docnav-output` | 用同一个 response 执行 protocol 或 rendered plan |
+| Renderer selection 与 presentation text | Linked caller + selected renderer | Core CLI 注入内置 renderer |
+| Public output value 与 process exit | Core CLI | 将 mode 映射为 output plan |
 
 ## Decisions
 
@@ -36,55 +32,61 @@ OutputPlan::ProtocolJson
 OutputPlan::Rendered(RenderStrategy)
 ```
 
-Core CLI 只接受 document output values `readable-view` 与 `protocol-json`。省略 output 或选择 `readable-view` 时，core composition 注入内置 `readable-view` renderer；选择 `protocol-json` 时构造 `ProtocolJson`。Help、version 和尚未形成有效 document output context 的 early failure 继续由 PlainText 或其现有 owner 处理，不构成第三个 document output path。
+Core CLI 只接受 `readable-view` 与 `protocol-json`。省略 output 或选择 `readable-view` 时构造带内置 renderer 的 `Rendered`；选择 `protocol-json` 时构造 `ProtocolJson`。Help、version 和其它 non-document output 保持现有 owner。
 
-### Decision 2: Renderer dependency 只由 linked code 提供
+### Decision 2: Renderer 由 linked code 提供
 
-每个 `Rendered` plan 在进入 output orchestration 前必须携带一个 renderer function 或 trait value。Core CLI 的 public `readable-view` value 固定对应内置 renderer；其它 linked code caller 直接调用 shared API 时可以提供替代实现，但不复用 `readable-view` 作为自定义格式名称。
+每个 `Rendered` plan 在进入 output orchestration 前携带一个 renderer function 或 trait value。Core CLI 固定注入内置 `readable-view` renderer；其它 linked caller 可以直接提供自定义 renderer。
 
-CLI、config、environment、manifest、plugin metadata 和 subprocess input 都不携带 renderer implementation 或 strategy id。Adapter definition 继续只描述格式和 operation contract。
+Public input 只选择 output mode，不携带 renderer implementation id。
 
-### Decision 3: Renderer 直接消费完成的 typed outcome
+### Decision 3: Renderer 直接消费 `ProtocolResponse`
 
 Renderer contract 为：
 
 ```text
-RenderStrategy(RenderInput, RenderContext) -> Result<UTF8Text, RenderFailure>
+RenderStrategy(&ProtocolResponse) -> Result<String, RenderFailure>
 ```
 
-`RenderInput` 是一个完成的 operation success outcome 或 primary `DiagnosticRecord`；`RenderContext` 只包含 presentation 所需的 operation 与 selected format/adapter facts。Renderer 可以建立 private helper view，但该 view 不序列化、不发布 schema，也不承担跨进程或跨版本 compatibility。
+`ProtocolResponse` 是 renderer 的完整输入。Success response 提供 typed operation result；failure response 提供现有 protocol error、optional operation 和 request context。Document failure 在进入 output plan 前使用现有 protocol projection 构造成 failure response。
 
-### Decision 4: Output layer 原子提交 text 并拥有可恢复失败
+### Decision 4: Renderer 拥有完整文本，output layer 拥有写入
 
-Renderer 在内存中产生完整 UTF-8 text。成功时 output layer 原样提交该值，不追加 wrapper、block framing、separator 或尾随换行；内置 renderer 自己保持 `readable-view` framing，自定义 renderer 自己定义 presentation contract。
+Renderer 在第一次 stdout write 前返回完整 `String`。Output layer 原样写入该值，不追加 wrapper、separator 或换行。
 
-Renderer 返回 `RenderFailure` 时，output layer 产生 output-owned `output_render_failed` boundary diagnostic，保持 stdout 为空，通过 stderr 与 internal failure exit mapping 报告，并且不调用第二个 renderer。Diagnostic details 只包含 bounded render failure facts，不把 renderer-private payload 变成 public contract。
+Renderer 返回 `RenderFailure` 时，output layer 返回该错误，stdout 保持为空，并且不调用第二个 renderer。Core CLI 对内置 renderer failure 沿用现有 output failure mapping；本 change 不新增或重命名 stable diagnostic code。
 
-### Decision 5: Protocol、logging 与 adapter payload 绕过 renderer
+Renderer 成功后的 stdout writer failure 继续作为独立 I/O error，可能发生在部分 bytes 已写入之后。
 
-`ProtocolJson` 直接序列化既有 success/failure envelope，不构造 `RenderInput`。Renderer 只读取 completed outcome，不改写 ref、page、entries、matches、content type、cost、diagnostic code 或 operation status。Invocation logging 继续写入独立 sink，不进入 renderer input/output、protocol fields 或 adapter handler payload。
+### Decision 5: 内置 renderer 保持 `readable-view` contract
 
-### Decision 6: `readable-json` hard cutover
+内置 renderer 从 `ProtocolResponse` 派生现有 readable presentation，并保持 header、block reference、framing、unstructured outline 和 readable error text 的 owner contract。它可以继续使用 private helper value；只有最终 `readable-view` text 是 public readable contract。
 
-实现删除 `readable-json` mode、serializer、public DTO、schema/examples/fixtures/goldens 和 mode-specific validation，不提供 alias、fallback 或 compatibility branch。需要稳定结构化事实的 caller 改用 `protocol-json`；需要自定义 presentation 的 linked caller 直接构造 `Rendered`。
+### Decision 6: 删除 `readable-json`
+
+实现删除 `readable-json` accepted value、output branch 和 public schema/example/validation surface，不提供 alias 或 fallback。需要稳定结构化输出的 caller 使用 `protocol-json`；需要其它 presentation 的 linked caller 注入 renderer。
 
 ## Acceptance
 
 | Check | Pass condition | Evidence |
 | --- | --- | --- |
-| CLI mapping | Omitted/`readable-view` 使用内置 renderer；`protocol-json` 绕过 renderer | Core CLI + process tests |
-| Linked renderer | Direct caller 可注入自定义 renderer，public inputs 无 implementation identity | Shared output API tests + repository search |
-| Protocol isolation | Existing success/failure envelope、ref 与 pagination shape 不变 | Protocol schema/examples + integration tests |
-| Atomic rendered output | Success 精确提交 renderer text；returned failure 不产生 partial stdout 或 fallback | Output tests + CLI smoke |
-| Diagnostic identity | Primary diagnostic 保持 identity；render failure 使用 `output_render_failed` | Diagnostics + output tests |
-| Cutover | Runtime、docs、schema 和 active consumer plans 不再依赖 readable JSON DTO | Filtered search + workspace verification |
+| Unified input | Protocol 与 rendered paths 都消费同一 `ProtocolResponse` contract | Shared output tests |
+| CLI mapping | Omitted/`readable-view` 使用内置 renderer；`protocol-json` 绕过 renderer | Core CLI tests |
+| Exact text | Rendered stdout 等于 renderer 返回的完整 UTF-8 text | Renderer/output tests |
+| Failure boundary | `RenderFailure` 发生在 stdout write 前且不触发 fallback；writer error 保持独立 | Output writer tests |
+| Cutover | Runtime 和 Current validation materials 不再提供 `readable-json` | Schema/docs checks + workspace verification |
+
+## Migration
+
+1. 需要稳定结构化结果的 CLI/config consumer 将 `readable-json` 改为 `protocol-json`。
+2. 只需要阅读文本的 caller 使用默认输出或 `readable-view`。
+3. Readable helper 可以作为内置 renderer 的 private implementation 保留；public readable JSON schema、examples 和 mode-specific validation 被删除。
 
 ## Risks / Trade-offs
 
-- 自定义 renderer 可以省略 ref、continuation 或其它事实：presentation completeness 由 renderer owner 声明，稳定完整事实继续由 `protocol-json` 提供。
-- Workspace release 使用 `panic = "abort"`，因此 renderer panic 不属于可恢复 `RenderFailure` contract；linked renderer 是 trusted code，并通过直接 tests 证明正常与 returned-error paths。本 change 不增加 process isolation。
-- 轻量结构化 consumer 需要解析更完整的 protocol envelope：这是删除第二套 machine schema 后接受的迁移成本。
-- Hard cutover 会让旧 consumer 与回滚版本不兼容：schema、examples、active plans 和 runtime 在同一 change 中迁移；rollback 通过整体 revert 恢复旧 contract。
+- Renderer 依赖 stable `ProtocolResponse` contract；这是本 change 选择的统一内部输入。
+- 自定义 renderer 可以省略 protocol facts；需要完整稳定事实的 caller 使用 `protocol-json`。
+- Renderer 返回完整 `String`，因此 rendered path 的峰值内存随输出文本大小增长。
 
 ## Open Questions
 

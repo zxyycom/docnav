@@ -2,32 +2,37 @@
 
 ### Requirement: Core CLI selects output mode and process exit behavior
 
-Core CLI MUST parse the document output modes `readable-view` and `protocol-json`, construct the corresponding output plan, and map diagnostics to process exit behavior without redefining protocol、operation result or renderer semantics. Omitted output or `readable-view` MUST construct `Rendered` with the built-in renderer supplied by core composition. `protocol-json` MUST construct `ProtocolJson` and bypass renderer invocation.
+Core CLI MUST accept exactly the document output modes `readable-view` and `protocol-json`, construct the corresponding output plan, and map failures to existing process exit behavior. Omitted output or `readable-view` MUST construct `Rendered` with the built-in renderer. `protocol-json` MUST construct `ProtocolJson`. A document failure that occurs before navigation returns a response MUST be projected into `ProtocolResponse::Failure` before the selected output plan executes.
 
-#### Scenario: Omitted output uses core composition
+#### Scenario: Omitted output uses the built-in renderer
 
-- **WHEN** a caller omits output mode for a valid document operation
+- **WHEN** a caller omits output mode for a document operation
 - **THEN** core constructs `Rendered` with the built-in `readable-view` renderer
 
-#### Scenario: Explicit readable-view selects rendered output
+#### Scenario: Explicit readable-view uses the built-in renderer
 
 - **WHEN** a caller requests `--output readable-view`
-- **THEN** core constructs `Rendered` with the built-in `readable-view` renderer
-- **THEN** the CLI value does not supply renderer implementation identity
+- **THEN** core constructs `Rendered` with the built-in renderer
 
 #### Scenario: Protocol JSON bypasses rendering
 
 - **WHEN** a caller requests `--output protocol-json`
-- **THEN** core emits protocol stdout without invoking a renderer
+- **THEN** core constructs `ProtocolJson`
+- **THEN** the protocol response is emitted without invoking a renderer
 
-#### Scenario: Document failure follows selected output plan
+#### Scenario: Early document failure follows the recognized output mode
 
-- **WHEN** a document operation fails after a valid output context exists
-- **THEN** `ProtocolJson` emits the protocol failure envelope or `Rendered` invokes its renderer with the primary diagnostic
-- **THEN** core uses the CLI exit mapping for the surfaced diagnostic class
+- **WHEN** a document failure occurs before navigation returns a response
+- **THEN** core constructs `ProtocolResponse::Failure` through the existing protocol error projection
+- **THEN** `ProtocolJson` serializes that response or `Rendered` passes it to the built-in renderer
 
-#### Scenario: Render failure follows output mapping
+#### Scenario: Removed readable-json value is rejected
 
-- **WHEN** the selected renderer returns `RenderFailure`
-- **THEN** core leaves stdout empty and surfaces `output_render_failed` on stderr
-- **THEN** core uses the mapped failure exit behavior
+- **WHEN** CLI or config input supplies `readable-json`
+- **THEN** core reports the normal invalid-value diagnostic
+- **THEN** no readable-json plan、alias or fallback is constructed
+
+#### Scenario: Non-document output remains unchanged
+
+- **WHEN** help、version or another non-document command succeeds
+- **THEN** core keeps that command's existing owner-specific output behavior
