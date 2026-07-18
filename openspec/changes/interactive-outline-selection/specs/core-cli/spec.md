@@ -14,8 +14,7 @@
 - **THEN** adapter protocol request 和 response shape 不因交互模式改变
 
 #### Scenario: 交互式 outline 不支持机器可读输出模式
-- **WHEN** 调用方执行 `docnav outline docs/guide.md --interactive --output readable-json`
-- **OR** 调用方执行 `docnav outline docs/guide.md --interactive --output protocol-json`
+- **WHEN** 调用方执行 `docnav outline docs/guide.md --interactive --output protocol-json`
 - **THEN** `docnav` 返回 `INVALID_REQUEST`
 - **THEN** `docnav` 不启动交互 UI
 - **THEN** stdout 不混合终端控制输出和机器可读 JSON

@@ -22,7 +22,7 @@ Docnav 的基础链路是 `outline -> ref -> read`。这个链路稳定、清楚
   - 在搜索结果明确时减少 find 后的手动 read。
   - 围绕某个 ref 获取相邻上下文。
 - 当前 change 不选择主方案、不承诺命令名、不固定输入字段、不定义最终 schema。
-- 后续进入实现前，需要创建或更新更具体的 implementation change，届时再决定是扩展现有命令、增加 option、提供 SDK helper，还是新增极少数专用入口。后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 声明 content pointer 和 renderer config。
+- 后续进入实现前，需要创建或更新更具体的 implementation change，届时再决定是扩展现有命令、增加 option、提供 SDK helper，还是新增极少数专用入口。若 composition 进入 core document operation，后续 change 必须定义统一 `ProtocolResponse` result、`protocol-json` schema/example 和内置 `readable-view` renderer 映射；若仅属于接入层 convenience，则保持在 core public contract 之外。
 
 ## Capabilities
 

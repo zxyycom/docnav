@@ -10,7 +10,7 @@
 
 - 为 outline 增加显式的预算内 preview 组合能力。
 - 使用确定性 entry selection 规则，优先复用 outline 返回顺序和稳定 item facts。
-- 用现有 read pipeline 读取 preview 内容，并在 readable output 中表达预览、跳过原因和 continuation。
+- 用现有 read pipeline 读取 preview 内容，并在统一 typed result 中表达预览、跳过原因和 continuation。
 - 保持 adapter 不新增 preview operation，不要求 adapter 理解跨章节阅读策略。
 
 **Non-Goals:**
@@ -34,22 +34,22 @@ core 不直接解析文档内容或 ref。每个 preview 都通过现有 read pi
 
 替代方案是在 outline adapter 中直接塞 excerpt 或 summary；这会把组合体验变成 adapter 展示语义，容易造成格式间重复实现。
 
-### Decision 3: preview 是 readable composition，不污染 protocol-json
+### Decision 3: preview facts 进入统一 ProtocolResponse
 
-Skim Pack 目标是首屏阅读体验。第一版应通过 readable-view / readable-json typed payload 表达 entries 和 preview blocks；`protocol-json` 继续返回基础 outline result，或在显式 preview 控制下报告 unsupported combination。
+Skim Pack 虽然服务首屏阅读体验，但 preview selection、追加 read 和 read status 都是 core-owned 业务语义，不能只存在于 renderer。第一版必须定义 typed composition result，包含 base outline facts、preview content、status 和 continuation；`protocol-json` 直接暴露这些事实，内置 renderer 从同一 result 生成 `readable-view`。
 
-替代方案是扩展 raw protocol outline result 以包含 preview blocks；这会改变 machine contract，需要更重的 schema/examples/compatibility 审计。
+Adapter-owned `OutlineResult` / `ReadResult` 保持不变；core 在组合边界构造新的或扩展后的 operation result。该 machine contract 必须在实现前完成 schema、example 和 compatibility 审计。
 
 ## Risks / Trade-offs
 
 - [Risk] preview 会让 outline 首屏变长，反而降低结构扫描效率。-> Mitigation: 使用显式 surface 和小预算默认值，并在预算耗尽时稳定停止。
 - [Risk] preview 选择前 N 个 entries 可能不是用户最想读的部分。-> Mitigation: 第一版承认它不是智能推荐，只提供确定性样本；用户仍可用 ref/read 精确追读。
 - [Risk] 多次 read 增加 latency。-> Mitigation: 限制 preview 数量和总预算；后续实现可先串行，必要时再评估并发。
-- [Risk] output shape 与 auto-read composition 重复。-> Mitigation: 复用 typed readable composition primitives 或 renderer config pattern，但保持两个 change 的 public behavior 独立验收。
+- [Risk] output shape 与 auto-read composition 重复。-> Mitigation: 复用 typed composition status/fact primitives 和 renderer mapping pattern，但保持两个 change 的 public behavior 独立验收。
 
 ## Migration Plan
 
-该 change 是 additive；默认不要求 adapter 迁移。实现阶段应先更新 docs/spec/schema/examples，再实现 outline 后的 preview read 编排，最后覆盖预算、分页、read 失败、无 ref、多 entry 和 protocol-json 组合控制测试。
+该 change 是 additive；默认不要求 adapter 迁移。实现阶段应先更新 docs/spec/schema/examples，再实现 outline 后的 preview read 编排，最后覆盖预算、分页、read 失败、无 ref、多 entry，以及两条 output path 对同一 composition facts 的投影测试。
 
 ## Open Questions
 

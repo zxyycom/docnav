@@ -30,13 +30,13 @@ Operation composition exploration SHALL use core CLI or reusable SDK helpers as 
 
 ### Requirement: public contract 延后定稿
 
-The exploration SHALL defer concrete command names, flags, readable JSON shape, protocol-json behavior and continuation details to a later implementation change. The follow-up implementation change MUST adopt the final typed readable shape and renderer config when declaring content pointer and document output mode.
+The exploration SHALL defer concrete command names, flags, typed protocol result shape, readable-view mapping and continuation details to a later implementation change. The follow-up implementation change MUST decide whether the composition is core-owned protocol behavior or caller-owned orchestration. Core-owned composition MUST define one `ProtocolResponse` result consumed by both public document output modes.
 
 #### Scenario: 进入实现前
 
 - **WHEN** a candidate composition is selected for implementation
 - **THEN** a follow-up implementation change SHALL define the concrete public contract, validation materials and tests
-- **AND** SHALL declare content pointer and renderer config per the typed readable shape finalized by `replace-text-with-readable-view`
+- **AND** core-owned composition SHALL declare its typed protocol result, `protocol-json` schema/example and built-in `readable-view` renderer mapping
 
 ### Requirement: 候选池与临时筛选标准
 

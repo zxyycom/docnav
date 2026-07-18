@@ -19,13 +19,13 @@
 ## 3. 临时筛选标准
 
 - [ ] 3.1 维护一组临时筛选标准，用于后续讨论前粗筛候选。
-- [ ] 3.2 筛选标准必须覆盖：是否组合现有 operation、是否默认归属 core/SDK、是否减少往返或状态管理、是否保持 ref opaque、是否能表达 continuation、是否优先复用现有 surface、是否避免污染 raw protocol、是否能用小 spike 验证。
+- [ ] 3.2 筛选标准必须覆盖：是否组合现有 operation、是否默认归属 core/SDK、是否减少往返或状态管理、是否保持 ref opaque、是否能表达 continuation、是否优先复用现有 surface、core-owned 事实是否能进入统一 `ProtocolResponse`、是否能用小 spike 验证。
 - [ ] 3.3 明确该标准不是最终验收规则；候选进入实现前必须重新定稿 public contract。
 
 ## 4. 后续决策问题
 
 - [ ] 4.2 判断哪些问题必须在实现前定稿，哪些可以通过 spike 或小范围实验确认。
-- [ ] 4.3 明确后续实现不得直接复用本 change 的探索文本作为最终 contract；后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 和 renderer config 定稿 public contract。
+- [ ] 4.3 明确后续实现不得直接复用本 change 的探索文本作为最终 contract；后续 implementation change 必须定稿 composition owner，并为 core-owned composition 同步定义 typed protocol result、两种 public output mode、renderer mapping 和验证材料。
 
 ## 5. 验证
 

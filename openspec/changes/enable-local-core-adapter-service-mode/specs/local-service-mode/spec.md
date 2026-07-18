@@ -9,7 +9,7 @@ Local service mode MUST use the same core release static adapter registry and ad
 - **THEN** the selected adapter implementation is the same adapter library handle used without service mode
 
 ### Requirement: local service mode MUST preserve document output contracts
-Local service mode MUST NOT add service status, cache status, or internal protocol facts to successful `readable-view`, `readable-json`, or `protocol-json` document output.
+Local service mode MUST NOT add service status, cache status, or internal protocol facts to successful `readable-view` or `protocol-json` document output.
 
 #### Scenario: Service status is not part of success payload
 - **WHEN** a document operation succeeds through a local service path

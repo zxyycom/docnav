@@ -9,17 +9,17 @@
 - **THEN** tool 列表包含四个 document tools
 
 ### Requirement: MCP tool call 必须映射到核心 docnav CLI
-`docnav-mcp` MUST 将 tool 参数直接映射为核心 `docnav` CLI 调用，并 MUST 为每个 document tool 固定传入 `--output readable-json`。Adapter 调用、adapter 选择和格式识别 MUST 由核心 `docnav` CLI 执行。
+`docnav-mcp` MUST 将 tool 参数直接映射为核心 `docnav` CLI 调用，并 MUST 为每个 document tool 固定传入 `--output protocol-json`。Adapter 调用、adapter 选择和格式识别 MUST 由核心 `docnav` CLI 执行。
 
 #### Scenario: document_read 调用
 - **WHEN** MCP Client 调用 `document_read` 并提供 path、ref、page 和 limit_chars
-- **THEN** `docnav-mcp` 调用核心 `docnav read --output readable-json`
+- **THEN** `docnav-mcp` 调用核心 `docnav read --output protocol-json`
 - **THEN** ref 原样传递给 `docnav`
 
 #### Scenario: document_outline 调用
 - **WHEN** MCP Client 调用 `document_outline` 并提供 path、page 和 limit_chars
-- **THEN** `docnav-mcp` 调用核心 `docnav outline --output readable-json`
-- **THEN** structuredContent 从 stdout readable JSON 解析得到
+- **THEN** `docnav-mcp` 调用核心 `docnav outline --output protocol-json`
+- **THEN** bridge 校验 stdout `ProtocolResponse` 后从 success result 映射 structuredContent
 
 ### Requirement: MCP adapter 参数必须原样映射
 MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。该值 MUST 作为 caller-declared adapter id 交给核心 `docnav` CLI；adapter 参数省略时，格式识别和候选继续遍历 MUST 由核心 `docnav` CLI 完成。
@@ -29,8 +29,8 @@ MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。该值 M
 - **THEN** `docnav-mcp` 将其传给 `docnav --adapter docnav-markdown`
 - **THEN** adapter 选择由 `docnav` 完成
 
-### Requirement: structuredContent 必须使用 readable schema
-MCP structuredContent MUST 使用对应 operation 的 readable schema，并 MUST 从 `docnav --output readable-json` 的 stdout JSON 派生。successful structuredContent MUST 只包含 operation readable success payload 字段；failure structuredContent MUST map the primary `DiagnosticRecord` from readable error output；read structuredContent MUST 保留 `content_type`。MCP TextContent 渲染 SHOULD 消费 `replace-text-with-readable-view` 的 readable-view contract 和仓库 renderer config；block pointer、byte length 和 block payload 语义 SHOULD 与 Rust renderer 一致。
+### Requirement: structuredContent 必须从 protocol facts 映射
+MCP structuredContent MUST 使用对应 tool 的 MCP outputSchema，并 MUST 从 `docnav --output protocol-json` 的 `ProtocolResponse` 派生。Successful structuredContent MUST 只包含 operation result 中由 tool 拥有的字段；failure structuredContent MUST map `ProtocolResponse::Failure.error`；read structuredContent MUST 保留 `content_type`。MCP TextContent renderer MUST 消费同一 result/error facts，并 MUST NOT 解析默认 `readable-view`、复制 Rust block framing 或发起第二次 CLI 调用。
 
 #### Scenario: document_outline structuredContent
 - **WHEN** `document_outline` 返回结果
@@ -45,20 +45,20 @@ MCP structuredContent MUST 使用对应 operation 的 readable schema，并 MUST
 #### Scenario: 成功 stderr status 不升级为错误
 - **WHEN** `docnav` 子进程成功退出并向 stderr 写入 owner-scoped status
 - **THEN** `docnav-mcp` 返回成功的 MCP tool result
-- **THEN** 成功/失败判定以退出码和 stdout readable JSON payload 为准
+- **THEN** 成功/失败判定以退出码和 stdout protocol response 的 `ok` 字段为准
 
 ### Requirement: tool outputSchema 必须内联或随包打包
-`docnav-mcp` MUST 为每个 tool 声明精简 readable outputSchema，并 MUST 内联或随包打包 schema。Schema MUST 可在离线环境中使用。
+`docnav-mcp` MUST 为每个 tool 声明精简 MCP outputSchema，并 MUST 内联或随包打包 schema。Schema MUST 可在离线环境中使用。
 
 #### Scenario: 声明 outputSchema
 - **WHEN** MCP Client 读取 tool 声明
 - **THEN** 每个 document tool 都包含对应 outputSchema
 - **THEN** schema 可在离线环境中使用
 
-### Requirement: MCP 错误输出必须保持阅读层语义
-`docnav-mcp` MUST 将 `docnav` readable 错误中的 primary `DiagnosticRecord` 转换为 MCP TextContent 和 structuredContent，并 MUST 至少保留 code、message 和 owner，且在存在时保留 guidance/details。完整 protocol envelope MUST 由 `docnav --output protocol-json` 提供，而不是 MCP structuredContent 的输出形状。
+### Requirement: MCP 错误输出必须保留 protocol error 语义
+`docnav-mcp` MUST 将 `ProtocolResponse::Failure.error` 转换为 MCP TextContent 和 structuredContent，并 MUST 至少保留 code、message 和 owner，且在存在时保留 guidance/details。完整 protocol envelope MUST 只作为 bridge 的稳定输入，不得成为 MCP structuredContent 的输出形状。
 
 #### Scenario: docnav 返回 REF_NOT_FOUND
 - **WHEN** 核心 `docnav` 返回 `REF_NOT_FOUND`
-- **THEN** MCP structuredContent 保留 primary `DiagnosticRecord` 的 code、message 和 owner
+- **THEN** MCP structuredContent 保留 protocol error 的 code、message 和 owner
 - **THEN** 输出不包含 protocol envelope 字段

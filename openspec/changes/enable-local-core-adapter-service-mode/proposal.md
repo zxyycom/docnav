@@ -10,7 +10,7 @@
 - service 不提供 adapter executable discovery、adapter artifact hosting 或 adapter implementation source。
 - core service 只缓存 core-owned 状态，例如 project context、配置解析结果、static registry metadata 或安全可失效的 adapter layer metadata。
 - adapter layer 仍来自当前 core release static registry；service 只调用同一 adapter library handle。
-- 不改变 public `protocol-json`、`readable-json`、`readable-view`、ref、pagination 或 adapter-owned parser/navigation 语义。
+- 不改变 public `protocol-json`、`readable-view`、ref、pagination 或 adapter-owned parser/navigation 语义。
 
 ## Capabilities
 

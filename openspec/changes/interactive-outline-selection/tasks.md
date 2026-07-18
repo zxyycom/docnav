@@ -16,7 +16,7 @@
 ## 3. Core CLI 参数与边界
 
 - [ ] 3.1 在 core CLI outline 命令中增加 `--interactive` 参数，并保持普通 `outline` 参数和 help 行为不变。
-- [ ] 3.2 实现 `--interactive` 与 `--output readable-json`、`--output protocol-json` 的互斥校验，返回 `INVALID_REQUEST` 且不启动交互 UI。
+- [ ] 3.2 实现 `--interactive` 与 `--output protocol-json` 的互斥校验，返回 `INVALID_REQUEST` 且不启动交互 UI；省略 output 或显式 `readable-view` 继续使用人类终端流程。
 - [ ] 3.3 实现非 TTY stdin/stdout 环境的 `--interactive` 拒绝路径，返回 `INVALID_REQUEST` 并给出明确诊断。
 - [ ] 3.4 确认 `--interactive` 不进入 adapter `invoke` stdin JSON，也不作为 adapter native option 传递。
 

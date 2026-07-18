@@ -22,7 +22,7 @@ Core CLI SHALL expose an explicit outline preview composition control that seque
 - **THEN** core SHALL stop issuing additional preview reads
 - **AND** core SHALL preserve the outline result with deterministic skipped or pending preview status
 
-#### Scenario: protocol output does not mix preview payload
+#### Scenario: protocol output exposes typed preview facts
 - **WHEN** a caller requests `protocol-json` together with outline preview composition
-- **THEN** core SHALL NOT append preview read content into the outline protocol result
-- **AND** core SHALL either reject the unsupported combination or route to a separately documented protocol contract before implementation is considered complete
+- **THEN** core SHALL construct the documented typed composition result before output orchestration
+- **AND** `protocol-json` SHALL serialize the same outline, preview, status and continuation facts consumed by the built-in readable renderer

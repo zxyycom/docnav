@@ -35,9 +35,9 @@ Non-Goals:
 2. 优先复用现有 public surface。
 
 
-3. 保持 raw protocol 简洁。
+3. 先确定 composition 是否属于 core protocol 语义。
 
-   composition 不应默认扩展 raw protocol。若需要机器稳定 contract，应先证明它不是接入层 convenience，而是跨 adapter 的长期业务语义。
+   Core document operation 的两条 output path 共享同一个 `ProtocolResponse`。若 composition 在 core 中执行额外 operation 并向用户暴露结果，这些事实必须进入 typed protocol result，再分别由 `protocol-json` 序列化和内置 renderer 投影；若它只是接入层 convenience，则应由 SDK/MCP 等调用方组合基础 operations，不在 core 中引入 renderer-only 业务结果。
 
 4. 把候选体验当作 examples，不当作当前承诺。
 
@@ -54,7 +54,7 @@ Non-Goals:
 2. 明确结果自动展开：先执行 outline 或 find，当结果足够明确且预算允许时自动推进到 read；不明确时返回原始导航结果。
 3. 上下文扩展：给定一个 ref，围绕当前 outline context 读取相邻或相关上下文，减少手动来回读取。
 4. continuation recipe：在 readable output 中提供可执行的下一步提示，说明应保留哪些 path、ref、query、options、limit 和 page。
-5. composition explain：不读取额外内容，只解释一次组合请求会如何选择 adapter、应用默认值和调用基础 operations。explain 的 readable-view 和 readable-json 输出按对应 typed readable shape 和 renderer config 生成。
+5. composition explain：不读取额外内容，只解释一次组合请求会如何选择 adapter、应用默认值和调用基础 operations。若 explain 成为 core document operation，其 typed result 进入统一 `ProtocolResponse`，`protocol-json` 暴露事实，`readable-view` 由内置 renderer 投影。
 6. 批量搜索：一次传入多个 query，按 query 分组返回 find 结果，帮助调用方在术语不确定时减少往返。
 7. outline preview：在 outline 结果中附带少量预算内预览，帮助调用方决定下一步 read；是否属于 adapter 展示语义需要后续审计。
 8. 预算感知自动停止：组合流程共享总 limit，在预算耗尽时稳定停止并标记 pending 或 continuation。
@@ -78,12 +78,12 @@ Non-Goals:
 - [Risk] 过早设计具体命令会把探索空间锁死。-> Mitigation: 当前 artifacts 只记录方向和决策问题，不写最终 command contract。
 - [Risk] composition 被错误下放到 adapter，造成重复实现。-> Mitigation: 记录默认归属为 core/SDK，adapter 只在需要格式语义时参与。
 - [Risk] 过度追求快捷入口会破坏 `outline -> ref -> read` 的清晰模型。-> Mitigation: 后续实现必须说明它如何复用或补充基础链路。
-- [Risk] readable output 和 raw protocol 混在一起。-> Mitigation: 当前方向默认把 composition 视为 readable-layer / access-layer convenience；composition 的 readable-view 和 readable-json 输出必须通过 `replace-text-with-readable-view` 的 typed readable shape 和 renderer config 生成，raw protocol 是否扩展留到具体 change 审计。
+- [Risk] composition 业务事实只存在于 renderer，导致两条 output path 语义分叉。-> Mitigation: 后续 change 必须二选一：core-owned composition 定义统一 typed protocol result；接入层 convenience 只组合既有 operations，不修改 core document output。
 
 ## Follow-Up Plan
 
 1. 收集真实使用流程中重复出现的 operation 序列。
-3. 选择一个足够小的候选做后续 implementation change。后续 implementation change 必须按 `replace-text-with-readable-view` 的最终 typed readable shape 声明 content pointer、renderer config 和三种 document output mode（readable-view、readable-json、protocol-json）。
+3. 选择一个足够小的候选做后续 implementation change。后续 implementation change 必须声明 composition owner；core-owned composition 同步定义 `ProtocolResponse` result、`protocol-json` schema/example、`readable-view` renderer mapping 和两种 public document output mode。
 4. 在后续 change 中再更新主规范、schema、examples 和测试。
 
 ## Open Questions
