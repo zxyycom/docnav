@@ -17,10 +17,16 @@ use super::model::{ConfigContext, CoreConfig};
 mod diagnostics;
 use diagnostics::config_source_error;
 
-pub(crate) fn load_context_for_project(project: ProjectContext) -> AppResult<ConfigContext> {
+/// Observes each resolved config in project-to-user precedence order.
+pub(crate) fn load_context_for_project(
+    project: ProjectContext,
+    mut on_source_loaded: impl FnMut(&CoreConfig),
+) -> AppResult<ConfigContext> {
     let catalog = config_parameter_catalog()?;
     let project_config = read_context_config(&project, &catalog, ConfigFileSource::Project)?;
+    on_source_loaded(&project_config);
     let user_config = read_context_config(&project, &catalog, ConfigFileSource::User)?;
+    on_source_loaded(&user_config);
     Ok(ConfigContext {
         project,
         project_config,

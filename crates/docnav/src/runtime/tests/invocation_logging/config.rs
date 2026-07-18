@@ -43,7 +43,7 @@ fn invocation_logging_config_enabled_uses_validated_core_config() {
             }
         }),
     );
-    let context = load_context_for_project(context.project).unwrap();
+    let context = load_context_for_project(context.project, |_| {}).unwrap();
     let request = DocumentRequest::from_config_context(outline_command(None, None), context);
 
     let outcome = AdapterRuntime.execute_document(request).unwrap();
@@ -73,7 +73,7 @@ fn invocation_cli_content_root_without_cli_log_does_not_override_config_log() {
             }
         }),
     );
-    let context = load_context_for_project(context.project).unwrap();
+    let context = load_context_for_project(context.project, |_| {}).unwrap();
     let mut command = read_command("H:L1:H1");
     command.invocation_log_content_root = Some("capture".to_owned());
     let request = DocumentRequest::from_config_context(command, context);
@@ -113,7 +113,7 @@ fn invocation_log_config_type_error_is_blocking_core_config_error() {
         }),
     );
 
-    let error = load_context_for_project(context.project).unwrap_err();
+    let error = load_context_for_project(context.project, |_| {}).unwrap_err();
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "invocation_log.enabled");

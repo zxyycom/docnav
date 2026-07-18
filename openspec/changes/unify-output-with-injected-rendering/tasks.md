@@ -20,7 +20,7 @@
 ## 4. 自动化证明
 
 - [x] 4.1 添加 shared output tests，覆盖 success/failure `ProtocolResponse`、built-in/custom renderer、exact text、`RenderFailure` before stdout、no fallback 和独立 writer failure。
-- [x] 4.2 添加 core CLI tests，覆盖 omitted output、explicit `readable-view`、CLI/config-selected `protocol-json`、early document failure 和 removed `readable-json` rejection。
+- [x] 4.2 添加 core CLI tests，覆盖 omitted output、explicit `readable-view`、CLI/config-selected `protocol-json`、config-loading early failure、其它 early document failure 和 removed `readable-json` rejection。
 - [x] 4.3 更新 readable conformance 与 protocol integration tests，证明 built-in text contract 保持且 protocol envelope/schema 不变。
 
 ## 5. 验证与交付

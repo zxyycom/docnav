@@ -1,4 +1,4 @@
-import { createProject } from "../fixtures.ts";
+import { copyConfigFixtureToProject, createProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
   expect,
@@ -35,6 +35,34 @@ export async function assertConfiguredProtocolEarlyFailure(missingPath: string) 
     record,
     !record.stdout.includes("[block "),
     "config-selected protocol early failure has no readable block framing"
+  );
+
+  const invalidUserConfigPath = copyConfigFixtureToProject(
+    project,
+    "legacy-defaults-limit",
+    "invalid-user-config.json"
+  );
+  const invalidUserConfig = await runCli(
+    "CORE-OUTPUT-001 project protocol-json survives invalid user config",
+    [
+      "read",
+      missingPath,
+      "--ref",
+      "H:L1:H1",
+      "--user-config",
+      invalidUserConfigPath
+    ],
+    { project }
+  );
+  expectExit(invalidUserConfig, exitCodes.input);
+  expectStderrEmpty(invalidUserConfig);
+  const invalidUserResponse = parseJson(invalidUserConfig);
+  validateSchema(invalidUserConfig, "protocolResponse", invalidUserResponse);
+  expectProtocolFailure(invalidUserConfig, invalidUserResponse, "read", "INVALID_REQUEST");
+  expect(
+    invalidUserConfig,
+    !invalidUserConfig.stdout.includes("[block "),
+    "project protocol-json config loading failure has no readable block framing"
   );
 
   const invalidCliOutput = await runCli(
