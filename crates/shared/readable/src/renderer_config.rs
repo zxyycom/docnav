@@ -12,6 +12,7 @@ use crate::view_kind::ReadableViewKind;
 
 const BLOCK_POINTER_ROOT_ERROR: &str = "must start with '/'";
 const BLOCK_POINTER_ESCAPE_ERROR: &str = "must escape '~' as '~0' or '~1'";
+const AUTO_READ_CONTENT_POINTER: &str = "/auto_read/read/content";
 
 // ── Block pointer ──────────────────────────────────────────────────────────
 
@@ -113,6 +114,14 @@ impl RendererConfig {
             ViewBlockConfig { blocks: vec![] },
         );
 
+        // structured outline with auto-read – nested read content is the block
+        views.insert(
+            ReadableViewKind::OutlineAutoRead,
+            ViewBlockConfig {
+                blocks: vec![AUTO_READ_CONTENT_POINTER.to_owned()],
+            },
+        );
+
         // unstructured outline – full content is the primary block
         views.insert(
             ReadableViewKind::OutlineUnstructured,
@@ -131,6 +140,14 @@ impl RendererConfig {
 
         // find – no blocks
         views.insert(ReadableViewKind::Find, ViewBlockConfig { blocks: vec![] });
+
+        // find with auto-read – nested read content is the block
+        views.insert(
+            ReadableViewKind::FindAutoRead,
+            ViewBlockConfig {
+                blocks: vec![AUTO_READ_CONTENT_POINTER.to_owned()],
+            },
+        );
 
         // info – no blocks
         views.insert(ReadableViewKind::Info, ViewBlockConfig { blocks: vec![] });

@@ -40,9 +40,9 @@ pub use error::{
 pub use manifest::{AdapterIdentity, FormatDescriptor, Manifest, ManifestValidationError};
 pub use operation::{Operation, OperationParseError, PagedOperation};
 pub use operation_result::{
-    Cost, Entry, FindResult, InfoAdapter, InfoDocument, InfoResult, Location, Measurement,
-    OperationResult, OutlineResult, ReadResult, StructuredOutlineResult, UnstructuredOutlineReason,
-    UnstructuredOutlineResult,
+    AutoReadReason, AutoReadResult, Cost, Entry, FindResult, InfoAdapter, InfoDocument, InfoResult,
+    Location, Measurement, OperationResult, OutlineResult, ReadResult, StructuredOutlineResult,
+    UnstructuredOutlineReason, UnstructuredOutlineResult,
 };
 pub use options::Options;
 pub use positive_integer::{positive_result, try_positive, PositiveIntegerError};

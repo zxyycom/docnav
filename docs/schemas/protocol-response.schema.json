@@ -173,6 +173,9 @@
         },
         "page": {
           "$ref": "#/$defs/page"
+        },
+        "auto_read": {
+          "$ref": "#/$defs/autoRead"
         }
       },
       "additionalProperties": false
@@ -236,6 +239,22 @@
       },
       "additionalProperties": false
     },
+    "autoRead": {
+      "type": "object",
+      "required": [
+        "reason",
+        "read"
+      ],
+      "properties": {
+        "reason": {
+          "const": "unique_ref"
+        },
+        "read": {
+          "$ref": "#/$defs/readResult"
+        }
+      },
+      "additionalProperties": false
+    },
     "findResult": {
       "type": "object",
       "required": [
@@ -251,6 +270,9 @@
         },
         "page": {
           "$ref": "#/$defs/page"
+        },
+        "auto_read": {
+          "$ref": "#/$defs/autoRead"
         }
       },
       "additionalProperties": false

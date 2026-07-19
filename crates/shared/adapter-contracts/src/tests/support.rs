@@ -55,10 +55,7 @@ impl Adapter for NoHookAdapter {
     }
 
     fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
-        Ok(FindResult {
-            matches: Vec::new(),
-            page: None,
-        })
+        Ok(FindResult::new(Vec::new(), None))
     }
 
     fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {

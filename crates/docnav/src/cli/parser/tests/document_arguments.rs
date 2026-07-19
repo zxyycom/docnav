@@ -38,6 +38,85 @@ fn explicit_pagination_value_is_parsed() {
 }
 
 #[test]
+fn auto_read_modes_keep_the_canonical_identity_and_exact_tokens() {
+    for (args, expected) in [
+        (
+            vec!["outline", "doc.md", "--auto-read", "unique-ref"],
+            "unique-ref",
+        ),
+        (
+            vec![
+                "find",
+                "doc.md",
+                "--query",
+                "needle",
+                "--auto-read",
+                "disabled",
+            ],
+            "disabled",
+        ),
+    ] {
+        let parsed = parse(args).expect("parse supported auto-read mode");
+        let CliCommand::Document(command) = parsed.command else {
+            panic!("expected document command");
+        };
+        let candidate = candidate(&command, "docnav.defaults.auto_read");
+        assert_eq!(
+            candidate.locator(),
+            &SourceLocator::CliFlag("--auto-read".to_owned())
+        );
+        assert_eq!(candidate.input(), &CandidateInput::Value(json!(expected)));
+    }
+}
+
+#[test]
+fn invalid_auto_read_token_is_preserved_for_selected_validation() {
+    let parsed = parse(["outline", "doc.md", "--auto-read", "sometimes"])
+        .expect("structural parse preserves the canonical candidate");
+    let CliCommand::Document(command) = parsed.command else {
+        panic!("expected document command");
+    };
+
+    assert_eq!(
+        candidate(&command, "docnav.defaults.auto_read").input(),
+        &CandidateInput::Value(json!("sometimes"))
+    );
+}
+
+#[test]
+fn auto_read_rejects_missing_duplicate_and_inapplicable_input_structurally() {
+    let missing =
+        parse(["outline", "doc.md", "--auto-read"]).expect_err("auto-read requires a value");
+    assert_diagnostic(missing, "--auto-read", "missing_value");
+
+    let duplicate = parse([
+        "outline",
+        "doc.md",
+        "--auto-read",
+        "disabled",
+        "--auto-read",
+        "unique-ref",
+    ])
+    .expect_err("auto-read is a single-value flag");
+    assert_diagnostic(duplicate, "argv", "invalid command line arguments");
+
+    for args in [
+        vec![
+            "read",
+            "doc.md",
+            "--ref",
+            "doc:full",
+            "--auto-read",
+            "disabled",
+        ],
+        vec!["info", "doc.md", "--auto-read", "disabled"],
+        vec!["version", "--auto-read", "disabled"],
+    ] {
+        parse(args).expect_err("unsupported command must reject auto-read");
+    }
+}
+
+#[test]
 fn explicit_max_heading_level_value_is_parsed_for_supported_operations() {
     for args in [
         vec!["outline", "doc.md", "--max-heading-level", "2"],

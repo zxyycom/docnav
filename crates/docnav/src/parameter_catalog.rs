@@ -1,12 +1,13 @@
 use docnav_adapter_contracts::StandardInputBinding;
 use docnav_navigation::{
-    DocumentParameterBinding, DocumentParameterCatalog, DocumentParameterCatalogBuildError,
-    DocumentParameterEntry, NavigationOutputMode,
+    AutoReadMode, DocumentParameterBinding, DocumentParameterCatalog,
+    DocumentParameterCatalogBuildError, DocumentParameterEntry, NavigationOutputMode,
 };
 use docnav_protocol::{Operation, PagedOperation};
 use docnav_typed_fields::{
     CliBooleanEncoding, CliProcessingMetadata, ExpectedFieldShape, FieldBound, FieldDef,
-    FieldDefSet, FieldIdentity, FieldValidation, MergeStrategy, ProcessStrategy,
+    FieldDefSet, FieldDefSetBuilder, FieldIdentity, FieldValidation, MergeStrategy,
+    ProcessStrategy,
 };
 
 use crate::registry::AdapterRegistry;
@@ -15,6 +16,7 @@ pub(crate) const PAGE_IDENTITY: &str = "docnav.document.page";
 pub(crate) const LIMIT_IDENTITY: &str = "docnav.defaults.pagination.limit";
 pub(crate) const PAGINATION_ENABLED_IDENTITY: &str = "docnav.defaults.pagination.enabled";
 pub(crate) const OUTPUT_IDENTITY: &str = "docnav.defaults.output";
+pub(crate) const AUTO_READ_IDENTITY: &str = "docnav.defaults.auto_read";
 pub(crate) const MAX_HEADING_LEVEL_IDENTITY: &str =
     "docnav.adapters.docnav-markdown.options.max_heading_level";
 
@@ -26,7 +28,19 @@ const MAX_PAGINATION_LIMIT: i64 = u32::MAX as i64;
 pub(crate) fn document_parameter_catalog(
 ) -> Result<DocumentParameterCatalog, DocumentParameterCatalogBuildError> {
     let registry = AdapterRegistry::builtin();
-    let fields = FieldDefSet::builder()
+
+    DocumentParameterCatalog::new(
+        registry
+            .adapters
+            .iter()
+            .map(|definition| definition().id().to_owned()),
+        document_parameter_fields(),
+        document_parameter_entries(),
+    )
+}
+
+fn document_parameter_fields() -> FieldDefSetBuilder {
+    FieldDefSet::builder()
         .field(
             FieldDef::builder(PAGE_IDENTITY)
                 .process(
@@ -101,6 +115,25 @@ pub(crate) fn document_parameter_catalog(
             ExpectedFieldShape::required(),
         )
         .field(
+            FieldDef::builder(AUTO_READ_IDENTITY)
+                .process(
+                    CLI_PROCESSING,
+                    ProcessStrategy::cli_flag("--auto-read").cli_metadata(
+                        CliProcessingMetadata::new()
+                            .help("Automatically read a unique returned ref")
+                            .value_name("disabled|unique-ref"),
+                    ),
+                )
+                .process(
+                    CONFIG_PROCESSING,
+                    ProcessStrategy::config_path(["defaults", "auto_read"]),
+                )
+                .validation(FieldValidation::string_enum::<AutoReadMode>())
+                .default_static(AutoReadMode::UniqueRef)
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::required(),
+        )
+        .field(
             FieldDef::builder(MAX_HEADING_LEVEL_IDENTITY)
                 .process(
                     CLI_PROCESSING,
@@ -124,8 +157,11 @@ pub(crate) fn document_parameter_catalog(
                 .default_static(3)
                 .merge(MergeStrategy::Replace),
             ExpectedFieldShape::optional(),
-        );
-    let entries = vec![
+        )
+}
+
+fn document_parameter_entries() -> Vec<DocumentParameterEntry> {
+    vec![
         entry(
             PAGE_IDENTITY,
             None,
@@ -164,6 +200,14 @@ pub(crate) fn document_parameter_catalog(
             ],
         ),
         entry(
+            AUTO_READ_IDENTITY,
+            None,
+            [
+                DocumentParameterBinding::AutoReadMode(Operation::Outline),
+                DocumentParameterBinding::AutoReadMode(Operation::Find),
+            ],
+        ),
+        entry(
             MAX_HEADING_LEVEL_IDENTITY,
             Some(MARKDOWN_ADAPTER_ID),
             [
@@ -173,16 +217,7 @@ pub(crate) fn document_parameter_catalog(
                 DocumentParameterBinding::StandardInput(StandardInputBinding::FindMaxHeadingLevel),
             ],
         ),
-    ];
-
-    DocumentParameterCatalog::new(
-        registry
-            .adapters
-            .iter()
-            .map(|definition| definition().id().to_owned()),
-        fields,
-        entries,
-    )
+    ]
 }
 
 fn positive_integer_validation() -> FieldValidation<i64> {

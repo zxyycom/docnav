@@ -13,6 +13,7 @@ pub enum DocumentParameterBinding {
     StandardInput(StandardInputBinding),
     PaginationEnabled(PagedOperation),
     OutputMode(Operation),
+    AutoReadMode(Operation),
 }
 
 impl DocumentParameterBinding {
@@ -25,6 +26,7 @@ impl DocumentParameterBinding {
                 PagedOperation::Find => Operation::Find,
             },
             Self::OutputMode(operation) => operation,
+            Self::AutoReadMode(operation) => operation,
         }
     }
 
@@ -32,7 +34,7 @@ impl DocumentParameterBinding {
         match self {
             Self::StandardInput(binding) => binding.expected_value_kind(),
             Self::PaginationEnabled(_) => ValueKind::Boolean,
-            Self::OutputMode(_) => ValueKind::String,
+            Self::OutputMode(_) | Self::AutoReadMode(_) => ValueKind::String,
         }
     }
 }
@@ -108,67 +110,7 @@ impl DocumentParameterCatalog {
             .into_iter()
             .map(Into::into)
             .collect::<BTreeSet<_>>();
-        let mut associated_fields = BTreeSet::new();
-        let mut bound_targets: Vec<(FieldIdentity, Option<String>, DocumentParameterBinding)> =
-            Vec::new();
-
-        for entry in &entries {
-            if !associated_fields.insert(entry.identity.clone()) {
-                return Err(
-                    DocumentParameterCatalogBuildError::DuplicateEntryAssociation {
-                        identity: entry.identity.clone(),
-                    },
-                );
-            }
-            let Some(field) = fields.field(&entry.identity) else {
-                return Err(
-                    DocumentParameterCatalogBuildError::UnknownFieldAssociation {
-                        identity: entry.identity.clone(),
-                    },
-                );
-            };
-            if let Some(adapter_id) = &entry.adapter_id {
-                if !known_adapter_ids.contains(adapter_id) {
-                    return Err(DocumentParameterCatalogBuildError::UnknownAdapterId {
-                        identity: entry.identity.clone(),
-                        adapter_id: adapter_id.clone(),
-                    });
-                }
-            }
-            validate_bindings(entry, field.value_kind())?;
-            for binding in &entry.bindings {
-                if let Some((previous_identity, _, _)) =
-                    bound_targets
-                        .iter()
-                        .find(|(_, adapter_id, previous_binding)| {
-                            previous_binding == binding
-                                && adapter_scopes_overlap(
-                                    adapter_id.as_deref(),
-                                    entry.adapter_id.as_deref(),
-                                )
-                        })
-                {
-                    return Err(
-                        DocumentParameterCatalogBuildError::DuplicateOperationTarget {
-                            previous_identity: previous_identity.clone(),
-                            current_identity: entry.identity.clone(),
-                            binding: *binding,
-                        },
-                    );
-                }
-                bound_targets.push((entry.identity.clone(), entry.adapter_id.clone(), *binding));
-            }
-        }
-
-        for metadata in fields.schema_metadata() {
-            if !associated_fields.contains(metadata.identity()) {
-                return Err(
-                    DocumentParameterCatalogBuildError::MissingEntryAssociation {
-                        identity: metadata.identity().clone(),
-                    },
-                );
-            }
-        }
+        validate_catalog_entries(&fields, &known_adapter_ids, &entries)?;
 
         Ok(Self {
             known_adapter_ids,
@@ -386,6 +328,100 @@ impl std::error::Error for DocumentParameterCatalogBuildError {
             _ => None,
         }
     }
+}
+
+type BoundTarget = (FieldIdentity, Option<String>, DocumentParameterBinding);
+
+fn validate_catalog_entries(
+    fields: &FieldDefSet,
+    known_adapter_ids: &BTreeSet<String>,
+    entries: &[DocumentParameterEntry],
+) -> Result<(), DocumentParameterCatalogBuildError> {
+    let mut associated_fields = BTreeSet::new();
+    let mut bound_targets = Vec::new();
+
+    for entry in entries {
+        validate_entry_association(entry, fields, known_adapter_ids, &mut associated_fields)?;
+        validate_entry_targets(entry, &mut bound_targets)?;
+    }
+
+    validate_all_fields_are_associated(fields, &associated_fields)
+}
+
+fn validate_entry_association(
+    entry: &DocumentParameterEntry,
+    fields: &FieldDefSet,
+    known_adapter_ids: &BTreeSet<String>,
+    associated_fields: &mut BTreeSet<FieldIdentity>,
+) -> Result<(), DocumentParameterCatalogBuildError> {
+    if !associated_fields.insert(entry.identity.clone()) {
+        return Err(
+            DocumentParameterCatalogBuildError::DuplicateEntryAssociation {
+                identity: entry.identity.clone(),
+            },
+        );
+    }
+    let Some(field) = fields.field(&entry.identity) else {
+        return Err(
+            DocumentParameterCatalogBuildError::UnknownFieldAssociation {
+                identity: entry.identity.clone(),
+            },
+        );
+    };
+    if let Some(adapter_id) = &entry.adapter_id {
+        if !known_adapter_ids.contains(adapter_id) {
+            return Err(DocumentParameterCatalogBuildError::UnknownAdapterId {
+                identity: entry.identity.clone(),
+                adapter_id: adapter_id.clone(),
+            });
+        }
+    }
+    validate_bindings(entry, field.value_kind())
+}
+
+fn validate_entry_targets(
+    entry: &DocumentParameterEntry,
+    bound_targets: &mut Vec<BoundTarget>,
+) -> Result<(), DocumentParameterCatalogBuildError> {
+    for binding in &entry.bindings {
+        if let Some((previous_identity, _, _)) =
+            bound_targets
+                .iter()
+                .find(|(_, adapter_id, previous_binding)| {
+                    previous_binding == binding
+                        && adapter_scopes_overlap(
+                            adapter_id.as_deref(),
+                            entry.adapter_id.as_deref(),
+                        )
+                })
+        {
+            return Err(
+                DocumentParameterCatalogBuildError::DuplicateOperationTarget {
+                    previous_identity: previous_identity.clone(),
+                    current_identity: entry.identity.clone(),
+                    binding: *binding,
+                },
+            );
+        }
+        bound_targets.push((entry.identity.clone(), entry.adapter_id.clone(), *binding));
+    }
+    Ok(())
+}
+
+fn validate_all_fields_are_associated(
+    fields: &FieldDefSet,
+    associated_fields: &BTreeSet<FieldIdentity>,
+) -> Result<(), DocumentParameterCatalogBuildError> {
+    for metadata in fields.schema_metadata() {
+        if !associated_fields.contains(metadata.identity()) {
+            return Err(
+                DocumentParameterCatalogBuildError::MissingEntryAssociation {
+                    identity: metadata.identity().clone(),
+                },
+            );
+        }
+    }
+    Ok(())
 }
 
 fn validate_bindings(

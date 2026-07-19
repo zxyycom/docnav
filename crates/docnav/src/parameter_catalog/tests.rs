@@ -7,12 +7,12 @@ use docnav_typed_fields::{
 };
 
 use super::{
-    document_parameter_catalog, LIMIT_IDENTITY, MAX_HEADING_LEVEL_IDENTITY, OUTPUT_IDENTITY,
-    PAGE_IDENTITY, PAGINATION_ENABLED_IDENTITY,
+    document_parameter_catalog, AUTO_READ_IDENTITY, LIMIT_IDENTITY, MAX_HEADING_LEVEL_IDENTITY,
+    OUTPUT_IDENTITY, PAGE_IDENTITY, PAGINATION_ENABLED_IDENTITY,
 };
 
 #[test]
-fn core_catalog_contains_exactly_the_five_closed_scalar_parameters() {
+fn core_catalog_contains_the_auto_read_orchestration_parameter() {
     let catalog = document_parameter_catalog().expect("core parameter catalog is valid");
 
     assert_eq!(
@@ -26,6 +26,7 @@ fn core_catalog_contains_exactly_the_five_closed_scalar_parameters() {
             LIMIT_IDENTITY,
             PAGINATION_ENABLED_IDENTITY,
             OUTPUT_IDENTITY,
+            AUTO_READ_IDENTITY,
             MAX_HEADING_LEVEL_IDENTITY,
         ]
     );
@@ -72,6 +73,15 @@ fn core_catalog_contains_exactly_the_five_closed_scalar_parameters() {
     );
     assert_entry(
         &catalog,
+        AUTO_READ_IDENTITY,
+        None,
+        &[
+            DocumentParameterBinding::AutoReadMode(Operation::Outline),
+            DocumentParameterBinding::AutoReadMode(Operation::Find),
+        ],
+    );
+    assert_entry(
+        &catalog,
         MAX_HEADING_LEVEL_IDENTITY,
         Some("docnav-markdown"),
         &[
@@ -88,47 +98,80 @@ fn catalog_fields_preserve_current_locator_type_default_merge_and_range_facts() 
     assert_field(
         &catalog,
         PAGE_IDENTITY,
-        ValueKind::Integer,
-        DefaultMetadata::Static(1.into()),
-        "--page",
-        None,
-        integer_range(1, i64::from(u32::MAX)),
+        ExpectedField {
+            value_kind: ValueKind::Integer,
+            default: DefaultMetadata::Static(1.into()),
+            cli_flag: "--page",
+            config_path: None,
+            numeric_range: integer_range(1, i64::from(u32::MAX)),
+        },
     );
     assert_field(
         &catalog,
         LIMIT_IDENTITY,
-        ValueKind::Integer,
-        DefaultMetadata::Static(6000.into()),
-        "--limit",
-        Some(&["defaults", "pagination", "limit"]),
-        integer_range(1, i64::from(u32::MAX)),
+        ExpectedField {
+            value_kind: ValueKind::Integer,
+            default: DefaultMetadata::Static(6000.into()),
+            cli_flag: "--limit",
+            config_path: Some(&["defaults", "pagination", "limit"]),
+            numeric_range: integer_range(1, i64::from(u32::MAX)),
+        },
     );
     assert_field(
         &catalog,
         PAGINATION_ENABLED_IDENTITY,
-        ValueKind::Boolean,
-        DefaultMetadata::Static(true.into()),
-        "--pagination",
-        Some(&["defaults", "pagination", "enabled"]),
-        FieldNumericRange::None,
+        ExpectedField {
+            value_kind: ValueKind::Boolean,
+            default: DefaultMetadata::Static(true.into()),
+            cli_flag: "--pagination",
+            config_path: Some(&["defaults", "pagination", "enabled"]),
+            numeric_range: FieldNumericRange::None,
+        },
     );
     assert_field(
         &catalog,
         OUTPUT_IDENTITY,
-        ValueKind::String,
-        DefaultMetadata::Static("readable-view".into()),
-        "--output",
-        Some(&["defaults", "output"]),
-        FieldNumericRange::None,
+        ExpectedField {
+            value_kind: ValueKind::String,
+            default: DefaultMetadata::Static("readable-view".into()),
+            cli_flag: "--output",
+            config_path: Some(&["defaults", "output"]),
+            numeric_range: FieldNumericRange::None,
+        },
+    );
+    assert_field(
+        &catalog,
+        AUTO_READ_IDENTITY,
+        ExpectedField {
+            value_kind: ValueKind::String,
+            default: DefaultMetadata::Static("unique-ref".into()),
+            cli_flag: "--auto-read",
+            config_path: Some(&["defaults", "auto_read"]),
+            numeric_range: FieldNumericRange::None,
+        },
+    );
+    let auto_read = catalog
+        .fields()
+        .field(&docnav_typed_fields::FieldIdentity::new(AUTO_READ_IDENTITY).unwrap())
+        .expect("auto-read field");
+    let accepted_values = [
+        serde_json::Value::String("disabled".to_owned()),
+        serde_json::Value::String("unique-ref".to_owned()),
+    ];
+    assert_eq!(
+        auto_read.constraints().enum_values.as_deref(),
+        Some(accepted_values.as_slice())
     );
     assert_field(
         &catalog,
         MAX_HEADING_LEVEL_IDENTITY,
-        ValueKind::Integer,
-        DefaultMetadata::Static(3.into()),
-        "--max-heading-level",
-        Some(&["options", "docnav-markdown", "max_heading_level"]),
-        integer_range(1, 6),
+        ExpectedField {
+            value_kind: ValueKind::Integer,
+            default: DefaultMetadata::Static(3.into()),
+            cli_flag: "--max-heading-level",
+            config_path: Some(&["options", "docnav-markdown", "max_heading_level"]),
+            numeric_range: integer_range(1, 6),
+        },
     );
 }
 
@@ -162,6 +205,7 @@ fn operation_projection_filters_only_by_closed_bindings() {
                 LIMIT_IDENTITY,
                 PAGINATION_ENABLED_IDENTITY,
                 OUTPUT_IDENTITY,
+                AUTO_READ_IDENTITY,
                 MAX_HEADING_LEVEL_IDENTITY,
             ],
         ),
@@ -181,6 +225,7 @@ fn operation_projection_filters_only_by_closed_bindings() {
                 LIMIT_IDENTITY,
                 PAGINATION_ENABLED_IDENTITY,
                 OUTPUT_IDENTITY,
+                AUTO_READ_IDENTITY,
                 MAX_HEADING_LEVEL_IDENTITY,
             ],
         ),
@@ -209,34 +254,44 @@ fn assert_entry(
     assert_eq!(entry.bindings(), bindings);
 }
 
+struct ExpectedField<'a> {
+    value_kind: ValueKind,
+    default: DefaultMetadata,
+    cli_flag: &'a str,
+    config_path: Option<&'a [&'a str]>,
+    numeric_range: FieldNumericRange,
+}
+
 fn assert_field(
     catalog: &docnav_navigation::DocumentParameterCatalog,
     identity: &str,
-    value_kind: ValueKind,
-    default: DefaultMetadata,
-    cli_flag: &str,
-    config_path: Option<&[&str]>,
-    numeric_range: FieldNumericRange,
+    expected: ExpectedField<'_>,
 ) {
     let identity = docnav_typed_fields::FieldIdentity::new(identity).expect("valid identity");
     let field = catalog.fields().field(&identity).expect("catalog field");
     let metadata = field.schema_metadata();
-    assert_eq!(metadata.value_kind(), value_kind);
-    assert_eq!(metadata.default(), &default);
+    assert_eq!(metadata.value_kind(), expected.value_kind);
+    assert_eq!(metadata.default(), &expected.default);
     assert_eq!(metadata.merge_strategy(), MergeStrategy::Replace);
-    assert_eq!(&metadata.constraints().numeric_range, &numeric_range);
+    assert_eq!(
+        &metadata.constraints().numeric_range,
+        &expected.numeric_range
+    );
 
     let cli = field
         .processing_metadata(&ProcessingId::new("cli").expect("valid processing id"))
         .expect("CLI processing metadata");
-    assert_eq!(cli.locator, ProcessingLocator::CliFlag(cli_flag.to_owned()));
+    assert_eq!(
+        cli.locator,
+        ProcessingLocator::CliFlag(expected.cli_flag.to_owned())
+    );
 
     let config = field
         .processing_metadata(&ProcessingId::new("config").expect("valid processing id"))
         .and_then(|metadata| metadata.locator.config_path().cloned());
     assert_eq!(
         config.as_ref().map(|path| path.segments()),
-        config_path.map(|segments| segments.to_vec())
+        expected.config_path.map(|segments| segments.to_vec())
     );
 }
 

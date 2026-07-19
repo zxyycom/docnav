@@ -10,9 +10,11 @@ use std::fmt;
 #[serde(rename_all = "kebab-case")]
 pub enum ReadableViewKind {
     Outline,
+    OutlineAutoRead,
     OutlineUnstructured,
     Read,
     Find,
+    FindAutoRead,
     Info,
     /// Represents a readable error payload.
     Error,
@@ -23,9 +25,11 @@ impl ReadableViewKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Outline => "outline",
+            Self::OutlineAutoRead => "outline-auto-read",
             Self::OutlineUnstructured => "outline-unstructured",
             Self::Read => "read",
             Self::Find => "find",
+            Self::FindAutoRead => "find-auto-read",
             Self::Info => "info",
             Self::Error => "error",
         }

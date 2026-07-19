@@ -107,7 +107,7 @@ impl Adapter for MarkdownAdapter {
         let matches = document.find_entries(&input.query, max_heading_level);
         let (matches, page) = paginate_entries(&matches, input.page, input.limit);
 
-        Ok(FindResult { matches, page })
+        Ok(FindResult::new(matches, page))
     }
 
     fn info(&self, input: &InfoInput) -> AdapterResult<InfoResult> {

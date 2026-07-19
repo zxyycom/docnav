@@ -227,6 +227,98 @@ fn protocol_response_contract_rejects_schema_backed_field_failures() {
 }
 
 #[test]
+fn protocol_auto_read_contract_accepts_exact_outline_and_find_success_objects() {
+    for value in [
+        protocol_outline_auto_read_response(),
+        protocol_find_auto_read_response(),
+    ] {
+        assert_public_schema_valid(PROTOCOL_RESPONSE_SCHEMA, &value);
+        validate_protocol_response_value(&value).expect("contract validator accepts auto-read");
+        decode_protocol_response_value(value).expect("typed auto-read response decodes");
+    }
+}
+
+#[test]
+fn protocol_auto_read_contract_rejects_status_error_and_extra_fields() {
+    let cases = [
+        protocol_outline_auto_read_response_with(|response| {
+            response["result"]["auto_read"]["status"] = serde_json::json!("success")
+        }),
+        protocol_outline_auto_read_response_with(|response| {
+            response["result"]["auto_read"]["error"] =
+                serde_json::json!({ "code": "INTERNAL_ERROR" })
+        }),
+        protocol_outline_auto_read_response_with(|response| {
+            response["result"]["auto_read"]["extra"] = serde_json::json!(true)
+        }),
+    ];
+
+    for value in cases {
+        assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
+        assert!(validate_protocol_response_value(&value).is_err());
+        let error = decode_protocol_response_value(value)
+            .expect_err("closed auto-read object should fail schema decoding");
+        assert_eq!(error.stage(), DecodePipelineStage::Schema);
+    }
+}
+
+#[test]
+fn protocol_auto_read_contract_rejects_unstructured_read_and_info_placement() {
+    let cases = [
+        serde_json::json!({
+            "protocol_version": "0.1",
+            "request_id": "req-unstructured-auto-read",
+            "operation": "outline",
+            "ok": true,
+            "result": {
+                "kind": "unstructured",
+                "reason": "path_rule",
+                "content": "whole document",
+                "content_type": "text/markdown",
+                "cost": { "measurements": [] },
+                "auto_read": auto_read_value()
+            }
+        }),
+        serde_json::json!({
+            "protocol_version": "0.1",
+            "request_id": "req-read-auto-read",
+            "operation": "read",
+            "ok": true,
+            "result": {
+                "ref": "H:L1:H1",
+                "content": "# Guide",
+                "content_type": "text/markdown",
+                "cost": {
+                    "measurements": [
+                        { "unit": "bytes", "value": 7 }
+                    ]
+                },
+                "page": null,
+                "auto_read": auto_read_value()
+            }
+        }),
+        serde_json::json!({
+            "protocol_version": "0.1",
+            "request_id": "req-info-auto-read",
+            "operation": "info",
+            "ok": true,
+            "result": {
+                "document": { "content_type": "text/markdown" },
+                "auto_read": auto_read_value()
+            }
+        }),
+    ];
+
+    for value in cases {
+        assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
+        assert!(validate_protocol_response_value(&value).is_err());
+        let error = decode_protocol_response_value(value)
+            .expect_err("auto-read is only valid on structured outline and find");
+        assert_eq!(error.stage(), DecodePipelineStage::Schema);
+    }
+}
+
+#[test]
 fn protocol_response_public_schema_rejects_undocumented_format_candidates() {
     let cases = [
         protocol_format_unknown_error_with(|response| {
@@ -286,6 +378,62 @@ fn protocol_outline_response_with(update: impl FnOnce(&mut Value)) -> Value {
     });
     update(&mut response);
     response
+}
+
+fn protocol_outline_auto_read_response() -> Value {
+    serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-outline-auto-read",
+        "operation": "outline",
+        "ok": true,
+        "result": {
+            "kind": "structured",
+            "entries": [
+                { "ref": "H:L1:H1", "label": "Guide" }
+            ],
+            "page": 2,
+            "auto_read": auto_read_value()
+        }
+    })
+}
+
+fn protocol_outline_auto_read_response_with(update: impl FnOnce(&mut Value)) -> Value {
+    let mut response = protocol_outline_auto_read_response();
+    update(&mut response);
+    response
+}
+
+fn protocol_find_auto_read_response() -> Value {
+    serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-find-auto-read",
+        "operation": "find",
+        "ok": true,
+        "result": {
+            "matches": [
+                { "ref": "H:L1:H1", "label": "Guide" }
+            ],
+            "page": null,
+            "auto_read": auto_read_value()
+        }
+    })
+}
+
+fn auto_read_value() -> Value {
+    serde_json::json!({
+        "reason": "unique_ref",
+        "read": {
+            "ref": "H:L1:H1",
+            "content": "# Guide",
+            "content_type": "text/markdown",
+            "cost": {
+                "measurements": [
+                    { "unit": "bytes", "value": 7 }
+                ]
+            },
+            "page": 3
+        }
+    })
 }
 
 fn protocol_format_unknown_error_with(update: impl FnOnce(&mut Value)) -> Value {

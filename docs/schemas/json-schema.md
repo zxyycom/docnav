@@ -17,13 +17,13 @@
 
 `protocol-response.schema.json` 只校验 protocol envelope 和 typed operation result，不作为 readable-view header schema。它使用响应 `operation` 校验成功 result 类型，并按 [原始协议](../protocol.md#协议错误对象) 中的 primary diagnostic projection 校验错误字段和 details；protocol envelope 和投影字段由 [原始协议](../protocol.md) 拥有。原始协议 schema 是机器稳定接口校验材料，用于示例、fixture、CI drift check 和第三方对齐；production runtime decode path 的字段级校验由 `docnav-typed-fields` contract validation 承接。
 
-protocol response 示例证明 outline/find item facts、read `cost.measurements[]` 和 info `document`/`adapter`/`metadata` 的 raw shape。Readable-view presentation 从同一个 protocol response 派生，但不以另一组 JSON examples 或 schema 形成机器 contract。
+protocol response 示例证明 outline/find item facts、read `cost.measurements[]` 和 info `document`/`adapter`/`metadata` 的 raw shape。Outline/find 的 `auto_read` 是 default-on orchestration 成功时才出现的 optional closed object：`reason` 固定为 `unique_ref`，`read` 复用既有 `ReadResult` schema。示例分别覆盖当前返回结果只有一个 distinct ref、多个 find match 共享同一 ref，以及多个 distinct ref 时保持 base result；base operation fields 和 base/read `page` continuation 保持原位置与含义。Readable-view presentation 从同一个 protocol response 派生，但不以另一组 JSON examples 或 schema 形成机器 contract。
 
 ## 配置参考层
 
 | Schema | 用途 |
 | --- | --- |
-| [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | `docnav` 配置 source 中 `options.docnav-markdown.max_heading_level` Markdown native option、document operation defaults、navigation-owned outline selector 和 core-owned `invocation_log` section 的字段形状和示例校验；core catalog 与 selected-operation view 的参数语义、selector priority、path matching、threshold comparison 和 invocation logging enablement 不由 config schema 拥有 |
+| [docnav-markdown-config.schema.json](docnav-markdown-config.schema.json) | `docnav` 配置 source 中 `defaults.auto_read`、`options.docnav-markdown.max_heading_level` Markdown native option、其它 document operation defaults、navigation-owned outline selector 和 core-owned `invocation_log` section 的字段形状和示例校验；core catalog 与 selected-operation view 的参数语义、selector priority、path matching、threshold comparison 和 invocation logging enablement 不由 config schema 拥有 |
 
 配置 schema 只描述文档化的 JSON 文件形状，可用于示例校验和编辑器提示。配置文件发现、字段映射、来源合并、strict unmapped field failure、错误归属和 adapter-specific 字段语义由 [Navigation Input Resolution](../navigation-input-resolution.md)、[适配器契约](../adapter-contract.md) 和对应 adapter 文档拥有。
 

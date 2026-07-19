@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/schemas/v0.1/docnav-markdown-config.schema.json",
-  "$comment": "Reference schema for docnav config source examples that include Markdown native options under options.<adapter-id>.<option-key>, navigation-owned outline selectors and core-owned invocation_log shape. The schema describes JSON file shape only. Navigation input resolution owns source mapping, selector priority, path matching and threshold comparison; selected adapter declarations own option semantics such as max_heading_level type and range validation before request construction; CLI owns invocation logging enablement and path behavior.",
+  "$comment": "Reference schema for docnav config source examples that include core-owned document defaults, Markdown native options under options.<adapter-id>.<option-key>, navigation-owned outline selectors and core-owned invocation_log shape. The schema describes JSON file shape only. Navigation input resolution owns source mapping, selector priority, path matching and threshold comparison; selected adapter declarations own option semantics such as max_heading_level type and range validation before request construction; CLI owns invocation logging enablement and path behavior.",
   "type": "object",
   "properties": {
     "defaults": {
@@ -29,6 +29,13 @@
             "protocol-json"
           ],
           "description": "Default core CLI output mode for document operations."
+        },
+        "auto_read": {
+          "enum": [
+            "disabled",
+            "unique-ref"
+          ],
+          "description": "Core-owned auto-read mode for outline and find. The built-in default is unique-ref."
         }
       },
       "additionalProperties": false

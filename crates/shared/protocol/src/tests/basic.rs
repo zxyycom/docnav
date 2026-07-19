@@ -83,6 +83,135 @@ fn constructs_unstructured_outline_success_response() {
 }
 
 #[test]
+fn constructs_outline_auto_read_success_with_base_fields_and_outer_operation() {
+    let entry = Entry {
+        ref_id: "H:L1:H1".to_owned(),
+        label: "Guide".to_owned(),
+        kind: Some("heading".to_owned()),
+        location: None,
+        summary: None,
+        excerpt: None,
+        rank: None,
+        cost: None,
+        metadata: None,
+    };
+    let read = ReadResult {
+        ref_id: entry.ref_id.clone(),
+        content: "# Guide".to_owned(),
+        content_type: "text/markdown".to_owned(),
+        cost: Cost {
+            measurements: vec![Measurement {
+                unit: "bytes".to_owned(),
+                value: 7,
+                scope: None,
+            }],
+        },
+        page: Some(positive(2)),
+    };
+    let result = OutlineResult::Structured(StructuredOutlineResult {
+        entries: vec![entry],
+        page: Some(positive(3)),
+        auto_read: Some(AutoReadResult::unique_ref(read.clone())),
+    });
+
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "req-outline-auto-read-001",
+        OperationResult::Outline(result),
+    );
+    let value = serde_json::to_value(&response).expect("response serializes");
+
+    assert_eq!(value["operation"], "outline");
+    assert_eq!(value["result"]["kind"], "structured");
+    assert_eq!(value["result"]["entries"][0]["ref"], "H:L1:H1");
+    assert_eq!(value["result"]["page"], 3);
+    assert_eq!(
+        value["result"]["auto_read"],
+        serde_json::json!({
+            "reason": "unique_ref",
+            "read": {
+                "ref": "H:L1:H1",
+                "content": "# Guide",
+                "content_type": "text/markdown",
+                "cost": {
+                    "measurements": [
+                        { "unit": "bytes", "value": 7 }
+                    ]
+                },
+                "page": 2
+            }
+        })
+    );
+    assert_eq!(
+        decode_protocol_response_value(value).expect("composed outline response decodes"),
+        response
+    );
+}
+
+#[test]
+fn constructs_find_auto_read_success_with_base_fields_and_outer_operation() {
+    let entry = Entry {
+        ref_id: "H:L5:H2".to_owned(),
+        label: "Install".to_owned(),
+        kind: Some("heading".to_owned()),
+        location: None,
+        summary: None,
+        excerpt: Some("Install Docnav".to_owned()),
+        rank: Some(1.0),
+        cost: None,
+        metadata: None,
+    };
+    let read = ReadResult {
+        ref_id: entry.ref_id.clone(),
+        content: "## Install".to_owned(),
+        content_type: "text/markdown".to_owned(),
+        cost: Cost {
+            measurements: vec![Measurement {
+                unit: "bytes".to_owned(),
+                value: 10,
+                scope: None,
+            }],
+        },
+        page: None,
+    };
+    let result = FindResult {
+        matches: vec![entry],
+        page: Some(positive(4)),
+        auto_read: Some(AutoReadResult::unique_ref(read)),
+    };
+
+    let response = ProtocolResponse::success(
+        PROTOCOL_VERSION,
+        "req-find-auto-read-001",
+        OperationResult::Find(result),
+    );
+    let value = serde_json::to_value(&response).expect("response serializes");
+
+    assert_eq!(value["operation"], "find");
+    assert_eq!(value["result"]["matches"][0]["ref"], "H:L5:H2");
+    assert_eq!(value["result"]["page"], 4);
+    assert_eq!(value["result"]["auto_read"]["reason"], "unique_ref");
+    assert_eq!(
+        value["result"]["auto_read"]["read"]["content"],
+        "## Install"
+    );
+    assert_eq!(
+        decode_protocol_response_value(value).expect("composed find response decodes"),
+        response
+    );
+}
+
+#[test]
+fn base_result_constructors_omit_auto_read() {
+    let outline = serde_json::to_value(OutlineResult::structured(Vec::new(), None))
+        .expect("outline serializes");
+    let find = serde_json::to_value(FindResult::new(Vec::new(), None)).expect("find serializes");
+
+    assert!(outline.get("auto_read").is_none());
+    assert!(find.get("auto_read").is_none());
+}
+
+#[test]
 fn generated_request_id_is_non_empty() {
     let request_id = generate_request_id();
     assert!(!request_id.is_empty());

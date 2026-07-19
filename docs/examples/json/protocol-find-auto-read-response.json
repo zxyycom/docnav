@@ -1,0 +1,45 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-find-auto-read-001",
+  "operation": "find",
+  "ok": true,
+  "result": {
+    "matches": [
+      {
+        "ref": "H:L4:H2",
+        "label": "Primary installation instructions.",
+        "kind": "match",
+        "location": {
+          "line_start": 5
+        }
+      },
+      {
+        "ref": "H:L4:H2",
+        "label": "Run setup.",
+        "kind": "match",
+        "location": {
+          "line_start": 7
+        }
+      }
+    ],
+    "page": null,
+    "auto_read": {
+      "reason": "unique_ref",
+      "read": {
+        "ref": "H:L4:H2",
+        "content": "## Install\nPrimary installation instructions.\n\n### Windows\nRun setup.",
+        "content_type": "text/markdown",
+        "cost": {
+          "measurements": [
+            {
+              "unit": "bytes",
+              "value": 69,
+              "scope": "selection"
+            }
+          ]
+        },
+        "page": null
+      }
+    }
+  }
+}

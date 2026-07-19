@@ -46,9 +46,14 @@ fn help_text_shows_only_public_output_modes() {
 fn help_text_scopes_catalog_parameters_to_supported_operations() {
     let outline = parse(["outline", "--help"]).expect("parse outline help");
     let read = parse(["read", "--help"]).expect("parse read help");
+    let find = parse(["find", "--help"]).expect("parse find help");
 
-    match (outline.command, read.command) {
-        (CliCommand::Help(outline_text), CliCommand::Help(read_text)) => {
+    match (outline.command, read.command, find.command) {
+        (
+            CliCommand::Help(outline_text),
+            CliCommand::Help(read_text),
+            CliCommand::Help(find_text),
+        ) => {
             assert!(
                 outline_text.contains("--max-heading-level"),
                 "outline help should list the Markdown catalog parameter; got:\n{outline_text}"
@@ -56,6 +61,21 @@ fn help_text_scopes_catalog_parameters_to_supported_operations() {
             assert!(
                 !read_text.contains("--max-heading-level"),
                 "read help should not list the Markdown catalog parameter; got:\n{read_text}"
+            );
+            for text in [&outline_text, &find_text] {
+                assert!(
+                    text.contains("--auto-read <disabled|unique-ref>"),
+                    "outline/find help should show exact auto-read tokens; got:\n{text}"
+                );
+                assert!(
+                    text.contains("possible values: disabled, unique-ref")
+                        && text.contains("default: unique-ref"),
+                    "auto-read help should derive enum and default facts; got:\n{text}"
+                );
+            }
+            assert!(
+                !read_text.contains("--auto-read"),
+                "read help must not expose auto-read; got:\n{read_text}"
             );
         }
         commands => panic!("expected help commands, got {commands:?}"),

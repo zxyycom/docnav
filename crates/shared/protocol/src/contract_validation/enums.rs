@@ -1,6 +1,8 @@
 use docnav_typed_fields::FieldStringEnum;
 
-use crate::{Operation, ProbeReasonCode, UnstructuredOutlineReason, PROTOCOL_VERSION};
+use crate::{
+    AutoReadReason, Operation, ProbeReasonCode, UnstructuredOutlineReason, PROTOCOL_VERSION,
+};
 
 #[derive(Clone, Copy)]
 pub(super) enum ContractVersion {
@@ -72,6 +74,19 @@ impl FieldStringEnum for UnstructuredOutlineReason {
         match self {
             Self::PathRule => "path_rule",
             Self::CostThreshold => "cost_threshold",
+        }
+    }
+}
+
+impl FieldStringEnum for AutoReadReason {
+    fn variants() -> &'static [Self] {
+        const VARIANTS: &[AutoReadReason] = &[AutoReadReason::UniqueRef];
+        VARIANTS
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::UniqueRef => "unique_ref",
         }
     }
 }

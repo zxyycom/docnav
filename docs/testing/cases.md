@@ -56,6 +56,24 @@ Proves:
 - CLI 或 config 使用已删除的 `readable-json` 时走普通 invalid-value boundary，不产生 alias、fallback 或 document output。
 - Unstructured outline selected by config 在 `readable-view` 中作为 content block、在 `protocol-json` 中作为 raw result 可观察，并且不虚构 entries/ref/page/continuation。
 
+### BB-CORE-AUTO-READ-001 Core unique-ref auto-read 默认值与关闭来源可观察
+Status: implemented
+Existing smoke task: `CORE-AUTO-READ-001`
+Code: `test/smoke/core/cases/auto-read.ts`
+
+Proves:
+- 真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read；`protocol-json` 与 `readable-view` 从同一结果保留 ref、content type 和 nested content。
+- CLI、默认 project config fixture 或显式 user config fixture 解析为 `disabled` 时，真实进程以退出码 `0` 返回原 base find，stdout 保持所选输出模式且 stderr 为空；代表性 protocol/readable 分支均不出现 `auto_read`，readable base projection 也不产生 block。
+
+```mermaid
+flowchart LR
+  A["真实 find：两个 match 共享一个 ref"] --> B{"resolved auto-read mode"}
+  B -->|"省略来源：unique-ref"| C["追加 nested read"]
+  C --> D["protocol object + readable nested block"]
+  B -->|"CLI / project / user：disabled"| E["保留 base find"]
+  E --> F["exit 0 + clean stdout/stderr + no auto_read"]
+```
+
 ### BB-CORE-ARGS-001 Core 拒绝缺失的 operation 参数
 Status: implemented
 Existing smoke task: `CORE-ARGS-001`
@@ -272,6 +290,8 @@ Proves:
 - Config load failure 可由显式 CLI log 在 runtime config 初始化前记录为 config-layer failure。
 - Metadata-only read event 只记录 SHA-256 content hash、content type 和 size metadata；未单独开启 content capture 时不写正文文件。
 - 单独开启 content capture 后正文文件只写入独立 root 下的日期/`sha256-<content_hash>.content` 相对路径，文件 bytes hash 与主日志 hash 一致。
+- Successful outline/find auto-read 仍只记录根 operation event；追加的 read content 复用既有 metadata-only content reference，显式 capture 时复用同一个 hash/capture event shape，未显式 capture 时不写正文文件。
+- Unique-ref 已触发但 nested read 返回 adapter diagnostic 时，public/base command 仍成功；日志只保留单个 root `operation_completed`，不记录 nested diagnostic 或正文，也不产生 read root event 或 content capture。
 - 日志文件写入失败、output projection failure 和 content capture failure 不改变原 document operation 的成功/失败语义。
 
 决策说明:
@@ -407,6 +427,7 @@ Code: `crates/shared/readable/src/renderer/tests/success.rs`
 
 Proves:
 - 内置 renderer 的 private presentation helper 保持 readable-view header、block replacement、UTF-8 byte length、LF framing、extension fields 和 operation-specific block/no-block config。
+- Conformance representatives 保持 successful auto-read 的 `/auto_read/read/content` nested block、无 `auto_read` 的 structured outline header-only projection，以及 unstructured outline 的 `/content` base block。
 - Private readable error value 和 header standalone JSON 可还原为最终 readable-view text；该 helper value 不形成 public output mode 或 schema。
 
 决策说明:

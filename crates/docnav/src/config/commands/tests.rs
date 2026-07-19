@@ -22,7 +22,8 @@ fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing()
         &project_config,
         json!({
             "defaults": {
-                "output": "protocol-json"
+                "output": "protocol-json",
+                "auto_read": "disabled"
             },
             "options": {
                 "docnav-markdown": {
@@ -58,6 +59,14 @@ fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing()
         )
         .is_none(),
         "CLI-only page must not appear in config parameter facts"
+    );
+    assert_eq!(
+        parameter_fact(&output["inspection"], "docnav.defaults.auto_read"),
+        Some(&json!({
+            "identity": "docnav.defaults.auto_read",
+            "source": "project",
+            "value": "disabled"
+        }))
     );
     assert_eq!(fs::read_to_string(&project_config).unwrap(), project_before);
     assert_eq!(fs::read_to_string(&user_config).unwrap(), user_before);

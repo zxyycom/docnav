@@ -113,6 +113,8 @@ structured branch:
     entry item, required
   page:
     positive integer | null, required
+  auto_read:
+    AutoReadResult, optional
 
 unstructured branch:
   reason:
@@ -149,6 +151,21 @@ page:
 
 `cost.measurements[]` 是机器稳定的结构化成本事实。常见单位包括 `lines`、`bytes` 和 `tokens`，但具体单位集合由 adapter 拥有；阅读输出负责把它压缩为人类可读摘要。
 
+### AutoReadResult
+
+```text
+reason:
+  "unique_ref", required
+read:
+  ReadResult, required
+```
+
+`AutoReadResult` 是 closed success-only object，只能作为 structured `OutlineResult` 或 `FindResult` 的 optional `auto_read` field 出现。它只包含 exact `reason: "unique_ref"` 和完整 existing `ReadResult`，不包含 `mode`、`status`、sibling `ref`、`error` 或额外字段。
+
+只有 unique-ref orchestration 成功产生并校验 nested read 时才返回 `auto_read`。Auto-read disabled、当前返回 ref 不唯一、nested read 未成功或 candidate composition 未通过校验时，该字段必须缺失；协议不在其它位置增加 skipped reason 或 nested diagnostic。Base entries/matches、ordering 和 page 保持原 shape 与含义。
+
+Composed response 仍只有一个 public success envelope：outer `operation` 保持 caller 请求的 `outline` 或 `find`，nested read 不创建第二个 envelope。Base operation 失败继续返回既有 failure envelope；base 成功但未形成 composed success 时继续返回未修改的 base success。
+
 ### FindResult
 
 ```text
@@ -156,6 +173,8 @@ matches[]:
   entry item, required
 page:
   positive integer | null, required
+auto_read:
+  AutoReadResult, optional
 ```
 
 ### InfoResult
@@ -189,6 +208,8 @@ metadata  object, optional
 - `page` 只表达下一页编号，不携带命令、参数或不透明游标。
 - 继续读取时，调用方保持 operation、document path 和其它 arguments 稳定，只替换为响应返回的 `page`。
 - 请求超过结果末尾的 page 时返回空结果和 `page: null`，不作为错误。
+- Composed outline/find 的 base `page` 继续表示该 base operation 的下一页；non-null base page 不阻止当前结果的 unique-ref orchestration。
+- `auto_read.read.page` 继续表示 nested read 的下一页。调用方使用 `auto_read.read.ref` 和该 page 按普通 read contract 继续；协议不增加 composition-wide continuation field。
 
 ## ref 规则
 

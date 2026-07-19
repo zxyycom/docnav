@@ -13,7 +13,7 @@
             "defaults",
             "options"
           ],
-          "field_count": 2
+          "field_count": 3
         },
         "diagnostics": []
       },
@@ -58,6 +58,12 @@
         "has_default": true
       },
       {
+        "identity": "docnav.defaults.auto_read",
+        "path": "defaults.auto_read",
+        "value_kind": "String",
+        "has_default": true
+      },
+      {
         "identity": "docnav.adapters.docnav-markdown.options.max_heading_level",
         "path": "options.docnav-markdown.max_heading_level",
         "value_kind": "Integer",
@@ -93,6 +99,11 @@
         "identity": "docnav.adapters.docnav-markdown.options.max_heading_level",
         "source": "project",
         "value": 2
+      },
+      {
+        "identity": "docnav.defaults.auto_read",
+        "source": "project",
+        "value": "disabled"
       },
       {
         "identity": "docnav.defaults.output",

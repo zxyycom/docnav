@@ -9,6 +9,8 @@ use docnav_protocol::{
 };
 use serde_json::{json, Value};
 
+mod auto_read;
+
 static FAILING_RENDERER_CALLS: AtomicUsize = AtomicUsize::new(0);
 
 fn read_result() -> OperationResult {
@@ -276,8 +278,8 @@ fn built_in_renderer_maps_find_response() {
     let response = ProtocolResponse::success(
         PROTOCOL_VERSION,
         "request-1",
-        OperationResult::Find(FindResult {
-            matches: vec![Entry {
+        OperationResult::Find(FindResult::new(
+            vec![Entry {
                 ref_id: "M1".into(),
                 label: "needle".into(),
                 kind: Some("match".into()),
@@ -291,8 +293,8 @@ fn built_in_renderer_maps_find_response() {
                 cost: None,
                 metadata: None,
             }],
-            page: None,
-        }),
+            None,
+        )),
     );
     let output = render_readable_response(&response).unwrap();
 

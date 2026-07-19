@@ -47,6 +47,8 @@ docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
 
 成功 response 的 `result` 保留 adapter 返回的结构化事实。内置 `readable-view` renderer 需要的 `display`、成本摘要和精简字段从这些事实派生；原始协议不反向接受 presentation-only 字段。
 
+当 navigation 返回包含 successful `auto_read` 的 composed outline/find response 时，`ProtocolJson` 直接序列化完整 outer response，并原样保留 protocol-owned `auto_read` object；outer operation 仍为 `outline` 或 `find`。Navigation 返回 base response 时，输出中不增加 sibling auto-read metadata。该 plan 不执行 read，也不构造 selection、skipped 或 failed facts。
+
 ## `readable-view`
 
 用途：文档操作的默认输出模式。人类和 AI 直接阅读，信息密度高，开箱即可定位内容。省略 output 或选择 `readable-view` 时，core 构造携带内置 renderer 的 `Rendered`。内置 renderer 接收完整 `ProtocolResponse::Success` 或 `ProtocolResponse::Failure`，并返回一个由 pretty JSON header 和零个或多个 length-delimited block section 组成的完整文本。调用方和测试通过字段名和值、block pointer 和 UTF-8 byte length 判断语义；JSON header object key 顺序和多个 block section 的输出顺序不作为稳定契约。
@@ -57,14 +59,16 @@ docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
 
 | View Kind | Block Pointers |
 | --- | --- |
-| `outline` | 无 block |
+| `outline` | `/auto_read/read/content`，仅在 successful `auto_read` 存在时 |
 | `outline-unstructured` | `/content` |
 | `read` | `/content` |
-| `find` | 无 block |
+| `find` | `/auto_read/read/content`，仅在 successful `auto_read` 存在时 |
 | `info` | 无 block |
 | `error` | `/error` |
 
-Structured outline 的 `readable-view` header 包含 `kind: "structured"`、entries 和 page，不产生 block section。Navigation pre-dispatch 产出的 unstructured outline result 由内置 renderer 表示为 `kind: "unstructured"`、`reason`、`content_type`、稳定 `cost` facts 和 `content` 的 `{"$block": "/content", "bytes": <n>}` 引用；`/content` block payload 等于 response 中该 result 的 content。它是 content，不得被表示为 outline entries 或分页状态；header 不包含 entries、ref、page 或 continuation。
+Structured outline 和 find 的 `readable-view` 始终保留既有 base header fields。Protocol response 包含 `auto_read` 时，renderer 在 header 中增加同名 object：保留 `reason`，并把 nested read 的 `ref`、`content_type`、`page` 和由 `cost.measurements[]` 派生的 readable cost summary 放入 `auto_read.read`；nested `content` 替换为 `{"$block": "/auto_read/read/content", "bytes": <utf8-byte-length>}`。Renderer 恰好输出一个同 pointer 的 length-delimited block，payload bytes 等于 protocol `auto_read.read.content`。
+
+Protocol response 不包含 `auto_read` 时，structured outline/find 使用原有 base projection，不增加 auto-read header field 或 block。Navigation pre-dispatch 产出的 unstructured outline result 仍由内置 renderer 表示为 `kind: "unstructured"`、`reason`、`content_type`、稳定 `cost` facts 和 `content` 的 `{"$block": "/content", "bytes": <n>}` 引用；`/content` block payload 等于 response 中该 result 的 content。它是 content，不得被表示为 outline entries 或分页状态；header 不包含 entries、ref、page、continuation 或 `auto_read`。
 
 Unstructured outline 的 `readable-view` 示例：
 
@@ -89,7 +93,7 @@ plain note
 
 `readable-view` framing 在所有平台使用 LF byte `0x0A`；header 以 LF 结束，存在 block 时 header 结束 LF 后有一个空 separator LF。block marker 行以 LF 结束；正文不含尾部换行时，renderer 在 block marker 前插入不属于 payload 的 framing LF。正文中的 marker 字样（`[block ...]` 等）不改变以 byte length 定界的 block 边界。
 
-内置 renderer 在写 stdout 前完成内存渲染。Block pointer 缺失、目标值非字符串、pointer 重复或 identity 冲突时返回 `RenderFailure`；core 沿用现有 `readable_view_render_failed` output failure mapping。此时 stdout 为空，stderr 包含诊断，不调用第二个 renderer；进程退出码按 [CLI](cli.md#退出码) 映射。渲染成功后，output layer 把完整文本原样写入，不追加 framing 或换行。
+内置 renderer 在写 stdout 前完成内存渲染。Block pointer（包括 `/auto_read/read/content`）缺失、目标值非字符串、pointer 重复或 identity 冲突时返回 `RenderFailure`；core 沿用现有 `readable_view_render_failed` output failure mapping。此时 stdout 为空，stderr 包含诊断，不调用第二个 renderer；进程退出码按 [CLI](cli.md#退出码) 映射。渲染成功后，output layer 把完整文本原样写入，不追加 framing 或换行。
 
 `read` 的 `readable-view` 示例：
 

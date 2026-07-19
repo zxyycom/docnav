@@ -11,7 +11,7 @@ use assertions::check_assertions;
 
 /// Run a single conformance vector.
 pub fn run_vector(vector: &ConformanceVector) {
-    let kind = parse_view_kind(&vector.view_kind);
+    let kind = parse_view_kind(&vector.view_kind, &vector.input);
     let config = renderer_config_for(vector, kind);
 
     match &vector.expected_failure {
@@ -61,12 +61,14 @@ pub fn run_vector(vector: &ConformanceVector) {
     }
 }
 
-/// Parse a view kind string from a fixture into a `ReadableViewKind`.
-fn parse_view_kind(s: &str) -> ReadableViewKind {
+/// Map a fixture view and its payload shape to the renderer's block policy.
+fn parse_view_kind(s: &str, input: &serde_json::Value) -> ReadableViewKind {
     match s {
+        "outline" if input.get("auto_read").is_some() => ReadableViewKind::OutlineAutoRead,
         "outline" => ReadableViewKind::Outline,
         "outline-unstructured" => ReadableViewKind::OutlineUnstructured,
         "read" => ReadableViewKind::Read,
+        "find" if input.get("auto_read").is_some() => ReadableViewKind::FindAutoRead,
         "find" => ReadableViewKind::Find,
         "info" => ReadableViewKind::Info,
         "error" => ReadableViewKind::Error,

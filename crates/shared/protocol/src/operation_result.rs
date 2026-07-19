@@ -76,7 +76,11 @@ pub enum OutlineResult {
 
 impl OutlineResult {
     pub fn structured(entries: Vec<Entry>, page: Option<PositiveInteger>) -> Self {
-        Self::Structured(StructuredOutlineResult { entries, page })
+        Self::Structured(StructuredOutlineResult {
+            entries,
+            page,
+            auto_read: None,
+        })
     }
 
     pub fn unstructured(
@@ -120,6 +124,8 @@ impl OutlineResult {
 pub struct StructuredOutlineResult {
     pub entries: Vec<Entry>,
     pub page: Option<PositiveInteger>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_read: Option<AutoReadResult>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -151,9 +157,43 @@ pub struct ReadResult {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct AutoReadResult {
+    pub reason: AutoReadReason,
+    pub read: ReadResult,
+}
+
+impl AutoReadResult {
+    pub fn unique_ref(read: ReadResult) -> Self {
+        Self {
+            reason: AutoReadReason::UniqueRef,
+            read,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutoReadReason {
+    UniqueRef,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FindResult {
     pub matches: Vec<Entry>,
     pub page: Option<PositiveInteger>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_read: Option<AutoReadResult>,
+}
+
+impl FindResult {
+    pub fn new(matches: Vec<Entry>, page: Option<PositiveInteger>) -> Self {
+        Self {
+            matches,
+            page,
+            auto_read: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -14,13 +14,13 @@ use docnav_protocol::{
     OutlineResult, PagedOperation, ProbeReason, ProbeReasonCode, ProbeResult, ReadResult,
 };
 use docnav_typed_fields::{
-    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldValidation, MergeStrategy,
-    ProcessStrategy,
+    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldDefSetBuilder, FieldValidation,
+    MergeStrategy, ProcessStrategy,
 };
 use serde_json::Value;
 
 use crate::{
-    config_source::LoadedNavigationConfigSource, DocumentParameterBinding,
+    config_source::LoadedNavigationConfigSource, AutoReadMode, DocumentParameterBinding,
     DocumentParameterCatalog, DocumentParameterEntry, NavigationAdapterRegistry, NavigationCommand,
     NavigationConfigSource, NavigationConfigSourceLevel, NavigationConfigSourceOrigin,
     NavigationConfigSources, NavigationOutputMode,
@@ -30,6 +30,7 @@ const PAGE_IDENTITY: &str = "docnav.document.page";
 const LIMIT_IDENTITY: &str = "docnav.defaults.pagination.limit";
 const PAGINATION_ENABLED_IDENTITY: &str = "docnav.defaults.pagination.enabled";
 const OUTPUT_IDENTITY: &str = "docnav.defaults.output";
+const AUTO_READ_IDENTITY: &str = "docnav.defaults.auto_read";
 const MARKDOWN_MAX_HEADING_LEVEL_IDENTITY: &str =
     "docnav.adapters.docnav-markdown.options.max_heading_level";
 const OTHER_MAX_HEADING_LEVEL_IDENTITY: &str =
@@ -91,7 +92,16 @@ pub(super) fn config_sources(project: Value, user: Value) -> NavigationConfigSou
 }
 
 pub(super) fn document_parameter_catalog() -> DocumentParameterCatalog {
-    let fields = FieldDefSet::builder()
+    DocumentParameterCatalog::new(
+        ["docnav-markdown", "docnav-other", "docnav-unsupported"],
+        document_parameter_fields(),
+        document_parameter_entries(),
+    )
+    .expect("test document parameter catalog must be valid")
+}
+
+fn document_parameter_fields() -> FieldDefSetBuilder {
+    FieldDefSet::builder()
         .field(
             FieldDef::builder(PAGE_IDENTITY)
                 .process("cli", ProcessStrategy::cli_flag("--page"))
@@ -143,6 +153,18 @@ pub(super) fn document_parameter_catalog() -> DocumentParameterCatalog {
             ExpectedFieldShape::required(),
         )
         .field(
+            FieldDef::builder(AUTO_READ_IDENTITY)
+                .process("cli", ProcessStrategy::cli_flag("--auto-read"))
+                .process(
+                    "config",
+                    ProcessStrategy::config_path(["defaults", "auto_read"]),
+                )
+                .validation(FieldValidation::string_enum::<AutoReadMode>())
+                .default_static(AutoReadMode::UniqueRef)
+                .merge(MergeStrategy::Replace),
+            ExpectedFieldShape::required(),
+        )
+        .field(
             FieldDef::builder(MARKDOWN_MAX_HEADING_LEVEL_IDENTITY)
                 .process("cli", ProcessStrategy::cli_flag("--max-heading-level"))
                 .process(
@@ -171,8 +193,11 @@ pub(super) fn document_parameter_catalog() -> DocumentParameterCatalog {
                 )
                 .merge(MergeStrategy::Replace),
             ExpectedFieldShape::optional(),
-        );
-    let entries = vec![
+        )
+}
+
+fn document_parameter_entries() -> Vec<DocumentParameterEntry> {
+    vec![
         DocumentParameterEntry::new(
             FieldIdentity::new(PAGE_IDENTITY).expect("test field identity must be valid"),
             None,
@@ -212,6 +237,14 @@ pub(super) fn document_parameter_catalog() -> DocumentParameterCatalog {
             ],
         ),
         DocumentParameterEntry::new(
+            FieldIdentity::new(AUTO_READ_IDENTITY).expect("test field identity must be valid"),
+            None,
+            vec![
+                DocumentParameterBinding::AutoReadMode(Operation::Outline),
+                DocumentParameterBinding::AutoReadMode(Operation::Find),
+            ],
+        ),
+        DocumentParameterEntry::new(
             FieldIdentity::new(MARKDOWN_MAX_HEADING_LEVEL_IDENTITY)
                 .expect("test field identity must be valid"),
             Some("docnav-markdown".to_owned()),
@@ -233,14 +266,7 @@ pub(super) fn document_parameter_catalog() -> DocumentParameterCatalog {
                 DocumentParameterBinding::StandardInput(StandardInputBinding::FindMaxHeadingLevel),
             ],
         ),
-    ];
-
-    DocumentParameterCatalog::new(
-        ["docnav-markdown", "docnav-other", "docnav-unsupported"],
-        fields,
-        entries,
-    )
-    .expect("test document parameter catalog must be valid")
+    ]
 }
 
 pub(super) fn write_config_file(path: &Path, value: Value) {

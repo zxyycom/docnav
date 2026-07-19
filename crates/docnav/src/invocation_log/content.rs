@@ -32,9 +32,19 @@ pub(super) fn content_reference_for_result(
             Some(&result.content_type),
         )),
         OperationResult::Outline(result) => result
-            .as_unstructured()
-            .map(|result| content_reference(&result.content, Some(&result.content_type))),
-        OperationResult::Find(_) | OperationResult::Info(_) => None,
+            .as_structured()
+            .and_then(|result| result.auto_read.as_ref())
+            .map(|result| content_reference(&result.read.content, Some(&result.read.content_type)))
+            .or_else(|| {
+                result
+                    .as_unstructured()
+                    .map(|result| content_reference(&result.content, Some(&result.content_type)))
+            }),
+        OperationResult::Find(result) => result
+            .auto_read
+            .as_ref()
+            .map(|result| content_reference(&result.read.content, Some(&result.read.content_type))),
+        OperationResult::Info(_) => None,
     }
 }
 

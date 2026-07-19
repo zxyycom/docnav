@@ -7,7 +7,7 @@ use cli_config_resolution::{
 use docnav_protocol::{Operation, PositiveInteger};
 use serde_json::{json, Value};
 
-use crate::{NavigationError, NavigationOutputMode};
+use crate::{AutoReadMode, NavigationError, NavigationOutputMode};
 
 use super::{ids, resolution, MAX_PAGINATION_LIMIT};
 
@@ -207,6 +207,7 @@ pub(super) fn max_pagination_limit() -> PositiveInteger {
 fn field_label(identity: &str) -> &'static str {
     match identity {
         ids::ADAPTER => "--adapter",
+        ids::AUTO_READ => "--auto-read",
         ids::LIMIT => "--limit",
         ids::OUTPUT => "--output",
         ids::PAGE => "--page",
@@ -220,6 +221,10 @@ fn field_label(identity: &str) -> &'static str {
 
 fn validation_reason(identity: &str) -> String {
     match identity {
+        ids::AUTO_READ => format!(
+            "invalid --auto-read: accepted values: {}",
+            AutoReadMode::ACCEPTED_VALUES.join(", ")
+        ),
         ids::LIMIT => "--limit must be a positive integer".to_owned(),
         ids::OUTPUT => format!(
             "invalid --output: accepted values: {}",

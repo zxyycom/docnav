@@ -4,7 +4,8 @@
       "enabled": true,
       "limit": 6000
     },
-    "output": "readable-view"
+    "output": "readable-view",
+    "auto_read": "unique-ref"
   },
   "invocation_log": {
     "enabled": true,

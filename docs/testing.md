@@ -32,6 +32,8 @@
 
 如果自动化验证必须复制被测实现、引入只为测试存在的观测接口、依赖脆弱外部环境，或其长期维护成本明显高于语义漂移风险，可以不新增自动化测试。此时在 owner 文档的验证说明或变更审查记录中写明 `Manual CR:`、审查对象和判定条件；不得用空断言、恒真断言或名义上的 implemented case 代替人工审查。
 
+`outline` / `find` success-only auto-read 按 owner 边界保留代表性证明：canonical resolution 的 Rust tests 证明 CLI、project、user 和 built-in 来源优先级；真实 CLI 或等价集成链路证明省略来源时默认 dispatch，以及 CLI/config `disabled` 保留原 base command；navigation/protocol tests 证明 nested read 未成功时仍返回无 `auto_read` 的 base success；readable conformance 分别证明 nested `/auto_read/read/content`、无 `auto_read` 的 base-only projection 和 unstructured `/content`；invocation logging tests 证明根 operation 仍是 outline/find、显式 capture 复用既有 hash/event shape，且默认不记录正文。各层只选择能观察该 owner 结果的代表，不建立来源、operation、output mode 和失败类型的交叉矩阵。
+
 ### CLI smoke
 
 CLI smoke 从发布给用户的可执行入口验证外部契约。覆盖范围按以下维度评估：

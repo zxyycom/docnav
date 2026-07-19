@@ -9,7 +9,7 @@ use super::super::field_builders::{
     non_empty_string_field, non_empty_unique_array, non_negative_int_field, number_field,
     object_field, positive_int_field, string_enum_field, string_field,
 };
-use crate::UnstructuredOutlineReason;
+use crate::{AutoReadReason, UnstructuredOutlineReason};
 
 pub(super) fn response_common_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     add_request_id(add_protocol_version(
@@ -132,6 +132,11 @@ pub(super) fn response_structured_outline_result_fields(
             positive_int_field("result.page", ["result", "page"]),
             ExpectedFieldShape::required_nullable(),
         )
+        .field_with_declaration_path(
+            ["result", "auto_read"],
+            object_field("result.auto_read", ["result", "auto_read"]),
+            ExpectedFieldShape::optional(),
+        )
         .build()
 }
 
@@ -157,17 +162,33 @@ pub(super) fn response_unstructured_outline_result_fields(
 }
 
 pub(super) fn response_read_result_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
-    add_result_content_fields(FieldDefSet::builder().field_with_declaration_path(
-        ["result", "ref"],
-        non_empty_string_field("result.ref", ["result", "ref"]),
-        ExpectedFieldShape::required(),
-    ))
-    .field_with_declaration_path(
-        ["result", "page"],
-        positive_int_field("result.page", ["result", "page"]),
-        ExpectedFieldShape::required_nullable(),
-    )
-    .build()
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["ref"],
+            non_empty_string_field("read.ref", ["ref"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["content"],
+            string_field("read.content", ["content"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["content_type"],
+            non_empty_string_field("read.content_type", ["content_type"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["cost"],
+            object_field("read.cost", ["cost"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["page"],
+            positive_int_field("read.page", ["page"]),
+            ExpectedFieldShape::required_nullable(),
+        )
+        .build()
 }
 
 fn add_result_content_fields(builder: FieldDefSetBuilder) -> FieldDefSetBuilder {
@@ -205,6 +226,26 @@ pub(super) fn response_find_result_fields() -> Result<FieldDefSet, FieldDefSetBu
             ["result", "page"],
             positive_int_field("result.page", ["result", "page"]),
             ExpectedFieldShape::required_nullable(),
+        )
+        .field_with_declaration_path(
+            ["result", "auto_read"],
+            object_field("result.auto_read", ["result", "auto_read"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn response_auto_read_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["reason"],
+            string_enum_field::<AutoReadReason>("auto_read.reason", ["reason"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["read"],
+            object_field("auto_read.read", ["read"]),
+            ExpectedFieldShape::required(),
         )
         .build()
 }

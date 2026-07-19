@@ -10,6 +10,7 @@
 - protocol outline 是扁平 entries，entry 使用 `ref`、`label` 和可选结构化 facts。
 - protocol find 是扁平 matches，match 使用同一 entry fact shape。
 - ref 从 outline 原样交给 read。
+- outline/find 当前返回结果中的非空 ref 去重后恰好只有一个，且追加 read 成功时，success result 增加 `auto_read`；其它 outcome 保持原 base result。
 - protocol read 使用 `cost.measurements[]`。
 - 分页结果返回下一页 page；null 表示没有更多信息。
 
@@ -21,7 +22,15 @@
 
 Structured outline 示例使用 `kind: "structured"`、entries 和 page。非结构化全文 outline 示例包括 path selector 触发的 [protocol-outline-unstructured-path-response.json](json/protocol-outline-unstructured-path-response.json)、cost threshold 触发的 [protocol-outline-unstructured-cost-response.json](json/protocol-outline-unstructured-cost-response.json)，以及 threshold 不命中后保持 structured 的 [protocol-outline-threshold-miss-response.json](json/protocol-outline-threshold-miss-response.json)。
 
-默认 CLI `readable-view` 输出由 built-in renderer 从同一个 protocol response 派生；structured outline 不产生 block section，unstructured outline 使用 `/content` block 承载全文。`readable-view` framing 的验收边界见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
+[protocol-outline-auto-read-response.json](json/protocol-outline-auto-read-response.json) 展示当前返回结果只有一个 distinct ref 时成功追加完整 `ReadResult`。它同时保留 base `entries` 和非 null `page`，说明 auto-read 只判断当前返回结果，不改变 outline continuation。[protocol-outline-response.json](json/protocol-outline-response.json) 返回多个 distinct ref，因此保持无 `auto_read` 的 base result。
+
+默认 CLI `readable-view` 由 built-in renderer 从同一个 protocol response 派生，并按 outline 的结果形态呈现内容：
+
+- 不含 `auto_read` 的 structured result 只输出 base header，不产生 block；
+- 含 successful `auto_read` 的 structured result 保留 base header，并用 `/auto_read/read/content` block 承载 nested read content；
+- unstructured result 使用 `/content` block 承载全文。
+
+完整的字段投影和 framing 契约见 [输出模式](../output.md)，schema 校验范围见 [JSON Schema 索引](../schemas/json-schema.md)。
 
 protocol 请求显式传入 `page: 1`、`limit: 28` 和 request `arguments.options.max_heading_level: 3`。这是 operation request argument，不是持久 config source path；配置文件中的 Markdown native option 使用 `options.docnav-markdown.max_heading_level`。结果返回 `page: 2`，表明还有更多条目且应继续请求第二页。
 
@@ -66,11 +75,12 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 `find` 与 `info` 能力示例：
 
 - [protocol-find-request.json](json/protocol-find-request.json) / [response](json/protocol-find-response.json)
+- [protocol-find-auto-read-response.json](json/protocol-find-auto-read-response.json) 展示多个 match 共享同一 opaque ref 时只附加一个成功 `auto_read`
 - [protocol-info-request.json](json/protocol-info-request.json) / [response](json/protocol-info-response.json)
 
 ## 配置示例
 
-- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 `options.docnav-markdown.max_heading_level` Markdown native option、document operation defaults 和 core-owned `invocation_log` section 的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。
+- [docnav-markdown-config.json](json/docnav-markdown-config.json) 展示 `docnav` 配置 source 中 `options.docnav-markdown.max_heading_level` Markdown native option、document operation defaults 和 core-owned `invocation_log` section 的文档化 shape，对应 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。Project 和 user config 使用同一个 `defaults.auto_read` JSON locator；其 canonical catalog identity 是 `docnav.defaults.auto_read`，`docnav config inspect` 只读展示对应 source candidate。
 - [docnav-markdown-config-path-unstructured.json](json/docnav-markdown-config-path-unstructured.json) 展示 `outline.mode_rules[]` path selector 和后写 rule 覆盖。
 - [docnav-markdown-config-cost-unstructured.json](json/docnav-markdown-config-cost-unstructured.json) 展示 adapter-scoped cost threshold selector。
 - [docnav-markdown-config-threshold-miss.json](json/docnav-markdown-config-threshold-miss.json) 展示 threshold candidate filtering 和不命中时保持 structured 的输入形状。

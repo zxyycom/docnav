@@ -1,4 +1,6 @@
 mod adapter_source;
+mod auto_read_composition;
+mod auto_read_config;
 mod config_sources;
 mod hard_cutover;
 mod native_options;

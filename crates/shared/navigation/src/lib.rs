@@ -4,6 +4,7 @@
 //! registered adapters, constructs closed operation input, and dispatches through the selected
 //! strategy while preserving adapter-owned capabilities and full-read hooks.
 
+mod auto_read;
 mod config_source;
 mod context;
 mod error;
@@ -68,6 +69,34 @@ impl NavigationOutputMode {
             "protocol-json" => Ok(Self::ProtocolJson),
             _ => Err(format!(
                 "invalid output value {value:?}, accepted values: {}",
+                Self::ACCEPTED_VALUES.join(", ")
+            )),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AutoReadMode {
+    Disabled,
+    UniqueRef,
+}
+
+impl AutoReadMode {
+    pub const ACCEPTED_VALUES: &'static [&'static str] = &["disabled", "unique-ref"];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Disabled => "disabled",
+            Self::UniqueRef => "unique-ref",
+        }
+    }
+
+    pub fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "disabled" => Ok(Self::Disabled),
+            "unique-ref" => Ok(Self::UniqueRef),
+            _ => Err(format!(
+                "invalid auto-read value {value:?}, accepted values: {}",
                 Self::ACCEPTED_VALUES.join(", ")
             )),
         }
@@ -288,6 +317,12 @@ where
     let prepared = prepare_navigation_request(command.operation, resolved, &mut trace)?;
     let response = dispatch_navigation_request(&config_sources, &selection, &prepared, &mut trace)?;
     let response = validate_navigation_response(response, &mut trace)?;
+    let response = auto_read::compose_response(
+        prepared.auto_read,
+        &selection.adapter,
+        &prepared.standard_input,
+        response,
+    );
 
     Ok(NavigationCommandOutcome {
         response,
@@ -299,6 +334,7 @@ where
 struct PreparedNavigationRequest {
     request: RequestEnvelope,
     output: NavigationOutputMode,
+    auto_read: Option<AutoReadMode>,
     standard_input: StandardOperationInput,
 }
 
@@ -364,6 +400,7 @@ fn prepare_navigation_request(
         page,
         limit,
         output,
+        auto_read,
         options,
         standard_input,
     } = resolved;
@@ -382,6 +419,7 @@ fn prepare_navigation_request(
     Ok(PreparedNavigationRequest {
         request,
         output,
+        auto_read,
         standard_input,
     })
 }
@@ -430,6 +468,13 @@ fn validate_navigation_response(
         trace.failure_layer = Some(NavigationFailureLayer::ResultValidation);
         NavigationError::protocol_response_invalid(error.to_string()).with_invocation_trace(trace)
     })?;
+    if auto_read::base_response_has_auto_read(&response) {
+        trace.failure_layer = Some(NavigationFailureLayer::ResultValidation);
+        return Err(NavigationError::protocol_response_invalid(
+            "adapter base result contains navigation-owned auto_read",
+        )
+        .with_invocation_trace(trace));
+    }
     Ok(response)
 }
 

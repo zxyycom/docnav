@@ -15,6 +15,7 @@ import {
   createRealMarkdownLinkTasks,
   createRealMarkdownRefErrorTasks
 } from "./smoke/core/cases/real-markdown.ts";
+import { createAutoReadTasks } from "./smoke/core/cases/auto-read.ts";
 import { createDocumentOutputBoundaryTasks } from "./smoke/core/cases/outputs.ts";
 import { createAdapterSelectionTasks } from "./smoke/core/cases/adapter-selection.ts";
 import { createCliArgumentFailureTasks } from "./smoke/core/cases/cli-args.ts";
@@ -41,6 +42,11 @@ try {
       id: "real-markdown-ref-error",
       label: "built-in markdown ref error mapping",
       tasks: createRealMarkdownRefErrorTasks()
+    },
+    {
+      id: "auto-read",
+      label: "unique-ref auto-read defaults and disable sources",
+      tasks: createAutoReadTasks()
     },
     { id: "document-output-boundary", label: "document output boundary", tasks: createDocumentOutputBoundaryTasks() },
     { id: "adapter-selection", label: "adapter selection representative", tasks: createAdapterSelectionTasks() },

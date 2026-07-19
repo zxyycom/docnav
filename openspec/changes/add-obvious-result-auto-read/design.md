@@ -153,4 +153,4 @@ Invocation log 的 root operation 仍为 `outline` 或 `find`，不新增独立 
 
 ## Open Questions
 
-无未回答问题。开始 owner 文档或应用代码实现前，仍需用户审计并明确批准更新后的 proposal、design、spec deltas 和 tasks。
+无未回答问题。实现前用户批准门已完成，其执行状态与完成记录以 `tasks.md` 0.1 为准。

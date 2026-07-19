@@ -30,6 +30,8 @@ pub struct CoreConfig {
 pub struct DefaultsConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_read: Option<String>,
     #[serde(default, skip_serializing_if = "PaginationConfig::is_empty")]
     pub pagination: PaginationConfig,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -73,7 +75,10 @@ pub struct NativeOptionsConfig {
 
 impl DefaultsConfig {
     fn is_empty(&self) -> bool {
-        self.adapter.is_none() && self.pagination.is_empty() && self.output.is_none()
+        self.adapter.is_none()
+            && self.auto_read.is_none()
+            && self.pagination.is_empty()
+            && self.output.is_none()
     }
 }
 
@@ -127,5 +132,24 @@ mod tests {
             config.options.value_for_key("registered_elsewhere"),
             Some(&json!({ "raw": true }))
         );
+    }
+
+    #[test]
+    fn defaults_auto_read_preserves_raw_modes() {
+        for mode in ["disabled", "unique-ref"] {
+            let value = json!({
+                "defaults": {
+                    "auto_read": mode
+                }
+            });
+            let config: CoreConfig =
+                serde_json::from_value(value.clone()).expect("raw auto-read mode");
+
+            assert!(!config.defaults.is_empty());
+            assert_eq!(
+                serde_json::to_value(config).expect("serialize raw auto-read mode"),
+                value
+            );
+        }
     }
 }

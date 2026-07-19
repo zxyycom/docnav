@@ -1,0 +1,36 @@
+{
+  "description": "Structured outline with successful auto-read keeps base fields in the header and renders only nested read content at /auto_read/read/content.",
+  "view_kind": "outline",
+  "config_override": null,
+  "expected_failure": null,
+  "input": {
+    "entries": [
+      {"ref": "H:L3:H2", "display": "Only"}
+    ],
+    "page": 2,
+    "auto_read": {
+      "reason": "unique_ref",
+      "read": {
+        "ref": "H:L3:H2",
+        "content": "## Only\n\nNested auto-read content.\n",
+        "content_type": "text/markdown",
+        "cost": "3 lines | 0.1 KB",
+        "page": 2
+      }
+    }
+  },
+  "assertions": [
+    {"type": "block", "pointer": "/auto_read/read/content", "byte_length": 35, "payload": "## Only\n\nNested auto-read content.\n"},
+    {"type": "header_field", "pointer": "/entries/0/ref", "value": "H:L3:H2"},
+    {"type": "header_field", "pointer": "/page", "value": 2},
+    {"type": "header_field", "pointer": "/auto_read/reason", "value": "unique_ref"},
+    {"type": "header_field", "pointer": "/auto_read/read/ref", "value": "H:L3:H2"},
+    {"type": "header_field", "pointer": "/auto_read/read/content", "value": {"$block": "/auto_read/read/content", "bytes": 35}},
+    {"type": "header_field", "pointer": "/auto_read/read/content_type", "value": "text/markdown"},
+    {"type": "header_field", "pointer": "/auto_read/read/cost", "value": "3 lines | 0.1 KB"},
+    {"type": "header_field", "pointer": "/auto_read/read/page", "value": 2},
+    {"type": "output_contains", "text": "[block /auto_read/read/content bytes=35]"},
+    {"type": "output_contains", "text": "[endblock /auto_read/read/content]"},
+    {"type": "no_cr_in_framing"}
+  ]
+}

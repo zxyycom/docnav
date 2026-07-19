@@ -29,3 +29,4 @@ assertion types, and the explicitly excluded stability surface.
 | `18_renderer_failure_missing_pointer.json` | Renderer failure — missing pointer |
 | `19_renderer_failure_non_string.json` | Renderer failure — non-string target |
 | `20_outline_unstructured_content_block.json` | Unstructured outline `/content` block |
+| `21_outline_auto_read_nested_content_block.json` | Structured outline auto-read `/auto_read/read/content` block |

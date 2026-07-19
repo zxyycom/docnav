@@ -119,3 +119,10 @@ fn conformance_20_outline_unstructured_content_block() {
         "fixtures/conformance/20_outline_unstructured_content_block.json"
     ));
 }
+
+#[test]
+fn conformance_21_outline_auto_read_nested_content_block() {
+    run_vector(&load_vector!(
+        "fixtures/conformance/21_outline_auto_read_nested_content_block.json"
+    ));
+}

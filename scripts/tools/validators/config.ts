@@ -68,7 +68,8 @@ export const OUTPUT_MODE_CONSISTENCY = {
     "17_order_independent_assertions.json",
     "18_renderer_failure_missing_pointer.json",
     "19_renderer_failure_non_string.json",
-    "20_outline_unstructured_content_block.json"
+    "20_outline_unstructured_content_block.json",
+    "21_outline_auto_read_nested_content_block.json"
   ]
 };
 

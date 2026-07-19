@@ -1,6 +1,6 @@
 use docnav_protocol::{
-    protocol_error_default_guidance, Cost, Entry, InfoResult, Measurement, OperationResult,
-    OutlineResult, ProtocolError, ProtocolResponse,
+    protocol_error_default_guidance, AutoReadResult, Cost, Entry, FindResult, InfoResult,
+    Measurement, OperationResult, OutlineResult, ProtocolError, ProtocolResponse, ReadResult,
 };
 use docnav_readable::{render_readable_view, to_readable_value, ReadableViewKind};
 use serde_json::{json, Map, Value};
@@ -30,17 +30,8 @@ pub fn render_readable_response(response: &ProtocolResponse) -> Result<String, R
 fn readable_payload(result: &OperationResult) -> Result<Value, RenderFailure> {
     let value = match result {
         OperationResult::Outline(result) => readable_outline_payload(result),
-        OperationResult::Read(result) => json!({
-            "ref": result.ref_id,
-            "content": result.content,
-            "content_type": result.content_type,
-            "cost": cost_summary(&result.cost),
-            "page": result.page,
-        }),
-        OperationResult::Find(result) => json!({
-            "matches": result.matches.iter().map(readable_entry).collect::<Vec<_>>(),
-            "page": result.page,
-        }),
+        OperationResult::Read(result) => readable_read_payload(result),
+        OperationResult::Find(result) => readable_find_payload(result),
         OperationResult::Info(result) => json!({
             "display": info_display(result),
         }),
@@ -50,11 +41,17 @@ fn readable_payload(result: &OperationResult) -> Result<Value, RenderFailure> {
 
 fn readable_outline_payload(result: &OutlineResult) -> Value {
     match result {
-        OutlineResult::Structured(result) => json!({
-            "kind": "structured",
-            "entries": result.entries.iter().map(readable_entry).collect::<Vec<_>>(),
-            "page": result.page,
-        }),
+        OutlineResult::Structured(result) => {
+            let mut payload = json!({
+                "kind": "structured",
+                "entries": result.entries.iter().map(readable_entry).collect::<Vec<_>>(),
+                "page": result.page,
+            });
+            if let Some(auto_read) = &result.auto_read {
+                payload["auto_read"] = readable_auto_read_payload(auto_read);
+            }
+            payload
+        }
         OutlineResult::Unstructured(result) => json!({
             "kind": "unstructured",
             "reason": result.reason,
@@ -65,13 +62,49 @@ fn readable_outline_payload(result: &OutlineResult) -> Value {
     }
 }
 
+fn readable_find_payload(result: &FindResult) -> Value {
+    let mut payload = json!({
+        "matches": result.matches.iter().map(readable_entry).collect::<Vec<_>>(),
+        "page": result.page,
+    });
+    if let Some(auto_read) = &result.auto_read {
+        payload["auto_read"] = readable_auto_read_payload(auto_read);
+    }
+    payload
+}
+
+fn readable_auto_read_payload(result: &AutoReadResult) -> Value {
+    json!({
+        "reason": result.reason,
+        "read": readable_read_payload(&result.read),
+    })
+}
+
+fn readable_read_payload(result: &ReadResult) -> Value {
+    json!({
+        "ref": result.ref_id,
+        "content": result.content,
+        "content_type": result.content_type,
+        "cost": cost_summary(&result.cost),
+        "page": result.page,
+    })
+}
+
 fn view_kind_for_result(result: &OperationResult) -> ReadableViewKind {
     match result {
+        OperationResult::Outline(OutlineResult::Structured(result))
+            if result.auto_read.is_some() =>
+        {
+            ReadableViewKind::OutlineAutoRead
+        }
         OperationResult::Outline(OutlineResult::Structured(_)) => ReadableViewKind::Outline,
         OperationResult::Outline(OutlineResult::Unstructured(_)) => {
             ReadableViewKind::OutlineUnstructured
         }
         OperationResult::Read(_) => ReadableViewKind::Read,
+        OperationResult::Find(result) if result.auto_read.is_some() => {
+            ReadableViewKind::FindAutoRead
+        }
         OperationResult::Find(_) => ReadableViewKind::Find,
         OperationResult::Info(_) => ReadableViewKind::Info,
     }
