@@ -46,6 +46,9 @@ export function assertProfile(profile: string): asserts profile is Profile {
 }
 
 export function visibleOutputLines(check: CheckTask, output: string, status: CheckStatus = "failed"): string[] {
+  if (status === "passed") {
+    return [];
+  }
   const allowedLines = lines(output).filter((line) => isAllowedOutput(check, line, status));
   return allowedLines.filter((line) => !isIgnoredOutput(check, line));
 }

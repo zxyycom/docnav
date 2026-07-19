@@ -43,14 +43,14 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, output), []);
   });
 
-  it("keeps actionable output after filtering known success noise", () => {
+  it("keeps actionable failure output after filtering known success noise", () => {
     const check = checkById("release-package-script-tests");
     const output = [
       "(pass) package selection accepts a target [0.23ms]",
       "unexpected diagnostic"
     ].join("\n");
 
-    assert.deepEqual(visibleOutputLines(check, output), ["unexpected diagnostic"]);
+    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["unexpected diagnostic"]);
   });
 
   it("filters package manager echoes from successful script checks", () => {
@@ -67,10 +67,14 @@ describe("workspace verifier configuration", () => {
     );
   });
 
-  it("filters docs validator success details", () => {
+  it("suppresses all passed output even when a success line is not configured", () => {
     const check = checkById("docs-validators");
+    const output = [
+      "protocol examples ok: 4 operation(s)",
+      "unexpected diagnostic"
+    ].join("\n");
 
-    assert.deepEqual(visibleOutputLines(check, "readable error details shape ok", "passed"), []);
+    assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
   });
 
   it("filters workspace verifier script test package output", () => {
@@ -117,12 +121,12 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
   });
 
-  it("prints visible report output immediately after completion lines", () => {
+  it("prints visible warning output immediately after completion lines", () => {
     const lines: string[] = [];
 
     printCompletionResult(
       {
-        status: "passed",
+        status: "warning",
         check: { id: "docs-validators", label: "docs validators" },
         durationMs: 1250,
         visibleOutput: "catalog diagnostic\nschema diagnostic"
@@ -131,7 +135,7 @@ describe("workspace verifier configuration", () => {
     );
 
     assert.deepEqual(lines, [
-      "  passed: docs validators (1.3s)",
+      "  warning: docs validators (1.3s)",
       "catalog diagnostic\nschema diagnostic"
     ]);
   });

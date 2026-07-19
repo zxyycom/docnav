@@ -803,7 +803,7 @@ Proves:
 - full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
 - completion line 和 summary 可区分 passed、warning 和 failed。
 - completion duration 在秒数进位时输出规范化的分钟与秒，不产生 `60s` 余数。
-- 输出过滤规则由 verifier 配置维护；终端输出保留状态摘要和可行动诊断，完整子命令输出写入 verifier log。
+- 输出过滤规则由 verifier 配置维护；passed 只输出 completion line，warning 和 failed 保留允许显示的可行动诊断，完整子命令输出写入 verifier log。
 - check definition normalization 要求 leaf 提供非空 command，并拒绝同时提供 command 和 tasks 的 group。
 
 ```mermaid
@@ -816,9 +816,10 @@ flowchart LR
   E --> F
   F --> H["接收 check result 并过滤终端可见输出"]
   H --> I{"result status"}
-  I -->|"passed / warning / failed"| J["输出 completion lines"]
-  J --> K["输出允许显示的诊断"]
-  K --> L["统计 report groups 和 leaf checks"]
+  I -->|"passed"| J["只输出 completion line"]
+  I -->|"warning / failed"| K["输出 completion line 和允许显示的诊断"]
+  J --> L["统计 report groups 和 leaf checks"]
+  K --> L
 ```
 
 ### AUX-SMOKE-HARNESS-001 Smoke harness 正确记录 task 和 command 输出语义
