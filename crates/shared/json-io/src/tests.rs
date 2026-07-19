@@ -44,10 +44,7 @@ impl Write for FailingWriter {
 fn compact_json_writes_value_and_newline() {
     let mut output = Vec::new();
     write_json_value_compact(&json!({"ok": true}), &mut output).unwrap();
-    assert_eq!(
-        output,
-        br#"{"ok":true}"#.iter().copied().chain([b'\n']).collect::<Vec<_>>()
-    );
+    assert_eq!(output, b"{\"ok\":true}\n");
 }
 
 #[test]
