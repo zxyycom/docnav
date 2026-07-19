@@ -17,6 +17,10 @@ members = [
 ]
 resolver = "2"
 
+# Tokenizer initialization dominates short-lived debug CLI invocations.
+[profile.dev.package.tiktoken-rs]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 lto = "fat"
