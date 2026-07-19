@@ -43,7 +43,7 @@ function readJsonStringArrayEnv(name: string): string[] {
 
 export const DEFAULT_CONFIG = Object.freeze({
   /** 配置版本，用于 baseline 比较时追踪配置变更 */
-  version: "0.8.7",
+  version: "0.8.8",
 
   include: [
     "crates/**/*.rs",
