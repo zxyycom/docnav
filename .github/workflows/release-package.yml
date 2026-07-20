@@ -45,49 +45,12 @@ jobs:
       - name: Add Rust target
         run: mise exec -- rustup target add "${{ matrix.target }}"
 
-      # TODO: Remove all three manual Windows dirty checkpoints after the first mutating stage is identified and fixed.
-      - name: Diagnose workspace after setup (Windows)
-        if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch'
-        run: |
-          $workspaceStatus = @(git status --porcelain=v1 --untracked-files=all --ignored=no)
-          $workspaceStatus
-          if ($workspaceStatus.Count -gt 0) {
-            Write-Host "Tracked diff name/status:"
-            git diff --name-status HEAD --
-            Write-Host "Untracked files:"
-            git ls-files --others --exclude-standard
-          }
-
       - name: Resolve package layout
         id: info
         run: bun run info:docnav-package -- --target "${{ matrix.target }}"
 
-      - name: Diagnose workspace after package info (Windows)
-        if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch'
-        run: |
-          $workspaceStatus = @(git status --porcelain=v1 --untracked-files=all --ignored=no)
-          $workspaceStatus
-          if ($workspaceStatus.Count -gt 0) {
-            Write-Host "Tracked diff name/status:"
-            git diff --name-status HEAD --
-            Write-Host "Untracked files:"
-            git ls-files --others --exclude-standard
-          }
-
       - name: Build release package
         run: bun run package:docnav -- --target "${{ matrix.target }}"
-
-      - name: Diagnose workspace after release package build (Windows)
-        if: runner.os == 'Windows' && github.event_name == 'workflow_dispatch'
-        run: |
-          $workspaceStatus = @(git status --porcelain=v1 --untracked-files=all --ignored=no)
-          $workspaceStatus
-          if ($workspaceStatus.Count -gt 0) {
-            Write-Host "Tracked diff name/status:"
-            git diff --name-status HEAD --
-            Write-Host "Untracked files:"
-            git ls-files --others --exclude-standard
-          }
 
       - name: Verify release package
         run: bun run verify:docnav-package -- --manifest "${{ steps.info.outputs.manifest_path }}" --expect-producer-kind github-actions --expect-source-dirty false
