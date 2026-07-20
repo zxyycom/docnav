@@ -1,41 +1,41 @@
-**一句话核心：用最小公共发布层和可执行 Quick Start 交付 Markdown CLI Beta，所有实现任务必须等待阻塞审计完成；本文件是仅位于本 change 目录下的未审核临时任务清单，不影响现有主规范或其它 change。**
+## 0. 实施启动门禁
 
-## 0. 实现前阻塞审计
+- [x] 0.1 审计 proposal、design、`release-artifacts` delta 和 tasks：主承诺统一为“当前实现收尾、既有验证、打包发布”，capability 复用现有 `release-artifacts` owner。
+- [x] 0.2 确认 planning artifacts 完整且没有未回答的开放问题；进入实现前的改动仅位于本 change，后续实现修改由既有验证报告的阻塞决定。
 
-- [ ] 0.1 阻塞审计 proposal、design、`release-artifacts` delta 和本 tasks 是否都围绕“公开可体验的 Markdown CLI Beta”核心句，capability ID 是否复用现有 `release-artifacts` owner；本项和 0.2 未完成前不得执行任何 1.x 及后续实现任务。
-- [ ] 0.2 阻塞审计本 change 是否只包含 `openspec/changes/ship-markdown-cli-beta/` 下的未审核临时 artifacts、未修改主规范/实现/其它 change，`## Open Questions` 是否无未回答问题或已收敛歧义，并确认 MCP、service mode、interactive/preview/composition、新格式、遥测和全面评测平台不在实现范围。
+## 1. 当前实现收尾
 
-## 1. Owner 契约与证明目标
+- [ ] 1.1 在目标 clean commit 上按 `docs/navigation.md` 状态语义审计当前主规范、README、实现和测试证据，列出且只列出会阻塞当前版本交付的真实不一致。
+- [ ] 1.2 运行现有 required/full workspace verification、docs/OpenSpec validation、CLI smoke 和 release-package checks，记录 baseline 结果。
+- [ ] 1.3 处理 baseline 结果：没有失败时记录 release baseline 已就绪；出现失败时按对应 owner contract 做最小修复，并重新运行受影响的 focused checks 和完整 baseline verification。
 
-- [ ] 1.1 更新 `docs/testing/release.md`，定义 canonical package、staged public files、public prerelease、验收对象和失败边界。
-- [ ] 1.2 按 `docs/testing/case-maintenance.md` 写明 public-file staging、Quick Start acceptance 和发布门禁的“owner 语义 -> 可观察结果”证明目标，并更新 case ledger 与 coverage mapping 计划。
-- [ ] 1.3 局部审计 owner 文档与本 change spec 一致，且未改变 CLI/protocol/output/Markdown contract 或把其它 active change 变为依赖。
+## 2. Beta 版本与发布资料
 
-## 2. Beta 版本与公共文件准备
+- [ ] 2.1 将 Cargo workspace version 更新为 `0.1.0-beta.1`，刷新 `Cargo.lock`，并确认 Cargo metadata、CLI version、package path 和 manifest version 一致。
+- [ ] 2.2 更新 `docs/testing/release.md`，增加 release baseline、public-file 派生、prerelease promotion、发布复核和失败恢复边界，同时保留现有 canonical package owner。
+- [ ] 2.3 更新 `README.md`，补齐当前 Beta 的支持 target、下载、checksum、基本启动入口和现有详细文档链接。
+- [ ] 2.4 增加 `docs/releases/v0.1.0-beta.1.md` 作为 prerelease notes source，只根据当前实现与验证证据描述版本范围、获取方式和已知发布限制。
 
-- [ ] 2.1 将 Cargo workspace version 与相关 package/version 断言更新为 `0.1.0-beta.1`，并用 focused tests 证明 `docnav version`、package path 和 manifest version 一致。
-- [ ] 2.2 在 release-package tooling 中增加 target-qualified public binary 与 `.sha256` 的 staging，验证其内容与 canonical package binary 逐字节相同，且不改变 `package/`、manifest 或既有 `SHA256SUMS.txt`。
-- [ ] 2.3 为 Linux/Windows public filename、checksum、target/version mismatch、缺失文件、dirty source 和非 GitHub Actions producer 增加脚本级代表测试。
+## 3. Canonical package 与 public files
 
-## 3. Quick Start 与 Beta acceptance
+- [ ] 3.1 复用现有 release-package build/verify/smoke，为 Linux 与 Windows 生成 canonical packages；不改变 package layout、manifest、`SHA256SUMS.txt` 或 Cargo release profile。
+- [ ] 3.2 在现有 release-package 实现归属中增加最小 public-file staging：从 manifest 定位已验证 core binary，复制为 target-qualified filename，并生成对应 `.sha256`。
+- [ ] 3.3 验证 public binary 与 package binary 逐字节相同；staging 失败时清理 partial public files，且不得调用 Cargo 或搜索替代 binary。
+- [ ] 3.4 为 public filename、checksum、byte equality、exact file set，以及 missing/mismatched package evidence 增加最小脚本级测试。
 
-- [ ] 3.1 增加一个最小 Markdown acceptance fixture，使 outline/find 返回实际 ref，并让该 ref 原样进入 read；该 fixture 只证明路径可执行，不证明产品效果。
-- [ ] 3.2 实现 staged public binary acceptance：直接运行 target-qualified 文件，覆盖 `version`、默认 readable-view、`protocol-json` ref 提取、outline-to-read 和 find-to-read，禁止回退到 Cargo output 或开发 wrapper。
-- [ ] 3.3 更新 README，提供 Linux/Windows 下载、checksum、执行准备和与 acceptance 同语义的五分钟 Quick Start。
-- [ ] 3.4 在 README 和 prerelease notes owner 中明确 Beta、Markdown-only、支持 target、适用/不适用场景、已知限制、反馈入口、无默认自动遥测和无未经实测效果声明。
+## 4. CI 打包与 prerelease promotion
 
-## 4. CI prerelease 发布门禁
+- [ ] 4.1 扩展 `.github/workflows/release-package.yml`：保留非发布验证入口，并增加匹配 Beta tag 的 publish 路径；workflow/build jobs 默认 `contents: read`。
+- [ ] 4.2 让 native matrix 依次完成 canonical package build、verify/smoke 和 public staging，再上传同一 run 的 package/public evidence。
+- [ ] 4.3 增加 read-only aggregate validation，核对 exact target 集合、workspace/tag version、tag commit、clean source、current-run producer 和 package/public hashes。
+- [ ] 4.4 增加唯一 `contents: write` publish job：拒绝 existing release，并用 `gh release create --verify-tag --prerelease --latest=false`、versioned notes 和四个已验证 public files 创建新 prerelease。
+- [ ] 4.5 为 event condition、job dependencies、job-level permission、artifact handoff、existing-release rejection 和 publish failure 增加范围匹配的静态或脚本验证。
 
-- [ ] 4.1 在修改 workflow 前核对 GitHub 官方 release/tag/permission 文档，记录所采用官方接口的当前触发、prerelease、asset upload 与 token 权限事实。
-- [ ] 4.2 扩展 release workflow，使 matrix job 在 package smoke 后上传 staged public files，聚合 publish job 只消费同一次 run 的完整 Linux/Windows 文件集合并重复核对版本、hash、producer 和 dirty 状态。
-- [ ] 4.3 将 `contents: write` 限制到 tag/version 完全匹配的 publish job；branch、PR、普通 dispatch、任一 target/acceptance 失败或非 Beta version 均不得创建或更新 public release。
-- [ ] 4.4 为 workflow/job ordering、publish condition、permission、artifact handoff 和 partial failure 增加范围匹配的静态或脚本验证，不通过真实公开发布伪造单元测试。
+## 5. 最终验证与发布
 
-## 5. 交付验证与发布
-
-- [ ] 5.1 完成 case ledger、coverage mapping、源码 `@case` 标记及 release/CLI smoke proof，避免为等价 platform filename 建重复测试矩阵。
-- [ ] 5.2 运行 release-package script tests、docs validation、focused acceptance 和本地 canonical package verify/smoke，并检查 staged public binary hash 与执行结果。
-- [ ] 5.3 运行 `bun run verify:docnav-workspace` 与 `openspec validate ship-markdown-cli-beta --type change --strict --no-interactive`，修复本 change 引入的失败。
-- [ ] 5.4 用局部 diff 做最小实现审计，删除与公开 Beta 路径无关的抽象、target、教程、功能或 workflow 权限。
-- [ ] 5.5 仅在用户明确授权创建外部版本后，创建 `v0.1.0-beta.1` tag 并让干净 CI 发布 prerelease；发布前不得手工上传未验证 binary。
-- [ ] 5.6 从公开 prerelease 重新下载两个 target 的 binary/checksum，复核 checksum，并在可用平台人工执行 README Quick Start；若失败则撤下下载入口且不复用该 prerelease version。
+- [ ] 5.1 运行 release-package script tests、TypeScript checks、docs validation、本地 package verify/smoke 和 public-file verification。
+- [ ] 5.2 运行 `bun run verify:docnav-workspace` 与 `openspec validate ship-markdown-cli-beta --type change --strict --no-interactive`。
+- [ ] 5.3 用局部 diff 审计最终范围：除有明确失败证据的修复外，只允许版本、发布资料、package/public staging 和 CI promotion 改动。
+- [ ] 5.4 在用户明确授权后运行非发布 CI 演练，确认两个 target 完整通过且 GitHub release 状态未变化。
+- [ ] 5.5 仅在用户再次明确授权公开版本后创建并推送 `v0.1.0-beta.1` tag；不得手工上传或覆盖未通过当前 workflow 的 assets。
+- [ ] 5.6 重新下载四个公开 assets，复核 exact set、checksum、binary version 和基本执行结果，并在 change-local `delivery-notes.md` 记录 commit、tag、release URL、workflow run、hashes 和最终状态。

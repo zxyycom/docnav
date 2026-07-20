@@ -1,3 +1,3 @@
 # ship-markdown-cli-beta
 
-冻结推测性扩展，交付一个可安装、可走通真实 Markdown 导航任务且限制透明的 Docnav CLI Beta。
+以当前实现为发布基线，完成既有验证和发布资料对齐后，复用现有 package 链路生成并发布首个 Docnav Markdown CLI Beta；验证失败时只修复对应阻塞。
