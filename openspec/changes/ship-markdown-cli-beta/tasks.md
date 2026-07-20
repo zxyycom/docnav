@@ -18,7 +18,7 @@
 
 ## 3. Canonical package 与 public files
 
-- [ ] 3.1 复用现有 release-package build/verify/smoke，为 Linux 与 Windows 生成 canonical packages；不改变 package layout、manifest、`SHA256SUMS.txt` 或 Cargo release profile。
+- [x] 3.1 复用现有 release-package build/verify/smoke，为 Linux 与 Windows 生成 canonical packages；不改变 package layout、manifest、`SHA256SUMS.txt` 或 Cargo release profile。
 - [x] 3.2 在现有 release-package 实现归属中增加最小 public-file staging：从 manifest 定位已验证 core binary，复制为 target-qualified filename，并生成对应 `.sha256`。
 - [x] 3.3 验证 public binary 与 package binary 逐字节相同；staging 失败时清理 partial public files，且不得调用 Cargo 或搜索替代 binary。
 - [x] 3.4 为 public filename、checksum、byte equality、exact file set，以及 missing/mismatched package evidence 增加最小脚本级测试。
@@ -36,6 +36,6 @@
 - [x] 5.1 运行 release-package script tests、TypeScript checks、docs validation、本地 package verify/smoke 和 public-file verification。
 - [x] 5.2 运行 `bun run verify:docnav-workspace` 与 `openspec validate ship-markdown-cli-beta --type change --strict --no-interactive`。
 - [x] 5.3 用局部 diff 审计最终范围：除有明确失败证据的修复外，只允许版本、发布资料、package/public staging 和 CI promotion 改动。
-- [ ] 5.4 在用户明确授权后运行非发布 CI 演练，确认两个 target 完整通过且 GitHub release 状态未变化。
-- [ ] 5.5 仅在用户再次明确授权公开版本后创建并推送 `v0.1.0-beta.1` tag；不得手工上传或覆盖未通过当前 workflow 的 assets。
-- [ ] 5.6 重新下载四个公开 assets，复核 exact set、checksum、binary version 和基本执行结果，并在 change-local `delivery-notes.md` 记录 commit、tag、release URL、workflow run、hashes 和最终状态。
+- [x] 5.4 在用户明确授权后运行非发布 CI 演练，确认两个 target 完整通过且 GitHub release 状态未变化。
+- [x] 5.5 仅在用户再次明确授权公开版本后创建并推送 `v0.1.0-beta.1` tag；不得手工上传或覆盖未通过当前 workflow 的 assets。
+- [x] 5.6 重新下载四个公开 assets，复核 exact set、checksum、binary version 和基本执行结果，并在 change-local `delivery-notes.md` 记录 commit、tag、release URL、workflow run、hashes 和最终状态。
