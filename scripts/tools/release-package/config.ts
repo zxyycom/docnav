@@ -86,6 +86,17 @@ export function expectedBinaryName(binName: string, target: string): string {
   return target.includes("windows") ? `${binName}.exe` : binName;
 }
 
+export function publicBinaryName(version: string, target: string): string {
+  switch (target) {
+    case "x86_64-unknown-linux-gnu":
+      return `docnav-v${version}-${target}`;
+    case "x86_64-pc-windows-msvc":
+      return `docnav-v${version}-${target}.exe`;
+    default:
+      throw new Error(`unsupported public release target ${target}`);
+  }
+}
+
 export function compareStrings(left: string, right: string): number {
   if (left < right) {
     return -1;

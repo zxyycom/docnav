@@ -16,3 +16,4 @@ export {
 export { runScript } from "./io.ts";
 export { validateReleasePackage } from "./validation.ts";
 export { buildReleasePackage } from "./build.ts";
+export { stagePublicFiles } from "./public.ts";

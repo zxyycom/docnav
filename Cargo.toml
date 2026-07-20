@@ -32,7 +32,7 @@ strip = "symbols"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/zxyycom/docnav"
-version = "0.1.0"
+version = "0.1.0-beta.1"
 
 [workspace.dependencies]
 clap = { version = "4.5.40", default-features = false, features = ["std", "help", "usage", "string"] }

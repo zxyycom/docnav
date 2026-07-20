@@ -2,6 +2,9 @@ name: Release package
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*-beta.*"
 
 permissions:
   contents: read
@@ -49,12 +52,122 @@ jobs:
       - name: Build release package
         run: bun run package:docnav -- --target "${{ matrix.target }}"
 
-      - name: Smoke release package
+      - name: Verify release package
+        run: bun run verify:docnav-package -- --manifest "${{ steps.info.outputs.manifest_path }}" --expect-producer-kind github-actions --expect-source-dirty false
+
+      - name: Smoke release package (50 commands)
         run: bun run smoke:docnav-package -- --manifest "${{ steps.info.outputs.manifest_path }}" --expect-producer-kind github-actions --expect-source-dirty false
 
-      - name: Upload package
+      - name: Stage public files
+        run: bun run stage:docnav-public -- --manifest "${{ steps.info.outputs.manifest_path }}" --expect-producer-kind github-actions --expect-source-dirty false
+
+      - name: Upload package and public evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: docnav-v${{ steps.info.outputs.version }}-${{ matrix.target }}
-          path: "${{ steps.info.outputs.package_dir }}"
+          name: ${{ matrix.target }}
+          path: |
+            ${{ steps.info.outputs.package_dir }}
+            artifacts/docnav/v${{ steps.info.outputs.version }}/${{ matrix.target }}/public
           if-no-files-found: error
+
+  aggregate:
+    name: Validate release candidate
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Bootstrap mise and Bun
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+        with:
+          version: 2026.7.5
+          install_args: bun node pnpm rust
+          cache: true
+
+      - name: Resolve candidate layout
+        id: info
+        run: bun run info:docnav-package -- --target "x86_64-unknown-linux-gnu"
+
+      - name: Download current-run candidate artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: "x86_64-*"
+          path: artifacts/docnav/v${{ steps.info.outputs.version }}
+
+      - name: Validate manual release candidate
+        if: github.event_name == 'workflow_dispatch'
+        run: bun run validate:docnav-candidate -- --candidate-root "artifacts/docnav/v${{ steps.info.outputs.version }}"
+
+      - name: Validate tagged release candidate
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bun run validate:docnav-candidate -- --candidate-root "artifacts/docnav/v${{ steps.info.outputs.version }}" --tag "$env:RELEASE_TAG"
+
+  publish:
+    name: Publish GitHub prerelease
+    needs: aggregate
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Bootstrap mise and Bun
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3.6.3
+        with:
+          version: 2026.7.5
+          install_args: bun node pnpm rust
+          cache: true
+
+      - name: Resolve candidate layout
+        id: info
+        run: bun run info:docnav-package -- --target "x86_64-unknown-linux-gnu"
+
+      - name: Download current-run candidate artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: "x86_64-*"
+          path: artifacts/docnav/v${{ steps.info.outputs.version }}
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $tag = $env:RELEASE_TAG
+          $version = "${{ steps.info.outputs.version }}"
+          $candidateRoot = "artifacts/docnav/v$version"
+
+          $PSNativeCommandUseErrorActionPreference = $false
+          gh release view "$tag" --repo "${{ github.repository }}" *> $null
+          $releaseLookupExit = $LASTEXITCODE
+          if ($releaseLookupExit -eq 0) {
+            throw "release $tag already exists"
+          }
+          if ($releaseLookupExit -ne 1) {
+            throw "failed to check existing release $tag"
+          }
+
+          gh release create "$tag" `
+            "$candidateRoot/x86_64-unknown-linux-gnu/public/docnav-v$version-x86_64-unknown-linux-gnu" `
+            "$candidateRoot/x86_64-unknown-linux-gnu/public/docnav-v$version-x86_64-unknown-linux-gnu.sha256" `
+            "$candidateRoot/x86_64-pc-windows-msvc/public/docnav-v$version-x86_64-pc-windows-msvc.exe" `
+            "$candidateRoot/x86_64-pc-windows-msvc/public/docnav-v$version-x86_64-pc-windows-msvc.exe.sha256" `
+            --repo "${{ github.repository }}" `
+            --verify-tag `
+            --prerelease `
+            --latest=false `
+            --notes-file "docs/releases/$tag.md"
+          if ($LASTEXITCODE -ne 0) {
+            throw "failed to create release $tag"
+          }

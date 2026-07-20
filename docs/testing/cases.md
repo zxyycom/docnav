@@ -1037,6 +1037,67 @@ flowchart LR
   G -->|"extra option / path / positional"| J["拒绝非法 build target args"]
 ```
 
+### AUX-RELEASE-PUBLIC-001 Public files 从已验证 canonical package 派生
+Status: implemented
+Code: `scripts/tools/release-package/public.test.ts`
+
+Proves:
+- Linux 与 Windows canonical package evidence 分别派生 target-qualified public binary 和 checksum；public binary bytes、checksum filename/hash 和 exact two-file set 与对应 package entry 一致。
+- Manifest 或 package evidence 缺失、package binary hash 不一致时，staging 在 public mutation 前失败，并保留既有 public marker/set。
+- Package validation 成功后，checksum 写入失败会清理本次 staging 的 public files。
+
+```mermaid
+flowchart LR
+  A["输入：manifest path 与 package evidence"] --> B{"完整 package validation"}
+  B -->|"missing / mismatch"| C["public mutation 前失败"]
+  C --> D["观察：既有 public marker/set 不变"]
+  B -->|"Linux / Windows valid"| E["复制 target-qualified core binary"]
+  E --> F{"checksum 写入"}
+  F -->|"success"| G["观察：bytes、hash、filename 与 exact set 一致"]
+  F -->|"failure"| H["清理本次 public files"]
+  H --> I["观察：public directory 不存在"]
+```
+
+### AUX-RELEASE-CANDIDATE-001 Release candidate 聚合证据保持同源
+Status: implemented
+Code: `scripts/tools/release-package/candidate.test.ts`
+
+Proves:
+- 显式 version root 只接受 exact Linux/Windows direct target set；每个 target 的 canonical package、exact public file set、binary bytes 和 checksum 均与 manifest evidence 一致。
+- Candidate version、commit、clean-source 和 producer 必须对应当前 workspace 与同一次 GitHub Actions run；tag validation 额外要求 `v<workspace-version>` 指向同一 commit，manual validation 不要求 tag。
+- 聚合成功保持 candidate files 不变；任一 target、version、commit、dirty state、producer 或 package/public hash evidence 不一致时失败。
+
+```mermaid
+flowchart LR
+  A["输入：version root、workspace/run facts、optional tag"] --> B{"exact target 与 package/public evidence"}
+  B -->|"missing / extra / hash mismatch"| C["观察：聚合失败"]
+  B -->|"valid"| D{"version、commit、clean、producer"}
+  D -->|"mismatch"| C
+  D -->|"manual"| E["观察：通过且 candidate files 不变"]
+  D -->|"tag"| F{"tag = v&lt;version&gt; 且 commit 相同"}
+  F -->|"no"| C
+  F -->|"yes"| E
+```
+
+### AUX-RELEASE-WORKFLOW-001 Beta release workflow 保持验证与 promotion 门禁
+Status: implemented
+Code: `scripts/tools/release-package/workflow.test.ts`
+
+Proves:
+- Workflow 保留手动验证入口，只增加 Beta tag push；默认权限为 `contents: read`，唯一写权限属于 tag-only publish job。
+- Exact Linux/Windows matrix 按 build、explicit verify、50-command smoke、public staging 的顺序生成唯一 target artifacts；aggregate 只下载当前 run evidence，manual validation 不传 tag，tag validation 传递当前 ref name。
+- Publish 依赖 aggregate，拒绝 existing release，并用一次 `gh release create` 把四个动态 version public paths 与 versioned notes 发布为 prerelease；create failure 保持失败。
+
+```mermaid
+flowchart LR
+  A["触发：manual 或 Beta tag"] --> B["matrix：build → verify → smoke → stage → upload"]
+  B --> C["aggregate：下载同一次 run evidence"]
+  C -->|"manual，无 tag 参数"| D["观察：只完成候选验证"]
+  C -->|"tag，ref name 参数"| E{"candidate valid 且 release 不存在"}
+  E -->|"no"| F["观察：promotion 失败且不覆盖 release"]
+  E -->|"yes"| G["单次 create：prerelease + exact 四个 public files"]
+```
+
 ### AUX-CASE-CATALOG-001 Case catalog validator 覆盖 planned/status/path 语义
 Status: implemented
 Code: `scripts/tools/validators/case-catalog/index.test.ts`
