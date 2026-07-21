@@ -12,6 +12,8 @@ outline -> ref -> read
 
 当前实现、规划和 adapter 能力边界，以 `docs/navigation.md` 指向的主规范和状态语义为准。涉及产品、协议、CLI、adapter、schema、示例或测试细节时，先按对应主规范判断。
 
+长期决策与 OpenSpec change 的记录位置、同步顺序和冲突处理，以 `docs/navigation.md` 的“长期决策与 OpenSpec 分工”为准。活动决策记录用于恢复跨 change 的方向和理由，不替代 owner 规范或当前实现证据。
+
 ## 架构边界
 
 - `docnav` 负责格式识别、adapter 路由和管理、配置、项目初始化、默认参数解析、输出模式和错误映射。

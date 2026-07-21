@@ -1,10 +1,10 @@
 # openspec-governance Specification
 
 ## Purpose
-定义 OpenSpec 在 Docnav docs-first 工作流中的角色、状态边界和 capability 命名规则，避免 change 规划、工具视图和长期主规范互相竞争 owner。
+定义 OpenSpec 在 Docnav docs-first 工作流中的角色、状态边界和 capability 命名规则，避免 change 规划、长期决策记录、工具视图和主规范互相竞争 owner。
 ## Requirements
 ### Requirement: OpenSpec artifacts preserve docs-first ownership
-OpenSpec artifacts MUST 支持 Docnav docs-first 工作流。Active change MUST 表示计划中、探索中、实现中或待验收的 change artifact；除非对应主规范明确标注 Current 或已实现，并且代码、测试或 release artifact 提供当前实现证据，否则 active change 中的 `MUST` / `SHALL` MUST NOT 被解释为当前二进制已支持。`openspec/specs/` MAY 作为 OpenSpec 工具视图和决策索引；docs/OpenSpec/实现状态分工和冲突归并规则由 `docs/navigation.md` 拥有。
+OpenSpec artifacts MUST 支持 Docnav docs-first 工作流。Active change MUST 表示计划中、探索中、实现中或待验收的 change artifact；除非对应主规范明确标注 Current 或已实现，并且代码、测试或 release artifact 提供当前实现证据，否则 active change 中的 `MUST` / `SHALL` MUST NOT 被解释为当前二进制已支持。`openspec/specs/` MAY 作为 capability specification 的 OpenSpec 工具视图；docs、OpenSpec、长期决策记录和实现状态的分工与冲突处理规则由 `docs/navigation.md` 拥有。
 
 #### Scenario: Reading an active change
 - **WHEN** 实现者读取 `openspec/changes/<change>/` 下的 proposal、design、tasks 或 spec delta
@@ -14,7 +14,19 @@ OpenSpec artifacts MUST 支持 Docnav docs-first 工作流。Active change MUST 
 #### Scenario: OpenSpec and docs conflict
 - **WHEN** OpenSpec artifact 与 `docs/` owner 主规范表达不一致
 - **THEN** 实现者 MUST 按 `docs/navigation.md` 的冲突类型判断同步方向
-- **THEN** 归档前 MUST 让受影响的 docs、OpenSpec artifact 和验证材料回到同一目标决策
+- **THEN** 归档前 MUST 让受影响的 docs、OpenSpec artifact、长期决策记录和验证材料回到同一目标决策
+
+### Requirement: Change decisions remain within their scope
+Active change 中影响范围、方案、边界或验收的已确认判断 MUST 保存在对应 `design.md` 的 `## Decisions`。该 change 归档时 MUST NOT 自动把这些判断复制到 `docs/decisions/`。判断需要在 change 之外继续作为默认方向，或会改变现有活动决策时，change MUST 按 `docs/navigation.md` 的分工和同步顺序处理后再归档。
+
+#### Scenario: Recording a change-scoped decision
+- **WHEN** 已确认判断只约束一个 active change 的方案、边界或验收
+- **THEN** 该判断 MUST 写入该 change 的 `design.md` `## Decisions`
+- **THEN** 该 change 归档时 MUST NOT 自动把该判断复制到 `docs/decisions/`
+
+#### Scenario: A decision remains relevant beyond the change
+- **WHEN** 已确认判断在当前 change 之外仍作为默认方向，或会改变现有活动决策
+- **THEN** 归档该 change 前 MUST 按 `docs/navigation.md` 同步 owner 文档和长期决策记录
 
 ### Requirement: Capability ID uses stable ownership naming
 OpenSpec capability ID MUST 表达长期主 spec 所有权，并 MUST 与一次性 change name 分离。Capability ID MUST 使用 kebab-case 名词或名词短语，MUST NOT 包含 `implement`、`implementation`、`change`、`task`、日期或临时版本阶段。

@@ -2,8 +2,23 @@
   "schemaVersion": 3,
   "records": [
     {
-      "path": "decision-management/use-verified-decision-records.md",
+      "path": "decision-management/separate-decision-spec-ownership.md",
       "status": "active",
+      "createdAt": "2026-07-21T07:07:20Z",
+      "title": "分离长期决策、OpenSpec 与规范所有权",
+      "purpose": "让稳定规则、change 内决策和跨 change 理由各有明确 owner，并保持决策集合可审计。",
+      "background": "项目同时使用 owner 文档、OpenSpec change 内决策和长期决策记录，前序记录还固化了具体校验实现。",
+      "decision": "按作用域分离 owner 文档、OpenSpec change 与长期决策记录，并用仓库内必需校验保护决策集合。",
+      "relations": [
+        {
+          "type": "修订",
+          "target": "decision-management/use-verified-decision-records.md"
+        }
+      ]
+    },
+    {
+      "path": "decision-management/use-verified-decision-records.md",
+      "status": "archived",
       "createdAt": "2026-07-21T03:51:33Z",
       "title": "将仓库决策记录纳入必需验证",
       "purpose": "让长期决策在仓库内保持可恢复、可审计且结构一致。",
