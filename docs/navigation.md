@@ -12,9 +12,10 @@
 | 实现原始协议或机器输出 | [原始协议](protocol.md)、[输出模式](output.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
 | 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | 对应实现面的主规范 |
 | 写测试或验证脚本 | [测试策略](testing.md)、[测试用例维护](testing/case-maintenance.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |
+| 恢复或维护长期决策 | [决策索引](decisions/decision-index.json) | 相关决策 Markdown；写入前按项目级 `decision-records` skill 契约 |
 | 审计历史或变更依据 | `../openspec/changes/` | 按 change 目录读取对应 proposal、design、specs、tasks |
 
-`../openspec/changes/` 用于变更设计、验收和审计历史；日常实现从对应任务主规范进入。
+`decisions/` 保存已确认且会持续影响后续工作的长期判断；`../openspec/changes/` 用于变更设计、验收和审计历史。日常实现仍从对应任务主规范进入。
 
 ## 交付验证
 

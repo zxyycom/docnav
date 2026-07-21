@@ -77,6 +77,16 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
   });
 
+  it("filters decision record success output from docs validator failures", () => {
+    const check = checkById("docs-validators");
+    const output = [
+      "Decision records check passed (1 areas, 1 decisions, 1 active, 0 archived).",
+      "decision diagnostic"
+    ].join("\n");
+
+    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["decision diagnostic"]);
+  });
+
   it("filters workspace verifier script test package output", () => {
     const check = checkById("workspace-verifier-script-tests");
     const output = [

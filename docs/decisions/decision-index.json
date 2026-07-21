@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "records": [
+    {
+      "path": "decision-management/use-verified-decision-records.md",
+      "status": "active",
+      "createdAt": "2026-07-21T03:51:33Z",
+      "title": "将仓库决策记录纳入必需验证",
+      "purpose": "让长期决策在仓库内保持可恢复、可审计且结构一致。",
+      "background": "项目已引入 decision-records skill，但个人安装和人工维护不能保证 CI 可复现或索引同步。",
+      "decision": "版本化管理 docs/decisions，并由 required docs validator 直接调用项目内模块执行严格检查。",
+      "relations": []
+    }
+  ]
+}

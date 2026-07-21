@@ -798,6 +798,7 @@ Code: `scripts/docnav-workspace/verify.test.ts`
 Proves:
 - required 和 full verifier profile 保持区分。
 - profile membership 和 report counting 由 verifier tests 明确证明。
+- docs validator 的已知成功输出在组合失败时被过滤，可行动诊断保持可见。
 - required profile 显式包含 case catalog docs validator 和 validator script tests。
 - required profile 包含 quick quality check；full profile 使用 full quality check 替代 quick quality check，并追加更宽验证。
 - full profile 的 quality check 使用 verifier 输出；只有未带 `acceptedReason` 的 quality warning 会映射为 verifier warning。
