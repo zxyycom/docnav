@@ -121,7 +121,7 @@ export const checks = defineChecks([
           /^error details ok:/,
           /^manifest example consistency ok:/,
           /^document output mode consistency ok:/,
-          /^Decision records check passed \(\d+ areas, \d+ decisions, \d+ active, \d+ archived\)\.$/,
+          /^Decision records check passed \(\d+ domains, \d+ decisions, \d+ active, \d+ aligned, \d+ unaligned, \d+ archived\)\.$/,
           /^markdown links ok:/
         ]
       },

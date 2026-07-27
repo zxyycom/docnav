@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "domains": [
+    {
+      "id": "decision-management",
+      "description": "维护长期决策的记录、生命周期、演进关系及其与 owner 规范和 OpenSpec change 的分工。"
+    }
+  ]
+}

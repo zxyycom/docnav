@@ -80,7 +80,7 @@ describe("workspace verifier configuration", () => {
   it("filters decision record success output from docs validator failures", () => {
     const check = checkById("docs-validators");
     const output = [
-      "Decision records check passed (1 areas, 1 decisions, 1 active, 0 archived).",
+      "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived).",
       "decision diagnostic"
     ].join("\n");
 

@@ -12,10 +12,10 @@
 | 实现原始协议或机器输出 | [原始协议](protocol.md)、[输出模式](output.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
 | 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | 对应实现面的主规范 |
 | 写测试或验证脚本 | [测试策略](testing.md)、[测试用例维护](testing/case-maintenance.md)、[工程工具链](tooling.md)、[JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | [覆盖矩阵](testing/coverage.md)、对应实现面的主规范 |
-| 恢复或维护长期决策 | [决策索引](decisions/decision-index.json)、“长期决策与 OpenSpec 分工” | 相关决策 Markdown；写入前按项目级 `decision-records` skill 契约 |
+| 恢复或维护长期决策 | [项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md) 的 `list`、“长期决策与 OpenSpec 分工” | 用 `domains` 选择责任领域，以 `show` / `trace` 展开相关记录；写入前读取 skill 的领域契约 |
 | 审计历史或变更依据 | `../openspec/changes/` | 按 change 目录读取对应 proposal、design、specs、tasks |
 
-`decisions/` 保存已确认且会持续影响后续工作的长期判断；`../openspec/changes/` 用于变更设计、验收和审计历史。日常实现仍从对应任务主规范进入。
+`decisions/` 保存已确认且会持续影响后续工作的长期判断；`decisions/decision-domains.json` 定义受控领域，各条决策 Markdown 拥有自身内容、生命周期、对齐和直接演进关系，[决策索引](decisions/decision-index.json) 只是可删除重建的查询投影。`../openspec/changes/` 用于变更设计、验收和审计历史。日常实现仍从对应任务主规范进入。
 
 ## 交付验证
 
@@ -89,7 +89,9 @@ OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 
 2. 已确认判断在当前 change 之外仍作为默认方向，或不依附任何 change 但会持续影响后续工作时，才写入 `docs/decisions/`；归档 change 不自动复制其中的决策。
 3. active change 要改变现有活动决策时，归档 change 前先同步 owner 文档，再按决策记录生命周期归档前序并激活后续记录。
 4. 载体之间不一致时，稳定规则以 owner 文档为准，当前状态以代码、测试和 release artifact 为准；随后同步 OpenSpec 和验证材料，并归档、修订或替代失配的决策记录。
-5. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态和关系由 [决策索引](decisions/decision-index.json) 管理。
+5. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态、对齐和关系由各条决策 Markdown 拥有，[决策索引](decisions/decision-index.json) 只提供可重建查询视图。
+
+活动决策已经生效。`aligned` 表示完整决策已与当前 owner 文档、代码、测试或 release artifact 等事实来源核对并建立为持续基线；`unaligned` 表示决策仍需通过同一比较恢复实际差距，不表示可以忽略该决策。已对齐基线后来与事实偏离时按一致性问题处理，不把记录改回未对齐。
 
 ## 规则所有权
 
@@ -98,6 +100,7 @@ OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 
 | 规则面 | Owner 文档 |
 | --- | --- |
 | 长期决策、OpenSpec change 与 owner 规范的分工、同步和冲突处理 | 本文档 |
+| 项目级长期决策的领域、内容、生命周期、对齐和直接演进关系 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
 | 组件职责、输出分层、调用链、运行边界 | [架构](architecture.md) |
 | adapter library interface、manifest metadata、probe、adapter 选择、internal discovery failure list、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |

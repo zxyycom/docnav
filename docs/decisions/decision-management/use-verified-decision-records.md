@@ -1,9 +1,13 @@
-# 将仓库决策记录纳入必需验证
-
-## 索引摘要
-- 目的: 让长期决策在仓库内保持可恢复、可审计且结构一致。
-- 背景: 项目已引入 decision-records skill，但个人安装和人工维护不能保证 CI 可复现或索引同步。
-- 决策: 版本化管理 docs/decisions，并由 required docs validator 直接调用项目内模块执行严格检查。
+---
+title: 将仓库决策记录纳入必需验证
+status: archived
+alignment: null
+createdAt: 2026-07-21T03:51:33Z
+purpose: 让长期决策在仓库内保持可恢复、可审计且结构一致。
+background: 项目已引入 decision-records skill，但个人安装和人工维护不能保证 CI 可复现或索引同步。
+decision: 版本化管理 docs/decisions，并由 required docs validator 直接调用项目内模块执行严格检查。
+relations: []
+---
 
 ## 目的
 - 让会持续影响后续工作的长期判断随仓库版本化，并在本地与 CI 中及时发现目录、正文、索引和关系漂移。

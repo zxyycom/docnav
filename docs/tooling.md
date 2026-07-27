@@ -86,7 +86,15 @@ bun run env:check
 
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check。full profile 使用 full quality check 替代 quick quality check，并追加更宽验证；full profile 的 quality check 使用 verifier 输出，只在存在未带 `acceptedReason` 的 warning 时把 workspace verification 标记为 warning。profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
 
-`scripts/docs/validate.ts` 直接导入仓库跟踪的 `.codex/skills/decision-records/scripts/decision-records.mjs`，由 `validate:docs` 的 `decisions` task 执行严格检查。该入口不依赖个人 skill 目录，也不运行需要联网的 skill 更新检查。
+`scripts/docs/validate.ts` 直接导入仓库跟踪的 `.codex/skills/decision-records/scripts/decision-records.mjs`，由 `validate:docs` 的 `decisions` task 执行 v5 严格检查。该检查覆盖受控领域、Markdown metadata 与正文、生命周期、对齐、直接关系和派生索引，并进入 required profile。入口不依赖个人 skill 目录，也不运行需要联网的 updater 或 release 查询。
+
+决策维护从仓库跟踪的 v5 CLI 进入：
+
+```bash
+node .codex/skills/decision-records/scripts/decision-records.mjs <command> --root .
+```
+
+`domains`、`list`、`show` 和 `trace` 用于只读恢复，`check` 用于严格验收；手工修改领域表或决策 Markdown 后使用 `sync-index --write` 重建派生索引。生命周期、对齐和演进变化使用 skill 定义的显式维护命令，不直接编辑索引。`update-skill.mjs` 只用于有意的 package 维护，不属于日常验证链路。
 
 Workspace verifier 的运行并发预算可由 `--concurrency <n>` 或环境变量 `DOCNAV_VERIFY_CONCURRENCY` 提供，CLI 参数优先；值必须是正整数。两者都省略或环境变量为空时不设置并发上限，由 task runner 使用默认调度行为。
 

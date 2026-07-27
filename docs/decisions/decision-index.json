@@ -1,30 +1,82 @@
 {
-  "schemaVersion": 3,
-  "records": [
+  "schemaVersion": 2,
+  "namespace": "decisions",
+  "definitionVersion": 3,
+  "metadata": {
+    "domains": [
+      {
+        "description": "维护长期决策的记录、生命周期、演进关系及其与 owner 规范和 OpenSpec change 的分工。",
+        "id": "decision-management"
+      }
+    ]
+  },
+  "sourceRevision": "sha256:f028fde972ada73058e22f940380d5df9ebff060971b9d8687d98ba8197eb2de",
+  "keyDefinitions": [
     {
-      "path": "decision-management/separate-decision-spec-ownership.md",
-      "status": "active",
-      "createdAt": "2026-07-21T07:07:20Z",
-      "title": "分离长期决策、OpenSpec 与规范所有权",
-      "purpose": "让稳定规则、change 内决策和跨 change 理由各有明确 owner，并保持决策集合可审计。",
-      "background": "项目同时使用 owner 文档、OpenSpec change 内决策和长期决策记录，前序记录还固化了具体校验实现。",
-      "decision": "按作用域分离 owner 文档、OpenSpec change 与长期决策记录，并用仓库内必需校验保护决策集合。",
-      "relations": [
-        {
-          "type": "修订",
-          "target": "decision-management/use-verified-decision-records.md"
-        }
-      ]
+      "name": "domain",
+      "mode": "exact"
     },
     {
-      "path": "decision-management/use-verified-decision-records.md",
-      "status": "archived",
-      "createdAt": "2026-07-21T03:51:33Z",
-      "title": "将仓库决策记录纳入必需验证",
-      "purpose": "让长期决策在仓库内保持可恢复、可审计且结构一致。",
-      "background": "项目已引入 decision-records skill，但个人安装和人工维护不能保证 CI 可复现或索引同步。",
-      "decision": "版本化管理 docs/decisions，并由 required docs validator 直接调用项目内模块执行严格检查。",
-      "relations": []
+      "name": "status",
+      "mode": "exact"
+    },
+    {
+      "name": "alignment",
+      "mode": "exact"
+    }
+  ],
+  "entries": [
+    {
+      "id": "decision-management/separate-decision-spec-ownership.md",
+      "keys": {
+        "domain": [
+          "decision-management"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "aligned"
+        ]
+      },
+      "state": {
+        "path": "decision-management/separate-decision-spec-ownership.md",
+        "title": "分离长期决策、OpenSpec 与规范所有权",
+        "status": "active",
+        "alignment": "aligned",
+        "createdAt": "2026-07-21T07:07:20Z",
+        "purpose": "让稳定规则、change 内决策和跨 change 理由各有明确 owner，并保持决策集合可审计。",
+        "background": "项目同时使用 owner 文档、OpenSpec change 内决策和长期决策记录，前序记录还固化了具体校验实现。",
+        "decision": "按作用域分离 owner 文档、OpenSpec change 与长期决策记录，并用仓库内必需校验保护决策集合。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "decision-management/use-verified-decision-records.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "decision-management/use-verified-decision-records.md",
+      "keys": {
+        "domain": [
+          "decision-management"
+        ],
+        "status": [
+          "archived"
+        ]
+      },
+      "state": {
+        "path": "decision-management/use-verified-decision-records.md",
+        "title": "将仓库决策记录纳入必需验证",
+        "status": "archived",
+        "alignment": null,
+        "createdAt": "2026-07-21T03:51:33Z",
+        "purpose": "让长期决策在仓库内保持可恢复、可审计且结构一致。",
+        "background": "项目已引入 decision-records skill，但个人安装和人工维护不能保证 CI 可复现或索引同步。",
+        "decision": "版本化管理 docs/decisions，并由 required docs validator 直接调用项目内模块执行严格检查。",
+        "relations": []
+      }
     }
   ]
 }

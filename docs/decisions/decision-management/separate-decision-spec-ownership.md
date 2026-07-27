@@ -1,9 +1,15 @@
-# 分离长期决策、OpenSpec 与规范所有权
-
-## 索引摘要
-- 目的: 让稳定规则、change 内决策和跨 change 理由各有明确 owner，并保持决策集合可审计。
-- 背景: 项目同时使用 owner 文档、OpenSpec change 内决策和长期决策记录，前序记录还固化了具体校验实现。
-- 决策: 按作用域分离 owner 文档、OpenSpec change 与长期决策记录，并用仓库内必需校验保护决策集合。
+---
+title: 分离长期决策、OpenSpec 与规范所有权
+status: active
+alignment: aligned
+createdAt: 2026-07-21T07:07:20Z
+purpose: 让稳定规则、change 内决策和跨 change 理由各有明确 owner，并保持决策集合可审计。
+background: 项目同时使用 owner 文档、OpenSpec change 内决策和长期决策记录，前序记录还固化了具体校验实现。
+decision: 按作用域分离 owner 文档、OpenSpec change 与长期决策记录，并用仓库内必需校验保护决策集合。
+relations:
+  - type: 修订
+    target: decision-management/use-verified-decision-records.md
+---
 
 ## 目的
 - 让稳定规则、变更范围内决策和跨变更长期理由各有唯一 owner，避免相互覆盖、重复维护或被误读为当前实现状态。
@@ -19,6 +25,3 @@
 - 采用: 长期决策记录保存目的、关键背景、采用方向和演进关系，作为后续工作的默认判断依据，但不覆盖 owner 文档，也不证明当前实现已经支持；失配时必须同步 owner、OpenSpec 和验证材料，并按生命周期处理决策记录。
 - 采用: `docs/decisions` 随仓库版本化，并纳入仓库自带、确定性且不依赖个人安装或网络的 required 校验；具体命令、模块和调用路径由测试与工具链文档拥有，可以在保持这些边界时演进。
 - 采用: [决策索引](../decision-index.json) 单独管理全局决策生命周期；`openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图。
-
-## 关系
-- 修订: [将仓库决策记录纳入必需验证](use-verified-decision-records.md)
