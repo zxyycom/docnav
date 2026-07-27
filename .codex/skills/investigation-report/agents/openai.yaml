@@ -1,0 +1,4 @@
+interface:
+  display_name: "调查报告"
+  short_description: "保存可独立复核和比较的形成时调查快照"
+  default_prompt: "使用 $investigation-report 围绕一个核心问题创建、更新或审阅可独立复核并与历史比较的调查报告。"

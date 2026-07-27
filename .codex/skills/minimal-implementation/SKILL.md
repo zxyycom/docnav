@@ -1,109 +1,137 @@
 ---
 name: minimal-implementation
 description: >-
-  在开始实现或修改代码之前使用；在 code review、CR 或交付前检查当前 diff
-  时再次使用；用户要求审计指定代码范围的过度工程时也使用。用于约束新增
-  维护面，并在实现后发现不必要的复杂度。
+  当工程实现、方案或 diff 会引入依赖、抽象、配置、扩展点、wrapper、
+  通用机制或长期 ownership，或用户明确要求 minimal、YAGNI、
+  over-engineering、what can be deleted 或 complexity pass 时使用。在目标、
+  contract 和责任 owner 已明确后，比较正确候选的总维护面，选择、实施或
+  报告更小方案。前置未决时只暴露缺口；普通机械修改、一般 correctness
+  review 和纯可读性重构不使用。
+metadata:
+  version: "2"
 ---
 
 # Minimal Implementation
 
-以最少必要维护面交付当前结果。把用户目标和已确认契约作为当前 scope，选择概念更少、职责更直接、验证更清楚的实现。维护面包括概念、分支、文件、依赖、配置和长期 ownership；代码行数作为结果信号。
+## 目标
 
-## 工作模式
+在目标、governing contract、责任 owner 和检查范围已明确后，比较能够正确交付当前义务的现实候选，选择、实施或报告总维护面更小且责任更直接的方案。
 
-1. **Implement**：选择并应用最小正确方案，完成匹配验证。
-2. **Review**：检查当前 diff 或指定改动，报告有证据支撑的复杂度收敛机会。
-3. **Audit**：检查用户指定的代码范围，按置信度和维护收益给出排序报告。
+维护面包括概念、分支、模块和文件、依赖、配置、运行状态、跨 owner 协调、验证负担与长期 ownership。代码行数只作为调查信号，不作为最小性的独立判据。
 
-用户同时要求实现和 review 时，完成 Implement 和验证，再检查最终 diff。用户要求更大代码范围的复杂度审计时，使用 Audit。
+## 输入、前置与授权
 
-## 决策流程
+1. 从用户要求、当前实现或 diff、项目行为 owner、调用方和验证入口恢复目标、governing contract、责任 owner 与检查范围。
+2. 前置缺失且会改变候选结论时，只完成恢复该前置所需的最小调查。仍需用户决定时，报告这一项缺口并停止候选比较，不自行扩展为产品或架构设计。
+3. 沿用当前任务授权：
+   - 实现或修改任务可以应用选定方案并完成匹配验证。
+   - 只读 review、audit 或方案比较只报告判断，不修改代码。
+   - 证据不足的候选进入待确认问题，不形成 finding。
 
-1. **建立目标**：读取用户目标、相关代码、调用链、可观察契约和验证材料；写清必须交付的行为和最窄证明。
-2. **锁定当前 scope**：将明确需求、现有消费者和已确认兼容性责任纳入本次交付；未来能力由真实消费者和可观察条件触发。
-3. **依序检查候选方案**：
-   1. 复用 codebase 已有的 helper、type、pattern 或责任位置。
-   2. 使用覆盖所需行为和 edge cases 的标准库能力。
-   3. 使用 OS、browser、database、protocol 或 framework 的原生机制。
-   4. 复用完整覆盖需求的已安装依赖。
-   5. 引入能显著降低长期维护与 correctness 风险的成熟依赖。
-   6. 编写概念最少、表达清楚、符合相邻风格的自定义实现。
-4. **应用最小正确门槛**：选择第一个完整通过下一节门槛的候选；同一层级有多个候选时，依次比较契约可靠性、概念数量、长期维护成本和验证清晰度。
-5. **修复共同根因**：处理 bug 时先复现并追踪相关调用方，在覆盖受影响路径的最窄共享位置修复共同根因。
-6. **处理可选复杂度**：对安全、可逆并保持既有 contract、compatibility、data handling 和状态语义的选择，采用简单默认值；涉及这些语义的决策以用户确认的方向为准。
+上述出口和证据不足时的降级共享下列流程，不形成独立工作模式。
 
-## 最小正确门槛
+## 核心流程
 
-候选方案同时满足以下条件时，进入实施或替代建议：
+### 1. 固定比较边界
 
-- 完整交付用户当前目标，并保持已确认 contract、compatibility 和 observable behavior。
-- 覆盖外部输入验证、数据完整性、security、accessibility、必要 error handling、observability 和已声明的 performance budget。
-- 处理由契约和所选机制带来的 edge cases，并采用清楚、常规、可维护的表达。
-- 使用与受影响行为匹配的自动化测试、静态检查、可复现操作或其他直接证据完成验证。
-- 保留由 deployment、hardware、data distribution 或 operator policy 决定的配置与校准点，并将其作为运行时输入。
-- 评估“一种实现、一个调用方、一个导出”时，同步核对公开契约、ownership、test seam、生成流程和兼容性责任。
+1. 写清必须交付或保持的 observable behavior、兼容性责任和明确非目标。
+2. 确认当前实现位置、调用方、消费者、事实源与验证义务。
+3. 只检查用户指定范围、当前 diff 或承接当前行为所需的最窄相邻范围；发现范围外问题时，仅在它会改变当前结论时继续追踪。
 
-在同等正确的方案之间，优先删除或复用，优先常规写法，优先更小的长期维护面。简化方案存在明确 ceiling 时，记录 ceiling、可观察触发条件和升级路径。
+### 2. 识别决定性维护面
 
-## Implement
+只识别当前方案和现实候选之间会改变选择的维度：
 
-1. 用决策流程选择方案，并用最小正确门槛确认方案。
-2. 将修改集中在承接当前行为的责任位置，使新增抽象、配置、文件和依赖与当前目标一一对应。
-3. 运行与受影响行为匹配的最窄验证，并确认最终 diff 与当前交付一致。
-4. 报告完成结果和验证证据；存在明确 ceiling 时，同时报告可观察触发条件和升级路径。
+1. 概念、抽象、分支、模块和文件。
+2. 运行时与开发时依赖、配置、扩展点和状态。
+3. 跨 owner 协调、兼容层、迁移责任和长期 ownership。
+4. 测试、诊断、部署、操作与后续升级负担。
 
-## Review
+额外维护面是相对其他可行候选可以省略、但当前方案仍会引入的成本。它必须能映射到当前 contract、真实消费者或项目拥有的运行约束；“以后可能需要”本身不构成依据。候选机制不可避免的成本直接进入总维护面比较，不为满足形式而虚构需求映射。
 
-1. 确认 diff intent、changed surface 和需要保持的 contract。
-2. 追踪调用方、已有能力、dependency behavior、配置生效路径和责任位置，形成有直接依据的 complexity finding。
-3. 为每项 finding 给出更小替代方案和需要完成的验证。
-4. 用最小正确门槛检查每个替代方案。
+简单任务只做内部核对，不创建或输出维护面账本。候选在依赖、owner、运行风险或长期责任上存在实质差异，或用户明确要求 audit 时，才展开逐项证据。
 
-## Audit
+### 3. 搜索更小候选
 
-1. 从用户请求确定审计范围和目标，优先检查维护者直接拥有的源代码、依赖和配置。
-2. 建立组件、调用方、消费者、配置生效路径、依赖消费、转发层和平台能力之间的关系。
-3. 根据关系证据识别重复实现、未来驱动的灵活性、转发层、依赖收敛和平台能力复用机会。
-4. 对每个候选项追踪 contract、历史原因和验证责任；证据仍需补充的候选归入待确认问题。
-5. 按置信度和可减少的维护面排序，给出可独立实施和验证的建议。
+按以下有界启发式搜索，不把顺序作为绝对排名：
 
-## Finding 分类与输出
+1. 省略尚无当前义务的能力，或删除已经没有消费者和 contract 的实现。
+2. 复用 codebase 中同语义、同责任 owner 的现有能力。
+3. 使用完整覆盖目标行为的标准库或平台原生机制。
+4. 使用能在保持正确性的同时降低总维护成本的既有或成熟依赖。
+5. 编写概念最少、责任局部且符合相邻代码表达的自定义实现。
 
-使用以下标签：
+已有 helper 只有在语义和责任 owner 相同时才复用。依赖只有在不削弱正确性且降低总维护成本时才优先；责任清楚的少量局部代码可以比通用依赖更小。
 
-- `delete`：调用、契约和验证证据共同支持移除的代码或配置。
-- `reuse`：codebase 已有能力可以承接同一语义。
+证据足以比较现实候选，且继续搜索不会合理改变结论时停止。风险、维护面差异或验证不确定性足以影响选择时，才按比例扩大调查。
+
+### 4. 通过正确性门槛
+
+候选只有同时满足以下条件时才进入比较：
+
+1. 完整交付当前目标，并保持 governing contract、兼容性和可观察行为。
+2. 保持项目已明确且与当前选择有关的安全、运行和 operator 约束，处理所选机制与 contract 带来的现实 edge cases，不把责任转移给未声明的消费者。
+3. 能用项目要求的测试、静态检查、可复现操作或其他直接证据完成匹配验证。
+
+不能通过门槛的方案不是更小候选。
+
+### 5. 比较总维护面
+
+1. 只比较已经通过正确性门槛的候选。
+2. 整体比较上一步识别的决定性维护面，包括升级责任和长期认知成本。
+3. 选择总维护面更小且责任更直接的方案，不以局部行数替代整体比较。
+4. 简化方案的已知能力上限只有在影响真实消费者或已有运行约束时才报告，并给出可观察触发条件与升级路径。
+
+## 交付与输出
+
+1. 实现或修改任务：
+   - 应用选定方案，把修改放在承接当前行为的责任位置。
+   - 运行匹配验证，并确认最终 diff 没有引入范围外通用化。
+2. 只读 review、audit 或方案比较：
+   - 给出位置、直接证据、更小替代方案和实施前必须完成的验证。
+   - 证据不足时只列出会改变结论的缺口，不猜测为 finding。
+3. 嵌入普通 code review 时：
+   - 沿用宿主的 severity、排序和输出格式。
+   - 只报告具有直接证据且会增加真实维护成本的问题，不接管 correctness、security 或通用质量 verdict。
+
+独立 complexity audit 使用以下标签：
+
+- `delete`：调用方、契约和验证证据共同支持移除的代码、配置或依赖。
+- `reuse`：同语义、同 owner 的 codebase 能力可以直接承接。
 - `stdlib`：标准库完整覆盖自定义实现。
-- `native`：平台原生能力完整覆盖依赖或自定义代码。
-- `yagni`：把实现时机绑定到真实消费者或可观察触发条件的未来能力。
-- `shrink`：保持清晰度和行为的同时减少重复逻辑或维护面。
+- `native`：平台原生能力完整覆盖依赖或自定义实现。
+- `yagni`：当前没有真实消费者或可观察触发条件的预防性能力。
 
-Review 和 Audit 的 finding 使用：
+Finding 使用：
 
-`<confidence> <path>[:<line>] <tag> — <evidence>; <smallest alternative>; verify: <required evidence>.`
+```text
+<confidence> <path>[:<line>] <tag> — <evidence>; <smallest alternative>; verify: <required evidence>.
+```
 
-`confidence` 使用 `high`（有直接调用或 contract 证据）和 `medium`（证据充分，实施前完成已写明的检查）。证据仍需补充的候选归入待确认问题。Audit 先按 confidence，再按维护收益排序；收益使用可验证的维护面变化表达。
+`confidence` 使用 `high` 或 `medium`。缺少直接 contract、调用方或生效路径证据时归入待确认问题。独立 audit 先按置信度、再按可减少的总维护面排序；当前范围已经精简时，直接说明 complexity pass 完成。
 
-当前范围已保持精简时，写“当前范围已保持精简，complexity pass 完成。”
+## 边界与降级
 
-## 上游原文
+1. 事情是否值得做、应做到什么程度或由哪层负责，仍由当前任务或产品架构判断 owner 决定。该判断不可用时，报告前置缺口，不代替它作出决定。
+2. 多个现实场景是否共享契约、需要几个变体或怎样分层，交给共享契约设计 owner。该判断不可用时，保持局部或报告未决边界。
+3. 测试是否形成独立证明、如何登记人工风险或维护测试账本，由测试证据 owner 承接。本 skill 只保留当前候选必须通过的验证义务。
+4. 上述能力不构成安装依赖；目标、contract 和 owner 已由项目明确时，本 skill 可以独立完成维护面选择与审计。
 
-本文件承接合并后的执行规则。比较 Ponytail 原始行为、审计本次提炼或更新固定版本时，读取以下材料。
+## 上游材料
 
-上游固定为 [DietrichGebert/ponytail@14a0d795](https://github.com/DietrichGebert/ponytail/tree/14a0d79548d4de8fc2de95c1b94bb0de63a739d3)，许可证为 MIT：
+本 skill 的实现前候选搜索和 complexity finding 起点参考固定版本的 Ponytail。正常执行不读取上游快照；只有审计本次提炼、比较原始行为或更新固定版本时，才读取：
 
-- [ponytail-upstream.md](references/ponytail-upstream.md)：原始 implementation mode。
-- [ponytail-review-upstream.md](references/ponytail-review-upstream.md)：原始 diff review。
-- [ponytail-audit-upstream.md](references/ponytail-audit-upstream.md)：原始 repository audit。
-- [ponytail-license.txt](references/ponytail-license.txt)：完整许可证。
+- [ponytail-implementation.md](references/upstream/ponytail-implementation.md)
+- [ponytail-review.md](references/upstream/ponytail-review.md)
+- [ponytail-audit.md](references/upstream/ponytail-audit.md)
+- [LICENSE](references/upstream/LICENSE)
 
-`references/` 中的上游文件保持逐字副本。更新时固定新的 commit，并重新进行内容比对。执行时以用户目标、已确认契约和高优先级指令为依据；上游材料用于追溯和更新提炼。
+上游固定为 [DietrichGebert/ponytail@14a0d795](https://github.com/DietrichGebert/ponytail/tree/14a0d79548d4de8fc2de95c1b94bb0de63a739d3)。快照保持逐字副本；更新时固定新的 commit、保留许可证并重新审计本 skill 的触发、边界和行为提炼。
 
 ## 完成检查
 
-- 当前 scope、现有消费者和兼容性责任已经明确。
-- 当前方案是候选优先级中第一个通过最小正确门槛的方案。
-- bug fix 覆盖共同根因和相关调用路径。
-- Implement 提供验证证据；Review/Audit finding 提供位置、证据、替代方案和验证要求。
-- 简化方案存在明确 ceiling 时，已记录可观察触发条件和升级路径。
+1. 目标、contract、owner、现实消费者和检查范围已经明确，或会改变结论的前置缺口已显式报告。
+2. 额外维护面具有当前依据，候选不可避免的成本已进入总维护面比较。
+3. 选定方案通过正确性门槛，并在可行候选中具有更小的总维护面。
+4. 交付内容和验证与当前授权出口一致。
+5. 最终 diff、建议或 finding 没有引入范围外通用化，也没有接管相邻 owner。
