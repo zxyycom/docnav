@@ -1,4 +1,4 @@
-# Claim CLAIM-WB-CONTRACTS-ERROR-001: Adapter contracts error mapping 保持 protocol 投影边界
+# Claim CLAIM-ADAPTER-ERROR-PROJECTION-001: Adapter contracts error mapping 保持 protocol 投影边界
 
 Topic: `adapter-contracts`
 Owner ref: `docs/adapter-contract.md#文档操作执行边界`

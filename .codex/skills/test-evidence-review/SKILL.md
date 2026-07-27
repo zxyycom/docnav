@@ -40,7 +40,7 @@ lint、类型检查、fixture、helper、hook、mock、断言和测试步骤。�
 
 1. 读取项目测试约定、行为 owner、目标测试和当前 diff。
 2. 运行项目 wrapper 的全树检查。静态入口、运行时入口和 committed inventory
-   必须双向闭合；Git diff 或旧账本不能替代这一步。
+   必须双向闭合；Git diff 或局部清单不能替代这一步。
 3. 查询相关 Entry 与 Claim。变更报告只用于缩小审查范围，不代表未报告入口已经
    证明充分。
 4. 对新增或变化的测试判断：
@@ -62,7 +62,8 @@ Claim 必须同时满足：
 2. `statement` 陈述稳定契约，而不是测试名称、实现步骤或通用模板。
 3. `observations` 描述失败时能判断的调用方可观察结果。
 4. `supportedBy` 只引用当前 inventory 的 `entryKey`，至少一项。
-5. topic 来自受控表，Claim ID 稳定且全局唯一。
+5. topic 来自受控表，Claim ID 按稳定语义命名且全局唯一；topic 只在至少一个
+   当前 Claim 使用它时保留。
 
 以下内容不建立 Claim：
 
@@ -77,7 +78,7 @@ Claim 必须同时满足：
   `supportedBy`，不要把 `entryKey` 当长期身份。
 - **split**：按各入口实际证明信号分配旧 Claim；只有独立长期判断才拆 Claim。
 - **merge**：合并入口不自动合并 Claim；分别判断每个长期判断是否仍成立。
-- **删除**：没有当前入口支持的 Claim 必须删除、重写或明确迁移，不能悬空。
+- **删除**：没有当前入口支持的 Claim 必须删除、重写或重新关联，不能悬空。
 - **implementation-changed / claim-stale**：读取 owner 与测试正文重新判断；不能仅
   通过更新 fingerprint 消除审查。
 

@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-ADAPTER-MGMT-001: Core adapter inspection 命令覆盖
+# Claim CLAIM-CLI-ADAPTER-INSPECTION-001: Core adapter inspection 命令覆盖
 
 Topic: `core-cli`
 Owner ref: `docs/cli.md#内置-adapter-检查`

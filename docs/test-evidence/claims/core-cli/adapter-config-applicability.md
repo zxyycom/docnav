@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-CONFIG-004: Adapter-scoped config 按 catalog operation applicability 生效
+# Claim CLAIM-CLI-ADAPTER-CONFIG-APPLICABILITY-001: Adapter-scoped config 按 catalog operation applicability 生效
 
 Topic: `core-cli`
 Owner ref: `docs/navigation-input-resolution.md#selected-operation-catalog-view`

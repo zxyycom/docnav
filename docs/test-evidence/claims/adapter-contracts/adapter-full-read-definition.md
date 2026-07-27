@@ -1,4 +1,4 @@
-# Claim CLAIM-WB-CONTRACTS-DEFINITION-001: Adapter definition validation 收敛 full-read capability facts
+# Claim CLAIM-ADAPTER-FULL-READ-DEFINITION-001: Adapter definition validation 收敛 full-read capability facts
 
 Topic: `adapter-contracts`
 Owner ref: `docs/adapter-contract.md#内置-adapter-接口`

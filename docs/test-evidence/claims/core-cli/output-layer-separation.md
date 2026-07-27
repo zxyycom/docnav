@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-OUTPUT-001: Core 文档输出模式不混层
+# Claim CLAIM-CLI-OUTPUT-LAYER-SEPARATION-001: Core 文档输出模式不混层
 
 Topic: `core-cli`
 Owner ref: `docs/output.md#输出层边界`

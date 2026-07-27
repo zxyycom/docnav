@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-SOURCE-001: Core adapter source 来自 static registry
+# Claim CLAIM-CLI-STATIC-REGISTRY-DISPATCH-001: Core adapter source 来自 static registry
 
 Topic: `core-cli`
 Owner ref: `docs/adapter-contract.md#内置-adapter-接口`

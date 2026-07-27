@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-MD-DOCHEAD-001: Markdown document head 通过真实 CLI 输出模式可观察
+# Claim CLAIM-CLI-MARKDOWN-DOCUMENT-HEAD-001: Markdown document head 通过真实 CLI 输出模式可观察
 
 Topic: `core-cli`
 Owner ref: `docs/adapters/markdown.md#document-head`

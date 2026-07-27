@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-AUTO-READ-001: Core unique-ref auto-read 默认值与关闭来源可观察
+# Claim CLAIM-CLI-UNIQUE-REF-AUTO-READ-001: Core unique-ref auto-read 默认值与关闭来源可观察
 
 Topic: `core-cli`
 Owner ref: `docs/navigation-input-resolution.md#unique-ref-auto-read-composition`

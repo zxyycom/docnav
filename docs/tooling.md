@@ -97,7 +97,7 @@ required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality c
 
 同一 docs validator 的 `cases` task 只调用 `scripts/test-evidence/` project
 wrapper。wrapper 拥有 supported runner profile、静态规则、Cargo/Bun/smoke
-report、入口归一和 inventory 闭合；仓库跟踪的 `test-evidence-review` v8 skill
+report、入口归一和 inventory 闭合；仓库跟踪的 `test-evidence-review` skill
 拥有通用 Entry、Claim 与索引契约。required profile 另行运行 ast-grep rule tests，
 两条入口都不依赖个人 skill、全局 ast-grep 或联网 updater。
 

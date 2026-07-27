@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-CONFIG-PATH-001: Config path flags select CLI config targets
+# Claim CLAIM-CLI-CONFIG-PATH-SELECTION-001: Config path flags select CLI config targets
 
 Topic: `core-cli`
 Owner ref: `docs/cli.md#配置文件路径`

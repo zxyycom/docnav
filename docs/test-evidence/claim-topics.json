@@ -10,40 +10,12 @@
       "description": "Core CLI parsing, configuration, runtime orchestration, registry, and process-level smoke behavior."
     },
     {
-      "id": "diagnostics",
-      "description": "Typed diagnostic codes, records, details validation, and projection behavior."
-    },
-    {
       "id": "markdown-adapter",
       "description": "Markdown parsing, references, navigation operations, display fields, and pagination."
     },
     {
       "id": "navigation",
       "description": "Navigation input resolution, source precedence, adapter routing, and dispatch behavior."
-    },
-    {
-      "id": "output-rendering",
-      "description": "Protocol response output planning, readable rendering, framing, and output channels."
-    },
-    {
-      "id": "protocol",
-      "description": "Protocol types, decoding, schema constraints, envelopes, and diagnostic projection."
-    },
-    {
-      "id": "quality-tooling",
-      "description": "Repository quality measurement, caching, reporting, warnings, and scan configuration."
-    },
-    {
-      "id": "release",
-      "description": "Release package selection, staging, candidate validation, and workflow policy."
-    },
-    {
-      "id": "shared-foundations",
-      "description": "Shared argument, field, source-resolution, JSON, and text-cost foundations."
-    },
-    {
-      "id": "test-infrastructure",
-      "description": "Test harnesses, fixtures, workspace verification, task scheduling, and evidence catalog integration."
     }
   ]
 }

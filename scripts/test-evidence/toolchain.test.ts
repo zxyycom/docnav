@@ -75,7 +75,7 @@ test("keeps the pinned ast-grep skill distribution byte-for-byte complete", () =
   );
 });
 
-test("keeps the project-owned test-evidence v8 skill complete and updater-free", () => {
+test("keeps the project-owned test-evidence skill complete and updater-free", () => {
   const skillRoot = path.join(
     workspaceRoot,
     ".codex",
@@ -96,7 +96,7 @@ test("keeps the project-owned test-evidence v8 skill complete and updater-free",
   ]);
   assert.equal(
     directoryFingerprint(skillRoot),
-    "0c9c19156d2605694b0177897590e3e8cc8b444893d91a921535eaaf3c11fa94"
+    "38fa7fe98879b5f1bae042734fc4c92817228ba7c0479d22e3a12ab2846dc7f8"
   );
 });
 

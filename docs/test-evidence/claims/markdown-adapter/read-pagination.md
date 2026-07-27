@@ -1,4 +1,4 @@
-# Claim CLAIM-WB-MD-PAGE-001: Markdown read 分页按 Unicode 字符计数
+# Claim CLAIM-MARKDOWN-READ-PAGINATION-001: Markdown read 分页按 Unicode 字符计数
 
 Topic: `markdown-adapter`
 Owner ref: `docs/adapters/markdown.md#read`

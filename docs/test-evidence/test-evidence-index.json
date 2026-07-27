@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "sha256:1367604fc0faf3f3aeb9f26e46801e2ca71e654db2d39688c1fcb16646aad3ef",
-  "inventoryRevision": "sha256:02e7d9aee0a6514f251e6d8ab730e8528867cbb949d9198f7cd9864c7c54ab8a",
+  "sourceRevision": "sha256:739d088dad26449ef56b782e4925ac40c760626b6f0f2e079998e0c1685ace7d",
+  "inventoryRevision": "sha256:dc1d9ae828ce58897cc5eee82e99d50a3c262861658c4b20d9942f3202beea8d",
   "topics": [
     {
       "id": "adapter-contracts",
@@ -12,40 +12,12 @@
       "description": "Core CLI parsing, configuration, runtime orchestration, registry, and process-level smoke behavior."
     },
     {
-      "id": "diagnostics",
-      "description": "Typed diagnostic codes, records, details validation, and projection behavior."
-    },
-    {
       "id": "markdown-adapter",
       "description": "Markdown parsing, references, navigation operations, display fields, and pagination."
     },
     {
       "id": "navigation",
       "description": "Navigation input resolution, source precedence, adapter routing, and dispatch behavior."
-    },
-    {
-      "id": "output-rendering",
-      "description": "Protocol response output planning, readable rendering, framing, and output channels."
-    },
-    {
-      "id": "protocol",
-      "description": "Protocol types, decoding, schema constraints, envelopes, and diagnostic projection."
-    },
-    {
-      "id": "quality-tooling",
-      "description": "Repository quality measurement, caching, reporting, warnings, and scan configuration."
-    },
-    {
-      "id": "release",
-      "description": "Release package selection, staging, candidate validation, and workflow policy."
-    },
-    {
-      "id": "shared-foundations",
-      "description": "Shared argument, field, source-resolution, JSON, and text-cost foundations."
-    },
-    {
-      "id": "test-infrastructure",
-      "description": "Test harnesses, fixtures, workspace verification, task scheduling, and evidence catalog integration."
     }
   ],
   "entries": [
@@ -77,9 +49,7 @@
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:22667edbbe9ad0689b86831fb4a7f4132bfb410709f88369de47b8b88a08348c",
-      "claimIds": [
-        "CLAIM-AUX-WORKSPACE-VERIFY-006"
-      ]
+      "claimIds": []
     },
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters package manager echoes from successful script checks",
@@ -712,10 +682,10 @@
       "claimIds": []
     },
     {
-      "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|keeps the project-owned test-evidence v8 skill complete and updater-free",
+      "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|keeps the project-owned test-evidence skill complete and updater-free",
       "runner": "bun",
       "target": "scripts/test-evidence/toolchain.test.ts",
-      "selector": "keeps the project-owned test-evidence v8 skill complete and updater-free",
+      "selector": "keeps the project-owned test-evidence skill complete and updater-free",
       "sourcePath": "scripts/test-evidence/toolchain.test.ts",
       "sourceRange": {
         "startLine": 78,
@@ -723,7 +693,7 @@
         "endLine": 101,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:9ccd68074b95d15612f19b8507ec45a38df9d90d55e9be8625e614eed3fb84c9",
+      "sourceFingerprint": "sha256:fc88bbabb9a334bcd54af245b08b40592f9951e095dc09164f95917073edebbc",
       "claimIds": []
     },
     {
@@ -814,9 +784,7 @@
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:52e9959aa79aea2380a621ffd2c1f124594739257e1c7d5c356b47f66d04e04a",
-      "claimIds": [
-        "CLAIM-AUX-WORKSPACE-PROCESS-001"
-      ]
+      "claimIds": []
     },
     {
       "entryKey": "bun|scripts/tools/parallel-task-runner/test/index.test.ts|parallel task runner > does not limit concurrency when no explicit concurrency is provided",
@@ -2347,7 +2315,7 @@
       },
       "sourceFingerprint": "sha256:43ea13ed67e78a5770a3e059729fc722230e6d5ad6329900c4e92e15a9c2f677",
       "claimIds": [
-        "CLAIM-WB-CONTRACTS-DEFINITION-001"
+        "CLAIM-ADAPTER-FULL-READ-DEFINITION-001"
       ]
     },
     {
@@ -2364,7 +2332,7 @@
       },
       "sourceFingerprint": "sha256:548a86629e40737f254f713e62208a132b17cd1305748eac84e39d3e3e92d3bf",
       "claimIds": [
-        "CLAIM-WB-CONTRACTS-ERROR-001"
+        "CLAIM-ADAPTER-ERROR-PROJECTION-001"
       ]
     },
     {
@@ -3130,9 +3098,7 @@
         "endColumn": 2
       },
       "sourceFingerprint": "sha256:542a185e2f42e39339706d380cfeb7c128d6335244ceb30c0908ee54a35acdb5",
-      "claimIds": [
-        "CLAIM-WB-MD-ERROR-001"
-      ]
+      "claimIds": []
     },
     {
       "entryKey": "cargo|docnav-markdown:test:adapter|options_error_display::outline_consumes_max_heading_level_from_standard_input",
@@ -3207,9 +3173,7 @@
         "endColumn": 2
       },
       "sourceFingerprint": "sha256:6772660e3f851880d70fd761a93ff95fcb90c4593fb8702b5d18b132262dd5a6",
-      "claimIds": [
-        "CLAIM-WB-MD-REF-001"
-      ]
+      "claimIds": []
     },
     {
       "entryKey": "cargo|docnav-markdown:test:adapter|outline_ref::outline_exposes_document_head_before_visible_headings_when_nonblank",
@@ -3405,7 +3369,7 @@
       },
       "sourceFingerprint": "sha256:409fa9af15e9bb3d19afb23a66ce60b301c10070d886ff48a70271083947d606",
       "claimIds": [
-        "CLAIM-WB-MD-FIND-001"
+        "CLAIM-MARKDOWN-FIND-VISIBLE-REGION-001"
       ]
     },
     {
@@ -3467,7 +3431,7 @@
       },
       "sourceFingerprint": "sha256:ad45b85a4d147e185fa45f5dd05d67738662275f4a136c3a048bcd320c175d90",
       "claimIds": [
-        "CLAIM-WB-MD-PAGE-001"
+        "CLAIM-MARKDOWN-READ-PAGINATION-001"
       ]
     },
     {
@@ -3724,7 +3688,7 @@
       },
       "sourceFingerprint": "sha256:cd6bb7ec09e2c908b0b55df69bb29b5047fab928ad720f0027c64deaaf8d711d",
       "claimIds": [
-        "CLAIM-WB-NAVIGATION-FIELD-SETS-001"
+        "CLAIM-NAVIGATION-SELECTED-FIELD-SET-001"
       ]
     },
     {
@@ -4086,7 +4050,7 @@
       },
       "sourceFingerprint": "sha256:9e0b0cdc3870f80afc6d65b0a5a602128860da0d2d7ae11967aab3d14981bab2",
       "claimIds": [
-        "CLAIM-WB-NAVIGATION-DISPATCH-001"
+        "CLAIM-NAVIGATION-CONFIG-SOURCE-DISPATCH-001"
       ]
     },
     {
@@ -7868,7 +7832,7 @@
       },
       "sourceFingerprint": "sha256:9872ef381f456e0c071c824b56bb08177c682aeebf2764da825c75bdc573e8a1",
       "claimIds": [
-        "CLAIM-BB-CORE-SELECT-001"
+        "CLAIM-CLI-ADAPTER-SELECTION-001"
       ]
     },
     {
@@ -7885,7 +7849,7 @@
       },
       "sourceFingerprint": "sha256:dc16ecb7711f289f82a68bf7fcfd2d8d8ca513331cf400b1df23bf67c4d4ef91",
       "claimIds": [
-        "CLAIM-BB-CORE-AUTO-READ-001"
+        "CLAIM-CLI-UNIQUE-REF-AUTO-READ-001"
       ]
     },
     {
@@ -7902,7 +7866,7 @@
       },
       "sourceFingerprint": "sha256:0c5a09730c8c222476512007d0444c300806b8aaff8f184610963cf03c40d49d",
       "claimIds": [
-        "CLAIM-BB-CORE-ARGS-001"
+        "CLAIM-CLI-REQUIRED-ARGUMENT-001"
       ]
     },
     {
@@ -7919,7 +7883,7 @@
       },
       "sourceFingerprint": "sha256:a6ec782a6ac3c214678476c676b475166e22f438d8cce2065a2cb0d553da4af6",
       "claimIds": [
-        "CLAIM-BB-CORE-CONFIG-001"
+        "CLAIM-CLI-CONFIG-INSPECTION-001"
       ]
     },
     {
@@ -7936,7 +7900,7 @@
       },
       "sourceFingerprint": "sha256:6df6a75a23d326d6c8d563827583d3ac283c3241db55a3c4959faddbd4baea09",
       "claimIds": [
-        "CLAIM-BB-CORE-CONFIG-002"
+        "CLAIM-CLI-CONFIG-VALUE-DIAGNOSTIC-001"
       ]
     },
     {
@@ -7953,7 +7917,7 @@
       },
       "sourceFingerprint": "sha256:65aaf9720d6e1fe104537bf6902bc016ac2ce96e566ad5d7da67d9bb96718849",
       "claimIds": [
-        "CLAIM-BB-CORE-CONFIG-003"
+        "CLAIM-CLI-REMOVED-LIMIT-DIAGNOSTIC-001"
       ]
     },
     {
@@ -7970,7 +7934,7 @@
       },
       "sourceFingerprint": "sha256:9ad72be41f3747c7a223a08c69d49b306f634334a0da51d3e6d58292b4534ed0",
       "claimIds": [
-        "CLAIM-BB-CORE-CONFIG-004"
+        "CLAIM-CLI-ADAPTER-CONFIG-APPLICABILITY-001"
       ]
     },
     {
@@ -7987,7 +7951,7 @@
       },
       "sourceFingerprint": "sha256:7f4960fee004861078bac243f3d054e13830438f6033c860468c720bb9b9a414",
       "claimIds": [
-        "CLAIM-BB-CORE-CONFIG-PATH-001"
+        "CLAIM-CLI-CONFIG-PATH-SELECTION-001"
       ]
     },
     {
@@ -8004,7 +7968,7 @@
       },
       "sourceFingerprint": "sha256:90afecd81180bdd97f72049bdc9f855ffdac71a3e6759acce6b7f9c38256580b",
       "claimIds": [
-        "CLAIM-BB-CORE-OUTPUT-001"
+        "CLAIM-CLI-OUTPUT-LAYER-SEPARATION-001"
       ]
     },
     {
@@ -8021,7 +7985,7 @@
       },
       "sourceFingerprint": "sha256:3017e7e10b971ed9e28b94eb8e2a14b9e2bdf377924e80a77c4123da2b43da29",
       "claimIds": [
-        "CLAIM-BB-CORE-LINK-001"
+        "CLAIM-CLI-REF-ROUND-TRIP-001"
       ]
     },
     {
@@ -8038,7 +8002,7 @@
       },
       "sourceFingerprint": "sha256:7f7864bafd975f49ddcabcc5051af4eaee448c2712644b4d9c2017ccbebd17c4",
       "claimIds": [
-        "CLAIM-BB-CORE-MD-DOCHEAD-001"
+        "CLAIM-CLI-MARKDOWN-DOCUMENT-HEAD-001"
       ]
     },
     {
@@ -8055,7 +8019,7 @@
       },
       "sourceFingerprint": "sha256:e0df8b007e255084c335988e5379fcd9d1aea212d8ad7770dba3f80498159094",
       "claimIds": [
-        "CLAIM-BB-CORE-MD-OPTIONS-001"
+        "CLAIM-CLI-MARKDOWN-HEADING-LIMIT-001"
       ]
     },
     {
@@ -8072,7 +8036,7 @@
       },
       "sourceFingerprint": "sha256:2b00fe36cb55cd0d9c1b3b0efc745e970f839afdf456796ca1cd2ffd6984a80e",
       "claimIds": [
-        "CLAIM-BB-CORE-REF-001"
+        "CLAIM-CLI-ADAPTER-REF-ERROR-001"
       ]
     },
     {
@@ -8089,7 +8053,7 @@
       },
       "sourceFingerprint": "sha256:5998472e0e0ee1cc731ac5f6e9e8a85d7e59e491ffa418da93ac0af256ca71d5",
       "claimIds": [
-        "CLAIM-BB-CORE-FAIL-001"
+        "CLAIM-CLI-PROBE-FAILURE-PROJECTION-001"
       ]
     },
     {
@@ -8106,7 +8070,7 @@
       },
       "sourceFingerprint": "sha256:8a6dcd8847d70fa02c83c5214ab1f5f8ce1f995da0c8ae1de8e9f7496fcecab0",
       "claimIds": [
-        "CLAIM-BB-CORE-SOURCE-001"
+        "CLAIM-CLI-STATIC-REGISTRY-DISPATCH-001"
       ]
     },
     {
@@ -8123,7 +8087,7 @@
       },
       "sourceFingerprint": "sha256:74ffe705d0043d13c356dbdaa36d5c1a818b1a5e6344959e572a8121d7695ede",
       "claimIds": [
-        "CLAIM-BB-CORE-ADAPTER-MGMT-001"
+        "CLAIM-CLI-ADAPTER-INSPECTION-001"
       ]
     },
     {
@@ -8140,49 +8104,70 @@
       },
       "sourceFingerprint": "sha256:14d0c8dc3a3719e6097bbfc8888457c4cb33ed793906307f87504d86c84963dc",
       "claimIds": [
-        "CLAIM-BB-CORE-TOOLS-001"
+        "CLAIM-CLI-TOOL-COMMANDS-001"
       ]
     }
   ],
   "claims": [
     {
-      "id": "CLAIM-AUX-WORKSPACE-PROCESS-001",
-      "title": "Shared process wrapper plain-text environment 稳定",
-      "topic": "test-infrastructure",
-      "ownerRef": "docs/tooling.md#子进程输出环境",
+      "id": "CLAIM-ADAPTER-ERROR-PROJECTION-001",
+      "title": "Adapter contracts error mapping 保持 protocol 投影边界",
+      "topic": "adapter-contracts",
+      "ownerRef": "docs/adapter-contract.md#文档操作执行边界",
       "statement": [
-        "Shared script process wrappers override caller color settings with the repository plain-text child environment."
+        "Adapter-layer document errors preserve their protocol code, owner, location and default guidance when projected."
       ],
       "observations": [
-        "shared process wrapper 在 sync 和 async child process 入口覆盖 caller-provided color env，统一注入 plain-text output environment。"
+        "Adapter document errors project to protocol error code, owner, location and default guidance through `AdapterError::protocol_error()`.",
+        "Adapter-owned native option errors project issue metadata to invalid-request received, expected, details and guidance fields."
       ],
       "supportedBy": [
-        "bun|scripts/tools/foundation/test/foundation.test.ts|script foundation > runs child processes with plain text output environment"
+        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_error_constructors_project_protocol_error_details"
       ],
-      "sourcePath": "claims/test-infrastructure/aux-workspace-process-001.md",
-      "sourceFingerprint": "sha256:f78265737da675d0458fde7461d32ee1cd6147b031bc9cdc6018267dc193e45f",
-      "ownerFingerprint": "sha256:59ee70ea31811555f00c2ff1937ca9d77b1cdd98f1f3462f60616e6cdb47526a"
+      "sourcePath": "claims/adapter-contracts/adapter-error-projection.md",
+      "sourceFingerprint": "sha256:424f9e7bd2f0413f16c4662a7b832c1e00d652ede9b9e226534cbff4bb437c29",
+      "ownerFingerprint": "sha256:72358439f3f888baa9819cc3dcd403a9686846a50b74bfc44933e55ef2a87a5e"
     },
     {
-      "id": "CLAIM-AUX-WORKSPACE-VERIFY-006",
-      "title": "Filters catalog success output from docs validator failures",
-      "topic": "test-infrastructure",
-      "ownerRef": "docs/testing.md#统一验证入口",
+      "id": "CLAIM-ADAPTER-FULL-READ-DEFINITION-001",
+      "title": "Adapter definition validation 收敛 full-read capability facts",
+      "topic": "adapter-contracts",
+      "ownerRef": "docs/adapter-contract.md#内置-adapter-接口",
       "statement": [
-        "Workspace verification suppresses known successful validator noise while preserving actionable failure diagnostics."
+        "Adapter definitions reject a declared unstructured full-read capability whose required capability facts are empty."
       ],
       "observations": [
-        "已知的 test-evidence 与 decision-records 成功输出会被过滤，失败诊断仍保持可见。"
+        "Adapter definition validation rejects a declared but empty unstructured full-read capability set.",
+        "Adapter definition validation rejects blank or duplicate cost measurement units."
       ],
       "supportedBy": [
-        "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters catalog success output from docs validator failures"
+        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_capabilities"
       ],
-      "sourcePath": "claims/test-infrastructure/aux-workspace-verify-006.md",
-      "sourceFingerprint": "sha256:bfa22105da3a93484d77c0ae1b5705bd70a77f50bc16f1ce9c9241d56dfab844",
-      "ownerFingerprint": "sha256:7e037f52187fe14f9461908341e7944395dcf0f614ae29c2860bb3bc11100322"
+      "sourcePath": "claims/adapter-contracts/adapter-full-read-definition.md",
+      "sourceFingerprint": "sha256:9198b7f3dda78e4589fb0eb0021520d6b037162d381a793e6744bfec285d2858",
+      "ownerFingerprint": "sha256:d785f9bd40d2fbf6326db5c8cb9cc968dcb5135ce11d6e9a605ed3b6d440d6da"
     },
     {
-      "id": "CLAIM-BB-CORE-ADAPTER-MGMT-001",
+      "id": "CLAIM-CLI-ADAPTER-CONFIG-APPLICABILITY-001",
+      "title": "Adapter-scoped config 按 catalog operation applicability 生效",
+      "topic": "core-cli",
+      "ownerRef": "docs/navigation-input-resolution.md#selected-operation-catalog-view",
+      "statement": [
+        "Adapter-scoped config affects an operation only through the selected adapter and operation catalog view."
+      ],
+      "observations": [
+        "Project config 中的 `options.docnav-markdown.max_heading_level` 通过 core-authored Markdown-scoped catalog entry 影响 `outline` entries。",
+        "User config 中的 `options.docnav-markdown.max_heading_level` 通过 direct config file edit/read 参与 source priority；当 catalog 不把该参数绑定到 selected operation 时，返回 structured unsupported diagnostic 并保留 source level/path。"
+      ],
+      "supportedBy": [
+        "smoke|core:config-context|CORE-CONFIG-004"
+      ],
+      "sourcePath": "claims/core-cli/adapter-config-applicability.md",
+      "sourceFingerprint": "sha256:7410b3b40dfdc67572c2448c89c80660ced2704f46baa504cec22375235d821f",
+      "ownerFingerprint": "sha256:65ee490442663d7ac1819dca1d05512444a9af82f235b74e87bdfc6c7ef6c81c"
+    },
+    {
+      "id": "CLAIM-CLI-ADAPTER-INSPECTION-001",
       "title": "Core adapter inspection 命令覆盖",
       "topic": "core-cli",
       "ownerRef": "docs/cli.md#内置-adapter-检查",
@@ -8196,50 +8181,50 @@
       "supportedBy": [
         "smoke|core:tool-commands|CORE-ADAPTER-MGMT-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-adapter-mgmt-001.md",
-      "sourceFingerprint": "sha256:ccb4526bf13892b44b2971e2846e9bb618939f48084142461c17c28ab75d5ea4",
+      "sourcePath": "claims/core-cli/adapter-inspection.md",
+      "sourceFingerprint": "sha256:127e18a6370e22b1a58316e7449ac4fad3091c497f3edff66cbe1dfe7ab4d7fa",
       "ownerFingerprint": "sha256:1273044aa85cb6c7d994a9bf3fb7b5fe38729e2da20b73cd6abdc208a73aad32"
     },
     {
-      "id": "CLAIM-BB-CORE-ARGS-001",
-      "title": "Core 拒绝缺失的 operation 参数",
+      "id": "CLAIM-CLI-ADAPTER-REF-ERROR-001",
+      "title": "Adapter ref 错误穿过 Core",
       "topic": "core-cli",
-      "ownerRef": "docs/cli.md#document-operation-执行",
+      "ownerRef": "docs/ref-contract.md#共享-ref-错误",
       "statement": [
-        "A document command missing an operation-owned required argument fails at the stable input boundary."
+        "A ref rejected by the selected adapter crosses core as the stable shared ref failure."
       ],
       "observations": [
-        "document command 缺少本 operation 拥有的必需参数时返回稳定 input failure。",
-        "该 smoke case 代表这一类外部 CLI 错误，不枚举所有 parser 组合。"
+        "被选中 adapter 拒绝的 ref 会从 core 返回稳定 protocol failure。",
+        "`protocol-json` 承载错误时，stderr 不输出 JSON payload。"
       ],
       "supportedBy": [
-        "smoke|core:cli-argument-failure|CORE-ARGS-001"
+        "smoke|core:real-markdown-ref-error|CORE-REF-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-args-001.md",
-      "sourceFingerprint": "sha256:913b212dc0ea59420e8682a269cf528fcffcb3c0903e6bdedf72f3d3f7ea1028",
-      "ownerFingerprint": "sha256:84582e185b84f26afa095eb4974f9e31bf5b16688e9ae07dc0b084d17a4b3eb5"
+      "sourcePath": "claims/core-cli/adapter-ref-error.md",
+      "sourceFingerprint": "sha256:1a2bb6b729a746f2db224273410f0f3504a087a322ee79e985f6539766249963",
+      "ownerFingerprint": "sha256:341891616d380a717f243e6baf42440b750b1053421222199d2c1d64cfd92d83"
     },
     {
-      "id": "CLAIM-BB-CORE-AUTO-READ-001",
-      "title": "Core unique-ref auto-read 默认值与关闭来源可观察",
+      "id": "CLAIM-CLI-ADAPTER-SELECTION-001",
+      "title": "显式 adapter 失败返回 selection diagnostic",
       "topic": "core-cli",
-      "ownerRef": "docs/navigation-input-resolution.md#unique-ref-auto-read-composition",
+      "ownerRef": "docs/adapter-contract.md#adapter-选择",
       "statement": [
-        "A successful outline or find with one distinct ref defaults to unique-ref auto-read unless an explicit source disables it."
+        "An explicitly selected missing adapter returns an adapter-selection diagnostic and does not fall back silently."
       ],
       "observations": [
-        "真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read；`protocol-json` 与 `readable-view` 从同一结果保留 ref、content type 和 nested content。",
-        "CLI、默认 project config fixture 或显式 user config fixture 解析为 `disabled` 时，真实进程以退出码 `0` 返回原 base find，stdout 保持所选输出模式且 stderr 为空；代表性 protocol/readable 分支均不出现 `auto_read`，readable base projection 也不产生 block。"
+        "显式 CLI 或 project config 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。",
+        "显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。"
       ],
       "supportedBy": [
-        "smoke|core:auto-read|CORE-AUTO-READ-001"
+        "smoke|core:adapter-selection|CORE-SELECT-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-auto-read-001.md",
-      "sourceFingerprint": "sha256:d33477690b981d4b0363064f84d5cb8375e02e780863b91cfe9cec6265712163",
-      "ownerFingerprint": "sha256:158caa26389ddd15fa3c523dc21b97ce9803c9906a1f82018c736a05bb23c7f6"
+      "sourcePath": "claims/core-cli/adapter-selection.md",
+      "sourceFingerprint": "sha256:1b17efeb9c87ba3a87c682e6e4f0994dd261aaacdc129734276147d15db891f7",
+      "ownerFingerprint": "sha256:28cf9d617d70878987897d181d8add3d657008117d5b1ae278bc628bf4961825"
     },
     {
-      "id": "CLAIM-BB-CORE-CONFIG-001",
+      "id": "CLAIM-CLI-CONFIG-INSPECTION-001",
       "title": "Config inspect source status 与参数事实可观察",
       "topic": "core-cli",
       "ownerRef": "docs/cli.md#配置命令",
@@ -8254,68 +8239,12 @@
       "supportedBy": [
         "smoke|core:config-context|CORE-CONFIG-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-config-001.md",
-      "sourceFingerprint": "sha256:3c5bae0484f4ee28aa9edd8ab531e3d32bb2f7e96bb0325455e552e4a5c1ca5b",
+      "sourcePath": "claims/core-cli/config-inspection.md",
+      "sourceFingerprint": "sha256:f0813ffefda9bc7c8457f538961f6d4bea3da8dd530168f8637354a445c134fc",
       "ownerFingerprint": "sha256:41ad7ab9102d80c64261e38ad86f266ece7a164d8e0a5f3507f4356bf2129d53"
     },
     {
-      "id": "CLAIM-BB-CORE-CONFIG-002",
-      "title": "Invalid config value 通过 inspect/source validation 被拒绝",
-      "topic": "core-cli",
-      "ownerRef": "docs/cli.md#配置命令",
-      "statement": [
-        "Config inspection attributes invalid selected-source values to their field and validation reason."
-      ],
-      "observations": [
-        "A selected config source containing `defaults.output: \"text\"` appears in `docnav config inspect` source diagnostics as field `defaults.output` with reason `enum_invalid`."
-      ],
-      "supportedBy": [
-        "smoke|core:config-context|CORE-CONFIG-002"
-      ],
-      "sourcePath": "claims/core-cli/bb-core-config-002.md",
-      "sourceFingerprint": "sha256:b40fecfc7bfbd14cceb05f0db4eaa3fc3c4865eaa5a7325d2c7922d09ea22a1b",
-      "ownerFingerprint": "sha256:41ad7ab9102d80c64261e38ad86f266ece7a164d8e0a5f3507f4356bf2129d53"
-    },
-    {
-      "id": "CLAIM-BB-CORE-CONFIG-003",
-      "title": "Legacy defaults.limit 通过 config source diagnostic 被拒绝",
-      "topic": "core-cli",
-      "ownerRef": "docs/navigation-input-resolution.md#配置文件形状",
-      "statement": [
-        "The removed defaults.limit field is rejected as invalid configuration rather than accepted as a pagination input."
-      ],
-      "observations": [
-        "project config 中的 legacy `defaults.limit` 会在真实 `outline` CLI 链路中返回 config-owned `INVALID_REQUEST`。",
-        "structured `unknown_config_field` / `config_issues` diagnostic 报告字段、source level、path origin 和 config path。"
-      ],
-      "supportedBy": [
-        "smoke|core:config-context|CORE-CONFIG-003"
-      ],
-      "sourcePath": "claims/core-cli/bb-core-config-003.md",
-      "sourceFingerprint": "sha256:a26abd6c9250e60f5b8adf1c6591e81c16a10116ce9079c067fe6cf2ec0d3748",
-      "ownerFingerprint": "sha256:154febba71274e9809cf5c771c2e4797627db01918f8253e0a7db5e7118c0467"
-    },
-    {
-      "id": "CLAIM-BB-CORE-CONFIG-004",
-      "title": "Adapter-scoped config 按 catalog operation applicability 生效",
-      "topic": "core-cli",
-      "ownerRef": "docs/navigation-input-resolution.md#selected-operation-catalog-view",
-      "statement": [
-        "Adapter-scoped config affects an operation only through the selected adapter and operation catalog view."
-      ],
-      "observations": [
-        "Project config 中的 `options.docnav-markdown.max_heading_level` 通过 core-authored Markdown-scoped catalog entry 影响 `outline` entries。",
-        "User config 中的 `options.docnav-markdown.max_heading_level` 通过 direct config file edit/read 参与 source priority；当 catalog 不把该参数绑定到 selected operation 时，返回 structured unsupported diagnostic 并保留 source level/path。"
-      ],
-      "supportedBy": [
-        "smoke|core:config-context|CORE-CONFIG-004"
-      ],
-      "sourcePath": "claims/core-cli/bb-core-config-004.md",
-      "sourceFingerprint": "sha256:569ef7c8003d158c2f6336724ad19c1571bf980348a48a6c0ee3cb001cdbedc3",
-      "ownerFingerprint": "sha256:65ee490442663d7ac1819dca1d05512444a9af82f235b74e87bdfc6c7ef6c81c"
-    },
-    {
-      "id": "CLAIM-BB-CORE-CONFIG-PATH-001",
+      "id": "CLAIM-CLI-CONFIG-PATH-SELECTION-001",
       "title": "Config path flags select CLI config targets",
       "topic": "core-cli",
       "ownerRef": "docs/cli.md#配置文件路径",
@@ -8331,51 +8260,30 @@
       "supportedBy": [
         "smoke|core:config-context|CORE-CONFIG-PATH-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-config-path-001.md",
-      "sourceFingerprint": "sha256:bf44ee236d363a9e2e407881214c1f4433cd0e034dce23bb8d83d1e6be6d9d5a",
+      "sourcePath": "claims/core-cli/config-path-selection.md",
+      "sourceFingerprint": "sha256:cdc93217de25cf9da4e506a9d794e134090b99cb6a36385d12eb04e2eef48fe2",
       "ownerFingerprint": "sha256:64e9e06f8135120e1867a1b850355ac1948999170764a3588525beb06d420f11"
     },
     {
-      "id": "CLAIM-BB-CORE-FAIL-001",
-      "title": "Candidate probe failure 投影为格式候选摘要",
+      "id": "CLAIM-CLI-CONFIG-VALUE-DIAGNOSTIC-001",
+      "title": "Invalid config value 通过 inspect/source validation 被拒绝",
       "topic": "core-cli",
-      "ownerRef": "docs/adapter-contract.md#probe-识别",
+      "ownerRef": "docs/cli.md#配置命令",
       "statement": [
-        "A built-in adapter probe failure remains visible in the format-candidate failure projection."
+        "Config inspection attributes invalid selected-source values to their field and validation reason."
       ],
       "observations": [
-        "candidate discovery 阶段的 built-in adapter probe failure 被报告为 `FORMAT_UNKNOWN` candidate summary。",
-        "candidate failure 不会被折叠成 selected adapter layer failure。",
-        "未显式声明 adapter 的 automatic discovery 全部 probe 失败时，candidate failures 从属于 primary diagnostic details。"
+        "A selected config source containing `defaults.output: \"text\"` appears in `docnav config inspect` source diagnostics as field `defaults.output` with reason `enum_invalid`."
       ],
       "supportedBy": [
-        "smoke|core:registry-contract-failures|CORE-FAIL-001"
+        "smoke|core:config-context|CORE-CONFIG-002"
       ],
-      "sourcePath": "claims/core-cli/bb-core-fail-001.md",
-      "sourceFingerprint": "sha256:8ee5a72b40012361d7b7d7d50f087067a3020594a7a4e7e2e16f12d7774ca12b",
-      "ownerFingerprint": "sha256:9ca80127dcf8c90a9518b5aa8ee3c37622356050f19b72bcece44343eca6d040"
+      "sourcePath": "claims/core-cli/config-value-diagnostic.md",
+      "sourceFingerprint": "sha256:c5db15b97be03c8e32dfe33aecee345910eb2355132f12e4e544e521698dca19",
+      "ownerFingerprint": "sha256:41ad7ab9102d80c64261e38ad86f266ece7a164d8e0a5f3507f4356bf2129d53"
     },
     {
-      "id": "CLAIM-BB-CORE-LINK-001",
-      "title": "Core 原样传递真实 Markdown ref",
-      "topic": "core-cli",
-      "ownerRef": "docs/ref-contract.md#共享调用流程",
-      "statement": [
-        "Core passes adapter-generated refs unchanged from outline or find into read."
-      ],
-      "observations": [
-        "真实 `docnav` 进程可以通过 Markdown adapter 完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info` 链路。",
-        "outline/find 返回的 adapter ref 可原样提交给 read，`readable-view` read 保留该 ref；用户可见阅读文本不包含 protocol envelope。"
-      ],
-      "supportedBy": [
-        "smoke|core:real-markdown-link-chain|CORE-LINK-001"
-      ],
-      "sourcePath": "claims/core-cli/bb-core-link-001.md",
-      "sourceFingerprint": "sha256:d8b93fa17d2ceb9a84d56b83c102589872eb830ea04dbe378db8484ff6785377",
-      "ownerFingerprint": "sha256:2b4dde37beca74631425b58b51c13e92c0c434437771e36581749595c3f56e1d"
-    },
-    {
-      "id": "CLAIM-BB-CORE-MD-DOCHEAD-001",
+      "id": "CLAIM-CLI-MARKDOWN-DOCUMENT-HEAD-001",
       "title": "Markdown document head 通过真实 CLI 输出模式可观察",
       "topic": "core-cli",
       "ownerRef": "docs/adapters/markdown.md#document-head",
@@ -8391,12 +8299,12 @@
       "supportedBy": [
         "smoke|core:real-markdown-link-chain|CORE-MD-DOCHEAD-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-md-dochead-001.md",
-      "sourceFingerprint": "sha256:1f3a043c016333e69f5f756dcadaa36c492b5fb86d4dbd85b86a1e17f85c05f1",
+      "sourcePath": "claims/core-cli/markdown-document-head.md",
+      "sourceFingerprint": "sha256:f1e62f82cf184629d76879b8001fffc2ba8a3a5d991b923089c2ca8110420211",
       "ownerFingerprint": "sha256:a654e3057d438733ee239ace17d9e263ac2a150bd10c27faf670a4ad3d49a98a"
     },
     {
-      "id": "CLAIM-BB-CORE-MD-OPTIONS-001",
+      "id": "CLAIM-CLI-MARKDOWN-HEADING-LIMIT-001",
       "title": "Markdown max_heading_level option 通过真实 CLI 生效",
       "topic": "core-cli",
       "ownerRef": "docs/adapters/markdown.md#可见性与-max_heading_level",
@@ -8404,17 +8312,17 @@
         "Markdown max_heading_level controls outline visibility and rejects values outside the adapter-owned boundary."
       ],
       "observations": [
-        "Markdown `max_heading_level` 可以从 CLI flag 影响 `outline` 可见粒度；越界值作为 adapter-owned option validation error 投影。Project config source 的同类型证明由 `BB-CORE-CONFIG-004` 承担。"
+        "Markdown `max_heading_level` 可以从 CLI flag 影响 `outline` 可见粒度；越界值作为 adapter-owned option validation error 投影。Project config source 的同类型证明由 `CLAIM-CLI-ADAPTER-CONFIG-APPLICABILITY-001` 承担。"
       ],
       "supportedBy": [
         "smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-md-options-001.md",
-      "sourceFingerprint": "sha256:489e4c6e855f964e8fcbaacea2db9155b62d528db7057a401f075b87c057ec28",
+      "sourcePath": "claims/core-cli/markdown-heading-limit.md",
+      "sourceFingerprint": "sha256:fcb7d3e6a1a25a702f6d974725f4231e8b40764365b47640a3262e98feadbde3",
       "ownerFingerprint": "sha256:7ddee43106f92363099c61418738f03e72e4792d88ab2e05cae2e79a108a27ad"
     },
     {
-      "id": "CLAIM-BB-CORE-OUTPUT-001",
+      "id": "CLAIM-CLI-OUTPUT-LAYER-SEPARATION-001",
       "title": "Core 文档输出模式不混层",
       "topic": "core-cli",
       "ownerRef": "docs/output.md#输出层边界",
@@ -8431,50 +8339,89 @@
       "supportedBy": [
         "smoke|core:document-output-boundary|CORE-OUTPUT-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-output-001.md",
-      "sourceFingerprint": "sha256:0565e707457a48666fdbf7728cd8a589f24eccedccf22585a0fb7e8eed4826e0",
+      "sourcePath": "claims/core-cli/output-layer-separation.md",
+      "sourceFingerprint": "sha256:eaacfead6dc867707ebf8cf2782b16a87d578e5d83d1dfb2d0075fad1d8676a2",
       "ownerFingerprint": "sha256:9ca078762c82f414c62516202493d36bf5fa7d411a7a6253e61e6a4d889e3002"
     },
     {
-      "id": "CLAIM-BB-CORE-REF-001",
-      "title": "Adapter ref 错误穿过 Core",
+      "id": "CLAIM-CLI-PROBE-FAILURE-PROJECTION-001",
+      "title": "Candidate probe failure 投影为格式候选摘要",
       "topic": "core-cli",
-      "ownerRef": "docs/ref-contract.md#共享-ref-错误",
+      "ownerRef": "docs/adapter-contract.md#probe-识别",
       "statement": [
-        "A ref rejected by the selected adapter crosses core as the stable shared ref failure."
+        "A built-in adapter probe failure remains visible in the format-candidate failure projection."
       ],
       "observations": [
-        "被选中 adapter 拒绝的 ref 会从 core 返回稳定 protocol failure。",
-        "`protocol-json` 承载错误时，stderr 不输出 JSON payload。"
+        "candidate discovery 阶段的 built-in adapter probe failure 被报告为 `FORMAT_UNKNOWN` candidate summary。",
+        "candidate failure 不会被折叠成 selected adapter layer failure。",
+        "未显式声明 adapter 的 automatic discovery 全部 probe 失败时，candidate failures 从属于 primary diagnostic details。"
       ],
       "supportedBy": [
-        "smoke|core:real-markdown-ref-error|CORE-REF-001"
+        "smoke|core:registry-contract-failures|CORE-FAIL-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-ref-001.md",
-      "sourceFingerprint": "sha256:ea8dc8013d190807e9e8d993cf925bf2ed70d600045d75fddc5516c02a7151ec",
-      "ownerFingerprint": "sha256:341891616d380a717f243e6baf42440b750b1053421222199d2c1d64cfd92d83"
+      "sourcePath": "claims/core-cli/probe-failure-projection.md",
+      "sourceFingerprint": "sha256:84ab14b818d45584ae2af44133dc78622e2628fe3a010dccee56400178105ee9",
+      "ownerFingerprint": "sha256:9ca80127dcf8c90a9518b5aa8ee3c37622356050f19b72bcece44343eca6d040"
     },
     {
-      "id": "CLAIM-BB-CORE-SELECT-001",
-      "title": "显式 adapter 失败返回 selection diagnostic",
+      "id": "CLAIM-CLI-REF-ROUND-TRIP-001",
+      "title": "Core 原样传递真实 Markdown ref",
       "topic": "core-cli",
-      "ownerRef": "docs/adapter-contract.md#adapter-选择",
+      "ownerRef": "docs/ref-contract.md#共享调用流程",
       "statement": [
-        "An explicitly selected missing adapter returns an adapter-selection diagnostic and does not fall back silently."
+        "Core passes adapter-generated refs unchanged from outline or find into read."
       ],
       "observations": [
-        "显式 CLI 或 project config 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。",
-        "显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。"
+        "真实 `docnav` 进程可以通过 Markdown adapter 完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info` 链路。",
+        "outline/find 返回的 adapter ref 可原样提交给 read，`readable-view` read 保留该 ref；用户可见阅读文本不包含 protocol envelope。"
       ],
       "supportedBy": [
-        "smoke|core:adapter-selection|CORE-SELECT-001"
+        "smoke|core:real-markdown-link-chain|CORE-LINK-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-select-001.md",
-      "sourceFingerprint": "sha256:06c52ccf6ba38d5a12404918933a88ecc6a00daeae1a518ab2ea137a242142b0",
-      "ownerFingerprint": "sha256:28cf9d617d70878987897d181d8add3d657008117d5b1ae278bc628bf4961825"
+      "sourcePath": "claims/core-cli/ref-round-trip.md",
+      "sourceFingerprint": "sha256:cf8d8435ede74ee2f8c359d18e698c288a4dbc55603e4706db69f32da8546409",
+      "ownerFingerprint": "sha256:2b4dde37beca74631425b58b51c13e92c0c434437771e36581749595c3f56e1d"
     },
     {
-      "id": "CLAIM-BB-CORE-SOURCE-001",
+      "id": "CLAIM-CLI-REMOVED-LIMIT-DIAGNOSTIC-001",
+      "title": "Legacy defaults.limit 通过 config source diagnostic 被拒绝",
+      "topic": "core-cli",
+      "ownerRef": "docs/navigation-input-resolution.md#配置文件形状",
+      "statement": [
+        "The removed defaults.limit field is rejected as invalid configuration rather than accepted as a pagination input."
+      ],
+      "observations": [
+        "project config 中的 legacy `defaults.limit` 会在真实 `outline` CLI 链路中返回 config-owned `INVALID_REQUEST`。",
+        "structured `unknown_config_field` / `config_issues` diagnostic 报告字段、source level、path origin 和 config path。"
+      ],
+      "supportedBy": [
+        "smoke|core:config-context|CORE-CONFIG-003"
+      ],
+      "sourcePath": "claims/core-cli/removed-limit-diagnostic.md",
+      "sourceFingerprint": "sha256:8af6cca99afb327793c419a29db469e5ddcd66ef9fcbec8196eb0142ac5dfcf2",
+      "ownerFingerprint": "sha256:154febba71274e9809cf5c771c2e4797627db01918f8253e0a7db5e7118c0467"
+    },
+    {
+      "id": "CLAIM-CLI-REQUIRED-ARGUMENT-001",
+      "title": "Core 拒绝缺失的 operation 参数",
+      "topic": "core-cli",
+      "ownerRef": "docs/cli.md#document-operation-执行",
+      "statement": [
+        "A document command missing an operation-owned required argument fails at the stable input boundary."
+      ],
+      "observations": [
+        "document command 缺少本 operation 拥有的必需参数时返回稳定 input failure。",
+        "该 smoke case 代表这一类外部 CLI 错误，不枚举所有 parser 组合。"
+      ],
+      "supportedBy": [
+        "smoke|core:cli-argument-failure|CORE-ARGS-001"
+      ],
+      "sourcePath": "claims/core-cli/required-argument.md",
+      "sourceFingerprint": "sha256:22c1cc562a7ffee7ba6d2b87d7631cec4bc21637d201f1d2d6caa4c81a4ca4df",
+      "ownerFingerprint": "sha256:84582e185b84f26afa095eb4974f9e31bf5b16688e9ae07dc0b084d17a4b3eb5"
+    },
+    {
+      "id": "CLAIM-CLI-STATIC-REGISTRY-DISPATCH-001",
       "title": "Core adapter source 来自 static registry",
       "topic": "core-cli",
       "ownerRef": "docs/adapter-contract.md#内置-adapter-接口",
@@ -8488,12 +8435,12 @@
       "supportedBy": [
         "smoke|core:registry-contract-failures|CORE-SOURCE-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-source-001.md",
-      "sourceFingerprint": "sha256:398b3231f2f094ba4c103e0970bb1f071aa88c26048e80b74f2898498e82f279",
+      "sourcePath": "claims/core-cli/static-registry-dispatch.md",
+      "sourceFingerprint": "sha256:dcaf115275feea6e5b0bf3bd30bea7aa96c94db0a7bb347ff49f6292e699d796",
       "ownerFingerprint": "sha256:d785f9bd40d2fbf6326db5c8cb9cc968dcb5135ce11d6e9a605ed3b6d440d6da"
     },
     {
-      "id": "CLAIM-BB-CORE-TOOLS-001",
+      "id": "CLAIM-CLI-TOOL-COMMANDS-001",
       "title": "Core 非 document 命令保持可用",
       "topic": "core-cli",
       "ownerRef": "docs/cli.md#命令面",
@@ -8507,68 +8454,31 @@
       "supportedBy": [
         "smoke|core:tool-commands|CORE-TOOLS-001"
       ],
-      "sourcePath": "claims/core-cli/bb-core-tools-001.md",
-      "sourceFingerprint": "sha256:caf0c2eb3bd4faf16842243a126408e703e0259e0e48aea0952ef3bcc57aed9f",
+      "sourcePath": "claims/core-cli/tool-commands.md",
+      "sourceFingerprint": "sha256:dabecad4b8561443a8d78b538d8b91b27aef32ed09b4aecb8c777f4bc4201a6e",
       "ownerFingerprint": "sha256:b3e56f9604daaf03e613e935376beb852dd3e2cdec2b095ced27b667c4b3b2ed"
     },
     {
-      "id": "CLAIM-WB-CONTRACTS-DEFINITION-001",
-      "title": "Adapter definition validation 收敛 full-read capability facts",
-      "topic": "adapter-contracts",
-      "ownerRef": "docs/adapter-contract.md#内置-adapter-接口",
+      "id": "CLAIM-CLI-UNIQUE-REF-AUTO-READ-001",
+      "title": "Core unique-ref auto-read 默认值与关闭来源可观察",
+      "topic": "core-cli",
+      "ownerRef": "docs/navigation-input-resolution.md#unique-ref-auto-read-composition",
       "statement": [
-        "Adapter definitions reject a declared unstructured full-read capability whose required capability facts are empty."
+        "A successful outline or find with one distinct ref defaults to unique-ref auto-read unless an explicit source disables it."
       ],
       "observations": [
-        "Adapter definition validation rejects a declared but empty unstructured full-read capability set.",
-        "Adapter definition validation rejects blank or duplicate cost measurement units."
+        "真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read；`protocol-json` 与 `readable-view` 从同一结果保留 ref、content type 和 nested content。",
+        "CLI、默认 project config fixture 或显式 user config fixture 解析为 `disabled` 时，真实进程以退出码 `0` 返回原 base find，stdout 保持所选输出模式且 stderr 为空；代表性 protocol/readable 分支均不出现 `auto_read`，readable base projection 也不产生 block。"
       ],
       "supportedBy": [
-        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_capabilities"
+        "smoke|core:auto-read|CORE-AUTO-READ-001"
       ],
-      "sourcePath": "claims/adapter-contracts/wb-contracts-definition-001.md",
-      "sourceFingerprint": "sha256:146a03abcb5618936978e8b04302e07df13c77b3decab96e737ea43daf3f4bed",
-      "ownerFingerprint": "sha256:d785f9bd40d2fbf6326db5c8cb9cc968dcb5135ce11d6e9a605ed3b6d440d6da"
+      "sourcePath": "claims/core-cli/unique-ref-auto-read.md",
+      "sourceFingerprint": "sha256:f3dae6cf4300c2b14241850076046e3517450966034d4f05696b4409a4dddf49",
+      "ownerFingerprint": "sha256:158caa26389ddd15fa3c523dc21b97ce9803c9906a1f82018c736a05bb23c7f6"
     },
     {
-      "id": "CLAIM-WB-CONTRACTS-ERROR-001",
-      "title": "Adapter contracts error mapping 保持 protocol 投影边界",
-      "topic": "adapter-contracts",
-      "ownerRef": "docs/adapter-contract.md#文档操作执行边界",
-      "statement": [
-        "Adapter-layer document errors preserve their protocol code, owner, location and default guidance when projected."
-      ],
-      "observations": [
-        "Adapter document errors project to protocol error code, owner, location and default guidance through `AdapterError::protocol_error()`.",
-        "Adapter-owned native option errors project issue metadata to invalid-request received, expected, details and guidance fields."
-      ],
-      "supportedBy": [
-        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_error_constructors_project_protocol_error_details"
-      ],
-      "sourcePath": "claims/adapter-contracts/wb-contracts-error-001.md",
-      "sourceFingerprint": "sha256:c4993dbf3e744f32fe816343924d2f784caa9edb4a69bc9d5a842e11ee22381d",
-      "ownerFingerprint": "sha256:72358439f3f888baa9819cc3dcd403a9686846a50b74bfc44933e55ef2a87a5e"
-    },
-    {
-      "id": "CLAIM-WB-MD-ERROR-001",
-      "title": "Markdown adapter document error 稳定",
-      "topic": "markdown-adapter",
-      "ownerRef": "docs/adapters/markdown.md#错误分类",
-      "statement": [
-        "Markdown input that is not valid UTF-8 returns the adapter-owned encoding failure."
-      ],
-      "observations": [
-        "non-UTF-8 document 返回稳定 encoding error。"
-      ],
-      "supportedBy": [
-        "cargo|docnav-markdown:test:adapter|options_error_display::non_utf8_document_returns_stable_encoding_error"
-      ],
-      "sourcePath": "claims/markdown-adapter/wb-md-error-001.md",
-      "sourceFingerprint": "sha256:ea4f314c7f3d27079f9b5217d3ff6f2f2ae1d1884bde58546bbfd04dbc674d53",
-      "ownerFingerprint": "sha256:19d7b022c946fc62fd26eb2d08c4098f7593bc76225d2f1a0abcce022126de6a"
-    },
-    {
-      "id": "CLAIM-WB-MD-FIND-001",
+      "id": "CLAIM-MARKDOWN-FIND-VISIBLE-REGION-001",
       "title": "Markdown find ref 和 display 语义稳定",
       "topic": "markdown-adapter",
       "ownerRef": "docs/adapters/markdown.md#find",
@@ -8577,18 +8487,17 @@
       ],
       "observations": [
         "find 匹配 hidden heading 时，ref 指向当前 visible region 或 full document fallback。",
-        "find display 保留匹配片段且 ref 不受 display 内容影响。",
-        "document head 命中到 `HEAD:leading` 的语义由 `WB-MD-DOCHEAD-002` 覆盖。"
+        "find display 保留匹配片段且 ref 不受 display 内容影响。"
       ],
       "supportedBy": [
         "cargo|docnav-markdown:test:adapter|paging_find::find_ref_targets_current_visible_region_and_read_contains_match"
       ],
-      "sourcePath": "claims/markdown-adapter/wb-md-find-001.md",
-      "sourceFingerprint": "sha256:a418d869dfd46a9164f4509346936beca848c668b3355414ad8bde5897360daa",
+      "sourcePath": "claims/markdown-adapter/find-visible-region.md",
+      "sourceFingerprint": "sha256:d2288cb7f84995a3e12762f72a845784ffb5139392b7024fc73a6698a88cc0fe",
       "ownerFingerprint": "sha256:71879a58edab590c535e8163596fe7daa352b210f3014d75ec2857bbaad47904"
     },
     {
-      "id": "CLAIM-WB-MD-PAGE-001",
+      "id": "CLAIM-MARKDOWN-READ-PAGINATION-001",
       "title": "Markdown read 分页按 Unicode 字符计数",
       "topic": "markdown-adapter",
       "ownerRef": "docs/adapters/markdown.md#read",
@@ -8603,30 +8512,12 @@
       "supportedBy": [
         "cargo|docnav-markdown:test:adapter|paging_find::read_paginates_unicode_without_splitting_characters"
       ],
-      "sourcePath": "claims/markdown-adapter/wb-md-page-001.md",
-      "sourceFingerprint": "sha256:2cae9ac3edd2d6d408c194fef3bf23b0eacd6b36ab2804f01996fd4cff406a1a",
+      "sourcePath": "claims/markdown-adapter/read-pagination.md",
+      "sourceFingerprint": "sha256:b331657577f7168c90718fadd3b0338a5eb35b78255dea6e1a304237e49afd47",
       "ownerFingerprint": "sha256:be7d916dd568c263ac2d5dc36397a05dbd55bfddd7b9d763af29d501d78a3938"
     },
     {
-      "id": "CLAIM-WB-MD-REF-001",
-      "title": "Markdown 重复标题生成唯一可读 ref",
-      "topic": "markdown-adapter",
-      "ownerRef": "docs/adapters/markdown.md#重复-heading",
-      "statement": [
-        "Duplicate headings at different structural coordinates receive unique readable refs that resolve to their own sections."
-      ],
-      "observations": [
-        "位于不同结构坐标的重复 heading 会生成唯一 ref，且每个 ref 都能读取对应 section。"
-      ],
-      "supportedBy": [
-        "cargo|docnav-markdown:test:adapter|outline_ref::duplicate_heading_paths_generate_unique_refs_and_read_unique_sections"
-      ],
-      "sourcePath": "claims/markdown-adapter/wb-md-ref-001.md",
-      "sourceFingerprint": "sha256:120d1f45888e0aa77cd0475058fbcf32e8492c6686467a41853b7e74ecb28a39",
-      "ownerFingerprint": "sha256:d2403d3292ec5d26eb0d7c92b32db3443c7c275bc8c2065a41758250a813f08f"
-    },
-    {
-      "id": "CLAIM-WB-NAVIGATION-DISPATCH-001",
+      "id": "CLAIM-NAVIGATION-CONFIG-SOURCE-DISPATCH-001",
       "title": "Navigation config source loading and dispatch 稳定",
       "topic": "navigation",
       "ownerRef": "docs/navigation-input-resolution.md#docnav-navigation",
@@ -8642,12 +8533,12 @@
       "supportedBy": [
         "cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_loads_project_and_user_config_sources_from_descriptors"
       ],
-      "sourcePath": "claims/navigation/wb-navigation-dispatch-001.md",
-      "sourceFingerprint": "sha256:2f9d2501a59788c2ce0a7fd776add28f8c65f730fc03064b87af76971d8029be",
+      "sourcePath": "claims/navigation/config-source-dispatch.md",
+      "sourceFingerprint": "sha256:47ae2ca9221b570a9f7f76af626d15ccd53c46dd9014d6dedb52896a725bc566",
       "ownerFingerprint": "sha256:051623807619de0018805db22dff4906299db710b04f96e430ef0aaa796fc7ac"
     },
     {
-      "id": "CLAIM-WB-NAVIGATION-FIELD-SETS-001",
+      "id": "CLAIM-NAVIGATION-SELECTED-FIELD-SET-001",
       "title": "Selected field set follows closed catalog applicability",
       "topic": "navigation",
       "ownerRef": "docs/navigation-input-resolution.md#selected-operation-catalog-view",
@@ -8661,8 +8552,8 @@
       "supportedBy": [
         "cargo|docnav-navigation:lib:docnav_navigation|parameters::fields::tests::selected_fields_combine_fixed_inputs_with_catalog_projection"
       ],
-      "sourcePath": "claims/navigation/wb-navigation-field-sets-001.md",
-      "sourceFingerprint": "sha256:0da84d028c256d1ab33c24234f57f7be160dfa4db7ffd427f79d632f7ebae231",
+      "sourcePath": "claims/navigation/selected-field-set.md",
+      "sourceFingerprint": "sha256:823c044aad0d9252a1fe1145f93fee907af57dc7261a42b285ccf10ecf5d30ed",
       "ownerFingerprint": "sha256:65ee490442663d7ac1819dca1d05512444a9af82f235b74e87bdfc6c7ef6c81c"
     }
   ]

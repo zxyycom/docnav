@@ -17,6 +17,10 @@ NativeTestEntry、Evidence Claim、查询与索引契约由项目级
 因此 inventory 可以用于离线查询和 Git 审计，但不能创建入口；Claim 可以承接
 rename、split 或 merge 后的长期语义，但不能证明一个原生入口仍然存在。
 
+本体系只评估完整当前树。日常检查和查询不读取旧 case、旧 marker、迁移映射或
+历史目录；确需审计历史时从 Git 与对应 OpenSpec change 恢复，不把历史材料接回
+当前验证链。
+
 ## 使用时机
 
 出现以下任一情况时按本文处理：
@@ -105,7 +109,8 @@ Supported by:
 
 Claim ID 全局唯一且稳定；topic 必须来自受控表并与目录一致。Claim 不得复述测试名、
 AST match、实现步骤或“测试稳定契约”等通用模板，也不得只证明 fixture、mock 或
-内部路径。owner 不存在、引用未知 Entry、全部支持入口被删除、owner section 或
+内部路径。Claim ID 按当前稳定语义命名，不继承旧 case ID；topic 只在至少有一个
+当前 Claim 使用时保留。owner 不存在、引用未知 Entry、全部支持入口被删除、owner section 或
 关联入口发生未审查变化时，严格检查以 `claim-stale` 或对应诊断阻断。
 
 ## 修改流程

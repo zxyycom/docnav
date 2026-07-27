@@ -1,4 +1,4 @@
-# Claim CLAIM-WB-NAVIGATION-FIELD-SETS-001: Selected field set follows closed catalog applicability
+# Claim CLAIM-NAVIGATION-SELECTED-FIELD-SET-001: Selected field set follows closed catalog applicability
 
 Topic: `navigation`
 Owner ref: `docs/navigation-input-resolution.md#selected-operation-catalog-view`

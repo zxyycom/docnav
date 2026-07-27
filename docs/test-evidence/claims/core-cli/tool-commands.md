@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-TOOLS-001: Core 非 document 命令保持可用
+# Claim CLAIM-CLI-TOOL-COMMANDS-001: Core 非 document 命令保持可用
 
 Topic: `core-cli`
 Owner ref: `docs/cli.md#命令面`

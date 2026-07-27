@@ -84,8 +84,10 @@ Supported by:
 
 1. 标题、Topic、Owner ref、Statement、Observations、Supported by 各恰好一处，
    顺序固定，不接受额外段落。
-2. Claim ID 符合 `^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){2,}-\\d{3}$` 且全局唯一。
-3. topic 符合 slug 规则，存在于受控表，并与目录名一致。
+2. Claim ID 符合 `^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){2,}-\\d{3}$`，按稳定语义
+   命名且全局唯一；不把旧目录、旧 case ID 或一次性迁移来源编码进 ID。
+3. topic 符合 slug 规则，存在于受控表，并与目录名一致。受控表只保留至少被一个
+   当前 Claim 使用的 topic。
 4. `ownerRef` 是工作区相对 Markdown 路径加非空 heading fragment；文件和 heading
    必须存在。
 5. Statement、Observations、Supported by 都是非空、去重列表。`supportedBy`

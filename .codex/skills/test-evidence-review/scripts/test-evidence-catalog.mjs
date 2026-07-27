@@ -618,7 +618,7 @@ function parseClaim(paths, directoryTopic, claimPath, entryKeys, diagnostics) {
     diagnostics.push(diagnostic(
       "claim.layout-invalid",
       "claim",
-      "Claim must use the exact v8 Markdown field order and list layout",
+      "Claim must use the exact current Markdown field order and list layout",
       { blocking: true, path: sourcePath }
     ));
     return null;
@@ -852,7 +852,7 @@ function validatePersistedIndex(indexPath, projection) {
       diagnostic(
         "index.invalid",
         "index",
-        "test evidence index has an invalid v8 shape",
+        "test evidence index has an invalid current shape",
         { blocking: true, path: relativeDisplayPath(indexPath) }
       )
     ];

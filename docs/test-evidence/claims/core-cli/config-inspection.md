@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-CONFIG-001: Config inspect source status 与参数事实可观察
+# Claim CLAIM-CLI-CONFIG-INSPECTION-001: Config inspect source status 与参数事实可观察
 
 Topic: `core-cli`
 Owner ref: `docs/cli.md#配置命令`

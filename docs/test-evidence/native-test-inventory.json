@@ -4,7 +4,7 @@
     "id": "docnav-native-tests",
     "version": 1
   },
-  "sourceRevision": "sha256:02e7d9aee0a6514f251e6d8ab730e8528867cbb949d9198f7cd9864c7c54ab8a",
+  "sourceRevision": "sha256:dc1d9ae828ce58897cc5eee82e99d50a3c262861658c4b20d9942f3202beea8d",
   "entries": [
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters cargo trybuild success noise from successful cargo test output",
@@ -623,10 +623,10 @@
       "sourceFingerprint": "sha256:113e54db73a46dfc422892e78170d4a93ced652a31917ef6258da63e48ca3839"
     },
     {
-      "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|keeps the project-owned test-evidence v8 skill complete and updater-free",
+      "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|keeps the project-owned test-evidence skill complete and updater-free",
       "runner": "bun",
       "target": "scripts/test-evidence/toolchain.test.ts",
-      "selector": "keeps the project-owned test-evidence v8 skill complete and updater-free",
+      "selector": "keeps the project-owned test-evidence skill complete and updater-free",
       "sourcePath": "scripts/test-evidence/toolchain.test.ts",
       "sourceRange": {
         "startLine": 78,
@@ -634,7 +634,7 @@
         "endLine": 101,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:9ccd68074b95d15612f19b8507ec45a38df9d90d55e9be8625e614eed3fb84c9"
+      "sourceFingerprint": "sha256:fc88bbabb9a334bcd54af245b08b40592f9951e095dc09164f95917073edebbc"
     },
     {
       "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|pins the audited ast-grep package resolutions in the repository lockfile",

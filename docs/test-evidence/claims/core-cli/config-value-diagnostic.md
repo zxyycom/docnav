@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-CONFIG-002: Invalid config value 通过 inspect/source validation 被拒绝
+# Claim CLAIM-CLI-CONFIG-VALUE-DIAGNOSTIC-001: Invalid config value 通过 inspect/source validation 被拒绝
 
 Topic: `core-cli`
 Owner ref: `docs/cli.md#配置命令`

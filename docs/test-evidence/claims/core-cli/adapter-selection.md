@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-SELECT-001: 显式 adapter 失败返回 selection diagnostic
+# Claim CLAIM-CLI-ADAPTER-SELECTION-001: 显式 adapter 失败返回 selection diagnostic
 
 Topic: `core-cli`
 Owner ref: `docs/adapter-contract.md#adapter-选择`

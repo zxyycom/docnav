@@ -1,4 +1,4 @@
-# Claim CLAIM-WB-NAVIGATION-DISPATCH-001: Navigation config source loading and dispatch 稳定
+# Claim CLAIM-NAVIGATION-CONFIG-SOURCE-DISPATCH-001: Navigation config source loading and dispatch 稳定
 
 Topic: `navigation`
 Owner ref: `docs/navigation-input-resolution.md#docnav-navigation`

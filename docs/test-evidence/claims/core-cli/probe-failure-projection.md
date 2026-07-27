@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-FAIL-001: Candidate probe failure 投影为格式候选摘要
+# Claim CLAIM-CLI-PROBE-FAILURE-PROJECTION-001: Candidate probe failure 投影为格式候选摘要
 
 Topic: `core-cli`
 Owner ref: `docs/adapter-contract.md#probe-识别`

@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-ARGS-001: Core 拒绝缺失的 operation 参数
+# Claim CLAIM-CLI-REQUIRED-ARGUMENT-001: Core 拒绝缺失的 operation 参数
 
 Topic: `core-cli`
 Owner ref: `docs/cli.md#document-operation-执行`

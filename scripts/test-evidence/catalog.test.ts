@@ -300,7 +300,7 @@ test("loads one versioned and sorted supported runner profile", () => {
 });
 
 function createEvidenceFixture(): Fixture {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-evidence-v8-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-test-evidence-"));
   fs.mkdirSync(path.join(root, "docs", "test-evidence"), { recursive: true });
   fs.writeFileSync(
     path.join(root, "docs", "owner.md"),

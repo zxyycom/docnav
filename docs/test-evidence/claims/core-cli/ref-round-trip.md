@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-LINK-001: Core 原样传递真实 Markdown ref
+# Claim CLAIM-CLI-REF-ROUND-TRIP-001: Core 原样传递真实 Markdown ref
 
 Topic: `core-cli`
 Owner ref: `docs/ref-contract.md#共享调用流程`

@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-REF-001: Adapter ref 错误穿过 Core
+# Claim CLAIM-CLI-ADAPTER-REF-ERROR-001: Adapter ref 错误穿过 Core
 
 Topic: `core-cli`
 Owner ref: `docs/ref-contract.md#共享-ref-错误`

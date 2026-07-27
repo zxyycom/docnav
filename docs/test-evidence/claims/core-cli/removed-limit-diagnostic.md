@@ -1,4 +1,4 @@
-# Claim CLAIM-BB-CORE-CONFIG-003: Legacy defaults.limit 通过 config source diagnostic 被拒绝
+# Claim CLAIM-CLI-REMOVED-LIMIT-DIAGNOSTIC-001: Legacy defaults.limit 通过 config source diagnostic 被拒绝
 
 Topic: `core-cli`
 Owner ref: `docs/navigation-input-resolution.md#配置文件形状`
