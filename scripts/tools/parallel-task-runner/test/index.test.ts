@@ -9,7 +9,6 @@ import {
 } from "../src/index.ts";
 import type { NormalizedTask } from "../src/index.ts";
 
-// @case AUX-PARALLEL-RUNNER-001
 describe("parallel task runner", () => {
   it("normalizes task metadata and supports task.run as the execution body", async () => {
     const task = normalizeTask({

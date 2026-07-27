@@ -1,4 +1,3 @@
-// @case WB-MD-REF-GRAMMAR-001
 use super::*;
 
 #[test]
@@ -34,7 +33,6 @@ fn parse_rejects_one_representative_per_invalid_grammar_type() {
     }
 }
 
-// @case WB-MD-REF-MATCH-001
 #[test]
 fn matches_exact_line_level() {
     let heading = Heading {

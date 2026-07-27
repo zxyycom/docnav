@@ -20,7 +20,6 @@ const supportedTargets = [
 ] as const;
 type SupportedTarget = (typeof supportedTargets)[number];
 
-// @case AUX-RELEASE-CANDIDATE-001
 test("accepts an exact manual-run candidate without modifying its files", () => {
   using fixture = createCandidateFixture();
   const before = snapshotTree(fixture.candidateRoot);

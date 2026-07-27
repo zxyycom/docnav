@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-MD-META-001
 #[test]
 fn manifest_declares_markdown_v0_identity_and_formats() {
     let definition = markdown_adapter_definition();

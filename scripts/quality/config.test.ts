@@ -9,7 +9,6 @@ import { classifyFile } from "../tools/quality-core/src/model/code-areas.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-// @case AUX-QUALITY-CODE-AREAS-001
 describe("quality code area classification", () => {
   it("keeps smoke case and fixture files in the fixtures/examples area", () => {
     assert.equal(classifyQualityFile("test/smoke/core/cases/config-management.ts"), "fixtures-examples");

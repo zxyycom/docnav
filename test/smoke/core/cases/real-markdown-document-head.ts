@@ -31,7 +31,6 @@ const DOCUMENT_HEAD_CONTENT = [
   ""
 ].join("\n");
 
-// @case BB-CORE-MD-DOCHEAD-001
 export async function assertDocumentHeadOutputModes(project: SmokeProject) {
   const documentPath = copyDocumentFixture(project, DOCUMENT_HEAD_FIXTURE, "docs/document-head.md");
 

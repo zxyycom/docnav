@@ -30,31 +30,26 @@ import { testConfigPathFlagsSelectConfigTargets } from "./config-path-flags.ts";
 
 export function createConfigContextTasks() {
   return [
-    // @case BB-CORE-CONFIG-001
     {
       id: "CORE-CONFIG-001",
       label: "CORE-CONFIG-001 config source and path context",
       run: testConfigSourceAndPathContext
     },
-    // @case BB-CORE-CONFIG-002
     {
       id: "CORE-CONFIG-002",
       label: "CORE-CONFIG-002 removed readable-json config value rejected",
       run: testRemovedOutputConfigRejected
     },
-    // @case BB-CORE-CONFIG-003
     {
       id: "CORE-CONFIG-003",
       label: "CORE-CONFIG-003 legacy defaults.limit rejected",
       run: assertLegacyDefaultsLimitConfigFails
     },
-    // @case BB-CORE-CONFIG-004
     {
       id: "CORE-CONFIG-004",
       label: "CORE-CONFIG-004 native option config behavior",
       run: testNativeOptionConfigBehavior
     },
-    // @case BB-CORE-CONFIG-PATH-001
     {
       id: "CORE-CONFIG-PATH-001",
       label: "CORE-CONFIG-PATH-001 config path flags select config files",
@@ -65,13 +60,11 @@ export function createConfigContextTasks() {
 
 export function createToolCommandTasks() {
   return [
-    // @case BB-CORE-TOOLS-001
     {
       id: "CORE-TOOLS-001",
       label: "CORE-TOOLS-001 init version and help commands",
       run: testInitVersionAndHelp
     },
-    // @case BB-CORE-ADAPTER-MGMT-001
     {
       id: "CORE-ADAPTER-MGMT-001",
       label: "CORE-ADAPTER-MGMT-001 doctor and adapter list commands",

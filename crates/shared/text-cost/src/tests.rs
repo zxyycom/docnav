@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-TEXT-COST-001
 fn assert_measurement(measurement: Measurement, unit: &str, value: u64) {
     assert_eq!(measurement.unit, unit);
     assert_eq!(measurement.value, value);

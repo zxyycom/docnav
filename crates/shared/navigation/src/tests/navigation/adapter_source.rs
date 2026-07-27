@@ -8,7 +8,6 @@ use super::super::support::{
 };
 
 #[test]
-// @case WB-NAV-ADAPTER-SOURCE-001
 fn explicit_missing_adapter_reports_static_registry_guidance() {
     let command = navigation_command(vec![cli_value_candidate(
         "docnav.defaults.adapter",

@@ -36,7 +36,6 @@ fn assert_cost_measurements(cost: &docnav_protocol::Cost, scope: &str, text: &st
     );
 }
 
-// @case WB-MD-PARSE-001
 #[test]
 fn parser_ignores_code_fence_pseudo_heading_and_invalid_heading() {
     let document = MarkdownDocument::parse(
@@ -70,7 +69,6 @@ fn read_section_ends_at_next_same_or_higher_heading() {
     );
 }
 
-// @case WB-MD-OUTLINE-001
 #[test]
 fn outline_generates_canonical_heading_refs() {
     let document = MarkdownDocument::parse("# Guide\n\n## Install\n".to_owned());
@@ -157,7 +155,6 @@ fn ref_uses_structural_coordinates_for_textual_title() {
     assert_eq!(entries[0].ref_id, "H:L1:H1");
 }
 
-// @case WB-MD-READ-001
 #[test]
 fn read_canonical_ref_resolves_matching_heading() {
     let document = MarkdownDocument::parse("# Guide\nIntro\n## Install\nBody\n".to_owned());
@@ -181,7 +178,6 @@ fn doc_full_still_resolves_to_full_document() {
     );
 }
 
-// @case WB-MD-LINK-001
 #[test]
 fn outline_to_read_roundtrip_with_canonical_ref() {
     let document =

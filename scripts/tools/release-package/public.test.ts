@@ -9,7 +9,6 @@ import { stagePublicFiles } from "./public.ts";
 
 const version = "0.1.0-beta.1";
 
-// @case AUX-RELEASE-PUBLIC-001
 test("stages the exact Linux public file set from canonical package evidence", () => {
   using fixture = createPackageFixture("x86_64-unknown-linux-gnu", Buffer.from("linux-binary"));
 

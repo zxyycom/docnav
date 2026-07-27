@@ -1,11 +1,9 @@
 use super::super::parse;
 use crate::error::AppError;
 
-// @case WB-CORE-ARGS-001
 mod structural_errors;
 mod values;
 
-// @case WB-CORE-ARGS-REPAIR-001
 mod protocol_errors;
 
 fn assert_diagnostic(error: AppError, field: &str, reason_fragment: &str) {

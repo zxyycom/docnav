@@ -1,9 +1,9 @@
 # 测试策略
 
-本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。以下子文档分别维护测试用例流程、最终账本、覆盖矩阵和发布包预验收：
+本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。以下材料分别维护测试证据流程、权威目录、覆盖矩阵和发布包预验收：
 
-- [测试用例维护](testing/case-maintenance.md)：测试函数变更时的 case 归属、`@case` 标记和账本更新流程。
-- [测试用例编号账本](testing/cases.md)：最终 case 条目、证明目标和源码 `@case` 标记映射。
+- [测试证据维护](testing/case-maintenance.md)：测试变更时的原生入口粒度、case 维护和验证流程。
+- [测试证据 topic 表](test-evidence/test-evidence-topics.json)：受控测试责任；各 topic 直属的独立 Markdown case 是权威证据目录，统一索引为派生投影。
 - [覆盖矩阵](testing/coverage.md)：跨入口、命令族和文档操作的最低覆盖目标。
 - [发布包验证](testing/release.md)：release package 的本地预验收和 CI/CD 验证边界。
 
@@ -127,7 +127,12 @@ full profile 会验证质量观测链路本身：工具封装测试、扫描执�
 
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check，分别验证 `.ts` 脚本类型 contract、静态质量规则和轻量质量观测状态。
 
-同一 profile 的 docs validator 直接调用项目内 `decision-records` 模块，对 `docs/decisions` 的目录、Markdown、全生命周期索引和关系执行严格检查。该自动检查只证明确定性结构契约；记录门槛、理由质量和当前行为 owner 是否同步继续由变更审查判断。
+同一 profile 的 docs validator 直接调用项目内 `test-evidence-review` 模块，对
+`docs/test-evidence` 的 topic、独立 case、全目录唯一 ID 和派生索引新鲜度执行严格
+检查。工具不执行 `Entry`，也不扫描源码证明入口完整性；入口粒度、契约质量和本次
+范围完整性继续由测试变更审查判断。
+
+docs validator 也直接调用项目内 `decision-records` 模块，对 `docs/decisions` 的目录、Markdown、全生命周期索引和关系执行严格检查。该自动检查只证明确定性结构契约；记录门槛、理由质量和当前行为 owner 是否同步继续由变更审查判断。
 
 workspace verifier 的终端输出用于快速判断当前验证状态：默认展示每个 report 的 completion line 和最终 summary。运行期输出按职责分离：
 

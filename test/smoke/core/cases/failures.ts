@@ -17,13 +17,11 @@ import { exitCodes } from "../config.ts";
 
 export function createRegistryAndContractFailureTasks() {
   return [
-    // @case BB-CORE-FAIL-001
     {
       id: "CORE-FAIL-001",
       label: "CORE-FAIL-001 adapter candidate failure summary",
       run: testCandidateFailureSummary
     },
-    // @case BB-CORE-SOURCE-001
     {
       id: "CORE-SOURCE-001",
       label: "CORE-SOURCE-001 historical registry ignored",

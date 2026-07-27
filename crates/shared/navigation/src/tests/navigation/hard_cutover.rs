@@ -7,7 +7,6 @@ use super::super::support::{
     cli_value_candidate, config_sources, navigation_command, StubRegistry,
 };
 
-// @case WB-NAVIGATION-HARD-CUTOVER-001
 #[test]
 fn hard_cutover_preserves_common_and_native_option_source_priority() {
     let command = navigation_command(vec![

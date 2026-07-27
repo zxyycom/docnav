@@ -1,4 +1,3 @@
-// @case WB-MD-PAGING-DISPLAY-001
 use super::*;
 use docnav_protocol::positive_result;
 

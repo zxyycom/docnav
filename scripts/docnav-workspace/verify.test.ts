@@ -23,7 +23,6 @@ import { parseArgs, resolveVerificationConcurrency } from "./verify/args.ts";
 import { executeCheck } from "./verify/execution.ts";
 import { printCompletionResult } from "./verify/output.ts";
 
-// @case AUX-WORKSPACE-VERIFY-001
 describe("workspace verifier configuration", () => {
   it("filters successful test runner output from release package script tests", () => {
     const check = checkById("release-package-script-tests");
@@ -77,14 +76,15 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
   });
 
-  it("filters decision record success output from docs validator failures", () => {
+  it("filters catalog success output from docs validator failures", () => {
     const check = checkById("docs-validators");
     const output = [
+      "Test evidence check passed: 11 topic(s), 431 test case(s).",
       "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived).",
-      "decision diagnostic"
+      "catalog diagnostic"
     ].join("\n");
 
-    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["decision diagnostic"]);
+    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["catalog diagnostic"]);
   });
 
   it("filters workspace verifier script test package output", () => {
@@ -159,7 +159,6 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredIds.includes("lint-scripts"));
     assert.ok(requiredIds.includes("quality-quick-check"));
     assert.ok(requiredIds.includes("docs-validators"));
-    assert.ok(!requiredIds.includes("docs-case-catalog-validator"));
     assert.ok(!requiredIds.includes("docs-schema-validator"));
     assert.ok(requiredIds.includes("workspace-verifier-script-tests"));
     assert.ok(requiredIds.includes("validator-script-tests"));

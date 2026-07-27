@@ -4,7 +4,6 @@ use crate::{
     FormatUnknownDetails, ProtocolDiagnosticCode,
 };
 
-// @case WB-DIAG-RECORD-001
 #[test]
 fn diagnostic_record_validates_details_and_uses_code_defaults() {
     let source = DiagnosticSource::with_stage("docnav", "argv");

@@ -10,7 +10,6 @@ import { changedFilesSection, warningsSection } from "./findings.ts";
 import { fileDecisionTokenRankings, fileRankings, functionSizeRankings } from "./rankings.ts";
 import { repositorySize } from "./summary.ts";
 
-// @case AUX-QUALITY-REPORT-001
 describe("quality report", () => {
   it("keeps changed-file watchlist useful without baseline annotations", () => {
     const metrics = qualityMetrics();

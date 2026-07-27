@@ -1,6 +1,5 @@
 mod adapter_scopes;
 mod defaults;
-// @case WB-NAV-INPUT-RESOLUTION-001
 mod resolution;
 mod validation;
 

@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-READABLE-RENDERER-002
 // ── 1.7.1 Config validation: pointer missing ──────────────────────
 
 #[test]

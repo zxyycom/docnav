@@ -12,7 +12,6 @@ use crate::parameters::{
 const MATCHING_IDENTITY: &str = "docnav.adapters.first.options.max_heading_level";
 const OTHER_IDENTITY: &str = "docnav.adapters.second.options.max_heading_level";
 
-// @case WB-NAVIGATION-FIELD-SETS-001
 #[test]
 fn selected_fields_combine_fixed_inputs_with_catalog_projection() {
     let catalog = catalog();

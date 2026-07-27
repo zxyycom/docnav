@@ -1,4 +1,3 @@
-// @case WB-READABLE-RENDERER-001
 use super::*;
 
 // ── 1.6.1 No-block operation (outline uses empty blocks) ────────────

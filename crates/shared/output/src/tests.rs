@@ -155,7 +155,6 @@ fn assert_readable_block(output: &str, expected_header: Value, pointer: &str, pa
     }
 }
 
-// @case WB-OUTPUT-DOCUMENT-001
 #[test]
 fn custom_renderer_receives_success_response_and_controls_exact_text() {
     let response = success_response();
@@ -234,7 +233,6 @@ fn protocol_json_serializes_success_and_failure_responses_without_rendering() {
     }
 }
 
-// @case WB-READABLE-VIEW-001
 #[test]
 fn built_in_renderer_maps_structured_outline_response() {
     let response = ProtocolResponse::success(

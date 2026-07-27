@@ -34,7 +34,7 @@ bun run verify:docnav-workspace
 | 项目首页 | [README](../README.md) | 确认项目目标、v0 范围或运行入口 |
 | 文档导航 | 本文档 | 定位任务主规范、状态语义、规则 owner 和交付验证入口 |
 | 主规范 | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[测试策略](testing.md) | 修改稳定规则或实现职责 |
-| 测试资料 | [测试用例维护](testing/case-maintenance.md)、[测试用例编号账本](testing/cases.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、case 条目、覆盖目标或 release 验证 |
+| 测试资料 | [测试证据维护](testing/case-maintenance.md)、[测试证据 topic 表](test-evidence/test-evidence-topics.json)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、case 条目、覆盖目标或 release 验证 |
 | Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](coding-style.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
@@ -111,8 +111,8 @@ OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 
 | ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
-| 测试函数变更时的 case 归属、账本更新和源码 `@case` 标记维护流程 | [测试用例维护](testing/case-maintenance.md) |
-| 最终 case 条目、证明目标和源码 `@case` 标记映射 | [测试用例编号账本](testing/cases.md) |
+| 测试变更时的原生入口粒度、case 维护和项目验证流程 | [测试证据维护](testing/case-maintenance.md)；通用格式和目录行为由[项目级 `test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md)拥有 |
+| 受控测试责任和最终 case 条目 | [测试证据 topic 表](test-evidence/test-evidence-topics.json)与各 topic 直属 Markdown；`test-evidence-index.json` 只作可重建查询投影 |
 | 工具版本、项目环境配置与检测、包管理、TypeScript 脚本运行方式和脚本类型检查验证入口 | [工程工具链](tooling.md) |
 | typed field definition core 的共享 crate owner、字段事实源、校验归属和 schema metadata view 边界 | [架构](architecture.md) |
 | JSON 字段形状和示例语义校验 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) |

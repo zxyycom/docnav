@@ -16,7 +16,6 @@ import { exitCodes } from "../config.ts";
 
 export function createAdapterSelectionTasks() {
   return [
-    // @case BB-CORE-SELECT-001
     {
       id: "CORE-SELECT-001",
       label: "CORE-SELECT-001 declared adapter selection failure",

@@ -1,4 +1,3 @@
-// @case WB-CORE-OUTPUT-001
 use super::*;
 use docnav_diagnostics::{
     typed_codes, BoundaryDetails, DiagnosticRecordDraft, DiagnosticSource, RefDetails,

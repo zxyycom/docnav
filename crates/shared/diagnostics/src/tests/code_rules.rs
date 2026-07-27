@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 
 use crate::{BoundaryDiagnosticCode, DiagnosticCode, ProtocolDiagnosticCode};
 
-// @case WB-DIAG-RULES-001
 #[test]
 fn diagnostic_code_rules_cover_each_variant() {
     let codes: Vec<_> = DiagnosticCode::all().collect();

@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-MD-ADAPTER-OUTLINE-001
 #[test]
 fn outline_is_flat_default_h1_to_h3_and_ignores_code_fences() {
     let path = write_doc(
@@ -55,7 +54,6 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
     }
 }
 
-// @case WB-MD-DOCHEAD-001
 #[test]
 fn outline_exposes_document_head_before_visible_headings_when_nonblank() {
     let path = write_doc(
@@ -122,7 +120,6 @@ fn outline_keeps_frontmatter_pseudo_heading_fence_pseudo_heading_and_hr_in_docum
     );
 }
 
-// @case WB-MD-REF-001
 #[test]
 fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
     let path = write_doc("duplicates.md", "# A\n## B\nfirst\n# A\n## B\nsecond\n");
@@ -159,7 +156,6 @@ fn duplicate_heading_paths_generate_unique_refs_and_read_unique_sections() {
     assert!(!first_a.content.contains("second"));
 }
 
-// @case WB-MD-REF-002
 #[test]
 fn read_reports_ref_invalid_for_grammar_outside_refs() {
     let path = write_doc(

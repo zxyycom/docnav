@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-MD-PAGE-001
 #[test]
 fn read_paginates_unicode_without_splitting_characters() {
     let selected = "# A\n界界界abc\n";
@@ -27,7 +26,6 @@ fn read_paginates_unicode_without_splitting_characters() {
     assert!(second.content.starts_with("界界"));
 }
 
-// @case WB-MD-FIND-001
 #[test]
 fn find_ref_targets_current_visible_region_and_read_contains_match() {
     let path = write_doc(
@@ -49,7 +47,6 @@ fn find_ref_targets_current_visible_region_and_read_contains_match() {
     assert!(!read.content.contains("# Next"));
 }
 
-// @case WB-MD-DOCHEAD-002
 #[test]
 fn find_match_before_first_visible_heading_uses_document_head_ref() {
     let path = write_doc("find-before-heading.md", "target before\n\n# Later\nbody\n");
@@ -113,7 +110,6 @@ fn read_document_head_preserves_yaml_delimiters_and_leading_text() {
     assert_eq!(read.content_type, "text/markdown");
 }
 
-// @case WB-MD-PAGE-002
 #[test]
 fn outline_paginates_with_response_page_until_end_and_past_end() {
     let path = write_doc("outline-pages.md", "# A\none\n# B\ntwo\n# C\nthree\n");

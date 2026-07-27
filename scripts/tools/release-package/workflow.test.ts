@@ -7,7 +7,6 @@ const workflow = fs.readFileSync(
   "utf8",
 );
 
-// @case AUX-RELEASE-WORKFLOW-001
 test("release workflow keeps manual validation and gates promotion on Beta tags", () => {
   const workflowHeader = before(workflow, "\njobs:\n");
 

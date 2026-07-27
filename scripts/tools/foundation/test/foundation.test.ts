@@ -25,7 +25,6 @@ describe("script foundation", () => {
     expect(processFailed({ status: 0 })).toBe(false);
   });
 
-  // @case AUX-WORKSPACE-PROCESS-001
   test("runs child processes with plain text output environment", async () => {
     const env = colorEnabledEnv();
 

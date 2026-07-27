@@ -51,7 +51,11 @@ outline -> ref -> read
 
 1. 涉及实现代码、重构、测试脚本、验证脚本或跨模块修改时，除对应主规范外，先读取 `docs/coding-style.md`；交付前按其中“变更前后自检”检查。
 2. 涉及架构、协议、数据模型、CLI/API surface、adapter 边界、依赖或验证链路的实现前，简短说明技术判断依据、影响范围、可能受影响模块和验证方式。
-3. 新增或修改测试前，按 `docs/testing.md` 和 `docs/testing/case-maintenance.md` 写清证明目标；历史回归只作为风险线索或输入选择，不新增缺少明文契约依据的断言。
+3. 新增、修改、删除或审查测试前，按 `docs/testing.md`、
+   `docs/testing/case-maintenance.md` 和项目级 `test-evidence-review` skill 确定最小
+   原生入口、owner 契约与证明目标；本次范围内每个保留入口恰好维护一个独立 case
+   并同步派生索引。历史回归只作为风险线索或输入选择，不新增缺少明文契约依据的
+   断言。
 4. 涉及协议、schema、示例、CLI 或 adapter 时，同步更新对应主规范和验证材料。
 5. 当实现与 docs、OpenSpec、schema 或 examples 看似偏离时，先按 `docs/navigation.md` 的状态语义判断是当前实现缺口、目标能力、计划中 change、历史记录还是同一目标内部冲突；能确定正确方向时同步修正，不能确定时让用户选择更新代码、更新文档或记录偏差原因。
 6. CLI 命令优先选择只读、可复现、范围明确的命令；验证命令按改动范围选择，避免无关全量操作。

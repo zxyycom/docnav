@@ -84,6 +84,5 @@ fn value_at_path<'a>(root: &'a Value, path: &FieldPath) -> Option<&'a Value> {
     Some(value)
 }
 
-// @case WB-PARAM-SERDE-001
 #[cfg(test)]
 mod tests;

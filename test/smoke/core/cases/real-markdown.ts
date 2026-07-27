@@ -30,18 +30,26 @@ interface ReadableViewRefHandoffExpectation {
 
 export function createRealMarkdownLinkTasks() {
   return [
-    // @case BB-CORE-LINK-001
     {
       id: "CORE-LINK-001",
       label: "CORE-LINK-001 real markdown ref handoff chain",
       run: testRealMarkdownRefHandoffChain
+    },
+    {
+      id: "CORE-MD-OPTIONS-001",
+      label: "CORE-MD-OPTIONS-001 Markdown option behavior",
+      run: testMaxHeadingLevelBehavior
+    },
+    {
+      id: "CORE-MD-DOCHEAD-001",
+      label: "CORE-MD-DOCHEAD-001 Markdown document head output modes",
+      run: testDocumentHeadOutputModes
     }
   ];
 }
 
 export function createRealMarkdownRefErrorTasks() {
   return [
-    // @case BB-CORE-REF-001
     {
       id: "CORE-REF-001",
       label: "CORE-REF-001 real markdown ref error mapping",
@@ -53,8 +61,6 @@ export function createRealMarkdownRefErrorTasks() {
 async function testRealMarkdownRefHandoffChain() {
   const project = createRegisteredRealMarkdownProject("real-markdown-ref-handoff");
 
-  await assertMaxHeadingLevelBehavior(project);
-  await assertDocumentHeadOutputModes(project);
   const outlineRef = await readFirstOutlineRef(project);
   await assertReadableViewReadRefHandoff(
     project,
@@ -86,6 +92,16 @@ async function testRealMarkdownRefHandoffChain() {
   );
 
   await assertInfoReadableOutput(project);
+}
+
+async function testMaxHeadingLevelBehavior() {
+  const project = createRegisteredRealMarkdownProject("real-markdown-max-heading-level");
+  await assertMaxHeadingLevelBehavior(project);
+}
+
+async function testDocumentHeadOutputModes() {
+  const project = createRegisteredRealMarkdownProject("real-markdown-document-head");
+  await assertDocumentHeadOutputModes(project);
 }
 
 async function assertReadableViewReadRefHandoff(
@@ -146,7 +162,6 @@ async function testRealMarkdownRefInvalidProtocol() {
   expect(record, details.ref === "bad:ref", "REF_INVALID preserves ref in error details");
 }
 
-// @case BB-CORE-MD-OPTIONS-001
 async function assertMaxHeadingLevelBehavior(project: SmokeProject) {
   await assertMaxHeadingLevelCliOption(project);
   await assertMaxHeadingLevelAdapterValidation(project);

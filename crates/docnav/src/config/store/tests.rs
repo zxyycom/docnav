@@ -5,7 +5,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
 
-// @case WB-CORE-CONFIG-SOURCE-001
 use super::{read_selected_config, ConfigFileSource};
 use crate::project_context::{ConfigPathOrigin, SelectedConfigPath};
 

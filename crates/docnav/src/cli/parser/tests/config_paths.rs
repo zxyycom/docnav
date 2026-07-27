@@ -1,4 +1,3 @@
-// @case WB-CORE-CONFIG-PATH-001
 use super::super::parse;
 use crate::cli::{CliCommand, ConfigCommand};
 

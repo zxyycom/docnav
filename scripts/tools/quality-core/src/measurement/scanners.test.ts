@@ -18,7 +18,6 @@ import { TEST_QUALITY_CONFIG } from "../../test/config.ts";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 describe("quality scanner output parsing", () => {
-  // @case AUX-QUALITY-PARSER-001
   it("parses scc 3.7 Provider paths and rejects unknown CSV headers", () => {
     const csv = [
       "Language,Provider,Filename,Lines,Code,Comments,Blanks,Complexity,Bytes,ULOC",
@@ -125,7 +124,6 @@ describe("quality scanner output parsing", () => {
 });
 
 describe("quality jscpd wrapper failure projection", () => {
-  // @case AUX-QUALITY-JSCPD-WRAPPER-001
   it("does not treat a successful jscpd run without JSON as a successful empty scan", () => {
     const toolConfig = createFakeJscpdToolConfig({ stdout: "", stderr: "", exitCode: 0 });
 

@@ -84,7 +84,6 @@ const BASELINE_SNAPSHOT: BaselineSnapshot = {
   }
 };
 
-// @case AUX-QUALITY-CACHE-001
 describe("quality measurement cache", () => {
   it("keys duplicate-code cache by scan identity and strips changed-scope annotations", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-cache-"));

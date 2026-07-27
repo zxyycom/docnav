@@ -13,7 +13,6 @@ after(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });
 
-// @case AUX-SMOKE-HARNESS-002
 describe("core smoke fixture projects", () => {
   it("uses semantic config fixtures with the shared Markdown document", () => {
     const project = configFixtureProject("project-native-option-outline");

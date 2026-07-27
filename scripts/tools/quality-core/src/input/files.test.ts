@@ -15,7 +15,6 @@ import {
 import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 import { detectScanInputChange, materializeBaselineRevision } from "./revisions.ts";
 
-// @case AUX-QUALITY-FINGERPRINT-001
 describe("quality input fingerprints", () => {
   it("uses stable SHA-256 fingerprints for sorted file content", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-fingerprint-"));
@@ -40,7 +39,6 @@ describe("quality input fingerprints", () => {
   });
 });
 
-// @case AUX-QUALITY-GIT-PATHSPEC-001
 describe("quality input git pathspecs", () => {
   it("builds explicit git pathspec arguments and can omit empty pathspecs", () => {
     assert.deepEqual(gitGlobPathspecArgs(["scripts/**/*.ts"]), ["--", ":(glob)scripts/**/*.ts"]);
@@ -49,7 +47,6 @@ describe("quality input git pathspecs", () => {
   });
 });
 
-// @case AUX-QUALITY-CHANGED-FILES-001
 describe("quality changed file input", () => {
   it("fails fast when an explicit changed-files list cannot be read", () => {
     assert.throws(

@@ -15,7 +15,6 @@ use super::super::support::{
     write_config_file, StubRegistry,
 };
 
-// @case WB-NAVIGATION-DISPATCH-001
 #[test]
 fn navigation_loads_project_and_user_config_sources_from_descriptors() {
     let workspace = temp_workspace_path("navigation-owned-config-loading");
@@ -64,7 +63,6 @@ fn navigation_loads_project_and_user_config_sources_from_descriptors() {
     let _ = fs::remove_dir_all(workspace);
 }
 
-// @case WB-NAVIGATION-CONFIG-SOURCES-002
 #[test]
 fn default_missing_config_sources_are_absent_without_diagnostics() {
     let workspace = temp_workspace_path("navigation-default-missing-config-loading");

@@ -143,7 +143,6 @@ mod tests {
     use super::*;
     use crate::output::write_outcome;
 
-    // @case WB-CORE-DOCTOR-001
     #[test]
     fn doctor_reports_explicit_missing_config_as_failure() {
         let workspace = temp_workspace("doctor-explicit-missing");

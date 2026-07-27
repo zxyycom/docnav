@@ -21,7 +21,6 @@ fn canonical_fields() -> FieldDefSet {
 }
 
 #[test]
-// @case WB-PARAM-FIELD-CONTRACT-001
 fn canonical_processing_metadata_exposes_source_locators() {
     let fields = canonical_fields();
 

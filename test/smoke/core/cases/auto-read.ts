@@ -29,7 +29,6 @@ interface AutoReadFacts {
 
 export function createAutoReadTasks() {
   return [
-    // @case BB-CORE-AUTO-READ-001
     {
       id: "CORE-AUTO-READ-001",
       label: "CORE-AUTO-READ-001 unique-ref auto-read defaults and disable sources",

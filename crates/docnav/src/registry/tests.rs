@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-CORE-ADAPTER-001
 #[test]
 fn static_registry_contains_built_in_markdown_adapter() {
     let registry = AdapterRegistry::builtin();

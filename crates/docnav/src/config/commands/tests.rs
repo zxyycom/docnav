@@ -13,7 +13,6 @@ const INVALID_JSON_INSPECTION_GOLDEN: &str =
     include_str!("fixtures/config-inspect-invalid-json.json");
 
 #[test]
-// @case WB-CORE-CONFIG-PATH-002
 fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing() {
     let workspace = temp_workspace("config-inspect-selected-sources");
     let project_config = workspace.join("selected-project.json");

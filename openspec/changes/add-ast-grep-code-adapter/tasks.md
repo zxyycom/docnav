@@ -40,7 +40,7 @@
 ## 7. Owner 文档与测试账本
 
 - [ ] 7.1 新增 code adapter 主文档，记录读取时机、formats、outline mapping、ref grammar、read/find/info、partial parse、错误、非目标和验证入口，并从 `docs/navigation.md`、adapter/ref owner 的适当位置建立单一所有权链接。
-- [ ] 7.2 按 `docs/testing/case-maintenance.md` 为新增/修改测试分配 case ids、源码 `@case` 标记、case ledger 条目和 coverage mapping，逐项写明所证明的 requirement/scenario。
+- [ ] 7.2 按 `docs/testing/case-maintenance.md` 为本次新增、修改和保留的最小原生测试入口维护独立 test-evidence case、派生索引和 coverage mapping，逐项写明所证明的 requirement/scenario。
 - [ ] 7.3 更新用户可见的 adapter/format 支持说明和示例索引，并运行文档导航、链接及 schema/example 局部验证，确认 consumer 文档不暴露 ast-grep API 或内部 rule shape。
 
 ## 8. Release artifact 验证

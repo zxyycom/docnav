@@ -2,7 +2,6 @@ use super::*;
 use serde_json::json;
 use serde_json::Value;
 
-// @case WB-TYPED-FIELDS-001
 fn limit_field() -> FieldDef {
     FieldDef::builder("docnav.defaults.limit")
         .process(CONFIG_PROCESSING, config_json_path(["defaults", "limit"]))

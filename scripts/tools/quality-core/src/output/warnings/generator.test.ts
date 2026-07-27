@@ -5,7 +5,6 @@ import type { AcceptedWarningConfig, DuplicateCodeFragment, FileMetric, Function
 import { generateWarningChannels } from "./generator.ts";
 import { TEST_QUALITY_CONFIG } from "../../../test/config.ts";
 
-// @case AUX-QUALITY-WARNINGS-001
 describe("quality warning generation", () => {
   it("uses scc code lines and low decision-token allowance for file-size warnings", () => {
     const files = [

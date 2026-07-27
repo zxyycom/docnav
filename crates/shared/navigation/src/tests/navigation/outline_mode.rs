@@ -14,8 +14,6 @@ use support::{
     command_for, measurement, success_outline, threshold_config, RecordingAdapter, SingleRegistry,
 };
 
-// @case WB-NAV-OUTLINE-MODE-001
-
 #[test]
 fn project_path_rule_overrides_user_rule_and_uses_default_utf8_fallback() {
     let workspace = temp_workspace_path("outline-mode-path-fallback");

@@ -5,7 +5,6 @@ import { parseArgs } from "./args.ts";
 import { DEFAULT_CONFIG } from "./config.ts";
 import { resolveChangedFilesForScan } from "../tools/quality-core/src/scan-command/changed-files.ts";
 
-// @case AUX-QUALITY-SCAN-CLI-001
 describe("quality scan CLI args", () => {
   it("skips baseline by default and keeps baseline generation opt-in", () => {
     const defaults = parseArgs([]);

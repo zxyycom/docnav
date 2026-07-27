@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-PROTO-DECODE-001
 #[test]
 fn decode_protocol_request_runs_contract_before_raw_decode() {
     let schema_invalid = serde_json::json!({

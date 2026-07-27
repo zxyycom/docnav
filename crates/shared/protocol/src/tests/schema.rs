@@ -8,7 +8,6 @@ const MANIFEST_SCHEMA: &str = include_str!("../../../../../docs/schemas/manifest
 const PROBE_RESULT_SCHEMA: &str =
     include_str!("../../../../../docs/schemas/probe-result.schema.json");
 
-// @case WB-PROTO-SCHEMA-001
 #[test]
 fn parses_protocol_fixtures_into_shared_types() {
     for operation in ["outline", "read", "find", "info"] {

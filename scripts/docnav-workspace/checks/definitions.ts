@@ -110,7 +110,7 @@ export const checks = defineChecks([
         args: ["run", "validate:docs"],
         ignoreOutput: [
           /^\$ bun scripts\/docs\/validate\.ts$/,
-          /^test case catalog ok:/,
+          /^Test evidence check passed: \d+ topic\(s\), \d+ test case\(s\)\.$/,
           /^json syntax ok:/,
           /^schema strict compile ok:/,
           /^schema ok:/,

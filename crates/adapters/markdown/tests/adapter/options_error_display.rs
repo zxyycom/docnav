@@ -1,6 +1,5 @@
 use super::*;
 
-// @case WB-MD-OPTIONS-001
 #[test]
 fn adapter_owned_options_shape_outline_and_find_granularity() {
     let path = write_doc("adapter-owned-options.md", "# Top\n\n#### Deep\nneedle\n");
@@ -94,7 +93,6 @@ fn outline_rejects_out_of_range_max_heading_level_at_adapter_boundary() {
     }
 }
 
-// @case WB-MD-ERROR-001
 #[test]
 fn non_utf8_document_returns_stable_encoding_error() {
     let path = write_bytes("bad.md", &[0xFF, 0xFE, 0x00]);
@@ -110,7 +108,6 @@ fn non_utf8_document_returns_stable_encoding_error() {
     );
 }
 
-// @case WB-MD-DISPLAY-001
 #[test]
 fn outline_entries_include_heading_title() {
     let path = write_doc("display.md", "# Installation Guide\n\n## Setup\nBody\n");
