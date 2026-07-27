@@ -88,23 +88,24 @@ Claim：
 4. `supportedBy` 至少引用一个当前 `entryKey`。
 5. 该说明能实质改善后续审查，而不是填充字段。
 
-每个 `claims/<topic>/<slug>.md` 恰好保存一个 Claim：
+每个 `claims/<topic>/<slug>.md` 恰好保存一个 Claim。下面代码块只定义字段顺序；
+`<...>` 是必须替换的占位符，替换前不是有效 Claim。当前可提交实例见
+[required-argument Claim](../test-evidence/claims/core-cli/required-argument.md)。
 
 ```markdown
-# Claim CLAIM-OUTPUT-PURITY-001: Protocol output keeps stdout pure
+# Claim <CLAIM-ID>: <title>
 
-Topic: `output-rendering`
-Owner ref: `docs/output.md#协议输出`
+Topic: `<topic-from-claim-topics>`
+Owner ref: `<docs/path.md#requirement-heading>`
 
 Statement:
-- Protocol JSON uses stdout as its only document-output channel.
+- <stable contract statement>
 
 Observations:
-- A successful invocation writes one protocol envelope to stdout.
-- Diagnostics do not add JSON documents to stderr.
+- <caller-visible result when the contract holds or fails>
 
 Supported by:
-- `smoke|core|protocol-output`
+- `<current-entry-key>`
 ```
 
 Claim ID 全局唯一且稳定；topic 必须来自受控表并与目录一致。Claim 不得复述测试名、
@@ -152,6 +153,13 @@ bun run test-evidence -- sync --write --root .
 bun run test-evidence -- check --root .
 bun run validate:docs -- cases
 ```
+
+`--root` 的边界按命令类型区分：
+
+- `topics`、`list` 和 `show` 只读取指定工作区的 evidence 目录，不执行项目 runner。
+- `check`、`sync` 和 `changes` 会执行本 checkout 内的项目 runner adapter；它们的
+  `--root` 必须指向当前 checkout。其它 checkout 会得到阻断性 profile 诊断，不会
+  与当前 checkout 的 runner 结果混合。
 
 `list` / `show` 在 index 缺失或陈旧时只构造带 warning 的内存投影，不隐式写回。
 只有 `sync --write` 可以重建 inventory/index。修改测试代码时还要运行目标 runner；

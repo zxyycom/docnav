@@ -11,7 +11,8 @@
   - smoke: 17
 - Evidence Claims: 23
 - Used Claim topics: 4
-- Full workspace verification: 0 failed, 1 visible quality warning
+- Full workspace verification: 14 passed, 1 warning-status check, 0 failed
+- Quality warnings without accepted reasons: 17
 
 ## Current-only evidence model
 
@@ -44,7 +45,7 @@ documents, or related active changes.
 | Command | Result |
 | --- | --- |
 | `bun run test:test-evidence-rules` | Passed: 9 positive, nearest-negative and unsupported-shape rule tests. |
-| `bun run test:test-evidence` | Passed: 16 catalog, schema, query, change-report and toolchain tests. |
+| `bun run test:test-evidence` | Passed: 16 catalog, schema, query, change-report, profile/root boundary and toolchain tests. |
 | `bun run verify:test-evidence-toolchain` | Passed: minimal and frozen reinstalls were offline; CLI reported `ast-grep 0.45.0`. |
 | `uv run --with pyyaml python /home/dev/.codex/skills/.system/skill-creator/scripts/quick_validate.py .codex/skills/test-evidence-review` | Passed. |
 | `bun run test-evidence -- sync --write --root .` | Passed: rebuilt 536 Entries, 23 Claims and the current index. |
@@ -76,8 +77,7 @@ test-evidence skill.
 - 1 reported `warning`: quality full check;
 - 0 failed.
 
-The quality report keeps 19 warnings without accepted reasons visible, including
-17 changed/regression warnings. The largest observations remain long
-discovery/inventory/CLI functions in `scripts/test-evidence/`. This change does
-not hide them with accepted reasons or expand the current-only correction into a
-behavior-preserving code-simplification pass.
+The quality report keeps 17 warnings without accepted reasons visible, including
+7 changed/regression warnings. This correction only separates newly added
+inventory boundary validation from inventory generation, comparison and I/O;
+remaining discovery/inventory/CLI observations stay visible for separate review.

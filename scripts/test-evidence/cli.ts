@@ -15,6 +15,7 @@ import {
   readCommittedInventory,
   writeNativeTestInventory
 } from "./inventory.ts";
+import { parseNativeTestInventory } from "./inventory-validation.ts";
 import {
   diagnostic,
   type NativeTestInventory,
@@ -87,7 +88,7 @@ export async function createCurrentChangeReport(options: {
   }
   let baseline;
   try {
-    baseline = parseInventory(
+    baseline = parseNativeTestInventory(
       JSON.parse(fs.readFileSync(options.baselinePath, "utf8")) as unknown
     );
   } catch (error) {
@@ -301,25 +302,6 @@ export function exitCodeForDiagnostics(
     return 5;
   }
   return 6;
-}
-
-function parseInventory(value: unknown): NativeTestInventory {
-  if (
-    !isRecord(value) ||
-    value.schemaVersion !== 1 ||
-    !isRecord(value.profile) ||
-    typeof value.profile.id !== "string" ||
-    !Number.isInteger(value.profile.version) ||
-    typeof value.sourceRevision !== "string" ||
-    !Array.isArray(value.entries)
-  ) {
-    throw new Error("baseline does not use NativeTestInventory v1");
-  }
-  return value as NativeTestInventory;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function toRelativePath(workspaceRoot: string, targetPath: string): string {

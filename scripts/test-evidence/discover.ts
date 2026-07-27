@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { canonicalJson } from "./fingerprint.ts";
 import { discoverBunEntries } from "./discovery/bun.ts";
 import { discoverRustEntries } from "./discovery/rust.ts";
@@ -9,42 +11,40 @@ import {
 } from "./model.ts";
 import {
   loadSupportedRunnerProfile,
+  workspaceRoot as supportedWorkspaceRoot,
   type SupportedRunnerProfile
 } from "./profile.ts";
 
 export async function discoverNativeTestEntries(options: {
   workspaceRoot: string;
 }): Promise<DiscoveryResult> {
+  const workspaceRoot = path.resolve(options.workspaceRoot);
+  if (workspaceRoot !== supportedWorkspaceRoot) {
+    return invalidProfileDiscovery(
+      `native test discovery must use the current checkout ${supportedWorkspaceRoot}; received ${workspaceRoot}`,
+      workspaceRoot
+    );
+  }
+
   let profile: SupportedRunnerProfile;
   try {
     profile = loadSupportedRunnerProfile();
   } catch (error) {
-    return {
-      profile: {
-        id: "invalid-profile",
-        version: 1
-      },
-      entries: [],
-      diagnostics: [
-        diagnostic(
-          "runner-profile-invalid",
-          "profile",
-          error instanceof Error ? error.message : String(error)
-        )
-      ]
-    };
+    return invalidProfileDiscovery(
+      error instanceof Error ? error.message : String(error)
+    );
   }
 
   const rust = await discoverRustEntries({
-    workspaceRoot: options.workspaceRoot,
+    workspaceRoot,
     profile
   });
   const bun = await discoverBunEntries({
-    workspaceRoot: options.workspaceRoot,
+    workspaceRoot,
     profile
   });
   const smoke = await discoverSmokeEntries({
-    workspaceRoot: options.workspaceRoot,
+    workspaceRoot,
     profile
   });
   const diagnostics = [
@@ -83,6 +83,27 @@ export async function discoverNativeTestEntries(options: {
     },
     entries,
     diagnostics
+  };
+}
+
+function invalidProfileDiscovery(
+  message: string,
+  sourcePath?: string
+): DiscoveryResult {
+  return {
+    profile: {
+      id: "invalid-profile",
+      version: 1
+    },
+    entries: [],
+    diagnostics: [
+      diagnostic(
+        "runner-profile-invalid",
+        "profile",
+        message,
+        sourcePath === undefined ? {} : { path: sourcePath }
+      )
+    ]
   };
 }
 

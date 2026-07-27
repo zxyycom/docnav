@@ -12,6 +12,7 @@ import {
   type NativeTestInventory,
   type TestEvidenceDiagnostic
 } from "./model.ts";
+import { isNativeTestEntry } from "./inventory-validation.ts";
 
 export function inventoryPath(workspaceRoot: string): string {
   return path.join(
@@ -188,19 +189,6 @@ export function writeNativeTestInventory(
   } finally {
     fs.rmSync(temporaryPath, { force: true });
   }
-}
-
-function isNativeTestEntry(value: unknown): value is NativeTestEntry {
-  return (
-    isRecord(value) &&
-    typeof value.entryKey === "string" &&
-    typeof value.runner === "string" &&
-    typeof value.target === "string" &&
-    typeof value.selector === "string" &&
-    typeof value.sourcePath === "string" &&
-    isRecord(value.sourceRange) &&
-    typeof value.sourceFingerprint === "string"
-  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

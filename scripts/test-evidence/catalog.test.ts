@@ -15,9 +15,11 @@ import {
 } from "../../.codex/skills/test-evidence-review/scripts/test-evidence-catalog.mjs";
 import { compareInventoryBaseline } from "./change-report.ts";
 import { exitCodeForDiagnostics } from "./cli.ts";
+import { discoverNativeTestEntries } from "./discover.ts";
 import { parseBunJUnit } from "./discovery/bun.ts";
 import { parseLibtestList } from "./discovery/rust.ts";
 import { createNativeTestInventory } from "./inventory.ts";
+import { parseNativeTestInventory } from "./inventory-validation.ts";
 import {
   diagnostic,
   type DiscoveryResult,
@@ -273,6 +275,13 @@ test("reports structural changes without replacing full-tree closure", () => {
       to: renamed.entryKey
     }
   ]);
+  assert.throws(
+    () => parseNativeTestInventory({
+      ...baseline,
+      entries: [null]
+    }),
+    /entries\[0\]/
+  );
 });
 
 test("uses distinct project exit statuses for discovery, runner, inventory and Claim failures", () => {
@@ -290,13 +299,77 @@ test("uses distinct project exit statuses for discovery, runner, inventory and C
   ]), 6);
 });
 
-test("loads one versioned and sorted supported runner profile", () => {
+test("loads one versioned and sorted supported runner profile", async () => {
   const profile = loadSupportedRunnerProfile();
   assert.equal(profile.id, "docnav-native-tests");
   assert.equal(profile.version, 1);
   assert.deepEqual(profile.bun.files, [...profile.bun.files].sort());
   assert.equal(new Set(profile.bun.files).size, profile.bun.files.length);
   assert.equal(profile.smoke.factory, "test/smoke/core/profile.ts");
+
+  const temporaryRoot = fs.mkdtempSync(path.join(
+    os.tmpdir(),
+    "docnav-runner-profile-"
+  ));
+  try {
+    const invalidProfiles = [
+      {
+        ...profile,
+        id: 1
+      },
+      {
+        ...profile,
+        cargo: {
+          ...profile.cargo,
+          sourceRoots: ["../outside"]
+        }
+      },
+      {
+        ...profile,
+        bun: {
+          files: []
+        }
+      },
+      {
+        ...profile,
+        bun: {
+          files: ["scripts/not-a-test.ts"]
+        }
+      },
+      {
+        ...profile,
+        smoke: {
+          ...profile.smoke,
+          factory: "test/smoke/other/profile.ts"
+        }
+      },
+      {
+        ...profile,
+        smoke: {
+          ...profile.smoke,
+          sourceRoots: ["/tmp"]
+        }
+      }
+    ];
+    for (const [index, invalidProfile] of invalidProfiles.entries()) {
+      const sourcePath = path.join(temporaryRoot, `${index}.json`);
+      writeJson(sourcePath, invalidProfile);
+      assert.throws(
+        () => loadSupportedRunnerProfile(sourcePath),
+        /identity|safe relative POSIX paths|non-empty string array|must end with \.test\.ts|smoke identity/
+      );
+    }
+  } finally {
+    fs.rmSync(temporaryRoot, { force: true, recursive: true });
+  }
+
+  const rootMismatch = await discoverNativeTestEntries({
+    workspaceRoot: os.tmpdir()
+  });
+  assert.ok(rootMismatch.diagnostics.some(({ code, message }) => (
+    code === "runner-profile-invalid" &&
+    message.includes("current checkout")
+  )));
 });
 
 function createEvidenceFixture(): Fixture {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "sha256:739d088dad26449ef56b782e4925ac40c760626b6f0f2e079998e0c1685ace7d",
-  "inventoryRevision": "sha256:dc1d9ae828ce58897cc5eee82e99d50a3c262861658c4b20d9942f3202beea8d",
+  "sourceRevision": "sha256:eda27b1522adc069230ad1838190ab587fba7d1eb5b4c04dd8915ebc9d7fcd86",
+  "inventoryRevision": "sha256:75b64b2372a180aa0be4fdefdbb363ef34136a18672fa362f310a261f80dcfb8",
   "topics": [
     {
       "id": "adapter-contracts",
@@ -493,9 +493,9 @@
       "selector": "allows a current machine case without an Evidence Claim",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 74,
+        "startLine": 76,
         "startColumn": 1,
-        "endLine": 86,
+        "endLine": 88,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:5f23bf96328f83c848a1c66f458c915e1db783bda9a413f1f720aea9e5fef45e",
@@ -508,12 +508,12 @@
       "selector": "loads one versioned and sorted supported runner profile",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 293,
+        "startLine": 302,
         "startColumn": 1,
-        "endLine": 300,
+        "endLine": 373,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:7aee2615b9eeed0c1252b489cff4468cabeff375d077e4440430246f47d49a1e",
+      "sourceFingerprint": "sha256:5368e0ec2945c6b0da73d4ca89e1e82d4deccc4591b6d2b67a71a0e65113d344",
       "claimIds": []
     },
     {
@@ -523,9 +523,9 @@
       "selector": "parses stable Cargo and Bun runner reports without inferring missing fields",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 216,
+        "startLine": 218,
         "startColumn": 1,
-        "endLine": 249,
+        "endLine": 251,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:097fcd0d8d22764883a5af0074baa0a33df6ca05505762640729556879cba856",
@@ -538,9 +538,9 @@
       "selector": "rejects unknown Entry support and no-information templates",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 88,
+        "startLine": 90,
         "startColumn": 1,
-        "endLine": 98,
+        "endLine": 100,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:e4b56cfdaeacab72cc29697beaf516bd45c3d911e6f020f95552ca18f735a95d",
@@ -553,9 +553,9 @@
       "selector": "reports claim-stale when owner content changes after index sync",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 100,
+        "startLine": 102,
         "startColumn": 1,
-        "endLine": 117,
+        "endLine": 119,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:ac62e89ba4a4b13fa29dee8c057d6434dee80bfefeb268a8c672afbe3b92a170",
@@ -568,12 +568,12 @@
       "selector": "reports structural changes without replacing full-tree closure",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 251,
+        "startLine": 253,
         "startColumn": 1,
-        "endLine": 276,
+        "endLine": 285,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:ac1fd77677f1a8e88c25625ec58992e2e3b1cc28eab69510a49020d523ca09b6",
+      "sourceFingerprint": "sha256:bb064331d9af7dab17faa752192d1c600fa59088320f0d1371ab347ebd9bb241",
       "claimIds": []
     },
     {
@@ -583,9 +583,9 @@
       "selector": "uses a warning-only memory projection without writing a missing index",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 119,
+        "startLine": 121,
         "startColumn": 1,
-        "endLine": 138,
+        "endLine": 140,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:5d46aad9cea490b17bee146984efffe8d0af4e7836f59c2af2d18b8bd409137c",
@@ -598,9 +598,9 @@
       "selector": "uses distinct project exit statuses for discovery, runner, inventory and Claim failures",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 278,
+        "startLine": 287,
         "startColumn": 1,
-        "endLine": 291,
+        "endLine": 300,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:56314ef7f5b79d964747686d0235145afcf904c13facdd01ebe8fd51d9a15d78",
@@ -613,9 +613,9 @@
       "selector": "validates the committed profile, inventory, Claim and index examples against v1 schemas",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 140,
+        "startLine": 142,
         "startColumn": 1,
-        "endLine": 214,
+        "endLine": 216,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:ad136539d212636bd4093691b287c4828c55607602504424d4959a85ecf3f0c3",
@@ -628,9 +628,9 @@
       "selector": "validates, indexes and queries NativeTestEntry and Evidence Claim",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 34,
+        "startLine": 36,
         "startColumn": 1,
-        "endLine": 72,
+        "endLine": 74,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:3549386b3740eb5ed218fcfa6984a67efe3ee312fba07c637f3dee18ff9b218f",

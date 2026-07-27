@@ -2,6 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://docnav.dev/test-evidence/supported-runner-profile.schema.json",
   "title": "SupportedRunnerProfile",
+  "$defs": {
+    "safeRelativePosixPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s)(?!.*\\s$)(?!/)(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))(?!.*//)(?!.*\\\\)(?!.*\\/$)[^\\u0000]+$"
+    }
+  },
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -38,8 +45,7 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/$defs/safeRelativePosixPath"
           }
         },
         "targetKinds": {
@@ -71,8 +77,15 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "type": "string",
-            "pattern": "\\.test\\.ts$"
+            "allOf": [
+              {
+                "$ref": "#/$defs/safeRelativePosixPath"
+              },
+              {
+                "type": "string",
+                "pattern": "\\.test\\.ts$"
+              }
+            ]
           }
         }
       }
@@ -98,8 +111,7 @@
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/$defs/safeRelativePosixPath"
           }
         }
       }

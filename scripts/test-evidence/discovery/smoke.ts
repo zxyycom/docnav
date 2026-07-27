@@ -19,9 +19,10 @@ import {
   type StaticTestCandidate,
   type TestEvidenceDiagnostic
 } from "../model.ts";
-import type { SupportedRunnerProfile } from "../profile.ts";
-
-const CORE_SMOKE_FACTORY = "test/smoke/core/profile.ts";
+import {
+  SUPPORTED_SMOKE_FACTORY,
+  type SupportedRunnerProfile
+} from "../profile.ts";
 
 export async function discoverSmokeEntries(options: {
   workspaceRoot: string;
@@ -31,7 +32,7 @@ export async function discoverSmokeEntries(options: {
   diagnostics: TestEvidenceDiagnostic[];
 }> {
   const diagnostics: TestEvidenceDiagnostic[] = [];
-  if (options.profile.smoke.factory !== CORE_SMOKE_FACTORY) {
+  if (options.profile.smoke.factory !== SUPPORTED_SMOKE_FACTORY) {
     return {
       entries: [],
       diagnostics: [
