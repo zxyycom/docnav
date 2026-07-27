@@ -1,4 +1,5 @@
 allowBuilds:
+  '@ast-grep/cli': true
   '@fission-ai/openspec': true
 minimumReleaseAgeExclude:
   - '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260621.1'

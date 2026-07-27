@@ -1,0 +1,15 @@
+id: bun-unsupported-dynamic
+message: Unsupported dynamic Bun test registration
+severity: error
+language: TypeScript
+rule:
+  all:
+    - any:
+        - pattern: test($$$ARGS)
+        - pattern: it($$$ARGS)
+    - not:
+        any:
+          - pattern: test("$NAME", $RUN)
+          - pattern: it("$NAME", $RUN)
+          - pattern: test("$NAME", $OPTIONS, $RUN)
+          - pattern: it("$NAME", $OPTIONS, $RUN)

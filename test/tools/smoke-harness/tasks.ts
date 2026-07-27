@@ -17,10 +17,25 @@ export interface SmokeTask extends TaskDefinition {
 
 export interface SmokeTaskOptions {
   concurrency?: string | number | null;
+  selector?: string | null;
 }
 
 export function prepareSmokeTasks(tasks: readonly SmokeTask[]): NormalizedTask[] {
   return withSmokeReportMetadata(tasks);
+}
+
+export function selectSmokeTasks(
+  tasks: readonly NormalizedTask[],
+  selector: string | null | undefined
+): NormalizedTask[] {
+  if (selector === undefined || selector === null || selector === "") {
+    return [...tasks];
+  }
+  const selected = tasks.filter(({ id }) => id === selector);
+  if (selected.length !== 1) {
+    throw new Error(`unknown smoke task selector: ${selector}`);
+  }
+  return selected;
 }
 
 export function resolveSmokeConcurrency(

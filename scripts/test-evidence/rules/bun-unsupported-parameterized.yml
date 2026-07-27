@@ -1,0 +1,8 @@
+id: bun-unsupported-parameterized
+message: Unsupported parameterized Bun test registration
+severity: error
+language: TypeScript
+rule:
+  any:
+    - pattern: test.each($$$CASES)($$$ARGS)
+    - pattern: it.each($$$CASES)($$$ARGS)

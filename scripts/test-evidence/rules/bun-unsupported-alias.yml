@@ -1,0 +1,8 @@
+id: bun-unsupported-alias
+message: Unsupported aliased Bun test registration
+severity: error
+language: TypeScript
+rule:
+  pattern:
+    context: 'import { test as $ALIAS } from "bun:test"'
+    selector: import_specifier

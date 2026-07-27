@@ -1,0 +1,13 @@
+id: bun-unsupported-dynamic
+valid:
+  - |
+    test("literal", () => {});
+  - |
+    helper(dynamicName, () => {});
+invalid:
+  - |
+    test(dynamicName, () => {});
+  - |
+    function registerCase(name: string, run: () => void) {
+      test(name, run);
+    }

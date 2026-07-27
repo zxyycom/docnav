@@ -1,0 +1,6 @@
+id: smoke-native-leaf
+message: Supported smoke leaf task entry
+severity: info
+language: TypeScript
+rule:
+  pattern: '{ id: "$ID", label: "$LABEL", run: $RUN }'

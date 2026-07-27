@@ -1,0 +1,9 @@
+id: bun-unsupported-parameterized
+valid:
+  - |
+    test("literal", () => {});
+invalid:
+  - |
+    test.each([[1], [2]])("case %i", (value) => {});
+  - |
+    it.each(cases)("case", () => {});

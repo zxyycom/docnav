@@ -110,7 +110,7 @@ export const checks = defineChecks([
         args: ["run", "validate:docs"],
         ignoreOutput: [
           /^\$ bun scripts\/docs\/validate\.ts$/,
-          /^Test evidence check passed: \d+ topic\(s\), \d+ test case\(s\)\.$/,
+          /^Test evidence check passed: \d+ native entry\/entries \(\d+ Cargo, \d+ Bun, \d+ smoke\), \d+ claim\(s\)\.$/,
           /^json syntax ok:/,
           /^schema strict compile ok:/,
           /^schema ok:/,
@@ -141,6 +141,20 @@ export const checks = defineChecks([
         args: ["run", "test:validators"],
         ignoreOutput: [
           ...testRunnerSuccessOutput
+        ]
+      },
+      {
+        id: "test-evidence-rule-tests",
+        label: "test evidence ast-grep rule tests",
+        command: "bun",
+        args: ["run", "test:test-evidence-rules"],
+        ignoreOutput: [
+          /^\$ bun scripts\/test-evidence\/test-rules\.ts$/,
+          /^ast-grep \d+\.\d+\.\d+$/,
+          /^Running \d+ tests$/,
+          /^-+ Case Details -+$/,
+          /^PASS .+$/,
+          /^test result: ok\. \d+ passed; 0 failed;$/
         ]
       },
       {

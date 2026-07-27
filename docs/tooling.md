@@ -17,6 +17,13 @@ GitHub Actions 依赖固定到可追溯的完整 commit SHA；有正式 release 
 
 质量观测的 duplicate-code scanner 使用当前仓库 devDependency 中的 `jscpd`，wrapper 通过当前仓库 `node_modules/.bin/jscpd`（Windows 为 `jscpd.cmd`）运行扫描；不要求 baseline materialized repo 安装 `jscpd`，也不要求全局 `jscpd`、`cpd`、Java 或 PMD 安装。当前 `jscpd` 5.x launcher 委托仓库依赖中的 Rust binary，`--version` 实际输出可以使用 `cpd <version>` 前缀；wrapper 接受该版本文本不表示支持全局 `cpd` 命令。Lizard 和 scc 由 mise 的 `pipx` / `go` backend 提供；临时诊断可以通过 `DOCNAV_LIZARD_CMD`、`DOCNAV_LIZARD_ARGS`、`DOCNAV_SCC_CMD` 和 `DOCNAV_SCC_ARGS` 覆盖命令与参数。扫描 wrapper 不通过 baseline cwd 解析依赖。
 
+测试证据静态发现使用当前仓库 devDependency 中精确锁定的 `@ast-grep/cli`，只允许
+`scripts/test-evidence/ast-grep.ts` 解析本地 `node_modules/.bin` 后调用。
+`test:test-evidence-rules` 验证项目规则，`verify:test-evidence-toolchain` 在仓库外
+最小 frozen install 中验证离线解析和调用。该 executable、规则和项目级 ast-grep
+skill 都是开发验证材料，不进入 canonical release file set，也不成为 Docnav CLI
+或 adapter 的产品运行时依赖。
+
 ## 项目环境配置与检测
 
 前置条件：调用方能从 `PATH` 解析 Bun、Git 和 mise。
@@ -87,6 +94,12 @@ bun run env:check
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check。full profile 使用 full quality check 替代 quick quality check，并追加更宽验证；full profile 的 quality check 使用 verifier 输出，只在存在未带 `acceptedReason` 的 warning 时把 workspace verification 标记为 warning。profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
 
 `scripts/docs/validate.ts` 直接导入仓库跟踪的 `.codex/skills/decision-records/scripts/decision-records.mjs`，由 `validate:docs` 的 `decisions` task 执行 v5 严格检查。该检查覆盖受控领域、Markdown metadata 与正文、生命周期、对齐、直接关系和派生索引，并进入 required profile。入口不依赖个人 skill 目录，也不运行需要联网的 updater 或 release 查询。
+
+同一 docs validator 的 `cases` task 只调用 `scripts/test-evidence/` project
+wrapper。wrapper 拥有 supported runner profile、静态规则、Cargo/Bun/smoke
+report、入口归一和 inventory 闭合；仓库跟踪的 `test-evidence-review` v8 skill
+拥有通用 Entry、Claim 与索引契约。required profile 另行运行 ast-grep rule tests，
+两条入口都不依赖个人 skill、全局 ast-grep 或联网 updater。
 
 决策维护从仓库跟踪的 v5 CLI 进入：
 

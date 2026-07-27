@@ -79,7 +79,7 @@ describe("workspace verifier configuration", () => {
   it("filters catalog success output from docs validator failures", () => {
     const check = checkById("docs-validators");
     const output = [
-      "Test evidence check passed: 11 topic(s), 431 test case(s).",
+      "Test evidence check passed: 531 native entry/entries (391 Cargo, 123 Bun, 17 smoke), 27 claim(s).",
       "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived).",
       "catalog diagnostic"
     ].join("\n");
@@ -336,7 +336,7 @@ describe("workspace verifier configuration", () => {
     const docsChecks = requiredChecks.filter((check) => check.id.startsWith("docs-"));
 
     assert.deepEqual(docsChecks.map((check) => check.id), ["docs-validators"]);
-    assert.equal(reportCountForChecks(requiredChecks), 9);
+    assert.equal(reportCountForChecks(requiredChecks), 10);
   });
 });
 

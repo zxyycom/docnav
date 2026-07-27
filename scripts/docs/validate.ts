@@ -5,7 +5,7 @@ import { validateJsonSyntax, validateSchemas } from "../tools/validators/schema/
 import { validateOutputModeConsistency } from "../tools/validators/output/document-output-modes.ts";
 import { validateProtocolExampleSemantics } from "../tools/validators/protocol/protocol-examples.ts";
 import { runDecisionRecordsCli } from "../../.codex/skills/decision-records/scripts/decision-records.mjs";
-import { runTestEvidenceCatalogCli } from "../../.codex/skills/test-evidence-review/scripts/test-evidence-catalog.mjs";
+import { runTestEvidenceCli } from "../test-evidence/cli.ts";
 
 const requested = new Set(process.argv.slice(2));
 const runAll = requested.size === 0;
@@ -32,7 +32,7 @@ async function validateDecisionRecordCollection() {
 }
 
 async function validateTestEvidenceCatalog() {
-  const exitCode = await runTestEvidenceCatalogCli(["check", "--root", process.cwd()]);
+  const exitCode = await runTestEvidenceCli(["check", "--root", process.cwd()]);
   assert(exitCode === 0, "test evidence validation failed");
 }
 

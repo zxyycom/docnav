@@ -1,0 +1,13 @@
+id: smoke-unsupported-dynamic
+message: Unsupported dynamic smoke task returned in a task list
+severity: error
+language: TypeScript
+rule:
+  all:
+    - kind: call_expression
+    - inside:
+        kind: array
+        stopBy: neighbor
+    - inside:
+        kind: return_statement
+        stopBy: end

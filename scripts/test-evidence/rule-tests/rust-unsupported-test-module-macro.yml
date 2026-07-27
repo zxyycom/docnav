@@ -1,0 +1,16 @@
+id: rust-unsupported-test-module-macro
+valid:
+  - |
+    fn helper() {
+        generated_cases!();
+    }
+  - |
+    mod production {
+        generated_cases!();
+    }
+invalid:
+  - |
+    #[cfg(test)]
+    mod tests {
+        generated_cases!();
+    }

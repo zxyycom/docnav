@@ -1,0 +1,13 @@
+id: smoke-unsupported-dynamic
+valid:
+  - |
+    const task = makeTask(dynamicId);
+  - |
+    function createTasks() {
+      return [{ id: "CORE-DIRECT-001", label: "direct", run: runDirect }];
+    }
+invalid:
+  - |
+    function createTasks() {
+      return [makeTask(dynamicId)];
+    }

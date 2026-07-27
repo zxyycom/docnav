@@ -2,16 +2,18 @@
 
 本文供测试作者和 reviewer 判断改动是否触达最低覆盖面，只定义最低覆盖维度；不列具体测试用例，不定义稳定字段、错误码、命令语义或字段形状。产品语义以 [文档导航](../navigation.md#规则所有权) 指向的 owner 文档为准。
 
-测试实现变更时，按[测试证据维护](case-maintenance.md)识别最小原生入口并维护唯一
-case；最终条目位于 `docs/test-evidence/<topic>/<slug>.md`，topic 由
-[`test-evidence-topics.json`](../test-evidence/test-evidence-topics.json) 控制。
+测试实现变更时，按[测试证据维护](case-maintenance.md)识别最小原生入口。项目
+wrapper 从完整当前源码和 runner 报告为每个受支持入口生成唯一 machine case；
+只有不能从入口事实机械恢复、且具有长期审查价值的判断才进入
+`docs/test-evidence/claims/<topic>/<slug>.md`，topic 由
+[`claim-topics.json`](../test-evidence/claim-topics.json) 控制。
 
 ## 使用方式
 
 1. 先按 [测试策略](../testing.md) 选择测试层级。
 2. 再用本文确认改动触及哪些覆盖维度。
-3. 新增证明目标时，按[测试证据维护](case-maintenance.md)判断是否拆分原生入口，
-   并同步独立 case 与派生索引。
+3. 新增证明目标时，按[测试证据维护](case-maintenance.md)判断是否拆分原生入口、
+   是否需要 Evidence Claim，并同步 machine inventory 与派生索引。
 
 ## 覆盖维度
 
@@ -35,13 +37,14 @@ case；最终条目位于 `docs/test-evidence/<topic>/<slug>.md`，topic 由
 - CLI smoke：证明真实 core CLI 入口、stdout/stderr、exit code、strict failure/error 投影承载位置和 package 可执行性。
 - Rust tests：证明 parser、ref、分页、decode stage、diagnostic record/code/details/投影 helper、shared output plans、renderer 和内部状态转换等自定义逻辑不变量。
 - schema/docs validators：证明 protocol 字段形状、示例链路、schema 投影映射和文档化 fixture 与当前 owner 文档一致；`readable-view` 由 conformance text 验证，schema/example/fixture 不成为 code/details 规则来源。
-- 测试证据维护：定义测试变更时的原生入口粒度、case 内容、topic 归属和索引同步
-  流程。
-- 测试证据目录：每个独立 Markdown 保存一个入口的 `Entry`、`Contract` 和
-  `Proves`，不替代测试实现、行为 owner 或覆盖矩阵。
+- 测试证据维护：定义测试变更时的原生入口粒度、全树闭合、Claim 门槛、topic
+  归属和派生制品同步流程。
+- 测试证据目录：machine inventory 一对一投影当前入口事实；每个独立 Markdown
+  只保存一个有信息增量的 Evidence Claim。两者都不替代测试实现、行为 owner 或
+  覆盖矩阵。
 
 ## 审查规则
 
-1. 新测试应证明新的行为边界、责任层级或等价类；同一等价类的更多参数值优先下沉到较低层测试或现有 case 断言。
+1. 新测试应证明新的行为边界、责任层级或等价类；同一等价类的更多参数值优先下沉到较低层测试或现有入口断言。
 2. 外部入口只保留代表路径；字段全集、错误全集和参数全集由 owner 文档、schema、fixtures 或 Rust tests 证明。
 3. 改动跨多个维度时，至少为每个受影响维度保留一个可执行证明；无需为所有维度做交叉乘积。

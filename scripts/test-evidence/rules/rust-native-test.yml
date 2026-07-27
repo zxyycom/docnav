@@ -1,0 +1,13 @@
+id: rust-native-test
+message: Supported Rust native test entry
+severity: info
+language: Rust
+rule:
+  all:
+    - pattern:
+        context: |
+          fn $NAME() { $$$BODY }
+        selector: function_item
+    - follows:
+        pattern: '#[test]'
+        stopBy: neighbor

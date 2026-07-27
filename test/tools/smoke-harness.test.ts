@@ -113,6 +113,55 @@ describe("smoke harness task scheduling", () => {
     );
   });
 
+  it("selects one smoke leaf by its stable id and preserves the parent report", async () => {
+    const state = createSmokeState();
+    const harness = createHarness(state, []);
+
+    const results = await harness.runSmokeTasks([
+      {
+        id: "matrix",
+        label: "case matrix",
+        tasks: [
+          {
+            id: "case-one",
+            label: "case one",
+            run: async () => {
+              await harness.runCli("case one command", ["case-one"]);
+            }
+          },
+          {
+            id: "case-two",
+            label: "case two",
+            run: async () => {
+              await harness.runCli("case two command", ["case-two"]);
+            }
+          }
+        ]
+      }
+    ], {
+      selector: "case-two"
+    });
+
+    assert.deepEqual(
+      state.commandRecords.map(({ name }) => name),
+      ["case two command"]
+    );
+    assert.deepEqual(
+      results.map(({ id, label, commandCount }) => ({
+        id,
+        label,
+        commandCount
+      })),
+      [
+        {
+          id: "matrix",
+          label: "case matrix",
+          commandCount: 1
+        }
+      ]
+    );
+  });
+
   it("uses DOCNAV_SMOKE_CONCURRENCY at the smoke scheduling boundary", async () => {
     const state = createSmokeState();
     const events: string[] = [];

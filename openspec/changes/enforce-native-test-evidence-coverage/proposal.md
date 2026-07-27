@@ -27,7 +27,7 @@
 
 ## Impact
 
-- Skill 与依赖：`.codex/skills/ast-grep/`、`.codex/skills/test-evidence-review/`、固定的开发期 ast-grep CLI 来源和 lockfile。
+- Skill 与依赖：按固定上游分发接入 `.codex/skills/ast-grep/`；以固定的上游 `test-evidence-review` v7 为基线，在项目内演进并拥有 `.codex/skills/test-evidence-review/` v8；固定开发期 ast-grep CLI 来源和 lockfile。
 - 发现与验证：项目级 ast-grep rules/rule tests、Rust/Bun/smoke inventory adapters、case/claim 查询与索引工具、`validate:docs -- cases` 和 workspace verifier。
 - 测试证据：`docs/test-evidence/` 中经阻塞审计确认的全部 v7 case Markdown、topic 表、派生索引和新的 Claim/机器 inventory 表示。
 - 测试实现：不支持稳定发现的动态注册、wrapper、参数化或 smoke 聚合形态可能需要收敛为显式项目入口；产品实现不因本 change 改变。

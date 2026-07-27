@@ -1,0 +1,12 @@
+id: rust-unsupported-test-attribute
+valid:
+  - |
+    #[test]
+    fn direct_case() {}
+  - |
+    #[cfg(test)]
+    fn helper() {}
+invalid:
+  - |
+    #[tokio::test]
+    async fn async_case() {}

@@ -159,6 +159,8 @@ Machine inventory 的当前树检查不依赖基线；基线只用于给 AI 缩�
 
 仓库内项目 wrapper 负责运行 ast-grep、Cargo/Bun/smoke 入口、规范化 runner adapter、集合比较和当前树 inventory 生成。`test-evidence-review` skill v8 负责机器结果分类、Claim 质量、AI 审查流程、通用 schema/query/index 契约和完成标准。
 
+阻塞审计必须先固定上游 `test-evidence-review` v7 的完整分发，随后由 Docnav 以该分发为基线拥有并演进 v8；不得假设存在尚未发布的上游 v8。v8 完成后必须固定自己的完整文件清单和内容 fingerprint，并移除或替换会用上游 v7 覆盖项目 v8 的 self-updater。未来重新同步上游只能作为显式三方审查，不得作为 required check 或隐式更新入口。
+
 `validate:docs -- cases` 调用项目 wrapper；wrapper 可以导入 skill 的通用模块，但不得复制 Claim/catalog 规则。发现失败、测试执行失败、inventory 失败和 Claim 失败必须保持不同诊断来源。
 
 ### Decision 10: v7 单轨迁移且保留完整去向
@@ -198,4 +200,4 @@ Machine inventory 的当前树检查不依赖基线；基线只用于给 AI 缩�
 
 ## Open Questions
 
-无未回答开放问题，可以进入实现前阻塞审计。ast-grep skill source、CLI 精确版本和 runner 命令矩阵属于审计必须固定的实现输入，不改变本 design 的责任边界。
+无未回答开放问题，可以进入实现前阻塞审计。上游 v7 基线与 project-owned v8 的更新边界、ast-grep skill source、CLI 精确版本和 runner 命令矩阵属于审计必须固定的实现输入，不改变本 design 的产品责任边界。

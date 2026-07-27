@@ -1,0 +1,7 @@
+id: bun-unsupported-alias
+valid:
+  - |
+    import { test } from "bun:test";
+invalid:
+  - |
+    import { test as spec } from "bun:test";

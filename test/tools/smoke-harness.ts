@@ -25,6 +25,7 @@ import {
   aggregateSmokeReports,
   prepareSmokeTasks,
   resolveSmokeConcurrency,
+  selectSmokeTasks,
   withSmokeTaskMetadata
 } from "./smoke-harness/tasks.ts";
 import type {
@@ -40,7 +41,8 @@ import {
 export type { SmokeCommandOptions } from "./smoke-harness/process.ts";
 export {
   prepareSmokeTasks,
-  resolveSmokeConcurrency
+  resolveSmokeConcurrency,
+  selectSmokeTasks
 } from "./smoke-harness/tasks.ts";
 export type {
   SmokeTask,
@@ -231,7 +233,10 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     const concurrencyValue = taskOptions.concurrency === undefined
       ? process.env.DOCNAV_SMOKE_CONCURRENCY
       : taskOptions.concurrency;
-    const preparedTasks = prepareSmokeTasks(tasks);
+    const preparedTasks = selectSmokeTasks(
+      prepareSmokeTasks(tasks),
+      taskOptions.selector
+    );
     const results = await runParallelTasks(preparedTasks, {
       concurrency: resolveSmokeConcurrency(concurrencyValue),
       execute: async (task) => withSmokeTaskMetadata(await runTest(task.label, () => task.run?.(task), { id: task.id }), task)

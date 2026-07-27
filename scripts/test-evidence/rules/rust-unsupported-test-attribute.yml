@@ -1,0 +1,11 @@
+id: rust-unsupported-test-attribute
+message: Unsupported Rust test attribute macro
+severity: error
+language: Rust
+rule:
+  kind: function_item
+  follows:
+    all:
+      - kind: attribute_item
+      - regex: '^#\[[A-Za-z_][A-Za-z0-9_:]*::test\]$'
+    stopBy: neighbor

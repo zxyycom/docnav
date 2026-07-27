@@ -1,9 +1,10 @@
 # 测试策略
 
-本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。以下材料分别维护测试证据流程、权威目录、覆盖矩阵和发布包预验收：
+本文定义 Docnav 自动化测试的层级、所有权、统一验证入口和一致性审计规则。以下材料分别维护测试证据流程、入口投影、长期语义、覆盖矩阵和发布包预验收：
 
-- [测试证据维护](testing/case-maintenance.md)：测试变更时的原生入口粒度、case 维护和验证流程。
-- [测试证据 topic 表](test-evidence/test-evidence-topics.json)：受控测试责任；各 topic 直属的独立 Markdown case 是权威证据目录，统一索引为派生投影。
+- [测试证据维护](testing/case-maintenance.md)：测试变更时的原生入口粒度、全树闭合、Evidence Claim 和验证流程。
+- [machine inventory](test-evidence/native-test-inventory.json)：从当前源码与 runner 报告生成的一入口一 machine case 投影；它不是入口权威源。
+- [Claim topic 表](test-evidence/claim-topics.json)：受控长期责任；`test-evidence/claims/<topic>/` 中的 Markdown Claim 拥有不能从入口事实机械恢复的语义。
 - [覆盖矩阵](testing/coverage.md)：跨入口、命令族和文档操作的最低覆盖目标。
 - [发布包验证](testing/release.md)：release package 的本地预验收和 CI/CD 验证边界。
 
@@ -22,11 +23,11 @@
 
 测试按观察边界划分所有权。同一行为只有在不同层能观察到不同 owner 结果时才跨层测试：Rust tests 直接观察模块/API 的输入输出，CLI smoke 观察真实进程入口的退出码、stdout、stderr 和文件效果。测试不证明内部实现路径、函数组织或背后逻辑。
 
-测试首先是当前有效性证据：执行结果必须直接表明 owner 承诺的行为当前成立。发现未来变化只是自动化验证的自然结果，不是 case 的证明目标；不得用“能够防止某种回归”、实现采用了哪条内部路径，或调用方无法观察的背后逻辑扩大 `Proves:`。
+测试首先是当前有效性证据：执行结果必须直接表明 owner 承诺的行为当前成立。发现未来变化只是自动化验证的自然结果，不是证明目标；不得用“能够防止某种回归”、实现采用了哪条内部路径，或调用方无法观察的背后逻辑扩大测试意图或 Evidence Claim。
 
-历史回归只作为风险线索或代表性输入来源，不作为证明目标。无论是新增 case、拆分 case，还是把断言嵌入已有 case，新增断言都必须先能写出“owner 明确承诺的语义 -> 可观察结果”的证明目标，并能追溯到当前 owner 文档、schema、示例、primary failure projection 或覆盖矩阵。只有当明文契约要求校验缺失、拒绝、输出通道不污染、ref 不改变或其它否定性边界时，才测试该否定行为；否则使用现有覆盖、局部验证命令或代码审查证明本次改动。
+历史回归只作为风险线索或代表性输入来源，不作为证明目标。无论是新增或拆分原生入口，还是把断言嵌入已有入口，新增断言都必须先能写出“owner 明确承诺的语义 -> 可观察结果”的证明目标，并能追溯到当前 owner 文档、schema、示例、primary failure projection 或覆盖矩阵。只有当明文契约要求校验缺失、拒绝、输出通道不污染、ref 不改变或其它否定性边界时，才测试该否定行为；否则使用现有覆盖、局部验证命令或代码审查证明本次改动。
 
-维护测试和测试文档时遵循两条约束：owner 文档明确承诺的行为，自动化测试应断言调用方能够观察到的结果；owner 没有承诺、或当前层级无法可靠观察的行为，应缩小 case 的 `Proves:`，不得为了匹配账本文字增加防御性断言、测试专用探针或对实现细节的反向推断。
+维护测试和测试文档时遵循两条约束：owner 文档明确承诺的行为，自动化测试应断言调用方能够观察到的结果；owner 没有承诺、或当前层级无法可靠观察的行为，应缩小测试意图或删除对应 Claim，不得为了匹配账本文字增加防御性断言、测试专用探针或对实现细节的反向推断。原生入口无论是否需要 Claim，都由全树发现生成 machine case；只有长期判断具有额外审查价值时才维护 Claim。
 
 测试按语义类型和等价类选择代表，不按语法拼写、枚举字面量或参数组合穷举。“一个类型”表示具有独立解析、校验、状态转换、输出 shape 或失败投影的可观察行为；同一行为中的多个合法写法或同类非法值只保留一个代表。只有 owner 明确定义了不同语法分支，或不同输入产生不同可观察结果时，才分别测试。
 
@@ -104,6 +105,7 @@ Manual CR: 修改 protocol、manifest 或 probe 的 schema 与 Rust typed shape 
 - `bun run typecheck:scripts` 证明脚本模块 contract 和边界类型一致，不替代真实 CLI、schema 或 smoke 验证。
 - `bun run lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 和常见静态质量问题。
 - 共享脚本内部模块的 private manifest 提供局部 `typecheck`、`lint` 和 focused `test` 入口；full profile 运行其中证明 public semantics 的 focused tests。private manifest 是本地聚焦入口，不形成独立 workspace 或发布边界，也不要求为每个 package 或测试函数建立额外账本项。
+- 原生入口静态发现使用仓库精确锁定的 external ast-grep CLI，只能从 `scripts/test-evidence/ast-grep.ts` 调用。它属于开发期验证依赖，不进入 canonical release file set，也不改变产品期 `docnav-code` 直接链接 Rust crates、不得启动外部 executable 的边界。
 
 ## 统一验证入口
 
@@ -127,10 +129,12 @@ full profile 会验证质量观测链路本身：工具封装测试、扫描执�
 
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check，分别验证 `.ts` 脚本类型 contract、静态质量规则和轻量质量观测状态。
 
-同一 profile 的 docs validator 直接调用项目内 `test-evidence-review` 模块，对
-`docs/test-evidence` 的 topic、独立 case、全目录唯一 ID 和派生索引新鲜度执行严格
-检查。工具不执行 `Entry`，也不扫描源码证明入口完整性；入口粒度、契约质量和本次
-范围完整性继续由测试变更审查判断。
+同一 profile 的 docs validator 只从仓库内 `scripts/test-evidence/` project
+wrapper 进入。wrapper 按版本化 supported runner profile 扫描完整当前源码、执行
+Cargo/Bun/smoke 的 list 或 report、规范化原生入口，并双向核对静态入口、runtime
+入口和 committed machine inventory；随后严格校验 Claim topic、owner、当前入口
+引用和派生索引新鲜度。任何漏项、悬空、重复、不支持形态、陈旧 inventory 或陈旧
+Claim 都会阻断验证。变更报告只能缩小 AI 语义审查范围，不能替代这次全树闭合。
 
 docs validator 也直接调用项目内 `decision-records` 模块，对 `docs/decisions` 的目录、Markdown、全生命周期索引和关系执行严格检查。该自动检查只证明确定性结构契约；记录门槛、理由质量和当前行为 owner 是否同步继续由变更审查判断。
 
@@ -164,7 +168,7 @@ Manual CR: 修改 workspace verifier 的 check definitions、命令参数、depe
 交付前检查：
 
 1. 新增、删除或修改测试能追溯到 [文档导航](navigation.md#规则所有权) 指向的 owner 文档。
-2. 测试函数变更已按 [测试用例维护](testing/case-maintenance.md) 判断证明目标、case 归属和账本更新范围。
+2. 测试函数变更已按 [测试证据维护](testing/case-maintenance.md) 完成全树入口闭合，判断证明目标和 Claim 更新范围，并同步派生 inventory/index。
 3. 测试文档只记录覆盖目标和验收边界，不重新定义稳定字段、错误码、DiagnosticCode details 规则或命令语义。
 4. schema、示例和 fixture 只校验 protocol raw shape、`readable-view` 最终文本和二者的 documented mapping，不成为新的业务语义或 code/details 规则来源；private readable helper value 不形成 public schema。
 5. OpenSpec change 只作为变更依据、验收和审计历史，不作为日常实现主入口。

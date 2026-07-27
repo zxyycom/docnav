@@ -53,9 +53,10 @@ outline -> ref -> read
 2. 涉及架构、协议、数据模型、CLI/API surface、adapter 边界、依赖或验证链路的实现前，简短说明技术判断依据、影响范围、可能受影响模块和验证方式。
 3. 新增、修改、删除或审查测试前，按 `docs/testing.md`、
    `docs/testing/case-maintenance.md` 和项目级 `test-evidence-review` skill 确定最小
-   原生入口、owner 契约与证明目标；本次范围内每个保留入口恰好维护一个独立 case
-   并同步派生索引。历史回归只作为风险线索或输入选择，不新增缺少明文契约依据的
-   断言。
+   原生入口、owner 契约与证明目标；先用项目 wrapper 证明完整当前树的静态入口、
+   runner 入口与 machine inventory 一一闭合，再只为具有长期信息增量的判断维护
+   Evidence Claim。历史回归只作为风险线索或输入选择，不新增缺少明文契约依据的
+   断言或模板 Claim。
 4. 涉及协议、schema、示例、CLI 或 adapter 时，同步更新对应主规范和验证材料。
 5. 当实现与 docs、OpenSpec、schema 或 examples 看似偏离时，先按 `docs/navigation.md` 的状态语义判断是当前实现缺口、目标能力、计划中 change、历史记录还是同一目标内部冲突；能确定正确方向时同步修正，不能确定时让用户选择更新代码、更新文档或记录偏差原因。
 6. CLI 命令优先选择只读、可复现、范围明确的命令；验证命令按改动范围选择，避免无关全量操作。

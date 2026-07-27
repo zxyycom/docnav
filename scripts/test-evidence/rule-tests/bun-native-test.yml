@@ -1,0 +1,13 @@
+id: bun-native-test
+valid:
+  - |
+    test(dynamicName, () => {});
+  - |
+    test.each([[1]])("case %i", () => {});
+  - |
+    registerCase("wrapped", () => {});
+invalid:
+  - |
+    test("direct test", () => {});
+  - |
+    it("direct it", { timeout: 1000 }, () => {});

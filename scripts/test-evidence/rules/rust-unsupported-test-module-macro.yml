@@ -1,0 +1,15 @@
+id: rust-unsupported-test-module-macro
+message: Unsupported macro invocation at test module declaration level
+severity: error
+language: Rust
+rule:
+  all:
+    - kind: macro_invocation
+    - inside:
+        kind: declaration_list
+        stopBy: neighbor
+    - inside:
+        pattern:
+          context: 'mod tests { $$$BODY }'
+          selector: mod_item
+        stopBy: end

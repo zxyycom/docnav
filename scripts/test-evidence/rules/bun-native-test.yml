@@ -1,0 +1,10 @@
+id: bun-native-test
+message: Supported Bun native test entry
+severity: info
+language: TypeScript
+rule:
+  any:
+    - pattern: test("$NAME", $RUN)
+    - pattern: it("$NAME", $RUN)
+    - pattern: test("$NAME", $OPTIONS, $RUN)
+    - pattern: it("$NAME", $OPTIONS, $RUN)

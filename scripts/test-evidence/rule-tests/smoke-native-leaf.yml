@@ -1,0 +1,15 @@
+id: smoke-native-leaf
+valid:
+  - |
+    ({ id: "group", label: "group", tasks: children })
+  - |
+    makeTask(dynamicId)
+invalid:
+  - |
+    ({ id: "CORE-DIRECT-001", label: "direct", run: runDirect })
+  - |
+    ({
+      id: "CORE-NESTED-001",
+      label: "nested",
+      run: async () => {}
+    })

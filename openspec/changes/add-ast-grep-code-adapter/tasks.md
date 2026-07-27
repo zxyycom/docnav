@@ -9,7 +9,7 @@
 ## 2. 实现基线与依赖接入
 
 - [ ] 2.1 在门禁完成后读取 `docs/coding-style.md`、`docs/testing.md`、`docs/testing/case-maintenance.md` 以及 architecture/adapter/ref/release owner 文档，记录本 change 的证明目标、最小验证命令和与 active `add-json-adapter` 的文件重叠。
-- [ ] 2.2 在 workspace 中精确锁定互相兼容的 `ast-grep-core`、`ast-grep-language`、`ast-grep-outline` 版本，关闭全语言默认 features，只启用 Rust、JavaScript、TypeScript/TSX 和 Python parser，并用 `cargo tree -e features` 验证 feature closure。
+- [ ] 2.2 在 workspace 中精确锁定互相兼容的 `ast-grep-core`、`ast-grep-language`、`ast-grep-outline` 版本，关闭全语言默认 features，只启用 Rust、JavaScript、TypeScript/TSX 和 Python parser，并用 `cargo tree -e features` 验证 feature closure；不得把测试证据发现使用的开发期 `@ast-grep/cli`、规则或 wrapper 复用为产品依赖。
 - [ ] 2.3 新增 `crates/adapters/code` workspace crate 和最小 public definition factory，接入既有 adapter contracts、protocol、diagnostics、text-cost 与 SHA-256 helper，不增加通用 engine trait 或新的 shared crate。
 - [ ] 2.4 完成新增依赖的 license、来源、Rust 1.96.0 compatibility 和 release binary size 变化检查，并把证据放入既有质量/发布 owner。
 
@@ -40,7 +40,7 @@
 ## 7. Owner 文档与测试账本
 
 - [ ] 7.1 新增 code adapter 主文档，记录读取时机、formats、outline mapping、ref grammar、read/find/info、partial parse、错误、非目标和验证入口，并从 `docs/navigation.md`、adapter/ref owner 的适当位置建立单一所有权链接。
-- [ ] 7.2 按 `docs/testing/case-maintenance.md` 为本次新增、修改和保留的最小原生测试入口维护独立 test-evidence case、派生索引和 coverage mapping，逐项写明所证明的 requirement/scenario。
+- [ ] 7.2 按 `docs/testing/case-maintenance.md` 对完整 supported runner profile 运行静态/runtime/inventory 闭合，为每个最小原生入口生成唯一 machine case 并同步派生索引和 coverage mapping；只为不能从入口事实机械恢复、且具有长期审查价值的 requirement/scenario 维护 Evidence Claim。
 - [ ] 7.3 更新用户可见的 adapter/format 支持说明和示例索引，并运行文档导航、链接及 schema/example 局部验证，确认 consumer 文档不暴露 ast-grep API 或内部 rule shape。
 
 ## 8. Release artifact 验证

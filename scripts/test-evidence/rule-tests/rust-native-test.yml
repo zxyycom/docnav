@@ -1,0 +1,17 @@
+id: rust-native-test
+valid:
+  - |
+    fn helper() {}
+  - |
+    #[tokio::test]
+    async fn async_case() {}
+invalid:
+  - |
+    #[test]
+    fn direct_case() {
+        assert!(true);
+    }
+  - |
+    #[ignore]
+    #[test]
+    fn ignored_but_selectable() {}
