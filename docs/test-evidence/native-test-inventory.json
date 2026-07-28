@@ -4,7 +4,7 @@
     "id": "docnav-native-tests",
     "version": 2
   },
-  "sourceRevision": "sha256:f462ea5ad58816a552a6dacbefd90b20982fe25aaa574b319c8fdeb745846ca7",
+  "sourceRevision": "sha256:077c22d38d6c74067df3f35c1fabe36c33ff85142019da71eb84055182e24b4a",
   "entries": [
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters cargo trybuild success noise from successful cargo test output",
@@ -13,26 +13,26 @@
       "selector": "workspace verifier configuration > filters cargo trybuild success noise from successful cargo test output",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 120,
+        "startLine": 94,
         "startColumn": 3,
-        "endLine": 132,
+        "endLine": 106,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:deb0ec8abf6c103f50a97f337464a9209c771ab218250e7c45e9d9a227d46dbf"
     },
     {
-      "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters catalog success output from docs validator failures",
+      "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters decision success output from docs validator failures",
       "runner": "bun",
       "target": "scripts/docnav-workspace/verify.test.ts",
-      "selector": "workspace verifier configuration > filters catalog success output from docs validator failures",
+      "selector": "workspace verifier configuration > filters decision success output from docs validator failures",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 79,
+        "startLine": 71,
         "startColumn": 3,
-        "endLine": 88,
+        "endLine": 79,
         "endColumn": 5
       },
-      "sourceFingerprint": "sha256:22667edbbe9ad0689b86831fb4a7f4132bfb410709f88369de47b8b88a08348c"
+      "sourceFingerprint": "sha256:e3adc9f34105d90969643506827067fd3dd6a76a269e5c2ee7eae4d87d385b0a"
     },
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters package manager echoes from successful script checks",
@@ -41,9 +41,9 @@
       "selector": "workspace verifier configuration > filters package manager echoes from successful script checks",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 55,
+        "startLine": 47,
         "startColumn": 3,
-        "endLine": 67,
+        "endLine": 59,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:78b6392b55c92d15080d4d096ea344797ec48f80220812008fda8247d2fde5b7"
@@ -55,40 +55,26 @@
       "selector": "workspace verifier configuration > filters quality timing details from terminal-visible output",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 107,
+        "startLine": 81,
         "startColumn": 3,
-        "endLine": 118,
+        "endLine": 92,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:eb355cbd4f6d9b4c1136cf6ededc51a6459be63d8647fb15acf80e5a7e344936"
     },
     {
-      "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters successful test runner output from release package script tests",
+      "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters successful test evidence ledger output",
       "runner": "bun",
       "target": "scripts/docnav-workspace/verify.test.ts",
-      "selector": "workspace verifier configuration > filters successful test runner output from release package script tests",
+      "selector": "workspace verifier configuration > filters successful test evidence ledger output",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
         "startLine": 27,
         "startColumn": 3,
-        "endLine": 43,
+        "endLine": 35,
         "endColumn": 5
       },
-      "sourceFingerprint": "sha256:7be4e2573bdfd031d117c9240edede4602f22bbdb34dfb02e69994bcd2881554"
-    },
-    {
-      "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters workspace verifier script test package output",
-      "runner": "bun",
-      "target": "scripts/docnav-workspace/verify.test.ts",
-      "selector": "workspace verifier configuration > filters workspace verifier script test package output",
-      "sourcePath": "scripts/docnav-workspace/verify.test.ts",
-      "sourceRange": {
-        "startLine": 90,
-        "startColumn": 3,
-        "endLine": 105,
-        "endColumn": 5
-      },
-      "sourceFingerprint": "sha256:ef1d0ef62206a40f78938e80d135416ceacca9b1d038b9c53057a7a905929933"
+      "sourceFingerprint": "sha256:f9247f876de12ca99d72f6a7c9dcc5c777ba877742671e57cec31eea7efa948e"
     },
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > formats completion lines and durations for streaming output",
@@ -97,9 +83,9 @@
       "selector": "workspace verifier configuration > formats completion lines and durations for streaming output",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 242,
+        "startLine": 219,
         "startColumn": 3,
-        "endLine": 272,
+        "endLine": 249,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:2dfb250fdb1ad58e1861cd0beb3c086ba31ce2189270a5f132c9616d446a3770"
@@ -111,12 +97,12 @@
       "selector": "workspace verifier configuration > keeps actionable failure output after filtering known success noise",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 45,
+        "startLine": 37,
         "startColumn": 3,
-        "endLine": 53,
+        "endLine": 45,
         "endColumn": 5
       },
-      "sourceFingerprint": "sha256:874c114e6ef05efceb2dfcf2b0ecfb0ddb34dbc1ab65edc398429e6b5b03f22d"
+      "sourceFingerprint": "sha256:61f493700edf653b2d0de5b533c2852be7babbdd2361f7308cfd8d1beda577b1"
     },
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > maps quality warning markers to warning check status",
@@ -125,9 +111,9 @@
       "selector": "workspace verifier configuration > maps quality warning markers to warning check status",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 274,
+        "startLine": 251,
         "startColumn": 3,
-        "endLine": 289,
+        "endLine": 266,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:c8bde0c26a362b63a2ba771de143ae10c071705193fe1391aad1dcd32d50a767"
@@ -139,9 +125,9 @@
       "selector": "workspace verifier configuration > parses verification profile arguments",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 181,
+        "startLine": 158,
         "startColumn": 3,
-        "endLine": 192,
+        "endLine": 169,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:27d112189a65b1c9865386b901cfbf7308257b14390bdd443e947a4a5373339d"
@@ -153,9 +139,9 @@
       "selector": "workspace verifier configuration > prepares development binary env with isolated copied executables",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 201,
+        "startLine": 178,
         "startColumn": 3,
-        "endLine": 222,
+        "endLine": 199,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:c3b9cc08edd51296ea251d1871845a05b40ebe9be8463217b104c17630602c91"
@@ -167,9 +153,9 @@
       "selector": "workspace verifier configuration > prints visible warning output immediately after completion lines",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 134,
+        "startLine": 108,
         "startColumn": 3,
-        "endLine": 151,
+        "endLine": 125,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:df8b6d168331a02aeaac53c6dc7090f590a09fda68a9c680da95ebf53ded2c49"
@@ -181,9 +167,9 @@
       "selector": "workspace verifier configuration > rejects invalid leaf and group check definitions",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 316,
+        "startLine": 293,
         "startColumn": 3,
-        "endLine": 332,
+        "endLine": 309,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:876098fe2167e00c1310d4cda4197b7a2273aaf4023aab55138aeb63732590d9"
@@ -195,9 +181,9 @@
       "selector": "workspace verifier configuration > removes copied development binary artifacts",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 224,
+        "startLine": 201,
         "startColumn": 3,
-        "endLine": 240,
+        "endLine": 217,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:b3baadb2927d0a0cf1d4ab26d7c3ce9bffb32a4737a7ca27bb1d68198bd3c8b7"
@@ -209,9 +195,9 @@
       "selector": "workspace verifier configuration > reports environment setup errors as failed check results",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 291,
+        "startLine": 268,
         "startColumn": 3,
-        "endLine": 314,
+        "endLine": 291,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:a8d59cee877475c634707ffe58d7997ea38f83d1425f56932016f8ab36c4de41"
@@ -223,9 +209,9 @@
       "selector": "workspace verifier configuration > resolves verifier concurrency only when a limit is configured",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 194,
+        "startLine": 171,
         "startColumn": 3,
-        "endLine": 199,
+        "endLine": 176,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:e8383bba9b9da453c13ca976243d462dfe77cb12d7934eae97a52fe26062086a"
@@ -237,12 +223,12 @@
       "selector": "workspace verifier configuration > schedules docs validation through one executable check",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 334,
+        "startLine": 311,
         "startColumn": 3,
-        "endLine": 340,
+        "endLine": 317,
         "endColumn": 5
       },
-      "sourceFingerprint": "sha256:f1ac8906d731d5ed5383fbdded79575f3118e1a952ba88506b715c1ab212517e"
+      "sourceFingerprint": "sha256:35087dfb7d33eeaa5798db453b7543a2ab28debd247f8994207a51f733aa995f"
     },
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > separates required and full verification profiles",
@@ -251,12 +237,12 @@
       "selector": "workspace verifier configuration > separates required and full verification profiles",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 153,
+        "startLine": 127,
         "startColumn": 3,
-        "endLine": 179,
+        "endLine": 156,
         "endColumn": 5
       },
-      "sourceFingerprint": "sha256:cfc51f69dff969a12544b9032735575bf4e4b187de1fe9d68552e5575ffb461f"
+      "sourceFingerprint": "sha256:cad4d2174fe1c060b62d2249baf1b3c57267e85b785956d7e20a25ec8d031514"
     },
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > suppresses all passed output even when a success line is not configured",
@@ -265,9 +251,9 @@
       "selector": "workspace verifier configuration > suppresses all passed output even when a success line is not configured",
       "sourcePath": "scripts/docnav-workspace/verify.test.ts",
       "sourceRange": {
-        "startLine": 69,
+        "startLine": 61,
         "startColumn": 3,
-        "endLine": 77,
+        "endLine": 69,
         "endColumn": 5
       },
       "sourceFingerprint": "sha256:81a932a8078cdb359a1ab10e0b84b77774e89b3afe59a6e7362f2a696884a780"
@@ -522,7 +508,7 @@
         "endLine": 299,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:bb064331d9af7dab17faa752192d1c600fa59088320f0d1371ab347ebd9bb241"
+      "sourceFingerprint": "sha256:0c509b30e8ae520ed6214f77e8edf990a50c02e3c8742332cb91081af81b6e4c"
     },
     {
       "entryKey": "bun|scripts/test-evidence/catalog.test.ts|uses a warning-only memory projection without writing a missing index",
@@ -629,9 +615,9 @@
       "selector": "does not invoke the external ast-grep executable outside the developer wrapper",
       "sourcePath": "scripts/test-evidence/toolchain.test.ts",
       "sourceRange": {
-        "startLine": 118,
+        "startLine": 78,
         "startColumn": 1,
-        "endLine": 142,
+        "endLine": 102,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:9f0d3e2dcab632adbdab4e0144b45cefa7349b8f7d18920c36dcd36f614b3eb4"
@@ -643,26 +629,12 @@
       "selector": "keeps the development ast-grep executable outside canonical release components",
       "sourcePath": "scripts/test-evidence/toolchain.test.ts",
       "sourceRange": {
-        "startLine": 103,
-        "startColumn": 1,
-        "endLine": 116,
-        "endColumn": 3
-      },
-      "sourceFingerprint": "sha256:8fc66482d4ec6c1ca05c3ad7807114074e75e048efe99ceaff85d41029880978"
-    },
-    {
-      "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|keeps the pinned ast-grep skill distribution byte-for-byte complete",
-      "runner": "bun",
-      "target": "scripts/test-evidence/toolchain.test.ts",
-      "selector": "keeps the pinned ast-grep skill distribution byte-for-byte complete",
-      "sourcePath": "scripts/test-evidence/toolchain.test.ts",
-      "sourceRange": {
-        "startLine": 62,
+        "startLine": 63,
         "startColumn": 1,
         "endLine": 76,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:113e54db73a46dfc422892e78170d4a93ced652a31917ef6258da63e48ca3839"
+      "sourceFingerprint": "sha256:8fc66482d4ec6c1ca05c3ad7807114074e75e048efe99ceaff85d41029880978"
     },
     {
       "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|keeps the project-owned test-evidence skill complete and updater-free",
@@ -671,26 +643,12 @@
       "selector": "keeps the project-owned test-evidence skill complete and updater-free",
       "sourcePath": "scripts/test-evidence/toolchain.test.ts",
       "sourceRange": {
-        "startLine": 78,
+        "startLine": 42,
         "startColumn": 1,
-        "endLine": 101,
+        "endLine": 61,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:fc88bbabb9a334bcd54af245b08b40592f9951e095dc09164f95917073edebbc"
-    },
-    {
-      "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|pins the audited ast-grep package resolutions in the repository lockfile",
-      "runner": "bun",
-      "target": "scripts/test-evidence/toolchain.test.ts",
-      "selector": "pins the audited ast-grep package resolutions in the repository lockfile",
-      "sourcePath": "scripts/test-evidence/toolchain.test.ts",
-      "sourceRange": {
-        "startLine": 43,
-        "startColumn": 1,
-        "endLine": 60,
-        "endColumn": 3
-      },
-      "sourceFingerprint": "sha256:c72a6d6ea4d088d2a859a302a3fa6f99ef5e7df825e7151c5a4a288959cfb127"
+      "sourceFingerprint": "sha256:aab8ab41f8ea1664b1cae73cab6aa25b0177cb186b14c8f92ff6ada07709ff92"
     },
     {
       "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|uses the repository-locked ast-grep CLI through the project wrapper",
@@ -699,9 +657,9 @@
       "selector": "uses the repository-locked ast-grep CLI through the project wrapper",
       "sourcePath": "scripts/test-evidence/toolchain.test.ts",
       "sourceRange": {
-        "startLine": 23,
+        "startLine": 22,
         "startColumn": 1,
-        "endLine": 41,
+        "endLine": 40,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:e6b87b05cc152c5efcb492588f003dc76d332964bc5821d2fca301ae9c2d1611"

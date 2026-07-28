@@ -166,7 +166,6 @@ bun run test-evidence -- show <entry-key-or-claim-id> --root .
 bun run test-evidence -- changes --baseline <inventory-path> --root .
 bun run test-evidence -- sync --write --root .
 bun run test-evidence -- check --root .
-bun run validate:docs -- cases
 ```
 
 `--root` 的边界按命令类型区分：

@@ -40,6 +40,31 @@ export function buildTestEvidenceProjection(options) {
   };
 }
 
+export function parseNativeTestInventory(value) {
+  const diagnostics = [];
+  const inventory = normalizeInventory(
+    value,
+    "native-test-inventory.json",
+    diagnostics
+  );
+  const failure = diagnostics.find(({ blocking }) => blocking);
+  if (!inventory || failure) {
+    throw new Error(
+      failure?.message ?? "native test inventory is invalid"
+    );
+  }
+  return inventory;
+}
+
+export function isNativeTestEntry(value) {
+  return normalizeEntry(
+    value,
+    "native-test-inventory.json",
+    0,
+    []
+  ) !== null;
+}
+
 export function validateTestEvidence(options) {
   const built = buildTestEvidenceProjection(options);
   const diagnostics = [...built.diagnostics];
@@ -247,6 +272,10 @@ function loadInventory(inventoryPath, diagnostics) {
   if (!raw) {
     return null;
   }
+  return normalizeInventory(raw, inventoryPath, diagnostics);
+}
+
+function normalizeInventory(raw, inventoryPath, diagnostics) {
   if (!isRecord(raw) || !hasExactKeys(
     raw,
     ["schemaVersion", "profile", "sourceRevision", "entries"]

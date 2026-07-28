@@ -12,7 +12,9 @@ import {
   type NativeTestInventory,
   type TestEvidenceDiagnostic
 } from "./model.ts";
-import { isNativeTestEntry } from "./inventory-validation.ts";
+import {
+  isNativeTestEntry
+} from "../../.codex/skills/test-evidence-review/scripts/test-evidence-catalog.mjs";
 
 export function inventoryPath(workspaceRoot: string): string {
   return path.join(

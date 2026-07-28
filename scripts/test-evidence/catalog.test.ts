@@ -7,6 +7,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import type { AnySchema } from "ajv";
 
 import {
+  parseNativeTestInventory,
   queryTestEvidence,
   showTestEvidence,
   syncTestEvidenceIndex,
@@ -19,7 +20,6 @@ import { parseBunJUnit } from "./discovery/bun.ts";
 import { resolveBunTestFiles } from "./discovery/bun-files.ts";
 import { parseLibtestList } from "./discovery/rust.ts";
 import { createNativeTestInventory } from "./inventory.ts";
-import { parseNativeTestInventory } from "./inventory-validation.ts";
 import {
   diagnostic,
   type DiscoveryResult,
@@ -294,7 +294,7 @@ test("reports structural changes without replacing full-tree closure", () => {
       ...baseline,
       entries: [null]
     }),
-    /entries\[0\]/
+    /inventory entry 0/
   );
 });
 

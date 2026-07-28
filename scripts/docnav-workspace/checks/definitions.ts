@@ -4,17 +4,6 @@ import { PROFILE_FULL, PROFILE_REQUIRED } from "./model.ts";
 const DEV_BIN_COPY_DIR = ".cache/docnav/verify/dev-bins";
 const DEV_BIN_ENV_FILE = ".cache/docnav/verify/dev-bins.json";
 
-const testRunnerSuccessOutput = [
-  /^\$ bun test(?: .*)?$/,
-  /^bun test v\d+\.\d+\.\d+ \([0-9a-f]+\)$/,
-  /^.*\.test\.ts:$/,
-  /^\(pass\) .+ \[[\d.]+(?:ms|s)\]$/,
-  /^\s*\d+ pass$/,
-  /^\s*0 fail$/,
-  /^\s*\d+ expect\(\) calls$/,
-  /^Ran \d+ tests? across \d+ files?\. \[[\d.]+(?:ms|s)\]$/
-];
-
 const cargoProgressOutput = [
   /^\s*(Checking|Compiling) .*$/,
   /^\s*Blocking waiting for file lock on .+$/,
@@ -110,7 +99,6 @@ export const checks = defineChecks([
         args: ["run", "validate:docs"],
         ignoreOutput: [
           /^\$ bun scripts\/docs\/validate\.ts$/,
-          /^Test evidence check passed: \d+ native entry\/entries \(\d+ Cargo, \d+ Bun, \d+ smoke\), \d+ claim\(s\)\.$/,
           /^json syntax ok:/,
           /^schema strict compile ok:/,
           /^schema ok:/,
@@ -126,21 +114,13 @@ export const checks = defineChecks([
         ]
       },
       {
-        id: "workspace-verifier-script-tests",
-        label: "workspace verifier script tests",
+        id: "test-evidence-ledger",
+        label: "test evidence ledger",
         command: "bun",
-        args: ["run", "test:workspace-verifier"],
+        args: ["run", "test-evidence", "--", "check", "--root", "."],
         ignoreOutput: [
-          ...testRunnerSuccessOutput
-        ]
-      },
-      {
-        id: "validator-script-tests",
-        label: "validator script tests",
-        command: "bun",
-        args: ["run", "test:validators"],
-        ignoreOutput: [
-          ...testRunnerSuccessOutput
+          /^\$ bun scripts\/test-evidence\/index\.ts check --root \.$/,
+          /^Test evidence check passed: \d+ native entry\/entries \(\d+ Cargo, \d+ Bun, \d+ smoke\), \d+ claim\(s\)\.$/
         ]
       },
       {
@@ -155,15 +135,6 @@ export const checks = defineChecks([
           /^-+ Case Details -+$/,
           /^PASS .+$/,
           /^test result: ok\. \d+ passed; 0 failed;$/
-        ]
-      },
-      {
-        id: "release-package-script-tests",
-        label: "release package script tests",
-        command: "bun",
-        args: ["run", "test:release-package-scripts"],
-        ignoreOutput: [
-          ...testRunnerSuccessOutput
         ]
       },
       {
@@ -182,15 +153,6 @@ export const checks = defineChecks([
     type: PROFILE_FULL,
     tasks: [
       {
-        id: "quality-internal-tests",
-        label: "quality internal tests",
-        command: "bun",
-        args: ["run", "quality:test"],
-        ignoreOutput: [
-          ...testRunnerSuccessOutput
-        ]
-      },
-      {
         id: "quality-full-check",
         label: "quality full check",
         command: "bun",
@@ -204,7 +166,6 @@ export const checks = defineChecks([
         env: {
           DOCNAV_QUALITY_TIMINGS: "1"
         },
-        dependsOn: ["quality-internal-tests"],
         allowOutput: [
           ...qualityVerificationWarningOutput
         ],

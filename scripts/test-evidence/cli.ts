@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { parseArgs } from "node:util";
 
 import {
+  parseNativeTestInventory,
   runTestEvidenceCatalogCli,
   syncTestEvidenceIndex,
   validateTestEvidence
@@ -15,7 +17,6 @@ import {
   readCommittedInventory,
   writeNativeTestInventory
 } from "./inventory.ts";
-import { parseNativeTestInventory } from "./inventory-validation.ts";
 import {
   diagnostic,
   type NativeTestInventory,
@@ -120,16 +121,16 @@ export async function createCurrentChangeReport(options: {
 export async function runTestEvidenceCli(
   argv: readonly string[] = process.argv.slice(2)
 ): Promise<number> {
+  if (["topics", "list", "show"].includes(String(argv[0]))) {
+    return runTestEvidenceCatalogCli([...argv]);
+  }
+
   let options;
   try {
-    options = parseArgs(argv);
+    options = parseProjectArgs(argv);
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     return 2;
-  }
-
-  if (["topics", "list", "show"].includes(options.command)) {
-    return runTestEvidenceCatalogCli([...argv]);
   }
 
   if (options.command === "changes") {
@@ -199,62 +200,44 @@ function projectReport(
   };
 }
 
-function parseArgs(argv: readonly string[]): {
-  command: "check" | "sync" | "changes" | "topics" | "list" | "show";
+function parseProjectArgs(argv: readonly string[]): {
+  command: "check" | "sync" | "changes";
   workspaceRoot: string;
   baselinePath?: string;
   json: boolean;
 } {
   const command = argv[0];
-  if (!["check", "sync", "changes", "topics", "list", "show"].includes(command)) {
+  if (!["check", "sync", "changes"].includes(command)) {
     throw new Error("usage: test-evidence <check|sync|changes|topics|list|show>");
   }
-  let workspaceRoot: string | undefined;
-  let baselinePath: string | undefined;
-  let json = false;
-  for (let index = 1; index < argv.length; index += 1) {
-    const token = argv[index];
-    if (token === "--json") {
-      json = true;
-    } else if (token === "--write" && command === "sync") {
-      // sync is write-only at the project boundary.
-    } else if (token === "--root" || token === "--baseline") {
-      const value = argv[index + 1];
-      if (!value || value.startsWith("--")) {
-        throw new Error(`${token} requires a value`);
-      }
-      if (token === "--root") {
-        workspaceRoot = path.resolve(value);
-      } else {
-        baselinePath = value;
-      }
-      index += 1;
-    } else if (["topics", "list", "show"].includes(command)) {
-      // The generic CLI validates the remaining query flags.
-      if (!token.startsWith("--") && command === "show") {
-        continue;
-      }
-      if (token.startsWith("--")) {
-        index += token === "--json" ? 0 : 1;
-      }
-    } else {
-      throw new Error(`unknown option ${token}`);
+  const { values } = parseArgs({
+    args: [...argv.slice(1)],
+    allowPositionals: false,
+    strict: true,
+    options: {
+      root: { type: "string" },
+      baseline: { type: "string" },
+      json: { type: "boolean" },
+      write: { type: "boolean" }
     }
-  }
-  if (!workspaceRoot) {
+  });
+  if (!values.root) {
     throw new Error("--root is required");
   }
-  if (command === "sync" && !argv.includes("--write")) {
+  if (command === "sync" && !values.write) {
     throw new Error("sync requires --write");
   }
-  if (command === "changes" && !baselinePath) {
+  if (command !== "sync" && values.write) {
+    throw new Error("--write is only valid with sync");
+  }
+  if (command === "changes" && !values.baseline) {
     throw new Error("changes requires --baseline");
   }
   return {
-    command: command as "check" | "sync" | "changes" | "topics" | "list" | "show",
-    workspaceRoot,
-    baselinePath,
-    json
+    command: command as "check" | "sync" | "changes",
+    workspaceRoot: path.resolve(values.root),
+    baselinePath: values.baseline,
+    json: values.json ?? false
   };
 }
 

@@ -24,28 +24,20 @@ import { executeCheck } from "./verify/execution.ts";
 import { printCompletionResult } from "./verify/output.ts";
 
 describe("workspace verifier configuration", () => {
-  it("filters successful test runner output from release package script tests", () => {
-    const check = checkById("release-package-script-tests");
+  it("filters successful test evidence ledger output", () => {
+    const check = checkById("test-evidence-ledger");
     const output = [
-      "bun test v1.3.14 (0d9b296a)",
-      "",
-      "scripts\\tools\\release-package\\args.test.ts:",
-      "(pass) package selection defaults to the current host package [0.27ms]",
-      "(pass) package selection accepts a target [0.23ms]",
-      "(pass) package build target accepts one target option [1.14s]",
-      "",
-      "  3 pass",
-      "  0 fail",
-      "Ran 3 tests across 1 file. [1.61s]"
+      "$ bun scripts/test-evidence/index.ts check --root .",
+      "Test evidence check passed: 550 native entry/entries (393 Cargo, 130 Bun, 27 smoke), 21 claim(s)."
     ].join("\n");
 
     assert.deepEqual(visibleOutputLines(check, output), []);
   });
 
   it("keeps actionable failure output after filtering known success noise", () => {
-    const check = checkById("release-package-script-tests");
+    const check = checkById("test-evidence-ledger");
     const output = [
-      "(pass) package selection accepts a target [0.23ms]",
+      "$ bun scripts/test-evidence/index.ts check --root .",
       "unexpected diagnostic"
     ].join("\n");
 
@@ -76,32 +68,14 @@ describe("workspace verifier configuration", () => {
     assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
   });
 
-  it("filters catalog success output from docs validator failures", () => {
+  it("filters decision success output from docs validator failures", () => {
     const check = checkById("docs-validators");
     const output = [
-      "Test evidence check passed: 531 native entry/entries (391 Cargo, 123 Bun, 17 smoke), 27 claim(s).",
       "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived).",
-      "catalog diagnostic"
+      "schema diagnostic"
     ].join("\n");
 
-    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["catalog diagnostic"]);
-  });
-
-  it("filters workspace verifier script test package output", () => {
-    const check = checkById("workspace-verifier-script-tests");
-    const output = [
-      "$ bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/foundation/test/foundation.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
-      "bun test v1.3.14 (0d9b296a)",
-      "",
-      "scripts\\docnav-workspace\\verify.test.ts:",
-      "(pass) workspace verifier configuration > filters output [0.27ms]",
-      "",
-      "  1 pass",
-      "  0 fail",
-      "Ran 1 test across 1 file. [1.61s]"
-    ].join("\n");
-
-    assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
+    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["schema diagnostic"]);
   });
 
   it("filters quality timing details from terminal-visible output", () => {
@@ -160,8 +134,10 @@ describe("workspace verifier configuration", () => {
     assert.ok(requiredIds.includes("quality-quick-check"));
     assert.ok(requiredIds.includes("docs-validators"));
     assert.ok(!requiredIds.includes("docs-schema-validator"));
-    assert.ok(requiredIds.includes("workspace-verifier-script-tests"));
-    assert.ok(requiredIds.includes("validator-script-tests"));
+    assert.ok(requiredIds.includes("test-evidence-ledger"));
+    assert.ok(!requiredIds.includes("workspace-verifier-script-tests"));
+    assert.ok(!requiredIds.includes("validator-script-tests"));
+    assert.ok(!requiredIds.includes("release-package-script-tests"));
     assert.ok(requiredIds.includes("git-diff-whitespace"));
     assert.ok(!requiredIds.includes("cargo-test"));
     assert.ok(!requiredIds.includes("quality-internal-tests"));
@@ -170,7 +146,8 @@ describe("workspace verifier configuration", () => {
     assert.ok(fullIds.includes("cargo-fmt"));
     assert.ok(!fullIds.includes("quality-quick-check"));
     assert.ok(fullIds.includes("quality-full-check"));
-    assert.ok(fullIds.includes("quality-internal-tests"));
+    assert.ok(fullIds.includes("test-evidence-ledger"));
+    assert.ok(!fullIds.includes("quality-internal-tests"));
     assert.ok(!fullIds.includes("quality-report-tests"));
     assert.ok(fullIds.includes("cargo-test"));
     assert.ok(fullIds.includes("docnav-development-binaries"));
@@ -336,7 +313,7 @@ describe("workspace verifier configuration", () => {
     const docsChecks = requiredChecks.filter((check) => check.id.startsWith("docs-"));
 
     assert.deepEqual(docsChecks.map((check) => check.id), ["docs-validators"]);
-    assert.equal(reportCountForChecks(requiredChecks), 10);
+    assert.equal(reportCountForChecks(requiredChecks), 8);
   });
 });
 

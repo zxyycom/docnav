@@ -123,18 +123,22 @@ bun run verify:docnav-workspace
 bun run verify:docnav-workspace:required
 ```
 
-required profile 是快速、确定性的必需验证集合，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。它包含 quick quality check；该检查跳过 baseline comparison 和 jscpd duplicate detection，因此出现 warning 时会提示当前不是全量质检。full profile 复用 required profile 中的非质量必需检查，使用 full quality check 替代 quick quality check，并追加质量观测内部测试、CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。
+required profile 是快速、确定性的必需验证集合，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。它包含 quick quality check；该检查跳过 baseline comparison 和 jscpd duplicate detection，因此出现 warning 时会提示当前不是全量质检。full profile 复用 required profile 中的非质量必需检查，使用 full quality check 替代 quick quality check，并追加 CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。质量观测和其它 Bun 内部测试已经由 required profile 的测试账本入口统一执行，不再作为重复的 full-profile 子集任务。
 
 full profile 会验证质量观测链路本身：工具封装测试、扫描执行、配置读取和输出结构必须通过。Lizard、scc 和 jscpd 的观测结果进入快照、报告和 warning records；单独质量扫描存在 warning records 时继续显示 `warning`。workspace verifier 的 full profile 使用 verifier 输出：只有未带 `acceptedReason` 的 warning records 会把 workspace verifier 状态标记为 `warning`，带 `acceptedReason` 的 warning 仍写入质量 artifact 和报告，并在对应 warning 旁展示原因。
 
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check，分别验证 `.ts` 脚本类型 contract、静态质量规则和轻量质量观测状态。
 
-同一 profile 的 docs validator 只从仓库内 `scripts/test-evidence/` project
-wrapper 进入。wrapper 按版本化 supported runner profile 扫描完整当前源码、执行
+required profile 的 `test-evidence-ledger` check 只从仓库内
+`scripts/test-evidence/` project wrapper 进入。wrapper 按版本化 supported runner
+profile 扫描完整当前源码、执行
 Cargo/Bun/smoke 的 list 或 report、规范化原生入口，并双向核对静态入口、runtime
 入口和 committed machine inventory；随后严格校验 Claim topic、owner、当前入口
 引用和派生索引新鲜度。任何漏项、悬空、重复、不支持形态、陈旧 inventory 或陈旧
-Claim 都会阻断验证。变更报告只能缩小 AI 语义审查范围，不能替代这次全树闭合。
+Claim 都会阻断验证。Bun report 已执行 supported profile 中的完整 Bun 测试面，因此
+workspace verifier 不再重复调度 workspace、validator、release 或 quality 的 Bun
+子集；这些 package scripts 只保留为局部开发入口。变更报告只能缩小 AI 语义审查
+范围，不能替代这次全树闭合。
 
 docs validator 也直接调用项目内 `decision-records` 模块，对 `docs/decisions` 的目录、Markdown、全生命周期索引和关系执行严格检查。该自动检查只证明确定性结构契约；记录门槛、理由质量和当前行为 owner 是否同步继续由变更审查判断。
 
@@ -156,6 +160,7 @@ Manual CR: 修改 workspace verifier 的 check definitions、命令参数、depe
 | 命令 | 用途 |
 | --- | --- |
 | `bun run verify:docnav-workspace:required` | 快速验证，只跑必需检查 |
+| `bun run test-evidence -- check --root .` | 全树闭合测试账本并执行完整 Bun 测试面 |
 | `bun run quality:check` | 快速质量检查，生成 quick profile 报告 |
 | `bun run quality:full-check` | 全量质量检查，包含 baseline comparison |
 | `bun run smoke:docnav` | 对当前开发构建运行 core CLI smoke |

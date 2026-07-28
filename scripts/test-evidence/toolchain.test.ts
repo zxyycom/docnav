@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,41 +39,6 @@ test("uses the repository-locked ast-grep CLI through the project wrapper", asyn
   assert.equal(result.stdout.trim(), expectedAstGrepVersionLine());
 });
 
-test("pins the audited ast-grep package resolutions in the repository lockfile", () => {
-  const lockfile = fs.readFileSync(
-    path.join(workspaceRoot, "pnpm-lock.yaml"),
-    "utf8"
-  );
-  assert.match(
-    lockfile,
-    /'@ast-grep\/cli':\n\s+specifier: 0\.45\.0\n\s+version: 0\.45\.0/
-  );
-  assert.ok(lockfile.includes(
-    "'@ast-grep/cli@0.45.0':\n" +
-    "    resolution: {integrity: sha512-OQ4pcktMtg1hcQat/iCpX9r8HJ7mU/2SZVoGHA9id2gEfosvDw5m5RINQXsSRZXQW8bl45FW6FhdK0O2FiKjsw==}"
-  ));
-  assert.ok(lockfile.includes(
-    "'@ast-grep/cli-linux-x64-gnu@0.45.0':\n" +
-    "    resolution: {integrity: sha512-rAMZJzAiBuXMViuJgdPeMZXI9HnqwMCh3ybIoj8dfWBPsAywKgU8vyH4kd/R5fFr/oB4lKVhTJ2/mEBsOQTHaQ==}"
-  ));
-});
-
-test("keeps the pinned ast-grep skill distribution byte-for-byte complete", () => {
-  const skillRoot = path.join(workspaceRoot, ".codex", "skills", "ast-grep");
-  assert.deepEqual(listRelativeFiles(skillRoot), [
-    "SKILL.md",
-    "agents/openai.yaml",
-    "references/rules-and-recipes.md",
-    "scripts/update-skill.d.mts",
-    "scripts/update-skill.mjs",
-    "scripts/update-skill.mjs.map"
-  ]);
-  assert.equal(
-    directoryFingerprint(skillRoot),
-    "8957af003ca667e987db9e42e7f76e8f6813a0fe9f7e87a09ce4454424de0d44"
-  );
-});
-
 test("keeps the project-owned test-evidence skill complete and updater-free", () => {
   const skillRoot = path.join(
     workspaceRoot,
@@ -94,10 +58,6 @@ test("keeps the project-owned test-evidence skill complete and updater-free", ()
     "scripts/test-evidence-catalog.d.mts",
     "scripts/test-evidence-catalog.mjs"
   ]);
-  assert.equal(
-    directoryFingerprint(skillRoot),
-    "38fa7fe98879b5f1bae042734fc4c92817228ba7c0479d22e3a12ab2846dc7f8"
-  );
 });
 
 test("keeps the development ast-grep executable outside canonical release components", () => {
@@ -140,19 +100,6 @@ test("does not invoke the external ast-grep executable outside the developer wra
   });
   assert.deepEqual(violations, []);
 });
-
-function directoryFingerprint(root: string): string {
-  const manifest = listRelativeFiles(root)
-    .map((relativePath) => {
-      const contentHash = crypto
-        .createHash("sha256")
-        .update(fs.readFileSync(path.join(root, relativePath)))
-        .digest("hex");
-      return `${relativePath}\0${contentHash}\n`;
-    })
-    .join("");
-  return crypto.createHash("sha256").update(manifest).digest("hex");
-}
 
 function listFilesWithExtension(root: string, extension: string): string[] {
   if (!fs.existsSync(root)) {

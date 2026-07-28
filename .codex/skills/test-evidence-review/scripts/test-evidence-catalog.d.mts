@@ -32,6 +32,16 @@ export type NativeTestEntry = {
   sourceFingerprint: string;
 };
 
+export type NativeTestInventory = {
+  schemaVersion: 1;
+  profile: {
+    id: string;
+    version: number;
+  };
+  sourceRevision: string;
+  entries: NativeTestEntry[];
+};
+
 export type EvidenceClaim = {
   id: string;
   title: string;
@@ -120,6 +130,14 @@ export type TestEvidenceShowResult = {
 export declare function buildTestEvidenceProjection(options: {
   workspaceRoot: string;
 }): BuildTestEvidenceProjectionResult;
+
+export declare function parseNativeTestInventory(
+  value: unknown
+): NativeTestInventory;
+
+export declare function isNativeTestEntry(
+  value: unknown
+): value is NativeTestEntry;
 
 export declare function validateTestEvidence(options: {
   workspaceRoot: string;
