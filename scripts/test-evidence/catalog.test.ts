@@ -1,232 +1,462 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { Ajv2020 } from "ajv/dist/2020.js";
-import type { AnySchema } from "ajv";
 
 import {
-  parseNativeTestInventory,
-  queryTestEvidence,
-  showTestEvidence,
-  syncTestEvidenceIndex,
-  validateTestEvidence
-} from "../../.codex/skills/test-evidence-review/scripts/test-evidence-catalog.mjs";
-import { compareInventoryBaseline } from "./change-report.ts";
+  listTestCaseTopics,
+  loadTestCaseCatalog,
+  queryTestCases,
+  showTestCase,
+  validateTestCaseCoverage
+} from "./cases.ts";
 import { exitCodeForDiagnostics } from "./cli.ts";
-import { discoverNativeTestEntries } from "./discover.ts";
+import { closeStaticAndRuntimeEntities } from "./closure.ts";
+import { discoverTestEntities } from "./discover.ts";
 import { parseBunJUnit } from "./discovery/bun.ts";
 import { resolveBunTestFiles } from "./discovery/bun-files.ts";
 import { parseLibtestList } from "./discovery/rust.ts";
-import { createNativeTestInventory } from "./inventory.ts";
 import {
   diagnostic,
-  type DiscoveryResult,
-  type NativeTestEntry
+  type RuntimeTestEntity,
+  type StaticTestEntity,
+  type TestEntity
 } from "./model.ts";
 import {
   loadSupportedRunnerProfile,
-  profilePath,
   workspaceRoot
 } from "./profile.ts";
 
-const entryKey = "bun|tests/example.test.ts|contract > rejects invalid input";
+const bunEntity = "bun|tests/example.test.ts|contract > rejects invalid input";
+const cargoEntity = "cargo|example:lib:example|tests::rejects_invalid_input";
+const smokeEntity = "smoke|core:root|CORE-CONTRACT-001";
 
-test("validates, indexes and queries NativeTestEntry and Evidence Claim", () => {
-  using fixture = createEvidenceFixture();
-  writeClaim(fixture.root);
+test("parses and queries topic-grouped semantic Cases", () => {
+  using fixture = createCaseFixture();
 
-  const sync = syncTestEvidenceIndex({
-    mode: "write",
-    workspaceRoot: fixture.root
-  });
-  const report = validateTestEvidence({ workspaceRoot: fixture.root });
-  const byOwner = queryTestEvidence({
+  const catalog = loadTestCaseCatalog({ workspaceRoot: fixture.root });
+  const topics = listTestCaseTopics({ workspaceRoot: fixture.root });
+  const byTopic = queryTestCases({
     workspaceRoot: fixture.root,
-    ownerRef: "docs/owner.md#contract"
+    topic: "contract"
   });
-  const shown = showTestEvidence({
+  const byEntity = queryTestCases({
     workspaceRoot: fixture.root,
-    id: entryKey
+    entityKey: bunEntity
+  });
+  const byOwnerText = queryTestCases({
+    workspaceRoot: fixture.root,
+    ownerRef: "docs/owner.md#contract",
+    query: "state unchanged",
+    offset: 0,
+    limit: 10
+  });
+  const shown = showTestCase({
+    workspaceRoot: fixture.root,
+    id: "CASE-CONTRACT-REJECT-001"
   });
 
-  assert.equal(sync.status, "ok");
-  assert.equal(report.status, "ok");
-  assert.deepEqual(report.summary, {
-    topics: 1,
-    entries: 1,
-    claims: 1
-  });
-  assert.equal(byOwner.source, "index");
+  assert.deepEqual(catalog.diagnostics, []);
   assert.deepEqual(
-    byOwner.items.map(({ kind, id }) => ({ kind, id })),
+    catalog.cases.map(({ id, topic }) => ({ id, topic })),
     [
-      { kind: "claim", id: "CLAIM-EXAMPLE-CONTRACT-001" },
-      { kind: "entry", id: entryKey }
+      { id: "CASE-CONTRACT-REJECT-001", topic: "contract" },
+      { id: "CASE-CONTRACT-STATE-002", topic: "contract" },
+      { id: "CASE-NAVIGATION-DISPATCH-001", topic: "navigation" }
     ]
   );
-  assert.equal(shown.item?.kind, "entry");
   assert.deepEqual(
-    shown.item?.kind === "entry" ? shown.item.claimIds : [],
-    ["CLAIM-EXAMPLE-CONTRACT-001"]
+    topics.topics.map(({ id, cases }) => ({ id, cases })),
+    [
+      { id: "contract", cases: 2 },
+      { id: "navigation", cases: 1 }
+    ]
   );
-});
-
-test("allows a current machine case without an Evidence Claim", () => {
-  using fixture = createEvidenceFixture();
-  const sync = syncTestEvidenceIndex({
-    mode: "write",
-    workspaceRoot: fixture.root
-  });
-  const report = validateTestEvidence({ workspaceRoot: fixture.root });
-
-  assert.equal(sync.status, "ok");
-  assert.equal(report.status, "ok");
-  assert.equal(report.summary.entries, 1);
-  assert.equal(report.summary.claims, 0);
-});
-
-test("rejects unknown Entry support and no-information templates", () => {
-  using fixture = createEvidenceFixture();
-  writeClaim(fixture.root, {
-    statement: "Stable contract.",
-    supportedBy: "bun|tests/missing.test.ts|missing"
-  });
-
-  const report = validateTestEvidence({ workspaceRoot: fixture.root });
-  assertDiagnostic(report.diagnostics, "claim.template-repetition");
-  assertDiagnostic(report.diagnostics, "claim.entry-unknown");
-});
-
-test("reports claim-stale when owner content changes after index sync", () => {
-  using fixture = createEvidenceFixture();
-  writeClaim(fixture.root);
-  const sync = syncTestEvidenceIndex({
-    mode: "write",
-    workspaceRoot: fixture.root
-  });
-  assert.equal(sync.status, "ok");
-
-  fs.writeFileSync(
-    path.join(fixture.root, "docs", "owner.md"),
-    "# Owner\n\n## Contract\n\nChanged owner requirement.\n"
+  assert.equal(byTopic.total, 2);
+  assert.deepEqual(
+    byEntity.items.map(({ id }) => id),
+    ["CASE-CONTRACT-REJECT-001", "CASE-CONTRACT-STATE-002"]
   );
-  const report = validateTestEvidence({ workspaceRoot: fixture.root });
+  assert.deepEqual(
+    byOwnerText.items.map(({ id }) => id),
+    ["CASE-CONTRACT-STATE-002"]
+  );
+  assert.equal(shown.status, "ok");
+  assert.equal(shown.item?.title, "Invalid input remains rejected");
 
-  assertDiagnostic(report.diagnostics, "claim.stale");
-  assertDiagnostic(report.diagnostics, "index.stale");
-});
-
-test("uses a warning-only memory projection without writing a missing index", () => {
-  using fixture = createEvidenceFixture();
-  const indexPath = path.join(
-    fixture.root,
-    "docs",
-    "test-evidence",
-    "test-evidence-index.json"
+  const cliTopics = runCli([
+    "topics",
+    "--root",
+    fixture.root
+  ]);
+  assert.equal(cliTopics.status, 0);
+  assert.equal(cliTopics.stderr, "");
+  const cliTopicsJson = JSON.parse(cliTopics.stdout) as {
+    status: string;
+    topics: Array<{ id: string; cases: number }>;
+  };
+  assert.equal(cliTopicsJson.status, "ok");
+  assert.deepEqual(
+    cliTopicsJson.topics.map(({ id, cases }) => ({ id, cases })),
+    [
+      { id: "contract", cases: 2 },
+      { id: "navigation", cases: 1 }
+    ]
   );
 
-  const result = queryTestEvidence({
-    workspaceRoot: fixture.root,
-    kind: "entry"
-  });
-
-  assert.equal(result.status, "ok");
-  assert.equal(result.source, "memory");
-  assertDiagnostic(result.diagnostics, "index.missing", false);
-  assert.equal(fs.existsSync(indexPath), false);
-  assert.equal(result.total, 1);
-});
-
-test("validates the committed profile, inventory, Claim and index examples against their schemas", () => {
-  const ajv = new Ajv2020({
-    allErrors: true,
-    strict: true
-  });
-  const schemaRoot = path.join(
-    workspaceRoot,
-    ".codex",
-    "skills",
-    "test-evidence-review",
-    "schemas"
+  const cliList = runCli([
+    "list",
+    "--entity-key",
+    cargoEntity,
+    "--root",
+    fixture.root
+  ]);
+  assert.equal(cliList.status, 0);
+  assert.equal(cliList.stderr, "");
+  const cliListJson = JSON.parse(cliList.stdout) as {
+    total: number;
+    items: Array<{ id: string }>;
+  };
+  assert.equal(cliListJson.total, 1);
+  assert.deepEqual(
+    cliListJson.items.map(({ id }) => id),
+    ["CASE-CONTRACT-REJECT-001"]
   );
-  for (const fileName of [
-    "native-test-entry.schema.json",
-    "native-test-inventory.schema.json",
-    "evidence-claim.schema.json",
-    "claim-topic-catalog.schema.json",
-    "test-evidence-index.schema.json"
-  ]) {
-    ajv.addSchema(readJson(path.join(schemaRoot, fileName)) as AnySchema);
-  }
-  ajv.addSchema(readJson(path.join(
-    workspaceRoot,
-    "scripts",
-    "test-evidence",
-    "supported-runner-profile.schema.json"
-  )) as AnySchema);
 
-  const committedIndex = readJson(path.join(
-    workspaceRoot,
-    "docs",
-    "test-evidence",
-    "test-evidence-index.json"
-  ));
+  const cliShow = runCli([
+    "show",
+    "CASE-CONTRACT-REJECT-001",
+    "--root",
+    fixture.root
+  ]);
+  assert.equal(cliShow.status, 0);
+  assert.equal(cliShow.stderr, "");
+  const cliShowJson = JSON.parse(cliShow.stdout) as {
+    status: string;
+    item: { id: string } | null;
+  };
+  assert.equal(cliShowJson.status, "ok");
+  assert.equal(cliShowJson.item?.id, "CASE-CONTRACT-REJECT-001");
+
+  const cliMissing = runCli([
+    "show",
+    "CASE-MISSING-001",
+    "--root",
+    fixture.root
+  ]);
+  assert.equal(cliMissing.status, 6);
+  assert.equal(cliMissing.stderr, "");
+  const cliMissingJson = JSON.parse(cliMissing.stdout) as {
+    status: string;
+    diagnostics: Array<{ code: string }>;
+    item: null;
+  };
+  assert.equal(cliMissingJson.status, "error");
+  assert.equal(cliMissingJson.item, null);
   assert.ok(
-    typeof committedIndex === "object" &&
-    committedIndex !== null &&
-    !Array.isArray(committedIndex)
+    cliMissingJson.diagnostics.some(({ code }) => (
+      code === "query.case-not-found"
+    ))
   );
-  const committedClaims = (
-    committedIndex as Record<string, unknown>
-  ).claims;
-  assert.ok(Array.isArray(committedClaims));
-  const examples: Array<[string, unknown]> = [
-    [
-      "https://docnav.dev/test-evidence/supported-runner-profile.schema.json",
-      readJson(profilePath)
-    ],
-    [
-      "https://docnav.dev/test-evidence/native-test-inventory.schema.json",
-      readJson(path.join(
-        workspaceRoot,
-        "docs",
-        "test-evidence",
-        "native-test-inventory.json"
-      ))
-    ],
-    [
-      "https://docnav.dev/test-evidence/claim-topic-catalog.schema.json",
-      readJson(path.join(
-        workspaceRoot,
-        "docs",
-        "test-evidence",
-        "claim-topics.json"
-      ))
-    ],
-    [
-      "https://docnav.dev/test-evidence/test-evidence-index.schema.json",
-      committedIndex
-    ]
+
+  const cliCheckFailure = runCli([
+    "check",
+    "--root",
+    fixture.root
+  ]);
+  assert.equal(cliCheckFailure.status, 3);
+  assert.equal(cliCheckFailure.stdout, "");
+  assert.match(
+    cliCheckFailure.stderr,
+    /profile:runner-profile-invalid:/
+  );
+
+  const rejectedCommands = [
+    ["sync", "--root", fixture.root],
+    ["changes", "--root", fixture.root],
+    ["list", "--entry-key", bunEntity, "--root", fixture.root],
+    ["list", "--claim-id", "CLAIM-001", "--root", fixture.root],
+    ["list", "--kind", "entry", "--root", fixture.root],
+    ["list", "--case-id", "CASE-CONTRACT-REJECT-001", "--root", fixture.root]
   ];
-  for (const [schemaId, value] of examples) {
-    assert.equal(
-      ajv.validate(schemaId, value),
-      true,
-      `${schemaId}: ${ajv.errorsText()}`
-    );
+  for (const args of rejectedCommands) {
+    const rejected = runCli(args);
+    assert.equal(rejected.status, 2, args.join(" "));
+    assert.equal(rejected.stdout, "", args.join(" "));
+    assert.notEqual(rejected.stderr, "", args.join(" "));
   }
-  for (const claim of committedClaims) {
-    assert.equal(
-      ajv.validate(
-        "https://docnav.dev/test-evidence/evidence-claim.schema.json",
-        claim
-      ),
-      true,
-      `evidence Claim: ${ajv.errorsText()}`
-    );
-  }
+});
+
+test("diagnoses malformed Case structure and stable identity conflicts", () => {
+  using fixture = createFixtureRoot();
+  writeTopics(fixture.root, ["contract", "empty", "other"]);
+  writeTopicFile(fixture.root, "contract", [
+    "# contract",
+    "",
+    "## Case CASE-DUPLICATE-001: Missing required semantics",
+    "Entities:",
+    `- \`${bunEntity}\``,
+    `- \`${bunEntity}\``,
+    "Proves:",
+    ""
+  ]);
+  writeTopicFile(fixture.root, "empty", ["# empty"]);
+  writeTopicFile(fixture.root, "other", [
+    "# mismatched",
+    "",
+    "Case prose outside a Case block is not allowed.",
+    "",
+    "## Case CASE-DUPLICATE-001: Duplicate identity",
+    "Owner: `docs/owner.md#guide--install`",
+    "Entities:",
+    `- \`${cargoEntity}\``,
+    "Proves:",
+    "- The public error remains observable.",
+    "",
+    "## Case CASE-FRONTMATTER-001: Frontmatter is not heading content",
+    "Owner: `docs/owner.md#frontmatter-heading`",
+    "Entities:",
+    `- \`${cargoEntity}\``,
+    "Proves:",
+    "- Document frontmatter does not create an Owner heading.",
+    "",
+    "## Case CASE-EMPTY-001: No implementation entity",
+    "Owner: `docs/missing.md#contract`",
+    "Entities:",
+    "Proves:",
+    "- The public result remains observable.",
+    "",
+    "## Case CASE-TYPO-001 Missing the required colon",
+    "Owner: `docs/owner.md#contract`",
+    "",
+    "## Notes",
+    "Topic notes are not a Case block.",
+    ""
+  ]);
+  writeTopicFile(fixture.root, "unknown", [
+    "# unknown",
+    "",
+    "## Case CASE-UNKNOWN-SHOULD-NOT-LOAD-001: Unknown topics are not sources",
+    "Owner: `docs/owner.md#contract`",
+    "Entities:",
+    `- \`${smokeEntity}\``,
+    "Proves:",
+    "- Unknown Markdown cannot contribute semantic Cases.",
+    ""
+  ]);
+
+  const catalog = loadTestCaseCatalog({ workspaceRoot: fixture.root });
+
+  assertDiagnostic(catalog.diagnostics, "topic.unknown");
+  assertDiagnosticPath(
+    catalog.diagnostics,
+    "topic.unknown",
+    "docs/testing/cases/unknown.md"
+  );
+  assertDiagnostic(catalog.diagnostics, "topic.heading-invalid");
+  assertDiagnostic(catalog.diagnostics, "topic.content-unexpected");
+  assertDiagnostic(catalog.diagnostics, "case.heading-invalid");
+  assertDiagnostic(catalog.diagnostics, "topic.heading-unexpected");
+  assertDiagnostic(catalog.diagnostics, "case.id-duplicate");
+  assertDiagnostic(catalog.diagnostics, "case.owner-missing");
+  assertDiagnostic(catalog.diagnostics, "case.owner-unknown");
+  assertDiagnostic(catalog.diagnostics, "case.owner-heading-unknown");
+  assertDiagnostic(catalog.diagnostics, "case.entity-duplicate");
+  assertDiagnostic(catalog.diagnostics, "case.entities-empty");
+  assertDiagnostic(catalog.diagnostics, "case.proves-empty");
+  assertDiagnosticForCase(
+    catalog.diagnostics,
+    "case.owner-heading-unknown",
+    "CASE-DUPLICATE-001"
+  );
+  assertDiagnosticForCase(
+    catalog.diagnostics,
+    "case.owner-heading-unknown",
+    "CASE-FRONTMATTER-001"
+  );
+  assert.equal(
+    catalog.cases.some(({ id }) => id === "CASE-UNKNOWN-SHOULD-NOT-LOAD-001"),
+    false
+  );
+  assert.equal(
+    catalog.diagnostics.some(({ path: sourcePath }) => (
+      sourcePath === "docs/testing/cases/empty.md"
+    )),
+    false,
+    "an H1-only topic is a valid empty topic"
+  );
+
+  using layoutFixture = createCaseFixture();
+  const layoutCasesPath = caseDirectory(layoutFixture.root);
+  fs.mkdirSync(path.join(layoutCasesPath, "nested"));
+  fs.writeFileSync(path.join(layoutCasesPath, "notes.txt"), "not a Case source\n");
+  fs.symlinkSync(
+    "contract.md",
+    path.join(layoutCasesPath, "linked.md"),
+    "file"
+  );
+  const layoutCatalog = loadTestCaseCatalog({
+    workspaceRoot: layoutFixture.root
+  });
+  assertDiagnosticPath(
+    layoutCatalog.diagnostics,
+    "cases.nested-directory",
+    "docs/testing/cases/nested"
+  );
+  assertDiagnosticPath(
+    layoutCatalog.diagnostics,
+    "cases.symlink-unsupported",
+    "docs/testing/cases/linked.md"
+  );
+  assert.equal(
+    layoutCatalog.diagnostics.some(({ path: sourcePath }) => (
+      sourcePath === "docs/testing/cases/notes.txt"
+    )),
+    false,
+    "unrelated regular non-Markdown files are not Case sources"
+  );
+
+  using topicsLinkFixture = createCaseFixture();
+  const topicsPath = path.join(caseDirectory(topicsLinkFixture.root), "topics.json");
+  fs.renameSync(
+    topicsPath,
+    path.join(caseDirectory(topicsLinkFixture.root), "topics-source.json")
+  );
+  fs.symlinkSync("topics-source.json", topicsPath, "file");
+  assertDiagnosticPath(
+    loadTestCaseCatalog({ workspaceRoot: topicsLinkFixture.root }).diagnostics,
+    "topics.invalid",
+    "docs/testing/cases/topics.json"
+  );
+
+  using topicLinkFixture = createCaseFixture();
+  const topicPath = path.join(caseDirectory(topicLinkFixture.root), "contract.md");
+  fs.renameSync(
+    topicPath,
+    path.join(caseDirectory(topicLinkFixture.root), "contract-source.txt")
+  );
+  fs.symlinkSync("contract-source.txt", topicPath, "file");
+  assertDiagnosticPath(
+    loadTestCaseCatalog({ workspaceRoot: topicLinkFixture.root }).diagnostics,
+    "cases.symlink-unsupported",
+    "docs/testing/cases/contract.md"
+  );
+
+  using rootLinkFixture = createCaseFixture();
+  const rootCasesPath = caseDirectory(rootLinkFixture.root);
+  fs.renameSync(rootCasesPath, `${rootCasesPath}-source`);
+  fs.symlinkSync(
+    path.basename(`${rootCasesPath}-source`),
+    rootCasesPath,
+    "dir"
+  );
+  assertDiagnosticPath(
+    loadTestCaseCatalog({ workspaceRoot: rootLinkFixture.root }).diagnostics,
+    "cases.directory-invalid",
+    "docs/testing/cases"
+  );
+});
+
+test("closes current test entities against the union of Case mappings", () => {
+  using fixture = createCaseFixture();
+  const catalog = loadTestCaseCatalog({ workspaceRoot: fixture.root });
+  const entities = [
+    testEntity(bunEntity),
+    testEntity(cargoEntity),
+    testEntity(smokeEntity)
+  ];
+
+  assert.deepEqual(validateTestCaseCoverage({ catalog, entities }), []);
+
+  const unknownEntity = "bun|tests/missing.test.ts|missing";
+  const changedCatalog = {
+    ...catalog,
+    cases: catalog.cases.map((testCase) => (
+      testCase.id === "CASE-CONTRACT-REJECT-001"
+        ? {
+            ...testCase,
+            entityKeys: testCase.entityKeys.map((entityKey) => (
+              entityKey === cargoEntity ? unknownEntity : entityKey
+            ))
+          }
+        : testCase
+    ))
+  };
+  const diagnostics = validateTestCaseCoverage({
+    catalog: changedCatalog,
+    entities
+  });
+
+  assertDiagnostic(diagnostics, "case.entity-unknown");
+  assertDiagnostic(diagnostics, "entity.case-missing");
+  assert.equal(
+    diagnostics.some(({ code, entityKey }) => (
+      code === "entity.case-missing" && entityKey === bunEntity
+    )),
+    false,
+    "one entity may be mapped by multiple Cases"
+  );
+
+  const identity = "tests/example.test.ts\0contract > rejects invalid input";
+  const staticEntity = staticTestEntity(identity);
+  const runtimeEntity = runtimeTestEntity(identity);
+  const closed = closeStaticAndRuntimeEntities({
+    runner: "bun",
+    statics: [staticEntity],
+    runtime: [runtimeEntity],
+    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
+  });
+  assert.deepEqual(closed.diagnostics, []);
+  assert.deepEqual(
+    closed.entities.map(({ entityKey }) => entityKey),
+    [bunEntity]
+  );
+
+  const staticOnly = closeStaticAndRuntimeEntities({
+    runner: "bun",
+    statics: [staticEntity],
+    runtime: [],
+    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
+  });
+  assertDiagnostic(staticOnly.diagnostics, "static-only");
+  assert.match(staticOnly.diagnostics[0]?.message ?? "", /static TestEntity/);
+
+  const runtimeOnly = closeStaticAndRuntimeEntities({
+    runner: "bun",
+    statics: [],
+    runtime: [runtimeEntity],
+    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
+  });
+  assertDiagnostic(runtimeOnly.diagnostics, "runtime-only");
+  assert.match(runtimeOnly.diagnostics[0]?.message ?? "", /runtime TestEntity/);
+
+  const duplicateStatic = closeStaticAndRuntimeEntities({
+    runner: "bun",
+    statics: [staticEntity, { ...staticEntity }],
+    runtime: [runtimeEntity],
+    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
+  });
+  assertDiagnostic(duplicateStatic.diagnostics, "duplicate-entity");
+  assert.equal(duplicateStatic.diagnostics[0]?.origin, "static");
+  assert.match(
+    duplicateStatic.diagnostics[0]?.message ?? "",
+    /TestEntity identity/
+  );
+
+  const duplicateRuntime = closeStaticAndRuntimeEntities({
+    runner: "bun",
+    statics: [staticEntity],
+    runtime: [runtimeEntity, { ...runtimeEntity }],
+    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
+  });
+  assertDiagnostic(duplicateRuntime.diagnostics, "duplicate-entity");
+  assert.equal(duplicateRuntime.diagnostics[0]?.origin, "runner");
+  assert.match(
+    duplicateRuntime.diagnostics[0]?.message ?? "",
+    /TestEntity identity/
+  );
 });
 
 test("parses stable Cargo and Bun runner reports without inferring missing fields", () => {
@@ -264,52 +494,18 @@ test("parses stable Cargo and Bun runner reports without inferring missing field
   );
 });
 
-test("reports structural changes without replacing full-tree closure", () => {
-  const original = exampleEntry("bun|tests/example.test.ts|suite > old", 10);
-  const renamed = {
-    ...exampleEntry("bun|tests/example.test.ts|suite > new", 11),
-    sourceFingerprint: `sha256:${"2".repeat(64)}`
-  };
-  const unchanged = exampleEntry("cargo|package:lib:target|tests::same", 20);
-  const changed = {
-    ...unchanged,
-    sourceFingerprint: `sha256:${"3".repeat(64)}`
-  };
-  const baseline = createNativeTestInventory(discovery([original, unchanged]));
-  const current = createNativeTestInventory(discovery([renamed, changed]));
-
-  const report = compareInventoryBaseline(baseline, current);
-
-  assert.deepEqual(report.added, [renamed.entryKey]);
-  assert.deepEqual(report.removed, [original.entryKey]);
-  assert.deepEqual(report.implementationChanged, [changed.entryKey]);
-  assert.deepEqual(report.renameCandidates, [
-    {
-      from: original.entryKey,
-      to: renamed.entryKey
-    }
-  ]);
-  assert.throws(
-    () => parseNativeTestInventory({
-      ...baseline,
-      entries: [null]
-    }),
-    /inventory entry 0/
-  );
-});
-
-test("uses distinct project exit statuses for discovery, runner, inventory and Claim failures", () => {
+test("uses distinct exit statuses for discovery, runner, Case, and query failures", () => {
   assert.equal(exitCodeForDiagnostics([
-    diagnostic("unsupported-entry-shape", "static", "unsupported")
+    diagnostic("unsupported-entity-shape", "static", "unsupported")
   ]), 3);
   assert.equal(exitCodeForDiagnostics([
     diagnostic("runner-report-failed", "runner", "failed")
   ]), 4);
   assert.equal(exitCodeForDiagnostics([
-    diagnostic("missing-case", "inventory", "missing")
+    diagnostic("entity.case-missing", "case", "missing")
   ]), 5);
   assert.equal(exitCodeForDiagnostics([
-    diagnostic("claim.owner-unknown", "claim", "unknown")
+    diagnostic("query.case-not-found", "query", "unknown")
   ]), 6);
 });
 
@@ -388,7 +584,7 @@ test("loads one versioned and sorted supported runner profile", async () => {
     fs.rmSync(temporaryRoot, { force: true, recursive: true });
   }
 
-  const rootMismatch = await discoverNativeTestEntries({
+  const rootMismatch = await discoverTestEntities({
     workspaceRoot: os.tmpdir()
   });
   assert.ok(rootMismatch.diagnostics.some(({ code, message }) => (
@@ -397,51 +593,71 @@ test("loads one versioned and sorted supported runner profile", async () => {
   )));
 });
 
-function createEvidenceFixture(): Fixture {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-test-evidence-"));
-  fs.mkdirSync(path.join(root, "docs", "test-evidence"), { recursive: true });
+function createCaseFixture(): Fixture {
+  const fixture = createFixtureRoot();
+  writeTopics(fixture.root, ["contract", "navigation"]);
+  writeTopicFile(fixture.root, "contract", [
+    "# contract",
+    "",
+    "## Case CASE-CONTRACT-REJECT-001: Invalid input remains rejected",
+    "Owner: `docs/owner.md#contract`",
+    "Entities:",
+    `- \`${bunEntity}\``,
+    `- \`${cargoEntity}\``,
+    "Proves:",
+    "- Invalid input returns the public error.",
+    "",
+    "## Case CASE-CONTRACT-STATE-002: Rejection preserves state",
+    "Owner: `docs/owner.md#contract`",
+    "Entities:",
+    `- \`${bunEntity}\``,
+    "Proves:",
+    "- The caller observes the protected state unchanged.",
+    ""
+  ]);
+  writeTopicFile(fixture.root, "navigation", [
+    "# navigation",
+    "",
+    "## Case CASE-NAVIGATION-DISPATCH-001: Dispatch selects the requested adapter",
+    "Owner: `docs/owner.md#navigation`",
+    "Entities:",
+    `- \`${smokeEntity}\``,
+    "Proves:",
+    "- The selected adapter handles the request.",
+    ""
+  ]);
+  return fixture;
+}
+
+function createFixtureRoot(): Fixture {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-test-cases-"));
+  fs.mkdirSync(path.join(root, "docs", "testing", "cases"), {
+    recursive: true
+  });
   fs.writeFileSync(
     path.join(root, "docs", "owner.md"),
-    "# Owner\n\n## Contract\n\nInvalid input is rejected without changing state.\n"
-  );
-  writeJson(
-    path.join(root, "docs", "test-evidence", "claim-topics.json"),
-    {
-      schemaVersion: 1,
-      topics: [
-        {
-          id: "contract",
-          description: "Stable public contract evidence."
-        }
-      ]
-    }
-  );
-  writeJson(
-    path.join(root, "docs", "test-evidence", "native-test-inventory.json"),
-    {
-      schemaVersion: 1,
-      profile: {
-        id: "fixture",
-        version: 1
-      },
-      sourceRevision: `sha256:${"0".repeat(64)}`,
-      entries: [
-        {
-          entryKey,
-          runner: "bun",
-          target: "tests/example.test.ts",
-          selector: "contract > rejects invalid input",
-          sourcePath: "tests/example.test.ts",
-          sourceRange: {
-            startLine: 3,
-            startColumn: 1,
-            endLine: 5,
-            endColumn: 3
-          },
-          sourceFingerprint: `sha256:${"1".repeat(64)}`
-        }
-      ]
-    }
+    [
+      "---",
+      "title: Owner fixture",
+      "## Frontmatter Heading",
+      "---",
+      "# Owner",
+      "",
+      "```text",
+      "# Output excerpt",
+      "",
+      "## Guide > Install",
+      "```",
+      "",
+      "## Contract",
+      "",
+      "Invalid input is rejected without changing state.",
+      "",
+      "## Navigation",
+      "",
+      "The selected adapter handles the request.",
+      ""
+    ].join("\n")
   );
   return {
     root,
@@ -449,6 +665,34 @@ function createEvidenceFixture(): Fixture {
       fs.rmSync(root, { force: true, recursive: true });
     }
   };
+}
+
+function caseDirectory(root: string): string {
+  return path.join(root, "docs", "testing", "cases");
+}
+
+function writeTopics(root: string, topicIds: readonly string[]): void {
+  writeJson(
+    path.join(root, "docs", "testing", "cases", "topics.json"),
+    {
+      schemaVersion: 1,
+      topics: topicIds.map((id) => ({
+        id,
+        description: `${id} behavior.`
+      }))
+    }
+  );
+}
+
+function writeTopicFile(
+  root: string,
+  topic: string,
+  lines: readonly string[]
+): void {
+  fs.writeFileSync(
+    path.join(root, "docs", "testing", "cases", `${topic}.md`),
+    lines.join("\n")
+  );
 }
 
 function findConventionalBunTests(
@@ -473,92 +717,119 @@ function findConventionalBunTests(
   }
 }
 
-function writeClaim(
-  root: string,
-  overrides: {
-    statement?: string;
-    supportedBy?: string;
-  } = {}
-): void {
-  const claimRoot = path.join(
-    root,
-    "docs",
-    "test-evidence",
-    "claims",
-    "contract"
-  );
-  fs.mkdirSync(claimRoot, { recursive: true });
-  fs.writeFileSync(
-    path.join(claimRoot, "example-contract.md"),
+function testEntity(entityKey: string): TestEntity {
+  const [runner = "bun", target = "tests/example.test.ts", selector = "case"] =
+    entityKey.split("|");
+  return {
+    entityKey,
+    runner,
+    target,
+    selector,
+    sourcePath: target,
+    sourceRange: {
+      startLine: 1,
+      startColumn: 1,
+      endLine: 1,
+      endColumn: 10
+    }
+  };
+}
+
+function staticTestEntity(identity: string): StaticTestEntity {
+  return {
+    identity,
+    sourcePath: "tests/example.test.ts",
+    sourceRange: {
+      startLine: 7,
+      startColumn: 1,
+      endLine: 7,
+      endColumn: 42
+    }
+  };
+}
+
+function runtimeTestEntity(identity: string): RuntimeTestEntity {
+  return {
+    identity,
+    target: "tests/example.test.ts",
+    selector: "contract > rejects invalid input"
+  };
+}
+
+function runCli(args: readonly string[]): {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+} {
+  const result = spawnSync(
+    process.execPath,
     [
-      "# Claim CLAIM-EXAMPLE-CONTRACT-001: Invalid input remains rejected",
-      "",
-      "Topic: `contract`",
-      "Owner ref: `docs/owner.md#contract`",
-      "",
-      "Statement:",
-      `- ${overrides.statement ?? "Invalid input cannot mutate the protected state."}`,
-      "",
-      "Observations:",
-      "- The call returns the documented invalid-input error.",
-      "- The protected state remains unchanged.",
-      "",
-      "Supported by:",
-      `- \`${overrides.supportedBy ?? entryKey}\``,
-      ""
-    ].join("\n")
+      path.join(workspaceRoot, "scripts", "test-evidence", "index.ts"),
+      ...args
+    ],
+    {
+      cwd: workspaceRoot,
+      encoding: "utf8"
+    }
   );
+  assert.equal(result.error, undefined);
+  assert.equal(result.signal, null);
+  return {
+    status: result.status,
+    stdout: result.stdout,
+    stderr: result.stderr
+  };
 }
 
 function writeJson(targetPath: string, value: unknown): void {
   fs.writeFileSync(targetPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function readJson(sourcePath: string): unknown {
-  return JSON.parse(fs.readFileSync(sourcePath, "utf8")) as unknown;
-}
-
-function exampleEntry(entryKey: string, startLine: number): NativeTestEntry {
-  const [runner = "bun", target = "tests/example.test.ts", selector = "case"] = entryKey.split("|");
-  return {
-    entryKey,
-    runner,
-    target,
-    selector,
-    sourcePath: "tests/example.test.ts",
-    sourceRange: {
-      startLine,
-      startColumn: 1,
-      endLine: startLine,
-      endColumn: 10
-    },
-    sourceFingerprint: `sha256:${"1".repeat(64)}`
-  };
-}
-
-function discovery(entries: NativeTestEntry[]): DiscoveryResult {
-  return {
-    profile: {
-      id: "fixture",
-      version: 1
-    },
-    entries: [...entries].sort((left, right) => (
-      left.entryKey < right.entryKey ? -1 : left.entryKey > right.entryKey ? 1 : 0
-    )),
-    diagnostics: []
-  };
-}
-
 function assertDiagnostic(
-  diagnostics: Array<{ code: string; blocking: boolean }>,
-  code: string,
-  blocking = true
+  diagnostics: ReadonlyArray<{ code: string; blocking: boolean }>,
+  code: string
 ): void {
   assert.ok(
-    diagnostics.some((diagnostic) => (
-      diagnostic.code === code && diagnostic.blocking === blocking
+    diagnostics.some((value) => value.code === code && value.blocking),
+    `expected blocking diagnostic ${code}: ${JSON.stringify(diagnostics)}`
+  );
+}
+
+function assertDiagnosticForCase(
+  diagnostics: ReadonlyArray<{
+    code: string;
+    blocking: boolean;
+    caseId?: string;
+  }>,
+  code: string,
+  caseId: string
+): void {
+  assert.ok(
+    diagnostics.some((value) => (
+      value.code === code &&
+      value.blocking &&
+      value.caseId === caseId
     )),
-    `expected ${blocking ? "blocking" : "non-blocking"} diagnostic ${code}: ${JSON.stringify(diagnostics)}`
+    `expected blocking diagnostic ${code} for ${caseId}: ${JSON.stringify(diagnostics)}`
+  );
+}
+
+function assertDiagnosticPath(
+  diagnostics: ReadonlyArray<{
+    code: string;
+    blocking: boolean;
+    path?: string;
+  }>,
+  code: string,
+  sourcePath: string
+): void {
+  assert.ok(
+    diagnostics.some((value) => (
+      value.code === code &&
+      value.blocking &&
+      value.path === sourcePath
+    )),
+    `expected blocking diagnostic ${code} at ${sourcePath}: ${JSON.stringify(diagnostics)}`
   );
 }
 

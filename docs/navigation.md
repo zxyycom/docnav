@@ -34,7 +34,7 @@ bun run verify:docnav-workspace
 | 项目首页 | [README](../README.md) | 确认项目目标、v0 范围或运行入口 |
 | 文档导航 | 本文档 | 定位任务主规范、状态语义、规则 owner 和交付验证入口 |
 | 主规范 | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[测试策略](testing.md) | 修改稳定规则或实现职责 |
-| 测试资料 | [测试证据维护](testing/case-maintenance.md)、[Claim topic 表](test-evidence/claim-topics.json)、[machine inventory](test-evidence/native-test-inventory.json)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、当前原生入口、长期 Evidence Claim、覆盖目标或 release 验证 |
+| 测试资料 | [语义测试 Case 维护](testing/case-maintenance.md)、[Case topic 表](testing/cases/topics.json)、`testing/cases/<topic>.md`、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、当前实体与语义 Case 映射、覆盖目标或 release 验证 |
 | Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](coding-style.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
@@ -59,7 +59,7 @@ OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change na
 | `typed-fields` | [架构](architecture.md) | typed field identity、constraint metadata、schema metadata projection 和 duplicate guard |
 | `contract-validation` | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) | schema/example validation、runtime validation parity 和 drift checks |
 | `release-artifacts` | [发布包验证](testing/release.md) | package layout、manifest/checksum 和 release artifact verification |
-| `test-evidence-management` | [测试证据维护](testing/case-maintenance.md) | supported runner profile、原生入口闭合、machine inventory、Evidence Claim 和查询索引 |
+| `test-evidence-management` | [语义测试 Case 维护](testing/case-maintenance.md) | supported runner profile、当前测试实体闭合、语义 Case、topic 和有界查询 |
 | `repository-quality-observability` | [工程工具链](tooling.md) | 非阻断质量快照、报告、baseline delta 和扫描边界 |
 | `openspec-governance` | 本文档 | OpenSpec、长期决策记录与 docs-first 的分工，以及 capability 命名和归档规则 |
 
@@ -112,9 +112,9 @@ OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 
 | ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
-| 测试变更时的原生入口粒度、supported runner profile、静态/runtime 闭合和项目验证流程 | [测试证据维护](testing/case-maintenance.md)与 `../scripts/test-evidence/`；通用 Entry、Claim 和索引契约由[项目级 `test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md)拥有 |
-| 当前原生入口与 machine case | 当前源码和 runner 报告拥有入口事实；[machine inventory](test-evidence/native-test-inventory.json)是可删除重建的当前投影，不创建入口 |
-| 长期测试语义与受控责任 | `test-evidence/claims/<topic>/` 中的 Evidence Claim 与 [Claim topic 表](test-evidence/claim-topics.json)；`test-evidence-index.json` 只作可重建查询投影 |
+| 测试变更时的 Case 粒度、supported runner profile、静态/runtime/Case 映射闭合和项目验证流程 | [语义测试 Case 维护](testing/case-maintenance.md)与 `../scripts/test-evidence/`；通用评审方法由[项目级 `test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md)提供 |
+| 当前测试实体的存在性与 runner 身份 | 当前源码和 runner 报告；project wrapper 只发现、归一并比较当前集合，不提交派生实体清单 |
+| 长期测试目的、实体映射与受控分类 | `testing/cases/<topic>.md` 中的语义 Case 与 [Case topic 表](testing/cases/topics.json) |
 | 工具版本、项目环境配置与检测、包管理、TypeScript 脚本运行方式和脚本类型检查验证入口 | [工程工具链](tooling.md) |
 | typed field definition core 的共享 crate owner、字段事实源、校验归属和 schema metadata view 边界 | [架构](architecture.md) |
 | JSON 字段形状和示例语义校验 | [JSON Schema 索引](schemas/json-schema.md)、[示例](examples/README.md) |

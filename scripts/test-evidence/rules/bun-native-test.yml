@@ -1,5 +1,5 @@
 id: bun-native-test
-message: Supported Bun native test entry
+message: Supported Bun test entity
 severity: info
 language: TypeScript
 rule:

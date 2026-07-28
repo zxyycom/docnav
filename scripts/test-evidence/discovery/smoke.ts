@@ -11,35 +11,34 @@ import {
   unsupportedAstDiagnostics,
   type AstMatch
 } from "../ast-scan.ts";
-import { closeStaticAndRuntimeEntries } from "../closure.ts";
+import { closeStaticAndRuntimeEntities } from "../closure.ts";
 import {
   diagnostic,
-  type NativeTestEntry,
-  type RuntimeTestEntry,
-  type StaticTestCandidate,
+  type RuntimeTestEntity,
+  type StaticTestEntity,
+  type TestEntity,
   type TestEvidenceDiagnostic
 } from "../model.ts";
 import {
   SUPPORTED_SMOKE_FACTORY,
   type SupportedRunnerProfile
 } from "../profile.ts";
-import { createSmokeSourceFingerprint } from "./smoke-fingerprint.ts";
 
 type SmokeDiscoveryOptions = {
   workspaceRoot: string;
   profile: SupportedRunnerProfile;
 };
 
-export async function discoverSmokeEntries(
+export async function discoverSmokeEntities(
   options: SmokeDiscoveryOptions
 ): Promise<{
-  entries: NativeTestEntry[];
+  entities: TestEntity[];
   diagnostics: TestEvidenceDiagnostic[];
 }> {
   const diagnostics: TestEvidenceDiagnostic[] = [];
   if (options.profile.smoke.factory !== SUPPORTED_SMOKE_FACTORY) {
     return {
-      entries: [],
+      entities: [],
       diagnostics: [
         diagnostic(
           "runner-profile-invalid",
@@ -55,23 +54,23 @@ export async function discoverSmokeEntries(
   }
 
   const matches = await scanSmokeSources(options, diagnostics);
-  const statics = createStaticCandidates(options, matches, diagnostics);
-  const runtime = createRuntimeEntries(options.profile, diagnostics);
+  const statics = createStaticCandidates(matches, diagnostics);
+  const runtime = createRuntimeEntities(options.profile, diagnostics);
 
   if (diagnostics.some(({ blocking }) => blocking)) {
     return {
-      entries: [],
+      entities: [],
       diagnostics
     };
   }
-  const closed = closeStaticAndRuntimeEntries({
+  const closed = closeStaticAndRuntimeEntities({
     runner: "smoke",
     statics,
     runtime,
-    createEntryKey: ({ target, selector }) => `smoke|${target}|${selector}`
+    createEntityKey: ({ target, selector }) => `smoke|${target}|${selector}`
   });
   return {
-    entries: closed.entries,
+    entities: closed.entities,
     diagnostics: [...diagnostics, ...closed.diagnostics]
   };
 }
@@ -105,13 +104,12 @@ async function scanSmokeSources(
 }
 
 function createStaticCandidates(
-  options: SmokeDiscoveryOptions,
   matches: AstMatch[],
   diagnostics: TestEvidenceDiagnostic[]
-): StaticTestCandidate[] {
-  const statics: StaticTestCandidate[] = [];
+): StaticTestEntity[] {
+  const statics: StaticTestEntity[] = [];
   for (const match of matches) {
-    const candidate = createStaticCandidate(options, match, diagnostics);
+    const candidate = createStaticCandidate(match, diagnostics);
     if (candidate) {
       statics.push(candidate);
     }
@@ -120,17 +118,15 @@ function createStaticCandidates(
 }
 
 function createStaticCandidate(
-  options: SmokeDiscoveryOptions,
   match: AstMatch,
   diagnostics: TestEvidenceDiagnostic[]
-): StaticTestCandidate | null {
+): StaticTestEntity | null {
   const id = match.metaVariables.single.ID?.text;
-  const runExpression = match.metaVariables.single.RUN?.text;
-  if (!id || !runExpression) {
+  if (!id) {
     diagnostics.push(diagnostic(
       "static-scan-failed",
       "static",
-      "smoke native leaf rule did not capture ID and RUN",
+      "smoke native leaf rule did not capture ID",
       {
         path: match.file,
         line: match.range.start.line + 1,
@@ -139,41 +135,17 @@ function createStaticCandidate(
     ));
     return null;
   }
-  try {
-    return {
-      identity: id,
-      sourcePath: match.file,
-      sourceRange: astSourceRange(match),
-      sourceFingerprint: createSmokeSourceFingerprint({
-        workspaceRoot: options.workspaceRoot,
-        sourceRoots: options.profile.smoke.sourceRoots,
-        sourcePath: match.file,
-        taskSource: match.text,
-        runExpression
-      })
-    };
-  } catch (error) {
-    diagnostics.push(diagnostic(
-      "unsupported-entry-shape",
-      "static",
-      `smoke task ${id} has no attributable implementation: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      {
-        path: match.file,
-        line: match.range.start.line + 1,
-        runner: "smoke",
-        selector: id
-      }
-    ));
-    return null;
-  }
+  return {
+    identity: id,
+    sourcePath: match.file,
+    sourceRange: astSourceRange(match)
+  };
 }
 
-function createRuntimeEntries(
+function createRuntimeEntities(
   profile: SupportedRunnerProfile,
   diagnostics: TestEvidenceDiagnostic[]
-): RuntimeTestEntry[] {
+): RuntimeTestEntity[] {
   try {
     const prepared = prepareSmokeTasks(createCoreSmokeTasks());
     return prepared.map((task) => {

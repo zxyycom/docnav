@@ -115,12 +115,12 @@ export const checks = defineChecks([
       },
       {
         id: "test-evidence-ledger",
-        label: "test evidence ledger",
+        label: "semantic Case ledger",
         command: "bun",
         args: ["run", "test-evidence", "--", "check", "--root", "."],
         ignoreOutput: [
           /^\$ bun scripts\/test-evidence\/index\.ts check --root \.$/,
-          /^Test evidence check passed: \d+ native entry\/entries \(\d+ Cargo, \d+ Bun, \d+ smoke\), \d+ claim\(s\)\.$/
+          /^Test Case check passed: \d+ current test entities \(\d+ Cargo, \d+ Bun, \d+ smoke\); \d+ mapped by \d+ semantic Cases across \d+ topics\.$/
         ]
       },
       {

@@ -1,5 +1,5 @@
 id: smoke-native-leaf
-message: Supported smoke leaf task entry
+message: Supported smoke leaf test entity
 severity: info
 language: TypeScript
 rule:

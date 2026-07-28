@@ -40,7 +40,7 @@
 ## 7. Owner 文档与测试账本
 
 - [ ] 7.1 新增 code adapter 主文档，记录读取时机、formats、outline mapping、ref grammar、read/find/info、partial parse、错误、非目标和验证入口，并从 `docs/navigation.md`、adapter/ref owner 的适当位置建立单一所有权链接。
-- [ ] 7.2 按 `docs/testing/case-maintenance.md` 对完整 supported runner profile 运行静态/runtime/inventory 闭合，为每个最小原生入口生成唯一 machine case 并同步派生索引和 coverage mapping；只为不能从入口事实机械恢复、且具有长期审查价值的 requirement/scenario 维护 Evidence Claim。
+- [ ] 7.2 按 `docs/testing/case-maintenance.md` 对完整 supported runner profile 运行静态/runtime/Case 映射闭合，确保每个当前测试实体至少关联一个语义 Case 并同步 coverage mapping；只有 owner 契约或可观察结果确实独立时才新增或拆分 Case，不为账本表示机械拆测试。
 - [ ] 7.3 更新用户可见的 adapter/format 支持说明和示例索引，并运行文档导航、链接及 schema/example 局部验证，确认 consumer 文档不暴露 ast-grep API 或内部 rule shape。
 
 ## 8. Release artifact 验证

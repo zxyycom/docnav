@@ -1,102 +1,90 @@
 ---
 name: test-evidence-review
 description: >-
-  在新增、修改、删除或审查测试实现，查询原生测试入口或 Evidence Claim，或处理
-  测试 rename、split、merge 与证据陈旧性时使用。先要求项目 runner profile
-  对静态入口、运行时入口和 machine inventory 做全树闭合，再审查测试的契约、
-  可观察信号、可靠性与 Claim 信息增量。仅运行既有测试、只修改被测对象或处理
-  lint、类型检查、schema、构建等工程校验时不使用。
+  在新增、修改、删除或审查测试，维护语义 Case 账本，处理测试 rename、split、
+  merge，或判断重复测试是否仍有独立证明价值时使用。优先调用项目 wrapper
+  取得完整当前测试实体并验证 Case 映射，再审查契约、可观察信号、可靠性和维护
+  价值；不得为了账本表示而机械拆分测试。仅运行既有测试、只修改被测对象，或
+  处理 lint、类型检查、schema、构建等工程校验时不使用。
 ---
 
 # Test Evidence Review
 
 ## 目标
 
-把两类责任分开：
+以 **Case** 记录一项稳定、可证伪的测试目的。Case 连接行为 owner、证明内容和
+项目当前测试实体；测试实体只是项目 runner 能发现和报告的执行证据，不是需要
+人工维护的第二套账本对象。
 
-1. **NativeTestEntry** 是 runner 能稳定独立报告或选择的当前原生测试入口。项目
-   wrapper 从源码和 runner 报告发现入口，并为每个入口生成一个 machine case。
-2. **Evidence Claim** 是不能从测试名或 AST 机械恢复的长期判断，记录精确行为
-   owner、契约陈述、可观察结果和支持它的当前入口。
+Case 的边界由共同的 owner 契约和可观察结果决定，而不是测试函数数量。多个输入
+变体或测试实体可以支持同一 Case；一个实体确实观察多个独立目的时也可以关联多个
+Case。**不得仅为使某段测试能单独进入账本而拆分测试。**
 
-普通内部测试允许没有 Claim。Claim 必须有至少一个当前入口。不得为每个入口生成
-重复的 `Contract` / `Proves` 模板，也不得把 AST、测试名或实现断言改写成看似有
-语义的 Claim。
+## 能力边界
 
-## 适用边界
+项目拥有 runner profile、静态与运行时发现、实体身份、Case 存储格式、topic
+分类、查询命令和严格检查。本 skill 只提供能力感知的评审方法，不提供项目路径、
+runner adapter、schema、CLI runtime 或持久化格式。
 
-项目 wrapper 拥有 supported runner profile、ast-grep 规则、runner 调用、入口
-归一、闭合检查和 inventory 生成。本 skill 只拥有通用 Entry/Claim/index 契约、
-查询模型、证据审查和完成标准。
+开始前读取项目测试规范和行为 owner，并查找项目 wrapper：
 
-以下对象不是 NativeTestEntry：测试文件、suite、package script、runner、CI job、
-lint、类型检查、fixture、helper、hook、mock、断言和测试步骤。聚合节点包含可分别
-报告的更小节点时，machine case 对应更小节点。
+1. wrapper 能给出完整当前实体并校验静态发现、runner 报告和 Case 映射时，先运行
+   该严格检查。
+2. wrapper 只提供部分范围时，只对该范围下结论，并明确未证明全局完整。
+3. 项目没有账本能力时，直接评审目标测试；不要临时发明通用存储、runner profile
+   或自动生成 Case。
 
-需要字段、路径、诊断或 CLI 细节时读取
-[证据目录契约](references/evidence-contract.md)。
+lint、类型检查、schema、build、fixture、helper、hook、mock 和测试步骤通常是工程
+校验或实现构件，不因存在于验证链就自动成为测试实体或 Case。
 
 ## 审查顺序
 
-1. 读取项目测试约定、行为 owner、目标测试和当前 diff。
-2. 运行项目 wrapper 的全树检查。静态入口、运行时入口和 committed inventory
-   必须双向闭合；Git diff 或局部清单不能替代这一步。
-3. 查询相关 Entry 与 Claim。变更报告只用于缩小审查范围，不代表未报告入口已经
-   证明充分。
-4. 对新增或变化的测试判断：
+1. 读取项目测试约定、行为 owner、相关 Case、目标测试和当前 diff。
+2. 用项目 wrapper 查询 topic、Case 和实体映射；完整性检查必须使用完整当前树，
+   Git diff 只能缩小人工审查范围。
+3. 对新增或变化的测试判断：
    - **契约背景**：对应哪个稳定 requirement 或边界。
    - **证明信号**：失败是否能指向该契约失效。
    - **可观察性**：是否断言调用方可见的返回值、错误、状态、交互或资源结果。
    - **可靠性**：fixture、mock、时序、随机性和环境是否稳定。
    - **证据独立性**：预期值是否独立于被测实现。
    - **维护价值**：证明增量是否值得运行与维护成本。
-5. 只有长期语义无法由 owner 加 Entry 直接恢复、且对后续审查有信息增量时，才新增
-   或更新 Claim。
-6. 同步 inventory/index，运行目标测试和项目严格检查。
+4. 先尝试把实体关联到已有 Case。只有 owner 契约或可观察结果确实独立时才新增或
+   拆分 Case；同一意图的输入变体优先留在一个测试或参数表中。
+5. 无法关联到有意义 Case 的实体，应合并、删除，或按项目边界移出测试账本，不能
+   用复述测试名的模板 Case 消除缺口。
+6. 运行目标测试、项目严格检查和范围匹配的工作区验证。
 
-## Claim 门槛
+## Case 门槛
 
-Claim 必须同时满足：
+一个可维护的 Case 应同时具备：
 
-1. `ownerRef` 精确定位当前行为 owner 中的 requirement。
-2. `statement` 陈述稳定契约，而不是测试名称、实现步骤或通用模板。
-3. `observations` 描述失败时能判断的调用方可观察结果。
-4. `supportedBy` 只引用当前 inventory 的 `entryKey`，至少一项。
-5. topic 来自受控表，Claim ID 按稳定语义命名且全局唯一；topic 只在至少一个
-   当前 Claim 使用它时保留。
+1. 稳定身份，不随机械测试名称变化。
+2. 一个明确的当前行为 owner。
+3. 至少一项可证伪、调用方可观察的证明内容。
+4. 至少一个项目当前实体作为执行证据。
+5. 属于一个受控 topic，使大量 Case 可以有界查询。
 
-以下内容不建立 Claim：
-
-- “测试稳定契约”“结果可观察”等无信息模板。
-- 只复述函数名、测试名、AST match 或实现分支。
-- 仅对 fixture、mock、helper 或内部步骤成立的陈述。
-- 已由精确 owner requirement 和 Entry 名称充分表达、不会改善后续判断的重复说明。
+Case 不是完整契约文档，也不是测试源码摘要。只复述函数名、AST match、实现步骤，
+或写成“测试稳定契约”“结果可观察”等模板，不能解释测试为何值得存在。
 
 ## 结构变化
 
-- **rename candidate**：先确认行为语义是否连续；保留 Claim ID，更新
-  `supportedBy`，不要把 `entryKey` 当长期身份。
-- **split**：按各入口实际证明信号分配旧 Claim；只有独立长期判断才拆 Claim。
-- **merge**：合并入口不自动合并 Claim；分别判断每个长期判断是否仍成立。
-- **删除**：没有当前入口支持的 Claim 必须删除、重写或重新关联，不能悬空。
-- **implementation-changed / claim-stale**：读取 owner 与测试正文重新判断；不能仅
-  通过更新 fingerprint 消除审查。
-
-## 查询
-
-先用项目 wrapper 的 `topics` 或有界 `list` 缩小范围，再用 `show` 展开单个
-Entry 或 Claim。查询可按 `entryKey`、runner、target、sourcePath、Claim ID、
-精确 topic、ownerRef 和文本过滤。
-
-索引缺失或陈旧时，只读查询可以使用带 warning 的内存投影，但不得写回。严格
-`check` 必须要求 committed inventory 和 index 都与当前树一致。
+- **rename**：先确认语义连续；保留 Case ID，只更新实体映射。
+- **split**：按实际证明目的分配新实体；只有目的也分裂时才拆 Case。
+- **merge**：实体合并不自动合并 Case；同一实体可以继续支持多个目的。
+- **delete**：删除实体后同步所有相关 Case；没有当前证据的 implemented Case
+  必须删除、改写或重新关联。
+- **正文变化**：即使实体身份未变，也要重读 owner、断言和相关 Case，不能把映射
+  闭合误当成语义仍然成立。
 
 ## 完成标准
 
-1. supported profile 的静态入口、运行时入口与 machine inventory 完全闭合；所有
-   unsupported、duplicate、missing、orphan 或 stale 诊断已处理。
-2. 每个当前 Entry 恰好有一个 machine case；普通 Entry 可以没有 Claim。
-3. 每个 Claim 通过 owner、topic、信息增量、观察信号和当前 Entry 引用检查。
-4. rename/split/merge/delete 的 Claim 连续性已明确审查，没有靠机械生成补语义。
-5. 目标测试、项目 wrapper 严格检查和范围匹配的工作区验证已经通过，或阻塞边界已
-   明确说明。
+1. 在项目声明支持的范围内，当前实体集合已经由项目 wrapper 证明完整。
+2. 每个当前实体至少关联一个 Case，每个 implemented Case 至少有一个当前实体，
+   且不存在未知或重复身份。
+3. 变化 Case 的 owner、证明信号、可靠性和维护价值已经人工审查。
+4. rename、split、merge、delete 的语义连续性已经处理，没有靠机械生成或机械拆分
+   填补账本。
+5. 目标测试、项目严格检查和范围匹配的验证已经通过；无法证明的完整性或语义边界
+   已明确说明。

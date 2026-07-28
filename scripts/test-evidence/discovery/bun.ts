@@ -3,17 +3,16 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-  astSourceFingerprint,
   astSourceRange,
   scanAstRule,
   unsupportedAstDiagnostics
 } from "../ast-scan.ts";
-import { closeStaticAndRuntimeEntries } from "../closure.ts";
+import { closeStaticAndRuntimeEntities } from "../closure.ts";
 import {
   diagnostic,
-  type NativeTestEntry,
-  type RuntimeTestEntry,
-  type StaticTestCandidate,
+  type RuntimeTestEntity,
+  type StaticTestEntity,
+  type TestEntity,
   type TestEvidenceDiagnostic
 } from "../model.ts";
 import type { SupportedRunnerProfile } from "../profile.ts";
@@ -30,11 +29,11 @@ export type BunJUnitCase = {
   line: number;
 };
 
-export async function discoverBunEntries(options: {
+export async function discoverBunEntities(options: {
   workspaceRoot: string;
   profile: SupportedRunnerProfile;
 }): Promise<{
-  entries: NativeTestEntry[];
+  entities: TestEntity[];
   diagnostics: TestEvidenceDiagnostic[];
 }> {
   const diagnostics: TestEvidenceDiagnostic[] = [];
@@ -46,7 +45,7 @@ export async function discoverBunEntries(options: {
     });
   } catch (error) {
     return {
-      entries: [],
+      entities: [],
       diagnostics: [
         diagnostic(
           "runner-profile-invalid",
@@ -84,7 +83,7 @@ export async function discoverBunEntries(options: {
     diagnostics.push(...unsupportedAstDiagnostics(scan.matches, "bun"));
   }
 
-  const statics: StaticTestCandidate[] = [];
+  const statics: StaticTestEntity[] = [];
   for (const match of nativeScan.matches) {
     const name = match.metaVariables.single.NAME?.text;
     if (!name) {
@@ -107,8 +106,7 @@ export async function discoverBunEntries(options: {
         name
       ),
       sourcePath: match.file,
-      sourceRange: astSourceRange(match),
-      sourceFingerprint: astSourceFingerprint(match)
+      sourceRange: astSourceRange(match)
     });
   }
 
@@ -116,18 +114,18 @@ export async function discoverBunEntries(options: {
   diagnostics.push(...runtimeResult.diagnostics);
   if (diagnostics.some(({ blocking }) => blocking)) {
     return {
-      entries: [],
+      entities: [],
       diagnostics
     };
   }
-  const closed = closeStaticAndRuntimeEntries({
+  const closed = closeStaticAndRuntimeEntities({
     runner: "bun",
     statics,
-    runtime: runtimeResult.entries,
-    createEntryKey: ({ target, selector }) => `bun|${target}|${selector}`
+    runtime: runtimeResult.entities,
+    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
   });
   return {
-    entries: closed.entries,
+    entities: closed.entities,
     diagnostics: [...diagnostics, ...closed.diagnostics]
   };
 }
@@ -136,7 +134,7 @@ async function enumerateBunTests(options: {
   workspaceRoot: string;
   profile: SupportedRunnerProfile;
 }, files: readonly string[]): Promise<{
-  entries: RuntimeTestEntry[];
+  entities: RuntimeTestEntity[];
   diagnostics: TestEvidenceDiagnostic[];
 }> {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-bun-report-"));
@@ -155,7 +153,7 @@ async function enumerateBunTests(options: {
     });
     if (result.status !== 0) {
       return {
-        entries: [],
+        entities: [],
         diagnostics: [
           diagnostic(
             "runner-report-failed",
@@ -168,7 +166,7 @@ async function enumerateBunTests(options: {
     }
     if (!fs.existsSync(reportPath)) {
       return {
-        entries: [],
+        entities: [],
         diagnostics: [
           diagnostic(
             "runner-report-invalid",
@@ -184,7 +182,7 @@ async function enumerateBunTests(options: {
       cases = parseBunJUnit(fs.readFileSync(reportPath, "utf8"));
     } catch (error) {
       return {
-        entries: [],
+        entities: [],
         diagnostics: [
           diagnostic(
             "runner-report-invalid",
@@ -196,7 +194,7 @@ async function enumerateBunTests(options: {
       };
     }
     return {
-      entries: cases.map((testCase) => ({
+      entities: cases.map((testCase) => ({
         identity: bunLocationIdentity(
           testCase.file,
           testCase.line,

@@ -2,17 +2,16 @@ import path from "node:path";
 
 import { runProcess } from "../../tools/foundation/src/index.ts";
 import {
-  astSourceFingerprint,
   astSourceRange,
   scanAstRule,
   unsupportedAstDiagnostics
 } from "../ast-scan.ts";
-import { closeStaticAndRuntimeEntries } from "../closure.ts";
+import { closeStaticAndRuntimeEntities } from "../closure.ts";
 import {
   diagnostic,
-  type NativeTestEntry,
-  type RuntimeTestEntry,
-  type StaticTestCandidate,
+  type RuntimeTestEntity,
+  type StaticTestEntity,
+  type TestEntity,
   type TestEvidenceDiagnostic
 } from "../model.ts";
 import type { SupportedRunnerProfile } from "../profile.ts";
@@ -28,11 +27,11 @@ type CargoArtifact = {
   executable: string;
 };
 
-export async function discoverRustEntries(options: {
+export async function discoverRustEntities(options: {
   workspaceRoot: string;
   profile: SupportedRunnerProfile;
 }): Promise<{
-  entries: NativeTestEntry[];
+  entities: TestEntity[];
   diagnostics: TestEvidenceDiagnostic[];
 }> {
   const diagnostics: TestEvidenceDiagnostic[] = [];
@@ -62,7 +61,7 @@ export async function discoverRustEntries(options: {
     diagnostics.push(...unsupportedAstDiagnostics(scan.matches, "cargo"));
   }
 
-  const statics: StaticTestCandidate[] = [];
+  const statics: StaticTestEntity[] = [];
   for (const match of nativeScan.matches) {
     const name = match.metaVariables.single.NAME?.text;
     if (!name) {
@@ -81,8 +80,7 @@ export async function discoverRustEntries(options: {
     statics.push({
       identity: name,
       sourcePath: match.file,
-      sourceRange: astSourceRange(match),
-      sourceFingerprint: astSourceFingerprint(match)
+      sourceRange: astSourceRange(match)
     });
   }
 
@@ -90,19 +88,19 @@ export async function discoverRustEntries(options: {
   diagnostics.push(...runtimeResult.diagnostics);
   if (diagnostics.some(({ blocking }) => blocking)) {
     return {
-      entries: [],
+      entities: [],
       diagnostics
     };
   }
 
-  const closed = closeStaticAndRuntimeEntries({
+  const closed = closeStaticAndRuntimeEntities({
     runner: "cargo",
     statics,
-    runtime: runtimeResult.entries,
-    createEntryKey: ({ target, selector }) => `cargo|${target}|${selector}`
+    runtime: runtimeResult.entities,
+    createEntityKey: ({ target, selector }) => `cargo|${target}|${selector}`
   });
   return {
-    entries: closed.entries,
+    entities: closed.entities,
     diagnostics: [...diagnostics, ...closed.diagnostics]
   };
 }
@@ -111,7 +109,7 @@ async function enumerateCargoTests(options: {
   workspaceRoot: string;
   profile: SupportedRunnerProfile;
 }): Promise<{
-  entries: RuntimeTestEntry[];
+  entities: RuntimeTestEntity[];
   diagnostics: TestEvidenceDiagnostic[];
 }> {
   const diagnostics: TestEvidenceDiagnostic[] = [];
@@ -123,7 +121,7 @@ async function enumerateCargoTests(options: {
   });
   if (metadataResult.status !== 0) {
     return {
-      entries: [],
+      entities: [],
       diagnostics: [
         diagnostic(
           "runner-metadata-failed",
@@ -140,7 +138,7 @@ async function enumerateCargoTests(options: {
     packageNames = parseCargoPackageNames(metadataResult.stdout);
   } catch (error) {
     return {
-      entries: [],
+      entities: [],
       diagnostics: [
         diagnostic(
           "runner-report-invalid",
@@ -166,7 +164,7 @@ async function enumerateCargoTests(options: {
   });
   if (buildResult.status !== 0) {
     return {
-      entries: [],
+      entities: [],
       diagnostics: [
         diagnostic(
           "runner-build-failed",
@@ -187,7 +185,7 @@ async function enumerateCargoTests(options: {
     );
   } catch (error) {
     return {
-      entries: [],
+      entities: [],
       diagnostics: [
         diagnostic(
           "runner-report-invalid",
@@ -199,7 +197,7 @@ async function enumerateCargoTests(options: {
     };
   }
 
-  const entries: RuntimeTestEntry[] = [];
+  const entities: RuntimeTestEntity[] = [];
   for (const artifact of artifacts) {
     const listResult = await runProcess({
       command: artifact.executable,
@@ -223,7 +221,7 @@ async function enumerateCargoTests(options: {
       continue;
     }
     for (const selector of parseLibtestList(listResult.stdout)) {
-      entries.push({
+      entities.push({
         identity: selector.split("::").at(-1) ?? selector,
         target: cargoTarget(artifact),
         selector
@@ -259,7 +257,7 @@ async function enumerateCargoTests(options: {
   } else {
     for (const selector of parseLibtestList(doctestResult.stdout)) {
       diagnostics.push(diagnostic(
-        "unsupported-entry-shape",
+        "unsupported-entity-shape",
         "runner",
         `Cargo doctest ${selector} is runtime-visible but profile v1 has no static doctest adapter`,
         {
@@ -272,7 +270,7 @@ async function enumerateCargoTests(options: {
   }
 
   return {
-    entries,
+    entities,
     diagnostics
   };
 }

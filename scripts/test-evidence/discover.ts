@@ -1,13 +1,12 @@
 import path from "node:path";
 
-import { canonicalJson } from "./fingerprint.ts";
-import { discoverBunEntries } from "./discovery/bun.ts";
-import { discoverRustEntries } from "./discovery/rust.ts";
-import { discoverSmokeEntries } from "./discovery/smoke.ts";
+import { discoverBunEntities } from "./discovery/bun.ts";
+import { discoverRustEntities } from "./discovery/rust.ts";
+import { discoverSmokeEntities } from "./discovery/smoke.ts";
 import {
   diagnostic,
   type DiscoveryResult,
-  type NativeTestEntry
+  type TestEntity
 } from "./model.ts";
 import {
   loadSupportedRunnerProfile,
@@ -15,7 +14,7 @@ import {
   type SupportedRunnerProfile
 } from "./profile.ts";
 
-export async function discoverNativeTestEntries(options: {
+export async function discoverTestEntities(options: {
   workspaceRoot: string;
 }): Promise<DiscoveryResult> {
   const workspaceRoot = path.resolve(options.workspaceRoot);
@@ -35,15 +34,15 @@ export async function discoverNativeTestEntries(options: {
     );
   }
 
-  const rust = await discoverRustEntries({
+  const rust = await discoverRustEntities({
     workspaceRoot,
     profile
   });
-  const bun = await discoverBunEntries({
+  const bun = await discoverBunEntities({
     workspaceRoot,
     profile
   });
-  const smoke = await discoverSmokeEntries({
+  const smoke = await discoverSmokeEntities({
     workspaceRoot,
     profile
   });
@@ -52,25 +51,25 @@ export async function discoverNativeTestEntries(options: {
     ...bun.diagnostics,
     ...smoke.diagnostics
   ];
-  const entries = [
-    ...rust.entries,
-    ...bun.entries,
-    ...smoke.entries
-  ].sort(compareEntries);
+  const entities = [
+    ...rust.entities,
+    ...bun.entities,
+    ...smoke.entities
+  ].sort(compareEntities);
 
-  for (let index = 1; index < entries.length; index += 1) {
-    if (entries[index - 1]?.entryKey === entries[index]?.entryKey) {
-      const entry = entries[index];
+  for (let index = 1; index < entities.length; index += 1) {
+    if (entities[index - 1]?.entityKey === entities[index]?.entityKey) {
+      const entity = entities[index];
       diagnostics.push(diagnostic(
-        "duplicate-entry",
-        "inventory",
-        `multiple runner adapters produced entryKey ${entry.entryKey}`,
+        "duplicate-entity",
+        "runner",
+        `multiple runner adapters produced entity key ${entity.entityKey}`,
         {
-          runner: entry.runner,
-          target: entry.target,
-          selector: entry.selector,
-          entryKey: entry.entryKey,
-          path: entry.sourcePath
+          runner: entity.runner,
+          target: entity.target,
+          selector: entity.selector,
+          entityKey: entity.entityKey,
+          path: entity.sourcePath
         }
       ));
     }
@@ -81,7 +80,7 @@ export async function discoverNativeTestEntries(options: {
       id: profile.id,
       version: profile.version
     },
-    entries,
+    entities,
     diagnostics
   };
 }
@@ -95,7 +94,7 @@ function invalidProfileDiscovery(
       id: "invalid-profile",
       version: 1
     },
-    entries: [],
+    entities: [],
     diagnostics: [
       diagnostic(
         "runner-profile-invalid",
@@ -107,8 +106,8 @@ function invalidProfileDiscovery(
   };
 }
 
-function compareEntries(left: NativeTestEntry, right: NativeTestEntry): number {
-  const leftKey = canonicalJson(left.entryKey);
-  const rightKey = canonicalJson(right.entryKey);
-  return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+function compareEntities(left: TestEntity, right: TestEntity): number {
+  return left.entityKey < right.entityKey
+    ? -1
+    : left.entityKey > right.entityKey ? 1 : 0;
 }

@@ -1,5 +1,5 @@
 id: rust-native-test
-message: Supported Rust native test entry
+message: Supported Rust test entity
 severity: info
 language: Rust
 rule:

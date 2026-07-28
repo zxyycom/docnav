@@ -2,9 +2,7 @@ export type TestEvidenceDiagnosticOrigin =
   | "profile"
   | "static"
   | "runner"
-  | "inventory"
-  | "claim"
-  | "index"
+  | "case"
   | "query";
 
 export type TestEvidenceDiagnostic = {
@@ -19,8 +17,8 @@ export type TestEvidenceDiagnostic = {
   runner?: string;
   target?: string;
   selector?: string;
-  entryKey?: string;
-  claimId?: string;
+  entityKey?: string;
+  caseId?: string;
 };
 
 export type SourceRange = {
@@ -30,34 +28,22 @@ export type SourceRange = {
   endColumn: number;
 };
 
-export type NativeTestEntry = {
-  entryKey: string;
+export type TestEntity = {
+  entityKey: string;
   runner: string;
   target: string;
   selector: string;
   sourcePath: string;
   sourceRange: SourceRange;
-  sourceFingerprint: string;
 };
 
-export type NativeTestInventory = {
-  schemaVersion: 1;
-  profile: {
-    id: string;
-    version: number;
-  };
-  sourceRevision: string;
-  entries: NativeTestEntry[];
-};
-
-export type StaticTestCandidate = {
+export type StaticTestEntity = {
   identity: string;
   sourcePath: string;
   sourceRange: SourceRange;
-  sourceFingerprint: string;
 };
 
-export type RuntimeTestEntry = {
+export type RuntimeTestEntity = {
   identity: string;
   target: string;
   selector: string;
@@ -68,7 +54,7 @@ export type DiscoveryResult = {
     id: string;
     version: number;
   };
-  entries: NativeTestEntry[];
+  entities: TestEntity[];
   diagnostics: TestEvidenceDiagnostic[];
 };
 
@@ -90,7 +76,7 @@ export function diagnostic(
     ...(details.runner === undefined ? {} : { runner: details.runner }),
     ...(details.target === undefined ? {} : { target: details.target }),
     ...(details.selector === undefined ? {} : { selector: details.selector }),
-    ...(details.entryKey === undefined ? {} : { entryKey: details.entryKey }),
-    ...(details.claimId === undefined ? {} : { claimId: details.claimId })
+    ...(details.entityKey === undefined ? {} : { entityKey: details.entityKey }),
+    ...(details.caseId === undefined ? {} : { caseId: details.caseId })
   };
 }

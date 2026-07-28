@@ -23,7 +23,7 @@
     "test:workspace-verifier": "bun test scripts/docnav-workspace/verify.test.ts test/tools/smoke-harness.test.ts test/smoke/core/fixtures/project.test.ts scripts/tools/foundation/test/foundation.test.ts scripts/tools/parallel-task-runner/test/index.test.ts",
     "test:release-package-scripts": "bun test scripts/tools/release-package/args.test.ts scripts/tools/release-package/public.test.ts scripts/tools/release-package/candidate.test.ts scripts/tools/release-package/workflow.test.ts",
     "test:test-evidence-rules": "bun scripts/test-evidence/test-rules.ts",
-    "test:test-evidence": "bun test scripts/test-evidence scripts/docs/test-evidence-validation.test.ts",
+    "test:test-evidence": "bun test scripts/test-evidence",
     "verify:test-evidence-toolchain": "bun scripts/test-evidence/verify-toolchain-offline.ts",
     "test-evidence": "bun scripts/test-evidence/index.ts",
     "verify:docnav-workspace": "mise exec -- bun scripts/docnav-workspace/verify.ts",

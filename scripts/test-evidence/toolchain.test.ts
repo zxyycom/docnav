@@ -39,27 +39,6 @@ test("uses the repository-locked ast-grep CLI through the project wrapper", asyn
   assert.equal(result.stdout.trim(), expectedAstGrepVersionLine());
 });
 
-test("keeps the project-owned test-evidence skill complete and updater-free", () => {
-  const skillRoot = path.join(
-    workspaceRoot,
-    ".codex",
-    "skills",
-    "test-evidence-review"
-  );
-  assert.deepEqual(listRelativeFiles(skillRoot), [
-    "SKILL.md",
-    "agents/openai.yaml",
-    "references/evidence-contract.md",
-    "schemas/claim-topic-catalog.schema.json",
-    "schemas/evidence-claim.schema.json",
-    "schemas/native-test-entry.schema.json",
-    "schemas/native-test-inventory.schema.json",
-    "schemas/test-evidence-index.schema.json",
-    "scripts/test-evidence-catalog.d.mts",
-    "scripts/test-evidence-catalog.mjs"
-  ]);
-});
-
 test("keeps the development ast-grep executable outside canonical release components", () => {
   assert.deepEqual(releaseComponents, [
     {
@@ -116,24 +95,6 @@ function listFilesWithExtension(root: string, extension: string): string[] {
         walk(entryPath);
       } else if (entry.isFile() && entryPath.endsWith(extension)) {
         files.push(entryPath);
-      }
-    }
-  }
-}
-
-function listRelativeFiles(root: string): string[] {
-  const files: string[] = [];
-  walk(root, "");
-  return files.sort();
-
-  function walk(directory: string, relativeDirectory: string): void {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      const relativePath = path.posix.join(relativeDirectory, entry.name);
-      const absolutePath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        walk(absolutePath, relativePath);
-      } else if (entry.isFile()) {
-        files.push(relativePath);
       }
     }
   }

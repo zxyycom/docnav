@@ -97,11 +97,12 @@ required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality c
 
 required profile 的 `test-evidence-ledger` check 只调用
 `scripts/test-evidence/` project wrapper。wrapper 拥有 supported runner profile、
-静态规则、Cargo/Bun/smoke report、入口归一和 inventory 闭合；仓库跟踪的
-`test-evidence-review` skill 拥有通用 Entry、Claim 与索引契约。Bun report 已覆盖
-完整 Bun 测试面，所以 workspace verifier 不再重复调度各 package script 子集；
-这些脚本继续作为局部开发入口。required profile 另行运行 ast-grep rule tests，
-两条入口都不依赖个人 skill、全局 ast-grep 或联网 updater。
+静态规则、Cargo/Bun/smoke report、实体归一，以及静态/runtime/语义 Case 映射
+闭合；`docs/testing/cases/` 拥有 topic 与 Case 内容。仓库跟踪的
+`test-evidence-review` skill 只提供通用评审方法，不承载项目 runtime 或 schema。
+Bun report 已覆盖完整 Bun 测试面，所以 workspace verifier 不再重复调度各
+package script 子集；这些脚本继续作为局部开发入口。required profile 另行运行
+ast-grep rule tests，两条入口都不依赖个人 skill、全局 ast-grep 或联网 updater。
 
 决策维护从仓库跟踪的 v5 CLI 进入：
 

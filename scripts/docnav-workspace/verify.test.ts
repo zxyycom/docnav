@@ -24,11 +24,11 @@ import { executeCheck } from "./verify/execution.ts";
 import { printCompletionResult } from "./verify/output.ts";
 
 describe("workspace verifier configuration", () => {
-  it("filters successful test evidence ledger output", () => {
+  it("filters successful semantic Case ledger output", () => {
     const check = checkById("test-evidence-ledger");
     const output = [
       "$ bun scripts/test-evidence/index.ts check --root .",
-      "Test evidence check passed: 550 native entry/entries (393 Cargo, 130 Bun, 27 smoke), 21 claim(s)."
+      "Test Case check passed: 537 current test entities (393 Cargo, 117 Bun, 27 smoke); 537 mapped by 116 semantic Cases across 11 topics."
     ].join("\n");
 
     assert.deepEqual(visibleOutputLines(check, output), []);

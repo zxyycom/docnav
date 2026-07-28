@@ -40,7 +40,7 @@
 
 - [ ] 5.1 扩展真实 core CLI smoke，用实际 JSON fixture 覆盖 automatic selection、outline/ref/read、find/ref/read、readable-view、`protocol-json` 和代表性 failure。
 - [ ] 5.2 扩展 canonical package smoke，用 package 中同一个 `docnav` binary 覆盖 Markdown 与 JSON roundtrip 及双 adapter list；不得查找独立 JSON executable。
-- [ ] 5.3 同步更新测试策略、release docs、完整当前树的 machine test-evidence inventory 与派生索引、coverage mapping，以及受 JSON manifest/probe/example 影响的验证材料；只为不能从入口事实机械恢复、且具有长期审查价值的判断维护 Evidence Claim。
+- [ ] 5.3 同步更新测试策略、release docs、完整当前树的语义 Case 与当前测试实体映射、coverage mapping，以及受 JSON manifest/probe/example 影响的验证材料；只有 owner 契约或可观察结果确实独立时才新增或拆分 Case，不为账本表示机械拆测试。
 - [ ] 5.4 运行 JSON crate focused tests、core/navigation focused tests、CLI smoke、package verify/smoke，并确认 pagination/ref roundtrip 在终止前持续前进。
 
 ## 6. 架构观察与交付审计

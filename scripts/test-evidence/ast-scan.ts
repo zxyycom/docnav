@@ -1,7 +1,6 @@
 import path from "node:path";
 
 import { runAstGrep } from "./ast-grep.ts";
-import { normalizedSourceFingerprint } from "./fingerprint.ts";
 import {
   diagnostic,
   type SourceRange,
@@ -106,18 +105,14 @@ export function astSourceRange(match: AstMatch): SourceRange {
   };
 }
 
-export function astSourceFingerprint(match: AstMatch): string {
-  return normalizedSourceFingerprint(match.text);
-}
-
 export function unsupportedAstDiagnostics(
   matches: readonly AstMatch[],
   runner: string
 ): TestEvidenceDiagnostic[] {
   return matches.map((match) => diagnostic(
-    "unsupported-entry-shape",
+    "unsupported-entity-shape",
     "static",
-    `${runner} source uses unsupported entry shape ${match.ruleId}`,
+    `${runner} source uses unsupported test entity shape ${match.ruleId}`,
     {
       path: match.file,
       line: match.range.start.line + 1,

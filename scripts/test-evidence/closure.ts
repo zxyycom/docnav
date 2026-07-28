@@ -1,18 +1,18 @@
 import {
   diagnostic,
-  type NativeTestEntry,
-  type RuntimeTestEntry,
-  type StaticTestCandidate,
+  type RuntimeTestEntity,
+  type StaticTestEntity,
+  type TestEntity,
   type TestEvidenceDiagnostic
 } from "./model.ts";
 
-export function closeStaticAndRuntimeEntries(options: {
+export function closeStaticAndRuntimeEntities(options: {
   runner: string;
-  statics: StaticTestCandidate[];
-  runtime: RuntimeTestEntry[];
-  createEntryKey: (runtime: RuntimeTestEntry) => string;
+  statics: StaticTestEntity[];
+  runtime: RuntimeTestEntity[];
+  createEntityKey: (runtime: RuntimeTestEntity) => string;
 }): {
-  entries: NativeTestEntry[];
+  entities: TestEntity[];
   diagnostics: TestEvidenceDiagnostic[];
 } {
   const diagnostics: TestEvidenceDiagnostic[] = [];
@@ -22,16 +22,16 @@ export function closeStaticAndRuntimeEntries(options: {
     ...staticGroups.keys(),
     ...runtimeGroups.keys()
   ])].sort();
-  const entries: NativeTestEntry[] = [];
+  const entities: TestEntity[] = [];
 
   for (const identity of identities) {
     const staticCandidates = staticGroups.get(identity) ?? [];
     const runtimeEntries = runtimeGroups.get(identity) ?? [];
     if (staticCandidates.length > 1 || runtimeEntries.length > 1) {
       diagnostics.push(diagnostic(
-        "duplicate-entry",
+        "duplicate-entity",
         staticCandidates.length > 1 ? "static" : "runner",
-        `${options.runner} identity ${identity} is ambiguous (${staticCandidates.length} static, ${runtimeEntries.length} runtime)`,
+        `${options.runner} TestEntity identity ${identity} is ambiguous (${staticCandidates.length} static, ${runtimeEntries.length} runtime)`,
         {
           runner: options.runner,
           selector: runtimeEntries[0]?.selector,
@@ -45,7 +45,7 @@ export function closeStaticAndRuntimeEntries(options: {
       diagnostics.push(diagnostic(
         "static-only",
         "static",
-        `${options.runner} static entry ${identity} is absent from the runner report`,
+        `${options.runner} static TestEntity ${identity} is absent from the runner report`,
         {
           runner: options.runner,
           path: candidate.sourcePath,
@@ -60,7 +60,7 @@ export function closeStaticAndRuntimeEntries(options: {
       diagnostics.push(diagnostic(
         "runtime-only",
         "runner",
-        `${options.runner} runner entry ${runtime.selector} has no supported static declaration`,
+        `${options.runner} runtime TestEntity ${runtime.selector} has no supported static declaration`,
         {
           runner: options.runner,
           target: runtime.target,
@@ -74,20 +74,19 @@ export function closeStaticAndRuntimeEntries(options: {
     if (!candidate || !runtime) {
       continue;
     }
-    entries.push({
-      entryKey: options.createEntryKey(runtime),
+    entities.push({
+      entityKey: options.createEntityKey(runtime),
       runner: options.runner,
       target: runtime.target,
       selector: runtime.selector,
       sourcePath: candidate.sourcePath,
-      sourceRange: candidate.sourceRange,
-      sourceFingerprint: candidate.sourceFingerprint
+      sourceRange: candidate.sourceRange
     });
   }
 
   return {
-    entries: entries.sort((left, right) => (
-      left.entryKey < right.entryKey ? -1 : left.entryKey > right.entryKey ? 1 : 0
+    entities: entities.sort((left, right) => (
+      left.entityKey < right.entityKey ? -1 : left.entityKey > right.entityKey ? 1 : 0
     )),
     diagnostics
   };

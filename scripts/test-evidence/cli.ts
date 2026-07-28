@@ -1,272 +1,98 @@
-import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
 import {
-  parseNativeTestInventory,
-  runTestEvidenceCatalogCli,
-  syncTestEvidenceIndex,
-  validateTestEvidence
-} from "../../.codex/skills/test-evidence-review/scripts/test-evidence-catalog.mjs";
-import { compareInventoryBaseline } from "./change-report.ts";
-import { discoverNativeTestEntries } from "./discover.ts";
-import {
-  compareNativeTestInventory,
-  createNativeTestInventory,
-  inventoryPath,
-  readCommittedInventory,
-  writeNativeTestInventory
-} from "./inventory.ts";
-import {
-  diagnostic,
-  type NativeTestInventory,
-  type TestEvidenceDiagnostic
+  listTestCaseTopics,
+  loadTestCaseCatalog,
+  queryTestCases,
+  showTestCase,
+  validateQueryWindow,
+  validateTestCaseCoverage
+} from "./cases.ts";
+import { discoverTestEntities } from "./discover.ts";
+import type {
+  TestEntity,
+  TestEvidenceDiagnostic
 } from "./model.ts";
+
+export type ProjectTestEvidenceReport = {
+  schemaVersion: 1;
+  status: "ok" | "error";
+  diagnostics: TestEvidenceDiagnostic[];
+  summary: {
+    entities: number;
+    cargo: number;
+    bun: number;
+    smoke: number;
+    mappedEntities: number;
+    topics: number;
+    cases: number;
+  };
+};
 
 export async function checkTestEvidence(options: {
   workspaceRoot: string;
 }): Promise<ProjectTestEvidenceReport> {
-  const discovery = await discoverNativeTestEntries(options);
-  const diagnostics = [...discovery.diagnostics];
-  const expected = createNativeTestInventory(discovery);
-  if (!diagnostics.some(({ blocking }) => blocking)) {
-    const actual = readCommittedInventory(options.workspaceRoot);
-    diagnostics.push(...compareNativeTestInventory({
-      expected,
-      actual,
-      sourcePath: toRelativePath(
-        options.workspaceRoot,
-        inventoryPath(options.workspaceRoot)
-      )
+  const discovery = await discoverTestEntities(options);
+  const catalog = loadTestCaseCatalog(options);
+  const diagnostics = [
+    ...discovery.diagnostics,
+    ...catalog.diagnostics
+  ];
+  if (!discovery.diagnostics.some(({ blocking }) => blocking)) {
+    diagnostics.push(...validateTestCaseCoverage({
+      catalog,
+      entities: discovery.entities
     }));
   }
-
-  const catalog = validateTestEvidence(options);
-  diagnostics.push(...catalog.diagnostics as TestEvidenceDiagnostic[]);
-  return projectReport(expected, catalog.summary, diagnostics);
-}
-
-export async function syncProjectTestEvidence(options: {
-  workspaceRoot: string;
-}): Promise<ProjectTestEvidenceReport> {
-  const discovery = await discoverNativeTestEntries(options);
-  const inventory = createNativeTestInventory(discovery);
-  if (discovery.diagnostics.some(({ blocking }) => blocking)) {
-    return projectReport(
-      inventory,
-      { topics: 0, entries: 0, claims: 0 },
-      discovery.diagnostics
-    );
-  }
-
-  writeNativeTestInventory(options.workspaceRoot, inventory);
-  const catalog = syncTestEvidenceIndex({
-    workspaceRoot: options.workspaceRoot,
-    mode: "write"
-  });
-  return projectReport(
-    inventory,
-    catalog.summary,
-    catalog.diagnostics as TestEvidenceDiagnostic[]
-  );
-}
-
-export async function createCurrentChangeReport(options: {
-  workspaceRoot: string;
-  baselinePath: string;
-}): Promise<{
-  status: "ok" | "error";
-  diagnostics: TestEvidenceDiagnostic[];
-  report: ReturnType<typeof compareInventoryBaseline> | null;
-}> {
-  const discovery = await discoverNativeTestEntries(options);
-  if (discovery.diagnostics.some(({ blocking }) => blocking)) {
-    return {
-      status: "error",
-      diagnostics: discovery.diagnostics,
-      report: null
-    };
-  }
-  let baseline;
-  try {
-    baseline = parseNativeTestInventory(
-      JSON.parse(fs.readFileSync(options.baselinePath, "utf8")) as unknown
-    );
-  } catch (error) {
-    return {
-      status: "error",
-      diagnostics: [
-        diagnostic(
-          "baseline-invalid",
-          "inventory",
-          `cannot read baseline inventory: ${error instanceof Error ? error.message : String(error)}`,
-          {
-            path: toRelativePath(options.workspaceRoot, options.baselinePath)
-          }
-        )
-      ],
-      report: null
-    };
-  }
-  return {
-    status: "ok",
-    diagnostics: [],
-    report: compareInventoryBaseline(
-      baseline,
-      createNativeTestInventory(discovery)
-    )
-  };
+  return projectReport(discovery.entities, catalog, diagnostics);
 }
 
 export async function runTestEvidenceCli(
   argv: readonly string[] = process.argv.slice(2)
 ): Promise<number> {
-  if (["topics", "list", "show"].includes(String(argv[0]))) {
-    return runTestEvidenceCatalogCli([...argv]);
-  }
-
-  let options;
+  let command: ParsedCommand;
   try {
-    options = parseProjectArgs(argv);
+    command = parseCommand(argv);
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.stderr.write(`${errorMessage(error)}\n`);
     return 2;
   }
 
-  if (options.command === "changes") {
-    const result = await createCurrentChangeReport({
-      workspaceRoot: options.workspaceRoot,
-      baselinePath: path.resolve(
-        options.workspaceRoot,
-        String(options.baselinePath)
-      )
+  if (command.command === "topics") {
+    const result = listTestCaseTopics({
+      workspaceRoot: command.workspaceRoot
     });
-    writeResult(result, options.json);
+    writeJson(result);
+    return result.status === "ok"
+      ? 0
+      : exitCodeForDiagnostics(result.diagnostics);
+  }
+  if (command.command === "list") {
+    const result = queryTestCases(command);
+    writeJson(result);
+    return result.status === "ok"
+      ? 0
+      : exitCodeForDiagnostics(result.diagnostics);
+  }
+  if (command.command === "show") {
+    const result = showTestCase({
+      workspaceRoot: command.workspaceRoot,
+      id: command.id
+    });
+    writeJson(result);
     return result.status === "ok"
       ? 0
       : exitCodeForDiagnostics(result.diagnostics);
   }
 
-  const result = options.command === "sync"
-    ? await syncProjectTestEvidence({
-        workspaceRoot: options.workspaceRoot
-      })
-    : await checkTestEvidence({
-        workspaceRoot: options.workspaceRoot
-      });
-  writeResult(result, options.json);
+  const result = await checkTestEvidence({
+    workspaceRoot: command.workspaceRoot
+  });
+  writeCheckResult(result, command.json);
   return result.status === "ok"
     ? 0
     : exitCodeForDiagnostics(result.diagnostics);
-}
-
-type ProjectTestEvidenceReport = {
-  schemaVersion: 1;
-  status: "ok" | "error";
-  sourceRevision: string;
-  diagnostics: TestEvidenceDiagnostic[];
-  summary: {
-    entries: number;
-    cargo: number;
-    bun: number;
-    smoke: number;
-    topics: number;
-    claims: number;
-  };
-};
-
-function projectReport(
-  inventory: NativeTestInventory,
-  catalogSummary: {
-    topics: number;
-    entries: number;
-    claims: number;
-  },
-  diagnostics: TestEvidenceDiagnostic[]
-): ProjectTestEvidenceReport {
-  return {
-    schemaVersion: 1,
-    status: diagnostics.some(({ blocking }) => blocking) ? "error" : "ok",
-    sourceRevision: inventory.sourceRevision,
-    diagnostics,
-    summary: {
-      entries: inventory.entries.length,
-      cargo: inventory.entries.filter(({ runner }) => runner === "cargo").length,
-      bun: inventory.entries.filter(({ runner }) => runner === "bun").length,
-      smoke: inventory.entries.filter(({ runner }) => runner === "smoke").length,
-      topics: catalogSummary.topics,
-      claims: catalogSummary.claims
-    }
-  };
-}
-
-function parseProjectArgs(argv: readonly string[]): {
-  command: "check" | "sync" | "changes";
-  workspaceRoot: string;
-  baselinePath?: string;
-  json: boolean;
-} {
-  const command = argv[0];
-  if (!["check", "sync", "changes"].includes(command)) {
-    throw new Error("usage: test-evidence <check|sync|changes|topics|list|show>");
-  }
-  const { values } = parseArgs({
-    args: [...argv.slice(1)],
-    allowPositionals: false,
-    strict: true,
-    options: {
-      root: { type: "string" },
-      baseline: { type: "string" },
-      json: { type: "boolean" },
-      write: { type: "boolean" }
-    }
-  });
-  if (!values.root) {
-    throw new Error("--root is required");
-  }
-  if (command === "sync" && !values.write) {
-    throw new Error("sync requires --write");
-  }
-  if (command !== "sync" && values.write) {
-    throw new Error("--write is only valid with sync");
-  }
-  if (command === "changes" && !values.baseline) {
-    throw new Error("changes requires --baseline");
-  }
-  return {
-    command: command as "check" | "sync" | "changes",
-    workspaceRoot: path.resolve(values.root),
-    baselinePath: values.baseline,
-    json: values.json ?? false
-  };
-}
-
-function writeResult(
-  result: ProjectTestEvidenceReport | Awaited<ReturnType<typeof createCurrentChangeReport>>,
-  json: boolean
-): void {
-  if (json) {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    return;
-  }
-  if ("summary" in result && result.status === "ok") {
-    process.stdout.write(
-      `Test evidence check passed: ${result.summary.entries} native entry/entries ` +
-      `(${result.summary.cargo} Cargo, ${result.summary.bun} Bun, ${result.summary.smoke} smoke), ` +
-      `${result.summary.claims} claim(s).\n`
-    );
-    return;
-  }
-  if ("report" in result && result.status === "ok") {
-    process.stdout.write(`${JSON.stringify(result.report, null, 2)}\n`);
-    return;
-  }
-  for (const value of result.diagnostics) {
-    process.stderr.write(
-      `${value.origin}:${value.code}: ${value.message}` +
-      `${value.path ? ` (${value.path}${value.line ? `:${value.line}` : ""})` : ""}\n`
-    );
-  }
 }
 
 export function exitCodeForDiagnostics(
@@ -281,12 +107,195 @@ export function exitCodeForDiagnostics(
   if (origins.has("runner")) {
     return 4;
   }
-  if (origins.has("inventory")) {
+  if (origins.has("case")) {
     return 5;
   }
   return 6;
 }
 
-function toRelativePath(workspaceRoot: string, targetPath: string): string {
-  return path.relative(workspaceRoot, targetPath).split(path.sep).join("/");
+type ParsedCommand =
+  | {
+      command: "check";
+      workspaceRoot: string;
+      json: boolean;
+    }
+  | {
+      command: "topics";
+      workspaceRoot: string;
+    }
+  | {
+      command: "list";
+      workspaceRoot: string;
+      topic?: string;
+      entityKey?: string;
+      ownerRef?: string;
+      query?: string;
+      offset?: number;
+      limit?: number;
+    }
+  | {
+      command: "show";
+      workspaceRoot: string;
+      id: string;
+    };
+
+function parseCommand(argv: readonly string[]): ParsedCommand {
+  const command = argv[0];
+  if (!["check", "topics", "list", "show"].includes(String(command))) {
+    throw new Error("usage: test-evidence <check|topics|list|show>");
+  }
+  if (command === "show") {
+    const { positionals, values } = parseArgs({
+      args: [...argv.slice(1)],
+      allowPositionals: true,
+      strict: true,
+      options: {
+        root: { type: "string" }
+      }
+    });
+    requireRoot(values.root);
+    if (positionals.length !== 1) {
+      throw new Error("show requires exactly one <CASE-ID>");
+    }
+    return {
+      command,
+      workspaceRoot: path.resolve(values.root),
+      id: positionals[0]
+    };
+  }
+  if (command === "list") {
+    const { values } = parseArgs({
+      args: [...argv.slice(1)],
+      allowPositionals: false,
+      strict: true,
+      options: {
+        root: { type: "string" },
+        topic: { type: "string" },
+        "entity-key": { type: "string" },
+        "owner-ref": { type: "string" },
+        query: { type: "string" },
+        offset: { type: "string" },
+        limit: { type: "string" }
+      }
+    });
+    requireRoot(values.root);
+    const offset = optionalInteger(values.offset);
+    const limit = optionalInteger(values.limit);
+    validateQueryWindow({ offset, limit });
+    return {
+      command,
+      workspaceRoot: path.resolve(values.root),
+      ...(values.topic === undefined ? {} : { topic: values.topic }),
+      ...(values["entity-key"] === undefined
+        ? {}
+        : { entityKey: values["entity-key"] }),
+      ...(values["owner-ref"] === undefined
+        ? {}
+        : { ownerRef: values["owner-ref"] }),
+      ...(values.query === undefined ? {} : { query: values.query }),
+      ...(offset === undefined ? {} : { offset }),
+      ...(limit === undefined ? {} : { limit })
+    };
+  }
+
+  const { values } = parseArgs({
+    args: [...argv.slice(1)],
+    allowPositionals: false,
+    strict: true,
+    options: {
+      root: { type: "string" },
+      json: { type: "boolean" }
+    }
+  });
+  requireRoot(values.root);
+  if (command === "topics") {
+    if (values.json !== undefined) {
+      throw new Error("--json is not needed: topics always writes JSON");
+    }
+    return {
+      command,
+      workspaceRoot: path.resolve(values.root)
+    };
+  }
+  return {
+    command: "check",
+    workspaceRoot: path.resolve(values.root),
+    json: values.json ?? false
+  };
+}
+
+function projectReport(
+  entities: readonly TestEntity[],
+  catalog: ReturnType<typeof loadTestCaseCatalog>,
+  diagnostics: TestEvidenceDiagnostic[]
+): ProjectTestEvidenceReport {
+  const currentKeys = new Set(entities.map(({ entityKey }) => entityKey));
+  const mappedKeys = new Set(
+    catalog.cases
+      .flatMap(({ entityKeys }) => entityKeys)
+      .filter((entityKey) => currentKeys.has(entityKey))
+  );
+  return {
+    schemaVersion: 1,
+    status: diagnostics.some(({ blocking }) => blocking) ? "error" : "ok",
+    diagnostics,
+    summary: {
+      entities: entities.length,
+      cargo: entities.filter(({ runner }) => runner === "cargo").length,
+      bun: entities.filter(({ runner }) => runner === "bun").length,
+      smoke: entities.filter(({ runner }) => runner === "smoke").length,
+      mappedEntities: mappedKeys.size,
+      topics: catalog.topics.length,
+      cases: catalog.cases.length
+    }
+  };
+}
+
+function writeCheckResult(
+  result: ProjectTestEvidenceReport,
+  json: boolean
+): void {
+  if (json) {
+    writeJson(result);
+    return;
+  }
+  if (result.status === "ok") {
+    process.stdout.write(
+      `Test Case check passed: ${result.summary.entities} current test entities ` +
+      `(${result.summary.cargo} Cargo, ${result.summary.bun} Bun, ` +
+      `${result.summary.smoke} smoke); ${result.summary.mappedEntities} mapped by ` +
+      `${result.summary.cases} semantic Cases across ${result.summary.topics} topics.\n`
+    );
+    return;
+  }
+  for (const value of result.diagnostics) {
+    process.stderr.write(
+      `${value.origin}:${value.code}: ${value.message}` +
+      `${value.path ? ` (${value.path}${value.line ? `:${value.line}` : ""})` : ""}\n`
+    );
+  }
+}
+
+function writeJson(value: unknown): void {
+  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function requireRoot(value: string | undefined): asserts value is string {
+  if (value === undefined || value.length === 0) {
+    throw new Error("--root is required");
+  }
+}
+
+function optionalInteger(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!/^\d+$/.test(value)) {
+    return Number.NaN;
+  }
+  return Number(value);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
