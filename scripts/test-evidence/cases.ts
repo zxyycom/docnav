@@ -470,18 +470,16 @@ function parseTopicFile(options: {
     }
 
     const end = findNextH2(lines, cursor + 1);
-    if (CASE_HEADING_PATTERN.test(line)) {
-      const parsed = parseCaseBlock({
+    const match = CASE_HEADING_PATTERN.exec(line);
+    if (match !== null) {
+      cases.push(parseCaseBlock({
         lines,
         start: cursor,
         end,
         topic,
         sourcePath,
         diagnostics: options.diagnostics
-      });
-      if (parsed !== null) {
-        cases.push(parsed);
-      }
+      }, match));
     } else {
       options.diagnostics.push(diagnostic(
         line.startsWith("## Case")
@@ -506,19 +504,7 @@ function parseCaseBlock(options: {
   topic: string;
   sourcePath: string;
   diagnostics: TestEvidenceDiagnostic[];
-}): SemanticTestCase | null {
-  const match = CASE_HEADING_PATTERN.exec(
-    options.lines[options.start] ?? ""
-  );
-  if (match === null) {
-    options.diagnostics.push(diagnostic(
-      "case.heading-invalid",
-      "case",
-      "Case heading must use \"## Case <CASE-ID>: <title>\"",
-      { path: options.sourcePath, line: options.start + 1 }
-    ));
-    return null;
-  }
+}, match: RegExpExecArray): SemanticTestCase {
   const [, id, title] = match;
   const content = options.lines
     .slice(options.start + 1, options.end)

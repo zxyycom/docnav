@@ -22,7 +22,8 @@ import {
   diagnostic,
   type RuntimeTestEntity,
   type StaticTestEntity,
-  type TestEntity
+  type TestEntity,
+  type TestEvidenceDiagnostic
 } from "./model.ts";
 import {
   loadSupportedRunnerProfile,
@@ -35,26 +36,42 @@ const smokeEntity = "smoke|core:root|CORE-CONTRACT-001";
 
 test("parses and queries topic-grouped semantic Cases", () => {
   using fixture = createCaseFixture();
+  assertCatalogQueries(fixture.root);
+  assertCatalogCliQueries(fixture.root);
+  assertCatalogCliFailureBoundaries(fixture.root);
+});
 
-  const catalog = loadTestCaseCatalog({ workspaceRoot: fixture.root });
-  const topics = listTestCaseTopics({ workspaceRoot: fixture.root });
+test("diagnoses malformed Case structure and stable identity conflicts", () => {
+  assertMalformedCatalogDiagnostics();
+  assertCaseDirectoryLayoutDiagnostics();
+  assertCaseSourceSymlinkDiagnostics();
+});
+
+test("closes current test entities against the union of Case mappings", () => {
+  assertCaseMappingClosure();
+  assertStaticRuntimeClosure();
+});
+
+function assertCatalogQueries(root: string): void {
+  const catalog = loadTestCaseCatalog({ workspaceRoot: root });
+  const topics = listTestCaseTopics({ workspaceRoot: root });
   const byTopic = queryTestCases({
-    workspaceRoot: fixture.root,
+    workspaceRoot: root,
     topic: "contract"
   });
   const byEntity = queryTestCases({
-    workspaceRoot: fixture.root,
+    workspaceRoot: root,
     entityKey: bunEntity
   });
   const byOwnerText = queryTestCases({
-    workspaceRoot: fixture.root,
+    workspaceRoot: root,
     ownerRef: "docs/owner.md#contract",
     query: "state unchanged",
     offset: 0,
     limit: 10
   });
   const shown = showTestCase({
-    workspaceRoot: fixture.root,
+    workspaceRoot: root,
     id: "CASE-CONTRACT-REJECT-001"
   });
 
@@ -85,18 +102,13 @@ test("parses and queries topic-grouped semantic Cases", () => {
   );
   assert.equal(shown.status, "ok");
   assert.equal(shown.item?.title, "Invalid input remains rejected");
+}
 
-  const cliTopics = runCli([
-    "topics",
-    "--root",
-    fixture.root
-  ]);
-  assert.equal(cliTopics.status, 0);
-  assert.equal(cliTopics.stderr, "");
-  const cliTopicsJson = JSON.parse(cliTopics.stdout) as {
+function assertCatalogCliQueries(root: string): void {
+  const cliTopicsJson = runSuccessfulJsonCli<{
     status: string;
     topics: Array<{ id: string; cases: number }>;
-  };
+  }>(["topics", "--root", root]);
   assert.equal(cliTopicsJson.status, "ok");
   assert.deepEqual(
     cliTopicsJson.topics.map(({ id, cases }) => ({ id, cases })),
@@ -106,45 +118,41 @@ test("parses and queries topic-grouped semantic Cases", () => {
     ]
   );
 
-  const cliList = runCli([
+  const cliListJson = runSuccessfulJsonCli<{
+    total: number;
+    items: Array<{ id: string }>;
+  }>([
     "list",
     "--entity-key",
     cargoEntity,
     "--root",
-    fixture.root
+    root
   ]);
-  assert.equal(cliList.status, 0);
-  assert.equal(cliList.stderr, "");
-  const cliListJson = JSON.parse(cliList.stdout) as {
-    total: number;
-    items: Array<{ id: string }>;
-  };
   assert.equal(cliListJson.total, 1);
   assert.deepEqual(
     cliListJson.items.map(({ id }) => id),
     ["CASE-CONTRACT-REJECT-001"]
   );
 
-  const cliShow = runCli([
+  const cliShowJson = runSuccessfulJsonCli<{
+    status: string;
+    item: { id: string } | null;
+  }>([
     "show",
     "CASE-CONTRACT-REJECT-001",
     "--root",
-    fixture.root
+    root
   ]);
-  assert.equal(cliShow.status, 0);
-  assert.equal(cliShow.stderr, "");
-  const cliShowJson = JSON.parse(cliShow.stdout) as {
-    status: string;
-    item: { id: string } | null;
-  };
   assert.equal(cliShowJson.status, "ok");
   assert.equal(cliShowJson.item?.id, "CASE-CONTRACT-REJECT-001");
+}
 
+function assertCatalogCliFailureBoundaries(root: string): void {
   const cliMissing = runCli([
     "show",
     "CASE-MISSING-001",
     "--root",
-    fixture.root
+    root
   ]);
   assert.equal(cliMissing.status, 6);
   assert.equal(cliMissing.stderr, "");
@@ -164,7 +172,7 @@ test("parses and queries topic-grouped semantic Cases", () => {
   const cliCheckFailure = runCli([
     "check",
     "--root",
-    fixture.root
+    root
   ]);
   assert.equal(cliCheckFailure.status, 3);
   assert.equal(cliCheckFailure.stdout, "");
@@ -174,12 +182,12 @@ test("parses and queries topic-grouped semantic Cases", () => {
   );
 
   const rejectedCommands = [
-    ["sync", "--root", fixture.root],
-    ["changes", "--root", fixture.root],
-    ["list", "--entry-key", bunEntity, "--root", fixture.root],
-    ["list", "--claim-id", "CLAIM-001", "--root", fixture.root],
-    ["list", "--kind", "entry", "--root", fixture.root],
-    ["list", "--case-id", "CASE-CONTRACT-REJECT-001", "--root", fixture.root]
+    ["sync", "--root", root],
+    ["changes", "--root", root],
+    ["list", "--entry-key", bunEntity, "--root", root],
+    ["list", "--claim-id", "CLAIM-001", "--root", root],
+    ["list", "--kind", "entry", "--root", root],
+    ["list", "--case-id", "CASE-CONTRACT-REJECT-001", "--root", root]
   ];
   for (const args of rejectedCommands) {
     const rejected = runCli(args);
@@ -187,9 +195,9 @@ test("parses and queries topic-grouped semantic Cases", () => {
     assert.equal(rejected.stdout, "", args.join(" "));
     assert.notEqual(rejected.stderr, "", args.join(" "));
   }
-});
+}
 
-test("diagnoses malformed Case structure and stable identity conflicts", () => {
+function assertMalformedCatalogDiagnostics(): void {
   using fixture = createFixtureRoot();
   writeTopics(fixture.root, ["contract", "empty", "other"]);
   writeTopicFile(fixture.root, "contract", [
@@ -250,10 +258,10 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
   const catalog = loadTestCaseCatalog({ workspaceRoot: fixture.root });
 
   assertDiagnostic(catalog.diagnostics, "topic.unknown");
-  assertDiagnosticPath(
+  assertDiagnostic(
     catalog.diagnostics,
     "topic.unknown",
-    "docs/testing/cases/unknown.md"
+    { path: "docs/testing/cases/unknown.md" }
   );
   assertDiagnostic(catalog.diagnostics, "topic.heading-invalid");
   assertDiagnostic(catalog.diagnostics, "topic.content-unexpected");
@@ -266,15 +274,15 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
   assertDiagnostic(catalog.diagnostics, "case.entity-duplicate");
   assertDiagnostic(catalog.diagnostics, "case.entities-empty");
   assertDiagnostic(catalog.diagnostics, "case.proves-empty");
-  assertDiagnosticForCase(
+  assertDiagnostic(
     catalog.diagnostics,
     "case.owner-heading-unknown",
-    "CASE-DUPLICATE-001"
+    { caseId: "CASE-DUPLICATE-001" }
   );
-  assertDiagnosticForCase(
+  assertDiagnostic(
     catalog.diagnostics,
     "case.owner-heading-unknown",
-    "CASE-FRONTMATTER-001"
+    { caseId: "CASE-FRONTMATTER-001" }
   );
   assert.equal(
     catalog.cases.some(({ id }) => id === "CASE-UNKNOWN-SHOULD-NOT-LOAD-001"),
@@ -287,7 +295,9 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
     false,
     "an H1-only topic is a valid empty topic"
   );
+}
 
+function assertCaseDirectoryLayoutDiagnostics(): void {
   using layoutFixture = createCaseFixture();
   const layoutCasesPath = caseDirectory(layoutFixture.root);
   fs.mkdirSync(path.join(layoutCasesPath, "nested"));
@@ -300,15 +310,15 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
   const layoutCatalog = loadTestCaseCatalog({
     workspaceRoot: layoutFixture.root
   });
-  assertDiagnosticPath(
+  assertDiagnostic(
     layoutCatalog.diagnostics,
     "cases.nested-directory",
-    "docs/testing/cases/nested"
+    { path: "docs/testing/cases/nested" }
   );
-  assertDiagnosticPath(
+  assertDiagnostic(
     layoutCatalog.diagnostics,
     "cases.symlink-unsupported",
-    "docs/testing/cases/linked.md"
+    { path: "docs/testing/cases/linked.md" }
   );
   assert.equal(
     layoutCatalog.diagnostics.some(({ path: sourcePath }) => (
@@ -317,7 +327,9 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
     false,
     "unrelated regular non-Markdown files are not Case sources"
   );
+}
 
+function assertCaseSourceSymlinkDiagnostics(): void {
   using topicsLinkFixture = createCaseFixture();
   const topicsPath = path.join(caseDirectory(topicsLinkFixture.root), "topics.json");
   fs.renameSync(
@@ -325,10 +337,10 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
     path.join(caseDirectory(topicsLinkFixture.root), "topics-source.json")
   );
   fs.symlinkSync("topics-source.json", topicsPath, "file");
-  assertDiagnosticPath(
+  assertDiagnostic(
     loadTestCaseCatalog({ workspaceRoot: topicsLinkFixture.root }).diagnostics,
     "topics.invalid",
-    "docs/testing/cases/topics.json"
+    { path: "docs/testing/cases/topics.json" }
   );
 
   using topicLinkFixture = createCaseFixture();
@@ -338,10 +350,10 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
     path.join(caseDirectory(topicLinkFixture.root), "contract-source.txt")
   );
   fs.symlinkSync("contract-source.txt", topicPath, "file");
-  assertDiagnosticPath(
+  assertDiagnostic(
     loadTestCaseCatalog({ workspaceRoot: topicLinkFixture.root }).diagnostics,
     "cases.symlink-unsupported",
-    "docs/testing/cases/contract.md"
+    { path: "docs/testing/cases/contract.md" }
   );
 
   using rootLinkFixture = createCaseFixture();
@@ -352,14 +364,14 @@ test("diagnoses malformed Case structure and stable identity conflicts", () => {
     rootCasesPath,
     "dir"
   );
-  assertDiagnosticPath(
+  assertDiagnostic(
     loadTestCaseCatalog({ workspaceRoot: rootLinkFixture.root }).diagnostics,
     "cases.directory-invalid",
-    "docs/testing/cases"
+    { path: "docs/testing/cases" }
   );
-});
+}
 
-test("closes current test entities against the union of Case mappings", () => {
+function assertCaseMappingClosure(): void {
   using fixture = createCaseFixture();
   const catalog = loadTestCaseCatalog({ workspaceRoot: fixture.root });
   const entities = [
@@ -398,46 +410,43 @@ test("closes current test entities against the union of Case mappings", () => {
     false,
     "one entity may be mapped by multiple Cases"
   );
+}
 
+function assertStaticRuntimeClosure(): void {
   const identity = "tests/example.test.ts\0contract > rejects invalid input";
   const staticEntity = staticTestEntity(identity);
   const runtimeEntity = runtimeTestEntity(identity);
-  const closed = closeStaticAndRuntimeEntities({
-    runner: "bun",
-    statics: [staticEntity],
-    runtime: [runtimeEntity],
-    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
-  });
+  const closed = closeBunEntities([staticEntity], [runtimeEntity]);
   assert.deepEqual(closed.diagnostics, []);
   assert.deepEqual(
     closed.entities.map(({ entityKey }) => entityKey),
     [bunEntity]
   );
+  assertUnmatchedEntityClosure(staticEntity, runtimeEntity);
+  assertDuplicateEntityClosure(staticEntity, runtimeEntity);
+}
 
-  const staticOnly = closeStaticAndRuntimeEntities({
-    runner: "bun",
-    statics: [staticEntity],
-    runtime: [],
-    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
-  });
+function assertUnmatchedEntityClosure(
+  staticEntity: StaticTestEntity,
+  runtimeEntity: RuntimeTestEntity
+): void {
+  const staticOnly = closeBunEntities([staticEntity], []);
   assertDiagnostic(staticOnly.diagnostics, "static-only");
   assert.match(staticOnly.diagnostics[0]?.message ?? "", /static TestEntity/);
 
-  const runtimeOnly = closeStaticAndRuntimeEntities({
-    runner: "bun",
-    statics: [],
-    runtime: [runtimeEntity],
-    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
-  });
+  const runtimeOnly = closeBunEntities([], [runtimeEntity]);
   assertDiagnostic(runtimeOnly.diagnostics, "runtime-only");
   assert.match(runtimeOnly.diagnostics[0]?.message ?? "", /runtime TestEntity/);
+}
 
-  const duplicateStatic = closeStaticAndRuntimeEntities({
-    runner: "bun",
-    statics: [staticEntity, { ...staticEntity }],
-    runtime: [runtimeEntity],
-    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
-  });
+function assertDuplicateEntityClosure(
+  staticEntity: StaticTestEntity,
+  runtimeEntity: RuntimeTestEntity
+): void {
+  const duplicateStatic = closeBunEntities(
+    [staticEntity, { ...staticEntity }],
+    [runtimeEntity]
+  );
   assertDiagnostic(duplicateStatic.diagnostics, "duplicate-entity");
   assert.equal(duplicateStatic.diagnostics[0]?.origin, "static");
   assert.match(
@@ -445,19 +454,17 @@ test("closes current test entities against the union of Case mappings", () => {
     /TestEntity identity/
   );
 
-  const duplicateRuntime = closeStaticAndRuntimeEntities({
-    runner: "bun",
-    statics: [staticEntity],
-    runtime: [runtimeEntity, { ...runtimeEntity }],
-    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
-  });
+  const duplicateRuntime = closeBunEntities(
+    [staticEntity],
+    [runtimeEntity, { ...runtimeEntity }]
+  );
   assertDiagnostic(duplicateRuntime.diagnostics, "duplicate-entity");
   assert.equal(duplicateRuntime.diagnostics[0]?.origin, "runner");
   assert.match(
     duplicateRuntime.diagnostics[0]?.message ?? "",
     /TestEntity identity/
   );
-});
+}
 
 test("parses stable Cargo and Bun runner reports without inferring missing fields", () => {
   assert.deepEqual(
@@ -756,6 +763,18 @@ function runtimeTestEntity(identity: string): RuntimeTestEntity {
   };
 }
 
+function closeBunEntities(
+  statics: StaticTestEntity[],
+  runtime: RuntimeTestEntity[]
+): ReturnType<typeof closeStaticAndRuntimeEntities> {
+  return closeStaticAndRuntimeEntities({
+    runner: "bun",
+    statics,
+    runtime,
+    createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
+  });
+}
+
 function runCli(args: readonly string[]): {
   status: number | null;
   stdout: string;
@@ -781,55 +800,34 @@ function runCli(args: readonly string[]): {
   };
 }
 
+function runSuccessfulJsonCli<T>(args: readonly string[]): T {
+  const result = runCli(args);
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  return JSON.parse(result.stdout) as T;
+}
+
 function writeJson(targetPath: string, value: unknown): void {
   fs.writeFileSync(targetPath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function assertDiagnostic(
-  diagnostics: ReadonlyArray<{ code: string; blocking: boolean }>,
-  code: string
-): void {
-  assert.ok(
-    diagnostics.some((value) => value.code === code && value.blocking),
-    `expected blocking diagnostic ${code}: ${JSON.stringify(diagnostics)}`
-  );
-}
-
-function assertDiagnosticForCase(
-  diagnostics: ReadonlyArray<{
-    code: string;
-    blocking: boolean;
+  diagnostics: readonly TestEvidenceDiagnostic[],
+  code: string,
+  expected: {
     caseId?: string;
-  }>,
-  code: string,
-  caseId: string
-): void {
-  assert.ok(
-    diagnostics.some((value) => (
-      value.code === code &&
-      value.blocking &&
-      value.caseId === caseId
-    )),
-    `expected blocking diagnostic ${code} for ${caseId}: ${JSON.stringify(diagnostics)}`
-  );
-}
-
-function assertDiagnosticPath(
-  diagnostics: ReadonlyArray<{
-    code: string;
-    blocking: boolean;
     path?: string;
-  }>,
-  code: string,
-  sourcePath: string
+  } = {}
 ): void {
   assert.ok(
     diagnostics.some((value) => (
       value.code === code &&
       value.blocking &&
-      value.path === sourcePath
+      (expected.caseId === undefined || value.caseId === expected.caseId) &&
+      (expected.path === undefined || value.path === expected.path)
     )),
-    `expected blocking diagnostic ${code} at ${sourcePath}: ${JSON.stringify(diagnostics)}`
+    `expected blocking diagnostic ${code} ${JSON.stringify(expected)}: ` +
+    JSON.stringify(diagnostics)
   );
 }
 
