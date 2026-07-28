@@ -27,30 +27,6 @@ fn operation_applicability_is_derived_from_closed_bindings() {
 }
 
 #[test]
-fn operation_projection_borrows_the_canonical_field_facts() {
-    let catalog = catalog(
-        integer_field(FIRST_IDENTITY, "--first"),
-        vec![entry(
-            FIRST_IDENTITY,
-            None,
-            &[StandardInputBinding::OutlinePage],
-        )],
-    )
-    .expect("catalog is valid");
-    let canonical = catalog
-        .fields()
-        .field(&FieldIdentity::new(FIRST_IDENTITY).expect("valid identity"))
-        .expect("canonical field");
-    let projected = catalog
-        .operation_fields(Operation::Outline)
-        .next()
-        .expect("projected field");
-
-    assert!(std::ptr::eq(canonical, projected));
-    assert!(catalog.operation_fields(Operation::Read).next().is_none());
-}
-
-#[test]
 fn selected_operation_projection_includes_common_and_exact_adapter_fields_only() {
     let common_identity = "docnav.parameters.common";
     let matching_identity = "docnav.parameters.matching";

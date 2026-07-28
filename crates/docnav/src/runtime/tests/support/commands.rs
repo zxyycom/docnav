@@ -57,23 +57,6 @@ pub(in crate::runtime::tests) fn read_command(ref_id: &str) -> DocumentCommand {
     }
 }
 
-pub(in crate::runtime::tests) fn set_cli_value(
-    command: &mut DocumentCommand,
-    identity: &str,
-    flag: &str,
-    value: Value,
-) {
-    let mut candidates = command
-        .cli_source
-        .candidates()
-        .iter()
-        .filter(|candidate| candidate.field().as_str() != identity)
-        .cloned()
-        .collect::<Vec<_>>();
-    candidates.push(cli_value_candidate(identity, flag, value));
-    command.cli_source = cli_source(candidates);
-}
-
 pub(in crate::runtime::tests) fn cli_source(candidates: Vec<SourceCandidate>) -> Box<Source> {
     Box::new(
         Source::new(

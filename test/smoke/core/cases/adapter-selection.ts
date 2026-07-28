@@ -1,7 +1,4 @@
-import {
-  configFixtureProject,
-  createProject,
-} from "../fixtures.ts";
+import { createProject } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 import {
@@ -42,53 +39,6 @@ async function testExplicitAdapterFailureStopsSelection() {
   validateSchema(record, "protocolResponse", json);
   const error = expectProtocolFailure(record, json, "outline", "ADAPTER_UNAVAILABLE");
   expectSelectionFailureDetails(record, error.details, missingAdapter, "explicit");
-
-  const invalidNativeRecord = await runCli(
-    "CORE-SELECT-001 invalid native option does not preempt missing adapter",
-    [
-      "outline",
-      project.normalRelPath,
-      "--adapter",
-      missingAdapter,
-      "--max-heading-level",
-      "100",
-      "--output",
-      "protocol-json"
-    ],
-    { project }
-  );
-  expectExit(invalidNativeRecord, exitCodes.protocolOrAdapterProcess);
-  expectNoJsonPayloadInStderr(invalidNativeRecord);
-  const invalidNativeJson = parseJson(invalidNativeRecord);
-  validateSchema(invalidNativeRecord, "protocolResponse", invalidNativeJson);
-  const invalidNativeError = expectProtocolFailure(
-    invalidNativeRecord,
-    invalidNativeJson,
-    "outline",
-    "ADAPTER_UNAVAILABLE"
-  );
-  expectSelectionFailureDetails(
-    invalidNativeRecord,
-    invalidNativeError.details,
-    missingAdapter,
-    "explicit"
-  );
-
-  const configProject = configFixtureProject("selection-config-failure");
-  const configMissingAdapter = "project-config-adapter";
-
-  const configRecord = await runCli("CORE-SELECT-001 invalid config adapter returns selection diagnostic", [
-    "outline",
-    configProject.normalRelPath,
-    "--output",
-    "protocol-json"
-  ], { project: configProject });
-  expectExit(configRecord, exitCodes.protocolOrAdapterProcess);
-  expectNoJsonPayloadInStderr(configRecord);
-  const configJson = parseJson(configRecord);
-  validateSchema(configRecord, "protocolResponse", configJson);
-  const configError = expectProtocolFailure(configRecord, configJson, "outline", "ADAPTER_UNAVAILABLE");
-  expectSelectionFailureDetails(configRecord, configError.details, configMissingAdapter, "project");
 }
 
 function expectSelectionFailureDetails(

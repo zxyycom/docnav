@@ -48,7 +48,7 @@ fn matches_exact_line_level() {
 }
 
 #[test]
-fn matches_rejects_line_mismatch() {
+fn matches_rejects_coordinate_mismatch() {
     let heading = Heading {
         index: 3,
         level: 2,
@@ -57,20 +57,9 @@ fn matches_rejects_line_mismatch() {
         end: 0,
         line: 7,
     };
-    let parsed = ParsedRef::parse("H:L8:H2").unwrap();
-    assert!(!parsed.matches(&heading));
-}
 
-#[test]
-fn matches_rejects_level_mismatch() {
-    let heading = Heading {
-        index: 3,
-        level: 2,
-        title: "Target".into(),
-        start: 0,
-        end: 0,
-        line: 7,
-    };
-    let parsed = ParsedRef::parse("H:L7:H1").unwrap();
-    assert!(!parsed.matches(&heading));
+    for ref_id in ["H:L8:H2", "H:L7:H1"] {
+        let parsed = ParsedRef::parse(ref_id).unwrap();
+        assert!(!parsed.matches(&heading), "{ref_id}");
+    }
 }

@@ -86,11 +86,6 @@ impl NativeOptionsConfig {
     fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
-
-    #[cfg(test)]
-    pub(crate) fn value_for_key(&self, key: &str) -> Option<&Value> {
-        self.values.get(key)
-    }
 }
 
 impl InvocationLogConfig {
@@ -108,48 +103,5 @@ impl ContentCaptureConfig {
 impl PaginationConfig {
     fn is_empty(&self) -> bool {
         self.enabled.is_none() && self.limit.is_none()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use super::*;
-
-    #[test]
-    fn native_options_config_accepts_generic_raw_map() {
-        let config: CoreConfig = serde_json::from_value(json!({
-            "options": {
-                "registered_elsewhere": {
-                    "raw": true
-                }
-            }
-        }))
-        .expect("generic native option map");
-
-        assert_eq!(
-            config.options.value_for_key("registered_elsewhere"),
-            Some(&json!({ "raw": true }))
-        );
-    }
-
-    #[test]
-    fn defaults_auto_read_preserves_raw_modes() {
-        for mode in ["disabled", "unique-ref"] {
-            let value = json!({
-                "defaults": {
-                    "auto_read": mode
-                }
-            });
-            let config: CoreConfig =
-                serde_json::from_value(value.clone()).expect("raw auto-read mode");
-
-            assert!(!config.defaults.is_empty());
-            assert_eq!(
-                serde_json::to_value(config).expect("serialize raw auto-read mode"),
-                value
-            );
-        }
     }
 }

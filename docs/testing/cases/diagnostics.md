@@ -10,12 +10,10 @@ Entities:
 - `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::details::invalid_request_details_accept_known_optional_context_fields`
 - `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::record::diagnostic_record_rejects_empty_summary`
 - `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::record::diagnostic_record_validates_details_and_uses_code_defaults`
-- `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::record::format_record_accepts_candidate_failures`
 
 Proves:
 - `DiagnosticRecordDraft::into_record()` creates primary records with code defaults, typed details, source and absent guidance preserved.
-- Record construction rejects empty summaries and erased details whose shape does not match the diagnostic code.
-- Format diagnostic details can carry subordinate `candidate_failures` in the primary record details object.
+- Record construction 拒绝空 summary。
 
 ## Case WB-DIAG-RULES-001: Diagnostics code rules 保持稳定
 
@@ -26,5 +24,6 @@ Entities:
 - `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::code_rules::diagnostic_code_rules_cover_each_variant`
 
 Proves:
+- 通过 ordinal 索引的 protocol/boundary rule table 与对应 diagnostic code enum 保持逐项对齐。
 - `DiagnosticCode::all()` exposes the current diagnostic registry, including representative protocol and boundary diagnostic codes.
 - Each registry code exposes a non-empty unique stable string、non-empty details rule 和可用的 diagnostic projection route。

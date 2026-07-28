@@ -30,7 +30,7 @@ Owner: `docs/adapters/markdown.md#document-head`
 
 Entities:
 - `cargo|docnav-markdown:test:adapter|outline_ref::outline_exposes_document_head_before_visible_headings_when_nonblank`
-- `cargo|docnav-markdown:test:adapter|outline_ref::outline_exposes_document_head_for_frontmatter_only_or_plain_lead`
+- `cargo|docnav-markdown:test:adapter|outline_ref::outline_exposes_document_head_when_leading_region_is_frontmatter_only`
 - `cargo|docnav-markdown:test:adapter|outline_ref::outline_keeps_frontmatter_pseudo_heading_fence_pseudo_heading_and_hr_in_document_head`
 - `cargo|docnav-markdown:test:adapter|outline_ref::outline_omits_document_head_for_empty_or_whitespace_only_prefix`
 
@@ -79,18 +79,6 @@ Proves:
 - find 匹配 hidden heading 时，ref 指向当前 visible region 或 full document fallback。
 - find display 保留匹配片段且 ref 不受 display 内容影响。
 
-## Case WB-MD-LINK-001: Markdown outline/find ref 可通过 read roundtrip
-
-Owner: `docs/ref-contract.md#共享调用流程`
-
-Entities:
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::find_to_read_roundtrip_with_canonical_ref`
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::outline_to_read_roundtrip_with_canonical_ref`
-
-Proves:
-- Markdown navigation 生成的 outline entry ref 可以直接传给 read。
-- find 生成的 ref 也可直接提交给 read 并成功解析。
-
 ## Case WB-MD-META-001: Markdown manifest/probe/info 元数据稳定
 
 Owner: `docs/adapter-contract.md#manifest-元数据`
@@ -112,7 +100,6 @@ Owner: `docs/adapters/markdown.md#可见性与-max_heading_level`
 
 Entities:
 - `cargo|docnav-markdown:test:adapter|options_error_display::adapter_owned_options_shape_outline_and_find_granularity`
-- `cargo|docnav-markdown:test:adapter|options_error_display::outline_consumes_max_heading_level_from_standard_input`
 - `cargo|docnav-markdown:test:adapter|options_error_display::outline_does_not_default_a_missing_max_heading_level`
 - `cargo|docnav-markdown:test:adapter|options_error_display::outline_rejects_out_of_range_max_heading_level_at_adapter_boundary`
 
@@ -126,16 +113,13 @@ Proves:
 Owner: `docs/adapters/markdown.md#outline`
 
 Entities:
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::deep_heading_can_be_filtered_to_full_document`
 - `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::outline_entry_handles_whitespace_only_title`
 - `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::outline_entry_includes_title_level_and_cost`
 - `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::outline_generates_canonical_heading_refs`
 - `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::outline_refs_consistent_under_different_max_heading_level`
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::ref_uses_structural_coordinates_for_textual_title`
 
 Proves:
 - outline 生成 canonical ref，重复 title/path 不影响 ref，max heading level 只影响可见性。
-- deep-only document 在当前可见层级下 fallback 到 `doc:full`。
 - outline cost 按 `lines`、`bytes`、`tokens` 顺序报告 entry-scoped measurements，display 保留 title/cost，但 ref 不包含展示文本。
 
 ## Case WB-MD-PAGE-001: Markdown read 分页按 Unicode 字符计数
@@ -168,10 +152,8 @@ Owner: `docs/adapters/markdown.md#截断规则`
 
 Entities:
 - `cargo|docnav-markdown:lib:docnav_markdown|paging::tests::entry_paging_preserves_ref_and_truncates_display`
-- `cargo|docnav-markdown:lib:docnav_markdown|paging::tests::read_paging_counts_unicode_characters`
 
 Proves:
-- Markdown paging helper 对 Unicode 计数一致。
 - display 预算不足时截断 display 而不截断 ref，并在有空间时保留 ellipsis marker。
 
 ## Case WB-MD-PARSE-001: Markdown parser 忽略非 heading 结构
@@ -186,17 +168,6 @@ Entities:
 Proves:
 - code fence pseudo heading、invalid heading 和 frontmatter 不进入 heading model。
 - section boundary 按 Markdown heading 层级截断。
-
-## Case WB-MD-READ-001: Markdown read resolve 和 doc:full ref 稳定
-
-Owner: `docs/adapters/markdown.md#read`
-
-Entities:
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::doc_full_still_resolves_to_full_document`
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::tests::read_canonical_ref_resolves_matching_heading`
-
-Proves:
-- canonical ref 可解析到 heading，`doc:full` 可解析完整文档。
 
 ## Case WB-MD-REF-001: Markdown 重复标题生成唯一可读 ref
 
@@ -241,8 +212,7 @@ Owner: `docs/adapters/markdown.md#heading-ref-读取`
 
 Entities:
 - `cargo|docnav-markdown:lib:docnav_markdown|markdown::refs::tests::matches_exact_line_level`
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::refs::tests::matches_rejects_level_mismatch`
-- `cargo|docnav-markdown:lib:docnav_markdown|markdown::refs::tests::matches_rejects_line_mismatch`
+- `cargo|docnav-markdown:lib:docnav_markdown|markdown::refs::tests::matches_rejects_coordinate_mismatch`
 
 Proves:
 - parsed heading ref 在 line 和 level 同时匹配时命中目标 heading。

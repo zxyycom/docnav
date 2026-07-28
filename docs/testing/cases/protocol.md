@@ -28,13 +28,12 @@ Entities:
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_manifest_returns_the_typed_current_manifest`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_probe_result_returns_semantic_error_with_typed_value`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_request_preserves_defaultable_arguments`
-- `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_request_rejects_unmapped_arguments`
-- `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_request_runs_contract_before_raw_decode`
+- `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_request_rejects_unmapped_fields_before_raw_decode`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_response_keeps_operation_result_pairing_semantic`
 
 Proves:
 - Protocol request decoding runs schema/field-contract validation before raw typed decode.
-- Protocol request decoding rejects unmapped request arguments at the schema stage.
+- Protocol request decoding 在 raw typed decode 前的 schema stage 拒绝 unmapped request fields。
 - Protocol request decoding preserves defaultable empty arguments for operation-specific later resolution.
 - Manifest wrapper returns the current typed manifest shape.
 - Probe result semantic validation and protocol response operation/result pairing remain semantic-stage failures.
@@ -44,6 +43,7 @@ Proves:
 Owner: `docs/protocol.md#协议错误对象`
 
 Entities:
+- `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::record::format_record_accepts_candidate_failures`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::navigation_routing_default_guidance_uses_static_registry_language`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::protocol_error_codes_use_diagnostic_categories`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::protocol_error_location_uses_config_issue_path_and_field`
@@ -51,6 +51,7 @@ Entities:
 
 Proves:
 - request、document、adapter-boundary 和 internal category 各有一个 protocol diagnostic code 代表，其 diagnostic projection rule 暴露对应 protocol code。
+- Format diagnostic record 在 primary protocol details object 中保留 subordinate `candidate_failures`。
 - Navigation routing protocol errors expose static-registry guidance, and protocol errors round-trip through `DiagnosticRecord` projection while preserving guidance.
 - Invalid-request records with config issue details project protocol owner, location and received value from the diagnostic record.
 
@@ -67,9 +68,7 @@ Entities:
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_auto_read_contract_rejects_status_error_and_extra_fields`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_auto_read_contract_rejects_unstructured_read_and_info_placement`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_request_contract_rejects_schema_backed_field_failures`
-- `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_request_schema_rejects_an_empty_required_string`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_response_contract_rejects_schema_backed_field_failures`
-- `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_response_public_schema_rejects_undocumented_format_candidates`
 
 Proves:
 - 作为两条 output paths 统一输入的 success/failure `ProtocolResponse` fixtures 通过既有 public JSON Schema、runtime typed contract validation，并 deserialize 为共享 protocol types。

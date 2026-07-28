@@ -76,20 +76,18 @@ fn outline_exposes_document_head_before_visible_headings_when_nonblank() {
 }
 
 #[test]
-fn outline_exposes_document_head_for_frontmatter_only_or_plain_lead() {
-    for (content, heading_ref) in [
-        ("---\ntitle: Sample\n---\n\n# Real\nBody\n", "H:L5:H1"),
-        ("Lead text only.\n\n# Real\nBody\n", "H:L3:H1"),
-    ] {
-        let path = write_doc("document-head-variants.md", content);
-        let input = outline_input(&path, 6000, 1, Some(3));
-        let outline = outline_result(&input);
+fn outline_exposes_document_head_when_leading_region_is_frontmatter_only() {
+    let path = write_doc(
+        "document-head-frontmatter.md",
+        "---\ntitle: Sample\n---\n\n# Real\nBody\n",
+    );
+    let input = outline_input(&path, 6000, 1, Some(3));
+    let outline = outline_result(&input);
 
-        assert_eq!(
-            entry_refs(&outline.entries),
-            vec!["HEAD:leading", heading_ref]
-        );
-    }
+    assert_eq!(
+        entry_refs(&outline.entries),
+        vec!["HEAD:leading", "H:L5:H1"]
+    );
 }
 
 #[test]

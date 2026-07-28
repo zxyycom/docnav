@@ -28,7 +28,6 @@ Entities:
 - `cargo|docnav-readable:test:conformance_tests|conformance_11_no_trailing_newline`
 - `cargo|docnav-readable:test:conformance_tests|conformance_12_block_marker_in_body`
 - `cargo|docnav-readable:test:conformance_tests|conformance_14_readable_error`
-- `cargo|docnav-readable:test:conformance_tests|conformance_15_error_guidance_array`
 - `cargo|docnav-readable:test:conformance_tests|conformance_16_undeclared_extension_fields`
 - `cargo|docnav-readable:test:conformance_tests|conformance_17_order_independent_assertions`
 - `cargo|docnav-readable:test:conformance_tests|conformance_18_renderer_failure_missing_pointer`
@@ -41,49 +40,16 @@ Proves:
 - Conformance assertions compare semantic header values and exact block framing without treating JSON member order as a contract.
 - Invalid block pointers and non-string block targets remain renderer failures rather than silently changing output shape.
 
-## Case WB-READABLE-RENDERER-001: 内置 readable renderer private block/framing 规则
-
-Owner: `docs/output.md#readable-view`
-
-Entities:
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::combined_character_utf8_byte_length`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::crlf_payload_preserved_in_block`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::emoji_utf8_byte_length`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::empty_string_block_zero_bytes`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::find_operation_no_blocks`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::framing_uses_lf_byte`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::header_json_is_valid_standalone`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::info_operation_no_blocks`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::multiple_blocks_with_nested_pointer`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::no_trailing_lf_payload_gets_framing_lf`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::outline_no_blocks_emits_header_only`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::payload_contains_block_marker_text`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::read_content_block`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::readable_error_block`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::to_readable_value_serializes_valid_payload`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::trailing_lf_payload_no_extra_framing_lf`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::undeclared_fields_preserved_in_header`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::success::utf8_byte_length_is_correct`
-
-Proves:
-- 内置 renderer 的 private presentation helper 保持 readable-view header、block replacement、UTF-8 byte length、LF framing、extension fields 和 operation-specific block/no-block config。
-- Conformance representatives 保持 successful auto-read 的 `/auto_read/read/content` nested block、无 `auto_read` 的 structured outline header-only projection，以及 unstructured outline 的 `/content` base block。
-- Private readable error value 和 header standalone JSON 可还原为最终 readable-view text；该 helper value 不形成 public output mode 或 schema。
-
 ## Case WB-READABLE-RENDERER-002: 内置 readable renderer private config/error 边界稳定
 
 Owner: `docs/output.md#readable-view`
 
 Entities:
 - `cargo|docnav-readable:lib:docnav_readable|renderer::tests::errors::duplicate_pointer_in_config_fails`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::errors::non_string_target_fails`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::errors::pointer_missing_from_value_fails`
 - `cargo|docnav-readable:lib:docnav_readable|renderer::tests::errors::pointer_without_leading_slash_fails_config_validation`
-- `cargo|docnav-readable:lib:docnav_readable|renderer::tests::errors::render_error_uses_stable_id`
 
 Proves:
-- renderer 可以区分 missing pointer、non-string target、duplicate pointer 和 pointer syntax。
-- renderer failure 使用稳定 error id `readable_view_render_failed`。
+- 仓库内 renderer config 在渲染前拒绝 duplicate pointer 和非法 pointer syntax。
 
 ## Case WB-OUTPUT-READABLE-MAPPING-001: 内置 readable-view 从 ProtocolResponse 派生
 

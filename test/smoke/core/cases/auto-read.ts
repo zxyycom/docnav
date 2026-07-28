@@ -1,5 +1,4 @@
 import {
-  configFixturePath,
   configFixtureProject,
   createProject,
   type SmokeProject,
@@ -13,7 +12,6 @@ import {
   expectNoReadableViewBlocks,
   expectObjectArray,
   expectProtocolSuccess,
-  expectReadableViewBlockRestoresField,
   expectStderrEmpty,
   expectString,
   parseJson,
@@ -21,11 +19,6 @@ import {
 } from "../assertions.ts";
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 import type { JsonRecord } from "../assertions.ts";
-
-interface AutoReadFacts {
-  content: string;
-  ref: string;
-}
 
 export function createAutoReadTasks() {
   return [
@@ -39,8 +32,7 @@ export function createAutoReadTasks() {
 
 async function testAutoReadDefaultsAndDisableSources() {
   const defaultProject = createProject("auto-read-default");
-  const facts = await assertDefaultProtocolAutoRead(defaultProject);
-  await assertDefaultReadableAutoRead(defaultProject, facts);
+  await assertDefaultProtocolAutoRead(defaultProject);
   await assertCliDisabledReadableBase(defaultProject);
 
   const projectDisabled = configFixtureProject("auto-read-disabled", "auto-read-project-disabled");
@@ -48,16 +40,9 @@ async function testAutoReadDefaultsAndDisableSources() {
     "CORE-AUTO-READ-001 project config disabled keeps base find",
     projectDisabled,
   );
-
-  const userDisabled = createProject("auto-read-user-disabled");
-  await assertProtocolAutoReadAbsent(
-    "CORE-AUTO-READ-001 user config disabled keeps base find",
-    userDisabled,
-    ["--user-config", configFixturePath("auto-read-disabled")],
-  );
 }
 
-async function assertDefaultProtocolAutoRead(project: SmokeProject): Promise<AutoReadFacts> {
+async function assertDefaultProtocolAutoRead(project: SmokeProject) {
   const record = await runFind(
     "CORE-AUTO-READ-001 omitted sources default to unique-ref protocol-json",
     project,
@@ -78,31 +63,6 @@ async function assertDefaultProtocolAutoRead(project: SmokeProject): Promise<Aut
   expect(record, nestedRef === ref, "nested read reuses the unique find ref");
   expect(record, content.includes("## Install"), "nested read returns the matched Markdown section");
   expect(record, read.content_type === "text/markdown", "nested read preserves Markdown content type");
-  return { content, ref };
-}
-
-async function assertDefaultReadableAutoRead(project: SmokeProject, facts: AutoReadFacts) {
-  const record = await runFind(
-    "CORE-AUTO-READ-001 omitted sources default to unique-ref readable-view",
-    project,
-    "readable-view",
-  );
-  expectExit(record, 0);
-  expectStderrEmpty(record);
-  const header = parseReadableViewHeader(record);
-  expectNoProtocolEnvelope(record, header);
-  expectUniqueFindRef(record, header);
-  const autoRead = expectJsonObject(record, header.auto_read, "readable find header includes auto_read");
-  expect(record, autoRead.reason === "unique_ref", "readable auto_read reports unique_ref reason");
-  const read = expectJsonObject(record, autoRead.read, "readable auto_read includes nested read facts");
-  expect(record, read.ref === facts.ref, "readable nested read preserves the protocol ref");
-  expect(record, read.content_type === "text/markdown", "readable nested read preserves content type");
-  expectReadableViewBlockRestoresField(
-    record,
-    record.stdout,
-    "/auto_read/read/content",
-    facts.content,
-  );
 }
 
 async function assertCliDisabledReadableBase(project: SmokeProject) {

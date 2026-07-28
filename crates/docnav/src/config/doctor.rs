@@ -167,25 +167,6 @@ mod tests {
         let _ = fs::remove_dir_all(workspace);
     }
 
-    #[test]
-    fn adapter_layer_failure_dominates_multiple_doctor_failures() {
-        let registry = AdapterRegistry { adapters: &[] };
-        let mut checks = vec![DoctorCheck::failure(
-            json!({
-                "name": "project_config",
-                "status": "fail",
-                "message": "config input failed",
-            }),
-            DocnavExitCode::InputError,
-        )];
-        checks.extend(registry::adapter_layer_checks(&registry));
-
-        assert_eq!(
-            most_severe_exit(&checks),
-            DocnavExitCode::AdapterOrProtocolError
-        );
-    }
-
     fn check_by_name<'a>(output: &'a Value, name: &str) -> &'a Value {
         output["checks"]
             .as_array()

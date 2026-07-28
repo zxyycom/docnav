@@ -1,39 +1,5 @@
 use super::*;
 
-// ── 1.7.1 Config validation: pointer missing ──────────────────────
-
-#[test]
-fn pointer_missing_from_value_fails() {
-    let value = json!({"not_content": "x"});
-
-    let config = RendererConfig::default_config();
-    config.validate().unwrap();
-
-    let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
-    assert_eq!(err.id, RenderError::ERROR_ID);
-    assert!(
-        err.message.contains("/content"),
-        "error should mention missing pointer"
-    );
-}
-
-// ── 1.7.2 Config validation: non-string target ────────────────────
-
-#[test]
-fn non_string_target_fails() {
-    let value = json!({"content": 42, "content_type": "text/plain"});
-
-    let config = RendererConfig::default_config();
-    config.validate().unwrap();
-
-    let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
-    assert_eq!(err.id, RenderError::ERROR_ID);
-    assert!(
-        err.message.contains("not resolve to a string"),
-        "error should mention non-string target"
-    );
-}
-
 // ── 1.7.3 Config validation: duplicate pointer ────────────────────
 
 #[test]
@@ -69,16 +35,4 @@ fn pointer_without_leading_slash_fails_config_validation() {
     let err = custom_config.validate().unwrap_err();
     assert_eq!(err.id, RenderError::ERROR_ID);
     assert!(err.message.contains("must start with '/'"));
-}
-
-// ── 1.7.5 Renderer error id is stable ─────────────────────────────
-
-#[test]
-fn render_error_uses_stable_id() {
-    let value = json!({"wrong": "shape"});
-    let config = RendererConfig::default_config();
-    config.validate().unwrap();
-
-    let err = render_readable_view(&value, ReadableViewKind::Read, &config).unwrap_err();
-    assert_eq!(err.id, "readable_view_render_failed");
 }

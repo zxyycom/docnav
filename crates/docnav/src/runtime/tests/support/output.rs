@@ -100,12 +100,3 @@ pub(in crate::runtime::tests) fn first_entry_label(output: &Value) -> Option<&st
         .and_then(|entries| entries.first())
         .and_then(|entry| entry["label"].as_str())
 }
-
-pub(in crate::runtime::tests) fn entry_labels(output: &Value) -> Vec<&str> {
-    output["result"]["entries"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|entry| entry["label"].as_str().unwrap())
-        .collect()
-}

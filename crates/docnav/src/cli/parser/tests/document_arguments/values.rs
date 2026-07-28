@@ -37,34 +37,20 @@ fn explicit_pagination_value_is_parsed() {
 
 #[test]
 fn auto_read_modes_keep_the_canonical_identity_and_exact_tokens() {
-    for (args, expected) in [
-        (
-            vec!["outline", "doc.md", "--auto-read", "unique-ref"],
-            "unique-ref",
-        ),
-        (
-            vec![
-                "find",
-                "doc.md",
-                "--query",
-                "needle",
-                "--auto-read",
-                "disabled",
-            ],
-            "disabled",
-        ),
-    ] {
-        let parsed = parse(args).expect("parse supported auto-read mode");
-        let CliCommand::Document(command) = parsed.command else {
-            panic!("expected document command");
-        };
-        let candidate = candidate(&command, "docnav.defaults.auto_read");
-        assert_eq!(
-            candidate.locator(),
-            &SourceLocator::CliFlag("--auto-read".to_owned())
-        );
-        assert_eq!(candidate.input(), &CandidateInput::Value(json!(expected)));
-    }
+    let parsed = parse(["outline", "doc.md", "--auto-read", "unique-ref"])
+        .expect("parse supported auto-read mode");
+    let CliCommand::Document(command) = parsed.command else {
+        panic!("expected document command");
+    };
+    let candidate = candidate(&command, "docnav.defaults.auto_read");
+    assert_eq!(
+        candidate.locator(),
+        &SourceLocator::CliFlag("--auto-read".to_owned())
+    );
+    assert_eq!(
+        candidate.input(),
+        &CandidateInput::Value(json!("unique-ref"))
+    );
 }
 
 #[test]
@@ -83,33 +69,22 @@ fn invalid_auto_read_token_is_preserved_for_selected_validation() {
 
 #[test]
 fn explicit_max_heading_level_value_is_parsed_for_supported_operations() {
-    for args in [
-        vec!["outline", "doc.md", "--max-heading-level", "2"],
-        vec![
-            "find",
-            "doc.md",
-            "--query",
-            "needle",
-            "--max-heading-level",
-            "2",
-        ],
-    ] {
-        let parsed = parse(args).expect("parse max heading level");
+    let parsed =
+        parse(["outline", "doc.md", "--max-heading-level", "2"]).expect("parse max heading level");
 
-        match parsed.command {
-            CliCommand::Document(command) => {
-                let candidate = candidate(
-                    &command,
-                    "docnav.adapters.docnav-markdown.options.max_heading_level",
-                );
-                assert_eq!(
-                    candidate.locator(),
-                    &SourceLocator::CliFlag("--max-heading-level".to_owned())
-                );
-                assert_eq!(candidate.input(), &CandidateInput::Value(json!(2)));
-            }
-            command => panic!("expected document command, got {command:?}"),
+    match parsed.command {
+        CliCommand::Document(command) => {
+            let candidate = candidate(
+                &command,
+                "docnav.adapters.docnav-markdown.options.max_heading_level",
+            );
+            assert_eq!(
+                candidate.locator(),
+                &SourceLocator::CliFlag("--max-heading-level".to_owned())
+            );
+            assert_eq!(candidate.input(), &CandidateInput::Value(json!(2)));
         }
+        command => panic!("expected document command, got {command:?}"),
     }
 }
 

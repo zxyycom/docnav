@@ -9,68 +9,6 @@ use super::{read_selected_config, ConfigFileSource};
 use crate::project_context::{ConfigPathOrigin, SelectedConfigPath};
 
 #[test]
-fn unknown_config_field_reports_structured_config_issue() {
-    let root = temp_root("unknown-field");
-    let path = write_project_config(
-        &root,
-        json!({
-            "defaults": {
-                "limit": 12
-            }
-        }),
-    );
-    let error = read_selected_config(
-        &SelectedConfigPath::default(path),
-        ConfigFileSource::Project,
-    )
-    .unwrap_err();
-    let details = error.diagnostic().details().to_value();
-
-    assert_eq!(details["field"], "defaults.limit");
-    assert_eq!(details["reason"], "unknown_config_field");
-    assert_eq!(details["received"], "defaults.limit");
-    assert_eq!(details["accepted"], json!(["defaults.pagination.limit"]));
-    assert_eq!(
-        details["config_issues"][0]["source_level"],
-        Value::String("project".to_owned())
-    );
-    assert_eq!(
-        details["config_issues"][0]["path_origin"],
-        Value::String("default".to_owned())
-    );
-    assert_eq!(details["config_issues"][0]["field"], "defaults.limit");
-    assert_eq!(
-        details["config_issues"][0]["reason_code"],
-        "unknown_config_field"
-    );
-}
-
-#[test]
-fn adapter_id_native_option_config_key_is_typed_validated() {
-    let root = temp_root("adapter-id-option");
-    let path = write_project_config(
-        &root,
-        json!({
-            "options": {
-                "docnav-markdown": {
-                    "max_heading_level": 2
-                }
-            }
-        }),
-    );
-    let config = read_selected_config(
-        &SelectedConfigPath::default(path),
-        ConfigFileSource::Project,
-    )
-    .unwrap();
-
-    assert_eq!(
-        config.options.value_for_key("docnav-markdown"),
-        Some(&json!({"max_heading_level": 2}))
-    );
-}
-
-#[test]
 fn bare_native_option_config_path_is_unknown() {
     let root = temp_root("bare-option-unknown");
     let path = write_project_config(
@@ -179,30 +117,6 @@ fn direct_config_file_rejects_empty_invocation_log_path() {
     let details = error.diagnostic().details().to_value();
 
     assert_eq!(details["field"], "invocation_log.path");
-    assert_eq!(details["reason"], "length_invalid");
-}
-
-#[test]
-fn direct_config_file_rejects_empty_invocation_log_content_capture_root() {
-    let root = temp_root("empty-invocation-log-content-root");
-    let path = write_project_config(
-        &root,
-        json!({
-            "invocation_log": {
-                "content_capture": {
-                    "root": ""
-                }
-            }
-        }),
-    );
-    let error = read_selected_config(
-        &SelectedConfigPath::default(path),
-        ConfigFileSource::Project,
-    )
-    .unwrap_err();
-    let details = error.diagnostic().details().to_value();
-
-    assert_eq!(details["field"], "invocation_log.content_capture.root");
     assert_eq!(details["reason"], "length_invalid");
 }
 

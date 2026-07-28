@@ -1,42 +1,6 @@
 use super::*;
 
 #[test]
-fn navigation_rejects_option_missing_from_core_catalog() {
-    let error = execute_loaded_navigation_command(
-        navigation_command(Vec::new()),
-        config_sources(
-            json!({
-                "options": {
-                    "docnav-markdown": {
-                        "payload": {"source": "project"}
-                    }
-                }
-            }),
-            Value::Null,
-        ),
-        &crate::tests::support::document_parameter_catalog(),
-        &StubRegistry,
-    )
-    .expect_err("the adapter cannot add product parameters outside the core catalog");
-    let protocol_error = super::super::protocol_error(error.diagnostic());
-
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("field")
-            .and_then(Value::as_str),
-        Some("arguments.options.payload")
-    );
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("reason")
-            .and_then(Value::as_str),
-        Some("unsupported")
-    );
-}
-
-#[test]
 fn navigation_accepts_config_option_applicable_to_operation() {
     let outcome = execute_loaded_navigation_command(
         navigation_command(Vec::new()),

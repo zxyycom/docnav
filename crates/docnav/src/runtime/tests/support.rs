@@ -6,13 +6,13 @@ mod logging;
 mod output;
 mod workspace;
 
-pub(super) use commands::{cli_source, outline_command, read_command, set_cli_value};
+pub(super) use commands::{cli_source, outline_command, read_command};
 pub(super) use logging::{
     event_named, is_lower_sha256, read_jsonl_events, test_sha256_hex, FailingWriter,
     LogAbsentWriter,
 };
 pub(super) use output::{
-    assert_no_invocation_event_text, entry_labels, first_entry_label, parse_single_json_value,
+    assert_no_invocation_event_text, first_entry_label, parse_single_json_value,
     write_document_result, write_outcome_text_with_exit, write_protocol_json,
     write_protocol_json_with_exit,
 };

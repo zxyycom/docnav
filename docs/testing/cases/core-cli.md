@@ -30,8 +30,8 @@ Entities:
 - `smoke|core:auto-read|CORE-AUTO-READ-001`
 
 Proves:
-- 真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read；`protocol-json` 与 `readable-view` 从同一结果保留 ref、content type 和 nested content。
-- CLI、默认 project config fixture 或显式 user config fixture 解析为 `disabled` 时，真实进程以退出码 `0` 返回原 base find，stdout 保持所选输出模式且 stderr 为空；代表性 protocol/readable 分支均不出现 `auto_read`，readable base projection 也不产生 block。
+- 真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read，并在 `protocol-json` 中保留 ref、content type 和 nested content。
+- CLI 或 project config 解析为 `disabled` 时，真实进程以退出码 `0` 返回原 base find；代表性 readable/protocol 分支均不出现 `auto_read`，readable base projection 也不产生 block。
 
 ## Case BB-CORE-CONFIG-001: Config inspect source status 与参数事实可观察
 
@@ -73,7 +73,6 @@ Owner: `docs/navigation-input-resolution.md#selected-operation-catalog-view`
 
 Entities:
 - `smoke|core:config-context|CORE-CONFIG-004`
-- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_markdown_consumes_project_native_max_heading_level`
 
 Proves:
 - Project config 中的 `options.docnav-markdown.max_heading_level` 通过 core-authored Markdown-scoped catalog entry 影响 `outline` entries。
@@ -148,7 +147,6 @@ Owner: `docs/adapters/markdown.md#可见性与-max_heading_level`
 Entities:
 - `smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-001`
 - `smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-002`
-- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_markdown_delegates_native_option_range_to_adapter`
 
 Proves:
 - Markdown `max_heading_level` 可以从 CLI flag 影响 `outline` 可见粒度；越界值按 Markdown 声明的范围投影为带 explicit source 的 `range_invalid` option issue。Project config source 的同类型证明由 `BB-CORE-CONFIG-004` 承担。
@@ -168,7 +166,7 @@ Proves:
 - Readable text 与 protocol JSON 保持隔离：presentation-only display/cost/framing 不进入 protocol raw result，success/failure 仍分别保留当前 owner 的可观察语义。
 - CLI 显式选择或 project config 选择 `protocol-json` 时，navigation response 产生前的 document failure 仍输出完整 failure envelope，不回退到 `readable-view`；project-selected 分支同时覆盖低优先级 user config 加载失败。
 - CLI 显式使用已删除的 `readable-json` 时走普通 invalid-value boundary，不产生 alias、fallback 或 document output。
-- Unstructured outline selected by config 在 `readable-view` 中作为 content block、在 `protocol-json` 中作为 raw result 可观察，并且不虚构 entries/ref/page/continuation。
+- 由 path rule 选中的 unstructured outline 在 `readable-view` 中作为 content block、在 `protocol-json` 中作为 raw result 可观察，并且不虚构 entries/ref/page/continuation。
 
 ## Case BB-CORE-REF-001: Adapter ref 错误穿过 Core
 
@@ -190,7 +188,7 @@ Entities:
 - `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::missing_adapter_routing_precedes_invalid_native_option`
 
 Proves:
-- 显式 CLI 或 project config 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。
+- 显式 CLI 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。
 - 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
 
 ## Case BB-CORE-SOURCE-001: Core adapter source 来自 static registry
@@ -249,10 +247,7 @@ Owner: `docs/cli.md#document-operation-执行`
 
 Entities:
 - `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::structural_errors::auto_read_rejects_missing_duplicate_and_inapplicable_input_structurally`
-- `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::structural_errors::duplicate_generated_single_value_flag_is_rejected_structurally`
 - `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::structural_errors::extra_document_positional_is_rejected`
-- `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::structural_errors::generated_value_flag_without_value_maps_clap_structural_error`
-- `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::structural_errors::max_heading_level_is_rejected_for_unsupported_operations`
 - `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::structural_errors::unknown_document_argument_is_rejected`
 - `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::structural_errors::unused_known_argument_value_is_rejected_before_execution`
 - `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::values::auto_read_modes_keep_the_canonical_identity_and_exact_tokens`
@@ -268,31 +263,16 @@ Proves:
 - Clap 拥有 unknown、missing value 和 duplicate single-value structural failures；lexical compatibility boundary 只使用同源 cardinality facts 保持 positional 与 operation-inapplicable diagnostics。
 - 未被当前 operation 使用的 known argument 不会被抢先 typed 解析，而是在 parser 边界返回 input diagnostic。
 
-## Case WB-CORE-ARGS-REPAIR-001: Core parser input diagnostics expose protocol repair context
-
-Owner: `docs/cli.md#document-operation-执行`
-
-Entities:
-- `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::protocol_errors::extra_document_positional_protocol_error_has_repair_context`
-- `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::protocol_errors::unknown_document_argument_protocol_error_has_repair_context`
-- `cargo|docnav:lib:docnav|cli::parser::tests::document_arguments::protocol_errors::unsupported_info_page_protocol_error_has_repair_context`
-
-Proves:
-- Unknown document flags、extra document positionals and operation-inapplicable known arguments produce parser diagnostics whose protocol-json error projection preserves reason、received token、expected context and repair guidance.
-
 ## Case WB-CORE-CONFIG-PATH-001: Core parser accepts config file path flags
 
 Owner: `docs/cli.md#配置文件路径`
 
 Entities:
 - `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::config_inspect_parses_selected_config_file_paths`
-- `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::config_inspect_rejects_document_context_flags`
 - `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::config_path_flag_before_known_flag_is_missing_value_input_error`
 - `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::document_command_parses_config_file_paths_as_exact_values`
 - `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::init_and_doctor_parse_config_file_paths`
 - `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::init_rejects_user_config_path_flag`
-- `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::inline_config_path_value_can_start_with_known_flag_text`
-- `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::legacy_config_subcommands_are_rejected`
 - `cargo|docnav:lib:docnav|cli::parser::tests::config_paths::unsupported_config_path_flag_is_input_error`
 
 Proves:
@@ -304,7 +284,6 @@ Proves:
 Owner: `docs/cli.md#配置命令`
 
 Entities:
-- `cargo|docnav:lib:docnav|config::commands::tests::config_inspect_omits_optional_non_json_null_parameter_fact`
 - `cargo|docnav:lib:docnav|config::commands::tests::config_inspect_reports_catalog_adapter_range_with_exact_source`
 - `cargo|docnav:lib:docnav|config::commands::tests::config_inspect_reports_explicit_source_load_status_without_failing`
 - `cargo|docnav:lib:docnav|config::commands::tests::config_inspect_reports_selected_sources_and_parameter_facts_without_writing`
@@ -316,7 +295,7 @@ Entities:
 Proves:
 - Complete serialized-output goldens cover one valid selected project/user pair and one invalid-JSON project source. They lock source status、summaries、registry-backed config-source projection、resolved parameter facts、source-attributed diagnostics and top-level output shape while normalizing only runtime paths.
 - The valid golden proves adapter-id native option projection and project/user/built-in provenance without modifying either selected file. The invalid-load golden proves invalid JSON remains a successful inspection result with matching source and parameter diagnostics.
-- Explicit missing、top-level non-object and not-file source states retain focused equivalence checks；unreadable source loading remains owned by lower-layer config loading / parameter-resolution tests. Optional non-JSON config `null` suppresses its static default without creating a parameter fact.
+- 显式缺失、顶层非对象和非文件这三类 source state 保留代表性等价类检查；不可读 source 的加载仍由下层 config loading / parameter-resolution 测试负责。
 - `init --project-config` creates or preserves the selected project config file and rejects an existing directory at that selected file path.
 
 ## Case WB-CORE-CONFIG-SOURCE-001: Core config source validation preserves navigation-owned fields
@@ -324,18 +303,12 @@ Proves:
 Owner: `docs/navigation-input-resolution.md#配置文件形状`
 
 Entities:
-- `cargo|docnav:lib:docnav|config::model::tests::defaults_auto_read_preserves_raw_modes`
-- `cargo|docnav:lib:docnav|config::model::tests::native_options_config_accepts_generic_raw_map`
-- `cargo|docnav:lib:docnav|config::store::tests::adapter_id_native_option_config_key_is_typed_validated`
 - `cargo|docnav:lib:docnav|config::store::tests::bare_native_option_config_path_is_unknown`
 - `cargo|docnav:lib:docnav|config::store::tests::default_missing_config_path_is_absent`
-- `cargo|docnav:lib:docnav|config::store::tests::direct_config_file_rejects_empty_invocation_log_content_capture_root`
-- `cargo|docnav:lib:docnav|config::store::tests::direct_config_file_rejects_empty_invocation_log_path`
 - `cargo|docnav:lib:docnav|config::store::tests::explicit_missing_config_path_reports_blocking_issue`
 - `cargo|docnav:lib:docnav|config::store::tests::invalid_adapter_id_native_option_value_is_rejected`
 - `cargo|docnav:lib:docnav|config::store::tests::navigation_owned_outline_config_is_accepted`
 - `cargo|docnav:lib:docnav|config::store::tests::nested_non_object_config_field_reports_structured_config_issue`
-- `cargo|docnav:lib:docnav|config::store::tests::unknown_config_field_reports_structured_config_issue`
 
 Proves:
 - Core config source loading accepts documented navigation-owned `outline.mode_rules[]` and `outline.auto_full_read.thresholds[]` fields instead of rejecting them as unknown top-level config.
@@ -343,21 +316,18 @@ Proves:
 - Bare `options.max_heading_level` is rejected as an ordinary `unknown_config_field`; it is not migrated or interpreted as an adapter-id native option source path.
 - Invalid adapter-id native option values and nested non-object fields produce structured source-attributed config issues.
 - Default missing config paths remain absent, while explicit missing paths report `missing_explicit_cli` with explicit path origin.
-- The core config model preserves raw auto-read modes and generic adapter-native option maps for later navigation-owned resolution.
 
-## Case WB-CORE-DOCTOR-001: Doctor 聚合 typed check 退出码
+## Case WB-CORE-DOCTOR-001: Doctor 报告显式选择的配置文件失败
 
 Owner: `docs/cli.md#内置-adapter-检查`
 
 Entities:
-- `cargo|docnav:lib:docnav|config::doctor::tests::adapter_layer_failure_dominates_multiple_doctor_failures`
 - `cargo|docnav:lib:docnav|config::doctor::tests::doctor_reports_explicit_missing_config_as_failure`
 
 Proves:
-- selected config file 失败使用其 typed input error 退出码。
-- adapter layer failure 使用 adapter/protocol 退出码，并在多个失败同时存在时按严重度决定 doctor 退出码。
+- 显式选择的配置文件不存在时，doctor 报告带 source attribution 的 failure，并使用 typed input error 退出码。
 
-## Case WB-CORE-HELP-001: Core parser help/version 不进入 document output mode
+## Case WB-CORE-HELP-001: Core parser help 不进入 document output mode
 
 Owner: `docs/cli.md#parser-与-help`
 
@@ -366,19 +336,18 @@ Entities:
 - `cargo|docnav:lib:docnav|cli::parser::tests::help::help_returns_typed_help_command`
 - `cargo|docnav:lib:docnav|cli::parser::tests::help::help_text_scopes_catalog_parameters_to_supported_operations`
 - `cargo|docnav:lib:docnav|cli::parser::tests::help::help_text_shows_only_public_output_modes`
-- `cargo|docnav:lib:docnav|cli::parser::tests::help::non_document_surfaces_keep_their_own_command_shapes`
-- `cargo|docnav:lib:docnav|cli::parser::tests::help::version_command_has_no_output_mode`
 
 Proves:
 - `--help` 和 operation help 返回 typed help command，并且 document output 只展示 `readable-view` 与 `protocol-json`。
 - Operation help 按 core catalog binding 展示当前 operation 可用的参数；例如 outline 展示 `--max-heading-level`，read 不展示。
-- root help、version、config、adapter、init 和 doctor 保持各自的 static surface，不进入 document output mode。
+- 根级 `--help` 保持自己的 static surface，不进入 document output mode。
 
 ## Case WB-CORE-INVOCATION-LOG-001: Core runtime invocation log 保持审计边界
 
 Owner: `docs/cli.md#invocation-logging`
 
 Entities:
+- `cargo|docnav:lib:docnav|config::store::tests::direct_config_file_rejects_empty_invocation_log_path`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_cli_content_root_without_cli_log_does_not_override_config_log`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_cli_log_records_config_load_failure_before_runtime_config`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_log_config_type_error_is_blocking_core_config_error`
@@ -395,9 +364,9 @@ Entities:
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::failure::invocation_linked_handler_structured_diagnostic_logs_adapter_dispatch_failure`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::invocation_logging_enabled_success_writes_jsonl_with_request_id`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::invocation_output_write_failure_logs_output_projection_without_completion`
-- `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::invocation_readable_view_stdout_stays_free_of_log_events`
 
 Proves:
+- Core config source validation 拒绝空的 invocation log path。
 - Invocation logging 默认关闭，且配置关闭时不创建日志副作用。
 - CLI/config 显式启用后，core document operation 写入 JSONL operation event，并保留 request id、adapter id、operation status、bounded failure layer/code/summary 和 stdout purity。
 - Config load failure 可由显式 CLI log 在 runtime config 初始化前记录为 config-layer failure。
@@ -424,20 +393,16 @@ Owner: `docs/output.md#输出层边界`
 
 Entities:
 - `cargo|docnav:lib:docnav|output::tests::app_error_normalizes_non_protocol_diagnostic_before_document_output`
-- `cargo|docnav:lib:docnav|output::tests::built_in_render_failure_uses_existing_core_error_id`
 - `cargo|docnav:lib:docnav|output::tests::document_protocol_json_writes_protocol_envelope_with_empty_stderr`
 - `cargo|docnav:lib:docnav|output::tests::document_readable_view_uses_shared_output_facade`
-- `cargo|docnav:lib:docnav|output::tests::document_unstructured_outline_readable_view_uses_shared_output_facade`
-- `cargo|docnav:lib:docnav|output::tests::non_document_json_writes_value_directly`
-- `cargo|docnav:lib:docnav|output::tests::plain_text_outcome_writes_text_directly`
 - `cargo|docnav:lib:docnav|output::tests::readable_error_uses_document_facade_and_exit_policy_stays_local`
 - `cargo|docnav:lib:docnav|output::tests::readable_view_renderer_fatal_uses_bounded_stderr_and_internal_exit`
 - `cargo|docnav:lib:docnav|output::tests::rendered_writer_failure_stays_an_io_failure`
 
 Proves:
 - Core 把 document success 和提前发生的 document failure 统一表示为 `ProtocolResponse` 后再执行 output plan。
-- 省略 output 或显式 `readable-view` 构造携带内置 renderer 的 `Rendered`；`protocol-json` 构造 `ProtocolJson`，non-document output 保持 owner-specific。
-- 内置 renderer failure 沿用现有 output failure/exit mapping：stdout 为空、stderr 诊断有界，不切换 plan 或 renderer。
+- 省略 output 或显式 `readable-view` 构造携带内置 renderer 的 `Rendered`；`protocol-json` 构造 `ProtocolJson`。
+- 内置 renderer failure 沿用现有 stable error id 与 internal exit mapping，并把诊断写入 stderr。
 - Core document output composition 保持 stdout、stderr 和 exit code 职责，并覆盖真实 CLI smoke 中观察到的两个 public document output modes。
 
 ## Case WB-CORE-OUTPUTMODE-001: Core parser document output mode 解析稳定
@@ -462,10 +427,12 @@ Entities:
 - `cargo|docnav:lib:docnav|parameter_catalog::tests::catalog_fields_preserve_current_locator_type_default_merge_and_range_facts`
 - `cargo|docnav:lib:docnav|parameter_catalog::tests::core_catalog_contains_the_auto_read_orchestration_parameter`
 - `cargo|docnav:lib:docnav|parameter_catalog::tests::operation_projection_filters_only_by_closed_bindings`
+- `cargo|docnav-navigation:lib:docnav_navigation|parameters::fields::definitions::tests::common_named_fields_author_cli_processing_metadata`
 
 Proves:
 - The core catalog owns current locators, value kinds, defaults, merge rules, ranges, and auto-read orchestration facts without enabling an undeclared environment source.
 - Selected operation projection filters fields only through closed catalog bindings.
+- Common named fields 提供 generated core command surface 消费的 CLI processing locator 和 presentation metadata。
 
 ## Case WB-CORE-PREFLIGHT-001: Core preflight 检测 protocol-json intent
 
@@ -475,15 +442,13 @@ Entities:
 - `cargo|docnav:lib:docnav|cli::preflight::tests::detects_equals_protocol_json_output`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::detects_space_separated_protocol_json_output`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::document_without_output_defaults_to_readable_view`
-- `cargo|docnav:lib:docnav|cli::preflight::tests::legacy_config_failure_uses_protocol_json_framing`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::non_document_output_context_keeps_plain_command_semantics`
-- `cargo|docnav:lib:docnav|cli::preflight::tests::non_document_protocol_json_hint_uses_core_output_flag`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::projected_output_locator_frames_document_structural_failure`
 
 Proves:
 - Core preflight 从 current document command 的 canonical projection 获取 output locator/cardinality，并在解析失败前识别空格分隔和等号形式的 protocol-json intent。
 - Structural document failure 使用 projected output intent 选择 protocol failure framing。
-- Root 与 non-document commands 不触发 document projection；preflight 只服务错误输出模式选择，不替代正式 parser。
+- 根级 `--help` 不触发 document projection；preflight 只服务错误输出模式选择，不替代正式 parser。
 
 ## Case WB-CORE-PROJECT-CONTEXT-001: Project context resolves explicit and platform config paths
 
@@ -491,7 +456,6 @@ Owner: `docs/cli.md#配置文件路径`
 
 Entities:
 - `cargo|docnav:lib:docnav|project_context::tests::explicit_config_paths_are_resolved_relative_to_invocation_cwd`
-- `cargo|docnav:lib:docnav|project_context::tests::explicit_user_config_path_does_not_require_platform_default`
 - `cargo|docnav:lib:docnav|project_context::tests::user_config_path_prefers_docnav_config_dir_then_platform_default`
 - `cargo|docnav:lib:docnav|project_context::tests::user_config_path_uses_dot_docnav_under_platform_user_root`
 

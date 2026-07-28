@@ -4,8 +4,6 @@ use crate::error::AppError;
 mod structural_errors;
 mod values;
 
-mod protocol_errors;
-
 fn assert_diagnostic(error: AppError, field: &str, reason_fragment: &str) {
     let details = error.diagnostic().details().to_value();
     assert_eq!(

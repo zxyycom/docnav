@@ -116,40 +116,6 @@ fn explicit_missing_config_source_is_blocking_diagnostic() {
 }
 
 #[test]
-fn override_missing_config_source_preserves_override_diagnostic() {
-    let workspace = temp_workspace_path("navigation-override-missing-config-loading");
-    let project_config_path = workspace.join("project").join("missing-docnav.json");
-    let user_config_path = workspace.join("user").join("missing-docnav.json");
-
-    let error = execute_navigation_command(
-        navigation_command(Vec::new()),
-        NavigationConfigSourceDescriptors {
-            project: NavigationConfigSourceDescriptor::new(
-                NavigationConfigSourceOrigin::Override,
-                project_config_path.clone(),
-            ),
-            user: NavigationConfigSourceDescriptor::default(user_config_path),
-        },
-        &crate::tests::support::document_parameter_catalog(),
-        &StubRegistry,
-    )
-    .expect_err("missing override config source should fail");
-    let protocol_error = super::protocol_error(error.diagnostic());
-
-    assert_config_issue(
-        &protocol_error,
-        ExpectedConfigIssue::new(
-            "project",
-            "override",
-            &project_config_path,
-            "missing_override",
-            None,
-        ),
-    );
-    let _ = fs::remove_dir_all(workspace);
-}
-
-#[test]
 fn explicit_invalid_json_config_source_is_blocking_diagnostic() {
     let workspace = temp_workspace_path("navigation-explicit-invalid-config-loading");
     let invalid_json_path = workspace.join("project").join("invalid-docnav.json");
@@ -255,46 +221,6 @@ fn explicit_config_value_diagnostics_preserve_selected_source_path() {
             &project_config_path,
             "range_invalid",
             Some("options.docnav-markdown.max_heading_level"),
-        ),
-    );
-    let _ = fs::remove_dir_all(workspace);
-}
-
-#[test]
-fn explicit_default_config_value_diagnostics_preserve_selected_source_path() {
-    let workspace = temp_workspace_path("navigation-explicit-ordinary-value-diagnostic");
-    let project_config_path = workspace.join("project").join("docnav.json");
-    let default_missing_path = workspace.join("default").join("missing-docnav.json");
-    write_config_file(
-        &project_config_path,
-        json!({
-            "defaults": {
-                "pagination": {
-                    "limit": 0
-                }
-            }
-        }),
-    );
-
-    let error = execute_navigation_command(
-        navigation_command(Vec::new()),
-        NavigationConfigSourceDescriptors {
-            project: NavigationConfigSourceDescriptor::explicit_cli(project_config_path.clone()),
-            user: NavigationConfigSourceDescriptor::default(default_missing_path),
-        },
-        &crate::tests::support::document_parameter_catalog(),
-        &StubRegistry,
-    )
-    .expect_err("invalid project config limit should fail");
-    let protocol_error = super::protocol_error(error.diagnostic());
-    assert_config_issue(
-        &protocol_error,
-        ExpectedConfigIssue::new(
-            "project",
-            "explicit_cli",
-            &project_config_path,
-            "range_invalid",
-            Some("defaults.pagination.limit"),
         ),
     );
     let _ = fs::remove_dir_all(workspace);

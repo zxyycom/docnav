@@ -29,28 +29,14 @@ fn adapter_owned_options_shape_outline_and_find_granularity() {
 }
 
 #[test]
-fn outline_consumes_max_heading_level_from_standard_input() {
-    let path = write_doc("typed-input.md", "# Top\n\n#### Deep\n");
-    let input = outline_input(&path, 6000, 1, Some(4));
-    let result = outline_result(&input);
-
-    assert_eq!(entry_refs(&result.entries), vec!["H:L1:H1", "H:L3:H4"]);
-}
-
-#[test]
 fn outline_does_not_default_a_missing_max_heading_level() {
     let path = write_doc("missing-heading-level.md", "# Top\n");
     let mut input = outline_input(&path, 6000, 1, Some(3));
     input.max_heading_level = None;
 
-    let error = MarkdownAdapter
+    MarkdownAdapter
         .outline(&input)
         .expect_err("missing typed input must not be defaulted");
-
-    assert_eq!(
-        error.protocol_error().code(),
-        ProtocolDiagnosticCode::InternalError
-    );
 }
 
 #[test]

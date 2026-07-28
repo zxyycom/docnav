@@ -58,30 +58,46 @@ fn hard_cutover_preserves_common_and_native_option_source_priority() {
 }
 
 #[test]
-fn valid_explicit_common_value_does_not_hide_invalid_project_config() {
-    let command = navigation_command(vec![cli_value_candidate(
-        "docnav.defaults.output",
-        "--output",
-        json!("protocol-json"),
-    )]);
-
-    let error = execute_loaded_navigation_command(
-        command,
-        config_sources(
+fn valid_explicit_values_do_not_hide_invalid_lower_priority_config() {
+    let cases = [
+        (
+            cli_value_candidate("docnav.defaults.output", "--output", json!("protocol-json")),
             json!({"defaults": {"output": "readable-json"}}),
             Value::Null,
+            "defaults.output",
+            "enum_invalid",
+            "project",
+            "project/.docnav/docnav.json",
         ),
-        &crate::tests::support::document_parameter_catalog(),
-        &StubRegistry,
-    )
-    .expect_err("invalid project config remains blocking");
-    assert_source_diagnostic(
-        error.diagnostic(),
-        "defaults.output",
-        "enum_invalid",
-        "project",
-        "project/.docnav/docnav.json",
-    );
+        (
+            cli_value_candidate(
+                "docnav.adapters.docnav-markdown.options.max_heading_level",
+                "--max-heading-level",
+                json!(4),
+            ),
+            Value::Null,
+            json!({
+                "options": {
+                    "docnav-markdown": {"max_heading_level": 9}
+                }
+            }),
+            "options.docnav-markdown.max_heading_level",
+            "range_invalid",
+            "user",
+            "user/docnav.json",
+        ),
+    ];
+
+    for (candidate, project, user, field, reason, source_level, path) in cases {
+        let error = execute_loaded_navigation_command(
+            navigation_command(vec![candidate]),
+            config_sources(project, user),
+            &crate::tests::support::document_parameter_catalog(),
+            &StubRegistry,
+        )
+        .expect_err("invalid lower-priority config remains blocking");
+        assert_source_diagnostic(error.diagnostic(), field, reason, source_level, path);
+    }
 }
 
 #[test]
@@ -112,67 +128,6 @@ fn removed_readable_json_cli_value_is_rejected_by_canonical_resolution() {
                 reason.contains("accepted values: readable-view, protocol-json")
             }),
         "{protocol_error:?}"
-    );
-}
-
-#[test]
-fn valid_explicit_native_value_does_not_hide_invalid_user_config() {
-    let error = execute_loaded_navigation_command(
-        navigation_command(vec![cli_value_candidate(
-            "docnav.adapters.docnav-markdown.options.max_heading_level",
-            "--max-heading-level",
-            json!(4),
-        )]),
-        config_sources(
-            Value::Null,
-            json!({
-                "options": {
-                    "docnav-markdown": {"max_heading_level": 9}
-                }
-            }),
-        ),
-        &crate::tests::support::document_parameter_catalog(),
-        &StubRegistry,
-    )
-    .expect_err("invalid user config remains blocking");
-    assert_source_diagnostic(
-        error.diagnostic(),
-        "options.docnav-markdown.max_heading_level",
-        "range_invalid",
-        "user",
-        "user/docnav.json",
-    );
-}
-
-#[test]
-fn hard_cutover_preserves_field_declaration_order_for_primary_diagnostic() {
-    let error = execute_loaded_navigation_command(
-        navigation_command(Vec::new()),
-        config_sources(
-            json!({
-                "defaults": {
-                    "output": "invalid-output"
-                },
-                "options": {
-                    "docnav-markdown": {
-                        "max_heading_level": 9
-                    }
-                }
-            }),
-            Value::Null,
-        ),
-        &crate::tests::support::document_parameter_catalog(),
-        &StubRegistry,
-    )
-    .expect_err("mixed invalid common and native option fields");
-    let protocol_error = super::protocol_error(error.diagnostic());
-
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("field")
-            .and_then(Value::as_str),
-        Some("defaults.output")
     );
 }
 

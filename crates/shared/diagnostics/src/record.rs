@@ -137,16 +137,6 @@ impl DiagnosticRecordDraft {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn from_erased_for_test(
-        code: impl Into<DiagnosticCode>,
-        summary: impl Into<String>,
-        details: DiagnosticDetails,
-        source: DiagnosticSource,
-    ) -> Self {
-        Self::from_typed_parts(code.into(), summary, details, source)
-    }
-
     diagnostic_record_accessors!();
 
     pub const fn recoverable_status(&self) -> bool {

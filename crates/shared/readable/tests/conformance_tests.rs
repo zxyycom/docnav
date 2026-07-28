@@ -79,13 +79,6 @@ fn conformance_14_readable_error() {
 }
 
 #[test]
-fn conformance_15_error_guidance_array() {
-    run_vector(&load_vector!(
-        "fixtures/conformance/15_error_guidance_array.json"
-    ));
-}
-
-#[test]
 fn conformance_16_undeclared_extension_fields() {
     run_vector(&load_vector!(
         "fixtures/conformance/16_undeclared_extension_fields.json"

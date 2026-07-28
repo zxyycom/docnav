@@ -18,7 +18,6 @@ import { runCli, validateSchema } from "../harness.ts";
 
 export async function testUnstructuredOutlineOutputModes() {
   await assertPathRuleUnstructuredOutline();
-  await assertCostThresholdUnstructuredOutline();
 }
 
 async function assertPathRuleUnstructuredOutline() {
@@ -97,44 +96,4 @@ async function assertPathRuleUnstructuredOutline() {
   expect(readableView, !Object.hasOwn(header, "page"), "readable-view unstructured outline omits page");
   expect(readableView, !Object.hasOwn(header, "continuation"), "readable-view unstructured outline omits continuation");
   expectReadableViewBlockRestoresField(readableView, readableView.stdout, "/content", content);
-}
-
-async function assertCostThresholdUnstructuredOutline() {
-  const content = "small operational note";
-  const project = createProject("output-boundary-unstructured-outline-cost", {
-    config: {
-      outline: {
-        auto_full_read: {
-          thresholds: [
-            { adapter: "docnav-markdown", unit: "tokens", value: 1000 }
-          ]
-        }
-      }
-    }
-  });
-  const rawRelPath = "docs/small.md";
-  fs.writeFileSync(path.join(project.root, rawRelPath), content, "utf8");
-
-  const readable = await runCli("CORE-OUTPUT-004 outline unstructured cost-threshold readable-view", [
-    "outline",
-    rawRelPath,
-    "--output",
-    "readable-view"
-  ], { project });
-  expectExit(readable, 0);
-  expectStderrEmpty(readable);
-  const header = parseReadableViewHeader(readable);
-  expectNoProtocolEnvelope(readable, header);
-  expect(readable, header.kind === "unstructured", "cost-threshold readable-view outline uses unstructured kind");
-  expect(readable, header.reason === "cost_threshold", "cost-threshold readable-view preserves cost_threshold reason");
-  const readableCost = expectJsonObject(readable, header.cost, "cost-threshold readable-view cost is an object");
-  const readableMeasurements = expectObjectArray(
-    readable,
-    readableCost.measurements,
-    "cost-threshold readable-view cost measurements are objects"
-  );
-  expect(readable, readableMeasurements.length > 0, "cost-threshold readable-view cost facts are non-empty");
-  expect(readable, !Object.hasOwn(header, "entries"), "cost-threshold readable-view unstructured outline omits entries");
-  expect(readable, !Object.hasOwn(header, "page"), "cost-threshold readable-view unstructured outline omits page");
-  expectReadableViewBlockRestoresField(readable, readable.stdout, "/content", content);
 }

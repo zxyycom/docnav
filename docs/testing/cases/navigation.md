@@ -87,12 +87,10 @@ Proves:
 Owner: `docs/navigation-input-resolution.md#resolution-流程`
 
 Entities:
-- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_markdown_reports_project_native_option_source`
-- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_markdown_reports_user_native_option_source`
+- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_markdown_reports_project_and_user_native_option_sources`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_accepts_config_option_applicable_to_operation`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_does_not_forward_other_known_adapter_namespace`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_keeps_same_option_key_distinct_by_adapter_namespace`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_rejects_option_missing_from_core_catalog`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::defaults::navigation_accepts_max_heading_level_range_boundaries`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::defaults::navigation_includes_adapter_native_option_default`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::defaults::optional_non_json_config_null_suppresses_default_projections`
@@ -112,7 +110,7 @@ Entities:
 
 Proves:
 - Navigation input resolution preserves source labels for explicit input and project config option issues.
-- Navigation receives normalized CLI candidates with canonical identity/locator/source facts；selected catalog members enter canonical resolution, while a parameter absent from the core catalog fails before request construction and dispatch.
+- Navigation 接收带 canonical identity、locator 和 source facts 的 normalized CLI candidates；selected catalog members 在 request construction 和 dispatch 前进入 canonical resolution。
 - The core-authored catalog controls adapter scope、operation applicability、typed validation and static defaults；navigation resolves selected fields without reconstructing those facts.
 - Config source projection uses `options.<adapter-id>.<option-key>`; equal option keys in different adapter id namespaces stay distinct, and bare `options.<option-key>` is a normal unknown/invalid config path.
 - Navigation consumes adapter-scoped values only from the selected adapter namespace for the selected operation; other known adapter namespaces are not forwarded to the selected strategy.
@@ -154,11 +152,20 @@ Entities:
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::protocol::protocol_request_maps_core_inputs_to_operation_arguments`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::protocol::protocol_request_maps_read_and_find_operation_shapes`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::protocol::protocol_request_rejects_missing_read_ref`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::protocol::response_validation_failure_carries_result_validation_layer`
 
 Proves:
 - Protocol request fields map to the matching closed operation arguments and standard inputs for outline, read, find, and info.
-- Missing read refs and request/input operation mismatches fail before dispatch; invalid response construction retains the result-validation layer.
+- 缺失 read ref 或 request/input operation 不匹配时，在 dispatch 前失败。
+
+## Case WB-NAV-RESPONSE-VALIDATION-001: Navigation response validation 保留 failure-layer 归因
+
+Owner: `docs/architecture.md#调用链`
+
+Entities:
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::protocol::response_validation_failure_carries_result_validation_layer`
+
+Proves:
+- Navigation 校验 base response 时，结果构造失败保留 `ResultValidation` failure-layer，并同时保留 selected adapter 和 request correlation facts。
 
 ## Case WB-NAVIGATION-CONFIG-SOURCES-002: Navigation loads config sources with descriptor origin
 
@@ -169,11 +176,10 @@ Entities:
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::explicit_config_field_diagnostics_preserve_selected_source_path`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::explicit_config_path_selection_preserves_parameter_priority`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::explicit_config_value_diagnostics_preserve_selected_source_path`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::explicit_default_config_value_diagnostics_preserve_selected_source_path`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::explicit_invalid_json_config_source_is_blocking_diagnostic`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::explicit_missing_config_source_is_blocking_diagnostic`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_loads_project_and_user_config_sources_from_descriptors`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_rejects_nested_non_object_config_shapes`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::override_missing_config_source_preserves_override_diagnostic`
 
 Proves:
 - `docnav-navigation` loads project/user config sources from core-supplied descriptors that carry source level, resolved path and path origin.
@@ -181,36 +187,19 @@ Proves:
 - Explicit-path missing、unreadable、invalid JSON 和 top-level non-object config sources return blocking config source diagnostics with source level and selected config file path.
 - Selecting a config file through CLI flag does not promote values inside that file to direct argv source; parameter priority remains `explicit > project > user > built_in`.
 
-## Case WB-NAVIGATION-DISPATCH-001: Navigation config source loading and dispatch 稳定
-
-Owner: `docs/navigation-input-resolution.md#docnav-navigation`
-
-Entities:
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_loads_project_and_user_config_sources_from_descriptors`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_rejects_nested_non_object_config_shapes`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_does_not_forward_other_known_adapter_namespace`
-
-Proves:
-- `docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。
-- Project config source values under `options.<selected-adapter-id>.<option-key>` participate in selected catalog resolution and closed-input dispatch, producing the expected protocol success result.
-- Values under other known adapter id namespaces remain separate source facts and are not forwarded to the selected strategy.
-- Nested non-object config source shapes at `defaults`、`defaults.pagination` and `options` return navigation-owned typed input errors.
-
 ## Case WB-NAVIGATION-FIELD-SETS-001: Selected field set follows closed catalog applicability
 
 Owner: `docs/navigation-input-resolution.md#selected-operation-catalog-view`
 
 Entities:
 - `cargo|docnav-navigation:lib:docnav_navigation|parameters::catalog::tests::projection::operation_applicability_is_derived_from_closed_bindings`
-- `cargo|docnav-navigation:lib:docnav_navigation|parameters::catalog::tests::projection::operation_projection_borrows_the_canonical_field_facts`
 - `cargo|docnav-navigation:lib:docnav_navigation|parameters::catalog::tests::projection::selected_operation_projection_includes_common_and_exact_adapter_fields_only`
-- `cargo|docnav-navigation:lib:docnav_navigation|parameters::fields::definitions::tests::common_named_fields_author_cli_processing_metadata`
 - `cargo|docnav-navigation:lib:docnav_navigation|parameters::fields::tests::selected_fields_combine_fixed_inputs_with_catalog_projection`
 
 Proves:
 - The selected operation field set combines fixed operation inputs with the core-authored parameter catalog projection.
 - Adapter-scoped catalog fields are included only for the selected adapter；fields scoped to another adapter are excluded.
-- Operation applicability is derived from closed bindings; projections borrow canonical field facts and common named fields author the CLI processing metadata used by every selected view.
+- Operation applicability 只从 closed bindings 派生。
 
 ## Case WB-NAVIGATION-HARD-CUTOVER-001: Core catalog cutover preserves resolver parity
 
@@ -218,12 +207,9 @@ Owner: `docs/navigation-input-resolution.md#resolution-流程`
 
 Entities:
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::hard_cutover::hard_cutover_preserves_common_and_native_option_source_priority`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::hard_cutover::hard_cutover_preserves_field_declaration_order_for_primary_diagnostic`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::hard_cutover::removed_readable_json_cli_value_is_rejected_by_canonical_resolution`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::hard_cutover::valid_explicit_common_value_does_not_hide_invalid_project_config`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::hard_cutover::valid_explicit_native_value_does_not_hide_invalid_user_config`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::hard_cutover::valid_explicit_values_do_not_hide_invalid_lower_priority_config`
 
 Proves:
 - Normalized explicit `Source` carries core-catalog common and adapter-scoped candidates into navigation；explicit values retain priority over project and user values through the canonical resolver, and the public output mode/result remains unchanged.
 - A valid higher-priority explicit common or adapter-scoped value does not hide an invalid project/user config candidate；the blocking diagnostic retains source level、selected config path and reason.
-- Mixed invalid common and adapter-scoped catalog inputs retain catalog field order when selecting the primary diagnostic.

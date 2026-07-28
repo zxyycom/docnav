@@ -52,86 +52,31 @@ fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
 }
 
 #[test]
-fn core_linked_markdown_consumes_project_native_max_heading_level() {
-    let (_workspace, project_root) = markdown_project(
-        "linked-native-options",
-        "# One\n\n## Two\n\n### Three\n\n#### Four\n",
-    );
-
-    let context = default_context(project_root);
-    write_config_file(
-        context.project.project_config_path(),
-        json!({
-            "options": {
-                "docnav-markdown": {
-                    "max_heading_level": 2
-                }
-            }
-        }),
-    );
-    let command = outline_command(None, None);
-    let request = DocumentRequest::from_config_context(command, context);
-
-    let outcome = AdapterRuntime.execute_document(request).unwrap();
-    let output = write_protocol_json(outcome);
-    let labels = entry_labels(&output);
-
-    assert_eq!(output["ok"], true);
-    assert_eq!(labels, vec!["One", "Two"]);
-}
-
-#[test]
-fn core_linked_markdown_delegates_native_option_range_to_adapter() {
-    let (_workspace, project_root) =
-        markdown_project("linked-native-options-invalid", "# One\n\n## Two\n");
-    let context = default_context(project_root);
-    let command = outline_command(Some(7), None);
-    let request = DocumentRequest::from_config_context(command, context);
-
-    let (exit_code, output) = write_document_result(
-        AdapterRuntime.execute_document(request),
-        Operation::Outline,
-        OutputMode::ProtocolJson,
-    );
-
-    assert_eq!(exit_code, 2);
-    assert_eq!(output["ok"], false);
-    assert_eq!(output["error"]["code"], "INVALID_REQUEST");
-    assert_eq!(
-        output["error"]["details"]["field"],
-        "arguments.options.max_heading_level"
-    );
-    assert_eq!(output["error"]["details"]["reason"], "range_invalid");
-    assert_eq!(
-        output["error"]["details"]["option_issues"][0]["reason_code"],
-        "range_invalid"
-    );
-    assert_eq!(
-        output["error"]["details"]["option_issues"][0]["source"],
-        "explicit"
-    );
-}
-
-#[test]
-fn core_linked_markdown_reports_project_native_option_source() {
-    assert_invalid_native_option_source(
-        "project-native-option-source",
-        Some(json!("wide")),
-        None,
-        "type_mismatch",
-        "project",
-    );
-}
-
-#[test]
-fn core_linked_markdown_reports_user_native_option_source() {
-    assert_invalid_native_option_source(
-        "user-native-option-source",
-        None,
-        Some(json!(9)),
-        "range_invalid",
-        "user",
-    );
+fn core_linked_markdown_reports_project_and_user_native_option_sources() {
+    for (workspace_name, project_option, user_option, reason, source) in [
+        (
+            "project-native-option-source",
+            Some(json!("wide")),
+            None,
+            "type_mismatch",
+            "project",
+        ),
+        (
+            "user-native-option-source",
+            None,
+            Some(json!(9)),
+            "range_invalid",
+            "user",
+        ),
+    ] {
+        assert_invalid_native_option_source(
+            workspace_name,
+            project_option,
+            user_option,
+            reason,
+            source,
+        );
+    }
 }
 
 fn assert_invalid_native_option_source(

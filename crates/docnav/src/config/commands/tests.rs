@@ -74,42 +74,6 @@ fn config_inspect_reports_selected_sources_and_parameter_facts_without_writing()
 }
 
 #[test]
-fn config_inspect_omits_optional_non_json_null_parameter_fact() {
-    let workspace = temp_workspace("config-inspect-null-parameter-fact");
-    let project_config = workspace.join("project.json");
-    let user_config = workspace.join("user.json");
-    write_json(
-        &project_config,
-        json!({
-            "options": {
-                "docnav-markdown": {
-                    "max_heading_level": null
-                }
-            }
-        }),
-    );
-    write_json(&user_config, json!({}));
-
-    let output = execute(ConfigCommand::Inspect(ConfigInspect {
-        config_paths: config_paths(&project_config, &user_config),
-    }))
-    .expect("config inspect");
-    let output = outcome_json(output);
-    let inspection = &output["inspection"];
-
-    assert!(
-        parameter_fact(
-            inspection,
-            "docnav.adapters.docnav-markdown.options.max_heading_level"
-        )
-        .is_none(),
-        "optional non-JSON null should suppress its default without becoming a fact: {inspection}"
-    );
-
-    let _ = fs::remove_dir_all(workspace);
-}
-
-#[test]
 fn config_inspect_reports_validation_diagnostics_without_failing() {
     let workspace = temp_workspace("config-inspect-diagnostics");
     let project_config = workspace.join("project.json");

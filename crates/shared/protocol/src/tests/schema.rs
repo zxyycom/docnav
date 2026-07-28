@@ -46,20 +46,6 @@ fn parses_protocol_fixtures_into_shared_types() {
 }
 
 #[test]
-fn protocol_request_schema_rejects_an_empty_required_string() {
-    let value = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "",
-        "operation": "outline",
-        "document": { "path": "doc.md" },
-        "arguments": { "limit": 80, "page": 1 }
-    });
-
-    assert_public_schema_invalid(PROTOCOL_REQUEST_SCHEMA, &value);
-    assert!(validate_protocol_request_value(&value).is_err());
-}
-
-#[test]
 fn protocol_request_contract_rejects_schema_backed_field_failures() {
     let cases = [
         serde_json::json!({
@@ -95,6 +81,13 @@ fn protocol_request_contract_rejects_schema_backed_field_failures() {
             "request_id": "req-1",
             "operation": "outline",
             "document": { "path": "doc.md", "extra": true },
+            "arguments": { "limit": 80, "page": 1 }
+        }),
+        serde_json::json!({
+            "protocol_version": "0.1",
+            "request_id": "",
+            "operation": "outline",
+            "document": { "path": "doc.md" },
             "arguments": { "limit": 80, "page": 1 }
         }),
     ];
@@ -223,6 +216,26 @@ fn protocol_response_contract_rejects_schema_backed_field_failures() {
         assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
         assert!(validate_protocol_response_value(&value).is_err());
     }
+
+    let public_schema_only_cases = [
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["reason"] = serde_json::json!("NO_SUPPORTED_CANDIDATE")
+        }),
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["candidates"][0]["code"] =
+                serde_json::json!("ADAPTER_UNAVAILABLE")
+        }),
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["candidates"][0]["details"] = serde_json::json!({})
+        }),
+        protocol_format_unknown_error_with(|response| {
+            response["error"]["details"]["candidates"][0]["stage"] = serde_json::json!("invoke")
+        }),
+    ];
+
+    for value in public_schema_only_cases {
+        assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
+    }
 }
 
 #[test]
@@ -314,29 +327,6 @@ fn protocol_auto_read_contract_rejects_unstructured_read_and_info_placement() {
         let error = decode_protocol_response_value(value)
             .expect_err("auto-read is only valid on structured outline and find");
         assert_eq!(error.stage(), DecodePipelineStage::Schema);
-    }
-}
-
-#[test]
-fn protocol_response_public_schema_rejects_undocumented_format_candidates() {
-    let cases = [
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["reason"] = serde_json::json!("NO_SUPPORTED_CANDIDATE")
-        }),
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["candidates"][0]["code"] =
-                serde_json::json!("ADAPTER_UNAVAILABLE")
-        }),
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["candidates"][0]["details"] = serde_json::json!({})
-        }),
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["candidates"][0]["stage"] = serde_json::json!("invoke")
-        }),
-    ];
-
-    for value in cases {
-        assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
     }
 }
 

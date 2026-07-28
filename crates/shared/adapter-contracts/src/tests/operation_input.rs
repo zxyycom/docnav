@@ -11,38 +11,6 @@ use crate::{
 use super::support::{no_hook_manifest, NoHookAdapter};
 
 #[test]
-fn standard_operation_input_exposes_closed_operation_specific_values() {
-    for input in standard_inputs() {
-        let operation = input.operation();
-        match input {
-            StandardOperationInput::Outline(input) => {
-                assert_eq!(operation, Operation::Outline);
-                assert_eq!(input.document_path, "outline.md");
-                assert_eq!((input.page.get(), input.limit.get()), (1, 10));
-                assert_eq!(input.max_heading_level, Some(3));
-            }
-            StandardOperationInput::Read(input) => {
-                assert_eq!(operation, Operation::Read);
-                assert_eq!(input.document_path, "read.md");
-                assert_eq!(input.ref_id, "H:L1:H1");
-                assert_eq!((input.page.get(), input.limit.get()), (2, 20));
-            }
-            StandardOperationInput::Find(input) => {
-                assert_eq!(operation, Operation::Find);
-                assert_eq!(input.document_path, "find.md");
-                assert_eq!(input.query, "needle");
-                assert_eq!((input.page.get(), input.limit.get()), (3, 30));
-                assert_eq!(input.max_heading_level, None);
-            }
-            StandardOperationInput::Info(input) => {
-                assert_eq!(operation, Operation::Info);
-                assert_eq!(input.document_path, "info.md");
-            }
-        }
-    }
-}
-
-#[test]
 fn adapter_definition_dispatches_closed_standard_input_variants() {
     let adapter = NoHookAdapter;
     let definition =

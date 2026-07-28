@@ -23,8 +23,6 @@ pub mod error;
 pub mod readable_value;
 pub mod renderer;
 pub mod renderer_config;
-#[cfg(test)]
-mod test_payloads;
 pub mod view_kind;
 
 // Re-export key types for convenience.

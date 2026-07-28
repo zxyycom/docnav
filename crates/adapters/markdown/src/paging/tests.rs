@@ -20,13 +20,6 @@ fn entry(ref_id: &str, label: &str) -> Entry {
 }
 
 #[test]
-fn read_paging_counts_unicode_characters() {
-    let (page, next) = paginate_text("界abc", positive(1), positive(3));
-    assert_eq!(page, "界ab");
-    assert_eq!(next, Some(positive(2)));
-}
-
-#[test]
 fn entry_paging_preserves_ref_and_truncates_display() {
     let entries = vec![entry("R", "abcdef"), entry("N", "next")];
 

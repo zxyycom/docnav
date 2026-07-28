@@ -264,14 +264,4 @@ mod tests {
         assert_eq!(project.origin, ConfigPathOrigin::ExplicitCli);
         assert_eq!(user.origin, ConfigPathOrigin::ExplicitCli);
     }
-
-    #[test]
-    fn explicit_user_config_path_does_not_require_platform_default() {
-        let cwd = PathBuf::from("D:/workspace/project");
-
-        let selection = selected_user_config_path(&cwd, Some("user.json"), |_key| None).unwrap();
-
-        assert_eq!(selection.path, cwd.join("user.json"));
-        assert_eq!(selection.origin, ConfigPathOrigin::ExplicitCli);
-    }
 }

@@ -1,40 +1,36 @@
 use super::*;
 
 #[test]
-fn decode_protocol_request_runs_contract_before_raw_decode() {
-    let schema_invalid = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-1",
-        "operation": "outline",
-        "document": { "path": "doc.md" },
-        "arguments": { "limit": 80, "page": 1 },
-        "extra": true
-    });
+fn decode_protocol_request_rejects_unmapped_fields_before_raw_decode() {
+    let cases = [
+        serde_json::json!({
+            "protocol_version": "0.1",
+            "request_id": "req-1",
+            "operation": "outline",
+            "document": { "path": "doc.md" },
+            "arguments": { "future": true }
+        }),
+        serde_json::json!({
+            "protocol_version": "0.1",
+            "request_id": "req-1",
+            "operation": "outline",
+            "document": { "path": "doc.md" },
+            "arguments": { "limit": 80, "page": 1 },
+            "extra": true
+        }),
+    ];
 
-    let error = decode_protocol_request_value(schema_invalid)
-        .expect_err("unknown field should fail schema first");
-    assert_eq!(error.stage(), DecodePipelineStage::Schema);
-    match error {
-        DecodePipelineError::Schema(error) => {
-            assert_eq!(error.schema, "protocol-request.schema.json");
+    for request in cases {
+        let error = decode_protocol_request_value(request)
+            .expect_err("unmapped request fields should fail schema first");
+        assert_eq!(error.stage(), DecodePipelineStage::Schema);
+        match error {
+            DecodePipelineError::Schema(error) => {
+                assert_eq!(error.schema, "protocol-request.schema.json");
+            }
+            _ => panic!("expected schema error"),
         }
-        _ => panic!("expected schema error"),
     }
-}
-
-#[test]
-fn decode_protocol_request_rejects_unmapped_arguments() {
-    let request = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-1",
-        "operation": "outline",
-        "document": { "path": "doc.md" },
-        "arguments": { "future": true }
-    });
-
-    let error = decode_protocol_request_value(request)
-        .expect_err("unmapped arguments should fail schema first");
-    assert_eq!(error.stage(), DecodePipelineStage::Schema);
 }
 
 #[test]

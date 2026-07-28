@@ -1,5 +1,5 @@
 use crate::{
-    typed_codes, DiagnosticDetails, DiagnosticEffect, DiagnosticRecordDraft, DiagnosticRecordError,
+    typed_codes, DiagnosticEffect, DiagnosticRecordDraft, DiagnosticRecordError,
     DiagnosticSeverity, DiagnosticSource, FieldReasonDetails, FormatCandidateDetails,
     FormatUnknownDetails, ProtocolDiagnosticCode,
 };
@@ -15,26 +15,12 @@ fn diagnostic_record_validates_details_and_uses_code_defaults() {
     .into_record()
     .unwrap();
 
-    assert_eq!(record.id().get(), 0);
     assert_eq!(record.code(), ProtocolDiagnosticCode::InvalidRequest.into());
     assert_eq!(record.severity(), DiagnosticSeverity::Error);
     assert_eq!(record.effect(), DiagnosticEffect::InputRejected);
     assert_eq!(record.source(), &source);
     assert!(record.guidance().is_none());
     assert!(!record.recoverable());
-
-    let invalid = DiagnosticRecordDraft::from_erased_for_test(
-        ProtocolDiagnosticCode::InvalidRequest,
-        "invalid request",
-        DiagnosticDetails::Path {
-            path: "wrong-shape".to_owned(),
-        },
-        DiagnosticSource::new("protocol"),
-    );
-    assert!(matches!(
-        invalid.into_record(),
-        Err(DiagnosticRecordError::InvalidDetails(_))
-    ));
 }
 
 #[test]

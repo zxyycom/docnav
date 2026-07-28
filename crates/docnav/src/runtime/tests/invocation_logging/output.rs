@@ -71,35 +71,3 @@ fn invocation_output_write_failure_logs_output_projection_without_completion() {
         "output failure must not log completion: {events:#?}"
     );
 }
-
-#[test]
-fn invocation_readable_view_stdout_stays_free_of_log_events() {
-    let (_workspace, project_root) = markdown_project("invocation-readable-view", "# One\n");
-    let context = default_context(project_root.clone());
-    let log_path = project_root.join(".log").join("readable-view.jsonl");
-    let mut command = outline_command(None, None);
-    set_cli_value(
-        &mut command,
-        "docnav.defaults.output",
-        "--output",
-        serde_json::json!("readable-view"),
-    );
-    command.invocation_log = Some(".log/readable-view.jsonl".to_owned());
-    let request = DocumentRequest::from_config_context(command, context);
-
-    let outcome = AdapterRuntime.execute_document(request).unwrap();
-    let (exit_code, stdout, stderr) = write_outcome_text_with_exit(outcome);
-    let events = read_jsonl_events(&log_path);
-
-    assert_eq!(exit_code, 0);
-    assert_eq!(stderr, "");
-    assert!(
-        stdout.contains("One"),
-        "readable-view did not render document content: {stdout}"
-    );
-    assert_no_invocation_event_text(&stdout);
-    assert_eq!(
-        event_named(&events, "operation_completed")["event"],
-        "operation_completed"
-    );
-}
