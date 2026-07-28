@@ -3,9 +3,8 @@ use std::collections::BTreeSet;
 use serde_json::{Map, Value};
 
 use crate::process_strategy::ProcessingInputKind;
-use crate::processing::{ProcessedExtraction, ProcessedValue, ProcessingId};
+use crate::processing::ProcessingId;
 use crate::set::{FieldDefSet, FieldExtractionError, FieldValidationErrors};
-use crate::JsonPassthroughProcessing;
 
 #[derive(Clone, Copy, Debug)]
 pub struct JsonFieldSet<'a> {
@@ -23,23 +22,6 @@ impl<'a> JsonFieldSet<'a> {
         root: &Value,
     ) -> Result<(), FieldExtractionError> {
         validate_processing_values(self.fields, processing_id.into(), root)
-    }
-
-    pub fn validate_with_passthrough(
-        &self,
-        processing_id: impl Into<ProcessingId>,
-        root: &Value,
-        passthrough_processing: Option<&JsonPassthroughProcessing<'_>>,
-    ) -> ProcessedExtraction<Result<(), FieldExtractionError>, Value> {
-        let processing_id = passthrough_processing
-            .map(|processing| processing.id().clone())
-            .unwrap_or_else(|| processing_id.into());
-        let validation = validate_processing_values(self.fields, processing_id.clone(), root);
-        let processing = match passthrough_processing {
-            Some(processing) => processing.process(root.clone()),
-            None => ProcessedValue::new(processing_id, root.clone()),
-        };
-        ProcessedExtraction::new(validation, processing)
     }
 
     pub fn unused_fields<I, S>(

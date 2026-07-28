@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[test]
-fn diagnostic_record_validates_details_and_uses_code_defaults() {
+fn diagnostic_record_finalization_enforces_summary_and_code_defaults() {
     let source = DiagnosticSource::with_stage("docnav", "argv");
     let record = DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
         "invalid input",
@@ -21,10 +21,7 @@ fn diagnostic_record_validates_details_and_uses_code_defaults() {
     assert_eq!(record.source(), &source);
     assert!(record.guidance().is_none());
     assert!(!record.recoverable());
-}
 
-#[test]
-fn diagnostic_record_rejects_empty_summary() {
     let invalid = DiagnosticRecordDraft::new::<typed_codes::protocol::InvalidRequest>(
         "",
         FieldReasonDetails::new("argv", "unknown argument --future"),

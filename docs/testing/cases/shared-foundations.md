@@ -134,7 +134,7 @@ Proves:
 - Field metadata validation 区分 missing optional、wrong type 和 range violation，并保留 field identity、field path 和 machine-readable reason。
 - Required enum field declaration 使用 Rust enum metadata 校验 allowed value，missing required 和 disallowed enum value 返回可诊断 validation failure。
 
-## Case WB-TYPED-FIELDS-PROCESSING-ID-COMPILE-001: Processing identity has no unchecked conversion
+## Case WB-TYPED-FIELDS-PROCESSING-ID-COMPILE-001: ProcessingId has no unchecked string conversion
 
 Owner: `crates/shared/typed-fields/README.md#docnav-typed-fields`
 
@@ -142,20 +142,18 @@ Entities:
 - `cargo|docnav-typed-fields:test:processing_id_compile|processing_id_has_no_unchecked_from_conversion`
 
 Proves:
-- The public processing identity boundary does not expose an unchecked `From` conversion that can bypass non-empty identity validation.
+- The public `ProcessingId` boundary does not provide an unchecked string `From` conversion that could bypass non-empty validation.
 
-## Case WB-TYPED-FIELDS-PROCESSING-001: Typed field processing build 稳定
+## Case WB-TYPED-FIELDS-PROCESSING-001: Typed field processing declaration validation
 
 Owner: `crates/shared/typed-fields/README.md#docnav-typed-fields`
 
 Entities:
 - `cargo|docnav-typed-fields:lib:docnav_typed_fields|tests::processing::field_build_rejects_duplicate_processing_id`
-- `cargo|docnav-typed-fields:lib:docnav_typed_fields|tests::processing::processing_build_rejects_empty_processing_id`
-- `cargo|docnav-typed-fields:lib:docnav_typed_fields|tests::processing::processing_build_returns_caller_processed_value_for_typed_raw_input`
 - `cargo|docnav-typed-fields:lib:docnav_typed_fields|tests::processing::processing_id_try_from_rejects_empty_value`
 - `cargo|docnav-typed-fields:lib:docnav_typed_fields|tests::processing::set_build_rejects_missing_processing_strategy`
 
 Proves:
-- Processing build 接受 processing id 和 caller-provided function，可以用 typed raw input 返回 caller processing result；typed-fields 不解释处理函数内部语义。
-- Empty processing id 在 build 阶段失败。
-- Field set build rejects a leaf declaration without a processing strategy and preserves the declaration path in the build error.
+- `ProcessingId::try_from` rejects empty and whitespace-only input.
+- `FieldDef` build rejects duplicate processing identities.
+- `FieldDefSet` build rejects a leaf declaration without a processing strategy and preserves the declaration path in the build error.

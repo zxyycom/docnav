@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use super::*;
 
 mod field_model;
@@ -48,10 +46,6 @@ impl AsRef<str> for TestProcessing {
 }
 
 const CONFIG_PROCESSING: TestProcessing = TestProcessing("config");
-
-fn raw_json_processing(id: impl AsRef<str>) -> ProcessingBuild<'static, JsonValue, JsonValue> {
-    ProcessingBuild::new(id, |raw| raw).expect("processing id is valid")
-}
 
 fn config_json_path<I, S>(segments: I) -> ProcessStrategy
 where

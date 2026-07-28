@@ -16,9 +16,15 @@ Schema and processing views borrow those facts instead of copying them. Framewor
 topology, operation applicability, diagnostics, source priority, and output policy remain
 consumer-owned.
 
+Processing identities are validated domain values. Use `ProcessingId::new` or
+`ProcessingId::try_from` to construct one; both reject empty and whitespace-only input. The crate
+does not provide `From<&str>` or `From<String>`, because infallible string conversion could bypass
+that validation.
+
 The main entry points are:
 
 - `FieldDef::builder` and `FieldDefSet::builder` for direct, consumer-owned construction.
+- `ProcessingId::new` and `ProcessingId::try_from` for checked processing identities.
 - `FieldValidation` for standard type materialization and reusable validation rules.
 - `MergeStrategy::{Replace, Append, MapMerge, DenyConflict}` for canonical merge behavior.
 - `FieldValueMap` and `FieldValue` for typed materialization.

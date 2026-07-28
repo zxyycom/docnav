@@ -35,9 +35,10 @@ let parameters = FieldDefSet::builder()
     .build()
     .expect("parameter set");
 
+let env_processing = ProcessingId::new("env").expect("valid processing id");
 let env = extract_env(
     &parameters,
-    &ProcessingId::from("env"),
+    &env_processing,
     SourceId::new("environment").expect("source id"),
     30,
     [("APP_LIMIT", "42")],

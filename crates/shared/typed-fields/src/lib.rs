@@ -19,9 +19,7 @@ pub use process_strategy::{
     CliBooleanEncoding, CliProcessingMetadata, ProcessStrategy, ProcessingInputKind,
     ProcessingLocator,
 };
-pub use processing::{
-    InvalidProcessingId, ProcessedExtraction, ProcessedValue, ProcessingBuild, ProcessingId,
-};
+pub use processing::{InvalidProcessingId, ProcessingId};
 pub use range::{
     FieldBound, FieldBoundKind, FieldLength, FieldNumericBound, FieldNumericRange, FieldRange,
 };
@@ -33,8 +31,6 @@ pub use set::{
 };
 pub use validation::FieldValidation;
 pub use value::{FieldStringEnum, FieldValue, FieldValueError};
-
-pub type JsonPassthroughProcessing<'a> = ProcessingBuild<'a, JsonValue, JsonValue>;
 
 #[cfg(test)]
 mod tests;
