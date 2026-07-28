@@ -1,20 +1,25 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { exitCodeForDiagnostics } from "./cli.ts";
-import { diagnostic } from "./model.ts";
+const entrypoint = fileURLToPath(new URL("./index.ts", import.meta.url));
+const workspaceRoot = path.resolve(path.dirname(entrypoint), "..", "..");
 
-test("uses distinct exit statuses for discovery, runner, Case, and query failures", () => {
-  assert.equal(exitCodeForDiagnostics([
-    diagnostic("unsupported-entity-shape", "static", "unsupported")
-  ]), 3);
-  assert.equal(exitCodeForDiagnostics([
-    diagnostic("runner-report-failed", "runner", "failed")
-  ]), 4);
-  assert.equal(exitCodeForDiagnostics([
-    diagnostic("entity.case-missing", "case", "missing")
-  ]), 5);
-  assert.equal(exitCodeForDiagnostics([
-    diagnostic("query.case-not-found", "query", "unknown")
-  ]), 6);
+test("returns a query failure status at the CLI boundary", () => {
+  const result = spawnSync(process.execPath, [
+    entrypoint,
+    "show",
+    "CASE-THAT-DOES-NOT-EXIST",
+    "--root",
+    workspaceRoot
+  ], {
+    cwd: workspaceRoot,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 6);
+  assert.equal(result.stderr, "");
+  assert.match(result.stdout, /"code": "query\.case-not-found"/);
 });

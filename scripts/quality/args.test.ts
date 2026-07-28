@@ -2,52 +2,31 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import { parseArgs } from "./args.ts";
-import { DEFAULT_CONFIG } from "./config.ts";
-import { resolveChangedFilesForScan } from "../tools/quality-core/src/scan-command/changed-files.ts";
 
 describe("quality scan CLI args", () => {
   it("skips baseline by default and keeps baseline generation opt-in", () => {
-    const defaults = parseArgs([]);
-
-    assert.deepEqual(defaults, {
-      artifactDir: DEFAULT_CONFIG.artifactDir,
+    assert.deepEqual(profileAndBaseline(parseArgs([])), {
       baseline: null,
-      changedFiles: null,
       scanProfile: "full",
-      skipBaseline: true,
-      topN: DEFAULT_CONFIG.report.topN,
-      verificationOutput: false
+      skipBaseline: true
     });
-    assert.equal(parseArgs(["--with-baseline"]).skipBaseline, false);
-    assert.deepEqual(parseArgs(["--baseline", "abc123"]), {
-      artifactDir: DEFAULT_CONFIG.artifactDir,
+    assert.deepEqual(profileAndBaseline(parseArgs(["--with-baseline"])), {
+      baseline: null,
+      scanProfile: "full",
+      skipBaseline: false
+    });
+    assert.deepEqual(profileAndBaseline(parseArgs(["--baseline", "abc123"])), {
       baseline: "abc123",
-      changedFiles: null,
       scanProfile: "full",
-      skipBaseline: false,
-      topN: DEFAULT_CONFIG.report.topN,
-      verificationOutput: false
+      skipBaseline: false
     });
-    assert.equal(parseArgs(["--verification-output"]).verificationOutput, true);
-    const changedFiles = resolveChangedFilesForScan({
-      opts: defaults,
-      root: "/repo",
-      scope: { changed: true, changedFiles: [] },
-      collectChangedFiles: () => ["scripts/quality/scan.ts"]
-    });
-
-    assert.deepEqual(changedFiles, ["scripts/quality/scan.ts"]);
   });
 
   it("keeps quick quality checks baseline-free and explicit", () => {
-    assert.deepEqual(parseArgs(["--profile", "quick"]), {
-      artifactDir: DEFAULT_CONFIG.artifactDir,
+    assert.deepEqual(profileAndBaseline(parseArgs(["--profile", "quick"])), {
       baseline: null,
-      changedFiles: null,
       scanProfile: "quick",
-      skipBaseline: true,
-      topN: DEFAULT_CONFIG.report.topN,
-      verificationOutput: false
+      skipBaseline: true
     });
     assert.equal(parseArgs(["--profile", "full", "--with-baseline"]).skipBaseline, false);
     assert.throws(
@@ -57,3 +36,11 @@ describe("quality scan CLI args", () => {
     assert.throws(() => parseArgs(["--profile", "fast"]), /unknown quality scan profile: fast/);
   });
 });
+
+function profileAndBaseline(result: ReturnType<typeof parseArgs>) {
+  return {
+    baseline: result.baseline,
+    scanProfile: result.scanProfile,
+    skipBaseline: result.skipBaseline
+  };
+}

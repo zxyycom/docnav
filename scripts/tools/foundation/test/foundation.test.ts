@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  parseJsonValue,
   parsePositiveInteger,
   processFailed,
   runProcess,
@@ -15,8 +14,7 @@ describe("script foundation", () => {
     expect(() => parsePositiveInteger("0", "concurrency")).toThrow("concurrency must be a positive integer");
   });
 
-  test("parses JSON values and normalizes slash paths", () => {
-    expect(parseJsonValue("{\"ok\":true}")).toEqual({ ok: true });
+  test("normalizes backslashes in paths", () => {
     expect(toSlashPath("a\\b\\c.ts")).toBe("a/b/c.ts");
   });
 

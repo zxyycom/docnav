@@ -9,7 +9,6 @@ Entities:
 - `cargo|docnav-cli-args:lib:docnav_cli_args|tests::unknown_flag_does_not_consume_following_positional`
 - `cargo|docnav-cli-args:lib:docnav_cli_args|tests::unused_value_flag_records_fact_without_validating_value`
 - `cargo|docnav-cli-args:lib:docnav_cli_args|tests::unused_value_flag_requires_a_value`
-- `cargo|docnav-cli-args:lib:docnav_cli_args|tests::used_value_flag_allows_unknown_hyphen_value`
 - `cargo|docnav-cli-args:lib:docnav_cli_args|tests::used_value_flag_is_retained_and_consumes_value`
 - `cargo|docnav-cli-args:lib:docnav_cli_args|tests::used_value_flag_requires_a_value_before_known_value_flag`
 

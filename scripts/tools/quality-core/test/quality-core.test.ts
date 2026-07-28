@@ -22,21 +22,34 @@ describe("script quality core", () => {
   });
 
   test("generates warning channels from caller-provided thresholds", () => {
+    const callerConfig = {
+      ...config,
+      scc: {
+        fileCodeLines: {
+          absoluteFloor: 10,
+          changedDelta: 2,
+          lowDecisionTokenAllowance: {
+            codeLineFloor: 20,
+            maxDecisionTokens: 5
+          }
+        }
+      }
+    };
     const warnings = generateWarningChannels({
       files: [
         {
           codeArea: "typescript-production-scripts",
-          codeLines: 301,
-          decisionTokens: { source: "scc", value: 11 },
+          codeLines: 11,
+          decisionTokens: { source: "scc", value: 6 },
           isChanged: true,
           language: "TypeScript",
-          lines: 320,
+          lines: 12,
           path: "scripts/a.ts"
         }
       ],
       functions: [],
       duplicates: [],
-      config,
+      config: callerConfig,
       scope: { changed: true, changedFiles: ["scripts/a.ts"] },
       baseline: null,
       comparisonStatus: "baseline-unavailable",
@@ -52,7 +65,7 @@ describe("script quality core", () => {
       "scc-file-code-lines",
       "typescript-production-scripts",
       "scripts/a.ts",
-      301
+      11
     ]]);
     expect(warnings.changed).toHaveLength(0);
   });

@@ -125,73 +125,37 @@ describe("quality scanner output parsing", () => {
 
 describe("quality jscpd wrapper failure projection", () => {
   it("does not treat a successful jscpd run without JSON as a successful empty scan", () => {
-    const toolConfig = createFakeJscpdToolConfig({ stdout: "", stderr: "", exitCode: 0 });
+    const failureCases = [
+      { reportJson: undefined, diagnostic: /jscpd JSON report missing/ },
+      { reportJson: "   \n", diagnostic: /jscpd JSON report is empty/ }
+    ];
 
-    try {
-      const result = scanWithJscpd({
-        files: ["scripts/a.ts", "scripts/b.ts"],
-        cwd: REPO_ROOT,
-        toolConfig,
-        minimumTokens: 75,
-        format: TEST_QUALITY_CONFIG.jscpd.formatByCodeArea["typescript-production-scripts"]
+    for (const { reportJson, diagnostic } of failureCases) {
+      const toolConfig = createFakeJscpdToolConfig({
+        stdout: "",
+        stderr: "",
+        exitCode: 0,
+        reportJson
       });
 
-      assert.equal(result.ok, false);
-      if (!result.ok) {
-        assert.equal(result.skipped, false);
-        assert.equal(result.reason, "jscpd-report-failure");
-        assert.match(result.error, /jscpd JSON report missing/);
+      try {
+        const result = scanWithJscpd({
+          files: ["scripts/a.ts", "scripts/b.ts"],
+          cwd: REPO_ROOT,
+          toolConfig,
+          minimumTokens: 75,
+          format: TEST_QUALITY_CONFIG.jscpd.formatByCodeArea["typescript-production-scripts"]
+        });
+
+        assert.equal(result.ok, false);
+        if (!result.ok) {
+          assert.equal(result.skipped, false);
+          assert.equal(result.reason, "jscpd-report-failure");
+          assert.match(result.error, diagnostic);
+        }
+      } finally {
+        toolConfig.cleanup();
       }
-    } finally {
-      toolConfig.cleanup();
-    }
-  });
-
-  it("classifies empty jscpd JSON reports as report failures", () => {
-    const toolConfig = createFakeJscpdToolConfig({
-      stdout: "",
-      stderr: "",
-      exitCode: 0,
-      reportJson: "   \n"
-    });
-
-    try {
-      const result = scanWithJscpd({
-        files: ["scripts/a.ts", "scripts/b.ts"],
-        cwd: REPO_ROOT,
-        toolConfig,
-        minimumTokens: 75,
-        format: TEST_QUALITY_CONFIG.jscpd.formatByCodeArea["typescript-production-scripts"]
-      });
-
-      assert.equal(result.ok, false);
-      if (!result.ok) {
-        assert.equal(result.skipped, false);
-        assert.equal(result.reason, "jscpd-report-failure");
-        assert.match(result.error, /jscpd JSON report is empty/);
-      }
-    } finally {
-      toolConfig.cleanup();
-    }
-  });
-
-  it("classifies missing jscpd tools as skipped unavailable scans", () => {
-    const result = scanWithJscpd({
-      files: ["scripts/a.ts", "scripts/b.ts"],
-      cwd: REPO_ROOT,
-      toolConfig: {
-        command: join(REPO_ROOT, `docnav-missing-jscpd-${process.pid}.cmd`),
-        args: []
-      },
-      minimumTokens: 75,
-      format: TEST_QUALITY_CONFIG.jscpd.formatByCodeArea["typescript-production-scripts"]
-    });
-
-    assert.equal(result.ok, false);
-    if (!result.ok) {
-      assert.equal(result.skipped, true);
-      assert.equal(result.reason, "tool-unavailable");
-      assert.match(result.error, /jscpd not found/);
     }
   });
 

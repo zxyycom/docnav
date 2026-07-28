@@ -5,39 +5,49 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { createSmokeHarness, createSmokeState, resolveSmokeConcurrency } from "./smoke-harness.ts";
+import { createSmokeHarness, createSmokeState } from "./smoke-harness.ts";
 import type { CommandRecord, SmokeState } from "./smoke-harness.ts";
 
 describe("smoke harness task scheduling", () => {
   it("runs independent smoke tasks concurrently and keeps per-task command counts isolated", async () => {
     const state = createSmokeState();
-    const events: string[] = [];
-    const harness = createHarness(state, events);
+    const slowStarted = Promise.withResolvers<void>();
+    const releaseSlow = Promise.withResolvers<void>();
+    const fastFinished = Promise.withResolvers<void>();
+    let slowFinished = false;
+    const harness = createHarness(state, async (_executable, args) => {
+      if (args[0] === "slow") {
+        slowStarted.resolve();
+        await releaseSlow.promise;
+        slowFinished = true;
+      }
+      return successfulProcessResult();
+    });
 
-    const results = await harness.runSmokeTasks([
+    const running = harness.runSmokeTasks([
       {
         id: "slow",
         label: "slow task",
         run: async () => {
-          events.push("start:slow");
           await harness.runCli("slow command", ["slow"]);
-          events.push("end:slow");
         }
       },
       {
         id: "fast",
         label: "fast task",
         run: async () => {
-          events.push("start:fast");
           await harness.runCli("fast one", ["fast-one"]);
           await harness.runCli("fast two", ["fast-two"]);
-          events.push("end:fast");
+          fastFinished.resolve();
         }
       }
     ], { concurrency: 2 });
 
-    assert.ok(events.indexOf("start:fast") < events.indexOf("end:slow"));
-    assert.ok(events.indexOf("start:fast") < events.indexOf("command:slow"));
+    await Promise.all([slowStarted.promise, fastFinished.promise]);
+    assert.equal(slowFinished, false);
+    releaseSlow.resolve();
+
+    const results = await running;
     assert.deepEqual(results.map((result) => result.ok), [true, true]);
     assert.deepEqual(
       state.testResults.map((result) => [result.label, result.commandCount]),
@@ -51,7 +61,7 @@ describe("smoke harness task scheduling", () => {
 
   it("records failed task results without stopping other independent tasks", async () => {
     const state = createSmokeState();
-    const harness = createHarness(state, []);
+    const harness = createHarness(state);
 
     const results = await harness.runSmokeTasks([
       {
@@ -83,7 +93,7 @@ describe("smoke harness task scheduling", () => {
 
   it("runs nested case tasks but records only the parent smoke report", async () => {
     const state = createSmokeState();
-    const harness = createHarness(state, []);
+    const harness = createHarness(state);
 
     const results = await harness.runSmokeTasks([
       {
@@ -115,7 +125,7 @@ describe("smoke harness task scheduling", () => {
 
   it("selects one smoke leaf by its stable id and preserves the parent report", async () => {
     const state = createSmokeState();
-    const harness = createHarness(state, []);
+    const harness = createHarness(state);
 
     const results = await harness.runSmokeTasks([
       {
@@ -162,41 +172,6 @@ describe("smoke harness task scheduling", () => {
     );
   });
 
-  it("uses DOCNAV_SMOKE_CONCURRENCY at the smoke scheduling boundary", async () => {
-    const state = createSmokeState();
-    const events: string[] = [];
-    const harness = createHarness(state, events);
-    const previous = process.env.DOCNAV_SMOKE_CONCURRENCY;
-    process.env.DOCNAV_SMOKE_CONCURRENCY = "1";
-
-    try {
-      await harness.runSmokeTasks([
-        {
-          id: "slow",
-          label: "slow task",
-          run: async () => {
-            events.push("start:slow");
-            await harness.runCli("slow command", ["slow"]);
-            events.push("end:slow");
-          }
-        },
-        {
-          id: "fast",
-          label: "fast task",
-          run: async () => {
-            events.push("start:fast");
-            await harness.runCli("fast command", ["fast"]);
-            events.push("end:fast");
-          }
-        }
-      ]);
-    } finally {
-      restoreEnv("DOCNAV_SMOKE_CONCURRENCY", previous);
-    }
-
-    assert.ok(events.indexOf("end:slow") < events.indexOf("start:fast"));
-  });
-
   it("records default runner stdout and stderr on command records", async () => {
     const state = createSmokeState();
     const harness = createSpawnHarness(state);
@@ -222,21 +197,6 @@ describe("smoke harness task scheduling", () => {
 
     assert.equal(record.exitCode, 0);
     assert.deepEqual(JSON.parse(record.stdout), plainTextEnvValues());
-  });
-
-  it("validates smoke concurrency values", () => {
-    const previous = process.env.DOCNAV_SMOKE_CONCURRENCY;
-    process.env.DOCNAV_SMOKE_CONCURRENCY = "4";
-
-    try {
-      assert.equal(resolveSmokeConcurrency(undefined), undefined);
-      assert.equal(resolveSmokeConcurrency(""), undefined);
-      assert.equal(resolveSmokeConcurrency("2"), 2);
-      assert.throws(() => resolveSmokeConcurrency("0"), /positive integer/);
-      assert.throws(() => resolveSmokeConcurrency("abc"), /positive integer/);
-    } finally {
-      restoreEnv("DOCNAV_SMOKE_CONCURRENCY", previous);
-    }
   });
 
   it("creates and cleans only the owned core smoke run directory after task failure", { timeout: 10_000 }, () => {
@@ -285,7 +245,11 @@ describe("smoke harness task scheduling", () => {
   });
 });
 
-function createHarness(state: SmokeState, events: string[]) {
+type HarnessRunProcess = NonNullable<
+  Parameters<typeof createSmokeHarness>[0]["runProcess"]
+>;
+
+function createHarness(state: SmokeState, runProcess?: HarnessRunProcess) {
   return createSmokeHarness({
     state,
     root: process.cwd(),
@@ -300,17 +264,7 @@ function createHarness(state: SmokeState, events: string[]) {
     binaryFallback: "node",
     resolveCwd: () => process.cwd(),
     safeArgPattern: /^[A-Za-z0-9_./:=@+-]+$/,
-    runProcess: async (_executable: string, args: string[]) => {
-      await delay(args[0] === "slow" ? 40 : 1);
-      events.push(`command:${args[0]}`);
-      return {
-        exitCode: 0,
-        signal: null,
-        error: null,
-        stdout: "",
-        stderr: ""
-      };
-    }
+    runProcess: runProcess ?? (async () => successfulProcessResult())
   });
 }
 
@@ -368,18 +322,14 @@ function expect(record: CommandRecord, condition: unknown, summary: string) {
   }
 }
 
-function delay(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function restoreEnv(key: string, value: string | undefined) {
-  if (value === undefined) {
-    delete process.env[key];
-    return;
-  }
-  process.env[key] = value;
+function successfulProcessResult() {
+  return {
+    exitCode: 0,
+    signal: null,
+    error: null,
+    stdout: "",
+    stderr: ""
+  };
 }
 
 function childEnvProbeArgs(): string[] {

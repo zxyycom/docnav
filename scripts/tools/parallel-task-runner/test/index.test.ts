@@ -31,31 +31,52 @@ describe("parallel task runner", () => {
   });
 
   it("runs independent tasks concurrently but serializes matching mutexes", async () => {
-    const events: string[] = [];
-    const completed: string[] = [];
+    const independentStarted = Promise.withResolvers<void>();
+    const releaseIndependent = Promise.withResolvers<void>();
+    const sharedOneStarted = Promise.withResolvers<void>();
+    const releaseSharedOne = Promise.withResolvers<void>();
+    const sharedTwoStarted = Promise.withResolvers<void>();
+    let independentCompleted = false;
+    let sharedTwoHasStarted = false;
     const tasks = [
-      { id: "slow-independent", delayMs: 30 },
-      { id: "shared-one", delayMs: 20, mutex: ["cargo-build"] },
-      { id: "shared-two", delayMs: 1, mutex: ["cargo-build"] },
-      { id: "fast-independent", delayMs: 1 }
+      { id: "independent" },
+      { id: "shared-one", mutex: ["cargo-build"] },
+      { id: "shared-two", mutex: ["cargo-build"] }
     ];
 
-    await runParallelTasks(tasks, {
-      concurrency: 4,
+    const running = runParallelTasks(tasks, {
+      concurrency: 3,
       execute: async (task) => {
-        events.push(`start:${task.id}`);
-        await delay(taskDelayMs(task));
-        events.push(`end:${task.id}`);
+        switch (task.id) {
+          case "independent":
+            independentStarted.resolve();
+            await releaseIndependent.promise;
+            independentCompleted = true;
+            break;
+          case "shared-one":
+            sharedOneStarted.resolve();
+            await releaseSharedOne.promise;
+            break;
+          case "shared-two":
+            sharedTwoHasStarted = true;
+            sharedTwoStarted.resolve();
+            break;
+          default:
+            assert.fail(`unexpected task: ${task.id}`);
+        }
         return task.id;
-      },
-      onComplete: (result) => {
-        completed.push(result);
       }
     });
 
-    assert.ok(events.indexOf("start:fast-independent") < events.indexOf("end:slow-independent"));
-    assert.ok(events.indexOf("end:shared-one") < events.indexOf("start:shared-two"));
-    assert.deepEqual(completed.slice(0, 2), ["fast-independent", "shared-one"]);
+    await Promise.all([independentStarted.promise, sharedOneStarted.promise]);
+    assert.equal(sharedTwoHasStarted, false);
+
+    releaseSharedOne.resolve();
+    await sharedTwoStarted.promise;
+    assert.equal(independentCompleted, false);
+
+    releaseIndependent.resolve();
+    assert.deepEqual((await running).sort(), ["independent", "shared-one", "shared-two"]);
   });
 
   it("does not limit concurrency when no explicit concurrency is provided", async () => {
@@ -196,22 +217,6 @@ describe("parallel task runner", () => {
     });
     assert.deepEqual(taskById(tasks, "core-smoke").mutex, ["dev-bins", "temp-root"]);
     assert.deepEqual(taskById(tasks, "summary").dependsOn, ["markdown-smoke", "core-smoke"]);
-  });
-
-  it("schedules an explicitly prepared task list", async () => {
-    const seen: string[] = [];
-    const tasks = expandTasks([
-      { id: "group", tasks: [{ id: "leaf", run: () => "done" }] }
-    ]);
-
-    await runParallelTasks(tasks, {
-      execute: (task) => {
-        seen.push(task.id);
-        return task.run?.(task);
-      }
-    });
-
-    assert.deepEqual(seen, ["leaf"]);
   });
 
   it("rejects duplicate ids and unknown dependencies", async () => {

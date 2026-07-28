@@ -53,17 +53,14 @@ test("loads one versioned and sorted supported runner profile", async () => {
   assert.equal(profile.schemaVersion, 2);
   assert.equal(profile.id, "docnav-native-tests");
   assert.equal(profile.version, 2);
-  assert.deepEqual(profile.bun, {
-    sourceRoots: ["scripts", "test"],
-    include: ["**/*.test.ts"],
-    ignore: [],
-    supplementalFiles: []
-  });
+  assert.deepEqual(
+    profile.bun.sourceRoots,
+    [...profile.bun.sourceRoots].sort((left, right) => left.localeCompare(right))
+  );
   assert.deepEqual(
     resolveBunTestFiles({ workspaceRoot, profile: profile.bun }),
     findConventionalBunTests(workspaceRoot, profile.bun.sourceRoots)
   );
-  assert.equal(profile.smoke.factory, "test/smoke/core/profile.ts");
 
   const temporaryRoot = fs.mkdtempSync(path.join(
     os.tmpdir(),

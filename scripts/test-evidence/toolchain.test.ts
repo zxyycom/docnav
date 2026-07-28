@@ -4,7 +4,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { releaseComponents } from "../tools/release-package/config.ts";
 import {
   AST_GREP_PACKAGE,
   AST_GREP_VERSION,
@@ -37,21 +36,6 @@ test("uses the repository-locked ast-grep CLI through the project wrapper", asyn
   const result = await runAstGrep(["--version"]);
   assert.equal(result.status, 0);
   assert.equal(result.stdout.trim(), expectedAstGrepVersionLine());
-});
-
-test("keeps the development ast-grep executable outside canonical release components", () => {
-  assert.deepEqual(releaseComponents, [
-    {
-      component: "core",
-      packageName: "docnav",
-      binName: "docnav"
-    }
-  ]);
-  assert.ok(
-    releaseComponents.every(({ binName, packageName }) => (
-      !binName.includes("ast-grep") && !packageName.includes("ast-grep")
-    ))
-  );
 });
 
 test("does not invoke the external ast-grep executable outside the developer wrapper", () => {

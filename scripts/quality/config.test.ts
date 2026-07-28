@@ -10,14 +10,17 @@ import { classifyFile } from "../tools/quality-core/src/model/code-areas.ts";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("quality code area classification", () => {
-  it("keeps smoke case and fixture files in the fixtures/examples area", () => {
-    assert.equal(classifyQualityFile("test/smoke/core/cases/config-management.ts"), "fixtures-examples");
-    assert.equal(classifyQualityFile("test/smoke/core/fixtures/project.ts"), "fixtures-examples");
-  });
+  it("classifies representative smoke files by responsibility", () => {
+    const cases = [
+      ["test/smoke/core/cases/config-management.ts", "fixtures-examples"],
+      ["test/smoke/core/fixtures/project.ts", "fixtures-examples"],
+      ["test/tools/smoke-harness.ts", "typescript-validation-smoke"],
+      ["scripts/tools/validators/schema/index.ts", "typescript-validation-smoke"]
+    ] as const;
 
-  it("keeps smoke harness infrastructure in the validation/smoke area", () => {
-    assert.equal(classifyQualityFile("test/tools/smoke-harness.ts"), "typescript-validation-smoke");
-    assert.equal(classifyQualityFile("scripts/tools/validators/schema/index.ts"), "typescript-validation-smoke");
+    for (const [filePath, expectedArea] of cases) {
+      assert.equal(classifyQualityFile(filePath), expectedArea);
+    }
   });
 
   it("classifies root workspace crates by Rust source role", () => {
@@ -55,7 +58,6 @@ describe("quality code area classification", () => {
       assert.ok(files.includes(file), `quality current scan should include ${file}`);
     }
   });
-
 });
 
 function classifyQualityFile(filePath: string): string {

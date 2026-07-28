@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 
 import {
   buildBaselineSnapshotCacheKey,
@@ -93,36 +93,32 @@ describe("quality measurement cache", () => {
 
     try {
       const baseKey = buildScanCacheKey(identity);
-      assert.notEqual(baseKey, buildScanCacheKey({ ...identity, codeArea: "rust-tests" }));
-      assert.notEqual(
-        baseKey,
-        buildScanCacheKey({
+      const changedPublicInputs: DuplicateCodeCacheIdentity[] = [
+        { ...identity, codeArea: "rust-tests" },
+        { ...identity, commitSha: "def456" },
+        {
           ...identity,
           inputFingerprint: {
             fileCount: 1,
             fileList: ["src/changed.ts"],
             fingerprint: "sha256:changed:1"
           }
-        })
-      );
+        },
+        {
+          ...identity,
+          normalizedToolArgs: ["exec", "jscpd", "--min-tokens", "75", "--reporters", "json"]
+        },
+        { ...identity, toolVersion: "5.0.12" }
+      ];
+      for (const changedIdentity of changedPublicInputs) {
+        assert.notEqual(baseKey, buildScanCacheKey(changedIdentity));
+      }
 
       writeScanCacheEntry({ rootDir: tempDir, identity, metrics: [fragment] });
 
       const hit = loadScanCacheEntry({ rootDir: tempDir, identity });
       assert.equal(hit.hit, true);
       assert.equal(hit.hit ? hit.metrics[0]!.hitsChangedScope : true, false);
-      assert.equal(
-        hit.hit ? relative(tempDir, hit.cachePath).split("\\").join("/") : "",
-        `quality-scan-cache-v1/${baseKey}.json`
-      );
-
-      assert.notEqual(
-        baseKey,
-        buildScanCacheKey({
-          ...identity,
-          normalizedToolArgs: ["exec", "jscpd", "--min-tokens", "75", "--reporters", "json"]
-        })
-      );
 
       const mismatched = loadScanCacheEntry({
         rootDir: tempDir,

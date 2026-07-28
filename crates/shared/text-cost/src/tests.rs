@@ -21,9 +21,9 @@ fn byte_cost_counts_utf8_bytes() {
 
 #[test]
 fn token_cost_uses_o200k_base_ordinary_text() {
-    let text = "<|endoftext|>\nplain text";
-    let expected = o200k_base_singleton().count_ordinary(text) as u64;
+    let cases = [("", 0), ("plain text", 2), ("<|endoftext|>\nplain text", 9)];
 
-    assert_measurement(token_cost(""), "tokens", 0);
-    assert_measurement(token_cost(text), "tokens", expected);
+    for (text, expected) in cases {
+        assert_measurement(token_cost(text), "tokens", expected);
+    }
 }

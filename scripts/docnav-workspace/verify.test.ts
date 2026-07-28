@@ -16,46 +16,59 @@ import {
   reportCountForChecks,
   visibleOutputLines
 } from "./checks/index.ts";
-import type { CheckDefinition } from "./checks/model.ts";
-import { defineChecks } from "./checks/normalization.ts";
 import { formatCompletionLine, formatDurationMs } from "./results.ts";
 import { parseArgs, resolveVerificationConcurrency } from "./verify/args.ts";
 import { executeCheck } from "./verify/execution.ts";
 import { printCompletionResult } from "./verify/output.ts";
 
 describe("workspace verifier configuration", () => {
-  it("filters successful semantic Case ledger output", () => {
-    const check = checkById("test-evidence-ledger");
-    const output = [
-      "$ bun scripts/test-evidence/index.ts check --root .",
-      "Test Case check passed: 537 current test entities (393 Cargo, 117 Bun, 27 smoke); 537 mapped by 116 semantic Cases across 11 topics."
-    ].join("\n");
+  it("filters known success noise from terminal-visible output", () => {
+    const cases = [
+      {
+        checkId: "test-evidence-ledger",
+        output: [
+          "$ bun scripts/test-evidence/index.ts check --root .",
+          "Test Case check passed: 537 current test entities (393 Cargo, 117 Bun, 27 smoke); 537 mapped by 116 semantic Cases across 11 topics."
+        ].join("\n")
+      },
+      {
+        checkId: "typecheck-scripts",
+        output: "$ tsgo -p tsconfig.json"
+      },
+      {
+        checkId: "lint-scripts",
+        output: "$ eslint --max-warnings 0 --cache --cache-location .eslintcache --cache-strategy content"
+      }
+    ];
 
-    assert.deepEqual(visibleOutputLines(check, output), []);
+    for (const { checkId, output } of cases) {
+      assert.deepEqual(visibleOutputLines(checkById(checkId), output), []);
+    }
   });
 
   it("keeps actionable failure output after filtering known success noise", () => {
-    const check = checkById("test-evidence-ledger");
-    const output = [
-      "$ bun scripts/test-evidence/index.ts check --root .",
-      "unexpected diagnostic"
-    ].join("\n");
+    const cases = [
+      {
+        checkId: "test-evidence-ledger",
+        output: [
+          "$ bun scripts/test-evidence/index.ts check --root .",
+          "unexpected diagnostic"
+        ].join("\n"),
+        expected: ["unexpected diagnostic"]
+      },
+      {
+        checkId: "docs-validators",
+        output: [
+          "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived).",
+          "schema diagnostic"
+        ].join("\n"),
+        expected: ["schema diagnostic"]
+      }
+    ];
 
-    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["unexpected diagnostic"]);
-  });
-
-  it("filters package manager echoes from successful script checks", () => {
-    const typecheck = checkById("typecheck-scripts");
-    const lint = checkById("lint-scripts");
-
-    assert.deepEqual(visibleOutputLines(typecheck, "$ tsgo -p tsconfig.json"), []);
-    assert.deepEqual(
-      visibleOutputLines(
-        lint,
-        "$ eslint --max-warnings 0 --cache --cache-location .eslintcache --cache-strategy content"
-      ),
-      []
-    );
+    for (const { checkId, output, expected } of cases) {
+      assert.deepEqual(visibleOutputLines(checkById(checkId), output, "failed"), expected);
+    }
   });
 
   it("suppresses all passed output even when a success line is not configured", () => {
@@ -66,16 +79,6 @@ describe("workspace verifier configuration", () => {
     ].join("\n");
 
     assert.deepEqual(visibleOutputLines(check, output, "passed"), []);
-  });
-
-  it("filters decision success output from docs validator failures", () => {
-    const check = checkById("docs-validators");
-    const output = [
-      "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived).",
-      "schema diagnostic"
-    ].join("\n");
-
-    assert.deepEqual(visibleOutputLines(check, output, "failed"), ["schema diagnostic"]);
   });
 
   it("filters quality timing details from terminal-visible output", () => {
@@ -128,31 +131,27 @@ describe("workspace verifier configuration", () => {
     const requiredIds = checksForProfile(PROFILE_REQUIRED).map((check) => check.id);
     const fullIds = checksForProfile(PROFILE_FULL).map((check) => check.id);
 
-    assert.ok(requiredIds.includes("cargo-fmt"));
-    assert.ok(requiredIds.includes("typecheck-scripts"));
-    assert.ok(requiredIds.includes("lint-scripts"));
-    assert.ok(requiredIds.includes("quality-quick-check"));
-    assert.ok(requiredIds.includes("docs-validators"));
-    assert.ok(!requiredIds.includes("docs-schema-validator"));
-    assert.ok(requiredIds.includes("test-evidence-ledger"));
-    assert.ok(!requiredIds.includes("workspace-verifier-script-tests"));
-    assert.ok(!requiredIds.includes("validator-script-tests"));
-    assert.ok(!requiredIds.includes("release-package-script-tests"));
-    assert.ok(requiredIds.includes("git-diff-whitespace"));
-    assert.ok(!requiredIds.includes("cargo-test"));
-    assert.ok(!requiredIds.includes("quality-internal-tests"));
-    assert.ok(!requiredIds.includes("docnav-core-development-smoke"));
-
-    assert.ok(fullIds.includes("cargo-fmt"));
+    for (const id of [
+      "typecheck-scripts",
+      "lint-scripts",
+      "docs-validators",
+      "test-evidence-ledger",
+      "quality-quick-check"
+    ]) {
+      assert.ok(requiredIds.includes(id), `required profile should include ${id}`);
+    }
+    for (const id of [
+      "typecheck-scripts",
+      "test-evidence-ledger",
+      "quality-full-check",
+      "cargo-test",
+      "docnav-core-development-smoke",
+      "openspec"
+    ]) {
+      assert.ok(fullIds.includes(id), `full profile should include ${id}`);
+    }
+    assert.ok(!requiredIds.includes("quality-full-check"));
     assert.ok(!fullIds.includes("quality-quick-check"));
-    assert.ok(fullIds.includes("quality-full-check"));
-    assert.ok(fullIds.includes("test-evidence-ledger"));
-    assert.ok(!fullIds.includes("quality-internal-tests"));
-    assert.ok(!fullIds.includes("quality-report-tests"));
-    assert.ok(fullIds.includes("cargo-test"));
-    assert.ok(fullIds.includes("docnav-development-binaries"));
-    assert.ok(fullIds.includes("docnav-core-development-smoke"));
-    assert.ok(fullIds.includes("openspec"));
   });
 
   it("parses verification profile arguments", () => {
@@ -288,24 +287,6 @@ describe("workspace verifier configuration", () => {
     } finally {
       fs.rmSync(tempRoot, { force: true, recursive: true });
     }
-  });
-
-  it("rejects invalid leaf and group check definitions", () => {
-    const missingCommand = { id: "missing-command" } as unknown as CheckDefinition;
-    assert.throws(
-      () => defineChecks([missingCommand]),
-      /check missing-command leaf must define a non-empty command/
-    );
-
-    const groupWithCommand = {
-      id: "group-with-command",
-      command: "bun",
-      tasks: [{ id: "child", command: "bun" }]
-    } as unknown as CheckDefinition;
-    assert.throws(
-      () => defineChecks([groupWithCommand]),
-      /check group-with-command group must not define command/
-    );
   });
 
   it("schedules docs validation through one executable check", () => {

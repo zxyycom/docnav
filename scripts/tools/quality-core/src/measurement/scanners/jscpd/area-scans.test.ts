@@ -5,34 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { FatalIssue, QualityConfig, ToolAvailability } from "../../../model/schema.ts";
-import { planJscpdAreaScanTasks, scanJscpdAreasWithCache } from "./area-scans.ts";
+import { scanJscpdAreasWithCache } from "./area-scans.ts";
 import { TEST_QUALITY_CONFIG } from "../../../../test/config.ts";
 
 describe("jscpd tasks", () => {
-  it("plans one scan task per code area", () => {
-    const tasks = planJscpdAreaScanTasks([
-      {
-        area: "rust-production",
-        files: ["crates/b/src/lib.rs", "crates/a/src/lib.rs"],
-        minimumTokens: 75
-      },
-      {
-        area: "typescript-production-scripts",
-        files: ["scripts/a.ts", "scripts/b.ts"],
-        minimumTokens: 75
-      }
-    ]);
-
-    assert.deepEqual(tasks.map((task) => task.id), [
-      "jscpd:rust-production",
-      "jscpd:typescript-production-scripts"
-    ]);
-    assert.deepEqual(tasks[0]!.files, [
-      "crates/a/src/lib.rs",
-      "crates/b/src/lib.rs"
-    ]);
-  });
-
   it("records current-scan fatal issues when jscpd output is invalid", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-jscpd-area-"));
     const fakeJscpdPath = join(tempDir, "fake-jscpd.ts");

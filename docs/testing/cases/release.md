@@ -5,14 +5,10 @@
 Owner: `docs/testing/release.md#本地预验收`
 
 Entities:
-- `bun|scripts/tools/release-package/args.test.ts|package build target accepts one target option`
-- `bun|scripts/tools/release-package/args.test.ts|package build target defaults to host target`
-- `bun|scripts/tools/release-package/args.test.ts|package build target rejects extra options and paths`
-- `bun|scripts/tools/release-package/args.test.ts|package selection accepts a target`
-- `bun|scripts/tools/release-package/args.test.ts|package selection defaults to the current host package`
-- `bun|scripts/tools/release-package/args.test.ts|package selection keeps explicit manifest support`
-- `bun|scripts/tools/release-package/args.test.ts|package selection rejects ambiguous selectors`
-- `bun|scripts/tools/release-package/args.test.ts|package selection rejects target paths`
+- `bun|scripts/tools/release-package/args.test.ts|package build target parses supported selectors`
+- `bun|scripts/tools/release-package/args.test.ts|package build target rejects invalid selectors`
+- `bun|scripts/tools/release-package/args.test.ts|package selection parses supported selectors`
+- `bun|scripts/tools/release-package/args.test.ts|package selection rejects invalid selectors`
 
 Proves:
 - release package selector 区分 host package default、target triple、manifest path 和 ambiguous selector。
