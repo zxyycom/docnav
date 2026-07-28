@@ -1,5 +1,6 @@
-use cli_config_resolution::{ResolutionDiagnostic, SourceLocator};
+use cli_config_resolution::{ResolutionDiagnostic, ResolutionResult, SourceLocator};
 use docnav_diagnostics::DiagnosticSource;
+use docnav_protocol::Operation;
 use docnav_typed_fields::{FieldDefSet, ProcessingId};
 use serde_json::Value;
 
@@ -8,7 +9,11 @@ use crate::error::ConfigFieldError;
 use crate::{NavigationConfigSource, NavigationConfigSources, NavigationError};
 
 use super::super::{
-    native_options::{unsupported_option, UnsupportedOptionContext},
+    catalog::DocumentParameterCatalog,
+    native_options::{
+        catalog_option_for_identity, native_option_validation_error, unsupported_option,
+        UnsupportedOptionContext,
+    },
     values::{resolution_reason_code, validation_error_for_identity},
     CONFIG_PROCESSING,
 };
@@ -148,6 +153,66 @@ fn invalid_nested_object(source: &NavigationConfigSource, field: &str) -> Naviga
 
 pub(super) fn config_source_error(issue: &NavigationConfigSourceIssue) -> NavigationError {
     NavigationError::new(issue.to_record_draft(DiagnosticSource::with_stage("docnav", "config")))
+}
+
+pub(in crate::parameters) fn first_resolution_error(
+    resolution: &ResolutionResult,
+    config_sources: &NavigationConfigSources,
+) -> Result<(), NavigationError> {
+    first_config_source_error(config_sources)?;
+    if let Some(diagnostic) = resolution.diagnostics().first() {
+        return Err(resolution_error_with_config_sources(
+            diagnostic,
+            config_sources,
+        ));
+    }
+    Ok(())
+}
+
+pub(in crate::parameters) fn first_operation_resolution_error(
+    resolution: &ResolutionResult,
+    config_sources: &NavigationConfigSources,
+    selected_adapter_id: &str,
+    operation: Operation,
+    catalog: &DocumentParameterCatalog,
+) -> Result<(), NavigationError> {
+    if let Some(diagnostic) = resolution.diagnostics().first() {
+        if let Some((field, entry)) = catalog_option_for_identity(
+            catalog,
+            selected_adapter_id,
+            operation,
+            diagnostic.field.as_str(),
+        ) {
+            return Err(
+                native_option_validation_error(config_sources, field, entry, diagnostic).into(),
+            );
+        }
+        return Err(resolution_error_with_config_sources(
+            diagnostic,
+            config_sources,
+        ));
+    }
+    Ok(())
+}
+
+pub(super) fn first_config_source_error(
+    config_sources: &NavigationConfigSources,
+) -> Result<(), NavigationError> {
+    for source in [&config_sources.project, &config_sources.user] {
+        if let Some(issue) = source.loaded.diagnostics().first() {
+            return Err(config_source_error(issue));
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn first_config_source_error_for_source(
+    source: &NavigationConfigSource,
+) -> Result<(), NavigationError> {
+    if let Some(issue) = source.loaded.diagnostics().first() {
+        return Err(config_source_error(issue));
+    }
+    Ok(())
 }
 
 pub(super) fn resolution_error_with_config_sources(
