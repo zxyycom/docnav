@@ -12,7 +12,7 @@ export function validateReadableConformanceFixtures(): void {
   const conformanceDir = OUTPUT_MODE_CONSISTENCY.conformanceDir;
 
   assertConformanceFixturesExist(conformanceDir);
-  assertConformanceReadmeIndexesFixtures();
+  assertConformanceCatalogIndexesFixtures();
   assertConformanceDirectoryMatchesIndex(conformanceDir);
   assertMarkerFixtureRestoresPayload(conformanceDir);
 }
@@ -27,12 +27,12 @@ function assertConformanceFixturesExist(conformanceDir: string): void {
   }
 }
 
-function assertConformanceReadmeIndexesFixtures(): void {
-  const readme = readText(OUTPUT_MODE_CONSISTENCY.conformanceReadme);
+function assertConformanceCatalogIndexesFixtures(): void {
+  const catalog = readText(OUTPUT_MODE_CONSISTENCY.conformanceCatalog);
   for (const fixture of OUTPUT_MODE_CONSISTENCY.conformanceFixtures) {
     assert(
-      readme.includes(fixture),
-      `conformance README must index ${fixture}`
+      catalog.includes(fixture),
+      `conformance fixture catalog must index ${fixture}`
     );
   }
 }

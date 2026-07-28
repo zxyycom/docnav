@@ -2,7 +2,7 @@
 
 ## Case AUX-QUALITY-CACHE-001: Quality measurement cache identity 稳定
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/src/measurement/cache.test.ts|quality measurement cache > keys duplicate-code cache by scan identity and strips changed-scope annotations`
@@ -15,7 +15,7 @@ Proves:
 
 ## Case AUX-QUALITY-CHANGED-FILES-001: Quality revision inputs 保持 current/changed/baseline 一致
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/src/input/files.test.ts|quality changed file input > fails fast when an explicit changed-files list cannot be read`
@@ -42,7 +42,7 @@ Proves:
 
 ## Case AUX-QUALITY-JSCPD-TASK-001: Quality jscpd task 保留 current-scan failure projection
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/src/measurement/scanners/jscpd/area-scans.test.ts|jscpd tasks > records current-scan fatal issues when jscpd output is invalid`
@@ -52,7 +52,7 @@ Proves:
 
 ## Case AUX-QUALITY-JSCPD-WRAPPER-001: Quality jscpd wrapper failure projection 稳定
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/src/measurement/scanners.test.ts|quality jscpd wrapper failure projection > classifies non-zero jscpd exits as execution failures, not skipped scans`
@@ -68,7 +68,7 @@ Proves:
 
 ## Case AUX-QUALITY-PARSER-001: Quality scanner parser fixtures 稳定
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/src/measurement/scanners.test.ts|quality scanner output parsing > classifies invalid jscpd JSON and duplicate items as parse failures`
@@ -83,7 +83,7 @@ Proves:
 
 ## Case AUX-QUALITY-PUBLIC-API-001: Quality core applies caller-owned areas and thresholds
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/test/quality-core.test.ts|script quality core > classifies files using caller-provided code areas`
@@ -96,7 +96,7 @@ Proves:
 
 ## Case AUX-QUALITY-REPORT-001: Quality report 排名和 changed-file 摘要稳定
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/src/output/report/markdown-report.test.ts|quality report > keeps changed-file watchlist useful without baseline annotations`
@@ -126,7 +126,7 @@ Proves:
 
 ## Case AUX-QUALITY-WARNINGS-001: Quality warning 阈值语义稳定
 
-Owner: `scripts/tools/quality-core/README.md#use`
+Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/quality/annotate/warnings.test.ts|quality warning annotations > keeps accepted warnings in machine records but selects only unaccepted warnings`

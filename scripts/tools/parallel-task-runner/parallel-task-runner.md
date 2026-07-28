@@ -1,4 +1,4 @@
-# parallel-task-runner
+# Parallel task runner module
 
 Parallel task scheduling for TypeScript script tooling.
 

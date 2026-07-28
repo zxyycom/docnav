@@ -128,6 +128,12 @@ Workspace verifier 的运行并发预算可由 `--concurrency <n>` 或环境变�
 
 ## 共享脚本内部模块
 
-`scripts/tools/foundation/`、`scripts/tools/parallel-task-runner/` 和 `scripts/tools/quality-core/` 是 Docnav 仓库内普通跟踪源码形态的共享脚本工具边界。每个模块只保留一份极简 README 作为文档 owner，用于说明用途、public source entrypoint 和局部检查；private `package.json` 与 `tsconfig.json` 只服务 Bun、TypeScript、ESLint 和测试配置，不是 npm publish contract。
+[`foundation`](../scripts/tools/foundation/foundation.md)、
+[`parallel-task-runner`](../scripts/tools/parallel-task-runner/parallel-task-runner.md) 和
+[`quality-core`](../scripts/tools/quality-core/quality-core.md) 是 Docnav 仓库内普通跟踪
+源码形态的共享脚本工具边界。每个模块只保留一份与模块同名的极简说明文档作为
+本地 owner，用于说明用途、public source entrypoint 和局部检查；private
+`package.json` 与 `tsconfig.json` 只服务 Bun、TypeScript、ESLint 和测试配置，
+不是 npm publish contract。
 
 Docnav-owned command entrypoints、callers、quality defaults、workspace profiles、release product config、validators 和 package scripts 通过 typed config、task definitions 或 explicit options 直接导入这些模块的 source entrypoint，不保留 wrapper、re-export 或独立仓库兼容层。根 `tsconfig`、ESLint、workspace verifier 和质量扫描共同覆盖这些源码；模块自身的 private manifest 只提供局部反馈入口。

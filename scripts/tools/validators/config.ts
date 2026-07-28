@@ -54,7 +54,8 @@ export const DOCUMENT_OUTPUT_MODES = [
 
 export const OUTPUT_MODE_CONSISTENCY = {
   conformanceDir: "crates/shared/readable/tests/fixtures/conformance",
-  conformanceReadme: "crates/shared/readable/tests/fixtures/conformance/README.md",
+  conformanceCatalog:
+    "crates/shared/readable/tests/fixtures/conformance/conformance-fixtures.md",
   conformanceFixtures: [
     "01_no_block_outline.json",
     "04_single_block.json",

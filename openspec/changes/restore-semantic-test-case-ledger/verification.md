@@ -2,6 +2,24 @@
 
 本文件记录本 change 在 2026-07-28 完成的最终验证证据。结果只证明当前工作树与 change artifact 已满足 apply 验收；change 保持未归档，归档仍需单独评估和执行。
 
+## Authority and audit scope
+
+本目录保存本次变更的提案、设计、迁移处置、任务和形成时验证证据，不是稳定规则或
+当前实现状态的 owner：
+
+- 日常测试变更从
+  [`docs/testing/case-maintenance.md`](../../../docs/testing/case-maintenance.md)
+  读取当前账本规则。
+- 当前测试实体的存在性与身份以当前源码、runner 报告和 project wrapper 为准。
+- 当前 Case 内容以 `docs/testing/cases/<topic>.md` 为准，Topic 分类以
+  `docs/testing/cases/topics.json` 为准。
+- 本文件中的数量和验证结果是形成时观测；判断当前工作树时重新运行项目检查。
+
+审计本 change 时依次读取 `proposal.md`、`design.md`、
+`specs/test-evidence-management/spec.md`、`tasks.md` 和本文件。历史 Entry/Claim、
+inventory/index 和旧 Case 只解释迁移背景，不参与当前查询或闭合，也不建立当前
+Case、当前实体或产品测试义务。
+
 ## Focused verification
 
 Status: passed

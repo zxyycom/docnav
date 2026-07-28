@@ -2,7 +2,7 @@
 
 ## Case AUX-PARALLEL-RUNNER-001: Parallel task runner 保持调度契约
 
-Owner: `scripts/tools/parallel-task-runner/README.md#use`
+Owner: `scripts/tools/parallel-task-runner/parallel-task-runner.md#use`
 
 Entities:
 - `bun|scripts/tools/parallel-task-runner/test/index.test.ts|parallel task runner > does not limit concurrency when no explicit concurrency is provided`
@@ -22,7 +22,7 @@ Proves:
 
 ## Case AUX-SCRIPT-VALUE-PARSING-001: Shared script path normalization 与正整数解析稳定
 
-Owner: `scripts/tools/foundation/README.md#use`
+Owner: `scripts/tools/foundation/foundation.md#use`
 
 Entities:
 - `bun|scripts/tools/foundation/test/foundation.test.ts|script foundation > normalizes backslashes in paths`

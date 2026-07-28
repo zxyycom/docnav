@@ -1,4 +1,4 @@
-# Conformance vector fixtures
+# Readable-view conformance fixture catalog
 
 This directory contains committed, version-controlled JSON files that serve as
 cross-implementation acceptance material for the readable-view renderer.

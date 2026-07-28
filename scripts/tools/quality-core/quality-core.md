@@ -1,4 +1,4 @@
-# quality-core
+# Quality core module
 
 Quality scanning core for TypeScript script tooling.
 

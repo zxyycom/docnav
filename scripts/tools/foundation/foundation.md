@@ -1,4 +1,4 @@
-# foundation
+# Foundation script module
 
 TypeScript foundation helpers for script tooling.
 

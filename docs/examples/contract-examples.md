@@ -1,4 +1,4 @@
-# 端到端示例
+# 端到端契约示例
 
 本目录使用 [nested-duplicate.md](markdown/nested-duplicate.md) 展示 Markdown `outline -> ref -> read`、page、原始协议与阅读输出的边界。
 
