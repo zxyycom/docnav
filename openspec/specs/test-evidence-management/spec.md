@@ -3,95 +3,122 @@
 ## Purpose
 TBD - created by archiving change migrate-test-evidence-review-v7. Update Purpose after archive.
 ## Requirements
-### Requirement: 一个保留的最小原生测试入口对应一个 case
-项目测试证据 MUST 以测试框架能够稳定独立选择、单独报告且拥有完整测试意图的最小原生测试入口为登记粒度。本次范围内每个保留入口 MUST 恰好对应一个 case，聚合容器和内部环节 MUST NOT 独立登记。
+### Requirement: 完整当前树生成测试实体集合
+项目 MUST 让受控 runner profile 从完整当前树发现测试框架能够稳定独立选择或报告、且拥有完整测试意图的最小 scanned test entity（测试实体），并 MUST 在内存中闭合 static declaration、runtime report 与实体映射。每个测试实体 MUST 具有唯一且确定性的 entity key；扫描结果 MUST NOT 通过手写 Entry、`NativeTestEntry` 长期模型或 committed inventory 成为第二事实源。
 
-#### Scenario: Runner 报告多个原生测试节点
-- **WHEN** 一个测试文件、suite、脚本或 CI job 聚合多个可区分的原生测试节点
-- **THEN** 聚合对象只作为执行或定位容器
-- **THEN** 每个本次保留的最小原生测试入口分别拥有一个 case
+#### Scenario: Static 与 runtime 集合闭合
+- **WHEN** strict check 执行 supported runner profile
+- **THEN** scanner 双向比较 static、runtime 与实体映射并生成唯一当前测试实体集合
+- **THEN** 任一 `static-only`、`runtime-only`、unsupported shape 或 duplicate test entity 都阻断检查
 
-#### Scenario: Helper 只服务所属测试入口
-- **WHEN** fixture、helper、mock、hook、断言或步骤只参与一个原生测试节点的最终判定
-- **THEN** 它归入所属入口的证据背景
-- **THEN** 它不得建立独立 case
+#### Scenario: 聚合和内部环节不是实体
+- **WHEN** 测试文件、suite、runner、CI job、fixture、helper、mock、hook、断言或步骤只聚合或服务测试节点
+- **THEN** scanner 只为可独立选择或报告的最小完整测试节点生成测试实体
+- **THEN** 聚合或内部环节不得获得 entity key
 
-#### Scenario: 工程校验不是测试入口
+#### Scenario: 工程校验不是测试实体
 - **WHEN** lint、类型检查、schema、生成物一致性、安全扫描或 workspace profile 只执行工程校验
 - **THEN** 该校验由自身 owner 和验证链路承接
-- **THEN** 测试证据目录不得把命令、job 或结果登记为测试 case
+- **THEN** test Case 账本不得把命令、job 或结果登记为测试实体
 
-### Requirement: Topic 目录与单 case Markdown 是权威源
-项目 MUST 固定使用 `docs/test-evidence` 作为测试证据根目录，以受控 `test-evidence-topics.json` 定义稳定测试责任 topic，并 MUST 让每个合法 `<topic>/<slug>.md` 恰好保存一个 case。topic MUST NOT 改变 case 身份或测试粒度。
+### Requirement: Topic catalog 与 Topic 文件直接拥有语义 Case
+项目 MUST 固定使用 `docs/testing/cases/topics.json` 定义稳定 topic ID、说明和顺序，并 MUST 让每个受控 topic 恰有一个 `docs/testing/cases/<topic>.md`，保存该 topic 的零个或多个当前 Case。Case root MUST 是 workspace 内的非符号链接目录；`topics.json` 以及受控或未知的 `.md` 成员 MUST 解析为 workspace 内的非符号链接普通文件。Case ID MUST 在全部 topic 中全局唯一且稳定。项目 MUST NOT 维护一 Case 一文件目录或重复 Case/entity 关系的 committed query index。
 
-#### Scenario: 按 topic 定位 case
-- **WHEN** 维护者查询一个已定义 topic
-- **THEN** 结果只包含该 topic 直属目录中的合法 case
-- **THEN** 每个结果的 sourcePath 使用 `<topic>/<slug>.md`
+#### Scenario: 空 topic 仍然稳定存在
+- **WHEN** 一个已定义 topic 暂时没有 Case
+- **THEN** `topics.json` 和对应 `<topic>.md` 仍共同定义合法空 topic
+- **THEN** `topics` 查询返回该 topic 且 strict check 不因它为空而失败
 
-#### Scenario: 目录包含未知成员
-- **WHEN** 根目录出现未知 topic、额外根文件、符号链接、嵌套目录或空 topic 目录
-- **THEN** 严格检查报告阻断诊断
-- **THEN** 非法布局不得通过只读索引回退绕过
+#### Scenario: 按 topic 定位 Case
+- **WHEN** 维护者按精确 topic 查询账本
+- **THEN** 结果只包含该 topic 文件中的 Case
+- **THEN** topic 不改变 Case ID、证明粒度或实体身份
 
-### Requirement: Case 只表达入口、契约和证明
-每个 case MUST 使用全目录唯一且稳定的 case ID，并 MUST 各有且只有一个 `Entry`、`Contract` 和 `Proves`。`Entry` MUST 精确定位同一个最小原生测试入口；`Contract` MUST 来自稳定 owner 语义；`Proves` MUST 描述直接可判断的可观察结果。目录 MUST NOT 使用 Status、Code、Verification、角色或源码 marker。
+#### Scenario: Case source 保持 workspace-safe
+- **WHEN** Case root、`topics.json` 或任一 `.md` 成员越出 workspace、经过符号链接或不是其要求的目录/普通文件类型
+- **THEN** strict check 报告阻断诊断
+- **THEN** 查询不得通过缓存或兼容读取绕过非法布局
 
-#### Scenario: 一个入口拥有多个定位
-- **WHEN** 测试定义路径和 runner 精确选择命令都定位同一个原生测试节点
-- **THEN** 同一 case 的 Entry 可以保存这些不重复定位
-- **THEN** 这些定位不得跨越到另一个原生测试节点
+#### Scenario: Case 目录成员边界
+- **WHEN** Case 目录包含嵌套目录、任意符号链接或未在 `topics.json` 中登记的 `.md` 文件
+- **THEN** strict check 报告阻断诊断
+- **THEN** 与 Case source 无关的非 Markdown 普通文件被忽略
 
-#### Scenario: 旧聚合 case 需要拆分
-- **WHEN** 旧 case 混合多个可独立命名、独立失败的测试意图
-- **THEN** 迁移先拆成对应原生测试入口并分别建立 case
-- **THEN** 只有语义连续且完整承接旧判断的入口可以保留旧 ID，其余入口使用唯一新 ID
+#### Scenario: Topic Markdown 只接受受控语法
+- **WHEN** parser 读取一个受控 topic Markdown
+- **THEN** 文件只可包含一个 H1，随后是空行和合法的 `## Case <CASE-ID>: <title>` Case blocks
+- **THEN** 仅含 H1 的空 topic 合法，而 malformed Case H2、其它 H2 或 Case block 外 prose 均报告阻断诊断
 
-#### Scenario: 历史回归缺少 owner 契约
-- **WHEN** 旧 case 只描述历史事故、防止未来回归或内部实现路径，且没有当前 owner 明文语义
-- **THEN** 该文字不得直接成为 Contract 或新增断言
-- **THEN** 维护者缩小、转交或删除该证据项并在迁移映射中说明
+### Requirement: Case 直接表达单一 Owner、证明和当前测试实体
+账本 MUST 只保存当前 implemented Case。每个 Case MUST 恰好声明一个精确定位当前 Markdown heading 的 `Owner`、非空 `Entities` 和非空 `Proves`；该 Owner MUST 真正拥有全部 `Proves` 所述责任，而不只是与主题相关，每条 `Proves` MUST 描述该 Owner 下责任方可观察的判断，每个 entity key MUST 完整、精确地来自当前 scanner。稳定 Case ID MUST 持续代表同一语义责任；已退休 ID MUST NOT 被重新用于其它语义。Case MUST NOT 保存 `Status`、Entry、Claim、source fingerprint、Code path、Verification、源码 marker 或派生反向引用。
 
-### Requirement: 派生索引可重建且查询有界
-项目 MUST 从受控 topic 表和全部合法 case Markdown 生成统一派生索引。索引 MUST 可删除重建，并 MUST 提供按 ID、精确 topic 和文本的有界查询以及单 case 原文展开；索引不得成为 case 内容或 topic 的第二权威源。
+#### Scenario: Case 关联当前测试实体
+- **WHEN** 维护者登记一个当前 Case
+- **THEN** `Entities` 至少包含一个当前测试实体的 entity key
+- **THEN** 每个列出的测试实体都能直接产生该 Case 所述的可观察证明信号
 
-#### Scenario: 权威 case 变化使索引陈旧
-- **WHEN** topic 定义、case 文件、路径或正文发生变化
-- **THEN** 旧 source revision 被识别为陈旧
-- **THEN** 严格检查失败，且同步入口可以从完整合法目录原子重建索引
+#### Scenario: Planned 行为不进入当前 Case 账本
+- **WHEN** 一个行为仍是 planned 且没有当前实现证据
+- **THEN** 该行为留在 OpenSpec、owner 文档或其它规划 owner
+- **THEN** Case 账本不得用 `Status` 或空 `Entities` 建立占位 Case
 
-#### Scenario: 查询使用合法内存投影
-- **WHEN** 索引缺失或陈旧但 topic 表和全部 case 目录合法
-- **THEN** list 或 show 可以返回带 warning 的只读内存投影
-- **THEN** 查询不得隐式写回索引
+#### Scenario: 历史 Case 跨越多个 owner
+- **WHEN** 一个历史 Case 的证明陈述不能由单一当前 owner 完整承接
+- **THEN** 维护者拆分或收窄 Case，并为每个保留 Case 选择一个精确 Owner
+- **THEN** `Proves` 不得超出该 Owner 与当前测试实体能够直接支持的范围
 
-### Requirement: 证据评估保持可观察与可靠
-保留的测试 case MUST 指向当前契约背景、具体失败信号和调用方可观察结果，并 MUST 检查输入、fixture、mock、时序、随机性和环境不会使证据失真。测试 MUST NOT 只复述实现、只证明 mock，或让被测实现生成自身预期值。
+#### Scenario: 历史 implemented Case 有起点直接证据
+- **WHEN** 逐项审查的历史 implemented Case 所述生产契约当前仍然存在，且本 change 实现开始前已有当前测试实体直接产生该语义的可观察信号
+- **THEN** 维护者保留语义连续的 Case ID，并按当前事实迁移 Owner、Entities 与 Proves
+- **THEN** 不得仅因实现路径或测试实体改变而换用新 ID
 
-#### Scenario: 测试证明公共失败语义
-- **WHEN** 一个原生测试入口验证 owner 定义的错误或失败边界
-- **THEN** Contract 指向该稳定边界
-- **THEN** Proves 说明调用方可观察的错误、状态或资源结果
+#### Scenario: 当前能力缺少起点直接测试实体
+- **WHEN** 历史 implemented Case 所述生产能力仍存在，但本 change 实现开始前没有当前测试实体直接产生该语义的可观察信号
+- **THEN** 该 seed 不迁入 current ledger，也不成为本 change 新增或改写产品测试的义务
+- **THEN** 独立的 owner-driven product test change 决定是否补足直接测试，历史 Case ID 保持原语义且不得换义复用
 
-#### Scenario: 测试混合独立意图
-- **WHEN** 一个原生测试节点包含可以独立命名和独立失败的多个测试意图
-- **THEN** 维护者先拆分测试节点
-- **THEN** 每个保留节点分别完成证据评估和 case 登记
+#### Scenario: 历史生产能力已经移除
+- **WHEN** owner 与当前源码证明确认一个历史 implemented Case 所述生产能力已经移除
+- **THEN** 维护者以明确的 owner/source 依据退休该 Case，而不是编造空 Case
+- **THEN** 该 Case ID 不得被重新用于其它语义
 
-### Requirement: 仓库内验证只使用单一测试证据源
-项目 MUST 跟踪 test-evidence-review v7 的完整运行时分发内容，并 MUST 通过仓库内确定性入口严格检查固定目录。迁移完成后，集中账本、源码 marker、旧 case-catalog 采集器和兼容双读 MUST 不再作为活跃验证来源。
+### Requirement: 当前测试实体与 Case 双向覆盖
+严格检查 MUST 计算当前测试实体与 Case 的 many-to-many 关系，并 MUST 保证每个当前测试实体至少属于一个 Case、每个 Case 至少引用一个当前测试实体。项目允许同一测试实体支持多个 Case、同一 Case 由多个测试实体支持，并 MUST NOT 强制一对一映射。
 
-#### Scenario: Required profile 检查测试证据
-- **WHEN** 本地或 CI 运行 required 文档验证
-- **THEN** `cases` task 从项目跟踪的 v7 模块执行严格目录检查
-- **THEN** 验证不依赖个人 skill、网络、updater 或旧 marker 采集
+#### Scenario: 当前测试实体没有语义 Case
+- **WHEN** scanner 返回的一个当前测试实体未被任何 Case 精确列举
+- **THEN** strict check 报告 uncovered test entity 并失败
+- **THEN** 维护者必须把它归入真实证明目标或调整测试，而不是生成模板 Case
 
-#### Scenario: 测试变更维护 case
-- **WHEN** 任务新增、修改、删除或保留测试实现
-- **THEN** 维护者按 runner 原生入口更新对应独立 case 和派生索引
-- **THEN** 目标测试与目录严格检查共同作为交付证据
+#### Scenario: Case 没有当前测试实体
+- **WHEN** Case 的 `Entities` 为空或全部 key 均不在当前 scanner 集合
+- **THEN** strict check 报告无当前实现证据并失败
+- **THEN** 维护者必须更新 Case、实体关系或当前测试
 
-#### Scenario: 归档历史保留旧术语
-- **WHEN** 已归档 OpenSpec change 记录迁移前的账本或 marker 流程
+#### Scenario: 一个测试实体支持多个 Case
+- **WHEN** 同一测试实体直接观察多个可独立命名的 owner 结果
+- **THEN** 多个 Case 可以引用同一个 entity key
+- **THEN** strict check 分别验证各 Case 的 Owner 与证明内容，不把关系复用诊断为重复测试实体
+
+### Requirement: 查询和 Required 门禁只使用当前证据链
+项目 MUST 让 `topics`、有界 `list` 和单 Case `show` 直接读取 topic catalog 与 Topic/Case 文件，并 MUST 让仓库内 `check` 从完整 scanner test entity 集合与同一 Case source 执行严格验证。迁移完成后，Evidence Claim、hand-written Entry、`NativeTestEntry` 长期模型、native inventory、query index、旧源码 marker、`sync`、baseline `changes` 与兼容双读 MUST NOT 作为活跃验证或查询来源。
+
+#### Scenario: 只读查询不生成派生状态
+- **WHEN** 维护者按 topic、Owner、entity key 或文本执行有界 `list`，或通过单 Case `show` 精确查询 Case ID
+- **THEN** 查询直接从合法 `topics.json` 与 topic files 返回有界结果
+- **THEN** 查询不执行隐式写入且不要求 committed inventory/index
+
+#### Scenario: Case ID 只通过单 Case show 查询
+- **WHEN** 维护者需要按完整 Case ID 精确定位 Case
+- **THEN** CLI 只通过 `show <CASE-ID>` 执行该查询
+- **THEN** `list` 只接受 topic、Owner、entity key、文本与 pagination 的有界过滤，不提供 Case ID filter
+
+#### Scenario: Required profile 检查完整当前树
+- **WHEN** 本地或 CI 运行 workspace required profile
+- **THEN** test-evidence check 先证明 static/runtime/实体映射闭合，再证明 Topic/Case 结构与双向 coverage
+- **THEN** missing、unknown、duplicate 或 malformed Case/test-entity 关系使 required check 失败
+
+#### Scenario: 历史材料不参与当前验证
+- **WHEN** Git 或已归档 OpenSpec change 保留旧账本、Claim、Entry、inventory、index 或 marker 记录
 - **THEN** 历史 artifact 可以保持原文
-- **THEN** 稳定文档、AGENTS、代码和 active changes 不得继续依赖旧流程
+- **THEN** 当前 docs、skill、代码、测试和 active change 不得读取它们来补足当前 coverage
