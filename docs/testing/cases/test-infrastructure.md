@@ -72,7 +72,7 @@ Owner: `docs/testing/case-maintenance.md#查询与验证`
 Entities:
 - `bun|scripts/test-evidence/catalog.test.ts|diagnoses malformed Case structure and stable identity conflicts`
 - `bun|scripts/test-evidence/catalog.test.ts|parses and queries topic-grouped semantic Cases`
-- `bun|scripts/test-evidence/catalog.test.ts|uses distinct exit statuses for discovery, runner, Case, and query failures`
+- `bun|scripts/test-evidence/catalog-cli.test.ts|uses distinct exit statuses for discovery, runner, Case, and query failures`
 
 Proves:
 - Topic-grouped Markdown is parsed into semantic Cases with stable IDs, exact owner/entity mappings, and bounded topic/query/show projections.
@@ -83,7 +83,7 @@ Proves:
 Owner: `docs/testing/case-maintenance.md#全树闭合`
 
 Entities:
-- `bun|scripts/test-evidence/catalog.test.ts|closes current test entities against the union of Case mappings`
+- `bun|scripts/test-evidence/closure.test.ts|closes current test entities against the union of Case mappings`
 
 Proves:
 - Static discovery and runner reports must describe the same complete current entity set.
@@ -94,8 +94,8 @@ Proves:
 Owner: `docs/testing/case-maintenance.md#全树闭合`
 
 Entities:
-- `bun|scripts/test-evidence/catalog.test.ts|loads one versioned and sorted supported runner profile`
-- `bun|scripts/test-evidence/catalog.test.ts|parses stable Cargo and Bun runner reports without inferring missing fields`
+- `bun|scripts/test-evidence/discovery/profile.test.ts|loads one versioned and sorted supported runner profile`
+- `bun|scripts/test-evidence/discovery/profile.test.ts|parses stable Cargo and Bun runner reports without inferring missing fields`
 - `bun|scripts/test-evidence/discovery/bun-files.test.ts|expands Bun test roots with include, ignore and supplemental files`
 - `bun|scripts/test-evidence/discovery/bun-files.test.ts|rejects invalid, empty and redundant Bun test surfaces`
 

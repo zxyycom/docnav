@@ -2,25 +2,17 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import {
-  astSourceRange,
-  scanAstRule,
-  unsupportedAstDiagnostics
-} from "../ast-scan.ts";
+import { astSourceRange, scanAstRule, unsupportedAstDiagnostics, type AstMatch } from "../ast-scan.ts";
 import { closeStaticAndRuntimeEntities } from "../closure.ts";
-import {
-  diagnostic,
-  type RuntimeTestEntity,
-  type StaticTestEntity,
-  type TestEntity,
-  type TestEvidenceDiagnostic
-} from "../model.ts";
+import { diagnostic, type RuntimeTestEntity, type StaticTestEntity, type TestEntity, type TestEvidenceDiagnostic } from "../model.ts";
 import type { SupportedRunnerProfile } from "../profile.ts";
-import {
-  processFailureMessage,
-  runMiseCommand
-} from "../runner-process.ts";
+import { processFailureMessage, runMiseCommand } from "../runner-process.ts";
 import { resolveBunTestFiles } from "./bun-files.ts";
+
+type BunDiscoveryOptions = { workspaceRoot: string; profile: SupportedRunnerProfile };
+type BunDiscoveryResult = { entities: TestEntity[]; diagnostics: TestEvidenceDiagnostic[] };
+type BunRuntimeResult = { entities: RuntimeTestEntity[]; diagnostics: TestEvidenceDiagnostic[] };
+type BunStaticResult = { entities: StaticTestEntity[]; diagnostics: TestEvidenceDiagnostic[] };
 
 export type BunJUnitCase = {
   name: string;
@@ -29,13 +21,9 @@ export type BunJUnitCase = {
   line: number;
 };
 
-export async function discoverBunEntities(options: {
-  workspaceRoot: string;
-  profile: SupportedRunnerProfile;
-}): Promise<{
-  entities: TestEntity[];
-  diagnostics: TestEvidenceDiagnostic[];
-}> {
+export async function discoverBunEntities(
+  options: BunDiscoveryOptions
+): Promise<BunDiscoveryResult> {
   const diagnostics: TestEvidenceDiagnostic[] = [];
   let files: string[];
   try {
@@ -57,59 +45,8 @@ export async function discoverBunEntities(options: {
     };
   }
 
-  const ruleRoot = path.join(
-    options.workspaceRoot,
-    "scripts",
-    "test-evidence",
-    "rules"
-  );
-  const nativeScan = await scanAstRule({
-    workspaceRoot: options.workspaceRoot,
-    rulePath: path.join(ruleRoot, "bun-native-test.yml"),
-    paths: files
-  });
-  diagnostics.push(...nativeScan.diagnostics);
-  for (const ruleName of [
-    "bun-unsupported-alias.yml",
-    "bun-unsupported-dynamic.yml",
-    "bun-unsupported-parameterized.yml"
-  ]) {
-    const scan = await scanAstRule({
-      workspaceRoot: options.workspaceRoot,
-      rulePath: path.join(ruleRoot, ruleName),
-      paths: files
-    });
-    diagnostics.push(...scan.diagnostics);
-    diagnostics.push(...unsupportedAstDiagnostics(scan.matches, "bun"));
-  }
-
-  const statics: StaticTestEntity[] = [];
-  for (const match of nativeScan.matches) {
-    const name = match.metaVariables.single.NAME?.text;
-    if (!name) {
-      diagnostics.push(diagnostic(
-        "static-scan-failed",
-        "static",
-        "Bun native test rule did not capture NAME",
-        {
-          path: match.file,
-          line: match.range.start.line + 1,
-          runner: "bun"
-        }
-      ));
-      continue;
-    }
-    statics.push({
-      identity: bunLocationIdentity(
-        match.file,
-        match.range.start.line + 1,
-        name
-      ),
-      sourcePath: match.file,
-      sourceRange: astSourceRange(match)
-    });
-  }
-
+  const staticResult = await scanBunStaticEntities(options.workspaceRoot, files);
+  diagnostics.push(...staticResult.diagnostics);
   const runtimeResult = await enumerateBunTests(options, files);
   diagnostics.push(...runtimeResult.diagnostics);
   if (diagnostics.some(({ blocking }) => blocking)) {
@@ -120,7 +57,7 @@ export async function discoverBunEntities(options: {
   }
   const closed = closeStaticAndRuntimeEntities({
     runner: "bun",
-    statics,
+    statics: staticResult.entities,
     runtime: runtimeResult.entities,
     createEntityKey: ({ target, selector }) => `bun|${target}|${selector}`
   });
@@ -130,13 +67,10 @@ export async function discoverBunEntities(options: {
   };
 }
 
-async function enumerateBunTests(options: {
-  workspaceRoot: string;
-  profile: SupportedRunnerProfile;
-}, files: readonly string[]): Promise<{
-  entities: RuntimeTestEntity[];
-  diagnostics: TestEvidenceDiagnostic[];
-}> {
+async function enumerateBunTests(
+  options: BunDiscoveryOptions,
+  files: readonly string[]
+): Promise<BunRuntimeResult> {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-bun-report-"));
   const reportPath = path.join(temporaryRoot, "junit.xml");
   try {
@@ -226,24 +160,7 @@ export function parseBunJUnit(source: string): BunJUnitCase[] {
 
   const cases: BunJUnitCase[] = [];
   for (const match of source.matchAll(/<testcase\b([^>]*)\/?>/gu)) {
-    const attributes = parseXmlAttributes(match[1]);
-    if (
-      attributes.name === undefined ||
-      attributes.file === undefined ||
-      attributes.line === undefined
-    ) {
-      throw new Error("testcase is missing name, file or line");
-    }
-    const line = parseNonNegativeInteger(attributes.line, "testcase line");
-    if (line < 1) {
-      throw new Error("testcase line must be 1-based");
-    }
-    cases.push({
-      name: attributes.name,
-      className: attributes.classname ?? "",
-      file: attributes.file.replaceAll("\\", "/"),
-      line
-    });
+    cases.push(parseBunJUnitCase(match[1]));
   }
   if (cases.length !== expectedTests) {
     throw new Error(
@@ -251,6 +168,94 @@ export function parseBunJUnit(source: string): BunJUnitCase[] {
     );
   }
   return cases;
+}
+
+async function scanBunStaticEntities(
+  workspaceRoot: string,
+  files: string[]
+): Promise<BunStaticResult> {
+  const ruleRoot = path.join(
+    workspaceRoot,
+    "scripts",
+    "test-evidence",
+    "rules"
+  );
+  const nativeScan = await scanAstRule({
+    workspaceRoot,
+    rulePath: path.join(ruleRoot, "bun-native-test.yml"),
+    paths: files
+  });
+  const diagnostics = [...nativeScan.diagnostics];
+  for (const ruleName of [
+    "bun-unsupported-alias.yml",
+    "bun-unsupported-dynamic.yml",
+    "bun-unsupported-parameterized.yml"
+  ]) {
+    const scan = await scanAstRule({
+      workspaceRoot,
+      rulePath: path.join(ruleRoot, ruleName),
+      paths: files
+    });
+    diagnostics.push(...scan.diagnostics);
+    diagnostics.push(...unsupportedAstDiagnostics(scan.matches, "bun"));
+  }
+  const candidates = bunStaticCandidates(nativeScan.matches);
+  return {
+    entities: candidates.entities,
+    diagnostics: [...diagnostics, ...candidates.diagnostics]
+  };
+}
+
+function bunStaticCandidates(matches: readonly AstMatch[]): BunStaticResult {
+  const entities: StaticTestEntity[] = [];
+  const diagnostics: TestEvidenceDiagnostic[] = [];
+  for (const match of matches) {
+    const name = match.metaVariables.single.NAME?.text;
+    if (!name) {
+      diagnostics.push(diagnostic(
+        "static-scan-failed",
+        "static",
+        "Bun native test rule did not capture NAME",
+        {
+          path: match.file,
+          line: match.range.start.line + 1,
+          runner: "bun"
+        }
+      ));
+      continue;
+    }
+    entities.push({
+      identity: bunLocationIdentity(
+        match.file,
+        match.range.start.line + 1,
+        name
+      ),
+      sourcePath: match.file,
+      sourceRange: astSourceRange(match)
+    });
+  }
+  return { entities, diagnostics };
+}
+
+function parseBunJUnitCase(source: string): BunJUnitCase {
+  const attributes = parseXmlAttributes(source);
+  if (
+    attributes.name === undefined ||
+    attributes.file === undefined ||
+    attributes.line === undefined
+  ) {
+    throw new Error("testcase is missing name, file or line");
+  }
+  const line = parseNonNegativeInteger(attributes.line, "testcase line");
+  if (line < 1) {
+    throw new Error("testcase line must be 1-based");
+  }
+  return {
+    name: attributes.name,
+    className: attributes.classname ?? "",
+    file: attributes.file.replaceAll("\\", "/"),
+    line
+  };
 }
 
 function parseXmlAttributes(source: string): Record<string, string> {

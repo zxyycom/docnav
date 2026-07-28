@@ -18,22 +18,65 @@ export async function discoverTestEntities(options: {
   workspaceRoot: string;
 }): Promise<DiscoveryResult> {
   const workspaceRoot = path.resolve(options.workspaceRoot);
+  const profileResolution = resolveDiscoveryProfile(workspaceRoot);
+  if (profileResolution.failure) {
+    return profileResolution.failure;
+  }
+  const profile = profileResolution.profile;
+  const discovered = await discoverRunnerEntities(workspaceRoot, profile);
+  const diagnostics = [
+    ...discovered.diagnostics,
+    ...duplicateEntityDiagnostics(discovered.entities)
+  ];
+  return {
+    profile: {
+      id: profile.id,
+      version: profile.version
+    },
+    entities: discovered.entities,
+    diagnostics
+  };
+}
+
+type ProfileResolution =
+  | {
+      profile: SupportedRunnerProfile;
+      failure?: never;
+    }
+  | {
+      profile?: never;
+      failure: DiscoveryResult;
+    };
+
+function resolveDiscoveryProfile(workspaceRoot: string): ProfileResolution {
   if (workspaceRoot !== supportedWorkspaceRoot) {
-    return invalidProfileDiscovery(
-      `native test discovery must use the current checkout ${supportedWorkspaceRoot}; received ${workspaceRoot}`,
-      workspaceRoot
-    );
+    return {
+      failure: invalidProfileDiscovery(
+        `native test discovery must use the current checkout ${supportedWorkspaceRoot}; received ${workspaceRoot}`,
+        workspaceRoot
+      )
+    };
   }
-
-  let profile: SupportedRunnerProfile;
   try {
-    profile = loadSupportedRunnerProfile();
+    return {
+      profile: loadSupportedRunnerProfile()
+    };
   } catch (error) {
-    return invalidProfileDiscovery(
-      error instanceof Error ? error.message : String(error)
-    );
+    return {
+      failure: invalidProfileDiscovery(
+        error instanceof Error ? error.message : String(error)
+      )
+    };
   }
+}
 
+async function discoverRunnerEntities(
+  workspaceRoot: string,
+  profile: SupportedRunnerProfile
+): Promise<{
+  entities: TestEntity[];
+  diagnostics: DiscoveryResult["diagnostics"];
+}> {
   const rust = await discoverRustEntities({
     workspaceRoot,
     profile
@@ -46,17 +89,24 @@ export async function discoverTestEntities(options: {
     workspaceRoot,
     profile
   });
-  const diagnostics = [
-    ...rust.diagnostics,
-    ...bun.diagnostics,
-    ...smoke.diagnostics
-  ];
-  const entities = [
-    ...rust.entities,
-    ...bun.entities,
-    ...smoke.entities
-  ].sort(compareEntities);
+  return {
+    entities: [
+      ...rust.entities,
+      ...bun.entities,
+      ...smoke.entities
+    ].sort(compareEntities),
+    diagnostics: [
+      ...rust.diagnostics,
+      ...bun.diagnostics,
+      ...smoke.diagnostics
+    ]
+  };
+}
 
+function duplicateEntityDiagnostics(
+  entities: readonly TestEntity[]
+): DiscoveryResult["diagnostics"] {
+  const diagnostics: DiscoveryResult["diagnostics"] = [];
   for (let index = 1; index < entities.length; index += 1) {
     if (entities[index - 1]?.entityKey === entities[index]?.entityKey) {
       const entity = entities[index];
@@ -74,15 +124,7 @@ export async function discoverTestEntities(options: {
       ));
     }
   }
-
-  return {
-    profile: {
-      id: profile.id,
-      version: profile.version
-    },
-    entities,
-    diagnostics
-  };
+  return diagnostics;
 }
 
 function invalidProfileDiscovery(

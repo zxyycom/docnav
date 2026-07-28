@@ -10,10 +10,7 @@ import {
   validateTestCaseCoverage
 } from "./cases.ts";
 import { discoverTestEntities } from "./discover.ts";
-import type {
-  TestEntity,
-  TestEvidenceDiagnostic
-} from "./model.ts";
+import type { TestEntity, TestEvidenceDiagnostic } from "./model.ts";
 
 export type ProjectTestEvidenceReport = {
   schemaVersion: 1;
@@ -141,65 +138,82 @@ type ParsedCommand =
 
 function parseCommand(argv: readonly string[]): ParsedCommand {
   const command = argv[0];
-  if (!["check", "topics", "list", "show"].includes(String(command))) {
+  if (
+    command !== "check" &&
+    command !== "topics" &&
+    command !== "list" &&
+    command !== "show"
+  ) {
     throw new Error("usage: test-evidence <check|topics|list|show>");
   }
+  const args = [...argv.slice(1)];
   if (command === "show") {
-    const { positionals, values } = parseArgs({
-      args: [...argv.slice(1)],
-      allowPositionals: true,
-      strict: true,
-      options: {
-        root: { type: "string" }
-      }
-    });
-    requireRoot(values.root);
-    if (positionals.length !== 1) {
-      throw new Error("show requires exactly one <CASE-ID>");
-    }
-    return {
-      command,
-      workspaceRoot: path.resolve(values.root),
-      id: positionals[0]
-    };
+    return parseShowCommand(args);
   }
   if (command === "list") {
-    const { values } = parseArgs({
-      args: [...argv.slice(1)],
-      allowPositionals: false,
-      strict: true,
-      options: {
-        root: { type: "string" },
-        topic: { type: "string" },
-        "entity-key": { type: "string" },
-        "owner-ref": { type: "string" },
-        query: { type: "string" },
-        offset: { type: "string" },
-        limit: { type: "string" }
-      }
-    });
-    requireRoot(values.root);
-    const offset = optionalInteger(values.offset);
-    const limit = optionalInteger(values.limit);
-    validateQueryWindow({ offset, limit });
-    return {
-      command,
-      workspaceRoot: path.resolve(values.root),
-      ...(values.topic === undefined ? {} : { topic: values.topic }),
-      ...(values["entity-key"] === undefined
-        ? {}
-        : { entityKey: values["entity-key"] }),
-      ...(values["owner-ref"] === undefined
-        ? {}
-        : { ownerRef: values["owner-ref"] }),
-      ...(values.query === undefined ? {} : { query: values.query }),
-      ...(offset === undefined ? {} : { offset }),
-      ...(limit === undefined ? {} : { limit })
-    };
+    return parseListCommand(args);
   }
+  return parseCheckOrTopicsCommand(command, args);
+}
 
+function parseShowCommand(args: string[]): ParsedCommand {
+  const { positionals, values } = parseArgs({
+    args,
+    allowPositionals: true,
+    strict: true,
+    options: {
+      root: { type: "string" }
+    }
+  });
+  requireRoot(values.root);
+  if (positionals.length !== 1) {
+    throw new Error("show requires exactly one <CASE-ID>");
+  }
+  return {
+    command: "show",
+    workspaceRoot: path.resolve(values.root),
+    id: positionals[0]
+  };
+}
+
+function parseListCommand(args: string[]): ParsedCommand {
   const { values } = parseArgs({
-    args: [...argv.slice(1)],
+    args,
+    allowPositionals: false,
+    strict: true,
+    options: {
+      root: { type: "string" },
+      topic: { type: "string" },
+      "entity-key": { type: "string" },
+      "owner-ref": { type: "string" },
+      query: { type: "string" },
+      offset: { type: "string" },
+      limit: { type: "string" }
+    }
+  });
+  requireRoot(values.root);
+  const offset = optionalInteger(values.offset);
+  const limit = optionalInteger(values.limit);
+  validateQueryWindow({ offset, limit });
+  return {
+    command: "list",
+    workspaceRoot: path.resolve(values.root),
+    ...(values.topic === undefined ? {} : { topic: values.topic }),
+    ...(values["entity-key"] === undefined
+      ? {}
+      : { entityKey: values["entity-key"] }),
+    ...(values["owner-ref"] === undefined
+      ? {}
+      : { ownerRef: values["owner-ref"] }),
+    ...(values.query === undefined ? {} : { query: values.query }),
+    ...(offset === undefined ? {} : { offset }),
+    ...(limit === undefined ? {} : { limit })
+  };
+}
+
+function parseCheckOrTopicsCommand(command: "check" | "topics", args: string[]): ParsedCommand {
+  const { values } = parseArgs({
+    args,
     allowPositionals: false,
     strict: true,
     options: {
