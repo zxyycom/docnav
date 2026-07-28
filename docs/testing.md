@@ -11,6 +11,9 @@
 - [发布包验证](testing/release.md)：release package 的本地预验收和 CI/CD 验证边界。
 
 稳定字段、错误码、命令语义、adapter 行为和字段形状以 [文档导航](navigation.md#规则所有权) 指向的 owner 文档为准；测试文档只记录覆盖目标和验收边界。
+Case 的对象关系、存储格式、查询、当前/历史边界和闭合失败处理只由
+[语义测试 Case 维护](testing/case-maintenance.md)完整定义；本文只决定测试层级、
+自动化证据义务和 workspace 验收。
 
 ## 测试层级
 
@@ -30,12 +33,16 @@
 回归”、实现采用了哪条内部路径，或调用方无法观察的背后逻辑扩大测试意图或
 语义 Case。
 
-历史回归只作为风险线索或代表性输入来源，不作为证明目标。无论是新增或拆分当前
-测试实体，还是把断言嵌入已有实体，新增断言都必须先能写出“owner 明确承诺的语义
--> 可观察结果”的证明目标，并能追溯到当前 owner 文档、schema、示例、primary
-failure projection 或覆盖矩阵。只有当明文契约要求校验缺失、拒绝、输出通道不
-污染、ref 不改变或其它否定性边界时，才测试该否定行为；否则使用现有覆盖、局部
-验证命令或代码审查证明本次改动。
+历史回归、历史 Case、OpenSpec migration record 或其它旧测试材料只作为风险线索、
+迁移审计或代表性输入来源，不作为当前证明目标，也不单独建立新增产品测试的义务。
+生产能力仍存在但缺少当前直接测试实体时，应由独立的 owner-driven change 根据
+当前契约、风险和维护成本决定是否补测试；不得把恢复历史账本完整性当成理由。
+
+无论是新增或拆分当前测试实体，还是把断言嵌入已有实体，新增断言都必须先能写出
+“owner 明确承诺的语义 -> 可观察结果”的证明目标，并能追溯到当前 owner 文档、
+schema、示例、primary failure projection 或覆盖矩阵。只有当明文契约要求校验
+缺失、拒绝、输出通道不污染、ref 不改变或其它否定性边界时，才测试该否定行为；
+否则使用现有覆盖、局部验证命令或代码审查证明本次改动。
 
 维护测试和测试文档时遵循两条约束：owner 文档明确承诺的行为，自动化测试应断言
 调用方能够观察到的结果；owner 没有承诺、或当前层级无法可靠观察的行为，应缩小
@@ -45,7 +52,7 @@ failure projection 或覆盖矩阵。只有当明文契约要求校验缺失、�
 
 测试按语义类型和等价类选择代表，不按语法拼写、枚举字面量或参数组合穷举。“一个类型”表示具有独立解析、校验、状态转换、输出 shape 或失败投影的可观察行为；同一行为中的多个合法写法或同类非法值只保留一个代表。只有 owner 明确定义了不同语法分支，或不同输入产生不同可观察结果时，才分别测试。
 
-如果自动化验证必须复制被测实现、引入只为测试存在的观测接口、依赖脆弱外部环境，或其长期维护成本明显高于语义漂移风险，可以不新增自动化测试。此时在 owner 文档的验证说明或变更审查记录中写明 `Manual CR:`、审查对象和判定条件；不得用空断言、恒真断言或名义上的 implemented case 代替人工审查。
+如果自动化验证必须复制被测实现、引入只为测试存在的观测接口、依赖脆弱外部环境，或其长期维护成本明显高于语义漂移风险，可以不新增自动化测试。此时在 owner 文档的验证说明或变更审查记录中写明 `Manual CR:`、审查对象和判定条件；不得用空断言、恒真断言或名义上的 implemented Case 代替人工审查。
 
 `outline` / `find` success-only auto-read 按 owner 边界保留代表性证明：canonical resolution 的 Rust tests 证明 CLI、project、user 和 built-in 来源优先级；真实 CLI 或等价集成链路证明省略来源时默认 dispatch，以及 CLI/config `disabled` 保留原 base command；navigation/protocol tests 证明 nested read 未成功时仍返回无 `auto_read` 的 base success；readable conformance 分别证明 nested `/auto_read/read/content`、无 `auto_read` 的 base-only projection 和 unstructured `/content`；invocation logging tests 证明根 operation 仍是 outline/find、显式 capture 复用既有 hash/event shape，且默认不记录正文。各层只选择能观察该 owner 结果的代表，不建立来源、operation、output mode 和失败类型的交叉矩阵。
 

@@ -2,11 +2,10 @@
 
 本文供测试作者和 reviewer 判断改动是否触达最低覆盖面，只定义最低覆盖维度；不列具体测试用例，不定义稳定字段、错误码、命令语义或字段形状。产品语义以 [文档导航](../navigation.md#规则所有权) 指向的 owner 文档为准。
 
-测试实现变更时，按[语义测试 Case 维护](case-maintenance.md)审查当前实体与测试
-目的。项目 wrapper 从完整当前源码和 runner 报告发现受支持实体；每个实体至少
-关联一个 `docs/testing/cases/<topic>.md` 中的语义 Case，topic 由
-[`cases/topics.json`](cases/topics.json) 控制。Case 按 owner 契约与可观察结果
-划分，不按 runner 节点数量机械拆分。
+测试实现变更时，先用本文选择最低覆盖维度，再按
+[语义测试 Case 维护](case-maintenance.md)审查当前实体与测试目的并维护映射。
+本文不拥有 Case 格式、Topic 分类或全树闭合规则，也不根据历史覆盖目标创建当前
+Case 或产品测试义务。
 
 ## 使用方式
 
@@ -37,10 +36,10 @@
 - CLI smoke：证明真实 core CLI 入口、stdout/stderr、exit code、strict failure/error 投影承载位置和 package 可执行性。
 - Rust tests：证明 parser、ref、分页、decode stage、diagnostic record/code/details/投影 helper、shared output plans、renderer 和内部状态转换等自定义逻辑不变量。
 - schema/docs validators：证明 protocol 字段形状、示例链路、schema 投影映射和文档化 fixture 与当前 owner 文档一致；`readable-view` 由 conformance text 验证，schema/example/fixture 不成为 code/details 规则来源。
-- 语义测试 Case 维护：定义测试变更时的 Case 粒度、topic 归属、全树实体发现和
-  Case 映射闭合流程。
-- Case 目录：每个 topic 文档保存多个语义 Case；Case 连接行为 owner、证明目的和
-  当前实体，但不替代测试实现、行为 owner 或覆盖矩阵。
+- 语义测试 Case 维护：测试变更涉及 Case 或当前实体映射时，按
+  [账本 owner](case-maintenance.md)执行查询、语义审查和全树闭合。
+- Case 目录：保存当前 Case 及实体映射；它消费本文的覆盖目标，但不替代测试实现、
+  行为 owner 或覆盖矩阵。
 
 ## 审查规则
 

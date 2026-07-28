@@ -15,7 +15,7 @@
 - 让稳定语义 Case 直接拥有当前 owner、可观察证明陈述和精确测试实体 key。
 - 保留完整当前树 scanner 以及 static/runtime/映射闭合，不再提交扫描结果副本。
 - 用双向覆盖阻断遗漏，同时允许一个 Case 由多个测试实体支持、一个测试实体支持多个 Case。
-- 让受控 topic catalog 成为稳定、可为空的责任分组 owner，并避免一 Case 一文件造成的碎片化。
+- 让受控 topic catalog 成为稳定、可为空的有界查询分类 owner，并避免一 Case 一文件造成的碎片化。
 - 处理历史 102 Case：以其中 101 个 implemented Case 为审查种子，明确排除唯一 planned Case；只有本 change 实现开始前已有当前测试实体直接支持的语义才迁移，其余按明确处置完成硬切换。
 
 **Non-Goals:**

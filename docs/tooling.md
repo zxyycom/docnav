@@ -96,9 +96,10 @@ required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality c
 `scripts/docs/validate.ts` 直接导入仓库跟踪的 `.codex/skills/decision-records/scripts/decision-records.mjs`，由 `validate:docs` 的 `decisions` task 执行 v5 严格检查。该检查覆盖受控领域、Markdown metadata 与正文、生命周期、对齐、直接关系和派生索引，并进入 required profile。入口不依赖个人 skill 目录，也不运行需要联网的 updater 或 release 查询。
 
 required profile 的 `test-evidence-ledger` check 只调用
-`scripts/test-evidence/` project wrapper。wrapper 拥有 supported runner profile、
-静态规则、Cargo/Bun/smoke report、实体归一，以及静态/runtime/语义 Case 映射
-闭合；`docs/testing/cases/` 拥有 topic 与 Case 内容。仓库跟踪的
+`scripts/test-evidence/` project wrapper。wrapper 实现 supported runner profile、
+静态规则、Cargo/Bun/smoke report、实体归一和严格检查；
+[语义测试 Case 维护](testing/case-maintenance.md)拥有稳定的账本与闭合规则，
+`docs/testing/cases/` 拥有 topic 与当前 Case 内容。仓库跟踪的
 `test-evidence-review` skill 只提供通用评审方法，不承载项目 runtime 或 schema。
 Bun report 已覆盖完整 Bun 测试面，所以 workspace verifier 不再重复调度各
 package script 子集；这些脚本继续作为局部开发入口。required profile 另行运行

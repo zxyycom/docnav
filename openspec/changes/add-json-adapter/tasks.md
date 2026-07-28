@@ -9,7 +9,7 @@
 ## 1. JSON owner 文档与证明目标
 
 - [ ] 1.1 新增 `docs/adapters/json.md`，定义 probe、重复 key、deterministic traversal、canonical ref、outline/read/find/info、full-read、pagination、cost 和错误 owner 语义，并把它接入 `docs/navigation.md`。
-- [ ] 1.2 按测试策略、case maintenance 和 coverage owner，先写 JSON parser/ref/operation、core selection、CLI smoke 与 package smoke 的“owner 语义 -> 可观察结果”证明目标，更新 case ledger/coverage plan。
+- [ ] 1.2 依次读取 `docs/testing.md`、JSON/adapter/ref/core/release 行为 owner、`docs/testing/case-maintenance.md` 和 `docs/testing/coverage.md`，先写 JSON parser/ref/operation、core selection、CLI smoke 与 package smoke 的“owner 语义 -> 可观察结果”证明目标，再规划当前 Case/实体映射与覆盖维度。
 - [ ] 1.3 准备最小长期 fixtures，覆盖 mixed tree、special pointer tokens、empty roots、root scalar、duplicate keys、invalid/trailing input、Unicode pagination 和 long result；同一等价类不重复枚举。
 
 ## 2. Adapter-private document 与 ref mechanics
@@ -40,7 +40,7 @@
 
 - [ ] 5.1 扩展真实 core CLI smoke，用实际 JSON fixture 覆盖 automatic selection、outline/ref/read、find/ref/read、readable-view、`protocol-json` 和代表性 failure。
 - [ ] 5.2 扩展 canonical package smoke，用 package 中同一个 `docnav` binary 覆盖 Markdown 与 JSON roundtrip 及双 adapter list；不得查找独立 JSON executable。
-- [ ] 5.3 同步更新测试策略、release docs、完整当前树的语义 Case 与当前测试实体映射、coverage mapping，以及受 JSON manifest/probe/example 影响的验证材料；只有 owner 契约或可观察结果确实独立时才新增或拆分 Case，不为账本表示机械拆测试。
+- [ ] 5.3 同步更新测试策略、release docs、完整当前树的语义 Case 与当前测试实体映射、coverage mapping，以及受 JSON manifest/probe/example 影响的验证材料；按 `docs/testing/case-maintenance.md` 只为当前实体直接证明的独立 owner 契约或可观察结果新增/拆分 Case，历史材料不建立额外测试义务。
 - [ ] 5.4 运行 JSON crate focused tests、core/navigation focused tests、CLI smoke、package verify/smoke，并确认 pagination/ref roundtrip 在终止前持续前进。
 
 ## 6. 架构观察与交付审计

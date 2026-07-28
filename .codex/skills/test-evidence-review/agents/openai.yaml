@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Evidence Review"
-  short_description: "用语义 Case 审查测试目的、实体闭合与维护价值"
-  default_prompt: "使用 $test-evidence-review 调用项目 wrapper 闭合当前测试实体与语义 Case，再审查变化测试的契约、可观察信号、可靠性和维护价值；不要为了账本表示机械拆分测试。"
+  short_description: "审查测试证明质量与可选语义 Case 账本"
+  default_prompt: "使用 $test-evidence-review：先读项目测试策略和行为 owner，再识别项目是否声明 Case 账本、Topic 与完整性 wrapper；已声明能力严格按项目 owner 查询和闭合，没有账本时直接审查目标测试，历史材料不建立测试义务。"

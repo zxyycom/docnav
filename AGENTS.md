@@ -52,11 +52,11 @@ outline -> ref -> read
 1. 涉及实现代码、重构、测试脚本、验证脚本或跨模块修改时，除对应主规范外，先读取 `docs/coding-style.md`；交付前按其中“变更前后自检”检查。
 2. 涉及架构、协议、数据模型、CLI/API surface、adapter 边界、依赖或验证链路的实现前，简短说明技术判断依据、影响范围、可能受影响模块和验证方式。
 3. 新增、修改、删除或审查测试前，按 `docs/testing.md`、
-   `docs/testing/case-maintenance.md` 和项目级 `test-evidence-review` skill 确定
-   owner 契约、语义 Case 与证明目标；先用项目 wrapper 证明完整当前树的静态实体、
-   runner 实体和 Case 映射闭合。每个当前实体必须关联至少一个有意义的 Case；
-   不得为了账本表示机械拆分测试，也不得用复述测试名的模板 Case 填补缺口。历史
-   回归只作为风险线索或输入选择，不新增缺少明文契约依据的断言。
+   对应行为 owner、`docs/testing/case-maintenance.md`、项目级
+   `test-evidence-review` skill 的顺序恢复测试层级、当前契约、账本流程和通用评审
+   方法；修改前先用项目 wrapper 证明完整当前树的静态实体、runner 实体和 Case
+   映射闭合。Case 细节以 `case-maintenance.md` 为准。历史 Case、OpenSpec 或旧
+   账本只作审计与风险输入，不形成当前 coverage 缺口或当前任务的产品测试义务。
 4. 涉及协议、schema、示例、CLI 或 adapter 时，同步更新对应主规范和验证材料。
 5. 当实现与 docs、OpenSpec、schema 或 examples 看似偏离时，先按 `docs/navigation.md` 的状态语义判断是当前实现缺口、目标能力、计划中 change、历史记录还是同一目标内部冲突；能确定正确方向时同步修正，不能确定时让用户选择更新代码、更新文档或记录偏差原因。
 6. CLI 命令优先选择只读、可复现、范围明确的命令；验证命令按改动范围选择，避免无关全量操作。
