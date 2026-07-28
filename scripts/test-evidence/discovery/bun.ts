@@ -21,6 +21,7 @@ import {
   processFailureMessage,
   runMiseCommand
 } from "../runner-process.ts";
+import { resolveBunTestFiles } from "./bun-files.ts";
 
 export type BunJUnitCase = {
   name: string;
@@ -37,21 +38,23 @@ export async function discoverBunEntries(options: {
   diagnostics: TestEvidenceDiagnostic[];
 }> {
   const diagnostics: TestEvidenceDiagnostic[] = [];
-  const missingFiles = options.profile.bun.files.filter((sourcePath) => (
-    !fs.existsSync(path.join(options.workspaceRoot, sourcePath))
-  ));
-  if (missingFiles.length > 0) {
+  let files: string[];
+  try {
+    files = resolveBunTestFiles({
+      workspaceRoot: options.workspaceRoot,
+      profile: options.profile.bun
+    });
+  } catch (error) {
     return {
       entries: [],
-      diagnostics: missingFiles.map((sourcePath) => diagnostic(
-        "runner-profile-invalid",
-        "profile",
-        `Bun test surface does not exist: ${sourcePath}`,
-        {
-          path: sourcePath,
-          runner: "bun"
-        }
-      ))
+      diagnostics: [
+        diagnostic(
+          "runner-profile-invalid",
+          "profile",
+          error instanceof Error ? error.message : String(error),
+          { runner: "bun" }
+        )
+      ]
     };
   }
 
@@ -64,7 +67,7 @@ export async function discoverBunEntries(options: {
   const nativeScan = await scanAstRule({
     workspaceRoot: options.workspaceRoot,
     rulePath: path.join(ruleRoot, "bun-native-test.yml"),
-    paths: options.profile.bun.files
+    paths: files
   });
   diagnostics.push(...nativeScan.diagnostics);
   for (const ruleName of [
@@ -75,7 +78,7 @@ export async function discoverBunEntries(options: {
     const scan = await scanAstRule({
       workspaceRoot: options.workspaceRoot,
       rulePath: path.join(ruleRoot, ruleName),
-      paths: options.profile.bun.files
+      paths: files
     });
     diagnostics.push(...scan.diagnostics);
     diagnostics.push(...unsupportedAstDiagnostics(scan.matches, "bun"));
@@ -109,7 +112,7 @@ export async function discoverBunEntries(options: {
     });
   }
 
-  const runtimeResult = await enumerateBunTests(options);
+  const runtimeResult = await enumerateBunTests(options, files);
   diagnostics.push(...runtimeResult.diagnostics);
   if (diagnostics.some(({ blocking }) => blocking)) {
     return {
@@ -132,7 +135,7 @@ export async function discoverBunEntries(options: {
 async function enumerateBunTests(options: {
   workspaceRoot: string;
   profile: SupportedRunnerProfile;
-}): Promise<{
+}, files: readonly string[]): Promise<{
   entries: RuntimeTestEntry[];
   diagnostics: TestEvidenceDiagnostic[];
 }> {
@@ -144,7 +147,7 @@ async function enumerateBunTests(options: {
       command: "bun",
       args: [
         "test",
-        ...options.profile.bun.files,
+        ...files,
         "--reporter=junit",
         `--reporter-outfile=${reportPath}`
       ],

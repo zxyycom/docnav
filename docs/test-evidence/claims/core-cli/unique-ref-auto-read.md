@@ -4,7 +4,7 @@ Topic: `core-cli`
 Owner ref: `docs/navigation-input-resolution.md#unique-ref-auto-read-composition`
 
 Statement:
-- A successful outline or find with one distinct ref defaults to unique-ref auto-read unless an explicit source disables it.
+- A successful find with one distinct ref defaults to unique-ref auto-read unless an explicit source disables it.
 
 Observations:
 - 真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read；`protocol-json` 与 `readable-view` 从同一结果保留 ref、content type 和 nested content。

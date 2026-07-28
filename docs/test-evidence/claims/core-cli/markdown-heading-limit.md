@@ -11,3 +11,4 @@ Observations:
 
 Supported by:
 - `smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-001`
+- `smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-002`

@@ -3,10 +3,29 @@ use crate::{AdapterDefinition, AdapterDefinitionError, UnstructuredFullReadCapab
 use super::support::{no_hook_manifest, NoHookAdapter};
 
 #[test]
-fn adapter_definition_rejects_invalid_full_read_capabilities() {
+fn adapter_definition_rejects_empty_full_read_capabilities() {
+    let adapter = NoHookAdapter;
+    let error = AdapterDefinition::new(
+        no_hook_manifest(),
+        &adapter,
+        Some(UnstructuredFullReadCapabilities::default()),
+    )
+    .expect_err("empty full-read capabilities");
+
+    assert!(matches!(
+        error,
+        AdapterDefinitionError::UnsupportedCapabilityCombination {
+            capability: "full_read",
+            reason: "full-read capabilities must declare at least one hook or cost unit",
+            ..
+        }
+    ));
+}
+
+#[test]
+fn adapter_definition_rejects_invalid_full_read_cost_units() {
     let adapter = NoHookAdapter;
     let cases = [
-        UnstructuredFullReadCapabilities::default(),
         UnstructuredFullReadCapabilities {
             content_hook: false,
             cost_measurement_units: vec![String::new()],
@@ -27,6 +46,7 @@ fn adapter_definition_rejects_invalid_full_read_capabilities() {
             error,
             AdapterDefinitionError::UnsupportedCapabilityCombination {
                 capability: "full_read",
+                reason: "full-read cost measurement units must be non-empty and unique",
                 ..
             }
         ));

@@ -34,7 +34,7 @@ const DOCUMENT_HEAD_CONTENT = [
 export async function assertDocumentHeadOutputModes(project: SmokeProject) {
   const documentPath = copyDocumentFixture(project, DOCUMENT_HEAD_FIXTURE, "docs/document-head.md");
 
-  const protocolOutline = await runCli("CORE-LINK-001 document head outline protocol-json", [
+  const protocolOutline = await runCli("CORE-MD-DOCHEAD-001 document head outline protocol-json", [
     "outline",
     documentPath,
     "--output",
@@ -52,7 +52,7 @@ export async function assertDocumentHeadOutputModes(project: SmokeProject) {
   );
   const protocolHeadEntry = assertProtocolDocumentHeadEntry(protocolOutline, protocolOutlineResult);
 
-  const readableViewOutline = await runCli("CORE-LINK-001 document head outline readable-view", [
+  const readableViewOutline = await runCli("CORE-MD-DOCHEAD-001 document head outline readable-view", [
     "outline",
     documentPath,
     "--output",
@@ -70,7 +70,7 @@ export async function assertDocumentHeadOutputModes(project: SmokeProject) {
     "document head readable-view derives display from protocol facts"
   );
 
-  const protocolRead = await runCli("CORE-LINK-001 document head read protocol-json", [
+  const protocolRead = await runCli("CORE-MD-DOCHEAD-001 document head read protocol-json", [
     "read",
     documentPath,
     "--ref",
@@ -90,7 +90,7 @@ export async function assertDocumentHeadOutputModes(project: SmokeProject) {
   );
   assertDocumentHeadReadPayload(protocolRead, protocolReadResult);
 
-  const readableViewRead = await runCli("CORE-LINK-001 document head read readable-view", [
+  const readableViewRead = await runCli("CORE-MD-DOCHEAD-001 document head read readable-view", [
     "read",
     documentPath,
     "--ref",

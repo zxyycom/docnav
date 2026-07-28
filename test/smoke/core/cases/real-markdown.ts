@@ -15,8 +15,11 @@ import {
   parseJson,
   parseReadableViewHeader
 } from "../assertions.ts";
-import { exitCodes } from "../config.ts";
 import { assertDocumentHeadOutputModes } from "./real-markdown-document-head.ts";
+import {
+  testMaxHeadingLevelAdapterValidation,
+  testMaxHeadingLevelCliOption
+} from "./real-markdown-options.ts";
 
 interface ReadableViewRefHandoffExpectation {
   contentIncludes: string;
@@ -32,13 +35,28 @@ export function createRealMarkdownLinkTasks() {
   return [
     {
       id: "CORE-LINK-001",
-      label: "CORE-LINK-001 real markdown ref handoff chain",
-      run: testRealMarkdownRefHandoffChain
+      label: "CORE-LINK-001 outline ref handoff",
+      run: testOutlineRefHandoff
+    },
+    {
+      id: "CORE-LINK-002",
+      label: "CORE-LINK-002 find ref handoff",
+      run: testFindRefHandoff
+    },
+    {
+      id: "CORE-INFO-001",
+      label: "CORE-INFO-001 Markdown info readable output",
+      run: testInfoReadableOutput
     },
     {
       id: "CORE-MD-OPTIONS-001",
-      label: "CORE-MD-OPTIONS-001 Markdown option behavior",
-      run: testMaxHeadingLevelBehavior
+      label: "CORE-MD-OPTIONS-001 Markdown option success behavior",
+      run: testMaxHeadingLevelCliOption
+    },
+    {
+      id: "CORE-MD-OPTIONS-002",
+      label: "CORE-MD-OPTIONS-002 Markdown option adapter validation",
+      run: testMaxHeadingLevelAdapterValidation
     },
     {
       id: "CORE-MD-DOCHEAD-001",
@@ -58,9 +76,8 @@ export function createRealMarkdownRefErrorTasks() {
   ];
 }
 
-async function testRealMarkdownRefHandoffChain() {
-  const project = createRegisteredRealMarkdownProject("real-markdown-ref-handoff");
-
+async function testOutlineRefHandoff() {
+  const project = createRegisteredRealMarkdownProject("real-markdown-outline-ref-handoff");
   const outlineRef = await readFirstOutlineRef(project);
   await assertReadableViewReadRefHandoff(
     project,
@@ -77,11 +94,14 @@ async function testRealMarkdownRefHandoffChain() {
       refSummary: "read preserves outline ref"
     }
   );
+}
 
+async function testFindRefHandoff() {
+  const project = createRegisteredRealMarkdownProject("real-markdown-find-ref-handoff");
   const findRef = await readFirstFindRef(project);
   await assertReadableViewReadRefHandoff(
     project,
-    "CORE-LINK-001 read find ref readable-view",
+    "CORE-LINK-002 read find ref readable-view",
     project.normalRelPath,
     findRef,
     {
@@ -90,13 +110,11 @@ async function testRealMarkdownRefHandoffChain() {
       refSummary: "read preserves find ref"
     }
   );
-
-  await assertInfoReadableOutput(project);
 }
 
-async function testMaxHeadingLevelBehavior() {
-  const project = createRegisteredRealMarkdownProject("real-markdown-max-heading-level");
-  await assertMaxHeadingLevelBehavior(project);
+async function testInfoReadableOutput() {
+  const project = createRegisteredRealMarkdownProject("real-markdown-info-readable");
+  await assertInfoReadableOutput(project);
 }
 
 async function testDocumentHeadOutputModes() {
@@ -162,101 +180,6 @@ async function testRealMarkdownRefInvalidProtocol() {
   expect(record, details.ref === "bad:ref", "REF_INVALID preserves ref in error details");
 }
 
-async function assertMaxHeadingLevelBehavior(project: SmokeProject) {
-  await assertMaxHeadingLevelCliOption(project);
-  await assertMaxHeadingLevelAdapterValidation(project);
-}
-
-async function assertMaxHeadingLevelCliOption(project: SmokeProject) {
-  const record = await runCli("CORE-LINK-001 outline max heading level native option", [
-    "outline",
-    project.normalRelPath,
-    "--max-heading-level",
-    "1",
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, 0);
-  expectNoJsonPayloadInStderr(record);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  const result = expectJsonObject(record, json.result, "outline result is an object");
-  const entries = expectObjectArray(record, result.entries, "outline entries are objects");
-  expect(record, entries.length === 1, "max heading level filters nested Markdown headings");
-}
-
-async function assertMaxHeadingLevelAdapterValidation(project: SmokeProject) {
-  const record = await runCli("CORE-LINK-001 outline invalid max heading level is adapter-owned", [
-    "outline",
-    project.normalRelPath,
-    "--max-heading-level",
-    "7",
-    "--output",
-    "protocol-json"
-  ], { project });
-  expectExit(record, exitCodes.input);
-  expectNoJsonPayloadInStderr(record);
-  const json = parseJson(record);
-  validateSchema(record, "protocolResponse", json);
-  const error = expectProtocolFailure(record, json, "outline", "INVALID_REQUEST");
-  const details = expectJsonObject(record, error.details, "protocol error details is an object");
-  expect(
-    record,
-    details.field === "arguments.options.max_heading_level",
-    "adapter option validation reports operation argument field"
-  );
-  expect(
-    record,
-    details.reason === "range_invalid",
-    "adapter option validation reports Markdown range reason"
-  );
-  expect(
-    record,
-    error.owner === "adapter_options",
-    "adapter option validation is adapter-owned"
-  );
-  expect(
-    record,
-    error.received === "7",
-    "adapter option validation reports received value"
-  );
-  expect(
-    record,
-    error.expected === "integer in range 1..6",
-    "adapter option validation reports expected value"
-  );
-  const issues = expectObjectArray(
-    record,
-    details.option_issues,
-    "adapter option validation reports option issues"
-  );
-  const issue = expectJsonObject(
-    record,
-    issues[0],
-    "adapter option validation issue is an object"
-  );
-  expect(
-    record,
-    issue.owner === "docnav-markdown",
-    "adapter option validation issue reports owner"
-  );
-  expect(
-    record,
-    issue.namespace === "options",
-    "adapter option validation issue reports namespace"
-  );
-  expect(
-    record,
-    issue.key === "max_heading_level",
-    "adapter option validation issue reports key"
-  );
-  expect(
-    record,
-    issue.reason_code === "range_invalid",
-    "adapter option validation issue reports range reason code"
-  );
-}
-
 function createRegisteredRealMarkdownProject(name: string) {
   return createProject(name);
 }
@@ -282,7 +205,7 @@ async function readFirstOutlineRef(project: SmokeProject) {
 }
 
 async function readFirstFindRef(project: SmokeProject) {
-  const record = await runCli("CORE-LINK-001 find real markdown protocol-json", [
+  const record = await runCli("CORE-LINK-002 find real markdown protocol-json", [
     "find",
     project.normalRelPath,
     "--query",
@@ -304,7 +227,7 @@ async function readFirstFindRef(project: SmokeProject) {
 }
 
 async function assertInfoReadableOutput(project: SmokeProject) {
-  const record = await runCli("CORE-LINK-001 info real markdown readable-view", [
+  const record = await runCli("CORE-INFO-001 info real markdown readable-view", [
     "info",
     project.normalRelPath,
     "--output",

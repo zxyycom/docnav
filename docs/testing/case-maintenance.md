@@ -40,6 +40,10 @@ NativeTestEntry 是 runner 能稳定独立选择或报告，并拥有一项完�
 原生节点。每个 supported Entry 由 project wrapper 生成恰好一个 machine case，
 身份是确定性 `entryKey`。Machine case 只投影 runner、target、selector、
 source path/range 和 source fingerprint，不使用手写 Markdown 或源码 marker。
+Smoke Entry 的 fingerprint 除 leaf task 声明外，还包含其 `run` 绑定在 smoke
+`sourceRoots` 内可达的顶层实现声明；同一模块中不可达的其它声明不影响该 Entry。
+source roots 外的 fixture、harness 与 assertion 只记录依赖绑定，不作为单个 Entry
+独占的实现正文。
 
 判断粒度时依次确认：
 
@@ -63,8 +67,19 @@ leaf task 通常是 Entry。以下对象不是 Entry：
 
 版本化 profile 位于
 `scripts/test-evidence/supported-runner-profile.json`，明确 Cargo source roots
-与 target kinds、Bun test files，以及 smoke factory 和 source roots。严格检查
-始终从完整 profile 执行以下闭合，不以 Git diff 或旧 inventory 为发现范围：
+与 target kinds、Bun source roots 和目录内相对 `include` / `ignore` 规则，以及
+smoke factory 和 source roots。常规 Bun 测试由目录规则自动纳入；
+`supplementalFiles` 只补充无法归入这些规则的特殊文件，不能重复列出已经匹配的
+文件。Bun pattern 必须是相对 source root 的正向 POSIX glob；不接受以 `!` 或
+`#` 开头的控制语法。每个 source root 与 supplemental path 都必须词法位于当前
+checkout 内，路径各级不得经过符号链接；root 必须是目录，supplement 必须是普通
+文件。
+
+展开顺序固定为：分别取得每个 root 的 include match，移除 ignore match，再合并
+workspace-relative supplemental files，最后排序去重。静态扫描与 runtime runner
+必须复用这一份结果；每个 include 必须有匹配，最终集合不得为空，ignore 可以暂时
+无匹配，冗余 supplemental file 会阻断。严格检查始终从完整 profile 执行以下闭合，
+不以 Git diff 或旧 inventory 为发现范围：
 
 1. 用项目 ast-grep 规则发现静态候选，并枚举 Cargo、Bun 与 smoke runner report。
 2. 规范化两侧身份，双向比较 static 与 runtime 集合。
@@ -162,6 +177,9 @@ bun run validate:docs -- cases
   与当前 checkout 的 runner 结果混合。
 
 `list` / `show` 在 index 缺失或陈旧时只构造带 warning 的内存投影，不隐式写回。
-只有 `sync --write` 可以重建 inventory/index。修改测试代码时还要运行目标 runner；
-跨多个验证入口时，再运行 `bun run verify:docnav-workspace:required` 或完整
+只有 `sync --write` 可以重建 inventory/index。它必须能在 committed
+inventory/index 已陈旧时从当前完整静态/runtime 闭合集合重建派生状态；工具自测
+在重建前只校验这些文件各自的 schema shape，语义新鲜度由写入后紧接的 strict
+`check` 证明。修改测试代码时还要运行目标 runner；跨多个验证入口时，再运行
+`bun run verify:docnav-workspace:required` 或完整
 `bun run verify:docnav-workspace`。

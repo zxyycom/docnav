@@ -19,7 +19,7 @@ export async function assertConfiguredProtocolEarlyFailure(missingPath: string) 
       }
     }
   });
-  const record = await runCli("CORE-OUTPUT-001 configured early failure protocol-json", [
+  const record = await runCli("CORE-OUTPUT-002 configured early failure protocol-json", [
     "read",
     missingPath,
     "--ref",
@@ -43,7 +43,7 @@ export async function assertConfiguredProtocolEarlyFailure(missingPath: string) 
     "invalid-user-config.json"
   );
   const invalidUserConfig = await runCli(
-    "CORE-OUTPUT-001 project protocol-json survives invalid user config",
+    "CORE-OUTPUT-002 project protocol-json survives invalid user config",
     [
       "read",
       missingPath,
@@ -66,7 +66,7 @@ export async function assertConfiguredProtocolEarlyFailure(missingPath: string) 
   );
 
   const invalidCliOutput = await runCli(
-    "CORE-OUTPUT-001 invalid CLI output does not fall through to config",
+    "CORE-OUTPUT-002 invalid CLI output does not fall through to config",
     ["outline", project.normalRelPath, "--output", "readable-json"],
     { project }
   );

@@ -26,14 +26,17 @@ import {
   assertProjectNativeOptionConfigAffectsOutline,
   assertUserNativeOptionConfigRejectedForRead
 } from "./config-native-options.ts";
-import { testConfigPathFlagsSelectConfigTargets } from "./config-path-flags.ts";
+import {
+  testConfigPathFlagsSelectConfigTargets,
+  testLegacyConfigSetRejectsSelectedConfigFiles
+} from "./config-path-flags.ts";
 
 export function createConfigContextTasks() {
   return [
     {
       id: "CORE-CONFIG-001",
-      label: "CORE-CONFIG-001 config source and path context",
-      run: testConfigSourceAndPathContext
+      label: "CORE-CONFIG-001 config source inspection",
+      run: testConfigSourceInspection
     },
     {
       id: "CORE-CONFIG-002",
@@ -51,9 +54,19 @@ export function createConfigContextTasks() {
       run: testNativeOptionConfigBehavior
     },
     {
+      id: "CORE-CONFIG-005",
+      label: "CORE-CONFIG-005 disabled pagination ignores numeric limit",
+      run: testPaginationDisabledBehavior
+    },
+    {
       id: "CORE-CONFIG-PATH-001",
       label: "CORE-CONFIG-PATH-001 config path flags select config files",
       run: testConfigPathFlagsSelectConfigTargets
+    },
+    {
+      id: "CORE-CONFIG-PATH-002",
+      label: "CORE-CONFIG-PATH-002 removed config set rejects selected files",
+      run: testLegacyConfigSetRejectsSelectedConfigFiles
     }
   ];
 }
@@ -62,8 +75,18 @@ export function createToolCommandTasks() {
   return [
     {
       id: "CORE-TOOLS-001",
-      label: "CORE-TOOLS-001 init version and help commands",
-      run: testInitVersionAndHelp
+      label: "CORE-TOOLS-001 init creates project config",
+      run: testInitCommand
+    },
+    {
+      id: "CORE-TOOLS-002",
+      label: "CORE-TOOLS-002 version reports crate version",
+      run: testVersionCommand
+    },
+    {
+      id: "CORE-TOOLS-003",
+      label: "CORE-TOOLS-003 outline help documents output options",
+      run: testOutlineHelp
     },
     {
       id: "CORE-ADAPTER-MGMT-001",
@@ -73,9 +96,18 @@ export function createToolCommandTasks() {
   ];
 }
 
-async function testConfigSourceAndPathContext() {
-  const project = mutableConfigFixtureProject("config-precedence-base", "config-precedence");
+async function testConfigSourceInspection() {
+  const project = configContextProject("config-inspection");
+  await assertConfigInspectSourceAndFacts(project, "docnav-markdown");
+}
 
+async function testPaginationDisabledBehavior() {
+  const project = configContextProject("pagination-disabled");
+  await assertPaginationDisabledSuccess(project);
+}
+
+function configContextProject(name: string): SmokeProject {
+  const project = mutableConfigFixtureProject("config-precedence-base", name);
   writeUserConfig(project, {
     defaults: {
       pagination: {
@@ -84,8 +116,7 @@ async function testConfigSourceAndPathContext() {
       }
     }
   });
-  await assertConfigInspectSourceAndFacts(project, "docnav-markdown");
-  await assertPaginationDisabledSuccess(project);
+  return project;
 }
 
 async function testRemovedOutputConfigRejected() {
@@ -155,7 +186,7 @@ async function assertRemovedReadableJsonOutputInspectDiagnostic(project: SmokePr
 }
 
 async function assertPaginationDisabledSuccess(project: SmokeProject) {
-  const record = await runCli("CORE-CONFIG-001 config disabled pagination uses numeric limit only", [
+  const record = await runCli("CORE-CONFIG-005 config disabled pagination uses numeric limit only", [
     "outline",
     project.normalRelPath,
     "--limit",
@@ -230,20 +261,26 @@ function projectionHasPath(record: CommandRecord, inspection: JsonRecord, fieldP
   return projection.some((field) => field.path === fieldPath);
 }
 
-async function testInitVersionAndHelp() {
+async function testInitCommand() {
   const initProject = createProject("tool-init", { docnavDir: false, normalDocument: false });
   const init = await runCli("CORE-TOOLS-001 init creates project config", ["init"], { project: initProject });
   expectExit(init, 0);
   expectStderrEmpty(init);
   const initJson = parseJson(init);
   expect(init, initJson.created === true, "init creates config on first run");
+}
 
-  const version = await runCli("CORE-TOOLS-001 version prints crate version", ["version"], { project: initProject });
+async function testVersionCommand() {
+  const project = createProject("tool-version", { docnavDir: false, normalDocument: false });
+  const version = await runCli("CORE-TOOLS-002 version prints crate version", ["version"], { project });
   expectExit(version, 0);
   expectStderrEmpty(version);
   expectStdoutIncludes(version, "docnav ");
+}
 
-  const help = await runCli("CORE-TOOLS-001 docnav outline help", ["outline", "--help"], { project: initProject });
+async function testOutlineHelp() {
+  const project = createProject("tool-outline-help", { docnavDir: false, normalDocument: false });
+  const help = await runCli("CORE-TOOLS-003 docnav outline help", ["outline", "--help"], { project });
   expectExit(help, 0);
   expectStderrEmpty(help);
   expectStdoutIncludes(help, "--output");

@@ -7,7 +7,6 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import type { AnySchema } from "ajv";
 
 import {
-  buildTestEvidenceProjection,
   queryTestEvidence,
   showTestEvidence,
   syncTestEvidenceIndex,
@@ -17,6 +16,7 @@ import { compareInventoryBaseline } from "./change-report.ts";
 import { exitCodeForDiagnostics } from "./cli.ts";
 import { discoverNativeTestEntries } from "./discover.ts";
 import { parseBunJUnit } from "./discovery/bun.ts";
+import { resolveBunTestFiles } from "./discovery/bun-files.ts";
 import { parseLibtestList } from "./discovery/rust.ts";
 import { createNativeTestInventory } from "./inventory.ts";
 import { parseNativeTestInventory } from "./inventory-validation.ts";
@@ -139,7 +139,7 @@ test("uses a warning-only memory projection without writing a missing index", ()
   assert.equal(result.total, 1);
 });
 
-test("validates the committed profile, inventory, Claim and index examples against v1 schemas", () => {
+test("validates the committed profile, inventory, Claim and index examples against their schemas", () => {
   const ajv = new Ajv2020({
     allErrors: true,
     strict: true
@@ -167,8 +167,21 @@ test("validates the committed profile, inventory, Claim and index examples again
     "supported-runner-profile.schema.json"
   )) as AnySchema);
 
-  const projection = buildTestEvidenceProjection({ workspaceRoot }).projection;
-  assert.ok(projection);
+  const committedIndex = readJson(path.join(
+    workspaceRoot,
+    "docs",
+    "test-evidence",
+    "test-evidence-index.json"
+  ));
+  assert.ok(
+    typeof committedIndex === "object" &&
+    committedIndex !== null &&
+    !Array.isArray(committedIndex)
+  );
+  const committedClaims = (
+    committedIndex as Record<string, unknown>
+  ).claims;
+  assert.ok(Array.isArray(committedClaims));
   const examples: Array<[string, unknown]> = [
     [
       "https://docnav.dev/test-evidence/supported-runner-profile.schema.json",
@@ -193,17 +206,8 @@ test("validates the committed profile, inventory, Claim and index examples again
       ))
     ],
     [
-      "https://docnav.dev/test-evidence/evidence-claim.schema.json",
-      projection.claims[0]
-    ],
-    [
       "https://docnav.dev/test-evidence/test-evidence-index.schema.json",
-      readJson(path.join(
-        workspaceRoot,
-        "docs",
-        "test-evidence",
-        "test-evidence-index.json"
-      ))
+      committedIndex
     ]
   ];
   for (const [schemaId, value] of examples) {
@@ -211,6 +215,16 @@ test("validates the committed profile, inventory, Claim and index examples again
       ajv.validate(schemaId, value),
       true,
       `${schemaId}: ${ajv.errorsText()}`
+    );
+  }
+  for (const claim of committedClaims) {
+    assert.equal(
+      ajv.validate(
+        "https://docnav.dev/test-evidence/evidence-claim.schema.json",
+        claim
+      ),
+      true,
+      `evidence Claim: ${ajv.errorsText()}`
     );
   }
 });
@@ -301,10 +315,19 @@ test("uses distinct project exit statuses for discovery, runner, inventory and C
 
 test("loads one versioned and sorted supported runner profile", async () => {
   const profile = loadSupportedRunnerProfile();
+  assert.equal(profile.schemaVersion, 2);
   assert.equal(profile.id, "docnav-native-tests");
-  assert.equal(profile.version, 1);
-  assert.deepEqual(profile.bun.files, [...profile.bun.files].sort());
-  assert.equal(new Set(profile.bun.files).size, profile.bun.files.length);
+  assert.equal(profile.version, 2);
+  assert.deepEqual(profile.bun, {
+    sourceRoots: ["scripts", "test"],
+    include: ["**/*.test.ts"],
+    ignore: [],
+    supplementalFiles: []
+  });
+  assert.deepEqual(
+    resolveBunTestFiles({ workspaceRoot, profile: profile.bun }),
+    findConventionalBunTests(workspaceRoot, profile.bun.sourceRoots)
+  );
   assert.equal(profile.smoke.factory, "test/smoke/core/profile.ts");
 
   const temporaryRoot = fs.mkdtempSync(path.join(
@@ -327,13 +350,15 @@ test("loads one versioned and sorted supported runner profile", async () => {
       {
         ...profile,
         bun: {
-          files: []
+          ...profile.bun,
+          sourceRoots: []
         }
       },
       {
         ...profile,
         bun: {
-          files: ["scripts/not-a-test.ts"]
+          ...profile.bun,
+          include: ["../**/*.test.ts"]
         }
       },
       {
@@ -356,7 +381,7 @@ test("loads one versioned and sorted supported runner profile", async () => {
       writeJson(sourcePath, invalidProfile);
       assert.throws(
         () => loadSupportedRunnerProfile(sourcePath),
-        /identity|safe relative POSIX paths|non-empty string array|must end with \.test\.ts|smoke identity/
+        /identity|safe relative POSIX paths|non-empty string array|positive relative POSIX globs|smoke identity/
       );
     }
   } finally {
@@ -424,6 +449,28 @@ function createEvidenceFixture(): Fixture {
       fs.rmSync(root, { force: true, recursive: true });
     }
   };
+}
+
+function findConventionalBunTests(
+  root: string,
+  sourceRoots: readonly string[]
+): string[] {
+  const files: string[] = [];
+  for (const sourceRoot of sourceRoots) {
+    visit(path.join(root, sourceRoot), sourceRoot);
+  }
+  return files.sort();
+
+  function visit(directoryPath: string, relativeDirectory: string): void {
+    for (const entry of fs.readdirSync(directoryPath, { withFileTypes: true })) {
+      const relativePath = path.posix.join(relativeDirectory, entry.name);
+      if (entry.isDirectory()) {
+        visit(path.join(directoryPath, entry.name), relativePath);
+      } else if (entry.isFile() && entry.name.endsWith(".test.ts")) {
+        files.push(relativePath);
+      }
+    }
+  }
 }
 
 function writeClaim(

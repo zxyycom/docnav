@@ -4,7 +4,7 @@ Topic: `core-cli`
 Owner ref: `docs/adapters/markdown.md#document-head`
 
 Statement:
-- Structured Markdown outline exposes eligible document-head content as HEAD:leading before visible headings.
+- Structured Markdown exposes eligible leading content as `HEAD:leading` before visible headings and reads that ref without losing the original content.
 
 Observations:
 - 真实 CLI fixture 包含 YAML frontmatter、普通前导正文和可见 heading 时，structured outline 在 heading entries 前暴露 `HEAD:leading`。

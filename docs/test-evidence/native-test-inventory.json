@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "profile": {
     "id": "docnav-native-tests",
-    "version": 1
+    "version": 2
   },
-  "sourceRevision": "sha256:75b64b2372a180aa0be4fdefdbb363ef34136a18672fa362f310a261f80dcfb8",
+  "sourceRevision": "sha256:f462ea5ad58816a552a6dacbefd90b20982fe25aaa574b319c8fdeb745846ca7",
   "entries": [
     {
       "entryKey": "bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters cargo trybuild success noise from successful cargo test output",
@@ -461,12 +461,12 @@
       "selector": "loads one versioned and sorted supported runner profile",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 302,
+        "startLine": 316,
         "startColumn": 1,
-        "endLine": 373,
+        "endLine": 398,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:5368e0ec2945c6b0da73d4ca89e1e82d4deccc4591b6d2b67a71a0e65113d344"
+      "sourceFingerprint": "sha256:e165ca032f7291fc94cd6728ea0fc4d73b8b1cd848fe410958e08ab58b2b0130"
     },
     {
       "entryKey": "bun|scripts/test-evidence/catalog.test.ts|parses stable Cargo and Bun runner reports without inferring missing fields",
@@ -475,9 +475,9 @@
       "selector": "parses stable Cargo and Bun runner reports without inferring missing fields",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 218,
+        "startLine": 232,
         "startColumn": 1,
-        "endLine": 251,
+        "endLine": 265,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:097fcd0d8d22764883a5af0074baa0a33df6ca05505762640729556879cba856"
@@ -517,9 +517,9 @@
       "selector": "reports structural changes without replacing full-tree closure",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 253,
+        "startLine": 267,
         "startColumn": 1,
-        "endLine": 285,
+        "endLine": 299,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:bb064331d9af7dab17faa752192d1c600fa59088320f0d1371ab347ebd9bb241"
@@ -545,26 +545,26 @@
       "selector": "uses distinct project exit statuses for discovery, runner, inventory and Claim failures",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 287,
+        "startLine": 301,
         "startColumn": 1,
-        "endLine": 300,
+        "endLine": 314,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:56314ef7f5b79d964747686d0235145afcf904c13facdd01ebe8fd51d9a15d78"
     },
     {
-      "entryKey": "bun|scripts/test-evidence/catalog.test.ts|validates the committed profile, inventory, Claim and index examples against v1 schemas",
+      "entryKey": "bun|scripts/test-evidence/catalog.test.ts|validates the committed profile, inventory, Claim and index examples against their schemas",
       "runner": "bun",
       "target": "scripts/test-evidence/catalog.test.ts",
-      "selector": "validates the committed profile, inventory, Claim and index examples against v1 schemas",
+      "selector": "validates the committed profile, inventory, Claim and index examples against their schemas",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
         "startLine": 142,
         "startColumn": 1,
-        "endLine": 216,
+        "endLine": 230,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:ad136539d212636bd4093691b287c4828c55607602504424d4959a85ecf3f0c3"
+      "sourceFingerprint": "sha256:6acbfddb504b568e34f9fd67afb61b42e0b1c2dda239f7a41f627dbd369ada6e"
     },
     {
       "entryKey": "bun|scripts/test-evidence/catalog.test.ts|validates, indexes and queries NativeTestEntry and Evidence Claim",
@@ -579,6 +579,48 @@
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:3549386b3740eb5ed218fcfa6984a67efe3ee312fba07c637f3dee18ff9b218f"
+    },
+    {
+      "entryKey": "bun|scripts/test-evidence/discovery/bun-files.test.ts|expands Bun test roots with include, ignore and supplemental files",
+      "runner": "bun",
+      "target": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "selector": "expands Bun test roots with include, ignore and supplemental files",
+      "sourcePath": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "sourceRange": {
+        "startLine": 9,
+        "startColumn": 1,
+        "endLine": 41,
+        "endColumn": 3
+      },
+      "sourceFingerprint": "sha256:0bd5ac3650e38eb2eb626e0b6309b35be0e7802bc20d5697389ad139f209849a"
+    },
+    {
+      "entryKey": "bun|scripts/test-evidence/discovery/bun-files.test.ts|rejects invalid, empty and redundant Bun test surfaces",
+      "runner": "bun",
+      "target": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "selector": "rejects invalid, empty and redundant Bun test surfaces",
+      "sourcePath": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "sourceRange": {
+        "startLine": 43,
+        "startColumn": 1,
+        "endLine": 133,
+        "endColumn": 3
+      },
+      "sourceFingerprint": "sha256:7adef45397a7f8a04c76d48f3004f5b03913cec322a73e432cfb312067afe946"
+    },
+    {
+      "entryKey": "bun|scripts/test-evidence/discovery/smoke-fingerprint.test.ts|fingerprints the reachable smoke run implementation without unrelated declarations",
+      "runner": "bun",
+      "target": "scripts/test-evidence/discovery/smoke-fingerprint.test.ts",
+      "selector": "fingerprints the reachable smoke run implementation without unrelated declarations",
+      "sourcePath": "scripts/test-evidence/discovery/smoke-fingerprint.test.ts",
+      "sourceRange": {
+        "startLine": 9,
+        "startColumn": 1,
+        "endLine": 36,
+        "endColumn": 3
+      },
+      "sourceFingerprint": "sha256:67a155d243db0e25a6721f6fb92341b9d12487c9ab445bbc42efcf7578c537d2"
     },
     {
       "entryKey": "bun|scripts/test-evidence/toolchain.test.ts|does not invoke the external ast-grep executable outside the developer wrapper",
@@ -2135,32 +2177,60 @@
       "sourceFingerprint": "sha256:f4ecd2f6bf848c8a9a8a66c9bfdf7cfcb4ac8742cf69ccb36993f6b494b03e8b"
     },
     {
-      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_capabilities",
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_empty_full_read_capabilities",
       "runner": "cargo",
       "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
-      "selector": "tests::definition::adapter_definition_rejects_invalid_full_read_capabilities",
+      "selector": "tests::definition::adapter_definition_rejects_empty_full_read_capabilities",
       "sourcePath": "crates/shared/adapter-contracts/src/tests/definition.rs",
       "sourceRange": {
         "startLine": 6,
         "startColumn": 1,
-        "endLine": 34,
+        "endLine": 23,
         "endColumn": 2
       },
-      "sourceFingerprint": "sha256:43ea13ed67e78a5770a3e059729fc722230e6d5ad6329900c4e92e15a9c2f677"
+      "sourceFingerprint": "sha256:5d7abc3aa1c4f75fa48376233c1c5ea7c7d9579d193a06fcd59e1af0f3dddcce"
     },
     {
-      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_error_constructors_project_protocol_error_details",
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_cost_units",
       "runner": "cargo",
       "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
-      "selector": "tests::error::adapter_error_constructors_project_protocol_error_details",
+      "selector": "tests::definition::adapter_definition_rejects_invalid_full_read_cost_units",
+      "sourcePath": "crates/shared/adapter-contracts/src/tests/definition.rs",
+      "sourceRange": {
+        "startLine": 26,
+        "startColumn": 1,
+        "endLine": 54,
+        "endColumn": 2
+      },
+      "sourceFingerprint": "sha256:e1f9bda9b1a560b4623696dfae406fcabf4c5d5694025fb1e38d112867d30e58"
+    },
+    {
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_document_not_found_error_projects_protocol_details",
+      "runner": "cargo",
+      "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
+      "selector": "tests::error::adapter_document_not_found_error_projects_protocol_details",
       "sourcePath": "crates/shared/adapter-contracts/src/tests/error.rs",
       "sourceRange": {
         "startLine": 5,
         "startColumn": 1,
-        "endLine": 63,
+        "endLine": 18,
         "endColumn": 2
       },
-      "sourceFingerprint": "sha256:548a86629e40737f254f713e62208a132b17cd1305748eac84e39d3e3e92d3bf"
+      "sourceFingerprint": "sha256:19b2308cbb7c993e46654ea25c696b23aeb9cfce961c4b46dcddd7e646c24075"
+    },
+    {
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_native_option_error_projects_protocol_details",
+      "runner": "cargo",
+      "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
+      "selector": "tests::error::adapter_native_option_error_projects_protocol_details",
+      "sourcePath": "crates/shared/adapter-contracts/src/tests/error.rs",
+      "sourceRange": {
+        "startLine": 21,
+        "startColumn": 1,
+        "endLine": 66,
+        "endColumn": 2
+      },
+      "sourceFingerprint": "sha256:289faa4f1903ea31122733e83556baa57c28d849afe98ef38ec92d6c1c28f10a"
     },
     {
       "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::full_read::unstructured_full_read_hooks_default_to_absent_capabilities",
@@ -7284,7 +7354,7 @@
         "endLine": 23,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:9872ef381f456e0c071c824b56bb08177c682aeebf2764da825c75bdc573e8a1"
+      "sourceFingerprint": "sha256:d5236f335cc7d0597c4a7f77c481b9916af1eeb6a53763c026070f6c46e2aef8"
     },
     {
       "entryKey": "smoke|core:auto-read|CORE-AUTO-READ-001",
@@ -7298,7 +7368,7 @@
         "endLine": 36,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:dc16ecb7711f289f82a68bf7fcfd2d8d8ca513331cf400b1df23bf67c4d4ef91"
+      "sourceFingerprint": "sha256:7975879b34a4ac05e94f0ce7aca1012c2831a51827c55d29734e35f685167931"
     },
     {
       "entryKey": "smoke|core:cli-argument-failure|CORE-ARGS-001",
@@ -7312,7 +7382,7 @@
         "endLine": 17,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:0c5a09730c8c222476512007d0444c300806b8aaff8f184610963cf03c40d49d"
+      "sourceFingerprint": "sha256:13db084170d741a23c3afa4c4e655138d0a00a391b204b83f85d1147f62108fa"
     },
     {
       "entryKey": "smoke|core:config-context|CORE-CONFIG-001",
@@ -7321,12 +7391,12 @@
       "selector": "CORE-CONFIG-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 33,
+        "startLine": 36,
         "startColumn": 5,
-        "endLine": 37,
+        "endLine": 40,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:a6ec782a6ac3c214678476c676b475166e22f438d8cce2065a2cb0d553da4af6"
+      "sourceFingerprint": "sha256:de3242e41f46335f839feeb5f68e5eb6beb1e53d59b006d85345987ad624993e"
     },
     {
       "entryKey": "smoke|core:config-context|CORE-CONFIG-002",
@@ -7335,12 +7405,12 @@
       "selector": "CORE-CONFIG-002",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 38,
+        "startLine": 41,
         "startColumn": 5,
-        "endLine": 42,
+        "endLine": 45,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:6df6a75a23d326d6c8d563827583d3ac283c3241db55a3c4959faddbd4baea09"
+      "sourceFingerprint": "sha256:5fab61d31643b4dcece8c43b4ef50a4e89d21a32848ebdfd74ea591c970d2b37"
     },
     {
       "entryKey": "smoke|core:config-context|CORE-CONFIG-003",
@@ -7349,12 +7419,12 @@
       "selector": "CORE-CONFIG-003",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 43,
+        "startLine": 46,
         "startColumn": 5,
-        "endLine": 47,
+        "endLine": 50,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:65aaf9720d6e1fe104537bf6902bc016ac2ce96e566ad5d7da67d9bb96718849"
+      "sourceFingerprint": "sha256:1aae9ac19e6f75c6b65087b9786469a90b05a3f5e5ce92651115ececc161bcd4"
     },
     {
       "entryKey": "smoke|core:config-context|CORE-CONFIG-004",
@@ -7363,12 +7433,26 @@
       "selector": "CORE-CONFIG-004",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 48,
+        "startLine": 51,
         "startColumn": 5,
-        "endLine": 52,
+        "endLine": 55,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:9ad72be41f3747c7a223a08c69d49b306f634334a0da51d3e6d58292b4534ed0"
+      "sourceFingerprint": "sha256:1f03810df848fa0cbd78f71ac0153e0e93deb8d1943c67c573f69e0964ad0433"
+    },
+    {
+      "entryKey": "smoke|core:config-context|CORE-CONFIG-005",
+      "runner": "smoke",
+      "target": "core:config-context",
+      "selector": "CORE-CONFIG-005",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 56,
+        "startColumn": 5,
+        "endLine": 60,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:511544b8f4a680daf3571b26e183807ac76f1611d0eea993c35a53d445181726"
     },
     {
       "entryKey": "smoke|core:config-context|CORE-CONFIG-PATH-001",
@@ -7377,12 +7461,26 @@
       "selector": "CORE-CONFIG-PATH-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 53,
+        "startLine": 61,
         "startColumn": 5,
-        "endLine": 57,
+        "endLine": 65,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:7f4960fee004861078bac243f3d054e13830438f6033c860468c720bb9b9a414"
+      "sourceFingerprint": "sha256:94dc7c31e2ace89600ab42e1c58f11ec02566fad7a5c1fcaf2bbbfd19e75a52a"
+    },
+    {
+      "entryKey": "smoke|core:config-context|CORE-CONFIG-PATH-002",
+      "runner": "smoke",
+      "target": "core:config-context",
+      "selector": "CORE-CONFIG-PATH-002",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 66,
+        "startColumn": 5,
+        "endLine": 70,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:1d498e8120fd64d80c93d4d3b2e2f476f4a169856fd889c7926d129fc7c0cc0d"
     },
     {
       "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-001",
@@ -7391,12 +7489,68 @@
       "selector": "CORE-OUTPUT-001",
       "sourcePath": "test/smoke/core/cases/outputs.ts",
       "sourceRange": {
-        "startLine": 32,
+        "startLine": 30,
         "startColumn": 5,
-        "endLine": 36,
+        "endLine": 34,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:90afecd81180bdd97f72049bdc9f855ffdac71a3e6759acce6b7f9c38256580b"
+      "sourceFingerprint": "sha256:d0edfe86ce3233831c3c87e26c4371b70a9207a041dead68c8cf7135fc554c12"
+    },
+    {
+      "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-002",
+      "runner": "smoke",
+      "target": "core:document-output-boundary",
+      "selector": "CORE-OUTPUT-002",
+      "sourcePath": "test/smoke/core/cases/outputs.ts",
+      "sourceRange": {
+        "startLine": 35,
+        "startColumn": 5,
+        "endLine": 39,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:aeed37270fa45897e413678b1981aecdcb2361c3f9442413f48afe16d161e9e2"
+    },
+    {
+      "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-003",
+      "runner": "smoke",
+      "target": "core:document-output-boundary",
+      "selector": "CORE-OUTPUT-003",
+      "sourcePath": "test/smoke/core/cases/outputs.ts",
+      "sourceRange": {
+        "startLine": 40,
+        "startColumn": 5,
+        "endLine": 44,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:e4689415aa93a7e68f4ea9281b9165ae68fb2a6bd2fed24421b8b5057e87aad6"
+    },
+    {
+      "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-004",
+      "runner": "smoke",
+      "target": "core:document-output-boundary",
+      "selector": "CORE-OUTPUT-004",
+      "sourcePath": "test/smoke/core/cases/outputs.ts",
+      "sourceRange": {
+        "startLine": 45,
+        "startColumn": 5,
+        "endLine": 49,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:1b23987767a4eff359e5a173f0b13e3adc26ed08fef3520daad4579ccc7e17d5"
+    },
+    {
+      "entryKey": "smoke|core:real-markdown-link-chain|CORE-INFO-001",
+      "runner": "smoke",
+      "target": "core:real-markdown-link-chain",
+      "selector": "CORE-INFO-001",
+      "sourcePath": "test/smoke/core/cases/real-markdown.ts",
+      "sourceRange": {
+        "startLine": 46,
+        "startColumn": 5,
+        "endLine": 50,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:34bd7d4e5511c24da5bcaed845beac08bdbe650de58adeda6a4ffc30d9df7873"
     },
     {
       "entryKey": "smoke|core:real-markdown-link-chain|CORE-LINK-001",
@@ -7405,12 +7559,26 @@
       "selector": "CORE-LINK-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 33,
+        "startLine": 36,
         "startColumn": 5,
-        "endLine": 37,
+        "endLine": 40,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:3017e7e10b971ed9e28b94eb8e2a14b9e2bdf377924e80a77c4123da2b43da29"
+      "sourceFingerprint": "sha256:db271e0ac3c81813160177f7aaf2affca25b5483a82be6788e2b59a5d3bedef5"
+    },
+    {
+      "entryKey": "smoke|core:real-markdown-link-chain|CORE-LINK-002",
+      "runner": "smoke",
+      "target": "core:real-markdown-link-chain",
+      "selector": "CORE-LINK-002",
+      "sourcePath": "test/smoke/core/cases/real-markdown.ts",
+      "sourceRange": {
+        "startLine": 41,
+        "startColumn": 5,
+        "endLine": 45,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:6295f8e114814e74a4503afafbece5eb683da188d9c675bf90677ca401893f63"
     },
     {
       "entryKey": "smoke|core:real-markdown-link-chain|CORE-MD-DOCHEAD-001",
@@ -7419,12 +7587,12 @@
       "selector": "CORE-MD-DOCHEAD-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 43,
+        "startLine": 61,
         "startColumn": 5,
-        "endLine": 47,
+        "endLine": 65,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:7f7864bafd975f49ddcabcc5051af4eaee448c2712644b4d9c2017ccbebd17c4"
+      "sourceFingerprint": "sha256:35cd5ee5dd5d64c6907633984a3fd8d6ff088086fc78141b8631299dea2a4751"
     },
     {
       "entryKey": "smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-001",
@@ -7433,12 +7601,26 @@
       "selector": "CORE-MD-OPTIONS-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 38,
+        "startLine": 51,
         "startColumn": 5,
-        "endLine": 42,
+        "endLine": 55,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:e0df8b007e255084c335988e5379fcd9d1aea212d8ad7770dba3f80498159094"
+      "sourceFingerprint": "sha256:a41e491dd211fa80ab3b6d69876e430d8bdeea414c31bd2e48e1a32f2b1aa6b0"
+    },
+    {
+      "entryKey": "smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-002",
+      "runner": "smoke",
+      "target": "core:real-markdown-link-chain",
+      "selector": "CORE-MD-OPTIONS-002",
+      "sourcePath": "test/smoke/core/cases/real-markdown.ts",
+      "sourceRange": {
+        "startLine": 56,
+        "startColumn": 5,
+        "endLine": 60,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:4e9aad10f3bcbe668983dcc0926dd54ce90608345a37d48bffb0b895e87efccb"
     },
     {
       "entryKey": "smoke|core:real-markdown-ref-error|CORE-REF-001",
@@ -7447,12 +7629,12 @@
       "selector": "CORE-REF-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 53,
+        "startLine": 71,
         "startColumn": 5,
-        "endLine": 57,
+        "endLine": 75,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:2b00fe36cb55cd0d9c1b3b0efc745e970f839afdf456796ca1cd2ffd6984a80e"
+      "sourceFingerprint": "sha256:fa71b714f63064ff205e94095bf75661f433dda036bd88ce7eef63d7ec14e4c8"
     },
     {
       "entryKey": "smoke|core:registry-contract-failures|CORE-FAIL-001",
@@ -7466,7 +7648,7 @@
         "endLine": 24,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:5998472e0e0ee1cc731ac5f6e9e8a85d7e59e491ffa418da93ac0af256ca71d5"
+      "sourceFingerprint": "sha256:18e0c58b08ebcc79989ec784f9c1785bd0ad3e7b7610b1bbc9fba1e723408c83"
     },
     {
       "entryKey": "smoke|core:registry-contract-failures|CORE-SOURCE-001",
@@ -7480,7 +7662,7 @@
         "endLine": 29,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:8a6dcd8847d70fa02c83c5214ab1f5f8ce1f995da0c8ae1de8e9f7496fcecab0"
+      "sourceFingerprint": "sha256:44eb004c01b54ae374318486e48d0c7912442aa3305fcea738de25c457b03508"
     },
     {
       "entryKey": "smoke|core:tool-commands|CORE-ADAPTER-MGMT-001",
@@ -7489,12 +7671,12 @@
       "selector": "CORE-ADAPTER-MGMT-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 68,
+        "startLine": 91,
         "startColumn": 5,
-        "endLine": 72,
+        "endLine": 95,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:74ffe705d0043d13c356dbdaa36d5c1a818b1a5e6344959e572a8121d7695ede"
+      "sourceFingerprint": "sha256:b0ba8d39140c5525eea8dd2a28dd60f26fba674818899fc4570189e614a63fb8"
     },
     {
       "entryKey": "smoke|core:tool-commands|CORE-TOOLS-001",
@@ -7503,12 +7685,40 @@
       "selector": "CORE-TOOLS-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 63,
+        "startLine": 76,
         "startColumn": 5,
-        "endLine": 67,
+        "endLine": 80,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:14d0c8dc3a3719e6097bbfc8888457c4cb33ed793906307f87504d86c84963dc"
+      "sourceFingerprint": "sha256:48bea06bddd433af829960729b5d077eb8a2ccd9b28a8c18c3dbc985698f2936"
+    },
+    {
+      "entryKey": "smoke|core:tool-commands|CORE-TOOLS-002",
+      "runner": "smoke",
+      "target": "core:tool-commands",
+      "selector": "CORE-TOOLS-002",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 81,
+        "startColumn": 5,
+        "endLine": 85,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:c6372f46ea40716845c52cd727c254ffede1895b67c931972a33abe14a696fc2"
+    },
+    {
+      "entryKey": "smoke|core:tool-commands|CORE-TOOLS-003",
+      "runner": "smoke",
+      "target": "core:tool-commands",
+      "selector": "CORE-TOOLS-003",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 86,
+        "startColumn": 5,
+        "endLine": 90,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:737e8776ee40f3a64463dbc6af0896159891f410d64c2552216e09bdb9ab8cd2"
     }
   ]
 }

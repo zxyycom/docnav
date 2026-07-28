@@ -4,7 +4,7 @@ Topic: `navigation`
 Owner ref: `docs/navigation-input-resolution.md#docnav-navigation`
 
 Statement:
-- Navigation loads project and user raw config sources from the source descriptors handed off by core.
+- Navigation owns loading, validation and adapter scoping for the raw config sources handed off by core before closed-input dispatch.
 
 Observations:
 - `docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。
@@ -14,3 +14,5 @@ Observations:
 
 Supported by:
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_loads_project_and_user_config_sources_from_descriptors`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_rejects_nested_non_object_config_shapes`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_does_not_forward_other_known_adapter_namespace`

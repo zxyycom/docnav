@@ -12,3 +12,4 @@ Observations:
 
 Supported by:
 - `cargo|docnav-markdown:test:adapter|paging_find::find_ref_targets_current_visible_region_and_read_contains_match`
+- `cargo|docnav-markdown:test:adapter|paging_find::find_falls_back_to_full_document_when_no_heading_is_visible`

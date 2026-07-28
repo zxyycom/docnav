@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "docnav-native-tests",
-  "version": 1,
+  "version": 2,
   "cargo": {
     "sourceRoots": [
       "crates"
@@ -14,30 +14,15 @@
     "doctests": "block-until-supported"
   },
   "bun": {
-    "files": [
-      "scripts/docnav-workspace/verify.test.ts",
-      "scripts/docs/test-evidence-validation.test.ts",
-      "scripts/quality/annotate/warnings.test.ts",
-      "scripts/quality/args.test.ts",
-      "scripts/quality/config.test.ts",
-      "scripts/test-evidence/catalog.test.ts",
-      "scripts/test-evidence/toolchain.test.ts",
-      "scripts/tools/foundation/test/foundation.test.ts",
-      "scripts/tools/parallel-task-runner/test/index.test.ts",
-      "scripts/tools/quality-core/src/input/files.test.ts",
-      "scripts/tools/quality-core/src/measurement/cache.test.ts",
-      "scripts/tools/quality-core/src/measurement/scanners.test.ts",
-      "scripts/tools/quality-core/src/measurement/scanners/jscpd/area-scans.test.ts",
-      "scripts/tools/quality-core/src/output/report/markdown-report.test.ts",
-      "scripts/tools/quality-core/src/output/warnings/generator.test.ts",
-      "scripts/tools/quality-core/test/quality-core.test.ts",
-      "scripts/tools/release-package/args.test.ts",
-      "scripts/tools/release-package/candidate.test.ts",
-      "scripts/tools/release-package/public.test.ts",
-      "scripts/tools/release-package/workflow.test.ts",
-      "test/smoke/core/fixtures/project.test.ts",
-      "test/tools/smoke-harness.test.ts"
-    ]
+    "sourceRoots": [
+      "scripts",
+      "test"
+    ],
+    "include": [
+      "**/*.test.ts"
+    ],
+    "ignore": [],
+    "supplementalFiles": []
   },
   "smoke": {
     "id": "core",

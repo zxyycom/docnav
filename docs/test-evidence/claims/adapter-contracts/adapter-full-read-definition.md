@@ -11,4 +11,5 @@ Observations:
 - Adapter definition validation rejects blank or duplicate cost measurement units.
 
 Supported by:
-- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_capabilities`
+- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_empty_full_read_capabilities`
+- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_cost_units`

@@ -7,6 +7,11 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^(?!\\s)(?!.*\\s$)(?!/)(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))(?!.*//)(?!.*\\\\)(?!.*\\/$)[^\\u0000]+$"
+    },
+    "safeRelativePosixGlob": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![!#])(?!\\s)(?!.*\\s$)(?!/)(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))(?!.*//)(?!.*\\\\)(?!.*\\/$)[^\\u0000]+$"
     }
   },
   "type": "object",
@@ -21,7 +26,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "id": {
       "type": "string",
@@ -69,23 +74,40 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "files"
+        "sourceRoots",
+        "include",
+        "ignore",
+        "supplementalFiles"
       ],
       "properties": {
-        "files": {
+        "sourceRoots": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "allOf": [
-              {
-                "$ref": "#/$defs/safeRelativePosixPath"
-              },
-              {
-                "type": "string",
-                "pattern": "\\.test\\.ts$"
-              }
-            ]
+            "$ref": "#/$defs/safeRelativePosixPath"
+          }
+        },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/safeRelativePosixGlob"
+          }
+        },
+        "ignore": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/safeRelativePosixGlob"
+          }
+        },
+        "supplementalFiles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/safeRelativePosixPath"
           }
         }
       }

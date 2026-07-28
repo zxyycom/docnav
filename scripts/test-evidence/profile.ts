@@ -2,13 +2,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  type BunTestSurface,
+  isSafeRelativeGlob
+} from "./discovery/bun-files.ts";
 import { isSafeRelativePosixPath } from "./relative-path.ts";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const SUPPORTED_SMOKE_FACTORY = "test/smoke/core/profile.ts";
 
 export type SupportedRunnerProfile = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   id: string;
   version: number;
   cargo: {
@@ -16,9 +20,7 @@ export type SupportedRunnerProfile = {
     targetKinds: Array<"bin" | "lib" | "test">;
     doctests: "block-until-supported";
   };
-  bun: {
-    files: string[];
-  };
+  bun: BunTestSurface;
   smoke: {
     id: string;
     factory: string;
@@ -54,7 +56,7 @@ export function loadSupportedRunnerProfile(
     throw new Error("supported runner profile has an invalid root shape");
   }
   if (
-    value.schemaVersion !== 1 ||
+    value.schemaVersion !== 2 ||
     typeof value.id !== "string" ||
     !SLUG_PATTERN.test(value.id) ||
     !Number.isInteger(value.version) ||
@@ -66,7 +68,7 @@ export function loadSupportedRunnerProfile(
   const bun = parseBunProfile(value.bun);
   const smoke = parseSmokeProfile(value.smoke);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: value.id,
     version: Number(value.version),
     cargo,
@@ -99,14 +101,40 @@ function parseCargoProfile(value: unknown): SupportedRunnerProfile["cargo"] {
 }
 
 function parseBunProfile(value: unknown): SupportedRunnerProfile["bun"] {
-  if (!isRecord(value) || !hasExactKeys(value, ["files"])) {
+  if (!isRecord(value) || !hasExactKeys(value, [
+    "sourceRoots",
+    "include",
+    "ignore",
+    "supplementalFiles"
+  ])) {
     throw new Error("supported runner Bun profile is invalid");
   }
-  const files = relativePathList(value.files, "Bun files");
-  if (files.some((sourcePath) => !sourcePath.endsWith(".test.ts"))) {
-    throw new Error("supported runner Bun files must end with .test.ts");
+  const sourceRoots = relativePathList(value.sourceRoots, "Bun sourceRoots");
+  const include = globList(value.include, "Bun include");
+  const ignore = globList(value.ignore, "Bun ignore", { allowEmpty: true });
+  const supplementalFiles = relativePathList(
+    value.supplementalFiles,
+    "Bun supplementalFiles",
+    { allowEmpty: true }
+  );
+  return {
+    sourceRoots,
+    include,
+    ignore,
+    supplementalFiles
+  };
+}
+
+function globList(
+  value: unknown,
+  label: string,
+  options: { allowEmpty?: boolean } = {}
+): string[] {
+  const items = sortedStringList(value, label, options);
+  if (items.some((item) => !isSafeRelativeGlob(item))) {
+    throw new Error(`${label} must contain positive relative POSIX globs`);
   }
-  return { files };
+  return items;
 }
 
 function parseSmokeProfile(value: unknown): SupportedRunnerProfile["smoke"] {
@@ -131,17 +159,30 @@ function parseSmokeProfile(value: unknown): SupportedRunnerProfile["smoke"] {
   };
 }
 
-function relativePathList(value: unknown, label: string): string[] {
-  const items = sortedStringList(value, label);
+function relativePathList(
+  value: unknown,
+  label: string,
+  options: { allowEmpty?: boolean } = {}
+): string[] {
+  const items = sortedStringList(value, label, options);
   if (items.some((item) => !isSafeRelativePosixPath(item))) {
     throw new Error(`${label} must contain safe relative POSIX paths`);
   }
   return items;
 }
 
-function sortedStringList(value: unknown, label: string): string[] {
-  if (!isUnknownArray(value) || value.length === 0) {
-    throw new Error(`${label} must be a non-empty string array`);
+function sortedStringList(
+  value: unknown,
+  label: string,
+  options: { allowEmpty?: boolean } = {}
+): string[] {
+  if (
+    !isUnknownArray(value) ||
+    (!options.allowEmpty && value.length === 0)
+  ) {
+    throw new Error(
+      `${label} must be ${options.allowEmpty ? "a" : "a non-empty"} string array`
+    );
   }
   const items = value.map((item) => {
     if (

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "sha256:eda27b1522adc069230ad1838190ab587fba7d1eb5b4c04dd8915ebc9d7fcd86",
-  "inventoryRevision": "sha256:75b64b2372a180aa0be4fdefdbb363ef34136a18672fa362f310a261f80dcfb8",
+  "sourceRevision": "sha256:86c20003308d6afb7c5332bb0e5915c8230eaa240af192c1260c496494f3e4e9",
+  "inventoryRevision": "sha256:f462ea5ad58816a552a6dacbefd90b20982fe25aaa574b319c8fdeb745846ca7",
   "topics": [
     {
       "id": "adapter-contracts",
@@ -508,12 +508,12 @@
       "selector": "loads one versioned and sorted supported runner profile",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 302,
+        "startLine": 316,
         "startColumn": 1,
-        "endLine": 373,
+        "endLine": 398,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:5368e0ec2945c6b0da73d4ca89e1e82d4deccc4591b6d2b67a71a0e65113d344",
+      "sourceFingerprint": "sha256:e165ca032f7291fc94cd6728ea0fc4d73b8b1cd848fe410958e08ab58b2b0130",
       "claimIds": []
     },
     {
@@ -523,9 +523,9 @@
       "selector": "parses stable Cargo and Bun runner reports without inferring missing fields",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 218,
+        "startLine": 232,
         "startColumn": 1,
-        "endLine": 251,
+        "endLine": 265,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:097fcd0d8d22764883a5af0074baa0a33df6ca05505762640729556879cba856",
@@ -568,9 +568,9 @@
       "selector": "reports structural changes without replacing full-tree closure",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 253,
+        "startLine": 267,
         "startColumn": 1,
-        "endLine": 285,
+        "endLine": 299,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:bb064331d9af7dab17faa752192d1c600fa59088320f0d1371ab347ebd9bb241",
@@ -598,27 +598,27 @@
       "selector": "uses distinct project exit statuses for discovery, runner, inventory and Claim failures",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
-        "startLine": 287,
+        "startLine": 301,
         "startColumn": 1,
-        "endLine": 300,
+        "endLine": 314,
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:56314ef7f5b79d964747686d0235145afcf904c13facdd01ebe8fd51d9a15d78",
       "claimIds": []
     },
     {
-      "entryKey": "bun|scripts/test-evidence/catalog.test.ts|validates the committed profile, inventory, Claim and index examples against v1 schemas",
+      "entryKey": "bun|scripts/test-evidence/catalog.test.ts|validates the committed profile, inventory, Claim and index examples against their schemas",
       "runner": "bun",
       "target": "scripts/test-evidence/catalog.test.ts",
-      "selector": "validates the committed profile, inventory, Claim and index examples against v1 schemas",
+      "selector": "validates the committed profile, inventory, Claim and index examples against their schemas",
       "sourcePath": "scripts/test-evidence/catalog.test.ts",
       "sourceRange": {
         "startLine": 142,
         "startColumn": 1,
-        "endLine": 216,
+        "endLine": 230,
         "endColumn": 3
       },
-      "sourceFingerprint": "sha256:ad136539d212636bd4093691b287c4828c55607602504424d4959a85ecf3f0c3",
+      "sourceFingerprint": "sha256:6acbfddb504b568e34f9fd67afb61b42e0b1c2dda239f7a41f627dbd369ada6e",
       "claimIds": []
     },
     {
@@ -634,6 +634,51 @@
         "endColumn": 3
       },
       "sourceFingerprint": "sha256:3549386b3740eb5ed218fcfa6984a67efe3ee312fba07c637f3dee18ff9b218f",
+      "claimIds": []
+    },
+    {
+      "entryKey": "bun|scripts/test-evidence/discovery/bun-files.test.ts|expands Bun test roots with include, ignore and supplemental files",
+      "runner": "bun",
+      "target": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "selector": "expands Bun test roots with include, ignore and supplemental files",
+      "sourcePath": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "sourceRange": {
+        "startLine": 9,
+        "startColumn": 1,
+        "endLine": 41,
+        "endColumn": 3
+      },
+      "sourceFingerprint": "sha256:0bd5ac3650e38eb2eb626e0b6309b35be0e7802bc20d5697389ad139f209849a",
+      "claimIds": []
+    },
+    {
+      "entryKey": "bun|scripts/test-evidence/discovery/bun-files.test.ts|rejects invalid, empty and redundant Bun test surfaces",
+      "runner": "bun",
+      "target": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "selector": "rejects invalid, empty and redundant Bun test surfaces",
+      "sourcePath": "scripts/test-evidence/discovery/bun-files.test.ts",
+      "sourceRange": {
+        "startLine": 43,
+        "startColumn": 1,
+        "endLine": 133,
+        "endColumn": 3
+      },
+      "sourceFingerprint": "sha256:7adef45397a7f8a04c76d48f3004f5b03913cec322a73e432cfb312067afe946",
+      "claimIds": []
+    },
+    {
+      "entryKey": "bun|scripts/test-evidence/discovery/smoke-fingerprint.test.ts|fingerprints the reachable smoke run implementation without unrelated declarations",
+      "runner": "bun",
+      "target": "scripts/test-evidence/discovery/smoke-fingerprint.test.ts",
+      "selector": "fingerprints the reachable smoke run implementation without unrelated declarations",
+      "sourcePath": "scripts/test-evidence/discovery/smoke-fingerprint.test.ts",
+      "sourceRange": {
+        "startLine": 9,
+        "startColumn": 1,
+        "endLine": 36,
+        "endColumn": 3
+      },
+      "sourceFingerprint": "sha256:67a155d243db0e25a6721f6fb92341b9d12487c9ab445bbc42efcf7578c537d2",
       "claimIds": []
     },
     {
@@ -2302,35 +2347,69 @@
       "claimIds": []
     },
     {
-      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_capabilities",
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_empty_full_read_capabilities",
       "runner": "cargo",
       "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
-      "selector": "tests::definition::adapter_definition_rejects_invalid_full_read_capabilities",
+      "selector": "tests::definition::adapter_definition_rejects_empty_full_read_capabilities",
       "sourcePath": "crates/shared/adapter-contracts/src/tests/definition.rs",
       "sourceRange": {
         "startLine": 6,
         "startColumn": 1,
-        "endLine": 34,
+        "endLine": 23,
         "endColumn": 2
       },
-      "sourceFingerprint": "sha256:43ea13ed67e78a5770a3e059729fc722230e6d5ad6329900c4e92e15a9c2f677",
+      "sourceFingerprint": "sha256:5d7abc3aa1c4f75fa48376233c1c5ea7c7d9579d193a06fcd59e1af0f3dddcce",
       "claimIds": [
         "CLAIM-ADAPTER-FULL-READ-DEFINITION-001"
       ]
     },
     {
-      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_error_constructors_project_protocol_error_details",
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_cost_units",
       "runner": "cargo",
       "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
-      "selector": "tests::error::adapter_error_constructors_project_protocol_error_details",
+      "selector": "tests::definition::adapter_definition_rejects_invalid_full_read_cost_units",
+      "sourcePath": "crates/shared/adapter-contracts/src/tests/definition.rs",
+      "sourceRange": {
+        "startLine": 26,
+        "startColumn": 1,
+        "endLine": 54,
+        "endColumn": 2
+      },
+      "sourceFingerprint": "sha256:e1f9bda9b1a560b4623696dfae406fcabf4c5d5694025fb1e38d112867d30e58",
+      "claimIds": [
+        "CLAIM-ADAPTER-FULL-READ-DEFINITION-001"
+      ]
+    },
+    {
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_document_not_found_error_projects_protocol_details",
+      "runner": "cargo",
+      "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
+      "selector": "tests::error::adapter_document_not_found_error_projects_protocol_details",
       "sourcePath": "crates/shared/adapter-contracts/src/tests/error.rs",
       "sourceRange": {
         "startLine": 5,
         "startColumn": 1,
-        "endLine": 63,
+        "endLine": 18,
         "endColumn": 2
       },
-      "sourceFingerprint": "sha256:548a86629e40737f254f713e62208a132b17cd1305748eac84e39d3e3e92d3bf",
+      "sourceFingerprint": "sha256:19b2308cbb7c993e46654ea25c696b23aeb9cfce961c4b46dcddd7e646c24075",
+      "claimIds": [
+        "CLAIM-ADAPTER-ERROR-PROJECTION-001"
+      ]
+    },
+    {
+      "entryKey": "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_native_option_error_projects_protocol_details",
+      "runner": "cargo",
+      "target": "docnav-adapter-contracts:lib:docnav_adapter_contracts",
+      "selector": "tests::error::adapter_native_option_error_projects_protocol_details",
+      "sourcePath": "crates/shared/adapter-contracts/src/tests/error.rs",
+      "sourceRange": {
+        "startLine": 21,
+        "startColumn": 1,
+        "endLine": 66,
+        "endColumn": 2
+      },
+      "sourceFingerprint": "sha256:289faa4f1903ea31122733e83556baa57c28d849afe98ef38ec92d6c1c28f10a",
       "claimIds": [
         "CLAIM-ADAPTER-ERROR-PROJECTION-001"
       ]
@@ -3323,7 +3402,9 @@
         "endColumn": 2
       },
       "sourceFingerprint": "sha256:aeda8ec95dc3814128f9df029510f49b73b06af29b298931aad01300a231f51f",
-      "claimIds": []
+      "claimIds": [
+        "CLAIM-MARKDOWN-FIND-VISIBLE-REGION-001"
+      ]
     },
     {
       "entryKey": "cargo|docnav-markdown:test:adapter|paging_find::find_match_before_first_visible_heading_uses_document_head_ref",
@@ -3687,9 +3768,7 @@
         "endColumn": 2
       },
       "sourceFingerprint": "sha256:cd6bb7ec09e2c908b0b55df69bb29b5047fab928ad720f0027c64deaaf8d711d",
-      "claimIds": [
-        "CLAIM-NAVIGATION-SELECTED-FIELD-SET-001"
-      ]
+      "claimIds": []
     },
     {
       "entryKey": "cargo|docnav-navigation:lib:docnav_navigation|parameters::tests::auto_read_replace_trace_keeps_selected_overridden_and_builtin_provenance",
@@ -4066,7 +4145,9 @@
         "endColumn": 2
       },
       "sourceFingerprint": "sha256:f726a5d9adddff739dd80522d9cdb7d350324da8fd6ce250fca243001584603a",
-      "claimIds": []
+      "claimIds": [
+        "CLAIM-NAVIGATION-CONFIG-SOURCE-DISPATCH-001"
+      ]
     },
     {
       "entryKey": "cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::override_missing_config_source_preserves_override_diagnostic",
@@ -4186,7 +4267,9 @@
         "endColumn": 2
       },
       "sourceFingerprint": "sha256:984fc8430d6c059f1585c12c06c283a3c70fd886edebeb32ef02e5eb4bc1db29",
-      "claimIds": []
+      "claimIds": [
+        "CLAIM-NAVIGATION-CONFIG-SOURCE-DISPATCH-001"
+      ]
     },
     {
       "entryKey": "cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_keeps_same_option_key_distinct_by_adapter_namespace",
@@ -7830,7 +7913,7 @@
         "endLine": 23,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:9872ef381f456e0c071c824b56bb08177c682aeebf2764da825c75bdc573e8a1",
+      "sourceFingerprint": "sha256:d5236f335cc7d0597c4a7f77c481b9916af1eeb6a53763c026070f6c46e2aef8",
       "claimIds": [
         "CLAIM-CLI-ADAPTER-SELECTION-001"
       ]
@@ -7847,7 +7930,7 @@
         "endLine": 36,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:dc16ecb7711f289f82a68bf7fcfd2d8d8ca513331cf400b1df23bf67c4d4ef91",
+      "sourceFingerprint": "sha256:7975879b34a4ac05e94f0ce7aca1012c2831a51827c55d29734e35f685167931",
       "claimIds": [
         "CLAIM-CLI-UNIQUE-REF-AUTO-READ-001"
       ]
@@ -7864,7 +7947,7 @@
         "endLine": 17,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:0c5a09730c8c222476512007d0444c300806b8aaff8f184610963cf03c40d49d",
+      "sourceFingerprint": "sha256:13db084170d741a23c3afa4c4e655138d0a00a391b204b83f85d1147f62108fa",
       "claimIds": [
         "CLAIM-CLI-REQUIRED-ARGUMENT-001"
       ]
@@ -7876,12 +7959,12 @@
       "selector": "CORE-CONFIG-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 33,
+        "startLine": 36,
         "startColumn": 5,
-        "endLine": 37,
+        "endLine": 40,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:a6ec782a6ac3c214678476c676b475166e22f438d8cce2065a2cb0d553da4af6",
+      "sourceFingerprint": "sha256:de3242e41f46335f839feeb5f68e5eb6beb1e53d59b006d85345987ad624993e",
       "claimIds": [
         "CLAIM-CLI-CONFIG-INSPECTION-001"
       ]
@@ -7893,12 +7976,12 @@
       "selector": "CORE-CONFIG-002",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 38,
+        "startLine": 41,
         "startColumn": 5,
-        "endLine": 42,
+        "endLine": 45,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:6df6a75a23d326d6c8d563827583d3ac283c3241db55a3c4959faddbd4baea09",
+      "sourceFingerprint": "sha256:5fab61d31643b4dcece8c43b4ef50a4e89d21a32848ebdfd74ea591c970d2b37",
       "claimIds": [
         "CLAIM-CLI-CONFIG-VALUE-DIAGNOSTIC-001"
       ]
@@ -7910,12 +7993,12 @@
       "selector": "CORE-CONFIG-003",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 43,
+        "startLine": 46,
         "startColumn": 5,
-        "endLine": 47,
+        "endLine": 50,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:65aaf9720d6e1fe104537bf6902bc016ac2ce96e566ad5d7da67d9bb96718849",
+      "sourceFingerprint": "sha256:1aae9ac19e6f75c6b65087b9786469a90b05a3f5e5ce92651115ececc161bcd4",
       "claimIds": [
         "CLAIM-CLI-REMOVED-LIMIT-DIAGNOSTIC-001"
       ]
@@ -7927,15 +8010,30 @@
       "selector": "CORE-CONFIG-004",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 48,
+        "startLine": 51,
         "startColumn": 5,
-        "endLine": 52,
+        "endLine": 55,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:9ad72be41f3747c7a223a08c69d49b306f634334a0da51d3e6d58292b4534ed0",
+      "sourceFingerprint": "sha256:1f03810df848fa0cbd78f71ac0153e0e93deb8d1943c67c573f69e0964ad0433",
       "claimIds": [
         "CLAIM-CLI-ADAPTER-CONFIG-APPLICABILITY-001"
       ]
+    },
+    {
+      "entryKey": "smoke|core:config-context|CORE-CONFIG-005",
+      "runner": "smoke",
+      "target": "core:config-context",
+      "selector": "CORE-CONFIG-005",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 56,
+        "startColumn": 5,
+        "endLine": 60,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:511544b8f4a680daf3571b26e183807ac76f1611d0eea993c35a53d445181726",
+      "claimIds": []
     },
     {
       "entryKey": "smoke|core:config-context|CORE-CONFIG-PATH-001",
@@ -7944,15 +8042,30 @@
       "selector": "CORE-CONFIG-PATH-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 53,
+        "startLine": 61,
         "startColumn": 5,
-        "endLine": 57,
+        "endLine": 65,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:7f4960fee004861078bac243f3d054e13830438f6033c860468c720bb9b9a414",
+      "sourceFingerprint": "sha256:94dc7c31e2ace89600ab42e1c58f11ec02566fad7a5c1fcaf2bbbfd19e75a52a",
       "claimIds": [
         "CLAIM-CLI-CONFIG-PATH-SELECTION-001"
       ]
+    },
+    {
+      "entryKey": "smoke|core:config-context|CORE-CONFIG-PATH-002",
+      "runner": "smoke",
+      "target": "core:config-context",
+      "selector": "CORE-CONFIG-PATH-002",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 66,
+        "startColumn": 5,
+        "endLine": 70,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:1d498e8120fd64d80c93d4d3b2e2f476f4a169856fd889c7926d129fc7c0cc0d",
+      "claimIds": []
     },
     {
       "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-001",
@@ -7961,15 +8074,81 @@
       "selector": "CORE-OUTPUT-001",
       "sourcePath": "test/smoke/core/cases/outputs.ts",
       "sourceRange": {
-        "startLine": 32,
+        "startLine": 30,
         "startColumn": 5,
-        "endLine": 36,
+        "endLine": 34,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:90afecd81180bdd97f72049bdc9f855ffdac71a3e6759acce6b7f9c38256580b",
+      "sourceFingerprint": "sha256:d0edfe86ce3233831c3c87e26c4371b70a9207a041dead68c8cf7135fc554c12",
       "claimIds": [
         "CLAIM-CLI-OUTPUT-LAYER-SEPARATION-001"
       ]
+    },
+    {
+      "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-002",
+      "runner": "smoke",
+      "target": "core:document-output-boundary",
+      "selector": "CORE-OUTPUT-002",
+      "sourcePath": "test/smoke/core/cases/outputs.ts",
+      "sourceRange": {
+        "startLine": 35,
+        "startColumn": 5,
+        "endLine": 39,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:aeed37270fa45897e413678b1981aecdcb2361c3f9442413f48afe16d161e9e2",
+      "claimIds": [
+        "CLAIM-CLI-OUTPUT-LAYER-SEPARATION-001"
+      ]
+    },
+    {
+      "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-003",
+      "runner": "smoke",
+      "target": "core:document-output-boundary",
+      "selector": "CORE-OUTPUT-003",
+      "sourcePath": "test/smoke/core/cases/outputs.ts",
+      "sourceRange": {
+        "startLine": 40,
+        "startColumn": 5,
+        "endLine": 44,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:e4689415aa93a7e68f4ea9281b9165ae68fb2a6bd2fed24421b8b5057e87aad6",
+      "claimIds": [
+        "CLAIM-CLI-OUTPUT-LAYER-SEPARATION-001"
+      ]
+    },
+    {
+      "entryKey": "smoke|core:document-output-boundary|CORE-OUTPUT-004",
+      "runner": "smoke",
+      "target": "core:document-output-boundary",
+      "selector": "CORE-OUTPUT-004",
+      "sourcePath": "test/smoke/core/cases/outputs.ts",
+      "sourceRange": {
+        "startLine": 45,
+        "startColumn": 5,
+        "endLine": 49,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:1b23987767a4eff359e5a173f0b13e3adc26ed08fef3520daad4579ccc7e17d5",
+      "claimIds": [
+        "CLAIM-CLI-OUTPUT-LAYER-SEPARATION-001"
+      ]
+    },
+    {
+      "entryKey": "smoke|core:real-markdown-link-chain|CORE-INFO-001",
+      "runner": "smoke",
+      "target": "core:real-markdown-link-chain",
+      "selector": "CORE-INFO-001",
+      "sourcePath": "test/smoke/core/cases/real-markdown.ts",
+      "sourceRange": {
+        "startLine": 46,
+        "startColumn": 5,
+        "endLine": 50,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:34bd7d4e5511c24da5bcaed845beac08bdbe650de58adeda6a4ffc30d9df7873",
+      "claimIds": []
     },
     {
       "entryKey": "smoke|core:real-markdown-link-chain|CORE-LINK-001",
@@ -7978,12 +8157,29 @@
       "selector": "CORE-LINK-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 33,
+        "startLine": 36,
         "startColumn": 5,
-        "endLine": 37,
+        "endLine": 40,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:3017e7e10b971ed9e28b94eb8e2a14b9e2bdf377924e80a77c4123da2b43da29",
+      "sourceFingerprint": "sha256:db271e0ac3c81813160177f7aaf2affca25b5483a82be6788e2b59a5d3bedef5",
+      "claimIds": [
+        "CLAIM-CLI-REF-ROUND-TRIP-001"
+      ]
+    },
+    {
+      "entryKey": "smoke|core:real-markdown-link-chain|CORE-LINK-002",
+      "runner": "smoke",
+      "target": "core:real-markdown-link-chain",
+      "selector": "CORE-LINK-002",
+      "sourcePath": "test/smoke/core/cases/real-markdown.ts",
+      "sourceRange": {
+        "startLine": 41,
+        "startColumn": 5,
+        "endLine": 45,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:6295f8e114814e74a4503afafbece5eb683da188d9c675bf90677ca401893f63",
       "claimIds": [
         "CLAIM-CLI-REF-ROUND-TRIP-001"
       ]
@@ -7995,12 +8191,12 @@
       "selector": "CORE-MD-DOCHEAD-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 43,
+        "startLine": 61,
         "startColumn": 5,
-        "endLine": 47,
+        "endLine": 65,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:7f7864bafd975f49ddcabcc5051af4eaee448c2712644b4d9c2017ccbebd17c4",
+      "sourceFingerprint": "sha256:35cd5ee5dd5d64c6907633984a3fd8d6ff088086fc78141b8631299dea2a4751",
       "claimIds": [
         "CLAIM-CLI-MARKDOWN-DOCUMENT-HEAD-001"
       ]
@@ -8012,12 +8208,29 @@
       "selector": "CORE-MD-OPTIONS-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 38,
+        "startLine": 51,
         "startColumn": 5,
-        "endLine": 42,
+        "endLine": 55,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:e0df8b007e255084c335988e5379fcd9d1aea212d8ad7770dba3f80498159094",
+      "sourceFingerprint": "sha256:a41e491dd211fa80ab3b6d69876e430d8bdeea414c31bd2e48e1a32f2b1aa6b0",
+      "claimIds": [
+        "CLAIM-CLI-MARKDOWN-HEADING-LIMIT-001"
+      ]
+    },
+    {
+      "entryKey": "smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-002",
+      "runner": "smoke",
+      "target": "core:real-markdown-link-chain",
+      "selector": "CORE-MD-OPTIONS-002",
+      "sourcePath": "test/smoke/core/cases/real-markdown.ts",
+      "sourceRange": {
+        "startLine": 56,
+        "startColumn": 5,
+        "endLine": 60,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:4e9aad10f3bcbe668983dcc0926dd54ce90608345a37d48bffb0b895e87efccb",
       "claimIds": [
         "CLAIM-CLI-MARKDOWN-HEADING-LIMIT-001"
       ]
@@ -8029,12 +8242,12 @@
       "selector": "CORE-REF-001",
       "sourcePath": "test/smoke/core/cases/real-markdown.ts",
       "sourceRange": {
-        "startLine": 53,
+        "startLine": 71,
         "startColumn": 5,
-        "endLine": 57,
+        "endLine": 75,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:2b00fe36cb55cd0d9c1b3b0efc745e970f839afdf456796ca1cd2ffd6984a80e",
+      "sourceFingerprint": "sha256:fa71b714f63064ff205e94095bf75661f433dda036bd88ce7eef63d7ec14e4c8",
       "claimIds": [
         "CLAIM-CLI-ADAPTER-REF-ERROR-001"
       ]
@@ -8051,7 +8264,7 @@
         "endLine": 24,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:5998472e0e0ee1cc731ac5f6e9e8a85d7e59e491ffa418da93ac0af256ca71d5",
+      "sourceFingerprint": "sha256:18e0c58b08ebcc79989ec784f9c1785bd0ad3e7b7610b1bbc9fba1e723408c83",
       "claimIds": [
         "CLAIM-CLI-PROBE-FAILURE-PROJECTION-001"
       ]
@@ -8068,7 +8281,7 @@
         "endLine": 29,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:8a6dcd8847d70fa02c83c5214ab1f5f8ce1f995da0c8ae1de8e9f7496fcecab0",
+      "sourceFingerprint": "sha256:44eb004c01b54ae374318486e48d0c7912442aa3305fcea738de25c457b03508",
       "claimIds": [
         "CLAIM-CLI-STATIC-REGISTRY-DISPATCH-001"
       ]
@@ -8080,12 +8293,12 @@
       "selector": "CORE-ADAPTER-MGMT-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 68,
+        "startLine": 91,
         "startColumn": 5,
-        "endLine": 72,
+        "endLine": 95,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:74ffe705d0043d13c356dbdaa36d5c1a818b1a5e6344959e572a8121d7695ede",
+      "sourceFingerprint": "sha256:b0ba8d39140c5525eea8dd2a28dd60f26fba674818899fc4570189e614a63fb8",
       "claimIds": [
         "CLAIM-CLI-ADAPTER-INSPECTION-001"
       ]
@@ -8097,15 +8310,43 @@
       "selector": "CORE-TOOLS-001",
       "sourcePath": "test/smoke/core/cases/config-management.ts",
       "sourceRange": {
-        "startLine": 63,
+        "startLine": 76,
         "startColumn": 5,
-        "endLine": 67,
+        "endLine": 80,
         "endColumn": 6
       },
-      "sourceFingerprint": "sha256:14d0c8dc3a3719e6097bbfc8888457c4cb33ed793906307f87504d86c84963dc",
-      "claimIds": [
-        "CLAIM-CLI-TOOL-COMMANDS-001"
-      ]
+      "sourceFingerprint": "sha256:48bea06bddd433af829960729b5d077eb8a2ccd9b28a8c18c3dbc985698f2936",
+      "claimIds": []
+    },
+    {
+      "entryKey": "smoke|core:tool-commands|CORE-TOOLS-002",
+      "runner": "smoke",
+      "target": "core:tool-commands",
+      "selector": "CORE-TOOLS-002",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 81,
+        "startColumn": 5,
+        "endLine": 85,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:c6372f46ea40716845c52cd727c254ffede1895b67c931972a33abe14a696fc2",
+      "claimIds": []
+    },
+    {
+      "entryKey": "smoke|core:tool-commands|CORE-TOOLS-003",
+      "runner": "smoke",
+      "target": "core:tool-commands",
+      "selector": "CORE-TOOLS-003",
+      "sourcePath": "test/smoke/core/cases/config-management.ts",
+      "sourceRange": {
+        "startLine": 86,
+        "startColumn": 5,
+        "endLine": 90,
+        "endColumn": 6
+      },
+      "sourceFingerprint": "sha256:737e8776ee40f3a64463dbc6af0896159891f410d64c2552216e09bdb9ab8cd2",
+      "claimIds": []
     }
   ],
   "claims": [
@@ -8115,17 +8356,18 @@
       "topic": "adapter-contracts",
       "ownerRef": "docs/adapter-contract.md#文档操作执行边界",
       "statement": [
-        "Adapter-layer document errors preserve their protocol code, owner, location and default guidance when projected."
+        "Adapter-layer document and native-option errors preserve their typed protocol facts when projected."
       ],
       "observations": [
         "Adapter document errors project to protocol error code, owner, location and default guidance through `AdapterError::protocol_error()`.",
         "Adapter-owned native option errors project issue metadata to invalid-request received, expected, details and guidance fields."
       ],
       "supportedBy": [
-        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_error_constructors_project_protocol_error_details"
+        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_document_not_found_error_projects_protocol_details",
+        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_native_option_error_projects_protocol_details"
       ],
       "sourcePath": "claims/adapter-contracts/adapter-error-projection.md",
-      "sourceFingerprint": "sha256:424f9e7bd2f0413f16c4662a7b832c1e00d652ede9b9e226534cbff4bb437c29",
+      "sourceFingerprint": "sha256:e0fbafc23cc84b4e650662ab5a2502cb91088e357bbf1e1b47638c21bcd3908b",
       "ownerFingerprint": "sha256:72358439f3f888baa9819cc3dcd403a9686846a50b74bfc44933e55ef2a87a5e"
     },
     {
@@ -8141,10 +8383,11 @@
         "Adapter definition validation rejects blank or duplicate cost measurement units."
       ],
       "supportedBy": [
-        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_capabilities"
+        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_empty_full_read_capabilities",
+        "cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::definition::adapter_definition_rejects_invalid_full_read_cost_units"
       ],
       "sourcePath": "claims/adapter-contracts/adapter-full-read-definition.md",
-      "sourceFingerprint": "sha256:9198b7f3dda78e4589fb0eb0021520d6b037162d381a793e6744bfec285d2858",
+      "sourceFingerprint": "sha256:bd4470baed4fd8b22eb622e30a874b423d19dc5a8344f67c65ede165df04dc0f",
       "ownerFingerprint": "sha256:d785f9bd40d2fbf6326db5c8cb9cc968dcb5135ce11d6e9a605ed3b6d440d6da"
     },
     {
@@ -8233,14 +8476,13 @@
       ],
       "observations": [
         "`docnav config inspect` reports selected project/user source scope、origin、load state、source diagnostics and current adapter/output/pagination parameter facts without modifying either selected file。",
-        "Inspect output includes the config-source projection entry for the observed pagination field.",
-        "Disabled pagination configured through direct config file edit remains observable through inspect facts；an `outline` command with an explicit numeric `--limit` returns the complete three-entry fixture outline with `page: null`."
+        "Inspect output includes the config-source projection entry for the observed pagination field."
       ],
       "supportedBy": [
         "smoke|core:config-context|CORE-CONFIG-001"
       ],
       "sourcePath": "claims/core-cli/config-inspection.md",
-      "sourceFingerprint": "sha256:f0813ffefda9bc7c8457f538961f6d4bea3da8dd530168f8637354a445c134fc",
+      "sourceFingerprint": "sha256:f4e46db55ae4120af855f9672a964a70acced431bdac95ba5fd6f4f5d1f101ab",
       "ownerFingerprint": "sha256:41ad7ab9102d80c64261e38ad86f266ece7a164d8e0a5f3507f4356bf2129d53"
     },
     {
@@ -8254,14 +8496,13 @@
       "observations": [
         "真实 document operation 通过 `--project-config <path>` 和 `--user-config <path>` 使用显式 selected config files，而不是 project context、`DOCNAV_CONFIG_DIR` 或平台默认路径。",
         "`docnav config inspect --project-config <path> --user-config <path>` reports exactly those selected source paths and their origins without writing either file.",
-        "Document operations and `config inspect` share the same config source descriptor/path selection boundary, while document operation value resolution remains owned by navigation input resolution.",
-        "Representative mutating legacy command `config set` with selected config path flags is rejected through the normal CLI parse/error boundary and does not modify selected files; the removed command names form one parser equivalence class."
+        "Document operations and `config inspect` share the same config source descriptor/path selection boundary, while document operation value resolution remains owned by navigation input resolution."
       ],
       "supportedBy": [
         "smoke|core:config-context|CORE-CONFIG-PATH-001"
       ],
       "sourcePath": "claims/core-cli/config-path-selection.md",
-      "sourceFingerprint": "sha256:cdc93217de25cf9da4e506a9d794e134090b99cb6a36385d12eb04e2eef48fe2",
+      "sourceFingerprint": "sha256:032342d0d1a8dd316827a449e3255f354bb1d698cecf999305c1bc3eb21467c6",
       "ownerFingerprint": "sha256:64e9e06f8135120e1867a1b850355ac1948999170764a3588525beb06d420f11"
     },
     {
@@ -8288,7 +8529,7 @@
       "topic": "core-cli",
       "ownerRef": "docs/adapters/markdown.md#document-head",
       "statement": [
-        "Structured Markdown outline exposes eligible document-head content as HEAD:leading before visible headings."
+        "Structured Markdown exposes eligible leading content as `HEAD:leading` before visible headings and reads that ref without losing the original content."
       ],
       "observations": [
         "真实 CLI fixture 包含 YAML frontmatter、普通前导正文和可见 heading 时，structured outline 在 heading entries 前暴露 `HEAD:leading`。",
@@ -8300,7 +8541,7 @@
         "smoke|core:real-markdown-link-chain|CORE-MD-DOCHEAD-001"
       ],
       "sourcePath": "claims/core-cli/markdown-document-head.md",
-      "sourceFingerprint": "sha256:f1e62f82cf184629d76879b8001fffc2ba8a3a5d991b923089c2ca8110420211",
+      "sourceFingerprint": "sha256:9194813e589d3744588a4151765c0aa3fe7bad548c9612f4aea16610e41c86ca",
       "ownerFingerprint": "sha256:a654e3057d438733ee239ace17d9e263ac2a150bd10c27faf670a4ad3d49a98a"
     },
     {
@@ -8315,10 +8556,11 @@
         "Markdown `max_heading_level` 可以从 CLI flag 影响 `outline` 可见粒度；越界值作为 adapter-owned option validation error 投影。Project config source 的同类型证明由 `CLAIM-CLI-ADAPTER-CONFIG-APPLICABILITY-001` 承担。"
       ],
       "supportedBy": [
-        "smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-001"
+        "smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-001",
+        "smoke|core:real-markdown-link-chain|CORE-MD-OPTIONS-002"
       ],
       "sourcePath": "claims/core-cli/markdown-heading-limit.md",
-      "sourceFingerprint": "sha256:fcb7d3e6a1a25a702f6d974725f4231e8b40764365b47640a3262e98feadbde3",
+      "sourceFingerprint": "sha256:03669ab63b0c0b52d8755fa64396109155f2983ca9e4d1e2a4a309123a259301",
       "ownerFingerprint": "sha256:7ddee43106f92363099c61418738f03e72e4792d88ab2e05cae2e79a108a27ad"
     },
     {
@@ -8333,14 +8575,17 @@
         "省略 output 和显式 `readable-view` 产生相同的 built-in readable-view text contract；`protocol-json` 对同一文档结果输出完整 protocol envelope。",
         "Readable text 与 protocol JSON 保持隔离：presentation-only display/cost/framing 不进入 protocol raw result，success/failure 仍分别保留当前 owner 的可观察语义。",
         "CLI 显式选择或 project config 选择 `protocol-json` 时，navigation response 产生前的 document failure 仍输出完整 failure envelope，不回退到 `readable-view`；project-selected 分支同时覆盖低优先级 user config 加载失败。",
-        "CLI 或 config 使用已删除的 `readable-json` 时走普通 invalid-value boundary，不产生 alias、fallback 或 document output。",
+        "CLI 显式使用已删除的 `readable-json` 时走普通 invalid-value boundary，不产生 alias、fallback 或 document output。",
         "Unstructured outline selected by config 在 `readable-view` 中作为 content block、在 `protocol-json` 中作为 raw result 可观察，并且不虚构 entries/ref/page/continuation。"
       ],
       "supportedBy": [
-        "smoke|core:document-output-boundary|CORE-OUTPUT-001"
+        "smoke|core:document-output-boundary|CORE-OUTPUT-001",
+        "smoke|core:document-output-boundary|CORE-OUTPUT-002",
+        "smoke|core:document-output-boundary|CORE-OUTPUT-003",
+        "smoke|core:document-output-boundary|CORE-OUTPUT-004"
       ],
       "sourcePath": "claims/core-cli/output-layer-separation.md",
-      "sourceFingerprint": "sha256:eaacfead6dc867707ebf8cf2782b16a87d578e5d83d1dfb2d0075fad1d8676a2",
+      "sourceFingerprint": "sha256:2925c1c18e33f39e34aa60c16953ef736567514b45464c2cb83f55f49615886e",
       "ownerFingerprint": "sha256:9ca078762c82f414c62516202493d36bf5fa7d411a7a6253e61e6a4d889e3002"
     },
     {
@@ -8372,14 +8617,15 @@
         "Core passes adapter-generated refs unchanged from outline or find into read."
       ],
       "observations": [
-        "真实 `docnav` 进程可以通过 Markdown adapter 完成 `outline -> ref -> read`、`find -> ref -> read` 和 `info` 链路。",
+        "真实 `docnav` 进程可以通过 Markdown adapter 分别完成 `outline -> ref -> read` 和 `find -> ref -> read` 链路。",
         "outline/find 返回的 adapter ref 可原样提交给 read，`readable-view` read 保留该 ref；用户可见阅读文本不包含 protocol envelope。"
       ],
       "supportedBy": [
-        "smoke|core:real-markdown-link-chain|CORE-LINK-001"
+        "smoke|core:real-markdown-link-chain|CORE-LINK-001",
+        "smoke|core:real-markdown-link-chain|CORE-LINK-002"
       ],
       "sourcePath": "claims/core-cli/ref-round-trip.md",
-      "sourceFingerprint": "sha256:cf8d8435ede74ee2f8c359d18e698c288a4dbc55603e4706db69f32da8546409",
+      "sourceFingerprint": "sha256:57618b1b5f7364fff9da85bc76cf289c92f0e4da117c880c30aa4abb15e27d34",
       "ownerFingerprint": "sha256:2b4dde37beca74631425b58b51c13e92c0c434437771e36581749595c3f56e1d"
     },
     {
@@ -8440,31 +8686,12 @@
       "ownerFingerprint": "sha256:d785f9bd40d2fbf6326db5c8cb9cc968dcb5135ce11d6e9a605ed3b6d440d6da"
     },
     {
-      "id": "CLAIM-CLI-TOOL-COMMANDS-001",
-      "title": "Core 非 document 命令保持可用",
-      "topic": "core-cli",
-      "ownerRef": "docs/cli.md#命令面",
-      "statement": [
-        "Non-document tool commands remain available through the same top-level CLI surface."
-      ],
-      "observations": [
-        "`init` 通过真实 CLI 创建 project config。",
-        "`version` 输出 crate version，document help 暴露 output/pagination CLI options。"
-      ],
-      "supportedBy": [
-        "smoke|core:tool-commands|CORE-TOOLS-001"
-      ],
-      "sourcePath": "claims/core-cli/tool-commands.md",
-      "sourceFingerprint": "sha256:dabecad4b8561443a8d78b538d8b91b27aef32ed09b4aecb8c777f4bc4201a6e",
-      "ownerFingerprint": "sha256:b3e56f9604daaf03e613e935376beb852dd3e2cdec2b095ced27b667c4b3b2ed"
-    },
-    {
       "id": "CLAIM-CLI-UNIQUE-REF-AUTO-READ-001",
       "title": "Core unique-ref auto-read 默认值与关闭来源可观察",
       "topic": "core-cli",
       "ownerRef": "docs/navigation-input-resolution.md#unique-ref-auto-read-composition",
       "statement": [
-        "A successful outline or find with one distinct ref defaults to unique-ref auto-read unless an explicit source disables it."
+        "A successful find with one distinct ref defaults to unique-ref auto-read unless an explicit source disables it."
       ],
       "observations": [
         "真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read；`protocol-json` 与 `readable-view` 从同一结果保留 ref、content type 和 nested content。",
@@ -8474,7 +8701,7 @@
         "smoke|core:auto-read|CORE-AUTO-READ-001"
       ],
       "sourcePath": "claims/core-cli/unique-ref-auto-read.md",
-      "sourceFingerprint": "sha256:f3dae6cf4300c2b14241850076046e3517450966034d4f05696b4409a4dddf49",
+      "sourceFingerprint": "sha256:6259ede09c69c9906c9a57c6577fef959f6e80d6d1d17e386545fe28a86e4b66",
       "ownerFingerprint": "sha256:158caa26389ddd15fa3c523dc21b97ce9803c9906a1f82018c736a05bb23c7f6"
     },
     {
@@ -8490,10 +8717,11 @@
         "find display 保留匹配片段且 ref 不受 display 内容影响。"
       ],
       "supportedBy": [
-        "cargo|docnav-markdown:test:adapter|paging_find::find_ref_targets_current_visible_region_and_read_contains_match"
+        "cargo|docnav-markdown:test:adapter|paging_find::find_ref_targets_current_visible_region_and_read_contains_match",
+        "cargo|docnav-markdown:test:adapter|paging_find::find_falls_back_to_full_document_when_no_heading_is_visible"
       ],
       "sourcePath": "claims/markdown-adapter/find-visible-region.md",
-      "sourceFingerprint": "sha256:d2288cb7f84995a3e12762f72a845784ffb5139392b7024fc73a6698a88cc0fe",
+      "sourceFingerprint": "sha256:9a9c4961ea61baee129e0bc16e41837178e5c3028c35478f3bf41d3a17275762",
       "ownerFingerprint": "sha256:71879a58edab590c535e8163596fe7daa352b210f3014d75ec2857bbaad47904"
     },
     {
@@ -8506,14 +8734,14 @@
       ],
       "observations": [
         "Markdown read pagination 按 Unicode 字符计数，不拆分字符。",
-        "page 前进和结束状态可通过返回的 page metadata 观察。",
-        "read cost 使用 selection-scoped helper measurements；token cost 不参与分页预算。"
+        "首个分页结果通过 page metadata 暴露下一页，后续请求从对应字符边界继续。",
+        "read cost 在分页同时仍使用 selection-scoped helper measurements。"
       ],
       "supportedBy": [
         "cargo|docnav-markdown:test:adapter|paging_find::read_paginates_unicode_without_splitting_characters"
       ],
       "sourcePath": "claims/markdown-adapter/read-pagination.md",
-      "sourceFingerprint": "sha256:b331657577f7168c90718fadd3b0338a5eb35b78255dea6e1a304237e49afd47",
+      "sourceFingerprint": "sha256:bb021024404f59fa3c11493251294a453d1365f8565d32690af9b8d9c6b928c1",
       "ownerFingerprint": "sha256:be7d916dd568c263ac2d5dc36397a05dbd55bfddd7b9d763af29d501d78a3938"
     },
     {
@@ -8522,7 +8750,7 @@
       "topic": "navigation",
       "ownerRef": "docs/navigation-input-resolution.md#docnav-navigation",
       "statement": [
-        "Navigation loads project and user raw config sources from the source descriptors handed off by core."
+        "Navigation owns loading, validation and adapter scoping for the raw config sources handed off by core before closed-input dispatch."
       ],
       "observations": [
         "`docnav-navigation` 接收 config source descriptor paths 并由 navigation boundary 加载 project/user raw config sources。",
@@ -8531,30 +8759,13 @@
         "Nested non-object config source shapes at `defaults`、`defaults.pagination` and `options` return navigation-owned typed input errors."
       ],
       "supportedBy": [
-        "cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_loads_project_and_user_config_sources_from_descriptors"
+        "cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_loads_project_and_user_config_sources_from_descriptors",
+        "cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::config_sources::navigation_rejects_nested_non_object_config_shapes",
+        "cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::native_options::adapter_scopes::navigation_does_not_forward_other_known_adapter_namespace"
       ],
       "sourcePath": "claims/navigation/config-source-dispatch.md",
-      "sourceFingerprint": "sha256:47ae2ca9221b570a9f7f76af626d15ccd53c46dd9014d6dedb52896a725bc566",
+      "sourceFingerprint": "sha256:12c63a8ca4e090ffa6df3c90afd59b1d49442d5d599b900defc555c505df77a4",
       "ownerFingerprint": "sha256:051623807619de0018805db22dff4906299db710b04f96e430ef0aaa796fc7ac"
-    },
-    {
-      "id": "CLAIM-NAVIGATION-SELECTED-FIELD-SET-001",
-      "title": "Selected field set follows closed catalog applicability",
-      "topic": "navigation",
-      "ownerRef": "docs/navigation-input-resolution.md#selected-operation-catalog-view",
-      "statement": [
-        "The selected operation field set combines fixed operation inputs with only the applicable core-authored catalog entries."
-      ],
-      "observations": [
-        "The selected operation field set combines fixed operation inputs with the core-authored parameter catalog projection.",
-        "Adapter-scoped catalog fields are included only for the selected adapter；fields scoped to another adapter are excluded."
-      ],
-      "supportedBy": [
-        "cargo|docnav-navigation:lib:docnav_navigation|parameters::fields::tests::selected_fields_combine_fixed_inputs_with_catalog_projection"
-      ],
-      "sourcePath": "claims/navigation/selected-field-set.md",
-      "sourceFingerprint": "sha256:823c044aad0d9252a1fe1145f93fee907af57dc7261a42b285ccf10ecf5d30ed",
-      "ownerFingerprint": "sha256:65ee490442663d7ac1819dca1d05512444a9af82f235b74e87bdfc6c7ef6c81c"
     }
   ]
 }

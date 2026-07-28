@@ -18,7 +18,7 @@ export function createCoreSmokeTasks(): SmokeTask[] {
   return [
     {
       id: "real-markdown-link-chain",
-      label: "built-in markdown ref handoff chain",
+      label: "built-in Markdown navigation behavior",
       tasks: createRealMarkdownLinkTasks()
     },
     {

@@ -72,6 +72,10 @@ export async function testConfigPathFlagsSelectConfigTargets() {
     },
   });
 
+  const selectedConfigSnapshot = snapshotSelectedConfigFiles(
+    mutableProjectConfig,
+    mutableUserConfig,
+  );
   const inspect = await runCli(
     "CORE-CONFIG-PATH-001 config inspect uses selected config files",
     [
@@ -101,10 +105,28 @@ export async function testConfigPathFlagsSelectConfigTargets() {
     projectionHasPath(inspect, inspection, "defaults.pagination.limit"),
     "config inspect exposes config-source projection for selected config fields",
   );
+  expectSelectedConfigFilesUnchanged(inspect, selectedConfigSnapshot);
+}
 
+export async function testLegacyConfigSetRejectsSelectedConfigFiles() {
+  const project = createProject("config-path-legacy-rejection");
+  const mutableProjectConfig = path.join(project.root, "selected", "project.json");
+  const mutableUserConfig = path.join(project.root, "selected", "user.json");
+  writeJson(mutableProjectConfig, {
+    defaults: {
+      output: "readable-view",
+    },
+  });
+  writeJson(mutableUserConfig, {
+    defaults: {
+      pagination: {
+        limit: 321,
+      },
+    },
+  });
   const selectedConfigSnapshot = snapshotSelectedConfigFiles(mutableProjectConfig, mutableUserConfig);
   const legacy = await runCli(
-    "CORE-CONFIG-PATH-001 legacy config set rejects selected config files",
+    "CORE-CONFIG-PATH-002 legacy config set rejects selected config files",
     [
       "config",
       "set",

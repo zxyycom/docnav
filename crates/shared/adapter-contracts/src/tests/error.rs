@@ -2,7 +2,7 @@ use crate::{AdapterError, NativeOptionIssue};
 use docnav_protocol::ProtocolDiagnosticCode;
 
 #[test]
-fn adapter_error_constructors_project_protocol_error_details() {
+fn adapter_document_not_found_error_projects_protocol_details() {
     let not_found = AdapterError::document_not_found("missing.md").protocol_error();
 
     assert_eq!(not_found.code(), ProtocolDiagnosticCode::DocumentNotFound);
@@ -15,7 +15,10 @@ fn adapter_error_constructors_project_protocol_error_details() {
         not_found.guidance().unwrap()[0],
         "Check the document path and retry."
     );
+}
 
+#[test]
+fn adapter_native_option_error_projects_protocol_details() {
     let issue = NativeOptionIssue {
         owner: "docnav-markdown".to_owned(),
         namespace: "options".to_owned(),
