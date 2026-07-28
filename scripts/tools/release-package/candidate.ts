@@ -44,6 +44,14 @@ type CandidateTargetResult = {
   target: SupportedTarget;
 };
 
+type ValidatedTargetPackage = {
+  manifestHash: string;
+  packageDir: string;
+  coreEntry: { path: string; sha256: string };
+};
+
+type PublicFileSet = { binaryName: string; checksumName: string };
+
 export type CandidateValidationResult = {
   candidateRoot: string;
   gitCommit: string;
@@ -132,6 +140,34 @@ function validateTarget(
   assertDirectory(packageDir, `${target} package`);
   assertDirectory(publicDir, `${target} public`);
 
+  const validatedPackage = validateTargetPackage(
+    packageDir,
+    target,
+    expectations,
+  );
+  const publicFiles = validatePublicFileSet(
+    publicDir,
+    target,
+    expectations.version,
+  );
+  const publicBinaryHash = validatePublicBinaryParity(
+    validatedPackage,
+    publicDir,
+    publicFiles,
+  );
+  return {
+    manifestHash: validatedPackage.manifestHash,
+    packageBinaryHash: validatedPackage.coreEntry.sha256,
+    publicBinaryHash,
+    target,
+  };
+}
+
+function validateTargetPackage(
+  packageDir: string,
+  target: SupportedTarget,
+  expectations: CandidateExpectations,
+): ValidatedTargetPackage {
   const validatedPackage = validateReleasePackage(
     path.join(packageDir, "manifest.json"),
     {
@@ -170,30 +206,49 @@ function validateTarget(
     "validated manifest must contain a core binary entry",
   );
 
-  const publicFileName = publicBinaryName(expectations.version, target);
-  const publicChecksumName = `${publicFileName}.sha256`;
+  return {
+    manifestHash: validatedPackage.manifestHash,
+    packageDir: validatedPackage.packageDir,
+    coreEntry: { path: coreEntry.path, sha256: coreEntry.sha256 },
+  };
+}
+
+function validatePublicFileSet(
+  publicDir: string,
+  target: SupportedTarget,
+  version: string,
+): PublicFileSet {
+  const binaryName = publicBinaryName(version, target);
+  const checksumName = `${binaryName}.sha256`;
   const publicEntries = readDirectory(publicDir, `${target} public`);
   const publicNames = publicEntries
     .map((entry) => entry.name)
     .sort(compareStrings);
   assertEqualLists(
     publicNames,
-    [publicFileName, publicChecksumName].sort(compareStrings),
+    [binaryName, checksumName].sort(compareStrings),
     "public directory must contain exactly the binary and checksum",
   );
   assert(
     publicEntries.every((entry) => entry.isFile()),
     "public directory entries must be files",
   );
+  return { binaryName, checksumName };
+}
 
+function validatePublicBinaryParity(
+  validatedPackage: ValidatedTargetPackage,
+  publicDir: string,
+  publicFiles: PublicFileSet,
+): string {
   const packageBinaryPath = path.join(
     validatedPackage.packageDir,
-    coreEntry.path,
+    validatedPackage.coreEntry.path,
   );
-  const publicBinaryPath = path.join(publicDir, publicFileName);
+  const publicBinaryPath = path.join(publicDir, publicFiles.binaryName);
   const publicBinaryHash = sha256File(publicBinaryPath);
   assert(
-    publicBinaryHash === coreEntry.sha256,
+    publicBinaryHash === validatedPackage.coreEntry.sha256,
     "public binary sha256 must match canonical package binary",
   );
   assert(
@@ -203,19 +258,13 @@ function validateTarget(
     "public binary bytes must match canonical package binary",
   );
 
-  const checksumPath = path.join(publicDir, publicChecksumName);
+  const checksumPath = path.join(publicDir, publicFiles.checksumName);
   assert(
     fs.readFileSync(checksumPath, "utf8") ===
-      `${publicBinaryHash}  ${publicFileName}\n`,
+      `${publicBinaryHash}  ${publicFiles.binaryName}\n`,
     "public checksum must match binary hash and filename",
   );
-
-  return {
-    manifestHash: validatedPackage.manifestHash,
-    packageBinaryHash: coreEntry.sha256,
-    publicBinaryHash,
-    target,
-  };
+  return publicBinaryHash;
 }
 
 function validateTag(expectations: CandidateExpectations): void {
