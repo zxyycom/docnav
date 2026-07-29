@@ -5,12 +5,24 @@
   "metadata": {
     "domains": [
       {
+        "description": "维护格式扩展、真实 adapter 样本、完整行为证据与共享抽象门槛的长期方向。",
+        "id": "adapter-evolution"
+      },
+      {
         "description": "维护长期决策的记录、生命周期、演进关系及其与 owner 规范和 OpenSpec change 的分工。",
         "id": "decision-management"
+      },
+      {
+        "description": "维护 JSON 导航的 ref、树遍历、原文查找、解析保真、输入约束、安全上限与结构化序列化方向。",
+        "id": "json-navigation"
+      },
+      {
+        "description": "维护跨格式结构化读取、源码保真、raw/readable 输出分层与自定义渲染的长期方向。",
+        "id": "navigation-output"
       }
     ]
   },
-  "sourceRevision": "sha256:f028fde972ada73058e22f940380d5df9ebff060971b9d8687d98ba8197eb2de",
+  "sourceRevision": "sha256:0275955bd45a68ac468600f322e783bcbadbf9f5c5d225c4f4ae6333c34647ff",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -26,6 +38,81 @@
     }
   ],
   "entries": [
+    {
+      "id": "adapter-evolution/select-json-as-second-adapter.md",
+      "keys": {
+        "domain": [
+          "adapter-evolution"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "adapter-evolution/select-json-as-second-adapter.md",
+        "title": "选择 JSON 作为第二个真实适配器",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:57:52Z",
+        "purpose": "以范围可控且足够异构的格式建立第二个真实 adapter 边界样本。",
+        "background": "JSON 简单常用，树导航不同于 Markdown，又比代码、HTML 或 PDF 更少混入解析复杂度。",
+        "decision": "第二个真实 adapter 选择 JSON，后续格式继续按自身目标和证据独立选择。",
+        "relations": []
+      }
+    },
+    {
+      "id": "adapter-evolution/validate-boundaries-with-complete-adapter-behavior.md",
+      "keys": {
+        "domain": [
+          "adapter-evolution"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "adapter-evolution/validate-boundaries-with-complete-adapter-behavior.md",
+        "title": "用完整 adapter 行为检验边界",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-29T01:32:38Z",
+        "purpose": "让 adapter 边界证据覆盖格式实现会实际经过的全部产品行为。",
+        "background": "解析、导航、查找、读取和可读展示会分别暴露共享设计中的多余职责、缺失职责与格式特例。",
+        "decision": "真实格式走通固定 operation、full-read 与格式专用 readable presentation 后，才形成完整 adapter 边界证据；各阶段可以由相连的 change 依次交付。",
+        "relations": []
+      }
+    },
+    {
+      "id": "adapter-evolution/validate-boundaries-with-real-adapters.md",
+      "keys": {
+        "domain": [
+          "adapter-evolution"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "adapter-evolution/validate-boundaries-with-real-adapters.md",
+        "title": "用异构真实适配器检验共享抽象",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:57:52Z",
+        "purpose": "让共享 adapter contract 只承接由异构真实实现共同证明的职责。",
+        "background": "只有 Markdown 一个真实实现时，共享职责与 Markdown 特有实现之间没有可反驳的边界样本。",
+        "decision": "用第二个真实且结构不同的 adapter 检验边界，并只从重复出现的职责提炼共享抽象。",
+        "relations": []
+      }
+    },
     {
       "id": "decision-management/separate-decision-spec-ownership.md",
       "keys": {
@@ -76,6 +163,273 @@
         "background": "项目已引入 decision-records skill，但个人安装和人工维护不能保证 CI 可复现或索引同步。",
         "decision": "版本化管理 docs/decisions，并由 required docs validator 直接调用项目内模块执行严格检查。",
         "relations": []
+      }
+    },
+    {
+      "id": "json-navigation/keep-depth-limit-adapter-private.md",
+      "keys": {
+        "domain": [
+          "json-navigation"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "json-navigation/keep-depth-limit-adapter-private.md",
+        "title": "JSON 深度上限保持适配器私有",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:57:53Z",
+        "purpose": "用 adapter-private 单一安全边界控制 JSON 递归成本并保持公共输入契约稳定。",
+        "background": "JSON 需要确定性深度保护，当前运行证据支持固定边界而非 caller-configurable 参数。",
+        "decision": "根深度定义为零，当前最大深度固定为 127，并由 adapter-private 单一硬编码配置源拥有。",
+        "relations": []
+      }
+    },
+    {
+      "id": "json-navigation/normalize-structured-json-output.md",
+      "keys": {
+        "domain": [
+          "json-navigation"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "json-navigation/normalize-structured-json-output.md",
+        "title": "规范化 JSON 结构化读取输出",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:58:10Z",
+        "purpose": "让 raw structured JSON 以稳定 serializer spelling 和布局表达选中 value。",
+        "background": "JSON 解析后空白和 escape spelling 会自然规范化，而数字、重复 key 与顺序另有独立正确性边界。",
+        "decision": "使用 pinned parser 和 serializer 的自然结果及两空格布局，只保留由独立决策要求的格式事实。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-navigation/preserve-number-tokens.md",
+      "keys": {
+        "domain": [
+          "json-navigation"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "json-navigation/preserve-number-tokens.md",
+        "title": "保留 JSON 数字的原始 token",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:57:52Z",
+        "purpose": "让合法 JSON number 在解析、导航和结构化读取之间保持同一文本身份。",
+        "background": "JSON 导航观察 number token，常见整数或浮点模型无法无损承载全部合法 token。",
+        "decision": "JSON adapter 保存并原样序列化 number token；arithmetic equivalence 位于导航能力之外。",
+        "relations": []
+      }
+    },
+    {
+      "id": "json-navigation/reject-duplicate-object-members.md",
+      "keys": {
+        "domain": [
+          "json-navigation"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "json-navigation/reject-duplicate-object-members.md",
+        "title": "JSON 对象成员名必须唯一",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:57:52Z",
+        "purpose": "让成功接收的 JSON object 具有唯一 decoded member name 和唯一 tree path。",
+        "background": "JSON 语法可包含重复 name，而 parser 对重复 member 的处理并不一致。",
+        "decision": "JSON adapter 只接受 decoded member name 唯一的 object，使成功 parse 保留全部成员和唯一路径。",
+        "relations": []
+      }
+    },
+    {
+      "id": "json-navigation/search-original-json-source.md",
+      "keys": {
+        "domain": [
+          "json-navigation"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "json-navigation/search-original-json-source.md",
+        "title": "JSON 查找使用原文语料",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-29T01:32:38Z",
+        "purpose": "让 JSON find 命中用户在文件中实际写下的文本。",
+        "background": "Canonical ref 和 structured read 会转换 pointer escape、空白、字符串 escape 与普通 scalar spelling，不能代表原文搜索语义。",
+        "decision": "JSON find 对去除可选 UTF-8 BOM 后的原文执行 literal search，并把源码命中映射为 JSON adapter 拥有的可继续读取 ref。",
+        "relations": []
+      }
+    },
+    {
+      "id": "json-navigation/use-canonical-json-pointer-refs.md",
+      "keys": {
+        "domain": [
+          "json-navigation"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "json-navigation/use-canonical-json-pointer-refs.md",
+        "title": "JSON 引用采用规范化树路径",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:57:52Z",
+        "purpose": "让每个可导航 JSON 节点拥有唯一、可解释且能安全经过 CLI argv 的 adapter-owned ref。",
+        "background": "JSON 天然以树路径定位节点，但 raw pointer 可包含控制字符，生成式 ID 又会丢失路径语义。",
+        "decision": "使用带 json 前缀的 RFC 6901 URI fragment 表示，并由 JSON adapter 独占生成、解析和校验。",
+        "relations": []
+      }
+    },
+    {
+      "id": "navigation-output/keep-custom-rendering-in-readable-view.md",
+      "keys": {
+        "domain": [
+          "navigation-output"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "navigation-output/keep-custom-rendering-in-readable-view.md",
+        "title": "自定义渲染由可读视图拥有",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:58:11Z",
+        "purpose": "让格式专用的人类展示独立演进，并保持 raw protocol 与可继续导航事实稳定。",
+        "background": "信息密度、层级和 preview 是 presentation 选择，adapter operation result 是机器事实。",
+        "decision": "自定义渲染由 readable-view 拥有，并以既有 raw facts 作为唯一输入契约。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md",
+      "keys": {
+        "domain": [
+          "navigation-output"
+        ],
+        "status": [
+          "archived"
+        ]
+      },
+      "state": {
+        "path": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md",
+        "title": "分离语义读取、源码保真与自定义渲染",
+        "status": "archived",
+        "alignment": null,
+        "createdAt": "2026-07-28T11:11:57Z",
+        "purpose": "让结构化读取、原文保真和面向人的自定义渲染各有稳定职责，避免格式接入被源码复刻或展示偏好绑架。",
+        "background": "结构化格式经过解析和序列化后会自然规范化部分词法表示，而成员顺序等源码事实只有在局部低成本时才值得保留。",
+        "decision": "结构化读取默认采用格式语义和受控序列化，原文由 full-read 拥有，自定义渲染只属于 readable-view，源码顺序按证据决定。",
+        "relations": []
+      }
+    },
+    {
+      "id": "navigation-output/separate-structured-and-source-reads.md",
+      "keys": {
+        "domain": [
+          "navigation-output"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "navigation-output/separate-structured-and-source-reads.md",
+        "title": "分离结构化语义读取与原文读取",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:57:53Z",
+        "purpose": "让结构化导航返回节点语义，同时为需要完整源码 spelling 和布局的调用方保留明确入口。",
+        "background": "语义序列化与逐字节源码保真面向不同读取需求，并需要不同的 adapter 数据责任。",
+        "decision": "Structured read 拥有选中节点的格式语义，unstructured full-read 拥有完整原文。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "navigation-output/treat-source-order-as-costed-format-policy.md",
+      "keys": {
+        "domain": [
+          "navigation-output"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "navigation-output/treat-source-order-as-costed-format-policy.md",
+        "title": "源码顺序采用格式级成本判断",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-07-28T11:58:10Z",
+        "purpose": "让格式 owner 按可验证成本选择 source order 或确定性语义顺序。",
+        "background": "成员顺序对部分结构化文档有用，但不同 parser 和格式模型承载它的成本并不相同。",
+        "decision": "格式在私有表示可低成本自然承载时保留源码顺序，否则采用确定性语义顺序。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md"
+          }
+        ]
       }
     }
   ]

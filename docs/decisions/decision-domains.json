@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "domains": [
     {
+      "id": "adapter-evolution",
+      "description": "维护格式扩展、真实 adapter 样本、完整行为证据与共享抽象门槛的长期方向。"
+    },
+    {
       "id": "decision-management",
       "description": "维护长期决策的记录、生命周期、演进关系及其与 owner 规范和 OpenSpec change 的分工。"
+    },
+    {
+      "id": "json-navigation",
+      "description": "维护 JSON 导航的 ref、树遍历、原文查找、解析保真、输入约束、安全上限与结构化序列化方向。"
+    },
+    {
+      "id": "navigation-output",
+      "description": "维护跨格式结构化读取、源码保真、raw/readable 输出分层与自定义渲染的长期方向。"
     }
   ]
 }
