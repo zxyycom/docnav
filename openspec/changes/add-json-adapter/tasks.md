@@ -1,6 +1,6 @@
 **目标：以最小静态 JSON adapter 完整走通现有产品链路并记录真实扩展摩擦。**
 
-**状态：本文是 change-local candidate task list。[Decision Map](design.md#decision-map) 标出已确认方向和唯一剩余 gate；0.5 source-order 实验完成后进入 1.x。当前 change 使用 generic `readable-view`，格式专用自定义渲染由 6.4 交接到必需的后续 change。Current 能力仍以 `docs/`、代码和测试为准。**
+**执行顺序：0.x 记录已完成的实施前审计；按 1–6 交付 JSON adapter，并由 6.4 建立必需的自定义渲染 change。未勾选任务不表示 Current 能力。**
 
 ## 0. 实施入口
 
@@ -8,13 +8,13 @@
 - [x] 0.2 完成范围审计：change 内容与 design 的 Target Scope 一致；现有 static delivery、closed input、shared protocol 和 owner boundaries 构成实施基线。
 - [x] 0.3 确认启动依据：第二个真实 adapter 用于架构边界验证，JSON 是已确认样本；Decision Map A0 连接长期理由与本 change。
 - [x] 0.4 完成长期决策维护：Decision Map 中可独立修订的活动判断均为 active unaligned，决策关系与索引检查通过。
-- [ ] 0.5 执行 E1 object source-order 有界实验。在 A2/A3/A7 所需 adapter-private decode model 与 source regions 上比较局部表示、memory、branching 和 maintenance 成本；成本保持当前 model 量级时保留 source order，否则采用 parser/model 的确定性顺序。把结果同步到 design、delta、tasks 和测试目标后进入 1.x。
-- [x] 0.6 确认 JSON 自定义渲染的交付顺序：当前 change 用既有 generic `readable-view` 走通全部 fixed operations 并记录格式假设；信息密度、层级、标点、preview、分页显示和 renderer mechanics 由相连的后续 change 完整确定，作为 adapter 边界验证的必需阶段。
+- [x] 0.5 完成 object source-order 有界审计：workspace 锁定的 `serde_json 1.0.150` 自定义 visitor 可把嵌套 object member 直接写入唯一 member `Vec`、拒绝重复 decoded key，并按相同顺序取得保留 number token 的借用 `RawValue` 源码切片；该 primary tree 可同时服务 traversal、structured read 和 source index，不需要第二份全量 tree、替代 parser 或 shared contract 修改。JSON 因此保留 object 源码顺序。
+- [x] 0.6 确认 JSON 自定义渲染的交付顺序：当前 change 用既有 generic `readable-view` 走通全部 fixed operations 并记录格式假设；任务 6.4 建立专门 change，完整确定信息密度、层级、标点、preview、分页显示和 renderer mechanics，继续 adapter 边界验证。
 
 ## 1. JSON owner 文档与证明目标
 
 - [ ] 1.1 将跨格式活动决策同步到稳定 owner：`docs/architecture.md` 承接真实异构 adapter 的完整行为证据门槛以及 structured/full-read/raw/readable 分层，`docs/adapter-contract.md` 承接由真实重复职责形成共享抽象和按证据选择源码顺序的 adapter 边界，`docs/output.md` 承接 generic `readable-view`、格式专用自定义渲染与 raw machine contract 的分层。
-- [ ] 1.2 新增 `docs/adapters/json.md`，定义 probe/reason、重复 key、原始 number token、E1 选定顺序、canonical `json:#` ref、outline、原文 find 与 source-region-to-ref 映射、read/info、full-read、pagination、cost 和错误 owner 语义，并把它接入 `docs/navigation.md`。
+- [ ] 1.2 新增 `docs/adapters/json.md`，定义 probe/reason、重复 key、原始 number token、object source order、canonical `json:#` ref、outline、原文 find 与 source-region-to-ref 映射、read/info、full-read、pagination、cost 和错误 owner 语义，并把它接入 `docs/navigation.md`。
 - [ ] 1.3 依次读取 `docs/testing.md`、JSON/adapter/ref/core/release 行为 owner、`docs/testing/case-maintenance.md`、`docs/testing/coverage.md` 和项目级 `test-evidence-review` skill；修改任何测试前运行 `bun run test-evidence -- check --root .` 证明完整当前树闭合。随后写清 JSON parser/ref/operation、core selection、CLI smoke 与 package smoke 的“owner 语义 -> 可观察结果”，查询并规划当前 Case/实体映射与覆盖维度。
 - [ ] 1.4 准备最小长期 fixtures，覆盖 mixed tree、`~`/`/`/空 key/control/非 ASCII pointer tokens、object `"01"` 与 array `01`、empty container roots、root scalar、duplicate decoded keys、invalid/trailing input、`max_depth` 127/128 边界、Unicode pagination、大数/指数原始 token、key/scalar/结构/空白/跨节点原文命中、重复 ref occurrence 和 long result；每个 fixture 对应一个独立等价类或跨层复用目标。
 
@@ -23,7 +23,7 @@
 - [ ] 2.1 新增 `docnav-json` workspace crate 和最小模块边界，依赖集合限定为既有 adapter contracts、protocol、text-cost、serde/serde_json；启用 `serde_json` `raw_value` 或等价私有 mechanics 保存 number token。
 - [ ] 2.2 先写 owner tests，再实现 UTF-8/BOM load、原文件 byte size、完整输入 decode、所有层级的 duplicate decoded member rejection、adapter-private 单一硬编码配置源中的 `max_depth <= 127`、原始 number token、node/member source regions、稳定 root kind/node count/max depth，以及 probe/operation-time diagnostic mapping。
 - [ ] 2.3 先写 owner tests，再实现 `json:#`/RFC 6901 URI-fragment canonical ref encode/parse/resolve，覆盖 `~0`/`~1`、大写 canonical percent encoding、root/空 key/control/non-ASCII key、context-sensitive array index、超范围 canonical index、`REF_INVALID` 与 `REF_NOT_FOUND`。
-- [ ] 2.4 先写 owner tests，再按 E1 选定的 object member 顺序实现 traversal，array 保持 index 顺序并执行 depth-first preorder；tree representation 保持 JSON adapter-private。
+- [ ] 2.4 先写 owner tests，再按 object member 源码顺序实现 traversal，array 保持 index 顺序并执行 depth-first preorder；tree representation 保持 JSON adapter-private。
 - [ ] 2.5 使用 workspace-pinned parser/serializer 的自然 scalar/escape/尾随换行结果生成两空格 structured JSON，只对原始 number token 做已批准的特殊保留；同时实现 BOM-stripped original-source full-read。复用现有 cost/pagination mechanics，分别证明完整 structured text cost、actual full-read text cost 和 Unicode-safe continuation。
 
 ## 3. Fixed adapter strategy
@@ -54,6 +54,6 @@
 - [ ] 6.1 在 `design.md` 追加 `## Implementation Observations`，记录实际接入点、shared contract/catalog 变化、跨 adapter 重复、不可预测修改点、职责绕行，以及 generic `readable-view` 在 JSON outline/read/find/info 上暴露的格式假设。
 - [ ] 6.2 对实现 diff 做 minimal-implementation 审计；最终 diff 只保留 JSON 产品语义、static integration、owner evidence 及由实际阻塞证明必要的 shared change。
 - [ ] 6.3 运行 `cargo fmt --check`、范围匹配的 clippy/test 后运行 `bun run verify:docnav-workspace` 与 `openspec validate add-json-adapter --type change --strict --no-interactive`。
-- [ ] 6.4 基于稳定 raw facts 和 Implementation Observations 建立相连的 JSON 自定义渲染 follow-up change；该 change 完整承接信息密度、层级、标点、preview、分页显示和 renderer mechanics，并继续 adapter 完整行为的边界验证。
+- [ ] 6.4 基于稳定 raw facts 和 Implementation Observations 建立专门的 JSON 自定义渲染 change；该 change 完整承接信息密度、层级、标点、preview、分页显示和 renderer mechanics，并继续 adapter 完整行为的边界验证。
 - [ ] 6.5 根据 Implementation Observations 判断其它后续结构 change；只有重复职责或阻塞级摩擦形成证据时建立，否则以当前 static boundary 结束本轮 raw adapter 交付。
 - [ ] 6.6 将 Decision Map 中所有 active unaligned 决策分别与稳定 owner、代码、测试和 release evidence 做完整事实核对；只对已全部成为 Current 基线的记录执行 `mark-aligned`，其余保持 unaligned 并写明实际差距。完整行为证据与格式专用渲染有关的决策保持 unaligned，直到后续 presentation change 完成。

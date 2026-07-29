@@ -1,6 +1,6 @@
 **目标：定义通过 core static registry 交付的内置 JSON adapter 产品语义、closed input 和 adapter-owned ref contract。**
 
-**状态：本文件描述 candidate capability target；raw structured JSON 使用 workspace-pinned parser/serializer 的自然结果和两空格 layout，find 使用 BOM-stripped 原文。Object member 顺序尚待 E1；当前 change 的 readable output 使用既有 generic `readable-view`，格式专用自定义渲染由相连的后续 change 承接。实施从 `tasks.md` 0.5 关闭后开始。Current 能力仍以 `docs/`、代码和测试为准。**
+**适用状态：本 capability delta 定义 `add-json-adapter` 的目标行为，不表示 Current 能力；当前支持仍以 `docs/`、代码和测试为准。**
 
 ## ADDED Requirements
 
@@ -59,11 +59,11 @@ JSON adapter MUST 生成并解析非空 ref `json:#<fragment>`，其中 `#<fragm
 - **THEN** adapter 返回 `REF_NOT_FOUND`
 
 ### Requirement: JSON outline 必须提供确定性扁平树导航
-JSON outline MUST 对 object member 和 array element 进行 depth-first preorder 遍历，并为每个可导航 descendant 返回一个带完整 JSON ref、非空 label 和 `object|array|string|number|boolean|null` value kind 的 flat entry。Object member MUST 按 E1 最终选定的确定性顺序遍历，array element MUST 按 index 升序遍历；本 requirement 在 E1 将具体顺序同步到 capability delta 后进入实施。Object child label MUST 使用解码后的 member name，空 key label MUST 为 `""`；array child label MUST 为 `[<index>]`。Root object/array 的 entry set MUST 由 descendants 组成，因此空 object/array MUST 返回空 entries 和 null page。Root scalar MUST 返回唯一 ref `json:#`、label `<root>` 且 kind 对应该 scalar 类型的 entry。首期 entry shape MUST 使用既有 common fields，JSON-specific metadata 和 source location 均为空。Outline MUST 使用现有 limit/page 契约分页，超长 item 截断时 MUST 保留完整 ref、最小非空 label 和分页前进。
+JSON outline MUST 对 object member 和 array element 进行 depth-first preorder 遍历，并为每个可导航 descendant 返回一个带完整 JSON ref、非空 label 和 `object|array|string|number|boolean|null` value kind 的 flat entry。Object member MUST 按源码顺序遍历，array element MUST 按 index 升序遍历。Object child label MUST 使用解码后的 member name，空 key label MUST 为 `""`；array child label MUST 为 `[<index>]`。Root object/array 的 entry set MUST 由 descendants 组成，因此空 object/array MUST 返回空 entries 和 null page。Root scalar MUST 返回唯一 ref `json:#`、label `<root>` 且 kind 对应该 scalar 类型的 entry。首期 entry shape MUST 使用既有 common fields，JSON-specific metadata 和 source location 均为空。Outline MUST 使用现有 limit/page 契约分页，超长 item 截断时 MUST 保留完整 ref、最小非空 label 和分页前进。
 
 #### Scenario: 遍历混合 JSON 树
 - **WHEN** root object 含有 object、array 和 scalar descendants
-- **THEN** outline 按 E1 最终选定的 object member 顺序和 array index 顺序执行 depth-first preorder
+- **THEN** outline 按 object member 源码顺序和 array index 顺序执行 depth-first preorder
 - **THEN** container 与 scalar entry 的 kind 反映 JSON value kind
 - **THEN** 每个 entry ref 都能原样传给 read
 
@@ -77,7 +77,7 @@ JSON outline MUST 对 object member 和 array element 进行 depth-first preorde
 - **THEN** read 该 ref 返回对应 scalar
 
 ### Requirement: JSON read 必须返回指定节点的规范化 JSON
-JSON read MUST 解析 JSON-owned ref，并将指定 JSON value 序列化为规范化 pretty JSON：object member 顺序与 outline 的 E1 结果一致，container layout MUST 使用两空格缩进。每个 number MUST 使用原始 token；string escape、普通 scalar spelling 和尾随换行 MUST 使用 workspace-pinned parser/serializer 的自然结果。Read result MUST 保留输入 ref，使用 `application/json` content type，对分页前的完整 structured-read text 计算 cost，并按现有 Unicode-safe text pagination 返回 content 和下一页。当前 change 的 generic `readable-view` MUST 从这些 raw result facts 形成既有 read header 和 content block。
+JSON read MUST 解析 JSON-owned ref，并将指定 JSON value 序列化为规范化 pretty JSON：object member MUST 保持源码顺序，container layout MUST 使用两空格缩进。每个 number MUST 使用原始 token；string escape、普通 scalar spelling 和尾随换行 MUST 使用 workspace-pinned parser/serializer 的自然结果。Read result MUST 保留输入 ref，使用 `application/json` content type，对分页前的完整 structured-read text 计算 cost，并按现有 Unicode-safe text pagination 返回 content 和下一页。当前 change 的 generic `readable-view` MUST 从这些 raw result facts 形成既有 read header 和 content block。
 
 #### Scenario: 读取嵌套 object
 - **WHEN** read 收到 outline 返回的 nested object ref

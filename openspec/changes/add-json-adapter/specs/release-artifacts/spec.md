@@ -1,6 +1,6 @@
 **目标：让 canonical package smoke 从同一个 core executable 证明 Markdown 与静态 linked JSON adapter。**
 
-**状态：本文件描述 candidate delta；JSON change 的 E1 source-order 实验完成后进入实施。当前 package smoke 使用既有 generic `readable-view`；JSON 格式专用自定义渲染由相连的后续 change 承接。Current release behavior 仍以现有 `release-artifacts` owner、脚本和制品证据为准。**
+**适用状态：本 capability delta 定义 `add-json-adapter` 对 release validation 的目标修改，不表示 Current 行为；当前 release 支持仍以 `release-artifacts` owner、脚本和制品证据为准。**
 
 ## MODIFIED Requirements
 
