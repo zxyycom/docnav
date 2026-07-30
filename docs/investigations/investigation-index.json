@@ -1,0 +1,57 @@
+{
+  "definitionVersion": 2,
+  "entries": [
+    {
+      "id": "runtime/realtime-progress-reporting.md",
+      "keys": {
+        "category": [
+          "runtime"
+        ],
+        "latest-report-at": [
+          1785396921000
+        ],
+        "status": [
+          "已结束"
+        ],
+        "text": [
+          "Docnav 在保持单一最终 stdout 契约时，能否以可接受影响提供执行中进度或心跳？",
+          "Docnav 实时进度与心跳调查",
+          "保持最终 stdout 契约的进度方案比较"
+        ]
+      },
+      "state": {
+        "latestReportAt": "2026-07-30T07:35:21+00:00",
+        "path": "runtime/realtime-progress-reporting.md",
+        "question": "Docnav 在保持单一最终 stdout 契约时，能否以可接受影响提供执行中进度或心跳？",
+        "reportCount": 1,
+        "reportTitles": [
+          "保持最终 stdout 契约的进度方案比较"
+        ],
+        "status": "已结束",
+        "title": "Docnav 实时进度与心跳调查"
+      }
+    }
+  ],
+  "keyDefinitions": [
+    {
+      "mode": "exact",
+      "name": "category"
+    },
+    {
+      "mode": "range",
+      "name": "latest-report-at"
+    },
+    {
+      "mode": "exact",
+      "name": "status"
+    },
+    {
+      "mode": "text",
+      "name": "text"
+    }
+  ],
+  "metadata": {},
+  "namespace": "investigations",
+  "schemaVersion": 2,
+  "sourceRevision": "sha256:7a8820802dce068b67bf9dadbc593653694c9358baf855b1daaedaac659c8fa4"
+}
