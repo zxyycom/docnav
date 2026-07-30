@@ -6,7 +6,7 @@ Docnav's finite navigation flow is useful only when the work needed to describe 
 
 Unique-ref auto-read is already Current navigation behavior: it may add an existing `ReadResult` to one outline/find response. `explore-operation-composition` is the historical exploration from which that behavior evolved; it is not a dependency, owner, or prerequisite for this token-cost change. Nested read must obey the same returned-content estimate contract as ordinary read.
 
-The worktree's `bpe-openai` experiment is not a Current baseline, selected calculator, or approved dependency. It can contribute reproducible evidence only under the same comparison criteria as other candidates.
+The earlier uncommitted `bpe-openai` experiment has been removed from the worktree. It is not a Current baseline, selected calculator, or approved dependency; its retained measurements are seed evidence only and may contribute after independent reproduction under the same comparison criteria as other candidates.
 
 This change crosses shared text-cost mechanics, raw protocol facts, readable projection, and format-owned cost attachment. Stable rules ultimately belong in their owner docs and schema/examples; these temporary artifacts plan the change and do not prove current implementation.
 
@@ -202,7 +202,7 @@ implementation remain in those changes.
 - **[Full-read token thresholds still precompute a non-returned target]** → resolve the existing threshold contract at the human gate; add its owner capabilities before implementation if behavior must change.
 - **[A lightweight calculator adds heavy startup/RSS/package cost]** → make resource and package budgets blocking acceptance criteria; a later failure reopens the gate and invalidates the affected approval.
 - **[Existing consumers assume exact `tokens`]** → choose an explicit compatibility/migration plan before schema or code changes and verify raw/readable consumers.
-- **[The worktree experiment becomes a de facto choice]** → evaluate it only as a reproducible candidate and do not treat existing code or lockfile state as approval.
+- **[The removed experiment becomes a de facto choice]** → evaluate its historical measurements only as seed evidence and do not treat prior code or lockfile state as approval.
 
 ## Migration Plan
 

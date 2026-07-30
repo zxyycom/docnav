@@ -129,7 +129,7 @@ Evidence state 依次区分：
 - 约 `20.78 MiB`、`1,500,000` 节点 JSON：outline 约 `0.742 s / 453224 KiB RSS`，find miss 约 `0.412 s / 263404 KiB RSS`，root read 约 `1.018 s / 343556 KiB RSS`。
 - `1,000,000` 字符 key 在 `limit 10` 下仍产生约 `1000293` bytes 输出。
 - 旧 tokenizer 路径曾观察到约 `310 MiB`；具体 memory 定义与完整 workload 仍待恢复。
-- `5 MiB` / BPE 工作树数据受未批准依赖影响，不得表述为 Current 或 release baseline。
+- 先前未提交且已移除的 `5 MiB` / BPE 实验数据受未批准依赖影响，只能作为待独立复现的 seed observation，不得表述为 Current 或 release baseline。
 
 用户已接受正常数据下当前 JSON 表现作为非阻断 observation，由本独立 change 后续承接；该接受不覆盖 stress/adversarial 输入，也不批准任何数字预算或具体修复。
 

@@ -11,7 +11,7 @@
 - [ ] 2.1 在任何测量前，按 design Decision 2 把有限 initial workload packet、每个 required cell、fixture/format 选择规则、unavailable/not-applicable 条件和停止规则写入既有 `audit-report.md`；未选 format × operation × output × page × stress 组合统一标为 `unmeasured/future`，不得扩展为笛卡尔积。
 - [ ] 2.2 从 Current release/source evidence 和已批准 dependencies 恢复被测 binary、build 与 process boundary，为 packet 分别固定一个 startup cell 和一个 package cell、primary format 的 outline/find/ref-derived read 与一个 later-page cell、至多一个 secondary-format outline cell，以及三层 scale、find miss、root read、长 key/label/ref 和适用时 retained-memory lifecycle 的 stress cells。
 - [ ] 2.3 按 design Decision 3 只对 task 2.1 的 required cells 记录完整 command、flags、fixture、output/page/limit/query/ref、build、host、cache、repeats、测量定义和原始样本，并测量适用的 wall time/CPU、I/O/准备次数、peak/retained memory、stdout/stderr/page、package size 与伸缩结果；每个 cell 完成或有证据地标为 unavailable/not-applicable 后停止首轮测量。
-- [ ] 2.4 在相同记录规则下尝试复现 design Decision 7 的 JSON、超长 key/output 和旧 tokenizer seed observations；无法恢复完整条件或无法复现的数字继续标记为 seed observation。受未批准依赖影响的 `5 MiB` / BPE 工作树数据不得升级为 Current 或 release baseline。
+- [ ] 2.4 在相同记录规则下尝试复现 design Decision 7 的 JSON、超长 key/output 和旧 tokenizer seed observations；无法恢复完整条件或无法复现的数字继续标记为 seed observation。先前未提交且已移除、并受未批准依赖影响的 `5 MiB` / BPE 实验数据不得升级为 Current 或 release baseline。
 
 ## 3. Attribution and report
 
