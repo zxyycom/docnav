@@ -33,14 +33,17 @@ Docnav 发布制品 MUST 写入统一目录结构 `artifacts/docnav/v<version>/<
 - **THEN** `SHA256SUMS.txt` 可校验 `docnav` 可执行文件和 `manifest.json`
 
 ### Requirement: 发布制品验证必须直接运行 package 原文件
-发布制品验证脚本 MUST 从 `artifacts/docnav/v<version>/<target>/package/manifest.json` 定位核心 CLI，并 MUST 在校验文件集合、大小和校验和后直接运行该文件。验收对象 MUST 来自该 `package/` 目录；验证脚本 MUST NOT 使用 Cargo `target/`、`.log`、临时目录、硬编码旧路径或归档包解压结果中的可执行文件替代验收对象。
+发布制品验证脚本 MUST 从 `artifacts/docnav/v<version>/<target>/package/manifest.json` 定位核心 CLI，并 MUST 在校验文件集合、大小和校验和后直接运行该文件；manifest-resolved package path MUST 是 smoke 的唯一 executable identity。发布制品 smoke MUST 为 release static registry 中的每个内置格式保留一个代表性 document operation roundtrip。包含 JSON adapter 的 release MUST 至少验证 Markdown 与 JSON 的 automatic selection、outline 返回实际 ref、该 ref 原样进入 read，以及 `adapter list` 报告 `docnav-markdown` 和 `docnav-json` 都来自 `core_static`。其它内置格式 MUST 按 registry owner 的当前 membership 与 ordering contract 保留代表性验证。JSON adapter MUST 通过 package core `docnav` executable 交付。
 
-#### Scenario: 发布制品 smoke 验证
-- **WHEN** 执行发布制品 smoke
-- **THEN** 脚本读取统一 `package/` 目录中的 `manifest.json`
-- **THEN** 脚本直接运行 `manifest.json` 指向的 `docnav`
-- **THEN** linked Markdown adapter behavior 通过该 `docnav` 的 document operation 验收
-- **THEN** 被验收对象来自 `package/` 目录
+#### Scenario: 发布制品 smoke 验证所有内置格式
+- **WHEN** package 中的 `docnav` 已通过文件集合、size 和 checksum 校验
+- **THEN** smoke 从统一 `package/manifest.json` 定位并直接运行该 `docnav`
+- **THEN** smoke 直接运行该 package binary 导航一个 Markdown fixture
+- **THEN** smoke 直接运行同一 binary 导航一个 JSON fixture
+- **THEN** 两条路径都从 outline 取得实际 ref 并成功 read
+- **THEN** `adapter list` 报告 `docnav-markdown` 和 `docnav-json` 的 implementation source 都是 `core_static`
+- **THEN** 当时已合并的其它内置格式仍保留代表性 roundtrip
+- **THEN** manifest-resolved package `docnav` 是 Markdown 与 JSON smoke 的共同 executable identity
 
 ### Requirement: 开发期 smoke 与发布制品验证必须职责分离
 允许保留直接运行 Cargo 构建结果的开发期 smoke，但该入口 MUST 通过名称、脚本文案或 `package.json` 命令明确标识为开发期 smoke。workspace verify MAY 包含开发期 smoke；发布制品验收入口 MUST 只使用统一 `package/` 目录中的文件。
