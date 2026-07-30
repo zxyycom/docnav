@@ -56,7 +56,7 @@ The semantic dependency is directional: the selected model maps occurrences to f
 - Current continuation is an integer next-page value. Any cursor, nested group continuation, cross-request retained state, or result-set identity would be a separate public contract decision.
 - Protocol JSON is a process-boundary contract. Changing `Entry[]`, field meaning, item order, or page meaning affects external consumers even when the Rust API compiles.
 - Direct linked adapters return the shared `FindResult`; changing its item type can also change the linked Rust adapter contract.
-- `add-json-adapter` has completed all of its tasks but remains unarchived and therefore has not yet produced a main `json-adapter` capability. JSON is valid design evidence, but this change may record only a post-archive handoff and must not modify or rebase the unarchived change.
+- `add-json-adapter` is archived, and `docs/adapters/json.md` plus the main `json-adapter` capability are the Current JSON owners. JSON is valid design evidence; this change must not modify the archive, and it may change the Current JSON contract only after the human model gate determines that a complete `json-adapter` delta is required.
 - The active `add-json-readable-renderer` change owns JSON-specific presentation. It may later consume approved raw facts, but this change must not implement or rebase its renderer.
 - Approximate token cost and same-invocation document-state reuse are independent changes. Neither is a prerequisite for choosing find semantics, and neither may be smuggled into this change.
 
@@ -78,7 +78,7 @@ The semantic dependency is directional: the selected model maps occurrences to f
 - Freeze model-independent ownership and opacity invariants now.
 - Require explicit user or designated product/architecture-owner approval before revising the provisional deltas into an implementable contract.
 - Provide an implementation sequence that updates contract/schema/examples before evidence and code.
-- Record a post-archive JSON handoff and a separate renderer handoff without implementing or modifying either owning change here.
+- Record a handoff to the Current `json-adapter` owner and a separate renderer handoff without modifying the archive or implementing the renderer change here.
 
 **Non-Goals:**
 
@@ -87,7 +87,7 @@ The semantic dependency is directional: the selected model maps occurrences to f
 - Designing fuzzy search, ranking, relevance scoring, regex, search indexes, or cross-document search.
 - Introducing cross-invocation caches, public sessions, result-set IDs, or opaque continuation cursors unless the approved model separately requires and approves them.
 - Solving approximate token calculation, document-state reuse, or general operation composition.
-- Modifying JSON find/readable behavior here; this change records only the post-archive adapter handoff and the separate renderer handoff.
+- Modifying JSON find/readable behavior before the model gate closes; the approved model must later assess the Current `json-adapter` owner, while the separate renderer handoff remains presentation-only.
 - Treating display strings, excerpts, source locations, or ref spelling as interchangeable identities.
 
 ## Decision dependency chain
@@ -99,7 +99,7 @@ The owner must approve one internally consistent packet. The order below explain
 3. Define deterministic ordering, representative/nested evidence, final page unit, continuation, and reproducibility for page `k`.
 4. Define current-page or query-global auto-read from the refs and completeness facts actually exposed by the selected units.
 5. Bound first-page and subsequent-page scan work plus retained work; choose budget-exhaustion behavior. Require complete-query proof only for selected all-candidate facts.
-6. Select compatibility/versioning, migration, rollback, and post-archive consumer handoffs.
+6. Select compatibility/versioning, migration, rollback, and Current-owner consumer handoffs.
 
 Tasks 1.1–1.3 close this packet: human approval, persistent exact contract, then blocking artifact audit. Agent analysis may improve the packet but cannot approve it.
 
@@ -192,15 +192,15 @@ Occurrence streaming, distinct-ref accumulation, and complete grouping have diff
 
 After the model and work budget are approved, implementation should start with the smallest adapter/private mechanism. A shared boundary requires at least two real consumers with the same logical unit, lifecycle, error, budget, and continuation semantics.
 
-### Decision 8: JSON is evidence now and a handoff later
+### Decision 8: JSON is Current evidence and a gated owner handoff
 
 **Status: confirmed by current capability ownership.**
 
 JSON's active decisions require source-text literal search and deterministic mapping from each source hit to a canonical readable ref. Those facts expose the same occurrence-to-ref cardinality issue as Markdown and must inform the product choice.
 
-This change does not create a `json-adapter` delta while that capability is absent from the main specs. Once `add-json-adapter` is archived, its owner must receive a handoff containing the approved logical unit, fields, ordering, page/continuation, scan budget, and auto-read semantics. The active JSON renderer receives a separate raw-facts/presentation handoff and remains responsible for its own readable contract.
+The Current `json-adapter` owner already exists. Task 1.2 must use the approved logical unit, fields, ordering, page/continuation, scan budget, and auto-read semantics to decide whether this change needs a complete `json-adapter` delta; this status correction does not preselect that scope. The active JSON renderer receives a separate raw-facts/presentation handoff and remains responsible for its own readable contract.
 
-`add-json-adapter` is currently task-complete but unarchived. Nothing in this change changes its completed artifacts, adds work to it, or treats the handoff as effective before archive.
+The archived `add-json-adapter` artifacts are historical evidence and remain unchanged. Any approved JSON contract update targets the Current owner rather than reopening or rebasing the archive.
 
 ### Decision 9: Every Current Entry field requires an explicit wire disposition
 
@@ -322,7 +322,7 @@ For every candidate, a page containing one item/group can coexist with later pag
 - [Page-number continuation cannot cheaply resume global grouping] → Either accept deterministic rescans, approve adapter-private complete indexes, or explicitly redesign continuation; do not add hidden cross-request state.
 - [Adapters silently diverge] → Keep one shared logical model or add an explicit approved discriminator; validate Markdown and later JSON against the same shared invariants.
 - [Readable output invents missing group facts] → Require raw protocol facts to be sufficient; renderer tests must prove it only projects the immutable response.
-- [The task-complete but unarchived JSON change is edited opportunistically] → Record only a post-archive handoff here; do not edit or rebase `add-json-adapter`, and leave renderer implementation to its own change.
+- [The archived JSON change is edited opportunistically] → Keep the archive immutable, assess the Current `json-adapter` owner only after approval, and leave renderer implementation to its own change.
 - [Independent performance changes become accidental prerequisites] → Keep token-estimator and state-reuse implementation tasks absent from this change and test find semantics independently of them.
 
 ## Migration Plan
@@ -335,8 +335,14 @@ This is a conditional execution sequence, not evidence that a Target or migratio
 4. **Establish evidence.** Follow the test owner and Case-maintenance workflow, prove the current tree is closed, preserve Current tests where they remain independent evidence, and add failing/current evidence for logical units, repeated refs, cross-page behavior, every approved field disposition, truncation, monotonic replay/seen-set/lookahead, all-candidate completeness proofs where selected, current-page work bounds, auto-read, and output parity.
 5. **Implement the vertical slice.** Update shared protocol/validation, navigation auto-read, the minimum adapter contract surface, Markdown production/pagination, and built-in readable output. Add no shared producer/sink/group accumulator without the evidence required by Decision 7.
 6. **Integrate and validate.** Run schema/example validation, targeted Rust/static/integration checks, continuation round trips, large-document resource checks, workspace verification, and release-package smoke validation.
-7. **Handoff consumers without changing their active work.** `add-json-adapter` is task-complete but unarchived; after it is archived, provide the new main owner the approved raw contract and required evidence. Until then, keep the handoff recorded only here and do not edit or rebase that change. Provide `add-json-readable-renderer` only the raw-facts/presentation handoff; do not implement its change here. Record any MCP, skim, interactive-outline, or code-adapter follow-up in their own owner changes.
+7. **Handoff consumers without changing their active work.** Provide the Current `json-adapter` owner the approved raw contract and required evidence, adding a complete delta in this change only if task 1.2 determines one is required; do not edit the archived `add-json-adapter` change. Provide `add-json-readable-renderer` only the raw-facts/presentation handoff; do not implement its change here. Record any MCP, skim, interactive-outline, or code-adapter follow-up in their own owner changes.
 8. **Rollout and rollback.** For an additive compatible model, retain old-consumer evidence for the approved window. For a breaking model, release atomically with schema/examples/version notes; rollback restores the previous protocol, Markdown producer, navigation selector, renderer, and validation artifacts together. Do not leave producers and consumers on mixed meanings.
+
+`redesign-token-cost-estimation` answers a different product question and is not
+an implementation prerequisite. Because both changes fully replace some of the
+same owner requirements, the later change must refresh its own complete
+`MODIFIED` bodies from the then-Current owners and preserve the earlier change's
+effective clauses.
 
 ## Open Questions
 
@@ -357,4 +363,4 @@ Closure means more than answering the list conversationally: task 1.2 must recor
 11. **Retained-work budget:** How many refs, occurrences, excerpts, counters, offsets, or spill bytes may be retained? Are private spill files allowed, and what cleanup/failure rules apply?
 12. **Budget exhaustion:** Must the adapter degrade to occurrence results, return explicitly partial facts, continue scanning on another page, omit unproven optional facts, or return a stable diagnostic? Silent model changes are not permitted.
 13. **Compatibility:** Is the approved path compatible addition, bounded dual transition, or intentional breaking change? What protocol/schema/Rust version, deprecation window, release note, and rollback proof are required?
-14. **Post-archive JSON handoff:** `add-json-adapter` is task-complete but unarchived and must not be changed here. After it is archived, which new owner/change consumes this recorded model-alignment handoff, on what compatibility schedule, and which separate renderer milestone consumes the approved raw facts?
+14. **Current JSON owner handoff:** The archived `add-json-adapter` change must remain unchanged. Does the approved model require a complete delta for the Current `json-adapter` owner, what compatibility schedule applies, and which separate renderer milestone consumes the approved raw facts?

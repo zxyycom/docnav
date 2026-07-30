@@ -183,13 +183,16 @@ requirements only:
 | --- | --- |
 | `redesign-find-result-model` | Independent. Its find model does not determine this calculator or encoding; this change requires only that a returned ref not imply target-content measurement. |
 | `reuse-adapter-document-state` | Independent. State reuse is neither required nor redesigned; the cost work bounds apply to either lifecycle. |
-| `add-json-adapter` | Handoff recipient through its eventual `json-adapter` owner. No synonymous delta is created here while that capability is absent from main specs. |
+| Current `json-adapter` owner | `add-json-adapter` 已归档。任务 1 的决策门禁按批准后的 contract 判断本 change 是否需要增加完整 `json-adapter` delta；归档 change 保持不变。 |
 | `add-json-readable-renderer`, `interactive-outline-selection`, `add-outline-preview-skim-pack` | Handoff recipients that must consume the accepted scope without freezing an unapproved encoding or treating returned-page cost as complete-selection cost. |
 | `implement-docnav-mcp-bridge` | Handoff recipient that relays the accepted Docnav fact instead of calculating a separate token cost. |
 | Other adapter changes, including the code adapter change | Handoff recipients through their own adapter owners. |
 
 None is a prerequisite or apply-order dependency. Task edits, rebases, and
-implementation remain in those changes.
+implementation remain in those changes. If this change and
+`redesign-find-result-model` land in different orders, the later change MUST
+refresh its own complete overlapping `MODIFIED` requirements from the then-Current
+owners and preserve every already-effective clause from the earlier change.
 
 ## Risks / Trade-offs
 

@@ -137,11 +137,11 @@ Static registry 很小；registry construction 从 manifest 派生一个 validat
 
 Dependency features 只启用批准 coverage 所需集合。Library upgrade、format mapping expansion 和新 format support 必须走现有 dependency/owner review，而不能由 raw upstream enum 自动扩大 Docnav support。
 
-### Decision 8: Cross-change owner acceptance 是 implementation gate
+### Decision 8: Cross-change handoff 建立单向 rebase，不建立反向实现依赖
 
-- `add-project-wide-find`：本 change 是其 implementation predecessor。Project owner 必须先明确接受并完成该 predecessor gate，并记录：automatic `FORMAT_UNKNOWN` unknown/unsupported 是 normal filter；inference operational failure、inference ambiguity和 selected parse/operation failure 是 per-document local failure；registry format identity conflict 是 global fatal；explicit adapter missing 仍是 global fatal。本 change 不编辑其 artifacts 或实现 project traversal。
-- `reuse-adapter-document-state`：本 change 取代其“registry-order first-supported”和“每个 unsupported/invalid candidate cleanup”假设。State-reuse owner 必须在本 change 实施前记录接受或拒绝 handoff；接受时把 candidate traversal/cleanup scope 缩为一次 inference 加一个 selected adapter，同时保留 selected document view、full-read、nested read、snapshot、cleanup、memory/lifetime 和 private-state价值。拒绝时双方 implementation 均保持阻断，直到人工决定 ordering/contract；本 change 不选择 state mechanism。
-- `add-ast-grep-code-adapter`：owner 必须在本 change 实施前接受或拒绝 no-probe 与 exact multi-format mapping handoff。接受时每个 normalized language format exact match 到同一 `docnav-code` definition，parser types remain private；拒绝时本 change 不假设 code formats 可用，并保持 implementation gate 未通过。
+- `add-project-wide-find`：本 change 是其 implementation predecessor。Project Decisions 5/12 已在 artifact 层接受并记录：automatic `FORMAT_UNKNOWN` unknown/unsupported 是 normal filter；inference operational failure、inference ambiguity和 selected parse/operation failure 是 per-document local failure；registry format identity conflict 是 global fatal；explicit adapter missing 仍是 global fatal。Routing task 0.6 只核对并记录该 planning acceptance，不要求 project task 1.3、implementation 或 validation 完成；最终顺序保持 routing 完成后再由 project task 1.3 接收最终 seam。本 change 不编辑其 artifacts 或实现 project traversal。
+- `reuse-adapter-document-state`：本 change 取代其“registry-order first-supported”和“每个 unsupported/invalid candidate cleanup”假设。Task 0.7 只记录 downstream no-probe handoff；state-reuse 推进时按最终 Current routing pipeline 重建候选与 lifecycle 证据，同时保留 selected document view、full-read、nested read、snapshot、cleanup、memory/lifetime 和 private-state价值。本 change 不要求 state-reuse 先选择机制，也不选择其 mechanism；只有 source-backed audit 证明 no-probe 会破坏该 change 核心目标时才升级为人工决策。
+- `add-ast-grep-code-adapter`：task 0.8 只记录 downstream no-probe/exact-routing handoff。Code-adapter change 在修改 dependency 或 production 前按最终 Current routing contract 重写旧 probe/registry-order artifacts；该 handoff 不在本 change 预选其 dependency、language coverage 或 parser implementation。
 - `audit-runtime-performance-boundaries`：其 `probe/routing` attribution 后续应解释为 inference/routing；startup/package-size evidence可被引用，但该 audit 不批准本 dependency，也不是本 change prerequisite。
 - archived `add-json-adapter`：其 probe content validation、candidate rejection 和 `json-document-changed-after-probe` 是 migration input，不是继续保留 probe 的依据。Apply 时更新 Current JSON owner docs/spec/tests，让 selected JSON strategy 的正常 parse/TOCTOU diagnostic 取代 stage-specific reload 特例；不得改写 archived record。
 
@@ -170,7 +170,7 @@ Selection diagnostics可投影 normalized format id 和 Docnav-owned reason，�
 
 ## Migration Plan
 
-1. 完成 `dependency-audit.md`、probe compatibility inventory、三个 cross-change owner acceptance 和人工 approval；随后更新所有 artifact 决策并关闭 Open Questions。
+1. 完成 `dependency-audit.md`、probe compatibility inventory、三个 cross-change handoff records 和人工 approval；随后更新所有 artifact 决策并关闭 Open Questions。
 2. 通过 blocking artifact audit，证明 capability IDs、delta requirements、diagnostic taxonomy、dependency choice、probe outcome 和 implementation scope 完全一致。
 3. 按项目 TDD/Case 流程先建立 automatic/explicit/failure/no-fallback 与 adapter parse evidence，再同步长期 owner docs、schema/examples/fixtures。
 4. 实现一次 inference、normalization、validated registry index 和 exact lookup；迁移 explicit path；在同一 change 中完整删除 probe method/type/validator/typed-field/schema/evidence surface。
@@ -183,4 +183,4 @@ Selection diagnostics可投影 normalized format id 和 Docnav-owned reason，�
 
 1. **哪个精确 dependency/version/features 通过 Decision 6，并获得谁的显式批准？** `dependency-audit.md` 提供证据，用户或指定 architecture/product owner 决定；无批准或 no-dependency 结论等于不实施，并不授权 custom detector。
 2. **probe compatibility inventory 是否发现真实 owner-backed consumer？** 当前唯一 Target 是完整删除。若发现，current apply 停止，用户/owner 决定取消本 change 或重新提出独立 owner change；不能在实施中临时保留 inspection。
-3. **`add-project-wide-find`、`reuse-adapter-document-state` 和 `add-ast-grep-code-adapter` 的 owner 是否分别接受 Decision 8 handoff？** 三项 acceptance 都必须形成可审计记录；任一未接受或拒绝后未获人工处理时，本 change implementation 保持阻断。
+3. **Decision 8 的三项 handoff 是否形成可审计记录？** Project 记录核对既有 Decisions 5/12 的 planning acceptance；state-reuse 与 code-adapter 记录 downstream rebase 条件，不要求其内部决策或 implementation 先完成。只有 handoff audit 发现会破坏下游 change 核心目标且尚未获人工处理时，本 change implementation 才保持阻断。

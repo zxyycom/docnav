@@ -1,7 +1,8 @@
 # json-adapter Specification
 
 ## Purpose
-TBD - created by archiving change add-json-adapter. Update Purpose after archive.
+定义内置 JSON adapter 的静态注册、格式识别、导航、canonical ref、结构化读取、原文查找、info、full-read、安全边界与验证契约。
+
 ## Requirements
 ### Requirement: JSON adapter 必须作为静态 linked adapter 提供
 `docnav-json` MUST 以 adapter id `docnav-json`、format id `json` 和 content type `application/json` 暴露一个 registry-facing `AdapterDefinition` factory，并由 core static registry 链接进同一个 `docnav` 可执行文件。JSON adapter 的 executable set MUST 精确等于 package core `docnav` 单元素集合。它 MUST 实现固定的 probe、outline、read、find 和 info strategy interface。其 public input surface MUST 等于既有 closed standard operation input；core parameter catalog、`StandardInputBinding`、CLI、env、config 和 protocol input inventory MUST 保持注册前的契约。JSON-specific 安全上限 MUST 由 adapter-private 单一硬编码配置源拥有。

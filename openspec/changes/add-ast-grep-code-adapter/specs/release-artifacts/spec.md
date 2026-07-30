@@ -2,6 +2,8 @@
 
 本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 `release-artifacts` delta spec，不修改或替代现有主规范、其它文档或其它 change。
 
+**Cross-change status:** 本 delta 形成于 inferred routing 之前，当前不可直接 apply。任务 1.2 必须在 routing predecessor 成为 Current 后重写 automatic-selection 验证；本说明不预选依赖、format coverage 或 parser 实现。
+
 ## ADDED Requirements
 
 ### Requirement: Package verifies linked code navigation

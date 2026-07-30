@@ -1,14 +1,15 @@
 本 change 的目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
 
-本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 tasks，不修改或替代现有主规范、其它文档或其它 change。
+本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 tasks，不修改或替代现有主规范、其它文档或其它 change。已完成的 1.1 只证明 2026-07-20 起草基线的结构审计；`replace-probe-traversal-with-inferred-routing` 的 handoff 尚未闭合，因此 1.2 完成前不得执行 2.x 或任何 production/dependency 修改。
 
 ## 1. 阻塞级实现前审计
 
-- [x] 1.1 完成阻塞审计；审计完成前不得执行任何 2.x 及后续实现任务。结论（2026-07-20）：proposal、design、两份 delta specs 和 tasks 均围绕核心句；`code-adapter` 是稳定新 owner，`release-artifacts` 复用准确；本 change 只包含自身目录下的未审核临时 artifacts，未修改其它 docs/specs/changes；`## Open Questions` 无未回答问题或歧义。门禁解除。
+- [x] 1.1 完成旧起草基线的阻塞审计；审计完成前不得执行任何 2.x 及后续实现任务。结论（2026-07-20）：proposal、design、两份 delta specs 和 tasks 均围绕核心句；`code-adapter` 是稳定新 owner，`release-artifacts` 复用准确；本 change 只包含自身目录下的未审核临时 artifacts，未修改其它 docs/specs/changes；`## Open Questions` 无未回答问题或歧义。该基线门禁当时解除，但不替代新增的 routing handoff task 1.2。
+- [ ] 1.2 在 `replace-probe-traversal-with-inferred-routing` 完成最终 owner contract、implementation 和 validation 后，按其 Current no-probe/exact-routing 基线重写本 change 内所有 probe、registry-order 与 format-selection 描述，并重新运行 blocking artifact audit。此任务只接收 routing handoff，不选择 inference dependency、code format mapping、ast-grep dependency 或 parser 实现。
 
 ## 2. 实现基线与依赖接入
 
-- [ ] 2.1 在门禁完成后，依次读取 `docs/coding-style.md`、`docs/testing.md`、architecture/adapter/ref/release 行为 owner 和 `docs/testing/case-maintenance.md`，记录本 change 的当前证明目标、最小验证命令和与 active `add-json-adapter` 的文件重叠。
+- [ ] 2.1 在任务 1.2 完成后，依次读取 `docs/coding-style.md`、`docs/testing.md`、architecture/adapter/ref/release 行为 owner 和 `docs/testing/case-maintenance.md`，记录本 change 的当前证明目标、最小验证命令，以及必须保留的 Current JSON workspace/registry/release-smoke 基线。
 - [ ] 2.2 在 workspace 中精确锁定互相兼容的 `ast-grep-core`、`ast-grep-language`、`ast-grep-outline` 版本，关闭全语言默认 features，只启用 Rust、JavaScript、TypeScript/TSX 和 Python parser，并用 `cargo tree -e features` 验证 feature closure；不得把测试证据发现使用的开发期 `@ast-grep/cli`、规则或 wrapper 复用为产品依赖。
 - [ ] 2.3 新增 `crates/adapters/code` workspace crate 和最小 public definition factory，接入既有 adapter contracts、protocol、diagnostics、text-cost 与 SHA-256 helper，不增加通用 engine trait 或新的 shared crate。
 - [ ] 2.4 完成新增依赖的 license、来源、Rust 1.96.0 compatibility 和 release binary size 变化检查，并把证据放入既有质量/发布 owner。
@@ -33,7 +34,7 @@
 
 ## 6. Core、输出与可观察契约集成
 
-- [ ] 6.1 把 `docnav-code` definition 加入 core static registry 和已知 adapter catalog，保留当前 Markdown、JSON（若已合并）及其它 definitions，不使用固定 adapter 总数或覆盖并行 change。
+- [ ] 6.1 把 `docnav-code` definition 加入 core static registry 和已知 adapter catalog，保留当前 Markdown、JSON 及其它 definitions，不使用固定 adapter 总数或覆盖现有 change。
 - [ ] 6.2 增加 adapter list、automatic/explicit selection、invocation logging 和每种 format 的 core CLI tests；证明 closed input、现有 error mapping、linked dispatch，且日志不泄露源码或 parser internals。
 - [ ] 6.3 增加 protocol-json/readable-view integration tests 与 code outline/read/find/info examples，证明现有 envelope/wrapper/schema 可直接承载新增行为；若出现 schema mismatch，先更新本 change 的 contract 决策再修改 schema。
 

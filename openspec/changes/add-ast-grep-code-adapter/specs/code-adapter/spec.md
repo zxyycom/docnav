@@ -2,6 +2,8 @@
 
 本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 `code-adapter` delta spec，不修改或替代现有主规范、其它文档或其它 change。
 
+**Cross-change status:** 本 delta 形成于 inferred routing 之前，当前不可直接 apply。任务 1.2 必须在 routing predecessor 成为 Current 后重写 probe、registry-order 和 format-selection 条款；本说明不预选依赖、format coverage 或 parser 实现。
+
 ## ADDED Requirements
 
 ### Requirement: Linked multi-format code adapter
@@ -171,7 +173,7 @@ Code adapter MUST 使用现有 closed operation inputs 和 operation result type
 #### Scenario: Existing consumers remain compatible
 
 - **WHEN** code adapter 被加入 static registry
-- **THEN** 现有 Markdown、JSON（若已合并）和 shared protocol consumer 继续使用原字段、ref opacity、output mode 和 error mapping
+- **THEN** 现有 Markdown、JSON 和 shared protocol consumer 继续使用原字段、ref opacity、output mode 和 error mapping
 - **THEN** code adapter 不要求 consumer 识别 ast-grep 类型或 code ref grammar
 
 #### Scenario: Cross-layer verification

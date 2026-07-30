@@ -100,7 +100,7 @@ Seed observations, observations, and reproducible baselines MUST be non-blocking
 
 ### Requirement: Performance findings return to the behavior owner
 
-The audit MUST hand each proposed fix to the capability or change that owns the affected behavior. It MUST remain independent of `add-json-adapter`, `redesign-token-cost-estimation`, `reuse-adapter-document-state`, and `redesign-find-result-model`; none of those changes MUST depend on this audit, and this audit MUST NOT implement or duplicate their JSON behavior, estimator, reusable-state mechanism, find model, or work-budget decisions.
+The audit MUST hand each proposed fix to the capability or change that owns the affected behavior. It MUST remain independent of the Current `json-adapter` owner, `redesign-token-cost-estimation`, `reuse-adapter-document-state`, and `redesign-find-result-model`; none of those owners or changes MUST depend on this audit, and this audit MUST NOT reopen the archived `add-json-adapter` change or implement/duplicate their JSON behavior, estimator, reusable-state mechanism, find model, or work-budget decisions.
 
 #### Scenario: Attribution identifies an owner-specific path
 

@@ -5,11 +5,18 @@ prepared-state, shared-source, or Rust type design.
 
 ## Context
 
-Current navigation first selects a linked adapter by calling `probe(path)`, then constructs one closed operation input and dispatches the selected strategy. A structured outline/find success may trigger navigation-owned unique-ref auto-read, which dispatches the same adapter's ordinary `read` strategy. Outline policy may instead call a cost-measurement hook followed by an unstructured full-read content hook, or may fall back to the structured outline strategy.
+This design recorded a pre-routing baseline in which navigation selects a linked adapter by calling `probe(path)`, then constructs one closed operation input and dispatches the selected strategy. A structured outline/find success may trigger navigation-owned unique-ref auto-read, which dispatches the same adapter's ordinary `read` strategy. Outline policy may instead call a cost-measurement hook followed by an unstructured full-read content hook, or may fall back to the structured outline strategy.
 
-Current Markdown and JSON adapters acquire and decode the path separately in probe and in every operation/hook. Each Markdown operation and full-read hook constructs a new `MarkdownDocument`; JSON probe and every JSON operation/hook each construct a new adapter-private `JsonDocument`. Consequently:
+`replace-probe-traversal-with-inferred-routing` is the sequencing predecessor
+for this change, not a request to select its reuse mechanism. After routing is
+implemented, validated, and synchronized as Current, task 1.1 must rewrite this
+change's proposal, design, specs, and tasks from the no-probe pipeline before any
+other decision-packet task begins. The probe/candidate-traversal rows below are
+historical comparison material, not Target obligations.
 
-| Current path | Selected-adapter preparation work |
+In that pre-routing baseline, Markdown and JSON adapters acquire and decode the path separately in probe and in every operation/hook. Each Markdown operation and full-read hook constructs a new `MarkdownDocument`; JSON probe and every JSON operation/hook each construct a new adapter-private `JsonDocument`. Consequently:
+
+| Pre-routing path | Selected-adapter preparation work |
 | --- | --- |
 | direct outline/read/find/info | probe acquisition/decode (and JSON parse), then operation acquisition/decode/parse |
 | cost threshold does not select full read | probe, cost hook, then structured outline each prepare independently |
@@ -125,11 +132,11 @@ A core-owned source acquisition primitive remains a candidate only if the adapte
 
 Instrumentation must distinguish at least source acquisition, decode, complete parse/model construction, and cleanup. Evidence must cover:
 
-1. declared-adapter and automatic-discovery direct outline/read/find/info;
-2. each unsupported/invalid automatic-discovery candidate and the eventually selected candidate;
+1. declared-adapter and inferred automatic-selection direct outline/read/find/info;
+2. inference/source preparation and the exactly selected adapter's preparation, reuse, and release;
 3. cost threshold match, miss, measurement failure, content-hook failure, and default full-read fallback;
 4. eligible unique-ref nested read success, adapter diagnostic, invalid nested result, and invalid composed response;
-5. a path replaced or modified at controlled points between probe, policy, base operation, and nested read;
+5. a path replaced or modified at controlled points between inference, selected preparation, policy, base operation, and nested read;
 6. normal return, early return, error, cancellation if supported, and panic/unwind-safe destruction.
 
 The target is not “one parse for the entire invocation” regardless of semantics. It is “no repeated complete preparation of the same approved document view solely because navigation composed internal stages.” An explicitly approved refresh or retry may prepare another view, but its trigger, error mapping, and bound must be normative and tested; routine fallback cannot silently reparse until it succeeds.
@@ -146,8 +153,8 @@ The candidates are evaluated against shared obligations rather than surface simi
 | **B. Candidate-scoped open/probe handle** | Navigation opens one candidate handle, probes through it, drops failed handles, and promotes the selected handle; RAII can make cleanup explicit | Selected handle can dispatch ordinary operations without a second open | Cost, content, facts, structured fallback, and nested read can share one handle; default fallback needs a handle-owned source operation or an approved core snapshot | Ordinary read method on the selected handle can reuse state | Snapshot begins at candidate open unless separately refreshed | Strong lifecycle expression without downcast, but creates an object/lifetime abstraction before cheap rejection and can expand into a generic document object; in-process only unless a future adapter host contains the handle |
 | **C. Operation-shaped invocation session** | If created only after selection it cannot reuse automatic-discovery probe work; if it includes probe it converges toward candidate handle A/B and must adopt their cleanup rules | Clean operation-shaped dispatch after session creation | Can offer the fixed operations and declared hooks over one state | Naturally supports repeated ordinary read | Snapshot normally begins at session creation; the relation to prior probe is unresolved | Familiar interface but broadest risk of a second adapter framework, method growth, and premature request-scoped state; external use would require host-local lifetime, not public session IDs |
 | **D. Core-owned document acquisition/byte view plus adapter-owned decode/parse/ref/source-region behavior** | Core may acquire one immutable byte view and lend/share it across candidate probes; each adapter must still discard its private failed-candidate parse state | Selected adapter can prepare once from the shared source only if an additional private prepared-state boundary exists | Navigation's default fallback can reuse bytes; adapter cost/content can share adapter-private preparation if the combined design provides it | Nested read can reuse only with the same private preparation boundary | Makes source snapshot explicit and can preserve one inode/byte view; this deliberately changes path-reopen behavior | Moves document acquisition/storage and source lifetime into core, may allocate large shared buffers, and by itself removes neither repeated decode nor parse; external transport of bytes is a separate future design |
-| **E. Adapter-local or composition-local reuse** | Existing selection may remain; failed candidates use Current cleanup | Can special-case only chosen adapter/path, often leaving probe duplication | Can optimize one adapter's hooks or one navigation branch | Can optimize auto-read locally | Snapshot and lifecycle risk becoming implicit or different per branch | Lowest initial surface, useful as evidence, but likely duplicates orchestration, requires hidden cache/thread-local/downcast or combination methods, and may not form a durable cross-adapter contract |
-| **F. Current independent operations** | Current probes return public facts and leave no state; Rust locals clean up each attempt | Probe and operation prepare independently | Measurement/content/structured fallback prepare independently | Base and nested read prepare independently | Every stage may reopen the path; JSON uses a post-probe reload failure for invalid changed content | No interface change and simplest ownership, but it does not solve the accepted resource problem |
+| **E. Adapter-local or composition-local reuse** | Existing selection may remain; failed candidates use pre-routing cleanup | Can special-case only chosen adapter/path, often leaving probe duplication | Can optimize one adapter's hooks or one navigation branch | Can optimize auto-read locally | Snapshot and lifecycle risk becoming implicit or different per branch | Lowest initial surface, useful as evidence, but likely duplicates orchestration, requires hidden cache/thread-local/downcast or combination methods, and may not form a durable cross-adapter contract |
+| **F. Pre-routing independent operations (historical baseline)** | Pre-routing probes return public facts and leave no state; Rust locals clean up each attempt | Probe and operation prepare independently | Measurement/content/structured fallback prepare independently | Base and nested read prepare independently | Every stage may reopen the path; JSON uses a post-probe reload failure for invalid changed content | No interface change and simplest ownership, but it does not solve the accepted resource problem |
 
 No row is approved merely because it appears smaller. Candidate C is not the default. Candidate D is incomplete unless it also proves required adapter-private parse reuse. Candidate E is acceptable only if owner evidence shows the reusable obligation is truly local rather than a shared lifecycle. Candidate F remains the compatibility baseline and rollback implementation, not a solution.
 
@@ -157,7 +164,13 @@ The architecture/product owner may approve a deliberately bounded composition of
 
 **Status: confirmed constraints; source-view behavior open.**
 
-- **Automatic discovery:** registry order, first-supported selection, public probe validation, and collected candidate failure evidence remain unchanged. Private state from an unsupported or invalid candidate cannot be passed to another adapter. Cleanup failure must not silently convert an unsupported candidate into supported; whether cleanup failure is reportable or only internal is part of the gate.
+The automatic-discovery bullet below records the pre-routing constraint and must
+be replaced by task 1.1 before the state-reuse decision packet is presented.
+It does not preserve registry-order probing after inferred routing becomes
+Current. The direct-operation, full-read, auto-read, and ref ownership
+constraints remain inputs to the rebuilt packet.
+
+- **Automatic selection:** preserve the final inferred-routing contract: one private inference result maps to one exact selected adapter, with no registry-order probe traversal or public candidate-failure evidence. The rebuilt decision packet must define when any reusable source/selected-adapter state becomes reachable and how it is released without changing routing diagnostics.
 - **Direct operation:** the selected adapter still receives one closed operation-specific input and returns one typed result or adapter diagnostic. Reuse cannot add a generic parameter/state lookup to that input.
 - **Full-read:** Current mode resolution, threshold comparison, measurement failure fallback to structured outline, content/facts hooks, and default UTF-8 fallback remain navigation-owned. The approved design must say which source view the default fallback reads and whether a threshold miss retains prepared state for structured outline.
 - **Auto-read:** Current-result unique-ref eligibility, opaque ref pass-through, read page `1`, validated nested read, composed-response validation, and silent fallback to the validated base result remain unchanged. State reuse cannot turn nested read failure into a public partial status.
@@ -178,7 +191,7 @@ This change's implementation scope is the static linked adapter path. A future e
 - `interactive-outline-selection` composes outline and one or more later reads across user interaction. Its maintainer must decide whether one interactive workflow is one reuse invocation or multiple independent invocations; this change does not extend a private state lifetime across an unbounded prompt.
 - `add-ast-grep-code-adapter` keeps ast-grep models private. It must not be forced onto an unapproved state interface; after approval it supplies lifetime and memory evidence appropriate to borrowed parser structures.
 - `enable-local-core-adapter-service-mode` remains core-local and cannot use this change to claim a public adapter runtime or cross-invocation parser cache.
-- The JSON adapter's Current post-probe reload diagnostic and mutation test are explicit migration inputs. The JSON owner must accept any replacement snapshot rule in its own owner materials; this change does not silently overwrite it.
+- The JSON adapter's legacy post-probe reload diagnostic and mutation test are migration evidence from the predecessor baseline. Task 1.1 must restore the then-Current JSON contract after routing; the Current JSON owner must accept any later snapshot rule in its own owner materials, and this change does not silently overwrite it.
 
 These are handoff surfaces, not prerequisites that merge the changes or
 authorize edits outside this directory. The proposal owns the independent
@@ -205,7 +218,7 @@ listed above.
 3. Complete task 1.8: append a Decision naming the exact mechanism and rejected generality, close or answer every Open Question, and refine every mechanism-neutral delta with complete lifecycle, ownership, snapshot, error, cleanup, and fallback rules.
 4. Complete task 1.9's cross-artifact audit. Owner-doc, test, and implementation work remains blocked until this audit passes.
 5. Follow the testing owner and Case-maintenance workflow, prove the current tree closes, and establish current/failing count, mutation, cleanup, and non-leakage evidence.
-6. Implement the smallest approved linked-adapter vertical slice at the exact owner boundaries named by the decision, then align Markdown. Change navigation or adapter-contract representation only where the approved candidate requires it; do not manufacture a shared data structure for a local candidate. While the JSON capability is not archived, treat JSON counts and TOCTOU behavior only as a gate/handoff and do not modify its normative or production owner from this change. Hand off compatible requirements to the later JSON owner, code adapter, interactive selection, and service mode through their own changes.
+6. Implement the smallest approved linked-adapter vertical slice at the exact owner boundaries named by the decision, then align Markdown. Change navigation or adapter-contract representation only where the approved candidate requires it; do not manufacture a shared data structure for a local candidate. Treat Current JSON counts and TOCTOU behavior as a gate/handoff and modify the Current `json-adapter` owner only if the approved scope includes a complete owner delta; never modify the archived `add-json-adapter` change. Hand off compatible requirements to the code adapter, interactive selection, and service mode through their own changes.
 7. Validate direct operations, automatic discovery, every full-read branch, auto-read success/fallback, controlled TOCTOU, cleanup, protocol/readable non-leakage, workspace checks, and release-package behavior.
 
 Rollback before publication removes the private reuse mechanism and returns to Current independent operation preparation; public payloads require no migration. If the approved implementation changes snapshot/TOCTOU behavior, rollback is a behavior change and must restore the corresponding owner docs and mutation evidence rather than being described as operationally invisible.
@@ -215,6 +228,10 @@ Rollback before publication removes the private reuse mechanism and returns to C
 All four gate areas below form one explicit **architecture/product-owner
 decision**. A partial answer does not unlock implementation, and an agent cannot
 close a gap by choosing a conventional default.
+
+Task 1.1 rewrites probe-specific questions below against the final no-probe
+Current pipeline before this packet is presented. Until then, those phrases are
+historical prompts rather than approved Target obligations.
 
 ### Gate G1: Mechanism and responsibility split
 
@@ -235,9 +252,9 @@ close a gap by choosing a conventional default.
    parser-invalid replacement between stages, should the invocation return a
    result from the captured view, a changed-document diagnostic, a normal owner
    diagnostic, or another bounded outcome?
-5. How is the Current JSON `json-document-changed-after-probe` behavior
-   migrated? Which JSON owner material and deterministic TOCTOU cases must
-   change before implementation is accepted?
+5. How is the legacy JSON `json-document-changed-after-probe` migration evidence
+   reconciled with the then-Current JSON owner? Which owner material and
+   deterministic TOCTOU cases must change before implementation is accepted?
 
 ### Gate G3: Cleanup, fallback, and resource bounds
 

@@ -16,7 +16,7 @@
 - [ ] 2.3 Update `docs/output.md` with the built-in readable approximation and scope notation, including mixed-scope measurement behavior and the rule that rendering never calculates missing cost or issues another operation.
 - [ ] 2.4 Update `docs/adapters/markdown.md` with returned-page read cost, current-page cheap outline selection estimates, unstructured returned-content cost, find target non-measurement, and unchanged ref/region/character-pagination semantics.
 - [ ] 2.5 Update every affected protocol schema and contract example to the approved machine shape. Validate ordinary/nonterminal read, nested read, structured outline, unstructured outline, and find-without-target-cost examples before production code.
-- [ ] 2.6 Record the accepted compatibility version and the Decision 7 handoff conditions for `add-json-adapter`, `add-json-readable-renderer`, `interactive-outline-selection`, `add-outline-preview-skim-pack`, `implement-docnav-mcp-bridge`, and relevant adapter changes. Preserve the independent status of `redesign-find-result-model` and `reuse-adapter-document-state`; do not implement, rebase, or edit another owning change from this task.
+- [ ] 2.6 Record the accepted compatibility version and the Decision 7 handoff conditions for the Current `json-adapter` owner, `add-json-readable-renderer`, `interactive-outline-selection`, `add-outline-preview-skim-pack`, `implement-docnav-mcp-bridge`, and relevant adapter changes. Decide from the approved contract whether this change needs a complete `json-adapter` delta; do not modify the archived `add-json-adapter` change. Preserve the independent status of `redesign-find-result-model` and `reuse-adapter-document-state`; if the find-model change has already landed, refresh this change's complete overlapping `MODIFIED` requirements from the new Current owner text and preserve its effective clauses without editing that change.
 
 ## 3. Test and benchmark evidence
 
@@ -51,6 +51,6 @@
 ## 7. Handoff and closure
 
 - [ ] 7.1 Deliver the accepted contract/version/handoff notes to each adjacent change owner without implementing or rebasing JSON readable rendering, interactive outline selection, skim, MCP, or other adapter work here.
-- [ ] 7.2 Confirm the eventual archived `json-adapter` owner has a blocked handoff for returned-content/current-page token behavior; do not create a synonymous capability delta while it is absent from main specs.
+- [ ] 7.2 Confirm the Current `json-adapter` owner has received the approved returned-content/current-page token handoff and that task 2.6's recorded delta/no-delta scope is complete; keep the archived `add-json-adapter` artifacts unchanged.
 - [ ] 7.3 Run `ai-ready-docs` over changed owner and OpenSpec material and perform the coding-style self-review over implementation diffs; confirm authority, state labels, no unnecessary abstraction, no unapproved dependency, and no edits to adjacent changes.
 - [ ] 7.4 Run final strict OpenSpec, workspace, schema/example, corpus-budget, and release verification. A Q2–Q4 or dependency failure reopens the gate and invalidates the affected approval; archive only after replacement evidence, human approval, task 1.6 synchronization, all implementation evidence, and accepted handoffs are complete.

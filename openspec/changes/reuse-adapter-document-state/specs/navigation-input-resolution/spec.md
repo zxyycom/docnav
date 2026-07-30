@@ -5,6 +5,9 @@ document acquisition owner, or source snapshot. `proposal.md` owns the change
 status; `design.md` leaves “approved invocation lifecycle” and “approved
 document view” open; tasks 1.7–1.8 must approve and define them before applying
 this delta.
+This pre-routing delta is not apply-ready as written: task 1.1 must first
+rewrite every probe/candidate obligation from the final no-probe Current routing
+contract while preserving already-effective owner clauses.
 
 ## MODIFIED Requirements
 

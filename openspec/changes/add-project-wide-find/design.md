@@ -266,7 +266,7 @@ Implementation order:
 4. This change synchronizes owner docs, request/response schema/examples and test evidence before production implementation.
 5. Core/navigation/protocol/output implementation and workspace verification follow.
 
-Neither predecessor imports project traversal or result ownership. This change does not edit their artifacts or select their dependencies. `audit-runtime-performance-boundaries` may consume measurements at any stage but is not an implementation prerequisite and cannot silently change the fixed semantics above.
+Neither predecessor imports project traversal or result ownership. This change does not edit their artifacts or select their dependencies. After each predecessor lands, this change must rewrite every overlapping complete `MODIFIED` requirement in its own directory from the then-Current owner text and preserve all effective predecessor clauses. `reuse-adapter-document-state` remains independent: whichever of the two changes lands later performs the same rebase for their overlapping navigation requirements without editing the earlier change. `audit-runtime-performance-boundaries` may consume measurements at any stage but is not an implementation prerequisite and cannot silently change the fixed semantics above.
 
 ## Risks / Trade-offs
 
@@ -282,7 +282,7 @@ Neither predecessor imports project traversal or result ownership. This change d
 
 ## Migration Plan
 
-1. Complete both blocking predecessor acceptance/completion tasks; revise this change if either finalized contract differs.
+1. Complete both blocking predecessor acceptance/completion tasks; then refresh this change's overlapping complete `MODIFIED` requirements from the new Current owners, preserve the predecessor clauses, and revise this change if either finalized contract differs.
 2. Produce change-local traversal dependency audit and obtain explicit exact dependency/version/features or no-new-dependency approval.
 3. Prove per-directory DFS, inference/error taxonomy, fixed replay state machine and closed-union compatibility in the blocking audit.
 4. Use representative workloads to validate and select the initial positive finite build-private quantum without encoding its exact value in public artifacts.

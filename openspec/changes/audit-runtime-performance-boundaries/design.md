@@ -8,7 +8,7 @@ Docnav 的产品承诺是通过有限、可继续的 `outline -> ref -> read` �
 
 - core、navigation、adapter、protocol/output 和 release owner 分别拥有自己的可观察契约；
 - `redesign-token-cost-estimation`、`reuse-adapter-document-state` 和 `redesign-find-result-model` 分别拥有 estimator、同调用状态复用和 find 模型选择；
-- `add-json-adapter` 拥有 JSON-specific 导航行为；
+- Current `json-adapter` owner（`docs/adapters/json.md` 与 main capability）拥有 JSON-specific 导航行为；归档的 `add-json-adapter` 只提供历史证据；
 - `repository-quality-observability` 只拥有静态代码质量 snapshot，不拥有 runtime workload 或性能 budget。
 
 因此，本 change 新增 `runtime-performance` capability 作为审计 owner，只组织可比较证据、归因、人工决策和 handoff。它不成为上述 change 的依赖，也不接管它们的实现。

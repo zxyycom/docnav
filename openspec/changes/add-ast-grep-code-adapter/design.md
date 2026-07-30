@@ -15,7 +15,14 @@ ast-grep 0.44.1 已发布可直接使用的 `ast-grep-core`、`ast-grep-language
 - <https://docs.rs/ast-grep-outline/0.44.1/ast_grep_outline/model/struct.OutlineItem.html>
 - <https://docs.rs/ast-grep-language/0.44.1/ast_grep_language/enum.SupportLang.html>
 
-当前 active change `add-json-adapter` 也会触及 workspace、registry 和 release smoke。本 change 的语义不依赖 JSON adapter，但实现合并时必须保留双方的 linked definitions 和验证覆盖。
+`add-json-adapter` 已归档，现有 JSON linked definition、workspace membership 和 release-smoke 证据是本 change 必须保留的 Current 基线。
+
+本 design 的 probe 与 registry-order 文字形成于
+`replace-probe-traversal-with-inferred-routing` 之前。该 routing change 是
+automatic-selection 语义的 sequencing predecessor；在它成为 Current 后，
+本 change 必须先在自己的 artifacts 中重写相关 contract，再选择 code-adapter
+依赖或修改 production。这个顺序不预选 inference library、format mapping 或
+ast-grep 内部实现。
 
 ## Goals / Non-Goals
 
@@ -104,9 +111,9 @@ info 返回 format-specific content type、UTF-8、原文件 byte size、adapter
 
 ### Decision 9: additive rollout and cross-change coordination
 
-本 change 不迁移现有数据或 ref。registry 中 code adapter 放在已有 definitions 之后，避免改变现有格式的优先选择；由于扩展名集合不重叠，正常 automatic discovery 仍由具体 probe 决定。实现若与 `add-json-adapter` 并行，必须合并 registry、Cargo workspace 和 release smoke，而不能用固定 adapter 数量覆盖另一项 change。
+本 change 不迁移现有数据或 ref。这里关于 registry order 与具体 probe 的描述属于 routing predecessor 落地前的起草基线，不得直接作为 production 实施依据；任务 1.2 必须按最终 Current routing contract 重写它。实现必须保留现有 JSON registry、Cargo workspace 和 release smoke，不能用固定 adapter 数量覆盖 Current definitions。
 
-回滚时删除 code adapter registration、crate/dependencies、code fixtures/docs 和对应 smoke 即可；现有 Markdown、JSON（若已合并）、protocol 和用户配置不需要迁移。
+回滚时删除 code adapter registration、crate/dependencies、code fixtures/docs 和对应 smoke 即可；现有 Markdown、JSON、protocol 和用户配置不需要迁移。
 
 ## Risks / Trade-offs
 

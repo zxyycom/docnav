@@ -18,7 +18,7 @@ Docnav 的有限导航流程需要同时约束启动、计算、I/O、内存、�
 ### Non-goals
 
 - 不选择或实现 parser、cache、document state reuse、token estimator、find model、pagination、renderer、buffering、allocator 或依赖优化。
-- 不成为 `add-json-adapter`、`redesign-token-cost-estimation`、`reuse-adapter-document-state` 或 `redesign-find-result-model` 的前置；也不重复它们拥有的行为、机制或决策。
+- 不回开归档的 `add-json-adapter`，不成为 Current `json-adapter` owner、`redesign-token-cost-estimation`、`reuse-adapter-document-state` 或 `redesign-find-result-model` 的前置；也不重复它们拥有的行为、机制或决策。
 - 不把 `repository-quality-observability` 扩展成运行时性能 owner；未来可以由独立 integration 汇总两类报告，但静态代码质量 snapshot 与运行 workload 证据保持不同职责。
 - 不设计 benchmark framework、dashboard、cache、通用 producer/sink、CI gate 或新的 public CLI/protocol surface。
 

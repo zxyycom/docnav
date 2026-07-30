@@ -31,4 +31,5 @@ Docnav 当前只能按已有格式结构导航，读取大型源码时仍缺少�
 - 代码：新增 `crates/adapters/code`，并修改 workspace dependency、core static registry、adapter catalog/inspection、相关 fixtures 和验证脚本。
 - 公共接口：不新增 protocol 字段、operation、output mode 或用户参数；新增 adapter id `docnav-code`、代码 format descriptors、代码 adapter 私有 ref grammar 和相应可观察导航行为。
 - 依赖与制品：发布 binary 静态链接所选语言 parser；实现记录 ast-grep 精确版本、启用的 parser features、license 检查和 release binary size 变化。
-- 并行工作：当前 `add-json-adapter` 也可能修改 workspace、registry 和 release smoke；实现阶段必须保留两项 change 的 adapter，并避免用固定 adapter 数量或脆弱 registry 顺序覆盖对方。
+- Current JSON 基线：`add-json-adapter` 已归档；实现阶段必须保留现有 JSON linked definition、workspace membership 和 release-smoke 证据，并避免用固定 adapter 数量覆盖现有 registry。
+- Routing handoff：`replace-probe-traversal-with-inferred-routing` 是 automatic-selection 语义的 sequencing predecessor。其最终 Current contract 落地前，本 change 的 probe/registry-order 描述只记录旧起草基线，不授权 production 或 dependency 修改；推进本 change 时必须先在本目录按最终 routing owner 重新基线。
