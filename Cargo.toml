@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/docnav",
+  "crates/adapters/json",
   "crates/adapters/markdown",
   "crates/shared/adapter-contracts",
   "crates/shared/cli-config-resolution",
@@ -43,6 +44,7 @@ docnav-adapter-contracts = { path = "crates/shared/adapter-contracts" }
 docnav-cli-args = { path = "crates/shared/cli-args" }
 docnav-diagnostics = { path = "crates/shared/diagnostics" }
 docnav-json-io = { path = "crates/shared/json-io" }
+docnav-json = { path = "crates/adapters/json" }
 docnav-markdown = { path = "crates/adapters/markdown" }
 docnav-navigation = { path = "crates/shared/navigation" }
 docnav-output = { path = "crates/shared/output" }

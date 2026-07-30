@@ -1,7 +1,7 @@
 ---
 title: JSON 对象成员名必须唯一
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-07-28T11:57:52Z
 purpose: 让成功接收的 JSON object 具有唯一 decoded member name 和唯一 tree path。
 background: JSON 语法可包含重复 name，而 parser 对重复 member 的处理并不一致。

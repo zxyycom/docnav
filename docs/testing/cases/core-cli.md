@@ -98,11 +98,13 @@ Owner: `docs/adapter-contract.md#probe-识别`
 
 Entities:
 - `smoke|core:registry-contract-failures|CORE-FAIL-001`
+- `smoke|core:real-json|CORE-JSON-FAIL-001`
 
 Proves:
 - candidate discovery 阶段的 built-in adapter probe failure 被报告为 `FORMAT_UNKNOWN` candidate summary。
 - candidate failure 不会被折叠成 selected adapter layer failure。
 - 未显式声明 adapter 的 automatic discovery 全部 probe 失败时，candidate failures 从属于 primary diagnostic details。
+- 真实 core CLI 对 invalid JSON 的 automatic outline 返回 `FORMAT_UNKNOWN` / `NO_SUPPORTED_ADAPTER`，并保留 `docnav-json` candidate 的 `probe` stage 与 `PROBE_UNSUPPORTED` reason。
 
 ## Case BB-CORE-INFO-001: Core exposes Markdown info through readable output
 
@@ -160,6 +162,7 @@ Entities:
 - `smoke|core:document-output-boundary|CORE-OUTPUT-002`
 - `smoke|core:document-output-boundary|CORE-OUTPUT-003`
 - `smoke|core:document-output-boundary|CORE-OUTPUT-004`
+- `smoke|core:real-json|CORE-JSON-NAV-001`
 
 Proves:
 - 省略 output 和显式 `readable-view` 产生相同的 built-in readable-view text contract；`protocol-json` 对同一文档结果输出完整 protocol envelope。
@@ -167,6 +170,7 @@ Proves:
 - CLI 显式选择或 project config 选择 `protocol-json` 时，navigation response 产生前的 document failure 仍输出完整 failure envelope，不回退到 `readable-view`；project-selected 分支同时覆盖低优先级 user config 加载失败。
 - CLI 显式使用已删除的 `readable-json` 时走普通 invalid-value boundary，不产生 alias、fallback 或 document output。
 - 由 path rule 选中的 unstructured outline 在 `readable-view` 中作为 content block、在 `protocol-json` 中作为 raw result 可观察，并且不虚构 entries/ref/page/continuation。
+- 真实 core CLI 的 JSON protocol-json outline/read/find 保持 raw facts 且不注入 `display`；generic `readable-view` 保留 JSON ref、content type 与派生成本，并通过 content block 还原完整内容。
 
 ## Case BB-CORE-REF-001: Adapter ref 错误穿过 Core
 
@@ -174,10 +178,12 @@ Owner: `docs/ref-contract.md#共享-ref-错误`
 
 Entities:
 - `smoke|core:real-markdown-ref-error|CORE-REF-001`
+- `smoke|core:real-json|CORE-JSON-FAIL-001`
 
 Proves:
 - 被选中 adapter 拒绝的 ref 会从 core 返回稳定 protocol failure。
 - `protocol-json` 承载错误时，stderr 不输出 JSON payload。
+- 真实 core CLI 将 noncanonical JSON array ref 与 canonical missing ref 分别返回为 `REF_INVALID` 和 `REF_NOT_FOUND`，保留 rejected ref，并保持 protocol payload 不进入 stderr。
 
 ## Case BB-CORE-SELECT-001: 显式 adapter 失败返回 selection diagnostic
 
@@ -185,11 +191,15 @@ Owner: `docs/adapter-contract.md#adapter-选择`
 
 Entities:
 - `smoke|core:adapter-selection|CORE-SELECT-001`
+- `smoke|core:real-json|CORE-JSON-NAV-001`
 - `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::missing_adapter_routing_precedes_invalid_native_option`
+- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_json_supports_automatic_and_declared_selection_and_reports_declared_rejection`
 
 Proves:
 - 显式 CLI 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。
 - 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
+- JSON 文档的 automatic selection 通过 static registry 进入 linked `docnav-json` outline，显式 `docnav-json` 选择进入 linked read，并返回对应 JSON result facts。
+- 显式 `docnav-json` probe 拒绝 Markdown 文档时返回 navigation-owned `ADAPTER_UNAVAILABLE`，且不回退到 Markdown adapter。
 
 ## Case BB-CORE-SOURCE-001: Core adapter source 来自 static registry
 
@@ -220,14 +230,22 @@ Proves:
 Owner: `docs/adapter-contract.md#内置-adapter-接口`
 
 Entities:
-- `cargo|docnav:lib:docnav|registry::tests::adapter_layer_check_reports_definition_metadata_and_core_source`
-- `cargo|docnav:lib:docnav|registry::tests::adapter_list_preserves_static_registry_projection`
 - `cargo|docnav:lib:docnav|registry::tests::static_registry_contains_built_in_markdown_adapter`
 
 Proves:
-- Core static registry 包含 release 内置 Markdown adapter descriptor metadata。
-- Adapter layer check 从 adapter definition 读取 metadata，并把 core-owned implementation source 保留为 static registry fact。
-- `adapter list` preserves the same static-registry id and implementation-source projection.
+- Core static registry 按固定顺序包含 release 内置 `docnav-markdown` 与 `docnav-json` definitions；两者投影对应 format metadata，JSON descriptor 包含 `.json` 与 `application/json`，每个 definition 的 probe identity 与 registry id 对齐。
+
+## Case WB-CORE-ADAPTER-INSPECTION-001: Core adapter inspection 精确投影
+
+Owner: `docs/cli.md#内置-adapter-检查`
+
+Entities:
+- `cargo|docnav:lib:docnav|registry::tests::adapter_layer_check_reports_definition_metadata_and_core_source`
+- `cargo|docnav:lib:docnav|registry::tests::adapter_list_preserves_static_registry_projection`
+
+Proves:
+- `doctor` 消费的 registry/layer checks 报告两个 adapter，并按相同顺序为 Markdown 与 JSON 输出 passing format/version facts 和 core-owned `implementation_source: "core_static"`。
+- `adapter list` 报告 `registry: "core_static"`，并按 registry 顺序完整投影 Markdown 与 JSON 的 id、name、version、implementation source 和 format metadata。
 
 ## Case WB-CORE-ADAPTER-SURFACE-001: Core adapter command surface 保持静态注册表边界
 
@@ -433,6 +451,8 @@ Proves:
 - The core catalog owns current locators, value kinds, defaults, merge rules, ranges, and auto-read orchestration facts without enabling an undeclared environment source.
 - Selected operation projection filters fields only through closed catalog bindings.
 - Common named fields 提供 generated core command surface 消费的 CLI processing locator 和 presentation metadata。
+- 注册 `docnav-json` 只扩展 known adapter id，不新增 JSON-scoped parameter entry；注册前后的 catalog inventory 与完整 `StandardInputBinding` 集合保持一致。
+- `docnav-json` outline selected view 精确复用既有 common page、limit、pagination、output 与 auto-read bindings；`max_heading_level` 继续只以 exact `docnav-markdown` tag 绑定 outline/find。
 
 ## Case WB-CORE-PREFLIGHT-001: Core preflight 检测 protocol-json intent
 

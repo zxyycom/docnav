@@ -1,4 +1,5 @@
 use docnav_adapter_contracts::AdapterDefinition;
+use docnav_json::json_adapter_definition;
 use docnav_markdown::markdown_adapter_definition;
 use docnav_navigation::NavigationAdapterRegistry;
 use serde_json::{json, Value};
@@ -8,7 +9,8 @@ use crate::config::DoctorCheck;
 use crate::error::{AppResult, DocnavExitCode};
 use crate::output::CommandOutcome;
 
-static ADAPTERS: &[fn() -> AdapterDefinition<'static>] = &[markdown_adapter_definition];
+static ADAPTERS: &[fn() -> AdapterDefinition<'static>] =
+    &[markdown_adapter_definition, json_adapter_definition];
 
 #[derive(Clone, Copy)]
 pub struct AdapterRegistry {

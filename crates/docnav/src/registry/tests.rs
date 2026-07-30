@@ -3,38 +3,66 @@ use super::*;
 #[test]
 fn static_registry_contains_built_in_markdown_adapter() {
     let registry = AdapterRegistry::builtin();
-    let definition = registry
+    let definitions = registry
         .adapters
         .iter()
         .map(|definition| definition())
-        .find(|definition| definition.id() == "docnav-markdown")
-        .expect("built-in markdown adapter");
+        .collect::<Vec<_>>();
 
-    let manifest = definition.manifest();
+    assert_eq!(
+        definitions
+            .iter()
+            .map(AdapterDefinition::id)
+            .collect::<Vec<_>>(),
+        ["docnav-markdown", "docnav-json"]
+    );
+    assert_eq!(definitions[0].manifest().formats[0].id, "markdown");
+    let json_format = &definitions[1].manifest().formats[0];
+    assert_eq!(json_format.id, "json");
+    assert_eq!(json_format.extensions, [".json"]);
+    assert_eq!(json_format.content_types, ["application/json"]);
 
-    assert_eq!(definition.id(), "docnav-markdown");
-    assert_eq!(manifest.adapter.id, "docnav-markdown");
-    assert!(manifest
-        .formats
-        .iter()
-        .any(|format| format.id == "markdown"));
+    for definition in definitions {
+        let probe = definition.probe("registry-metadata-probe");
+        assert_eq!(probe.adapter_id, definition.id());
+        assert_eq!(probe.path, "registry-metadata-probe");
+        assert!(!probe.reasons.is_empty());
+    }
 }
 
 #[test]
 fn adapter_layer_check_reports_definition_metadata_and_core_source() {
     let registry = AdapterRegistry::builtin();
     let checks = adapter_layer_checks(&registry);
-    let check = checks.first().expect("adapter layer check").value();
+    let registry_check = registry_check(&registry);
 
-    assert_eq!(check.get("status").and_then(Value::as_str), Some("pass"));
+    assert_eq!(registry_check.value()["status"], "pass");
+    assert_eq!(registry_check.value()["adapter_count"], 2);
+    assert_eq!(checks.len(), 2);
     assert_eq!(
-        check.get("message").and_then(Value::as_str),
-        Some("built-in adapter layer metadata is available")
+        checks
+            .iter()
+            .map(|check| check.value()["adapter_id"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["docnav-markdown", "docnav-json"]
     );
     assert_eq!(
-        check.get("implementation_source").and_then(Value::as_str),
-        Some("core_static")
+        checks
+            .iter()
+            .map(|check| check.value()["formats"][0]["id"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["markdown", "json"]
     );
+    for check in checks {
+        let check = check.value();
+        assert_eq!(check["status"], "pass");
+        assert_eq!(
+            check["message"],
+            "built-in adapter layer metadata is available"
+        );
+        assert_eq!(check["implementation_source"], "core_static");
+        assert_eq!(check["version"], env!("CARGO_PKG_VERSION"));
+    }
 }
 
 #[test]
@@ -47,10 +75,6 @@ fn adapter_list_preserves_static_registry_projection() {
         &mut stderr,
     );
     let output: Value = serde_json::from_slice(&stdout).expect("adapter list json");
-    let adapters = output
-        .get("adapters")
-        .and_then(Value::as_array)
-        .expect("adapters");
 
     assert_eq!(exit_code, 0);
     assert!(stderr.is_empty());
@@ -58,15 +82,31 @@ fn adapter_list_preserves_static_registry_projection() {
         output.get("registry").and_then(Value::as_str),
         Some("core_static")
     );
-    assert_eq!(adapters.len(), 1);
     assert_eq!(
-        adapters[0].get("id").and_then(Value::as_str),
-        Some("docnav-markdown")
-    );
-    assert_eq!(
-        adapters[0]
-            .get("implementation_source")
-            .and_then(Value::as_str),
-        Some("core_static")
+        output["adapters"],
+        json!([
+            {
+                "id": "docnav-markdown",
+                "name": "Docnav Markdown Adapter",
+                "version": env!("CARGO_PKG_VERSION"),
+                "implementation_source": "core_static",
+                "formats": [{
+                    "id": "markdown",
+                    "extensions": [".md", ".markdown"],
+                    "content_types": ["text/markdown"],
+                }],
+            },
+            {
+                "id": "docnav-json",
+                "name": "Docnav JSON Adapter",
+                "version": env!("CARGO_PKG_VERSION"),
+                "implementation_source": "core_static",
+                "formats": [{
+                    "id": "json",
+                    "extensions": [".json"],
+                    "content_types": ["application/json"],
+                }],
+            },
+        ])
     );
 }

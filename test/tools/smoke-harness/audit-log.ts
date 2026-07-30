@@ -29,9 +29,10 @@ export function createSmokeAuditLog(options: SmokeAuditLogOptions) {
   } = options;
 
   function formatCommandRecord(record: CommandRecord) {
+    const executable = record.executable ?? binaryPath() ?? binaryFallback;
     return [
       `### ${record.name}`,
-      `$ ${quoteArg(binaryPath() ?? binaryFallback)} ${record.args.map(quoteArg).join(" ")}`.trimEnd(),
+      `$ ${quoteArg(executable)} ${record.args.map(quoteArg).join(" ")}`.trimEnd(),
       `cwd: ${record.cwd}`,
       `stdin: ${record.stdinSummary ?? "(none)"}`,
       `exit: ${record.exitCode}`,

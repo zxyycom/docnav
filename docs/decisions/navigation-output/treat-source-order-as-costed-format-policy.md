@@ -1,7 +1,7 @@
 ---
 title: 源码顺序采用格式级成本判断
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-07-28T11:58:10Z
 purpose: 让格式 owner 按可验证成本选择 source order 或确定性语义顺序。
 background: 成员顺序对部分结构化文档有用，但不同 parser 和格式模型承载它的成本并不相同。

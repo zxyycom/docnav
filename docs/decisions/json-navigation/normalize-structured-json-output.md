@@ -1,7 +1,7 @@
 ---
 title: 规范化 JSON 结构化读取输出
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-07-28T11:58:10Z
 purpose: 让 raw structured JSON 以稳定 serializer spelling 和布局表达选中 value。
 background: JSON 解析后空白和 escape spelling 会自然规范化，而数字、重复 key 与顺序另有独立正确性边界。

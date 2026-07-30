@@ -47,7 +47,7 @@ Entities:
 
 Proves:
 - Linux 与 Windows canonical package evidence 分别派生 target-qualified public binary 和 checksum；public binary bytes、checksum filename/hash 和 exact two-file set 与对应 package entry 一致。
-- Manifest 或 package evidence 缺失、package binary hash 不一致时，staging 在 public mutation 前失败，并保留既有 public marker/set。
+- Manifest 或 package evidence 缺失、package binary 是 symbolic link / 其它非普通文件，或 package binary hash 不一致时，staging 在 public mutation 前失败，并保留既有 public marker/set。
 - Package validation 成功后，checksum 写入失败会清理本次 staging 的 public files。
 
 ## Case AUX-RELEASE-WORKFLOW-001: Beta release workflow 保持验证与 promotion 门禁
@@ -62,5 +62,5 @@ Entities:
 
 Proves:
 - Workflow 保留手动验证入口，只增加 Beta tag push；默认权限为 `contents: read`，唯一写权限属于 tag-only publish job。
-- Exact Linux/Windows matrix 按 build、explicit verify、50-command smoke、public staging 的顺序生成唯一 target artifacts；aggregate 只下载当前 run evidence，manual validation 不传 tag，tag validation 传递当前 ref name。
+- Exact Linux/Windows matrix 按 build、explicit manifest verify、manifest-selected package smoke、public staging 的顺序生成唯一 target artifacts；aggregate 只下载当前 run evidence，manual validation 不传 tag，tag validation 传递当前 ref name。
 - Publish 依赖 aggregate，拒绝 existing release，并用一次 `gh release create` 把四个动态 version public paths 与 versioned notes 发布为 prerelease；create failure 保持失败。

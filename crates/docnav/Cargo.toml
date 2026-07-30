@@ -14,6 +14,7 @@ cli-config-resolution.workspace = true
 docnav-adapter-contracts.workspace = true
 docnav-cli-args.workspace = true
 docnav-diagnostics.workspace = true
+docnav-json.workspace = true
 docnav-json-io.workspace = true
 docnav-markdown.workspace = true
 docnav-navigation.workspace = true

@@ -18,6 +18,8 @@ ProtocolResponse
 
 在执行任一 document output plan 前，成功或失败必须已经表示为一个不可变 `ProtocolResponse`。`ProtocolJson` 序列化该 response；`Rendered` 把同一个 response 原样传给其选定 renderer。`ProtocolResponse` 是 renderer 的完整输入 contract；它的 envelope、result、error、operation 和 request context 仍由 [原始协议](protocol.md) 拥有，本文件不定义第二套 outcome 或 context model。提前发生的 document failure 由 core 使用既有 protocol error projection 构造成 `ProtocolResponse::Failure` 后再进入选定 plan。
 
+`ProtocolJson` 是 raw machine contract；generic `readable-view` renderer 是同一稳定 response 的共享阅读投影。Structured operation content 与 non-structured full-read 原文仍是上游不同 result semantics，renderer 不把二者归一为第二套数据 contract。格式专用 renderer 也只能作为 `Rendered` 路径中的 presentation strategy，不新增 output mode，不改变 `ProtocolResponse` 或 `protocol-json`。
+
 每个 `Rendered` plan 在输出编排开始前携带一个由 linked code 选择的 renderer function 或 trait value。Core CLI 对省略 output 或 `readable-view` 固定注入内置 renderer；直接使用 shared output API 的 linked caller 可以注入自定义 renderer，但 renderer identity 不进入 CLI、config 或 serialized contract。
 
 Renderer contract 为：
@@ -52,6 +54,8 @@ docnav read docs/guide.md --ref "<ref-from-outline>" --output protocol-json
 ## `readable-view`
 
 用途：文档操作的默认输出模式。人类和 AI 直接阅读，信息密度高，开箱即可定位内容。省略 output 或选择 `readable-view` 时，core 构造携带内置 renderer 的 `Rendered`。内置 renderer 接收完整 `ProtocolResponse::Success` 或 `ProtocolResponse::Failure`，并返回一个由 pretty JSON header 和零个或多个 length-delimited block section 组成的完整文本。调用方和测试通过字段名和值、block pointer 和 UTF-8 byte length 判断语义；JSON header object key 顺序和多个 block section 的输出顺序不作为稳定契约。
+
+新格式可以先通过该 generic renderer 证明 shared output path；这只证明通用阅读投影，不证明格式专用 presentation 已交付。JSON 专用 renderer 是 Planned 后续 change，届时再确定信息密度、完整 opaque ref 的路径定位信号、标点、preview、分页显示和 renderer selection mechanics；renderer 保持 ref opaque，不合成 hierarchy、depth、parent 或 indentation。在此之前不得把 generic JSON `readable-view` 目标误述为已实现的 JSON 专用渲染。
 
 成功 header 始终只包含阅读层操作字段（ref、display、content_type、cost、page 等）和该 operation 拥有的 success payload 字段。outline/find 的 `display` 由 response 中的 raw item facts 派生；read 的 `cost` 是由 `cost.measurements[]` 派生的人类可读摘要。renderer config 声明为 block 的字符串字段（例如 read 的 `/content`、readable error 的 `/error`）在 header 中以 `{"$block": "<pointer>", "bytes": <utf8-byte-length>}` 引用替代；实际字符串内容写入 `[block <pointer> bytes=<n>]` ... `[endblock <pointer>]` section。
 

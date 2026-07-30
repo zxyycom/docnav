@@ -12,15 +12,21 @@ Required profile 可用于开发期快速反馈，但不替代上述完整 basel
 
 正式发布制品由 `bun run package:docnav -- --target <triple>` 生成，落在 `artifacts/docnav/v<version>/<target>/package/`。Linked adapter libraries 编译进 `docnav` 核心 CLI，不作为独立 package 文件验收。
 
-该目录只包含：
+该目录的精确文件集合是：
 
-- `docnav`
+- 与 target 对应的唯一 core executable：`x86_64-unknown-linux-gnu` 为 `docnav`，
+  `x86_64-pc-windows-msvc` 为 `docnav.exe`
 - `manifest.json`
 - `SHA256SUMS.txt`
 
 仓库脚本不生成 `.zip`、`.tar.gz` 或其它归档包。
 
-`manifest.json` 是 release artifact manifest，不复用 adapter manifest schema。发布制品验证先从该清单定位文件集合，再检查大小和校验和，最后直接运行 `package/` 中的二进制，而不是回退到 `target/`、日志、临时目录或解压产物。
+`manifest.json` 是 release artifact manifest，不复用 adapter manifest schema。
+它必须包含唯一 core executable entry；该 entry 必须直接解析到 `package/` 内的
+非符号链接普通文件。发布制品验证先从该清单定位文件集合，以 `lstat` 拒绝
+symbolic link 和其它非普通文件，再检查大小和校验和。Package smoke 继续从这个
+已验证 entry 解析 binary，而不是按 target 猜测文件名或回退到 `target/`、日志、
+临时目录或解压产物。
 
 ## 本地预验收
 
@@ -34,7 +40,16 @@ bun run smoke:docnav-package
 
 发布包验证和 smoke 命令会自动定位当前 workspace 版本与 host target 对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用 `--manifest <path>` 验证显式 package。`bun run info:docnav-package` 可打印自动定位结果。
 
-`package:docnav` 在生成结束时校验文件集合、manifest、大小和校验和，但不运行 CLI smoke。`smoke:docnav-package` 直接测试 package 中的 `docnav` 可执行文件，并通过 core CLI document operation 证明 linked Markdown adapter 行为。
+`package:docnav` 在生成结束时校验文件集合、manifest、普通文件边界、大小和校验和，
+但不运行 CLI smoke。`smoke:docnav-package` 使用 manifest 的唯一 core entry，
+以同一个 manifest 所指向的 core binary 执行 required adapter inspection，以及
+Markdown 与 JSON 的 direct CLI roundtrip；这证明两个 adapter 均 linked 到
+canonical core binary，而不是独立 package 文件。
+
+Package profile 在 Linux 和 Windows 上运行相同的 direct CLI surface。Linux x86_64
+development core smoke 另有 deterministic JSON TOCTOU helper；package profile
+明确不运行该 helper，因此 release evidence 不声称 Windows 或 package TOCTOU
+coverage。
 
 ## Public-file 派生
 
@@ -45,7 +60,11 @@ Public files 是 canonical package 通过 verify 和 smoke 后派生的公开下
 
 Public binary 必须与 manifest 指向的 package binary 逐字节相同；`.sha256` 必须包含小写十六进制 SHA-256 和对应 public filename。派生过程不得调用 Cargo、搜索替代 binary、改变 canonical `package/` 文件集合，或修改 `manifest.json` 和 `SHA256SUMS.txt`。
 
-Package 缺失、尚未通过 verify/smoke，或 version、target、path、hash 与 manifest 不一致时，派生必须失败并清理 partial public files，不能留下可被 promotion 接受的完整 public file set。
+Package 缺失、尚未通过 verify/smoke，manifest binary 为 symbolic link 或其它
+非普通文件，或 version、target、path、hash 与 manifest 不一致时，派生必须失败。
+在 public mutation 前发现的失败必须保留既有 public set；mutation 开始后的失败
+必须清理本次 partial public files，不能留下可被 promotion 接受的完整 public
+file set。
 
 ## Prerelease promotion
 

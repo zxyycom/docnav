@@ -1,7 +1,7 @@
 ---
 title: 用异构真实适配器检验共享抽象
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-07-28T11:57:52Z
 purpose: 让共享 adapter contract 只承接由异构真实实现共同证明的职责。
 background: 只有 Markdown 一个真实实现时，共享职责与 Markdown 特有实现之间没有可反驳的边界样本。

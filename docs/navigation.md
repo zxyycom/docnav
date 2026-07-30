@@ -11,6 +11,7 @@
 | 实现 `docnav` 核心 CLI | [架构](architecture.md)、[CLI](cli.md)、[Navigation Input Resolution](navigation-input-resolution.md)、[输出模式](output.md) | [原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[测试策略](testing.md) |
 | 实现原始协议或机器输出 | [原始协议](protocol.md)、[输出模式](output.md) | [JSON Schema 索引](schemas/json-schema.md)、[适配器契约](adapter-contract.md) |
 | 实现 Markdown adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[Markdown Adapter](adapters/markdown.md) | 对应实现面的主规范 |
+| 实现 JSON adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[JSON Adapter](adapters/json.md) | [输出模式](output.md)和对应实现面的主规范 |
 | 新增、修改或审查测试 | [测试策略](testing.md)、对应行为 owner、[语义测试 Case 维护](testing/case-maintenance.md) | [覆盖矩阵](testing/coverage.md)、项目级 [`test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md) |
 | 修改验证脚本或 workspace check | [工程工具链](tooling.md)、[测试策略的统一验证入口](testing.md#统一验证入口)、[编码规范](coding-style.md) | 变更涉及实体发现或 Case 映射时再读[语义测试 Case 维护](testing/case-maintenance.md)；涉及字段或示例时读[JSON Schema 索引](schemas/json-schema.md)和[契约示例](examples/contract-examples.md) |
 | 恢复或维护长期决策 | [项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md) 的 `list`、“长期决策与 OpenSpec 分工” | 用 `domains` 选择责任领域，以 `show` / `trace` 展开相关记录；写入前读取 skill 的领域契约 |
@@ -36,7 +37,7 @@ bun run verify:docnav-workspace
 | 文档导航 | 本文档 | 定位任务主规范、状态语义、规则 owner 和交付验证入口 |
 | 主规范 | [架构](architecture.md)、[CLI](cli.md)、[输出模式](output.md)、[原始协议](protocol.md)、[适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[测试策略](testing.md) | 修改稳定规则或实现职责 |
 | 测试资料 | [语义测试 Case 维护](testing/case-maintenance.md)、[Case topic 表](testing/cases/topics.json)、`testing/cases/<topic>.md`、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) | 测试变更流程、当前实体与语义 Case 映射、覆盖目标或 release 验证 |
-| Adapter 专页 | [Markdown Adapter](adapters/markdown.md) | 修改 Markdown adapter 私有行为 |
+| Adapter 专页 | [Markdown Adapter](adapters/markdown.md)、[JSON Adapter](adapters/json.md) | 修改对应 adapter 的私有行为 |
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[契约示例](examples/contract-examples.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](coding-style.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
 | 长期决策 | [决策索引](decisions/decision-index.json)、`decisions/<topic>/` | 恢复跨 change 仍有效的目的、背景、采用方向和演进关系 |
@@ -68,6 +69,7 @@ OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change na
 | `diagnostics-contract` | [架构](architecture.md) | DiagnosticCode、DiagnosticRecord、canonical details 和 primary projection |
 | `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar 和 outline/find 到 read 的原样传递流程 |
 | `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown parser/probe/ref/outline/read/find/info、typed strategy input semantics |
+| `json-adapter` | [JSON Adapter](adapters/json.md) | JSON probe/private model/ref/outline/read/find/info/full-read 和 JSON-owned errors |
 | `typed-fields` | [架构](architecture.md) | typed field identity、constraint metadata、schema metadata projection 和 duplicate guard |
 | `contract-validation` | [JSON Schema 索引](schemas/json-schema.md)、[契约示例](examples/contract-examples.md) | schema/example validation、runtime validation parity 和 drift checks |
 | `release-artifacts` | [发布包验证](testing/release.md) | package layout、manifest/checksum 和 release artifact verification |
@@ -123,6 +125,7 @@ OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 
 | diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |
 | ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
+| JSON probe/parse、private model、ref grammar、导航顺序、source-region find、structured/full-read 和 JSON-owned error 边界 | [JSON Adapter](adapters/json.md) |
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
 | 测试变更时的 Case 粒度、存储/查询、supported runner profile、静态/runtime/Case 映射闭合和项目验证流程 | [语义测试 Case 维护](testing/case-maintenance.md)拥有稳定规则；`../scripts/test-evidence/` 实现项目检查；通用评审方法由[项目级 `test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md)提供 |
 | 当前测试实体的存在性与 runner 身份 | 当前源码和 runner 报告；project wrapper 只发现、归一并比较当前集合，不提交派生实体清单 |

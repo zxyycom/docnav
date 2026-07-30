@@ -6,6 +6,8 @@
 
 每个默认适配器作为 core release 内置 workspace crate 暴露一个 registry-facing `AdapterDefinition` factory，并由 `docnav` static registry 注册。Definition 只组合 manifest identity、一个固定 `Adapter` strategy 和可选 `UnstructuredFullReadCapabilities`；它不声明 caller-configurable 参数、source locator、default、merge、validation 或 consumer binding。加载或注册 adapter 本身不能扩大 core 接受的 CLI、env、config 或 protocol input。
 
+新增 adapter 的私有格式策略或安全限制不扩大 `StandardOperationInput`、core parameter catalog 或 source inventory。只有当 caller-configurable fact 在真实异构 adapter 间具有相同 public 语义，并由对应 core owner 接受时，才进入共享参数面；否则由格式 adapter 的固定私有配置拥有。
+
 当前最小 strategy interface：
 
 ```text
@@ -50,6 +52,8 @@ pub fn markdown_adapter_definition() -> AdapterDefinition<'static> {
 Core parameter catalog 是 caller-configurable 参数的唯一 authoring path；`options.<adapter-id>.<option-key>` 等 source path、exact adapter tag、default 与 binding 都不属于 adapter definition。Input resolution 规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 
 ## 适配器职责
+
+共享 adapter contract 只吸收至少两个真实异构 adapter 已证明相同的职责，不根据预期复用提前抽象。结构遍历和 structured read 是否保留源码顺序属于 adapter-owned、带实现成本的格式策略：adapter 只在格式语义需要且实现证据支持时承诺该顺序；core 和共享 contract 不规定跨格式通用源码顺序，也不要求为此复制文档模型。
 
 - 使用成熟 parser 解析格式。
 - 生成扁平 outline 和 adapter-owned ref。

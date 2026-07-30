@@ -1,0 +1,10 @@
+{
+  "": null,
+  "a/b~café\u0001": {
+    "zeta": 1.2300e+04,
+    "alpha": "needle source"
+  },
+  "array": [
+    {"message": "needle two"}
+  ]
+}

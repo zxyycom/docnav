@@ -4,6 +4,8 @@ import {
   createRealMarkdownLinkTasks,
   createRealMarkdownRefErrorTasks
 } from "./cases/real-markdown.ts";
+import { createRealJsonTasks } from "./cases/real-json.ts";
+import { createRealJsonToctouTasks } from "./cases/real-json-toctou.ts";
 import { createAutoReadTasks } from "./cases/auto-read.ts";
 import { createDocumentOutputBoundaryTasks } from "./cases/outputs.ts";
 import { createAdapterSelectionTasks } from "./cases/adapter-selection.ts";
@@ -26,6 +28,12 @@ export function createCoreSmokeTasks(): SmokeTask[] {
       label: "built-in markdown ref error mapping",
       tasks: createRealMarkdownRefErrorTasks()
     },
+    {
+      id: "real-json",
+      label: "built-in JSON core CLI behavior",
+      tasks: createRealJsonTasks()
+    },
+    ...createPlatformSmokeTasks(),
     {
       id: "auto-read",
       label: "unique-ref auto-read defaults and disable sources",
@@ -60,6 +68,23 @@ export function createCoreSmokeTasks(): SmokeTask[] {
       id: "tool-commands",
       label: "init version doctor and help commands",
       tasks: createToolCommandTasks()
+    }
+  ];
+}
+
+function createPlatformSmokeTasks(): SmokeTask[] {
+  if (
+    process.env.DOCNAV_SMOKE_PROFILE === "release-package"
+    || process.platform !== "linux"
+    || process.arch !== "x64"
+  ) {
+    return [];
+  }
+  return [
+    {
+      id: "real-json-toctou",
+      label: "built-in JSON deterministic TOCTOU behavior",
+      tasks: createRealJsonToctouTasks()
     }
   ];
 }

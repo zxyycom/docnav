@@ -108,6 +108,32 @@ Manual CR: 修改 protocol、manifest 或 probe 的 schema 与 Rust typed shape 
 - 同一校验规则下的多个等价非法值。
 - 真实 CLI 的 `readable-view` block framing、stdout/stderr 分流和用户可观察输出边界；内置 renderer 的 exact text 与 failure branches 由 shared output/conformance tests 证明，不在 core parser tests 建重复矩阵。
 
+### JSON adapter 证据分层
+
+JSON adapter 的稳定契约由 [JSON Adapter](adapters/json.md) 拥有；测试和 release
+材料只按可观察边界记录当前证据，不把 owner 文档本身当作实现证明：
+
+- JSON crate tests 直接观察 adapter-private manifest/probe、loader/model、ref、
+  traversal、structured/full-read content、find、info、pagination/cost 和
+  JSON-owned failure mapping。
+- Core Rust tests 观察 static registry membership、linked handler availability、
+  automatic/explicit selection handoff、closed parameter catalog 与
+  JSON strategy dispatch；注册 JSON 不新增 public input 的证明留在这一层。
+- 真实 core CLI smoke 观察 automatic 与 explicit JSON selection、required adapter
+  inspection、`outline -> ref -> read`、`find -> ref -> read`、raw number、generic
+  `readable-view`、`protocol-json` 和代表性 selection/ref/document failure。
+  Linux x86_64 development profile 另外运行 deterministic TOCTOU helper；该
+  platform-only 证据不属于 release package 或 Windows。
+- Canonical package smoke 从已验证 release manifest 的唯一 core entry 解析
+  `docnav` binary，并用同一个 binary 执行 Markdown 与 JSON direct CLI roundtrip
+  及 required adapter inspection。`release-package` profile 不运行上述 Linux-only
+  TOCTOU helper，因此 package smoke 只声称跨 target 的 direct CLI evidence。
+
+当前 JSON crate/core/CLI 测试目的和实体映射由
+[`json-adapter`](testing/cases/json-adapter.md)及相关
+[`core-cli`](testing/cases/core-cli.md) Case 维护。Package build、verify 和 smoke
+是 release 工程校验；它们不因进入验收链就成为新的测试实体或重复 Case。
+
 ### 代码组织
 
 - Rust 白盒测试放在对应 `tests.rs` 子模块，主实现文件只声明测试模块。

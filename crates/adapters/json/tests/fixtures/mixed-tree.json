@@ -1,0 +1,19 @@
+{
+  "z": -0.50e+02,
+  "\u0061": [1, {"b": 2}],
+  "true-value": true,
+  "null-value": null,
+  "string-value": "scalar-hit",
+  "huge": 1e9999,
+  "~": "tilde",
+  "/": "slash",
+  "": "empty",
+  "\u0000control": "control",
+  "雪": "非 ASCII 🍣",
+  "01": {"repeat": "repeat repeat"},
+  "array-context": ["zero", "one"],
+  "cross-node": ["left", "right"],
+  "empty-object": {},
+  "empty-array": [],
+  "key-hit": "tail"
+}

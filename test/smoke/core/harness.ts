@@ -16,6 +16,7 @@ export const {
   printSuccessSummary,
   runCli,
   runSmokeTasks,
+  runTestHelper,
   runTest,
   validateSchema,
   writeAuditLogs

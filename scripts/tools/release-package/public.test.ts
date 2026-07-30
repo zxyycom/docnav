@@ -62,6 +62,20 @@ test("mismatched canonical package evidence fails without modifying an existing 
     /sha256 must match actual file hash/,
   );
   assert.deepEqual(fs.readFileSync(staged.publicBinaryPath), fixture.binaryBytes);
+
+  const externalBinaryPath = path.join(
+    path.dirname(path.dirname(fixture.binaryPath)),
+    "external-docnav",
+  );
+  fs.rmSync(fixture.binaryPath);
+  fs.writeFileSync(externalBinaryPath, fixture.binaryBytes);
+  fs.symlinkSync(externalBinaryPath, fixture.binaryPath);
+
+  assert.throws(
+    () => stagePublicFiles(fixture.manifestPath),
+    /docnav must be a file/,
+  );
+  assert.deepEqual(fs.readFileSync(staged.publicBinaryPath), fixture.binaryBytes);
 });
 
 test("a checksum write failure removes public files created after validation", () => {

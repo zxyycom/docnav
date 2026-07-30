@@ -184,6 +184,11 @@ describe("smoke harness task scheduling", () => {
     assert.equal(record.exitCode, 0);
     assert.equal(record.stdout, "out");
     assert.equal(record.stderr, "err");
+    assert.equal(record.executable, process.execPath);
+    assert.match(
+      harness.formatCommandRecord(record).join("\n"),
+      new RegExp(`^\\$ ${escapeRegex(process.execPath)} `, "m")
+    );
     assert.equal(state.commandRecords[0], record);
   });
 
@@ -330,6 +335,10 @@ function successfulProcessResult() {
     stdout: "",
     stderr: ""
   };
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function childEnvProbeArgs(): string[] {

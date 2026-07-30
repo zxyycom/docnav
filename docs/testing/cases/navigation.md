@@ -195,11 +195,13 @@ Entities:
 - `cargo|docnav-navigation:lib:docnav_navigation|parameters::catalog::tests::projection::operation_applicability_is_derived_from_closed_bindings`
 - `cargo|docnav-navigation:lib:docnav_navigation|parameters::catalog::tests::projection::selected_operation_projection_includes_common_and_exact_adapter_fields_only`
 - `cargo|docnav-navigation:lib:docnav_navigation|parameters::fields::tests::selected_fields_combine_fixed_inputs_with_catalog_projection`
+- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::selected_json_uses_only_common_closed_inputs_and_excludes_markdown_native_option`
 
 Proves:
 - The selected operation field set combines fixed operation inputs with the core-authored parameter catalog projection.
 - Adapter-scoped catalog fields are included only for the selected adapter；fields scoped to another adapter are excluded.
 - Operation applicability 只从 closed bindings 派生。
+- Runtime selected `docnav-json` outline 只接收适用的 common page/limit closed inputs；project-sourced Markdown-only `max_heading_level` 被排除，page 2、limit 1 返回精确的第二个 JSON entry 和 terminal page。
 
 ## Case WB-NAVIGATION-HARD-CUTOVER-001: Core catalog cutover preserves resolver parity
 

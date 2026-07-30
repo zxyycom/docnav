@@ -14,6 +14,10 @@
       "description": "Typed diagnostic codes, records, details validation, and projection behavior."
     },
     {
+      "id": "json-adapter",
+      "description": "JSON decoding, primary document model, source fidelity, duplicate-member handling, and depth limits."
+    },
+    {
       "id": "markdown-adapter",
       "description": "Markdown parsing, references, navigation operations, display facts, and pagination."
     },

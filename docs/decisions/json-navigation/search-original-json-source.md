@@ -1,7 +1,7 @@
 ---
 title: JSON 查找使用原文语料
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-07-29T01:32:38Z
 purpose: 让 JSON find 命中用户在文件中实际写下的文本。
 background: Canonical ref 和 structured read 会转换 pointer escape、空白、字符串 escape 与普通 scalar spelling，不能代表原文搜索语义。

@@ -1,5 +1,5 @@
 use docnav_adapter_contracts::StandardInputBinding;
-use docnav_navigation::DocumentParameterBinding;
+use docnav_navigation::{DocumentParameterBinding, DocumentParameterCatalog};
 use docnav_protocol::{Operation, PagedOperation};
 use docnav_typed_fields::{
     DefaultMetadata, FieldBound, FieldNumericRange, FieldRange, MergeStrategy, ProcessingId,
@@ -7,14 +7,74 @@ use docnav_typed_fields::{
 };
 
 use super::{
-    document_parameter_catalog, AUTO_READ_IDENTITY, LIMIT_IDENTITY, MAX_HEADING_LEVEL_IDENTITY,
-    OUTPUT_IDENTITY, PAGE_IDENTITY, PAGINATION_ENABLED_IDENTITY,
+    document_parameter_catalog, document_parameter_entries, document_parameter_fields,
+    AUTO_READ_IDENTITY, LIMIT_IDENTITY, MAX_HEADING_LEVEL_IDENTITY, OUTPUT_IDENTITY, PAGE_IDENTITY,
+    PAGINATION_ENABLED_IDENTITY,
 };
 
 #[test]
 fn core_catalog_contains_the_auto_read_orchestration_parameter() {
+    let catalog_before_json_registration = DocumentParameterCatalog::new(
+        ["docnav-markdown"],
+        document_parameter_fields(),
+        document_parameter_entries(),
+    )
+    .expect("pre-JSON core parameter catalog is valid");
     let catalog = document_parameter_catalog().expect("core parameter catalog is valid");
 
+    assert!(!catalog_before_json_registration.is_known_adapter_id("docnav-json"));
+    assert!(catalog.is_known_adapter_id("docnav-json"));
+    assert_catalog_inventory_eq(&catalog_before_json_registration, &catalog);
+    assert!(catalog.entries().iter().all(|entry| {
+        entry.adapter_id() != Some("docnav-json")
+            && !entry.identity().as_str().contains("docnav-json")
+    }));
+    let expected_standard_input_bindings = vec![
+        StandardInputBinding::OutlinePage,
+        StandardInputBinding::ReadPage,
+        StandardInputBinding::FindPage,
+        StandardInputBinding::OutlineLimit,
+        StandardInputBinding::ReadLimit,
+        StandardInputBinding::FindLimit,
+        StandardInputBinding::OutlineMaxHeadingLevel,
+        StandardInputBinding::FindMaxHeadingLevel,
+    ];
+    assert_eq!(
+        standard_input_bindings(&catalog_before_json_registration),
+        expected_standard_input_bindings
+    );
+    assert_eq!(
+        standard_input_bindings(&catalog),
+        expected_standard_input_bindings
+    );
+    assert_eq!(
+        catalog
+            .selected_operation_parameters("docnav-json", Operation::Outline)
+            .map(|(field, _, binding)| (field.identity().as_str(), binding))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                PAGE_IDENTITY,
+                DocumentParameterBinding::StandardInput(StandardInputBinding::OutlinePage),
+            ),
+            (
+                LIMIT_IDENTITY,
+                DocumentParameterBinding::StandardInput(StandardInputBinding::OutlineLimit),
+            ),
+            (
+                PAGINATION_ENABLED_IDENTITY,
+                DocumentParameterBinding::PaginationEnabled(PagedOperation::Outline),
+            ),
+            (
+                OUTPUT_IDENTITY,
+                DocumentParameterBinding::OutputMode(Operation::Outline),
+            ),
+            (
+                AUTO_READ_IDENTITY,
+                DocumentParameterBinding::AutoReadMode(Operation::Outline),
+            ),
+        ]
+    );
     assert_eq!(
         catalog
             .entries()
@@ -300,4 +360,41 @@ fn integer_range(min: i64, max: i64) -> FieldNumericRange {
         FieldBound::closed(min),
         FieldBound::closed(max),
     ))
+}
+
+fn assert_catalog_inventory_eq(
+    before: &DocumentParameterCatalog,
+    after: &DocumentParameterCatalog,
+) {
+    assert_eq!(before.entries().len(), after.entries().len());
+    for (before, after) in before.entries().iter().zip(after.entries()) {
+        assert_eq!(before.identity(), after.identity());
+        assert_eq!(before.adapter_id(), after.adapter_id());
+        assert_eq!(before.bindings(), after.bindings());
+    }
+    assert_eq!(
+        before.fields().schema_metadata(),
+        after.fields().schema_metadata()
+    );
+    for processing in ["cli", "config", "env"] {
+        let processing = ProcessingId::new(processing).expect("valid processing id");
+        assert_eq!(
+            before.fields().processing_metadata(&processing),
+            after.fields().processing_metadata(&processing)
+        );
+    }
+}
+
+fn standard_input_bindings(catalog: &DocumentParameterCatalog) -> Vec<StandardInputBinding> {
+    catalog
+        .entries()
+        .iter()
+        .flat_map(|entry| entry.bindings())
+        .filter_map(|binding| match binding {
+            DocumentParameterBinding::StandardInput(binding) => Some(*binding),
+            DocumentParameterBinding::PaginationEnabled(_)
+            | DocumentParameterBinding::OutputMode(_)
+            | DocumentParameterBinding::AutoReadMode(_) => None,
+        })
+        .collect()
 }

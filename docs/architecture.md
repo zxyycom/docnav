@@ -24,6 +24,9 @@ Docnav 文档操作分为两类输出：
 | 阅读输出 | 为 AI 和人类提供高信息密度结果；不作为长期机器解析接口 | `docnav` 默认输出或 `docnav --output readable-view` |
 
 两类输出共同消费同一个不可变 `ProtocolResponse`，但使用不同路径：`ProtocolJson` 直接序列化该 response；`Rendered(RenderStrategy)` 把该 response 原样交给 linked code 预先选定的 renderer。`ProtocolResponse` 的字段和业务语义仍由 [原始协议](protocol.md) 拥有，输出层不定义第二套 outcome 或 context。
+
+结构化 operation result、非结构化 full-read 原文、raw machine contract 和 readable projection 是四个独立边界。格式 adapter 拥有 structured content 和 adapter-contributed full-read facts 的格式语义；原始协议保留稳定事实；generic 或格式专用 renderer 只派生阅读表示，不得反向改写 structured/full-read 语义或 raw machine contract。
+
 Runtime invocation log 是第三类独立审计 sink，不属于 document output。它只在 CLI/config 显式启用后写入 owner-documented sink/path；未启用时不得新增 stdout/stderr、protocol/readable 字段、adapter strategy input 或日志文件副作用。启用后，日志事件仍不得进入 `readable-view` 或 `protocol-json` stdout。
 普通 CLI 输出优先服务阅读体验；需要机器稳定解析、兼容校验或自动化断言时，调用完整协议接口。
 Document operation 在执行 output plan 前把成功或失败统一表示为 `ProtocolResponse`。Public document output 只声明 `readable-view` 和 `protocol-json`：省略 output 或选择 `readable-view` 时，core 构造带内置 renderer 的 `Rendered`；选择 `protocol-json` 时构造 `ProtocolJson`。Help、version 和其它非文档命令的成功输出保持对应 owner 的 PlainText 或命令自有 JSON。
@@ -65,6 +68,8 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 ### 共享库
 
 共享库只抽取稳定契约、机械流程和跨组件重复实现。共享 crate owner：
+
+新增或扩大共享 adapter 抽象，至少需要两个真实异构 adapter 在完整行为面上形成同一职责的实现证据；只完成 registration、probe 或单个 operation 不足以证明共享边界。完整证据覆盖 fixed operations、ref/pagination、structured/full-read、raw protocol 和 generic readable path，以及该格式声明需要的格式专用 presentation。证据形成前，格式差异留在 adapter 私有实现，不预先增加共享参数、扩展点或兼容层。
 
 - `docnav-protocol`：定义原始 protocol request/response、page、错误投影和稳定字段，包括 outline/find success-only optional `auto_read` object；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest/probe typed contract helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
 - `docnav-readable`：提供 private readable `Value` 转换、仓库内 renderer config、`ReadableViewKind`、block/framing primitives 和 conformance vector 类型。它只消费调用方准备的 private readable `Value`，不拥有 `ProtocolResponse`、operation/result/error mapping、public output mode 或 stdout/stderr 编排。

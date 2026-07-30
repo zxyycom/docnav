@@ -216,6 +216,7 @@ dependencies = [
  "docnav-adapter-contracts",
  "docnav-cli-args",
  "docnav-diagnostics",
+ "docnav-json",
  "docnav-json-io",
  "docnav-markdown",
  "docnav-navigation",
@@ -245,6 +246,17 @@ version = "0.1.0-beta.1"
 name = "docnav-diagnostics"
 version = "0.1.0-beta.1"
 dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "docnav-json"
+version = "0.1.0-beta.1"
+dependencies = [
+ "docnav-adapter-contracts",
+ "docnav-protocol",
+ "docnav-text-cost",
  "serde",
  "serde_json",
 ]

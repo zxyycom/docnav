@@ -61,6 +61,7 @@ export interface CommandRecord {
   assertions: AssertionRecord[];
   cwd: string;
   error: string | null;
+  executable?: string;
   exitCode: number;
   name: string;
   signal: NodeJS.Signals | null;
@@ -187,7 +188,32 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
   }
 
   async function runCli(name: string, args: string[], commandOptions: SmokeCommandOptions = {}) {
-    const command = prepareCliCommand(commandOptions);
+    const executable = binaryPath();
+    if (!executable) {
+      throw new Error("smoke binary path is not configured");
+    }
+    return runRecordedCommand(name, executable, args, commandOptions);
+  }
+
+  async function runTestHelper(
+    name: string,
+    executable: string,
+    args: string[],
+    commandOptions: SmokeCommandOptions = {}
+  ) {
+    if (executable.length === 0) {
+      throw new Error("smoke test helper executable is not configured");
+    }
+    return runRecordedCommand(name, executable, args, commandOptions);
+  }
+
+  async function runRecordedCommand(
+    name: string,
+    executable: string,
+    args: string[],
+    commandOptions: SmokeCommandOptions
+  ) {
+    const command = prepareCommand(executable, commandOptions);
     const result = await runProcess(command.executable, args, command.processOptions);
     const record = createCommandRecord(name, args, command, commandOptions, result);
 
@@ -198,12 +224,11 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     return record;
   }
 
-  function prepareCliCommand(commandOptions: SmokeCommandOptions): PreparedCliCommand {
+  function prepareCommand(
+    executable: string,
+    commandOptions: SmokeCommandOptions
+  ): PreparedCliCommand {
     const cwd = resolveCwd(commandOptions);
-    const executable = binaryPath();
-    if (!executable) {
-      throw new Error("smoke binary path is not configured");
-    }
 
     return {
       cwd,
@@ -223,6 +248,7 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
       name,
       args,
       cwd: command.cwd,
+      executable: command.executable,
       stdinSummary: summarizeCommandStdin(commandOptions),
       ...normalizeProcessResult(result),
       assertions: []
@@ -295,6 +321,7 @@ export function createSmokeHarness(options: CreateSmokeHarnessOptions) {
     printSuccessSummary,
     runCli,
     runSmokeTasks,
+    runTestHelper,
     runTest,
     validateSchema,
     writeAuditLogs: auditLog.writeAuditLogs

@@ -1,7 +1,7 @@
 ---
 title: JSON 深度上限保持适配器私有
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-07-28T11:57:53Z
 purpose: 用 adapter-private 单一安全边界控制 JSON 递归成本并保持公共输入契约稳定。
 background: JSON 需要确定性深度保护，当前运行证据支持固定边界而非 caller-configurable 参数。

@@ -22,7 +22,7 @@
       }
     ]
   },
-  "sourceRevision": "sha256:0275955bd45a68ac468600f322e783bcbadbf9f5c5d225c4f4ae6333c34647ff",
+  "sourceRevision": "sha256:d6f4993f5c65e8e7b454c73ca7703a2fd6a2b67fa61e195cfc26f7ab2ba2b253",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -48,14 +48,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "adapter-evolution/select-json-as-second-adapter.md",
         "title": "选择 JSON 作为第二个真实适配器",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:57:52Z",
         "purpose": "以范围可控且足够异构的格式建立第二个真实 adapter 边界样本。",
         "background": "JSON 简单常用，树导航不同于 Markdown，又比代码、HTML 或 PDF 更少混入解析复杂度。",
@@ -98,14 +98,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "adapter-evolution/validate-boundaries-with-real-adapters.md",
         "title": "用异构真实适配器检验共享抽象",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:57:52Z",
         "purpose": "让共享 adapter contract 只承接由异构真实实现共同证明的职责。",
         "background": "只有 Markdown 一个真实实现时，共享职责与 Markdown 特有实现之间没有可反驳的边界样本。",
@@ -175,14 +175,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "json-navigation/keep-depth-limit-adapter-private.md",
         "title": "JSON 深度上限保持适配器私有",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:57:53Z",
         "purpose": "用 adapter-private 单一安全边界控制 JSON 递归成本并保持公共输入契约稳定。",
         "background": "JSON 需要确定性深度保护，当前运行证据支持固定边界而非 caller-configurable 参数。",
@@ -200,14 +200,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "json-navigation/normalize-structured-json-output.md",
         "title": "规范化 JSON 结构化读取输出",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:58:10Z",
         "purpose": "让 raw structured JSON 以稳定 serializer spelling 和布局表达选中 value。",
         "background": "JSON 解析后空白和 escape spelling 会自然规范化，而数字、重复 key 与顺序另有独立正确性边界。",
@@ -230,14 +230,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "json-navigation/preserve-number-tokens.md",
         "title": "保留 JSON 数字的原始 token",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:57:52Z",
         "purpose": "让合法 JSON number 在解析、导航和结构化读取之间保持同一文本身份。",
         "background": "JSON 导航观察 number token，常见整数或浮点模型无法无损承载全部合法 token。",
@@ -255,14 +255,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "json-navigation/reject-duplicate-object-members.md",
         "title": "JSON 对象成员名必须唯一",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:57:52Z",
         "purpose": "让成功接收的 JSON object 具有唯一 decoded member name 和唯一 tree path。",
         "background": "JSON 语法可包含重复 name，而 parser 对重复 member 的处理并不一致。",
@@ -280,14 +280,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "json-navigation/search-original-json-source.md",
         "title": "JSON 查找使用原文语料",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-29T01:32:38Z",
         "purpose": "让 JSON find 命中用户在文件中实际写下的文本。",
         "background": "Canonical ref 和 structured read 会转换 pointer escape、空白、字符串 escape 与普通 scalar spelling，不能代表原文搜索语义。",
@@ -305,14 +305,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "json-navigation/use-canonical-json-pointer-refs.md",
         "title": "JSON 引用采用规范化树路径",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:57:52Z",
         "purpose": "让每个可导航 JSON 节点拥有唯一、可解释且能安全经过 CLI argv 的 adapter-owned ref。",
         "background": "JSON 天然以树路径定位节点，但 raw pointer 可包含控制字符，生成式 ID 又会丢失路径语义。",
@@ -382,14 +382,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "navigation-output/separate-structured-and-source-reads.md",
         "title": "分离结构化语义读取与原文读取",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:57:53Z",
         "purpose": "让结构化导航返回节点语义，同时为需要完整源码 spelling 和布局的调用方保留明确入口。",
         "background": "语义序列化与逐字节源码保真面向不同读取需求，并需要不同的 adapter 数据责任。",
@@ -412,14 +412,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "navigation-output/treat-source-order-as-costed-format-policy.md",
         "title": "源码顺序采用格式级成本判断",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-07-28T11:58:10Z",
         "purpose": "让格式 owner 按可验证成本选择 source order 或确定性语义顺序。",
         "background": "成员顺序对部分结构化文档有用，但不同 parser 和格式模型承载它的成本并不相同。",

@@ -34,7 +34,7 @@ export function validatePackagedBinaries(
     assert(entry, `manifest missing file entry for ${fileName}`);
 
     const filePath = path.join(packageDir, fileName);
-    const stats = fs.statSync(filePath);
+    const stats = fs.lstatSync(filePath);
     assert(stats.isFile(), `${fileName} must be a file`);
     assert(
       entry.size_bytes === stats.size,

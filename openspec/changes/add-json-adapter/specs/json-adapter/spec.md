@@ -59,7 +59,7 @@ JSON adapter MUST 生成并解析非空 ref `json:#<fragment>`，其中 `#<fragm
 - **THEN** adapter 返回 `REF_NOT_FOUND`
 
 ### Requirement: JSON outline 必须提供确定性扁平树导航
-JSON outline MUST 对 object member 和 array element 进行 depth-first preorder 遍历，并为每个可导航 descendant 返回一个带完整 JSON ref、非空 label 和 `object|array|string|number|boolean|null` value kind 的 flat entry。Object member MUST 按源码顺序遍历，array element MUST 按 index 升序遍历。Object child label MUST 使用解码后的 member name，空 key label MUST 为 `""`；array child label MUST 为 `[<index>]`。Root object/array 的 entry set MUST 由 descendants 组成，因此空 object/array MUST 返回空 entries 和 null page。Root scalar MUST 返回唯一 ref `json:#`、label `<root>` 且 kind 对应该 scalar 类型的 entry。首期 entry shape MUST 使用既有 common fields，JSON-specific metadata 和 source location 均为空。Outline MUST 使用现有 limit/page 契约分页，超长 item 截断时 MUST 保留完整 ref、最小非空 label 和分页前进。
+JSON outline MUST 对 object member 和 array element 进行 depth-first preorder 遍历，并为每个可导航 descendant 返回一个带完整 JSON ref、非空 label 和 `object|array|string|number|boolean|null` value kind 的 flat entry。Object member MUST 按源码顺序遍历，array element MUST 按 index 升序遍历。Object child label MUST 使用解码后的 member name，空 key 的正常 label MUST 为两个双引号字符 `""` 且 ref MUST 仍为 `json:#/`；array child label MUST 为 `[<index>]`。Root object/array 的 entry set MUST 由 descendants 组成，因此空 object/array MUST 返回空 entries 和 null page。Root scalar MUST 返回唯一 ref `json:#`、label `<root>` 且 kind 对应该 scalar 类型的 entry。首期 entry shape MUST 使用既有 common fields，JSON-specific metadata 和 source location 均为空。Outline MUST 使用现有 limit/page 契约分页，超长 item 截断时 MUST 保留完整 ref、最小非空 label 和分页前进；分页预算截断后没有可见的正常 label 内容可保留时，最小非空 label MUST 为 `.`，且该 fallback MUST NOT 替代空 key 的正常 label `""`。
 
 #### Scenario: 遍历混合 JSON 树
 - **WHEN** root object 含有 object、array 和 scalar descendants

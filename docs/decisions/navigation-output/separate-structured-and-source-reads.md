@@ -1,7 +1,7 @@
 ---
 title: 分离结构化语义读取与原文读取
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-07-28T11:57:53Z
 purpose: 让结构化导航返回节点语义，同时为需要完整源码 spelling 和布局的调用方保留明确入口。
 background: 语义序列化与逐字节源码保真面向不同读取需求，并需要不同的 adapter 数据责任。

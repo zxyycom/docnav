@@ -1,5 +1,6 @@
 use std::fs;
 
+use cli_config_resolution::{FieldIdentity, SourceCandidate, SourceLocator};
 use docnav_protocol::Operation;
 use serde_json::{json, Value};
 
@@ -49,6 +50,118 @@ fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
         document_path.is_none(),
         "protocol output should not leak internal path shape: {output}"
     );
+}
+
+#[test]
+fn core_linked_json_supports_automatic_and_declared_selection_and_reports_declared_rejection() {
+    let workspace = temp_workspace("linked-json-selection");
+    let project_root = workspace.path().join("project");
+    let docs_dir = project_root.join("docs");
+    fs::create_dir_all(&docs_dir).unwrap();
+    fs::write(
+        docs_dir.join("settings.json"),
+        "{\"first\":1,\"second\":2}\n",
+    )
+    .unwrap();
+    fs::write(docs_dir.join("fallback.md"), "# Markdown fallback\n").unwrap();
+
+    let context = default_context(project_root);
+
+    let automatic = AdapterRuntime
+        .execute_document(DocumentRequest::from_config_context(
+            json_outline_command("docs/settings.json", None, 1, 80),
+            context.clone(),
+        ))
+        .expect("automatic discovery should select the linked JSON adapter");
+    let automatic = write_protocol_json(automatic);
+
+    assert_eq!(automatic["ok"], true);
+    assert_eq!(automatic["operation"], "outline");
+    assert_eq!(automatic["result"]["entries"].as_array().unwrap().len(), 2);
+    assert_eq!(automatic["result"]["entries"][0]["ref"], "json:#/first");
+    assert_eq!(automatic["result"]["entries"][0]["kind"], "number");
+    assert_eq!(automatic["result"]["page"], Value::Null);
+
+    let declared = AdapterRuntime
+        .execute_document(DocumentRequest::from_config_context(
+            json_read_command("docs/settings.json", "json:#/second", Some("docnav-json")),
+            context.clone(),
+        ))
+        .expect("declared selection should dispatch the linked JSON read strategy");
+    let declared = write_protocol_json(declared);
+
+    assert_eq!(declared["ok"], true);
+    assert_eq!(declared["operation"], "read");
+    assert_eq!(declared["result"]["ref"], "json:#/second");
+    assert_eq!(declared["result"]["content"], "2");
+    assert_eq!(declared["result"]["content_type"], "application/json");
+
+    let error = match AdapterRuntime.execute_document(DocumentRequest::from_config_context(
+        json_outline_command("docs/fallback.md", Some("docnav-json"), 1, 80),
+        context,
+    )) {
+        Ok(_) => panic!("declared JSON rejection must not fall back to the Markdown adapter"),
+        Err(error) => error,
+    };
+    let record = error
+        .diagnostic()
+        .clone()
+        .into_record()
+        .expect("diagnostic should be valid");
+    let protocol_error = docnav_protocol::ProtocolError::from_diagnostic_record(&record).unwrap();
+
+    assert_eq!(
+        protocol_error.code(),
+        docnav_protocol::ProtocolDiagnosticCode::AdapterUnavailable
+    );
+    assert_eq!(protocol_error.owner(), "docnav_navigation_routing");
+    assert_eq!(
+        protocol_error
+            .details()
+            .get("adapter_id")
+            .and_then(Value::as_str),
+        Some("docnav-json")
+    );
+}
+
+#[test]
+fn selected_json_uses_only_common_closed_inputs_and_excludes_markdown_native_option() {
+    let workspace = temp_workspace("linked-json-closed-inputs");
+    let project_root = workspace.path().join("project");
+    let docs_dir = project_root.join("docs");
+    fs::create_dir_all(&docs_dir).unwrap();
+    fs::write(
+        docs_dir.join("settings.json"),
+        "{\"first\":1,\"second\":2}\n",
+    )
+    .unwrap();
+
+    let context = default_context(project_root);
+    write_config_file(
+        context.project.project_config_path(),
+        json!({
+            "options": {
+                "docnav-markdown": {
+                    "max_heading_level": 1
+                }
+            }
+        }),
+    );
+
+    let output = AdapterRuntime
+        .execute_document(DocumentRequest::from_config_context(
+            json_outline_command("docs/settings.json", Some("docnav-json"), 2, 1),
+            context,
+        ))
+        .expect("selected JSON should dispatch with common inputs only");
+    let output = write_protocol_json(output);
+
+    assert_eq!(output["ok"], true);
+    assert_eq!(output["operation"], "outline");
+    assert_eq!(output["result"]["entries"].as_array().unwrap().len(), 1);
+    assert_eq!(output["result"]["entries"][0]["ref"], "json:#/second");
+    assert_eq!(output["result"]["entries"][0]["kind"], "number");
+    assert_eq!(output["result"]["page"], Value::Null);
 }
 
 #[test]
@@ -141,4 +254,71 @@ fn missing_adapter_routing_precedes_invalid_native_option() {
             .and_then(Value::as_str),
         Some("missing-adapter")
     );
+}
+
+fn json_outline_command(
+    path: &str,
+    adapter: Option<&str>,
+    page: u32,
+    limit: u32,
+) -> DocumentCommand {
+    let mut candidates = vec![
+        cli_value_candidate("docnav.document.page", "--page", json!(page)),
+        cli_value_candidate("docnav.defaults.pagination.limit", "--limit", json!(limit)),
+        cli_value_candidate(
+            "docnav.defaults.auto_read",
+            "--auto-read",
+            json!("disabled"),
+        ),
+        cli_value_candidate("docnav.defaults.output", "--output", json!("protocol-json")),
+    ];
+    if let Some(adapter) = adapter {
+        candidates.push(cli_value_candidate(
+            "docnav.defaults.adapter",
+            "--adapter",
+            json!(adapter),
+        ));
+    }
+    DocumentCommand {
+        operation: Operation::Outline,
+        path: path.to_owned(),
+        ref_id: None,
+        query: None,
+        cli_source: cli_source(candidates),
+        invocation_log: None,
+        invocation_log_content_root: None,
+        config_paths: Default::default(),
+    }
+}
+
+fn json_read_command(path: &str, ref_id: &str, adapter: Option<&str>) -> DocumentCommand {
+    let mut candidates = vec![
+        cli_value_candidate("docnav.defaults.pagination.limit", "--limit", json!(80)),
+        cli_value_candidate("docnav.defaults.output", "--output", json!("protocol-json")),
+    ];
+    if let Some(adapter) = adapter {
+        candidates.push(cli_value_candidate(
+            "docnav.defaults.adapter",
+            "--adapter",
+            json!(adapter),
+        ));
+    }
+    DocumentCommand {
+        operation: Operation::Read,
+        path: path.to_owned(),
+        ref_id: Some(ref_id.to_owned()),
+        query: None,
+        cli_source: cli_source(candidates),
+        invocation_log: None,
+        invocation_log_content_root: None,
+        config_paths: Default::default(),
+    }
+}
+
+fn cli_value_candidate(identity: &str, flag: &str, value: Value) -> SourceCandidate {
+    SourceCandidate::value(
+        FieldIdentity::new(identity).unwrap(),
+        SourceLocator::CliFlag(flag.to_owned()),
+        value,
+    )
 }
