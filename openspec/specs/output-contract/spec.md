@@ -2,7 +2,6 @@
 
 ## Purpose
 Define Docnav document operation output modes, protocol-response rendering, renderer injection, readable-view presentation, stdout/stderr boundaries, and failure projection. `protocol-contract` owns raw protocol envelopes; adapter capabilities own format facts.
-
 ## Requirements
 ### Requirement: Document output modes are fixed
 
@@ -51,8 +50,9 @@ Document output orchestration MUST execute the selected output plan and control 
 
 #### Scenario: Non-document output remains owner-specific
 
-- **WHEN** `docnav` or an adapter emits help、version、manifest or probe output
+- **WHEN** `docnav` or an adapter emits help、version or manifest output
 - **THEN** that owner keeps its existing mode and framing
+- **THEN** no removed probe output mode or payload is retained
 
 ### Requirement: Readable output supports unstructured outline content
 

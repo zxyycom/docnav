@@ -17,7 +17,8 @@ Docnav runtime invocation logging MUST be inactive unless an explicit CLI option
 
 - **WHEN** invocation logging is enabled with an owner-documented log sink
 - **THEN** invocation log events are written only to that resolved sink
-- **THEN** the event sink is not document output stdout and is not injected into protocol, readable, manifest, probe, or adapter handler payloads
+- **THEN** the event sink is not document output stdout and is not injected into protocol, readable, manifest, or adapter handler payloads
+- **THEN** no removed probe payload is retained as a logging destination
 
 ### Requirement: 调用日志使用结构化 JSONL 事件
 
@@ -79,7 +80,7 @@ Invocation logs MUST NOT inline full document content in the primary invocation 
 
 ### Requirement: 调用日志不得污染 stdout 或协议输出
 
-Invocation logging MUST be isolated from document output stdout and linked adapter handler payloads. Logging MUST NOT add fields to `RequestEnvelope`, `ProtocolResponse`, readable output payloads, manifest output, or probe output.
+Invocation logging MUST be isolated from document output stdout and linked adapter handler payloads. Logging MUST NOT add fields to `RequestEnvelope`, `ProtocolResponse`, readable output payloads, or manifest output. The removed probe output surface MUST NOT be reconstructed as a logging record or destination.
 
 #### Scenario: protocol-json stdout 保持纯净
 
@@ -98,6 +99,7 @@ Invocation logging MUST be isolated from document output stdout and linked adapt
 - **WHEN** core CLI dispatches a linked adapter handler
 - **THEN** the handler still returns only structured result or diagnostic payloads to the caller boundary
 - **THEN** runtime invocation logs are written only to the configured log sink and are not injected into handler input, handler output, or document stdout
+- **THEN** logging emits no removed probe result or record
 
 ### Requirement: 日志写入失败不改变文档操作语义
 

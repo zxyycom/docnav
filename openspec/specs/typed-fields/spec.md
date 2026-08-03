@@ -45,7 +45,7 @@ Definition sets MUST reject duplicate field identities before a consumer uses th
 
 ### Requirement: Consumers keep owner semantics
 
-Typed fields MUST provide reusable field identity, processing locator, value-kind, constraint, default, merge-strategy, validation, and typed-value facts. Docnav core MUST own caller-configurable document-operation parameter declarations, standard-input bindings, and the validation rules selected for pre-dispatch execution. Navigation MUST own source loading, resolution orchestration, standard-input construction, and dispatch. Adapters MUST own format strategies and MAY validate or repeat validation of standard typed values when algorithmic correctness requires it. Adapter validation MUST NOT contribute field declarations or source-resolution facts. Protocol envelopes, contract-validation gates, output rendering, and diagnostic code identity MUST remain with their dedicated consumer capabilities.
+Typed fields MUST provide reusable field identity, processing locator, value-kind, constraint, default, merge-strategy, validation, and typed-value facts. Docnav core MUST own caller-configurable document-operation parameter declarations, standard-input bindings, and the validation rules selected for pre-dispatch execution. Navigation MUST own source loading, resolution orchestration, private manifest-derived pathname lookup, standard-input construction, and dispatch. Private basenames, normalized suffixes, pathname-index entries, matched hints, matched format identities, and registry candidates MUST NOT become typed fields, caller parameters, processing locators, schema metadata, or adapter inputs. Adapters MUST own selected format strategies and MAY validate or repeat validation of standard typed values when algorithmic correctness requires it. Adapter validation MUST NOT contribute field declarations or source-resolution facts. Protocol envelopes, contract-validation gates, output rendering, and diagnostic code identity MUST remain with their dedicated consumer capabilities. When a consumer surface is removed, typed-fields MUST NOT retain that consumer's unreachable field-definition set or processing projection; removing probe therefore removes probe result/reason field definitions without changing the reusable typed-fields core API.
 
 #### Scenario: Navigation consumes the core catalog
 
@@ -53,6 +53,19 @@ Typed fields MUST provide reusable field identity, processing locator, value-kin
 - **THEN** typed fields provide canonical facts and attributed validation failures
 - **THEN** the declarations come from the core-owned catalog
 - **THEN** adapters do not inject or override those field facts
+
+#### Scenario: Private pathname route is produced
+
+- **WHEN** navigation matches an exact basename or normalized suffix hint and resolves its format for registry lookup
+- **THEN** the outcome remains private routing state
+- **THEN** typed-fields does not declare or project the pathname key, format identity, or registry candidate as caller data
+
+#### Scenario: Probe validation consumer is removed
+
+- **WHEN** protocol/contract-validation deletes the probe result surface
+- **THEN** probe result and nested reason `FieldDefSet` consumers are deleted
+- **THEN** no dead probe processing path remains in typed-field projections
+- **THEN** reusable typed-field construction and validation APIs remain unchanged
 
 #### Scenario: Adapter consumes a prepared value
 
@@ -158,6 +171,7 @@ Typed fields MUST support direct `FieldDef` / `FieldDefSet` construction, valida
 
 #### Scenario: Protocol validates direct field sets
 
-- **WHEN** protocol contract validation builds request, response, manifest, or probe fields
+- **WHEN** protocol contract validation builds request, response, or manifest fields
 - **THEN** direct builders continue to express declaration paths, expected shape, validation, defaults, and materialization
 - **THEN** protocol validation remains independent from the product parameter catalog
+- **THEN** no removed probe field set or processing projection is reconstructed

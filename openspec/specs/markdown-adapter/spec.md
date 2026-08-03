@@ -10,17 +10,6 @@ The Markdown adapter MUST implement outline, read, find, and info for Markdown d
 - **WHEN** the selected adapter is Markdown and the document is supported
 - **THEN** outline, read, find, and info are available through the standard document operation flow
 
-### Requirement: Probe recognizes only Markdown format support
-Markdown probe behavior MUST identify Markdown support and report unsupported input without claiming non-Markdown format ownership.
-
-#### Scenario: Markdown file
-- **WHEN** probe receives a Markdown document path
-- **THEN** it reports supported Markdown facts
-
-#### Scenario: Non-Markdown file
-- **WHEN** probe receives a document that is not recognized as Markdown
-- **THEN** it reports unsupported without parsing it as Markdown
-
 ### Requirement: Markdown outline returns flat bounded entries
 Markdown outline MUST return document-order flat entries with adapter-generated refs and compact display. Code-fence pseudo headings MUST NOT become entries. When filtering leaves no visible heading entry, outline MUST return the whole-document ref entry.
 
