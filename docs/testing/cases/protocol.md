@@ -26,7 +26,6 @@ Owner: `docs/protocol.md#请求包装`
 
 Entities:
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_manifest_returns_the_typed_current_manifest`
-- `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_probe_result_returns_semantic_error_with_typed_value`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_request_preserves_defaultable_arguments`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_request_rejects_unmapped_fields_before_raw_decode`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::decode::decode_protocol_response_keeps_operation_result_pairing_semantic`
@@ -36,22 +35,23 @@ Proves:
 - Protocol request decoding 在 raw typed decode 前的 schema stage 拒绝 unmapped request fields。
 - Protocol request decoding preserves defaultable empty arguments for operation-specific later resolution.
 - Manifest wrapper returns the current typed manifest shape.
-- Probe result semantic validation and protocol response operation/result pairing remain semantic-stage failures.
+- Protocol response operation/result pairing remains a semantic-stage failure.
 
 ## Case WB-PROTO-DIAGNOSTICS-001: Protocol diagnostic mapping and projection 保持稳定
 
 Owner: `docs/protocol.md#协议错误对象`
 
 Entities:
-- `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::record::format_record_accepts_candidate_failures`
+- `cargo|docnav-diagnostics:lib:docnav_diagnostics|tests::record::format_unknown_record_has_exact_routing_details`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::navigation_routing_default_guidance_uses_static_registry_language`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::protocol_error_codes_use_diagnostic_categories`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::protocol_error_location_uses_config_issue_path_and_field`
+- `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::protocol_routing_and_content_errors_use_exact_details`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::basic::protocol_error_roundtrips_through_diagnostic_record_projection`
 
 Proves:
 - request、document、adapter-boundary 和 internal category 各有一个 protocol diagnostic code 代表，其 diagnostic projection rule 暴露对应 protocol code。
-- Format diagnostic record 在 primary protocol details object 中保留 subordinate `candidate_failures`。
+- Unknown-format records expose only lexical path、fixed recognition reason and an empty candidates array；selected content failures expose only path and one stable reason；missing explicit adapters require fixed lookup reason/stage plus selection source。
 - Navigation routing protocol errors expose static-registry guidance, and protocol errors round-trip through `DiagnosticRecord` projection while preserving guidance.
 - Invalid-request records with config issue details project protocol owner, location and received value from the diagnostic record.
 
@@ -62,8 +62,6 @@ Owner: `docs/protocol.md#schema-所有权`
 Entities:
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::manifest_contract_rejects_schema_backed_field_failures`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::parses_protocol_fixtures_into_shared_types`
-- `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::probe_contract_rejects_schema_backed_field_failures`
-- `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::probe_schema_rejects_missing_reasons_and_bad_confidence`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_auto_read_contract_accepts_exact_outline_and_find_success_objects`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_auto_read_contract_rejects_status_error_and_extra_fields`
 - `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::protocol_auto_read_contract_rejects_unstructured_read_and_info_placement`
@@ -72,4 +70,16 @@ Entities:
 
 Proves:
 - 作为两条 output paths 统一输入的 success/failure `ProtocolResponse` fixtures 通过既有 public JSON Schema、runtime typed contract validation，并 deserialize 为共享 protocol types。
-- protocol request、protocol response、manifest 和 probe 的 unknown fields、missing required fields、wrong types、version constants、field constraints 和 semantic boundary 被实现测试消费。
+- protocol request、protocol response 和 manifest 的 unknown fields、missing required fields、wrong types、version constants、field constraints 和 semantic boundary 被实现测试消费；schema and typed response decoding both reject non-canonical adapter-unavailable details。
+
+## Case WB-PROTO-MANIFEST-ROUTING-001: Manifest routing hints share one public contract
+
+Owner: `docs/adapter-contract.md#manifest-元数据`
+
+Entities:
+- `cargo|docnav-protocol:lib:docnav_protocol|tests::schema::manifest_routing_hints_decode_and_round_trip_through_public_contract`
+
+Proves:
+- Public manifest schema and shared typed decoding both accept complete-basename `filenames[]` and leading-dot compound `extensions[]` routing hints.
+- Suffix hints may use non-ASCII and punctuation characters；the shared constraint only requires a non-bare leading dot and rejects `/` or `\\` separators.
+- Decoding and serialization preserve the routing hint arrays without creating a second transport shape.

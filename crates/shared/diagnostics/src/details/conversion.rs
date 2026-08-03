@@ -1,7 +1,7 @@
 use super::{
-    AdapterReasonDetails, BoundaryDetails, DiagnosticDetails, FieldReasonDetails,
-    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
-    PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    AdapterUnavailableDetails, BoundaryDetails, DiagnosticDetails, DocumentContentInvalidDetails,
+    FieldReasonDetails, FormatUnknownDetails, InternalDetails, PathDetails, PathEncodingDetails,
+    PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
 impl From<FieldReasonDetails> for DiagnosticDetails {
@@ -44,23 +44,21 @@ impl From<PathEncodingDetails> for DiagnosticDetails {
     }
 }
 
+impl From<DocumentContentInvalidDetails> for DiagnosticDetails {
+    fn from(details: DocumentContentInvalidDetails) -> Self {
+        Self::DocumentContentInvalid {
+            path: details.path,
+            reason: details.reason,
+        }
+    }
+}
+
 impl From<FormatUnknownDetails> for DiagnosticDetails {
     fn from(details: FormatUnknownDetails) -> Self {
         Self::FormatUnknown {
             path: details.path,
             reason: details.reason,
             candidates: details.candidates,
-            candidate_failures: details.candidate_failures,
-        }
-    }
-}
-
-impl From<FormatAmbiguousDetails> for DiagnosticDetails {
-    fn from(details: FormatAmbiguousDetails) -> Self {
-        Self::FormatAmbiguous {
-            path: details.path,
-            candidates: details.candidates,
-            candidate_failures: details.candidate_failures,
         }
     }
 }
@@ -91,13 +89,14 @@ impl From<RefReasonDetails> for DiagnosticDetails {
     }
 }
 
-impl From<AdapterReasonDetails> for DiagnosticDetails {
-    fn from(details: AdapterReasonDetails) -> Self {
-        Self::AdapterReason {
-            adapter_id: details.adapter_id,
-            reason: details.reason,
-            selection_source: details.selection_source,
-            stage: details.stage,
+impl From<AdapterUnavailableDetails> for DiagnosticDetails {
+    fn from(details: AdapterUnavailableDetails) -> Self {
+        let (adapter_id, reason, selection_source, stage) = details.into_parts();
+        Self::AdapterUnavailable {
+            adapter_id,
+            reason,
+            selection_source,
+            stage,
         }
     }
 }

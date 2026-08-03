@@ -6,8 +6,8 @@ use docnav_adapter_contracts::{
 };
 use docnav_protocol::{
     AdapterIdentity, AutoReadReason, AutoReadResult, Cost, Entry, FindResult, FormatDescriptor,
-    InfoResult, Manifest, OperationResult, OutlineResult, ProbeReason, ProbeReasonCode,
-    ProbeResult, ProtocolResponse, ReadResult, UnstructuredOutlineReason,
+    InfoResult, Manifest, OperationResult, OutlineResult, ProtocolResponse, ReadResult,
+    UnstructuredOutlineReason,
 };
 use serde_json::json;
 
@@ -149,21 +149,6 @@ impl RecordingAdapter {
 }
 
 impl Adapter for RecordingAdapter {
-    fn probe(&self, path: &str) -> ProbeResult {
-        ProbeResult {
-            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
-            adapter_id: "docnav-markdown".to_owned(),
-            path: path.to_owned(),
-            supported: true,
-            format: Some("stub".to_owned()),
-            confidence: 1.0,
-            reasons: vec![ProbeReason {
-                code: ProbeReasonCode::ContentMatch,
-                detail: "recording adapter accepts test path".to_owned(),
-            }],
-        }
-    }
-
     fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
         Ok(self.outline_result.clone())
     }
@@ -195,6 +180,7 @@ fn recording_manifest() -> Manifest {
         formats: vec![FormatDescriptor {
             id: "stub".to_owned(),
             extensions: vec![".stub".to_owned()],
+            filenames: vec![],
             content_types: vec!["text/stub".to_owned()],
         }],
     }

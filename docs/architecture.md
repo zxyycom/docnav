@@ -2,9 +2,11 @@
 
 本文是 Docnav v0 组件职责、输出分层、adapter 选择和进程边界的主规范。
 
+**Current routing contract：** manifest pathname routing、route-before-document-I/O 与 probe deletion 的组件职责已经由代码、测试和 release artifact 验证。其它状态边界仍按各自明确标注和证据判断。
+
 ## 核心定位
 
-Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责命令类型识别、非 navigation 命令、adapter registry 管理、配置管理入口、项目初始化、输出模式和错误投影。Navigation command 的 adapter selection、typed 参数解析、request construction 和 selected adapter dispatch 由 `docnav-navigation` 拥有。调用入口共享 `docnav` CLI 契约，不复制格式识别、adapter selection 或解析逻辑。
+Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责命令类型识别、非 navigation 命令、adapter registry 管理、词法 routing pathname 派生、配置管理入口、项目初始化、输出模式和错误投影。Navigation command 的 manifest-derived adapter selection、post-selection path normalization sequencing、typed 参数解析、request construction 和 selected adapter dispatch 由 `docnav-navigation` 拥有。调用入口共享 `docnav` CLI 契约，不复制 pathname routing、adapter selection 或格式解析逻辑。
 
 核心流程：
 
@@ -12,7 +14,7 @@ Docnav 是 CLI-first 的文档导航系统。`docnav` 是核心 CLI，负责命�
 outline -> ref -> read
 ```
 
-`path` 定位文档并供 `docnav` 选择 adapter；`ref` 只定位当前文档内部区域，由 adapter 生成和解析；`page` 表示分页位置；`limit` 表示 adapter-owned numeric budget，具体单位由 adapter owner 文档声明。
+Caller `path` 先与 command cwd 词法派生 invocation-private routing pathname，供 navigation 在 target-document I/O 前选择 adapter；选择后才形成 operation 使用的 filesystem-normalized document path。`ref` 只定位当前文档内部区域，由 adapter 生成和解析；`page` 表示分页位置；`limit` 表示 adapter-owned numeric budget，具体单位由 adapter owner 文档声明。
 
 ## 输出分层
 
@@ -31,7 +33,7 @@ Runtime invocation log 是第三类独立审计 sink，不属于 document output
 普通 CLI 输出优先服务阅读体验；需要机器稳定解析、兼容校验或自动化断言时，调用完整协议接口。
 Document operation 在执行 output plan 前把成功或失败统一表示为 `ProtocolResponse`。Public document output 只声明 `readable-view` 和 `protocol-json`：省略 output 或选择 `readable-view` 时，core 构造带内置 renderer 的 `Rendered`；选择 `protocol-json` 时构造 `ProtocolJson`。Help、version 和其它非文档命令的成功输出保持对应 owner 的 PlainText 或命令自有 JSON。
 
-`docnav` 对文档操作使用单一执行管线：core 完成命令分流、config source descriptor/path handoff 和输出模式识别；`docnav-navigation` 完成 raw config source loading、adapter selection、typed 参数解析、probe、adapter library dispatch 和结果判断。Validated structured outline/find base success 还可由 navigation 按 resolved auto-read mode 复用同一 selected adapter 的 read strategy，并在 output plan 前选择 base 或 composed `ProtocolResponse`。管线不按输出模式分叉；正常结果和提前发生的 document failure 都通过既有 protocol projection 形成 `ProtocolResponse`，再由 `ProtocolJson` 或 `Rendered` 执行输出。
+`docnav` 对文档操作使用单一执行管线：core 完成命令分流、lexical routing pathname 与 config source descriptor/path handoff 和输出模式识别；`docnav-navigation` 在 target-document I/O 前完成 private manifest pathname lookup 或 explicit exact adapter-id lookup，选择成功后才规范化 document path/access，然后完成 typed 参数解析、adapter library dispatch 和结果判断。Validated structured outline/find base success 还可由 navigation 按 resolved auto-read mode 复用同一 selected adapter 的 read strategy，并在 output plan 前选择 base 或 composed `ProtocolResponse`。管线不按输出模式分叉；正常结果和提前发生的 document failure 都通过既有 protocol projection 形成 `ProtocolResponse`，再由 `ProtocolJson` 或 `Rendered` 执行输出。
 
 选择机器可读入口表示调用方优先需要稳定、可预测、便于解析的输出；选择阅读入口表示调用方优先需要完成一次可继续的阅读链路。具体 stdout/stderr 通道、JSON shape 和错误包装由 [输出模式](output.md) 与 [原始协议](protocol.md) 定义。
 
@@ -42,10 +44,11 @@ Document operation 在执行 output plan 前把成功或失败统一表示为 `P
 负责：
 
 - 提供 `outline`、`read`、`find`、`info`、`init`、`doctor`、`version`、`config` 和 `adapter list`。
-- 维护 core release 内置 adapter static registry；registry 注册 linked adapter definition factory，`adapter list` 展示 definition 中的 adapter metadata。
+- 维护 core release 内置 adapter static registry；registry 注册 linked adapter definition factory，验证 normalized format identity、same-kind exact filename 与 ASCII-normalized suffix 的唯一性，`adapter list` 展示 definition 中的 adapter metadata。
+- 拥有 lexical routing pathname 派生和 filesystem-backed document path/access normalization 的 path policy；前者不访问目标文档，后者只由 navigation 在 adapter selection 成功后进入。
 - 提供 `.docnav/` 项目配置和用户级 `docnav` 配置的只读 `config inspect` 命令入口；config path flag、`config`/`init`/`doctor` target 语义见 [CLI](cli.md)，navigation command 的 config source descriptor/path handoff、raw source loading 和参数解析规则见 [Navigation Input Resolution](navigation-input-resolution.md)。
 - 解析命令类型；非 navigation 命令由 core 自己处理。
-- 在一个 core-owned catalog 中声明 release 接受的 document operation 参数及其 source locator、类型、默认值、merge、operation/consumer binding 和可选 exact adapter-id 标记；其中 `docnav.defaults.auto_read` 同时拥有 `--auto-read` 和 `defaults.auto_read` surface。对 navigation 命令把 operation、固定 positional/path facts、normalized document CLI source、config source descriptors/paths、catalog 和 adapter registry 交给 `docnav-navigation`。
+- 在一个 core-owned catalog 中声明 release 接受的 document operation 参数及其 source locator、类型、默认值、merge、operation/consumer binding 和可选 exact adapter-id 标记；其中 `docnav.defaults.auto_read` 同时拥有 `--auto-read` 和 `defaults.auto_read` surface。对 navigation 命令词法派生 invocation-private routing pathname，并把 operation、固定 positional/path facts、routing pathname、normalized document CLI source、config source descriptors/paths、catalog 和 adapter registry 交给 `docnav-navigation`；该阶段不得访问目标文档。
 - 统一处理输出模式和错误映射。
 - 接收并校验 document pipeline 完成的 `ProtocolResponse`，把 navigation 之前发生的 document failure 通过既有 projection 表示为同一类型，并按 CLI mapping 构造 `Rendered` 或 `ProtocolJson`。
 - 拥有 runtime invocation logging orchestration：按 [CLI](cli.md) 解析显式启用、日志 sink/path 和可选 content capture root，围绕 navigation-owned adapter selection、request construction、selected adapter dispatch、结果校验和输出投影边界记录 metadata-only JSONL 事件，并保证未启用或日志写入失败时不改变 document operation outcome。
@@ -56,12 +59,12 @@ Invocation logging 不把 adapter、protocol envelope 或输出层变成日志 o
 
 负责：
 
-- 使用成熟 parser 识别和解析对应格式。
+- 使用成熟 parser 读取并解析已选 operation 的实际文档；pathname hint 不替代格式有效性判断。
 - 生成扁平 outline、ref、业务语义结果和下一页 page。
 - 按自身契约解析 ref 并读取。
 - 消费 core/navigation 已完成来源解析和标准类型 materialization 的 closed operation-specific input；算法正确性需要时可以执行或重复格式语义校验。Auto-read mode 不进入该 input；base outline/find 与 optional nested read 对 adapter 仍是各自独立的单次 operation dispatch。
 - 返回 typed operation result 或 adapter error，不选择 output plan，也不拥有通用 readable-view 渲染规则。
-- 通过 registry-facing adapter definition/factory 暴露 adapter 身份、manifest/format metadata、固定 strategy 和可选 full-read capabilities/hooks。
+- 通过 registry-facing adapter definition/factory 暴露 adapter 身份、manifest format identity、complete-basename suffix/exact-filename hints、固定 operation strategy 和可选 full-read capabilities/hooks；不执行 automatic-selection detection，也不接收 matched routing state。
 
 adapter 只处理本格式请求，不承担跨格式路由、项目初始化、全局配置管理或调用入口适配。
 
@@ -69,12 +72,12 @@ adapter 只处理本格式请求，不承担跨格式路由、项目初始化、
 
 共享库只抽取稳定契约、机械流程和跨组件重复实现。共享 crate owner：
 
-新增或扩大共享 adapter 抽象，至少需要两个真实异构 adapter 在完整行为面上形成同一职责的实现证据；只完成 registration、probe 或单个 operation 不足以证明共享边界。完整证据覆盖 fixed operations、ref/pagination、structured/full-read、raw protocol 和 generic readable path，以及该格式声明需要的格式专用 presentation。证据形成前，格式差异留在 adapter 私有实现，不预先增加共享参数、扩展点或兼容层。
+新增或扩大共享 adapter 抽象，至少需要两个真实异构 adapter 在完整行为面上形成同一职责的实现证据；只完成 registration 或单个 operation 不足以证明共享边界。完整证据覆盖 fixed operations、ref/pagination、structured/full-read、raw protocol 和 generic readable path，以及该格式声明需要的格式专用 presentation。证据形成前，格式差异留在 adapter 私有实现，不预先增加共享参数、扩展点或兼容层。
 
-- `docnav-protocol`：定义原始 protocol request/response、page、错误投影和稳定字段，包括 outline/find success-only optional `auto_read` object；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest/probe typed contract helper。调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
+- `docnav-protocol`：定义原始 protocol request/response、page、错误投影和稳定字段，包括 outline/find success-only optional `auto_read` object；可提供 JSON decode、protocol field metadata、request id helper，以及 request direct input 与 response/manifest typed contract helper。它不定义 pathname match 或 probe result surface；调用方仍拥有错误归属、field path、diagnostic text、stdout/stderr placement 和 exit behavior。
 - `docnav-readable`：提供 private readable `Value` 转换、仓库内 renderer config、`ReadableViewKind`、block/framing primitives 和 conformance vector 类型。它只消费调用方准备的 private readable `Value`，不拥有 `ProtocolResponse`、operation/result/error mapping、public output mode 或 stdout/stderr 编排。
 - `docnav-adapter-contracts`：定义 core release 内置 adapter layer 的 registry-facing `AdapterDefinition`、definition validation、固定 `Adapter` strategy interface、closed `StandardOperationInput`、adapter error、full-read capabilities/hooks 和共享 operation result contract。格式 adapter 依赖本 crate 暴露 definition/factory 与 strategy；本 crate 不拥有 caller-configurable parameter declaration、source resolution、parser、ref grammar、routing policy、输出模式、CLI surface 或 static registry placement。
-- `docnav-navigation`：internal document operation orchestration owner，负责 raw project/user config source loading、full-catalog config validation、adapter selection、selected adapter/current-operation catalog filtering、typed-field resolution、从同一个 `ResolutionResult` 构造 protocol `Options` / closed `StandardOperationInput` / core output projection，并通过 selected adapter definition 调用 `outline/read/find/info` strategy。Validated base response 后的 current-result unique-ref 判定、existing read typed dispatch 和 base/composed response selection 也由本 crate 拥有。它不拥有 parameter catalog authoring、static registry 数据源、格式解析、ref 语法、外部 CLI 命令、格式算法语义或非 navigation 命令行为。
+- `docnav-navigation`：internal document operation orchestration owner，负责 raw project/user config source loading、full-catalog config validation、private complete-basename pathname lookup 或 explicit exact adapter-id lookup、route-before-I/O sequencing、选择成功后进入 core-owned document path/access normalization、selected adapter/current-operation catalog filtering、typed-field resolution、从同一个 `ResolutionResult` 构造 protocol `Options` / closed `StandardOperationInput` / core output projection，并通过 selected adapter definition 调用 `outline/read/find/info` strategy。Validated base response 后的 current-result unique-ref 判定、existing read typed dispatch 和 base/composed response selection 也由本 crate 拥有。它不拥有 parameter catalog authoring、static registry 数据源、格式解析、ref 语法、外部 CLI 命令、格式算法语义或非 navigation 命令行为；derived indexes、matched hint 和 matched format identity 始终是 invocation-private implementation facts。
 - `docnav-json-io`：低层 JSON IO helper，位于 document output 编排下层，只负责 JSON value serialization、newline writing 和 serialization/write failure plumbing；不拥有 schema、protocol/readable wrapper、diagnostic projection、output mode 或 exit code policy。
 - `docnav-output`：document operation 输出编排 owner，位于 `docnav-readable` 和 `docnav-json-io` 之上、`docnav` core 和 `docnav-navigation` 之下；拥有 `ProtocolResponse` 到内置 `RenderStrategy` 的 operation/result/error mapping，包括 successful `auto_read` 到 readable header 与 nested content block 的映射，并从统一 response 执行 `ProtocolJson` 或携带一个 `RenderStrategy` 的 `Rendered`。它负责 renderer invocation 与 document stdout/stderr，help、version、adapter list 或 doctor 的成功输出仍由各命令 owner 定义。
 - `docnav-text-cost`：共享 text cost helper owner，提供只接收纯文本并返回 protocol-compatible `Measurement` 的 `line_cost`、`byte_cost` 和 `token_cost`。调用方拥有文本选择、helper function 集合选择、measurement 顺序、scope 附加、输出暴露和分页预算语义；本 crate 不解析格式、ref、path、operation、adapter policy 或 readable 输出。
@@ -94,9 +97,10 @@ Parameter aggregation 是上述 existing pieces 对 core catalog canonical field
 
 ```text
 caller
-  -> docnav：解析命令类型、按 CLI 规则选择 config source descriptors/paths、处理非 navigation 命令和输出模式
-  -> docnav-navigation：加载并校验 raw config sources、解析 routing 输入、选择 adapter definition、解析 selected-operation typed 参数，并从一个 resolution result 构造 protocol、closed strategy input 和 core output projection
-  -> selected adapter strategy：消费 closed input，解析、导航、执行必要的格式语义校验并生成 ref 和语义结果
+  -> docnav：解析命令类型、词法派生 routing pathname、按 CLI 规则选择 config source descriptors/paths、处理非 navigation 命令和输出模式
+  -> docnav-navigation：加载并校验 raw config sources，在 target-document I/O 前完成 explicit exact-id 或 manifest pathname lookup
+  -> docnav-navigation：选择 adapter definition 后规范化 document path/access、解析 selected-operation typed 参数，并从一个 resolution result 构造 protocol、closed strategy input 和 core output projection
+  -> selected adapter strategy：消费 closed input，读取实际 document view，解析、导航、执行必要的格式语义校验并生成 ref 和语义结果
   <- typed operation result 或 adapter error
   -> docnav-navigation：校验 base response；符合 current-result unique-ref 条件时，以同一路径、adapter 和 opaque ref 调用 existing read strategy
   <- optional typed read result 或 adapter error
@@ -125,11 +129,11 @@ core-owned catalog declaration
 
 Catalog inventory 是 `page`、`limit`、`pagination.enabled`、`output`、`auto_read` 和 exact-tagged Markdown `max_heading_level`。每项由 core author canonical identity、已启用 locator、标准类型、constraints/default、merge、operation binding 和 closed consumer binding；adapter definition 不声明或发现产品参数。`docnav.defaults.auto_read` 的 CLI/config locator、default、来源顺序和 composition 规则由 [Navigation Input Resolution](navigation-input-resolution.md#unique-ref-auto-read-composition) 单点拥有。Core 的 bounded CLI parser 从 operation-scoped catalog view 生成 arguments/help 与 normalized typed/invalid candidates。
 
-Navigation 使用 routing inputs 选择 adapter，以 full catalog 校验 config shape 和 known adapter namespaces，再以 selected adapter exact tag/current operation view 检查 candidate applicability。Selected candidates 进入 canonical priority、merge、validation 和 materialization；不属于 selected view 的 explicit candidate 或 selected-adapter config value 在 dispatch 前失败。最终 resolution 的 sibling projections 分别提供 protocol `Options`、closed `StandardOperationInput` 和 core-owned output/orchestration facts。`pagination.enabled` 只参与 effective `limit` 归一化；`output` 与 `auto_read` 都不进入 adapter input。
+Navigation 使用 routing inputs 选择 adapter，以 full catalog 校验 config shape 和 known adapter namespaces，再以 selected adapter exact tag/current operation view 检查 candidate applicability。Adapter selection 在该 Current parameter-derivation 图中遵循本文的 pathname lookup、route-before-I/O 和 no-probe contract。Selected candidates 进入 canonical priority、merge、validation 和 materialization；不属于 selected view 的 explicit candidate 或 selected-adapter config value 在 dispatch 前失败。最终 resolution 的 sibling projections 分别提供 protocol `Options`、closed `StandardOperationInput` 和 core-owned output/orchestration facts。`pagination.enabled` 只参与 effective `limit` 归一化；`output` 与 `auto_read` 都不进入 adapter input。
 
 同一 document operation 的 public flags 和 closed consumer targets 保持唯一；catalog construction 在 argv parsing 前拒绝 duplicate/incompatible identity、locator、adapter tag、operation 或 binding。具体 CLI static/generated 分界由 [CLI](cli.md) 拥有；full/selected view、candidate applicability 和 request projection 由 [Navigation Input Resolution](navigation-input-resolution.md) 拥有；closed strategy boundary 由 [适配器契约](adapter-contract.md) 拥有。
 
-Invocation logging 的插桩点跟随同一调用链，但不改变链路输入输出：可记录 core CLI invocation metadata、navigation adapter selection outcome、`RequestEnvelope` 构造状态、selected adapter dispatch outcome、operation/output status、duration、响应大小摘要和 bounded diagnostic summary。日志事件使用 JSON Lines / NDJSON，一行一个独立 JSON event；事件字段 shape 由 [JSON Schema 索引](schemas/json-schema.md) 中的 invocation log schema 校验，字段语义和启用语义仍由本文件、[CLI](cli.md)、[Navigation Input Resolution](navigation-input-resolution.md)、[输出模式](output.md) 和 [原始协议](protocol.md) 分别拥有。
+Invocation logging 的插桩点跟随同一调用链，但不改变链路输入输出：可记录 core CLI invocation metadata、navigation adapter selection outcome、selected adapter id、`RequestEnvelope` 构造状态、selected adapter dispatch outcome、operation/output status、duration、响应大小摘要和 bounded diagnostic summary；不得投影 matched filename/suffix、matched format identity 或 derived lookup index。日志事件使用 JSON Lines / NDJSON，一行一个独立 JSON event；事件字段 shape 由 [JSON Schema 索引](schemas/json-schema.md) 中的 invocation log schema 校验，字段语义和启用语义仍由本文件、[CLI](cli.md)、[Navigation Input Resolution](navigation-input-resolution.md)、[输出模式](output.md) 和 [原始协议](protocol.md) 分别拥有。
 
 ## 运行边界
 
@@ -137,5 +141,5 @@ Invocation logging 的插桩点跟随同一调用链，但不改变链路输入�
 - Adapter layer 只返回 typed operation result 或 adapter error；stdout/stderr、退出码和 readable/protocol 包装由 `docnav` core/output owner 处理。
 - Auto-read 是 navigation 对既有 single-operation adapter dispatch 的 bounded composition，不新增 adapter operation、adapter mode、protocol request argument 或第二个 output attempt。
 - 普通 CLI 默认输出和 `docnav --output readable-view` 使用内置 renderer；机器校验使用 `docnav --output protocol-json`。
-- `doctor` 检查项目/用户配置、static registry 和 adapter layer 可用性。
+- `doctor` 检查项目/用户配置、static registry format/pathname-hint 唯一性和 adapter layer 可用性。
 - Runtime invocation logging 是本地运行时审计能力，不是测试/验证日志系统。它不得复用 verify/smoke `.log` 文件或 code-quality observability output 作为运行时 contract；这些开发期 artifact 仍由测试和质量工具 owner 定义。默认实现使用仓库内 JSONL writer；引入外部日志框架前必须完成依赖、初始化行为、feature 选择、输出 sink 隔离和 stdout purity 审计。

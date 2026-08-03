@@ -125,10 +125,6 @@ export function validateSchemas() {
     {
       schema: SCHEMAS.manifest,
       data: [EXAMPLES.manifest]
-    },
-    {
-      schema: SCHEMAS.probeResult,
-      data: [EXAMPLES.probeResult]
     }
   ];
 

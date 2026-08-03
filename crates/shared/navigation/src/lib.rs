@@ -1,8 +1,8 @@
 //! Source resolution, multi-adapter routing, and strategy dispatch for Docnav.
 //!
-//! Registries expose adapter definitions directly. Navigation probes and selects among all
-//! registered adapters, constructs closed operation input, and dispatches through the selected
-//! strategy while preserving adapter-owned capabilities and full-read hooks.
+//! Registries expose adapter definitions directly. Navigation selects from manifest-owned
+//! pathname hints, constructs closed operation input, and dispatches through the selected strategy
+//! while preserving adapter-owned capabilities and full-read hooks.
 
 mod auto_read;
 mod config_source;
@@ -20,6 +20,7 @@ use serde_json::Value;
 
 pub use context::{select_navigation_context, NavigationContextSelection};
 pub use error::NavigationError;
+pub use execution::PreparedNavigationSelection;
 #[cfg(test)]
 use execution::{execute_loaded_navigation_command, validate_navigation_response};
 pub use model::{
@@ -42,7 +43,8 @@ pub use protocol::{
     OperationInput,
 };
 pub use routing::{
-    select_adapter, AdapterSelectionRequest, CandidateEvidence, NavigationAdapterRegistry,
+    select_adapter, AdapterSelectionRequest, NavigationAdapterRegistry, RegistryRouting,
+    RegistryRoutingError,
 };
 
 /// Builds the adapter-routing CLI projection independently from product parameters.
@@ -66,6 +68,29 @@ where
         catalog,
         registry,
     )
+}
+
+pub fn prepare_navigation_command<'a, R>(
+    command: NavigationCommand,
+    config_sources: NavigationConfigSourceDescriptors,
+    registry: &'a R,
+) -> Result<PreparedNavigationSelection<'a>, NavigationError>
+where
+    R: NavigationAdapterRegistry + ?Sized,
+{
+    execution::prepare_loaded_navigation_command(
+        command,
+        load_navigation_config_sources(config_sources),
+        registry,
+    )
+}
+
+pub fn execute_prepared_navigation_command(
+    prepared: PreparedNavigationSelection<'_>,
+    document_path: String,
+    catalog: &DocumentParameterCatalog,
+) -> Result<NavigationCommandOutcome, NavigationError> {
+    execution::execute_prepared_navigation_command(prepared, document_path, catalog)
 }
 
 pub fn inspect_navigation_config_sources(

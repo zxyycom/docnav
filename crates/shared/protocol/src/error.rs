@@ -3,11 +3,11 @@ use serde_json::Value;
 use std::fmt;
 
 use docnav_diagnostics::{
-    typed_codes, AdapterReasonDetails, DiagnosticCode, DiagnosticRecord, DiagnosticRecordDraft,
-    DiagnosticSource, FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails,
-    FormatUnknownDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
-    ProtocolDiagnosticCode, ProtocolDiagnosticMarker, RefCandidateCountDetails, RefDetails,
-    RefReasonDetails,
+    typed_codes, AdapterUnavailableDetails, DiagnosticCode, DiagnosticRecord,
+    DiagnosticRecordDraft, DiagnosticSource, DocumentContentInvalidDetails,
+    DocumentContentInvalidReason, FieldReasonDetails, FormatUnknownDetails, InternalDetails,
+    PathDetails, PathEncodingDetails, PathReasonDetails, ProtocolDiagnosticCode,
+    ProtocolDiagnosticMarker, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
 use crate::ErrorDetails;
@@ -218,22 +218,18 @@ impl ProtocolError {
         )
     }
 
-    pub fn format_unknown(
+    pub fn document_content_invalid(
         path: impl Into<String>,
-        reason: impl Into<String>,
-        candidates: Vec<FormatCandidateDetails>,
+        reason: DocumentContentInvalidReason,
     ) -> Self {
-        Self::with_default_message::<typed_codes::protocol::FormatUnknown>(
-            FormatUnknownDetails::new(path, reason, candidates),
+        Self::with_default_message::<typed_codes::protocol::DocumentContentInvalid>(
+            DocumentContentInvalidDetails::new(path, reason),
         )
     }
 
-    pub fn format_ambiguous(
-        path: impl Into<String>,
-        candidates: Vec<FormatCandidateDetails>,
-    ) -> Self {
-        Self::with_default_message::<typed_codes::protocol::FormatAmbiguous>(
-            FormatAmbiguousDetails::new(path, candidates),
+    pub fn format_unknown(path: impl Into<String>) -> Self {
+        Self::with_default_message::<typed_codes::protocol::FormatUnknown>(
+            FormatUnknownDetails::new(path),
         )
     }
 
@@ -253,9 +249,12 @@ impl ProtocolError {
         ))
     }
 
-    pub fn adapter_unavailable(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
+    pub fn adapter_unavailable(
+        adapter_id: impl Into<String>,
+        selection_source: impl Into<String>,
+    ) -> Self {
         Self::with_default_message::<typed_codes::protocol::AdapterUnavailable>(
-            AdapterReasonDetails::new(adapter_id, reason),
+            AdapterUnavailableDetails::new(adapter_id, selection_source),
         )
     }
 
@@ -274,7 +273,9 @@ impl ProtocolError {
             .map_err(|source| InvalidErrorDetail {
                 code: self.code,
                 reason: source.to_string(),
-            })
+            })?;
+        self.to_record_draft(DiagnosticSource::new("docnav-protocol-validation"))
+            .map(|_| ())
     }
 
     pub fn to_record_draft(
@@ -294,11 +295,11 @@ impl ProtocolError {
             ProtocolDiagnosticCode::DocumentEncodingUnsupported => {
                 self.record_draft::<typed_codes::protocol::DocumentEncodingUnsupported>(source)
             }
+            ProtocolDiagnosticCode::DocumentContentInvalid => {
+                self.record_draft::<typed_codes::protocol::DocumentContentInvalid>(source)
+            }
             ProtocolDiagnosticCode::FormatUnknown => {
                 self.record_draft::<typed_codes::protocol::FormatUnknown>(source)
-            }
-            ProtocolDiagnosticCode::FormatAmbiguous => {
-                self.record_draft::<typed_codes::protocol::FormatAmbiguous>(source)
             }
             ProtocolDiagnosticCode::RefNotFound => {
                 self.record_draft::<typed_codes::protocol::RefNotFound>(source)

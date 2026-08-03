@@ -57,15 +57,15 @@ Proves:
 - find 命中 document head 且当前 structured outline 至少有一个可见 heading entry 时返回 `HEAD:leading`，使用该 ref read 可读取包含命中文本的 content。
 - find 命中 document head 但当前 outline 使用 `doc:full` fallback 时，返回 ref 仍可 read 到包含命中文本的内容。
 
-## Case WB-MD-ERROR-001: Markdown adapter document error 稳定
+## Case WB-MD-ERROR-001: Selected Markdown strategy validates the actual document
 
 Owner: `docs/adapters/markdown.md#错误分类`
 
 Entities:
-- `cargo|docnav-markdown:test:adapter|options_error_display::non_utf8_document_returns_stable_encoding_error`
+- `cargo|docnav-markdown:test:adapter|options_error_display::selected_outline_reads_actual_document_and_returns_stable_encoding_error`
 
 Proves:
-- non-UTF-8 document 返回稳定 encoding error。
+- Definition-dispatched Markdown outline validates the actual document after selection and preserves the stable encoding diagnostic for non-UTF-8 content, independent of the pathname hint.
 
 ## Case WB-MD-FIND-001: Markdown find ref 和 display 语义稳定
 
@@ -79,7 +79,7 @@ Proves:
 - find 匹配 hidden heading 时，ref 指向当前 visible region 或 full document fallback。
 - find display 保留匹配片段且 ref 不受 display 内容影响。
 
-## Case WB-MD-META-001: Markdown manifest/probe/info 元数据稳定
+## Case WB-MD-META-001: Markdown manifest/definition/info 元数据稳定
 
 Owner: `docs/adapter-contract.md#manifest-元数据`
 
@@ -87,10 +87,9 @@ Entities:
 - `cargo|docnav-markdown:test:adapter|meta::definition_declares_manifest_and_full_read_capabilities`
 - `cargo|docnav-markdown:test:adapter|meta::info_returns_markdown_summary`
 - `cargo|docnav-markdown:test:adapter|meta::manifest_declares_markdown_v0_identity_and_formats`
-- `cargo|docnav-markdown:test:adapter|meta::probe_returns_format_evidence_without_navigation_payload`
 
 Proves:
-- manifest 声明 Markdown v0 identity 和 format metadata，probe 返回 format evidence 而不泄漏 navigation payload。
+- manifest 声明 Markdown v0 identity 和 format metadata。
 - info 返回 Markdown summary。
 - Markdown registry-facing definition exposes manifest identity、linked strategy and the declared full-read capability set.
 

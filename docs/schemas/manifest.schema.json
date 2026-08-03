@@ -42,6 +42,7 @@
         "required": [
           "id",
           "extensions",
+          "filenames",
           "content_types"
         ],
         "properties": {
@@ -54,7 +55,21 @@
             "minItems": 1,
             "items": {
               "type": "string",
-              "pattern": "^\\.[A-Za-z0-9][A-Za-z0-9._-]*$"
+              "pattern": "^\\.[^/\\\\]+$"
+            }
+          },
+          "filenames": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^/\\\\]+$",
+              "not": {
+                "enum": [
+                  ".",
+                  ".."
+                ]
+              }
             }
           },
           "content_types": {

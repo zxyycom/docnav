@@ -2,7 +2,7 @@ pub type PositiveInteger = std::num::NonZeroU32;
 pub type Metadata = serde_json::Map<String, serde_json::Value>;
 pub type ErrorDetails = std::collections::BTreeMap<String, serde_json::Value>;
 
-pub use docnav_diagnostics::ProtocolDiagnosticCode;
+pub use docnav_diagnostics::{DocumentContentInvalidReason, ProtocolDiagnosticCode};
 
 mod constants;
 mod contract_validation;
@@ -14,17 +14,15 @@ mod operation;
 mod operation_result;
 mod options;
 mod positive_integer;
-mod probe;
 mod request_context;
 mod request_id;
 mod schema;
 mod version;
 
-pub use constants::{MANIFEST_VERSION, PROBE_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID};
+pub use constants::{MANIFEST_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID};
 pub use decode::{
-    decode_manifest_value, decode_probe_result_value, decode_protocol_request_value,
-    decode_protocol_response_value, decode_value, DecodePipelineError, DecodePipelineStage,
-    ProtocolRequestDecodeError,
+    decode_manifest_value, decode_protocol_request_value, decode_protocol_response_value,
+    decode_value, DecodePipelineError, DecodePipelineStage, ProtocolRequestDecodeError,
 };
 pub use envelope::{
     Document, FailureResponse, FindArguments, InfoArguments, OperationArguments, OutlineArguments,
@@ -46,14 +44,13 @@ pub use operation_result::{
 };
 pub use options::Options;
 pub use positive_integer::{positive_result, try_positive, PositiveIntegerError};
-pub use probe::{ProbeReason, ProbeReasonCode, ProbeResult, ProbeValidationError};
 pub use request_context::{
     extract_request_context, extract_request_context_from_value, PartialRequestContext,
 };
 pub use request_id::{generate_request_id, GENERATED_REQUEST_ID_PREFIX};
 pub use schema::{
-    validate_manifest_value, validate_probe_result_value, validate_protocol_request_value,
-    validate_protocol_response_value, SchemaValidationError,
+    validate_manifest_value, validate_protocol_request_value, validate_protocol_response_value,
+    SchemaValidationError,
 };
 pub use version::{ProtocolVersion, VersionParseError};
 

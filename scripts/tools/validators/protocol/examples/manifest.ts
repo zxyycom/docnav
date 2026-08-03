@@ -26,6 +26,11 @@ export function validateManifestSemantics() {
     ),
     "markdown manifest example missing .md extension",
   );
+  const filenames = jsonArray(markdownFormat[FIELDS.filenames], "markdown format filenames");
+  assert(
+    filenames.length === 0,
+    "markdown manifest example must declare no exact filename hints",
+  );
   const contentTypes = jsonArray(markdownFormat[FIELDS.contentTypes], "markdown format content_types");
   assert(
     contentTypes.includes(

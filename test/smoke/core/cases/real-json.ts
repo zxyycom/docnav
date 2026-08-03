@@ -1,10 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import type { CommandRecord } from "../../../tools/smoke-harness.ts";
 
-import {
-  copyDocumentFixture,
-  createProject,
-  type SmokeProject
-} from "../fixtures.ts";
+import { copyDocumentFixture, createProject, type SmokeProject } from "../fixtures.ts";
 import {
   runCli,
   runSuccessfulJsonCase,
@@ -13,7 +12,6 @@ import {
 import {
   expect,
   expectExit,
-  expectFormatCandidate,
   expectJsonObject,
   expectNoProtocolEnvelope,
   expectObjectArray,
@@ -64,15 +62,10 @@ async function testJsonSelectionAndNavigationRoundtrip() {
 
 async function testJsonFailureClassification() {
   const project = jsonFixtureProject("real-json-failures");
-  const invalidDocumentPath = copyDocumentFixture(
-    project,
-    "json-invalid-syntax.txt",
-    "docs/invalid.json"
-  );
 
   await assertInvalidArrayRef(project);
   await assertMissingArrayRef(project);
-  await assertInvalidJsonSelection(project, invalidDocumentPath);
+  await assertSelectedInvalidJsonReasons(project);
 }
 
 function jsonFixtureProject(name: string) {
@@ -376,42 +369,44 @@ async function assertMissingArrayRef(project: SmokeProject) {
   );
 }
 
-async function assertInvalidJsonSelection(
-  project: SmokeProject,
-  invalidDocumentPath: string
-) {
-  const { record, error } = await runProtocolFailure(
-    "CORE-JSON-FAIL-001 invalid JSON automatic selection",
-    ["outline", invalidDocumentPath],
-    project,
-    "outline",
-    "FORMAT_UNKNOWN",
-    exitCodes.documentRefFormat
-  );
-  const details = expectJsonObject(
-    record,
-    error.details,
-    "invalid JSON selection details are an object"
-  );
-  expect(
-    record,
-    details.reason === "NO_SUPPORTED_ADAPTER",
-    "invalid JSON stops automatic selection"
-  );
-  const candidates = expectObjectArray(
-    record,
-    details.candidates,
-    "invalid JSON selection reports candidates"
-  );
-  expectFormatCandidate(
-    record,
-    candidates.find((candidate) => candidate.adapter_id === jsonAdapterId),
-    {
-      adapter_id: jsonAdapterId,
-      stage: "probe",
-      reason: "PROBE_UNSUPPORTED"
-    }
-  );
+async function assertSelectedInvalidJsonReasons(project: SmokeProject) {
+  const cases = [
+    ["syntax", "{\"value\":}", "JSON_SYNTAX_INVALID"],
+    ["trailing", "{} trailing", "JSON_TRAILING_INPUT"],
+    ["duplicate", "{\"a\":1,\"\\u0061\":2}", "JSON_DUPLICATE_MEMBER"],
+    [
+      "depth",
+      `${"[".repeat(128)}[]${"]".repeat(128)}`,
+      "JSON_MAXIMUM_DEPTH_EXCEEDED"
+    ]
+  ] as const;
+
+  for (const [name, content, reason] of cases) {
+    const relativePath = `docs/invalid-${name}.md`;
+    const absolutePath = path.join(project.root, relativePath);
+    fs.writeFileSync(absolutePath, content, "utf8");
+    const normalizedPath = absolutePath.replaceAll(path.sep, "/");
+    const { record, error } = await runProtocolFailure(
+      `CORE-JSON-FAIL-001 explicit JSON ${name} failure`,
+      ["outline", relativePath, "--adapter", jsonAdapterId],
+      project,
+      "outline",
+      "DOCUMENT_CONTENT_INVALID",
+      exitCodes.documentRefFormat
+    );
+    const details = expectJsonObject(
+      record,
+      error.details,
+      `selected JSON ${name} details are an object`
+    );
+    expect(
+      record,
+      Object.keys(details).sort().join(",") === "path,reason",
+      `selected JSON ${name} details contain only path and reason`
+    );
+    expect(record, details.path === normalizedPath, `selected JSON ${name} preserves the normalized path`);
+    expect(record, details.reason === reason, `selected JSON ${name} uses ${reason}`);
+  }
 }
 
 function runProtocolSuccess(

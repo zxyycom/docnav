@@ -53,8 +53,7 @@ function expectSelectionFailureDetails(
   expect(record, details.stage === "resolve", "selection failure includes resolve stage");
   expect(
     record,
-    typeof details.reason === "string" &&
-      details.reason.includes("core release static registry"),
-    "selection failure reason describes static registry miss"
+    details.reason === "ADAPTER_NOT_FOUND",
+    "selection failure reason identifies the missing adapter"
   );
 }

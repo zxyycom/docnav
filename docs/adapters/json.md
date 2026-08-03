@@ -1,9 +1,10 @@
 # JSON Adapter
 
-本文是 `docnav-json` 当前导航行为和私有契约的长期 owner。代码、测试和 release
-artifact 已证明本页的 raw adapter、core static integration 与 generic readable
-路径为 Current；格式专用 readable renderer 仍按下文边界保持 Planned。本文中的
-`MUST` 按[文档导航的状态语义](../navigation.md#规范状态与实现状态)表达稳定契约。
+本文是 `docnav-json` 当前导航行为和私有契约的长期 owner。Pathname routing hints、
+fixed-strategy probe deletion、`DOCUMENT_CONTENT_INVALID` migration、raw adapter
+operations、core static integration 与 generic readable path 均已有 Current 证据；
+格式专用 readable renderer 仍按下文边界保持 Planned。本文中的 `MUST` 按
+[文档导航的状态语义](../navigation.md#规范状态与实现状态)表达稳定契约。
 
 共享 adapter interface、protocol result shape、ref 传递和输出编排分别由
 [适配器契约](../adapter-contract.md)、[原始协议](../protocol.md)、
@@ -18,12 +19,16 @@ artifact 已证明本页的 raw adapter、core static integration 与 generic re
 | --- | --- |
 | adapter id | `docnav-json` |
 | format id | `json` |
-| extension | `.json`，ASCII 大小写不敏感 |
+| `extensions[]` routing suffixes | `.json`、`.code-workspace`，按共享契约做 ASCII 大小写归一化 |
+| `filenames[]` exact routing hints | `.prettierrc`、`.watchmanconfig`，大小写敏感 exact basename |
 | content type | `application/json` |
 
+Adapter id、format id、content type 和 pathname hint rows 均为 Current metadata。
+
 `docnav-json` MUST 作为 core static registry 中的 linked adapter，通过 package
-内同一个 `docnav` executable 提供 `probe`、`outline`、`read`、`find` 和
-`info` strategy，并声明既有 unstructured full-read content/cost capability。
+内同一个 `docnav` executable 交付。Current fixed strategy surface 提供 `outline`、
+`read`、`find` 和 `info`，并声明既有 unstructured full-read content/cost capability；
+pathname hint rows 和 probe deletion 服从上方 Current 状态。
 它的 executable set 精确为 package core `docnav` 这个单元素集合。
 
 JSON strategy MUST 只消费各 operation 的 closed standard input。注册 JSON 不得
@@ -32,27 +37,33 @@ input，也不得把 JSON 私有上限提升为公共选项。首期支持一个
 JSON-like syntax、schema-aware semantics 和 arithmetic number semantics 不在本
 契约内。
 
-## Probe 与私有解析模型
+## Pathname routing 与私有解析模型
 
-Probe MUST 先检查 `.json` extension。Extension 不匹配时，它在读取文件前结束，
-返回 `supported: false`、`confidence: 0.0` 和单个 content-conflict reason。
+**Current routing contract：** JSON manifest 的上述 suffix/exact-filename hints 只用于
+navigation-private complete-basename lookup。Routing 在 target-document I/O 前选择
+linked `docnav-json` definition，不读取内容、不构造 JSON model，也不把 matched
+filename/suffix 或 format identity 传给 strategy。固定 JSON strategy 不保留 selection
+probe、probe result/reason/version 或兼容 inspection surface。完整 lookup、explicit
+override 和 no-fallback 规则由[适配器契约](../adapter-contract.md#adapter-选择)与
+[Navigation Input Resolution](../navigation-input-resolution.md#adapter-selection-and-path-sequencing)
+拥有。
 
-Extension 匹配后，probe MUST：
+Pathname hint 不是 JSON validity proof。每次 selected operation MUST 从 normalized
+document path 获取实际 document view，并按当前 strict JSON grammar：
 
 1. 去除至多一个开头 UTF-8 BOM，并执行 UTF-8 decode。
 2. 完整解析一个 JSON value，只允许其后存在 whitespace。
 3. 以 root depth `0` 计算深度，并要求最大 depth 不超过 `127`。
 4. 按解码后的 member name 检查每个 object；同一 object 内的 name 必须唯一。
 
-全部成立时，结果 MUST 为 `supported: true`、format `json`、confidence `1.0`，
-reasons 按 extension-match、content-match 的顺序返回。非 UTF-8、parse
-failure、trailing non-whitespace、depth 超限或重复 decoded member 均为
-`confidence: 0.0` 的 unsupported candidate，并返回对应 read/content-conflict
-reason；selection 在 operation strategy dispatch 前结束。
+`.prettierrc` 可以包含 strict JSON 之外的 YAML，`.code-workspace` 可以包含 JSON
+comments；在独立 JSONC grammar change 落地前，这两个 pathname alias 都只是
+best-effort hint。内容超出当前 strict JSON grammar 时，selected JSON strategy 返回
+正常 JSON-owned parse diagnostic，navigation 不重新 route 或尝试其它 adapter。本
+pathname-routing contract 不实现 JSONC grammar。
 
-`127` 由 adapter-private 单一硬编码配置源拥有，不形成公共 input。Probe 和每次
-selected operation reload 使用同一套私有 decode 语义；一次调用只解析一次，并
-建立一个 primary document model。该 model MUST 同时保存：
+`127` 由 adapter-private 单一硬编码配置源拥有，不形成公共 input。一次 selected
+operation 只解析一次，并建立一个 primary document model。该 model MUST 同时保存：
 
 - 去除可选 BOM 后的原文和原文件 byte size；
 - JSON tree、node kind、depth 和 node count；
@@ -194,18 +205,29 @@ Find pagination 的 retained entry working set MUST 随请求的 page limit 保�
 
 ## 错误边界
 
+**Current error contract：** 下表的 selected JSON content reasons 与 post-selection
+document-change 处理已随 no-probe cutover 生效。JSON internal parser mapping 不由本
+routing contract 重述。
+
 JSON-owned failure 按以下边界映射：
 
 | 条件 | 结果 |
 | --- | --- |
-| Probe 中 extension、encoding、parse、trailing input、depth 或 duplicate-member 不满足支持条件 | unsupported candidate；由既有 selection 流程处理 |
+| Selected document 缺失、path/access 无效 | 既有 `DOCUMENT_NOT_FOUND` / `DOCUMENT_PATH_INVALID` diagnostic |
+| Selected document 不是有效 UTF-8 | `DOCUMENT_ENCODING_UNSUPPORTED` |
+| JSON syntax 无效 | `DOCUMENT_CONTENT_INVALID`，reason `JSON_SYNTAX_INVALID` |
+| 完整 value 后存在 non-whitespace trailing input | `DOCUMENT_CONTENT_INVALID`，reason `JSON_TRAILING_INPUT` |
+| 同一 object 存在重复 decoded member name | `DOCUMENT_CONTENT_INVALID`，reason `JSON_DUPLICATE_MEMBER` |
+| 最大 depth 超过 `127` | `DOCUMENT_CONTENT_INVALID`，reason `JSON_MAXIMUM_DEPTH_EXCEEDED` |
 | JSON ref grammar 或 context-sensitive array token 非法 | `REF_INVALID` |
 | Canonical ref 在当前 document model 中不存在 | `REF_NOT_FOUND` |
-| Probe 成功后，operation reload 发现 syntax、trailing input、depth 或 duplicate-member 状态已变为无效 | `INTERNAL_ERROR`，`error_id: "json-document-changed-after-probe"` |
-| 文件消失或 encoding 在 reload 时变化 | 既有 document diagnostic |
+| Pathname selection 后、selected operation 读取前文档发生变化 | 按 operation 实际打开的 document view 返回上述正常 document/JSON diagnostic；不使用独立 mutation stage id |
 
-错误 envelope、共享 diagnostic code 和 details shape 由[原始协议](../protocol.md)
-拥有；JSON adapter 不增加新的 public error code。
+`DOCUMENT_CONTENT_INVALID.details` 只包含 normalized `path` 与上表 stable `reason`。
+Parser library type/message、unstable offset、duplicate member name 和 dependency trace
+保持私有。错误 envelope、共享 diagnostic code 和 details shape 由
+[原始协议](../protocol.md)拥有。Selected failure 不触发 pathname routing 或第二个
+adapter。
 
 ## Raw 与 Readable 输出边界
 
@@ -214,7 +236,7 @@ facts 的同一个 `ProtocolResponse`；generic `readable-view` 从它派生 out
 display、read header、cost summary 和 length-delimited content block。Raw
 protocol 不包含 `display` 或 readable framing。
 
-当前实现使用现有 generic renderer 走通 probe、outline、read、find、info 和
+当前实现使用现有 generic renderer 走通 outline、read、find、info 和
 full-read，不包含 JSON renderer、renderer 选择输入或公共输出 shape。JSON-specific
 信息密度、完整 opaque ref 的路径定位信号、标点、preview 和分页 presentation
 由后续独立 change 规划；该 renderer 不解析 ref，也不合成 hierarchy、depth、
@@ -222,12 +244,13 @@ parent 或 indentation。这些都不是本页的 Current 行为。
 
 ## 验证边界
 
-实现证据 MUST 覆盖 probe/parse、decoded duplicate key、depth 上限、source
-order、raw number、source-region mapping、ref roundtrip 和错误分类；operation
-证据 MUST 覆盖 outline/read/find/info/full-read、空容器、root scalar、Unicode
-pagination、cost 和 generic readable view。Core/CLI/release 证据另外覆盖自动与
-显式选择、closed public input、static registry，以及同一个 release binary 中的
-Markdown 与 JSON 行为。
+实现证据 MUST 覆盖 manifest pathname hints、selected-operation parse、decoded
+duplicate key、depth 上限、source order、raw number、source-region mapping、ref
+roundtrip 和错误分类；operation 证据 MUST 覆盖 outline/read/find/info/full-read、
+空容器、root scalar、Unicode pagination、cost 和 generic readable view。
+Core/CLI/release 证据另外覆盖 automatic/explicit selection、route-before-document-I/O、
+closed public input、selected failure no-fallback、static registry，以及同一个 release
+binary 中的 Markdown 与 JSON 行为。
 
 测试层级和 release 验证边界见[测试策略](../testing.md)和
 [发布包验证](../testing/release.md)。格式专用 readable renderer 的实现证据不在

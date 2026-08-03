@@ -9,15 +9,14 @@ use super::ProtocolErrorCategory;
 pub(super) fn default_owner_for_code(code: ProtocolDiagnosticCode) -> &'static str {
     match code {
         ProtocolDiagnosticCode::InvalidRequest => "protocol_input",
-        ProtocolDiagnosticCode::FormatUnknown | ProtocolDiagnosticCode::FormatAmbiguous => {
-            "docnav_navigation_routing"
-        }
+        ProtocolDiagnosticCode::FormatUnknown => "docnav_navigation_routing",
         ProtocolDiagnosticCode::AdapterUnavailable | ProtocolDiagnosticCode::InternalError => {
             "adapter"
         }
         ProtocolDiagnosticCode::DocumentNotFound
         | ProtocolDiagnosticCode::DocumentPathInvalid
         | ProtocolDiagnosticCode::DocumentEncodingUnsupported
+        | ProtocolDiagnosticCode::DocumentContentInvalid
         | ProtocolDiagnosticCode::RefNotFound
         | ProtocolDiagnosticCode::RefAmbiguous
         | ProtocolDiagnosticCode::RefInvalid => "adapter",
@@ -47,10 +46,10 @@ pub const fn protocol_error_default_guidance(code: ProtocolDiagnosticCode) -> &'
         ProtocolDiagnosticCode::DocumentNotFound => "Check the document path and retry.",
         ProtocolDiagnosticCode::DocumentPathInvalid => "Use a valid document path.",
         ProtocolDiagnosticCode::DocumentEncodingUnsupported => "Use a UTF-8 encoded document.",
+        ProtocolDiagnosticCode::DocumentContentInvalid => "Correct the document content and retry.",
         ProtocolDiagnosticCode::FormatUnknown => {
             "Use a supported document format or select a built-in adapter from this release."
         }
-        ProtocolDiagnosticCode::FormatAmbiguous => "Select an adapter explicitly.",
         ProtocolDiagnosticCode::RefNotFound => "Run outline again and use a returned ref.",
         ProtocolDiagnosticCode::RefAmbiguous => "Use a more specific ref from outline.",
         ProtocolDiagnosticCode::RefInvalid => "Use a valid ref returned by outline.",
@@ -73,10 +72,10 @@ pub const fn protocol_error_default_message(code: ProtocolDiagnosticCode) -> &'s
         ProtocolDiagnosticCode::DocumentEncodingUnsupported => {
             protocol_error_messages::DOCUMENT_ENCODING_UNSUPPORTED
         }
-        ProtocolDiagnosticCode::FormatUnknown => protocol_error_messages::DOCUMENT_FORMAT_UNKNOWN,
-        ProtocolDiagnosticCode::FormatAmbiguous => {
-            protocol_error_messages::DOCUMENT_FORMAT_AMBIGUOUS
+        ProtocolDiagnosticCode::DocumentContentInvalid => {
+            protocol_error_messages::DOCUMENT_CONTENT_INVALID
         }
+        ProtocolDiagnosticCode::FormatUnknown => protocol_error_messages::DOCUMENT_FORMAT_UNKNOWN,
         ProtocolDiagnosticCode::RefNotFound => protocol_error_messages::REF_NOT_FOUND,
         ProtocolDiagnosticCode::RefAmbiguous => protocol_error_messages::REF_AMBIGUOUS,
         ProtocolDiagnosticCode::RefInvalid => protocol_error_messages::REF_INVALID,

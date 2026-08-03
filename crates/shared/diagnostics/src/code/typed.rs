@@ -1,7 +1,8 @@
 use crate::details::{
-    AdapterReasonDetails, BoundaryDetails, DiagnosticDetailsPayload, FieldReasonDetails,
-    FormatAmbiguousDetails, FormatUnknownDetails, InternalDetails, PathDetails,
-    PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    AdapterUnavailableDetails, BoundaryDetails, DiagnosticDetailsPayload,
+    DocumentContentInvalidDetails, FieldReasonDetails, FormatUnknownDetails, InternalDetails,
+    PathDetails, PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails,
+    RefReasonDetails,
 };
 
 use super::{BoundaryDiagnosticCode, DiagnosticCode, ProtocolDiagnosticCode};
@@ -30,8 +31,8 @@ pub mod typed_codes {
         pub struct DocumentNotFound;
         pub struct DocumentPathInvalid;
         pub struct DocumentEncodingUnsupported;
+        pub struct DocumentContentInvalid;
         pub struct FormatUnknown;
-        pub struct FormatAmbiguous;
         pub struct RefNotFound;
         pub struct RefAmbiguous;
         pub struct RefInvalid;
@@ -49,9 +50,6 @@ pub mod typed_codes {
         pub struct ManifestAdapterIdMismatch;
         pub struct ManifestSchemaValidationFailed;
         pub struct ManifestSemanticValidationFailed;
-        pub struct ProbeResultAdapterIdMismatch;
-        pub struct ProbeResultSchemaValidationFailed;
-        pub struct ProbeResultSemanticValidationFailed;
         pub struct ProtocolResponseSchemaValidationFailed;
         pub struct ProtocolResponseSemanticValidationFailed;
         pub struct ReadableViewRenderFailed;
@@ -113,14 +111,14 @@ protocol_marker!(
     PathEncodingDetails
 );
 protocol_marker!(
+    typed_codes::protocol::DocumentContentInvalid,
+    DocumentContentInvalid,
+    DocumentContentInvalidDetails
+);
+protocol_marker!(
     typed_codes::protocol::FormatUnknown,
     FormatUnknown,
     FormatUnknownDetails
-);
-protocol_marker!(
-    typed_codes::protocol::FormatAmbiguous,
-    FormatAmbiguous,
-    FormatAmbiguousDetails
 );
 protocol_marker!(typed_codes::protocol::RefNotFound, RefNotFound, RefDetails);
 protocol_marker!(
@@ -136,7 +134,7 @@ protocol_marker!(
 protocol_marker!(
     typed_codes::protocol::AdapterUnavailable,
     AdapterUnavailable,
-    AdapterReasonDetails
+    AdapterUnavailableDetails
 );
 protocol_marker!(
     typed_codes::protocol::InternalError,
@@ -173,18 +171,6 @@ boundary_marker!(
 boundary_marker!(
     typed_codes::boundary::ManifestSemanticValidationFailed,
     ManifestSemanticValidationFailed
-);
-boundary_marker!(
-    typed_codes::boundary::ProbeResultAdapterIdMismatch,
-    ProbeResultAdapterIdMismatch
-);
-boundary_marker!(
-    typed_codes::boundary::ProbeResultSchemaValidationFailed,
-    ProbeResultSchemaValidationFailed
-);
-boundary_marker!(
-    typed_codes::boundary::ProbeResultSemanticValidationFailed,
-    ProbeResultSemanticValidationFailed
 );
 boundary_marker!(
     typed_codes::boundary::ProtocolResponseSchemaValidationFailed,

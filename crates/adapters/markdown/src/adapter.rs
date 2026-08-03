@@ -4,15 +4,11 @@ use docnav_adapter_contracts::{
 };
 use docnav_protocol::{
     AdapterIdentity, FindResult, FormatDescriptor, InfoAdapter, InfoDocument, InfoResult, Manifest,
-    Measurement, OutlineResult, ProbeReason, ProbeReasonCode, ProbeResult, ReadResult,
-    RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION,
+    Measurement, OutlineResult, ReadResult, RequestEnvelope, MANIFEST_VERSION,
 };
 use serde_json::json;
 
-use crate::markdown::{
-    cost_for, is_markdown_extension, is_utf8_markdown_candidate, max_heading_level,
-    MarkdownDocument, ResolvedRef,
-};
+use crate::markdown::{cost_for, max_heading_level, MarkdownDocument, ResolvedRef};
 use crate::paging::{paginate_entries, paginate_text};
 
 pub const ADAPTER_ID: &str = "docnav-markdown";
@@ -24,49 +20,6 @@ pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
 pub struct MarkdownAdapter;
 
 impl Adapter for MarkdownAdapter {
-    fn probe(&self, path: &str) -> ProbeResult {
-        let extension_match = is_markdown_extension(path);
-        let mut reasons = Vec::new();
-
-        if extension_match {
-            reasons.push(ProbeReason {
-                code: ProbeReasonCode::ExtensionMatch,
-                detail: "path extension is declared for Markdown".to_owned(),
-            });
-        }
-
-        match is_utf8_markdown_candidate(path) {
-            Ok(true) if extension_match => {
-                reasons.push(ProbeReason {
-                    code: ProbeReasonCode::ContentMatch,
-                    detail: "document is valid UTF-8 Markdown input".to_owned(),
-                });
-                probe(path, true, Some(FORMAT_ID_MARKDOWN), 1.0, reasons)
-            }
-            Ok(false) if extension_match => {
-                reasons.push(ProbeReason {
-                    code: ProbeReasonCode::ContentConflict,
-                    detail: "document is not valid UTF-8".to_owned(),
-                });
-                probe(path, false, None, 0.0, reasons)
-            }
-            Ok(_) => {
-                reasons.push(ProbeReason {
-                    code: ProbeReasonCode::ContentConflict,
-                    detail: "path extension is not declared for Markdown".to_owned(),
-                });
-                probe(path, false, None, 0.0, reasons)
-            }
-            Err(error) => {
-                reasons.push(ProbeReason {
-                    code: ProbeReasonCode::ReadError,
-                    detail: error.to_string(),
-                });
-                probe(path, false, None, 0.0, reasons)
-            }
-        }
-    }
-
     fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
         let document = MarkdownDocument::load(&input.document_path)?;
         let max_heading_level = max_heading_level(input.max_heading_level)?;
@@ -180,6 +133,7 @@ fn markdown_manifest() -> Manifest {
         formats: vec![FormatDescriptor {
             id: FORMAT_ID_MARKDOWN.to_owned(),
             extensions: vec![".md".to_owned(), ".markdown".to_owned()],
+            filenames: vec![],
             content_types: vec![CONTENT_TYPE_MARKDOWN.to_owned()],
         }],
     }
@@ -190,23 +144,5 @@ fn markdown_full_read_capabilities() -> UnstructuredFullReadCapabilities {
         content_hook: true,
         cost_measurement_units: vec!["lines".to_owned(), "bytes".to_owned(), "tokens".to_owned()],
         result_facts_hook: false,
-    }
-}
-
-fn probe(
-    path: &str,
-    supported: bool,
-    format: Option<&str>,
-    confidence: f64,
-    reasons: Vec<ProbeReason>,
-) -> ProbeResult {
-    ProbeResult {
-        probe_version: PROBE_VERSION.to_owned(),
-        adapter_id: ADAPTER_ID.to_owned(),
-        path: path.to_owned(),
-        supported,
-        format: format.map(str::to_owned),
-        confidence,
-        reasons,
     }
 }

@@ -43,13 +43,13 @@ bun run smoke:docnav-package
 `package:docnav` 在生成结束时校验文件集合、manifest、普通文件边界、大小和校验和，
 但不运行 CLI smoke。`smoke:docnav-package` 使用 manifest 的唯一 core entry，
 以同一个 manifest 所指向的 core binary 执行 required adapter inspection，以及
-Markdown 与 JSON 的 direct CLI roundtrip；这证明两个 adapter 均 linked 到
-canonical core binary，而不是独立 package 文件。
+Markdown 与 JSON 的 automatic outline、explicit read 和 outline-ref-read direct CLI
+roundtrip；这证明两个 adapter 均 linked 到 canonical core binary，而不是独立
+package 文件或按 operation/format 切换 executable。
 
-Package profile 在 Linux 和 Windows 上运行相同的 direct CLI surface。Linux x86_64
-development core smoke 另有 deterministic JSON TOCTOU helper；package profile
-明确不运行该 helper，因此 release evidence 不声称 Windows 或 package TOCTOU
-coverage。
+Package profile 在 Linux 和 Windows 上复用 development core smoke 的同一组
+routing、protocol/readable 与 failure assertions，只替换 manifest-resolved binary。
+它不建立 target-specific detector、fixture matrix 或 package validator 业务职责。
 
 ## Public-file 派生
 

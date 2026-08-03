@@ -1,8 +1,6 @@
 use docnav_typed_fields::FieldStringEnum;
 
-use crate::{
-    AutoReadReason, Operation, ProbeReasonCode, UnstructuredOutlineReason, PROTOCOL_VERSION,
-};
+use crate::{AutoReadReason, Operation, UnstructuredOutlineReason, PROTOCOL_VERSION};
 
 #[derive(Clone, Copy)]
 pub(super) enum ContractVersion {
@@ -91,35 +89,14 @@ impl FieldStringEnum for AutoReadReason {
     }
 }
 
-impl FieldStringEnum for ProbeReasonCode {
-    fn variants() -> &'static [Self] {
-        const VARIANTS: &[ProbeReasonCode] = &[
-            ProbeReasonCode::ExtensionMatch,
-            ProbeReasonCode::ContentMatch,
-            ProbeReasonCode::ContentConflict,
-            ProbeReasonCode::ReadError,
-        ];
-        VARIANTS
-    }
-
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::ExtensionMatch => "EXTENSION_MATCH",
-            Self::ContentMatch => "CONTENT_MATCH",
-            Self::ContentConflict => "CONTENT_CONFLICT",
-            Self::ReadError => "READ_ERROR",
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
 pub(super) enum ProtocolErrorCode {
     InvalidRequest,
     DocumentNotFound,
     DocumentPathInvalid,
     DocumentEncodingUnsupported,
+    DocumentContentInvalid,
     FormatUnknown,
-    FormatAmbiguous,
     RefNotFound,
     RefAmbiguous,
     RefInvalid,
@@ -134,8 +111,8 @@ impl FieldStringEnum for ProtocolErrorCode {
             ProtocolErrorCode::DocumentNotFound,
             ProtocolErrorCode::DocumentPathInvalid,
             ProtocolErrorCode::DocumentEncodingUnsupported,
+            ProtocolErrorCode::DocumentContentInvalid,
             ProtocolErrorCode::FormatUnknown,
-            ProtocolErrorCode::FormatAmbiguous,
             ProtocolErrorCode::RefNotFound,
             ProtocolErrorCode::RefAmbiguous,
             ProtocolErrorCode::RefInvalid,
@@ -151,8 +128,8 @@ impl FieldStringEnum for ProtocolErrorCode {
             Self::DocumentNotFound => "DOCUMENT_NOT_FOUND",
             Self::DocumentPathInvalid => "DOCUMENT_PATH_INVALID",
             Self::DocumentEncodingUnsupported => "DOCUMENT_ENCODING_UNSUPPORTED",
+            Self::DocumentContentInvalid => "DOCUMENT_CONTENT_INVALID",
             Self::FormatUnknown => "FORMAT_UNKNOWN",
-            Self::FormatAmbiguous => "FORMAT_AMBIGUOUS",
             Self::RefNotFound => "REF_NOT_FOUND",
             Self::RefAmbiguous => "REF_AMBIGUOUS",
             Self::RefInvalid => "REF_INVALID",

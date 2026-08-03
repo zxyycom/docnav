@@ -4,6 +4,8 @@
 
 配置只是 navigation 参数来源之一。本文不把配置文件、CLI argv、protocol arguments 或 adapter defaults 单独提升为主 owner；这些来源都在 `docnav-navigation` 的 input resolution 流程中按统一规则解析。
 
+**Current：** lexical pathname routing、route-before-document-I/O、no-probe selection、no-fallback dispatch 与既有 catalog/source resolution 已由实现证据证明。
+
 ## Owner 边界
 
 ### `docnav` core
@@ -13,7 +15,7 @@ Core 负责 invocation 入口和非 navigation 命令：
 1. 解析命令类型，区分 navigation command、`config`、`init`、`doctor`、`version`、help 和 adapter inspection。
 2. 为 navigation command 提供 project config 和 user config 的 source descriptor，包括 source level、resolved path 和 path origin。
 3. 对非 navigation 命令在 core 内完成处理，不进入 navigation input resolution。
-4. 对 navigation 命令，把 operation、固定 positional/path facts、normalized document CLI `Source`、config source descriptors/paths、core-owned `DocumentParameterCatalog` 和当前 core release 的 adapter registry 交给 `docnav-navigation`。
+4. 对 navigation 命令，从 caller document path 与 command cwd 词法派生 invocation-private routing pathname，并把 operation、固定 positional/path facts、routing pathname、normalized document CLI `Source`、config source descriptors/paths、core-owned `DocumentParameterCatalog` 和当前 core release 的 adapter registry 交给 `docnav-navigation`。该词法派生不得读取目标文档 metadata、open、canonicalize、read 或 parse 目标文档。
 5. 接收 navigation outcome，并按 [输出模式](output.md)、[原始协议](protocol.md) 和 [CLI](cli.md) 规则进行 surface 投影与退出码映射。
 
 Core 不为 navigation command 预先读取 raw config JSON、完成参数来源合并、selected-operation projection 或 request construction。Core 是 caller-configurable document operation parameter catalog 的唯一 author；adapter definition 不增加 catalog entry。
@@ -24,14 +26,15 @@ Core 不为 navigation command 预先读取 raw config JSON、完成参数来源
 `docnav-navigation` 是 navigation input resolution、raw navigation config source loading、adapter selection、request construction 和 adapter dispatch 的 owner：
 
 1. 根据 core 提供的 config source descriptors/paths 加载 raw project/user config sources，保留路径、缺失状态、读取失败和原始 JSON value。
-2. 从 fixed command facts、normalized CLI candidates 和 raw config sources 中解析 routing 必需输入，例如 operation、document path、declared adapter intent 和 ref/query。
-3. 使用 adapter registry 和 routing 输入选择 selected adapter；adapter selection 规则见 [适配器契约](adapter-contract.md#adapter-选择)。
-4. 使用 full catalog 校验完整 config shape、known adapter namespace、已声明 path 和 typed source value；再从 catalog 过滤当前 operation 的 common entry 与 exact selected-adapter-tag entry，构造 selected `FieldDefSet`。
-5. Fixed positional input 由 navigation-private direct mapping 产出；core 提供的 normalized CLI `Source` 已保留 canonical field identity、locator、typed/invalid input 和 source attribution。Project/user JSON 通过 Serde companion 按同一 catalog metadata 提取 declared candidates。
-6. 将 selected `FieldDefSet` 与 explicit、project、user sources交给 resolution core；字段有 environment locator 时还可加入 declared-only env source，优先级为 `explicit > env > project > user > built_in`，否则保持 `explicit > project > user > built_in`。Static default 由 field metadata 自动回退。
-7. Resolution core 执行 merge、provenance 和最终 canonical field validation；selected/contributing invalid candidate 或 missing required value 返回带来源信息的 blocking diagnostic，materialization 不返回部分参数对象。
-8. 从同一个 `ResolutionResult` 构造 protocol `Options` / `OperationArguments`、closed `StandardOperationInput` 和 core output projection，并通过 selected adapter definition 调用对应 operation strategy。
-9. 在 validated structured outline/find base success 后，根据 core projection 中的 auto-read mode 选择保留 base response，或复用同一 selected adapter 的 read strategy 形成 validated composed response。
+2. 从 fixed command facts、normalized CLI candidates 和 raw config sources 中解析 routing 必需输入，例如 operation、routing pathname、raw document path、declared adapter intent 和 ref/query。
+3. 在任何 target-document filesystem I/O 前使用 adapter registry 和 routing 输入选择 selected adapter；adapter selection 规则见 [适配器契约](adapter-contract.md#adapter-选择)。
+4. 选择成功后才进入 core-owned filesystem-backed document path/access normalization，形成 selected operation 使用的 normalized document path。
+5. 使用 full catalog 校验完整 config shape、known adapter namespace、已声明 path 和 typed source value；再从 catalog 过滤当前 operation 的 common entry 与 exact selected-adapter-tag entry，构造 selected `FieldDefSet`。
+6. Fixed positional input 由 navigation-private direct mapping 产出；core 提供的 normalized CLI `Source` 已保留 canonical field identity、locator、typed/invalid input 和 source attribution。Project/user JSON 通过 Serde companion 按同一 catalog metadata 提取 declared candidates。
+7. 将 selected `FieldDefSet` 与 explicit、project、user sources 交给 resolution core；字段有 environment locator 时还可加入 declared-only env source，优先级为 `explicit > env > project > user > built_in`，否则保持 `explicit > project > user > built_in`。Static default 由 field metadata 自动回退。
+8. Resolution core 执行 merge、provenance 和最终 canonical field validation；selected/contributing invalid candidate 或 missing required value 返回带来源信息的 blocking diagnostic，materialization 不返回部分参数对象。
+9. 从同一个 `ResolutionResult` 构造 protocol `Options` / `OperationArguments`、closed `StandardOperationInput` 和 core output projection，并通过 selected adapter definition 调用对应 operation strategy。
+10. 在 validated structured outline/find base success 后，根据 core projection 中的 auto-read mode 选择保留 base response，或复用同一 selected adapter 的 read strategy 形成 validated composed response。
 
 Adapter strategy 接收的是已解析的 operation-specific closed typed input。Source resolution、merge/default、标准类型 materialization 和 core-configured validation 已完成；strategy 不消费 raw source、generic parameter bag 或 protocol envelope，但可以为算法正确性防御性地校验或重复校验格式语义。
 
@@ -119,9 +122,21 @@ Auto-read entry 的 canonical identity 是 `docnav.defaults.auto_read`，类型�
 
 Full config validation view 接受 full catalog 的所有 known config locators，用于区分 known-other adapter namespace、unknown adapter/path 和 source typed failure。Selected-operation view 只包含 current operation 的 common entry 与 exact matching tag entry，用于 applicability、resolution 和 binding。`options.<adapter-id>.<option-key>` 是 core catalog 的 adapter-scoped config locator；同名 key 不跨 adapter namespace 合并。Fixed `path`、`ref`、`query` 使用 navigation-private direct processing，不进入 catalog。
 
+## Adapter Selection and Path Sequencing
+
+**Current：** 本节定义已实现的 pathname routing、route-before-document-I/O 和 probe removal 契约。
+
+Resolved declared adapter id 存在时，navigation 跳过 pathname routing，只做 exact adapter-id lookup；缺失 id 返回 `ADAPTER_UNAVAILABLE`，details 包含 declared `adapter_id`、`ADAPTER_NOT_FOUND`、resolved `selection_source` 和 stage `resolve`。命中 definition 只表示 caller 指定的 linked strategy 存在，不能跳过 selected operation 对实际文档的处理。
+
+Declared adapter id 不存在时，navigation 对 lexical routing pathname 的完整 basename 做一次 manifest-derived lookup：先按大小写敏感 exact spelling 匹配 `formats[].filenames[]`；没有命中时，再按 ASCII 大小写归一化匹配 end-anchored `formats[].extensions[]` suffix，并在多个命中中选择最长 suffix。Exact filename 优先于 generic suffix。Matched hint 私下映射到 normalized format identity，再 exact lookup 唯一 registry definition；registry order 不参与选择。完整 metadata 和 duplicate invariant 见 [适配器契约](adapter-contract.md#manifest-元数据)。
+
+Routing pathname 只从 caller path 与 cwd 词法派生。Automatic route 命中前不得读取目标 metadata、open、canonicalize、read 或 parse；无 hint 命中直接返回 `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`。选择成功后才进入 core-owned filesystem-backed document path/access normalization，并把 normalized document path 放入 selected operation 的 closed input。Derived lookup key/index、matched filename/suffix 和 matched format identity 不进入 diagnostics、protocol、readable output、logs、refs、continuations、typed fields 或 adapter input。
+
+一旦 definition 被选中，selection 生命周期结束。Selected strategy 必须读取并验证实际 document view；其 path/access、decode、parse、semantic、operation 或 invalid-result failure 保持 owner-compatible diagnostic。Navigation 不重新匹配 pathname、不遍历其它 registry definition，也不 dispatch 第二个 adapter。
+
 ## Resolution 流程
 
-Navigation command 的 **Current** 主流程：
+Navigation command 的 **Current** 统一主流程如下：
 
 ```text
 docnav core
@@ -129,13 +144,16 @@ docnav core
   if non-navigation: handle in core
   if navigation: build static/generated command from operation-scoped catalog view
   extract normalized typed/invalid CLI Source
-  pass fixed command facts + CLI Source + config source descriptors/paths + catalog + registry
+  derive lexical routing pathname from caller path + cwd without target-document I/O
+  pass fixed command facts + routing pathname + CLI Source + config source descriptors/paths + catalog + registry
 
 docnav-navigation
   load raw project/user config sources
   validate source shape/keys through full-catalog view and owner-specific shape validation
-  parse routing-required input
-  select adapter from registry
+  resolve declared adapter intent and other routing-required input
+  if adapter id is declared: exact adapter-id lookup
+  else: exact-filename / longest normalized-suffix lookup over complete basename
+  after selection: invoke core-owned document path/access normalization
   build selected FieldDefSet from current-operation common + exact matching adapter tag
   reject explicit candidates outside the selected/current-operation set
   map fixed positional input and extract declared env/project/user candidates
@@ -166,7 +184,7 @@ Config source diagnostic details 必须携带 source level 和 selected config f
 
 `outline` operation 在标准调用参数中包含 navigation-owned `outline_mode`。合法值为 `structured` 和 `unstructured_full`，默认值为 `structured`。`outline_mode` 不是 adapter 私有 option、ref policy、raw protocol argument 或 public CLI override flag。
 
-`outline_mode` resolution 发生在 document path 规范化、adapter selection 和 selected-operation catalog resolution 之后，且早于 selected adapter 的正常 outline strategy dispatch。优先级固定为：
+`outline_mode` resolution 发生在 adapter selection、post-selection document path 规范化和 selected-operation catalog resolution 之后，且早于 selected adapter 的正常 outline strategy dispatch。优先级固定为：
 
 1. `outline.mode_rules[]` path selector。
 2. `outline.auto_full_read.thresholds[]` adapter-scoped cost threshold selector。
@@ -221,7 +239,8 @@ Nested read 复用同一个 normalized document path、同一个 selected adapte
 | Config source loading | `docnav-navigation` 将 default path missing 视为 absent；explicit path missing、unreadable、JSON 无效或顶层非 object 返回 blocking config source diagnostic；present default-path source unreadable、JSON 无效或顶层非 object 也返回 config source diagnostic。 |
 | Source mapping | 未知字段、旧字段名、operation 不适用参数、unmapped input 或 selected-operation view 不接收的 adapter-scoped source 返回 input diagnostic。 |
 | Typed-field validation/extraction | 类型、范围、allowed value、required/nullability 和 default invalid 返回带来源的 typed validation diagnostic。 |
-| Adapter selection | Declared adapter lookup/probe 失败或 automatic discovery 全部失败按 [适配器契约](adapter-contract.md#adapter-选择) 返回 selection diagnostic。 |
+| Adapter selection | Declared adapter id 缺失时执行一次 private manifest pathname lookup；无 hint 命中返回 `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`。Declared adapter id 存在时跳过 pathname routing；exact lookup 缺失返回 `ADAPTER_UNAVAILABLE / ADAPTER_NOT_FOUND`。Registry duplicate invariant 逃到 runtime 时返回对应 `INTERNAL_ERROR`。 |
+| Post-selection path normalization | 已选中 definition 后的 path/access normalization failure 返回现有 document path/access diagnostic；不 dispatch adapter，也不尝试其它 definition。 |
 | Request construction | 绑定 metadata 缺失、arguments shape invalid 或 envelope construction failure 返回 internal/navigation diagnostic。 |
 
 本文只定义 input resolution 的失败位置和 owner；protocol failure shape 见 [协议错误对象](protocol.md#协议错误对象)，readable failure shape 见 [输出模式](output.md)，退出码见 [CLI](cli.md#退出码)。
@@ -239,3 +258,5 @@ Nested read 复用同一个 normalized document path、同一个 selected adapte
 7. Typed-field 校验/提取先于 protocol、closed strategy input 和 core output projections。
 8. 解析结果不回写 fixed command facts、normalized CLI source、config source、schema 示例或 protocol JSON fixture。
 9. Auto-read 只在 validated base response 后编排现有 read；不新增 adapter operation、protocol request argument、环境来源或 public non-success branch。
+10. Automatic routing 在 target-document I/O 前只使用 lexical routing pathname 和 validated manifest facts；explicit adapter intent exact lookup bypass pathname routing。
+11. Routing-derived indexes、matched hint/format 和 selection mechanics 保持 invocation-private；selected operation 的任何失败都不触发 fallback adapter。

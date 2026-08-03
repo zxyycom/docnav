@@ -53,7 +53,8 @@ fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
 }
 
 #[test]
-fn core_linked_json_supports_automatic_and_declared_selection_and_reports_declared_rejection() {
+fn core_linked_json_supports_automatic_and_declared_selection_and_reports_selected_content_failure()
+{
     let workspace = temp_workspace("linked-json-selection");
     let project_root = workspace.path().join("project");
     let docs_dir = project_root.join("docs");
@@ -64,6 +65,7 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_declar
     )
     .unwrap();
     fs::write(docs_dir.join("fallback.md"), "# Markdown fallback\n").unwrap();
+    let fallback_path = docs_dir.join("fallback.md").to_string_lossy().into_owned();
 
     let context = default_context(project_root);
 
@@ -96,31 +98,28 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_declar
     assert_eq!(declared["result"]["content"], "2");
     assert_eq!(declared["result"]["content_type"], "application/json");
 
-    let error = match AdapterRuntime.execute_document(DocumentRequest::from_config_context(
-        json_outline_command("docs/fallback.md", Some("docnav-json"), 1, 80),
-        context,
-    )) {
-        Ok(_) => panic!("declared JSON rejection must not fall back to the Markdown adapter"),
-        Err(error) => error,
-    };
-    let record = error
-        .diagnostic()
-        .clone()
-        .into_record()
-        .expect("diagnostic should be valid");
-    let protocol_error = docnav_protocol::ProtocolError::from_diagnostic_record(&record).unwrap();
+    let selected_failure = AdapterRuntime
+        .execute_document(DocumentRequest::from_config_context(
+            json_outline_command("docs/fallback.md", Some("docnav-json"), 1, 80),
+            context,
+        ))
+        .expect("selected strategy diagnostic should reach document output");
+    let (exit_code, selected_failure) = write_protocol_json_with_exit(selected_failure);
 
+    assert_eq!(exit_code, 3);
+    assert_eq!(selected_failure["ok"], false);
+    assert_eq!(selected_failure["operation"], "outline");
     assert_eq!(
-        protocol_error.code(),
-        docnav_protocol::ProtocolDiagnosticCode::AdapterUnavailable
+        selected_failure["error"]["code"],
+        "DOCUMENT_CONTENT_INVALID"
     );
-    assert_eq!(protocol_error.owner(), "docnav_navigation_routing");
+    assert_eq!(selected_failure["error"]["owner"], "adapter");
     assert_eq!(
-        protocol_error
-            .details()
-            .get("adapter_id")
-            .and_then(Value::as_str),
-        Some("docnav-json")
+        selected_failure["error"]["details"],
+        serde_json::json!({
+            "path": fallback_path,
+            "reason": "JSON_SYNTAX_INVALID",
+        })
     );
 }
 

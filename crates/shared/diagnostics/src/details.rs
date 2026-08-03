@@ -7,10 +7,10 @@ mod conversion;
 mod payload;
 
 pub use payload::{
-    AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails, DiagnosticDetailsPayload,
-    FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails, FormatUnknownDetails,
-    InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails,
-    RefDetails, RefReasonDetails,
+    AdapterConfigSourceDetails, AdapterUnavailableDetails, BoundaryDetails,
+    DiagnosticDetailsPayload, DocumentContentInvalidDetails, DocumentContentInvalidReason,
+    FieldReasonDetails, FormatUnknownDetails, FormatUnknownReason, InternalDetails, PathDetails,
+    PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -205,18 +205,14 @@ pub enum DiagnosticDetails {
         path: String,
         encoding: String,
     },
+    DocumentContentInvalid {
+        path: String,
+        reason: DocumentContentInvalidReason,
+    },
     FormatUnknown {
         path: String,
-        reason: String,
-        candidates: Vec<FormatCandidateDetails>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        candidate_failures: Option<Vec<FormatCandidateDetails>>,
-    },
-    FormatAmbiguous {
-        path: String,
-        candidates: Vec<FormatCandidateDetails>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        candidate_failures: Option<Vec<FormatCandidateDetails>>,
+        reason: FormatUnknownReason,
+        candidates: [Value; 0],
     },
     Ref {
         #[serde(rename = "ref")]
@@ -232,13 +228,11 @@ pub enum DiagnosticDetails {
         ref_id: String,
         reason: String,
     },
-    AdapterReason {
+    AdapterUnavailable {
         adapter_id: String,
         reason: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        selection_source: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        stage: Option<String>,
+        selection_source: String,
+        stage: String,
     },
     Internal {
         error_id: String,

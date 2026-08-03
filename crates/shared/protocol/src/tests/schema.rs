@@ -5,8 +5,6 @@ const PROTOCOL_REQUEST_SCHEMA: &str =
 const PROTOCOL_RESPONSE_SCHEMA: &str =
     include_str!("../../../../../docs/schemas/protocol-response.schema.json");
 const MANIFEST_SCHEMA: &str = include_str!("../../../../../docs/schemas/manifest.schema.json");
-const PROBE_RESULT_SCHEMA: &str =
-    include_str!("../../../../../docs/schemas/probe-result.schema.json");
 
 #[test]
 fn parses_protocol_fixtures_into_shared_types() {
@@ -36,13 +34,6 @@ fn parses_protocol_fixtures_into_shared_types() {
     manifest
         .validate_semantics()
         .expect("manifest fixture semantics");
-
-    let probe_value = read_json_fixture("probe-result.json");
-    assert_public_schema_valid(PROBE_RESULT_SCHEMA, &probe_value);
-    validate_probe_result_value(&probe_value).expect("probe fixture schema");
-    let probe: ProbeResult = serde_json::from_value(probe_value).expect("probe fixture parses");
-    assert_eq!(probe.probe_version, PROBE_VERSION);
-    probe.validate_semantics().expect("probe fixture semantics");
 }
 
 #[test]
@@ -105,6 +96,19 @@ fn manifest_contract_rejects_schema_backed_field_failures() {
         manifest_with(|manifest| manifest["manifest_version"] = serde_json::json!("0.2")),
         manifest_with(|manifest| manifest["adapter"]["id"] = serde_json::json!("")),
         manifest_with(|manifest| manifest["formats"][0]["extensions"][0] = serde_json::json!("md")),
+        manifest_with(|manifest| manifest["formats"][0]["extensions"][0] = serde_json::json!(".")),
+        manifest_with(|manifest| {
+            manifest["formats"][0]["extensions"][0] = serde_json::json!(".dir/file")
+        }),
+        manifest_with(|manifest| {
+            manifest["formats"][0]["extensions"][0] = serde_json::json!(".dir\\file")
+        }),
+        manifest_with(|manifest| manifest["formats"][0]["filenames"] = serde_json::json!([""])),
+        manifest_with(|manifest| manifest["formats"][0]["filenames"] = serde_json::json!(["."])),
+        manifest_with(|manifest| manifest["formats"][0]["filenames"] = serde_json::json!([".."])),
+        manifest_with(|manifest| {
+            manifest["formats"][0]["filenames"] = serde_json::json!(["dir/file"])
+        }),
         manifest_with(|manifest| manifest["formats"][0]["extra"] = serde_json::json!(true)),
         root_extra.clone(),
     ];
@@ -115,6 +119,28 @@ fn manifest_contract_rejects_schema_backed_field_failures() {
     }
 
     assert!(serde_json::from_value::<Manifest>(root_extra).is_err());
+}
+
+#[test]
+fn manifest_routing_hints_decode_and_round_trip_through_public_contract() {
+    let value = serde_json::json!({
+        "manifest_version": "0.1",
+        "adapter": {
+            "id": "stub",
+            "name": "Stub",
+            "version": "0.1.0"
+        },
+        "formats": [{
+            "id": "json",
+            "extensions": [".json", ".schema.json", ".配置+V1"],
+            "filenames": [".prettierrc", ".watchmanconfig"],
+            "content_types": ["application/json"]
+        }]
+    });
+
+    assert_public_schema_valid(MANIFEST_SCHEMA, &value);
+    let manifest = decode_manifest_value(value.clone()).expect("routing manifest decodes");
+    assert_eq!(serde_json::to_value(manifest).unwrap(), value);
 }
 
 fn minimal_manifest() -> Value {
@@ -129,65 +155,11 @@ fn minimal_manifest() -> Value {
             {
                 "id": "stub",
                 "extensions": [".stub"],
+                "filenames": [],
                 "content_types": ["text/stub"]
             }
         ]
     })
-}
-
-#[test]
-fn probe_schema_rejects_missing_reasons_and_bad_confidence() {
-    let missing_reasons = serde_json::json!({
-        "probe_version": "0.1",
-        "adapter_id": "stub",
-        "path": "doc.stub",
-        "supported": true,
-        "format": "stub",
-        "confidence": 1.0,
-        "reasons": []
-    });
-    let bad_confidence = serde_json::json!({
-        "probe_version": "0.1",
-        "adapter_id": "stub",
-        "path": "doc.stub",
-        "supported": true,
-        "format": "stub",
-        "confidence": 1.5,
-        "reasons": [
-            { "code": "EXTENSION_MATCH", "detail": "extension matched" }
-        ]
-    });
-
-    assert_public_schema_invalid(PROBE_RESULT_SCHEMA, &missing_reasons);
-    assert_public_schema_invalid(PROBE_RESULT_SCHEMA, &bad_confidence);
-    assert!(validate_probe_result_value(&missing_reasons).is_err());
-    assert!(validate_probe_result_value(&bad_confidence).is_err());
-
-    let probe: ProbeResult = serde_json::from_value(missing_reasons).expect("shape parses");
-    assert_eq!(
-        probe.validate_semantics(),
-        Err(ProbeValidationError::MissingReasons)
-    );
-    let probe: ProbeResult = serde_json::from_value(bad_confidence).expect("shape parses");
-    assert_eq!(
-        probe.validate_semantics(),
-        Err(ProbeValidationError::ConfidenceOutOfRange(1.5))
-    );
-}
-
-#[test]
-fn probe_contract_rejects_schema_backed_field_failures() {
-    let cases = [
-        probe_with(|probe| probe["probe_version"] = serde_json::json!("0.2")),
-        probe_with(|probe| probe["supported"] = serde_json::json!("yes")),
-        probe_with(|probe| probe["reasons"][0]["code"] = serde_json::json!("UNKNOWN")),
-        probe_with(|probe| probe["reasons"][0]["extra"] = serde_json::json!(true)),
-    ];
-
-    for value in cases {
-        assert_public_schema_invalid(PROBE_RESULT_SCHEMA, &value);
-        assert!(validate_probe_result_value(&value).is_err());
-    }
 }
 
 #[test]
@@ -217,24 +189,39 @@ fn protocol_response_contract_rejects_schema_backed_field_failures() {
         assert!(validate_protocol_response_value(&value).is_err());
     }
 
-    let public_schema_only_cases = [
+    let exact_error_cases = [
         protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["reason"] = serde_json::json!("NO_SUPPORTED_CANDIDATE")
+            response["error"]["details"]["reason"] = serde_json::json!("UNEXPECTED_REASON")
         }),
         protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["candidates"][0]["code"] =
-                serde_json::json!("ADAPTER_UNAVAILABLE")
+            response["error"]["details"]["candidates"] = serde_json::json!([{}])
         }),
         protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["candidates"][0]["details"] = serde_json::json!({})
+            response["error"]["details"]["evidence"] = serde_json::json!([])
         }),
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["candidates"][0]["stage"] = serde_json::json!("invoke")
+        protocol_document_content_invalid_error_with(|response| {
+            response["error"]["details"]["reason"] = serde_json::json!("PARSER_INTERNAL")
+        }),
+        protocol_document_content_invalid_error_with(|response| {
+            response["error"]["details"]["parser_message"] = serde_json::json!("unstable")
+        }),
+        protocol_adapter_unavailable_error_with(|response| {
+            response["error"]["details"]["reason"] = serde_json::json!("ADAPTER_UNAVAILABLE")
+        }),
+        protocol_adapter_unavailable_error_with(|response| {
+            response["error"]["details"]["stage"] = serde_json::json!("dispatch")
+        }),
+        protocol_adapter_unavailable_error_with(|response| {
+            response["error"]["details"]
+                .as_object_mut()
+                .unwrap()
+                .remove("selection_source");
         }),
     ];
 
-    for value in public_schema_only_cases {
+    for value in exact_error_cases {
         assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
+        assert!(decode_protocol_response_value(value).is_err());
     }
 }
 
@@ -336,22 +323,6 @@ fn manifest_with(update: impl FnOnce(&mut Value)) -> Value {
     manifest
 }
 
-fn probe_with(update: impl FnOnce(&mut Value)) -> Value {
-    let mut probe = serde_json::json!({
-        "probe_version": "0.1",
-        "adapter_id": "stub",
-        "path": "doc.stub",
-        "supported": true,
-        "format": "stub",
-        "confidence": 1.0,
-        "reasons": [
-            { "code": "EXTENSION_MATCH", "detail": "extension matched" }
-        ]
-    });
-    update(&mut probe);
-    probe
-}
-
 fn protocol_outline_response_with(update: impl FnOnce(&mut Value)) -> Value {
     let mut response = serde_json::json!({
         "protocol_version": "0.1",
@@ -437,14 +408,50 @@ fn protocol_format_unknown_error_with(update: impl FnOnce(&mut Value)) -> Value 
             "owner": "docnav_navigation_routing",
             "details": {
                 "path": "docs/file.data",
-                "reason": "NO_SUPPORTED_ADAPTER",
-                "candidates": [
-                    {
-                        "adapter_id": "docnav-markdown",
-                        "stage": "probe",
-                        "reason": "PROBE_UNSUPPORTED"
-                    }
-                ]
+                "reason": "FORMAT_NOT_RECOGNIZED",
+                "candidates": []
+            }
+        }
+    });
+    update(&mut response);
+    response
+}
+
+fn protocol_document_content_invalid_error_with(update: impl FnOnce(&mut Value)) -> Value {
+    let mut response = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "outline",
+        "ok": false,
+        "error": {
+            "code": "DOCUMENT_CONTENT_INVALID",
+            "message": "Document content is invalid.",
+            "owner": "adapter",
+            "details": {
+                "path": "docs/file.json",
+                "reason": "JSON_SYNTAX_INVALID"
+            }
+        }
+    });
+    update(&mut response);
+    response
+}
+
+fn protocol_adapter_unavailable_error_with(update: impl FnOnce(&mut Value)) -> Value {
+    let mut response = serde_json::json!({
+        "protocol_version": "0.1",
+        "request_id": "req-1",
+        "operation": "outline",
+        "ok": false,
+        "error": {
+            "code": "ADAPTER_UNAVAILABLE",
+            "message": "Adapter is unavailable.",
+            "owner": "docnav_navigation_routing",
+            "details": {
+                "adapter_id": "missing-adapter",
+                "reason": "ADAPTER_NOT_FOUND",
+                "selection_source": "explicit",
+                "stage": "resolve"
             }
         }
     });

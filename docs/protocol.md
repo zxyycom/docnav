@@ -15,6 +15,8 @@ v0 协议字段由 `0.1` schema 记录 documented shape。`protocol_version` 是
 
 Runtime invocation logging 不扩展 `RequestEnvelope` 或 `ProtocolResponse`。启用日志时，protocol stdout 仍只输出上述单个 response/failure envelope；日志只能记录 request/response correlation metadata、operation、request id 或 fallback correlation id、bounded status/size metadata 和 bounded diagnostic summary。完整 request/response payload、operation result `content` 和 protocol error details 不得作为完整对象复制进主 invocation log。
 
+Current pathname routing 仅在 linked `docnav` process 内完成。Lexical routing pathname、derived filename/suffix index、matched hint 与 matched format identity 都不是 request/success field；selection 后的 `document.path` 仍是 operation 使用的 normalized path。Protocol 不为 routing 新增 request、session、ref 或 continuation surface。
+
 ## 请求包装
 
 所有字段必需：
@@ -193,7 +195,7 @@ adapter:
 metadata  object, optional
 ```
 
-`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。InfoResult 的 protocol-visible scope 是当前文档和选中 adapter 的 facts；operation set 由 adapter contract 定义，manifest/probe 输出由对应 owner 定义。原始协议不返回 info `display`。
+`document`、`adapter` 和 `metadata` 是可选事实容器，用于表达文档类型、编码、大小、adapter 身份和 adapter-owned 统计信息。InfoResult 的 protocol-visible scope 是当前文档和选中 adapter 的 facts；operation set 由 adapter contract 定义，manifest inspection 由对应 owner 定义。原始协议不返回 info `display`，也不返回 pathname match state。
 
 ## 分页模型
 
@@ -219,6 +221,14 @@ ref 共享规则由 [Ref](ref-contract.md) 定义。原始协议只承载非空 
 
 所有格式适配器的 v0 契约只支持 UTF-8，可接受 UTF-8 BOM。无法解码时返回 `DOCUMENT_ENCODING_UNSUPPORTED`。
 
+## Routing 与协议边界
+
+**Current：** 本节与下方 routing failure projection 描述已实现的 pathname-routing 协议契约。
+
+共享协议不定义、export、decode、validate、serialize 或 schema-check probe result、probe reason/version 或 probe-stage candidate fact。Document operation 只保留既有 request/success envelope 或 canonical failure envelope；`adapter list` 继续消费 manifest facts，但它不是 document protocol operation。
+
+Manifest pathname lookup 或 explicit registry lookup 只选择 linked definition，不构成文档 parse 或 protocol success。Selected adapter 的 document、parse、semantic 或 operation failure 必须保持 owner-compatible diagnostic，不得被替换为 routing failure。Protocol/readable/log surface 都不投影 matched filename/suffix、matched format identity 或 derived index。
+
 ## 协议错误对象
 
 失败响应的 `error` 来自一个 primary `DiagnosticRecord`。Protocol 调用方稳定解析 `code`、`owner` 和本节列出的 `details`；`message` 和 `guidance` 是可读文案。
@@ -229,21 +239,27 @@ ref 共享规则由 [Ref](ref-contract.md) 定义。原始协议只承载非空 
 | `DOCUMENT_NOT_FOUND` | `path` | 无 |
 | `DOCUMENT_PATH_INVALID` | `path`、`reason` | 无 |
 | `DOCUMENT_ENCODING_UNSUPPORTED` | `path`、`encoding` | 无 |
-| `FORMAT_UNKNOWN` | `path`、`reason`、`candidates` | `candidate_failures` |
-| `FORMAT_AMBIGUOUS` | `path`、`candidates` | `candidate_failures` |
+| `DOCUMENT_CONTENT_INVALID` | `path`、`reason` | 无 |
+| `FORMAT_UNKNOWN` | `path`、`reason`、`candidates` | 无 |
 | `REF_NOT_FOUND` | `ref` | 无 |
 | `REF_AMBIGUOUS` | `ref`、`candidate_count` | 无 |
 | `REF_INVALID` | `ref`、`reason` | 无 |
-| `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason` | `selection_source`、`stage` |
+| `ADAPTER_UNAVAILABLE` | `adapter_id`、`reason`、`selection_source`、`stage` | 无 |
 | `INTERNAL_ERROR` | `error_id` | 无 |
 
-`FORMAT_UNKNOWN.details.reason` 当前稳定值为 `NO_SUPPORTED_ADAPTER`。`candidates` 和 `candidate_failures` 的元素包含 `adapter_id`、`stage` 和 `reason`；`stage` 取值为 `resolve` 或 `probe`。
+Automatic pathname routing 无 hint 命中时，protocol 投影 `FORMAT_UNKNOWN` 和 exact details `{"path":"<routing-pathname>","reason":"FORMAT_NOT_RECOGNIZED","candidates":[]}`；该 path 是 lexical routing pathname，因为 filesystem-backed document normalization 尚未运行。该 error 不携带 `format`、candidate-failure evidence、probe stage/reason 或 matched routing facts。
+
+Registry invariant failure 使用两个 exact projection：duplicate normalized format identity 返回 `INTERNAL_ERROR` 与 `{"error_id":"registry-format-identity-conflict"}`；duplicate same-kind ASCII-normalized suffix 或 exact filename 返回 `INTERNAL_ERROR` 与 `{"error_id":"registry-path-hint-conflict"}`。它们是 global registry failure，不是 document ambiguity。
+
+Explicit declared adapter id 缺失时，`ADAPTER_UNAVAILABLE.details` 精确包含 caller 的 `adapter_id`、`reason: "ADAPTER_NOT_FOUND"`、resolved `selection_source` 和 `stage: "resolve"`；automatic pathname routing 不运行。
+
+Selected JSON syntax、trailing non-whitespace input、duplicate decoded member 和 maximum-depth failure 使用 `DOCUMENT_CONTENT_INVALID`，details 只包含 normalized `path` 和对应 stable reason：`JSON_SYNTAX_INVALID`、`JSON_TRAILING_INPUT`、`JSON_DUPLICATE_MEMBER` 或 `JSON_MAXIMUM_DEPTH_EXCEEDED`。Invalid UTF-8 继续使用 `DOCUMENT_ENCODING_UNSUPPORTED`。Parser type/message、unstable offset、member name、dependency trace 和 removed post-probe stage id 都不得进入 public details。
 
 相关失败只能作为 `details` 的从属结构出现，不形成 sibling error list。修改 protocol error code 或 details 时，先更新本节，再同步 schema、examples、fixtures 和消费方测试。
 
 ## Schema 所有权
 
-[protocol-request.schema.json](schemas/protocol-request.schema.json) 和 [protocol-response.schema.json](schemas/protocol-response.schema.json) 只校验原始协议。响应 schema 使用 `operation` 绑定成功 result 类型；`options` 在 protocol schema 中保持 opaque object。阅读输出、manifest 和 probe 使用各自 schema，由对应 owner 文档定义。
+[protocol-request.schema.json](schemas/protocol-request.schema.json) 和 [protocol-response.schema.json](schemas/protocol-response.schema.json) 只校验原始协议。响应 schema 使用 `operation` 绑定成功 result 类型；`options` 在 protocol schema 中保持 opaque object。阅读输出和 manifest 使用各自 schema，由对应 owner 文档定义；Current protocol contract 不包含 probe schema/decoder/validator。
 
 Schema 是本文件的验证材料，不重新定义产品语义。修改 protocol-visible envelope、operation 参数、result shape、page、error code 或 details 时，先更新本文件，再同步 schema、examples、fixtures 和消费方测试。
 

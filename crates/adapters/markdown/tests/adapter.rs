@@ -2,7 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use docnav_adapter_contracts::{Adapter, FindInput, InfoInput, OutlineInput, ReadInput};
+use docnav_adapter_contracts::{
+    Adapter, FindInput, InfoInput, OutlineInput, ReadInput, StandardOperationInput,
+};
 use docnav_markdown::{markdown_adapter_definition, MarkdownAdapter};
 use docnav_protocol::{
     positive_result, FindResult, ProtocolDiagnosticCode, ProtocolError, StructuredOutlineResult,

@@ -66,13 +66,13 @@ export const ACCEPTED_WARNINGS = Object.freeze(
       path: "crates/adapters/json/src/adapter/tests.rs",
       codeArea: "rust-tests",
       metric: "code-lines",
-      value: 937,
+      value: 771,
       messageIncludes: [
         "File \"crates/adapters/json/src/adapter/tests.rs\"",
-        "937 code lines"
+        "771 code lines"
       ],
       reason:
-        "This is the JSON adapter contract suite: probe, every operation, diagnostic projection, and full-read hooks share the same TempDocument and operation-result helpers; splitting it would duplicate test-only fixtures without creating a separate behavior owner."
+        "This is the JSON adapter contract suite: manifest hints, selected-operation parsing, every operation, diagnostic projection, and full-read hooks share the same TempDocument and operation-result helpers; splitting it would duplicate test-only fixtures without creating a separate behavior owner."
     },
     {
       ruleId: "scc-file-code-lines",
@@ -182,13 +182,13 @@ export const ACCEPTED_WARNINGS = Object.freeze(
       path: "test/smoke/core/cases/real-json.ts",
       codeArea: "fixtures-examples",
       metric: "code-lines",
-      value: 432,
+      value: 425,
       messageIncludes: [
         "File \"test/smoke/core/cases/real-json.ts\"",
-        "432 code lines"
+        "425 code lines"
       ],
       reason:
-        "This file is one real-CLI JSON scenario, preserving registry, selection, outline/read, find, readable-view, and failure evidence around a shared SmokeProject; splitting it would scatter one executable roundtrip's audit trail."
+        "This file is one real-CLI JSON scenario, preserving registry, automatic/explicit selection, outline/read, find, readable-view, and selected failure evidence around a shared SmokeProject; splitting it would scatter one executable roundtrip's audit trail."
     },
     {
       ruleId: "lizard-parameter-count",
@@ -199,11 +199,41 @@ export const ACCEPTED_WARNINGS = Object.freeze(
       value: 6,
       messageIncludes: [
         "Function \"runProtocolFailure\"",
-        "real-json.ts:430",
+        "real-json.ts:425",
         "6 parameters"
       ],
       reason:
         "This thin smoke assertion helper receives six distinct call-site facts—label, arguments, project, operation, protocol code, and exit code—validates one command record, and returns it for detail checks; a one-use parameter object would add no domain boundary."
+    },
+    {
+      ruleId: "lizard-function-code-density",
+      sourceTool: "lizard",
+      path: "crates/docnav/src/runtime.rs",
+      codeArea: "rust-production",
+      metric: "function-code-density",
+      value: 57,
+      messageIncludes: [
+        "Function \"execute_document\"",
+        "runtime.rs:35",
+        "57 code lines at cyclomatic complexity 5"
+      ],
+      reason:
+        "This is one ordered runtime transaction: prepare routing, normalize the path, build the parameter catalog, execute navigation, and record each stage's failure against shared logging and timing state. Splitting it only to cross the observation threshold would add one-use state plumbing without a separate behavior owner; remove this acceptance if a stage gains an independent owner or the warning disappears."
+    },
+    {
+      ruleId: "lizard-cyclomatic-complexity",
+      sourceTool: "lizard",
+      path: "crates/shared/navigation/src/routing.rs",
+      codeArea: "rust-production",
+      metric: "cyclomatic-complexity",
+      value: 11,
+      messageIncludes: [
+        "Function \"select_adapter\"",
+        "routing.rs:124",
+        "cyclomatic complexity 11"
+      ],
+      reason:
+        "This is one adapter-selection decision: validate registry routing once, honor an explicit selection, otherwise infer the adapter from the pathname, then resolve its definition. Extracting either short branch would add a one-use wrapper without another responsibility owner; remove this acceptance if selection gains a separate responsibility or the warning disappears."
     }
   ] satisfies AcceptedWarningConfig[]
 );

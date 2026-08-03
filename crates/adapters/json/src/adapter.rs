@@ -1,14 +1,14 @@
 use std::fs;
-use std::path::Path;
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
-    ReadInput, UnstructuredFullRead, UnstructuredFullReadCapabilities,
+    Adapter, AdapterDefinition, AdapterError, AdapterResult, DocumentContentInvalidReason,
+    FindInput, InfoInput, OutlineInput, ReadInput, UnstructuredFullRead,
+    UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
     AdapterIdentity, Cost, Entry, FindResult, FormatDescriptor, InfoAdapter, InfoDocument,
-    InfoResult, Manifest, Measurement, OutlineResult, ProbeReason, ProbeReasonCode, ProbeResult,
-    ReadResult, RequestEnvelope, MANIFEST_VERSION, PROBE_VERSION,
+    InfoResult, Manifest, Measurement, OutlineResult, ReadResult, RequestEnvelope,
+    MANIFEST_VERSION,
 };
 use serde_json::json;
 
@@ -28,53 +28,6 @@ pub(crate) const CONTENT_TYPE_JSON: &str = "application/json";
 pub(crate) struct JsonAdapter;
 
 impl Adapter for JsonAdapter {
-    fn probe(&self, path: &str) -> ProbeResult {
-        if !has_json_extension(path) {
-            return probe_result(
-                path,
-                false,
-                None,
-                0.0,
-                vec![ProbeReason {
-                    code: ProbeReasonCode::ContentConflict,
-                    detail: "path extension is not declared for JSON".to_owned(),
-                }],
-            );
-        }
-
-        let mut reasons = vec![ProbeReason {
-            code: ProbeReasonCode::ExtensionMatch,
-            detail: "path extension is declared for JSON".to_owned(),
-        }];
-        let bytes = match fs::read(path) {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                reasons.push(ProbeReason {
-                    code: ProbeReasonCode::ReadError,
-                    detail: error.to_string(),
-                });
-                return probe_result(path, false, None, 0.0, reasons);
-            }
-        };
-
-        match load(&bytes) {
-            Ok(_) => {
-                reasons.push(ProbeReason {
-                    code: ProbeReasonCode::ContentMatch,
-                    detail: "document is valid UTF-8 JSON input".to_owned(),
-                });
-                probe_result(path, true, Some(FORMAT_ID_JSON), 1.0, reasons)
-            }
-            Err(error) => {
-                reasons.push(ProbeReason {
-                    code: ProbeReasonCode::ContentConflict,
-                    detail: loader_conflict_detail(error),
-                });
-                probe_result(path, false, None, 0.0, reasons)
-            }
-        }
-    }
-
     fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
         let document = reload_document(&input.document_path)?;
         let entries = document.preorder_entries();
@@ -196,7 +149,8 @@ fn json_manifest() -> Manifest {
         },
         formats: vec![FormatDescriptor {
             id: FORMAT_ID_JSON.to_owned(),
-            extensions: vec![".json".to_owned()],
+            extensions: vec![".json".to_owned(), ".code-workspace".to_owned()],
+            filenames: vec![".prettierrc".to_owned(), ".watchmanconfig".to_owned()],
             content_types: vec![CONTENT_TYPE_JSON.to_owned()],
         }],
     }
@@ -207,27 +161,6 @@ fn json_full_read_capabilities() -> UnstructuredFullReadCapabilities {
         content_hook: true,
         cost_measurement_units: vec!["lines".to_owned(), "bytes".to_owned(), "tokens".to_owned()],
         result_facts_hook: false,
-    }
-}
-
-fn has_json_extension(path: &str) -> bool {
-    Path::new(path)
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| extension.eq_ignore_ascii_case(FORMAT_ID_JSON))
-}
-
-fn loader_conflict_detail(error: LoadError) -> String {
-    match error {
-        LoadError::InvalidUtf8 { .. } => "document is not valid UTF-8".to_owned(),
-        LoadError::InvalidJson { .. } => "document is not valid JSON".to_owned(),
-        LoadError::TrailingInput { .. } => "document has trailing non-whitespace input".to_owned(),
-        LoadError::DuplicateMember { name } => {
-            format!("document has duplicate decoded member name {name:?}")
-        }
-        LoadError::MaximumDepthExceeded { maximum, actual } => {
-            format!("document maximum depth {actual} exceeds supported maximum {maximum}")
-        }
     }
 }
 
@@ -249,12 +182,22 @@ fn reload_error(path: &str, error: LoadError) -> AdapterError {
         LoadError::InvalidUtf8 { .. } => {
             AdapterError::document_encoding_unsupported(path, "non-utf-8")
         }
-        LoadError::InvalidJson { .. }
-        | LoadError::TrailingInput { .. }
-        | LoadError::DuplicateMember { .. }
-        | LoadError::MaximumDepthExceeded { .. } => {
-            AdapterError::internal("json-document-changed-after-probe")
-        }
+        LoadError::InvalidJson { .. } => AdapterError::document_content_invalid(
+            path,
+            DocumentContentInvalidReason::JsonSyntaxInvalid,
+        ),
+        LoadError::TrailingInput { .. } => AdapterError::document_content_invalid(
+            path,
+            DocumentContentInvalidReason::JsonTrailingInput,
+        ),
+        LoadError::DuplicateMember { .. } => AdapterError::document_content_invalid(
+            path,
+            DocumentContentInvalidReason::JsonDuplicateMember,
+        ),
+        LoadError::MaximumDepthExceeded { .. } => AdapterError::document_content_invalid(
+            path,
+            DocumentContentInvalidReason::JsonMaximumDepthExceeded,
+        ),
     }
 }
 
@@ -294,24 +237,6 @@ const fn kind_name(kind: JsonKind) -> &'static str {
         JsonKind::Number => "number",
         JsonKind::Boolean => "boolean",
         JsonKind::Null => "null",
-    }
-}
-
-fn probe_result(
-    path: &str,
-    supported: bool,
-    format: Option<&str>,
-    confidence: f64,
-    reasons: Vec<ProbeReason>,
-) -> ProbeResult {
-    ProbeResult {
-        probe_version: PROBE_VERSION.to_owned(),
-        adapter_id: ADAPTER_ID.to_owned(),
-        path: path.to_owned(),
-        supported,
-        format: format.map(str::to_owned),
-        confidence,
-        reasons,
     }
 }
 

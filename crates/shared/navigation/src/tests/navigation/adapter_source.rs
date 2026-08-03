@@ -4,11 +4,11 @@ use serde_json::Value;
 use crate::{execute_loaded_navigation_command, NavigationFailureLayer};
 
 use super::super::support::{
-    cli_value_candidate, config_sources, navigation_command, StubRegistry, UnsupportedRegistry,
+    cli_value_candidate, config_sources, navigation_command, StubRegistry,
 };
 
 #[test]
-fn explicit_missing_adapter_reports_static_registry_guidance() {
+fn explicit_missing_adapter_reports_exact_lookup_diagnostic() {
     let command = navigation_command(vec![cli_value_candidate(
         "docnav.defaults.adapter",
         "--adapter",
@@ -29,14 +29,14 @@ fn explicit_missing_adapter_reports_static_registry_guidance() {
         ProtocolDiagnosticCode::AdapterUnavailable
     );
     assert_eq!(protocol_error.owner(), "docnav_navigation_routing");
-    let guidance = protocol_error
-        .guidance()
-        .and_then(|items| items.first())
-        .expect("default guidance");
-    assert!(
-        guidance.contains("current core release static registry"),
-        "guidance should describe static registry: {guidance}"
-    );
+    let expected_details = serde_json::from_value(serde_json::json!({
+        "adapter_id": "custom-local-adapter",
+        "reason": "ADAPTER_NOT_FOUND",
+        "selection_source": "explicit",
+        "stage": "resolve"
+    }))
+    .unwrap();
+    assert_eq!(protocol_error.details(), &expected_details);
 }
 
 #[test]
@@ -61,35 +61,4 @@ fn explicit_missing_adapter_error_carries_invocation_failure_layer() {
     );
     assert_eq!(error.selected_adapter_id(), None);
     assert_eq!(error.request_id(), None);
-}
-
-#[test]
-fn automatic_discovery_all_fail_projects_candidate_failures() {
-    let error = execute_loaded_navigation_command(
-        navigation_command(Vec::new()),
-        config_sources(Value::Null, Value::Null),
-        &crate::tests::support::document_parameter_catalog(),
-        &UnsupportedRegistry,
-    )
-    .expect_err("all adapter candidates should fail");
-    let protocol_error = super::protocol_error(error.diagnostic());
-
-    assert_eq!(protocol_error.code(), ProtocolDiagnosticCode::FormatUnknown);
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("reason")
-            .and_then(Value::as_str),
-        Some("NO_SUPPORTED_ADAPTER")
-    );
-    assert_eq!(
-        protocol_error
-            .details()
-            .get("candidate_failures")
-            .and_then(Value::as_array)
-            .and_then(|failures| failures.first())
-            .and_then(|failure| failure.get("reason"))
-            .and_then(Value::as_str),
-        Some("PROBE_UNSUPPORTED")
-    );
 }

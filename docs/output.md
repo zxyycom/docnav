@@ -32,7 +32,7 @@ Renderer 必须在第一次 stdout write 前返回一份完整 UTF-8 `String` �
 
 Document operation failure projection 由本文件与 [原始协议](protocol.md)、[CLI](cli.md) 等 surface owner 分别承担；`docnav-diagnostics` 继续只提供 diagnostic/error model helper primitives 和 record invariants。Output 与 renderer failure mapping 不新增或重命名 stable diagnostic code。
 
-Runtime invocation log event 不是 document output，不由 `readable-view` 或 `protocol-json` 承载。启用 invocation logging 后，日志事件只能写入 [CLI](cli.md#invocation-logging) 解析出的独立 sink/path，不得作为 rendered text、protocol field、manifest/probe field 或 linked adapter handler payload 注入。
+Runtime invocation log event 不是 document output，不由 `readable-view` 或 `protocol-json` 承载。启用 invocation logging 后，日志事件只能写入 [CLI](cli.md#invocation-logging) 解析出的独立 sink/path，不得作为 rendered text、protocol field、manifest field 或 linked adapter handler payload 注入。Lexical routing pathname、derived filename/suffix index、matched hint 和 matched format identity 都是上游 invocation-private state；`protocol-json`、`readable-view` 与 invocation log 只保留各自既有 public/stable facts，不投影这些 routing mechanics。
 
 ## `protocol-json`
 

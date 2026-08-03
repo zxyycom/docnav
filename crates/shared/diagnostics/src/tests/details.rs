@@ -1,8 +1,9 @@
 use serde_json::{json, Value};
 
 use crate::{
-    DetailFieldRule, DetailFieldType, DiagnosticCode, DiagnosticDetailsError,
-    DiagnosticDetailsRule, ProtocolDiagnosticCode,
+    AdapterUnavailableDetails, DetailFieldRule, DetailFieldType, DiagnosticCode,
+    DiagnosticDetailsError, DiagnosticDetailsRule, DocumentContentInvalidDetails,
+    DocumentContentInvalidReason, ProtocolDiagnosticCode,
 };
 
 const REPRESENTATIVE_FIELD_TYPES: &[DetailFieldRule] = &[
@@ -91,6 +92,101 @@ fn invalid_request_details_accept_known_optional_context_fields() {
         Err(DiagnosticDetailsError::WrongType { field, expected })
             if field == "accepted" && expected == DetailFieldType::StringArray
     ));
+}
+
+#[test]
+fn document_content_invalid_details_require_exact_path_and_reason() {
+    let code = ProtocolDiagnosticCode::from_protocol_code("DOCUMENT_CONTENT_INVALID")
+        .expect("selected document content failures need a stable protocol code");
+    let rule = DiagnosticCode::from(code).details_rule();
+    let valid = json!({
+        "path": "/workspace/project/document.json",
+        "reason": "JSON_SYNTAX_INVALID"
+    });
+
+    assert!(rule.validate_value(&valid).is_ok());
+
+    for (reason, expected) in [
+        (
+            DocumentContentInvalidReason::JsonSyntaxInvalid,
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            DocumentContentInvalidReason::JsonTrailingInput,
+            "JSON_TRAILING_INPUT",
+        ),
+        (
+            DocumentContentInvalidReason::JsonDuplicateMember,
+            "JSON_DUPLICATE_MEMBER",
+        ),
+        (
+            DocumentContentInvalidReason::JsonMaximumDepthExceeded,
+            "JSON_MAXIMUM_DEPTH_EXCEEDED",
+        ),
+    ] {
+        let details =
+            DocumentContentInvalidDetails::new("/workspace/project/document.json", reason);
+        assert_eq!(serde_json::to_value(details).unwrap()["reason"], expected);
+    }
+    assert!(
+        serde_json::from_value::<DocumentContentInvalidDetails>(json!({
+            "path": "/workspace/project/document.json",
+            "reason": "PARSER_INTERNAL"
+        }))
+        .is_err()
+    );
+
+    let missing_reason = json!({ "path": "/workspace/project/document.json" });
+    assert!(matches!(
+        rule.validate_value(&missing_reason),
+        Err(DiagnosticDetailsError::MissingField { field }) if field == "reason"
+    ));
+
+    let with_parser_detail = json!({
+        "path": "/workspace/project/document.json",
+        "reason": "JSON_SYNTAX_INVALID",
+        "parser_message": "unstable parser detail"
+    });
+    assert!(matches!(
+        rule.validate_value(&with_parser_detail),
+        Err(DiagnosticDetailsError::ExtraField { field }) if field == "parser_message"
+    ));
+}
+
+#[test]
+fn adapter_unavailable_details_require_exact_lookup_facts() {
+    let details = AdapterUnavailableDetails::new("missing-adapter", "explicit");
+    assert_eq!(
+        serde_json::to_value(details).unwrap(),
+        json!({
+            "adapter_id": "missing-adapter",
+            "reason": "ADAPTER_NOT_FOUND",
+            "selection_source": "explicit",
+            "stage": "resolve"
+        })
+    );
+
+    for invalid in [
+        json!({
+            "adapter_id": "missing-adapter",
+            "reason": "ADAPTER_UNAVAILABLE",
+            "selection_source": "explicit",
+            "stage": "resolve"
+        }),
+        json!({
+            "adapter_id": "missing-adapter",
+            "reason": "ADAPTER_NOT_FOUND",
+            "selection_source": "explicit",
+            "stage": "dispatch"
+        }),
+        json!({
+            "adapter_id": "missing-adapter",
+            "reason": "ADAPTER_NOT_FOUND",
+            "stage": "resolve"
+        }),
+    ] {
+        assert!(serde_json::from_value::<AdapterUnavailableDetails>(invalid).is_err());
+    }
 }
 
 fn representative_details() -> Value {

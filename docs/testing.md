@@ -19,7 +19,7 @@ Case 的对象关系、存储格式、查询、当前/历史边界和闭合失�
 
 | 层级 | 核心目标 |
 | --- | --- |
-| schema | 原始协议、manifest 和 probe 通过各自 public schema；`readable-view` 最终文本通过 conformance vectors 和 text assertions 验证，不建立第二套 readable machine schema |
+| schema | 原始协议与 manifest 通过各自 public schema；`readable-view` 最终文本通过 conformance vectors 和 text assertions 验证，不建立第二套 readable machine schema |
 | 单元 | parser、ref、默认值、分页、diagnostic record/projection helper 等可直接调用并观察的模块行为 |
 | 集成 | `docnav` 配置优先级、static registry adapter 选择、adapter inspection、protocol request dispatch、输出模式和真实 CLI 通道 |
 | 端到端 | 真实 CLI、release package、协议映射、精简输出和 continuation 链路 |
@@ -90,7 +90,7 @@ Rust tests 负责无需启动真实 CLI 即可直接观察的 owner 行为。每
 - Markdown document head 范围与 eligibility：满足条件时始终暴露 `HEAD:leading`，空或纯空白 document head 不暴露 entry，无可见 heading 时保留 `doc:full` fallback。
 - Markdown document head read/find：frontmatter delimiter 和普通前导正文原文保留，`HEAD:leading` 返回 `text/markdown`，find 命中 document head 后可用返回 ref 继续 read，Unicode 分页不拆分字符。
 - Unicode 字符预算、分页和终止规则。
-- protocol、manifest 和 probe decode wrapper 只按实际可达行为选择 schema、typed result 或 semantic failure 代表；无法从具体 wrapper 构造的 generic deserialize fallback 不使用假 schema gate 建立测试。
+- protocol 与 manifest decode wrapper 只按实际可达行为选择 schema、typed result 或 semantic failure 代表；无法从具体 wrapper 构造的 generic deserialize fallback 不使用假 schema gate 建立测试。
 - DiagnosticCode details、primary `DiagnosticRecord` 投影、从属 details 语义、core CLI argv strictness、低层 JSON writer 和 paging helper 的可观察行为边界。
 - Shared document output：同一个 success/failure `ProtocolResponse` 分别进入 `ProtocolJson` 与 `Rendered(RenderStrategy)`；覆盖 built-in/custom renderer、exact returned text、`RenderFailure` before stdout、no fallback 和独立 writer failure。
 - Core CLI output composition：省略 output 与显式 `readable-view` 注入内置 renderer，`protocol-json` 绕过 renderer，提前发生的 document failure 先形成 `ProtocolResponse::Failure`，`readable-json` CLI/config value 按普通 invalid-value boundary 拒绝。
@@ -99,7 +99,7 @@ Rust tests 负责无需启动真实 CLI 即可直接观察的 owner 行为。每
 
 Manual CR: 修改 `DiagnosticCode -> details rule` 的完整字段表时，reviewer 同步核对 typed details payload、`code/details.rs` 和 protocol schema/example。自动化测试只为每种 details field type 保留一个验证代表，并验证具有独立 public projection 的具体 code；不维护一份由被测规则复制出来的全量 expected table。
 
-Manual CR: 修改 protocol、manifest 或 probe 的 schema 与 Rust typed shape 映射时，reviewer 对照 public schema、对应 Rust type 和具体 decode wrapper；若 schema-valid 但 typed-invalid 输入无法从该 wrapper 的真实 surface 构造，不用 generic type 或恒真 gate 伪造自动化分支。
+Manual CR: 修改 protocol 或 manifest 的 schema 与 Rust typed shape 映射时，reviewer 对照 public schema、对应 Rust type 和具体 decode wrapper；若 schema-valid 但 typed-invalid 输入无法从该 wrapper 的真实 surface 构造，不用 generic type 或恒真 gate 伪造自动化分支。
 
 以下行为由 CLI smoke 验证外部契约，无需在 Rust 中建立重复矩阵：
 
@@ -108,26 +108,33 @@ Manual CR: 修改 protocol、manifest 或 probe 的 schema 与 Rust typed shape 
 - 同一校验规则下的多个等价非法值。
 - 真实 CLI 的 `readable-view` block framing、stdout/stderr 分流和用户可观察输出边界；内置 renderer 的 exact text 与 failure branches 由 shared output/conformance tests 证明，不在 core parser tests 建重复矩阵。
 
-### JSON adapter 证据分层
+### JSON adapter 与 pathname routing 证据分层
 
 JSON adapter 的稳定契约由 [JSON Adapter](adapters/json.md) 拥有；测试和 release
 材料只按可观察边界记录当前证据，不把 owner 文档本身当作实现证明：
 
-- JSON crate tests 直接观察 adapter-private manifest/probe、loader/model、ref、
-  traversal、structured/full-read content、find、info、pagination/cost 和
-  JSON-owned failure mapping。
+- JSON crate tests 直接观察 adapter-private manifest pathname hints、selected-operation
+  loader/model、ref、traversal、structured/full-read content、find、info、
+  pagination/cost，以及 syntax、trailing input、duplicate member、maximum depth 对应
+  `DOCUMENT_CONTENT_INVALID` stable reason 的 JSON-owned failure mapping。
 - Core Rust tests 观察 static registry membership、linked handler availability、
-  automatic/explicit selection handoff、closed parameter catalog 与
-  JSON strategy dispatch；注册 JSON 不新增 public input 的证明留在这一层。
+  lexical route-before-document-I/O、automatic/explicit selection handoff、closed
+  parameter catalog 与 JSON strategy dispatch；注册 JSON 不新增 public input、
+  pathname/index match state 不进入 operation input 或 public output 的证明留在这一层。
 - 真实 core CLI smoke 观察 automatic 与 explicit JSON selection、required adapter
   inspection、`outline -> ref -> read`、`find -> ref -> read`、raw number、generic
-  `readable-view`、`protocol-json` 和代表性 selection/ref/document failure。
-  Linux x86_64 development profile 另外运行 deterministic TOCTOU helper；该
-  platform-only 证据不属于 release package 或 Windows。
+  `readable-view`、`protocol-json`、exact pathname no-match，以及 selected JSON 的
+  四种 `DOCUMENT_CONTENT_INVALID` reason。Markdown smoke 同样从 automatic outline
+  取得 ref，并由 explicit read 消费。
 - Canonical package smoke 从已验证 release manifest 的唯一 core entry 解析
-  `docnav` binary，并用同一个 binary 执行 Markdown 与 JSON direct CLI roundtrip
-  及 required adapter inspection。`release-package` profile 不运行上述 Linux-only
-  TOCTOU helper，因此 package smoke 只声称跨 target 的 direct CLI evidence。
+  `docnav` binary，并用同一个 binary 执行 Markdown 与 JSON automatic/explicit
+  selection、outline-to-ref-to-read、required adapter inspection 及相同的 public
+  output assertions；package profile 不维护另一套 routing fixture matrix。
+
+Routing change 只验证 `add-project-wide-find` 已接受的现有 outcome seam：pathname
+no-match、selected document/operation failure、registry invariant 与 explicit missing
+adapter 保持可区分。本层不实现 project traversal，也不把 downstream
+filter/local/fatal classification 声称为当前 core smoke 能力。
 
 当前 JSON crate/core/CLI 测试目的和实体映射由
 [`json-adapter`](testing/cases/json-adapter.md)及相关

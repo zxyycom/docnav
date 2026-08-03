@@ -1,4 +1,5 @@
 use crate::{AdapterError, NativeOptionIssue};
+use docnav_diagnostics::DocumentContentInvalidReason;
 use docnav_protocol::ProtocolDiagnosticCode;
 
 #[test]
@@ -14,6 +15,28 @@ fn adapter_document_not_found_error_projects_protocol_details() {
     assert_eq!(
         not_found.guidance().unwrap()[0],
         "Check the document path and retry."
+    );
+}
+
+#[test]
+fn adapter_document_content_invalid_error_projects_exact_protocol_details() {
+    let invalid = AdapterError::document_content_invalid(
+        "invalid.json",
+        DocumentContentInvalidReason::JsonDuplicateMember,
+    )
+    .protocol_error();
+
+    assert_eq!(
+        invalid.code(),
+        ProtocolDiagnosticCode::DocumentContentInvalid
+    );
+    assert_eq!(invalid.owner(), "adapter");
+    assert_eq!(
+        serde_json::to_value(invalid.details()).unwrap(),
+        serde_json::json!({
+            "path": "invalid.json",
+            "reason": "JSON_DUPLICATE_MEMBER"
+        })
     );
 }
 

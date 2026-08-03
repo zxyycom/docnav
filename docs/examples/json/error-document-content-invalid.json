@@ -1,0 +1,21 @@
+{
+  "protocol_version": "0.1",
+  "request_id": "req-outline-invalid-content",
+  "operation": "outline",
+  "ok": false,
+  "error": {
+    "code": "DOCUMENT_CONTENT_INVALID",
+    "message": "文档内容不是有效的 JSON。",
+    "owner": "adapter",
+    "location": {
+      "path": "docs/config.json"
+    },
+    "details": {
+      "path": "docs/config.json",
+      "reason": "JSON_DUPLICATE_MEMBER"
+    },
+    "guidance": [
+      "修正文档内容后重试。"
+    ]
+  }
+}

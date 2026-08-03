@@ -280,6 +280,68 @@ fn navigation_routing_default_guidance_uses_static_registry_language() {
 }
 
 #[test]
+fn protocol_routing_and_content_errors_use_exact_details() {
+    let unknown = ProtocolError::format_unknown("docs/file.data");
+    assert_eq!(
+        serde_json::to_value(unknown.details()).unwrap(),
+        serde_json::json!({
+            "path": "docs/file.data",
+            "reason": "FORMAT_NOT_RECOGNIZED",
+            "candidates": []
+        })
+    );
+    unknown.validate_details().unwrap();
+
+    let invalid = ProtocolError::document_content_invalid(
+        "docs/file.json",
+        DocumentContentInvalidReason::JsonTrailingInput,
+    );
+    assert_eq!(
+        serde_json::to_value(invalid.details()).unwrap(),
+        serde_json::json!({
+            "path": "docs/file.json",
+            "reason": "JSON_TRAILING_INPUT"
+        })
+    );
+    invalid.validate_details().unwrap();
+
+    let mut invalid_value = serde_json::to_value(invalid).unwrap();
+    invalid_value["details"]["reason"] = serde_json::json!("PARSER_INTERNAL");
+    let invalid: ProtocolError = serde_json::from_value(invalid_value).unwrap();
+    assert!(invalid.validate_details().is_err());
+
+    let unavailable = ProtocolError::adapter_unavailable("missing-adapter", "explicit");
+    assert_eq!(
+        serde_json::to_value(unavailable.details()).unwrap(),
+        serde_json::json!({
+            "adapter_id": "missing-adapter",
+            "reason": "ADAPTER_NOT_FOUND",
+            "selection_source": "explicit",
+            "stage": "resolve"
+        })
+    );
+    unavailable.validate_details().unwrap();
+
+    for update in [
+        ("reason", serde_json::json!("ADAPTER_UNAVAILABLE")),
+        ("stage", serde_json::json!("dispatch")),
+    ] {
+        let mut invalid_value = serde_json::to_value(&unavailable).unwrap();
+        invalid_value["details"][update.0] = update.1;
+        let invalid: ProtocolError = serde_json::from_value(invalid_value).unwrap();
+        assert!(invalid.validate_details().is_err());
+    }
+
+    let mut missing_source = serde_json::to_value(unavailable).unwrap();
+    missing_source["details"]
+        .as_object_mut()
+        .unwrap()
+        .remove("selection_source");
+    let invalid: ProtocolError = serde_json::from_value(missing_source).unwrap();
+    assert!(invalid.validate_details().is_err());
+}
+
+#[test]
 fn protocol_error_roundtrips_through_diagnostic_record_projection() {
     let error = ProtocolError::ref_not_found("R99")
         .with_owner("docnav_protocol_test")

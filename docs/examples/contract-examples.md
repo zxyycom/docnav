@@ -55,12 +55,11 @@ read 使用 `page: 1` 和 `limit: 64`，因此结果返回 `page: 2`；结果保
 ## 发现与错误
 
 - [manifest.json](json/manifest.json)
-- [probe-result.json](json/probe-result.json)
+- [error-document-content-invalid.json](json/error-document-content-invalid.json)
 - [error-ref-ambiguous.json](json/error-ref-ambiguous.json)
 - [error-ref-invalid.json](json/error-ref-invalid.json)
 - [error-ref-not-found.json](json/error-ref-not-found.json)
 - [error-format-unknown.json](json/error-format-unknown.json)
-- [error-format-ambiguous.json](json/error-format-ambiguous.json)
 - [error-invalid-request.json](json/error-invalid-request.json)
 - [error-unknown-argv.json](json/error-unknown-argv.json)
 - [error-extra-positional.json](json/error-extra-positional.json)
@@ -101,4 +100,4 @@ Invocation log 示例只证明 [invocation-log-event.schema.json](../schemas/inv
 
 原始协议由 protocol schema 校验，见 [JSON Schema 索引](../schemas/json-schema.md)。Protocol 示例证明 raw 结构化字段；readable-view 的最终文本由 built-in renderer conformance 承接，不发布另一组 JSON examples。
 
-示例只证明 protocol、manifest、probe、配置文件示例和 invocation log event 的 documented shape 与投影结果。Core CLI strict failure、primary diagnostic projection、protocol-json stdout purity、readable-view presentation、adapter inspection 边界、配置读取行为、invocation logging side-effect 边界和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。
+示例只证明 protocol、manifest、配置文件示例和 invocation log event 的 documented shape 与投影结果。Core CLI strict failure、primary diagnostic projection、protocol-json stdout purity、readable-view presentation、adapter inspection 边界、配置读取行为、invocation logging side-effect 边界和 pagination mechanics 由主规范、smoke 和 Rust 测试共同证明。

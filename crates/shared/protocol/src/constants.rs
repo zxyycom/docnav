@@ -2,7 +2,6 @@
 // 这些值来自主规范和 schema，代码只能引用它们，不能把本文件变成新的规则来源。
 pub const PROTOCOL_VERSION: &str = "0.1";
 pub const MANIFEST_VERSION: &str = "0.1";
-pub const PROBE_VERSION: &str = "0.1";
 pub const UNKNOWN_REQUEST_ID: &str = "unknown";
 
 // 原始协议 envelope 的稳定字段名，供边界解析和错误定位复用。
@@ -24,7 +23,6 @@ pub(crate) mod operation_names {
 // schema 文件名仅用于错误报告；include_str! 的路径仍留在 schema.rs 作为编译期资源边界。
 pub(crate) mod schema_names {
     pub const MANIFEST: &str = "manifest.schema.json";
-    pub const PROBE_RESULT: &str = "probe-result.schema.json";
     pub const PROTOCOL_REQUEST: &str = "protocol-request.schema.json";
     pub const PROTOCOL_RESPONSE: &str = "protocol-response.schema.json";
 }
@@ -32,8 +30,8 @@ pub(crate) mod schema_names {
 // Protocol error message 默认文案集中在这里；调用方只解析 code 和 details。
 pub(crate) mod protocol_error_messages {
     pub const ADAPTER_UNAVAILABLE: &str = "Adapter is unavailable.";
+    pub const DOCUMENT_CONTENT_INVALID: &str = "Document content is invalid.";
     pub const DOCUMENT_ENCODING_UNSUPPORTED: &str = "Document encoding is unsupported.";
-    pub const DOCUMENT_FORMAT_AMBIGUOUS: &str = "Document format is ambiguous.";
     pub const DOCUMENT_FORMAT_UNKNOWN: &str = "Document format is unknown.";
     pub const DOCUMENT_NOT_FOUND: &str = "Document was not found.";
     pub const DOCUMENT_PATH_INVALID: &str = "Document path is invalid.";

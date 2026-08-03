@@ -1,24 +1,26 @@
 //! Linked adapter strategy contract for Docnav navigation.
 //!
 //! [`AdapterDefinition`] combines manifest identity, declared capabilities, and one strategy.
-//! Strategies receive closed operation-specific input and retain probe, navigation, and optional
+//! Strategies receive closed operation-specific input and retain navigation and optional
 //! unstructured full-read hooks. Parameter declaration and source resolution remain outside this
 //! crate.
 
 use docnav_diagnostics::{
-    typed_codes, DiagnosticRecordDraft, DiagnosticSource, FieldReasonDetails, InternalDetails,
-    PathDetails, PathEncodingDetails, PathReasonDetails, RefDetails, RefReasonDetails,
+    typed_codes, DiagnosticRecordDraft, DiagnosticSource, DocumentContentInvalidDetails,
+    FieldReasonDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
+    RefDetails, RefReasonDetails,
 };
 use docnav_protocol::{
     normalize_protocol_diagnostic, protocol_error_record_draft,
     protocol_error_record_draft_with_summary, Cost, FindResult, InfoResult, OutlineResult,
-    ProbeResult, ProtocolDiagnosticFallback, ProtocolError, ReadResult, RequestEnvelope,
+    ProtocolDiagnosticFallback, ProtocolError, ReadResult, RequestEnvelope,
 };
 mod definition;
 mod native_option;
 mod operation_input;
 
 pub use definition::{AdapterDefinition, AdapterDefinitionError};
+pub use docnav_diagnostics::DocumentContentInvalidReason;
 pub use native_option::NativeOptionIssue;
 pub use operation_input::{
     FindInput, InfoInput, OutlineInput, ReadInput, StandardInputBinding, StandardOperationInput,
@@ -27,8 +29,6 @@ pub use operation_input::{
 pub type AdapterResult<T> = Result<T, AdapterError>;
 
 pub trait Adapter: Sync {
-    fn probe(&self, path: &str) -> ProbeResult;
-
     fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult>;
 
     fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult>;
@@ -192,6 +192,18 @@ impl AdapterError {
             typed_codes::protocol::DocumentEncodingUnsupported,
         >(
             PathEncodingDetails::new(path, encoding),
+            DiagnosticSource::with_stage("docnav-adapter-contracts", "adapter"),
+        ))
+    }
+
+    pub fn document_content_invalid(
+        path: impl Into<String>,
+        reason: DocumentContentInvalidReason,
+    ) -> Self {
+        Self::new(protocol_error_record_draft::<
+            typed_codes::protocol::DocumentContentInvalid,
+        >(
+            DocumentContentInvalidDetails::new(path, reason),
             DiagnosticSource::with_stage("docnav-adapter-contracts", "adapter"),
         ))
     }

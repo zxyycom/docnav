@@ -80,13 +80,13 @@ fn outline_rejects_out_of_range_max_heading_level_at_adapter_boundary() {
 }
 
 #[test]
-fn non_utf8_document_returns_stable_encoding_error() {
-    let path = write_bytes("bad.md", &[0xFF, 0xFE, 0x00]);
+fn selected_outline_reads_actual_document_and_returns_stable_encoding_error() {
+    let path = write_bytes("bad.data", &[0xFF, 0xFE, 0x00]);
     let input = outline_input(&path, 6000, 1, None);
 
-    let error = MarkdownAdapter
-        .outline(&input)
-        .expect_err("non UTF-8 fails");
+    let error = markdown_adapter_definition()
+        .execute_operation(&StandardOperationInput::Outline(input))
+        .expect_err("selected Markdown outline should validate the actual document");
 
     assert_eq!(
         error.protocol_error().code(),

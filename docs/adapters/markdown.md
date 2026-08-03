@@ -1,6 +1,6 @@
 # Markdown Adapter
 
-本文是 `docnav-markdown` 当前实现的导航行为和私有契约主文档。它覆盖 Markdown adapter 的 outline、read、find、ref grammar、结构快照语义、`doc:full`、错误分类、保证范围和验证入口，是 Markdown 实现与审计的长期规范来源。
+本文是 `docnav-markdown` 当前导航行为和私有契约主文档。它覆盖 Markdown adapter 的 pathname hints、outline、read、find、ref grammar、结构快照语义、`doc:full`、错误分类、保证范围和验证入口，是 Markdown 实现与审计的长期规范来源。
 
 共享协议和 `docnav` core 按共享 ref 契约原样传递 ref；Markdown heading ref 的解析归 Markdown adapter 拥有。共享 ref 最小契约见 [Ref](../ref-contract.md)。
 
@@ -13,9 +13,11 @@ Outline heading 识别范围排除：
 - frontmatter。
 - 代码围栏内的伪 heading。
 
-## Probe
+## Pathname routing hints
 
-Markdown probe 将扩展名和编码组合为支持判定：path 扩展名按 ASCII 大小写不敏感匹配 `.md` 或 `.markdown`，并且移除可选 UTF-8 BOM 后的文件内容必须是有效 UTF-8。只有编码有效但扩展名不匹配，或只有扩展名匹配但内容不是有效 UTF-8，都返回 `supported: false` 并提供 reason；probe 不解析 heading、ref 或其它 navigation payload。
+**Current：** Markdown manifest 为 normalized format id `markdown` 声明 `.md` 与 `.markdown` complete-basename suffix hints，`filenames[]` 为空。Automatic routing 按共享契约对 suffix 做 ASCII 大小写归一化和 end-anchored match；它在 target-document I/O 前只选择 linked `docnav-markdown` definition，不读取内容、不验证 UTF-8，也不解析 heading、ref 或其它 navigation payload。完整 lookup 与状态私有性由[适配器契约](../adapter-contract.md#adapter-选择)和 [Navigation Input Resolution](../navigation-input-resolution.md#adapter-selection-and-path-sequencing)拥有。
+
+固定 Markdown strategy 只实现 `outline`、`read`、`find` 和 `info`，不保留 selection probe 或兼容 inspection surface。选择成功后，requested strategy 仍从 normalized document path 读取并验证实际 Markdown document；encoding、parse、semantic 或 operation failure 使用正常 owner diagnostic，且不得触发其它 adapter。Matched suffix/format state 不进入 Markdown input、ref 或 result。
 
 ## Outline
 

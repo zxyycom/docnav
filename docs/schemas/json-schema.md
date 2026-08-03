@@ -9,7 +9,6 @@
 | [protocol-request.schema.json](protocol-request.schema.json) | protocol-json request envelope |
 | [protocol-response.schema.json](protocol-response.schema.json) | CLI `--output protocol-json` response envelope |
 | [manifest.schema.json](manifest.schema.json) | adapter manifest |
-| [probe-result.schema.json](probe-result.schema.json) | adapter probe |
 
 ## 阅读输出
 
@@ -31,7 +30,7 @@ protocol response 示例证明 outline/find item facts、read `cost.measurements
 
 文件系统边界、ref 唯一性、真实分页一致性和配置优先级不属于 JSON Schema 校验范围，应由对应 owner 文档下的实现级业务测试覆盖。
 
-`docnav-json-io` 拥有低层 serialization、newline writing 和 write failure plumbing。protocol request/response、manifest 和 probe 的字段 shape 仍由本目录维护；语义校验、错误归属、诊断投影和通道承载由对应 owner 文档与实现测试验收。
+`docnav-json-io` 拥有低层 serialization、newline writing 和 write failure plumbing。protocol request/response 与 manifest 的字段 shape 仍由本目录维护；语义校验、错误归属、诊断投影和通道承载由对应 owner 文档与实现测试验收。
 
 ## Runtime invocation log
 

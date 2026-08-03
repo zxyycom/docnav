@@ -1,9 +1,9 @@
 use crate::details::DiagnosticDetailsRule;
 
 use super::details::{
-    ADAPTER_REASON_FIELDS, BOUNDARY_FIELDS, FIELD_REASON_FIELDS, FORMAT_AMBIGUOUS_FIELDS,
-    FORMAT_UNKNOWN_FIELDS, INTERNAL_FIELDS, PATH_ENCODING_FIELDS, PATH_FIELDS, PATH_REASON_FIELDS,
-    REF_CANDIDATE_FIELDS, REF_FIELDS, REF_REASON_FIELDS,
+    ADAPTER_UNAVAILABLE_FIELDS, BOUNDARY_FIELDS, DOCUMENT_CONTENT_INVALID_FIELDS,
+    FIELD_REASON_FIELDS, FORMAT_UNKNOWN_FIELDS, INTERNAL_FIELDS, PATH_ENCODING_FIELDS, PATH_FIELDS,
+    PATH_REASON_FIELDS, REF_CANDIDATE_FIELDS, REF_FIELDS, REF_REASON_FIELDS,
 };
 use super::{
     BoundaryDiagnosticCode, DiagnosticCategory, DiagnosticEffect, DiagnosticSeverity,
@@ -69,16 +69,16 @@ pub(super) const PROTOCOL_RULES: [ProtocolDiagnosticRule; 11] = protocol_rules![
     DocumentNotFound => ("DOCUMENT_NOT_FOUND", Document, Error, DocumentFailed, PATH_FIELDS),
     DocumentPathInvalid => ("DOCUMENT_PATH_INVALID", Document, Error, DocumentFailed, PATH_REASON_FIELDS),
     DocumentEncodingUnsupported => ("DOCUMENT_ENCODING_UNSUPPORTED", Document, Error, DocumentFailed, PATH_ENCODING_FIELDS),
+    DocumentContentInvalid => ("DOCUMENT_CONTENT_INVALID", Document, Error, DocumentFailed, DOCUMENT_CONTENT_INVALID_FIELDS),
     FormatUnknown => ("FORMAT_UNKNOWN", Document, Error, DocumentFailed, FORMAT_UNKNOWN_FIELDS),
-    FormatAmbiguous => ("FORMAT_AMBIGUOUS", Document, Error, DocumentFailed, FORMAT_AMBIGUOUS_FIELDS),
     RefNotFound => ("REF_NOT_FOUND", Document, Error, DocumentFailed, REF_FIELDS),
     RefAmbiguous => ("REF_AMBIGUOUS", Document, Error, DocumentFailed, REF_CANDIDATE_FIELDS),
     RefInvalid => ("REF_INVALID", Document, Error, DocumentFailed, REF_REASON_FIELDS),
-    AdapterUnavailable => ("ADAPTER_UNAVAILABLE", AdapterBoundary, Error, AdapterBoundaryFailed, ADAPTER_REASON_FIELDS),
+    AdapterUnavailable => ("ADAPTER_UNAVAILABLE", AdapterBoundary, Error, AdapterBoundaryFailed, ADAPTER_UNAVAILABLE_FIELDS),
     InternalError => ("INTERNAL_ERROR", Internal, Fatal, InternalFailure, INTERNAL_FIELDS),
 ];
 
-pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 17] = boundary_rules![
+pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 14] = boundary_rules![
     FailedToReadRequest => ("failed_to_read_request", AdapterBoundary, Error, AdapterBoundaryFailed),
     FailedToSerialize => ("failed_to_serialize", Internal, Fatal, InternalFailure),
     FailedToWriteJson => ("failed_to_write_json", Internal, Fatal, InternalFailure),
@@ -88,9 +88,6 @@ pub(super) const BOUNDARY_RULES: [BoundaryDiagnosticRule; 17] = boundary_rules![
     ManifestAdapterIdMismatch => ("manifest_adapter_id_mismatch", AdapterBoundary, Error, AdapterBoundaryFailed),
     ManifestSchemaValidationFailed => ("manifest_schema_validation_failed", AdapterBoundary, Error, AdapterBoundaryFailed),
     ManifestSemanticValidationFailed => ("manifest_semantic_validation_failed", AdapterBoundary, Error, AdapterBoundaryFailed),
-    ProbeResultAdapterIdMismatch => ("probe_result_adapter_id_mismatch", AdapterBoundary, Error, AdapterBoundaryFailed),
-    ProbeResultSchemaValidationFailed => ("probe_result_schema_validation_failed", AdapterBoundary, Error, AdapterBoundaryFailed),
-    ProbeResultSemanticValidationFailed => ("probe_result_semantic_validation_failed", AdapterBoundary, Error, AdapterBoundaryFailed),
     ProtocolResponseSchemaValidationFailed => ("protocol_response_schema_validation_failed", AdapterBoundary, Error, AdapterBoundaryFailed),
     ProtocolResponseSemanticValidationFailed => ("protocol_response_semantic_validation_failed", AdapterBoundary, Error, AdapterBoundaryFailed),
     ReadableViewRenderFailed => ("readable_view_render_failed", Internal, Fatal, InternalFailure),

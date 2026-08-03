@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, fmt};
 
-use docnav_protocol::{Manifest, OperationResult, ProbeResult, RequestEnvelope};
+use docnav_protocol::{Manifest, OperationResult, RequestEnvelope};
 
 use crate::{
     Adapter, AdapterResult, StandardOperationInput, UnstructuredFullRead,
@@ -42,10 +42,6 @@ impl<'a> AdapterDefinition<'a> {
 
     pub fn unstructured_full_read_capabilities(&self) -> Option<&UnstructuredFullReadCapabilities> {
         self.full_read_capabilities.as_ref()
-    }
-
-    pub fn probe(&self, path: &str) -> ProbeResult {
-        self.strategy.probe(path)
     }
 
     pub fn execute_operation(

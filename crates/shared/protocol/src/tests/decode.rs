@@ -61,6 +61,7 @@ fn decode_manifest_returns_the_typed_current_manifest() {
             {
                 "id": "stub",
                 "extensions": [".stub"],
+                "filenames": [],
                 "content_types": ["text/stub"]
             }
         ]
@@ -69,32 +70,7 @@ fn decode_manifest_returns_the_typed_current_manifest() {
     let decoded = decode_manifest_value(manifest).expect("current manifest decodes");
     assert_eq!(decoded.adapter.id, "stub");
     assert_eq!(decoded.formats[0].extensions, [".stub"]);
-}
-
-#[test]
-fn decode_probe_result_returns_semantic_error_with_typed_value() {
-    let semantic_invalid = serde_json::json!({
-        "probe_version": "0.1",
-        "adapter_id": "stub",
-        "path": "doc.stub",
-        "supported": true,
-        "format": null,
-        "confidence": 1.0,
-        "reasons": [
-            { "code": "EXTENSION_MATCH", "detail": "extension matched" }
-        ]
-    });
-
-    let error = decode_probe_result_value(semantic_invalid)
-        .expect_err("supported probe without format should fail semantics");
-    assert_eq!(error.stage(), DecodePipelineStage::Semantic);
-    match error {
-        DecodePipelineError::Semantic { value, error } => {
-            assert!(value.supported);
-            assert_eq!(error, ProbeValidationError::SupportedWithoutFormat);
-        }
-        _ => panic!("expected semantic error"),
-    }
+    assert!(decoded.formats[0].filenames.is_empty());
 }
 
 #[test]

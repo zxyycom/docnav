@@ -6,7 +6,7 @@ use docnav_adapter_contracts::{
 };
 use docnav_markdown::{markdown_adapter_definition, MarkdownAdapter};
 use docnav_navigation::execute_navigation_command;
-use docnav_protocol::{FindResult, InfoResult, OutlineResult, ProbeResult, ReadResult};
+use docnav_protocol::{FindResult, InfoResult, OutlineResult, ReadResult};
 
 use super::super::super::{
     navigation_command, output_mode, AdapterRuntime, DocnavRuntime, DocumentRequest,
@@ -251,9 +251,7 @@ fn execute_document_with_nested_read_failure(request: DocumentRequest) -> Comman
         Some(&document.absolute_path),
     );
     let catalog = document_parameter_catalog().unwrap();
-    let registry = AdapterRegistry {
-        adapters: NESTED_READ_FAILURE_ADAPTERS,
-    };
+    let registry = AdapterRegistry::new(NESTED_READ_FAILURE_ADAPTERS);
     let outcome = execute_navigation_command(
         navigation_command(&request.command, document.adapter_path),
         request.config_source_descriptors,
@@ -274,10 +272,6 @@ static NESTED_READ_FAILURE_ADAPTERS: &[fn() -> AdapterDefinition<'static>] =
 struct NestedReadFailureAdapter;
 
 impl Adapter for NestedReadFailureAdapter {
-    fn probe(&self, path: &str) -> ProbeResult {
-        MarkdownAdapter.probe(path)
-    }
-
     fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
         MarkdownAdapter.outline(input)
     }

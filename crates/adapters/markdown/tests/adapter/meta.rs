@@ -12,6 +12,7 @@ fn manifest_declares_markdown_v0_identity_and_formats() {
     assert!(manifest.formats[0]
         .extensions
         .contains(&".markdown".to_owned()));
+    assert!(manifest.formats[0].filenames.is_empty());
     assert!(manifest.formats[0]
         .content_types
         .contains(&"text/markdown".to_owned()));
@@ -33,22 +34,6 @@ fn definition_declares_manifest_and_full_read_capabilities() {
     assert!(full_read.has_cost_measurement_unit("lines"));
     assert!(full_read.has_cost_measurement_unit("bytes"));
     assert!(full_read.has_cost_measurement_unit("tokens"));
-}
-
-#[test]
-fn probe_returns_format_evidence_without_navigation_payload() {
-    let path = write_doc("sample.md", "# Title\n");
-    let probe = MarkdownAdapter.probe(&path_string(&path));
-    let value = serde_json::to_value(&probe).expect("probe JSON");
-
-    assert!(probe.supported);
-    assert_eq!(probe.format.as_deref(), Some("markdown"));
-    assert!(probe
-        .reasons
-        .iter()
-        .any(|reason| reason.detail.contains("Markdown")));
-    assert!(value.get("entries").is_none());
-    assert!(value.get("content").is_none());
 }
 
 #[test]

@@ -1,6 +1,8 @@
 # 适配器契约
 
-本文定义格式适配器与 `docnav` core / `docnav-navigation` 的交接契约。它拥有源码级 strategy interface、静态 descriptor、默认 adapter layer invariant、manifest/probe、adapter 选择规则、operation dispatch、closed standard input、adapter-owned ref/result 边界和格式语义校验边界。
+本文定义格式适配器与 `docnav` core / `docnav-navigation` 的交接契约。它拥有源码级 strategy interface、静态 descriptor、默认 adapter layer invariant、manifest pathname hints、adapter 选择规则、operation dispatch、closed standard input、adapter-owned ref/result 边界和格式语义校验边界。
+
+**Current：** manifest pathname hints、no-probe strategy、route-before-document-I/O 和 no-fallback selection 已由代码、测试和 release artifact 验证。其它未明确标注 Current 的 `MUST` / `SHALL` 仍按[文档导航的状态语义](navigation.md#规范状态与实现状态)读取。
 
 ## 内置 adapter 接口
 
@@ -12,7 +14,6 @@
 
 ```text
 manifest
-strategy.probe
 strategy.outline(OutlineInput)
 strategy.read(ReadInput)
 strategy.find(FindInput)
@@ -32,7 +33,7 @@ contribute unstructured result facts
 
 Full-read cost measurement declaration SHOULD list the standard cost units the adapter can produce for the non-structured full-read path. Measurement hook MUST receive navigation-selected requested units and return standard `Cost.measurements[]` for the content that full-read would return. 未声明 hook/declaration 时，adapter 的 full-read measurement set 为空。
 
-`manifest` 是 definition 暴露的 metadata；`probe` 与四个 operation 方法属于固定 strategy interface，不需要逐 operation method registration 或兼容 dispatch layer。单次 adapter selection 只处理 registry lookup 和 probe outcome。
+`manifest` 是 definition 暴露的 metadata；固定 strategy interface 只包含四个 operation 方法，不需要逐 operation method registration 或兼容 dispatch layer。Adapter selection 只使用 registry 与 manifest facts，不执行 adapter-owned detection hook。
 
 `docnav-navigation` 接收 core 交出的 fixed command facts、normalized document CLI source、config source descriptors/paths、core parameter catalog 和 adapter registry，完成 source loading、full config validation、adapter selection、selected-operation resolution 与 closed input construction。Definition 只按 `StandardOperationInput` 的 closed variant dispatch 到对应 strategy method；adapter 不接收 raw CLI argv、raw config JSON、parameter declaration、source priority metadata、protocol envelope 或 generic parameter lookup。
 
@@ -76,42 +77,42 @@ adapter.name
 adapter.version
 formats[].id
 formats[].extensions[]
+formats[].filenames[]
 formats[].content_types[]
 ```
 
-manifest 字段范围限定为 adapter 身份、支持格式、扩展名和 content type。manifest 字段扩展必须先由本文件和 manifest schema 定义。正式 schema 见 [manifest.schema.json](schemas/manifest.schema.json)。
+`formats[].id` 是 project-owned normalized format identity。`formats[].extensions[]` 中每个值是带前导点、可包含多个点且不含路径分隔符的完整 basename suffix；它不是只表示最后一个 extension token。`formats[].filenames[]` 中每个值是不含路径分隔符、且不等于 `.` 或 `..` 的 exact basename，数组可以为空。两类 hint 只用于 pathname routing，不证明文档内容符合对应格式 grammar。
+
+Core static registry 必须保证每个 normalized format identity 最多映射一个 adapter definition，同一 ASCII-normalized suffix 或同一 exact filename 在各自 hint kind 内最多映射一个 format identity；同一 hint 的 exact duplicate declaration 也必须拒绝。Registry construction、`doctor` 和 release validation 在 document routing 前阻断这些冲突。不同长度 suffix 的重叠是合法的；exact filename 与 suffix 是不同 hint kind，因此 exact filename 可以覆盖同一 basename 的通用 suffix route。
+
+manifest 字段扩展必须先由本文件和 manifest schema 定义。正式 schema 见 [manifest.schema.json](schemas/manifest.schema.json)。
 
 Caller-configurable 格式参数及默认值属于 core parameter catalog。Manifest 只保持 adapter 身份和格式 metadata。
 
-## probe 识别
+## Pathname routing hints
 
-probe 的职责是格式识别。probe 输入只包含 path；adapter 选择提示保留在 selection 流程中。probe result 包含：
+**Current：** 本节和下方 adapter 选择规则是 pathname-routing cutover 后的统一契约。
 
-```text
-probe_version
-adapter_id
-path
-supported
-format
-confidence
-reasons[]
-```
+Automatic routing 从 manifest 派生 invocation-private exact-filename、normalized-suffix 和 format-id lookup。Derived indexes、matched hint 与 matched format identity 都是 navigation-private state，不进入 protocol、readable output、invocation log、ref、continuation、typed field 或 adapter operation input。
 
-每次判断至少包含一个 reason。内容匹配失败时返回 `supported: false` 并给出 reason。扩展名、content type 和其它格式识别线索属于 adapter probe 可使用的内部判断材料；`docnav` 的 traversal order 仍由 declared adapter lookup 或 automatic discovery registry order 决定。正式 schema 见 [probe-result.schema.json](schemas/probe-result.schema.json)。
+固定 `Adapter` strategy 和 `AdapterDefinition` 不定义 probe method、probe result/reason/version 或 selection-detection hook。内置 adapter 不为 selection 读取或解析目标文档；协议、schema、decoder、validator、typed-field consumer 和 inspection surface 也不保留 probe compatibility surface。`adapter list` 只投影 manifest identity、format descriptors、capabilities 和 core-owned implementation source。
 
 ## adapter 选择
 
 Adapter selection 的输入是 resolved declared adapter id，或 declared adapter id 缺失状态。
 
-Declared adapter id 表达 caller intent。存在 declared adapter id 时，`docnav` 使用 declared selection path。
+Declared adapter id 表达 caller intent。存在 declared adapter id 时，`docnav-navigation` 跳过 pathname routing，只在当前 core release 的 static registry 中做 exact adapter-id lookup。命中即选中该 definition；未命中返回 [原始协议](protocol.md#协议错误对象)定义的 `ADAPTER_UNAVAILABLE` selection diagnostic。Selection success 只证明 linked strategy 存在，不证明目标文档有效。
 
-存在 declared adapter id 时，`docnav-navigation` 在当前 core release 的 static registry 中查找同名 adapter definition，并执行该 definition 暴露的 probe。registry lookup 失败、probe result 契约无效或 probe 返回 `supported: false` 时，返回 adapter selection diagnostic；probe 返回 `supported: true` 时选中该 adapter definition。声明式选择的通过条件是同名 registry entry 和成功 probe。
+不存在 declared adapter id 时，`docnav-navigation` 使用 core 从 caller path 与 command cwd 词法派生的 routing pathname。该派生和 route lookup 不对目标文档执行 metadata lookup、open、canonicalize、read 或 parse。Automatic lookup 按固定顺序处理 routing pathname 的完整 basename：
 
-不存在 declared adapter id 时，`docnav-navigation` 进入 automatic discovery。Automatic discovery 只按 static registry 顺序遍历 adapter definitions 并执行 probe，返回第一个 `supported: true` 的 adapter definition。
+1. 先按大小写敏感的 exact spelling 匹配 `filenames[]`。
+2. 没有 exact filename 命中时，把完整 basename 与 `extensions[]` suffix 分别做 ASCII 大小写归一化，再执行 end-anchored suffix match。
+3. 多个不同长度 suffix 命中时选择字符数最长的声明；例如 `model.schema.JSON` 优先命中 `.schema.json` 而不是 `.json`，`settings.json.backup` 不命中 `.json`。
+4. 将命中的 normalized format identity exact lookup 为唯一 adapter definition。
 
-遍历过程中，单个 adapter 的 probe 契约无效、adapter layer 不可用或 `supported: false` 都是可恢复的候选失败。`docnav-navigation` 记录候选失败证据后继续遍历后续 adapter。若后续候选成功，selection outcome 是选中 adapter；全部候选失败时，selection outcome 是 format selection failure，并保留候选失败证据。
+没有 hint 命中时，selection 返回 `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`，并且不为 path normalization 或 candidate inspection 访问目标文档。Validated registry 不产生 document-level ambiguity 或“format 已识别但 linked adapter 缺失”；若重复 format identity 或同 kind pathname hint 仍逃到 runtime，则按 [原始协议](protocol.md#协议错误对象)的 registry invariant failure 返回。
 
-Static registry 中的 adapter definition 是 core release 内置 adapter layer 的静态成员。Adapter definition validation failure 属于 release validation 问题；单次文档操作的 candidate selection 只处理 registry lookup 和 probe outcome。
+Selection 命中后，navigation 才进入 core-owned filesystem-backed document path/access normalization，并为 selected operation 构造 normalized document path。Pathname hint 不替代 adapter parse：selected strategy 必须按 operation 正常路径读取、decode、parse 并验证实际文档。Missing/path/encoding、parse、semantic、operation 或 invalid-result failure 都属于已选 definition 的正常结果；navigation 不重新 route、不检查 registry 后续成员，也不 dispatch 第二个 adapter。
 
 `ref` 在选定 adapter 内部定位区域。`docnav` core 把非空 ref 原样传给选定 adapter。
 
@@ -124,12 +125,13 @@ Adapter strategy 接收的输入已经通过 routing 解析、adapter selection�
 Adapter operation strategy 必须：
 
 - 处理当前 request 指定的一个 operation。
+- 从 normalized document path 获取并验证该 operation 实际需要的 document view；pathname selection 不构造或传入格式模型。
 - 为分页操作返回下一页页码，结束时返回 null。
 - 按自身声明的 `limit` 预算分页，并始终返回完整 ref。
 - 在 outline/find 单条记录超过预算时，保留完整 ref 和最小非空 `label`，并让分页前进；其它 adapter-owned facts 可以省略或压缩。
 - 分页文本 `read` content 时，不切断 Unicode 字符。
 - 返回结构化 operation result 或 adapter diagnostic。
 
-Operation result 属于已选中 adapter 的执行结果。执行失败、result shape invalid 或 result semantic invalid 是 selected adapter execution failure；candidate selection 在 adapter 选中后结束。
+Operation result 属于已选中 adapter 的执行结果。执行失败、result shape invalid 或 result semantic invalid 是 selected adapter execution failure；selection 在 adapter 选中后结束，任何这类失败都不得触发 fallback routing。
 
 非结构化全文 hooks 只能为 `kind: "unstructured"` outline success result 补充 `content`、`content_type`、`Cost.measurements[]` 或其它稳定 result facts。Hook result MUST NOT 返回 entries、ref、page、continuation 或 readable-only wrapper；readable 文案、block framing 和 cost display 都由输出层从稳定 result facts 派生。

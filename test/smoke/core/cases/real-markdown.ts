@@ -132,6 +132,8 @@ async function assertReadableViewReadRefHandoff(
   const record = await runCli(name, [
     "read",
     documentPath,
+    "--adapter",
+    "docnav-markdown",
     "--ref",
     ref,
     "--output",

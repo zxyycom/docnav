@@ -11,7 +11,7 @@ use docnav_adapter_contracts::{
 };
 use docnav_protocol::{
     AdapterIdentity, Entry, FindResult, FormatDescriptor, InfoResult, Manifest, Operation,
-    OutlineResult, PagedOperation, ProbeReason, ProbeReasonCode, ProbeResult, ReadResult,
+    OutlineResult, PagedOperation, ReadResult,
 };
 use docnav_typed_fields::{
     ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldDefSetBuilder, FieldValidation,
@@ -311,18 +311,6 @@ impl NavigationAdapterRegistry for MultiAdapterRegistry {
     }
 }
 
-pub(super) struct UnsupportedRegistry;
-
-impl NavigationAdapterRegistry for UnsupportedRegistry {
-    fn adapters(&self) -> Vec<AdapterDefinition<'_>> {
-        vec![adapter_definition(
-            &UnsupportedAdapter,
-            unsupported_manifest(),
-            None,
-        )]
-    }
-}
-
 fn adapter_definition(
     adapter: &dyn Adapter,
     manifest: Manifest,
@@ -335,8 +323,6 @@ struct StubAdapter;
 
 struct OtherAdapter;
 
-struct UnsupportedAdapter;
-
 fn stub_manifest() -> Manifest {
     Manifest {
         manifest_version: "0.1".to_owned(),
@@ -348,27 +334,13 @@ fn stub_manifest() -> Manifest {
         formats: vec![FormatDescriptor {
             id: "stub".to_owned(),
             extensions: vec![".stub".to_owned()],
+            filenames: vec![],
             content_types: vec!["text/stub".to_owned()],
         }],
     }
 }
 
 impl Adapter for StubAdapter {
-    fn probe(&self, path: &str) -> ProbeResult {
-        ProbeResult {
-            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
-            adapter_id: "docnav-markdown".to_owned(),
-            path: path.to_owned(),
-            supported: true,
-            format: Some("stub".to_owned()),
-            confidence: 1.0,
-            reasons: vec![ProbeReason {
-                code: ProbeReasonCode::ContentMatch,
-                detail: "stub probe accepted".to_owned(),
-            }],
-        }
-    }
-
     fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
         let label = input
             .max_heading_level
@@ -417,27 +389,13 @@ fn other_manifest() -> Manifest {
         formats: vec![FormatDescriptor {
             id: "other".to_owned(),
             extensions: vec![".other".to_owned()],
+            filenames: vec![],
             content_types: vec!["text/other".to_owned()],
         }],
     }
 }
 
 impl Adapter for OtherAdapter {
-    fn probe(&self, path: &str) -> ProbeResult {
-        ProbeResult {
-            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
-            adapter_id: "docnav-other".to_owned(),
-            path: path.to_owned(),
-            supported: false,
-            format: None,
-            confidence: 0.0,
-            reasons: vec![ProbeReason {
-                code: ProbeReasonCode::ContentMatch,
-                detail: "other test probe rejected".to_owned(),
-            }],
-        }
-    }
-
     fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
         Err(AdapterError::internal("other-outline-unreachable"))
     }
@@ -452,54 +410,5 @@ impl Adapter for OtherAdapter {
 
     fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("other-info-unreachable"))
-    }
-}
-
-fn unsupported_manifest() -> Manifest {
-    Manifest {
-        manifest_version: "0.1".to_owned(),
-        adapter: AdapterIdentity {
-            id: "docnav-unsupported".to_owned(),
-            name: "Unsupported".to_owned(),
-            version: "0.1.0".to_owned(),
-        },
-        formats: vec![FormatDescriptor {
-            id: "unsupported".to_owned(),
-            extensions: vec![".unsupported".to_owned()],
-            content_types: vec!["application/x-unsupported".to_owned()],
-        }],
-    }
-}
-
-impl Adapter for UnsupportedAdapter {
-    fn probe(&self, path: &str) -> ProbeResult {
-        ProbeResult {
-            probe_version: docnav_protocol::PROBE_VERSION.to_owned(),
-            adapter_id: "docnav-unsupported".to_owned(),
-            path: path.to_owned(),
-            supported: false,
-            format: None,
-            confidence: 0.0,
-            reasons: vec![ProbeReason {
-                code: ProbeReasonCode::ContentMatch,
-                detail: "unsupported test probe rejected".to_owned(),
-            }],
-        }
-    }
-
-    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
-        Err(AdapterError::internal("unsupported-outline-unreachable"))
-    }
-
-    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
-        Err(AdapterError::internal("unsupported-read-unreachable"))
-    }
-
-    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
-        Err(AdapterError::internal("unsupported-find-unreachable"))
-    }
-
-    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
-        Err(AdapterError::internal("unsupported-info-unreachable"))
     }
 }

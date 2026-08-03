@@ -5,6 +5,7 @@ mod config_sources;
 mod hard_cutover;
 mod native_options;
 mod outline_mode;
+mod routing;
 
 use serde_json::Value;
 

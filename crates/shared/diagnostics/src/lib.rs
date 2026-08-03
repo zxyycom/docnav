@@ -8,11 +8,11 @@ pub use code::{
     DiagnosticSeverity, ProtocolDiagnosticCode, ProtocolDiagnosticMarker,
 };
 pub use details::{
-    AdapterConfigSourceDetails, AdapterReasonDetails, BoundaryDetails, DetailFieldRule,
+    AdapterConfigSourceDetails, AdapterUnavailableDetails, BoundaryDetails, DetailFieldRule,
     DetailFieldType, DiagnosticDetails, DiagnosticDetailsError, DiagnosticDetailsPayload,
-    DiagnosticDetailsRule, FieldReasonDetails, FormatAmbiguousDetails, FormatCandidateDetails,
-    FormatUnknownDetails, InternalDetails, PathDetails, PathEncodingDetails, PathReasonDetails,
-    RefCandidateCountDetails, RefDetails, RefReasonDetails,
+    DiagnosticDetailsRule, DocumentContentInvalidDetails, DocumentContentInvalidReason,
+    FieldReasonDetails, FormatUnknownDetails, FormatUnknownReason, InternalDetails, PathDetails,
+    PathEncodingDetails, PathReasonDetails, RefCandidateCountDetails, RefDetails, RefReasonDetails,
 };
 pub use record::{
     DiagnosticId, DiagnosticRecord, DiagnosticRecordDraft, DiagnosticRecordError, DiagnosticSource,

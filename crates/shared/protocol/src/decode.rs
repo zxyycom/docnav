@@ -4,10 +4,9 @@ use std::convert::Infallible;
 use std::fmt;
 
 use crate::{
-    validate_manifest_value, validate_probe_result_value, validate_protocol_request_value,
-    validate_protocol_response_value, Manifest, ManifestValidationError, ProbeResult,
-    ProbeValidationError, ProtocolResponse, ProtocolValidationError, RawRequestEnvelope,
-    SchemaValidationError,
+    validate_manifest_value, validate_protocol_request_value, validate_protocol_response_value,
+    Manifest, ManifestValidationError, ProtocolResponse, ProtocolValidationError,
+    RawRequestEnvelope, SchemaValidationError,
 };
 
 pub type ProtocolRequestDecodeError = DecodePipelineError<RawRequestEnvelope, Infallible>;
@@ -53,14 +52,6 @@ pub fn decode_manifest_value(
 ) -> Result<Manifest, DecodePipelineError<Manifest, ManifestValidationError>> {
     decode_value::<Manifest, ManifestValidationError>(value, validate_manifest_value, |manifest| {
         manifest.validate_semantics()
-    })
-}
-
-pub fn decode_probe_result_value(
-    value: Value,
-) -> Result<ProbeResult, DecodePipelineError<ProbeResult, ProbeValidationError>> {
-    decode_value::<ProbeResult, ProbeValidationError>(value, validate_probe_result_value, |probe| {
-        probe.validate_semantics()
     })
 }
 

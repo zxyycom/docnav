@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use docnav_typed_fields::{
-    ExpectedFieldShape, FieldBound, FieldDefSet, FieldDefSetBuildError, FieldLength,
+    ExpectedFieldShape, FieldBound, FieldDef, FieldDefSet, FieldDefSetBuildError, FieldLength,
     FieldValidation,
 };
 
@@ -9,7 +9,8 @@ use crate::constants::schema_names;
 use crate::SchemaValidationError;
 
 use super::field_builders::{
-    non_empty_array_field, non_empty_string_field, object_field, string_enum_field, value_field_set,
+    json_path, non_empty_array_field, non_empty_string_field, object_field, string_enum_field,
+    value_field_set,
 };
 use super::helpers::{
     reject_unknown_fields, schema_result, validate_field_set, validate_object_array_items,
@@ -55,6 +56,16 @@ pub(crate) fn validate_manifest_contract_value(value: &Value) -> Result<(), Sche
                 ValueArraySpec {
                     schema: schema_names::MANIFEST,
                     build: manifest_extension_fields,
+                },
+                errors,
+            );
+            validate_value_array_items_with_owned_prefix(
+                format,
+                &["filenames"],
+                path,
+                ValueArraySpec {
+                    schema: schema_names::MANIFEST,
+                    build: manifest_filename_fields,
                 },
                 errors,
             );
@@ -125,6 +136,13 @@ fn manifest_format_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
             ExpectedFieldShape::required(),
         )
         .field_with_declaration_path(
+            ["filenames"],
+            FieldDef::builder("formats[].filenames")
+                .process(super::JSON_CONTRACT_PROCESSING, json_path(["filenames"]))
+                .validation(FieldValidation::array()),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
             ["content_types"],
             non_empty_array_field("formats[].content_types", ["content_types"]),
             ExpectedFieldShape::required(),
@@ -135,7 +153,14 @@ fn manifest_format_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
 fn manifest_extension_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
     value_field_set(
         "formats[].extensions[]",
-        FieldValidation::string().regex(r"^\.[A-Za-z0-9][A-Za-z0-9._-]*$"),
+        FieldValidation::string().regex(r"^\.[^/\\]+$"),
+    )
+}
+
+fn manifest_filename_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    value_field_set(
+        "formats[].filenames[]",
+        FieldValidation::string().regex(r"^(?:[^./\\][^/\\]*|\.[^./\\][^/\\]*|\.\.[^/\\]+)$"),
     )
 }
 

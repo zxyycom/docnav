@@ -1,6 +1,5 @@
 use crate::routing::{
-    select_adapter, AdapterSelection, AdapterSelectionRequest, CandidateEvidence,
-    NavigationAdapterRegistry,
+    select_adapter, AdapterSelection, AdapterSelectionRequest, NavigationAdapterRegistry,
 };
 use crate::NavigationError;
 
@@ -17,15 +16,15 @@ impl NavigationContextSelection {
         preselected_adapter_id: Option<&str>,
         preselected_adapter_source: &str,
     ) -> Self {
+        let source = if preselected_adapter_id.is_some() {
+            preselected_adapter_source
+        } else {
+            "automatic_discovery"
+        };
         Self {
             adapter_id: selection.adapter.id().to_owned(),
-            source: context_selection_source(
-                preselected_adapter_id,
-                preselected_adapter_source,
-                &selection.evidence,
-            ),
-            note: "selected built-in adapter resolved from static registry and probe succeeded"
-                .to_owned(),
+            source: source.to_owned(),
+            note: "selected built-in adapter resolved from static registry".to_owned(),
         }
     }
 }
@@ -50,18 +49,4 @@ where
         preselected_adapter_id,
         preselected_adapter_source,
     ))
-}
-
-fn context_selection_source(
-    preselected_adapter_id: Option<&str>,
-    preselected_adapter_source: &str,
-    evidence: &[CandidateEvidence],
-) -> String {
-    if preselected_adapter_id.is_some() {
-        preselected_adapter_source.to_owned()
-    } else if evidence.is_empty() {
-        "automatic_discovery".to_owned()
-    } else {
-        "registry".to_owned()
-    }
 }

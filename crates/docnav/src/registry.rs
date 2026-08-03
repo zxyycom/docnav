@@ -1,7 +1,7 @@
 use docnav_adapter_contracts::AdapterDefinition;
 use docnav_json::json_adapter_definition;
 use docnav_markdown::markdown_adapter_definition;
-use docnav_navigation::NavigationAdapterRegistry;
+use docnav_navigation::{NavigationAdapterRegistry, RegistryRouting, RegistryRoutingError};
 use serde_json::{json, Value};
 
 use crate::cli::AdapterCommand;
@@ -12,14 +12,26 @@ use crate::output::CommandOutcome;
 static ADAPTERS: &[fn() -> AdapterDefinition<'static>] =
     &[markdown_adapter_definition, json_adapter_definition];
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct AdapterRegistry {
     pub adapters: &'static [fn() -> AdapterDefinition<'static>],
+    routing: Result<RegistryRouting, RegistryRoutingError>,
 }
 
 impl AdapterRegistry {
     pub fn builtin() -> Self {
-        Self { adapters: ADAPTERS }
+        Self::new(ADAPTERS)
+    }
+
+    pub fn new(adapters: &'static [fn() -> AdapterDefinition<'static>]) -> Self {
+        let definitions = adapters
+            .iter()
+            .map(|definition| definition())
+            .collect::<Vec<_>>();
+        Self {
+            adapters,
+            routing: RegistryRouting::from_adapters(&definitions),
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -37,6 +49,10 @@ impl NavigationAdapterRegistry for AdapterRegistry {
             .iter()
             .map(|definition| definition())
             .collect()
+    }
+
+    fn routing(&self) -> Result<RegistryRouting, RegistryRoutingError> {
+        self.routing.clone()
     }
 }
 
@@ -60,12 +76,24 @@ pub fn adapter_list() -> AppResult<CommandOutcome> {
 }
 
 pub fn registry_check(registry: &AdapterRegistry) -> DoctorCheck {
-    DoctorCheck::pass(json!({
-        "name": "core_static_adapter_registry",
-        "status": "pass",
-        "message": "core release static adapter registry is available",
-        "adapter_count": registry.len(),
-    }))
+    match registry.routing() {
+        Ok(_) => DoctorCheck::pass(json!({
+            "name": "core_static_adapter_registry",
+            "status": "pass",
+            "message": "core release static adapter registry is available",
+            "adapter_count": registry.len(),
+        })),
+        Err(error) => DoctorCheck::failure(
+            json!({
+                "name": "core_static_adapter_registry",
+                "status": "fail",
+                "message": "core release static adapter registry contains conflicting routing metadata",
+                "adapter_count": registry.len(),
+                "error_id": error.error_id(),
+            }),
+            DocnavExitCode::AdapterOrProtocolError,
+        ),
+    }
 }
 
 pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {

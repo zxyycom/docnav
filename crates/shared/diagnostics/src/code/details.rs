@@ -28,16 +28,14 @@ pub(super) const PATH_ENCODING_FIELDS: &[DetailFieldRule] = &[
     required("path", DetailKind::String),
     required("encoding", DetailKind::String),
 ];
+pub(super) const DOCUMENT_CONTENT_INVALID_FIELDS: &[DetailFieldRule] = &[
+    required("path", DetailKind::String),
+    required("reason", DetailKind::String),
+];
 pub(super) const FORMAT_UNKNOWN_FIELDS: &[DetailFieldRule] = &[
     required("path", DetailKind::String),
     required("reason", DetailKind::String),
     required("candidates", DetailKind::ObjectArray),
-    optional("candidate_failures", DetailKind::ObjectArray),
-];
-pub(super) const FORMAT_AMBIGUOUS_FIELDS: &[DetailFieldRule] = &[
-    required("path", DetailKind::String),
-    required("candidates", DetailKind::ObjectArray),
-    optional("candidate_failures", DetailKind::ObjectArray),
 ];
 pub(super) const REF_FIELDS: &[DetailFieldRule] = &[required("ref", DetailKind::String)];
 pub(super) const REF_CANDIDATE_FIELDS: &[DetailFieldRule] = &[
@@ -48,11 +46,11 @@ pub(super) const REF_REASON_FIELDS: &[DetailFieldRule] = &[
     required("ref", DetailKind::String),
     required("reason", DetailKind::String),
 ];
-pub(super) const ADAPTER_REASON_FIELDS: &[DetailFieldRule] = &[
+pub(super) const ADAPTER_UNAVAILABLE_FIELDS: &[DetailFieldRule] = &[
     required("adapter_id", DetailKind::String),
     required("reason", DetailKind::String),
-    optional("selection_source", DetailKind::String),
-    optional("stage", DetailKind::String),
+    required("selection_source", DetailKind::String),
+    required("stage", DetailKind::String),
 ];
 pub(super) const INTERNAL_FIELDS: &[DetailFieldRule] = &[required("error_id", DetailKind::String)];
 pub(super) const BOUNDARY_FIELDS: &[DetailFieldRule] = &[

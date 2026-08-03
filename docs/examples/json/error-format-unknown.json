@@ -6,32 +6,17 @@
   "error": {
     "code": "FORMAT_UNKNOWN",
     "message": "无法识别文档格式。",
-    "owner": "adapter_selection",
+    "owner": "docnav_navigation_routing",
     "location": {
-      "argument": "path"
+      "path": "docs/unknown.data"
     },
-    "received": "docs/unknown.data",
-    "expected": "a document supported by a core release built-in adapter",
     "details": {
       "path": "docs/unknown.data",
-      "reason": "NO_SUPPORTED_ADAPTER",
-      "candidates": [
-        {
-          "adapter_id": "docnav-markdown",
-          "stage": "probe",
-          "reason": "PROBE_UNSUPPORTED"
-        }
-      ],
-      "candidate_failures": [
-        {
-          "adapter_id": "docnav-markdown",
-          "stage": "probe",
-          "reason": "PROBE_UNSUPPORTED"
-        }
-      ]
+      "reason": "FORMAT_NOT_RECOGNIZED",
+      "candidates": []
     },
     "guidance": [
-      "在 docnav 配置中明确选择适配器。"
+      "使用受支持的文档 pathname，或显式选择当前 core release 内置的 adapter。"
     ]
   }
 }

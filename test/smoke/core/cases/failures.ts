@@ -1,15 +1,14 @@
+import path from "node:path";
+
 import {
   createProject,
-  copyNormalDocument,
   writeDamagedRegistry
 } from "../fixtures.ts";
 import { runCli, validateSchema } from "../harness.ts";
 import {
   expect,
-  expectFormatCandidate,
   expectExit,
   expectJsonObject,
-  expectObjectArray,
   expectProtocolFailure,
   parseJson
 } from "../assertions.ts";
@@ -19,8 +18,8 @@ export function createRegistryAndContractFailureTasks() {
   return [
     {
       id: "CORE-FAIL-001",
-      label: "CORE-FAIL-001 adapter candidate failure summary",
-      run: testCandidateFailureSummary
+      label: "CORE-FAIL-001 lexical pathname routing miss",
+      run: testLexicalPathnameRoutingMiss
     },
     {
       id: "CORE-SOURCE-001",
@@ -30,30 +29,34 @@ export function createRegistryAndContractFailureTasks() {
   ];
 }
 
-async function testCandidateFailureSummary() {
-  const project = createProject("failure-candidate-evidence");
-  const docPath = copyNormalDocument(project, "docs/noextension");
+async function testLexicalPathnameRoutingMiss() {
+  const project = createProject("failure-pathname-no-match");
+  const documentPath = "docs/noextension";
+  const routingPathname = path.join(project.root, documentPath).replaceAll(path.sep, "/");
 
-  const record = await runCli("CORE-FAIL-001 unsupported built-in candidate records summary", [
+  const record = await runCli("CORE-FAIL-001 missing extensionless path stops at lexical routing", [
     "outline",
-    docPath,
+    documentPath,
     "--output",
     "protocol-json"
   ], { project });
   expectExit(record, exitCodes.documentRefFormat);
   const json = parseJson(record);
   validateSchema(record, "protocolResponse", json);
-  expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
-  const error = expectJsonObject(record, json.error, "protocol error is an object");
-  const details = expectJsonObject(record, error.details, "protocol error details is an object");
-  expect(record, details.reason === "NO_SUPPORTED_ADAPTER", "FORMAT_UNKNOWN reason identifies unsupported adapter set");
-  const candidates = expectObjectArray(record, details.candidates, "FORMAT_UNKNOWN candidates are objects");
-  const candidate = candidates[0];
-  expectFormatCandidate(record, candidate, {
-    adapter_id: "docnav-markdown",
-    stage: "probe",
-    reason: "PROBE_UNSUPPORTED"
-  });
+  const error = expectProtocolFailure(record, json, "outline", "FORMAT_UNKNOWN");
+  const details = expectJsonObject(record, error.details, "FORMAT_UNKNOWN details are an object");
+  expect(
+    record,
+    Object.keys(details).sort().join(",") === "candidates,path,reason",
+    "FORMAT_UNKNOWN details contain only path, reason, and candidates"
+  );
+  expect(record, details.path === routingPathname, "FORMAT_UNKNOWN preserves the lexical routing pathname");
+  expect(record, details.reason === "FORMAT_NOT_RECOGNIZED", "FORMAT_UNKNOWN identifies a pathname hint miss");
+  expect(
+    record,
+    Array.isArray(details.candidates) && details.candidates.length === 0,
+    "FORMAT_UNKNOWN carries an empty candidates array"
+  );
 }
 
 async function testHistoricalRegistryIgnored() {

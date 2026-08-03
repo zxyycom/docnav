@@ -1,6 +1,6 @@
 use docnav_navigation::{
-    execute_navigation_command, NavigationCommand, NavigationConfigSourceDescriptors,
-    NavigationOutputMode,
+    execute_prepared_navigation_command, prepare_navigation_command, NavigationCommand,
+    NavigationConfigSourceDescriptors, NavigationOutputMode,
 };
 use std::time::Instant;
 
@@ -11,7 +11,7 @@ use crate::invocation_log::{DocumentInvocationLog, InvocationLogger};
 use crate::output::{outcome_for_response, CommandOutcome};
 use crate::parameter_catalog::document_parameter_catalog;
 use crate::project_context::ProjectContext;
-use crate::project_paths::normalize_document_path;
+use crate::project_paths::{normalize_document_path, routing_document_pathname};
 use crate::registry::AdapterRegistry;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -40,6 +40,20 @@ impl DocnavRuntime for AdapterRuntime {
             &request.user_config,
         );
         let started = request.started;
+        let routing_pathname = routing_document_pathname(&request.project, &request.command.path);
+        let registry = AdapterRegistry::builtin();
+        let prepared = match prepare_navigation_command(
+            navigation_command(&request.command, routing_pathname),
+            request.config_source_descriptors,
+            &registry,
+        ) {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                let context = logger.document_context(&request.command, &request.project, None);
+                logger.record_navigation_error(&context, &error, started.elapsed());
+                return Err(AppError::new(error.into_diagnostic()));
+            }
+        };
         let document = match normalize_document_path(&request.project, &request.command.path) {
             Ok(document) => document,
             Err(error) => {
@@ -53,7 +67,6 @@ impl DocnavRuntime for AdapterRuntime {
             &request.project,
             Some(&document.absolute_path),
         );
-        let registry = AdapterRegistry::builtin();
         let catalog = match document_parameter_catalog() {
             Ok(catalog) => catalog,
             Err(error) => {
@@ -64,18 +77,14 @@ impl DocnavRuntime for AdapterRuntime {
                 return Err(error);
             }
         };
-        let outcome = match execute_navigation_command(
-            navigation_command(&request.command, document.adapter_path),
-            request.config_source_descriptors,
-            &catalog,
-            &registry,
-        ) {
-            Ok(outcome) => outcome,
-            Err(error) => {
-                logger.record_navigation_error(&log_context, &error, started.elapsed());
-                return Err(AppError::new(error.into_diagnostic()));
-            }
-        };
+        let outcome =
+            match execute_prepared_navigation_command(prepared, document.adapter_path, &catalog) {
+                Ok(outcome) => outcome,
+                Err(error) => {
+                    logger.record_navigation_error(&log_context, &error, started.elapsed());
+                    return Err(AppError::new(error.into_diagnostic()));
+                }
+            };
         let output = output_mode(outcome.output);
         let invocation_log = DocumentInvocationLog::new(logger, log_context, started);
         outcome_for_response(outcome, output, Some(invocation_log))

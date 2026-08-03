@@ -446,8 +446,8 @@
                 "DOCUMENT_NOT_FOUND",
                 "DOCUMENT_PATH_INVALID",
                 "DOCUMENT_ENCODING_UNSUPPORTED",
+                "DOCUMENT_CONTENT_INVALID",
                 "FORMAT_UNKNOWN",
-                "FORMAT_AMBIGUOUS",
                 "REF_NOT_FOUND",
                 "REF_AMBIGUOUS",
                 "REF_INVALID",
@@ -560,7 +560,7 @@
                 "type": "object",
                 "properties": {
                   "code": {
-                    "const": "FORMAT_UNKNOWN"
+                    "const": "DOCUMENT_CONTENT_INVALID"
                   }
                 }
               },
@@ -568,7 +568,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "$ref": "#/$defs/protocolErrorDetailsFormatUnknown"
+                    "$ref": "#/$defs/protocolErrorDetailsDocumentContentInvalid"
                   }
                 }
               }
@@ -578,7 +578,7 @@
                 "type": "object",
                 "properties": {
                   "code": {
-                    "const": "FORMAT_AMBIGUOUS"
+                    "const": "FORMAT_UNKNOWN"
                   }
                 }
               },
@@ -586,7 +586,7 @@
                 "type": "object",
                 "properties": {
                   "details": {
-                    "$ref": "#/$defs/protocolErrorDetailsFormatAmbiguous"
+                    "$ref": "#/$defs/protocolErrorDetailsFormatUnknown"
                   }
                 }
               }
@@ -690,24 +690,23 @@
       "type": "object",
       "required": [
         "adapter_id",
-        "reason"
+        "reason",
+        "selection_source",
+        "stage"
       ],
       "properties": {
         "adapter_id": {
           "type": "string"
         },
         "reason": {
-          "type": "string"
+          "const": "ADAPTER_NOT_FOUND"
         },
         "selection_source": {
           "type": "string",
           "minLength": 1
         },
         "stage": {
-          "enum": [
-            "resolve",
-            "probe"
-          ]
+          "const": "resolve"
         }
       },
       "additionalProperties": false
@@ -851,31 +850,22 @@
       },
       "additionalProperties": false
     },
-    "protocolFormatCandidate": {
+    "protocolErrorDetailsDocumentContentInvalid": {
       "type": "object",
       "required": [
-        "adapter_id",
-        "stage",
+        "path",
         "reason"
       ],
       "properties": {
-        "adapter_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "stage": {
-          "enum": [
-            "resolve",
-            "probe"
-          ]
+        "path": {
+          "type": "string"
         },
         "reason": {
           "enum": [
-            "ADAPTER_NOT_FOUND",
-            "ADAPTER_UNAVAILABLE",
-            "PROBE_INVALID",
-            "PROBE_UNSUPPORTED",
-            "CONTENT_MATCH"
+            "JSON_SYNTAX_INVALID",
+            "JSON_TRAILING_INPUT",
+            "JSON_DUPLICATE_MEMBER",
+            "JSON_MAXIMUM_DEPTH_EXCEEDED"
           ]
         }
       },
@@ -893,44 +883,11 @@
           "type": "string"
         },
         "reason": {
-          "const": "NO_SUPPORTED_ADAPTER"
+          "const": "FORMAT_NOT_RECOGNIZED"
         },
         "candidates": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/protocolFormatCandidate"
-          }
-        },
-        "candidate_failures": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/protocolFormatCandidate"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "protocolErrorDetailsFormatAmbiguous": {
-      "type": "object",
-      "required": [
-        "path",
-        "candidates"
-      ],
-      "properties": {
-        "path": {
-          "type": "string"
-        },
-        "candidates": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/protocolFormatCandidate"
-          }
-        },
-        "candidate_failures": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/protocolFormatCandidate"
-          }
+          "maxItems": 0
         }
       },
       "additionalProperties": false

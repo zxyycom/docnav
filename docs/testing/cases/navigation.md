@@ -1,20 +1,18 @@
 # navigation
 
-## Case WB-NAV-ADAPTER-SOURCE-001: Navigation adapter selection 保持静态来源边界
+## Case WB-NAV-ADAPTER-SOURCE-001: Navigation explicit adapter lookup 保持静态来源边界
 
 Owner: `docs/adapter-contract.md#adapter-选择`
 
 Entities:
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::adapter_source::automatic_discovery_all_fail_projects_candidate_failures`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::adapter_source::explicit_missing_adapter_error_carries_invocation_failure_layer`
-- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::adapter_source::explicit_missing_adapter_reports_static_registry_guidance`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::adapter_source::explicit_missing_adapter_reports_exact_lookup_diagnostic`
 
 Proves:
-- 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`。
+- 显式声明的 adapter id 不存在于 static registry 时返回 `ADAPTER_UNAVAILABLE`，details 精确保留 adapter id、`ADAPTER_NOT_FOUND`、resolved selection source 和 `resolve` stage。
+- Missing-adapter routing constructs the exact typed payload；public projection cannot omit selection source or substitute another reason/stage。
 - diagnostic owner 来自 `docnav-navigation` routing，而不是 core routing。
-- guidance 指向 current core release static registry。
-- Automatic discovery 全部候选失败时返回 `FORMAT_UNKNOWN`，并把 routing-owned probe failure reason 投影到 primary details 的 `candidate_failures`。
-- 本 case 不证明 discovery 顺序、extension metadata 排序或 manifest metadata 与 candidate failure 的关系。
+- 本 Case 不证明 automatic pathname routing；该行为由 `WB-NAV-PATHNAME-ROUTING-001` 和 core routing integration 证据承担。
 
 ## Case WB-NAV-AUTO-READ-001: Unique-ref auto-read eligibility and composition remain bounded
 
@@ -215,3 +213,46 @@ Entities:
 Proves:
 - Normalized explicit `Source` carries core-catalog common and adapter-scoped candidates into navigation；explicit values retain priority over project and user values through the canonical resolver, and the public output mode/result remains unchanged.
 - A valid higher-priority explicit common or adapter-scoped value does not hide an invalid project/user config candidate；the blocking diagnostic retains source level、selected config path and reason.
+
+## Case WB-NAV-PATHNAME-ROUTING-001: Manifest pathname precedence selects one adapter
+
+Owner: `docs/adapter-contract.md#adapter-选择`
+
+Entities:
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::routing::automatic_routing_prefers_case_sensitive_exact_filename_over_suffix`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::routing::automatic_routing_uses_longest_compound_suffix_independent_of_registry_order`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::routing::automatic_suffix_routing_is_anchored_to_the_complete_basename_end`
+
+Proves:
+- Automatic routing treats `filenames[]` as case-sensitive complete-basename hints and gives an exact filename priority over a generic ASCII-normalized suffix.
+- Suffix routing preserves non-ASCII characters while applying case normalization only to ASCII characters.
+- When multiple suffixes match after ASCII normalization, the longest compound suffix selects its owning format regardless of registry order.
+- A declared suffix must match the end of the complete basename；an interior `.json` in `settings.json.backup` returns the normal pathname-miss diagnostic.
+- The matched manifest identity selects its owning registry definition without target-document I/O or an adapter detection hook.
+- Automatic selection context reports the stable source `automatic_discovery` without retaining candidate evidence.
+
+## Case WB-NAV-EXPLICIT-ROUTING-001: Explicit adapter intent bypasses pathname routing
+
+Owner: `docs/adapter-contract.md#adapter-选择`
+
+Entities:
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::routing::explicit_adapter_bypasses_pathname_routing_and_executes_selected_strategy`
+- `cargo|docnav:lib:docnav|registry::tests::explicit_json_selection_bypasses_markdown_pathname_and_still_parses_document`
+
+Proves:
+- Exact explicit adapter-id lookup skips automatic pathname routing, then dispatches only the selected strategy even when another manifest owns the pathname suffix.
+- Explicit lookup still consumes the registry's constructed validated routing view；duplicate or invalid manifest invariants fail before adapter-id resolution.
+- Explicitly selecting the built-in JSON strategy for a Markdown-suffixed file still executes real JSON document processing；lookup success alone is not operation success.
+- Explicit selection context preserves the resolved adapter-intent source rather than deriving it from routing evidence.
+
+## Case WB-NAV-SELECTED-FINALITY-001: Selected adapter outcome is final
+
+Owner: `docs/adapter-contract.md#文档操作执行边界`
+
+Entities:
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::routing::selected_diagnostic_or_invalid_result_never_dispatches_later_adapter`
+
+Proves:
+- After pathname routing selects one definition, an adapter diagnostic is returned as the selected operation response without dispatching a later registry member.
+- An invalid selected-adapter result fails at result validation without dispatching a later registry member.
+- Parse、semantic and operation diagnostics share the selected adapter diagnostic boundary；the post-selection execution stage consumes only the selected definition and no registry fallback input.

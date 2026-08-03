@@ -13,10 +13,6 @@ pub fn validate_manifest_value(value: &Value) -> Result<(), SchemaValidationErro
     crate::contract_validation::validate_manifest_contract_value(value)
 }
 
-pub fn validate_probe_result_value(value: &Value) -> Result<(), SchemaValidationError> {
-    crate::contract_validation::validate_probe_result_contract_value(value)
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchemaValidationError {
     pub schema: &'static str,

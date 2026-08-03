@@ -17,11 +17,13 @@ Proves:
 Owner: `docs/adapter-contract.md#文档操作执行边界`
 
 Entities:
+- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_document_content_invalid_error_projects_exact_protocol_details`
 - `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_document_not_found_error_projects_protocol_details`
 - `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::error::adapter_native_option_error_projects_protocol_details`
 
 Proves:
 - Adapter document errors project to protocol error code, owner, location and default guidance through `AdapterError::protocol_error()`.
+- Adapter content errors expose only normalized path and one stable JSON content-failure reason through `AdapterError::protocol_error()`.
 - Adapter-owned native option errors project issue metadata to invalid-request received, expected, details and guidance fields.
 
 ## Case WB-CONTRACTS-STANDARD-INPUT-001: Adapter contracts expose closed standard operation inputs

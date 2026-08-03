@@ -8,21 +8,17 @@ Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::manifest_declares_fixed_json_identity`
 
 Proves:
-- adapter-private manifest 通过语义校验，并固定声明 adapter id `docnav-json`、format id `json`、extension `.json` 和 content type `application/json`。
+- adapter-private manifest 通过语义校验，并固定声明 adapter id `docnav-json`、format id `json`、suffixes `.json` / `.code-workspace`、exact filenames `.prettierrc` / `.watchmanconfig` 和 content type `application/json`。
 
-## Case WB-JSON-PROBE-001: JSON 私有 probe 以 extension gate 和 loader 事实判定候选
+## Case WB-JSON-SELECTED-PARSE-001: Selected JSON strategy parses the actual document
 
-Owner: `docs/adapters/json.md#probe-与私有解析模型`
+Owner: `docs/adapter-contract.md#文档操作执行边界`
 
 Entities:
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::probe_checks_extension_case_insensitively_and_returns_ordered_success_evidence`
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::probe_short_circuits_extension_mismatch_before_io_but_reads_json_candidates`
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::probe_accepts_one_utf8_bom`
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::probe_maps_loader_failures_to_unsupported_diagnostics`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::selected_outline_parses_actual_document_independently_of_path_hint`
 
 Proves:
-- `.json` extension 按 ASCII 大小写不敏感匹配；匹配且内容有效时返回 supported JSON candidate、confidence `1.0` 和有序 extension/content success evidence，至多一个开头 UTF-8 BOM 被接受。
-- extension 不匹配时在 I/O 前返回单个 content-conflict；匹配的候选会读取内容，并把 read failure、非 UTF-8、非法 JSON、trailing input、重复 decoded member 和 depth 超限投影为 confidence `0.0` 的 unsupported evidence 与对应 detail。
+- Once the JSON definition is selected, definition dispatch parses the actual BOM-prefixed strict JSON document and returns JSON-owned outline facts even when the pathname itself supplies no JSON hint.
 
 ## Case WB-JSON-OUTLINE-001: JSON Adapter outline strategy 投影 common entries 与有限分页
 
@@ -49,27 +45,22 @@ Proves:
 - trait-dispatched `read` operation 接受 outline 返回的 refs，并保留输入 ref 与 `application/json` content type；selected root、object、empty container、string、boolean 和 root scalar 使用确定性 structured spelling，number 保留原始 source token。
 - Unicode-safe pagination 不切断 scalar，page 单调前进并可重组完整 selected content；每页及超过末页请求均保留分页前完整 cost，结果耗尽时 terminal。
 
-## Case WB-JSON-RELOAD-001: JSON trait-dispatched operations 使用 shared reload diagnostic mapping
+## Case WB-JSON-DIAGNOSTICS-001: Selected JSON content failures use stable document diagnostics
 
 Owner: `docs/adapters/json.md#错误边界`
 
 Entities:
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::outline_maps_reload_failures_to_stable_document_diagnostics`
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::read_uses_reload_diagnostics_when_the_selected_document_changes`
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::find_uses_reload_diagnostics_when_the_selected_document_changes`
-- `cargo|docnav-json:lib:docnav_json|adapter::tests::info_and_full_read_hooks_reuse_reload_diagnostics`
-- `smoke|core:real-json-toctou|CORE-JSON-TOCTOU-001`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::selected_outline_maps_current_document_failures_to_stable_diagnostics`
+- `smoke|core:real-json|CORE-JSON-FAIL-001`
 
 Proves:
-- probe 成功后，trait-dispatched `outline` reload 遇到文件消失时返回带 path 的 document-not-found，encoding 变化时返回 non-UTF-8 document diagnostic；syntax、trailing input、duplicate member 或 depth 状态变为无效时返回 `json-document-changed-after-probe` internal diagnostic。
-- trait-dispatched `read` operation 独立证明同一 shared reload mapping：文件消失保留 document-not-found path，syntax 状态变为无效时返回相同 internal diagnostic。
-- trait-dispatched `find` operation 独立证明同一 shared reload mapping：文件消失保留 document-not-found path，syntax 状态变为无效时返回相同 internal diagnostic。
-- direct info、full-read 与 cost-measurement calls 复用同一 reload mapping：文件消失、encoding 变化和 syntax 状态变为无效时分别返回对应 document、encoding 和 internal diagnostic。
-- Linux x86_64 且非 `release-package` 的 core smoke 通过 `ptrace` supervisor，在 probe 首次读取已打开的有效 JSON inode 时原子替换目标 path，使后续 outline reload 确定性读取无效 JSON；真实 core CLI 以 exit 1、空 stderr 和 schema-valid protocol stdout 返回 `INTERNAL_ERROR`，其中 `details.error_id` 为 `json-document-changed-after-probe`。该实体不提供 package 或 Windows evidence。
+- A selected JSON outline observes the document view it actually opens; a missing file and invalid UTF-8 preserve the existing exact document diagnostics.
+- Invalid syntax、trailing non-whitespace input、duplicate decoded member and depth overflow each return `DOCUMENT_CONTENT_INVALID` with only the normalized path and the corresponding stable JSON reason.
+- Real CLI explicit `--adapter docnav-json` selection on non-JSON `.md` paths returns all four selected JSON `DOCUMENT_CONTENT_INVALID` reasons above and does not fall back to pathname routing or another adapter.
 
 ## Case WB-JSON-PARSE-001: JSON loader 限定完整 UTF-8 单值输入
 
-Owner: `docs/adapters/json.md#probe-与私有解析模型`
+Owner: `docs/adapters/json.md#pathname-routing-与私有解析模型`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_tracks_bom_stripped_source_metadata_and_original_bytes`
@@ -81,7 +72,7 @@ Proves:
 
 ## Case WB-JSON-MODEL-001: JSON primary document model 保留结构与源码事实
 
-Owner: `docs/adapters/json.md#probe-与私有解析模型`
+Owner: `docs/adapters/json.md#pathname-routing-与私有解析模型`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_tracks_bom_stripped_source_metadata_and_original_bytes`
@@ -93,7 +84,7 @@ Proves:
 
 ## Case WB-JSON-DUPLICATE-001: JSON object 按 decoded member name 判重
 
-Owner: `docs/adapters/json.md#probe-与私有解析模型`
+Owner: `docs/adapters/json.md#pathname-routing-与私有解析模型`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_rejects_duplicate_decoded_member_names`
@@ -103,7 +94,7 @@ Proves:
 
 ## Case WB-JSON-DEPTH-001: JSON document depth 上限为 127
 
-Owner: `docs/adapters/json.md#probe-与私有解析模型`
+Owner: `docs/adapters/json.md#pathname-routing-与私有解析模型`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_accepts_depth_127_and_rejects_depth_128`

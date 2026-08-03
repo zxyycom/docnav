@@ -92,19 +92,16 @@ Proves:
 - Document operations and `config inspect` share the same config source descriptor/path selection boundary, while document operation value resolution remains owned by navigation input resolution.
 - A removed mutating config subcommand is rejected at the CLI boundary and leaves both explicitly selected files byte-for-byte unchanged.
 
-## Case BB-CORE-FAIL-001: Candidate probe failure 投影为格式候选摘要
+## Case BB-CORE-FAIL-001: Automatic pathname no-match 返回有限格式诊断
 
-Owner: `docs/adapter-contract.md#probe-识别`
+Owner: `docs/adapter-contract.md#adapter-选择`
 
 Entities:
 - `smoke|core:registry-contract-failures|CORE-FAIL-001`
-- `smoke|core:real-json|CORE-JSON-FAIL-001`
 
 Proves:
-- candidate discovery 阶段的 built-in adapter probe failure 被报告为 `FORMAT_UNKNOWN` candidate summary。
-- candidate failure 不会被折叠成 selected adapter layer failure。
-- 未显式声明 adapter 的 automatic discovery 全部 probe 失败时，candidate failures 从属于 primary diagnostic details。
-- 真实 core CLI 对 invalid JSON 的 automatic outline 返回 `FORMAT_UNKNOWN` / `NO_SUPPORTED_ADAPTER`，并保留 `docnav-json` candidate 的 `probe` stage 与 `PROBE_UNSUPPORTED` reason。
+- Automatic routing 对无 pathname hint 命中的文档返回 `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`，details 只保留 lexical path、固定 reason 与空 candidates。
+- Pathname no-match 不读取或解析目标文档，也不泄漏 matched hint、format identity 或 adapter candidate failure。
 
 ## Case BB-CORE-INFO-001: Core exposes Markdown info through readable output
 
@@ -193,13 +190,13 @@ Entities:
 - `smoke|core:adapter-selection|CORE-SELECT-001`
 - `smoke|core:real-json|CORE-JSON-NAV-001`
 - `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::missing_adapter_routing_precedes_invalid_native_option`
-- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_json_supports_automatic_and_declared_selection_and_reports_declared_rejection`
+- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_json_supports_automatic_and_declared_selection_and_reports_selected_content_failure`
 
 Proves:
 - 显式 CLI 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。
 - 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
 - JSON 文档的 automatic selection 通过 static registry 进入 linked `docnav-json` outline，显式 `docnav-json` 选择进入 linked read，并返回对应 JSON result facts。
-- 显式 `docnav-json` probe 拒绝 Markdown 文档时返回 navigation-owned `ADAPTER_UNAVAILABLE`，且不回退到 Markdown adapter。
+- 显式选择 `docnav-json` 处理 Markdown 内容时执行 selected JSON strategy，返回 adapter-owned `DOCUMENT_CONTENT_INVALID / JSON_SYNTAX_INVALID`，且不回退到 Markdown adapter。
 
 ## Case BB-CORE-SOURCE-001: Core adapter source 来自 static registry
 
@@ -225,15 +222,16 @@ Proves:
 - `init` 通过真实 CLI 创建 project config。
 - `version` 输出 crate version，document help 暴露 output/pagination CLI options。
 
-## Case WB-CORE-ADAPTER-001: Core 校验 adapter contract 对齐
+## Case WB-CORE-ADAPTER-001: Core 内置 registry 提供初始 routing metadata
 
-Owner: `docs/adapter-contract.md#内置-adapter-接口`
+Owner: `docs/adapter-contract.md#manifest-元数据`
 
 Entities:
-- `cargo|docnav:lib:docnav|registry::tests::static_registry_contains_built_in_markdown_adapter`
+- `cargo|docnav:lib:docnav|registry::tests::static_registry_contains_built_in_routing_metadata`
 
 Proves:
-- Core static registry 按固定顺序包含 release 内置 `docnav-markdown` 与 `docnav-json` definitions；两者投影对应 format metadata，JSON descriptor 包含 `.json` 与 `application/json`，每个 definition 的 probe identity 与 registry id 对齐。
+- Core static registry 包含 release 内置 `docnav-markdown` 与 `docnav-json` definitions，并投影各自 manifest-owned pathname routing metadata。
+- Markdown 初始 suffixes 是 `.md`、`.markdown`；JSON 初始 suffixes 是 `.json`、`.code-workspace`，exact filenames 是 `.prettierrc`、`.watchmanconfig`。
 
 ## Case WB-CORE-ADAPTER-INSPECTION-001: Core adapter inspection 精确投影
 
@@ -245,7 +243,21 @@ Entities:
 
 Proves:
 - `doctor` 消费的 registry/layer checks 报告两个 adapter，并按相同顺序为 Markdown 与 JSON 输出 passing format/version facts 和 core-owned `implementation_source: "core_static"`。
-- `adapter list` 报告 `registry: "core_static"`，并按 registry 顺序完整投影 Markdown 与 JSON 的 id、name、version、implementation source 和 format metadata。
+- `adapter list` 报告 `registry: "core_static"`，并按 registry 顺序完整投影 Markdown 与 JSON 的 id、name、version、implementation source、suffixes 和 exact filenames；inspection 不执行 document operation。
+
+## Case WB-CORE-REGISTRY-CONFLICT-001: Registry validation rejects ambiguous routing facts
+
+Owner: `docs/adapter-contract.md#manifest-元数据`
+
+Entities:
+- `cargo|docnav:lib:docnav|registry::tests::registry_check_rejects_ascii_normalized_duplicate_suffix`
+- `cargo|docnav:lib:docnav|registry::tests::registry_check_rejects_duplicate_exact_filename`
+- `cargo|docnav:lib:docnav|registry::tests::registry_check_rejects_duplicate_format_identity`
+
+Proves:
+- Core registry validation rejects duplicate normalized format identities instead of using registry order to choose one definition.
+- Core registry validation rejects same-kind duplicate exact filenames and ASCII-normalized suffixes before document routing.
+- Duplicate format and path-hint failures preserve their exact defensive runtime error ids；explicit adapter intent cannot bypass the constructed registry invariant.
 
 ## Case WB-CORE-ADAPTER-SURFACE-001: Core adapter command surface 保持静态注册表边界
 
@@ -404,6 +416,18 @@ Entities:
 Proves:
 - A relative path from a project subdirectory is normalized to the intended absolute document before linked-adapter dispatch.
 - Internal normalized path shape does not leak into the protocol result.
+
+## Case WB-CORE-ROUTING-PATH-001: Core routes before target-document filesystem access
+
+Owner: `docs/cli.md#document-operation-执行`
+
+Entities:
+- `cargo|docnav:lib:docnav|runtime::tests::routing::automatic_known_suffix_reaches_post_selection_path_failure`
+- `cargo|docnav:lib:docnav|runtime::tests::routing::automatic_unknown_suffix_fails_before_target_document_io`
+
+Proves:
+- Automatic routing 对 lexical pathname 的未知 suffix 在 target-document metadata、open、canonicalize 或 read 前返回 exact `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`，保留 lexical path、空 candidates，且不泄漏 routing-private hint/format facts。
+- Automatic routing 命中已知 Markdown suffix 后才进入 filesystem-backed path/access normalization；不存在的 target 返回既有 `DOCUMENT_NOT_FOUND`，而不是 pathname no-match。
 
 ## Case WB-CORE-OUTPUT-001: Core 输出编排保持通道边界
 

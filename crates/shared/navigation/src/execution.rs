@@ -24,9 +24,50 @@ pub(super) fn execute_loaded_navigation_command<R>(
 where
     R: NavigationAdapterRegistry + ?Sized,
 {
+    let document_path = command.document_path.clone();
+    let prepared = prepare_loaded_navigation_command(command, config_sources, registry)?;
+    execute_prepared_navigation_command(prepared, document_path, catalog)
+}
+
+pub struct PreparedNavigationSelection<'a> {
+    command: NavigationCommand,
+    config_sources: NavigationConfigSources,
+    selection: AdapterSelection<'a>,
+    trace: NavigationInvocationTrace,
+}
+
+pub(super) fn prepare_loaded_navigation_command<'a, R>(
+    command: NavigationCommand,
+    config_sources: NavigationConfigSources,
+    registry: &'a R,
+) -> Result<PreparedNavigationSelection<'a>, NavigationError>
+where
+    R: NavigationAdapterRegistry + ?Sized,
+{
     let mut trace = navigation_trace(command.operation);
     let adapter_intent = resolve_navigation_adapter_intent(&command, &config_sources, &mut trace)?;
     let selection = select_navigation_adapter(&command, &adapter_intent, registry, &mut trace)?;
+
+    Ok(PreparedNavigationSelection {
+        command,
+        config_sources,
+        selection,
+        trace,
+    })
+}
+
+pub(super) fn execute_prepared_navigation_command(
+    mut prepared: PreparedNavigationSelection<'_>,
+    document_path: String,
+    catalog: &DocumentParameterCatalog,
+) -> Result<NavigationCommandOutcome, NavigationError> {
+    prepared.command.document_path = document_path;
+    let PreparedNavigationSelection {
+        command,
+        config_sources,
+        selection,
+        mut trace,
+    } = prepared;
     let resolved =
         resolve_navigation_input(&command, &config_sources, &selection, catalog, &mut trace)?;
     let prepared = prepare_navigation_request(command.operation, resolved, &mut trace)?;
@@ -72,8 +113,8 @@ fn resolve_navigation_adapter_intent(
 }
 
 fn select_navigation_adapter<'a, R>(
-    command: &'a NavigationCommand,
-    adapter_intent: &'a AdapterIntent,
+    command: &NavigationCommand,
+    adapter_intent: &AdapterIntent,
     registry: &'a R,
     trace: &mut NavigationInvocationTrace,
 ) -> Result<AdapterSelection<'a>, NavigationError>

@@ -90,81 +90,52 @@ impl PathEncodingDetails {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct FormatUnknownDetails {
-    pub path: String,
-    pub reason: String,
-    pub candidates: Vec<FormatCandidateDetails>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub candidate_failures: Option<Vec<FormatCandidateDetails>>,
-}
-
-impl FormatUnknownDetails {
-    pub fn new(
-        path: impl Into<String>,
-        reason: impl Into<String>,
-        candidates: Vec<FormatCandidateDetails>,
-    ) -> Self {
-        Self {
-            path: path.into(),
-            reason: reason.into(),
-            candidates,
-            candidate_failures: None,
-        }
-    }
-
-    pub fn with_candidate_failures(
-        mut self,
-        candidate_failures: Vec<FormatCandidateDetails>,
-    ) -> Self {
-        self.candidate_failures = Some(candidate_failures);
-        self
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct FormatAmbiguousDetails {
-    pub path: String,
-    pub candidates: Vec<FormatCandidateDetails>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub candidate_failures: Option<Vec<FormatCandidateDetails>>,
-}
-
-impl FormatAmbiguousDetails {
-    pub fn new(path: impl Into<String>, candidates: Vec<FormatCandidateDetails>) -> Self {
-        Self {
-            path: path.into(),
-            candidates,
-            candidate_failures: None,
-        }
-    }
-
-    pub fn with_candidate_failures(
-        mut self,
-        candidate_failures: Vec<FormatCandidateDetails>,
-    ) -> Self {
-        self.candidate_failures = Some(candidate_failures);
-        self
-    }
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum DocumentContentInvalidReason {
+    #[serde(rename = "JSON_SYNTAX_INVALID")]
+    JsonSyntaxInvalid,
+    #[serde(rename = "JSON_TRAILING_INPUT")]
+    JsonTrailingInput,
+    #[serde(rename = "JSON_DUPLICATE_MEMBER")]
+    JsonDuplicateMember,
+    #[serde(rename = "JSON_MAXIMUM_DEPTH_EXCEEDED")]
+    JsonMaximumDepthExceeded,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct FormatCandidateDetails {
-    pub adapter_id: String,
-    pub stage: String,
-    pub reason: String,
+pub struct DocumentContentInvalidDetails {
+    pub path: String,
+    pub reason: DocumentContentInvalidReason,
 }
 
-impl FormatCandidateDetails {
-    pub fn new(
-        adapter_id: impl Into<String>,
-        stage: impl Into<String>,
-        reason: impl Into<String>,
-    ) -> Self {
+impl DocumentContentInvalidDetails {
+    pub fn new(path: impl Into<String>, reason: DocumentContentInvalidReason) -> Self {
         Self {
-            adapter_id: adapter_id.into(),
-            stage: stage.into(),
-            reason: reason.into(),
+            path: path.into(),
+            reason,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum FormatUnknownReason {
+    #[serde(rename = "FORMAT_NOT_RECOGNIZED")]
+    FormatNotRecognized,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FormatUnknownDetails {
+    pub path: String,
+    pub reason: FormatUnknownReason,
+    pub candidates: [Value; 0],
+}
+
+impl FormatUnknownDetails {
+    pub fn new(path: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            reason: FormatUnknownReason::FormatNotRecognized,
+            candidates: [],
         }
     }
 }
@@ -215,34 +186,60 @@ impl RefReasonDetails {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AdapterReasonDetails {
-    pub adapter_id: String,
-    pub reason: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub selection_source: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stage: Option<String>,
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+enum AdapterUnavailableReason {
+    #[serde(rename = "ADAPTER_NOT_FOUND")]
+    AdapterNotFound,
 }
 
-impl AdapterReasonDetails {
-    pub fn new(adapter_id: impl Into<String>, reason: impl Into<String>) -> Self {
+impl AdapterUnavailableReason {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::AdapterNotFound => "ADAPTER_NOT_FOUND",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+enum AdapterUnavailableStage {
+    #[serde(rename = "resolve")]
+    Resolve,
+}
+
+impl AdapterUnavailableStage {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Resolve => "resolve",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AdapterUnavailableDetails {
+    pub adapter_id: String,
+    reason: AdapterUnavailableReason,
+    pub selection_source: String,
+    stage: AdapterUnavailableStage,
+}
+
+impl AdapterUnavailableDetails {
+    pub fn new(adapter_id: impl Into<String>, selection_source: impl Into<String>) -> Self {
         Self {
             adapter_id: adapter_id.into(),
-            reason: reason.into(),
-            selection_source: None,
-            stage: None,
+            reason: AdapterUnavailableReason::AdapterNotFound,
+            selection_source: selection_source.into(),
+            stage: AdapterUnavailableStage::Resolve,
         }
     }
 
-    pub fn with_selection_context(
-        mut self,
-        selection_source: impl Into<String>,
-        stage: impl Into<String>,
-    ) -> Self {
-        self.selection_source = Some(selection_source.into());
-        self.stage = Some(stage.into());
-        self
+    pub(super) fn into_parts(self) -> (String, String, String, String) {
+        (
+            self.adapter_id,
+            self.reason.as_str().to_owned(),
+            self.selection_source,
+            self.stage.as_str().to_owned(),
+        )
     }
 }
 

@@ -28,21 +28,24 @@ Document operation 按以下顺序执行：
 
 1. 解析 command、subcommand、固定 positional、help 和显式 argv token。
 2. 确定项目根。
-3. 规范化 document path，并检查文件可访问性。
+3. 从 caller document path 与 command cwd 词法派生 invocation-private routing pathname；不得为该步骤读取 target metadata、open、canonicalize、read 或 parse 目标文档。
 4. 解析 invocation logging 的 core-owned CLI/config surface；未显式启用时不得创建日志 sink 或 content capture 文件。
-5. 解析并校验当前 operation 使用的 CLI 参数。
-6. 选择 adapter。
-7. 对 `outline` 解析 navigation-owned `outline_mode` selectors。
-8. 构造内部 document operation request。
-9. 调用选定 adapter 的 operation handler，或在 `outline_mode = "unstructured_full"` 时进入 navigation pre-dispatch full-read path。
-10. 对通过校验的 structured outline/find base success，按 resolved auto-read mode 选择保留 base response 或追加一次既有 read。
-11. 把 document success 或 failure 表示为 `ProtocolResponse`，执行选定 output plan，并映射进程退出码。
+5. 解析并校验当前 operation 使用的 CLI/config 输入，包括 resolved declared adapter intent。
+6. Declared adapter id 存在时做 exact registry lookup 并跳过 pathname routing；不存在时按 [适配器契约](adapter-contract.md#adapter-选择)执行一次 manifest-derived complete-basename lookup。
+7. Adapter selection 成功后才规范化 document path/access；失败时不调用 adapter layer，也不尝试其它 definition。
+8. 对 `outline` 解析 navigation-owned `outline_mode` selectors。
+9. 构造内部 document operation request。
+10. 调用选定 adapter 的 operation handler，或在 `outline_mode = "unstructured_full"` 时进入 navigation pre-dispatch full-read path。
+11. 对通过校验的 structured outline/find base success，按 resolved auto-read mode 选择保留 base response 或追加一次既有 read。
+12. 把 document success 或 failure 表示为 `ProtocolResponse`，执行选定 output plan，并映射进程退出码。
+
+**Current routing contract：** 上述第 3、6、7 步的 lexical pathname、route-before-document-I/O 和 no-probe selection 已实现。Routing pathname、matched hint/format 和 derived lookup state 不新增 CLI flag，也不进入 readable/protocol output 或 invocation log。
 
 `outline` 和 `find` 接受 `--auto-read <disabled|unique-ref>`，built-in default 为 `unique-ref`；project config 和 user config 使用 `defaults.auto_read` 提供同一组值。该 mode 对 `readable-view` 和 `protocol-json` 使用同一 navigation 结果，不选择 output path，也不进入 adapter operation input。Canonical field、来源优先级和追加条件由 [Navigation Input Resolution](navigation-input-resolution.md#unique-ref-auto-read-composition) 定义。
 
 非法 CLI 输入必须在 adapter 选择和 document operation handler 调用前失败。未知 argv、多余 positional、当前 operation 不使用的已知参数、缺少必需 path/ref/query、非法 page、非法 limit 或非法 output 都是 input failure；当前 operation 不使用的参数不触发其它 operation 的 eager validation。
 
-路径不存在、不可读或无法规范化时返回文档路径错误，不能调用 adapter layer。
+Automatic routing 无 pathname hint 命中时，使用 lexical routing pathname 返回 `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`，不得为了 path validation 访问目标文档。Automatic 或 explicit selection 命中后，路径不存在、不可读或无法规范化时返回现有文档路径错误，不能调用 adapter layer，也不能 fallback 到其它 adapter。
 
 Document output 的 public accepted values 恰好是 `readable-view` 和 `protocol-json`。省略 output 或解析得到 `readable-view` 时，core 构造携带内置 renderer 的 `Rendered`；解析得到 `protocol-json` 时构造 `ProtocolJson`。CLI argv 或 config 提供 `readable-json` 时走普通 invalid-value diagnostic，不构造 alias、fallback 或 output plan。需要稳定结构化输出的旧 caller 迁移到 `protocol-json`；只需要阅读文本的 caller 使用默认输出或 `readable-view`。
 
@@ -106,7 +109,7 @@ Help 文本必须只在 documented 支持的 command surface 展示 `--project-c
 
 Document operation、`init`、`doctor` 和 `config` 命令使用该项目根解析项目配置和项目上下文。
 
-`docnav` 接受项目根内外的可访问文件路径。相对 path 基于启动 cwd 解析。`document.path` 必须使用 `/`：项目根内路径可以传项目相对路径，项目根外路径传规范化绝对路径。
+`docnav` 接受项目根内外的文件路径。Caller 相对 path 基于启动 cwd 词法派生 routing pathname；这一 selection hint 不要求目标已存在或可访问。Adapter selection 成功后，core 才执行 filesystem-backed path/access normalization。Selected operation 的 `document.path` 必须使用 `/`：项目根内路径可以传项目相对路径，项目根外路径传规范化绝对路径。
 
 ## 配置文件路径
 
@@ -138,7 +141,7 @@ Runtime invocation logging 可读取同一 project/user config 文件中的 `inv
 - 对 project/user `defaults.auto_read`，通过同一 projection 报告 canonical field identity、source scope、locator、value 和 source-attributed validation diagnostic；inspection 不解析 document operation，也不触发 auto-read。
 - Adapter native option 的持久 config source path 固定为 `options.<adapter-id>.<option-key>`；`<adapter-id>` 使用当前 core release static registry 中的 adapter id，不使用 alias。旧裸 `options.<option-key>` 不兼容、不迁移，只按普通 unknown/invalid config path 处理。
 - `config inspect` 不修改任何 config file，不接受 key/value edit，不删除字段，不提供 single-key get/list 语义。
-- `config inspect` 不产生 document operation request，不构造 adapter operation arguments，不调用 probe 或 adapter handler，也不声称某个 adapter option 已 dispatch。Selected adapter/operation validation 仍由 [Navigation Input Resolution](navigation-input-resolution.md) 拥有。
+- `config inspect` 不产生 document operation request，不构造 adapter operation arguments，不执行 pathname routing 或 adapter handler，也不声称某个 adapter option 已 dispatch。Selected adapter/operation validation 仍由 [Navigation Input Resolution](navigation-input-resolution.md) 拥有。
 
 `docnav config get`、`docnav config set`、`docnav config unset` 和 `docnav config list` 是 breaking legacy surface，不再是 accepted subcommand；调用这些名称必须经 normal CLI parse/error boundary 拒绝，且不得修改 config file。
 
@@ -146,13 +149,13 @@ Runtime invocation logging 可读取同一 project/user config 文件中的 `inv
 
 ## 内置 adapter 检查
 
-`docnav adapter list` 展示当前 release 编译进 static registry 的 adapter metadata，例如 adapter id、名称、版本、core-owned implementation source、支持格式、扩展名、content type 和 operation metadata。Adapter-owned metadata 来自 registered adapter definition；implementation source 由 core static registry 记录。
+`docnav adapter list` 展示当前 release 编译进 static registry 的 adapter metadata，例如 adapter id、名称、版本、core-owned implementation source、支持格式、content type 和 operation metadata。Current manifest projection 包含 complete-basename `extensions[]` suffixes 与 exact `filenames[]`；adapter-owned metadata 来自 registered adapter definition，implementation source 由 core static registry 记录。Listing 不执行 document routing，也不投影 derived lookup index 或 matched hint/format state。
 
 默认 adapter 命令面只包含 `docnav adapter list`。
 
 `docnav init --project-config <path>` 创建或保留 selected project config file；未传时创建或保留当前 project context 的 `.docnav/docnav.json`。
 
-`docnav doctor` 检查 selected project/user config files、static registry 和 core release 内置 adapter layer 可用性。doctor 可以验证静态 descriptor 与 linked handler 是否一致；修复建议必须落在当前配置、static registry 或 linked adapter layer 边界内。
+`docnav doctor` 检查 selected project/user config files、static registry 和 core release 内置 adapter layer 可用性。Doctor 验证 normalized format identity、same-kind exact filename / ASCII-normalized suffix hint 的唯一性，以及静态 descriptor 与 linked handler 一致性。修复建议必须落在当前配置、static registry 或 linked adapter layer 边界内。
 
 ## adapter 执行入口
 

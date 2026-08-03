@@ -1,7 +1,7 @@
 ---
 title: 先按完整 basename 路由再读取文档
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-08-03T03:12:20Z
 purpose: 以纯 pathname、零新增依赖的确定性匹配先选择 adapter，再进入真实文件处理。
 background: 末段 extension 提取不能自然表达复合 suffix，且文件存在性与内容不应成为快速路由的前置条件。

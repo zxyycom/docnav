@@ -14,12 +14,7 @@ pub fn normalize_document_path(
     project: &ProjectContext,
     input: &str,
 ) -> AppResult<NormalizedDocumentPath> {
-    let raw_path = PathBuf::from(input);
-    let resolved = if raw_path.is_absolute() {
-        raw_path
-    } else {
-        project.cwd.join(raw_path)
-    };
+    let resolved = resolve_document_path(project, input);
 
     let metadata = fs::metadata(&resolved).map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {
@@ -49,6 +44,10 @@ pub fn normalize_document_path(
     })
 }
 
+pub(crate) fn routing_document_pathname(project: &ProjectContext, input: &str) -> String {
+    path_to_slash(&resolve_document_path(project, input))
+}
+
 pub fn path_to_slash(path: &Path) -> String {
     let mut text = path.display().to_string().replace('\\', "/");
     if let Some(stripped) = text.strip_prefix("//?/") {
@@ -62,4 +61,13 @@ pub fn path_to_slash(path: &Path) -> String {
 
 fn normalize_path_for_error(path: &Path) -> String {
     path_to_slash(path)
+}
+
+fn resolve_document_path(project: &ProjectContext, input: &str) -> PathBuf {
+    let raw_path = PathBuf::from(input);
+    if raw_path.is_absolute() {
+        raw_path
+    } else {
+        project.cwd.join(raw_path)
+    }
 }

@@ -23,7 +23,6 @@ export const FILE_SYSTEM = {
 // schema 和示例路径来自 docs/schemas 与 docs/examples，路径集中后便于审计校验材料增减。
 export const SCHEMAS = {
   manifest: "docs/schemas/manifest.schema.json",
-  probeResult: "docs/schemas/probe-result.schema.json",
   protocolRequest: "docs/schemas/protocol-request.schema.json",
   protocolResponse: "docs/schemas/protocol-response.schema.json",
   docnavMarkdownConfig: "docs/schemas/docnav-markdown-config.schema.json",
@@ -33,7 +32,6 @@ export const SCHEMAS = {
 export const EXAMPLES = {
   docnavMarkdownConfig: "docs/examples/json/docnav-markdown-config.json",
   manifest: "docs/examples/json/manifest.json",
-  probeResult: "docs/examples/json/probe-result.json",
   protocolReadResponse: "docs/examples/json/protocol-read-response.json",
   errorInvalidRequest: "docs/examples/json/error-invalid-request.json"
 };
@@ -95,6 +93,7 @@ export const FIELDS = {
   entries: "entries",
   error: "error",
   extensions: "extensions",
+  filenames: "filenames",
   formats: "formats",
   id: "id",
   limit: "limit",

@@ -8,8 +8,7 @@ use docnav_adapter_contracts::{
 use docnav_protocol::{
     positive_result, validate_protocol_response_value, Document, Entry, FindResult, Location,
     Operation, OperationArguments, OperationResult, OutlineArguments, OutlineResult,
-    ProbeReasonCode, ProtocolDiagnosticCode, ProtocolResponse, ReadResult, RequestEnvelope,
-    PROTOCOL_VERSION,
+    ProtocolDiagnosticCode, ProtocolResponse, ReadResult, RequestEnvelope, PROTOCOL_VERSION,
 };
 use serde_json::json;
 
@@ -26,7 +25,11 @@ fn manifest_declares_fixed_json_identity() {
     assert_eq!(manifest.adapter.id, "docnav-json");
     assert_eq!(manifest.formats.len(), 1);
     assert_eq!(manifest.formats[0].id, "json");
-    assert_eq!(manifest.formats[0].extensions, [".json"]);
+    assert_eq!(manifest.formats[0].extensions, [".json", ".code-workspace"]);
+    assert_eq!(
+        manifest.formats[0].filenames,
+        [".prettierrc", ".watchmanconfig"]
+    );
     assert_eq!(manifest.formats[0].content_types, ["application/json"]);
 
     let capabilities = definition
@@ -41,101 +44,20 @@ fn manifest_declares_fixed_json_identity() {
 }
 
 #[test]
-fn probe_checks_extension_case_insensitively_and_returns_ordered_success_evidence() {
-    let document = TempDocument::write("settings.JSON", br#"{"enabled":true}"#);
+fn selected_outline_parses_actual_document_independently_of_path_hint() {
+    let document = TempDocument::write("settings.data", b"\xef\xbb\xbf{\"enabled\":true}\n");
+    let input = StandardOperationInput::Outline(outline_input(&document, 1, 100, None));
 
-    let expected = JsonAdapter.probe(document.path_str());
-    let result = crate::json_adapter_definition().probe(document.path_str());
+    let result = crate::json_adapter_definition()
+        .execute_operation(&input)
+        .expect("selected JSON outline should parse the actual document");
 
-    assert_eq!(result, expected);
-    result.validate_semantics().expect("probe semantics");
-    assert!(result.supported);
-    assert_eq!(result.adapter_id, "docnav-json");
-    assert_eq!(result.path, document.path_str());
-    assert_eq!(result.format.as_deref(), Some("json"));
-    assert_eq!(result.confidence, 1.0);
     assert_eq!(
-        result
-            .reasons
-            .iter()
-            .map(|reason| reason.code)
-            .collect::<Vec<_>>(),
-        [
-            ProbeReasonCode::ExtensionMatch,
-            ProbeReasonCode::ContentMatch
-        ]
-    );
-    assert!(result
-        .reasons
-        .iter()
-        .all(|reason| !reason.detail.is_empty()));
-}
-
-#[test]
-fn probe_short_circuits_extension_mismatch_before_io_but_reads_json_candidates() {
-    let missing_markdown = TempDocument::missing("missing.md");
-    let mismatch = JsonAdapter.probe(missing_markdown.path_str());
-
-    assert!(!mismatch.supported);
-    assert_eq!(mismatch.format, None);
-    assert_eq!(mismatch.confidence, 0.0);
-    assert_eq!(mismatch.reasons.len(), 1);
-    assert_eq!(mismatch.reasons[0].code, ProbeReasonCode::ContentConflict);
-    assert_eq!(
-        mismatch.reasons[0].detail,
-        "path extension is not declared for JSON"
-    );
-
-    let missing_json = TempDocument::missing("missing.json");
-    let read_failure = JsonAdapter.probe(missing_json.path_str());
-
-    assert!(!read_failure.supported);
-    assert_eq!(
-        read_failure
-            .reasons
-            .iter()
-            .map(|reason| reason.code)
-            .collect::<Vec<_>>(),
-        [ProbeReasonCode::ExtensionMatch, ProbeReasonCode::ReadError]
-    );
-    assert!(!read_failure.reasons[1].detail.is_empty());
-}
-
-#[test]
-fn probe_accepts_one_utf8_bom() {
-    let document = TempDocument::write("bom.json", b"\xef\xbb\xbf [1, 2]\n");
-
-    let result = JsonAdapter.probe(document.path_str());
-
-    assert!(result.supported);
-    assert_eq!(result.format.as_deref(), Some("json"));
-    assert_eq!(result.confidence, 1.0);
-}
-
-#[test]
-fn probe_maps_loader_failures_to_unsupported_diagnostics() {
-    let invalid_utf8 = TempDocument::write("encoding.json", b"{\"value\":\"\xff\"}");
-    assert_content_conflict(&invalid_utf8, "document is not valid UTF-8");
-
-    let invalid_syntax = TempDocument::write("syntax.json", br#"{"value":}"#);
-    assert_content_conflict(&invalid_syntax, "document is not valid JSON");
-
-    let trailing = TempDocument::write("trailing.json", b"{} trailing");
-    assert_content_conflict(&trailing, "document has trailing non-whitespace input");
-
-    let duplicate = TempDocument::write("duplicate.json", br#"{"a":1,"\u0061":2}"#);
-    assert_content_conflict(
-        &duplicate,
-        "document has duplicate decoded member name \"a\"",
-    );
-
-    let depth = TempDocument::write(
-        "depth.json",
-        format!("{}[]{}", "[".repeat(128), "]".repeat(128)).as_bytes(),
-    );
-    assert_content_conflict(
-        &depth,
-        "document maximum depth 128 exceeds supported maximum 127",
+        result,
+        OperationResult::Outline(OutlineResult::structured(
+            vec![entry("json:#/enabled", "enabled", "boolean")],
+            None,
+        ))
     );
 }
 
@@ -248,43 +170,63 @@ fn outline_tiny_pages_preserve_complete_refs_and_terminate() {
 }
 
 #[test]
-fn outline_maps_reload_failures_to_stable_document_diagnostics() {
+fn selected_outline_maps_current_document_failures_to_stable_diagnostics() {
     let missing = TempDocument::write("missing.json", b"{}");
-    assert!(JsonAdapter.probe(missing.path_str()).supported);
+    let selected = crate::json_adapter_definition();
     fs::remove_file(&missing.path).expect("remove selected document");
-    assert_outline_error(
-        &missing,
-        ProtocolDiagnosticCode::DocumentNotFound,
-        "path",
-        json!(missing.path_str()),
+    assert_protocol_error(
+        &selected_outline_error(&selected, &missing),
+        "DOCUMENT_NOT_FOUND",
+        json!({ "path": missing.path_str() }),
     );
 
     let invalid_utf8 = TempDocument::write("encoding.json", b"{}");
-    assert!(JsonAdapter.probe(invalid_utf8.path_str()).supported);
+    let selected = crate::json_adapter_definition();
     fs::write(&invalid_utf8.path, b"{\"value\":\"\xff\"}")
         .expect("replace selected document with non-UTF-8 bytes");
-    assert_outline_error(
-        &invalid_utf8,
-        ProtocolDiagnosticCode::DocumentEncodingUnsupported,
-        "encoding",
-        json!("non-utf-8"),
+    assert_protocol_error(
+        &selected_outline_error(&selected, &invalid_utf8),
+        "DOCUMENT_ENCODING_UNSUPPORTED",
+        json!({
+            "path": invalid_utf8.path_str(),
+            "encoding": "non-utf-8",
+        }),
     );
 
-    let changed_inputs = [
-        br#"{"value":}"#.to_vec(),
-        b"{} trailing".to_vec(),
-        br#"{"a":1,"\u0061":2}"#.to_vec(),
-        format!("{}[]{}", "[".repeat(128), "]".repeat(128)).into_bytes(),
+    let invalid_content = [
+        (
+            "syntax.json",
+            br#"{"value":}"#.to_vec(),
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            "trailing.json",
+            b"{} trailing".to_vec(),
+            "JSON_TRAILING_INPUT",
+        ),
+        (
+            "duplicate.json",
+            br#"{"a":1,"\u0061":2}"#.to_vec(),
+            "JSON_DUPLICATE_MEMBER",
+        ),
+        (
+            "depth.json",
+            format!("{}[]{}", "[".repeat(128), "]".repeat(128)).into_bytes(),
+            "JSON_MAXIMUM_DEPTH_EXCEEDED",
+        ),
     ];
-    for bytes in changed_inputs {
-        let changed = TempDocument::write("changed.json", b"{}");
-        assert!(JsonAdapter.probe(changed.path_str()).supported);
-        fs::write(&changed.path, bytes).expect("replace selected document with invalid JSON");
-        assert_outline_error(
-            &changed,
-            ProtocolDiagnosticCode::InternalError,
-            "error_id",
-            json!("json-document-changed-after-probe"),
+    for (name, bytes, reason) in invalid_content {
+        let document = TempDocument::write(name, b"{}");
+        let selected = crate::json_adapter_definition();
+        fs::write(&document.path, bytes).expect("replace selected document with invalid JSON");
+
+        assert_protocol_error(
+            &selected_outline_error(&selected, &document),
+            "DOCUMENT_CONTENT_INVALID",
+            json!({
+                "path": document.path_str(),
+                "reason": reason,
+            }),
         );
     }
 }
@@ -431,39 +373,6 @@ fn read_paginates_unicode_and_keeps_complete_cost_on_every_page() {
 }
 
 #[test]
-fn read_uses_reload_diagnostics_when_the_selected_document_changes() {
-    let missing = TempDocument::write("missing-read.json", b"{}");
-    assert!(JsonAdapter.probe(missing.path_str()).supported);
-    fs::remove_file(&missing.path).expect("remove selected document");
-    let missing_error = JsonAdapter
-        .read(&read_input(&missing, "json:#", 1, 100))
-        .expect_err("missing selected document should fail")
-        .protocol_error();
-    assert_eq!(
-        missing_error.code(),
-        ProtocolDiagnosticCode::DocumentNotFound
-    );
-    assert_eq!(
-        missing_error.details().get("path"),
-        Some(&json!(missing.path_str()))
-    );
-
-    let changed = TempDocument::write("changed-read.json", b"{}");
-    assert!(JsonAdapter.probe(changed.path_str()).supported);
-    fs::write(&changed.path, br#"{"value":}"#)
-        .expect("replace selected document with invalid JSON");
-    let changed_error = JsonAdapter
-        .read(&read_input(&changed, "json:#", 1, 100))
-        .expect_err("invalid reloaded JSON should fail")
-        .protocol_error();
-    assert_eq!(changed_error.code(), ProtocolDiagnosticCode::InternalError);
-    assert_eq!(
-        changed_error.details().get("error_id"),
-        Some(&json!("json-document-changed-after-probe"))
-    );
-}
-
-#[test]
 fn find_projects_mixed_occurrences_and_round_trips_every_ref_through_read() {
     let document = TempDocument::write(
         "find.json",
@@ -579,39 +488,6 @@ fn find_rejects_an_empty_query_with_the_existing_invalid_request_diagnostic() {
 }
 
 #[test]
-fn find_uses_reload_diagnostics_when_the_selected_document_changes() {
-    let missing = TempDocument::write("missing-find.json", b"{}");
-    assert!(JsonAdapter.probe(missing.path_str()).supported);
-    fs::remove_file(&missing.path).expect("remove selected document");
-    let missing_error = JsonAdapter
-        .find(&find_input(&missing, "needle", 1, 100))
-        .expect_err("missing selected document should fail")
-        .protocol_error();
-    assert_eq!(
-        missing_error.code(),
-        ProtocolDiagnosticCode::DocumentNotFound
-    );
-    assert_eq!(
-        missing_error.details().get("path"),
-        Some(&json!(missing.path_str()))
-    );
-
-    let changed = TempDocument::write("changed-find.json", b"{}");
-    assert!(JsonAdapter.probe(changed.path_str()).supported);
-    fs::write(&changed.path, br#"{"value":}"#)
-        .expect("replace selected document with invalid JSON");
-    let changed_error = JsonAdapter
-        .find(&find_input(&changed, "needle", 1, 100))
-        .expect_err("invalid reloaded JSON should fail")
-        .protocol_error();
-    assert_eq!(changed_error.code(), ProtocolDiagnosticCode::InternalError);
-    assert_eq!(
-        changed_error.details().get("error_id"),
-        Some(&json!("json-document-changed-after-probe"))
-    );
-}
-
-#[test]
 fn info_reports_exact_bom_aware_document_and_nested_metadata() {
     let bytes = b"\xef\xbb\xbf{\"array\":[1,{\"leaf\":null}],\"empty\":{}}";
     let document = TempDocument::write("info-nested.json", bytes);
@@ -718,77 +594,6 @@ fn full_read_hooks_preserve_bom_stripped_source_and_measure_actual_cost() {
     expected_measurements
         .retain(|measurement| matches!(measurement.unit.as_str(), "bytes" | "tokens"));
     assert_eq!(measured.measurements, expected_measurements);
-}
-
-#[test]
-fn info_and_full_read_hooks_reuse_reload_diagnostics() {
-    let missing = TempDocument::write("missing-info.json", b"{}");
-    assert!(JsonAdapter.probe(missing.path_str()).supported);
-    fs::remove_file(&missing.path).expect("remove selected document");
-    let missing_error = JsonAdapter
-        .info(&info_input(&missing))
-        .expect_err("missing selected document should fail")
-        .protocol_error();
-    assert_eq!(
-        missing_error.code(),
-        ProtocolDiagnosticCode::DocumentNotFound
-    );
-    assert_eq!(
-        missing_error.details().get("path"),
-        Some(&json!(missing.path_str()))
-    );
-
-    let invalid_utf8 = TempDocument::write("encoding-full-read.json", b"{}");
-    assert!(JsonAdapter.probe(invalid_utf8.path_str()).supported);
-    fs::write(&invalid_utf8.path, b"{\"value\":\"\xff\"}")
-        .expect("replace selected document with non-UTF-8 bytes");
-    let encoding_error = JsonAdapter
-        .unstructured_full_read(&full_read_request(&invalid_utf8))
-        .expect_err("invalid UTF-8 should fail full read")
-        .protocol_error();
-    assert_eq!(
-        encoding_error.code(),
-        ProtocolDiagnosticCode::DocumentEncodingUnsupported
-    );
-    assert_eq!(
-        encoding_error.details().get("encoding"),
-        Some(&json!("non-utf-8"))
-    );
-
-    let changed = TempDocument::write("changed-full-read.json", b"{}");
-    assert!(JsonAdapter.probe(changed.path_str()).supported);
-    fs::write(&changed.path, br#"{"value":}"#)
-        .expect("replace selected document with invalid JSON");
-    let changed_error = JsonAdapter
-        .measure_unstructured_full_read_cost(&full_read_request(&changed), &["bytes".to_owned()])
-        .expect_err("invalid reloaded JSON should fail cost measurement")
-        .protocol_error();
-    assert_eq!(changed_error.code(), ProtocolDiagnosticCode::InternalError);
-    assert_eq!(
-        changed_error.details().get("error_id"),
-        Some(&json!("json-document-changed-after-probe"))
-    );
-}
-
-fn assert_content_conflict(document: &TempDocument, expected_detail: &str) {
-    let result = JsonAdapter.probe(document.path_str());
-
-    result.validate_semantics().expect("probe semantics");
-    assert!(!result.supported);
-    assert_eq!(result.format, None);
-    assert_eq!(result.confidence, 0.0);
-    assert_eq!(
-        result
-            .reasons
-            .iter()
-            .map(|reason| reason.code)
-            .collect::<Vec<_>>(),
-        [
-            ProbeReasonCode::ExtensionMatch,
-            ProbeReasonCode::ContentConflict
-        ]
-    );
-    assert_eq!(result.reasons[1].detail, expected_detail);
 }
 
 fn outline_input(
@@ -986,19 +791,28 @@ fn match_entry(ref_id: &str, label: &str, line: u32) -> Entry {
     }
 }
 
-fn assert_outline_error(
+fn selected_outline_error(
+    selected: &docnav_adapter_contracts::AdapterDefinition<'_>,
     document: &TempDocument,
-    expected_code: ProtocolDiagnosticCode,
-    detail_key: &str,
-    detail_value: serde_json::Value,
-) {
-    let error = JsonAdapter
-        .outline(&outline_input(document, 1, 100, None))
-        .expect_err("outline reload should fail");
-    let error = error.protocol_error();
+) -> docnav_protocol::ProtocolError {
+    selected
+        .execute_operation(&StandardOperationInput::Outline(outline_input(
+            document, 1, 100, None,
+        )))
+        .expect_err("selected JSON outline should reject the current document")
+        .protocol_error()
+}
 
-    assert_eq!(error.code(), expected_code);
-    assert_eq!(error.details().get(detail_key), Some(&detail_value));
+fn assert_protocol_error(
+    error: &docnav_protocol::ProtocolError,
+    expected_code: &str,
+    expected_details: serde_json::Value,
+) {
+    assert_eq!(error.code().protocol_code(), expected_code);
+    assert_eq!(
+        serde_json::to_value(error.details()).expect("protocol error details should serialize"),
+        expected_details,
+    );
 }
 
 struct TempDocument {
@@ -1017,7 +831,7 @@ impl TempDocument {
     fn missing(name: &str) -> Self {
         let id = NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed);
         let directory =
-            std::env::temp_dir().join(format!("docnav-json-probe-{}-{id}", std::process::id()));
+            std::env::temp_dir().join(format!("docnav-json-adapter-{}-{id}", std::process::id()));
         let path = directory.join(name);
         Self { directory, path }
     }
