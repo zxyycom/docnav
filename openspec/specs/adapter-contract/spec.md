@@ -1,7 +1,7 @@
 # adapter-contract Specification
 
 ## Purpose
-Define linked adapter interface boundaries: static descriptors, manifest/probe metadata, adapter-owned native option declarations, operation handler inputs, structured operation results, adapter diagnostics, and optional full-read support hooks. `protocol-contract` owns raw envelopes; `output-contract` owns public output rendering.
+Define linked adapter interface boundaries: static descriptors, manifest format/routing metadata, adapter-owned native option declarations, operation handler inputs, structured operation results, adapter diagnostics, and optional full-read support hooks. `protocol-contract` owns raw envelopes; `output-contract` owns public output rendering.
 ## Requirements
 ### Requirement: Linked adapter handlers receive prepared operation input
 
@@ -108,4 +108,3 @@ Value decoding, nullability required for materialization, default, source-preced
 - **WHEN** both core and the selected strategy check the same adapter-scoped constraint
 - **THEN** both checks accept the same value domain
 - **THEN** either rejection maps to a compatible observable diagnostic
-

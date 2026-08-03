@@ -38,3 +38,20 @@ Typed fields MUST provide reusable field identity, processing locator, value-kin
 - **WHEN** a core-owned field definition performs standard type materialization but leaves a context-dependent rule to the selected strategy
 - **THEN** typed-fields returns the standard typed value and provenance
 - **THEN** the adapter strategy owns the runtime semantic decision without owning the parameter declaration
+
+### Requirement: Public construction surface is direct and bounded
+
+Typed fields MUST support direct `FieldDef` / `FieldDefSet` construction, validation, defaults, merge strategy, and typed materialization. Consumers MUST be able to use typed materialization with only the reusable validation rules selected for that definition set; typed-fields MUST NOT require every downstream domain or algorithm precondition to become a field declaration. Direct builders MUST be the public construction path for consumer-owned sets; internal builder entries MAY remain private implementation details. Contributions to another consumer's set MUST go through that consumer's owned construction boundary.
+
+#### Scenario: Core builds the product catalog directly
+
+- **WHEN** core defines common or adapter-scoped document-operation parameter fields
+- **THEN** it uses direct field and definition-set builders
+- **THEN** the resulting definitions are owned by the core catalog
+
+#### Scenario: Protocol validates direct field sets
+
+- **WHEN** protocol contract validation builds request, response, or manifest fields
+- **THEN** direct builders continue to express declaration paths, expected shape, validation, defaults, and materialization
+- **THEN** protocol validation remains independent from the product parameter catalog
+- **THEN** no removed probe field set or processing projection is reconstructed

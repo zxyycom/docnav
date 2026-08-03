@@ -60,6 +60,12 @@ Manifest-derived automatic routing MUST NOT emit `NO_SUPPORTED_ADAPTER`, `FORMAT
 
 Failure outputs MUST expose a single primary diagnostic record for the failed operation. Additional context must remain secondary, stable, and subordinate to the primary cause. Automatic routing MUST NOT synthesize sibling or nested candidate-failure lists after probe traversal is removed.
 
+#### Scenario: Multiple candidate adapter failures
+
+- **WHEN** automatic routing finds no pathname hint or the one selected adapter subsequently fails
+- **THEN** the operation failure has one primary diagnostic from the owning boundary
+- **THEN** no multiple-candidate failure set or candidate evidence is produced
+
 #### Scenario: Automatic routing has no hint match
 
 - **WHEN** routing produces pathname unknown or registry-invariant failure

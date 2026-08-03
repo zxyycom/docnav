@@ -9,7 +9,7 @@
 | 已核对 handoff | Decision 8 与“实施前审计记录” | 下游 change 接收单向 rebase；不要求其先实现，也不形成反向依赖 |
 | 独立后续 change | `support-jsonc-in-json-adapter` | JSONC grammar、parser dependency 与 exact JSON/JSONC semantics 不由本 change 决定 |
 
-正式调查主题 `docs/investigations/dependencies/format-routing-inference.md` 是证据 owner，不是批准 owner。活动决策 `docs/decisions/adapter-evolution/route-by-manifest-basename-hints.md` 保存跨 change 默认方向，并在本 change 应用前保持 `unaligned`；本 design 和十份 delta specs 保存本 change 的已批准 Target。主规范、代码和测试在 apply 前仍描述 Current。
+正式调查主题 `docs/investigations/dependencies/format-routing-inference.md` 是证据 owner，不是批准 owner。活动决策 `docs/decisions/adapter-evolution/route-by-manifest-basename-hints.md` 保存跨 change 默认方向，并在本 change 应用前保持 `unaligned`；本 design 和十二份 delta specs 保存本 change 的已批准 Target。主规范、代码和测试在 apply 前仍描述 Current。
 
 ## Context
 
@@ -182,7 +182,7 @@ Selection diagnostics 和 invocation logs 都不投影 matched filename/suffix�
 3. **Protocol、runtime contract validation 与 typed-field consumer — 删除。** 删除 `crates/shared/protocol/src/probe.rs`，以及 `constants.rs`、`lib.rs`、`decode.rs`、`schema.rs`、`contract_validation.rs`、`contract_validation/probe.rs`、`contract_validation/enums.rs` 中的 probe version、type re-export、decoder、schema entry、semantic validation和 probe reason field definitions；删除对应 protocol decode/schema tests。Reusable typed-fields API 保留，只删除 protocol consumer 建立的 probe `FieldDefSet` 路径。
 4. **Diagnostics 与 routing-only vocabulary — 删除或替换。** 从 shared diagnostics/protocol code、rules、typed markers、details payload/conversion、metadata 和 tests 删除 probe boundary codes、`FormatCandidateDetails`、`candidate_failures` 与 routing-only `FORMAT_AMBIGUOUS`；审计未找到 `FORMAT_AMBIGUOUS` 的其它 Current owner，也未找到 Current `FORMAT_MATCH` producer。`FORMAT_UNKNOWN` 改为 `FORMAT_NOT_RECOGNIZED` 与空 `candidates`；selected JSON content failure 新增 `DOCUMENT_CONTENT_INVALID` 和四个 exact reasons。
 5. **Schema、examples 与 validators — 删除或同步。** 删除 `docs/schemas/probe-result.schema.json`、`docs/examples/json/probe-result.json` 及其 schema/example indexes、`scripts/tools/validators/config.ts` 和 schema validator registry entries；更新 manifest schema/example的 `filenames[]` 与 compound-suffix rules；更新 protocol-response schema 和 format-unknown example，删除 format-ambiguous example与 candidate/probe vocabulary。
-6. **Owner docs、main specs 与 Case evidence — 迁移。** 更新 `docs/adapter-contract.md`、`architecture.md`、`cli.md`、`navigation.md`、`navigation-input-resolution.md`、`protocol.md`、`output.md`、`testing.md`、`testing/coverage.md`、JSON/Markdown adapter owners、schema/example indexes，以及 core/navigation/protocol/JSON/Markdown Case ledgers。对应 `openspec/specs/` owners 在 apply/archive 同步时接收十份 delta；历史 decision 与 formal investigation 保留形成时事实，不改写成 Current。
+6. **Owner docs、main specs 与 Case evidence — 迁移。** 更新 `docs/adapter-contract.md`、`architecture.md`、`cli.md`、`navigation.md`、`navigation-input-resolution.md`、`protocol.md`、`output.md`、`testing.md`、`testing/coverage.md`、JSON/Markdown adapter owners、schema/example indexes，以及 core/navigation/protocol/JSON/Markdown Case ledgers。对应 `openspec/specs/` owners 在 apply/archive 同步时接收十二份 delta；历史 decision 与 formal investigation 保留形成时事实，不改写成 Current。
 7. **Smoke、TOCTOU 与 release-adjacent material — 迁移或删除。** Core failure/real-JSON smoke 改为 pathname no-match和 selected JSON diagnostics；probe-specific `test/tools/json-toctou-supervisor.py`、`real-json-toctou.ts` 与 `json-document-changed-after-probe` expectations 删除或由单次 selected-operation document/content evidence取代；`scripts/quality/accepted-warnings.ts` 随 JSON suite职责更新。Release workflow 没有 direct probe token，仍需通过 package smoke 和 workspace/schema validation证明最终 package 不携带 probe surface。
 
 限定搜索没有发现上述集合之外的 owner-backed production caller、CLI inspection command、package manifest或 release workflow probe promise。Fixture 正文中普通英文 “probe” 与 runtime progress observer 不属于 adapter routing；决策和调查中的 probe 文字是历史证据，保留不形成兼容义务。
@@ -200,7 +200,7 @@ Selection diagnostics 和 invocation logs 都不投影 matched filename/suffix�
 
 ### Artifact integrity audit
 
-- Proposal 的十个 capability ids 与十个 delta directories、现有 main-spec ids 完全一致：`adapter-contract`、`contract-validation`、`core-cli`、`diagnostics-contract`、`docnav-architecture`、`json-adapter`、`markdown-adapter`、`navigation-input-resolution`、`protocol-contract`、`typed-fields`。
+- Proposal 的十二个 capability ids 与十二个 delta directories、现有 main-spec ids 完全一致：`adapter-contract`、`contract-validation`、`core-cli`、`diagnostics-contract`、`docnav-architecture`、`invocation-logging`、`json-adapter`、`markdown-adapter`、`navigation-input-resolution`、`output-contract`、`protocol-contract`、`typed-fields`。
 - 每个 `MODIFIED` requirement 复用现有 main-spec heading并保留 Current clauses；JSON/protocol 的新增 requirement 与 JSON/Markdown 的 removed probe requirements 各自提供完整 Target、reason 和 migration。
 - Architecture、navigation、diagnostics、protocol、JSON owner、project handoff 与 tasks 对 no-match、registry conflict、explicit missing、selected failure 的 code/details/classification一致；routing state 不进入 adapter input、protocol、readable output或 logs。
 - `## Open Questions` 没有未回答或被措辞隐藏的 product/dependency/compatibility选择。审计未发现需要升级给用户的下游 core-goal incompatibility。

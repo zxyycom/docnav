@@ -52,6 +52,8 @@ Current automatic selection 按 static registry 顺序逐个执行 adapter probe
 - `protocol-contract`: 以既有 failure envelope 投影 routing outcomes 与 selected-content failure，并从 shared protocol surface 删除 probe result。
 - `contract-validation`: 验证 manifest filename hints 和 routing uniqueness，并删除 probe JSON schema/runtime validator及其 validation materials。
 - `typed-fields`: 删除 probe consumer-local field definitions/projections，并明确 private pathname/index outcome 不进入 typed-field catalog。
+- `output-contract`: 从非文档输出 framing 契约中删除已废止 probe output，不改变现有 document output orchestration。
+- `invocation-logging`: 从日志 sink 与 payload 隔离契约中删除已废止 probe output/result/record，不改变现有日志边界。
 - `markdown-adapter`: 删除 Markdown-owned selection probe 义务；Markdown 只在被精确选中后执行既有 document operations。
 - `json-adapter`: 删除 JSON-owned selection probe 与 post-probe reload 特例；manifest 声明获批 JSON pathname hints，selected JSON operation 继续执行当前严格 JSON parse 与 JSON-owned validation。
 
