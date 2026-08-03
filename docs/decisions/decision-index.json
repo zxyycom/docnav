@@ -22,7 +22,7 @@
       }
     ]
   },
-  "sourceRevision": "sha256:d6f4993f5c65e8e7b454c73ca7703a2fd6a2b67fa61e195cfc26f7ab2ba2b253",
+  "sourceRevision": "sha256:75bd2034b5d47f984bbcce26ed4a8ccf8cdd1ee86027332c9ec2becd2295ff66",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -38,6 +38,58 @@
     }
   ],
   "entries": [
+    {
+      "id": "adapter-evolution/route-by-manifest-basename-hints.md",
+      "keys": {
+        "domain": [
+          "adapter-evolution"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "adapter-evolution/route-by-manifest-basename-hints.md",
+        "title": "先按完整 basename 路由再读取文档",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-03T03:12:20Z",
+        "purpose": "以纯 pathname、零新增依赖的确定性匹配先选择 adapter，再进入真实文件处理。",
+        "background": "末段 extension 提取不能自然表达复合 suffix，且文件存在性与内容不应成为快速路由的前置条件。",
+        "decision": "先匹配 exact filename，再对完整 basename 做大小写归一化 suffix 匹配；命中事实保持私有，选中后才读取并解析。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "adapter-evolution/route-by-manifest-pathname-hints.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "adapter-evolution/route-by-manifest-pathname-hints.md",
+      "keys": {
+        "domain": [
+          "adapter-evolution"
+        ],
+        "status": [
+          "archived"
+        ]
+      },
+      "state": {
+        "path": "adapter-evolution/route-by-manifest-pathname-hints.md",
+        "title": "使用 manifest pathname hints 选择 adapter",
+        "status": "archived",
+        "alignment": null,
+        "createdAt": "2026-07-31T02:54:31Z",
+        "purpose": "以无文件 I/O、无 registry 顺序依赖的方式快速选择唯一 adapter。",
+        "background": "Probe traversal 重复读取文档；通用 MIME 表不能覆盖常见 dotfile 与项目专用文件名。",
+        "decision": "自动路由只用 manifest extension/exact-filename hints；不加识别依赖，内容由选中 adapter 验证。",
+        "relations": []
+      }
+    },
     {
       "id": "adapter-evolution/select-json-as-second-adapter.md",
       "keys": {

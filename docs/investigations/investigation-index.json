@@ -2,6 +2,40 @@
   "definitionVersion": 2,
   "entries": [
     {
+      "id": "dependencies/format-routing-inference.md",
+      "keys": {
+        "category": [
+          "dependencies"
+        ],
+        "latest-report-at": [
+          1785727221000
+        ],
+        "status": [
+          "已结束"
+        ],
+        "text": [
+          "Docnav 应以什么权威信号替代 probe traversal，以及现有 Rust 格式识别依赖中是否有功能充分、重量可接受、生态可信且比项目已有 metadata 更合适的候选？",
+          "Docnav 格式路由推断依赖调查",
+          "JSON/Markdown 候选依赖、路由语义与最小维护面审计",
+          "Manifest 路径提示决策、常见配置别名与 JSON-family 边界复查",
+          "纯 pathname 前置路由与完整 basename suffix 语义复查"
+        ]
+      },
+      "state": {
+        "latestReportAt": "2026-08-03T03:20:21+00:00",
+        "path": "dependencies/format-routing-inference.md",
+        "question": "Docnav 应以什么权威信号替代 probe traversal，以及现有 Rust 格式识别依赖中是否有功能充分、重量可接受、生态可信且比项目已有 metadata 更合适的候选？",
+        "reportCount": 3,
+        "reportTitles": [
+          "JSON/Markdown 候选依赖、路由语义与最小维护面审计",
+          "Manifest 路径提示决策、常见配置别名与 JSON-family 边界复查",
+          "纯 pathname 前置路由与完整 basename suffix 语义复查"
+        ],
+        "status": "已结束",
+        "title": "Docnav 格式路由推断依赖调查"
+      }
+    },
+    {
       "id": "runtime/realtime-progress-reporting.md",
       "keys": {
         "category": [
@@ -53,5 +87,5 @@
   "metadata": {},
   "namespace": "investigations",
   "schemaVersion": 2,
-  "sourceRevision": "sha256:7a8820802dce068b67bf9dadbc593653694c9358baf855b1daaedaac659c8fa4"
+  "sourceRevision": "sha256:aa2b4cd221c9591dfc887932abf623bf52a56522c4071839519b647ceff12ffe"
 }
