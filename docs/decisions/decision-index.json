@@ -19,10 +19,14 @@
       {
         "description": "维护跨格式结构化读取、源码保真、raw/readable 输出分层与自定义渲染的长期方向。",
         "id": "navigation-output"
+      },
+      {
+        "description": "维护本机不可用执行环境的验收、受控云端验证与外部写入边界的长期方向。",
+        "id": "validation-governance"
       }
     ]
   },
-  "sourceRevision": "sha256:02bee7377f2caaa67010197d7a4f0355b7f947fb3217ebef87e3ac9b5b8198d4",
+  "sourceRevision": "sha256:ba14974614109118097de0f60120ff741b0dcecf27e11dc48640c9c3992807bd",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -482,6 +486,31 @@
             "target": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md"
           }
         ]
+      }
+    },
+    {
+      "id": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
+      "keys": {
+        "domain": [
+          "validation-governance"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
+        "title": "受控分支承接非本机环境验收",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-04T08:49:10Z",
+        "purpose": "在本机缺少必要执行环境时，以受控且最小的云端验证补足验收证据。",
+        "background": "本机环境不能可靠覆盖所有目标平台，而验收不能把缺少的平台证据误作已经通过。",
+        "decision": "仅在必要时通过受控分支推送触发现有云端验证，优先使用本地 gh；gh 不可用即阻塞，不改走其它外部写入路径。",
+        "relations": []
       }
     }
   ]
