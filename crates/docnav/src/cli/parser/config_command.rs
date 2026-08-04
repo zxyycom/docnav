@@ -29,8 +29,9 @@ pub(super) fn parse_config_command(args: &[String]) -> AppResult<ParsedCli> {
 }
 
 fn parse_config_inspect(args: &[String]) -> AppResult<ParsedCli> {
-    let parsed = collect_config_args("config inspect", args)?;
-    let matches = config_inspect_command()
+    let command = config_inspect_command();
+    let parsed = collect_config_args("config inspect", args, &command)?;
+    let matches = command
         .try_get_matches_from(clap_argv(command_names::CONFIG_INSPECT, parsed.clap_args))
         .map_err(|_| config_inspect_error(args))?;
     Ok(ParsedCli::new(CliCommand::Config(ConfigCommand::Inspect(
@@ -44,7 +45,11 @@ struct ParsedConfigCommon {
     clap_args: Vec<String>,
 }
 
-fn collect_config_args(command: &str, args: &[String]) -> AppResult<ParsedConfigCommon> {
+fn collect_config_args(
+    command: &str,
+    args: &[String],
+    command_shape: &clap::Command,
+) -> AppResult<ParsedConfigCommon> {
     let known_value_flags = boundary_value_flags(|flag| {
         matches!(flag, ValueFlag::ProjectConfig | ValueFlag::UserConfig)
     });
@@ -52,7 +57,7 @@ fn collect_config_args(command: &str, args: &[String]) -> AppResult<ParsedConfig
         .map_err(scan_missing_value_error)?;
 
     if let Some(rejected) = scan.rejected.into_iter().next() {
-        return Err(error_from_rejected_arg(rejected));
+        return Err(error_from_rejected_arg(rejected, command_shape));
     }
 
     Ok(ParsedConfigCommon {

@@ -28,13 +28,14 @@ pub(super) fn parse_utility_command(
                 | (super::command_names::DOCTOR, ValueFlag::UserConfig)
         )
     });
+    let command_shape = utility_clap_command(label, about);
     let scan = scan_arg_boundaries(args, &ArgBoundaryScan::new(label, 0, &known_value_flags))
         .map_err(missing_value_error)?;
     if let Some(rejected) = scan.rejected.into_iter().next() {
-        return Err(error_from_rejected_arg(rejected));
+        return Err(error_from_rejected_arg(rejected, &command_shape));
     }
 
-    let matches = utility_clap_command(label, about)
+    let matches = command_shape
         .try_get_matches_from(clap_argv(label, scan.retained_args))
         .map_err(|_| AppError::invalid_request(label, "invalid command line arguments"))?;
 

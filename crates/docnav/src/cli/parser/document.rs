@@ -21,12 +21,7 @@ pub(super) fn parse_document_command(
     args: &[String],
 ) -> AppResult<ParsedCli> {
     let spec = document_clap_command(operation)?;
-    let value_flags = value_flags::DocumentValueFlags::new(operation, &spec.command);
-    let BoundaryDocumentArgs { clap_args } = collect_document_args(operation, args, &value_flags)?;
-    let matches = spec
-        .command
-        .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
-        .map_err(|error| errors::document_parse_error(operation, args, &value_flags, &error))?;
+    let matches = parse_document_matches(operation, args, &spec.command)?;
     let processing_id = ProcessingId::new("cli").expect("document CLI processing id is valid");
     let mut candidates = spec
         .routing_fields
@@ -66,6 +61,22 @@ pub(super) fn parse_document_command(
     )))
 }
 
+fn parse_document_matches(
+    operation: Operation,
+    args: &[String],
+    command_shape: &clap::Command,
+) -> AppResult<clap::ArgMatches> {
+    let value_flags = value_flags::DocumentValueFlags::new(operation, command_shape);
+    let BoundaryDocumentArgs { clap_args } =
+        collect_document_args(operation, args, &value_flags, command_shape)?;
+    command_shape
+        .clone()
+        .try_get_matches_from(clap_argv(operation.as_str(), clap_args))
+        .map_err(|error| {
+            errors::document_parse_error(operation, args, &value_flags, command_shape, &error)
+        })
+}
+
 struct BoundaryDocumentArgs {
     clap_args: Vec<String>,
 }
@@ -74,6 +85,7 @@ fn collect_document_args(
     operation: Operation,
     args: &[String],
     value_flags: &value_flags::DocumentValueFlags,
+    command_shape: &clap::Command,
 ) -> AppResult<BoundaryDocumentArgs> {
     let known_value_flags = value_flags.known_value_flags();
     let known_switch_flags = value_flags.known_switch_flags();
@@ -99,7 +111,7 @@ fn collect_document_args(
         });
     }
     if let Some(rejected) = scan.rejected.into_iter().next() {
-        return Err(error_from_rejected_arg(rejected));
+        return Err(error_from_rejected_arg(rejected, command_shape));
     }
 
     Ok(BoundaryDocumentArgs {

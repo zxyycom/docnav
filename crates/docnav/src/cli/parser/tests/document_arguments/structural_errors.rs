@@ -32,18 +32,33 @@ fn auto_read_rejects_missing_duplicate_and_inapplicable_input_structurally() {
 
 #[test]
 fn unused_known_argument_value_is_rejected_before_execution() {
-    let error = parse([
-        "info",
-        "doc.md",
-        "--page",
-        "nope",
-        "--output",
-        "readable-view",
-    ])
-    .expect_err("unused page should fail info");
+    let error = parse(["outline", "doc.md", "--ref", "doc:full"])
+        .expect_err("unused ref should fail outline");
 
     assert_eq!(error.exit_code().code(), DocnavExitCode::InputError.code());
-    assert_diagnostic(error, "--page", "unsupported_argument");
+    assert_diagnostic(error.clone(), "--ref", "unsupported_argument");
+    let details = error.diagnostic().details().to_value();
+    let accepted = details["accepted"]
+        .as_array()
+        .expect("unsupported argument diagnostic has expected command help")
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .collect::<Vec<_>>()
+        .join("\n");
+    for expected in [
+        "Usage: outline",
+        "--auto-read <disabled|unique-ref>",
+        "--max-heading-level <value>",
+        "--invocation-log <path>",
+        "--invocation-log-content-root <path>",
+        "--project-config <path>",
+        "--user-config <path>",
+    ] {
+        assert!(
+            accepted.contains(expected),
+            "unsupported argument expected usage should be rendered from the current outline command and include {expected:?}; got:\n{accepted}"
+        );
+    }
 }
 
 #[test]

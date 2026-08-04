@@ -13,10 +13,11 @@ pub(super) fn document_parse_error(
     operation: Operation,
     args: &[String],
     value_flags: &DocumentValueFlags,
+    command_shape: &clap::Command,
     clap_error: &clap::Error,
 ) -> AppError {
     if clap_error.kind() == ErrorKind::UnknownArgument {
-        return unknown_or_unused_argument(operation, args, value_flags);
+        return unknown_or_unused_argument(operation, args, value_flags, command_shape);
     }
     if !has_path_candidate(args, value_flags) {
         return AppError::invalid_request(
@@ -42,6 +43,7 @@ fn unknown_or_unused_argument(
     operation: Operation,
     args: &[String],
     value_flags: &DocumentValueFlags,
+    command_shape: &clap::Command,
 ) -> AppError {
     let token = args
         .iter()
@@ -51,13 +53,19 @@ fn unknown_or_unused_argument(
         .cloned()
         .unwrap_or_else(|| "--unknown".to_owned());
     if value_flags.is_unused(&token) {
-        return error_from_rejected_arg(docnav_cli_args::RejectedArg::UnusedValueFlag {
-            flag: token,
-            value: None,
-            command: operation.as_str().to_owned(),
-        });
+        return error_from_rejected_arg(
+            docnav_cli_args::RejectedArg::UnusedValueFlag {
+                flag: token,
+                value: None,
+                command: operation.as_str().to_owned(),
+            },
+            command_shape,
+        );
     }
-    error_from_rejected_arg(docnav_cli_args::RejectedArg::UnknownFlag { token })
+    error_from_rejected_arg(
+        docnav_cli_args::RejectedArg::UnknownFlag { token },
+        command_shape,
+    )
 }
 
 fn missing_value_arg<'a>(args: &'a [String], value_flags: &DocumentValueFlags) -> Option<&'a str> {

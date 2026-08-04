@@ -10,6 +10,21 @@ fn help_returns_typed_help_command() {
             assert!(text.contains("Usage:"));
             assert!(text.contains("--output"));
             assert!(text.contains("outline"));
+            for (argument, description) in [
+                ("<path>", "Document path to navigate"),
+                ("--invocation-log <path>", "Write invocation events"),
+                (
+                    "--invocation-log-content-root <path>",
+                    "Store captured invocation content",
+                ),
+                ("--project-config <path>", "Read project configuration"),
+                ("--user-config <path>", "Read user configuration"),
+            ] {
+                assert!(
+                    text.contains(argument) && text.contains(description),
+                    "outline help should explain {argument}; got:\n{text}"
+                );
+            }
         }
         command => panic!("expected help command, got {command:?}"),
     }
@@ -61,6 +76,16 @@ fn help_text_scopes_catalog_parameters_to_supported_operations() {
             assert!(
                 !read_text.contains("--max-heading-level"),
                 "read help should not list the Markdown catalog parameter; got:\n{read_text}"
+            );
+            assert!(
+                read_text.contains("--ref <ref>")
+                    && read_text.contains("Adapter-owned document region reference"),
+                "read help should explain its static ref argument; got:\n{read_text}"
+            );
+            assert!(
+                find_text.contains("--query <text>")
+                    && find_text.contains("Text to find in the document"),
+                "find help should explain its static query argument; got:\n{find_text}"
             );
             for text in [&outline_text, &find_text] {
                 assert!(

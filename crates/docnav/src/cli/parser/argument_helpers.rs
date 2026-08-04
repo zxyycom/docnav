@@ -1,4 +1,5 @@
 use clap::parser::{ArgMatches, ValueSource};
+use clap::Command;
 use docnav_cli_args::{KnownValueFlag as BoundaryKnownValueFlag, MissingValue, RejectedArg};
 
 use crate::error::{AppError, AppResult};
@@ -58,7 +59,7 @@ pub(super) fn boundary_value_flags(
         .collect()
 }
 
-pub(super) fn error_from_rejected_arg(rejected: RejectedArg) -> AppError {
+pub(super) fn error_from_rejected_arg(rejected: RejectedArg, command_shape: &Command) -> AppError {
     match rejected {
         RejectedArg::UnknownFlag { token } => AppError::invalid_request_with_input_context(
             "argv",
@@ -85,7 +86,7 @@ pub(super) fn error_from_rejected_arg(rejected: RejectedArg) -> AppError {
                 flag_token.to_owned(),
                 UNSUPPORTED_ARGUMENT,
                 Some(received),
-                unsupported_argument_expected(&command, flag_token),
+                unsupported_argument_expected(command_shape, flag_token),
                 [format!(
                     "Remove {flag_token} for {command}, or use a command that supports {flag_token}."
                 )],
@@ -127,23 +128,9 @@ fn received_value_flag(flag: &str, value: Option<&str>) -> String {
     value.map_or_else(|| flag.to_owned(), |value| format!("{flag} {value}"))
 }
 
-fn unsupported_argument_expected(command: &str, flag: &str) -> Vec<String> {
-    let command_shape = match command {
-        "outline" => {
-            "outline <path> [--page <n>] [--limit <n>] [--pagination <enabled|disabled>] [--adapter <id>] [--output <mode>]"
-        }
-        "read" => {
-            "read <path> --ref <ref> [--page <n>] [--limit <n>] [--pagination <enabled|disabled>] [--adapter <id>] [--output <mode>]"
-        }
-        "find" => {
-            "find <path> --query <text> [--page <n>] [--limit <n>] [--pagination <enabled|disabled>] [--adapter <id>] [--output <mode>]"
-        }
-        "info" => "info <path> [--adapter <id>] [--output <mode>]",
-        _ => return vec![format!("{command} without {flag}")],
-    };
-
+fn unsupported_argument_expected(command_shape: &Command, flag: &str) -> Vec<String> {
     vec![
-        command_shape.to_owned(),
+        command_shape.clone().render_long_help().to_string(),
         format!("a command that supports {flag}"),
     ]
 }

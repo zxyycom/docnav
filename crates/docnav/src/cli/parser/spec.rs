@@ -137,12 +137,14 @@ pub(in crate::cli) fn utility_clap_command(name: &'static str, about: &'static s
 fn path_arg() -> Arg {
     Arg::new(arg_ids::PATH)
         .value_name("path")
+        .help("Document path to navigate")
         .required(true)
         .value_parser(NonEmptyStringValueParser::new())
 }
 
 fn invocation_log_arg() -> Arg {
     value_arg(arg_ids::INVOCATION_LOG, "invocation-log", "path")
+        .help("Write invocation events to this JSONL path")
 }
 
 fn invocation_log_content_root_arg() -> Arg {
@@ -151,14 +153,17 @@ fn invocation_log_content_root_arg() -> Arg {
         "invocation-log-content-root",
         "path",
     )
+    .help("Store captured invocation content below this directory")
 }
 
 fn project_config_arg() -> Arg {
     value_arg(arg_ids::PROJECT_CONFIG, "project-config", "path")
+        .help("Read project configuration from this path")
 }
 
 fn user_config_arg() -> Arg {
     value_arg(arg_ids::USER_CONFIG, "user-config", "path")
+        .help("Read user configuration from this path")
 }
 
 fn with_config_path_args(command: Command, support: ConfigPathSupport) -> Command {
@@ -172,11 +177,15 @@ fn with_config_path_args(command: Command, support: ConfigPathSupport) -> Comman
 }
 
 fn query_arg() -> Arg {
-    value_arg(arg_ids::QUERY, "query", "text").required(true)
+    value_arg(arg_ids::QUERY, "query", "text")
+        .help("Text to find in the document")
+        .required(true)
 }
 
 fn ref_arg() -> Arg {
-    value_arg(arg_ids::REF, "ref", "ref").required(true)
+    value_arg(arg_ids::REF, "ref", "ref")
+        .help("Adapter-owned document region reference")
+        .required(true)
 }
 
 fn value_arg(id: impl Into<Id>, long: impl Into<Str>, value_name: &'static str) -> Arg {
