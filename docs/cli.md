@@ -74,6 +74,10 @@ Invocation log 默认记录 metadata-only event：schema version、timestamp、e
 Path display 默认记录 project-relative path；项目根外文档记录规范化绝对 path 的 bounded display 和 hash metadata。
 Query/ref 不作为跨层稳定身份记录，默认只记录 presence、length、hash 或 bounded preview，不记录无界原始值。
 
+同一个 invocation log sink 可以由多个 `docnav` 进程并发追加。每个 event 必须在跨进程互斥区内作为一条完整、以换行终止的 JSONL record 写入；参与该 sink 的 `docnav` writer 不得交错 record bytes 或丢失已经成功追加的 event。
+
+Invocation logging 是可选审计副作用。JSONL event 无法追加时，document operation 的 stdout、protocol/readable result 和退出状态保持原有语义；core 在 caller-supplied stderr 上至多为该 invocation 输出一次稳定 warning：`docnav warning: unable to append invocation log; check the configured log path and permissions`。该 warning 不包含 sink path、正文、query/ref、底层 I/O error 或其它可能的秘密；正常追加不产生额外 stderr。
+
 主 invocation log 不得 inline 完整 document content、完整 `RequestEnvelope` / `ProtocolResponse`、完整 diagnostic/debug output、环境变量或 secrets。涉及正文内容时，操作结果事件只记录 `hash_algorithm: "sha256"`、小写 64 位十六进制 `content_hash`、content type、size metadata 和可选 bounded summary。Content capture 必须由独立 surface 显式开启；开启后主日志追加 `content_captured` 或 `content_capture_failed` event，正文 bytes 不进入 document stdout、protocol/readable output 或主操作结果 event。
 
 当 outline/find 的 unique-ref auto-read 成功追加 read content 时，主操作事件的 `operation` 仍为根 outline/find，不新增 top-level read event。主操作事件用既有 metadata-only content reference 表达追加正文；显式启用 content capture 时，追加正文复用同一 SHA-256、相对路径和 `content_captured` / `content_capture_failed` event shape。未显式启用 capture 时不写正文文件；nested read 未成功时可以记录 bounded attempt outcome，但不得 inline nested diagnostic 或改变根操作的成功结果。

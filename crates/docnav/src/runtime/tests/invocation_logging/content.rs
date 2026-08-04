@@ -1,4 +1,5 @@
 use std::fs;
+use std::io;
 
 use docnav_adapter_contracts::{
     Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
@@ -201,17 +202,34 @@ fn invocation_failed_auto_read_keeps_only_the_successful_root_event() {
 #[test]
 fn invocation_unwritable_log_path_does_not_change_operation_result() {
     let (_workspace, project_root) = markdown_project("invocation-unwritable-log", "# One\n");
-    let context = default_context(project_root.clone());
+    let document_path = project_root.join("docs").join("guide.md");
     let log_dir = project_root.join("existing-dir");
+    let capture_root = project_root.join("capture");
     fs::create_dir_all(&log_dir).unwrap();
-    let mut command = outline_command(None, None);
-    command.invocation_log = Some("existing-dir".to_owned());
-    let request = DocumentRequest::from_config_context(command, context);
+    let args = vec![
+        "outline".to_owned(),
+        "--output".to_owned(),
+        "protocol-json".to_owned(),
+        "--invocation-log".to_owned(),
+        log_dir.display().to_string(),
+        "--invocation-log-content-root".to_owned(),
+        capture_root.display().to_string(),
+        document_path.display().to_string(),
+    ];
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
 
-    let outcome = AdapterRuntime.execute_document(request).unwrap();
-    let output = write_protocol_json(outcome);
+    let exit_code = crate::run(args, io::empty(), &mut stdout, &mut stderr);
+    let output: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
 
+    assert_eq!(exit_code, 0);
     assert_eq!(output["ok"], true);
+    assert!(output["result"]["auto_read"].is_object());
+    assert!(capture_root.exists());
+    assert_eq!(
+        String::from_utf8(stderr).unwrap(),
+        "docnav warning: unable to append invocation log; check the configured log path and permissions\n"
+    );
 }
 
 #[test]

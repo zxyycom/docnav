@@ -56,13 +56,19 @@ where
         }
     };
 
-    let execution = invocation.execute(runtime);
-    match execution.result {
+    let InvocationExecution {
+        result,
+        output_context,
+        invocation_log_diagnostics,
+    } = invocation.execute(runtime);
+    let exit_code = match result {
         Ok(outcome) => output::write_outcome(outcome, &mut stdout, &mut stderr),
-        Err(error) => {
-            write_invocation_error(&error, execution.output_context, &mut stdout, &mut stderr)
-        }
+        Err(error) => write_invocation_error(&error, output_context, &mut stdout, &mut stderr),
+    };
+    for diagnostic in invocation_log_diagnostics {
+        diagnostic.write_to(&mut stderr);
     }
+    exit_code
 }
 
 struct RunInvocation {
@@ -120,9 +126,17 @@ impl CliInvocation {
             command,
             mut output_context,
         } = self;
+        let mut invocation_log_diagnostics = Vec::new();
+        let result = pipeline::execute(
+            command,
+            runtime,
+            &mut output_context.output_mode,
+            &mut invocation_log_diagnostics,
+        );
         InvocationExecution {
-            result: pipeline::execute(command, runtime, &mut output_context.output_mode),
+            result,
             output_context,
+            invocation_log_diagnostics,
         }
     }
 }
@@ -130,6 +144,7 @@ impl CliInvocation {
 struct InvocationExecution {
     result: AppResult<output::CommandOutcome>,
     output_context: InvocationOutputContext,
+    invocation_log_diagnostics: Vec<invocation_log::InvocationLogDiagnostic>,
 }
 
 #[derive(Clone, Copy)]

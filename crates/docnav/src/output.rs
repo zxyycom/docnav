@@ -107,7 +107,9 @@ pub fn write_outcome<W: Write, E: Write>(
         } => match write_document_response(&navigation_outcome.response, plan, stdout) {
             Ok(()) => {
                 if let Some(invocation_log) = invocation_log {
-                    invocation_log.record_outcome(&navigation_outcome);
+                    if let Some(diagnostic) = invocation_log.record_outcome(&navigation_outcome) {
+                        diagnostic.write_to(stderr);
+                    }
                 }
                 outcome.exit_code.code()
             }
@@ -116,11 +118,13 @@ pub fn write_outcome<W: Write, E: Write>(
                 let error_summary = document_output_error_summary(&error);
                 let exit_code = write_document_output_error(error, stderr);
                 if let Some(invocation_log) = invocation_log.as_ref() {
-                    invocation_log.record_output_projection_error(
+                    if let Some(diagnostic) = invocation_log.record_output_projection_error(
                         &navigation_outcome,
                         &error_code,
                         error_summary,
-                    );
+                    ) {
+                        diagnostic.write_to(stderr);
+                    }
                 }
                 exit_code
             }

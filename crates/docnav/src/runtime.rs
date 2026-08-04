@@ -1,13 +1,15 @@
 use docnav_navigation::{
     execute_prepared_navigation_command, prepare_navigation_command, NavigationCommand,
-    NavigationConfigSourceDescriptors, NavigationOutputMode,
+    NavigationConfigSourceDescriptors, NavigationError, NavigationOutputMode,
 };
 use std::time::Instant;
 
 use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::{ConfigContext, CoreConfig};
 use crate::error::{AppError, AppResult};
-use crate::invocation_log::{DocumentInvocationLog, InvocationLogger};
+use crate::invocation_log::{
+    DocumentInvocationLog, DocumentLogContext, InvocationLogDiagnostic, InvocationLogger,
+};
 use crate::output::{outcome_for_response, CommandOutcome};
 use crate::parameter_catalog::document_parameter_catalog;
 use crate::project_context::ProjectContext;
@@ -25,68 +27,130 @@ pub struct DocumentRequest {
 }
 
 pub trait DocnavRuntime {
-    fn execute_document(&self, request: DocumentRequest) -> AppResult<CommandOutcome>;
+    #[cfg(test)]
+    fn execute_document(&self, request: DocumentRequest) -> AppResult<CommandOutcome> {
+        self.execute_document_with_diagnostics(request, &mut Vec::new())
+    }
+
+    fn execute_document_with_diagnostics(
+        &self,
+        request: DocumentRequest,
+        invocation_log_diagnostics: &mut Vec<InvocationLogDiagnostic>,
+    ) -> AppResult<CommandOutcome>;
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct AdapterRuntime;
 
-impl DocnavRuntime for AdapterRuntime {
-    fn execute_document(&self, request: DocumentRequest) -> AppResult<CommandOutcome> {
+struct RuntimeLogContext<'a> {
+    logger: InvocationLogger,
+    started: Instant,
+    diagnostics: &'a mut Vec<InvocationLogDiagnostic>,
+}
+
+impl<'a> RuntimeLogContext<'a> {
+    fn from_request(
+        request: &DocumentRequest,
+        diagnostics: &'a mut Vec<InvocationLogDiagnostic>,
+    ) -> Self {
         let logger = InvocationLogger::from_command(
             &request.command,
             &request.project,
             &request.project_config,
             &request.user_config,
         );
-        let started = request.started;
+        Self {
+            logger,
+            started: request.started,
+            diagnostics,
+        }
+    }
+
+    fn document_context(
+        &self,
+        command: &DocumentCommand,
+        project: &ProjectContext,
+        absolute_path: Option<&std::path::Path>,
+    ) -> DocumentLogContext {
+        self.logger
+            .document_context(command, project, absolute_path)
+    }
+
+    fn navigation_result<T>(
+        &mut self,
+        context: &DocumentLogContext,
+        result: Result<T, NavigationError>,
+    ) -> AppResult<T> {
+        result.map_err(|error| {
+            self.diagnostics.extend(self.logger.record_navigation_error(
+                context,
+                &error,
+                self.started.elapsed(),
+            ));
+            AppError::new(error.into_diagnostic())
+        })
+    }
+
+    fn operation_result<T>(
+        &mut self,
+        context: &DocumentLogContext,
+        result: AppResult<T>,
+    ) -> AppResult<T> {
+        result.inspect_err(|error| {
+            self.diagnostics.extend(self.logger.record_app_error(
+                context,
+                error,
+                "operation",
+                self.started.elapsed(),
+            ));
+        })
+    }
+
+    fn finish(self, context: DocumentLogContext) -> DocumentInvocationLog {
+        DocumentInvocationLog::new(self.logger, context, self.started)
+    }
+}
+
+impl DocnavRuntime for AdapterRuntime {
+    fn execute_document_with_diagnostics(
+        &self,
+        request: DocumentRequest,
+        invocation_log_diagnostics: &mut Vec<InvocationLogDiagnostic>,
+    ) -> AppResult<CommandOutcome> {
+        let mut logging = RuntimeLogContext::from_request(&request, invocation_log_diagnostics);
+        let initial_log_context =
+            logging.document_context(&request.command, &request.project, None);
         let routing_pathname = routing_document_pathname(&request.project, &request.command.path);
         let registry = AdapterRegistry::builtin();
-        let prepared = match prepare_navigation_command(
-            navigation_command(&request.command, routing_pathname),
-            request.config_source_descriptors,
-            &registry,
-        ) {
-            Ok(prepared) => prepared,
-            Err(error) => {
-                let context = logger.document_context(&request.command, &request.project, None);
-                logger.record_navigation_error(&context, &error, started.elapsed());
-                return Err(AppError::new(error.into_diagnostic()));
-            }
-        };
-        let document = match normalize_document_path(&request.project, &request.command.path) {
-            Ok(document) => document,
-            Err(error) => {
-                let context = logger.document_context(&request.command, &request.project, None);
-                logger.record_app_error(&context, &error, "operation", started.elapsed());
-                return Err(error);
-            }
-        };
-        let log_context = logger.document_context(
+        let prepared = logging.navigation_result(
+            &initial_log_context,
+            prepare_navigation_command(
+                navigation_command(&request.command, routing_pathname),
+                request.config_source_descriptors,
+                &registry,
+            ),
+        )?;
+        let document = logging.operation_result(
+            &initial_log_context,
+            normalize_document_path(&request.project, &request.command.path),
+        )?;
+        let document_log_context = logging.document_context(
             &request.command,
             &request.project,
             Some(&document.absolute_path),
         );
-        let catalog = match document_parameter_catalog() {
-            Ok(catalog) => catalog,
-            Err(error) => {
-                let error = AppError::internal(format!(
-                    "document-parameter-catalog-build-failed:runtime:{error}"
-                ));
-                logger.record_app_error(&log_context, &error, "operation", started.elapsed());
-                return Err(error);
-            }
-        };
-        let outcome =
-            match execute_prepared_navigation_command(prepared, document.adapter_path, &catalog) {
-                Ok(outcome) => outcome,
-                Err(error) => {
-                    logger.record_navigation_error(&log_context, &error, started.elapsed());
-                    return Err(AppError::new(error.into_diagnostic()));
-                }
-            };
+        let catalog = document_parameter_catalog().map_err(|error| {
+            AppError::internal(format!(
+                "document-parameter-catalog-build-failed:runtime:{error}"
+            ))
+        });
+        let catalog = logging.operation_result(&document_log_context, catalog)?;
+        let outcome = logging.navigation_result(
+            &document_log_context,
+            execute_prepared_navigation_command(prepared, document.adapter_path, &catalog),
+        )?;
         let output = output_mode(outcome.output);
-        let invocation_log = DocumentInvocationLog::new(logger, log_context, started);
+        let invocation_log = logging.finish(document_log_context);
         outcome_for_response(outcome, output, Some(invocation_log))
     }
 }

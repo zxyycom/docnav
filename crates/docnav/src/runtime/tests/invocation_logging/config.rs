@@ -174,3 +174,58 @@ fn invocation_cli_log_records_config_load_failure_before_runtime_config() {
         "config failure must not log completion: {events:#?}"
     );
 }
+
+#[test]
+fn invocation_unwritable_log_warns_for_pre_runtime_failure() {
+    let workspace = temp_workspace("invocation-unwritable-config-failure-log");
+    let project_config = workspace.path().join("broken-project.json");
+    let user_config = workspace.path().join("user.json");
+    let doc_path = workspace.path().join("guide.md");
+    let log_path = workspace.path().join("log-directory");
+    fs::write(&project_config, "{not-json").unwrap();
+    fs::write(&user_config, "{}").unwrap();
+    fs::write(&doc_path, "# One\n").unwrap();
+    fs::create_dir_all(&log_path).unwrap();
+    let base_args = vec![
+        "outline".to_owned(),
+        "--project-config".to_owned(),
+        project_config.display().to_string(),
+        "--user-config".to_owned(),
+        user_config.display().to_string(),
+        "--output".to_owned(),
+        "protocol-json".to_owned(),
+    ];
+    let mut baseline_args = base_args.clone();
+    baseline_args.push(doc_path.display().to_string());
+    let mut args = base_args;
+    args.extend([
+        "--invocation-log".to_owned(),
+        log_path.display().to_string(),
+        doc_path.display().to_string(),
+    ]);
+    let mut baseline_stdout = Vec::new();
+    let mut baseline_stderr = Vec::new();
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+
+    let baseline_exit_code = crate::run(
+        baseline_args,
+        io::empty(),
+        &mut baseline_stdout,
+        &mut baseline_stderr,
+    );
+    let exit_code = crate::run(args, io::empty(), &mut stdout, &mut stderr);
+    let baseline_output: Value = serde_json::from_slice(&baseline_stdout).unwrap();
+    let output: Value = serde_json::from_slice(&stdout).unwrap();
+
+    assert_eq!(exit_code, baseline_exit_code);
+    assert!(baseline_stderr.is_empty());
+    assert_eq!(output["ok"], false);
+    assert_eq!(output["operation"], baseline_output["operation"]);
+    assert_eq!(output["error"], baseline_output["error"]);
+    assert_eq!(
+        String::from_utf8(stderr).unwrap(),
+        "docnav warning: unable to append invocation log; check the configured log path and permissions\n"
+    );
+    assert_no_invocation_event_text(&String::from_utf8(stdout).unwrap());
+}

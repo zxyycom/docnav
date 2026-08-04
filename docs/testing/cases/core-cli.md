@@ -384,6 +384,7 @@ Entities:
 - `cargo|docnav:lib:docnav|config::store::tests::direct_config_file_rejects_empty_invocation_log_path`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_cli_content_root_without_cli_log_does_not_override_config_log`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_cli_log_records_config_load_failure_before_runtime_config`
+- `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_unwritable_log_warns_for_pre_runtime_failure`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_log_config_type_error_is_blocking_core_config_error`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_logging_config_enabled_uses_validated_core_config`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::config::invocation_logging_disabled_creates_no_log_side_effect`
@@ -397,6 +398,7 @@ Entities:
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::failure::invocation_failure_logs_bounded_layer_code_and_summary`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::failure::invocation_linked_handler_structured_diagnostic_logs_adapter_dispatch_failure`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::invocation_logging_enabled_success_writes_jsonl_with_request_id`
+- `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::concurrent_processes_append_complete_parseable_jsonl_events`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::invocation_output_write_failure_logs_output_projection_without_completion`
 
 Proves:
@@ -408,7 +410,8 @@ Proves:
 - 单独开启 content capture 后正文文件只写入独立 root 下的日期/`sha256-<content_hash>.content` 相对路径，文件 bytes hash 与主日志 hash 一致。
 - Successful outline/find auto-read 仍只记录根 operation event；追加的 read content 复用既有 metadata-only content reference，显式 capture 时复用同一个 hash/capture event shape，未显式 capture 时不写正文文件。
 - Unique-ref 已触发但 nested read 返回 adapter diagnostic 时，public/base command 仍成功；日志只保留单个 root `operation_completed`，不记录 nested diagnostic 或正文，也不产生 read root event 或 content capture。
-- 日志文件写入失败、output projection failure 和 content capture failure 不改变原 document operation 的成功/失败语义。
+- 多进程向同一 JSONL sink 并发追加时，每个 event 保持完整、独立可解析且不丢失。
+- 日志文件写入失败不改变原 document operation 的成功/失败语义，并通过调用方 stderr 输出有界 warning；output projection failure 和 content capture failure 继续保持原 operation 语义。
 
 ## Case WB-CORE-DOCUMENT-PATH-001: Core normalizes linked-adapter document paths
 

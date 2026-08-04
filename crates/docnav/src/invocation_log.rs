@@ -1,6 +1,7 @@
 mod content;
 mod event;
 mod hash;
+mod output;
 mod paths;
 mod settings;
 mod summary;
@@ -8,7 +9,8 @@ mod time;
 mod writer;
 
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 use docnav_navigation::{NavigationCommandOutcome, NavigationError, NavigationFailureLayer};
 use docnav_protocol::{generate_request_id, Operation, ProtocolResponse, SuccessResponse};
@@ -21,6 +23,7 @@ use crate::project_context::ProjectContext;
 
 use self::content::{capture_content_event, content_reference_for_result, result_page};
 use self::event::{operation_event_base, response_size_bytes, OperationEvent};
+pub(crate) use self::output::{DocumentInvocationLog, InvocationLogDiagnostic};
 use self::settings::InvocationLogSettings;
 use self::summary::{
     app_error_summary, arguments_summary, core_error_summary, document_summary, failure_summary,
@@ -30,11 +33,12 @@ use self::writer::append_json_line;
 
 const SCHEMA_VERSION: &str = "0.1";
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct InvocationLogger {
     sink_path: Option<PathBuf>,
     content_capture_root: Option<PathBuf>,
     correlation_id: String,
+    write_failure_reported: AtomicBool,
 }
 
 #[derive(Clone, Debug)]
@@ -44,49 +48,6 @@ pub(crate) struct DocumentLogContext {
     arguments: Value,
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct DocumentInvocationLog {
-    logger: InvocationLogger,
-    context: DocumentLogContext,
-    started: Instant,
-}
-
-impl DocumentInvocationLog {
-    pub(crate) fn new(
-        logger: InvocationLogger,
-        context: DocumentLogContext,
-        started: Instant,
-    ) -> Self {
-        Self {
-            logger,
-            context,
-            started,
-        }
-    }
-
-    pub(crate) fn record_outcome(&self, outcome: &NavigationCommandOutcome) {
-        self.logger
-            .record_outcome(&self.context, outcome, self.started.elapsed());
-    }
-
-    pub(crate) fn record_output_projection_error(
-        &self,
-        outcome: &NavigationCommandOutcome,
-        code: &str,
-        summary: impl AsRef<str>,
-    ) {
-        self.logger.record_output_projection_error(
-            &self.context,
-            OutputProjectionFailure {
-                outcome,
-                code,
-                summary: summary.as_ref().to_owned(),
-                duration: self.started.elapsed(),
-            },
-        );
-    }
-}
-
 impl InvocationLogger {
     pub(crate) fn explicit_cli(command: &DocumentCommand, project: &ProjectContext) -> Self {
         let settings = InvocationLogSettings::from_explicit_cli(command, project);
@@ -94,6 +55,7 @@ impl InvocationLogger {
             sink_path: settings.sink_path,
             content_capture_root: settings.content_capture_root,
             correlation_id: generate_request_id(),
+            write_failure_reported: AtomicBool::new(false),
         }
     }
 
@@ -109,6 +71,7 @@ impl InvocationLogger {
             sink_path: settings.sink_path,
             content_capture_root: settings.content_capture_root,
             correlation_id: generate_request_id(),
+            write_failure_reported: AtomicBool::new(false),
         }
     }
 
@@ -134,14 +97,14 @@ impl InvocationLogger {
         context: &DocumentLogContext,
         outcome: &NavigationCommandOutcome,
         duration: Duration,
-    ) {
+    ) -> Option<InvocationLogDiagnostic> {
         if !self.enabled() {
-            return;
+            return None;
         }
 
         match &outcome.response {
             ProtocolResponse::Success(success) => {
-                self.record_success(context, outcome, success, duration);
+                self.record_success(context, outcome, success, duration)
             }
             ProtocolResponse::Failure(failure) => {
                 let layer = outcome
@@ -165,7 +128,7 @@ impl InvocationLogger {
                     },
                 )
                 .with_field("failure", failure_summary);
-                self.append_event(event);
+                self.append_event(event)
             }
         }
     }
@@ -175,9 +138,9 @@ impl InvocationLogger {
         context: &DocumentLogContext,
         error: &NavigationError,
         duration: Duration,
-    ) {
+    ) -> Option<InvocationLogDiagnostic> {
         if !self.enabled() {
-            return;
+            return None;
         }
 
         let event = operation_event_base(
@@ -200,7 +163,7 @@ impl InvocationLogger {
                 error.diagnostic(),
             ),
         );
-        self.append_event(event);
+        self.append_event(event)
     }
 
     pub(crate) fn record_app_error(
@@ -209,9 +172,9 @@ impl InvocationLogger {
         error: &AppError,
         layer: &str,
         duration: Duration,
-    ) {
+    ) -> Option<InvocationLogDiagnostic> {
         if !self.enabled() {
-            return;
+            return None;
         }
 
         let event = operation_event_base(
@@ -226,16 +189,16 @@ impl InvocationLogger {
             },
         )
         .with_field("failure", core_error_summary(layer, error));
-        self.append_event(event);
+        self.append_event(event)
     }
 
     fn record_output_projection_error(
         &self,
         context: &DocumentLogContext,
         failure: OutputProjectionFailure<'_>,
-    ) {
+    ) -> Option<InvocationLogDiagnostic> {
         if !self.enabled() {
-            return;
+            return None;
         }
 
         let event = operation_event_base(
@@ -257,7 +220,7 @@ impl InvocationLogger {
                 &failure.summary,
             ),
         );
-        self.append_event(event);
+        self.append_event(event)
     }
 
     fn record_success(
@@ -266,7 +229,7 @@ impl InvocationLogger {
         outcome: &NavigationCommandOutcome,
         success: &SuccessResponse,
         duration: Duration,
-    ) {
+    ) -> Option<InvocationLogDiagnostic> {
         let content = content_reference_for_result(&success.result);
         let mut result = json!({
             "output_status": "ok",
@@ -291,7 +254,7 @@ impl InvocationLogger {
             },
         )
         .with_field("result", result);
-        self.append_event(event);
+        let mut diagnostic = self.append_event(event);
 
         if let (Some(root), Some(content)) = (&self.content_capture_root, content) {
             let event = capture_content_event(
@@ -301,15 +264,25 @@ impl InvocationLogger {
                 outcome.trace.request_id.as_deref(),
                 &content,
             );
-            self.append_event(event);
+            let capture_diagnostic = self.append_event(event);
+            if diagnostic.is_none() {
+                diagnostic = capture_diagnostic;
+            }
         }
+        diagnostic
     }
 
-    fn append_event(&self, event: Value) {
+    fn append_event(&self, event: Value) -> Option<InvocationLogDiagnostic> {
         let Some(path) = &self.sink_path else {
-            return;
+            return None;
         };
-        let _ = append_json_line(path, &event);
+        match append_json_line(path, &event) {
+            Ok(()) => None,
+            Err(_) if !self.write_failure_reported.swap(true, Ordering::Relaxed) => {
+                Some(InvocationLogDiagnostic)
+            }
+            Err(_) => None,
+        }
     }
 }
 

@@ -8,6 +8,7 @@ use crate::cli::{
     AdapterCommand, CliCommand, ConfigCommand, ConfigPathArgs, DocumentCommand, OutputMode,
 };
 use crate::error::AppResult;
+use crate::invocation_log::InvocationLogDiagnostic;
 use crate::output::CommandOutcome;
 use crate::runtime::DocnavRuntime;
 
@@ -15,8 +16,13 @@ pub(crate) fn execute<T: DocnavRuntime>(
     command: CliCommand,
     runtime: &T,
     error_output_mode: &mut OutputMode,
+    invocation_log_diagnostics: &mut Vec<InvocationLogDiagnostic>,
 ) -> AppResult<CommandOutcome> {
-    PipelineContext::from_runtime(runtime).execute(command, error_output_mode)
+    PipelineContext::from_runtime(runtime).execute(
+        command,
+        error_output_mode,
+        invocation_log_diagnostics,
+    )
 }
 
 struct PipelineContext<'a, T: DocnavRuntime> {
@@ -34,9 +40,12 @@ impl<'a, T: DocnavRuntime> PipelineContext<'a, T> {
         &self,
         command: CliCommand,
         error_output_mode: &mut OutputMode,
+        invocation_log_diagnostics: &mut Vec<InvocationLogDiagnostic>,
     ) -> AppResult<CommandOutcome> {
         match CommandFamily::from(command) {
-            CommandFamily::Document(command) => document::execute(command, self, error_output_mode),
+            CommandFamily::Document(command) => {
+                document::execute(command, self, error_output_mode, invocation_log_diagnostics)
+            }
             CommandFamily::Config(command) => configuration::execute(command, self),
             CommandFamily::Adapter(command) => adapter::execute(command),
             CommandFamily::Project(command) => project::execute(command),

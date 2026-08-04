@@ -280,21 +280,6 @@ export const ACCEPTED_WARNINGS = Object.freeze(
         "Decision 11 makes resolution one selected-first borrowed frame-chain transaction. Its object, array-index, scalar, direct-view, and tail-view branches preserve distinct ref semantics against the same selection chain; splitting them would add one-use coordination without another responsibility owner."
     },
     {
-      ruleId: "lizard-function-code-density",
-      sourceTool: "lizard",
-      path: "crates/docnav/src/runtime.rs",
-      codeArea: "rust-production",
-      metric: "function-code-density",
-      value: 57,
-      messageIncludes: [
-        "Function \"execute_document\"",
-        "runtime.rs:35",
-        "57 code lines at cyclomatic complexity 5"
-      ],
-      reason:
-        "This is one ordered runtime transaction: prepare routing, normalize the path, build the parameter catalog, execute navigation, and record each stage's failure against shared logging and timing state. Splitting it only to cross the observation threshold would add one-use state plumbing without a separate behavior owner; remove this acceptance if a stage gains an independent owner or the warning disappears."
-    },
-    {
       ruleId: "lizard-cyclomatic-complexity",
       sourceTool: "lizard",
       path: "crates/shared/navigation/src/routing.rs",

@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::{load_context_for_project, ConfigContext};
 use crate::error::AppResult;
-use crate::invocation_log::InvocationLogger;
+use crate::invocation_log::{InvocationLogDiagnostic, InvocationLogger};
 use crate::output::CommandOutcome;
 use crate::project_context::ProjectContext;
 use crate::runtime::{DocnavRuntime, DocumentRequest};
@@ -14,12 +14,17 @@ pub(super) fn execute<T: DocnavRuntime>(
     command: DocumentCommand,
     pipeline: &PipelineContext<'_, T>,
     error_output_mode: &mut OutputMode,
+    invocation_log_diagnostics: &mut Vec<InvocationLogDiagnostic>,
 ) -> AppResult<CommandOutcome> {
-    let context = DocumentPipelineContext::from_command(command, error_output_mode)?;
+    let context = DocumentPipelineContext::from_command(
+        command,
+        error_output_mode,
+        invocation_log_diagnostics,
+    )?;
     pipeline
         .services()
         .runtime()
-        .execute_document(context.into_request())
+        .execute_document_with_diagnostics(context.into_request(), invocation_log_diagnostics)
 }
 
 struct DocumentPipelineContext {
@@ -32,6 +37,7 @@ impl DocumentPipelineContext {
     fn from_command(
         command: DocumentCommand,
         error_output_mode: &mut OutputMode,
+        invocation_log_diagnostics: &mut Vec<InvocationLogDiagnostic>,
     ) -> AppResult<Self> {
         let started = Instant::now();
         // Navigation owns the final mode. This hint only preserves source
@@ -60,7 +66,12 @@ impl DocumentPipelineContext {
             Ok(context) => context,
             Err(error) => {
                 let log_context = logger.document_context(&command, &project, None);
-                logger.record_app_error(&log_context, &error, "config", started.elapsed());
+                invocation_log_diagnostics.extend(logger.record_app_error(
+                    &log_context,
+                    &error,
+                    "config",
+                    started.elapsed(),
+                ));
                 return Err(error);
             }
         };
