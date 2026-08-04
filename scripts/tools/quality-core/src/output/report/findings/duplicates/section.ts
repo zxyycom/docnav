@@ -15,6 +15,12 @@ export function duplicateCodeSection(metrics: QualityMetrics): string {
   lines.push("## 重复代码检测");
   lines.push("");
 
+  const measurementMessage = incompleteMeasurementMessage(metrics);
+  if (measurementMessage) {
+    lines.push(measurementMessage);
+    return lines.join("\n");
+  }
+
   const duplicates = metrics.duplicateCode;
   if (duplicates.length === 0) {
     lines.push("✅ 未发现重复代码片段（在配置的 minimum tokens 阈值以上）");
@@ -26,6 +32,21 @@ export function duplicateCodeSection(metrics: QualityMetrics): string {
   appendDuplicateAreas(lines, groupDuplicatesByArea(duplicates));
 
   return lines.join("\n");
+}
+
+function incompleteMeasurementMessage(metrics: QualityMetrics): string | null {
+  switch (metrics.duplicateCodeMeasurement.status) {
+    case "measured":
+      return null;
+    case "skipped-by-profile":
+      return "⏭️ 未测量重复代码：quick profile 跳过 jscpd。";
+    case "unavailable":
+      return "⚠️ 未测量重复代码：jscpd 不可用。";
+    case "error":
+      return "❌ 重复代码测量失败；请查看 quality scan 的 fatal issues。";
+    default:
+      throw new Error(`unsupported duplicate-code measurement status: ${metrics.duplicateCodeMeasurement.status}`);
+  }
 }
 
 function appendDuplicateAreas(

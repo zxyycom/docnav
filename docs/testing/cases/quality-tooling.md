@@ -66,6 +66,20 @@ Proves:
 - jscpd tool availability check 将 missing dependency 或 unavailable binary 映射为 `tool-unavailable`。
 - jscpd wrapper 将 non-zero execution 映射为 `jscpd-execution-error`，不把执行失败标成 skipped scan。
 
+## Case AUX-QUALITY-DUPLICATE-MEASUREMENT-001: Quality duplicate-code 测量状态准确
+
+Owner: `scripts/tools/quality-core/quality-core.md#use`
+
+Entities:
+- `bun|scripts/tools/quality-core/src/measurement/current-revision/index.test.ts|current revision duplicate-code measurement > records measured, profile-skipped, unavailable, and error states`
+- `bun|scripts/tools/quality-core/src/output/report/markdown-report.test.ts|quality report > distinguishes duplicate-code measured, profile-skipped, unavailable, and failed output`
+- `bun|scripts/tools/quality-core/test/quality-core.test.ts|script quality core > requires and validates duplicate-code measurement state`
+
+Proves:
+- Current scan 将成功测量、quick profile 跳过、jscpd 不可用和执行失败记录为不同的 typed measurement status。
+- 只有 `measured` 的空 duplicate array 会在人类报告和命令摘要中显示为零；其它状态明确显示未测量、不可用或失败。
+- Metrics schema `0.5.0` 要求 duplicate-code measurement object；validator 明确拒绝缺字段、非 object 或未知 status。
+
 ## Case AUX-QUALITY-PARSER-001: Quality scanner parser fixtures 稳定
 
 Owner: `scripts/tools/quality-core/quality-core.md#use`

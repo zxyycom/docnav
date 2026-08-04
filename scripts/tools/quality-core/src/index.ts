@@ -3,6 +3,7 @@ export { classifyFiles } from "./model/code-areas.ts";
 export {
   BASELINE_STATUSES,
   COMPARISON_STATUSES,
+  DUPLICATE_CODE_MEASUREMENT_STATUSES,
   createEmptyMetrics,
   METRICS_SCHEMA_VERSION,
   validateMetrics,
@@ -19,6 +20,7 @@ export {
   type CodeAreaFingerprint,
   type CodeAreaWarningPolicy,
   type ComparisonStatus,
+  type DuplicateCodeMeasurementStatus,
   type DuplicateCodeFragment,
   type DuplicateCodeLocation,
   type FatalIssue,

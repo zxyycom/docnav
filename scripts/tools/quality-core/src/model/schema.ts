@@ -1,6 +1,7 @@
 export {
   BASELINE_STATUSES,
   COMPARISON_STATUSES,
+  DUPLICATE_CODE_MEASUREMENT_STATUSES,
   METRICS_SCHEMA_VERSION,
   WARNING_LEVELS,
   WARNING_POLICIES
@@ -17,6 +18,7 @@ export type {
   CodeAreaFingerprint,
   CodeAreaWarningPolicy,
   ComparisonStatus,
+  DuplicateCodeMeasurementStatus,
   DuplicateCodeFragment,
   DuplicateCodeLocation,
   FatalIssue,

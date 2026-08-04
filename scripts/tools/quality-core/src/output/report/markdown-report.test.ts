@@ -7,8 +7,10 @@ import {
   type WarningRecord
 } from "../../model/schema.ts";
 import { changedFilesSection, warningsSection } from "./findings.ts";
+import { duplicateCodeSection } from "./findings/duplicates/section.ts";
 import { fileDecisionTokenRankings, fileRankings, functionSizeRankings } from "./rankings.ts";
 import { repositorySize } from "./summary.ts";
+import { printSummary } from "../../scan-command/command-output.ts";
 
 describe("quality report", () => {
   it("keeps changed-file watchlist useful without baseline annotations", () => {
@@ -115,7 +117,52 @@ describe("quality report", () => {
     assert.match(section, /\*\*\[scc\] code-lines\*\*: test warning/);
     assert.match(section, /Accepted reason: OperationArguments::operation/);
   });
+
+  it("distinguishes duplicate-code measured, profile-skipped, unavailable, and failed output", () => {
+    const cases = [
+      {
+        status: "measured",
+        report: /未发现重复代码片段/,
+        summary: /Duplicate fragments: 0/
+      },
+      {
+        status: "skipped-by-profile",
+        report: /未测量.*quick profile.*跳过 jscpd/,
+        summary: /Duplicate fragments: not measured \(skipped by quick profile\)/
+      },
+      {
+        status: "unavailable",
+        report: /未测量.*jscpd 不可用/,
+        summary: /Duplicate fragments: unavailable \(jscpd\)/
+      },
+      {
+        status: "error",
+        report: /重复代码测量失败/,
+        summary: /Duplicate fragments: measurement failed \(jscpd\)/
+      }
+    ] as const;
+
+    for (const testCase of cases) {
+      const metrics = qualityMetrics();
+      metrics.duplicateCodeMeasurement = { status: testCase.status };
+
+      assert.match(duplicateCodeSection(metrics), testCase.report);
+      assert.match(captureConsoleLog(() => printSummary(metrics)), testCase.summary);
+    }
+  });
 });
+
+function captureConsoleLog(callback: () => void): string {
+  const lines: string[] = [];
+  const originalLog = console.log;
+  console.log = (...values: unknown[]) => lines.push(values.join(" "));
+  try {
+    callback();
+  } finally {
+    console.log = originalLog;
+  }
+  return lines.join("\n");
+}
 
 function qualityMetrics(): QualityMetrics {
   return createEmptyMetrics({

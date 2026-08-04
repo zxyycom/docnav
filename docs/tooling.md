@@ -91,6 +91,8 @@ bun run env:check
 
 `typecheck:scripts`、`lint:scripts` 和 `quality:check` 是脚本模块与质量观测的快速验证入口。前者证明脚本类型、模块边界和共享状态一致；`lint:scripts` 证明脚本源码没有未使用变量/函数、显式 `any` 等静态质量问题；`quality:check` 运行 quick quality profile 并在出现 warning records 时输出前几个 warning、报告路径和“当前不是全量质检”的提示。质量扫描配置可以给已知可接受 warning 填充 `acceptedReason`；单独运行质量扫描时这些 warning 仍保持可见，并在对应 warning 旁展示原因。GitHub annotation 只投影未带 `acceptedReason` 的非 info warning，完整 warning records 和报告仍保留已接受记录。它们不替代真实 CLI、schema、进程 smoke、Rust tests、release package 验证或 `quality:full-check`。
 
+quick profile 不运行 duplicate-code measurement；其 `metrics.json`、Markdown report 和命令摘要必须将该结果标为 `skipped-by-profile` / not measured，而不是零个重复片段。full profile 只有在 jscpd 测量成功后才可把空数组呈现为 measured zero；工具不可用和执行失败分别保留为 `unavailable` 与 `error`。`metrics.json` schema `0.5.0` 要求 measurement state；内部字段与校验规则由 [`quality-core`](../scripts/tools/quality-core/quality-core.md) 拥有。
+
 required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check。full profile 使用 full quality check 替代 quick quality check，并追加更宽验证；full profile 的 quality check 使用 verifier 输出，只在存在未带 `acceptedReason` 的 warning 时把 workspace verification 标记为 warning。profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
 
 `scripts/docs/validate.ts` 直接导入仓库跟踪的 `.codex/skills/decision-records/scripts/decision-records.mjs`，由 `validate:docs` 的 `decisions` task 执行 v5 严格检查。该检查覆盖受控领域、Markdown metadata 与正文、生命周期、对齐、直接关系和派生索引，并进入 required profile。入口不依赖个人 skill 目录，也不运行需要联网的 updater 或 release 查询。

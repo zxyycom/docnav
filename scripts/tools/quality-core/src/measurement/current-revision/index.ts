@@ -26,6 +26,7 @@ export async function runCurrentRevisionScan({
   if (scanProfile === "full") {
     await runJscpdScan(context, fileMap);
   } else {
+    context.metrics.duplicateCodeMeasurement = { status: "skipped-by-profile" };
     console.log("Skipping jscpd duplicate detection for quick quality check");
   }
 

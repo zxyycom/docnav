@@ -1,4 +1,4 @@
-export const METRICS_SCHEMA_VERSION = "0.4.0";
+export const METRICS_SCHEMA_VERSION = "0.5.0";
 
 export const BASELINE_STATUSES = Object.freeze([
   "generated",
@@ -15,6 +15,13 @@ export const COMPARISON_STATUSES = Object.freeze([
   "baseline-unavailable"
 ]);
 
+export const DUPLICATE_CODE_MEASUREMENT_STATUSES = Object.freeze([
+  "measured",
+  "skipped-by-profile",
+  "unavailable",
+  "error"
+]);
+
 export const WARNING_LEVELS = Object.freeze(["info", "warning", "error"]);
 
 export const WARNING_POLICIES = Object.freeze([
@@ -28,6 +35,7 @@ export const WARNING_POLICIES = Object.freeze([
 export type BaselineStatus = typeof BASELINE_STATUSES[number];
 export type CodeAreaWarningPolicy = typeof WARNING_POLICIES[number];
 export type ComparisonStatus = typeof COMPARISON_STATUSES[number];
+export type DuplicateCodeMeasurementStatus = typeof DUPLICATE_CODE_MEASUREMENT_STATUSES[number];
 export type WarningLevel = typeof WARNING_LEVELS[number];
 
 export interface ToolInfo {
@@ -290,6 +298,9 @@ export interface QualityMetrics {
   comparisonStatus: ComparisonStatus | string;
   currentFingerprints: Record<string, CodeAreaFingerprint>;
   duplicateCode: DuplicateCodeFragment[];
+  duplicateCodeMeasurement: {
+    status: DuplicateCodeMeasurementStatus;
+  };
   fileMetrics: FileMetric[];
   functionMetrics: FunctionMetric[];
   metadata: ScanMetadata;

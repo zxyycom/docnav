@@ -86,13 +86,28 @@ export function printSummary(metrics: QualityMetrics): void {
   console.log("Summary:");
   console.log(`  Files: ${metrics.fileMetrics.length}`);
   console.log(`  Functions: ${metrics.functionMetrics.length}`);
-  console.log(`  Duplicate fragments: ${metrics.duplicateCode.length}`);
+  console.log(`  Duplicate fragments: ${duplicateCodeSummary(metrics)}`);
   console.log(`  Warnings: ${metrics.warnings.all.length} all`);
   console.log(`  Changed warnings: ${metrics.warnings.changed.length}`);
   console.log(`  Regression warnings: ${metrics.warnings.regressions.length}`);
   console.log(`  Baseline status: ${metrics.baseline.status}`);
   console.log(`  Comparison status: ${metrics.comparisonStatus}`);
   console.log("─".repeat(60));
+}
+
+function duplicateCodeSummary(metrics: QualityMetrics): string {
+  switch (metrics.duplicateCodeMeasurement.status) {
+    case "measured":
+      return String(metrics.duplicateCode.length);
+    case "skipped-by-profile":
+      return "not measured (skipped by quick profile)";
+    case "unavailable":
+      return "unavailable (jscpd)";
+    case "error":
+      return "measurement failed (jscpd)";
+    default:
+      throw new Error(`unsupported duplicate-code measurement status: ${metrics.duplicateCodeMeasurement.status}`);
+  }
 }
 
 export function qualityCheckStatus(metrics: QualityMetrics): QualityCheckStatus {

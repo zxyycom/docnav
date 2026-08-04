@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   classifyFiles,
+  createEmptyMetrics,
   generateWarningChannels,
   validateMetrics
 } from "../src/index.ts";
@@ -19,6 +20,41 @@ describe("script quality core", () => {
 
     expect(validation.valid).toBe(false);
     expect(validation.errors.includes("metrics.metadata is required")).toBe(true);
+  });
+
+  test("requires and validates duplicate-code measurement state", () => {
+    const metrics = createEmptyMetrics({
+      configVersion: config.version,
+      commitSha: "abc123",
+      repository: "/repo",
+      scope: { excludeDirs: [], generatedFiles: [], include: [] },
+      tools: []
+    });
+    const metricsRecord = metrics as unknown as Record<string, unknown>;
+    const missingMeasurement = { ...metricsRecord };
+    delete missingMeasurement.duplicateCodeMeasurement;
+
+    expect(validateMetrics(missingMeasurement)).toEqual({
+      valid: false,
+      errors: ["duplicateCodeMeasurement is required"]
+    });
+
+    const nonObject = { ...metricsRecord, duplicateCodeMeasurement: "measured" };
+    expect(validateMetrics(nonObject)).toEqual({
+      valid: false,
+      errors: ["duplicateCodeMeasurement must be an object"]
+    });
+
+    const invalidStatus = {
+      ...metricsRecord,
+      duplicateCodeMeasurement: { status: "not-run" }
+    };
+    expect(validateMetrics(invalidStatus)).toEqual({
+      valid: false,
+      errors: [
+        "duplicateCodeMeasurement.status: must be one of measured, skipped-by-profile, unavailable, error, got \"not-run\""
+      ]
+    });
   });
 
   test("generates warning channels from caller-provided thresholds", () => {

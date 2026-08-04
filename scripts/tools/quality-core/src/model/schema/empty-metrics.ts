@@ -35,6 +35,7 @@ export function createEmptyMetrics(options: {
     fileMetrics: [],
     functionMetrics: [],
     duplicateCode: [],
+    duplicateCodeMeasurement: { status: "unavailable" },
     aggregates: {
       byLanguage: [],
       byCodeArea: [],

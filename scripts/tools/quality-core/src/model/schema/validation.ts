@@ -2,6 +2,7 @@ import { isRecord, isUnknownArray } from "../../../../foundation/src/index.ts";
 import {
   BASELINE_STATUSES,
   COMPARISON_STATUSES,
+  DUPLICATE_CODE_MEASUREMENT_STATUSES,
   METRICS_SCHEMA_VERSION
 } from "./types.ts";
 import type { MetricsValidationResult } from "./types.ts";
@@ -26,11 +27,29 @@ export function validateMetrics(metrics: unknown): MetricsValidationResult {
     "comparisonStatus",
     errors
   );
+  validateDuplicateCodeMeasurement(metrics.duplicateCodeMeasurement, errors);
   validateRequiredObjects(metrics, errors);
   validateMetricArrays(metrics, errors);
   validateWarningChannels(metrics.warnings, errors);
 
   return { valid: errors.length === 0, errors };
+}
+
+function validateDuplicateCodeMeasurement(measurement: unknown, errors: string[]): void {
+  if (measurement === undefined) {
+    errors.push("duplicateCodeMeasurement is required");
+    return;
+  }
+  if (!isRecord(measurement)) {
+    errors.push("duplicateCodeMeasurement must be an object");
+    return;
+  }
+  validateStatusField(
+    measurement.status,
+    DUPLICATE_CODE_MEASUREMENT_STATUSES,
+    "duplicateCodeMeasurement.status",
+    errors
+  );
 }
 
 function validateMetadata(metadata: unknown, errors: string[]): void {
