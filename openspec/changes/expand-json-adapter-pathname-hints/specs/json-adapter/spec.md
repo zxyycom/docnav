@@ -1,4 +1,4 @@
-本临时 delta 计划在 `support-jsonc-in-json-adapter` 成为 Current 后，从 then-Current 主 spec 重建 JSON adapter 注册 requirement，完整保留其一个 `json` identity 与两个 descriptor content types，并仅扩展强 JSON-family pathname hint allowlist 与可验证 generic-routing 结果。
+本临时 delta 计划在 `add-jsonc-comment-aware-navigation` 成为 Current 后，从 then-Current 主 spec 重建 JSON adapter 注册 requirement，完整保留其一个 `json` identity 与两个 descriptor content types，并仅扩展强 JSON-family pathname hint allowlist 与可验证 generic-routing 结果。
 
 ## MODIFIED Requirements
 

@@ -4,7 +4,7 @@
 
 动机见 [proposal.md](proposal.md)。Current JSON adapter owner 与主 spec 精确声明 `.json`、`.code-workspace` suffixes 以及 `.prettierrc`、`.watchmanconfig` exact filenames；它们只是 automatic selection hints，匹配不读取文档、不证明 JSON validity，也不把 matched hint 传入 adapter strategy。被选中的 `docnav-json` 按其 grammar 和 operation contract 打开实际文档，失败后不重新 route。
 
-Active change `support-jsonc-in-json-adapter` 的 Target descriptor 是一个 `json` identity、`.json` / `.code-workspace` / `.jsonc` suffixes、exact `.prettierrc` / `.watchmanconfig` filenames，以及 `application/json` / `application/jsonc` content types；它还计划让全部 selected documents 使用一套 JSONC-capable grammar，但形成本文时这些 predecessor facts 尚未证明为 Current。`.code-snippets` 常见内容依赖该 grammar，而且两项 change 会触及同一个 registry-facing requirement；因此本文只能保存 combined successor target，不能把当前 main spec 误述为已含 `.jsonc` 或 `application/jsonc`，也不能直接把草案中的 `MODIFIED` block 当作届时的完整基线。
+Active change `add-jsonc-comment-aware-navigation` 的 Target descriptor 是一个 `json` identity、`.json` / `.code-workspace` / `.jsonc` suffixes、exact `.prettierrc` / `.watchmanconfig` filenames，以及 `application/json` / `application/jsonc` content types；它还计划让全部 selected documents 使用一套 JSONC-capable grammar，但形成本文时这些 predecessor facts 尚未证明为 Current。`.code-snippets` 常见内容依赖该 grammar，而且两项 change 会触及同一个 registry-facing requirement；因此本文只能保存 combined successor target，不能把当前 main spec 误述为已含 `.jsonc` 或 `application/jsonc`，也不能直接把草案中的 `MODIFIED` block 当作届时的完整基线。
 
 这些候选 pathname 都有稳定的 JSON-family 表示，但部分还带 profile 语义。既有 JSON tree、ref 与 operation surface 足以提供 generic structural navigation；profile validity、domain semantics 和远程资源处理不是 routing hint 或 generic adapter 的责任。
 
@@ -27,7 +27,7 @@ Active change `support-jsonc-in-json-adapter` 的 Target descriptor 是一个 `j
 
 ### Decision 1: Implementation is sequenced after the JSONC predecessor
 
-`support-jsonc-in-json-adapter` MUST 先完成、同步 owner artifacts，并有证据成为 Current；在此之前本 change 的任何 production、owner、test 或 release 实施任务都不得开始。阻塞审计届时 MUST 从 then-Current `openspec/specs/json-adapter/spec.md` 复制完整同名注册 requirement，再把本 change 的 allowlist diff 应用于 `MODIFIED` block，同时完整保留 predecessor 实际采用的 grammar、`application/json` / `application/jsonc` descriptor content-type set、matched-content-type input exclusion 与 evidence 边界。
+`add-jsonc-comment-aware-navigation` MUST 先完成、同步 owner artifacts，并有证据成为 Current；在此之前本 change 的任何 production、owner、test 或 release 实施任务都不得开始。阻塞审计届时 MUST 从 then-Current `openspec/specs/json-adapter/spec.md` 复制完整同名注册 requirement，再把本 change 的 allowlist diff 应用于 `MODIFIED` block，同时完整保留 predecessor 实际采用的 grammar、`application/json` / `application/jsonc` descriptor content-type set、matched-content-type input exclusion 与 evidence 边界。
 
 虽然 `.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif`、`Pipfile.lock` 与 `deno.lock` 的 routing-hint 语义不依赖 JSONC，仍选择整体顺序化，而不拆出并行 strict-only change；这样避免两个 active deltas 对同一注册 requirement 产生 archive 顺序依赖，也避免暂时交付一个缺少 `.code-snippets` 的中间 allowlist。
 

@@ -12,7 +12,7 @@
 
 ## Sequencing and status
 
-`support-jsonc-in-json-adapter` 是 sequencing predecessor，尤其因为 `.code-snippets` 常见内容依赖其 grammar。该 predecessor 的 Target descriptor 是一个 `json` identity、`.json` / `.code-workspace` / `.jsonc` suffixes、`.prettierrc` / `.watchmanconfig` exact filenames，以及 `application/json` / `application/jsonc` content types；本 change 只在该 Target 上追加九个 hints，不新增或解释 content type。OpenSpec 的 proposal/spec/design/tasks artifacts 已生成，但 task 0 的 predecessor/current-baseline 与完整 artifact 审计尚未执行；该门禁完成前不得开始 production 实施，也不得把上述 predecessor Target 或本 change 描述为已经 Current。
+`add-jsonc-comment-aware-navigation` 是 sequencing predecessor，尤其因为 `.code-snippets` 常见内容依赖其 grammar。该 predecessor 的 Target descriptor 是一个 `json` identity、`.json` / `.code-workspace` / `.jsonc` suffixes、`.prettierrc` / `.watchmanconfig` exact filenames，以及 `application/json` / `application/jsonc` content types；本 change 只在该 Target 上追加九个 hints，不新增或解释 content type。OpenSpec 的 proposal/spec/design/tasks artifacts 已生成，但 task 0 的 predecessor/current-baseline 与完整 artifact 审计尚未执行；该门禁完成前不得开始 production 实施，也不得把上述 predecessor Target 或本 change 描述为已经 Current。
 
 ## Reading path
 

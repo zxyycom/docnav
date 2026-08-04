@@ -2,11 +2,11 @@
 
 ## Why
 
-若 pathname 不以 `.json` 结尾，多个常见且结构上属于 JSON family 的文档目前无法通过 automatic pathname routing 到达 `docnav-json`。在不引入 profile-specific 行为的前提下扩展高置信度 hints，可以让这些文档复用既有 `outline -> ref -> read` 能力；将该工作排在 `support-jsonc-in-json-adapter` 之后，则避免 `.code-snippets` 的常见 JSONC 内容和两个并行 delta 对同一注册 requirement 形成不确定基线。
+若 pathname 不以 `.json` 结尾，多个常见且结构上属于 JSON family 的文档目前无法通过 automatic pathname routing 到达 `docnav-json`。在不引入 profile-specific 行为的前提下扩展高置信度 hints，可以让这些文档复用既有 `outline -> ref -> read` 能力；将该工作排在 `add-jsonc-comment-aware-navigation` 之后，则避免 `.code-snippets` 的常见 JSONC 内容和两个并行 delta 对同一注册 requirement 形成不确定基线。
 
 ## What Changes
 
-- 在 predecessor `support-jsonc-in-json-adapter` 已成为 Current 后，计划从 then-Current `json-adapter` 注册 requirement 完整重建一个 `MODIFIED` requirement，保留其一个 `json` identity、`.json` / `.code-workspace` / `.jsonc` suffixes、`.prettierrc` / `.watchmanconfig` exact filenames，以及 descriptor content types `application/json` / `application/jsonc`，再加入 normalized suffixes `.code-snippets`、`.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif` 和 exact filenames `Pipfile.lock`、`deno.lock`。
+- 在 predecessor `add-jsonc-comment-aware-navigation` 已成为 Current 后，计划从 then-Current `json-adapter` 注册 requirement 完整重建一个 `MODIFIED` requirement，保留其一个 `json` identity、`.json` / `.code-workspace` / `.jsonc` suffixes、`.prettierrc` / `.watchmanconfig` exact filenames，以及 descriptor content types `application/json` / `application/jsonc`，再加入 normalized suffixes `.code-snippets`、`.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif` 和 exact filenames `Pipfile.lock`、`deno.lock`。
 - 所有新增项只作为 manifest pathname selection hints；被选中的文档继续由 then-Current `docnav-json` grammar、generic structural navigation、ref、read、find、info、full-read、diagnostic 和 no-fallback 契约处理。Hint 命中与 predecessor 声明的两个 content types 都不证明内容有效，也不选择 profile 或 grammar mode。
 - 同步 JSON adapter owner 文档、OpenSpec 主 spec、manifest inspection/listing evidence、语义 Case、目标测试、coverage 与 release-package smoke；不改变或解释 predecessor 的 descriptor/result content-type 语义，也不改变 shared protocol、public input、format id `json` 或 adapter id `docnav-json`。
 - 将 strict-JSON-compatible hints 的语义与 JSONC grammar change 分离：本 change 不拥有 JSONC grammar，但为避免 `.code-snippets` 与注册 requirement 的叠加冲突，整体实施仍以 predecessor Current 为前置条件。
