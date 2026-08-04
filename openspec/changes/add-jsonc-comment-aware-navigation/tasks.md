@@ -46,7 +46,7 @@
 
 - [x] 5.1 运行 formatting、lint、targeted JSON unit/integration tests与完整 contract corpus；确认 strict snapshots不回归，所有 direct/tail attribution slots、三种ref/read views、virtual entry ordering、find mappings、content types、errors与 large-input bounds通过。
 - [x] 5.2 运行 core/navigation/CLI/protocol/output tests，验证 descriptor inspection、automatic/explicit selection、closed input、opaque refs、unique direct/tail ref auto-read、pagination/cost、schema-valid raw results、generic readable base/nested blocks和 selected-failure no-fallback。
-- [ ] 5.3 运行 Case completeness/coverage wrapper、schema/example/fixture validators与 Linux/Windows canonical release-package smoke；确认 package core executable交付同一 linked behavior。
+- [x] 5.3 运行 Case completeness/coverage wrapper、schema/example/fixture validators与 Linux/Windows canonical release-package smoke；确认 package core executable交付同一 linked behavior。
 - [x] 5.4 运行 `bun run verify:docnav-workspace`；调查每个 failure，直到通过或记录真实 external limitation、未验证 surface 与影响。
 
 ## 6. Final review and archive readiness
@@ -54,4 +54,4 @@
 - [x] 6.1 审查完整 diff 的 owner boundaries、one-change focus、dependency/model minimality、exact grammar/ref/content types、raw/readable parity、diagnostic privacy、downstream pathname-hint sequencing和 unrelated workspace preservation。
 - [x] 6.2 执行independent findings-first review与最终bounded doubt cycle，重点审查base/direct/tail ref compatibility、tail-anchor稳定性、attribution determinism、comment content validity、virtual entry ordering、pagination/cost、source fidelity、hostile input和rollback；解决所有actionable findings。
 - [x] 6.3 重跑 strict OpenSpec validation、所有改动 Markdown 的 `dnm outline`、docs/schema checks与 `git diff --check`；记录最终 evidence，确认 owner/spec/code/tests/release artifacts正确区分 Current 与 Target。
-- [ ] 6.4 确认 downstream `expand-json-adapter-pathname-hints` 从本 change 已归档的 then-Current descriptor/grammar baseline重建其 delta，不把 comments或 parser语义带入 hint-only scope；随后请求本 change验收与归档。
+- [x] 6.4 确认 downstream `expand-json-adapter-pathname-hints` 从本 change 已归档的 then-Current descriptor/grammar baseline重建其 delta，不把 comments或 parser语义带入 hint-only scope；随后请求本 change验收与归档。

@@ -26,7 +26,7 @@
       }
     ]
   },
-  "sourceRevision": "sha256:ba14974614109118097de0f60120ff741b0dcecf27e11dc48640c9c3992807bd",
+  "sourceRevision": "sha256:e4533c69842f35712effefb562fed9e514e7cb75462907d97f3676197b26b233",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -498,14 +498,14 @@
           "active"
         ],
         "alignment": [
-          "unaligned"
+          "aligned"
         ]
       },
       "state": {
         "path": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
         "title": "受控分支承接非本机环境验收",
         "status": "active",
-        "alignment": "unaligned",
+        "alignment": "aligned",
         "createdAt": "2026-08-04T08:49:10Z",
         "purpose": "在本机缺少必要执行环境时，以受控且最小的云端验证补足验收证据。",
         "background": "本机环境不能可靠覆盖所有目标平台，而验收不能把缺少的平台证据误作已经通过。",
