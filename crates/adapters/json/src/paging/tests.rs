@@ -2,6 +2,7 @@ use super::*;
 use crate::content::structured_value_facts;
 use crate::document::{load, JsonKind};
 use crate::find::FindEntry;
+use crate::traversal::JsonEntryKind;
 use docnav_protocol::{positive_result, Location, PositiveInteger};
 
 fn positive(value: u32) -> PositiveInteger {
@@ -57,7 +58,8 @@ fn entry_pages_with_tiny_limit_preserve_long_refs_and_make_progress() {
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].ref_id, expected[actual.len()].ref_id);
         assert_eq!(entries[0].label, ".");
-        assert_eq!(entries[0].kind, JsonKind::Number);
+        assert_eq!(entries[0].kind, JsonEntryKind::Value(JsonKind::Number));
+        assert_eq!(entries[0].summary, None);
         actual.push(entries[0].ref_id.clone());
 
         let Some(next_page) = next_page else {
@@ -74,6 +76,62 @@ fn entry_pages_with_tiny_limit_preserve_long_refs_and_make_progress() {
             .map(|entry| entry.ref_id.clone())
             .collect::<Vec<_>>()
     );
+}
+
+#[test]
+fn empty_key_labels_survive_tiny_ref_only_and_complete_entry_budgets() {
+    for (source, expected_ref, expected_summary) in [
+        (br#"{"": 1, "next": 2}"#.as_slice(), "json:#/", None),
+        (
+            br#"{"": /* note */ 1, "next": 2}"#.as_slice(),
+            "json:comments:#/",
+            Some("note"),
+        ),
+    ] {
+        let document = load(source).expect("empty-key pagination fixture should load");
+        let entries = document.preorder_entries();
+        let expected = &entries[0];
+        assert_eq!(expected.ref_id, expected_ref);
+        assert_eq!(expected.label, "\"\"");
+        assert_eq!(expected.kind, JsonEntryKind::Value(JsonKind::Number));
+        assert_eq!(expected.summary.as_deref(), expected_summary);
+
+        let ref_budget = expected.ref_id.chars().count();
+        let complete_budget = ref_budget
+            + expected.label.chars().count()
+            + expected
+                .summary
+                .as_deref()
+                .map(|summary| summary.chars().count())
+                .unwrap_or_default();
+        for (budget, retained_summary) in [
+            (1, None),
+            (ref_budget, None),
+            (ref_budget + 1, None),
+            (complete_budget, expected_summary),
+        ] {
+            let (page, next_page) = paginate_entries(
+                &entries,
+                positive(1),
+                positive(u32::try_from(budget).expect("test budget fits u32")),
+            );
+
+            assert_eq!(page.len(), 1);
+            assert_eq!(page[0].ref_id, expected_ref);
+            assert_eq!(page[0].label, "\"\"");
+            assert_eq!(page[0].kind, JsonEntryKind::Value(JsonKind::Number));
+            assert_eq!(page[0].summary.as_deref(), retained_summary);
+            assert_eq!(next_page, Some(positive(2)));
+        }
+    }
+
+    let document = load(br#"{"": 1, "\"\"": 2}"#)
+        .expect("quoted non-empty key pagination fixture should load");
+    let entries = document.preorder_entries();
+    let (second_page, next_page) = paginate_entries(&entries, positive(2), positive(1));
+    assert_eq!(second_page[0].ref_id, "json:#/%22%22");
+    assert_eq!(second_page[0].label, ".");
+    assert_eq!(next_page, None);
 }
 
 #[test]

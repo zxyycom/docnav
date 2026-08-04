@@ -1,3 +1,5 @@
+#[cfg(test)]
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::fmt;
 
@@ -5,8 +7,28 @@ use serde::de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor};
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
+#[cfg(test)]
+pub(crate) use crate::jsonc::CommentKind;
+pub(crate) use crate::jsonc::CommentToken;
+
 pub(crate) const MAX_DEPTH: u8 = 127;
 const UTF8_BOM: &[u8] = b"\xef\xbb\xbf";
+#[cfg(test)]
+pub(crate) const WIDE_COMMENT_ITEM_COUNT: usize = 1_024;
+
+#[cfg(test)]
+pub(crate) fn wide_comment_per_item_source() -> String {
+    let mut source = String::from("[");
+    for index in 0..WIDE_COMMENT_ITEM_COUNT {
+        source.push_str("\n  /* item-");
+        source.push_str(&index.to_string());
+        source.push_str(" */ ");
+        source.push_str(&index.to_string());
+        source.push(',');
+    }
+    source.push_str("\n]");
+    source
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct SourceRegion {
@@ -36,6 +58,8 @@ pub(crate) struct JsonNode {
     pub(crate) depth: u8,
     pub(crate) region: SourceRegion,
     pub(crate) value: JsonValue,
+    pub(crate) direct_comments: Option<CommentBundle>,
+    pub(crate) tail_comments: Option<CommentBundle>,
 }
 
 impl JsonNode {
@@ -69,6 +93,25 @@ pub(crate) struct JsonMember {
     pub(crate) value: JsonNode,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) struct CommentBundle {
+    indices: Vec<usize>,
+}
+
+impl CommentBundle {
+    pub(crate) fn indices(&self) -> &[usize] {
+        &self.indices
+    }
+
+    fn push(slot: &mut Option<Self>, index: usize) {
+        let bundle = slot.get_or_insert_with(|| Self {
+            indices: Vec::new(),
+        });
+        debug_assert!(bundle.indices().last().is_none_or(|&last| last < index));
+        bundle.indices.push(index);
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub(crate) struct JsonDocument {
     pub(crate) source: String,
@@ -76,11 +119,35 @@ pub(crate) struct JsonDocument {
     pub(crate) root: JsonNode,
     pub(crate) node_count: usize,
     pub(crate) max_depth: u8,
+    pub(crate) has_jsonc_syntax: bool,
+    pub(crate) comments: Vec<CommentToken>,
+    #[cfg(test)]
+    pub(crate) scan_steps: usize,
+    #[cfg(test)]
+    pub(crate) attribution_steps: usize,
+    #[cfg(test)]
+    comment_bundle_steps: Cell<usize>,
 }
 
 impl JsonDocument {
     pub(crate) fn root_kind(&self) -> JsonKind {
         self.root.kind()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_comment_bundle_steps(&self) {
+        self.comment_bundle_steps.set(0);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn comment_bundle_steps(&self) -> usize {
+        self.comment_bundle_steps.get()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn record_comment_bundle_step(&self) {
+        self.comment_bundle_steps
+            .set(self.comment_bundle_steps.get().saturating_add(1));
     }
 }
 
@@ -102,8 +169,12 @@ pub(crate) fn load(bytes: &[u8]) -> Result<JsonDocument, LoadError> {
         })?
         .to_owned();
 
-    let mut state = BuildState::new(&source);
-    let mut deserializer = serde_json::Deserializer::from_str(&source);
+    let scan = crate::jsonc::scan(&source).map_err(|error| LoadError::InvalidJson {
+        message: error.0.to_owned(),
+    })?;
+
+    let mut state = BuildState::new(&scan.parse_view);
+    let mut deserializer = serde_json::Deserializer::from_str(&scan.parse_view);
     deserializer.disable_recursion_limit();
 
     let parsed = NodeSeed {
@@ -130,11 +201,24 @@ pub(crate) fn load(bytes: &[u8]) -> Result<JsonDocument, LoadError> {
         });
     }
     state.skip_whitespace();
-    if state.cursor != source.len() {
+    if state.cursor != scan.parse_view.len() {
         return Err(LoadError::InvalidJson {
             message: "JSON source cursor did not reach the parsed value end".to_owned(),
         });
     }
+
+    let root_syntax_region = root.region;
+    let attribution_steps = attribute_comments(
+        &mut root,
+        root_syntax_region,
+        &scan.comments,
+        &scan.comment_line_starts,
+        &scan.commas,
+    )
+    .map_err(|message| LoadError::InvalidJson {
+        message: message.to_owned(),
+    })?;
+    debug_assert_eq!(attribution_steps, scan.comments.len());
 
     root.region = SourceRegion {
         start: 0,
@@ -142,6 +226,7 @@ pub(crate) fn load(bytes: &[u8]) -> Result<JsonDocument, LoadError> {
     };
     let node_count = state.node_count;
     let max_depth = state.max_depth;
+    drop(deserializer);
     drop(state);
     Ok(JsonDocument {
         source,
@@ -149,7 +234,290 @@ pub(crate) fn load(bytes: &[u8]) -> Result<JsonDocument, LoadError> {
         root,
         node_count,
         max_depth,
+        has_jsonc_syntax: scan.has_jsonc_syntax,
+        comments: scan.comments,
+        #[cfg(test)]
+        scan_steps: scan.scanned_bytes,
+        #[cfg(test)]
+        attribution_steps,
+        #[cfg(test)]
+        comment_bundle_steps: Cell::new(0),
     })
+}
+
+fn attribute_comments(
+    root: &mut JsonNode,
+    root_region: SourceRegion,
+    comments: &[CommentToken],
+    comment_line_starts: &[usize],
+    commas: &[usize],
+) -> Result<usize, &'static str> {
+    if comments.len() != comment_line_starts.len() {
+        return Err("JSONC comment line evidence is incomplete");
+    }
+    let mut attributor = CommentAttributor {
+        comments,
+        comment_line_starts,
+        commas,
+        comment_cursor: 0,
+        comma_cursor: 0,
+        assignments: 0,
+    };
+    attributor.take_direct_until(root_region.start, &mut root.direct_comments)?;
+    attributor.attribute_node(root, root_region)?;
+
+    let root_token = root_region
+        .end
+        .checked_sub(1)
+        .ok_or("parsed JSON root region is empty")?;
+    attributor.take_direct_or_tail_until(
+        usize::MAX,
+        root_token,
+        &mut root.direct_comments,
+        &mut root.tail_comments,
+    )?;
+    if attributor.comment_cursor != comments.len() {
+        return Err("JSONC attribution did not consume every comment");
+    }
+    Ok(attributor.assignments)
+}
+
+struct CommentAttributor<'source> {
+    comments: &'source [CommentToken],
+    comment_line_starts: &'source [usize],
+    commas: &'source [usize],
+    comment_cursor: usize,
+    comma_cursor: usize,
+    assignments: usize,
+}
+
+impl CommentAttributor<'_> {
+    fn attribute_node(
+        &mut self,
+        node: &mut JsonNode,
+        region: SourceRegion,
+    ) -> Result<(), &'static str> {
+        let closing = region
+            .end
+            .checked_sub(1)
+            .ok_or("parsed JSON node region is empty")?;
+        let JsonNode {
+            value,
+            direct_comments,
+            tail_comments,
+            ..
+        } = node;
+
+        match value {
+            JsonValue::Object(members) if members.is_empty() => {
+                self.take_direct_until(closing, direct_comments)?;
+            }
+            JsonValue::Object(members) => {
+                self.take_direct_until(
+                    members[0].name_region.start,
+                    &mut members[0].value.direct_comments,
+                )?;
+                self.take_direct_until(
+                    members[0].value.region.start,
+                    &mut members[0].value.direct_comments,
+                )?;
+                let first_region = members[0].value.region;
+                self.attribute_node(&mut members[0].value, first_region)?;
+
+                for index in 1..members.len() {
+                    let next_name_start = members[index].name_region.start;
+                    let comma = self
+                        .peek_comma_before(next_name_start)
+                        .ok_or("parsed JSON object member is missing its separator comma")?;
+                    let (previous, current) = members.split_at_mut(index);
+                    let previous = &mut previous[index - 1].value;
+                    let current = &mut current[0].value;
+                    self.take_direct_until(comma, &mut previous.direct_comments)?;
+                    self.consume_comma(comma)?;
+                    self.take_previous_or_next_until(
+                        next_name_start,
+                        comma,
+                        &mut previous.direct_comments,
+                        &mut current.direct_comments,
+                    )?;
+                    self.take_direct_until(current.region.start, &mut current.direct_comments)?;
+                    let current_region = current.region;
+                    self.attribute_node(current, current_region)?;
+                }
+
+                let last = members
+                    .last_mut()
+                    .expect("non-empty object has a last member");
+                if let Some(comma) = self.peek_comma_before(closing) {
+                    self.take_direct_until(comma, &mut last.value.direct_comments)?;
+                    self.consume_comma(comma)?;
+                    self.take_direct_or_tail_until(
+                        closing,
+                        comma,
+                        &mut last.value.direct_comments,
+                        tail_comments,
+                    )?;
+                } else {
+                    let last_token = last
+                        .value
+                        .region
+                        .end
+                        .checked_sub(1)
+                        .ok_or("parsed JSON member value region is empty")?;
+                    self.take_direct_or_tail_until(
+                        closing,
+                        last_token,
+                        &mut last.value.direct_comments,
+                        tail_comments,
+                    )?;
+                }
+            }
+            JsonValue::Array(elements) if elements.is_empty() => {
+                self.take_direct_until(closing, direct_comments)?;
+            }
+            JsonValue::Array(elements) => {
+                self.take_direct_until(elements[0].region.start, &mut elements[0].direct_comments)?;
+                let first_region = elements[0].region;
+                self.attribute_node(&mut elements[0], first_region)?;
+
+                for index in 1..elements.len() {
+                    let next_start = elements[index].region.start;
+                    let comma = self
+                        .peek_comma_before(next_start)
+                        .ok_or("parsed JSON array element is missing its separator comma")?;
+                    let (previous, current) = elements.split_at_mut(index);
+                    let previous = &mut previous[index - 1];
+                    let current = &mut current[0];
+                    self.take_direct_until(comma, &mut previous.direct_comments)?;
+                    self.consume_comma(comma)?;
+                    self.take_previous_or_next_until(
+                        next_start,
+                        comma,
+                        &mut previous.direct_comments,
+                        &mut current.direct_comments,
+                    )?;
+                    let current_region = current.region;
+                    self.attribute_node(current, current_region)?;
+                }
+
+                let last = elements
+                    .last_mut()
+                    .expect("non-empty array has a last element");
+                if let Some(comma) = self.peek_comma_before(closing) {
+                    self.take_direct_until(comma, &mut last.direct_comments)?;
+                    self.consume_comma(comma)?;
+                    self.take_direct_or_tail_until(
+                        closing,
+                        comma,
+                        &mut last.direct_comments,
+                        tail_comments,
+                    )?;
+                } else {
+                    let last_token = last
+                        .region
+                        .end
+                        .checked_sub(1)
+                        .ok_or("parsed JSON array element region is empty")?;
+                    self.take_direct_or_tail_until(
+                        closing,
+                        last_token,
+                        &mut last.direct_comments,
+                        tail_comments,
+                    )?;
+                }
+            }
+            JsonValue::String(_)
+            | JsonValue::Number(_)
+            | JsonValue::Boolean(_)
+            | JsonValue::Null => {}
+        }
+        Ok(())
+    }
+
+    fn take_direct_until(
+        &mut self,
+        end: usize,
+        direct: &mut Option<CommentBundle>,
+    ) -> Result<(), &'static str> {
+        while self.next_comment_starts_before(end) {
+            let index = self.take_comment_ending_by(end)?;
+            CommentBundle::push(direct, index);
+        }
+        Ok(())
+    }
+
+    fn take_previous_or_next_until(
+        &mut self,
+        end: usize,
+        previous_token: usize,
+        previous: &mut Option<CommentBundle>,
+        next: &mut Option<CommentBundle>,
+    ) -> Result<(), &'static str> {
+        while self.next_comment_starts_before(end) {
+            let same_line = self.comment_line_starts[self.comment_cursor] <= previous_token;
+            let index = self.take_comment_ending_by(end)?;
+            if same_line {
+                CommentBundle::push(previous, index);
+            } else {
+                CommentBundle::push(next, index);
+            }
+        }
+        Ok(())
+    }
+
+    fn take_direct_or_tail_until(
+        &mut self,
+        end: usize,
+        previous_token: usize,
+        direct: &mut Option<CommentBundle>,
+        tail: &mut Option<CommentBundle>,
+    ) -> Result<(), &'static str> {
+        while self.next_comment_starts_before(end) {
+            let same_line = self.comment_line_starts[self.comment_cursor] <= previous_token;
+            let index = self.take_comment_ending_by(end)?;
+            if same_line {
+                CommentBundle::push(direct, index);
+            } else {
+                CommentBundle::push(tail, index);
+            }
+        }
+        Ok(())
+    }
+
+    fn next_comment_starts_before(&self, end: usize) -> bool {
+        self.comments
+            .get(self.comment_cursor)
+            .is_some_and(|comment| comment.span.start < end)
+    }
+
+    fn take_comment_ending_by(&mut self, end: usize) -> Result<usize, &'static str> {
+        let index = self.comment_cursor;
+        let comment = self
+            .comments
+            .get(index)
+            .ok_or("JSONC attribution comment cursor exceeded evidence")?;
+        if comment.span.end > end {
+            return Err("JSONC comment crosses a parsed token boundary");
+        }
+        self.comment_cursor += 1;
+        self.assignments += 1;
+        Ok(index)
+    }
+
+    fn peek_comma_before(&self, end: usize) -> Option<usize> {
+        self.commas
+            .get(self.comma_cursor)
+            .copied()
+            .filter(|&comma| comma < end)
+    }
+
+    fn consume_comma(&mut self, comma: usize) -> Result<(), &'static str> {
+        if self.commas.get(self.comma_cursor) != Some(&comma) {
+            return Err("JSONC attribution comma cursor lost source order");
+        }
+        self.comma_cursor += 1;
+        Ok(())
+    }
 }
 
 struct BuildState<'source> {
@@ -496,6 +864,8 @@ impl NodeVisitor<'_, '_> {
             depth: self.depth,
             region,
             value,
+            direct_comments: None,
+            tail_comments: None,
         }
     }
 }

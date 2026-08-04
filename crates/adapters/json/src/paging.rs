@@ -9,6 +9,22 @@ use crate::traversal::JsonEntry;
 const TRUNCATION_MARKER: &str = "...";
 const MINIMUM_LABEL: &str = ".";
 
+struct EntryProjection<T> {
+    fields: fn(&T) -> (&str, &str),
+    fixed_label: fn(&T) -> bool,
+    set_label: fn(&mut T, String),
+    summary: fn(&T) -> Option<&str>,
+    set_summary: fn(&mut T, Option<String>),
+}
+
+impl<T> Clone for EntryProjection<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for EntryProjection<T> {}
+
 #[derive(Debug, PartialEq)]
 pub(crate) struct TextPage {
     pub(crate) content: String,
@@ -54,8 +70,13 @@ pub(crate) fn paginate_entries(
         entries,
         page,
         limit,
-        json_entry_fields,
-        set_json_entry_label,
+        EntryProjection {
+            fields: json_entry_fields,
+            fixed_label: json_entry_has_fixed_label,
+            set_label: set_json_entry_label,
+            summary: json_entry_summary,
+            set_summary: set_json_entry_summary,
+        },
     )
 }
 
@@ -93,8 +114,15 @@ where
     let mut used = 0_usize;
 
     while let Some(entry) = entries.peek() {
-        let adjusted = fit_entry(entry, limit, find_entry_fields, set_find_entry_label);
-        let cost = entry_cost(&adjusted, find_entry_fields);
+        let projection = EntryProjection {
+            fields: find_entry_fields,
+            fixed_label: no_fixed_label,
+            set_label: set_find_entry_label,
+            summary: no_entry_summary,
+            set_summary: ignore_entry_summary,
+        };
+        let adjusted = fit_entry(entry, limit, projection);
+        let cost = entry_cost(&adjusted, projection);
 
         if used > 0 && used.saturating_add(cost) > limit {
             break;
@@ -120,8 +148,7 @@ fn paginate_entry_slice<T: Clone>(
     entries: &[T],
     page: PositiveInteger,
     limit: PositiveInteger,
-    fields: fn(&T) -> (&str, &str),
-    set_label: fn(&mut T, String),
+    projection: EntryProjection<T>,
 ) -> (Vec<T>, Option<PositiveInteger>) {
     let target_page = page.get();
     let limit = limit.get() as usize;
@@ -129,7 +156,7 @@ fn paginate_entry_slice<T: Clone>(
     let mut current_page = 1;
 
     while current_page < target_page && index < entries.len() {
-        let (_, next_index) = entries_page(entries, index, limit, fields, set_label);
+        let (_, next_index) = entries_page(entries, index, limit, projection);
         index = next_index;
         current_page += 1;
     }
@@ -138,7 +165,7 @@ fn paginate_entry_slice<T: Clone>(
         return (Vec::new(), None);
     }
 
-    let (page_entries, next_index) = entries_page(entries, index, limit, fields, set_label);
+    let (page_entries, next_index) = entries_page(entries, index, limit, projection);
     let next_page = next_page(page, next_index < entries.len());
 
     (page_entries, next_page)
@@ -148,16 +175,15 @@ fn entries_page<T: Clone>(
     entries: &[T],
     start: usize,
     limit: usize,
-    fields: fn(&T) -> (&str, &str),
-    set_label: fn(&mut T, String),
+    projection: EntryProjection<T>,
 ) -> (Vec<T>, usize) {
     let mut page_entries = Vec::new();
     let mut used = 0_usize;
     let mut index = start;
 
     while let Some(entry) = entries.get(index) {
-        let adjusted = fit_entry(entry, limit, fields, set_label);
-        let cost = entry_cost(&adjusted, fields);
+        let adjusted = fit_entry(entry, limit, projection);
+        let cost = entry_cost(&adjusted, projection);
 
         if !page_entries.is_empty() && used.saturating_add(cost) > limit {
             break;
@@ -175,21 +201,29 @@ fn entries_page<T: Clone>(
     (page_entries, index)
 }
 
-fn fit_entry<T: Clone>(
-    entry: &T,
-    limit: usize,
-    fields: fn(&T) -> (&str, &str),
-    set_label: fn(&mut T, String),
-) -> T {
-    let (ref_id, label) = fields(entry);
+fn fit_entry<T: Clone>(entry: &T, limit: usize, projection: EntryProjection<T>) -> T {
+    let (ref_id, label) = (projection.fields)(entry);
     let ref_length = char_count(ref_id);
     let label_length = char_count(label);
+    let summary = (projection.summary)(entry);
+    let summary_length = summary.map(char_count).unwrap_or_default();
+    let required_length = ref_length.saturating_add(label_length);
 
-    if ref_length.saturating_add(label_length) <= limit {
+    if required_length.saturating_add(summary_length) <= limit {
         return entry.clone();
     }
 
     let mut adjusted = entry.clone();
+    if required_length <= limit {
+        let summary_budget = limit - required_length;
+        (projection.set_summary)(&mut adjusted, fit_summary(summary, summary_budget));
+        return adjusted;
+    }
+    (projection.set_summary)(&mut adjusted, None);
+    if (projection.fixed_label)(entry) {
+        return adjusted;
+    }
+
     let adjusted_label = if ref_length >= limit {
         MINIMUM_LABEL.to_owned()
     } else {
@@ -202,29 +236,74 @@ fn fit_entry<T: Clone>(
             take_chars(label, label_budget.max(1))
         }
     };
-    set_label(&mut adjusted, adjusted_label);
+    (projection.set_label)(&mut adjusted, adjusted_label);
     adjusted
 }
 
-fn entry_cost<T>(entry: &T, fields: fn(&T) -> (&str, &str)) -> usize {
-    let (ref_id, label) = fields(entry);
-    char_count(ref_id) + char_count(label)
+fn fit_summary(summary: Option<&str>, budget: usize) -> Option<String> {
+    let summary = summary?;
+    if char_count(summary) <= budget {
+        return Some(summary.to_owned());
+    }
+    let marker_length = char_count(TRUNCATION_MARKER);
+    (budget > marker_length).then(|| {
+        let content_budget = budget - marker_length;
+        format!(
+            "{}{TRUNCATION_MARKER}",
+            take_chars_exact(summary, content_budget)
+        )
+    })
+}
+
+fn entry_cost<T>(entry: &T, projection: EntryProjection<T>) -> usize {
+    let (ref_id, label) = (projection.fields)(entry);
+    char_count(ref_id)
+        .saturating_add(char_count(label))
+        .saturating_add(
+            (projection.summary)(entry)
+                .map(char_count)
+                .unwrap_or_default(),
+        )
 }
 
 fn json_entry_fields(entry: &JsonEntry) -> (&str, &str) {
     (&entry.ref_id, &entry.label)
 }
 
+fn json_entry_has_fixed_label(entry: &JsonEntry) -> bool {
+    entry.label == "\"\"" && entry.ref_id.ends_with('/')
+}
+
 fn set_json_entry_label(entry: &mut JsonEntry, label: String) {
     entry.label = label;
+}
+
+fn json_entry_summary(entry: &JsonEntry) -> Option<&str> {
+    entry.summary.as_deref()
+}
+
+fn set_json_entry_summary(entry: &mut JsonEntry, summary: Option<String>) {
+    entry.summary = summary;
 }
 
 fn find_entry_fields(entry: &FindEntry) -> (&str, &str) {
     (&entry.ref_id, &entry.label)
 }
 
+fn no_fixed_label<T>(_entry: &T) -> bool {
+    false
+}
+
 fn set_find_entry_label(entry: &mut FindEntry, label: String) {
     entry.label = label;
+}
+
+fn no_entry_summary<T>(_entry: &T) -> Option<&str> {
+    None
+}
+
+fn ignore_entry_summary<T>(_entry: &mut T, summary: Option<String>) {
+    debug_assert!(summary.is_none());
 }
 
 fn next_page(current: PositiveInteger, has_more: bool) -> Option<PositiveInteger> {
@@ -243,12 +322,16 @@ fn char_count(value: &str) -> usize {
 }
 
 fn take_chars(value: &str, count: usize) -> String {
-    let clipped = value.chars().take(count).collect::<String>();
+    let clipped = take_chars_exact(value, count);
     if clipped.is_empty() {
         MINIMUM_LABEL.to_owned()
     } else {
         clipped
     }
+}
+
+fn take_chars_exact(value: &str, count: usize) -> String {
+    value.chars().take(count).collect()
 }
 
 #[cfg(test)]

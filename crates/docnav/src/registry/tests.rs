@@ -41,9 +41,9 @@ fn static_registry_contains_built_in_routing_metadata() {
         serde_json::to_value(&definitions[1].manifest().formats).unwrap(),
         json!([{
             "id": "json",
-            "extensions": [".json", ".code-workspace"],
+            "extensions": [".json", ".code-workspace", ".jsonc"],
             "filenames": [".prettierrc", ".watchmanconfig"],
-            "content_types": ["application/json"]
+            "content_types": ["application/json", "application/jsonc"]
         }])
     );
 }
@@ -122,9 +122,9 @@ fn adapter_list_preserves_static_registry_projection() {
                 "implementation_source": "core_static",
                 "formats": [{
                     "id": "json",
-                    "extensions": [".json", ".code-workspace"],
+                    "extensions": [".json", ".code-workspace", ".jsonc"],
                     "filenames": [".prettierrc", ".watchmanconfig"],
-                    "content_types": ["application/json"],
+                    "content_types": ["application/json", "application/jsonc"],
                 }],
             },
         ])

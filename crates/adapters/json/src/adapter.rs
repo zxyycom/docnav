@@ -12,17 +12,18 @@ use docnav_protocol::{
 };
 use serde_json::json;
 
-use crate::content::{full_read_facts, structured_value_facts};
+use crate::content::{full_read_facts, selection_facts};
 use crate::document::{load, JsonDocument, JsonKind, LoadError};
 use crate::find::FindEntry;
 use crate::paging::{paginate_entries, paginate_find_entries, paginate_text};
-use crate::reference::RefError;
-use crate::traversal::JsonEntry;
+use crate::reference::{RefError, RefView};
+use crate::traversal::{JsonEntry, JsonEntryKind};
 
 pub(crate) const ADAPTER_ID: &str = "docnav-json";
 const ADAPTER_NAME: &str = "Docnav JSON Adapter";
 pub(crate) const FORMAT_ID_JSON: &str = "json";
 pub(crate) const CONTENT_TYPE_JSON: &str = "application/json";
+const CONTENT_TYPE_JSONC: &str = "application/jsonc";
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct JsonAdapter;
@@ -39,20 +40,24 @@ impl Adapter for JsonAdapter {
 
     fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult> {
         let document = reload_document(&input.document_path)?;
-        let node = document
-            .resolve_ref(&input.ref_id)
+        let selection = document
+            .resolve_selection(&input.ref_id)
             .map_err(|error| match error {
                 RefError::Invalid { reason } => AdapterError::ref_invalid(&input.ref_id, reason),
                 RefError::NotFound => AdapterError::ref_not_found(&input.ref_id),
             })?;
-        let facts = structured_value_facts(node)
+        let content_type = match selection.view {
+            RefView::Base => CONTENT_TYPE_JSON,
+            RefView::DirectComments | RefView::TailComments => CONTENT_TYPE_JSONC,
+        };
+        let facts = selection_facts(&document, &selection)
             .map_err(|_| AdapterError::internal("json-structured-serialization-failed"))?;
         let page = paginate_text(facts, input.page, input.limit);
 
         Ok(ReadResult {
             ref_id: input.ref_id.clone(),
             content: page.content,
-            content_type: CONTENT_TYPE_JSON.to_owned(),
+            content_type: content_type.to_owned(),
             cost: page.cost,
             page: page.page,
         })
@@ -79,7 +84,7 @@ impl Adapter for JsonAdapter {
 
         Ok(InfoResult {
             document: Some(InfoDocument {
-                content_type: Some(CONTENT_TYPE_JSON.to_owned()),
+                content_type: Some(source_content_type(&document).to_owned()),
                 encoding: Some("UTF-8".to_owned()),
                 size: Some(Measurement {
                     unit: "bytes".to_owned(),
@@ -108,7 +113,7 @@ impl Adapter for JsonAdapter {
     ) -> AdapterResult<UnstructuredFullRead> {
         let document = reload_document(&request.document.path)?;
         let facts = full_read_facts(&document);
-        let mut result = UnstructuredFullRead::new(facts.content, CONTENT_TYPE_JSON);
+        let mut result = UnstructuredFullRead::new(facts.content, source_content_type(&document));
         result.facts.cost = Some(facts.cost);
         Ok(result)
     }
@@ -149,9 +154,13 @@ fn json_manifest() -> Manifest {
         },
         formats: vec![FormatDescriptor {
             id: FORMAT_ID_JSON.to_owned(),
-            extensions: vec![".json".to_owned(), ".code-workspace".to_owned()],
+            extensions: vec![
+                ".json".to_owned(),
+                ".code-workspace".to_owned(),
+                ".jsonc".to_owned(),
+            ],
             filenames: vec![".prettierrc".to_owned(), ".watchmanconfig".to_owned()],
-            content_types: vec![CONTENT_TYPE_JSON.to_owned()],
+            content_types: vec![CONTENT_TYPE_JSON.to_owned(), CONTENT_TYPE_JSONC.to_owned()],
         }],
     }
 }
@@ -173,7 +182,15 @@ fn read_error(path: &str, error: std::io::Error) -> AdapterError {
     if error.kind() == std::io::ErrorKind::NotFound {
         AdapterError::document_not_found(path)
     } else {
-        AdapterError::document_path_invalid(path, error.to_string())
+        AdapterError::document_path_invalid(path, "document path could not be read")
+    }
+}
+
+fn source_content_type(document: &JsonDocument) -> &'static str {
+    if document.has_jsonc_syntax {
+        CONTENT_TYPE_JSONC
+    } else {
+        CONTENT_TYPE_JSON
     }
 }
 
@@ -202,12 +219,16 @@ fn reload_error(path: &str, error: LoadError) -> AdapterError {
 }
 
 fn outline_entry(entry: JsonEntry) -> Entry {
+    let kind = match entry.kind {
+        JsonEntryKind::Value(kind) => kind_name(kind),
+        JsonEntryKind::TailComments => "tail_comments",
+    };
     Entry {
         ref_id: entry.ref_id,
         label: entry.label,
-        kind: Some(kind_name(entry.kind).to_owned()),
+        kind: Some(kind.to_owned()),
         location: None,
-        summary: None,
+        summary: entry.summary,
         excerpt: None,
         rank: None,
         cost: None,

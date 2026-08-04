@@ -1,0 +1,8 @@
+// document header
+{
+  "number": -0.50e+02, // member suffix
+  "items": [
+    /* element header */
+    true,
+  ],
+}

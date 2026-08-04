@@ -25,12 +25,18 @@ fn manifest_declares_fixed_json_identity() {
     assert_eq!(manifest.adapter.id, "docnav-json");
     assert_eq!(manifest.formats.len(), 1);
     assert_eq!(manifest.formats[0].id, "json");
-    assert_eq!(manifest.formats[0].extensions, [".json", ".code-workspace"]);
+    assert_eq!(
+        manifest.formats[0].extensions,
+        [".json", ".code-workspace", ".jsonc"]
+    );
     assert_eq!(
         manifest.formats[0].filenames,
         [".prettierrc", ".watchmanconfig"]
     );
-    assert_eq!(manifest.formats[0].content_types, ["application/json"]);
+    assert_eq!(
+        manifest.formats[0].content_types,
+        ["application/json", "application/jsonc"]
+    );
 
     let capabilities = definition
         .unstructured_full_read_capabilities()
@@ -136,6 +142,160 @@ fn outline_handles_empty_container_roots_and_root_scalar() {
 }
 
 #[test]
+fn outline_projects_comment_refs_summaries_and_virtual_tail_entries() {
+    let document = TempDocument::write(
+        "comments.jsonc",
+        br#"/* root
+   direct */
+// second root
+{
+  // member direct
+  "member": {
+    "child": 1
+    /* member tail */
+  },
+  "array": [
+    // index   direct
+    2,
+    {
+      "leaf": 3
+      // nested tail
+    }
+    /* array
+       tail */
+  ]
+  /* root internal tail */
+}
+/* root document tail */"#,
+    );
+
+    let result = structured_outline(&document, 1, 10_000);
+
+    assert_eq!(
+        result.entries,
+        [
+            entry_with_summary(
+                "json:comments:#",
+                "<root>",
+                "object",
+                "root direct; second root",
+            ),
+            entry_with_summary(
+                "json:comments:#/member",
+                "member",
+                "object",
+                "member direct",
+            ),
+            entry("json:#/member/child", "child", "number"),
+            entry_with_summary(
+                "json:tail-comments:#/member",
+                "<tail comments>",
+                "tail_comments",
+                "member tail",
+            ),
+            entry("json:#/array", "array", "array"),
+            entry_with_summary("json:comments:#/array/0", "[0]", "number", "index direct",),
+            entry("json:#/array/1", "[1]", "object"),
+            entry("json:#/array/1/leaf", "leaf", "number"),
+            entry_with_summary(
+                "json:tail-comments:#/array/1",
+                "<tail comments>",
+                "tail_comments",
+                "nested tail",
+            ),
+            entry_with_summary(
+                "json:tail-comments:#/array",
+                "<tail comments>",
+                "tail_comments",
+                "array tail",
+            ),
+            entry_with_summary(
+                "json:tail-comments:#",
+                "<tail comments>",
+                "tail_comments",
+                "root internal tail; root document tail",
+            ),
+        ]
+    );
+    assert_eq!(result.page, None);
+    for entry in result
+        .entries
+        .iter()
+        .filter(|entry| entry.kind.as_deref() == Some("tail_comments"))
+    {
+        assert_eq!(entry.location, None);
+        assert_eq!(entry.metadata, None);
+        assert_eq!(entry.excerpt, None);
+        assert_eq!(entry.rank, None);
+        assert_eq!(entry.cost, None);
+    }
+
+    let empty_direct = TempDocument::write("empty-direct.jsonc", b"/* */ {}");
+    assert_eq!(
+        structured_outline(&empty_direct, 1, 100).entries,
+        [entry("json:comments:#", "<root>", "object")],
+        "an empty normalized body keeps the direct-comment ref but omits summary",
+    );
+
+    let tail_only = TempDocument::write("tail-only.jsonc", b"{}\n// document tail");
+    assert_eq!(
+        structured_outline(&tail_only, 1, 100).entries,
+        [entry_with_summary(
+            "json:tail-comments:#",
+            "<tail comments>",
+            "tail_comments",
+            "document tail",
+        )],
+        "a root container with only tail comments must not gain a root logical entry",
+    );
+}
+
+#[test]
+fn outline_comment_summary_budget_shrinks_before_label_and_pages_forward() {
+    let document = TempDocument::write(
+        "comment-paging.jsonc",
+        "{\"very-long\": /* 雪界导航说明 */ 1, \"next\": 2}".as_bytes(),
+    );
+    let full = structured_outline(&document, 1, 1_000);
+    let first = &full.entries[0];
+    let limit = first.ref_id.chars().count() + first.label.chars().count() + 5;
+
+    let first_page = structured_outline(
+        &document,
+        1,
+        u32::try_from(limit).expect("test budget fits u32"),
+    );
+    assert_eq!(
+        first_page.entries,
+        [entry_with_summary(
+            "json:comments:#/very-long",
+            "very-long",
+            "number",
+            "雪界...",
+        )]
+    );
+    assert_eq!(first_page.page.map(|page| page.get()), Some(2));
+
+    let second_page = structured_outline(
+        &document,
+        2,
+        u32::try_from(limit).expect("test budget fits u32"),
+    );
+    assert_eq!(
+        second_page.entries,
+        [entry("json:#/next", "next", "number")]
+    );
+    assert_eq!(second_page.page, None);
+
+    let tiny = structured_outline(&document, 1, 1);
+    assert_eq!(
+        tiny.entries,
+        [entry("json:comments:#/very-long", ".", "number")],
+    );
+    assert_eq!(tiny.page.map(|page| page.get()), Some(2));
+}
+
+#[test]
 fn outline_tiny_pages_preserve_complete_refs_and_terminate() {
     let document = TempDocument::write(
         "paging.json",
@@ -193,6 +353,23 @@ fn selected_outline_maps_current_document_failures_to_stable_diagnostics() {
         }),
     );
 
+    let unreadable = read_error(
+        "/normalized/unreadable.json",
+        std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "secret operating-system attachment",
+        ),
+    )
+    .protocol_error();
+    assert_protocol_error(
+        &unreadable,
+        "DOCUMENT_PATH_INVALID",
+        json!({
+            "path": "/normalized/unreadable.json",
+            "reason": "document path could not be read",
+        }),
+    );
+
     let invalid_content = [
         (
             "syntax.json",
@@ -205,8 +382,53 @@ fn selected_outline_maps_current_document_failures_to_stable_diagnostics() {
             "JSON_TRAILING_INPUT",
         ),
         (
+            "multiple-roots.jsonc",
+            b"{} /* accepted trivia */ []".to_vec(),
+            "JSON_TRAILING_INPUT",
+        ),
+        (
+            "unterminated-comment.jsonc",
+            b"{/* secret parser attachment".to_vec(),
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            "json5.jsonc",
+            b"{unquoted:'value', hexadecimal:0x10}".to_vec(),
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            "missing-comma.jsonc",
+            br#"{"first":1 "second":2}"#.to_vec(),
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            "doubled-comma.jsonc",
+            br#"{"first":1,,"second":2}"#.to_vec(),
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            "empty-object-comma.jsonc",
+            b"{,}".to_vec(),
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            "empty-array-comma.jsonc",
+            b"[,]".to_vec(),
+            "JSON_SYNTAX_INVALID",
+        ),
+        (
+            "trailing-empty-object-comma.jsonc",
+            b"1 {,}".to_vec(),
+            "JSON_TRAILING_INPUT",
+        ),
+        (
+            "trailing-empty-array-comma.jsonc",
+            b"1 [,]".to_vec(),
+            "JSON_TRAILING_INPUT",
+        ),
+        (
             "duplicate.json",
-            br#"{"a":1,"\u0061":2}"#.to_vec(),
+            br#"{"secret-duplicate-name":1,"secret-\u0064uplicate-name":2}"#.to_vec(),
             "JSON_DUPLICATE_MEMBER",
         ),
         (
@@ -313,6 +535,14 @@ fn read_maps_invalid_and_missing_refs_to_distinct_diagnostics() {
             "json:#/items/01",
             "expected a canonical nonnegative array index",
         ),
+        (
+            "json:unknown-comments:#/items",
+            "expected ref to start with json:#",
+        ),
+        (
+            "json:comments:#/items/~2",
+            "expected ~0 or ~1 JSON Pointer escape",
+        ),
     ] {
         let error = JsonAdapter
             .read(&read_input(&document, ref_id, 1, 100))
@@ -324,15 +554,21 @@ fn read_maps_invalid_and_missing_refs_to_distinct_diagnostics() {
         assert_eq!(error.details().get("reason"), Some(&json!(expected_reason)));
     }
 
-    let ref_id = "json:#/items/9";
-    let error = JsonAdapter
-        .read(&read_input(&document, ref_id, 1, 100))
-        .expect_err("missing canonical ref should fail")
-        .protocol_error();
+    for ref_id in [
+        "json:#/items/9",
+        "json:comments:#/items",
+        "json:tail-comments:#/items",
+    ] {
+        let error = JsonAdapter
+            .read(&read_input(&document, ref_id, 1, 100))
+            .expect_err("missing canonical ref or comment bundle should fail")
+            .protocol_error();
 
-    assert_eq!(error.code(), ProtocolDiagnosticCode::RefNotFound);
-    assert_eq!(error.details().get("ref"), Some(&json!(ref_id)));
-    assert_eq!(error.details().get("reason"), None);
+        assert_eq!(error.code(), ProtocolDiagnosticCode::RefNotFound);
+        assert_eq!(error.details().get("ref"), Some(&json!(ref_id)));
+        assert_eq!(error.details().get("reason"), None);
+        assert_eq!(error.details().len(), 1);
+    }
 }
 
 #[test]
@@ -370,6 +606,76 @@ fn read_paginates_unicode_and_keeps_complete_cost_on_every_page() {
     assert_eq!(past_end.content, "");
     assert_eq!(past_end.cost, expected_cost.expect("at least one page"));
     assert_eq!(past_end.page, None);
+}
+
+#[test]
+fn read_projects_base_and_comment_views_from_only_the_selected_frame() {
+    let document = TempDocument::write(
+        "comment-views.jsonc",
+        r#"/* root direct */
+{
+  "": /* empty direct */ [
+    // index direct
+    "雪" // index suffix
+    /* array tail */
+  ]
+} // root suffix
+/* document tail */"#
+            .as_bytes(),
+    );
+    let base = r#"{
+  "": [
+    "雪"
+  ]
+}"#;
+    let root_direct = format!("/* root direct */\n// root suffix\n{base}");
+    let empty_key_direct = "/* empty direct */\n[\n  \"雪\"\n]";
+    let index_direct = "// index direct\n// index suffix\n\"雪\"";
+    let empty_key_tail = "/* array tail */\n[\n  \"雪\"\n]";
+    let root_tail = format!("/* document tail */\n{base}");
+
+    for (ref_id, expected_content, expected_type) in [
+        ("json:#", base, CONTENT_TYPE_JSON),
+        ("json:comments:#", root_direct.as_str(), CONTENT_TYPE_JSONC),
+        ("json:comments:#/", empty_key_direct, CONTENT_TYPE_JSONC),
+        ("json:comments:#//0", index_direct, CONTENT_TYPE_JSONC),
+        ("json:tail-comments:#/", empty_key_tail, CONTENT_TYPE_JSONC),
+        (
+            "json:tail-comments:#",
+            root_tail.as_str(),
+            CONTENT_TYPE_JSONC,
+        ),
+    ] {
+        let result = read_result(&document, ref_id, 1, 10_000);
+        assert_eq!(result.ref_id, ref_id);
+        assert_eq!(result.content, expected_content, "ref: {ref_id}");
+        assert_eq!(result.content_type, expected_type, "ref: {ref_id}");
+        assert_eq!(result.page, None, "ref: {ref_id}");
+        assert_selection_cost(&result.cost, expected_content);
+    }
+
+    let mut page = 1;
+    let mut reconstructed = String::new();
+    let mut expected_cost = None;
+    loop {
+        let result = read_result(&document, "json:comments:#//0", page, 2);
+        assert_eq!(result.content_type, CONTENT_TYPE_JSONC);
+        assert!(result.content.chars().count() <= 2);
+        assert_selection_cost(&result.cost, index_direct);
+        if let Some(cost) = &expected_cost {
+            assert_eq!(&result.cost, cost);
+        } else {
+            expected_cost = Some(result.cost.clone());
+        }
+        reconstructed.push_str(&result.content);
+
+        let Some(next_page) = result.page else {
+            break;
+        };
+        assert_eq!(next_page.get(), page + 1);
+        page = next_page.get();
+    }
+    assert_eq!(reconstructed, index_direct);
 }
 
 #[test]
@@ -427,6 +733,89 @@ fn find_projects_mixed_occurrences_and_round_trips_every_ref_through_read() {
     );
     let value = serde_json::to_value(response).expect("find response should serialize");
     validate_protocol_response_value(&value).expect("find response should satisfy the schema");
+}
+
+#[test]
+fn find_maps_comment_occurrences_to_comment_views_and_preserves_find_facts() {
+    let document = TempDocument::write(
+        "comment-find.jsonc",
+        r#"// root-direct-hit
+{
+  // member-direct-hit
+  "member": {
+    "ordinary-hit": "雪"
+    // member-tail-hit
+  }
+}
+// root-tail-hit"#
+            .as_bytes(),
+    );
+
+    let result = find_result(&document, "hit", 1, 10_000);
+    assert_eq!(
+        result.matches,
+        [
+            match_entry("json:comments:#", "// root-direct-hit", 1),
+            match_entry("json:comments:#/member", "// member-direct-hit", 3),
+            match_entry("json:#/member/ordinary-hit", r#""ordinary-hit": "雪""#, 5),
+            match_entry("json:tail-comments:#/member", "// member-tail-hit", 6),
+            match_entry("json:tail-comments:#", "// root-tail-hit", 9),
+        ]
+    );
+
+    for (entry, expected_content, expected_type) in [
+        (
+            &result.matches[0],
+            r#"// root-direct-hit
+{
+  "member": {
+    "ordinary-hit": "雪"
+  }
+}"#,
+            CONTENT_TYPE_JSONC,
+        ),
+        (
+            &result.matches[1],
+            r#"// member-direct-hit
+{
+  "ordinary-hit": "雪"
+}"#,
+            CONTENT_TYPE_JSONC,
+        ),
+        (&result.matches[2], r#""雪""#, CONTENT_TYPE_JSON),
+        (
+            &result.matches[3],
+            r#"// member-tail-hit
+{
+  "ordinary-hit": "雪"
+}"#,
+            CONTENT_TYPE_JSONC,
+        ),
+        (
+            &result.matches[4],
+            r#"// root-tail-hit
+{
+  "member": {
+    "ordinary-hit": "雪"
+  }
+}"#,
+            CONTENT_TYPE_JSONC,
+        ),
+    ] {
+        let read = read_result(&document, &entry.ref_id, 1, 10_000);
+        assert_eq!(read.content, expected_content, "ref: {}", entry.ref_id);
+        assert_eq!(read.content_type, expected_type, "ref: {}", entry.ref_id);
+    }
+
+    let first = find_result(&document, "hit", 1, 1);
+    assert_eq!(first.matches, [match_entry("json:comments:#", ".", 1)]);
+    assert_eq!(first.page.map(|page| page.get()), Some(2));
+    let second = find_result(&document, "hit", 2, 1);
+    assert_eq!(
+        second.matches,
+        [match_entry("json:comments:#/member", ".", 3)]
+    );
+    assert_eq!(second.page.map(|page| page.get()), Some(3));
 }
 
 #[test]
@@ -521,6 +910,43 @@ fn info_reports_exact_bom_aware_document_and_nested_metadata() {
             ("max_depth".to_owned(), json!(3)),
         ]))
     );
+
+    for (name, source, expected_content_type) in [
+        (
+            "strict-string-markers.json",
+            br#"{"line":"// not a comment","block":"/* not a comment */","comma":"value,}"}"#
+                .as_slice(),
+            CONTENT_TYPE_JSON,
+        ),
+        (
+            "comments-only.jsonc",
+            b"/* accepted comment */\n{\"value\":1}".as_slice(),
+            CONTENT_TYPE_JSONC,
+        ),
+        (
+            "trailing-comma-only.jsonc",
+            b"{\"value\":1,}".as_slice(),
+            CONTENT_TYPE_JSONC,
+        ),
+    ] {
+        let document = TempDocument::write(name, source);
+        let info = execute_info(info_input(&document));
+
+        assert_eq!(
+            info.document
+                .as_ref()
+                .and_then(|document| document.content_type.as_deref()),
+            Some(expected_content_type),
+            "source: {}",
+            String::from_utf8_lossy(source),
+        );
+        assert_eq!(
+            info.adapter
+                .as_ref()
+                .and_then(|adapter| adapter.format.as_deref()),
+            Some(FORMAT_ID_JSON),
+        );
+    }
 }
 
 #[test]
@@ -560,40 +986,58 @@ fn info_reports_every_root_kind_with_root_depth_zero() {
 
 #[test]
 fn full_read_hooks_preserve_bom_stripped_source_and_measure_actual_cost() {
-    let expected_source = " \r\n{\"text\":\"\\u96ea\",\"items\":[]}\n\t";
-    let mut bytes = b"\xef\xbb\xbf".to_vec();
-    bytes.extend_from_slice(expected_source.as_bytes());
-    let document = TempDocument::write("full-read.json", &bytes);
-    let request = full_read_request(&document);
+    for (name, expected_source, expected_content_type) in [
+        (
+            "full-read.json",
+            " \r\n{\"line\":\"// marker\",\"block\":\"/* marker */\",\"items\":[]}\n\t",
+            CONTENT_TYPE_JSON,
+        ),
+        (
+            "full-read-comments.jsonc",
+            "/* exact comment */\r\n{\"text\":\"\\u96ea\"}\n",
+            CONTENT_TYPE_JSONC,
+        ),
+        (
+            "full-read-trailing-comma.jsonc",
+            "{\n  \"items\": [1, 2,],\n}\n",
+            CONTENT_TYPE_JSONC,
+        ),
+    ] {
+        let mut bytes = b"\xef\xbb\xbf".to_vec();
+        bytes.extend_from_slice(expected_source.as_bytes());
+        let document = TempDocument::write(name, &bytes);
+        let request = full_read_request(&document);
 
-    let expected = JsonAdapter
-        .unstructured_full_read(&request)
-        .expect("full read should succeed");
-    let definition = crate::json_adapter_definition();
-    let result = definition
-        .unstructured_full_read(&request)
-        .expect("definition full read should succeed");
+        let expected = JsonAdapter
+            .unstructured_full_read(&request)
+            .expect("full read should succeed");
+        let definition = crate::json_adapter_definition();
+        let result = definition
+            .unstructured_full_read(&request)
+            .expect("definition full read should succeed");
 
-    assert_eq!(result, expected);
-    assert_eq!(result.content, expected_source);
-    assert_eq!(result.content_type, "application/json");
-    let full_cost = result
-        .facts
-        .cost
-        .expect("full read should return cost facts");
-    assert_selection_cost(&full_cost, expected_source);
+        assert_eq!(result, expected);
+        assert_eq!(result.content, expected_source);
+        assert_eq!(result.content_type, expected_content_type);
+        let full_cost = result
+            .facts
+            .cost
+            .expect("full read should return cost facts");
+        assert_selection_cost(&full_cost, expected_source);
 
-    let expected_measured = JsonAdapter
-        .measure_unstructured_full_read_cost(&request, &["tokens".to_owned(), "bytes".to_owned()])
-        .expect("full-read cost measurement should succeed");
-    let measured = definition
-        .measure_unstructured_full_read_cost(&request, &["tokens".to_owned(), "bytes".to_owned()])
-        .expect("definition full-read cost measurement should succeed");
-    assert_eq!(measured, expected_measured);
-    let mut expected_measurements = full_cost.measurements;
-    expected_measurements
-        .retain(|measurement| matches!(measurement.unit.as_str(), "bytes" | "tokens"));
-    assert_eq!(measured.measurements, expected_measurements);
+        let requested_units = ["tokens".to_owned(), "bytes".to_owned()];
+        let expected_measured = JsonAdapter
+            .measure_unstructured_full_read_cost(&request, &requested_units)
+            .expect("full-read cost measurement should succeed");
+        let measured = definition
+            .measure_unstructured_full_read_cost(&request, &requested_units)
+            .expect("definition full-read cost measurement should succeed");
+        assert_eq!(measured, expected_measured);
+        let mut expected_measurements = full_cost.measurements;
+        expected_measurements
+            .retain(|measurement| matches!(measurement.unit.as_str(), "bytes" | "tokens"));
+        assert_eq!(measured.measurements, expected_measurements);
+    }
 }
 
 fn outline_input(
@@ -771,6 +1215,13 @@ fn entry(ref_id: &str, label: &str, kind: &str) -> Entry {
         rank: None,
         cost: None,
         metadata: None,
+    }
+}
+
+fn entry_with_summary(ref_id: &str, label: &str, kind: &str, summary: &str) -> Entry {
+    Entry {
+        summary: Some(summary.to_owned()),
+        ..entry(ref_id, label, kind)
     }
 }
 

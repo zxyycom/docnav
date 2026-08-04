@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use docnav_protocol::{positive_result, Location};
 
 use crate::document::{JsonDocument, JsonNode, JsonValue, SourceRegion};
-use crate::reference::canonical_ref;
+use crate::reference::{canonical_ref, canonical_ref_for_view, RefView};
 
 const MAX_LABEL_CHARS: usize = 96;
 const MAX_CONTEXT_SCALARS_PER_SIDE: usize = MAX_LABEL_CHARS + 1;
@@ -26,29 +26,46 @@ pub(crate) struct FindEntry {
 
 impl JsonDocument {
     fn source_matches_iter<'a>(&'a self, query: &'a str) -> impl Iterator<Item = SourceMatch> + 'a {
+        let mut comment_lookup = CommentRefLookup::new(self);
         self.source
             .match_indices(query)
             .take_while(move |_| !query.is_empty())
-            .map(|(start, matched)| {
+            .map(move |(start, matched)| {
                 let occurrence = SourceRegion {
                     start,
                     end: start + matched.len(),
                 };
-                let mut path = Vec::new();
-                append_deepest_path(&self.root, occurrence, &mut path);
-                let tokens = path.iter().map(String::as_str).collect::<Vec<_>>();
-
-                SourceMatch {
-                    ref_id: canonical_ref(&tokens),
-                    start: occurrence.start,
-                    end: occurrence.end,
-                }
+                self.source_match(occurrence, &mut comment_lookup)
             })
     }
 
     #[cfg(test)]
     pub(crate) fn source_matches(&self, query: &str) -> Vec<SourceMatch> {
         self.source_matches_iter(query).collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn source_matches_with_lookup_steps(
+        &self,
+        query: &str,
+    ) -> (Vec<SourceMatch>, usize) {
+        let mut comment_lookup = CommentRefLookup::new(self);
+        let matches = self
+            .source
+            .match_indices(query)
+            .take_while(|_| !query.is_empty())
+            .map(|(start, matched)| {
+                self.source_match(
+                    SourceRegion {
+                        start,
+                        end: start + matched.len(),
+                    },
+                    &mut comment_lookup,
+                )
+            })
+            .collect();
+
+        (matches, comment_lookup.steps)
     }
 
     pub(crate) fn find_entries<'a>(
@@ -75,6 +92,142 @@ impl JsonDocument {
                 location: line_location(line),
             }
         })
+    }
+
+    fn source_match(
+        &self,
+        occurrence: SourceRegion,
+        comment_lookup: &mut CommentRefLookup,
+    ) -> SourceMatch {
+        let ref_id = comment_lookup
+            .ref_for(occurrence)
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| {
+                let mut path = Vec::new();
+                append_deepest_path(&self.root, occurrence, &mut path);
+                let tokens = path.iter().map(String::as_str).collect::<Vec<_>>();
+                canonical_ref(&tokens)
+            });
+
+        SourceMatch {
+            ref_id,
+            start: occurrence.start,
+            end: occurrence.end,
+        }
+    }
+
+    fn comment_find_refs(&self) -> Vec<CommentFindRef> {
+        let mut refs = (0..self.comments.len()).map(|_| None).collect::<Vec<_>>();
+        let mut path = Vec::new();
+        append_comment_find_refs(self, &self.root, &mut path, &mut refs);
+
+        refs.into_iter()
+            .map(|entry| entry.expect("every JSONC comment has exactly one navigation bundle"))
+            .collect()
+    }
+}
+
+struct CommentFindRef {
+    span: SourceRegion,
+    ref_id: String,
+}
+
+struct CommentRefLookup {
+    refs: Vec<CommentFindRef>,
+    cursor: usize,
+    #[cfg(test)]
+    steps: usize,
+}
+
+impl CommentRefLookup {
+    fn new(document: &JsonDocument) -> Self {
+        Self {
+            refs: document.comment_find_refs(),
+            cursor: 0,
+            #[cfg(test)]
+            steps: 0,
+        }
+    }
+
+    fn ref_for(&mut self, occurrence: SourceRegion) -> Option<&str> {
+        while self
+            .refs
+            .get(self.cursor)
+            .is_some_and(|entry| entry.span.end <= occurrence.start)
+        {
+            self.cursor += 1;
+            #[cfg(test)]
+            {
+                self.steps += 1;
+            }
+        }
+        #[cfg(test)]
+        {
+            self.steps += 1;
+        }
+        self.refs
+            .get(self.cursor)
+            .filter(|entry| covers(entry.span, occurrence))
+            .map(|entry| entry.ref_id.as_str())
+    }
+}
+
+fn append_comment_find_refs(
+    document: &JsonDocument,
+    node: &JsonNode,
+    path: &mut Vec<String>,
+    refs: &mut [Option<CommentFindRef>],
+) {
+    append_comment_bundle_refs(
+        document,
+        node.direct_comments.as_ref(),
+        RefView::DirectComments,
+        path,
+        refs,
+    );
+    match &node.value {
+        JsonValue::Object(members) => {
+            for member in members {
+                path.push(member.name.clone());
+                append_comment_find_refs(document, &member.value, path, refs);
+                path.pop();
+            }
+        }
+        JsonValue::Array(elements) => {
+            for (index, element) in elements.iter().enumerate() {
+                path.push(index.to_string());
+                append_comment_find_refs(document, element, path, refs);
+                path.pop();
+            }
+        }
+        JsonValue::String(_) | JsonValue::Number(_) | JsonValue::Boolean(_) | JsonValue::Null => {}
+    }
+    append_comment_bundle_refs(
+        document,
+        node.tail_comments.as_ref(),
+        RefView::TailComments,
+        path,
+        refs,
+    );
+}
+
+fn append_comment_bundle_refs(
+    document: &JsonDocument,
+    bundle: Option<&crate::document::CommentBundle>,
+    view: RefView,
+    path: &[String],
+    refs: &mut [Option<CommentFindRef>],
+) {
+    let Some(bundle) = bundle else {
+        return;
+    };
+    let tokens = path.iter().map(String::as_str).collect::<Vec<_>>();
+    let ref_id = canonical_ref_for_view(view, &tokens);
+    for &index in bundle.indices() {
+        refs[index] = Some(CommentFindRef {
+            span: document.comments[index].span,
+            ref_id: ref_id.clone(),
+        });
     }
 }
 

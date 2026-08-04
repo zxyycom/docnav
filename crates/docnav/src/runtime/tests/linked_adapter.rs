@@ -61,7 +61,17 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_select
     fs::create_dir_all(&docs_dir).unwrap();
     fs::write(
         docs_dir.join("settings.json"),
-        "{\"first\":1,\"second\":2}\n",
+        "{\"first\":1,\"second\":2,}\n",
+    )
+    .unwrap();
+    fs::write(
+        docs_dir.join("settings.jsonc"),
+        "{\"first\":1,/* shared grammar */\"second\":2}\n",
+    )
+    .unwrap();
+    fs::write(
+        docs_dir.join("settings.md"),
+        "{\"first\":1,\"second\":2,}\n",
     )
     .unwrap();
     fs::write(docs_dir.join("fallback.md"), "# Markdown fallback\n").unwrap();
@@ -84,9 +94,27 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_select
     assert_eq!(automatic["result"]["entries"][0]["kind"], "number");
     assert_eq!(automatic["result"]["page"], Value::Null);
 
+    let automatic_jsonc = AdapterRuntime
+        .execute_document(DocumentRequest::from_config_context(
+            json_outline_command("docs/settings.jsonc", None, 1, 80),
+            context.clone(),
+        ))
+        .expect("automatic .jsonc discovery should select the linked JSON adapter");
+    let automatic_jsonc = write_protocol_json(automatic_jsonc);
+
+    assert_eq!(automatic_jsonc["ok"], true);
+    assert_eq!(
+        automatic_jsonc["result"]["entries"][0]["ref"],
+        "json:comments:#/first"
+    );
+    assert_eq!(
+        automatic_jsonc["result"]["entries"][1]["ref"],
+        "json:#/second"
+    );
+
     let declared = AdapterRuntime
         .execute_document(DocumentRequest::from_config_context(
-            json_read_command("docs/settings.json", "json:#/second", Some("docnav-json")),
+            json_read_command("docs/settings.md", "json:#/second", Some("docnav-json")),
             context.clone(),
         ))
         .expect("declared selection should dispatch the linked JSON read strategy");

@@ -1,5 +1,5 @@
 use super::*;
-use crate::document::load;
+use crate::document::{load, wide_comment_per_item_source, WIDE_COMMENT_ITEM_COUNT};
 
 const MIXED_TREE_FIXTURE: &str = include_str!("../../tests/fixtures/mixed-tree.json");
 
@@ -55,9 +55,10 @@ fn structured_selected_values_use_pinned_scalar_escaping_without_trailing_newlin
     .expect("escaping fixture should load");
 
     let picked = document
-        .resolve_ref("json:#/picked")
+        .resolve_selection("json:#/picked")
         .expect("nested object ref should resolve");
-    let picked_facts = structured_value_facts(picked).expect("nested parsed node should serialize");
+    let picked_facts = structured_value_facts(picked.frames[0].value)
+        .expect("nested parsed node should serialize");
     assert_eq!(
         picked_facts.content,
         r#"{
@@ -67,10 +68,10 @@ fn structured_selected_values_use_pinned_scalar_escaping_without_trailing_newlin
     );
 
     let escaped = document
-        .resolve_ref("json:#/picked/escaped")
+        .resolve_selection("json:#/picked/escaped")
         .expect("nested scalar ref should resolve");
-    let escaped_facts =
-        structured_value_facts(escaped).expect("scalar parsed node should serialize");
+    let escaped_facts = structured_value_facts(escaped.frames[0].value)
+        .expect("scalar parsed node should serialize");
     assert_eq!(
         escaped_facts.content,
         r#""quote\" slash/ line\n nul\u0000""#
@@ -91,6 +92,26 @@ fn full_read_strips_one_bom_only_and_measures_the_actual_source() {
     assert_eq!(facts.content, " \r\n{\"text\":\"\\u96ea\"}\n\t");
     assert_eq!(facts.content, document.source);
     assert_selection_cost(&facts.cost, &facts.content);
+}
+
+#[test]
+fn comment_projection_visits_only_the_selected_bundle_on_a_wide_comment_corpus() {
+    let source = wide_comment_per_item_source();
+    let document = load(source.as_bytes()).expect("wide comment corpus should load");
+    let selection = document
+        .resolve_selection("json:comments:#/1023")
+        .expect("last direct-comment ref should resolve");
+
+    document.reset_comment_bundle_steps();
+    let facts =
+        selection_facts(&document, &selection).expect("comment projection should serialize");
+
+    assert_eq!(document.comments.len(), WIDE_COMMENT_ITEM_COUNT);
+    assert_eq!(facts.content, "/* item-1023 */\n1023");
+    assert!(
+        document.comment_bundle_steps() <= 2,
+        "read may size and copy the selected bundle, but must not scan every comment"
+    );
 }
 
 fn assert_selection_cost(cost: &Cost, content: &str) {

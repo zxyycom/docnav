@@ -1,257 +1,227 @@
 # JSON Adapter
 
-本文是 `docnav-json` 当前导航行为和私有契约的长期 owner。Pathname routing hints、
-fixed-strategy probe deletion、`DOCUMENT_CONTENT_INVALID` migration、raw adapter
-operations、core static integration 与 generic readable path 均已有 Current 证据；
-格式专用 readable renderer 仍按下文边界保持 Planned。本文中的 `MUST` 按
-[文档导航的状态语义](../navigation.md#规范状态与实现状态)表达稳定契约。
-
-共享 adapter interface、protocol result shape、ref 传递和输出编排分别由
+本文是 `docnav-json` 的长期 JSON adapter owner。共享 adapter interface、protocol
+result shape、opaque ref 的原样传递和输出编排分别由
 [适配器契约](../adapter-contract.md)、[原始协议](../protocol.md)、
-[Ref](../ref-contract.md)和[输出模式](../output.md)拥有。本文只拥有 JSON 的
-识别、解析模型、ref grammar、导航语义和 JSON-owned 错误边界。
+[Ref](../ref-contract.md) 和[输出模式](../output.md)拥有；本文只拥有 JSON 的
+格式识别、grammar、私有 source model、ref grammar、导航、JSON-owned diagnostics
+和验证边界。
 
-## 交付与公共边界
+## Current 基线与 Target 状态
 
-当前 adapter identity 为：
+**Current：** 已有二进制证明 `docnav-json` 以 `json` identity 处理 strict JSON：
+`.json` 与 `.code-workspace` suffix、`.prettierrc` 与 `.watchmanconfig` filename hints、
+`application/json` source type、单一 `json:#<fragment>` ref、strict JSON parsing、
+确定性 outline/read/find/info/full-read 以及本页既有 stable diagnostics。Pathname hint
+只选择 adapter，不证明内容有效；selected failure 不会重新路由或 fallback。
 
-| Fact | Value |
-| --- | --- |
-| adapter id | `docnav-json` |
-| format id | `json` |
-| `extensions[]` routing suffixes | `.json`、`.code-workspace`，按共享契约做 ASCII 大小写归一化 |
-| `filenames[]` exact routing hints | `.prettierrc`、`.watchmanconfig`，大小写敏感 exact basename |
-| content type | `application/json` |
+**Target — `add-jsonc-comment-aware-navigation`：** 下列 `MUST` 定义该 change 完成后
+的 JSONC comment-aware 契约，不是当前实现声明。它以同一个 `docnav-json` /
+`json` identity 扩展 closed grammar、source facts 和 JSON-owned navigation；不新增
+shared operation、input、output mode、schema source 或 shared result field。实现和
+验证证据完成前，Current 基线保持上述 strict JSON 行为。
 
-Adapter id、format id、content type 和 pathname hint rows 均为 Current metadata。
+## Target：交付与公共边界
 
-`docnav-json` MUST 作为 core static registry 中的 linked adapter，通过 package
-内同一个 `docnav` executable 交付。Current fixed strategy surface 提供 `outline`、
-`read`、`find` 和 `info`，并声明既有 unstructured full-read content/cost capability；
-pathname hint rows 和 probe deletion 服从上方 Current 状态。
-它的 executable set 精确为 package core `docnav` 这个单元素集合。
+Target descriptor 仍作为 core static registry 中的 linked adapter，由 package 内同一个
+`docnav` executable 交付，executable set 精确为该单元素集合。它的 `extensions[]`
+MUST 精确为 `.json`、`.code-workspace`、`.jsonc`，`filenames[]` MUST 精确为
+`.prettierrc`、`.watchmanconfig`，`content_types[]` MUST 精确为 `application/json`、
+`application/jsonc`；不得声明其它 JSON-family pathname hint、adapter identity 或 format
+identity。format id 始终为 `json`。
 
-JSON strategy MUST 只消费各 operation 的 closed standard input。注册 JSON 不得
-增加 core parameter、`StandardInputBinding`、CLI、env、config 或 protocol
-input，也不得把 JSON 私有上限提升为公共选项。首期支持一个 UTF-8 JSON value；
-JSON-like syntax、schema-aware semantics 和 arithmetic number semantics 不在本
-契约内。
+Target fixed strategy 继续只提供 outline、read、find 和 info（以及既有 unstructured
+full-read content/cost capability），不引入 routing probe。每个 operation 只消费其 closed
+standard input；matched pathname、suffix、source content type 和 format identity 都不进入
+strategy input。JSONC 不得增加 core parameter、`StandardInputBinding`、CLI、env、config
+或 protocol input，且 adapter-private 安全上限仍由单一硬编码配置源拥有。
 
-## Pathname routing 与私有解析模型
+所有由 pathname hint 或 explicit adapter intent 选中的 JSON documents MUST 使用同一套
+JSONC-capable grammar；pathname 和 descriptor content type 不选择 strict/JSONC dialect。
+共享 ref owner 继续把任何 non-empty ref 当 opaque string 原样传给 selected adapter。
 
-**Current routing contract：** JSON manifest 的上述 suffix/exact-filename hints 只用于
-navigation-private complete-basename lookup。Routing 在 target-document I/O 前选择
-linked `docnav-json` definition，不读取内容、不构造 JSON model，也不把 matched
-filename/suffix 或 format identity 传给 strategy。固定 JSON strategy 不保留 selection
-probe、probe result/reason/version 或兼容 inspection surface。完整 lookup、explicit
-override 和 no-fallback 规则由[适配器契约](../adapter-contract.md#adapter-选择)与
-[Navigation Input Resolution](../navigation-input-resolution.md#adapter-selection-and-path-sequencing)
-拥有。
+## Target：grammar 与私有 source model
 
-Pathname hint 不是 JSON validity proof。每次 selected operation MUST 从 normalized
-document path 获取实际 document view，并按当前 strict JSON grammar：
+每次 selected operation MUST 从实际 document view 移除至多一个开头 UTF-8 BOM、解码
+UTF-8，并恰好解析一个 root value；其后只能是 grammar trivia。root depth 为 `0`，最大
+深度为 `127`，同一 object 的 decoded member name 必须唯一。strict JSON value、string
+和 number grammar 保持不变；number 保留 strict-JSON source token，object 保持 source
+member order，array 保持 index order。
 
-1. 去除至多一个开头 UTF-8 BOM，并执行 UTF-8 decode。
-2. 完整解析一个 JSON value，只允许其后存在 whitespace。
-3. 以 root depth `0` 计算深度，并要求最大 depth 不超过 `127`。
-4. 按解码后的 member name 检查每个 object；同一 object 内的 name 必须唯一。
+在 string 外，comments 只允许出现 strict JSON 原先允许 whitespace 的位置。Grammar
+trivia 只包括 strict-JSON SP/HTAB/LF/CR、`//` line comment 或 `/* ... */` block comment：
+line comment 在 LF、CRLF、lone CR 或 EOF 前结束；block comment 在第一个 `*/` 结束且
+不嵌套。非空 object/array 的 member/element 后最多可有一个 trailing comma。`{,}`、
+`[,]`、缺失或 doubled comma 仍无效；single quote、unquoted name、hex/leading-plus
+number、`NaN`、infinity、JSON5 extension、multiple roots 与其它更宽 JSON-family syntax
+均必须拒绝。
 
-`.prettierrc` 可以包含 strict JSON 之外的 YAML，`.code-workspace` 可以包含 JSON
-comments；在独立 JSONC grammar change 落地前，这两个 pathname alias 都只是
-best-effort hint。内容超出当前 strict JSON grammar 时，selected JSON strategy 返回
-正常 JSON-owned parse diagnostic，navigation 不重新 route 或尝试其它 adapter。本
-pathname-routing contract 不实现 JSONC grammar。
+Comments、trailing commas 与 trivia 不形成 logical JSON node、logical child entry、pointer
+token 或 JSON value kind。一个 primary ordered source-aware logical tree MUST 同时服务
+traversal、ref resolution、read、info 和 source-occurrence mapping；它保存 BOM-stripped
+source、original byte size、logical tree/kind/depth/node count、member/element/value regions、
+raw number tokens、source order 和所需索引。ordered comment spans、direct bundles 和 tail
+bundles可补充此树；不得创建第二棵完整 logical tree，parser/CST types、attachment heuristic
+及其 messages 均保持私有。
 
-`127` 由 adapter-private 单一硬编码配置源拥有，不形成公共 input。一次 selected
-operation 只解析一次，并建立一个 primary document model。该 model MUST 同时保存：
+## Target：JSON ref grammar 与三种 view
 
-- 去除可选 BOM 后的原文和原文件 byte size；
-- JSON tree、node kind、depth 和 node count；
-- object member 的 decoded name、源码顺序与 member/node source region；
-- array element 的 index 顺序与 node source region；
-- 每个 number 的原始 source token；
-- ref resolution、tree preorder 和 source occurrence mapping 所需的索引。
-
-Object MUST 以唯一的有序 member sequence 保存；array 保持 index 顺序。同一
-primary tree 服务 traversal、ref resolution、structured read 和 source indexing，
-不得为源码顺序建立第二份全量 tree。Workspace-pinned parser/serializer 是唯一
-JSON parser package；升级它时必须复核本文拥有的可观察 spelling、顺序和 region
-行为。
-
-## JSON Ref Grammar
-
-JSON ref 是非空、ASCII-safe 的 RFC 6901 URI fragment identifier
-representation：
+JSON adapter MUST 生成和解析三个非空 ASCII-safe ref view：
 
 ```text
 json:#<fragment>
+json:comments:#<fragment>
+json:tail-comments:#<fragment>
 ```
 
-Root ref 固定为 `json:#`。每个 path token 先把 `~` 和 `/` canonical escape 为
-`~0` 和 `~1`，再把 URI fragment 不允许的 UTF-8 bytes percent-encode；percent
-escape 的十六进制字母必须大写。生成的 ref 不得包含原始 NUL 或其它控制字符。
+三种 ref 使用同一个 RFC 6901 URI-fragment pointer 并锚定同一 logical JSON path。base
+view 选择 logical value；`comments:` 选择该 navigation binding 的 direct-comment bundle；
+`tail-comments:` 选择以该 logical value 为 anchor 的 tail-comment bundle。它们不是
+logical node、pointer token、format identity 或按 source offset 持久化的 comment identity。
+root refs 分别为 `json:#`、`json:comments:#`、`json:tail-comments:#`。
 
-- 空 object key 使用 `json:#/`。
-- Object token 按 decoded member name 解释，包括纯数字 member name。
-- Array token 只能是 `0` 或不带前导零的十进制 index；`-` 不是可读节点。
-- 同一个 token（例如 `01`）在 object 上可以是 member name，在 array 上则非法。
+Object token MUST 先把 `~`/`/` 转为 `~0`/`~1`，再以 UTF-8 和大写 hexadecimal percent
+escape 编码 URI fragment 禁止的 byte，且生成 ref 不含 raw NUL/control character。空 key
+三种 refs 分别为 `json:#/`、`json:comments:#/`、`json:tail-comments:#/`。Object token 按
+decoded member name 解释；array token 只能是 `0` 或无 leading zero 的 decimal index，`-`
+不可读取。同一 token 在 object 可为 member name，在 array 则按 index grammar 检查。
 
-以下情况返回 `REF_INVALID`：
+Outline 对拥有至少一个 direct comment 的 root/member/index 生成 direct-comment ref；对
+每个 non-empty tail bundle 生成 tail-comment ref；base ref 始终继续可读。prefix 缺失或未知、
+non-root fragment 无 `/`、percent/`~` escape 非法或非 canonical、array token 非 canonical
+时 MUST 返回 `REF_INVALID`。anchor path canonical 但不存在，或 path 存在但所选 direct/tail
+bundle 不存在时 MUST 返回 `REF_NOT_FOUND`。文档变更后 ref 不承诺跨版本身份：base path
+可指向新 value，stale comment-view ref 可返回 `REF_NOT_FOUND`。
 
-- 缺少 `json:#` prefix；
-- non-root fragment 缺少前导 `/`；
-- percent escape 或 `~` escape 非法或不是 canonical spelling；
-- 当前 path context 是 array，但 token 不是 canonical array index。
+## Target：comment attribution
 
-Grammar canonical、但当前 document model 中不存在的 object member 或 array
-index 返回 `REF_NOT_FOUND`。有效 JSON 已拒绝重复 decoded member，因此一个
-canonical ref 在同一次解析结果中至多定位一个 value。文档变化后，相同结构路径
-可以指向新 value 或返回 `REF_NOT_FOUND`；ref 不承诺跨文档版本的持久身份。
+Closed grammar 成功后，每个 source comment MUST 恰好归于 logical root、一个 object
+member、一个 array element 或一个 `Tail(tail_anchor)` slot。root、member、element 以 root
+selector、decoded key、canonical index 作为 direct navigation binding；nested container 的
+tail anchor 为其 canonical path，complete root 后 document tail 的 anchor 为 root path
+（包括 root scalar）。每个 canonical tail anchor 最多一个 tail slot；root container closing
+前的 internal tail 与 document tail 合并到同一 source-ordered root bundle。lexical line 在
+LF、CRLF、lone CR 或 EOF 结束；此规则不改变 Current LF-counted `find.location`。
 
-## Outline
+Attribution MUST 按 source token、region 和 lexical-line placement 而非 parser 的
+previous/next attachment 决定：
 
-JSON outline MUST 先形成确定性 flat entries，再使用既有 entry pagination：
+1. Root value 前的 comments 归 root direct；root complete token 或 container closing token
+   后、从同一 lexical line 开始的 comments 也归 root direct。独立后续 line 开始的
+   document-tail comment 归 `Tail(root)`。
+2. 其它 comment 先在最深 enclosing object/array context 中判断，nested value 的 comment
+   不得归 ancestor binding。
+3. Object member name 后至 value 前的 header trivia，以及 complete member value 后至
+   separator comma 前的 suffix trivia，归当前 member。opening token/previous comma 后至
+   next member name 前的 comment 归 next member；若有 previous member 且 comment 与其
+   value 或 comma 同行，则归 previous member。last member（或 optional trailing comma）
+   后至 closing token 前的 comment：同行归 last member，独立后续 line 归该 object tail。
+4. Array 以相同规则处理 index：element 后至 comma 前归当前 index；opening/previous comma
+   后至 next element 前归 next index，除非与 previous element/value comma 同行；last element
+   或 trailing comma 后至 closing token 前，同行归 last index，否则归该 array tail。
+5. Empty object/array 内 container-only comments 归 container value 自身的 direct binding：
+   nested container 用 parent key/index，root empty container 用 root selector；它们不创建
+   tail slot。complete empty root 后的 document tail 仍归 `Tail(root)`。
 
-- Object member 和 array element 按 depth-first preorder 遍历。
-- Object member 保持源码顺序；array element 按 index 升序。
-- 每个 descendant entry 的 `ref` 是完整 JSON ref，`kind` 是
-  `object|array|string|number|boolean|null`。
-- Object child 的 `label` 是 decoded member name；空 key 的正常 label 是两个双引号字符 `""`，其 ref 仍是 `json:#/`。
-- Array child 的 `label` 是 `[<index>]`。
+每个 navigation binding 与 tail anchor 各自最多一个 optional bundle。`None` 仅表示无
+comments；`Some` 含至少一个 source-ordered comment index 和每 token 精确的 BOM-stripped
+half-open UTF-8 byte span。span 不要求连续，root merged tail 仍按 offset 排序；一条 comment
+不得进入多个 direct/tail bundles。line token 包含 `//` body 不含 terminator；block token
+包含 `/*` 至第一个 `*/`。Outline summary 仅在派生时移除 delimiters、把每 body 的 Unicode
+whitespace run collapse 成单个 ASCII space、trim、丢弃空 body，以 `; ` join；不得含 CR/LF。
+空 summary 不删除 bundle 或 comment view，只省略 `Entry.summary`，且 bundle 不缓存第二份
+完整 normalized comment text。
 
-Root object 或 array 本身不形成 entry，其 entries 只包含 descendants；因此空
-`{}` 或 `[]` 返回空 entries 和 `page: null`。Root scalar 返回唯一 entry：
-`ref: "json:#"`、`label: "<root>"`，kind 对应 scalar 类型。
+## Target：outline
 
-首期 JSON outline 只使用既有 common item fields，不增加 JSON-specific raw
-field；source `location` 和 JSON-specific `metadata` 均不返回。任何 entry 的
-ref MUST 能原样传给 `read`。
+Outline MUST 对 expanded navigation tree 做 depth-first preorder。logical object member 与
+array element 形成 ordinary entry：完整 ref、非空 label、`object|array|string|number|boolean|null`
+kind；object member 依 source order，array 依 index order。empty object key 的 label 为 `""`，
+array label 为 `[<index>]`。任何 non-empty tail bundle 则在 anchor subtree 的所有 logical
+descendants 后形成一个 virtual child entry：`label: "<tail comments>"`、`kind: "tail_comments"`
+及 canonical tail ref。它不进入 logical tree、node count 或 pointer grammar；root tail entry
+在所有 root entries 后。
 
-## Read
+拥有 direct bundle 的 logical root/member/index entry MUST 使用 direct-comment ref；其它
+logical entry 用 base ref。non-empty derived summary 通过现有 optional `summary` field 返回。
+不返回 source `location`、JSON-specific `metadata` 或其它 JSON raw field。tail virtual entry
+精确只含 `{ref, label, kind}` 和 optional `summary`，省略 `location`、`metadata`、`excerpt`、
+`rank`、entry-level `cost`。
 
-JSON read MUST 解析 JSON-owned ref，并把目标 value 序列化为确定性的 structured
-JSON：
+Root object/array 仅在有 root direct bundle 时，才在 descendants 前增加唯一 `<root>` logical
+entry；无 root direct bundle 时继续没有 root-container entry。无 root direct bundle 但有 root
+tail bundle 时只增加 tail virtual entry。无 direct、descendant、tail 的 empty object/array
+返回 empty entries、null page。Root scalar 始终有 `<root>` entry，按 direct bundle 存在与否
+使用 direct-comment/base ref，随后（若存在）返回 root tail entry。
 
-- object member 保持源码顺序；
-- container 使用两空格缩进的 pretty layout；
-- number 使用原始 source token；
-- string escape、其它 scalar spelling 和尾随换行使用 workspace-pinned
-  parser/serializer 的自然结果。
+既有 limit/page 契约保持 preorder 和 forward progress：完整 ref 必须保留，预算不足先在
+Unicode scalar boundary 截断（以 `...` 标识）或省略 optional summary，随后才用既有 label
+截断；无法保留正常 label 内容时为 `.`，但不得替代 empty-key 正常 label `""`。所有 ref
+都能原样传给 `read`。
 
-Raw `ReadResult` MUST 保留输入 ref，使用 `application/json`，并对分页前的完整
-structured text 计算 cost。`content` 按既有 Unicode-safe text pagination 返回，
-不得切断多字节字符；`page` 指向下一页，结束时为 null。
+## Target：read 与 find
 
-## Find
+Read MUST 由 ref 的 selected view 返回确定性 content，并保留输入 ref、对分页前完整 content
+计算 cost、按既有 Unicode-safe text pagination 返回 content/page。base view 把 selected logical
+value 序列化为 strict JSON：object source order、two-space container layout、raw strict number
+token，以及 pinned serializer 的 string/scalar spelling/terminal newline；不包含 comments 或
+trailing commas，content type 为 `application/json`。
 
-JSON find 的 query 长度必须至少为 `1`；空 query 必须拒绝。Find MUST 在去除一个
-可选开头 UTF-8 BOM 后的原文中执行大小写敏感、从左到右、非重叠的 literal
-search。Canonical pointer 和 structured-read serialization 不属于搜索语料。
+Direct-comment view 仅按 source order 输出 selected navigation binding 的完整 raw comment
+tokens；tail view 仅输出 selected tail slot 的 tokens；两者随后输出同一 strict-JSON
+serialization。每个 token 后插入 LF `0x0A`，line token 本身不含 terminator。两种 projection
+均为完整 valid JSONC document，不能混入 ancestor/descendant/sibling 或其它 direct/tail
+comments，也不恢复 source trailing comma；content type 为 `application/jsonc`。Generic
+`readable-view` 仅从同一 raw result 派生既有 header 与 `/content` block，不重读 document、
+解析 ref 或重建 comments。
 
-Source region 按以下规则把每个 occurrence 归属到可读取 value：
+Find query 长度至少为 1；它在 BOM-stripped original source 上做 case-sensitive、left-to-right、
+non-overlapping literal search，包括 comments、trailing commas、original string/number spelling。
+Canonical ref 与 read serialization 不扩充语料。完全位于 direct-comment span 的 occurrence
+返回 direct-comment ref；完全位于 tail span 的 occurrence 返回 tail ref。其它 occurrence
+（包括 member name/value、ordinary whitespace、trailing comma、string marker，或跨 comment
+boundary/region）按 deepest-covering source region 返回 base ref；跨 child regions 归最近
+covering container。每个 occurrence 形成一个按 source offset 排序的 `kind: "match"` entry，
+带完整 ref、source-derived non-empty bounded excerpt label、source line location；同 ref 的
+occurrences 不合并，entry pagination 保持 order/forward progress。label construction 的
+state/context scan work 受 label budget 约束，不随 line 或连续 whitespace 长度增长。
 
-- root region 覆盖完整 BOM-stripped source；
-- object child region 从 member name token 开始并覆盖其 value；
-- array child region 覆盖其 value；
-- occurrence 归属完整覆盖其范围的最深 region；
-- child region 外的 container 结构或空白归属最近 container，root value 外围
-  whitespace 归属 root；
-- 跨越多个 child region 的 occurrence 归属同时覆盖它们的最近 container。
+## Target：info、full-read、安全与 diagnostics
 
-每个 source occurrence MUST 形成一个 match，并按 source offset 排序；多个
-occurrence 即使映射到同一 ref 也不得合并。Raw match 使用完整 ref、
-`kind: "match"`、从原文派生的非空 bounded excerpt `label` 和 source line
-location。返回的 ref MUST 能原样传给 `read`。
+Info MUST 返回 source-derived content type、UTF-8、含 optional BOM 的 original byte size、
+adapter id `docnav-json`、format id `json`，以及精确 `{root_kind, node_count, max_depth}`
+metadata（root included，root depth 0）。source 实际含 accepted comment 或 trailing comma
+则 content type 为 `application/jsonc`；否则为 `application/json`；string 内 `//` / `/* */`
+markers 不触发 JSONC type。
 
-作为 adapter-private operational invariant，每个 match 的 label construction
-所保留的 character state 和 context scan work MUST 由 label budget 约束；
-context scan 不得随 source line 或 occurrence 周围连续空白的长度增长。具体
-buffer 数量和 scan threshold 是实现与测试证据，不属于 public contract。
+Unstructured full-read MUST 返回 BOM-stripped original source，不删除 comments、trailing
+commas、whitespace、escapes 或 number spelling；使用与 info 相同 source-derived content type
+和实际 returned source 的 lines/bytes/tokens cost。它只补充既有 unstructured full-read
+content/cost facts，不增加 entries/ref/page/continuation/readable-only wrapper。
 
-## Info 与 Full-read
+JSON-owned failures MUST 保持 stable mapping：missing/path-access failures 用既有
+`DOCUMENT_NOT_FOUND` / `DOCUMENT_PATH_INVALID`；invalid UTF-8 用
+`DOCUMENT_ENCODING_UNSUPPORTED`；malformed JSON/JSONC、unterminated comment 或 rejected
+leniency 用 `DOCUMENT_CONTENT_INVALID / JSON_SYNTAX_INVALID`；complete root 后 non-trivia 或
+second root 用 `DOCUMENT_CONTENT_INVALID / JSON_TRAILING_INPUT`；duplicate decoded name 与
+depth overflow 分别为 `JSON_DUPLICATE_MEMBER`、`JSON_MAXIMUM_DEPTH_EXCEEDED`；malformed
+view/pointer 为 `REF_INVALID`，canonical but missing anchor/bundle 为 `REF_NOT_FOUND`。
+`DOCUMENT_CONTENT_INVALID.details` 仅有 normalized `path` 与 stable `reason`；parser
+message/type、unstable offset、duplicate name、dependency trace 和 recovery state 私有。selected
+failure 不 retry parser mode、routing 或 adapter；operation 以实际打开的 document view 诊断，
+不发出已移除的 `json-document-changed-after-probe`。
 
-JSON info MUST 返回：
+## Target：验证边界
 
-- document content type `application/json` 和 encoding `UTF-8`；
-- 包含可选 BOM 的原文件 byte size；
-- adapter id `docnav-json` 和 format id `json`；
-- key set 精确为 `{root_kind, node_count, max_depth}` 的 JSON metadata。
+Owner、adapter tests、Case ledger、coverage mapping、core CLI smoke 与 release package smoke
+MUST 分层证明 strict/no-comment behavior不回归；closed JSONC grammar、deterministic
+attribution、root/member/index 与 empty-container binding、tail anchor/virtual entry、base/direct/
+tail refs/views、comment find-to-read、info/full-read source facts、manifest、source offsets/raw
+numbers/duplicates/depth、stable diagnostics、Unicode pagination/cost、generic readable output、
+automatic/explicit selection、opaque pass-through、no fallback 与同一 release binary linked
+behavior。Large/deep/comment-heavy inputs 还必须证明 comment indexes、summary、attribution,
+find 与 drop 的 work/memory bounded，且不对每个 entry/occurrence 全量扫描 comment set。
 
-`root_kind` 使用 `object|array|string|number|boolean|null`；`node_count` 包含
-root；`max_depth` 以 root 为 `0`。
-
-Unstructured full-read MUST 返回去除一个可选 UTF-8 BOM 后、其它内容保持原样的
-JSON source text 和 `application/json`。Cost 的 `lines`、`bytes`、`tokens`
-measurement 针对实际返回 text。该 capability 只补充既有 unstructured full-read
-content/cost facts，不返回 entries、ref、page、continuation 或 readable-only
-wrapper。
-
-## Pagination、Cost 与截断
-
-JSON 不定义新的 pagination 或 cost shape。Outline/find 使用既有 entry
-pagination，read 使用既有 Unicode-safe text pagination；响应 `page` 是下一页
-页码，结果耗尽或请求超过末页时为 null。
-
-Entry pagination 截断 display facts 时 MUST 保持 occurrence/traversal order，
-始终保留完整 ref 和最小非空 label，并保证分页前进。分页预算截断后没有可见的
-正常 label 内容可保留时，使用 `.` 作为最小非空 fallback；该 fallback 不替代空
-key 的正常 label `""`。Read cost 描述分页前的完整 selected value；full-read
-cost 描述实际返回 source text。结构化 measurement 和 page shape
-继续由[原始协议](../protocol.md)拥有。
-
-Find pagination 的 retained entry working set MUST 随请求的 page limit 保持
-有界，continuation 判定只增加有界状态；不得为分页预先保留完整 occurrence set。
-具体 iterator 和 lookahead mechanics 是 adapter-private 实现证据。
-
-## 错误边界
-
-**Current error contract：** 下表的 selected JSON content reasons 与 post-selection
-document-change 处理已随 no-probe cutover 生效。JSON internal parser mapping 不由本
-routing contract 重述。
-
-JSON-owned failure 按以下边界映射：
-
-| 条件 | 结果 |
-| --- | --- |
-| Selected document 缺失、path/access 无效 | 既有 `DOCUMENT_NOT_FOUND` / `DOCUMENT_PATH_INVALID` diagnostic |
-| Selected document 不是有效 UTF-8 | `DOCUMENT_ENCODING_UNSUPPORTED` |
-| JSON syntax 无效 | `DOCUMENT_CONTENT_INVALID`，reason `JSON_SYNTAX_INVALID` |
-| 完整 value 后存在 non-whitespace trailing input | `DOCUMENT_CONTENT_INVALID`，reason `JSON_TRAILING_INPUT` |
-| 同一 object 存在重复 decoded member name | `DOCUMENT_CONTENT_INVALID`，reason `JSON_DUPLICATE_MEMBER` |
-| 最大 depth 超过 `127` | `DOCUMENT_CONTENT_INVALID`，reason `JSON_MAXIMUM_DEPTH_EXCEEDED` |
-| JSON ref grammar 或 context-sensitive array token 非法 | `REF_INVALID` |
-| Canonical ref 在当前 document model 中不存在 | `REF_NOT_FOUND` |
-| Pathname selection 后、selected operation 读取前文档发生变化 | 按 operation 实际打开的 document view 返回上述正常 document/JSON diagnostic；不使用独立 mutation stage id |
-
-`DOCUMENT_CONTENT_INVALID.details` 只包含 normalized `path` 与上表 stable `reason`。
-Parser library type/message、unstable offset、duplicate member name 和 dependency trace
-保持私有。错误 envelope、共享 diagnostic code 和 details shape 由
-[原始协议](../protocol.md)拥有。Selected failure 不触发 pathname routing 或第二个
-adapter。
-
-## Raw 与 Readable 输出边界
-
-JSON strategy 只返回本文规定的 raw result facts。`protocol-json` 序列化包含这些
-facts 的同一个 `ProtocolResponse`；generic `readable-view` 从它派生 outline/find
-display、read header、cost summary 和 length-delimited content block。Raw
-protocol 不包含 `display` 或 readable framing。
-
-当前实现使用现有 generic renderer 走通 outline、read、find、info 和
-full-read，不包含 JSON renderer、renderer 选择输入或公共输出 shape。JSON-specific
-信息密度、完整 opaque ref 的路径定位信号、标点、preview 和分页 presentation
-由后续独立 change 规划；该 renderer 不解析 ref，也不合成 hierarchy、depth、
-parent 或 indentation。这些都不是本页的 Current 行为。
-
-## 验证边界
-
-实现证据 MUST 覆盖 manifest pathname hints、selected-operation parse、decoded
-duplicate key、depth 上限、source order、raw number、source-region mapping、ref
-roundtrip 和错误分类；operation 证据 MUST 覆盖 outline/read/find/info/full-read、
-空容器、root scalar、Unicode pagination、cost 和 generic readable view。
-Core/CLI/release 证据另外覆盖 automatic/explicit selection、route-before-document-I/O、
-closed public input、selected failure no-fallback、static registry，以及同一个 release
-binary 中的 Markdown 与 JSON 行为。
-
-测试层级和 release 验证边界见[测试策略](../testing.md)和
-[发布包验证](../testing/release.md)。格式专用 readable renderer 的实现证据不在
-本页已建立的 Current 基线内。
+Shared protocol envelope、`Entry`、`ReadResult`、generic `readable-view`、pagination/cost shape
+仍由 shared owners 拥有；本 adapter owner 不重新定义它们。格式专用 readable renderer 仍为
+独立的 Planned change，不是本 Target 契约。

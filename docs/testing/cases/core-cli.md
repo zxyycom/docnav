@@ -28,9 +28,11 @@ Owner: `docs/navigation-input-resolution.md#unique-ref-auto-read-composition`
 
 Entities:
 - `smoke|core:auto-read|CORE-AUTO-READ-001`
+- `smoke|core:real-json|CORE-JSON-NAV-001`
 
 Proves:
 - 真实 `find` CLI 在所有 auto-read 来源省略且当前返回结果只有一个 distinct ref 时，默认以 `unique-ref` 追加 nested read，并在 `protocol-json` 中保留 ref、content type 和 nested content。
+- JSONC direct/tail comment find 各返回一个 opaque distinct ref 时复用同一 composition；`protocol-json` nested read 保留 ref、`application/jsonc`、cost、terminal page 和 selected content，`readable-view` 通过 `/auto_read/read/content` block 还原 nested content。
 - CLI 或 project config 解析为 `disabled` 时，真实进程以退出码 `0` 返回原 base find；代表性 readable/protocol 分支均不出现 `auto_read`，readable base projection 也不产生 block。
 
 ## Case BB-CORE-CONFIG-001: Config inspect source status 与参数事实可观察
@@ -167,7 +169,7 @@ Proves:
 - CLI 显式选择或 project config 选择 `protocol-json` 时，navigation response 产生前的 document failure 仍输出完整 failure envelope，不回退到 `readable-view`；project-selected 分支同时覆盖低优先级 user config 加载失败。
 - CLI 显式使用已删除的 `readable-json` 时走普通 invalid-value boundary，不产生 alias、fallback 或 document output。
 - 由 path rule 选中的 unstructured outline 在 `readable-view` 中作为 content block、在 `protocol-json` 中作为 raw result 可观察，并且不虚构 entries/ref/page/continuation。
-- 真实 core CLI 的 JSON protocol-json outline/read/find 保持 raw facts 且不注入 `display`；generic `readable-view` 保留 JSON ref、content type 与派生成本，并通过 content block 还原完整内容。
+- 真实 core CLI 的 JSON/JSONC protocol-json outline/read/find 保持 schema-valid raw facts 且不注入 `display`；generic `readable-view` 保留 JSON ref、content type 与派生成本，并通过 base `/content` 或 nested `/auto_read/read/content` block 还原完整内容。
 
 ## Case BB-CORE-REF-001: Adapter ref 错误穿过 Core
 
@@ -195,7 +197,8 @@ Entities:
 Proves:
 - 显式 CLI 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。
 - 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
-- JSON 文档的 automatic selection 通过 static registry 进入 linked `docnav-json` outline，显式 `docnav-json` 选择进入 linked read，并返回对应 JSON result facts。
+- `.json` 与 `.jsonc` 文档的 automatic selection 通过 static registry 进入同一 linked `docnav-json` JSONC grammar；显式 `docnav-json` 选择不依赖 pathname hint，并返回对应 JSON result facts。
+- 真实 CLI 对 `.json` comments/trailing comma 与 `.jsonc` 使用同一 automatic grammar，显式选择在 `.md` 路径复用该 grammar；direct/tail comment outline/find refs 原样进入 read 与 existing unique-ref auto-read。
 - 显式选择 `docnav-json` 处理 Markdown 内容时执行 selected JSON strategy，返回 adapter-owned `DOCUMENT_CONTENT_INVALID / JSON_SYNTAX_INVALID`，且不回退到 Markdown adapter。
 
 ## Case BB-CORE-SOURCE-001: Core adapter source 来自 static registry
@@ -231,7 +234,7 @@ Entities:
 
 Proves:
 - Core static registry 包含 release 内置 `docnav-markdown` 与 `docnav-json` definitions，并投影各自 manifest-owned pathname routing metadata。
-- Markdown 初始 suffixes 是 `.md`、`.markdown`；JSON 初始 suffixes 是 `.json`、`.code-workspace`，exact filenames 是 `.prettierrc`、`.watchmanconfig`。
+- Markdown 初始 suffixes 是 `.md`、`.markdown`；JSON suffixes 按 manifest 顺序是 `.json`、`.code-workspace`、`.jsonc`，exact filenames 是 `.prettierrc`、`.watchmanconfig`，content types 是 `application/json`、`application/jsonc`。
 
 ## Case WB-CORE-ADAPTER-INSPECTION-001: Core adapter inspection 精确投影
 
@@ -240,10 +243,11 @@ Owner: `docs/cli.md#内置-adapter-检查`
 Entities:
 - `cargo|docnav:lib:docnav|registry::tests::adapter_layer_check_reports_definition_metadata_and_core_source`
 - `cargo|docnav:lib:docnav|registry::tests::adapter_list_preserves_static_registry_projection`
+- `smoke|core:real-json|CORE-JSON-NAV-001`
 
 Proves:
 - `doctor` 消费的 registry/layer checks 报告两个 adapter，并按相同顺序为 Markdown 与 JSON 输出 passing format/version facts 和 core-owned `implementation_source: "core_static"`。
-- `adapter list` 报告 `registry: "core_static"`，并按 registry 顺序完整投影 Markdown 与 JSON 的 id、name、version、implementation source、suffixes 和 exact filenames；inspection 不执行 document operation。
+- `adapter list` 报告 `registry: "core_static"`，并按 registry 顺序完整投影 Markdown 与 JSON 的 id、name、version、implementation source、suffixes、exact filenames 和 content types；真实 CLI smoke 同时核对 JSON descriptor 的 exact facts，inspection 不执行 document operation。
 
 ## Case WB-CORE-REGISTRY-CONFLICT-001: Registry validation rejects ambiguous routing facts
 

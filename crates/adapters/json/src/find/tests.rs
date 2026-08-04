@@ -94,6 +94,72 @@ fn source_regions_map_occurrences_to_the_deepest_canonical_readable_ref() {
 }
 
 #[test]
+fn comment_spans_override_only_wholly_contained_occurrences_and_use_source_ordered_lookup() {
+    let document = load(
+        br#"// root-direct-hit
+{
+  // member-direct-hit
+  "member": {
+    "ordinary-hit": 1
+    // member-tail-hit
+  }
+}
+// root-tail-hit"#,
+    )
+    .expect("JSONC fixture should load");
+
+    assert_eq!(
+        document.source_matches("hit"),
+        [
+            SourceMatch {
+                ref_id: "json:comments:#".to_owned(),
+                start: 15,
+                end: 18,
+            },
+            SourceMatch {
+                ref_id: "json:comments:#/member".to_owned(),
+                start: 40,
+                end: 43,
+            },
+            SourceMatch {
+                ref_id: "json:#/member/ordinary-hit".to_owned(),
+                start: 72,
+                end: 75,
+            },
+            SourceMatch {
+                ref_id: "json:tail-comments:#/member".to_owned(),
+                start: 99,
+                end: 102,
+            },
+            SourceMatch {
+                ref_id: "json:tail-comments:#".to_owned(),
+                start: 122,
+                end: 125,
+            },
+        ]
+    );
+    assert_single_match(&document, "hit\n  \"member", "json:#");
+
+    let comment_count = 1_024;
+    let source = format!(
+        "{}{{\"value\": 1}}",
+        (0..comment_count)
+            .map(|index| format!("// hit-{index}\n"))
+            .collect::<String>()
+    );
+    let comment_heavy = load(source.as_bytes()).expect("comment-heavy JSONC fixture should load");
+    let (matches, lookup_steps) = comment_heavy.source_matches_with_lookup_steps("hit");
+
+    assert_eq!(matches.len(), comment_count);
+    assert!(matches.iter().all(|item| item.ref_id == "json:comments:#"));
+    assert!(
+        lookup_steps <= comment_count * 2,
+        "a source-ordered cursor may advance each comment once and check each occurrence once, \\
+         but must not rescan every comment for every occurrence"
+    );
+}
+
+#[test]
 fn find_entries_emit_nonempty_bounded_unicode_safe_labels() {
     let source = format!(
         r#"{{"value":"{}needle{}"}}"#,

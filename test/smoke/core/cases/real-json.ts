@@ -28,6 +28,16 @@ import { exitCodes } from "../config.ts";
 
 const jsonAdapterId = "docnav-json";
 const jsonDocumentPath = "docs/navigation.json";
+const jsoncAutomaticJsonPath = "docs/comment-navigation.json";
+const jsoncAutomaticPath = "docs/comment-navigation.jsonc";
+const jsoncExplicitPath = "docs/comment-navigation.md";
+const directCommentRef = "json:comments:#/value";
+const tailCommentRef = "json:tail-comments:#";
+const directCommentContent = "// direct-needle\n1";
+const tailCommentContent = `// tail-needle
+{
+  "value": 1
+}`;
 const specialRef = "json:#/a~1b~0caf%C3%A9%01";
 const specialContent = `{
   "zeta": 1.2300e+04,
@@ -53,6 +63,7 @@ async function testJsonSelectionAndNavigationRoundtrip() {
   const project = jsonFixtureProject("real-json-navigation");
 
   await assertAdapterRegistry(project);
+  await assertJsoncSelectionAndNavigation(project);
   const outlineRef = await assertAutomaticOutline(project);
   const content = await assertExplicitRead(project, outlineRef);
   const findRef = await assertFindSourceLocations(project);
@@ -75,6 +86,13 @@ function jsonFixtureProject(name: string) {
     "json-navigation.json",
     jsonDocumentPath
   );
+  for (const relativePath of [
+    jsoncAutomaticJsonPath,
+    jsoncAutomaticPath,
+    jsoncExplicitPath
+  ]) {
+    copyDocumentFixture(project, "jsonc-navigation.jsonc", relativePath);
+  }
   return project;
 }
 
@@ -113,6 +131,174 @@ async function assertAdapterRegistry(project: SmokeProject) {
       `${id} is linked from the core static registry`
     );
   }
+  const jsonAdapter = expectJsonObject(
+    record,
+    adapters.find((candidate) => candidate.id === jsonAdapterId),
+    "adapter list contains the JSON descriptor"
+  );
+  const formats = expectObjectArray(
+    record,
+    jsonAdapter.formats,
+    "JSON descriptor formats are objects"
+  );
+  const format = expectJsonObject(
+    record,
+    formats[0],
+    "JSON descriptor has one format"
+  );
+  expect(
+    record,
+    formats.length === 1 &&
+      format.id === "json" &&
+      JSON.stringify(format.extensions) ===
+        JSON.stringify([".json", ".code-workspace", ".jsonc"]) &&
+      JSON.stringify(format.filenames) ===
+        JSON.stringify([".prettierrc", ".watchmanconfig"]) &&
+      JSON.stringify(format.content_types) ===
+        JSON.stringify(["application/json", "application/jsonc"]),
+    "adapter list exposes the exact JSON and JSONC routing descriptor"
+  );
+}
+
+async function assertJsoncSelectionAndNavigation(project: SmokeProject) {
+  const { record, json } = await runProtocolSuccess(
+    "CORE-JSON-NAV-001 automatic .json accepts JSONC outline grammar",
+    ["outline", jsoncAutomaticJsonPath, "--auto-read", "disabled"],
+    project,
+    "outline"
+  );
+  const result = expectJsonObject(
+    record,
+    json.result,
+    "JSONC outline result is an object"
+  );
+  const entries = expectObjectArray(
+    record,
+    result.entries,
+    "JSONC outline entries are objects"
+  );
+  expect(
+    record,
+    JSON.stringify(entries.map((entry) => entry.ref)) ===
+      JSON.stringify([directCommentRef, tailCommentRef]),
+    "automatic .json outline preserves opaque direct and tail comment refs"
+  );
+
+  for (const [ref, expectedContent] of [
+    [directCommentRef, directCommentContent],
+    [tailCommentRef, tailCommentContent]
+  ] as const) {
+    const read = await runProtocolSuccess(
+      `CORE-JSON-NAV-001 automatic JSONC read preserves ${ref}`,
+      ["read", jsoncAutomaticJsonPath, "--ref", ref],
+      project,
+      "read"
+    );
+    const readResult = expectJsonObject(
+      read.record,
+      read.json.result,
+      "comment read result is an object"
+    );
+    expect(read.record, readResult.ref === ref, "comment read preserves the opaque input ref");
+    expect(
+      read.record,
+      readResult.content === expectedContent,
+      "comment read returns the selected projection"
+    );
+    expect(
+      read.record,
+      readResult.content_type === "application/jsonc",
+      "comment read exposes application/jsonc"
+    );
+  }
+
+  const explicit = await runProtocolSuccess(
+    "CORE-JSON-NAV-001 explicit JSON adapter accepts the same JSONC grammar",
+    ["read", jsoncExplicitPath, "--adapter", jsonAdapterId, "--ref", directCommentRef],
+    project,
+    "read"
+  );
+  const explicitResult = expectJsonObject(
+    explicit.record,
+    explicit.json.result,
+    "explicit JSONC read result is an object"
+  );
+  expect(
+    explicit.record,
+    explicitResult.content === directCommentContent,
+    "explicit selection uses the automatic JSONC grammar"
+  );
+
+  const direct = await runProtocolSuccess(
+    "CORE-JSON-NAV-001 unique direct-comment find auto-read protocol-json",
+    ["find", jsoncAutomaticJsonPath, "--query", "direct-needle"],
+    project,
+    "find"
+  );
+  assertCommentAutoRead(direct.record, direct.json, directCommentRef, directCommentContent);
+
+  const readable = await runCli(
+    "CORE-JSON-NAV-001 automatic .jsonc unique tail-comment auto-read readable-view",
+    ["find", jsoncAutomaticPath, "--query", "tail-needle", "--output", "readable-view"],
+    { project }
+  );
+  expectExit(readable, 0);
+  expectStderrEmpty(readable);
+  const header = parseReadableViewHeader(readable);
+  expectNoProtocolEnvelope(readable, header);
+  const autoRead = expectJsonObject(
+    readable,
+    header.auto_read,
+    "readable JSONC find includes auto_read"
+  );
+  const nestedRead = expectJsonObject(
+    readable,
+    autoRead.read,
+    "readable JSONC auto_read includes nested read"
+  );
+  expect(readable, nestedRead.ref === tailCommentRef, "readable auto-read preserves the tail ref");
+  expect(readable, nestedRead.content_type === "application/jsonc", "readable auto-read preserves JSONC content type");
+  expectReadableViewBlockRestoresField(
+    readable,
+    readable.stdout,
+    "/auto_read/read/content",
+    tailCommentContent
+  );
+}
+
+function assertCommentAutoRead(
+  record: CommandRecord,
+  json: JsonRecord,
+  ref: string,
+  content: string
+) {
+  const result = expectJsonObject(
+    record,
+    json.result,
+    "comment find result is an object"
+  );
+  const matches = expectObjectArray(
+    record,
+    result.matches,
+    "comment find matches are objects"
+  );
+  expect(
+    record,
+    matches.length === 1 && matches[0]?.ref === ref,
+    "comment find returns one opaque ref"
+  );
+  const autoRead = expectJsonObject(
+    record,
+    result.auto_read,
+    "unique comment ref triggers auto_read"
+  );
+  expect(record, autoRead.reason === "unique_ref", "comment auto_read reports unique_ref");
+  const read = expectJsonObject(record, autoRead.read, "comment auto_read includes nested read");
+  expect(record, read.ref === ref, "nested read preserves the comment ref");
+  expect(record, read.content === content, "nested read returns the comment projection");
+  expect(record, read.content_type === "application/jsonc", "nested read preserves JSONC content type");
+  expectJsonObject(record, read.cost, "nested read preserves cost facts");
+  expect(record, read.page === null, "nested read preserves terminal page facts");
 }
 
 async function assertAutomaticOutline(project: SmokeProject): Promise<string> {
