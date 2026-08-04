@@ -1,4 +1,4 @@
-本临时delta定义`docnav-json`的完整JSONC comment-aware target；它修改既有`json-adapter` capability，但在实现、验收和归档前不代表Current行为。Tail view固定为`json:tail-comments:#<fragment>`及其virtual-entry package；root internal tail与document tail固定合并为一个source-ordered、可非连续的root bundle。
+本 delta 定义 `docnav-json` 的完整 JSONC comment-aware target；它修改既有 `json-adapter` capability，但在实现、验收和归档前不代表 Current 行为。Tail view 固定为 `json:tail-comments:#<fragment>` 及其 virtual-entry package；root internal tail 与 document tail 固定合并为一个 source-ordered、可非连续的 root bundle。
 
 ## MODIFIED Requirements
 
@@ -79,7 +79,7 @@ Outline MUST为至少含一个direct source comment的root、object member或arr
 
 JSON outline MUST 对expanded navigation tree进行depth-first preorder遍历。Logical object member与array element各形成一个带完整JSON ref、非空label和`object|array|string|number|boolean|null` value kind的entry；每个非空tail-comment bundle另形成tail anchor的最后一个virtual child entry，其label MUST为`<tail comments>`、kind MUST为`tail_comments`、ref MUST为canonical tail-comment ref。Object member MUST按源码顺序遍历，array element MUST按index升序遍历，因此nested tail entry出现在anchor container全部logical descendants之后，root-tail entry出现在全部root entries之后。Virtual tail entry MUST NOT进入logical tree、JSON node count或JSON Pointer tokens。Object child label MUST使用decoded member name，空key的正常label MUST为两个双引号字符`""`；array child label MUST为`[<index>]`。Root object/array有root direct comments时，outline MUST在所有descendants前新增唯一`<root>` entry；没有root direct comments时MUST保持Current不返回root-container logical entry的行为。
 
-含至少一个direct comment的root、object member或array element entry MUST使用其canonical direct-comment ref；其它logical entries MUST使用base ref。Direct或tail bundle的normalized summary非空时，对应entry MUST在既有optional `summary` field中返回该文本。所有logical与virtual JSON outline entries MUST保持Current不返回source `location`或JSON-specific `metadata`的行为。Tail entry的raw field set MUST精确等于`{ref, label, kind}`加optional `summary`；`location`、`metadata`、`excerpt`、`rank`与entry-level `cost` MUST省略。没有root direct comments时，root object/array的logical entry set MUST只由descendants组成；但root tail bundle仍 MUST在这些descendants之后生成其virtual entry。既无root direct comments、logical descendants也无root tail bundle的空object/array MUST返回空entries和null page。Root scalar MUST始终先返回label `<root>`且kind对应scalar类型的logical entry，并按是否有root direct comments选择direct-comment或base root ref；其root tail entry如存在MUST随后返回。
+含至少一个direct comment的root、object member或array element entry MUST使用其canonical direct-comment ref；其它logical entries MUST使用base ref。Direct或tail bundle的normalized summary非空时，对应entry MUST在既有optional `summary` field中返回该单行文本；summary MUST NOT 包含 CR 或 LF。所有logical与virtual JSON outline entries MUST保持Current不返回source `location`或JSON-specific `metadata`的行为。Tail entry的raw field set MUST精确等于`{ref, label, kind}`加optional `summary`；`location`、`metadata`、`excerpt`、`rank`与entry-level `cost` MUST省略。没有root direct comments时，root object/array的logical entry set MUST只由descendants组成；但root tail bundle仍 MUST在这些descendants之后生成其virtual entry。既无root direct comments、logical descendants也无root tail bundle的空object/array MUST返回空entries和null page。Root scalar MUST始终先返回label `<root>`且kind对应scalar类型的logical entry，并按是否有root direct comments选择direct-comment或base root ref；其root tail entry如存在MUST随后返回。
 
 Outline MUST 使用现有 limit/page 契约分页并保持 preorder。完整 ref MUST 始终保留；预算不足时 MUST 先在 Unicode scalar boundary 截断或省略 optional summary：保留部分 summary 时必须以 `...` 标记截断，预算不足以保留有意义的 partial summary 时必须省略该 field。随后 adapter 才按 Current label 规则截断，且分页必须持续前进。分页预算截断后没有可见的正常 label 内容可保留时，最小非空 label MUST 为 `.`，且该 fallback MUST NOT 替代空 key 的正常 label `""`。任何 returned ref MUST 能原样传给 read。
 
@@ -128,7 +128,7 @@ Outline MUST 使用现有 limit/page 契约分页并保持 preorder。完整 ref
 
 JSON read MUST解析JSON-owned ref，并为base、direct-comment与tail-comment refs生成三个确定性view。Base ref MUST把指定logical JSON value序列化为valid strict JSON：object member保持源码顺序，container layout使用两空格缩进，每个number使用原始strict-JSON token，string escape、普通scalar spelling和尾随换行使用workspace-pinned serializer的pinned result；comments与trailing commas MUST不进入base content，content type MUST为`application/json`。
 
-Direct-comment ref MUST先按source order输出只归属于selected navigation binding的完整raw comment tokens，再输出该logical value的同一strict-JSON serialization。Tail-comment ref MUST先输出只归属于selected tail slot的完整raw tokens，再输出tail-anchor logical value的同一serialization。每个raw token MUST包含原始`//`或`/* ... */` delimiters但不包含line-comment terminator；adapter MUST在每个token后插入一个LF byte`0x0A`，使最后一个comment与value分隔。两种comment content MUST是完整valid JSONC document，MUST NOT包含其它direct/tail、ancestor、descendant或sibling comments，也MUST NOT恢复source trailing comma；content type MUST为`application/jsonc`。这些view是Current comment-aware projections，不限制private selection consumer未来使用完整selected-first context。
+Direct-comment ref MUST先按source order输出只归属于selected navigation binding的完整raw comment tokens，再输出该logical value的同一strict-JSON serialization。Tail-comment ref MUST先输出只归属于selected tail slot的完整raw tokens，再输出tail-anchor logical value的同一serialization。每个raw token MUST包含原始`//`或`/* ... */` delimiters但不包含line-comment terminator；adapter MUST在每个token后插入一个LF byte`0x0A`，使最后一个comment与value分隔。两种comment content MUST是完整valid JSONC document，MUST NOT包含其它direct/tail、ancestor、descendant或sibling comments，也MUST NOT恢复source trailing comma；content type MUST为`application/jsonc`。这些view是本 change 的 comment-aware projections，不限制private selection consumer未来使用完整selected-first context。
 
 三种 view 的 ReadResult MUST 保留输入 ref，对分页前的完整 content 计算 cost，并按现有 Unicode-safe text pagination 返回 content 和下一页。Generic `readable-view` MUST 从同一个 raw result 形成既有 read header 与 `/content` block，不重读文档、不解析 ref 或重建 comments。
 
@@ -250,9 +250,17 @@ Evidence MUST把parser behavior、private source model与observable contract分�
 
 #### Scenario: Parser default 不扩大产品 grammar
 
-- **WHEN** selected implementation 的 library default 接受本 spec 未批准的 JSON5、missing-comma 或 multi-root syntax
+- **WHEN** selected implementation 的 library default 接受本 spec 契约外的 JSON5、missing-comma 或 multi-root syntax
 - **THEN** adapter corpus 证明该 behavior 已被关闭或在 adapter boundary 拒绝
 - **THEN** dependency token、AST、error message 或 attachment heuristic 不进入 public contract
+
+#### Scenario: Unique comment ref 复用既有 auto-read
+
+- **WHEN** current outline/find page 的非空 refs 去重后恰好是一个 canonical direct-comment 或 tail-comment ref
+- **AND** core 的 existing `unique-ref` auto-read mode 启用
+- **THEN** navigation 把该 opaque ref 原样传给同一 selected adapter 的 read strategy
+- **THEN** successful `auto_read.read` 保留该 comment view 的 ref、`application/jsonc` content、cost 和 page
+- **THEN** protocol-json 与 generic readable-view 从同一 composed response 派生，readable nested content 使用既有 `/auto_read/read/content` block
 
 ### Requirement: JSON selected operations 必须验证实际文档
 
@@ -275,7 +283,7 @@ Invalid UTF-8 MUST use `DOCUMENT_ENCODING_UNSUPPORTED`。Malformed JSON/JSONC sy
 #### Scenario: JSONC syntax in `.json` 使用同一个 grammar
 
 - **WHEN** automatic routing selects `docnav-json` for a `.json` pathname
-- **AND** source uses only strict JSON plus approved comments or trailing comma
+- **AND** source uses only strict JSON plus comments or trailing comma allowed by this requirement
 - **THEN** selected strategy accepts it exactly as it would under `.jsonc`、`.code-workspace` or explicit selection
 - **THEN** routing does not pass a dialect into the adapter
 
@@ -322,7 +330,7 @@ Adapter MUST按以下顺序处理每个 comment：
 4. 在array中，complete element value之后、separator comma之前的suffix trivia归当前index。Opening token或previous separator comma之后、next element value之前的comment归next index；但存在previous element且comment与previous value或comma从同一lexical line开始时归previous index。Last element或optional trailing comma之后、closing token之前的comment在与last value/comma同一行时归last index；从独立后续lexical line开始时归`Tail(this array)`。
 5. Empty object/array内的 container-only comments归该 container value自身的 direct navigation binding：nested container使用其 parent object key或 array index，root empty container使用 root selector。没有 child时不因container内部comment创建tail slot；complete empty root之后的document-tail仍按rule 1进入root tail slot。
 
-每个navigation binding与每个canonical tail anchor MUST各自至多拥有一个optional comment bundle。`None` MUST只表示该slot没有comments；`Some` MUST包含至少一个source-ordered comment index，并保留每个token的exact BOM-stripped half-open UTF-8 byte span。Bundle内的comment spans不要求连续；root internal/document tail合并时仍按各token原始offset排序。多条comments归同一binding或tail slot时共享一个bundle与一个ref；同一comment MUST NOT同时进入direct与tail bundle或两个anchors。A raw line-comment token MUST include `//` and its body but exclude its terminator；a raw block token MUST include `/*` through the first `*/`。For outline summary only, adapter MUST remove delimiters、normalize CRLF/lone CR to LF、trim surrounding ASCII whitespace from each body、discard empty bodies and join remaining bodies with LF。Empty normalized summary MUST NOT erase the comment bundle或其comment view；it only omits `Entry.summary`。
+每个navigation binding与每个canonical tail anchor MUST各自至多拥有一个optional comment bundle。`None` MUST只表示该slot没有comments；`Some` MUST包含至少一个source-ordered comment index，并保留每个token的exact BOM-stripped half-open UTF-8 byte span。Bundle内的comment spans不要求连续；root internal/document tail合并时仍按各token原始offset排序。多条comments归同一binding或tail slot时共享一个bundle与一个ref；同一comment MUST NOT同时进入direct与tail bundle或两个anchors。A raw line-comment token MUST include `//` and its body but exclude its terminator；a raw block token MUST include `/*` through the first `*/`。For outline summary only, adapter MUST remove delimiters、collapse every Unicode whitespace run in each body to one ASCII space、trim each body、discard empty bodies and join the remaining bodies with `; `。The derived summary MUST NOT contain CR or LF。An empty derived summary MUST NOT erase the comment bundle或其comment view；it only omits `Entry.summary`。Bundle MUST NOT cache a second complete normalized copy of the comment text。
 
 #### Scenario: Root-leading and same-line trailing trivia belongs to root
 
@@ -388,6 +396,8 @@ Adapter MUST按以下顺序处理每个 comment：
 - **WHEN** one navigation binding或one tail slot owns multiple comments
 - **THEN** all tokens retain source order in one bundle and use one direct-comment或tail ref
 - **THEN** no individual comment token creates an independent key、index、offset identity或ref
+- **WHEN** the same bundle contains `// first` and a multiline `/* second<LF> line */`
+- **THEN** its untruncated outline summary is exactly `first; second line` and contains no line break
 
 #### Scenario: Direct与tail views可在同一container共存
 
@@ -398,6 +408,6 @@ Adapter MUST按以下顺序处理每个 comment：
 
 #### Scenario: Empty comment body still creates the comment view
 
-- **WHEN** a direct target或tail slot owns only `//` or `/* */` comments whose normalized bodies are empty
+- **WHEN** a direct target或tail slot owns only `//` or `/* */` comments whose derived bodies are empty
 - **THEN** outline uses the applicable direct-comment或tail ref but omits `summary`
 - **THEN** comment read still includes the raw comment token before the selected logical value

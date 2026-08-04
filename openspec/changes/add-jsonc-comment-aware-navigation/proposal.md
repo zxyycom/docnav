@@ -1,4 +1,4 @@
-本临时proposal计划让`docnav-json`在接受闭合JSONC语法的同时，把direct comments与independent tail comments都通过`outline -> ref -> read`交付；语法接入是这一完整结果的基础，而不是独立产品阶段。Tail public package与root-tail grouping已经闭合，exact parser/model仍由blocking implementation audit选择。
+本 proposal 让 `docnav-json` 在接受闭合 JSONC grammar 的同时，把 direct comments 与 independent tail comments 都通过 `outline -> ref -> read` 交付；语法接入是这一完整结果的基础，而不是独立产品阶段。Parser/model 实现固定为 adapter-private offset-preserving JSONC scanner 与 Current `serde_json` seed/model 的组合，不引入新 parser dependency。
 
 ## Why
 
@@ -13,7 +13,7 @@
 - 让 direct-comment 与 tail ref 的 `read` 返回完整、确定性的 `application/jsonc` document：按 source order 放置所选 direct或tail comment tokens，再放置logical value或tail anchor value的规范化strict-JSON serialization。Base ref 的 read 继续返回 `application/json`，且不包含 comments 或 trailing commas。
 - 让完全位于 direct-comment span 内的 `find` occurrence 返回该 binding 的 direct-comment ref，完全位于 tail-comment span内的 occurrence返回tail anchor的tail ref；其它 occurrence继续使用 Current source-region ownership。Source full-read 保留 BOM-stripped 原文，info/full-read 仅在 source 实际含 JSONC-only syntax 时报告 `application/jsonc`。
 - 保持 shared protocol envelope、`Entry`、`ReadResult`、generic `readable-view`、pagination 和 cost shape 不变；本 change 复用 `Entry.summary`、opaque ref 与既有 content block，不增加 shared field、operation、output mode 或 caller option。
-- 由完整 comment-aware contract 反向选择一个最小 sufficient parser/model 实现，并证明 strict/no-comment JSON、source offsets、duplicate/depth/raw-number behavior、bounded work 与 broader JSON syntax rejection 不回归。
+- 在 adapter load boundary 用一次线性 scanner 记录 comment/trailing-comma facts 并生成等长 neutralized parse view，再复用 Current `serde_json` seed/model；证明 strict/no-comment JSON、source offsets、duplicate/depth/raw-number behavior、bounded work 与 broader JSON syntax rejection 不回归。
 
 ## Non-Goals
 
@@ -34,7 +34,7 @@
 
 ## Impact
 
-- 预期影响 `crates/adapters/json` 的 manifest、parser/source model、traversal、ref、read、find、info/full-read 和测试；parser 选择可能修改 workspace dependency 与 lockfile。
+- 预期影响 `crates/adapters/json` 的 manifest、parser/source model、traversal、ref、read、find、info/full-read 和测试；已选定的 parser/model 路径不修改 workspace dependency 或 lockfile。
 - 实施时需要同步 JSON adapter owner 文档、主 spec、语义 Case、adapter/core/output tests、protocol examples 中使用既有字段的新 JSONC facts，以及 release-package smoke；在代码证据完成前这些都保持 Target 状态。
-- Shared ref owner 继续把 ref 当 opaque string 原样传递；shared protocol 和 output shape 不变。若实现审计证明必须增加 shared field 或 operation，本 proposal 必须先扩展 capability scope 并取得独立批准，不能在实现中顺带修改。
+- Shared ref owner 继续把 ref 当 opaque string 原样传递；shared protocol 和 output shape 不变。若后续实现发现必须增加 shared field 或 operation，该发现会使当前设计前提失效，需要先重新审阅 capability scope，不能在实现中顺带修改。
 - 本 change 取代此前按 syntax support 与 comment surfacing 拆分的计划；其它 active change 只能依赖本 change 成为 Current 后的完整 JSONC grammar/navigation baseline。

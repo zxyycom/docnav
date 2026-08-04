@@ -1,30 +1,22 @@
-本临时 task list 把 JSONC grammar、direct/tail comment attribution 与 `outline -> ref -> read` 作为一个 vertical slice 执行；task 0 是实现前阻塞门禁，不是产品实施。
+本 task list 把 JSONC grammar、direct/tail comment attribution 与 `outline -> ref -> read` 作为一个 vertical slice 执行。Task 0 的实施前审计已完成，证据统一记录在 [`design.md`](design.md#implementation-audit)；产品实施从 task 1.1 开始，其余未完成任务仍保持未勾选。
 
-## 0. Blocking implementation and artifact audit
+## 0. Implementation-readiness audit (complete)
 
-**在0.1–0.7全部完成前，不得执行第1–6节，也不得修改Cargo manifest/lockfile、production code、owner docs、main specs、schemas/examples、fixtures、Case ledger、tests或release artifacts。** OpenSpec artifacts显示done/ready只证明文件齐全，不能替代该门禁。
-
-- [ ] 0.1 从 `docs/navigation.md` 指向的 then-Current JSON/ref/protocol/output owners、main `json-adapter` spec、Current code/tests/release evidence 和相邻 active changes 恢复基线；在 `design.md` 只记录会改变 Decision 1–11 或 delta contract 的偏差，不把历史/active Target 当作 Current。
-- [ ] 0.2 建立紧凑contract corpus：
-  - 把已确认的`json:tail-comments:#<fragment>` virtual-entry package与root-tail merge规则纳入唯一README/design/delta/tasks contract，不保留待实现时选择的替代方案。
-  - 逐项映射closed JSONC grammar、strict regression、root/object/array placement、empty-container-self attribution、tail-anchor boundaries、三种refs、conditional root entry、tail virtual entry、summary、三种read views、find mapping、source content type、diagnostics与large/deep/comment-heavy input。
-  - 每个Case记录输入、expected observable result和owner requirement，不扩展到其它JSON-family产品语义。
-- [ ] 0.3 用 workspace 外安全临时目录 spike Design Decision 9 的现实 parser/model candidates；证明 exact comment/token byte spans、raw numbers、decoded duplicates、depth `127/128`、source order、first-closer block comments、closed leniency controls、single-root diagnostics、bounded drop/work 与 current serializer compatibility，不修改 workspace dependency state。
-- [ ] 0.4 比较候选的完整contract fit与总维护面，记录exact crate/version/features或exact custom scanner shape、direct/transitive dependency delta、license/advisory/maintenance、Rust/toolchain/target compatibility、representative build-size/startup/operation delta和rollback cost；只有一个候选满足完整contract时才在`design.md` Decision 9选择并链接point-in-time evidence。若全部no-fit，则记录blocking evidence并停止task 0，不能把“库能解析JSONC”或“最接近需求”当作comment-aware model已证明。
-- [ ] 0.5 对已选实现与 delta spec 执行 bounded doubt-driven challenge：挑战 base ref compatibility、direct/tail ref coexistence与 stale behavior、attribution ambiguity、tail anchor stability、complete JSONC read grammar、virtual entry ordering、summary/pagination、comment find-to-read、selection-chain legal states、all-frame context preservation与 Current selected-view projection、source/content-type truthfulness、parser-default leakage、hostile input、document changes 和 downgrade；将 findings 分类并解决所有 contract gap/valid issue。
-- [ ] 0.6 执行minimal implementation pass，确认已选方案只增加一个primary model、必要binding/anchor indexes、两个comment ref view markers与一条borrowed selected-first selection chain，不引入recursive parent tree、ancestor value clone、offset-based public comment identity、public dialect、shared protocol field、renderer parsing、per-item full comment scan或无当前消费者的JSON-family abstraction。
-- [ ] 0.7 完成blocking artifact与AI-recovery audit：
-  - 确认README/proposal/design/spec/tasks围绕同一句核心结果，`json-adapter` capability与delta path一致，Decision 1–11、attribution/ref/read contracts、private selection model和implementation selection无冲突，不存在未决product或architecture decision，本change未越权修改其它owner或active change。
-  - 让未依赖本次对话的reader仅从README进入，并正确回答direct与tail归属差异、三种ref的identity关系、empty-container规则、root-tail grouping、selection frame必备facts、Current projection与private context上限，以及下一项允许执行的task；任一答案需要口头上下文即视为失败。
-  - 运行strict OpenSpec validation、全部artifact `dnm outline`与docs/whitespace checks。只有审计证据记录完成后才可开始第1节。
+- [x] 0.1 恢复 `docs/navigation.md` 指向的 Current JSON/ref/protocol/output owners、main spec、code/tests/release evidence 和相邻 active-change baseline，未把 historical/active Target 当作 Current。
+- [x] 0.2 建立闭合 contract corpus，映射 grammar、attribution、三种 ref/read views、outline/find、source facts、diagnostics、integration 与 bounded-input evidence，未扩展其它 JSON-family 产品语义。
+- [x] 0.3 在 workspace 外隔离 temp crate 中 spike 三个现实 parser/model 候选；Rust 1.96.0 下 10 个针对性用例通过，workspace dependency state 未改变。
+- [x] 0.4 按完整 contract fit 与总维护面选择 private offset-preserving scanner + Current `serde_json 1.0.150`；记录候选版本、差异、dependency/license/advisory/toolchain/target、size/latency 与 rollback evidence。
+- [x] 0.5 完成 bounded doubt-driven challenge，收敛单行 summary、按需派生 bundle 文本和 unique comment-ref auto-read evidence，其余 ref/attribution/read/context/source/bounds 问题无未解决 contract gap。
+- [x] 0.6 完成 minimal implementation pass：保留一棵 primary tree、一个 load-time 等长 buffer、必要 comment/binding/anchor indexes、两个 comment view markers 与一条 borrowed selection chain，不增加无消费者的 abstraction 或 public surface。
+- [x] 0.7 完成 artifact/AI-recovery audit：README/proposal/design/delta/tasks 的 owner 与核心结果一致，reader 可从 README 恢复必要决策与下一任务，strict OpenSpec、`dnm outline`、docs 与 whitespace validation 通过。
 
 ## 1. Restore test evidence and establish failing behavior
 
 - [ ] 1.1 读取 `docs/coding-style.md`、`docs/testing.md`、then-Current JSON behavior owner、`docs/testing/case-maintenance.md` 与项目 `test-evidence-review` skill；在任何测试修改前运行项目 wrapper，证明完整 Current static entities、runner entities 与 Case mapping 闭合。
 - [ ] 1.2 为 strict/no-comment regression 和 JSONC vertical slice 新增或更新最小 semantic Cases，覆盖 corpus 中独立行为以及所有 renamed/split/merged test entities；重跑 Case completeness wrapper 后再改产品测试。
 - [ ] 1.3 添加失败的loader/model tests，证明closed grammar、BOM/UTF-8、raw numbers、decoded duplicates、depth、source regions/comment spans、Decision 3 navigation-binding direct attribution、empty-container-self attribution、tail-anchor attribution、root internal/document tails合并为一个source-ordered bundle、absent与present-empty direct/tail bundles、slot mutual exclusivity和hostile bounded behavior。
-- [ ] 1.4 添加失败的adapter operation与private ref-resolution tests，证明selected-first binding chain、root/empty-key/array-index区分、每个frame保留本层optional direct与tail bundles、Current read只投影selected frame/view、conditional root entry、tail virtual entry ordering、outline summary/paging、base/direct-comment/tail ref generation/resolution/coexistence/staleness、三种read content/type/cost/page、direct-comment/tail-comment/ordinary find-to-read和info/full-read source facts。
-- [ ] 1.5 添加失败的 core/CLI/output/release tests，证明 descriptor facts、automatic/explicit one-grammar selection、selected failure no-fallback、opaque direct-comment/tail ref pass-through、schema-valid `protocol-json`、generic `readable-view` blocks 和 packaged binary behavior。
+- [ ] 1.4 添加失败的adapter operation与private ref-resolution tests，证明selected-first binding chain、root/empty-key/array-index区分、每个frame保留本层optional direct与tail bundles、Target read只投影selected frame/view、conditional root entry、tail virtual entry ordering、outline summary/paging、base/direct-comment/tail ref generation/resolution/coexistence/staleness、三种read content/type/cost/page、direct-comment/tail-comment/ordinary find-to-read和info/full-read source facts。
+- [ ] 1.5 添加失败的 core/CLI/output/release tests，证明 descriptor facts、automatic/explicit one-grammar selection、selected failure no-fallback、opaque direct-comment/tail ref pass-through、unique direct/tail ref 的 existing auto-read、schema-valid `protocol-json`、generic `readable-view` nested blocks 和 packaged binary behavior。
 
 ## 2. Synchronize owner contracts and validation materials
 
@@ -35,17 +27,17 @@
 
 ## 3. Implement parser, source model, and attribution
 
-- [ ] 3.1 仅应用 task 0.4 选择的 dependency/version/features（如有），更新 workspace/adapter manifests和 lockfile一次；核对 resolved graph，若 license/security/feature/weight facts漂移则停止并返回 task 0。
+- [ ] 3.1 确认 task 0.4 选定路径不新增 dependency、feature 或 lockfile entry；descriptor manifest 只修改 task 3.2 的既有 facts。若实现被迫重开 parser/dependency 选择，停止并重新执行 task 0.3–0.6，不在本 task 中顺带引入。
 - [ ] 3.2 更新唯一 `json_manifest()` owner，增加 `.jsonc` 和 `application/jsonc`，保持一个 `docnav-json` / `json` identity、Current hint order、closed input 与 no-probe behavior。
-- [ ] 3.3 实现一个 JSONC-capable load path与单一 ordered source-aware logical tree，满足 selected-operation grammar、BOM/UTF-8、raw number、decoded duplicate、depth、source order、diagnostic normalization 和 bounded drop/work；显式关闭所有契约外leniency。
-- [ ] 3.4 实现ordered non-overlapping comment spans、navigation-binding optional direct bundles与tail-anchor optional bundles，按Decision 3/delta placement rules做一次deterministic attribution pass；empty-container comments归container自身direct binding，root internal tail与document tail合并为一个source-ordered、可非连续的root bundle，`None`只表示absent，`Some`保证至少一个source-ordered index并允许normalized body为空字符串，每个comment恰好进入一个direct或tail slot；保留raw tokens且不暴露parser/CST types或建立第二棵full tree。
+- [ ] 3.3 在 private `jsonc` lexical module 实现一次线性扫描、等长 neutralized parse view 与 selected-operation closed grammar；让 Current `serde_json 1.0.150` `NodeSeed`/`BuildState` 复用同一 offsets 构建唯一 ordered source-aware logical tree，保留 BOM/UTF-8、raw number、decoded duplicate、depth、source order、diagnostic normalization 和 bounded drop/work。
+- [ ] 3.4 实现ordered non-overlapping comment spans、navigation-binding optional direct bundles与tail-anchor optional bundles，按Decision 3/delta placement rules做一次deterministic attribution pass；empty-container comments归container自身direct binding，root internal tail与document tail合并为一个source-ordered、可非连续的root bundle，`None`只表示absent，`Some`保证至少一个source-ordered index，summary/read 按需从 source spans 派生且不缓存第二份 normalized text，每个comment恰好进入一个direct或tail slot；保留raw tokens且不暴露parser/CST types或建立第二棵full tree。
 - [ ] 3.5 使 loader/model corpus与 hostile-input tests通过，并用 instrumentation或有界断言证明 outline/read/find不会为每个 item全量扫描 comment set。
 
 ## 4. Implement comment-aware navigation operations
 
 - [ ] 4.1 把JSON ref handling分成syntax parse与document resolution：parser支持`json:comments:#<fragment>`与`json:tail-comments:#<fragment>` view markers和canonical tokens；resolver在primary document上产生borrowed selected-first selection chain，以显式root/object-member/array-element bindings保持empty key与comment三态，在每个frame保留binding/value/direct-bundle/tail-bundle context；实现direct-comment root/index、tail anchors、base compatibility、context-sensitive pointer validation、stale/no-comment `REF_NOT_FOUND`与malformed-view `REF_INVALID`，core/protocol继续原样传递。
-- [ ] 4.2 扩展expanded-tree preorder outline projection和JSON entry pagination：有direct comments的navigation binding生成direct-comment ref与non-empty normalized `summary`，root container仅有root direct comments时在descendants前新增`<root>` entry，其它logical nodes保留base refs；每个tail-comment bundle在tail-anchor subtree末尾生成label `<tail comments>`、kind `tail_comments`、canonical tail ref与optional `summary`的virtual entry，并省略其它optional entry fields；预算先缩减summary，始终保留完整ref与可前进page。
-- [ ] 4.3 从同一 `ResolvedSelection` 实现 base `application/json` read 与 Current direct-comment/tail `application/jsonc` projections：当前策略只选择首 frame与requested view，复用同一 normalized value serializer，按 source order拼接所选 exact comment tokens + LF，并对完整 projected content计算 cost后 Unicode-safe pagination；不得让 resolver丢弃 ancestor direct/tail context或把当前 projection shape变成 selection-model invariant。
+- [ ] 4.2 扩展expanded-tree preorder outline projection和JSON entry pagination：有direct comments的navigation binding生成direct-comment ref与按需派生的单行 normalized `summary`（多 body 用 `; ` 连接），root container仅有root direct comments时在descendants前新增`<root>` entry，其它logical nodes保留base refs；每个tail-comment bundle在tail-anchor subtree末尾生成label `<tail comments>`、kind `tail_comments`、canonical tail ref与optional `summary`的virtual entry，并省略其它optional entry fields；预算先缩减summary，始终保留完整ref与可前进page。
+- [ ] 4.3 从同一 `ResolvedSelection` 实现 base `application/json` read 与 Target direct-comment/tail `application/jsonc` projections：本 change 的策略只选择首 frame与requested view，复用同一 normalized value serializer，按 source order拼接所选 exact comment tokens + LF，并对完整 projected content计算 cost后 Unicode-safe pagination；不得让 resolver丢弃 ancestor direct/tail context或把本 projection shape变成 selection-model invariant。
 - [ ] 4.4 扩展source find：完全位于direct-comment span的occurrence映射direct-comment ref，完全位于tail-comment span的occurrence映射tail-anchor ref，其它occurrence沿用Current deepest-covering positional mapping与base ref；保持source order、line location、bounded label和分页前进。
 - [ ] 4.5 扩展 info/unstructured full-read 的 syntax-derived `application/json` / `application/jsonc` facts与 exact BOM-stripped source preservation，证明 string markers不误分类，format id保持 `json`。
 - [ ] 4.6 统一所有 JSON/JSONC load、ref和 operation failures到contracted stable diagnostics，证明 parser messages/types、attribution internals、routing retry和adapter fallback不越界。
@@ -53,7 +45,7 @@
 ## 5. Targeted and cross-layer verification
 
 - [ ] 5.1 运行 formatting、lint、targeted JSON unit/integration tests与完整 contract corpus；确认 strict snapshots不回归，所有 direct/tail attribution slots、三种ref/read views、virtual entry ordering、find mappings、content types、errors与 large-input bounds通过。
-- [ ] 5.2 运行 core/navigation/CLI/protocol/output tests，验证 descriptor inspection、automatic/explicit selection、closed input、opaque refs、pagination/cost、schema-valid raw results、generic readable blocks和 selected-failure no-fallback。
+- [ ] 5.2 运行 core/navigation/CLI/protocol/output tests，验证 descriptor inspection、automatic/explicit selection、closed input、opaque refs、unique direct/tail ref auto-read、pagination/cost、schema-valid raw results、generic readable base/nested blocks和 selected-failure no-fallback。
 - [ ] 5.3 运行 Case completeness/coverage wrapper、schema/example/fixture validators与 Linux/Windows canonical release-package smoke；确认 package core executable交付同一 linked behavior。
 - [ ] 5.4 运行 `bun run verify:docnav-workspace`；调查每个 failure，直到通过或记录真实 external limitation、未验证 surface 与影响。
 
