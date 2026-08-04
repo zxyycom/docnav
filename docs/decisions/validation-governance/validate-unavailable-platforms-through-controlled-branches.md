@@ -1,7 +1,7 @@
 ---
 title: 受控分支承接非本机环境验收
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-08-04T08:49:10Z
 purpose: 在本机缺少必要执行环境时，以受控且最小的云端验证补足验收证据。
 background: 本机环境不能可靠覆盖所有目标平台，而验收不能把缺少的平台证据误作已经通过。

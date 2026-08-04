@@ -26,7 +26,7 @@
       }
     ]
   },
-  "sourceRevision": "sha256:e4533c69842f35712effefb562fed9e514e7cb75462907d97f3676197b26b233",
+  "sourceRevision": "sha256:9ac347c94c1d552ac5ffb4a03f7aa9d77f7f3a705c0269ed0c2abebd9212924e",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -489,7 +489,7 @@
       }
     },
     {
-      "id": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
+      "id": "validation-governance/return-validated-commits-to-original-branch.md",
       "keys": {
         "domain": [
           "validation-governance"
@@ -502,10 +502,37 @@
         ]
       },
       "state": {
-        "path": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
-        "title": "受控分支承接非本机环境验收",
+        "path": "validation-governance/return-validated-commits-to-original-branch.md",
+        "title": "受控验证后回归原工作分支",
         "status": "active",
         "alignment": "aligned",
+        "createdAt": "2026-08-04T09:09:28Z",
+        "purpose": "在补足非本机验收证据时保持原分支的工作连续性，并把受控分支限制为临时云端验证载体。",
+        "background": "本机可能缺少必要执行环境，但为触发云端验证而创建的分支不应接管后续工作或形成额外合并历史。",
+        "decision": "原分支拥有工作连续性；受控分支只临时承载必要的推送和 CI，验证成功后以 --ff-only 将已验证提交带回原分支并继续工作，同时保持 gh 阻塞和其它外部写入需分别授权的边界。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
+      "keys": {
+        "domain": [
+          "validation-governance"
+        ],
+        "status": [
+          "archived"
+        ]
+      },
+      "state": {
+        "path": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
+        "title": "受控分支承接非本机环境验收",
+        "status": "archived",
+        "alignment": null,
         "createdAt": "2026-08-04T08:49:10Z",
         "purpose": "在本机缺少必要执行环境时，以受控且最小的云端验证补足验收证据。",
         "background": "本机环境不能可靠覆盖所有目标平台，而验收不能把缺少的平台证据误作已经通过。",
