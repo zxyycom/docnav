@@ -16,7 +16,7 @@ outline -> ref -> read
 
 Caller `path` 先与 command cwd 词法派生 invocation-private routing pathname，供 navigation 在 target-document I/O 前选择 adapter；选择后才形成 operation 使用的 filesystem-normalized document path。`ref` 只定位当前文档内部区域，由 adapter 生成和解析；共享层只原样传递。`page` 表示分页位置；`limit` 表示 adapter-owned numeric budget，具体单位由 adapter owner 文档声明。
 
-任何成功发出 caller-visible ref 的 behavior 都是 ref producer，必须让该 ref 在相同或独立准备的兼容视图上由 `read` 成功消费；grammar、canonical generation、correspondence、multiplicity 和不兼容视图行为仍由 adapter 及 [Ref 契约](ref-contract.md)拥有。
+任何成功发出 caller-visible ref 的 behavior 都是 ref producer，并自动受 [Ref 契约](ref-contract.md)约束。该契约拥有兼容视图成功保证和共享层/adapter 的责任分工；格式 owner 继续拥有 grammar、correspondence、multiplicity 和不兼容视图行为。
 
 ## 输出分层
 
@@ -67,7 +67,7 @@ Invocation logging 不把 adapter、protocol envelope 或输出层变成日志 o
 - 消费 core/navigation 已完成来源解析和标准类型 materialization 的 closed operation-specific input；算法正确性需要时可以执行或重复格式语义校验。Auto-read mode 不进入该 input；base outline/find 与 optional nested read 各自消费一个 closed input，但可在同一 invocation 的一个 `AdapterDocument` 上顺序执行。
 - 返回 typed operation result 或 adapter error，不选择 output plan，也不拥有通用 readable-view 渲染规则。
 - 通过 registry-facing `AdapterDefinition` 暴露 adapter 身份、manifest format identity、complete-basename suffix/exact-filename hints、`Adapter` factory 和可选 full-read capabilities；factory 为 normalized path 创建 invocation-private `AdapterDocument`，不执行 automatic-selection detection、target-document I/O 或 eager preparation，也不接收 matched routing state。
-- 把每个 caller-visible ref emission 作为 ref producer，并让 `read` 在兼容视图上原样回显 ref、物化 owner-defined selection；共享架构不规定 producer/read 的私有算法数量或 helper shape。
+- 生成或消费 ref 的 behavior 遵守 [Ref 契约](ref-contract.md)；格式 adapter 继续拥有私有算法的数量、拆分和 helper shape。
 - 保持各 behavior 的 validation-versus-first-access 顺序；base operation、applicable full-read hook 与 optional nested read 虽仍接收各自 closed input，但在同一 invocation 中复用一个 private document view。
 - 在 `AdapterDocument` 内拥有 acquisition、decode、parser/model/index、source-region 和 ref-resolution facts，不把 private document state 暴露给 caller。
 

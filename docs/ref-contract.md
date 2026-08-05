@@ -19,7 +19,7 @@ Ref 的 producer/read 一致性以兼容文档视图为边界。两个视图对�
 
 1. 使用相同 adapter identity 和 ref 语义；
 2. adapter 消费的 source bytes/text 与所有影响 ref 生成、解释和定位的固定配置或事实相同；
-3. `read` 不依赖既有 read input、opaque ref 和该视图之外的 producer-only 状态。
+3. `read` 的定位与物化只依赖既有 `ReadInput`、opaque ref 和该视图，不依赖 producer-only 状态。
 
 同一个 prepared view 与自身兼容；使用相同 source 和相关事实独立重新准备的视图也必须
 兼容。Adapter owner 可以声明更宽的等价关系，但共享层不从相同 path 推断兼容性。Source、

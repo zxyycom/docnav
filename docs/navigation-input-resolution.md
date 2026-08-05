@@ -232,7 +232,7 @@ Request construction 和 core-owned request/closed-input validation 成功后，
 
 每个 selected behavior 保留 adapter-owned semantic-validation-versus-first-access 顺序。第一次确实需要 document access 时，adapter document 至多 acquisition/decode/parse 一次 private source/model/index view；同一 invocation 内后续 eligible structured operation、cost/full-read/facts hook 或 unique-ref nested read 复用该 view，不因 stage 改变重新打开 path 或刷新 state。Prepared view 存在后，即使 path 被替换、原地修改、删除、修复、改变 encoding 或替换为 parse-invalid 内容，本次 invocation 仍继续使用已捕获 view；下一次 invocation 独立准备并按 [Ref](ref-contract.md) 判断兼容性和 stale behavior。
 
-Same-view reuse 是 composition 与 resource guarantee，不单独证明 ref producer 和 read 一致。任何成功发出 caller-visible ref 的 behavior 都是 producer；nested 或 direct `read` 仍必须只依靠 existing closed read input、opaque ref 和 compatible view，满足 canonicality、round-trip、no-hidden-context 与 owner-defined correspondence 契约。Navigation 不解析、规范化、重建或从 display facts 推断 ref。
+Same-view reuse 只保证 composition 与 resource reuse，不单独证明 ref producer 和 read 一致。完整的兼容视图成功保证由 [Ref 契约](ref-contract.md)拥有；navigation 只把 candidate ref 作为 opaque string 原样传递，不解析、规范化、重建或从 display facts 推断 ref。
 
 Adapter document 只存在于 linked process 的当前 invocation。Navigation 在最后一个 eligible stage、validated-base fallback、adapter diagnostic、result validation failure、cancellation 或 unwind 后通过 RAII 立即释放 private state；不提供 public cleanup operation、cleanup result、state id 或 retention handle。Source、parser、model、index、snapshot/cleanup 和 conformance-only facts 不得进入 closed input、protocol/readable output、ref、continuation、schema、example、invocation log、global registry 或 cross-invocation cache。Pagination request 是独立 invocation，不保留前一页 document state。
 
@@ -246,7 +246,7 @@ Nested read 复用同一个 normalized document path、同一个 selected `Adapt
 
 只有 nested read 产生 validated `ReadResult`，且包含该 result 的 candidate composed response 也通过 protocol 校验时，navigation 才返回 composed outline/find success；serialized `auto_read` shape 由 [原始协议](protocol.md#autoreadresult) 拥有。Nested read diagnostic、其它 non-success outcome 或 composed validation failure 都静默丢弃 candidate composition，并返回已校验的 base response，不增加 public status、skip reason、nested error 或其它 auto-read failure facts。Base operation failure 不进入该流程。
 
-Producer 与 nested read 因此观察同一个 prepared view；成功保证仍来自 adapter 的 compatible-view ref contract，而不是共享 state 本身。Validated `ReadResult` 必须原样回显 candidate ref；fallback 后也释放同一个 adapter document。兼容视图上的 producer/read disagreement 是 adapter defect，不能被 fallback 重新定义为合法 ref 语义。
+Producer 与 nested read 因此观察同一个 prepared view；共享 state 本身不提供 ref 正确性证明。Navigation 在本组合边界只接受原样回显 candidate ref 的 validated `ReadResult`，否则回退到 base response；两条路径随后都释放同一个 adapter document。Producer/read 的成功义务和 defect 分类见 [Ref 契约](ref-contract.md)。
 
 ## 错误出口
 

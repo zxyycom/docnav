@@ -118,14 +118,14 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 | --- | --- |
 | 长期决策、OpenSpec change 与 owner 规范的分工、同步和冲突处理 | 本文档 |
 | 项目级长期决策的领域、内容、生命周期、对齐和直接演进关系 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
-| 组件职责、输出分层、ref 一致性基础、invocation-private adapter document 生命周期、调用链、运行边界 | [架构](architecture.md) |
-| adapter library interface、manifest format identity/pathname hints、fixed public operation、adapter document 创建与私有准备边界、adapter 选择、registry invariant、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
+| 组件职责、输出分层、adapter document 在系统中的高层生命周期位置、调用链和运行边界 | [架构](architecture.md) |
+| adapter library interface、manifest format identity/pathname hints、fixed public operation、无 I/O factory、private state enclosure、adapter 选择、registry invariant、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、lexical routing pathname 与 post-selection document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
-| navigation command 的 raw command、config source descriptors/paths、core parameter catalog 和 registry 交接、routing 必需输入解析、route-before-document-I/O sequencing、full config validation、adapter selection、selected-operation catalog filtering、explicit/conditional env/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、invocation-private adapter document 创建与组合复用、protocol/closed adapter/core output projections 和 no-fallback adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
+| navigation command 的 raw command、config source descriptors/paths、core parameter catalog 和 registry 交接、routing 必需输入解析、route-before-document-I/O sequencing、full config validation、adapter selection、selected-operation catalog filtering、explicit/conditional env/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、adapter document 的创建时机与跨 stage 组合复用、protocol/closed adapter/core output projections 和 no-fallback adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
 | public output modes、两条 document output paths 共同消费 `ProtocolResponse` 的编排规则、renderer selection、readable-view framing、阅读文案配置和输出通道 | [输出模式](output.md) |
 | protocol envelope、operation、紧凑结果、page、protocol failure envelope、protocol error fields、code/details 规则和 primary diagnostic projection | [原始协议](protocol.md) |
 | diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |
-| ref producer/consumer、兼容文档视图、共享调用流程、explicit ref input 非空校验、opaque string、原样传递、round-trip consistency 和 adapter 所有权 | [Ref](ref-contract.md) |
+| ref producer/consumer、兼容文档视图、共享调用流程与成功保证、explicit ref input 非空校验、opaque string、原样传递、round-trip consistency、defect 分类和 adapter 所有权 | [Ref](ref-contract.md) |
 | Markdown ref grammar、兼容视图 correspondence、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
 | JSON pathname hints、selected-operation parse、private model、base/direct/tail ref grammar 与兼容视图 correspondence、导航顺序、source-region find、structured/full-read 和 JSON-owned error 边界 | [JSON Adapter](adapters/json.md) |
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |

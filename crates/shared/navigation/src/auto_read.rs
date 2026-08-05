@@ -29,7 +29,7 @@ pub(super) fn compose_response(
         return base_response;
     }
 
-    let Some(ref_id) = candidate_ref(&base_response).map(str::to_owned) else {
+    let Some(ref_id) = candidate_ref(&base_response) else {
         return base_response;
     };
     let Some((document_path, limit)) = read_context(base_input) else {
@@ -38,14 +38,14 @@ pub(super) fn compose_response(
     let page = PositiveInteger::new(1).expect("one is a positive integer");
     let standard_input = StandardOperationInput::Read(ReadInput {
         document_path: document_path.to_owned(),
-        ref_id: ref_id.clone(),
+        ref_id: ref_id.to_owned(),
         page,
         limit,
     });
     let Ok(request) = protocol_request(OperationInput {
         operation: Operation::Read,
         document_path: document_path.to_owned(),
-        ref_id: Some(ref_id),
+        ref_id: Some(ref_id.to_owned()),
         query: None,
         page: Some(page),
         limit: Some(limit),
@@ -54,7 +54,7 @@ pub(super) fn compose_response(
         return base_response;
     };
     let nested_response = execute_protocol_request(document, &request, &standard_input);
-    let Some(read) = validated_read_result(nested_response, &standard_input) else {
+    let Some(read) = validated_read_result(nested_response, ref_id) else {
         return base_response;
     };
 
@@ -98,10 +98,7 @@ fn read_context(input: &StandardOperationInput) -> Option<(&str, PositiveInteger
     }
 }
 
-fn validated_read_result(
-    response: ProtocolResponse,
-    standard_input: &StandardOperationInput,
-) -> Option<ReadResult> {
+fn validated_read_result(response: ProtocolResponse, expected_ref: &str) -> Option<ReadResult> {
     response.validate().ok()?;
     let ProtocolResponse::Success(success) = response else {
         return None;
@@ -109,10 +106,7 @@ fn validated_read_result(
     let OperationResult::Read(read) = success.result else {
         return None;
     };
-    let StandardOperationInput::Read(input) = standard_input else {
-        return None;
-    };
-    if read.ref_id != input.ref_id {
+    if read.ref_id != expected_ref {
         return None;
     }
     Some(read)
@@ -149,8 +143,6 @@ mod tests {
         PROTOCOL_VERSION,
     };
 
-    use docnav_adapter_contracts::{ReadInput, StandardOperationInput};
-
     use super::{attach_validated_read, unique_ref, validated_read_result};
 
     #[test]
@@ -170,10 +162,7 @@ mod tests {
             result: OperationResult::Read(read_result()),
         });
 
-        assert_eq!(
-            validated_read_result(response, &read_input("opaque:a")),
-            None
-        );
+        assert_eq!(validated_read_result(response, "opaque:a"), None);
     }
 
     #[test]
@@ -184,10 +173,7 @@ mod tests {
             OperationResult::Read(read_result()),
         );
 
-        assert_eq!(
-            validated_read_result(response, &read_input("opaque:other")),
-            None
-        );
+        assert_eq!(validated_read_result(response, "opaque:other"), None);
     }
 
     #[test]
@@ -213,14 +199,5 @@ mod tests {
             },
             page: None,
         }
-    }
-
-    fn read_input(ref_id: &str) -> StandardOperationInput {
-        StandardOperationInput::Read(ReadInput {
-            document_path: "doc.stub".to_owned(),
-            ref_id: ref_id.to_owned(),
-            page: docnav_protocol::positive_result(1).unwrap(),
-            limit: docnav_protocol::positive_result(80).unwrap(),
-        })
     }
 }

@@ -46,7 +46,7 @@ Full-read cost measurement declaration SHOULD list the standard cost units the a
 
 `manifest` 是 definition 暴露的 metadata；`Adapter` 只创建 document，四个 fixed operation 由 `AdapterDocument` 承接，不需要逐 operation registration 或兼容 dispatch layer。Adapter selection 只使用 registry 与 manifest facts，不执行 adapter-owned detection hook。
 
-任何成功返回 caller-visible ref 的 behavior 都是 ref producer，并自动承担同一 [Ref 契约](ref-contract.md)；是否属于 producer 由 observable ref emission 决定，而不是由方法名或方法数量决定。
+任何成功返回 caller-visible ref 的 behavior 都自动承担同一 [Ref 契约](ref-contract.md)。完整的 producer/consumer、兼容视图和 correspondence 规则由该契约及格式 owner 定义；本文只规定 public operation 与 document lifecycle boundary，不按方法名或方法数量定义 ref producer。
 
 `docnav-navigation` 接收 core 交出的 fixed command facts、normalized document CLI source、config source descriptors/paths、core parameter catalog 和 adapter registry，完成 source loading、full config validation、adapter selection、selected-operation resolution 与 closed input construction。Request validation 成功后，navigation 通过 definition 的 factory 为 normalized path 创建至多一个 `AdapterDocument`，再按 `StandardOperationInput` 的 closed variant dispatch 到对应 document behavior。Adapter 不接收 raw CLI argv、raw config JSON、parameter declaration、source priority metadata、protocol envelope、generic parameter lookup 或第二个 parser/state argument。
 
@@ -77,11 +77,7 @@ Core parameter catalog 是 caller-configurable 参数的唯一 authoring path；
 - 按自身契约解析 ref 并读取，将非法 ref、无匹配 ref 等失败返回为 adapter diagnostic。
 - 返回符合 [原始协议](protocol.md#紧凑语义结果) 的紧凑语义结果。
 
-adapter 直接提供本格式的 ref、结构化 item facts、内容、结构化成本、info metadata 和 page。
-
-- 把任何 caller-visible ref emission 作为 ref producer；`outline` / `find` producer 生成完整、非空、canonical ref，`read` consumer 在相同或独立准备的兼容视图上原样回显 ref 并物化 owner-defined selection。
-- 对 caller 自行构造的非法 ref 或不兼容视图，按自身契约返回 adapter diagnostic；兼容视图上的 producer/read disagreement 是 adapter defect。
-- 具体 canonical grammar、correspondence、multiplicity 和不兼容视图行为见 [Ref](ref-contract.md)及格式 owner。共享层不据此规定私有算法数量、函数拆分或 helper shape。
+adapter 直接提供本格式的 ref、结构化 item facts、内容、结构化成本、info metadata 和 page。Ref 的共享成功保证见 [Ref 契约](ref-contract.md)；canonical grammar、correspondence、multiplicity、caller-supplied ref 和不兼容视图行为见格式 owner。
 
 ## manifest 元数据
 

@@ -221,6 +221,10 @@ failure 不 retry parser mode、routing 或 adapter；operation 以实际打开�
 
 ## Current：invocation-private `JsonDocument` 与 ref 一致性
 
+本节只拥有 JSON prepared view 的组成、兼容条件、selection correspondence 和 mutation/stale
+语义。共享 producer/read 成功保证见 [Ref 契约](../ref-contract.md)，adapter document 的跨
+stage 创建与复用顺序见 [Navigation Input Resolution](../navigation-input-resolution.md#adapter-document-lifecycle)。
+
 `docnav-json` 的 invocation-private adapter document 在 final selection、core-owned path/access
 normalization 和 closed input resolution 完成后创建。创建边界只保存 normalized path，
 不读取或解析文档；任何按 Current 顺序先于 document access 的 adapter semantic

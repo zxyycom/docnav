@@ -89,6 +89,8 @@ Read result 的 `cost.measurements[]` 使用当前 ref 选中 Markdown text 的 
 
 ## Current：Prepared Markdown Document 与 Ref 一致性
 
+本节只拥有 Markdown prepared view 的组成、兼容条件、selection correspondence 和 mutation/stale 语义。共享 producer/read 成功保证见 [Ref 契约](../ref-contract.md)，adapter document 的跨 stage 创建与复用顺序见 [Navigation Input Resolution](../navigation-input-resolution.md#adapter-document-lifecycle)。
+
 ### Invocation-private prepared view
 
 Selected Markdown invocation 由 definition 为 normalized document path 创建一个 invocation-private `AdapterDocument`。该 document MUST 使用单个 prepared view 承载本次调用需要的 Markdown source、line、heading、section、document-head 和 ref 定位事实。创建 document 本身不得读取或解析目标文档；第一次按既有 operation 顺序需要访问文档时才捕获并准备该 view，且不得改变 adapter-owned 语义校验与首次文档访问的顺序。

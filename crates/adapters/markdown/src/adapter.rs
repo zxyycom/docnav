@@ -35,18 +35,11 @@ struct MarkdownAdapterDocument {
 
 impl MarkdownAdapterDocument {
     fn prepared(&mut self) -> AdapterResult<&MarkdownDocument> {
-        if self.prepared.is_none() {
-            self.prepared = Some(MarkdownDocument::load(&self.document_path));
-        }
-
-        match self
-            .prepared
+        let document_path = &self.document_path;
+        self.prepared
+            .get_or_insert_with(|| MarkdownDocument::load(document_path))
             .as_ref()
-            .expect("prepared state was initialized")
-        {
-            Ok(document) => Ok(document),
-            Err(error) => Err(error.clone()),
-        }
+            .map_err(Clone::clone)
     }
 }
 
