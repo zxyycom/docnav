@@ -57,7 +57,7 @@ Proves:
 - find 命中 document head 且当前 structured outline 至少有一个可见 heading entry 时返回 `HEAD:leading`，使用该 ref read 可读取包含命中文本的 content。
 - find 命中 document head 但当前 outline 使用 `doc:full` fallback 时，返回 ref 仍可 read 到包含命中文本的内容。
 
-## Case WB-MD-ERROR-001: Selected Markdown strategy validates the actual document
+## Case WB-MD-ERROR-001: Selected Markdown document validates the actual document
 
 Owner: `docs/adapters/markdown.md#错误分类`
 
@@ -65,7 +65,7 @@ Entities:
 - `cargo|docnav-markdown:test:adapter|options_error_display::selected_outline_reads_actual_document_and_returns_stable_encoding_error`
 
 Proves:
-- Definition-dispatched Markdown outline validates the actual document after selection and preserves the stable encoding diagnostic for non-UTF-8 content, independent of the pathname hint.
+- Definition-dispatched Markdown document outline validates the actual document after selection and preserves the stable encoding diagnostic for non-UTF-8 content, independent of the pathname hint.
 
 ## Case WB-MD-FIND-001: Markdown find ref 和 display 语义稳定
 
@@ -91,7 +91,7 @@ Entities:
 Proves:
 - manifest 声明 Markdown v0 identity 和 format metadata。
 - info 返回 Markdown summary。
-- Markdown registry-facing definition exposes manifest identity、linked strategy and the declared full-read capability set.
+- Markdown registry-facing definition exposes manifest identity、linked document factory and the declared full-read capability set.
 
 ## Case WB-MD-OPTIONS-001: Markdown standard input 控制可见粒度
 
@@ -104,8 +104,29 @@ Entities:
 
 Proves:
 - Closed `OutlineInput` / `FindInput` 中的 `max_heading_level` 同时影响 outline 和 find 的 visible heading granularity。
-- Markdown strategy 不为缺失的 `max_heading_level` 重复提供 catalog default。
-- Markdown adapter owns the `1..6` semantic range check at its strategy boundary and returns an adapter-option diagnostic for out-of-range standard input.
+- Markdown adapter document 不为缺失的 `max_heading_level` 重复提供 catalog default。
+- Markdown adapter owns the `1..6` semantic range check at its document boundary and returns an adapter-option diagnostic for out-of-range standard input.
+
+## Case WB-MD-PREPARED-001: Markdown prepared view 保持 ref/read 一致性
+
+Owner: `docs/adapters/markdown.md#currentprepared-markdown-document-与-ref-一致性`
+
+Entities:
+- `cargo|docnav-markdown:test:adapter|meta::cost_full_read_and_structured_outline_share_prepared_view`
+- `cargo|docnav-markdown:test:adapter|options_error_display::document_factory_and_empty_find_defer_document_access`
+- `cargo|docnav-markdown:test:adapter|outline_ref::outline_falls_back_to_full_document_for_no_visible_heading`
+- `cargo|docnav-markdown:test:adapter|outline_ref::outline_refs_across_terminal_pages_round_trip_on_same_and_fresh_documents`
+- `cargo|docnav-markdown:test:adapter|outline_ref::prepared_document_caches_initial_encoding_failure_after_path_repair`
+- `cargo|docnav-markdown:test:adapter|outline_ref::prepared_document_keeps_successful_view_after_path_mutation_and_deletion`
+- `cargo|docnav-markdown:test:adapter|paging_find::find_falls_back_to_full_document_when_no_heading_is_visible`
+- `cargo|docnav-markdown:test:adapter|paging_find::find_refs_across_terminal_pages_round_trip_on_same_and_fresh_documents`
+
+Proves:
+- outline/find 逐页运行到 terminal page 后，每个完整 heading、document-head 或 full ref 都能在 same-state 和 independently prepared fresh-compatible view 上被 page-1 read 原样消费，并返回 owner-defined region。
+- visibility filtering、重复 find ref 和截断 item facts 不会截断或改写 ref，也不要求 fresh read 恢复 producer-only option 或调用顺序。
+- document factory 与 empty-query semantic rejection 不访问目标文档；首次 Current-compatible document access 才准备 view。
+- cost 首次准备的 Markdown view 被后续 full-read content 与 structured outline 复用；fresh document 才观察之后的 source mutation。
+- 首次成功或失败的 prepared view 在同一 document 内不随 path replacement、in-place mutation、encoding change、deletion 或 repair 刷新；fresh document 则观察当前 source 并保留既有 stale-ref/diagnostic 语义。
 
 ## Case WB-MD-OUTLINE-001: Markdown outline ref 和 display 语义稳定
 

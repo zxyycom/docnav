@@ -112,8 +112,9 @@ by the adapter's documented ref/error contract.
 
 ### Requirement: Auxiliary adapter extensions do not compete with ref identity
 
-Cost, metadata, full-read/source facts, preview facts, rendering inputs, and
-other auxiliary behavior MAY use methods, hooks, accessors, or shared helpers
+Auxiliary adapter extensions MUST remain subordinate to ref identity. Cost,
+metadata, full-read/source facts, preview facts, rendering inputs, and other
+auxiliary behavior MAY use methods, hooks, accessors, or shared helpers
 appropriate to their owner. This contract MUST NOT classify their count or
 callable shape as the adapter's foundational architecture. An auxiliary
 extension that emits a caller-visible ref becomes a ref producer and MUST obey

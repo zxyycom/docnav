@@ -1,4 +1,8 @@
-use crate::{Adapter, AdapterResult, FindInput, InfoInput, OutlineInput, ReadInput};
+use std::rc::Rc;
+
+use crate::{
+    Adapter, AdapterDocument, AdapterResult, FindInput, InfoInput, OutlineInput, ReadInput,
+};
 use docnav_protocol::{
     AdapterIdentity, Cost, FindResult, FormatDescriptor, InfoResult, Manifest, OutlineResult,
     ReadResult, MANIFEST_VERSION,
@@ -24,11 +28,25 @@ pub(super) fn no_hook_manifest() -> Manifest {
 }
 
 impl Adapter for NoHookAdapter {
-    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
+    fn create_document(&self, _document_path: String) -> Box<dyn AdapterDocument + '_> {
+        Box::new(NoHookDocument {
+            private: Rc::new(()),
+        })
+    }
+}
+
+pub(super) struct NoHookDocument {
+    // Proves the document boundary does not require Send or Sync.
+    private: Rc<()>,
+}
+
+impl AdapterDocument for NoHookDocument {
+    fn outline(&mut self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        let _ = &self.private;
         Ok(OutlineResult::structured(Vec::new(), None))
     }
 
-    fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult> {
+    fn read(&mut self, input: &ReadInput) -> AdapterResult<ReadResult> {
         Ok(ReadResult {
             ref_id: input.ref_id.clone(),
             content: String::new(),
@@ -40,11 +58,11 @@ impl Adapter for NoHookAdapter {
         })
     }
 
-    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, _input: &FindInput) -> AdapterResult<FindResult> {
         Ok(FindResult::new(Vec::new(), None))
     }
 
-    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Ok(InfoResult {
             document: None,
             adapter: None,

@@ -3,8 +3,8 @@ use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput, ReadInput,
-    StandardOperationInput,
+    Adapter, AdapterDocument, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
+    ReadInput, StandardOperationInput,
 };
 use docnav_navigation::{select_adapter, AdapterSelectionRequest};
 use docnav_protocol::{
@@ -202,10 +202,12 @@ fn explicit_json_selection_bypasses_markdown_pathname_and_still_parses_document(
         limit: positive_result(80).unwrap(),
         max_heading_level: None,
     });
-    let operation = selection
-        .as_ref()
-        .ok()
-        .map(|selection| selection.adapter.execute_operation(&input));
+    let operation = selection.as_ref().ok().map(|selection| {
+        selection
+            .adapter
+            .create_document(path_string.clone())
+            .execute_operation(&input)
+    });
 
     fs::remove_file(path).unwrap();
 
@@ -336,19 +338,27 @@ static REGISTRY_TEST_ADAPTER: RegistryTestAdapter = RegistryTestAdapter;
 struct RegistryTestAdapter;
 
 impl Adapter for RegistryTestAdapter {
-    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
+    fn create_document(&self, _document_path: String) -> Box<dyn AdapterDocument + '_> {
+        Box::new(RegistryTestDocument)
+    }
+}
+
+struct RegistryTestDocument;
+
+impl AdapterDocument for RegistryTestDocument {
+    fn outline(&mut self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
         Err(AdapterError::internal("registry-test-outline-unreachable"))
     }
 
-    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
+    fn read(&mut self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("registry-test-read-unreachable"))
     }
 
-    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::internal("registry-test-find-unreachable"))
     }
 
-    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("registry-test-info-unreachable"))
     }
 }

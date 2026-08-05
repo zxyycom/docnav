@@ -1,8 +1,9 @@
-//! Source resolution, multi-adapter routing, and strategy dispatch for Docnav.
+//! Source resolution, multi-adapter routing, and adapter-document dispatch for Docnav.
 //!
 //! Registries expose adapter definitions directly. Navigation selects from manifest-owned
-//! pathname hints, constructs closed operation input, and dispatches through the selected strategy
-//! while preserving adapter-owned capabilities and full-read hooks.
+//! pathname hints, constructs closed operation input, creates one invocation-private document, and
+//! dispatches sequential stages through that document while preserving adapter-owned capabilities
+//! and full-read hooks.
 
 mod auto_read;
 mod config_source;

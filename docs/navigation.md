@@ -62,13 +62,13 @@ OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change na
 | --- | --- | --- |
 | `docnav-architecture` | [架构](architecture.md) | 组件职责、调用链、运行边界和跨层不变量 |
 | `core-cli` | [CLI](cli.md) | `docnav` 命令、argv、path/config、static registry 和退出行为 |
-| `navigation-input-resolution` | [Navigation Input Resolution](navigation-input-resolution.md) | config source、lexical pathname routing sequencing、adapter selection、typed extraction、request construction 和 dispatch |
-| `adapter-contract` | [适配器契约](adapter-contract.md) | linked adapter strategy interface、manifest pathname hints、selection contract、closed standard input 和 strategy result |
+| `navigation-input-resolution` | [Navigation Input Resolution](navigation-input-resolution.md) | config source、lexical pathname routing sequencing、adapter selection、typed extraction、request construction、AdapterDocument lifecycle 和 dispatch |
+| `adapter-contract` | [适配器契约](adapter-contract.md) | linked adapter factory / AdapterDocument interface、manifest pathname hints、selection contract、closed standard input 和 operation result |
 | `protocol-contract` | [原始协议](protocol.md) | raw protocol envelope、operation/result pairing、page 和 protocol failure |
 | `output-contract` | [输出模式](output.md) | public output modes、统一 `ProtocolResponse` 输入、`ProtocolJson` / `Rendered(RenderStrategy)`、renderer contract 和 output channels |
 | `diagnostics-contract` | [架构](architecture.md) | DiagnosticCode、DiagnosticRecord、canonical details 和 primary projection |
-| `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar 和 outline/find 到 read 的原样传递流程 |
-| `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown pathname hints、parser/ref/outline/read/find/info 和 typed strategy input semantics |
+| `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar、compatible-view round trip 和 producer/read 原样传递流程 |
+| `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown pathname hints、parser/ref/outline/read/find/info 和 typed adapter input semantics |
 | `json-adapter` | [JSON Adapter](adapters/json.md) | JSON pathname hints、private parse model、ref/outline/read/find/info/full-read 和 JSON-owned errors |
 | `typed-fields` | [架构](architecture.md) | typed field identity、constraint metadata、schema metadata projection 和 duplicate guard |
 | `contract-validation` | [JSON Schema 索引](schemas/json-schema.md)、[契约示例](examples/contract-examples.md) | schema/example validation、runtime validation parity 和 drift checks |
@@ -88,7 +88,7 @@ Docnav 采用 docs-first 工作流：`docs/` 是长期规范基础；代码、�
 
 OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 owner 文档的分工和同步顺序见“长期决策与 OpenSpec 分工”。小功能可以直接修改 docs、代码和测试。
 
-Manifest pathname routing、route-before-document-I/O 与 probe deletion 已由代码、测试和 release artifact 证明为 Current；对应长期规则由下方 owner 文档拥有。
+Manifest pathname routing、route-before-document-I/O、probe deletion、invocation-private adapter document lifecycle 和 compatible-view ref round trip 已由代码与测试证明为 Current；release artifact 继续证明对外协议和 CLI 兼容性。对应长期规则由下方 owner 文档拥有。
 
 ## 长期决策与 OpenSpec 分工
 
@@ -118,16 +118,16 @@ Manifest pathname routing、route-before-document-I/O 与 probe deletion 已由�
 | --- | --- |
 | 长期决策、OpenSpec change 与 owner 规范的分工、同步和冲突处理 | 本文档 |
 | 项目级长期决策的领域、内容、生命周期、对齐和直接演进关系 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
-| 组件职责、输出分层、调用链、运行边界 | [架构](architecture.md) |
-| adapter library interface、manifest format identity/pathname hints、fixed operation strategy、adapter 选择、registry invariant、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
+| 组件职责、输出分层、ref 一致性基础、invocation-private adapter document 生命周期、调用链、运行边界 | [架构](architecture.md) |
+| adapter library interface、manifest format identity/pathname hints、fixed public operation、adapter document 创建与私有准备边界、adapter 选择、registry invariant、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、lexical routing pathname 与 post-selection document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
-| navigation command 的 raw command、config source descriptors/paths、core parameter catalog 和 registry 交接、routing 必需输入解析、route-before-document-I/O sequencing、full config validation、adapter selection、selected-operation catalog filtering、explicit/conditional env/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、protocol/closed strategy/core output projections 和 no-fallback adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
+| navigation command 的 raw command、config source descriptors/paths、core parameter catalog 和 registry 交接、routing 必需输入解析、route-before-document-I/O sequencing、full config validation、adapter selection、selected-operation catalog filtering、explicit/conditional env/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、invocation-private adapter document 创建与组合复用、protocol/closed adapter/core output projections 和 no-fallback adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
 | public output modes、两条 document output paths 共同消费 `ProtocolResponse` 的编排规则、renderer selection、readable-view framing、阅读文案配置和输出通道 | [输出模式](output.md) |
 | protocol envelope、operation、紧凑结果、page、protocol failure envelope、protocol error fields、code/details 规则和 primary diagnostic projection | [原始协议](protocol.md) |
 | diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |
-| ref 的共享调用流程、explicit ref input 非空校验、opaque string、原样传递和 adapter 所有权 | [Ref](ref-contract.md) |
-| Markdown ref grammar、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
-| JSON pathname hints、selected-operation parse、private model、ref grammar、导航顺序、source-region find、structured/full-read 和 JSON-owned error 边界 | [JSON Adapter](adapters/json.md) |
+| ref producer/consumer、兼容文档视图、共享调用流程、explicit ref input 非空校验、opaque string、原样传递、round-trip consistency 和 adapter 所有权 | [Ref](ref-contract.md) |
+| Markdown ref grammar、兼容视图 correspondence、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
+| JSON pathname hints、selected-operation parse、private model、base/direct/tail ref grammar 与兼容视图 correspondence、导航顺序、source-region find、structured/full-read 和 JSON-owned error 边界 | [JSON Adapter](adapters/json.md) |
 | 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
 | 测试变更时的 Case 粒度、存储/查询、supported runner profile、静态/runtime/Case 映射闭合和项目验证流程 | [语义测试 Case 维护](testing/case-maintenance.md)拥有稳定规则；`../scripts/test-evidence/` 实现项目检查；通用评审方法由[项目级 `test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md)提供 |
 | 当前测试实体的存在性与 runner 身份 | 当前源码和 runner 报告；project wrapper 只发现、归一并比较当前集合，不提交派生实体清单 |
@@ -145,7 +145,8 @@ Manifest pathname routing、route-before-document-I/O 与 probe deletion 已由�
 | --- | --- |
 | owner 文档 | 某类规则的完整解释和维护位置；其它文档只保留摘要或引用。 |
 | docnav | 核心 CLI，负责格式识别、adapter 路由、配置、管理和输出分发。 |
-| adapter | 独立格式处理组件，拥有格式解析、导航策略、ref 和分页语义。 |
+| adapter | 独立格式处理组件；通过 factory 创建 invocation-private `AdapterDocument`，并拥有格式解析、导航算法、ref 和分页语义。 |
+| `AdapterDocument` | Selected adapter 为一个 normalized document path 创建的 invocation-private lifecycle owner；它懒准备并复用 private view，不把 state 暴露给 caller。 |
 | document | Docnav 操作的输入文件；caller path 先词法派生 routing pathname 供 adapter 选择，选择后才形成 operation 使用的 normalized document path。 |
 | routing pathname | Invocation-private lexical pathname，由 caller path 与 command cwd 派生，只用于 target-document I/O 前的 manifest basename lookup；不进入 adapter input 或 public output。 |
 | `outline -> ref -> read` | 标准导航流程：先取结构条目，再把 adapter 生成的 ref 原样传回读取。 |

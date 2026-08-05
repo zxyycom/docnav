@@ -201,6 +201,24 @@ Proves:
 - trait-dispatched `read` operation 把错误 prefix 与非 canonical array index 投影为带输入 ref 和 reason 的 `REF_INVALID`，把 canonical missing ref 投影为仅带输入 ref 的 `REF_NOT_FOUND`。
 - 真实 core CLI read 把 noncanonical array index `01` 投影为带 ref/reason 的 `REF_INVALID`，把 canonical missing index `9` 投影为保留 ref 的 `REF_NOT_FOUND`。
 
+## Case WB-JSON-PREPARED-VIEW-001: JSON invocation-private view 保持 ref 一致且不刷新
+
+Owner: `docs/adapters/json.md#currentinvocation-private-jsondocument-与-ref-一致性`
+
+Entities:
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::ref_conformance::strict_json_emitted_refs_round_trip_on_same_and_fresh_compatible_documents`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::ref_conformance::jsonc_emitted_refs_round_trip_on_same_and_fresh_compatible_documents`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::ref_conformance::root_scalar_and_tail_only_refs_round_trip_on_compatible_documents`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::prepared_view::empty_find_rejection_does_not_prepare_the_document`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::prepared_view::prepared_document_keeps_first_success_across_source_changes`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::prepared_view::prepared_document_caches_first_failure_and_fresh_document_observes_repair`
+
+Proves:
+- JSON document factory 不访问 path；首次需要 document view 时才准备并缓存唯一 primary `JsonDocument`。首次成功不会刷新，代表性 missing-path 首次失败在 repair 后仍由同一 document 原样返回，fresh document 才观察 repaired source。
+- 代表性 strict JSON/JSONC fixtures 的 outline/find 逐页运行至 terminal，所有完整 base/direct-comment/tail ref 都由 shared opaque-ref harness 在同一 prepared view 和独立 compatible preparation 上成功 read、精确回显，并保留 strict JSON 或 selected comment-aware JSONC materialization。
+- tiny entry budget 下 long ref 与 optional display truncation 不改变 ref，重复 find occurrence 保留相同可读 ref；root、member、index、empty/root-scalar、tail-only/virtual-tail 和 normalized/container correspondence 均保持 owner 语义，container read 不必逐字包含 source find evidence。
+- 首次成功准备后，same document 的 base/comment read、info、full-read 和 cost 持续观察同一 source/model，即使 path 被替换、删除或改为 parse-invalid/invalid-UTF-8；fresh document 分别观察新 value、stale comment `REF_NOT_FOUND`、`DOCUMENT_NOT_FOUND`、repair success、`JSON_SYNTAX_INVALID` 或 encoding diagnostic。
+
 ## Case WB-JSON-TRAVERSAL-001: JSON 私有遍历形成确定性 descendant entries
 
 Owner: `docs/adapters/json.md#currentoutline`
@@ -363,9 +381,10 @@ Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::find_rejects_an_empty_query_with_the_existing_invalid_request_diagnostic`
+- `cargo|docnav-json:lib:docnav_json|adapter::tests::prepared_view::empty_find_rejection_does_not_prepare_the_document`
 
 Proves:
-- trait-dispatched `find` operation 对长度为零的 query 返回 rejection，而不是成功的空 match result。
+- trait-dispatched `find` operation 对长度为零的 query 在 document access 前返回 rejection，而不是成功的空 match result；同一个 lazy document 随后仍能读取刚创建的 valid source 并执行 non-empty find，证明该 rejection 未触发或缓存 path failure。
 
 ## Case WB-JSON-FIND-005: JSONC find 将完整 comment span 映射到可读 comment view
 

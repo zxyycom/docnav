@@ -21,6 +21,7 @@ Owner: `docs/navigation-input-resolution.md#unique-ref-auto-read-composition`
 Entities:
 - `cargo|docnav-navigation:lib:docnav_navigation|auto_read::tests::invalid_composed_response_falls_back_to_the_original_base`
 - `cargo|docnav-navigation:lib:docnav_navigation|auto_read::tests::invalid_nested_success_is_not_accepted_as_a_read_result`
+- `cargo|docnav-navigation:lib:docnav_navigation|auto_read::tests::nested_read_must_echo_the_candidate_ref_exactly`
 - `cargo|docnav-navigation:lib:docnav_navigation|auto_read::tests::unique_ref_ignores_empty_refs_and_uses_string_exact_deduplication`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::auto_read_composition::find::find_eligibility_keeps_empty_or_multiple_ref_base_results`
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::auto_read_composition::find::repeated_find_refs_dispatch_one_read_on_later_pages_with_continuation`
@@ -33,8 +34,31 @@ Entities:
 
 Proves:
 - Only one non-empty distinct ref is eligible for nested read; empty, multiple, unstructured, or disabled results keep the validated base response.
-- Nested read reuses the selected document context and effective pagination facts, while nested diagnostics or invalid nested success never invalidate the original base success.
+- Nested read reuses the selected invocation-private adapter document and effective pagination facts；a successful nested read must exactly echo the opaque candidate ref, while nested diagnostics, mismatched refs, or invalid nested success never invalidate the original base success.
 - An adapter-supplied base `auto_read` is rejected before navigation composes its own result.
+
+## Case WB-NAV-ADAPTER-DOCUMENT-001: Navigation owns one bounded adapter document lifecycle
+
+Owner: `docs/adapter-contract.md#文档操作执行边界`
+
+Entities:
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::auto_read_composition::adapter_document_is_dropped_during_handler_unwind`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::auto_read_composition::request_construction_failure_does_not_create_an_adapter_document`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::auto_read_composition::outline::nested_read_diagnostic_silently_keeps_the_validated_base_result`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::auto_read_composition::outline::unique_outline_ref_composes_read_with_the_selected_document_context`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::outline_mode::cost_threshold_triggers_hook_full_read_and_preserves_selector_cost`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::outline_mode::path_triggered_hook_result_facts_are_used`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::outline_mode::project_path_rule_overrides_user_rule_and_uses_default_utf8_fallback`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::outline_mode::threshold_filtering_and_unit_merge_keep_structured_when_minimum_not_met`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::routing::automatic_suffix_routing_is_anchored_to_the_complete_basename_end`
+- `cargo|docnav-navigation:lib:docnav_navigation|tests::navigation::routing::selected_diagnostic_or_invalid_result_never_dispatches_later_adapter`
+
+Proves:
+- Pathname routing and request-construction failures record zero document creations、source acquisitions、decodes、complete model builds、peak live documents and drops；a selected valid request creates at most one document.
+- Direct outline、cost -> structured fallback、cost -> full-read content、content -> facts and unique-ref nested read each record one source acquisition、one decode and one complete model build on document id 1, with peak live documents 1.
+- Existing document-id stage records distinguish ref production (`outline`) from auxiliary access (`cost`、`content`、`facts`)；the auto-read probe separately records one producer call and one read-resolution call while the reader observes producer state.
+- Navigation-owned default UTF-8 full read creates and drops the bounded interface document but records zero adapter acquisition、decode、model build and model drop, so interface construction alone is not preparation evidence.
+- Success、nested-read fallback、adapter diagnostic、result-validation failure and unwind all finish with one selected-document drop、one prepared-model drop and final live documents 0, through RAII without a cleanup operation or retained cross-invocation handle.
 
 ## Case WB-NAV-AUTO-READ-CONFIG-001: Auto-read mode follows canonical source precedence
 
@@ -139,6 +163,7 @@ Proves:
 - outline config source shape rejects an unregistered `outline.*` key, an unregistered `outline.mode_rules[]` item key, missing required members and invalid typed values before selector parsing and reports the source-scoped nested field path.
 - Current owner-specific outline validation preserves parity across config inspect source validation, direct config read and navigation resolution; typed-fields compound helper tests are only added if this parity cannot be proven.
 - unstructured full-read pre-dispatch skips the normal outline handler and returns either default UTF-8 content, adapter hook content with selector cost, or adapter hook result facts with stable `path_rule` / `cost_threshold` reasons.
+- Cost-to-structured fallback and adapter-provided cost/content/facts stages reuse one invocation-private adapter document；the navigation-owned UTF-8 fallback does not call adapter document hooks.
 - path-triggered default full-read returns a controlled non-UTF-8 failure instead of producing lossy content.
 
 ## Case WB-NAV-PROTOCOL-BRIDGE-001: Protocol requests map to closed navigation inputs
@@ -229,6 +254,7 @@ Proves:
 - When multiple suffixes match after ASCII normalization, the longest compound suffix selects its owning format regardless of registry order.
 - A declared suffix must match the end of the complete basename；an interior `.json` in `settings.json.backup` returns the normal pathname-miss diagnostic.
 - The matched manifest identity selects its owning registry definition without target-document I/O or an adapter detection hook.
+- A pathname miss performs zero adapter document creation.
 - Automatic selection context reports the stable source `automatic_discovery` without retaining candidate evidence.
 
 ## Case WB-NAV-EXPLICIT-ROUTING-001: Explicit adapter intent bypasses pathname routing
@@ -255,4 +281,5 @@ Entities:
 Proves:
 - After pathname routing selects one definition, an adapter diagnostic is returned as the selected operation response without dispatching a later registry member.
 - An invalid selected-adapter result fails at result validation without dispatching a later registry member.
+- Adapter diagnostics and invalid selected results drop the selected invocation-private document before returning.
 - Parse、semantic and operation diagnostics share the selected adapter diagnostic boundary；the post-selection execution stage consumes only the selected definition and no registry fallback input.

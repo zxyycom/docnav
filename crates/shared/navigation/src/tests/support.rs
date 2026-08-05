@@ -6,8 +6,8 @@ use cli_config_resolution::{
     FieldIdentity, Source, SourceCandidate, SourceId, SourceKind, SourceLocator,
 };
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
-    ReadInput, StandardInputBinding, UnstructuredFullReadCapabilities,
+    Adapter, AdapterDefinition, AdapterDocument, AdapterError, AdapterResult, FindInput, InfoInput,
+    OutlineInput, ReadInput, StandardInputBinding, UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
     AdapterIdentity, Entry, FindResult, FormatDescriptor, InfoResult, Manifest, Operation,
@@ -341,7 +341,15 @@ fn stub_manifest() -> Manifest {
 }
 
 impl Adapter for StubAdapter {
-    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
+    fn create_document(&self, _document_path: String) -> Box<dyn AdapterDocument + '_> {
+        Box::new(StubDocument)
+    }
+}
+
+struct StubDocument;
+
+impl AdapterDocument for StubDocument {
+    fn outline(&mut self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
         let label = input
             .max_heading_level
             .map(|value| format!("Max {value}"))
@@ -362,18 +370,18 @@ impl Adapter for StubAdapter {
         ))
     }
 
-    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
+    fn read(&mut self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::ref_not_found("missing"))
     }
 
-    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::invalid_request(
             "arguments.query",
             "query is not indexed",
         ))
     }
 
-    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("stub-info-unimplemented"))
     }
 }
@@ -396,19 +404,27 @@ fn other_manifest() -> Manifest {
 }
 
 impl Adapter for OtherAdapter {
-    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
+    fn create_document(&self, _document_path: String) -> Box<dyn AdapterDocument + '_> {
+        Box::new(OtherDocument)
+    }
+}
+
+struct OtherDocument;
+
+impl AdapterDocument for OtherDocument {
+    fn outline(&mut self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
         Err(AdapterError::internal("other-outline-unreachable"))
     }
 
-    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
+    fn read(&mut self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("other-read-unreachable"))
     }
 
-    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::internal("other-find-unreachable"))
     }
 
-    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("other-info-unreachable"))
     }
 }

@@ -1,4 +1,4 @@
-use docnav_adapter_contracts::{AdapterDefinition, StandardOperationInput};
+use docnav_adapter_contracts::{AdapterDefinition, AdapterDocument, StandardOperationInput};
 use docnav_protocol::{Operation, ProtocolResponse, RequestEnvelope};
 
 use crate::outline_mode::{execute_unstructured_outline, resolve_outline_mode, OutlineMode};
@@ -71,11 +71,20 @@ pub(super) fn execute_prepared_navigation_command(
     let resolved =
         resolve_navigation_input(&command, &config_sources, &selection, catalog, &mut trace)?;
     let prepared = prepare_navigation_request(command.operation, resolved, &mut trace)?;
-    let response = dispatch_navigation_request(&config_sources, &selection, &prepared, &mut trace)?;
+    let mut document = selection
+        .adapter
+        .create_document(prepared.request.document.path.clone());
+    let response = dispatch_navigation_request(
+        &config_sources,
+        &selection,
+        document.as_mut(),
+        &prepared,
+        &mut trace,
+    )?;
     let response = validate_navigation_response(response, &mut trace)?;
     let response = auto_read::compose_response(
         prepared.auto_read,
-        &selection.adapter,
+        document.as_mut(),
         &prepared.standard_input,
         response,
     );
@@ -183,12 +192,14 @@ fn prepare_navigation_request(
 fn dispatch_navigation_request(
     config_sources: &NavigationConfigSources,
     selection: &AdapterSelection<'_>,
+    document: &mut dyn AdapterDocument,
     prepared: &PreparedNavigationRequest,
     trace: &mut NavigationInvocationTrace,
 ) -> Result<ProtocolResponse, NavigationError> {
     let response = execute_navigation_request(
         config_sources,
         &selection.adapter,
+        document,
         &prepared.request,
         &prepared.standard_input,
     )
@@ -237,16 +248,22 @@ pub(super) fn validate_navigation_response(
 fn execute_navigation_request(
     config_sources: &NavigationConfigSources,
     adapter: &AdapterDefinition<'_>,
+    document: &mut dyn AdapterDocument,
     request: &RequestEnvelope,
     standard_input: &StandardOperationInput,
 ) -> Result<ProtocolResponse, NavigationError> {
     if request.operation == Operation::Outline {
         if let OutlineMode::UnstructuredFull(unstructured) =
-            resolve_outline_mode(config_sources, adapter.id(), adapter, request)?
+            resolve_outline_mode(config_sources, adapter.id(), adapter, document, request)?
         {
-            return Ok(execute_unstructured_outline(adapter, request, unstructured));
+            return Ok(execute_unstructured_outline(
+                adapter,
+                document,
+                request,
+                unstructured,
+            ));
         }
     }
 
-    Ok(execute_protocol_request(adapter, request, standard_input))
+    Ok(execute_protocol_request(document, request, standard_input))
 }

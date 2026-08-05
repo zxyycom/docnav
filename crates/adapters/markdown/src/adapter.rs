@@ -1,6 +1,6 @@
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
-    ReadInput, UnstructuredFullRead, UnstructuredFullReadCapabilities,
+    Adapter, AdapterDefinition, AdapterDocument, AdapterError, AdapterResult, FindInput, InfoInput,
+    OutlineInput, ReadInput, UnstructuredFullRead, UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
     AdapterIdentity, FindResult, FormatDescriptor, InfoAdapter, InfoDocument, InfoResult, Manifest,
@@ -20,16 +20,47 @@ pub const CONTENT_TYPE_MARKDOWN: &str = "text/markdown";
 pub struct MarkdownAdapter;
 
 impl Adapter for MarkdownAdapter {
-    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
-        let document = MarkdownDocument::load(&input.document_path)?;
+    fn create_document(&self, document_path: String) -> Box<dyn AdapterDocument + '_> {
+        Box::new(MarkdownAdapterDocument {
+            document_path,
+            prepared: None,
+        })
+    }
+}
+
+struct MarkdownAdapterDocument {
+    document_path: String,
+    prepared: Option<AdapterResult<MarkdownDocument>>,
+}
+
+impl MarkdownAdapterDocument {
+    fn prepared(&mut self) -> AdapterResult<&MarkdownDocument> {
+        if self.prepared.is_none() {
+            self.prepared = Some(MarkdownDocument::load(&self.document_path));
+        }
+
+        match self
+            .prepared
+            .as_ref()
+            .expect("prepared state was initialized")
+        {
+            Ok(document) => Ok(document),
+            Err(error) => Err(error.clone()),
+        }
+    }
+}
+
+impl AdapterDocument for MarkdownAdapterDocument {
+    fn outline(&mut self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        let document = self.prepared()?;
         let max_heading_level = max_heading_level(input.max_heading_level)?;
         let entries = document.outline_entries(max_heading_level);
         let (entries, page) = paginate_entries(&entries, input.page, input.limit);
         Ok(OutlineResult::structured(entries, page))
     }
 
-    fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult> {
-        let document = MarkdownDocument::load(&input.document_path)?;
+    fn read(&mut self, input: &ReadInput) -> AdapterResult<ReadResult> {
+        let document = self.prepared()?;
         let resolved = document.resolve_ref(&input.ref_id)?;
         let content = match resolved {
             ResolvedRef::FullDocument => document.source(),
@@ -47,7 +78,7 @@ impl Adapter for MarkdownAdapter {
         })
     }
 
-    fn find(&self, input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, input: &FindInput) -> AdapterResult<FindResult> {
         if input.query.is_empty() {
             return Err(AdapterError::invalid_request(
                 "arguments.query",
@@ -55,7 +86,7 @@ impl Adapter for MarkdownAdapter {
             ));
         }
 
-        let document = MarkdownDocument::load(&input.document_path)?;
+        let document = self.prepared()?;
         let max_heading_level = max_heading_level(input.max_heading_level)?;
         let matches = document.find_entries(&input.query, max_heading_level);
         let (matches, page) = paginate_entries(&matches, input.page, input.limit);
@@ -63,8 +94,8 @@ impl Adapter for MarkdownAdapter {
         Ok(FindResult::new(matches, page))
     }
 
-    fn info(&self, input: &InfoInput) -> AdapterResult<InfoResult> {
-        let document = MarkdownDocument::load(&input.document_path)?;
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+        let document = self.prepared()?;
         Ok(InfoResult {
             document: Some(InfoDocument {
                 content_type: Some(CONTENT_TYPE_MARKDOWN.to_owned()),
@@ -87,21 +118,21 @@ impl Adapter for MarkdownAdapter {
     }
 
     fn unstructured_full_read(
-        &self,
-        request: &RequestEnvelope,
+        &mut self,
+        _request: &RequestEnvelope,
     ) -> AdapterResult<UnstructuredFullRead> {
-        let document = MarkdownDocument::load(&request.document.path)?;
+        let document = self.prepared()?;
         let mut result = UnstructuredFullRead::new(document.source(), CONTENT_TYPE_MARKDOWN);
         result.facts.cost = Some(cost_for(document.source()));
         Ok(result)
     }
 
     fn measure_unstructured_full_read_cost(
-        &self,
-        request: &RequestEnvelope,
+        &mut self,
+        _request: &RequestEnvelope,
         requested_units: &[String],
     ) -> AdapterResult<docnav_protocol::Cost> {
-        let document = MarkdownDocument::load(&request.document.path)?;
+        let document = self.prepared()?;
         let cost = cost_for(document.source());
         Ok(docnav_protocol::Cost {
             measurements: cost

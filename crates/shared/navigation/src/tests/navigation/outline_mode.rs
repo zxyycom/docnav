@@ -51,6 +51,15 @@ fn project_path_rule_overrides_user_rule_and_uses_default_utf8_fallback() {
     assert_eq!(result.content_type, "text/plain; charset=utf-8");
     assert!(result.cost.measurements.is_empty());
     assert_eq!(adapter.outline_calls.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.stage_documents(), Vec::new());
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 0);
     let _ = fs::remove_dir_all(workspace);
 }
 
@@ -126,6 +135,15 @@ fn threshold_filtering_and_unit_merge_keep_structured_when_minimum_not_met() {
         *adapter.cost_requests.lock().unwrap(),
         vec![vec!["tokens".to_owned()]]
     );
+    assert_eq!(adapter.stage_documents(), vec![("cost", 1), ("outline", 1)]);
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 1);
 }
 
 #[test]
@@ -169,6 +187,15 @@ fn threshold_missing_measurement_and_runtime_unavailable_fall_back_to_structured
         .as_structured()
         .is_some());
     assert_eq!(missing.cost_requests.lock().unwrap().len(), 1);
+    assert_eq!(missing.stage_documents(), vec![("cost", 1), ("outline", 1)]);
+    assert_eq!(missing.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(missing.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(missing.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(missing.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(missing.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(missing.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(missing.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(missing.model_drops.load(Ordering::SeqCst), 1);
 
     let unavailable = RecordingAdapter::with_cost_units(["tokens"]);
     unavailable.cost_error.store(true, Ordering::SeqCst);
@@ -183,6 +210,18 @@ fn threshold_missing_measurement_and_runtime_unavailable_fall_back_to_structured
         .as_structured()
         .is_some());
     assert_eq!(unavailable.cost_requests.lock().unwrap().len(), 1);
+    assert_eq!(
+        unavailable.stage_documents(),
+        vec![("cost", 1), ("outline", 1)]
+    );
+    assert_eq!(unavailable.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(unavailable.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(unavailable.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(unavailable.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(unavailable.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(unavailable.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(unavailable.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(unavailable.model_drops.load(Ordering::SeqCst), 1);
 }
 
 #[test]
@@ -207,6 +246,15 @@ fn cost_threshold_triggers_hook_full_read_and_preserves_selector_cost() {
     assert_eq!(result.content_type, "text/hook");
     assert_eq!(result.cost.measurements, vec![measurement("tokens", 8)]);
     assert_eq!(adapter.outline_calls.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.stage_documents(), vec![("cost", 1), ("content", 1)]);
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 1);
 }
 
 #[test]
@@ -243,6 +291,18 @@ fn path_triggered_hook_result_facts_are_used() {
     assert_eq!(result.content_type, "text/hook");
     assert_eq!(result.cost.measurements, vec![measurement("lines", 1)]);
     assert_eq!(adapter.outline_calls.load(Ordering::SeqCst), 0);
+    assert_eq!(
+        adapter.stage_documents(),
+        vec![("content", 1), ("facts", 1)]
+    );
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 1);
 }
 
 #[test]
@@ -277,6 +337,15 @@ fn path_triggered_default_fallback_reports_non_utf8_failure() {
         ProtocolDiagnosticCode::DocumentEncodingUnsupported
     );
     assert_eq!(adapter.outline_calls.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.stage_documents(), Vec::new());
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 0);
     let _ = fs::remove_dir_all(workspace);
 }
 

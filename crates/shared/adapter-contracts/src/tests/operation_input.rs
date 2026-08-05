@@ -11,14 +11,15 @@ use crate::{
 use super::support::{no_hook_manifest, NoHookAdapter};
 
 #[test]
-fn adapter_definition_dispatches_closed_standard_input_variants() {
+fn adapter_document_dispatches_closed_standard_input_variants() {
     let adapter = NoHookAdapter;
     let definition =
         AdapterDefinition::new(no_hook_manifest(), &adapter, None).expect("valid definition");
 
+    let mut document = definition.create_document("document.md".to_owned());
     for input in standard_inputs() {
         let operation = input.operation();
-        let result = definition
+        let result = document
             .execute_operation(&input)
             .expect("standard input dispatch");
 

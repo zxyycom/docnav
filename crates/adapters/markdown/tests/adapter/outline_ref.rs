@@ -37,21 +37,78 @@ fn outline_falls_back_to_full_document_for_no_visible_heading() {
     ] {
         let path = write_doc("fallback.md", content);
         let input = outline_input(&path, 6000, 1, Some(3));
-        let outline = outline_result(&input);
+        let definition = markdown_adapter_definition();
+        let mut document = definition.create_document(input.document_path.clone());
+        let outline = document
+            .outline(&input)
+            .expect("outline result")
+            .into_structured()
+            .expect("structured outline result");
         assert_eq!(outline.entries[0].ref_id, "doc:full");
 
-        let read_input = ReadInput {
-            document_path: path_string(&path),
-            ref_id: outline.entries[0].ref_id.clone(),
-            limit: positive(6000),
-            page: positive(1),
-        };
-        let read = MarkdownAdapter
-            .read(&read_input)
-            .expect("read full document");
-        assert_eq!(read.content, content);
-        assert_eq!(read.content_type, "text/markdown");
+        let read_input = read_input(&path, &outline.entries[0].ref_id, 6000, 1);
+        let (same, fresh) = assert_ref_round_trip(&definition, document.as_mut(), &read_input);
+        for read in [same, fresh] {
+            assert_eq!(read.content, content);
+            assert_eq!(read.content_type, "text/markdown");
+        }
     }
+}
+
+#[test]
+fn outline_refs_across_terminal_pages_round_trip_on_same_and_fresh_documents() {
+    let mut source =
+        "Lead text.\n\n# First heading with an intentionally long label\nfirst body\n".to_owned();
+    for _ in 0..105 {
+        source.push_str("filler\n");
+    }
+    source.push_str("# Late heading with another intentionally long label\nlate body\n");
+    let path = write_doc("outline-ref-conformance.md", &source);
+    let definition = markdown_adapter_definition();
+    let mut page = positive(1);
+    let mut refs = Vec::new();
+
+    loop {
+        let input = outline_input(&path, 20, page.get(), Some(3));
+        let mut document = definition.create_document(input.document_path.clone());
+        let result = document
+            .outline(&input)
+            .expect("outline result")
+            .into_structured()
+            .expect("structured outline result");
+        assert_eq!(result.entries.len(), 1, "tiny budget must still advance");
+
+        for entry in result.entries {
+            assert!(entry.label.ends_with("..."));
+            assert!(entry.cost.is_none());
+            let read_input = read_input(&path, &entry.ref_id, 6000, 1);
+            let (same, fresh) = assert_ref_round_trip(&definition, document.as_mut(), &read_input);
+            assert_eq!(same, fresh);
+
+            match entry.ref_id.as_str() {
+                "HEAD:leading" => assert_eq!(same.content, "Lead text.\n\n"),
+                "H:L3:H1" => {
+                    assert!(same
+                        .content
+                        .starts_with("# First heading with an intentionally long label\n"));
+                    assert!(!same.content.contains("# Late heading"));
+                }
+                "H:L110:H1" => assert_eq!(
+                    same.content,
+                    "# Late heading with another intentionally long label\nlate body\n"
+                ),
+                other => panic!("unexpected outline ref: {other}"),
+            }
+            refs.push(entry.ref_id);
+        }
+
+        let Some(next_page) = result.page else {
+            break;
+        };
+        page = next_page;
+    }
+
+    assert_eq!(refs, vec!["HEAD:leading", "H:L3:H1", "H:L110:H1"]);
 }
 
 #[test]
@@ -192,4 +249,103 @@ fn structure_snapshot_ref_is_evaluated_against_current_document() {
     let error = read_ref_error(&path2, ref_a);
     // 结构坐标变化后的 canonical ref 返回 REF_NOT_FOUND。
     assert_ref_not_found(&error, ref_a);
+}
+
+#[test]
+fn prepared_document_keeps_successful_view_after_path_mutation_and_deletion() {
+    let path = write_doc("prepared-success.md", "# Stable\nold body\n");
+    let definition = markdown_adapter_definition();
+    let outline_input = outline_input(&path, 6000, 1, Some(3));
+    let mut document = definition.create_document(outline_input.document_path.clone());
+    let outline = document
+        .outline(&outline_input)
+        .expect("outline result")
+        .into_structured()
+        .expect("structured outline result");
+    let ref_id = outline.entries[0].ref_id.clone();
+    let read_input = read_input(&path, &ref_id, 6000, 1);
+    let replace_path = |name: &str, bytes: &[u8]| {
+        let replacement = path.with_file_name(name);
+        fs::write(&replacement, bytes).expect("write replacement document");
+        fs::remove_file(&path).expect("remove replaced document");
+        fs::rename(&replacement, &path).expect("install replacement document");
+    };
+
+    replace_path("prepared-success-plain.md", b"plain replacement\n");
+    let same_after_replacement = document.read(&read_input).expect("read captured view");
+    assert_eq!(same_after_replacement.content, "# Stable\nold body\n");
+
+    let mut replacement_document = definition.create_document(path_string(&path));
+    let replacement_error = replacement_document
+        .read(&read_input)
+        .expect_err("fresh replacement view must not contain the old heading")
+        .protocol_error();
+    assert_ref_not_found(&replacement_error, &ref_id);
+
+    fs::write(&path, "# Mutated\nnew body\n").expect("mutate replacement in place");
+    let same_after_mutation = document.read(&read_input).expect("read captured view");
+    assert_eq!(same_after_mutation.content, "# Stable\nold body\n");
+    let mut mutated_document = definition.create_document(path_string(&path));
+    let mutated = mutated_document
+        .read(&read_input)
+        .expect("fresh view should resolve the current coordinate");
+    assert_eq!(mutated.content, "# Mutated\nnew body\n");
+
+    replace_path("prepared-success-invalid.md", &[0xFF, 0xFE, 0x00]);
+    let same_after_encoding_change = document.read(&read_input).expect("read captured view");
+    assert_eq!(same_after_encoding_change.content, "# Stable\nold body\n");
+    let mut encoding_document = definition.create_document(path_string(&path));
+    let encoding_error = encoding_document
+        .read(&read_input)
+        .expect_err("fresh invalid-encoding view must fail")
+        .protocol_error();
+    assert_eq!(
+        encoding_error.code(),
+        ProtocolDiagnosticCode::DocumentEncodingUnsupported
+    );
+
+    fs::remove_file(&path).expect("delete document");
+    let same_after_deletion = document.read(&read_input).expect("read captured view");
+    assert_eq!(same_after_deletion.content, "# Stable\nold body\n");
+
+    let mut deleted_document = definition.create_document(path_string(&path));
+    let deleted_error = deleted_document
+        .read(&read_input)
+        .expect_err("fresh deleted view must fail")
+        .protocol_error();
+    assert_eq!(
+        deleted_error.code(),
+        ProtocolDiagnosticCode::DocumentNotFound
+    );
+}
+
+#[test]
+fn prepared_document_caches_initial_encoding_failure_after_path_repair() {
+    let path = write_bytes("prepared-failure.md", &[0xFF, 0xFE, 0x00]);
+    let definition = markdown_adapter_definition();
+    let input = read_input(&path, "doc:full", 6000, 1);
+    let mut document = definition.create_document(input.document_path.clone());
+
+    let first = document
+        .read(&input)
+        .expect_err("initial encoding failure")
+        .protocol_error();
+    assert_eq!(
+        first.code(),
+        ProtocolDiagnosticCode::DocumentEncodingUnsupported
+    );
+
+    fs::write(&path, "# Repaired\nnew body\n").expect("repair document");
+    let repeated = document
+        .read(&input)
+        .expect_err("same document must retain the initial failure")
+        .protocol_error();
+    assert_eq!(
+        repeated.code(),
+        ProtocolDiagnosticCode::DocumentEncodingUnsupported
+    );
+
+    let mut fresh_document = definition.create_document(input.document_path.clone());
+    let fresh = fresh_document.read(&input).expect("fresh repaired view");
+    assert_eq!(fresh.content, "# Repaired\nnew body\n");
 }

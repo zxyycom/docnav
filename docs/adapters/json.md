@@ -24,7 +24,7 @@ result shape、opaque ref 的原样传递和输出编排分别由
 `.json`、`.code-workspace`、`.jsonc`、`.prettierrc`、`.watchmanconfig` 与两个
 content types 是既有 JSONC 基线；其余七个 suffixes 与两个 exact filenames 是扩展后的
 Current routing hints。任一 hint 命中后都只选择既有 `docnav-json`，不把 matched hint、
-profile 或 content-type 推断加入 strategy input。Selected operation 继续使用下文的同一
+profile 或 content-type 推断加入 adapter operation input。Selected operation 继续使用下文的同一
 JSONC-capable grammar、generic navigation、ref、output 与 diagnostic 契约；hint 命中不
 承诺 JSON-LD、GeoJSON、HAR、Web Manifest、Notebook、SARIF 或 lockfile 的 profile
 validity，selected failure 也不会重新路由或 fallback。
@@ -36,10 +36,10 @@ Current descriptor 作为 core static registry 中的 linked adapter，由 packa
 `filenames[]` 与 `content_types[]` MUST 精确匹配上一节的 Current 有序集合；不得声明其它
 JSON-family pathname hint、adapter identity 或 format identity。format id 始终为 `json`。
 
-Current fixed strategy 只提供 outline、read、find 和 info（以及既有 unstructured
-full-read content/cost capability），不引入 routing probe。每个 operation 只消费其 closed
+Current linked adapter 支持 fixed public outline、read、find 和 info（以及既有
+unstructured full-read content/cost capability），不引入 routing probe。每个 operation 只消费其 closed
 standard input；matched pathname、suffix、source content type 和 format identity 都不进入
-strategy input。JSONC 与 pathname hints 不得增加 core parameter、`StandardInputBinding`、
+adapter operation input。JSONC 与 pathname hints 不得增加 core parameter、`StandardInputBinding`、
 CLI、env、config 或 protocol input，且 adapter-private 安全上限仍由单一硬编码配置源拥有。
 
 所有由 pathname hint 或 explicit adapter intent 选中的 JSON documents MUST 使用同一套
@@ -48,8 +48,10 @@ JSONC-capable grammar；pathname 和 descriptor content type 不选择 strict/JS
 
 ## Current：grammar 与私有 source model
 
-每次 selected operation MUST 从实际 document view 移除至多一个开头 UTF-8 BOM、解码
-UTF-8，并恰好解析一个 root value；其后只能是 grammar trivia。root depth 为 `0`，最大
+每个 selected invocation 在首次实际 document access 时 MUST 从实际 document view
+移除至多一个开头 UTF-8 BOM、解码 UTF-8，并恰好解析一个 root value；其后只能是
+grammar trivia。同一 invocation 的后续 eligible operation 和 auxiliary stage 复用该
+prepared view，不重新读取、解码或解析。root depth 为 `0`，最大
 深度为 `127`，同一 object 的 decoded member name 必须唯一。strict JSON value、string
 和 number grammar 保持不变；number 保留 strict-JSON source token，object 保持 source
 member order，array 保持 index order。
@@ -217,21 +219,88 @@ message/type、unstable offset、duplicate name、dependency trace 和 recovery 
 failure 不 retry parser mode、routing 或 adapter；operation 以实际打开的 document view 诊断，
 不发出已移除的 `json-document-changed-after-probe`。
 
+## Current：invocation-private `JsonDocument` 与 ref 一致性
+
+`docnav-json` 的 invocation-private adapter document 在 final selection、core-owned path/access
+normalization 和 closed input resolution 完成后创建。创建边界只保存 normalized path，
+不读取或解析文档；任何按 Current 顺序先于 document access 的 adapter semantic
+validation 仍先执行。Invocation 首次实际需要 JSON document view 时，adapter MUST 准备
+至多一个 private `JsonDocument`。Prepared view MUST 继续由上文的 primary
+source-aware logical tree、source、regions、comment attribution、
+canonical-ref facts 和 source-derived metadata 组成；outline、find、read、info、full-read 与
+cost 等同一 invocation 内参与 JSON document work 的阶段 MUST 复用它，不得为后续阶段重新
+打开 path、重新 decode/parse/attribute、创建第二棵 logical tree 或增加 generic node/state
+lookup。首次准备失败继续使用 Current JSON-owned path、encoding 或 content diagnostic，不能
+借后续阶段重新读取来形成隐式 retry；private state 在 invocation 最后一个 eligible stage、
+failure、fallback completion、cancellation 或 unwind 后释放，不跨 invocation 或 pagination
+request 缓存。
+
+对本 adapter，compatible JSON view 至少要求相同 adapter/ref 语义、完全相同的实际 document
+bytes，以及相同的 ref、logical-path 和 comment-attribution 相关 facts。当前 JSON 没有额外的
+caller-configurable ref-semantic option；page、limit 和 find query 不改变 compatible-view
+identity。两个 view 可以来自不同 path；相同 path 本身不能证明 compatible，path 内容、编码
+或相关语义变化后形成的是 incompatible view。
+
+Outline 或 find 发出的每个完整 ref MUST 使用 Current canonical base/direct-comment/tail
+grammar，并在以下两种情况下都能由带有有效既有 read input 的 read page `1` 成功读取：
+
+1. producer 与 read 使用同一个 prepared `JsonDocument`；
+2. read 使用独立准备的 compatible JSON view。
+
+Read success MUST 原样回显输入 ref，并继续使用 Current view-specific materialization：base
+view 返回 selected logical value 的 strict JSON；direct-comment 与 tail-comment view 分别
+返回 selected binding 或 tail slot 的 comments 加同一 strict-JSON value。Ref resolution
+不得依赖 outline/find 已先被调用、producer-only option、in-memory node pointer、source
+offset identity 或其它未包含在 ref 与 compatible view 中的隐藏上下文。
+
+对应关系仍由本 owner 的 Current 规则决定：outline logical entry 对应其 logical value 或
+direct bundle，tail virtual entry 对应其 anchor 的 tail bundle；find 的完整 comment-span
+occurrence 对应 direct/tail bundle，其它 occurrence 对应 deepest-covering logical/container
+region。因此 find 返回的 ref 可以选择 normalized value 或 covering container，read content
+不要求逐字包含触发 find 的 punctuation、whitespace、comment boundary 或原始 scalar
+spelling。同一 ref 可以由多个 occurrence 重复发出，base/direct/tail 等多个 ref 也可以锚定
+同一 logical value；这些 multiplicity 不削弱每个 emitted ref 自身的 canonicality、read
+success 或语义对应关系。
+
+Prepared view 创建后，replacement、in-place mutation、deletion、repair、encoding change 或
+parse-invalid replacement MUST NOT 刷新该 invocation 的 `JsonDocument`；同一 prepared view
+上的后续 eligible work 继续观察首次成功准备的内容。later invocation 可以观察新 view，并
+按 Current 规则让 base path 指向新 value 或返回 `REF_NOT_FOUND`、让 stale comment view
+返回 `REF_NOT_FOUND`，或者在新的 path/encoding/content 准备阶段返回对应 document
+diagnostic。这些 incompatible-view outcome 不构成 compatible-view ref consistency 失败，也
+不建立 ref 的跨文档版本身份。
+
 ## Current：验证边界
 
 Owner、adapter tests、Case ledger、coverage mapping、core CLI smoke 与 release package smoke
-MUST 分层证明 strict/no-comment behavior不回归；closed JSONC grammar、deterministic
+MUST 分层证明 strict/no-comment behavior 不回归；closed JSONC grammar、deterministic
 attribution、root/member/index 与 empty-container binding、tail anchor/virtual entry、base/direct/
 tail refs/views、comment find-to-read、info/full-read source facts、manifest、source offsets/raw
 numbers/duplicates/depth、stable diagnostics、Unicode pagination/cost、generic readable output、
 automatic/explicit selection、opaque pass-through、no fallback 与同一 release binary linked
-behavior。Large/deep/comment-heavy inputs 还必须证明 comment indexes、summary、attribution,
+behavior。Large/deep/comment-heavy inputs 还必须证明 comment indexes、summary、attribution、
 find 与 drop 的 work/memory bounded，且不对每个 entry/occurrence 全量扫描 comment set。
 
 Pathname-hint evidence 还必须证明完整有序 manifest 集合、九个新增 complete basenames 的
 automatic selection、代表性 suffix 与 exact filename 的 `outline -> ref -> read`，以及
 grammar-invalid selected input 的 JSON-owned no-fallback diagnostic。Shared schema 与 examples
 只约束既有 manifest field shape；本能力只改变 pathname arrays 的 values。
+
+Conformance evidence MUST 把 ref 当作 opaque string，不能由 shared harness 解析、重写或
+重建。代表性 strict JSON 与 comment-aware JSONC fixtures MUST 遍历 outline/find 至 terminal
+page，收集每个原样保留的完整 ref，并对全部 ref 分别证明 same-state 与 independently prepared
+compatible-view read success。JSON-owned assertions MUST 同时证明 base/direct/tail
+materialization 和上述 occurrence/selection correspondence；还要覆盖 root/member/index、
+empty/fallback structure、tail virtual entry、重复 find ref、多个 ref 锚定同一 value、long
+ref 配合 truncated optional display facts，以及 find evidence 不会逐字出现在 read content 的
+container/normalized case。
+
+Deterministic mutation cases MUST 分开验证 same prepared view 的 no-refresh 与 later
+incompatible view 的 Current outcome。Preparation/reuse/drop evidence MUST 证明 routing 阶段
+不创建 JSON document，每条 direct JSON operation path 至多准备一次，同一 invocation 的
+cost/full-read/structured fallback 与 unique-ref nested read 在参与 JSON state 时复用同一
+view，并且 private model、source/parser value、snapshot/cleanup fact 或 state handle 不进入
+ref、protocol/raw/readable output、continuation、schema、example 或 log。
 
 Shared protocol envelope、`Entry`、`ReadResult`、generic `readable-view`、pagination/cost shape
 仍由 shared owners 拥有；本 adapter owner 不重新定义它们。格式专用 readable renderer 仍为

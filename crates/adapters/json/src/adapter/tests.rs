@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use docnav_adapter_contracts::{
-    FindInput, InfoInput, OutlineInput, ReadInput, StandardOperationInput,
+    AdapterDefinition, AdapterDocument, FindInput, InfoInput, OutlineInput, ReadInput,
+    StandardOperationInput,
 };
 use docnav_protocol::{
     positive_result, validate_protocol_response_value, Document, Entry, FindResult, Location,
@@ -15,6 +16,9 @@ use serde_json::json;
 use super::*;
 
 static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
+
+mod prepared_view;
+mod ref_conformance;
 
 #[test]
 fn manifest_declares_fixed_json_identity() {
@@ -69,8 +73,10 @@ fn manifest_declares_fixed_json_identity() {
 fn selected_outline_parses_actual_document_independently_of_path_hint() {
     let document = TempDocument::write("settings.data", b"\xef\xbb\xbf{\"enabled\":true}\n");
     let input = StandardOperationInput::Outline(outline_input(&document, 1, 100, None));
+    let definition = crate::json_adapter_definition();
+    let mut selected = definition.create_document(document.path_str().to_owned());
 
-    let result = crate::json_adapter_definition()
+    let result = selected
         .execute_operation(&input)
         .expect("selected JSON outline should parse the actual document");
 
@@ -141,18 +147,14 @@ fn outline_handles_empty_container_roots_and_root_scalar() {
         let document = TempDocument::write("empty.json", source);
 
         assert_eq!(
-            JsonAdapter
-                .outline(&outline_input(&document, 1, 100, None))
-                .expect("empty container outline"),
+            execute_outline(outline_input(&document, 1, 100, None)),
             OutlineResult::structured(Vec::new(), None),
         );
     }
 
     let scalar = TempDocument::write("scalar.json", b"false");
     assert_eq!(
-        JsonAdapter
-            .outline(&outline_input(&scalar, 1, 100, None))
-            .expect("root scalar outline"),
+        execute_outline(outline_input(&scalar, 1, 100, None)),
         OutlineResult::structured(vec![entry("json:#", "<root>", "boolean")], None),
     );
 }
@@ -544,6 +546,7 @@ fn read_round_trips_outline_refs_and_formats_selected_values() {
 #[test]
 fn read_maps_invalid_and_missing_refs_to_distinct_diagnostics() {
     let document = TempDocument::write("refs.json", br#"{"items":["zero"]}"#);
+    let mut selected = create_adapter_document(&document);
 
     for (ref_id, expected_reason) in [
         ("markdown:doc", "expected ref to start with json:#"),
@@ -560,7 +563,7 @@ fn read_maps_invalid_and_missing_refs_to_distinct_diagnostics() {
             "expected ~0 or ~1 JSON Pointer escape",
         ),
     ] {
-        let error = JsonAdapter
+        let error = selected
             .read(&read_input(&document, ref_id, 1, 100))
             .expect_err("invalid ref should fail")
             .protocol_error();
@@ -575,7 +578,7 @@ fn read_maps_invalid_and_missing_refs_to_distinct_diagnostics() {
         "json:comments:#/items",
         "json:tail-comments:#/items",
     ] {
-        let error = JsonAdapter
+        let error = selected
             .read(&read_input(&document, ref_id, 1, 100))
             .expect_err("missing canonical ref or comment bundle should fail")
             .protocol_error();
@@ -875,8 +878,9 @@ fn find_tiny_pages_preserve_occurrences_complete_refs_and_terminal_no_match() {
 #[test]
 fn find_rejects_an_empty_query_with_the_existing_invalid_request_diagnostic() {
     let document = TempDocument::write("empty-query.json", b"{}");
+    let mut selected = create_adapter_document(&document);
 
-    let error = JsonAdapter
+    let error = selected
         .find(&find_input(&document, "", 1, 100))
         .expect_err("empty query should fail")
         .protocol_error();
@@ -1023,16 +1027,12 @@ fn full_read_hooks_preserve_bom_stripped_source_and_measure_actual_cost() {
         bytes.extend_from_slice(expected_source.as_bytes());
         let document = TempDocument::write(name, &bytes);
         let request = full_read_request(&document);
+        let mut selected = create_adapter_document(&document);
 
-        let expected = JsonAdapter
+        let result = selected
             .unstructured_full_read(&request)
             .expect("full read should succeed");
-        let definition = crate::json_adapter_definition();
-        let result = definition
-            .unstructured_full_read(&request)
-            .expect("definition full read should succeed");
 
-        assert_eq!(result, expected);
         assert_eq!(result.content, expected_source);
         assert_eq!(result.content_type, expected_content_type);
         let full_cost = result
@@ -1042,13 +1042,9 @@ fn full_read_hooks_preserve_bom_stripped_source_and_measure_actual_cost() {
         assert_selection_cost(&full_cost, expected_source);
 
         let requested_units = ["tokens".to_owned(), "bytes".to_owned()];
-        let expected_measured = JsonAdapter
+        let measured = selected
             .measure_unstructured_full_read_cost(&request, &requested_units)
             .expect("full-read cost measurement should succeed");
-        let measured = definition
-            .measure_unstructured_full_read_cost(&request, &requested_units)
-            .expect("definition full-read cost measurement should succeed");
-        assert_eq!(measured, expected_measured);
         let mut expected_measurements = full_cost.measurements;
         expected_measurements
             .retain(|measurement| matches!(measurement.unit.as_str(), "bytes" | "tokens"));
@@ -1119,6 +1115,16 @@ fn find_result(document: &TempDocument, query: &str, page: u32, limit: u32) -> F
     execute_find(find_input(document, query, page, limit))
 }
 
+fn assert_ref_ids(round_trips: &[(Entry, ReadResult)], expected: &[&str]) {
+    assert_eq!(
+        round_trips
+            .iter()
+            .map(|(entry, _)| entry.ref_id.as_str())
+            .collect::<Vec<_>>(),
+        expected,
+    );
+}
+
 fn assert_selection_cost(cost: &docnav_protocol::Cost, content: &str) {
     let actual = cost
         .measurements
@@ -1165,58 +1171,50 @@ fn structured_outline(
 }
 
 fn execute_outline(input: OutlineInput) -> OutlineResult {
-    let expected = JsonAdapter
-        .outline(&input)
-        .expect("direct Adapter outline strategy should succeed");
-    let actual = crate::json_adapter_definition()
+    let definition = crate::json_adapter_definition();
+    let mut document = definition.create_document(input.document_path.clone());
+    let actual = document
         .execute_operation(&StandardOperationInput::Outline(input))
         .expect("definition outline should succeed");
     let OperationResult::Outline(actual) = actual else {
         panic!("outline input should return an outline result");
     };
-    assert_eq!(actual, expected);
     actual
 }
 
 fn execute_read(input: ReadInput) -> ReadResult {
-    let expected = JsonAdapter
-        .read(&input)
-        .expect("direct Adapter read strategy should succeed");
-    let actual = crate::json_adapter_definition()
+    let definition = crate::json_adapter_definition();
+    let mut document = definition.create_document(input.document_path.clone());
+    let actual = document
         .execute_operation(&StandardOperationInput::Read(input))
         .expect("definition read should succeed");
     let OperationResult::Read(actual) = actual else {
         panic!("read input should return a read result");
     };
-    assert_eq!(actual, expected);
     actual
 }
 
 fn execute_find(input: FindInput) -> FindResult {
-    let expected = JsonAdapter
-        .find(&input)
-        .expect("direct Adapter find strategy should succeed");
-    let actual = crate::json_adapter_definition()
+    let definition = crate::json_adapter_definition();
+    let mut document = definition.create_document(input.document_path.clone());
+    let actual = document
         .execute_operation(&StandardOperationInput::Find(input))
         .expect("definition find should succeed");
     let OperationResult::Find(actual) = actual else {
         panic!("find input should return a find result");
     };
-    assert_eq!(actual, expected);
     actual
 }
 
 fn execute_info(input: InfoInput) -> docnav_protocol::InfoResult {
-    let expected = JsonAdapter
-        .info(&input)
-        .expect("direct Adapter info strategy should succeed");
-    let actual = crate::json_adapter_definition()
+    let definition = crate::json_adapter_definition();
+    let mut document = definition.create_document(input.document_path.clone());
+    let actual = document
         .execute_operation(&StandardOperationInput::Info(input))
         .expect("definition info should succeed");
     let OperationResult::Info(actual) = actual else {
         panic!("info input should return an info result");
     };
-    assert_eq!(actual, expected);
     actual
 }
 
@@ -1259,10 +1257,11 @@ fn match_entry(ref_id: &str, label: &str, line: u32) -> Entry {
 }
 
 fn selected_outline_error(
-    selected: &docnav_adapter_contracts::AdapterDefinition<'_>,
+    selected: &AdapterDefinition<'_>,
     document: &TempDocument,
 ) -> docnav_protocol::ProtocolError {
     selected
+        .create_document(document.path_str().to_owned())
         .execute_operation(&StandardOperationInput::Outline(outline_input(
             document, 1, 100, None,
         )))
@@ -1308,6 +1307,10 @@ impl TempDocument {
             .to_str()
             .expect("temporary document path should be UTF-8")
     }
+}
+
+fn create_adapter_document(document: &TempDocument) -> Box<dyn AdapterDocument> {
+    crate::json_adapter_definition().create_document(document.path_str().to_owned())
 }
 
 impl Drop for TempDocument {

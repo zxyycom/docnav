@@ -2,8 +2,9 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
-    ReadInput, UnstructuredFullRead, UnstructuredFullReadCapabilities, UnstructuredFullReadFacts,
+    Adapter, AdapterDefinition, AdapterDocument, AdapterError, AdapterResult, FindInput, InfoInput,
+    OutlineInput, ReadInput, UnstructuredFullRead, UnstructuredFullReadCapabilities,
+    UnstructuredFullReadFacts,
 };
 use docnav_protocol::{
     AdapterIdentity, Cost, Entry, FindResult, FormatDescriptor, InfoResult, Manifest, Measurement,
@@ -84,6 +85,15 @@ pub(super) struct RecordingAdapter {
     pub(super) full_read_content: String,
     pub(super) full_read_content_type: String,
     pub(super) facts_cost: Option<Cost>,
+    pub(super) document_creations: AtomicUsize,
+    pub(super) source_acquisitions: AtomicUsize,
+    pub(super) source_decodes: AtomicUsize,
+    pub(super) model_builds: AtomicUsize,
+    pub(super) live_documents: AtomicUsize,
+    pub(super) peak_live_documents: AtomicUsize,
+    pub(super) document_drops: AtomicUsize,
+    pub(super) model_drops: AtomicUsize,
+    stage_documents: Mutex<Vec<(&'static str, usize)>>,
 }
 
 impl Default for RecordingAdapter {
@@ -100,6 +110,15 @@ impl Default for RecordingAdapter {
             full_read_content: "full read".to_owned(),
             full_read_content_type: "text/plain".to_owned(),
             facts_cost: None,
+            document_creations: AtomicUsize::new(0),
+            source_acquisitions: AtomicUsize::new(0),
+            source_decodes: AtomicUsize::new(0),
+            model_builds: AtomicUsize::new(0),
+            live_documents: AtomicUsize::new(0),
+            peak_live_documents: AtomicUsize::new(0),
+            document_drops: AtomicUsize::new(0),
+            model_drops: AtomicUsize::new(0),
+            stage_documents: Mutex::new(Vec::new()),
         }
     }
 }
@@ -126,6 +145,10 @@ impl RecordingAdapter {
         };
         (capabilities != UnstructuredFullReadCapabilities::default()).then_some(capabilities)
     }
+
+    pub(super) fn stage_documents(&self) -> Vec<(&'static str, usize)> {
+        self.stage_documents.lock().unwrap().clone()
+    }
 }
 
 fn recording_manifest() -> Manifest {
@@ -146,9 +169,57 @@ fn recording_manifest() -> Manifest {
 }
 
 impl Adapter for RecordingAdapter {
-    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
-        self.outline_calls.fetch_add(1, Ordering::SeqCst);
-        if self.fail_outline.load(Ordering::SeqCst) {
+    fn create_document(&self, _document_path: String) -> Box<dyn AdapterDocument + '_> {
+        let id = self.document_creations.fetch_add(1, Ordering::SeqCst) + 1;
+        let live = self.live_documents.fetch_add(1, Ordering::SeqCst) + 1;
+        self.peak_live_documents.fetch_max(live, Ordering::SeqCst);
+        Box::new(RecordingDocument {
+            adapter: self,
+            id,
+            prepared: false,
+        })
+    }
+}
+
+struct RecordingDocument<'a> {
+    adapter: &'a RecordingAdapter,
+    id: usize,
+    prepared: bool,
+}
+
+impl RecordingDocument<'_> {
+    fn record(&mut self, stage: &'static str) {
+        if !self.prepared {
+            self.adapter
+                .source_acquisitions
+                .fetch_add(1, Ordering::SeqCst);
+            self.adapter.source_decodes.fetch_add(1, Ordering::SeqCst);
+            self.adapter.model_builds.fetch_add(1, Ordering::SeqCst);
+            self.prepared = true;
+        }
+        self.adapter
+            .stage_documents
+            .lock()
+            .unwrap()
+            .push((stage, self.id));
+    }
+}
+
+impl Drop for RecordingDocument<'_> {
+    fn drop(&mut self) {
+        self.adapter.document_drops.fetch_add(1, Ordering::SeqCst);
+        self.adapter.live_documents.fetch_sub(1, Ordering::SeqCst);
+        if self.prepared {
+            self.adapter.model_drops.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+}
+
+impl AdapterDocument for RecordingDocument<'_> {
+    fn outline(&mut self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        self.record("outline");
+        self.adapter.outline_calls.fetch_add(1, Ordering::SeqCst);
+        if self.adapter.fail_outline.load(Ordering::SeqCst) {
             return Err(AdapterError::internal("outline-should-not-run"));
         }
         Ok(OutlineResult::structured(
@@ -167,51 +238,55 @@ impl Adapter for RecordingAdapter {
         ))
     }
 
-    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
+    fn read(&mut self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("read-unimplemented"))
     }
 
-    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::internal("find-unimplemented"))
     }
 
-    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("info-unimplemented"))
     }
 
     fn unstructured_full_read(
-        &self,
+        &mut self,
         _request: &RequestEnvelope,
     ) -> AdapterResult<UnstructuredFullRead> {
+        self.record("content");
         Ok(UnstructuredFullRead::new(
-            self.full_read_content.clone(),
-            self.full_read_content_type.clone(),
+            self.adapter.full_read_content.clone(),
+            self.adapter.full_read_content_type.clone(),
         ))
     }
 
     fn measure_unstructured_full_read_cost(
-        &self,
+        &mut self,
         _request: &RequestEnvelope,
         requested_units: &[String],
     ) -> AdapterResult<Cost> {
-        self.cost_requests
+        self.record("cost");
+        self.adapter
+            .cost_requests
             .lock()
             .unwrap()
             .push(requested_units.to_vec());
-        if self.cost_error.load(Ordering::SeqCst) {
+        if self.adapter.cost_error.load(Ordering::SeqCst) {
             return Err(AdapterError::internal("measurement-unavailable"));
         }
         Ok(Cost {
-            measurements: self.cost_measurements.clone(),
+            measurements: self.adapter.cost_measurements.clone(),
         })
     }
 
     fn unstructured_full_read_facts(
-        &self,
+        &mut self,
         _request: &RequestEnvelope,
     ) -> AdapterResult<UnstructuredFullReadFacts> {
+        self.record("facts");
         Ok(UnstructuredFullReadFacts {
-            cost: self.facts_cost.clone(),
+            cost: self.adapter.facts_cost.clone(),
         })
     }
 }

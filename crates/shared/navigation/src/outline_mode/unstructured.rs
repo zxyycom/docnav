@@ -3,7 +3,7 @@ use std::fs;
 use std::io::ErrorKind;
 
 use docnav_adapter_contracts::{
-    AdapterDefinition, AdapterError, AdapterResult, UnstructuredFullRead,
+    AdapterDefinition, AdapterDocument, AdapterError, AdapterResult, UnstructuredFullRead,
 };
 use docnav_protocol::{Cost, OperationResult, OutlineResult, ProtocolResponse, RequestEnvelope};
 
@@ -19,6 +19,7 @@ pub(super) fn resolve_cost_thresholds(
     config_sources: &NavigationConfigSources,
     selected_adapter_id: &str,
     selected_adapter: &AdapterDefinition<'_>,
+    document: &mut dyn AdapterDocument,
     request: &RequestEnvelope,
 ) -> Result<OutlineMode, NavigationError> {
     let effective = effective_thresholds(config_sources, selected_adapter_id)?;
@@ -31,8 +32,7 @@ pub(super) fn resolve_cost_thresholds(
         return Ok(OutlineMode::Structured);
     }
 
-    let cost = match selected_adapter.measure_unstructured_full_read_cost(request, &requested_units)
-    {
+    let cost = match document.measure_unstructured_full_read_cost(request, &requested_units) {
         Ok(cost) => cost,
         Err(_) => return Ok(OutlineMode::Structured),
     };
@@ -93,10 +93,11 @@ fn cost_matches_threshold(cost: &Cost, effective: &EffectiveThresholds) -> bool 
 
 pub(super) fn execute_unstructured_outline(
     adapter: &AdapterDefinition<'_>,
+    document: &mut dyn AdapterDocument,
     request: &RequestEnvelope,
     selection: UnstructuredFullSelection,
 ) -> ProtocolResponse {
-    match unstructured_full_read(adapter, request, selection.cost) {
+    match unstructured_full_read(adapter, document, request, selection.cost) {
         Ok(result) => ProtocolResponse::success(
             request.protocol_version.clone(),
             request.request_id.clone(),
@@ -113,18 +114,19 @@ pub(super) fn execute_unstructured_outline(
 
 fn unstructured_full_read(
     adapter: &AdapterDefinition<'_>,
+    document: &mut dyn AdapterDocument,
     request: &RequestEnvelope,
     selector_cost: Cost,
 ) -> AdapterResult<UnstructuredFullRead> {
     let capabilities = adapter.unstructured_full_read_capabilities();
     let mut result = if capabilities.is_some_and(|capabilities| capabilities.content_hook) {
-        adapter.unstructured_full_read(request)?
+        document.unstructured_full_read(request)?
     } else {
         default_utf8_full_read(request)?
     };
 
     if capabilities.is_some_and(|capabilities| capabilities.result_facts_hook) {
-        let facts = adapter.unstructured_full_read_facts(request)?;
+        let facts = document.unstructured_full_read_facts(request)?;
         if result.facts.cost.is_none() {
             result.facts.cost = facts.cost;
         }

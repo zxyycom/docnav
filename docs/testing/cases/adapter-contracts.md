@@ -31,12 +31,25 @@ Proves:
 Owner: `docs/adapter-contract.md#文档操作执行边界`
 
 Entities:
-- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::operation_input::adapter_definition_dispatches_closed_standard_input_variants`
+- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::operation_input::adapter_document_dispatches_closed_standard_input_variants`
 - `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::operation_input::standard_input_bindings_report_operation_and_expected_value_kind`
 
 Proves:
 - Standard operation input uses closed operation-specific variants instead of an open option map.
-- Adapter definitions dispatch the matching closed input variant, while each standard binding reports its operation and expected value kind.
+- An invocation-private adapter document dispatches the matching closed input variant, while each standard binding reports its operation and expected value kind.
+
+## Case WB-CONTRACTS-REF-CONFORMANCE-001: Opaque refs round-trip on same and fresh adapter documents
+
+Owner: `docs/adapter-contract.md#适配器职责`
+
+Entities:
+- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::ref_conformance::ref_conformance_reads_opaque_ref_on_same_and_fresh_documents_at_page_one`
+- `cargo|docnav-adapter-contracts:lib:docnav_adapter_contracts|tests::ref_conformance::ref_conformance_rejects_mismatched_read_results`
+
+Proves:
+- The shared conformance helper forwards an opaque ref unchanged to page-one read on the existing adapter document and a fresh document created by the same definition.
+- Both reads must return protocol-valid success results with exact ref echo；the helper does not parse refs or standardize pagination and adapter-owned correspondence.
+- Adapter documents may retain non-`Send`、non-`Sync` private state；the factory and closed read input expose no state handle or generic parser/model parameter.
 
 ## Case WB-CONTRACTS-UNSTRUCTURED-001: Adapter contracts unstructured full-read hook defaults 稳定
 
@@ -47,4 +60,4 @@ Entities:
 
 Proves:
 - Adapter contract default unstructured full-read capabilities are absent unless the adapter opts in.
-- Default unstructured full-read content hook returns an adapter error, cost measurement returns an empty `Cost`, and result facts return defaults.
+- Default adapter-document unstructured full-read content hook returns an adapter error, cost measurement returns an empty `Cost`, and result facts return defaults.

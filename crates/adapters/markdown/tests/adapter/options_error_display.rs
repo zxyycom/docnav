@@ -34,9 +34,33 @@ fn outline_does_not_default_a_missing_max_heading_level() {
     let mut input = outline_input(&path, 6000, 1, Some(3));
     input.max_heading_level = None;
 
-    MarkdownAdapter
+    adapter_document(&input.document_path)
         .outline(&input)
         .expect_err("missing typed input must not be defaulted");
+}
+
+#[test]
+fn document_factory_and_empty_find_defer_document_access() {
+    let path = write_doc("deferred-access.md", "temporary\n");
+    fs::remove_file(&path).expect("remove temporary document");
+    let definition = markdown_adapter_definition();
+    let empty_find = find_input(&path, "", 6000, 1, Some(3));
+    let mut document = definition.create_document(empty_find.document_path.clone());
+
+    let error = document
+        .find(&empty_find)
+        .expect_err("empty query must be rejected before document access")
+        .protocol_error();
+    assert_eq!(error.code(), ProtocolDiagnosticCode::InvalidRequest);
+
+    fs::write(&path, "# Ready\nbody\n").expect("create document after semantic rejection");
+    let outline_input = outline_input(&path, 6000, 1, Some(3));
+    let outline = document
+        .outline(&outline_input)
+        .expect("first document access must observe the created file")
+        .into_structured()
+        .expect("structured outline result");
+    assert_eq!(entry_refs(&outline.entries), vec!["H:L1:H1"]);
 }
 
 #[test]
@@ -44,7 +68,7 @@ fn outline_rejects_out_of_range_max_heading_level_at_adapter_boundary() {
     let path = write_doc("max-heading-level-invalid.md", "# Top\n");
     for level in [0, 7] {
         let input = outline_input(&path, 6000, 1, Some(level));
-        let error = MarkdownAdapter
+        let error = adapter_document(&input.document_path)
             .outline(&input)
             .expect_err("adapter must reject an out-of-range heading level");
         let protocol_error = error.protocol_error();
@@ -84,7 +108,9 @@ fn selected_outline_reads_actual_document_and_returns_stable_encoding_error() {
     let path = write_bytes("bad.data", &[0xFF, 0xFE, 0x00]);
     let input = outline_input(&path, 6000, 1, None);
 
-    let error = markdown_adapter_definition()
+    let definition = markdown_adapter_definition();
+    let mut document = definition.create_document(input.document_path.clone());
+    let error = document
         .execute_operation(&StandardOperationInput::Outline(input))
         .expect_err("selected Markdown outline should validate the actual document");
 

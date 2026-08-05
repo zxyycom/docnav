@@ -2,8 +2,8 @@ use std::fs;
 use std::io;
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
-    ReadInput,
+    Adapter, AdapterDefinition, AdapterDocument, AdapterError, AdapterResult, FindInput, InfoInput,
+    OutlineInput, ReadInput,
 };
 use docnav_markdown::{markdown_adapter_definition, MarkdownAdapter};
 use docnav_navigation::execute_navigation_command;
@@ -283,27 +283,43 @@ fn execute_document_with_nested_read_failure(request: DocumentRequest) -> Comman
     outcome_for_response(outcome, output, Some(invocation_log)).unwrap()
 }
 
-static NESTED_READ_FAILURE_ADAPTER: NestedReadFailureAdapter = NestedReadFailureAdapter;
+static NESTED_READ_FAILURE_ADAPTER: NestedReadFailureAdapter = NestedReadFailureAdapter {
+    markdown: MarkdownAdapter,
+};
 static NESTED_READ_FAILURE_ADAPTERS: &[fn() -> AdapterDefinition<'static>] =
     &[nested_read_failure_adapter_definition];
 
-struct NestedReadFailureAdapter;
+struct NestedReadFailureAdapter {
+    markdown: MarkdownAdapter,
+}
 
 impl Adapter for NestedReadFailureAdapter {
-    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
-        MarkdownAdapter.outline(input)
+    fn create_document(&self, document_path: String) -> Box<dyn AdapterDocument + '_> {
+        Box::new(NestedReadFailureDocument {
+            markdown: self.markdown.create_document(document_path),
+        })
+    }
+}
+
+struct NestedReadFailureDocument<'a> {
+    markdown: Box<dyn AdapterDocument + 'a>,
+}
+
+impl AdapterDocument for NestedReadFailureDocument<'_> {
+    fn outline(&mut self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        self.markdown.outline(input)
     }
 
-    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
+    fn read(&mut self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("nested-read-private-diagnostic"))
     }
 
-    fn find(&self, input: &FindInput) -> AdapterResult<FindResult> {
-        MarkdownAdapter.find(input)
+    fn find(&mut self, input: &FindInput) -> AdapterResult<FindResult> {
+        self.markdown.find(input)
     }
 
-    fn info(&self, input: &InfoInput) -> AdapterResult<InfoResult> {
-        MarkdownAdapter.info(input)
+    fn info(&mut self, input: &InfoInput) -> AdapterResult<InfoResult> {
+        self.markdown.info(input)
     }
 }
 

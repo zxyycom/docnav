@@ -1,10 +1,10 @@
 # Navigation Input Resolution
 
-本文是 document navigation input resolution 的主规范。读者应能从本文判断 `docnav` core parameter catalog 与 `docnav-navigation` 的 owner 边界、navigation command 的输入来源如何进入解析流程、raw project/user config source 如何加载和完整校验、selected adapter/current-operation view 如何从同一 catalog 过滤，以及一个 typed resolution result 如何投影为 protocol arguments、closed strategy input 和 core output facts。
+本文是 document navigation input resolution 的主规范。读者应能从本文判断 `docnav` core parameter catalog 与 `docnav-navigation` 的 owner 边界、navigation command 的输入来源如何进入解析流程、raw project/user config source 如何加载和完整校验、selected adapter/current-operation view 如何从同一 catalog 过滤，以及一个 typed resolution result 如何投影为 protocol arguments、closed adapter input 和 core output facts。
 
 配置只是 navigation 参数来源之一。本文不把配置文件、CLI argv、protocol arguments 或 adapter defaults 单独提升为主 owner；这些来源都在 `docnav-navigation` 的 input resolution 流程中按统一规则解析。
 
-**Current：** lexical pathname routing、route-before-document-I/O、no-probe selection、no-fallback dispatch 与既有 catalog/source resolution 已由实现证据证明。
+**Current：** lexical pathname routing、route-before-document-I/O、no-probe selection、no-fallback dispatch、catalog/source resolution 和 invocation-private adapter document orchestration 已由实现证据证明。
 
 ## Owner 边界
 
@@ -33,10 +33,10 @@ Core 不为 navigation command 预先读取 raw config JSON、完成参数来源
 6. Fixed positional input 由 navigation-private direct mapping 产出；core 提供的 normalized CLI `Source` 已保留 canonical field identity、locator、typed/invalid input 和 source attribution。Project/user JSON 通过 Serde companion 按同一 catalog metadata 提取 declared candidates。
 7. 将 selected `FieldDefSet` 与 explicit、project、user sources 交给 resolution core；字段有 environment locator 时还可加入 declared-only env source，优先级为 `explicit > env > project > user > built_in`，否则保持 `explicit > project > user > built_in`。Static default 由 field metadata 自动回退。
 8. Resolution core 执行 merge、provenance 和最终 canonical field validation；selected/contributing invalid candidate 或 missing required value 返回带来源信息的 blocking diagnostic，materialization 不返回部分参数对象。
-9. 从同一个 `ResolutionResult` 构造 protocol `Options` / `OperationArguments`、closed `StandardOperationInput` 和 core output projection，并通过 selected adapter definition 调用对应 operation strategy。
-10. 在 validated structured outline/find base success 后，根据 core projection 中的 auto-read mode 选择保留 base response，或复用同一 selected adapter 的 read strategy 形成 validated composed response。
+9. 从同一个 `ResolutionResult` 构造 protocol `Options` / `OperationArguments`、closed `StandardOperationInput` 和 core output projection；request 校验成功后，通过 selected definition 为 normalized path 创建至多一个无 I/O 的 invocation-private `AdapterDocument`，再调用对应 operation behavior。
+10. 在 validated structured outline/find base success 后，根据 core projection 中的 auto-read mode 选择保留 base response，或在同一个 `AdapterDocument` 上执行 read behavior 并形成 validated composed response；最后一个 eligible stage、validated-base fallback、error 或 unwind 后释放 document。
 
-Adapter strategy 接收的是已解析的 operation-specific closed typed input。Source resolution、merge/default、标准类型 materialization 和 core-configured validation 已完成；strategy 不消费 raw source、generic parameter bag 或 protocol envelope，但可以为算法正确性防御性地校验或重复校验格式语义。
+`AdapterDocument` 接收的是已解析的 operation-specific closed typed input。Source resolution、merge/default、标准类型 materialization 和 core-configured validation 已完成；document behavior 不消费 raw source、generic parameter bag、protocol envelope、caller-provided state handle 或第二个 parser/state argument，但可以为算法正确性防御性地校验或重复校验格式语义。Document factory 只建立 lifecycle owner；每个 behavior 在第一次确实需要 document access 时懒初始化 private view，并保持自身 validation-versus-access 顺序。
 
 ### Document CLI candidate 边界状态
 
@@ -107,12 +107,12 @@ Core-owned `DocumentParameterCatalog` 是 caller-configurable document operation
 
 | 参数 | Scope / consumer |
 | --- | --- |
-| `page` | common；paged strategy input |
-| `limit` | common；paged strategy input |
+| `page` | common；paged adapter input |
+| `limit` | common；paged adapter input |
 | `pagination.enabled` | common；navigation-owned effective-limit binding |
 | `output` | common；core output projection |
 | `auto_read` | outline/find；core navigation orchestration projection |
-| Markdown `max_heading_level` | exact `docnav-markdown` tag；outline/find strategy input |
+| Markdown `max_heading_level` | exact `docnav-markdown` tag；outline/find adapter input |
 
 每个 entry 组合 canonical field identity、已启用的 CLI/env/config locator、standard value kind、constraints/default、merge strategy、operation binding、closed consumer binding 和可选 exact static adapter-id tag。Untagged entry 对适用 operation 是 common；tagged entry 只在 tag 等于 selected adapter id 时进入 selected-operation view。Catalog construction 在 runtime parsing 前拒绝 duplicate/incompatible identity、locator、unknown adapter id、missing/incompatible consumer binding 和 invalid operation binding。
 
@@ -126,13 +126,15 @@ Full config validation view 接受 full catalog 的所有 known config locators�
 
 **Current：** 本节定义已实现的 pathname routing、route-before-document-I/O 和 probe removal 契约。
 
-Resolved declared adapter id 存在时，navigation 跳过 pathname routing，只做 exact adapter-id lookup；缺失 id 返回 `ADAPTER_UNAVAILABLE`，details 包含 declared `adapter_id`、`ADAPTER_NOT_FOUND`、resolved `selection_source` 和 stage `resolve`。命中 definition 只表示 caller 指定的 linked strategy 存在，不能跳过 selected operation 对实际文档的处理。
+Resolved declared adapter id 存在时，navigation 跳过 pathname routing，只做 exact adapter-id lookup；缺失 id 返回 `ADAPTER_UNAVAILABLE`，details 包含 declared `adapter_id`、`ADAPTER_NOT_FOUND`、resolved `selection_source` 和 stage `resolve`。命中 definition 只表示 caller 指定的 linked adapter factory 存在，不能跳过 selected operation 对实际文档的处理。
 
 Declared adapter id 不存在时，navigation 对 lexical routing pathname 的完整 basename 做一次 manifest-derived lookup：先按大小写敏感 exact spelling 匹配 `formats[].filenames[]`；没有命中时，再按 ASCII 大小写归一化匹配 end-anchored `formats[].extensions[]` suffix，并在多个命中中选择最长 suffix。Exact filename 优先于 generic suffix。Matched hint 私下映射到 normalized format identity，再 exact lookup 唯一 registry definition；registry order 不参与选择。完整 metadata 和 duplicate invariant 见 [适配器契约](adapter-contract.md#manifest-元数据)。
 
 Routing pathname 只从 caller path 与 cwd 词法派生。Automatic route 命中前不得读取目标 metadata、open、canonicalize、read 或 parse；无 hint 命中直接返回 `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`。选择成功后才进入 core-owned filesystem-backed document path/access normalization，并把 normalized document path 放入 selected operation 的 closed input。Derived lookup key/index、matched filename/suffix 和 matched format identity 不进入 diagnostics、protocol、readable output、logs、refs、continuations、typed fields 或 adapter input。
 
-一旦 definition 被选中，selection 生命周期结束。Selected strategy 必须读取并验证实际 document view；其 path/access、decode、parse、semantic、operation 或 invalid-result failure 保持 owner-compatible diagnostic。Navigation 不重新匹配 pathname、不遍历其它 registry definition，也不 dispatch 第二个 adapter。
+一旦 definition 被选中，selection 生命周期结束。Selected `AdapterDocument` behavior 必须读取并验证实际 document view；其 path/access、decode、parse、semantic、operation 或 invalid-result failure 保持 owner-compatible diagnostic。Navigation 不重新匹配 pathname、不遍历其它 registry definition，也不 dispatch 第二个 adapter。
+
+Routing 阶段不得创建 adapter document。Path/access normalization、selected-operation resolution、typed materialization 和 request validation 成功后，navigation 才创建 invocation-private `AdapterDocument`；factory 不执行 target-document I/O 或 eager preparation。
 
 ## Resolution 流程
 
@@ -161,8 +163,11 @@ docnav-navigation
   merge and perform final canonical field validation/materialization
   derive protocol Options/OperationArguments + closed StandardOperationInput + core output/orchestration facts
   construct RequestEnvelope and PreparedNavigationRequest
-  dispatch selected adapter definition operation strategy
+  validate the closed request/operation boundary
+  create one I/O-free invocation-private AdapterDocument
+  lazily prepare and dispatch selected behavior/full-read stages on that document
   validate base response and apply eligible unique-ref auto-read composition
+  release AdapterDocument before returning the outcome
 ```
 
 Resolution 必须保持来源信息，便于诊断表达 explicit、project config、user config 或 built-in default。Default-path config source 缺失不产生 diagnostic；explicit config path missing、present invalid source、unknown field、unmapped public input、type/range invalid 和 missing required value 产生 blocking diagnostic。
@@ -170,7 +175,7 @@ Resolution 必须保持来源信息，便于诊断表达 explicit、project conf
 Config source validation 与 selected adapter/operation resolution 是两阶段边界：
 
 1. Full validation 阶段读取 project/user config source，使用 full catalog 和 owner-specific shape validation 报告 unknown field、unknown adapter id、nested shape failure 和 declared scalar typed value failure。Known-other adapter namespace 可以通过 full validation。
-2. Selected adapter/operation 阶段只消费 current operation 的 common fields 与 exact selected-adapter-tag fields。其它已知 adapter namespace 不进入 selected resolution 或 strategy input；selected namespace 下不适用于 current operation 的 option 是 blocking unsupported parameter diagnostic。
+2. Selected adapter/operation 阶段只消费 current operation 的 common fields 与 exact selected-adapter-tag fields。其它已知 adapter namespace 不进入 selected resolution 或 adapter input；selected namespace 下不适用于 current operation 的 option 是 blocking unsupported parameter diagnostic。
 
 Invocation logging 可观察 resolution 阶段的稳定 metadata，但不改变 resolution outcome。可记录的 navigation-owned metadata 包括 adapter selection success/failure layer、selected adapter id、request construction success/failure、request id 或 fallback correlation id availability、operation arguments 的 bounded shape、selected adapter dispatch start/end status 和 output/error status metadata。不得把日志 event 作为额外 resolution result 返回给 caller。
 
@@ -178,13 +183,13 @@ Config path flag 只影响 source descriptor 的 resolved path 和 path origin�
 
 Config source diagnostic details 必须携带 source level 和 selected config file path，使 project config 与 user config 在路径都由 CLI flag 选择时仍可区分。
 
-当 `pagination.enabled` 最终为 `false` 时，resolution 在 sibling projections 前把分页预算归一为最大正整数 effective limit。该 effective limit 同时进入 protocol arguments 与 paged closed strategy input；`pagination.enabled` 本身不进入 adapter input。归一化不回写 fixed command facts、normalized CLI source 或 config source。
+当 `pagination.enabled` 最终为 `false` 时，resolution 在 sibling projections 前把分页预算归一为最大正整数 effective limit。该 effective limit 同时进入 protocol arguments 与 paged closed adapter input；`pagination.enabled` 本身不进入 adapter input。归一化不回写 fixed command facts、normalized CLI source 或 config source。
 
 ## Outline Mode Resolution
 
 `outline` operation 在标准调用参数中包含 navigation-owned `outline_mode`。合法值为 `structured` 和 `unstructured_full`，默认值为 `structured`。`outline_mode` 不是 adapter 私有 option、ref policy、raw protocol argument 或 public CLI override flag。
 
-`outline_mode` resolution 发生在 adapter selection、post-selection document path 规范化和 selected-operation catalog resolution 之后，且早于 selected adapter 的正常 outline strategy dispatch。优先级固定为：
+`outline_mode` resolution 发生在 adapter selection、post-selection document path 规范化和 selected-operation catalog resolution 之后，且早于 selected `AdapterDocument` 的正常 outline behavior。优先级固定为：
 
 1. `outline.mode_rules[]` path selector。
 2. `outline.auto_full_read.thresholds[]` adapter-scoped cost threshold selector。
@@ -192,17 +197,17 @@ Config source diagnostic details 必须携带 source level 和 selected config f
 
 Path selector 只在 `outline` operation 中生效。User config rules 保持文件顺序；project config rules 保持文件顺序并在 user rules 之后评估；最后一个匹配当前规范化 document path 的 rule 胜出。匹配结果可以显式产出 `structured`，此时 cost threshold selector 不得覆盖该 path rule。
 
-Cost threshold selector 只在没有 path rule 产出 `outline_mode` 时运行。Navigation 必须先按 selected adapter id 过滤 `outline.auto_full_read.thresholds[]`；没有 selected-adapter candidate threshold 时保持 `structured`，且不得调用 selected adapter definition 的 full-read capabilities/hooks。存在 candidate threshold 时，navigation 按 `unit` 合并阈值，同一 `unit` 取最小正整数 `value`，并只把这些 effective units 传给 selected adapter definition 暴露的 full-read cost measurement hook。
+Cost threshold selector 只在没有 path rule 产出 `outline_mode` 时运行。Navigation 必须先按 selected adapter id 过滤 `outline.auto_full_read.thresholds[]`；没有 selected-adapter candidate threshold 时保持 `structured`，且不得调用 selected `AdapterDocument` 的 full-read measurement hook。存在 candidate threshold 时，navigation 按 `unit` 合并阈值，同一 `unit` 取最小正整数 `value`，并只把这些 effective units 传给 definition 已声明、由 selected document 执行的 full-read cost measurement hook。
 
 Threshold 比较只使用 selected adapter full-read hook 返回的标准 `Cost.measurements[]`。Adapter definition 未声明、无法安全返回 measurement，或返回结果中没有 effective threshold 的 `unit` 时，selector 不命中并保持 `structured`。Navigation 不解析格式私有内容，也不为 adapter 缺失的 unit 发明成本语义。
 
-当 `outline_mode` 为 `unstructured_full` 时，navigation 在正常 outline strategy 前进入非结构化全文读取路径，通过 selected adapter definition 的可选 full-read hooks 或默认 UTF-8 原文读取方案产出非结构化 outline success result。该路径不返回 entries、ref、page 或 continuation；cost threshold 只是 selector，不是 `limit`、`page` 或 content 截断预算。
+当 `outline_mode` 为 `unstructured_full` 时，navigation 在正常 outline behavior 前进入非结构化全文读取路径，通过 selected `AdapterDocument` 的 declared full-read hooks 或默认 UTF-8 原文读取方案产出非结构化 outline success result。Selected-adapter cost、content 和 result-facts hooks 在本次 invocation 的同一个 document 上运行并复用其已初始化 view；没有对应 adapter content capability 时，navigation-owned 默认 UTF-8 原文读取仍是例外，不作为 adapter-state reuse 或 ref round-trip 的证明。该路径不返回 entries、ref、page 或 continuation；cost threshold 只是 selector，不是 `limit`、`page` 或 content 截断预算。
 
 ## Selected Operation Catalog View
 
-`docnav-navigation` 以 operation 过滤 catalog entries，再保留 untagged common entries 与 tag 精确等于 selected adapter id 的 entries。Non-matching tagged entry 不进入 selected `FieldDefSet`，也不向 strategy 暴露。当前 Markdown `max_heading_level` 只有在 selected adapter 为 `docnav-markdown` 且 operation 为 outline/find 时适用。
+`docnav-navigation` 以 operation 过滤 catalog entries，再保留 untagged common entries 与 tag 精确等于 selected adapter id 的 entries。Non-matching tagged entry 不进入 selected `FieldDefSet`，也不向 adapter document 暴露。当前 Markdown `max_heading_level` 只有在 selected adapter 为 `docnav-markdown` 且 operation 为 outline/find 时适用。
 
-Selected `FieldDefSet` 负责来源解析、字段级校验和 typed materialization。Navigation 按 selected identity 过滤 normalized CLI source，映射 fixed positional input，提取 applicable env/project/user candidates并调用 resolver；它不从 config key、CLI flag、adapter definition 或 registry entry 重新推导 locator、value kind、range、merge、default 或 binding。Adapter strategy 不参与这一步，可以在收到 closed typed input 后补充格式算法语义校验。
+Selected `FieldDefSet` 负责来源解析、字段级校验和 typed materialization。Navigation 按 selected identity 过滤 normalized CLI source，映射 fixed positional input，提取 applicable env/project/user candidates并调用 resolver；它不从 config key、CLI flag、adapter definition 或 registry entry 重新推导 locator、value kind、range、merge、default 或 binding。`AdapterDocument` 不参与这一步，可以在收到 closed typed input 后补充格式算法语义校验。
 
 ## Request Construction
 
@@ -215,11 +220,21 @@ Resolution 完成后，`docnav-navigation` 从同一个 `ResolutionResult` 构�
 | `find` | `query`、`limit`、`page`、`options` |
 | `info` | `options` |
 
-Protocol projection 保持上表的 `OperationArguments` 和 stable serialized `Options` shape。Strategy projection 是 closed `StandardOperationInput::{Outline, Read, Find, Info}`，只包含 operation-specific strategy-visible typed facts；没有通用 lookup、source metadata、declaration 或 serialized protocol representation。Core projection 保留 resolved output mode 和 auto-read mode 等 navigation orchestration facts；`output` 和 `auto_read` 都不进入 protocol `OperationArguments`、adapter `Options` 或 strategy input。
+Protocol projection 保持上表的 `OperationArguments` 和 stable serialized `Options` shape。Adapter projection 是 closed `StandardOperationInput::{Outline, Read, Find, Info}`，只包含 operation-specific adapter-visible typed facts；没有通用 lookup、source metadata、declaration、private state 或 serialized protocol representation。Core projection 保留 resolved output mode 和 auto-read mode 等 navigation orchestration facts；`output` 和 `auto_read` 都不进入 protocol `OperationArguments`、adapter `Options` 或 closed adapter input。
 
 最终 effective `limit` 和 `page` 必须是正整数。`ref` 和 `query` 是 operation-owned required input；缺失或非法时在 navigation boundary 返回 input diagnostic。Markdown `max_heading_level` 同时投影到 stable protocol `options` value 与 outline/find closed input；原始协议只承载该值，不解释格式算法语义。
 
 Invocation log 中的 request construction metadata 只能引用 `RequestEnvelope` 的 correlation facts 和 bounded argument summaries。`ref` 和 `query` 摘要不得替代 adapter-owned ref/query 语义；日志实现不能为了记录日志而重新解析 ref、复制 adapter-scoped parameter 语义或改变 request construction failure classification。
+
+## Adapter Document Lifecycle
+
+Request construction 和 core-owned request/closed-input validation 成功后，navigation 为 selected definition 与 normalized document path 创建至多一个 invocation-private adapter document。Creation 只建立 ownership boundary；不得读取目标 metadata、open、read、decode、parse、构造完整 model/index、解释 ref 或产生 document-content diagnostic。Routing、selection、path/input resolution 或 request construction 失败时不存在 adapter document。
+
+每个 selected behavior 保留 adapter-owned semantic-validation-versus-first-access 顺序。第一次确实需要 document access 时，adapter document 至多 acquisition/decode/parse 一次 private source/model/index view；同一 invocation 内后续 eligible structured operation、cost/full-read/facts hook 或 unique-ref nested read 复用该 view，不因 stage 改变重新打开 path 或刷新 state。Prepared view 存在后，即使 path 被替换、原地修改、删除、修复、改变 encoding 或替换为 parse-invalid 内容，本次 invocation 仍继续使用已捕获 view；下一次 invocation 独立准备并按 [Ref](ref-contract.md) 判断兼容性和 stale behavior。
+
+Same-view reuse 是 composition 与 resource guarantee，不单独证明 ref producer 和 read 一致。任何成功发出 caller-visible ref 的 behavior 都是 producer；nested 或 direct `read` 仍必须只依靠 existing closed read input、opaque ref 和 compatible view，满足 canonicality、round-trip、no-hidden-context 与 owner-defined correspondence 契约。Navigation 不解析、规范化、重建或从 display facts 推断 ref。
+
+Adapter document 只存在于 linked process 的当前 invocation。Navigation 在最后一个 eligible stage、validated-base fallback、adapter diagnostic、result validation failure、cancellation 或 unwind 后通过 RAII 立即释放 private state；不提供 public cleanup operation、cleanup result、state id 或 retention handle。Source、parser、model、index、snapshot/cleanup 和 conformance-only facts 不得进入 closed input、protocol/readable output、ref、continuation、schema、example、invocation log、global registry 或 cross-invocation cache。Pagination request 是独立 invocation，不保留前一页 document state。
 
 ## Unique-ref Auto-read Composition
 
@@ -227,9 +242,11 @@ Resolved mode 为 `disabled` 时，navigation 只执行请求的 base outline/fi
 
 该判定只描述当前 result，不推断整个文档或全部搜索结果。多个 find match 携带同一 ref 仍产生一个 candidate；空结果、多个 distinct ref 和 unstructured outline 直接保留 validated base response。Request page 和 base response 的 continuation `page` 不参与唯一性判定，因此 later request page 或 non-null continuation 上的一个 distinct ref 仍可触发 read。
 
-Nested read 复用同一个 normalized document path、同一个 selected adapter definition 和现有 typed read dispatch seam；candidate ref 作为 opaque string 原样传递，并从 read page `1` 开始，其余输入继续服从既有 read contract。Navigation 不递归调用 CLI、不重新选择 adapter、不启动子进程，也不执行中间 output plan。Adapter 每次仍只接收并执行一个 closed operation-specific input；auto-read mode 不进入 adapter contract，ref 只由 selected adapter read strategy 解析。
+Nested read 复用同一个 normalized document path、同一个 selected `AdapterDocument` 和现有 typed read dispatch seam；candidate ref 作为 opaque string 原样传递，并从 read page `1` 开始，其余输入继续服从既有 read contract。Navigation 不递归调用 CLI、不重新选择 adapter、不启动子进程，也不执行中间 output plan。每个 behavior 仍只接收并执行一个 closed operation-specific input；auto-read mode 不进入 adapter contract，ref 只由 selected adapter read behavior 解析。
 
 只有 nested read 产生 validated `ReadResult`，且包含该 result 的 candidate composed response 也通过 protocol 校验时，navigation 才返回 composed outline/find success；serialized `auto_read` shape 由 [原始协议](protocol.md#autoreadresult) 拥有。Nested read diagnostic、其它 non-success outcome 或 composed validation failure 都静默丢弃 candidate composition，并返回已校验的 base response，不增加 public status、skip reason、nested error 或其它 auto-read failure facts。Base operation failure 不进入该流程。
+
+Producer 与 nested read 因此观察同一个 prepared view；成功保证仍来自 adapter 的 compatible-view ref contract，而不是共享 state 本身。Validated `ReadResult` 必须原样回显 candidate ref；fallback 后也释放同一个 adapter document。兼容视图上的 producer/read disagreement 是 adapter defect，不能被 fallback 重新定义为合法 ref 语义。
 
 ## 错误出口
 
@@ -242,6 +259,7 @@ Nested read 复用同一个 normalized document path、同一个 selected adapte
 | Adapter selection | Declared adapter id 缺失时执行一次 private manifest pathname lookup；无 hint 命中返回 `FORMAT_UNKNOWN / FORMAT_NOT_RECOGNIZED`。Declared adapter id 存在时跳过 pathname routing；exact lookup 缺失返回 `ADAPTER_UNAVAILABLE / ADAPTER_NOT_FOUND`。Registry duplicate invariant 逃到 runtime 时返回对应 `INTERNAL_ERROR`。 |
 | Post-selection path normalization | 已选中 definition 后的 path/access normalization failure 返回现有 document path/access diagnostic；不 dispatch adapter，也不尝试其它 definition。 |
 | Request construction | 绑定 metadata 缺失、arguments shape invalid 或 envelope construction failure 返回 internal/navigation diagnostic。 |
+| Adapter document preparation / selected execution | 保留 selected adapter 的既有 path、encoding、content、ref 或 operation diagnostic；不 reroute、不 refresh prepared view，且在 failure 后释放 private state。 |
 
 本文只定义 input resolution 的失败位置和 owner；protocol failure shape 见 [协议错误对象](protocol.md#协议错误对象)，readable failure shape 见 [输出模式](output.md)，退出码见 [CLI](cli.md#退出码)。
 
@@ -255,8 +273,10 @@ Nested read 复用同一个 normalized document path、同一个 selected adapte
 4. 有 environment locator 的字段按 `explicit > env > project > user > built_in`；没有 locator 的字段不产生 env candidate，并保持 `explicit > project > user > built_in`。
 5. Config source descriptor 必须保留 source level、resolved path 和 path origin；config path flag selection 不改变参数来源优先级。
 6. `path`、`ref`、`query` 和 `page` 不进入配置文件字段集合。
-7. Typed-field 校验/提取先于 protocol、closed strategy input 和 core output projections。
+7. Typed-field 校验/提取先于 protocol、closed adapter input 和 core output projections。
 8. 解析结果不回写 fixed command facts、normalized CLI source、config source、schema 示例或 protocol JSON fixture。
 9. Auto-read 只在 validated base response 后编排现有 read；不新增 adapter operation、protocol request argument、环境来源或 public non-success branch。
 10. Automatic routing 在 target-document I/O 前只使用 lexical routing pathname 和 validated manifest facts；explicit adapter intent exact lookup bypass pathname routing。
 11. Routing-derived indexes、matched hint/format 和 selection mechanics 保持 invocation-private；selected operation 的任何失败都不触发 fallback adapter。
+12. Adapter document 只在 final selection、path/input resolution 和 request validation 后创建；factory 无 target-document I/O，first access 保持 adapter-owned semantic ordering。
+13. Direct operation、selected-adapter full-read stages 和 unique-ref nested read 在一个 invocation 中复用同一 private view，并在所有出口通过 RAII 释放；state 不进入任何 public 或 cross-invocation surface。

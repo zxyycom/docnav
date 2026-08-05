@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, FindInput, InfoInput, OutlineInput,
-    ReadInput,
+    Adapter, AdapterDefinition, AdapterDocument, AdapterError, AdapterResult, FindInput, InfoInput,
+    OutlineInput, ReadInput,
 };
 use docnav_protocol::{
     AutoReadResult, Cost, FindResult, InfoResult, Manifest, OutlineResult, ProtocolDiagnosticCode,
@@ -105,6 +105,14 @@ fn automatic_suffix_routing_is_anchored_to_the_complete_basename_end() {
 
     assert_eq!(protocol_error.code(), ProtocolDiagnosticCode::FormatUnknown);
     assert_eq!(adapter.outline_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.document_creations.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.source_decodes.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.model_builds.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.live_documents.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::Relaxed), 0);
+    assert_eq!(adapter.model_drops.load(Ordering::Relaxed), 0);
 }
 
 #[test]
@@ -143,6 +151,18 @@ fn explicit_adapter_bypasses_pathname_routing_and_executes_selected_strategy() {
     assert!(matches!(outcome.response, ProtocolResponse::Success(_)));
     assert_eq!(explicit.outline_calls.load(Ordering::Relaxed), 1);
     assert_eq!(automatic.outline_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(explicit.document_creations.load(Ordering::Relaxed), 1);
+    assert_eq!(automatic.document_creations.load(Ordering::Relaxed), 0);
+    assert_eq!(explicit.source_acquisitions.load(Ordering::Relaxed), 1);
+    assert_eq!(explicit.source_decodes.load(Ordering::Relaxed), 1);
+    assert_eq!(explicit.model_builds.load(Ordering::Relaxed), 1);
+    assert_eq!(automatic.source_acquisitions.load(Ordering::Relaxed), 0);
+    assert_eq!(automatic.source_decodes.load(Ordering::Relaxed), 0);
+    assert_eq!(automatic.model_builds.load(Ordering::Relaxed), 0);
+    assert_eq!(explicit.peak_live_documents.load(Ordering::Relaxed), 1);
+    assert_eq!(explicit.live_documents.load(Ordering::Relaxed), 0);
+    assert_eq!(explicit.document_drops.load(Ordering::Relaxed), 1);
+    assert_eq!(explicit.model_drops.load(Ordering::Relaxed), 1);
     let context = select_navigation_context(
         &registry,
         "docs/document.automatic",
@@ -185,6 +205,22 @@ fn selected_diagnostic_or_invalid_result_never_dispatches_later_adapter() {
             0,
             "{behavior:?}"
         );
+        assert_eq!(selected.document_creations.load(Ordering::Relaxed), 1);
+        assert_eq!(selected.source_acquisitions.load(Ordering::Relaxed), 1);
+        assert_eq!(selected.source_decodes.load(Ordering::Relaxed), 1);
+        assert_eq!(selected.model_builds.load(Ordering::Relaxed), 1);
+        assert_eq!(selected.peak_live_documents.load(Ordering::Relaxed), 1);
+        assert_eq!(selected.live_documents.load(Ordering::Relaxed), 0);
+        assert_eq!(selected.document_drops.load(Ordering::Relaxed), 1);
+        assert_eq!(selected.model_drops.load(Ordering::Relaxed), 1);
+        assert_eq!(later.document_creations.load(Ordering::Relaxed), 0);
+        assert_eq!(later.source_acquisitions.load(Ordering::Relaxed), 0);
+        assert_eq!(later.source_decodes.load(Ordering::Relaxed), 0);
+        assert_eq!(later.model_builds.load(Ordering::Relaxed), 0);
+        assert_eq!(later.peak_live_documents.load(Ordering::Relaxed), 0);
+        assert_eq!(later.live_documents.load(Ordering::Relaxed), 0);
+        assert_eq!(later.document_drops.load(Ordering::Relaxed), 0);
+        assert_eq!(later.model_drops.load(Ordering::Relaxed), 0);
         match behavior {
             OutlineBehavior::Diagnostic => {
                 let outcome = execution.expect("adapter diagnostic is a protocol response");
@@ -288,6 +324,14 @@ impl NavigationAdapterRegistry for TestRegistry<'_> {
 struct RecordingAdapter {
     outline_behavior: OutlineBehavior,
     outline_calls: AtomicUsize,
+    document_creations: AtomicUsize,
+    source_acquisitions: AtomicUsize,
+    source_decodes: AtomicUsize,
+    model_builds: AtomicUsize,
+    live_documents: AtomicUsize,
+    peak_live_documents: AtomicUsize,
+    document_drops: AtomicUsize,
+    model_drops: AtomicUsize,
 }
 
 impl RecordingAdapter {
@@ -299,6 +343,14 @@ impl RecordingAdapter {
         Self {
             outline_behavior,
             outline_calls: AtomicUsize::new(0),
+            document_creations: AtomicUsize::new(0),
+            source_acquisitions: AtomicUsize::new(0),
+            source_decodes: AtomicUsize::new(0),
+            model_builds: AtomicUsize::new(0),
+            live_documents: AtomicUsize::new(0),
+            peak_live_documents: AtomicUsize::new(0),
+            document_drops: AtomicUsize::new(0),
+            model_drops: AtomicUsize::new(0),
         }
     }
 }
@@ -311,9 +363,50 @@ enum OutlineBehavior {
 }
 
 impl Adapter for RecordingAdapter {
-    fn outline(&self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
-        self.outline_calls.fetch_add(1, Ordering::Relaxed);
-        match self.outline_behavior {
+    fn create_document(&self, _document_path: String) -> Box<dyn AdapterDocument + '_> {
+        self.document_creations.fetch_add(1, Ordering::Relaxed);
+        let live = self.live_documents.fetch_add(1, Ordering::Relaxed) + 1;
+        self.peak_live_documents.fetch_max(live, Ordering::Relaxed);
+        Box::new(RecordingDocument {
+            adapter: self,
+            prepared: false,
+        })
+    }
+}
+
+struct RecordingDocument<'a> {
+    adapter: &'a RecordingAdapter,
+    prepared: bool,
+}
+
+impl RecordingDocument<'_> {
+    fn prepare(&mut self) {
+        if !self.prepared {
+            self.adapter
+                .source_acquisitions
+                .fetch_add(1, Ordering::Relaxed);
+            self.adapter.source_decodes.fetch_add(1, Ordering::Relaxed);
+            self.adapter.model_builds.fetch_add(1, Ordering::Relaxed);
+            self.prepared = true;
+        }
+    }
+}
+
+impl Drop for RecordingDocument<'_> {
+    fn drop(&mut self) {
+        self.adapter.document_drops.fetch_add(1, Ordering::Relaxed);
+        self.adapter.live_documents.fetch_sub(1, Ordering::Relaxed);
+        if self.prepared {
+            self.adapter.model_drops.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+impl AdapterDocument for RecordingDocument<'_> {
+    fn outline(&mut self, _input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        self.prepare();
+        self.adapter.outline_calls.fetch_add(1, Ordering::Relaxed);
+        match self.adapter.outline_behavior {
             OutlineBehavior::Success => Ok(OutlineResult::structured(Vec::new(), None)),
             OutlineBehavior::Diagnostic => {
                 Err(AdapterError::internal("selected-adapter-operation-failed"))
@@ -336,15 +429,15 @@ impl Adapter for RecordingAdapter {
         }
     }
 
-    fn read(&self, _input: &ReadInput) -> AdapterResult<ReadResult> {
+    fn read(&mut self, _input: &ReadInput) -> AdapterResult<ReadResult> {
         Err(AdapterError::internal("routing-test-read-unreachable"))
     }
 
-    fn find(&self, _input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, _input: &FindInput) -> AdapterResult<FindResult> {
         Err(AdapterError::internal("routing-test-find-unreachable"))
     }
 
-    fn info(&self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
         Err(AdapterError::internal("routing-test-info-unreachable"))
     }
 }

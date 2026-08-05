@@ -1,7 +1,7 @@
 ---
 title: 优先建立调用内可复用文档准备边界
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-08-05T06:47:43Z
 purpose: 让 adapter 最小生命周期支持通用组合并避免同一文档在一次调用中反复完整解析。
 background: Selection、operation 和 core composition 会重复 acquisition、decode、parse 或索引，既增加成本也妨碍后续通用能力与新 adapter 接入。

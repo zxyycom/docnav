@@ -1,11 +1,8 @@
 use std::{collections::BTreeSet, fmt};
 
-use docnav_protocol::{Manifest, OperationResult, RequestEnvelope};
+use docnav_protocol::Manifest;
 
-use crate::{
-    Adapter, AdapterResult, StandardOperationInput, UnstructuredFullRead,
-    UnstructuredFullReadCapabilities, UnstructuredFullReadFacts,
-};
+use crate::{Adapter, AdapterDocument, UnstructuredFullReadCapabilities};
 
 mod error;
 
@@ -14,20 +11,20 @@ pub use error::AdapterDefinitionError;
 #[derive(Clone)]
 pub struct AdapterDefinition<'a> {
     manifest: Manifest,
-    strategy: &'a dyn Adapter,
+    factory: &'a dyn Adapter,
     full_read_capabilities: Option<UnstructuredFullReadCapabilities>,
 }
 
 impl<'a> AdapterDefinition<'a> {
     pub fn new(
         manifest: Manifest,
-        strategy: &'a dyn Adapter,
+        factory: &'a dyn Adapter,
         full_read_capabilities: Option<UnstructuredFullReadCapabilities>,
     ) -> Result<Self, AdapterDefinitionError> {
         validate_full_read_capabilities(&manifest.adapter.id, full_read_capabilities.as_ref())?;
         Ok(Self {
             manifest,
-            strategy,
+            factory,
             full_read_capabilities,
         })
     }
@@ -44,47 +41,9 @@ impl<'a> AdapterDefinition<'a> {
         self.full_read_capabilities.as_ref()
     }
 
-    pub fn execute_operation(
-        &self,
-        input: &StandardOperationInput,
-    ) -> AdapterResult<OperationResult> {
-        match input {
-            StandardOperationInput::Outline(input) => {
-                self.strategy.outline(input).map(OperationResult::Outline)
-            }
-            StandardOperationInput::Read(input) => {
-                self.strategy.read(input).map(OperationResult::Read)
-            }
-            StandardOperationInput::Find(input) => {
-                self.strategy.find(input).map(OperationResult::Find)
-            }
-            StandardOperationInput::Info(input) => {
-                self.strategy.info(input).map(OperationResult::Info)
-            }
-        }
-    }
-
-    pub fn unstructured_full_read(
-        &self,
-        request: &RequestEnvelope,
-    ) -> AdapterResult<UnstructuredFullRead> {
-        self.strategy.unstructured_full_read(request)
-    }
-
-    pub fn measure_unstructured_full_read_cost(
-        &self,
-        request: &RequestEnvelope,
-        requested_units: &[String],
-    ) -> AdapterResult<docnav_protocol::Cost> {
-        self.strategy
-            .measure_unstructured_full_read_cost(request, requested_units)
-    }
-
-    pub fn unstructured_full_read_facts(
-        &self,
-        request: &RequestEnvelope,
-    ) -> AdapterResult<UnstructuredFullReadFacts> {
-        self.strategy.unstructured_full_read_facts(request)
+    /// Creates one invocation-private document after navigation has finalized the request path.
+    pub fn create_document(&self, document_path: String) -> Box<dyn AdapterDocument + 'a> {
+        self.factory.create_document(document_path)
     }
 }
 

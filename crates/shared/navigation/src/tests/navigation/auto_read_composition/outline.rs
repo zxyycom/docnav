@@ -43,6 +43,17 @@ fn unique_outline_ref_composes_read_with_the_selected_document_context() {
             limit: positive(321).unwrap(),
         }]
     );
+    assert_eq!(adapter.shared_view_reads(), vec![true]);
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.ref_productions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.read_resolutions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 1);
     let ProtocolResponse::Success(success) = outcome.response else {
         panic!("expected success response");
     };
@@ -98,6 +109,16 @@ fn nested_read_diagnostic_silently_keeps_the_validated_base_result() {
 
     assert_eq!(adapter.read_inputs().len(), 1);
     assert_eq!(outline_result(outcome.response), base_result);
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.ref_productions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.read_resolutions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 1);
 }
 
 #[test]
@@ -149,6 +170,16 @@ fn adapter_base_result_with_auto_read_is_rejected_before_composition() {
         Some(NavigationFailureLayer::ResultValidation)
     );
     assert_eq!(adapter.read_inputs(), Vec::new());
+    assert_eq!(adapter.document_creations.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_acquisitions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.source_decodes.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_builds.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.ref_productions.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.read_resolutions.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.peak_live_documents.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.live_documents.load(Ordering::SeqCst), 0);
+    assert_eq!(adapter.document_drops.load(Ordering::SeqCst), 1);
+    assert_eq!(adapter.model_drops.load(Ordering::SeqCst), 1);
 }
 
 #[test]

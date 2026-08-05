@@ -2,12 +2,12 @@
 
 ### Requirement: JSON emitted refs round-trip through one compatible prepared view
 
-After `docnav-json` is selected and execution reaches document access, eligible
-JSON work MUST be able to reuse one private prepared document containing the
-decoded JSONC source, logical tree, source regions, comment attribution,
-canonical-ref facts, and source-derived metadata. The implementation MAY split
-or combine private algorithms as needed; method count and callable shape are not
-part of this requirement.
+Eligible JSON work MUST be able to reuse one private prepared document after
+`docnav-json` is selected and execution reaches document access. That document
+contains the decoded JSONC source, logical tree, source regions, comment
+attribution, canonical-ref facts, and source-derived metadata. The
+implementation MAY split or combine private algorithms as needed; method count
+and callable shape are not part of this requirement.
 
 Every ref emitted by JSON outline or find MUST be complete and canonical under
 the Current base/direct-comment/tail grammar. Read with valid existing input

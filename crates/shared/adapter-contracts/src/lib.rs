@@ -1,9 +1,9 @@
-//! Linked adapter strategy contract for Docnav navigation.
+//! Linked adapter document contract for Docnav navigation.
 //!
-//! [`AdapterDefinition`] combines manifest identity, declared capabilities, and one strategy.
-//! Strategies receive closed operation-specific input and retain navigation and optional
-//! unstructured full-read hooks. Parameter declaration and source resolution remain outside this
-//! crate.
+//! [`AdapterDefinition`] combines manifest identity, declared capabilities, and one document
+//! factory. Invocation-private documents receive closed operation-specific input and retain
+//! optional unstructured full-read hooks. Parameter declaration and source resolution remain
+//! outside this crate.
 
 use docnav_diagnostics::{
     typed_codes, DiagnosticRecordDraft, DiagnosticSource, DocumentContentInvalidDetails,
@@ -12,12 +12,13 @@ use docnav_diagnostics::{
 };
 use docnav_protocol::{
     normalize_protocol_diagnostic, protocol_error_record_draft,
-    protocol_error_record_draft_with_summary, Cost, FindResult, InfoResult, OutlineResult,
-    ProtocolDiagnosticFallback, ProtocolError, ReadResult, RequestEnvelope,
+    protocol_error_record_draft_with_summary, Cost, FindResult, InfoResult, OperationResult,
+    OutlineResult, ProtocolDiagnosticFallback, ProtocolError, ReadResult, RequestEnvelope,
 };
 mod definition;
 mod native_option;
 mod operation_input;
+mod ref_conformance;
 
 pub use definition::{AdapterDefinition, AdapterDefinitionError};
 pub use docnav_diagnostics::DocumentContentInvalidReason;
@@ -25,20 +26,46 @@ pub use native_option::NativeOptionIssue;
 pub use operation_input::{
     FindInput, InfoInput, OutlineInput, ReadInput, StandardInputBinding, StandardOperationInput,
 };
+pub use ref_conformance::assert_ref_round_trip;
 
 pub type AdapterResult<T> = Result<T, AdapterError>;
 
+/// Linked factory for one adapter format.
 pub trait Adapter: Sync {
-    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult>;
+    /// Creates an invocation-private lifecycle owner without accessing document content.
+    fn create_document(&self, document_path: String) -> Box<dyn AdapterDocument + '_>;
+}
 
-    fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult>;
+/// Invocation-private operations over one adapter-owned document view.
+///
+/// The trait intentionally has no `Send` or `Sync` bound: source, parser, model, and index state
+/// stay within the sequential navigation invocation that owns this value.
+pub trait AdapterDocument {
+    fn outline(&mut self, input: &OutlineInput) -> AdapterResult<OutlineResult>;
 
-    fn find(&self, input: &FindInput) -> AdapterResult<FindResult>;
+    fn read(&mut self, input: &ReadInput) -> AdapterResult<ReadResult>;
 
-    fn info(&self, input: &InfoInput) -> AdapterResult<InfoResult>;
+    fn find(&mut self, input: &FindInput) -> AdapterResult<FindResult>;
+
+    fn info(&mut self, input: &InfoInput) -> AdapterResult<InfoResult>;
+
+    /// Dispatches one closed standard input to its matching operation.
+    fn execute_operation(
+        &mut self,
+        input: &StandardOperationInput,
+    ) -> AdapterResult<OperationResult> {
+        match input {
+            StandardOperationInput::Outline(input) => {
+                self.outline(input).map(OperationResult::Outline)
+            }
+            StandardOperationInput::Read(input) => self.read(input).map(OperationResult::Read),
+            StandardOperationInput::Find(input) => self.find(input).map(OperationResult::Find),
+            StandardOperationInput::Info(input) => self.info(input).map(OperationResult::Info),
+        }
+    }
 
     fn unstructured_full_read(
-        &self,
+        &mut self,
         _request: &RequestEnvelope,
     ) -> AdapterResult<UnstructuredFullRead> {
         Err(AdapterError::internal(
@@ -47,7 +74,7 @@ pub trait Adapter: Sync {
     }
 
     fn measure_unstructured_full_read_cost(
-        &self,
+        &mut self,
         _request: &RequestEnvelope,
         _requested_units: &[String],
     ) -> AdapterResult<Cost> {
@@ -57,7 +84,7 @@ pub trait Adapter: Sync {
     }
 
     fn unstructured_full_read_facts(
-        &self,
+        &mut self,
         _request: &RequestEnvelope,
     ) -> AdapterResult<UnstructuredFullReadFacts> {
         Ok(UnstructuredFullReadFacts::default())

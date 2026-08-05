@@ -1,7 +1,7 @@
 use std::fmt;
 
 use docnav_adapter_contracts::{
-    AdapterDefinition, AdapterError, AdapterResult, StandardOperationInput,
+    AdapterDocument, AdapterError, AdapterResult, StandardOperationInput,
 };
 use docnav_protocol::{
     generate_request_id, Document, FindArguments, InfoArguments, Operation, OperationArguments,
@@ -60,11 +60,11 @@ pub fn protocol_request(input: OperationInput) -> Result<RequestEnvelope, Naviga
 }
 
 pub fn execute_protocol_request(
-    adapter: &AdapterDefinition<'_>,
+    document: &mut dyn AdapterDocument,
     request: &RequestEnvelope,
     standard_input: &StandardOperationInput,
 ) -> ProtocolResponse {
-    match execute_operation(adapter, request, standard_input) {
+    match execute_operation(document, request, standard_input) {
         Ok(result) => ProtocolResponse::success(
             request.protocol_version.clone(),
             request.request_id.clone(),
@@ -75,7 +75,7 @@ pub fn execute_protocol_request(
 }
 
 pub fn execute_operation(
-    adapter: &AdapterDefinition<'_>,
+    document: &mut dyn AdapterDocument,
     request: &RequestEnvelope,
     standard_input: &StandardOperationInput,
 ) -> AdapterResult<OperationResult> {
@@ -87,7 +87,7 @@ pub fn execute_operation(
             format!("arguments do not match operation {}", request.operation),
         ));
     }
-    adapter.execute_operation(standard_input)
+    document.execute_operation(standard_input)
 }
 
 fn operation_arguments(input: &OperationInput) -> Result<OperationArguments, NavigationInputError> {

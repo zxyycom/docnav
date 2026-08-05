@@ -12,7 +12,9 @@ fn read_paginates_unicode_without_splitting_characters() {
         page: positive(1),
     };
 
-    let first = MarkdownAdapter.read(&input).expect("first page");
+    let first = adapter_document(&input.document_path)
+        .read(&input)
+        .expect("first page");
     assert_eq!(first.ref_id, ref_id);
     assert_eq!(first.content, "# A\n界");
     assert_cost_measurements(&first.cost, "selection", selected);
@@ -22,7 +24,9 @@ fn read_paginates_unicode_without_splitting_characters() {
         page: positive(2),
         ..input
     };
-    let second = MarkdownAdapter.read(&second_input).expect("second page");
+    let second = adapter_document(&second_input.document_path)
+        .read(&second_input)
+        .expect("second page");
     assert!(second.content.starts_with("界界"));
 }
 
@@ -66,12 +70,54 @@ fn find_match_before_first_visible_heading_uses_document_head_ref() {
 fn find_falls_back_to_full_document_when_no_heading_is_visible() {
     let path = write_doc("fallback-find.md", "target before\n\n#### Deep\nbody\n");
     let input = find_input(&path, "target", 6000, 1, Some(3));
-    let result = find_result(&input);
+    let definition = markdown_adapter_definition();
+    let mut document = definition.create_document(input.document_path.clone());
+    let result = document.find(&input).expect("find result");
 
     assert_eq!(result.matches.len(), 1);
     assert_eq!(result.matches[0].ref_id, "doc:full");
-    let read = read_ref(&path, &result.matches[0].ref_id);
-    assert!(read.content.contains("target before"));
+    let read_input = read_input(&path, &result.matches[0].ref_id, 6000, 1);
+    let (same, fresh) = assert_ref_round_trip(&definition, document.as_mut(), &read_input);
+    for read in [same, fresh] {
+        assert!(read.content.contains("target before"));
+    }
+}
+
+#[test]
+fn find_refs_across_terminal_pages_round_trip_on_same_and_fresh_documents() {
+    let path = write_doc(
+        "find-ref-conformance.md",
+        "target head\n\n# First\ntarget one\ntarget two\n\n#### Hidden\ntarget hidden\n\n# Next\ntarget next\n",
+    );
+    let definition = markdown_adapter_definition();
+    let mut page = positive(1);
+    let mut refs = Vec::new();
+
+    loop {
+        let input = find_input(&path, "target", 1, page.get(), Some(3));
+        let mut document = definition.create_document(input.document_path.clone());
+        let result = document.find(&input).expect("find result");
+        assert_eq!(result.matches.len(), 1, "tiny budget must still advance");
+
+        for matched in result.matches {
+            assert_eq!(matched.label, ".");
+            let read_input = read_input(&path, &matched.ref_id, 6000, 1);
+            let (same, fresh) = assert_ref_round_trip(&definition, document.as_mut(), &read_input);
+            assert_eq!(same, fresh);
+            assert!(same.content.contains("target"));
+            refs.push(matched.ref_id);
+        }
+
+        let Some(next_page) = result.page else {
+            break;
+        };
+        page = next_page;
+    }
+
+    assert_eq!(refs.len(), 5);
+    assert_eq!(refs[0], "HEAD:leading");
+    assert_eq!(refs.iter().filter(|ref_id| *ref_id == "H:L3:H1").count(), 3);
+    assert_eq!(refs.last().map(String::as_str), Some("H:L10:H1"));
 }
 
 #[test]

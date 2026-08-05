@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use docnav_adapter_contracts::{
-    Adapter, FindInput, InfoInput, OutlineInput, ReadInput, StandardOperationInput,
+    assert_ref_round_trip, AdapterDocument, FindInput, InfoInput, OutlineInput, ReadInput,
+    StandardOperationInput,
 };
-use docnav_markdown::{markdown_adapter_definition, MarkdownAdapter};
+use docnav_markdown::markdown_adapter_definition;
 use docnav_protocol::{
     positive_result, FindResult, ProtocolDiagnosticCode, ProtocolError, StructuredOutlineResult,
 };
@@ -36,6 +37,19 @@ fn write_bytes(name: &str, content: &[u8]) -> PathBuf {
 
 fn path_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+fn adapter_document(document_path: &str) -> Box<dyn AdapterDocument> {
+    markdown_adapter_definition().create_document(document_path.to_owned())
+}
+
+fn read_input(path: &Path, ref_id: &str, limit: u32, page: u32) -> ReadInput {
+    ReadInput {
+        document_path: path_string(path),
+        ref_id: ref_id.to_owned(),
+        limit: positive(limit),
+        page: positive(page),
+    }
 }
 
 fn outline_input(
@@ -69,7 +83,7 @@ fn find_input(
 }
 
 fn outline_result(input: &OutlineInput) -> StructuredOutlineResult {
-    MarkdownAdapter
+    adapter_document(&input.document_path)
         .outline(input)
         .expect("outline result")
         .into_structured()
@@ -77,7 +91,9 @@ fn outline_result(input: &OutlineInput) -> StructuredOutlineResult {
 }
 
 fn find_result(input: &FindInput) -> FindResult {
-    MarkdownAdapter.find(input).expect("find result")
+    adapter_document(&input.document_path)
+        .find(input)
+        .expect("find result")
 }
 
 fn entry_refs(entries: &[docnav_protocol::Entry]) -> Vec<&str> {
@@ -94,13 +110,8 @@ fn read_ref_with_page(
     limit: u32,
     page: u32,
 ) -> docnav_protocol::ReadResult {
-    let input = ReadInput {
-        document_path: path_string(path),
-        ref_id: ref_id.to_owned(),
-        limit: positive(limit),
-        page: positive(page),
-    };
-    MarkdownAdapter
+    let input = read_input(path, ref_id, limit, page);
+    adapter_document(&input.document_path)
         .read(&input)
         .unwrap_or_else(|_| panic!("read ref: {ref_id}"))
 }
@@ -122,13 +133,11 @@ fn assert_cost_measurements(cost: &docnav_protocol::Cost, scope: &str, text: &st
 }
 
 fn read_ref_error(path: &Path, ref_id: &str) -> ProtocolError {
-    let input = ReadInput {
-        document_path: path_string(path),
-        ref_id: ref_id.to_owned(),
-        limit: positive(6000),
-        page: positive(1),
-    };
-    MarkdownAdapter.read(&input).unwrap_err().protocol_error()
+    let input = read_input(path, ref_id, 6000, 1);
+    adapter_document(&input.document_path)
+        .read(&input)
+        .unwrap_err()
+        .protocol_error()
 }
 
 fn assert_ref_not_found(error: &ProtocolError, ref_id: &str) {

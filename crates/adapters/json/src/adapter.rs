@@ -1,9 +1,9 @@
 use std::fs;
 
 use docnav_adapter_contracts::{
-    Adapter, AdapterDefinition, AdapterError, AdapterResult, DocumentContentInvalidReason,
-    FindInput, InfoInput, OutlineInput, ReadInput, UnstructuredFullRead,
-    UnstructuredFullReadCapabilities,
+    Adapter, AdapterDefinition, AdapterDocument, AdapterError, AdapterResult,
+    DocumentContentInvalidReason, FindInput, InfoInput, OutlineInput, ReadInput,
+    UnstructuredFullRead, UnstructuredFullReadCapabilities,
 };
 use docnav_protocol::{
     AdapterIdentity, Cost, Entry, FindResult, FormatDescriptor, InfoAdapter, InfoDocument,
@@ -29,8 +29,32 @@ const CONTENT_TYPE_JSONC: &str = "application/jsonc";
 pub(crate) struct JsonAdapter;
 
 impl Adapter for JsonAdapter {
-    fn outline(&self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
-        let document = reload_document(&input.document_path)?;
+    fn create_document(&self, document_path: String) -> Box<dyn AdapterDocument + '_> {
+        Box::new(JsonAdapterDocument {
+            document_path,
+            prepared: None,
+        })
+    }
+}
+
+struct JsonAdapterDocument {
+    document_path: String,
+    prepared: Option<AdapterResult<JsonDocument>>,
+}
+
+impl JsonAdapterDocument {
+    fn prepared(&mut self) -> AdapterResult<&JsonDocument> {
+        let document_path = &self.document_path;
+        self.prepared
+            .get_or_insert_with(|| reload_document(document_path))
+            .as_ref()
+            .map_err(Clone::clone)
+    }
+}
+
+impl AdapterDocument for JsonAdapterDocument {
+    fn outline(&mut self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
+        let document = self.prepared()?;
         let entries = document.preorder_entries();
         let (entries, page) = paginate_entries(&entries, input.page, input.limit);
         let entries = entries.into_iter().map(outline_entry).collect();
@@ -38,8 +62,8 @@ impl Adapter for JsonAdapter {
         Ok(OutlineResult::structured(entries, page))
     }
 
-    fn read(&self, input: &ReadInput) -> AdapterResult<ReadResult> {
-        let document = reload_document(&input.document_path)?;
+    fn read(&mut self, input: &ReadInput) -> AdapterResult<ReadResult> {
+        let document = self.prepared()?;
         let selection = document
             .resolve_selection(&input.ref_id)
             .map_err(|error| match error {
@@ -50,7 +74,7 @@ impl Adapter for JsonAdapter {
             RefView::Base => CONTENT_TYPE_JSON,
             RefView::DirectComments | RefView::TailComments => CONTENT_TYPE_JSONC,
         };
-        let facts = selection_facts(&document, &selection)
+        let facts = selection_facts(document, &selection)
             .map_err(|_| AdapterError::internal("json-structured-serialization-failed"))?;
         let page = paginate_text(facts, input.page, input.limit);
 
@@ -63,7 +87,7 @@ impl Adapter for JsonAdapter {
         })
     }
 
-    fn find(&self, input: &FindInput) -> AdapterResult<FindResult> {
+    fn find(&mut self, input: &FindInput) -> AdapterResult<FindResult> {
         if input.query.is_empty() {
             return Err(AdapterError::invalid_request(
                 "arguments.query",
@@ -71,7 +95,7 @@ impl Adapter for JsonAdapter {
             ));
         }
 
-        let document = reload_document(&input.document_path)?;
+        let document = self.prepared()?;
         let matches = document.find_entries(&input.query);
         let (matches, page) = paginate_find_entries(matches, input.page, input.limit);
         let matches = matches.into_iter().map(find_entry).collect();
@@ -79,12 +103,12 @@ impl Adapter for JsonAdapter {
         Ok(FindResult::new(matches, page))
     }
 
-    fn info(&self, input: &InfoInput) -> AdapterResult<InfoResult> {
-        let document = reload_document(&input.document_path)?;
+    fn info(&mut self, _input: &InfoInput) -> AdapterResult<InfoResult> {
+        let document = self.prepared()?;
 
         Ok(InfoResult {
             document: Some(InfoDocument {
-                content_type: Some(source_content_type(&document).to_owned()),
+                content_type: Some(source_content_type(document).to_owned()),
                 encoding: Some("UTF-8".to_owned()),
                 size: Some(Measurement {
                     unit: "bytes".to_owned(),
@@ -108,23 +132,23 @@ impl Adapter for JsonAdapter {
     }
 
     fn unstructured_full_read(
-        &self,
-        request: &RequestEnvelope,
+        &mut self,
+        _request: &RequestEnvelope,
     ) -> AdapterResult<UnstructuredFullRead> {
-        let document = reload_document(&request.document.path)?;
-        let facts = full_read_facts(&document);
-        let mut result = UnstructuredFullRead::new(facts.content, source_content_type(&document));
+        let document = self.prepared()?;
+        let facts = full_read_facts(document);
+        let mut result = UnstructuredFullRead::new(facts.content, source_content_type(document));
         result.facts.cost = Some(facts.cost);
         Ok(result)
     }
 
     fn measure_unstructured_full_read_cost(
-        &self,
-        request: &RequestEnvelope,
+        &mut self,
+        _request: &RequestEnvelope,
         requested_units: &[String],
     ) -> AdapterResult<Cost> {
-        let document = reload_document(&request.document.path)?;
-        let cost = full_read_facts(&document).cost;
+        let document = self.prepared()?;
+        let cost = full_read_facts(document).cost;
         Ok(Cost {
             measurements: cost
                 .measurements

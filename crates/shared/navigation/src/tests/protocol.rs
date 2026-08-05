@@ -134,8 +134,9 @@ fn protocol_dispatch_rejects_request_and_standard_input_operation_mismatch() {
     let standard_input = StandardOperationInput::Info(InfoInput {
         document_path: "docs/guide.stub".to_owned(),
     });
+    let mut document = adapter.create_document("docs/guide.stub".to_owned());
 
-    let response = execute_protocol_request(&adapter, &request, &standard_input);
+    let response = execute_protocol_request(document.as_mut(), &request, &standard_input);
     let ProtocolResponse::Failure(failure) = response else {
         panic!("operation mismatch must fail");
     };

@@ -17,11 +17,11 @@ Outline heading 识别范围排除：
 
 **Current：** Markdown manifest 为 normalized format id `markdown` 声明 `.md` 与 `.markdown` complete-basename suffix hints，`filenames[]` 为空。Automatic routing 按共享契约对 suffix 做 ASCII 大小写归一化和 end-anchored match；它在 target-document I/O 前只选择 linked `docnav-markdown` definition，不读取内容、不验证 UTF-8，也不解析 heading、ref 或其它 navigation payload。完整 lookup 与状态私有性由[适配器契约](../adapter-contract.md#adapter-选择)和 [Navigation Input Resolution](../navigation-input-resolution.md#adapter-selection-and-path-sequencing)拥有。
 
-固定 Markdown strategy 只实现 `outline`、`read`、`find` 和 `info`，不保留 selection probe 或兼容 inspection surface。选择成功后，requested strategy 仍从 normalized document path 读取并验证实际 Markdown document；encoding、parse、semantic 或 operation failure 使用正常 owner diagnostic，且不得触发其它 adapter。Matched suffix/format state 不进入 Markdown input、ref 或 result。
+Markdown definition 只暴露 manifest、document factory 和已声明的 full-read capabilities，不保留 selection probe 或兼容 inspection surface。选择与 closed-input resolution 成功后，factory 为 normalized document path 创建 invocation-private `AdapterDocument`；创建本身不读取或解析目标文档。该 document 在首个实际需要 source 的 operation 或 hook 中读取并验证 Markdown，encoding、parse、semantic 或 operation failure 使用正常 owner diagnostic，且不得触发其它 adapter。Matched suffix/format state 不进入 Markdown input、ref 或 result。
 
 ## Outline
 
-本节定义 Markdown adapter 正常结构化 outline strategy 的行为。若 navigation 标准 `outline_mode` 已解析为 `unstructured_full`，core-mediated navigation 在调用 linked Markdown adapter 的正常 outline strategy 前直接返回整篇 Markdown 原文，`content_type` 为 `text/markdown`，且结果不包含 heading entries、`doc:full`、ref、page 或 continuation。`outline_mode` 不是 Markdown strategy input。
+本节定义 Markdown adapter 的正常结构化 outline 行为。若 navigation 标准 `outline_mode` 已解析为 `unstructured_full`，core-mediated navigation 跳过 `AdapterDocument::outline`，改用同一 selected Markdown document 的 full-read hooks 返回整篇 Markdown 原文；`content_type` 为 `text/markdown`，且结果不包含 heading entries、`doc:full`、ref、page 或 continuation。`outline_mode` 不是 Markdown operation input。
 
 Markdown outline 按文档顺序返回扁平 heading entries。每条 entry 包含：
 
@@ -57,7 +57,7 @@ Outline result 不新增顶层 `frontmatter`、`metadata` 或 `document_head` �
 
 ### 可见性与 `max_heading_level`
 
-Core parameter catalog 唯一声明 `max_heading_level`：exact adapter tag 是 `docnav-markdown`，适用于 outline/find，内置默认值为 `3`，CLI locator 是 `--max-heading-level`，config locator 是 `options.docnav-markdown.max_heading_level`，标准范围为 `1..6`。Adapter selection 后，`docnav-navigation` 从 selected-operation catalog view 解析并 materialize 该值，再分别写入 protocol `Options` 和 closed `OutlineInput` / `FindInput`。Markdown strategy 直接消费 typed input，不读取 raw CLI argv、raw config JSON 或 generic parameter bag；为保持算法边界稳健，它仍可防御性地拒绝不满足 `1..6` 语义的值。可见性过滤决定 outline 返回哪些 heading entries。可见 heading 的 line/level 结构坐标保持稳定，保证同一解析结果中的同一 heading 在 outline 和 find 中使用相同 ref。
+Core parameter catalog 唯一声明 `max_heading_level`：exact adapter tag 是 `docnav-markdown`，适用于 outline/find，内置默认值为 `3`，CLI locator 是 `--max-heading-level`，config locator 是 `options.docnav-markdown.max_heading_level`，标准范围为 `1..6`。Adapter selection 后，`docnav-navigation` 从 selected-operation catalog view 解析并 materialize 该值，再分别写入 protocol `Options` 和 closed `OutlineInput` / `FindInput`。Markdown `AdapterDocument` 直接消费 typed input，不读取 raw CLI argv、raw config JSON 或 generic parameter bag；为保持算法边界稳健，它仍可防御性地拒绝不满足 `1..6` 语义的值。可见性过滤决定 outline 返回哪些 heading entries。可见 heading 的 line/level 结构坐标保持稳定，保证同一解析结果中的同一 heading 在 outline 和 find 中使用相同 ref。
 
 ### 无可见 heading 时的全文 ref
 
@@ -86,6 +86,52 @@ Read result 的 `cost.measurements[]` 使用当前 ref 选中 Markdown text 的 
 ### Document Head Ref 读取
 
 `read` 接受 `HEAD:leading` 并返回当前 Markdown document head 原文区域，`content_type` 为 `text/markdown`。如果该区域包含 YAML frontmatter delimiter，content 保留起止 delimiter。`limit` 和 `page` 行为沿用普通 read content 分页规则：分页预算按 Unicode 字符计数，分页后的 `content` 只返回当前 page，成本仍描述 `HEAD:leading` 选中的完整 document head selection。
+
+## Current：Prepared Markdown Document 与 Ref 一致性
+
+### Invocation-private prepared view
+
+Selected Markdown invocation 由 definition 为 normalized document path 创建一个 invocation-private `AdapterDocument`。该 document MUST 使用单个 prepared view 承载本次调用需要的 Markdown source、line、heading、section、document-head 和 ref 定位事实。创建 document 本身不得读取或解析目标文档；第一次按既有 operation 顺序需要访问文档时才捕获并准备该 view，且不得改变 adapter-owned 语义校验与首次文档访问的顺序。
+
+首次准备的成功或失败结果都由该 `AdapterDocument` 缓存。同一 invocation 中所有使用 selected Markdown state 的 eligible work MUST 复用该结果，不得仅因执行阶段变化而重新打开、decode、parse 或 retry 完整文档。Eligible work 包括直接 document operation、Markdown 参与的 full-read cost/content 与 structured fallback，以及 outline/find unique-ref composition 的 nested read。现有 info operation 与 cost/full-read hooks 不发出、解析或改写 ref identity。
+
+Prepared view 只存活于当前 invocation。Pagination 的下一页请求和其它后续调用重新建立各自的 view；不得跨 invocation、跨 page request 或通过 caller-visible session/cache 保留 Markdown 私有状态。私有 source、parser/index 值、snapshot id、cleanup fact 和 state handle 不得进入 closed operation input、protocol/readable output、ref、page、continuation、diagnostic 或 invocation log。
+
+### Compatible Markdown view
+
+对于一个已发出的 Markdown ref，两个 view 只有同时满足以下条件才兼容：
+
+1. 使用相同的 Markdown adapter identity、heading/ref grammar、parser/ref semantics；
+2. 消费完全相同的 decoded Markdown source；
+3. `read` 只依赖现有 `ReadInput`、opaque ref 和该 prepared view，不依赖 producer call order、内存指针、未暴露 option 或其它 producer-only state。
+
+同一个 prepared view 与自身兼容。另一次 invocation 从相同 source 和 parser/ref semantics 独立准备的 view 也必须兼容，即使 pathname 不同；相同 pathname 本身不证明兼容。
+
+`max_heading_level` 和 find query 影响 producer 的可见集合、match evidence 或 owning-region 选择，producer 的 page/limit 影响当前返回哪些 entries/matches 及 item facts；这些 producer inputs 都不属于已发出 ref 的 read-view identity。Read 自身的 page/limit 只控制既有 selection 的分页，不改变 ref identity。Fresh-compatible read 无需恢复上述 producer inputs，只需有效的现有 `ReadInput`、exact ref 和 compatible view。
+
+### Same-state 与 fresh-compatible round trip
+
+Markdown outline 或 find 的 validated success 在任意 page 发出的每个 ref MUST 完整、非空，并符合本页拥有的 canonical grammar 或 sentinel ref 规则。调用方以有效的既有 read 参数提交 exact ref 时，page `1` read MUST 在以下两种 view 上返回 validated success，并原样回显该 ref：
+
+1. producer 使用的同一个 prepared view；
+2. 从相同 source 和 parser/ref semantics 独立准备的 compatible view。
+
+成功 read 的完整 selection MUST 与 producer evidence 保持以下 Markdown-specific correspondence：
+
+- heading outline ref 选择该 heading 的本页既有 section；
+- `HEAD:leading` 选择本页定义的完整 document head 原文；
+- `doc:full` 选择完整 Markdown 文档；
+- find ref 选择“Find”一节按 source match 起始位置确定的 containing visible heading section、document head 或 full fallback region。Correspondence 由该 owning region 与 match evidence 的位置关系建立；read page `1` 可能因既有分页预算尚未包含命中片段，但 selection identity 不变。
+
+多个 find occurrences 可以发出同一个 ref，多个合法 ref 也可以按本页规则选择同一区域；这种 multiplicity 不削弱每个 emitted ref 的 canonicality、round trip 或 correspondence 要求。Read 不得要求 producer 提供 ref 与 compatible view 之外的隐藏定位状态。
+
+### Mutation 与 lifecycle 边界
+
+首次准备成功后，如果 backing path 被替换、原地修改、删除，或变为不同 encoding/content，当前 invocation MUST 继续使用已捕获的 view，不 refresh、reparse 或 reroute。当前 view 中已经发出的 ref 仍按 same-state round-trip 要求读取。首次准备失败后，即使 backing path 随后被修复，同一个 `AdapterDocument` 也不得隐式重试，而是继续返回已缓存的 diagnostic。
+
+后续 invocation 重新读取当时的文档并形成新 view。若 source 或 parser/ref semantics 已变化，该 view 与 producer view 不兼容，旧 ref 按“结构快照语义”和“错误分类”的 Current 规则重新判定；可能无法匹配、匹配当前坐标上的其它 heading，或在坐标未变化时继续匹配。该 stale behavior 不形成跨 mutation 的 ref 稳定承诺。
+
+Invocation 在最后一个 eligible stage、validation fallback、failure、cancellation 或 unwind 后释放 private state。释放只属于内部 lifecycle，不产生 public cleanup operation、snapshot fact 或额外结果字段。
 
 ## Heading Ref Grammar
 
@@ -210,15 +256,15 @@ Core `docnav` 配置源可以携带以下与 Markdown adapter 相关的 source v
 | `outline.auto_full_read.thresholds[]` | navigation-owned selector | 可按 selected adapter id `docnav-markdown` 和 definition-declared full-read cost unit 选择 `unstructured_full` |
 | `options.docnav-markdown.max_heading_level` | Core-catalog Markdown parameter | outline 和 find 的可见 heading 粒度 |
 
-Markdown parameter 和 outline selector 的 core 配置参考形状见 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。基础参数示例见 [docnav-markdown-config.json](../examples/json/docnav-markdown-config.json)，selector 示例见 [契约示例](../examples/contract-examples.md#配置示例)。这些文件只作为配置填写提示和示例校验；配置发现、字段映射、来源合并、失败处理和 runtime 参数校验由 [Navigation Input Resolution](../navigation-input-resolution.md) 与 [适配器契约](../adapter-contract.md#文档操作执行边界) 定义，runtime 不要求先加载该 schema。Config source 只提供 raw source value；core catalog 在 request construction 前执行 `max_heading_level` 的 `1..6` 标准校验和 typed materialization，Markdown strategy 可以防御性地重复语义校验。
+Markdown parameter 和 outline selector 的 core 配置参考形状见 [docnav-markdown-config.schema.json](../schemas/docnav-markdown-config.schema.json)。基础参数示例见 [docnav-markdown-config.json](../examples/json/docnav-markdown-config.json)，selector 示例见 [契约示例](../examples/contract-examples.md#配置示例)。这些文件只作为配置填写提示和示例校验；配置发现、字段映射、来源合并、失败处理和 runtime 参数校验由 [Navigation Input Resolution](../navigation-input-resolution.md) 与 [适配器契约](../adapter-contract.md#文档操作执行边界) 定义，runtime 不要求先加载该 schema。Config source 只提供 raw source value；core catalog 在 request construction 前执行 `max_heading_level` 的 `1..6` 标准校验和 typed materialization，Markdown `AdapterDocument` 可以防御性地重复语义校验。
 
 `options.docnav-markdown.max_heading_level` 是 core catalog 中 exact-tagged Markdown config source path；`docnav-markdown` 是当前 registry adapter id。Adapter selection 后，`docnav-navigation` 只在 exact tag 匹配且 operation 为 outline/find 时解析该参数。Type mismatch 或 `1..6` 范围外值在 typed-field validation/extraction 阶段返回带来源的 diagnostic。旧裸 `options.max_heading_level` 不兼容、不迁移，只按普通 unknown/invalid config path 处理。
 
-Markdown definition 同时声明 full-read capabilities：content hook 返回整篇 Markdown 原文，cost measurement units 为 `lines`、`bytes` 和 `tokens`。Navigation 的 path rule 或 cost threshold 允许 `unstructured_full` 时，从 selected Markdown definition 调用对应 hooks；Markdown adapter 的固定 strategy 仍实现正常 `outline`、`read`、`find` 和 `info`。
+Markdown definition 同时声明 full-read capabilities：content hook 返回整篇 Markdown 原文，cost measurement units 为 `lines`、`bytes` 和 `tokens`。Navigation 的 path rule 或 cost threshold 允许 `unstructured_full` 时，在 selected invocation 的同一个 Markdown `AdapterDocument` 上调用对应 hooks；该 document 也实现正常 `outline`、`read`、`find` 和 `info`。
 
 ## 保证范围
 
-Markdown adapter 保证：
+以下条目与“Current：Prepared Markdown Document 与 Ref 一致性”共同构成 Markdown adapter 的 Current 保证；prepared-view、compatible-view、round-trip 和 lifecycle 的完整定义以前述章节为准：
 
 - 同一解析结果中，outline 和 find 对同一 heading 生成相同 ref。
 - canonical heading ref 在同一次解析结果中唯一。
@@ -243,13 +289,24 @@ Markdown adapter 测试必须覆盖本页拥有的行为语义：
 - find 命中 document head 到 `HEAD:leading` read 的 roundtrip，以及 fallback 场景仍可 read 到命中文本。
 - outline/find/read 的 ref 生成、原样读取、item facts 职责、成本 measurement 和截断边界。
 - 静态 descriptor 暴露的默认 `pagination.enabled`、`limit`、`max_heading_level` 和 page 从 `1` 开始的分页规则。
-- Core CLI config source descriptor/path handoff、path context、navigation-owned default config absence、invalid config failure、`defaults.output`、navigation closed-input construction 和 Markdown strategy 对 `options.docnav-markdown.max_heading_level` 的 outline/find 可观察行为。
+- Core CLI config source descriptor/path handoff、path context、navigation-owned default config absence、invalid config failure、`defaults.output`、navigation closed-input construction 和 Markdown `AdapterDocument` 对 `options.docnav-markdown.max_heading_level` 的 outline/find 可观察行为。
 - Unicode 字符预算、超长 item facts 截断、ref 完整保留和分页前进。
 - 重复 heading、`doc:full`、`REF_INVALID` 和 `REF_NOT_FOUND` 边界。Grammar-invalid 自动化按非法字段、未知 ref 类型和前导零三种 owner-defined 类型各保留一个代表，不枚举同类拼写。
 
 测试层级、smoke case 组织和跨入口覆盖目标见 [测试策略](../testing.md) 与 [覆盖矩阵](../testing/coverage.md)。
 
 Manual CR: 修改 canonical heading ref 正则或字段约束时，reviewer 同步核对本页 grammar 表、`markdown/refs.rs` parser 和三类 grammar-invalid 代表；`doc:full` / `HEAD:leading` 继续由各自 read 行为验证，不在 heading parser 中建立 sentinel 字符串矩阵。
+
+### Prepared view 与 ref 一致性审计门禁
+
+自动化证据 MUST 持续满足以下审计门禁：
+
+- 通过共享 black-box conformance harness 把 ref 当作 opaque string，禁止测试 harness 解析、重建或从 display/label 推断 ref；
+- 对代表性 outline/find fixture 逐页运行到 terminal page，保留每个 occurrence 的完整 ref，并分别证明 same-state page `1` read 与 independently prepared fresh-compatible read 成功且 exact echo；每个 page request 仍是独立 invocation；
+- 覆盖 heading、`HEAD:leading`、`doc:full`、重复 find ref、visibility option、无可见 heading fallback、长 item facts 截断和 terminal pagination，并按本页规则断言 section/head/full/find correspondence；
+- 用确定性的 path replacement、in-place mutation、deletion、repair 和 encoding/content change 区分当前 invocation 的 captured view 与后续 incompatible view，并保留既有 stale-ref/error 结果；
+- 证明 routing 不准备 Markdown state，direct operation 至多准备一次，Markdown 参与的 cost/full-read/structured fallback 与 unique-ref nested read 在一个 invocation 内只使用一个 prepared view；
+- 证明 private state、parser/source 类型、snapshot/cleanup 和 conformance-only facts 不进入 closed input、raw/readable output、ref、page/continuation、schema/example 或 invocation log。
 
 ## 验证入口
 
@@ -260,6 +317,12 @@ bun --silent run dnm outline <path>
 bun --silent run dnm read <path> --ref "<ref>"
 bun --silent run dnm find <path> --query "<text>"
 bun --silent run dnm outline <path> --output protocol-json
+```
+
+Adapter-owned parsing、ref、prepared-view 和 operation evidence 通过以下局部入口验证：
+
+```bash
+cargo test -p docnav-markdown
 ```
 
 省略 `--output` 或显式使用 `readable-view` 时获得阅读文本；需要稳定结构化结果或完整协议 envelope 时使用 `protocol-json`。

@@ -1,7 +1,7 @@
 use docnav_protocol::{Operation, PositiveInteger};
 use docnav_typed_fields::ValueKind;
 
-/// Prepared input for an outline strategy.
+/// Prepared input for an outline document handler.
 ///
 /// Navigation constructs this value after source resolution and standard type
 /// materialization. Adapter-specific semantic validation may still reject it.
@@ -18,7 +18,7 @@ pub struct OutlineInput {
     pub max_heading_level: Option<i64>,
 }
 
-/// Prepared input for a read strategy.
+/// Prepared input for a read document handler.
 ///
 /// Navigation constructs this value after source resolution and standard type
 /// materialization. Adapter-specific semantic validation may still reject it.
@@ -34,7 +34,7 @@ pub struct ReadInput {
     pub limit: PositiveInteger,
 }
 
-/// Prepared input for a find strategy.
+/// Prepared input for a find document handler.
 ///
 /// Navigation constructs this value after source resolution and standard type
 /// materialization. Adapter-specific semantic validation may still reject it.
@@ -53,7 +53,7 @@ pub struct FindInput {
     pub max_heading_level: Option<i64>,
 }
 
-/// Prepared input for an info strategy.
+/// Prepared input for an info document handler.
 ///
 /// Navigation constructs this value after source resolution and standard type
 /// materialization. Adapter-specific semantic validation may still reject it.
@@ -63,7 +63,7 @@ pub struct InfoInput {
     pub document_path: String,
 }
 
-/// Closed strategy-input variants shared by navigation and linked adapters.
+/// Closed adapter-document input variants shared by navigation and linked adapters.
 ///
 /// This enum contains prepared operation facts only. It does not expose raw
 /// sources, protocol envelopes, parameter declarations, or a generic value
@@ -88,7 +88,7 @@ impl StandardOperationInput {
     }
 }
 
-/// Compile-time catalog targets for strategy-visible standard input fields.
+/// Compile-time catalog targets for handler-visible standard input fields.
 ///
 /// Fixed operation facts such as document path, ref, and query are deliberately
 /// absent: navigation maps them directly rather than through the product
