@@ -1,7 +1,7 @@
 ---
 title: 分离长期决策、OpenSpec 与规范所有权
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-07-21T07:07:20Z
 purpose: 让稳定规则、change 内决策和跨 change 理由各有明确 owner，并保持决策集合可审计。
 background: 项目同时使用 owner 文档、OpenSpec change 内决策和长期决策记录，前序记录还固化了具体校验实现。

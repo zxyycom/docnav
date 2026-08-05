@@ -30,7 +30,7 @@
       }
     ]
   },
-  "sourceRevision": "sha256:74d1c7d9bb4b5250f2ecd24a99cff450c2a744bd7aa8c943837a68e5526be326",
+  "sourceRevision": "sha256:e24e943e224daf5d5673c3022427ea687ada99f46e8db82df838a57b8171fc08",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -224,7 +224,7 @@
       }
     },
     {
-      "id": "decision-management/separate-decision-spec-ownership.md",
+      "id": "decision-management/separate-current-rules-future-directions-and-change-plans.md",
       "keys": {
         "domain": [
           "decision-management"
@@ -233,14 +233,41 @@
           "active"
         ],
         "alignment": [
-          "aligned"
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "decision-management/separate-current-rules-future-directions-and-change-plans.md",
+        "title": "分离当前规则、未来方向与实施计划",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-05T10:13:48Z",
+        "purpose": "让当前规范、已确认未来方向和实施计划各自保持合适的内容与细节时机。",
+        "background": "Future feature 的重要细节需要长期保留，但把它们提前写入 owner 文档或长期搁置的详细 change 会混淆当前事实、方向和实施承诺。",
+        "decision": "当前规则进入 owner 文档，未来方向进入未对齐决策，change 随实施准备细化；相关工作不必提前实现，但不要主动增加障碍。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "decision-management/separate-decision-spec-ownership.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "decision-management/separate-decision-spec-ownership.md",
+      "keys": {
+        "domain": [
+          "decision-management"
+        ],
+        "status": [
+          "archived"
         ]
       },
       "state": {
         "path": "decision-management/separate-decision-spec-ownership.md",
         "title": "分离长期决策、OpenSpec 与规范所有权",
-        "status": "active",
-        "alignment": "aligned",
+        "status": "archived",
+        "alignment": null,
         "createdAt": "2026-07-21T07:07:20Z",
         "purpose": "让稳定规则、change 内决策和跨 change 理由各有明确 owner，并保持决策集合可审计。",
         "background": "项目同时使用 owner 文档、OpenSpec change 内决策和长期决策记录，前序记录还固化了具体校验实现。",
