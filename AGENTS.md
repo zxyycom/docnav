@@ -8,11 +8,11 @@ Docnav 是 CLI-first 的结构化文档导航系统。核心入口是 `docnav` C
 outline -> ref -> read
 ```
 
-当前稳定规范以 `docs/` 为准；已经确认但尚未成为当前事实的未来方向由活动未对齐决策承接；OpenSpec 用于较大 change 的实施规划和审计；代码、测试和 release artifact 证明当前实现状态。既有文档中未明确标注 Current 或已实现的目标性 `MUST` / `SHALL` 不代表当前二进制已经支持。
+当前稳定规范以 `docs/` 为准；活动决策保存已确认的跨 change 方向；OpenSpec 用于较大 change 的规划和审计；代码、测试和 release artifact 证明当前实现状态。目标性 `MUST` / `SHALL` 只有在主规范明确标注 Current 或已实现时才表示当前二进制能力。
 
 当前实现、规划和 adapter 能力边界，以 `docs/navigation.md` 指向的主规范和状态语义为准。涉及产品、协议、CLI、adapter、schema、示例或测试细节时，先按对应主规范判断。
 
-长期决策与 OpenSpec change 的记录位置、细节时机、同步顺序和冲突处理，以 `docs/navigation.md` 的“长期决策与 OpenSpec 分工”为准。活动决策记录用于恢复跨 change 的方向和理由，不替代 owner 规范或当前实现证据；未对齐方向不要求提前准备或实现，但相关工作要注意别主动增加障碍。
+长期决策与 OpenSpec change 的记录位置、细节时机、对齐语义、同步顺序和冲突处理，以 `docs/navigation.md` 的“长期决策与 OpenSpec 分工”为准。活动决策记录用于恢复跨 change 的方向和理由，不替代 owner 规范或当前实现证据。
 
 ## 架构边界
 
@@ -58,7 +58,7 @@ outline -> ref -> read
    映射闭合。Case 细节以 `case-maintenance.md` 为准。历史 Case、OpenSpec 或旧
    账本只作审计与风险输入，不形成当前 coverage 缺口或当前任务的产品测试义务。
 4. 涉及协议、schema、示例、CLI 或 adapter 时，同步更新对应主规范和验证材料。
-5. 当实现与 docs、OpenSpec、schema、examples 或活动决策看似偏离时，先按 `docs/navigation.md` 的状态与 owner 语义判断是当前实现缺口、未对齐未来方向、实施中的 change、历史记录还是同一目标内部冲突；能确定正确方向时同步修正，不能确定时让用户选择更新代码、更新文档、演进决策或记录偏差原因。
+5. 当实现与 docs、OpenSpec、schema、examples 或活动决策看似偏离时，先按 `docs/navigation.md` 的状态与 owner 语义确定当前基线、未来方向、实施计划和历史记录各自属于哪一层；能确定正确方向时同步失配载体，不能确定时让用户选择。
 6. CLI 命令优先选择只读、可复现、范围明确的命令；验证命令按改动范围选择，避免无关全量操作。
 7. 改动跨 Rust 行为、OpenSpec、schema、示例、输出边界或多个包边界时，优先运行 `bun run verify:docnav-workspace`。
 8. 纯提示词或说明文档改动，可用 `dnm outline`、局部 diff 等范围匹配的验证。

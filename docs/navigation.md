@@ -79,14 +79,14 @@ OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change na
 
 ## 规范状态与实现状态
 
-Docnav 采用 docs-first 工作流：`docs/` 是当前稳定规范基础；代码、测试和 release artifact 证明当前实现状态。尚未实现但已经确认的未来方向由活动未对齐决策承接，不为了保存 future feature 而在 owner 文档中展开一套目标规格。
+Docnav 采用 docs-first 工作流：`docs/` owner 文档承接当前稳定规范，代码、测试和 release artifact 证明当前实现状态；活动未对齐决策承接已经确认的未来方向，OpenSpec change 承接实施计划。
 
-既有 owner 文档中未明确标注为 Current 或已实现的 `MUST` / `SHALL` 仍不自动表示当前二进制已经支持；相关内容以后被修改时，应按下方分工判断是当前规则、未来方向还是实施计划，而不是继续增加状态分支。
+`MUST` / `SHALL` 只有在对应内容标注为 Current 或已实现，并且存在实现证据时，才表示当前二进制能力。
 
 状态词只在影响实现或验收判断时使用：
 
 - Current：当前应已支持，并能由代码、测试、验证命令或 release artifact 证明。
-- Target / Planned：既有目标或计划上下文，不单独证明当前支持；新增 future feature 方向优先进入活动未对齐决策。
+- Target / Planned：目标或计划上下文；跨 change 仍有长期影响的完整方向由活动决策承接。
 - Historical：只表示形成时背景，不作为当前规则或未来方向。
 
 OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 owner 文档的分工和同步顺序见“长期决策与 OpenSpec 分工”。小功能可以直接修改 docs、代码和测试。
@@ -95,26 +95,24 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 
 ## 长期决策与 OpenSpec 分工
 
-稳定规则、change 内判断和跨 change 理由分层维护；同一判断只由一个 owner 完整解释。
+当前基线、未来方向和实施计划分层维护；同一判断只由一个 owner 完整解释。
 
-| 载体 | 拥有 | 不拥有 |
-| --- | --- | --- |
-| `docs/` owner 文档 | 已成为当前基线的稳定行为、public contract、职责边界和验证语义 | 未实现 feature 的详细目标、当前支持证明、change 任务或决策演进历史 |
-| `openspec/changes/<change>/` | 尚未准备实施时的粗略目标、边界和启动条件；准备实施后的设计、`## Decisions`、任务、验收依据和审计历史 | 稳定规则的最终 owner、跨 change 的未来方向或当前实现状态 |
-| `docs/decisions/` | 已确认且跨 change 仍有效的未来方向、重要细节、理由和生命周期关系 | 当前行为、实现状态、任务清单或只服务某次实施的完整设计 |
+| 载体 | 核心职责 |
+| --- | --- |
+| `docs/` owner 文档 | 已成为当前基线的稳定行为、public contract、职责边界和验证语义。 |
+| `openspec/changes/<change>/` | 服务该 change 当前阶段的探索依据、设计、`## Decisions`、任务、验收依据和审计历史。 |
+| `docs/decisions/` | 已确认且跨 change 仍有长期影响的方向、理由、约束和演进关系；对齐状态说明其与当前事实的关系。 |
 
 按以下顺序记录和同步：
 
-1. 尚未准备实施的 future change 只保留问题、目标、边界和启动条件；有跨 change 意义的细节进入活动未对齐决策，其余实现细节等准备实施时再确定。
-2. 准备实施后，change 才细化设计、任务和验收依据；change 或决策的存在都不单独提供实施授权、优先级或当前状态证明。
-3. 已经进入实施准备并形成细节的 change 后来搁置时，保留形成时方案，不因当前未执行而追溯性改粗；恢复前按届时 Current 基线和活动决策重新审计。
-4. 现有 change 不应仅为了统一成粗略状态而批量重写；以后恢复或实质修改时，再按届时 Current 基线、活动决策和本节分工收敛。
-5. 只影响某个 active change 的已确认判断写入该 change 的 `design.md` `## Decisions`；跨 change 仍有效的方向和重要细节写入 `docs/decisions/`，归档 change 不自动复制其中内容。
-6. active change 要改变现有活动决策时，归档 change 前先同步 owner 文档，再按决策记录生命周期归档前序并激活后续记录。
-7. 载体之间不一致时，当前稳定规则以 owner 文档为准，当前状态以代码、测试和 release artifact 为准；随后同步 OpenSpec 和验证材料，并归档、修订或替代失配的决策记录。
-8. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态、对齐和关系由各条决策 Markdown 拥有，[决策索引](decisions/decision-index.json) 只提供可重建查询视图。
+1. 只影响一个 active change 的判断写入该 change；跨 change 仍有长期影响的已确认判断写入 `docs/decisions/`；形成当前基线的结果写入对应 owner 文档。
+2. Future change 在探索阶段保留足以恢复意图的目标、约束、依据、开放问题和启动条件；进入实施准备后，再形成届时需要的设计、任务和验收依据。
+3. 已形成详细 artifacts 的 change 暂停后继续保留其审计上下文；恢复时根据当前基线、活动决策和实现状态更新仍需使用的内容。
+4. Change 收敛后，将形成当前基线的结果同步到 owner 文档和实现证据，将改变长期方向的判断同步为决策演进，再完成归档。
+5. 载体之间不一致时，当前稳定规则以 owner 文档为准，当前实现以代码、测试和 release artifact 为准，未来方向以活动决策为准，实施计划以 active change 为准；随后同步失配载体。
+6. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态、对齐和关系由各条决策 Markdown 拥有，[决策索引](decisions/decision-index.json) 只提供可重建查询视图。
 
-活动决策已经确认。`aligned` 表示完整方向已与当前 owner 文档、代码、测试或 release artifact 等事实来源核对并建立为持续基线；`unaligned` 表示已经确认但尚未成为当前事实的未来方向。当前工作不必因此提前准备或实现，但要注意别主动增加障碍；在既有授权范围内能顺手实现时可以一并完成。对齐状态本身不产生当前实施授权或优先级；决策正文仍可记录未来方向和先后关系。已对齐基线后来与事实偏离时按一致性问题处理，不把记录改回未对齐。
+活动决策已经确认。`aligned` 表示完整方向已与相关当前事实核对并建立为持续基线；`unaligned` 表示已经确认但尚未成为当前事实的未来方向。相关工作把未对齐方向作为未来演进输入，在满足本次任务的可行方案中优先保留通向该方向的路径，并可在当前任务范围已经覆盖时顺手推进。对齐状态说明方向与当前事实的关系；本次任务范围来自当前请求，未来先后关系来自决策正文。已对齐基线后来与事实偏离时按一致性问题处理。
 
 ## 规则所有权
 

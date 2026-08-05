@@ -46,14 +46,6 @@ metadata:
 3. 对 `已收敛` 条目检查是否仍有待选择、待确认或影响实现的歧义；存在歧义时暂停。
 4. 用户回答后，先更新 artifact，并按归宿删除开放问题或标记为 `已收敛`，再重新进入 apply 流程。
 
-## 恢复实施审计
-
-已经形成详细 artifacts 的 change 可以在暂停后继续保留原方案；暂停本身不要求把 change 改粗。用户正在恢复搁置的 change，或当前 owner 文档、活动决策和实现基线已在 artifacts 形成后发生相关变化时，执行任何实现任务前必须重新审计 proposal、design、specs 和 tasks：
-
-1. 对照届时 Current owner 文档、相关活动决策和当前实现，识别仍成立、需要更新或已经失效的方案。
-2. 先更新受影响 artifacts 和开放问题，再执行实现任务；不能确定的实质取舍交给用户决定。
-3. 跨 change 仍有效的新判断进入 `$decision-records`，不只留在恢复中的 change。
-
 ## 流程
 
 1. 运行 `openspec list --json`，确认 active changes 并锁定目标 change。
@@ -66,7 +58,7 @@ metadata:
 5. 运行 `openspec show "<name>" --type change --json --no-interactive`，用结构化 delta 理解 capability、operation 和 requirement 变化；只需要 delta 时加 `--deltas-only`。
 6. 对 CLI 未覆盖的 proposal、design、tasks 原文细节，按 `contextFiles` 精确读取对应文件。
 7. 按“执行前开放问题门禁”检查 `## Open Questions`；存在未回答问题或已收敛歧义时停止在询问阶段。
-8. 命中“恢复实施审计”条件时，先重新审计并同步 artifacts；审计未闭合前不执行实现任务。
+8. change 在暂停后恢复，或相关 owner 文档、活动决策与实现基线已经变化时，先对照当前事实更新受影响的 proposal、design、specs 和 tasks。
 9. 逐项实施未完成任务：
    - 说明当前任务。
    - 做与任务直接相关的最小必要改动。

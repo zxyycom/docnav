@@ -30,7 +30,7 @@
       }
     ]
   },
-  "sourceRevision": "sha256:73f43b77a76ef5c5da7db4f02de7169c807a3e8b4ffb8d520460ce20b49f4769",
+  "sourceRevision": "sha256:a20b4d81e4e220fe4296c1b1cd01ae34efa47fabe0b2a8300ad067336d23fca5",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -251,7 +251,7 @@
       }
     },
     {
-      "id": "decision-management/separate-current-rules-future-directions-and-change-plans.md",
+      "id": "decision-management/match-change-detail-to-current-phase.md",
       "keys": {
         "domain": [
           "decision-management"
@@ -264,10 +264,32 @@
         ]
       },
       "state": {
-        "path": "decision-management/separate-current-rules-future-directions-and-change-plans.md",
-        "title": "分离当前规则、未来方向与实施计划",
+        "path": "decision-management/match-change-detail-to-current-phase.md",
+        "title": "让 change 细节服务当前阶段",
         "status": "active",
         "alignment": "aligned",
+        "createdAt": "2026-08-05T14:30:08Z",
+        "purpose": "让 change 在探索阶段保留支持方向判断的信息，并在进入实施准备后形成实施细节。",
+        "background": "探索阶段需要保留约束、证据和开放问题；实施方案依赖届时基线，暂停后的 artifacts 仍有审计价值。",
+        "decision": "Change 在探索阶段保存目标、约束、证据、开放问题和启动条件，进入实施准备后形成实施方案，恢复时核对既有 artifacts。",
+        "relations": []
+      }
+    },
+    {
+      "id": "decision-management/separate-current-rules-future-directions-and-change-plans.md",
+      "keys": {
+        "domain": [
+          "decision-management"
+        ],
+        "status": [
+          "archived"
+        ]
+      },
+      "state": {
+        "path": "decision-management/separate-current-rules-future-directions-and-change-plans.md",
+        "title": "分离当前规则、未来方向与实施计划",
+        "status": "archived",
+        "alignment": null,
         "createdAt": "2026-08-05T10:13:48Z",
         "purpose": "让当前规范、已确认未来方向和实施计划各自保持合适的内容与细节时机。",
         "background": "Future feature 的重要细节需要长期保留，但把它们提前写入 owner 文档或长期搁置的详细 change 会混淆当前事实、方向和实施承诺。",
@@ -303,6 +325,36 @@
           {
             "type": "修订",
             "target": "decision-management/use-verified-decision-records.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "decision-management/treat-unaligned-decisions-as-future-direction-input.md",
+      "keys": {
+        "domain": [
+          "decision-management"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "aligned"
+        ]
+      },
+      "state": {
+        "path": "decision-management/treat-unaligned-decisions-as-future-direction-input.md",
+        "title": "将活动未对齐决策作为未来演进输入",
+        "status": "active",
+        "alignment": "aligned",
+        "createdAt": "2026-08-05T14:30:08Z",
+        "purpose": "让已确认但尚未成为当前事实的方向参与相关选择，同时由当前任务限定实施范围。",
+        "background": "未对齐状态需要同时表达方向已经确认、尚未成为当前基线，以及相关工作应怎样使用它。",
+        "decision": "活动未对齐决策作为未来演进输入；相关工作在满足本次任务的方案中优先保留演进路径，实施范围由当前任务确定。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "decision-management/separate-current-rules-future-directions-and-change-plans.md"
           }
         ]
       }

@@ -1,6 +1,6 @@
 ---
 name: openspec-propose
-description: 为已经进入实施准备的新 OpenSpec change 生成可进入实现阶段的 proposal、design、tasks 等 artifacts。用于用户明确希望把 change 准备到可实施状态，而不是只记录未来方向或粗略 change。
+description: 为准备进入实现的新 OpenSpec change 生成 proposal、design、tasks 等 artifacts。用于用户明确要求创建或补全可实施提案。
 license: MIT
 metadata:
   author: openspec
@@ -10,13 +10,13 @@ metadata:
 
 # OpenSpec Propose
 
-核心：只在当前请求明确进入实施准备时，把新增 change 细化为 apply-ready artifacts；未来方向本身不触发详细 proposal。
+核心：新增 change 只在 `openspec/changes/<name>/` 内生成临时 artifacts，用一句话锚定目标，并以阻塞级审计任务作为实现前置门禁。
 
 ## 目标
 
-根据用户已经确认要进入实施准备的 change name 或需求描述，创建新的 OpenSpec change，并生成进入实现阶段所需的 artifacts。完成后，该 change 应满足 `openspec status --change "<name>" --json` 中 `applyRequires` 指向的 artifacts 全部为 `done`；但在阻塞级审计任务完成前，该 change 只达到 artifact 准备状态，不可进入实现执行。
+根据用户给出的 change name 或需求描述，创建一个新的 OpenSpec change，并生成进入实现阶段所需的 artifacts。完成后，该 change 应满足 `openspec status --change "<name>" --json` 中 `applyRequires` 指向的 artifacts 全部为 `done`；但在阻塞级审计任务完成前，该 change 只达到 artifact 准备状态，不可进入实现执行。
 
-Change 名称、future feature 描述或既有 artifact 本身都不证明已经进入实施准备。当前请求只是在记录、探索或保存未来方向时，转入 `$openspec-explore`；已经确认且跨 change 有长期意义的方向与细节由 `$decision-records` 承接，不创建详细 design 或 tasks。
+`$openspec-explore` 承接探索与未来方向整理，`$decision-records` 承接已确认且跨 change 有长期影响的判断；本 skill 承接可实施提案的生成。
 
 ## 输入
 
@@ -27,7 +27,7 @@ Change 名称、future feature 描述或既有 artifact 本身都不证明已经
 
 当用户只提供需求描述时，从描述中派生简短、稳定、语义明确的 kebab-case 名称。名称应使用英文小写、数字和连字符，并表达 change 的核心行为。
 
-当需求目标、范围、名称或是否准备进入实施无法可靠判断，且不同判断会改变是否生成详细 artifacts 时，只询问这个阻塞选择；在得到答案前不创建或细化 change。
+当需求目标、范围或名称无法可靠判断时，直接向用户提问，要求补充“要构建或修复什么”。在理解目标前先暂停，不创建 change。
 
 ## CLI 使用策略
 
@@ -92,7 +92,6 @@ OpenSpec change name 和 capability ID 是不同概念：
 ## 工作流程
 
 1. 确定 change 名称、schema 和目标
-   - 先确认当前请求明确要求把该 change 准备到可实施状态；若只要求记录未来方向或保留粗略 change，停止本 skill 并转入对应探索或决策流程。
    - 先运行：
 
      ```text
@@ -200,22 +199,20 @@ OpenSpec change name 和 capability ID 是不同概念：
 9. 每个 artifact 文件正文开头必须写一句核心句，说明本 change 的目标和当前文档性质，防止后续内容偏离范围。
 10. Artifact 不得表达该 change 已批准、已审计或可直接实现；需要说明状态时，按模板或项目约定表述为临时 change artifact。
 11. tasks artifact 必须把阻塞级审计任务放在所有实现任务之前；后续实现任务必须以该审计完成为前置条件。
-12. 不为尚未进入实施准备的未来方向预填实现细节；本节的细化要求只适用于已经通过实施准备门禁的 change。
 
 ## 完成标准
 
 满足以下条件时才算完成：
 
 1. change 目录存在，并包含 `.openspec.yaml`。
-2. 当前请求已经明确要求把该 change 准备到可实施状态，而不是只记录未来方向。
-3. `openspec status --change "<name>" --json` 可读取。
-4. `applyRequires` 中列出的每个 artifact 都已写入文件，且状态为 `done`。
-5. 每个已生成 artifact 的文件路径来自对应 instructions 的 `outputPath`，并已验证存在。
-6. artifact 正文没有复制 `context`、`rules` 或内部流程说明。
-7. `openspec validate "<name>" --type change --json --strict --no-interactive` 通过；无法运行时说明失败原因和影响。
-8. tasks artifact 包含阻塞级审计任务，并明确审计未完成前不可执行实现任务。
-9. proposal Capabilities 和 specs 目录使用的 capability ID 符合命名规则，且已有能力修改使用现有主 spec ID。
-10. 最终回复包含 change 名称、change 路径、已创建 artifacts、最终状态、审计门禁状态和下一步入口。
+2. `openspec status --change "<name>" --json` 可读取。
+3. `applyRequires` 中列出的每个 artifact 都已写入文件，且状态为 `done`。
+4. 每个已生成 artifact 的文件路径来自对应 instructions 的 `outputPath`，并已验证存在。
+5. artifact 正文没有复制 `context`、`rules` 或内部流程说明。
+6. `openspec validate "<name>" --type change --json --strict --no-interactive` 通过；无法运行时说明失败原因和影响。
+7. tasks artifact 包含阻塞级审计任务，并明确审计未完成前不可执行实现任务。
+8. proposal Capabilities 和 specs 目录使用的 capability ID 符合命名规则，且已有能力修改使用现有主 spec ID。
+9. 最终回复包含 change 名称、change 路径、已创建 artifacts、最终状态、审计门禁状态和下一步入口。
 
 ## 最终回复格式
 

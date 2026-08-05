@@ -26,25 +26,26 @@ Active change 中影响范围、方案、边界或验收的已确认判断 MUST 
 
 #### Scenario: A decision remains relevant beyond the change
 - **WHEN** 已确认判断在当前 change 之外仍作为默认方向，或会改变现有活动决策
-- **THEN** 归档该 change 前 MUST 按 `docs/navigation.md` 同步 owner 文档和长期决策记录
+- **THEN** 该判断 MUST 按 `docs/navigation.md` 进入或演进长期决策
+- **THEN** 该 change 已形成当前基线时，归档前 MUST 同步对应 owner 文档
 
-### Requirement: Change detail follows implementation readiness
-尚未进入实施准备的 future change MUST 只保留问题、目标、边界和启动条件；跨 change 仍有意义的已确认方向与细节 MUST 进入长期决策，其余实现细节 MUST 等待实施准备。已经进入实施准备的 change MAY 细化设计、任务和验收依据；后来停止执行时 MUST 保留形成时方案，并 MUST 在恢复前根据届时当前基线和活动决策重新审计。
+### Requirement: Change detail serves its current phase
+OpenSpec change MUST 保存当前阶段要用于判断或执行的信息。探索阶段 MUST 保留有助于恢复方向的目标、约束、证据、开放问题和启动条件；进入实施准备后 MUST 补足届时需要的设计、任务和验收依据。跨 change 仍有长期影响的已确认判断 MUST 进入长期决策。已经形成详细 artifacts 的 change 暂停后 MUST 保留其审计上下文，并在恢复时根据当前基线、活动决策和实现状态更新仍需使用的内容。
 
-#### Scenario: Future change 尚未准备实施
-- **WHEN** 一个 future change 尚未进入实施准备
-- **THEN** change MUST 保持粗略目标和启动边界，不提前展开只服务实施的细节
-- **THEN** 有跨 change 意义的已确认细节 MUST 由长期决策承接
+#### Scenario: Future change 处于探索阶段
+- **WHEN** 一个 future change 尚在探索方向和实施条件
+- **THEN** artifacts MUST 保存恢复目标、边界和启动条件所需的约束、证据和开放问题
+- **THEN** 实施设计、任务和验收依据 MUST 在该 change 进入实施准备时形成
 
-#### Scenario: 已细化 change 后来搁置
-- **WHEN** 一个已经进入实施准备并形成细节的 change 后来停止执行
-- **THEN** 形成时方案 MUST 继续作为该 change 的审计记录，不因当前未执行而被追溯性改粗
-- **THEN** 恢复实施前 MUST 根据届时当前基线和活动决策重新审计
+#### Scenario: 细节具有跨 change 意义
+- **WHEN** 一项已确认判断在当前 change 之外仍有长期影响
+- **THEN** 该判断 MUST 由长期决策承接
+- **THEN** 当前 change MUST 保留理解本次方案所需的上下文
 
-#### Scenario: 既有 change 按触及时机收敛
-- **WHEN** 既有 change 只因本规则生效而显得比当前需要更详细
-- **THEN** 维护者 MUST NOT 仅为统一粗略程度而批量重写该 change
-- **THEN** 维护者 MUST 在以后恢复或实质修改该 change 时按届时当前基线、活动决策和细节分工重新审计
+#### Scenario: 恢复已细化的 change
+- **WHEN** 一个已经形成详细 artifacts 的 change 在暂停后恢复
+- **THEN** 原 artifacts MUST 作为形成时审计上下文继续保留
+- **THEN** 实施前 MUST 根据当前基线、活动决策和实现状态更新仍需使用的内容
 
 ### Requirement: Capability ID uses stable ownership naming
 OpenSpec capability ID MUST 表达长期主 spec 所有权，并 MUST 与一次性 change name 分离。Capability ID MUST 使用 kebab-case 名词或名词短语，MUST NOT 包含 `implement`、`implementation`、`change`、`task`、日期或临时版本阶段。

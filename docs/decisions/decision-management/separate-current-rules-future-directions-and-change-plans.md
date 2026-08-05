@@ -1,7 +1,7 @@
 ---
 title: 分离当前规则、未来方向与实施计划
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-08-05T10:13:48Z
 purpose: 让当前规范、已确认未来方向和实施计划各自保持合适的内容与细节时机。
 background: Future feature 的重要细节需要长期保留，但把它们提前写入 owner 文档或长期搁置的详细 change 会混淆当前事实、方向和实施承诺。
