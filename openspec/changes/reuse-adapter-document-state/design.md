@@ -1,297 +1,393 @@
-This design records the mechanism-neutral Target, confirmed responsibility
-boundaries, candidate comparison, and unresolved owner decisions for
-`reuse-adapter-document-state`. It is not an approved `Session`, handle,
-prepared-state, shared-source, or Rust type design.
+This design records the approved architecture for
+`reuse-adapter-document-state`: ref producer/read consistency is the durable
+contract; one prepared adapter document is the reuse and same-view mechanism;
+algorithm count and callable shape are intentionally non-normative.
 
-## Context
+## How to Read This Design
 
-This design recorded a pre-routing baseline in which navigation selects a linked adapter by calling `probe(path)`, then constructs one closed operation input and dispatches the selected strategy. A structured outline/find success may trigger navigation-owned unique-ref auto-read, which dispatches the same adapter's ordinary `read` strategy. Outline policy may instead call a cost-measurement hook followed by an unstructured full-read content hook, or may fall back to the structured outline strategy.
+- **Current** statements are backed by the named owner docs and source.
+- **Target** statements are the approved contract expressed by this change's
+  spec deltas.
+- **Compatible document view** has the exact meaning defined below; it is not a
+  synonym for “same path.”
+- **Implementation sketch** illustrates the ownership split but does not name a
+  mandatory Rust trait, object count, or method set.
 
-`replace-probe-traversal-with-inferred-routing` is the sequencing predecessor
-for this change, not a request to select its reuse mechanism. After routing is
-implemented, validated, and synchronized as Current, task 1.1 must rewrite this
-change's proposal, design, specs, and tasks from the no-probe pipeline before any
-other decision-packet task begins. The probe/candidate-traversal rows below are
-historical comparison material, not Target obligations.
+`proposal.md` owns scope and impact. This file owns approved decisions, ref
+laws, view compatibility, and evidence requirements. `tasks.md` owns apply
+order. Stable behavior moves to the named `docs/` owners only during apply.
 
-In that pre-routing baseline, Markdown and JSON adapters acquire and decode the path separately in probe and in every operation/hook. Each Markdown operation and full-read hook constructs a new `MarkdownDocument`; JSON probe and every JSON operation/hook each construct a new adapter-private `JsonDocument`. Consequently:
+## Current Baseline
 
-| Pre-routing path | Selected-adapter preparation work |
-| --- | --- |
-| direct outline/read/find/info | probe acquisition/decode (and JSON parse), then operation acquisition/decode/parse |
-| cost threshold does not select full read | probe, cost hook, then structured outline each prepare independently |
-| cost threshold selects full read | probe, cost hook, then content hook each prepare independently |
-| eligible unique-ref auto-read | probe, base outline/find, then nested read each prepare independently |
-| automatic discovery | each unsupported/invalid candidate prepares as its probe requires; the selected candidate then prepares again for dispatch |
+Current routing is lexical and target-document-I/O-free. Explicit adapter-id
+lookup or automatic complete-basename matching selects one linked adapter
+before the document is opened. The selected Markdown/JSON operation or hook
+then independently loads and builds its own private model.
 
-This is not a request to merge operations. Navigation must continue to decide whether and how operations compose, validate the base result, apply Current fallback policy, and own the invocation lifetime. Adapter-private format detection, source decode, parser tree/index, source regions, ref generation/resolution, and result semantics must remain with the adapter.
+Current source anchors:
 
-Stakeholders are the navigation and adapter-contract maintainers, Markdown and JSON owners, new adapter authors (notably the code adapter), interactive composition consumers, local-service maintainers, and the architecture/product owner who must approve source-view semantics and the reuse boundary.
+- routing and dispatch:
+  `crates/shared/navigation/src/routing.rs::select_adapter` and
+  `crates/shared/navigation/src/execution.rs`;
+- full-read composition:
+  `crates/shared/navigation/src/outline_mode/unstructured.rs`;
+- unique-ref nested read:
+  `crates/shared/navigation/src/auto_read.rs`;
+- linked adapter interface:
+  `crates/shared/adapter-contracts/src/lib.rs::Adapter`;
+- Markdown state/ref paths: `MarkdownDocument::load`, `outline_entries`,
+  `find_entries`, and `resolve_ref`;
+- JSON state/ref paths: `reload_document`, `preorder_entries`, `find_entries`,
+  and `resolve_selection`.
 
-## Planning Interpretation
+The Current ref owner guarantees that core passes outline/find refs unchanged
+to read, but explicitly does not guarantee that the selected adapter accepts,
+uniquely resolves, or successfully reads its own emitted ref. The adapter owns
+correctness, yet the cross-operation success law is not currently normative.
 
-- **Current** statements describe behavior that must be checked against owner
-  docs and implementation evidence. This change is not evidence that Current
-  behavior exists.
-- **Target** statements define the outcome and compatibility boundaries this
-  change intends to establish.
-- **Confirmed** decisions constrain every candidate but do not select a
-  concrete representation.
-- **Open** decisions are outputs of the architecture/product-owner gate in
-  tasks 1.1–1.7. They cannot be filled with agent defaults.
-- **Approved invocation lifecycle** and **approved document view** mean the
-  exact mechanism, stage lifetime, source snapshot, refresh, cleanup, and
-  fallback rules that the owner will approve. No such definition exists yet;
-  task 1.8 must replace the mechanism-neutral wording with the complete
-  approved rules before implementation.
+Current adapter behavior already exhibits the intended roles:
 
-`proposal.md` owns overall change status and scope. `tasks.md` owns the gate and
-apply sequence.
-
-## Goals / Non-Goals
-
-**Goals:**
-
-- Prevent composition alone from causing repeated complete acquisition, decode, or parse of the same selected-adapter document view within one navigation invocation.
-- Cover direct operations, declared and automatic adapter selection, unstructured full-read selection/content/fallback, and unique-ref nested read rather than optimizing only one happy path.
-- Keep navigation in control of composition, failure fallback, and lifetime; keep all format-specific state and algorithms owned by the adapter.
-- Make snapshot/TOCTOU, unsupported-candidate cleanup, cancellation/failure cleanup, and future process-boundary consequences explicit before implementation.
-- Preserve public protocol, ref, output, pagination, CLI, and auto-read result/fallback behavior.
-- Require count-based and mutation-based evidence rather than treating a new trait or object as proof of reuse.
-
-**Non-Goals:**
-
-- Selecting a request-scoped or operation-shaped session before the candidate gate.
-- Reusing state across invocations, caching by path, retaining state in local service process caches, or defining invalidation for a long-lived document cache.
-- Sharing parser trees, resolved nodes, refs, source-region indexes, or format error types across adapters or with core.
-- Adding state identifiers, opaque handles, snapshot metadata, or cleanup status to the public protocol, output, ref, continuation, log, schema, or example surface.
-- Changing automatic discovery order, probe support meaning, Current auto-read eligibility, nested-read silent fallback, full-read result shape, or direct operation results.
-- Choosing token-cost producers/sinks or any find occurrence/node/grouped model.
-- Defining an external adapter runtime, adapter wire session, or local-service document cache.
-
-## Responsibility and Lifetime Map
-
-The word “ownership” has three independent meanings in this change:
-responsibility for behavior, storage/allocation of source or parser values, and
-control of when a value remains reachable. The gate must decide each axis
-explicitly rather than inferring all three from one Rust type.
-
-| Concern | Confirmed owner or decision state | Lifetime / visibility |
+| Role | Markdown | JSON |
 | --- | --- | --- |
-| Navigation composition | `docnav-navigation` decides adapter selection, direct dispatch, full-read policy/fallback, unique-ref nested read, validation, and which stage runs next. | Navigation bounds the reuse opportunity to one invocation and decides when no later eligible stage exists. |
-| Adapter format semantics | The selected adapter owns format detection, decode/parse rules, parser/index/source-region facts, ref creation/resolution, and operation algorithms. | Adapter-private values are usable only behind the creating adapter boundary and never become caller data or serialized facts. |
-| Document acquisition and immutable bytes/text | **Open.** Candidates A, B, C, and E can leave acquisition inside the adapter boundary; candidate D may assign immutable acquisition/storage mechanics to a core primitive. | The gate must name the acquisition point, refresh allowance, retention bound, and consumers. A core byte view, if approved, is not adapter parser state. |
-| Navigation configuration-source loading | Current navigation responsibility for project/user configuration input. | This responsibility is unrelated to document-file byte acquisition and does not decide candidate D. |
-| Default UTF-8 full-read fallback | Navigation owns the fallback policy and result semantics. | The gate must define how it reads the approved document view without inspecting adapter-private decode/parse/index state. |
-| Refs | The adapter generates and interprets refs; navigation and other callers validate only the shared non-empty-string boundary and pass refs unchanged. | A ref is interpreted against the owner-approved document view. Reuse adds no caller-visible state ID and no cross-invocation stability promise. |
-| Protocol and output | Existing protocol/output owners keep all public shape and projection semantics. | Source, parser, handle, snapshot, and cleanup facts never enter protocol, readable output, continuation, logs, schemas, or examples. |
-| Local service or future external host | No execution/storage ownership is granted by this change. A later capability may keep state host-local only after defining its own boundary. | No cross-request cache, serialized handle, public session ID, or unbounded interactive retention is permitted here. |
+| prepare private view | UTF-8 source, headings, line starts, section facts | decoded JSONC source, logical tree, comments, source regions |
+| ref producer: outline | headings, document head, full fallback | logical preorder and comment views |
+| ref producer: find | source occurrences -> visible containing region | original-source occurrences -> direct/tail/deepest base region |
+| ref consumer: read | ref -> Markdown section/head/full source | ref -> strict JSON or comment-aware JSONC materialization |
+| auxiliary behavior | info, cost, full-read source facts | info metadata, cost, JSON/JSONC full-read facts |
 
-## Decisions
+Current successful preparation counts are secondary evidence:
 
-### Decision 1: The reusable outcome is an invocation-private selected document view, not a public session
+| Path | Current complete preparations | Target complete preparations |
+| --- | ---: | ---: |
+| routing only | 0 | 0 |
+| direct operation | 1 | 1 |
+| cost -> full-read content | 2 | 1 |
+| cost -> structured outline | 2 | 1 |
+| outline/find -> nested read | 2 | 1 |
 
-**Status: target and boundary confirmed; concrete representation remains open.**
+## Definitions
 
-The accepted problem is duplicate complete preparation attributable solely to stages composed inside one navigation invocation. “Selected document view” is a conceptual outcome that may contain two separable layers: an immutable source byte/text view and adapter-private decoded, parsed, indexed, source-region, or ref-related facts. The gate may approve one or both layers and must name their separate storage and lifetime owners. The term does not imply that they share one type.
+### Ref producer
 
-The reusable outcome:
+Any adapter-owned behavior that successfully emits a caller-visible ref. The
+Current producer operations are outline and find. A future preview, selection,
+or other extension becomes a ref producer whenever it emits refs and therefore
+inherits the same laws; an extension that emits no ref does not.
 
-- is bounded by one navigation invocation and cannot be looked up by a caller-visible ID;
-- leaves all format interpretation and private prepared facts with the adapter;
-- allows only the creating adapter to use the adapter-private portion;
-- may allow navigation's default full-read fallback to consume a core-owned immutable source view only if candidate D or an explicit bounded combination is approved;
-- cannot be serialized into `RequestEnvelope`, `ProtocolResponse`, readable output, continuation, ref, invocation log, or service status;
-- does not make adapter operation results or refs valid beyond the approved source-view lifetime;
-- releases each unsupported/invalid candidate's adapter-private portion before advancing under the approved bound, while a separately approved shared source view may remain reachable inside the same invocation; and
-- releases every selected private portion and source view no later than the approved success, selection failure, operation failure, validation fallback, cancellation, or unwind-safe invocation endpoint.
+### Ref consumer
 
-“Invocation-private selected document view” is an outcome-level term, not the
-name of a Rust type, a claim that one object owns both layers, or approval for a
-`Session` trait.
+The adapter-owned read/ref-resolution behavior that interprets an opaque ref
+and materializes the adapter-defined selection. The implementation may split
+parsing, lookup, selection, serialization, and paging across helpers; the
+contract observes the resulting read behavior.
 
-### Decision 2: Navigation owns composition and lifecycle; adapters own state and algorithms
+### Compatible document view
 
-**Status: confirmed.**
+Two views are compatible for a ref when all of the following hold:
 
-Navigation must define the stage boundaries at which candidate state may be created, selected, made available to direct dispatch or a composition stage, and no longer reachable. The approved mechanism may keep the concrete creation/drop mechanics behind the adapter boundary, but it must still prove the navigation-owned lifetime bound. Navigation must not inspect or reinterpret adapter-private contents. The adapter owns format detection, decode/parse rules, parser/index structures, source-region mapping, ref creation and resolution, and operation algorithms over the approved view. Current navigation ownership of raw project/user configuration-source loading is not ownership of document-file acquisition; document source acquisition/storage remains an explicit gate decision.
+1. the same adapter identity and ref semantics interpret the ref;
+2. the adapter consumes the same source bytes/text and the same fixed
+   format/configuration facts relevant to ref generation and resolution; and
+3. read requires no hidden producer-only state beyond the existing read input,
+   the opaque ref, and the compatible prepared view.
 
-The ownership split rules out:
+The same prepared state is compatible with itself. An independently prepared
+view from identical source and relevant facts MUST also be compatible. An
+adapter owner MAY document a broader equivalence, such as changes that do not
+affect its ref-relevant structure, but this change does not infer one.
 
-- core-defined parser trees or generic resolved-node handles;
-- navigation parsing refs to recover a node;
-- adapter-owned auto-read eligibility or operation sequencing;
-- a public or protocol-level state token;
-- hidden cross-invocation caches used to simulate lifecycle reuse.
+Same pathname alone is not compatibility. Source mutation, adapter/ref semantic
+changes, or different relevant configuration MAY make a view incompatible.
 
-A core-owned source acquisition primitive remains a candidate only if the adapter still owns decode/parse and the total design also addresses repeated adapter parse where required. A private shared helper remains possible only for mechanics with the same lifecycle and failure semantics across real adapters.
+### Auxiliary extension
 
-### Decision 3: Resource success is proved per path, not by interface shape
+Behavior that supplies cost, metadata, source/full-read facts, preview facts,
+or other non-ref identity information. Its implementation may be a method,
+hook, data accessor, helper, or shared projection. This change does not fix that
+shape. If it emits a ref, it additionally becomes a ref producer. Readable
+rendering remains an output-layer responsibility even when it consumes
+adapter-produced facts.
 
-**Status: confirmed; numeric budgets and approved snapshot are open.**
+## Approved Ref Consistency Laws
 
-Instrumentation must distinguish at least source acquisition, decode, complete parse/model construction, and cleanup. Evidence must cover:
+### Law 1: Opaque pass-through
 
-1. declared-adapter and inferred automatic-selection direct outline/read/find/info;
-2. inference/source preparation and the exactly selected adapter's preparation, reuse, and release;
-3. cost threshold match, miss, measurement failure, content-hook failure, and default full-read fallback;
-4. eligible unique-ref nested read success, adapter diagnostic, invalid nested result, and invalid composed response;
-5. a path replaced or modified at controlled points between inference, selected preparation, policy, base operation, and nested read;
-6. normal return, early return, error, cancellation if supported, and panic/unwind-safe destruction.
+Shared layers validate only the shared non-empty input boundary and pass a ref
+unchanged. They do not parse, normalize, reconstruct, or infer it from display
+text.
 
-The target is not “one parse for the entire invocation” regardless of semantics. It is “no repeated complete preparation of the same approved document view solely because navigation composed internal stages.” An explicitly approved refresh or retry may prepare another view, but its trigger, error mapping, and bound must be normative and tested; routine fallback cannot silently reparse until it succeeds.
+### Law 2: Producer canonicality
 
-### Decision 4: Six candidates remain distinct until the owner gate
+Every successfully emitted ref MUST be a complete non-empty canonical ref under
+the emitting adapter's documented grammar. Paging or label truncation MUST NOT
+truncate or rewrite it.
 
-**Status: comparison recorded; no candidate selected.**
+### Law 3: Compatible-view round trip
 
-The candidates are evaluated against shared obligations rather than surface similarity:
+For every ref `r` in a validated successful producer result over view `V`, read
+with valid existing read arguments and `r` MUST return a validated successful
+`ReadResult` on:
 
-| Candidate | Automatic discovery and unsupported cleanup | Direct operation | Full-read policy and fallback | Nested read | Snapshot / TOCTOU | Process and maintenance boundary |
-| --- | --- | --- | --- | --- | --- | --- |
-| **A. Probe returns an opaque prepared state companion** | Each probe attempt may return public evidence plus an internal state owned by that adapter; unsupported/invalid state must be destroyed before or while advancing under a bounded policy, and only selected state advances | Can reuse selected probe preparation if every operation accepts the opaque companion | Adapter hooks can reuse it; core default UTF-8 fallback cannot inspect it without an additional source seam | Same selected companion can reach ordinary read | Naturally favors selected probe view; refresh and JSON post-probe change behavior require explicit rules | Small selection delta in concept, but type erasure/downcast, ownership transfer, and fallible cleanup can become unsafe or adapter-framework complexity; the opaque value cannot cross a process |
-| **B. Candidate-scoped open/probe handle** | Navigation opens one candidate handle, probes through it, drops failed handles, and promotes the selected handle; RAII can make cleanup explicit | Selected handle can dispatch ordinary operations without a second open | Cost, content, facts, structured fallback, and nested read can share one handle; default fallback needs a handle-owned source operation or an approved core snapshot | Ordinary read method on the selected handle can reuse state | Snapshot begins at candidate open unless separately refreshed | Strong lifecycle expression without downcast, but creates an object/lifetime abstraction before cheap rejection and can expand into a generic document object; in-process only unless a future adapter host contains the handle |
-| **C. Operation-shaped invocation session** | If created only after selection it cannot reuse automatic-discovery probe work; if it includes probe it converges toward candidate handle A/B and must adopt their cleanup rules | Clean operation-shaped dispatch after session creation | Can offer the fixed operations and declared hooks over one state | Naturally supports repeated ordinary read | Snapshot normally begins at session creation; the relation to prior probe is unresolved | Familiar interface but broadest risk of a second adapter framework, method growth, and premature request-scoped state; external use would require host-local lifetime, not public session IDs |
-| **D. Core-owned document acquisition/byte view plus adapter-owned decode/parse/ref/source-region behavior** | Core may acquire one immutable byte view and lend/share it across candidate probes; each adapter must still discard its private failed-candidate parse state | Selected adapter can prepare once from the shared source only if an additional private prepared-state boundary exists | Navigation's default fallback can reuse bytes; adapter cost/content can share adapter-private preparation if the combined design provides it | Nested read can reuse only with the same private preparation boundary | Makes source snapshot explicit and can preserve one inode/byte view; this deliberately changes path-reopen behavior | Moves document acquisition/storage and source lifetime into core, may allocate large shared buffers, and by itself removes neither repeated decode nor parse; external transport of bytes is a separate future design |
-| **E. Adapter-local or composition-local reuse** | Existing selection may remain; failed candidates use pre-routing cleanup | Can special-case only chosen adapter/path, often leaving probe duplication | Can optimize one adapter's hooks or one navigation branch | Can optimize auto-read locally | Snapshot and lifecycle risk becoming implicit or different per branch | Lowest initial surface, useful as evidence, but likely duplicates orchestration, requires hidden cache/thread-local/downcast or combination methods, and may not form a durable cross-adapter contract |
-| **F. Pre-routing independent operations (historical baseline)** | Pre-routing probes return public facts and leave no state; Rust locals clean up each attempt | Probe and operation prepare independently | Measurement/content/structured fallback prepare independently | Base and nested read prepare independently | Every stage may reopen the path; JSON uses a post-probe reload failure for invalid changed content | No interface change and simplest ownership, but it does not solve the accepted resource problem |
+1. the same prepared view `V`; and
+2. any independently prepared compatible view `V'`.
 
-No row is approved merely because it appears smaller. Candidate C is not the default. Candidate D is incomplete unless it also proves required adapter-private parse reuse. Candidate E is acceptable only if owner evidence shows the reusable obligation is truly local rather than a shared lifecycle. Candidate F remains the compatibility baseline and rollback implementation, not a solution.
+The result MUST echo `r` unchanged. `REF_INVALID`, `REF_NOT_FOUND`,
+`REF_AMBIGUOUS`, or another failure caused by producer/consumer disagreement is
+an adapter contract violation on a compatible view, not an allowed outcome.
 
-The architecture/product owner may approve a deliberately bounded composition of candidates (for example, a source primitive plus a typed adapter-private prepared boundary), but must name each part and reject the unused generality.
+This law does not require runtime core to invoke read after every producer
+entry. It is normative adapter behavior proved by conformance evidence.
 
-### Decision 5: Selection, full-read, and nested-read semantics remain observable compatibility constraints
+### Law 4: No hidden producer context
 
-**Status: confirmed constraints; source-view behavior open.**
+A producer MUST encode or otherwise make available every identity fact that
+read needs through the documented ref and compatible view. Read MUST NOT depend
+on an in-memory pointer, producer call order, unexposed producer-only option, or
+state that cannot be reconstructed from an independently prepared compatible
+view.
 
-The automatic-discovery bullet below records the pre-routing constraint and must
-be replaced by task 1.1 before the state-reuse decision packet is presented.
-It does not preserve registry-order probing after inferred routing becomes
-Current. The direct-operation, full-read, auto-read, and ref ownership
-constraints remain inputs to the rebuilt packet.
+Invocation-private indexes MAY accelerate resolution; they MUST NOT be the only
+source of ref meaning.
 
-- **Automatic selection:** preserve the final inferred-routing contract: one private inference result maps to one exact selected adapter, with no registry-order probe traversal or public candidate-failure evidence. The rebuilt decision packet must define when any reusable source/selected-adapter state becomes reachable and how it is released without changing routing diagnostics.
-- **Direct operation:** the selected adapter still receives one closed operation-specific input and returns one typed result or adapter diagnostic. Reuse cannot add a generic parameter/state lookup to that input.
-- **Full-read:** Current mode resolution, threshold comparison, measurement failure fallback to structured outline, content/facts hooks, and default UTF-8 fallback remain navigation-owned. The approved design must say which source view the default fallback reads and whether a threshold miss retains prepared state for structured outline.
-- **Auto-read:** Current-result unique-ref eligibility, opaque ref pass-through, read page `1`, validated nested read, composed-response validation, and silent fallback to the validated base result remain unchanged. State reuse cannot turn nested read failure into a public partial status.
-- **Refs:** refs are interpreted against the adapter's approved current view. Reuse must not make navigation parse them or promise cross-invocation stability.
+### Law 5: Semantic correspondence
 
-### Decision 6: Public contracts remain unchanged and private state stays inside the executing process
+The resolved selection MUST correspond to the producer evidence according to
+the adapter owner:
 
-**Status: confirmed.**
+- an outline ref resolves to the documented selection represented by its entry;
+- a find ref resolves to the documented owning/representative selection for the
+  match evidence; and
+- another ref-producing extension documents the relation it promises.
 
-This change does not modify protocol, output, ref, CLI, parameter, schema, example, or continuation shape. Tests must assert absence of state IDs, handle metadata, snapshot metadata, cleanup fields, parser facts, and nested failure details from both protocol JSON and readable output.
+Correspondence does not universally mean the read content contains the literal
+query. JSON may map whitespace, punctuation, or a child-crossing occurrence to
+a container ref and return normalized content. The JSON owner defines that
+relation.
 
-This change's implementation scope is the static linked adapter path. A future external adapter host could keep an invocation object inside that host process, but this change does not define its transport or authorize serializing private state. Local core service mode may continue to reuse core-owned project/config/registry facts; it must not turn this invocation-local state into a cross-request cache. Service disabled/enabled paths must invoke the same approved adapter lifecycle if that change later adopts this handoff.
+### Law 6: Multiplicity remains adapter-owned
 
-### Decision 7: Related changes receive handoffs, not implementation from this change
+The laws do not require one-to-one identity. Multiple refs MAY select one
+region, one ref MAY appear for multiple find occurrences, and read MAY return a
+container-level selection. Each emitted ref still has to satisfy canonicality,
+round trip, and documented correspondence.
 
-**Status: confirmed.**
+### Law 7: Incompatible-view stale behavior remains adapter-owned
 
-- `interactive-outline-selection` composes outline and one or more later reads across user interaction. Its maintainer must decide whether one interactive workflow is one reuse invocation or multiple independent invocations; this change does not extend a private state lifetime across an unbounded prompt.
-- `add-ast-grep-code-adapter` keeps ast-grep models private. It must not be forced onto an unapproved state interface; after approval it supplies lifetime and memory evidence appropriate to borrowed parser structures.
-- `enable-local-core-adapter-service-mode` remains core-local and cannot use this change to claim a public adapter runtime or cross-invocation parser cache.
-- The JSON adapter's legacy post-probe reload diagnostic and mutation test are migration evidence from the predecessor baseline. Task 1.1 must restore the then-Current JSON contract after routing; the Current JSON owner must accept any later snapshot rule in its own owner materials, and this change does not silently overwrite it.
+When read evaluates a ref against an incompatible view, the adapter MAY resolve
+it differently or return its documented `REF_NOT_FOUND`, `REF_INVALID`, or
+ambiguity behavior. The producer guarantee does not create cross-version,
+cross-mutation, or cross-configuration ref stability.
 
-These are handoff surfaces, not prerequisites that merge the changes or
-authorize edits outside this directory. The proposal owns the independent
-change boundary; this Decision owns only the technical handoff constraints
-listed above.
+## Approved Decisions
+
+### Decision 1: Ref consistency, not method count, is the minimal contract
+
+**Status: approved.**
+
+The architecture does not require exactly three functions or any fixed helper
+shape. Outline and find are Current ref producers; read is the Current consumer.
+An adapter may implement find end-to-end, split matching from location, share a
+codec, or use other private algorithms. What matters is that every public ref
+emission obeys the approved laws.
+
+### Decision 2: One adapter document owns reusable private preparation
+
+**Status: approved.**
+
+After routing and input/path resolution, the selected adapter creates one
+invocation-private document boundary. Each adapter algorithm preserves its
+Current validation-versus-document-access ordering. At the first required
+access, the boundary captures and prepares one view, which later eligible work
+reuses.
+
+The adapter document is a lifecycle/state boundary, not a generic document DTO
+or a public session. Concrete state remains adapter-private.
+
+### Decision 3: One invocation does not refresh its prepared view
+
+**Status: approved.**
+
+After successful preparation, all later eligible producer, consumer, and
+auxiliary extension work in that invocation observes the same view. Path
+replacement, in-place mutation, deletion, repair, encoding change, or invalid
+replacement affects the next invocation, not the prepared state already in use.
+
+This same-view rule is necessary for composed consistency but not sufficient;
+the round-trip laws and evidence are what prove producer/read agreement.
+
+### Decision 4: Adapter owns the guarantee; shared infrastructure owns the gate
+
+**Status: approved.**
+
+Adapters own grammar, canonical generation, parsing, lookup, selection, and
+correspondence. Core cannot prove those semantics by inspecting opaque strings.
+Shared contract infrastructure owns a reusable conformance harness and requires
+each built-in adapter to pass it. Navigation owns validation of composed
+results, not ref grammar.
+
+Production runtime does not double-read every emitted ref. Test evidence and
+owner-specific contracts make violations defects.
+
+### Decision 5: Auxiliary behavior is extensible and subordinate to ref identity
+
+**Status: approved.**
+
+Cost, metadata, full-read/source facts, preview facts, and rendering inputs may
+use the smallest suitable extension form. This change neither counts them as
+foundational ref algorithms nor bans additional methods. They cannot parse,
+rewrite, or become an alternative identity source for refs unless explicitly
+acting as a ref producer under the same laws.
+
+### Decision 6: Current public shapes and routing remain compatibility boundaries
+
+**Status: approved.**
+
+Routing stays lexical, no-probe, exact/no-fallback, and state-free. Existing
+operation/result shapes, ref strings, pagination/continuation, output, CLI,
+config, diagnostics, and auto-read eligibility remain unchanged. Find result
+unit/ranking and token-cost/rendering redesigns remain separately owned.
+
+### Decision 7: Prepared-view reuse and ref consistency are separate guarantees
+
+**Status: approved.**
+
+One captured invocation view defines which prepared state eligible work reuses.
+It does not, by itself, prove that a ref producer and read agree. Therefore:
+
+1. ref production/consumption, rather than algorithm count or callable shape,
+   defines the architectural boundary; and
+2. compatible-view round trip is an explicit adapter contract backed by
+   executable conformance evidence.
+
+## Non-Normative Implementation Shape
+
+```text
+AdapterDefinition
+  manifest / capabilities
+  create_document(normalized_path) -> AdapterDocument
+
+AdapterDocument
+  private state: uninitialized -> prepared once -> released
+
+  ref producers
+    outline(...)
+    find(...)
+    future ref-emitting extensions...
+
+  ref consumer
+    read(ref, ...)
+
+  auxiliary extensions
+    info/cost/full-read/preview/render facts...
+```
+
+This diagram describes roles, not required methods. The first implementation
+may keep the existing outward operation interface and route it through a shared
+document boundary. A single adapter-private canonical ref encoder/parser is a
+useful simplification, but the contract requires behavior, not that type.
+
+The normalized path may remain in existing closed operation input for
+compatibility. Once private state is prepared, later work MUST NOT reopen the
+path merely because navigation dispatched another stage.
+
+## Conformance Evidence
+
+The shared harness MUST treat the adapter as a black box with opaque refs. For
+each selected built-in adapter it must cover:
+
+1. **same-state round trip:** collect every ref emitted by representative
+   outline/find pages and read page 1 through the same adapter document;
+2. **fresh-compatible round trip:** independently prepare the identical fixture
+   with the same relevant facts and read every collected ref;
+3. **all emitted page entries:** traverse deterministic pages to the terminal
+   page and test full refs even when labels/optional facts are truncated;
+4. **producer variety:** cover outline structure, repeated find refs, special
+   refs, comments/virtual entries, empty/fallback structures, and adapter-owned
+   visibility options;
+5. **correspondence:** assert owner-specific region/selection meaning rather
+   than only “read returned success”;
+6. **incompatible-view boundary:** mutate structure/source deterministically and
+   assert the owner-documented stale-ref outcome without treating it as a
+   compatible-view failure; and
+7. **non-leakage:** confirm no private handle, snapshot id, parser value, or
+   conformance-only fact enters protocol/output/ref/continuation/log surfaces.
+
+Representative fixtures and property/fuzz evidence cannot mathematically prove
+every adapter implementation, but together with the normative law they make a
+violation unambiguously an adapter defect. A new built-in adapter cannot claim
+contract support without the same harness coverage.
+
+## Invocation and Failure Behavior
+
+| Path | Approved behavior |
+| --- | --- |
+| routing/input failure | no adapter document or target-document I/O |
+| adapter semantic rejection before Current document access | preserve Current diagnostic ordering; no preparation |
+| first preparation failure | existing selected-adapter path/encoding/content diagnostic; no reroute |
+| direct operation | one preparation at most; execute requested behavior; release after validation |
+| cost/full-read/structured fallback | reuse the same view wherever the selected adapter path participates; preserve existing fallback semantics |
+| navigation default UTF-8 fallback | remains a navigation-owned exception when no prepared source capability exists; it is not a ref producer or reuse proof |
+| outline/find -> nested read | producer and consumer share one view; opaque ref is unchanged; round-trip law applies |
+| nested/composed validation failure | preserve validated base fallback, then release state |
+| cancellation/unwind | release private state through bounded RAII; no public cleanup result |
+
+Pagination requests remain separate invocations. “All refs” means all refs
+emitted by the deterministic logical sequence for the tested view across its
+pages; this change does not retain state or snapshot identity across page
+requests.
+
+## Compatibility and Handoffs
+
+- **Ref owner:** `docs/ref-contract.md` must replace its pass-through-only
+  disclaimer with the compatible-view producer/read law while retaining opaque
+  shared handling and incompatible-view boundaries.
+- **Markdown:** heading/document-head/full refs must round-trip on the same and
+  independently prepared identical Markdown view. Existing structural snapshot
+  behavior applies only when the later view is incompatible.
+- **JSON:** base/direct-comment/tail refs must round-trip through the existing
+  strict JSON or comment-aware JSONC materialization. JSON demonstrates why
+  selection correspondence is not literal source containment.
+- **Find result redesign:** may change occurrence/distinct/grouped units only
+  through its own gate; every resulting emitted ref still inherits these laws.
+- **Code adapter:** may use symbol-oriented search or split private algorithms;
+  its emitted symbol refs must pass the same compatible-view harness.
+- **Cost/rendering changes:** may change auxiliary facts or presentation through
+  their owners; neither may reinterpret ref identity.
+- **Interactive/service/external use:** gains no state retention across an
+  unbounded prompt, request, or process boundary.
 
 ## Risks / Trade-offs
 
-- **[A “session” name predetermines an over-broad framework]** → keep requirements outcome-based, compare all six candidates, and require owner approval of exact methods, types, and lifecycle before code.
-- **[Reuse silently changes which file version a ref addresses]** → approve a stage-by-stage snapshot matrix and deterministic JSON/Markdown mutation cases before normative mechanism refinement.
-- **[Unsupported candidate state leaks during automatic discovery]** → require bounded RAII/drop evidence for every continue/error branch and forbid cross-adapter state transfer.
-- **[Core source sharing erodes adapter ownership]** → core primitives, if approved, expose only immutable acquisition mechanics; decode, parse, indexes, refs, and algorithms remain adapter-owned.
-- **[Fallback paths reintroduce duplicate work]** → instrument threshold match/miss/error, content/facts hooks, structured fallback, and default UTF-8 fallback separately.
-- **[Private state becomes an accidental public or log contract]** → keep protocol/schema unchanged and add serialization/log non-leakage checks.
-- **[Large parsed models live longer and increase peak memory]** → require peak/lifetime evidence and release state immediately after the last eligible stage; do not retain it across invocations or unbounded interactive waits.
-- **[External/service aspirations force serializable handles]** → scope implementation to linked adapters and record only a future host-local lifetime requirement.
-- **[Local special-casing becomes permanent duplication]** → accept local reuse only with evidence that no shared lifecycle exists; otherwise select a typed common boundary after two real adapter implementations.
-- **[Concurrent file mutation makes cleanup or diagnostics nondeterministic]** → use controlled mutation barriers and specify whether the result is snapshot success, changed-document diagnostic, or another bounded owner-approved outcome.
+- A strong round-trip law exposes existing adapter bugs that pass-through-only
+  wording tolerated. That is intended, but implementation must add failing
+  evidence before refactoring.
+- “Compatible” can become vague. The minimum guaranteed case is independently
+  prepared identical source plus identical relevant adapter facts; any broader
+  equivalence must be adapter-documented.
+- A shared harness can accidentally test only happy refs. It must traverse all
+  emitted fixture pages and include special/virtual/fallback refs.
+- Runtime double-read would enforce the law at excessive cost and could change
+  diagnostics. Keep enforcement in contract tests and composed-result
+  validation.
+- Longer-lived models can increase peak memory. Measure retained size/lifetime
+  and release immediately after the last eligible stage.
+- Auxiliary extensions can grow into a second generic framework. Add only facts
+  or hooks justified by real consumers and keep ref identity single-owned.
 
 ## Migration Plan
 
-1. Complete tasks 1.1–1.6 and present one decision packet containing the six-candidate matrix, baseline and target counts, the responsibility/lifetime map, stage-by-stage source-view semantics, automatic-discovery cleanup, full-read fallback, nested-read fallback, and process-boundary consequences.
-2. Complete task 1.7 by obtaining explicit architecture/product-owner approval of the entire packet. Reviewers and agents may improve evidence but cannot select or mark a candidate approved.
-3. Complete task 1.8: append a Decision naming the exact mechanism and rejected generality, close or answer every Open Question, and refine every mechanism-neutral delta with complete lifecycle, ownership, snapshot, error, cleanup, and fallback rules.
-4. Complete task 1.9's cross-artifact audit. Owner-doc, test, and implementation work remains blocked until this audit passes.
-5. Follow the testing owner and Case-maintenance workflow, prove the current tree closes, and establish current/failing count, mutation, cleanup, and non-leakage evidence.
-6. Implement the smallest approved linked-adapter vertical slice at the exact owner boundaries named by the decision, then align Markdown. Change navigation or adapter-contract representation only where the approved candidate requires it; do not manufacture a shared data structure for a local candidate. Treat Current JSON counts and TOCTOU behavior as a gate/handoff and modify the Current `json-adapter` owner only if the approved scope includes a complete owner delta; never modify the archived `add-json-adapter` change. Hand off compatible requirements to the code adapter, interactive selection, and service mode through their own changes.
-7. Validate direct operations, automatic discovery, every full-read branch, auto-read success/fallback, controlled TOCTOU, cleanup, protocol/readable non-leakage, workspace checks, and release-package behavior.
+1. Synchronize the ref, adapter, architecture, navigation, Markdown, and JSON
+   owners with Decisions 1-7 before changing implementation.
+2. Follow the testing/Case-maintenance workflow; prove the Current tree closes;
+   add failing compatible-view round-trip and preparation-count evidence.
+3. Introduce the smallest invocation-private adapter-document state boundary
+   without fixing unnecessary method shapes.
+4. Migrate Markdown and JSON through the boundary and make every emitted fixture
+   ref pass same-state and fresh-compatible read.
+5. Preserve public results and independently owned extension behavior; run
+   targeted, workspace, mutation, conformance, and release verification.
 
-Rollback before publication removes the private reuse mechanism and returns to Current independent operation preparation; public payloads require no migration. If the approved implementation changes snapshot/TOCTOU behavior, rollback is a behavior change and must restore the corresponding owner docs and mutation evidence rather than being described as operationally invisible.
-
-## Open Questions
-
-All four gate areas below form one explicit **architecture/product-owner
-decision**. A partial answer does not unlock implementation, and an agent cannot
-close a gap by choosing a conventional default.
-
-Task 1.1 rewrites probe-specific questions below against the final no-probe
-Current pipeline before this packet is presented. Until then, those phrases are
-historical prompts rather than approved Target obligations.
-
-### Gate G1: Mechanism and responsibility split
-
-1. Which candidate, or precisely bounded combination of candidates, is approved?
-   What Rust ownership/type shape is allowed, and what tempting generality is
-   explicitly rejected?
-2. Which owner stores document bytes/text, which owner stores adapter-private
-   preparation, and which component controls reachability? Must every direct
-   operation reuse selected probe preparation when available, or are any
-   format-evidence-only probe reads intentionally exempt?
-
-### Gate G2: Source view, refs, and TOCTOU
-
-3. Does the selected candidate's successful probe view become the
-   base/full-read/nested-read view, or is there one deliberate refresh after
-   selection? At exactly which stage is the source snapshot fixed?
-4. For path replacement, in-place mutation, deletion, encoding change, and
-   parser-invalid replacement between stages, should the invocation return a
-   result from the captured view, a changed-document diagnostic, a normal owner
-   diagnostic, or another bounded outcome?
-5. How is the legacy JSON `json-document-changed-after-probe` migration evidence
-   reconciled with the then-Current JSON owner? Which owner material and
-   deterministic TOCTOU cases must change before implementation is accepted?
-
-### Gate G3: Cleanup, fallback, and resource bounds
-
-6. During automatic discovery, when exactly is unsupported/invalid candidate
-   state destroyed, what resource bound applies while advancing, and can
-   cleanup failure affect collected candidate evidence or the final selection
-   diagnostic?
-7. On full-read threshold match, miss, measurement error, content/facts error,
-   and absent content hook, which prepared/source view is retained or released?
-   How does the navigation-owned default UTF-8 fallback consume the approved
-   view without inspecting adapter-private state?
-8. On nested-read adapter failure, invalid nested result, invalid composed
-   response, or cancellation, is Current silent base-response fallback
-   preserved in every case, and when is private state released?
-9. Are destructors/RAII sufficient for cleanup, or does any approved resource
-   require fallible close/cancellation? If close fails, which owner receives
-   the diagnostic without adding public cleanup fields?
-
-### Gate G4: Execution boundary and handoffs
-
-10. Is implementation explicitly limited to static linked adapters? What
-    handoff statement is required so a future external adapter host or local
-    service keeps state host-local and invocation-local without a public
-    session ID?
-11. Does `interactive-outline-selection` define each user-confirmed read as a
-    new invocation, or may it retain state across a bounded prompt? What
-    timeout/cancellation/memory bound is required if retention is approved
-    there?
-12. In what order do Markdown, the JSON owner, code adapter, interactive
-    selection, and local service mode accept handoffs, and which owner can
-    block archive of this change?
-
-Gate completion must record the selected candidate parts and rejected
-generality, the final responsibility/lifetime map, a stage-by-stage source-view
-table, a cleanup/resource table, compatibility and handoff outcomes, and the
-explicit approval source. Task 1.8 then turns those outputs into a numbered
-Decision and complete delta requirements.
-
-These answers are required inputs to task 1.7. `tasks.md` owns the remaining
-unlock and apply sequence.
+Rollback restores independent operation preparation and the prior ref owner
+contract. Because this change intentionally strengthens the producer/read
+promise, rollback must also revert its owner docs and conformance evidence; no
+wire migration is required.

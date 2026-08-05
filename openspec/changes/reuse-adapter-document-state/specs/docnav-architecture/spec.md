@@ -1,83 +1,51 @@
-**Interpretation:** This mechanism-neutral Target delta fixes the
-navigation/adapter/public responsibility boundaries but does not select storage
-ownership, a source snapshot, a handle, a session, or a Rust type.
-`proposal.md` owns the change status; `design.md` leaves “approved invocation
-lifecycle” and “approved document view” open; tasks 1.7–1.8 must approve and
-define them before applying this delta.
-This pre-routing delta is not apply-ready as written: task 1.1 must first
-rewrite every probe/candidate obligation from the final no-probe Current routing
-contract while preserving already-effective owner clauses.
+## ADDED Requirements
 
-## MODIFIED Requirements
+### Requirement: Linked adapter execution reuses one view while ref laws define correctness
 
-### Requirement: Component ownership is single-sourced
+After Current lexical no-probe selection, architecture MUST create at most one
+selected-adapter document boundary and initialize at most one compatible private
+document view when execution first requires document access. Navigation MUST
+own stage ordering, policy, result validation, fallback, and the reachability
+bound. The selected adapter MUST own acquisition/decoding/parsing,
+validation-versus-access ordering, private source/model/index/source-region
+facts, ref generation/resolution, format search/navigation semantics, ordered
+bounded results, selection materialization, and diagnostics.
 
-Architecture MUST assign each durable rule to one owner. Core owns command/process behavior, the closed catalog of caller-configurable document-operation parameters including adapter-scoped parameters, and the closed standard operation-input contract. The standard input Rust types MAY live in the existing shared operation-contract layer required by navigation and adapters, but that dependency placement MUST NOT transfer accepted-input or binding ownership away from core. Navigation owns raw navigation configuration-source loading, full-catalog config validation, adapter selection, selected-operation filtering, typed-field resolution orchestration, standard-input construction, dispatch, operation composition, and the bounded lifetime of invocation-private reusable document state. Configuration-source loading MUST NOT be interpreted as ownership of document-file acquisition or immutable document byte storage; that storage owner and source-view lifetime MUST follow the explicitly approved mechanism. Adapters own the fixed strategy interface, format detection, decode/parse semantics, adapter-private parser/index/source-region state, navigation algorithms, algorithmic semantic validation, refs, and result facts. Navigation MUST NOT inspect adapter-private state, and adapter-private state MUST NOT enter public protocol, output, ref, continuation, logging, or caller-visible identifiers. Caller-configurable parameter facts MUST remain in the core catalog even when an adapter validates or revalidates a standard value. Protocol owns machine envelopes; contract-validation owns schema and runtime validation gates while preserving field-owner semantics; output owns readable projections; diagnostics own stable error identity; refs own cross-layer ref opacity.
+Prepared-state reuse MUST be treated as the same-view and resource mechanism,
+not as proof that producer and read algorithms agree. Every adapter ref producer
+and read consumer MUST additionally satisfy the `ref-contract`
+compatible-view canonicality, round-trip, no-hidden-context, and correspondence
+laws. Architecture MUST NOT prescribe their function count or private helper
+shape.
 
-#### Scenario: Cross-layer behavior changes
+Cost, metadata, full-read/source facts, preview facts, and rendering inputs MAY
+remain auxiliary extension surfaces. They MUST NOT become competing ref
+identity owners; any extension that emits refs inherits the ref-producer laws.
+Private state MUST remain inside the linked process, end with the bounded
+invocation, and remain absent from protocol, output, ref, continuation, logging,
+schema, caller input, and cross-invocation caches.
 
-- **WHEN** a change affects multiple layers
-- **THEN** each changed rule is recorded in its owning capability
-- **THEN** architecture records only the boundary or dependency between those owners
+#### Scenario: One invocation produces and consumes a ref
 
-#### Scenario: Format-specific parameter exists
+- **WHEN** navigation runs a ref-producing operation and eligible nested read
+- **THEN** both may reuse the same prepared view
+- **THEN** navigation passes the ref unchanged
+- **THEN** the adapter's ref contract, not shared-state existence alone, guarantees the read round trip
 
-- **WHEN** a parameter applies only to one adapter or operation
-- **THEN** core declares its accepted input facts, standard value kind, optional exact adapter-id marker, operation/standard-input bindings, and pre-dispatch validation policy in the product catalog
-- **THEN** navigation resolves it and passes a closed standard operation input
-- **THEN** the adapter owns how that value affects format behavior and any semantic check required by the strategy
-- **THEN** adapter-side validation does not create a parameter declaration surface
+#### Scenario: Another invocation prepares an equivalent document
 
-#### Scenario: One invocation composes adapter work
+- **WHEN** a later invocation selects the same adapter and independently prepares identical source and relevant facts
+- **THEN** the later view is compatible for the emitted ref
+- **THEN** read remains successful without access to the earlier in-memory state
 
-- **WHEN** navigation combines selection, pre-dispatch policy, a base operation, or a nested operation over one approved document view
-- **THEN** navigation controls which stages run and when the reusable state lifetime ends
-- **THEN** the selected adapter controls the private decode, parse, index, source-region, and ref facts reused by those stages
-- **THEN** document byte acquisition and storage follow the separately approved ownership rule
-- **THEN** neither owner assumes the other's semantic responsibilities
+#### Scenario: Auxiliary facts are projected
 
-#### Scenario: Private state is not observable contract
+- **WHEN** cost, info, full-read, preview, or readable rendering consumes adapter-produced facts
+- **THEN** the corresponding existing owner retains its semantics
+- **THEN** those facts do not reinterpret or reconstruct ref identity
 
-- **WHEN** an adapter reuses invocation-private document state
-- **THEN** protocol, output, ref, continuation, logging, schema, and caller inputs remain free of state handles and parser facts
-- **THEN** public behavior is derived only from the existing operation result or diagnostic contracts
+#### Scenario: Future execution crosses an invocation or process boundary
 
-### Requirement: Default document operations use linked adapter libraries
-
-The default document operation implementation source MUST be the current core release's static linked adapter set. Invocation-private reusable adapter state MUST remain inside the linked execution process and MUST end with the bounded navigation invocation. Future runtime adapter models require their own capability and MUST leave this default path explicit while they are not the selected architecture.
-
-#### Scenario: Core dispatches a document operation
-
-- **WHEN** `docnav` dispatches outline, read, find, or info
-- **THEN** implementation candidates come from the core release static registry
-- **THEN** the selected linked adapter library receives prepared operation input
-
-#### Scenario: Linked invocation reuses private state
-
-- **WHEN** the approved same-invocation lifecycle reuses selected-adapter preparation
-- **THEN** the reusable state remains private to the linked adapter execution boundary
-- **THEN** it is no longer retained after the invocation completes or fails
-- **THEN** no cross-invocation cache is created by this capability
-
-### Requirement: Integration entry points share Docnav contracts
-
-Integration surfaces such as MCP bridges or local service modes MUST delegate document semantics to the Docnav document operation contracts instead of re-parsing documents, reinterpreting refs, or inventing incompatible output semantics. They MUST NOT serialize invocation-private adapter state or extend it into a cross-request cache; a future external adapter host requires its own process-local lifecycle design without adding a public session identifier through this capability.
-
-#### Scenario: Bridge invokes Docnav
-
-- **WHEN** an integration surface exposes a document tool
-- **THEN** it maps caller input to Docnav document operations
-- **THEN** it preserves Docnav success and failure semantics at its own transport boundary
-
-#### Scenario: Local service executes a document operation
-
-- **WHEN** a local service delegates a document operation to the linked adapter path
-- **THEN** it uses the same approved navigation invocation lifecycle
-- **THEN** any adapter-private reusable state ends with that invocation
-- **THEN** service caching remains limited to separately owned core facts
-
-#### Scenario: Future execution crosses a process boundary
-
-- **WHEN** a future capability executes an adapter in another process
-- **THEN** this capability does not authorize serializing parser state or exposing a public state identifier
-- **THEN** that capability must define how the adapter host keeps any reusable state host-local and bounded
+- **WHEN** an integration wants to retain prepared state across a request, prompt, or process boundary
+- **THEN** this capability does not authorize that retention or serialization
+- **THEN** compatibility must come from the opaque ref and independently prepared compatible view, not a public state handle
