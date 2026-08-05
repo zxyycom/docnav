@@ -12,6 +12,26 @@ use docnav_protocol::{
     ProtocolError, ReadResult,
 };
 
+const JSON_FORMAT_EXTENSIONS: [&str; 10] = [
+    ".json",
+    ".code-workspace",
+    ".jsonc",
+    ".code-snippets",
+    ".jsonld",
+    ".geojson",
+    ".har",
+    ".webmanifest",
+    ".ipynb",
+    ".sarif",
+];
+const JSON_FORMAT_FILENAMES: [&str; 4] = [
+    ".prettierrc",
+    ".watchmanconfig",
+    "Pipfile.lock",
+    "deno.lock",
+];
+const JSON_FORMAT_CONTENT_TYPES: [&str; 2] = ["application/json", "application/jsonc"];
+
 #[test]
 fn static_registry_contains_built_in_routing_metadata() {
     let registry = AdapterRegistry::builtin();
@@ -41,9 +61,9 @@ fn static_registry_contains_built_in_routing_metadata() {
         serde_json::to_value(&definitions[1].manifest().formats).unwrap(),
         json!([{
             "id": "json",
-            "extensions": [".json", ".code-workspace", ".jsonc"],
-            "filenames": [".prettierrc", ".watchmanconfig"],
-            "content_types": ["application/json", "application/jsonc"]
+            "extensions": JSON_FORMAT_EXTENSIONS,
+            "filenames": JSON_FORMAT_FILENAMES,
+            "content_types": JSON_FORMAT_CONTENT_TYPES,
         }])
     );
 }
@@ -122,9 +142,9 @@ fn adapter_list_preserves_static_registry_projection() {
                 "implementation_source": "core_static",
                 "formats": [{
                     "id": "json",
-                    "extensions": [".json", ".code-workspace", ".jsonc"],
-                    "filenames": [".prettierrc", ".watchmanconfig"],
-                    "content_types": ["application/json", "application/jsonc"],
+                    "extensions": JSON_FORMAT_EXTENSIONS,
+                    "filenames": JSON_FORMAT_FILENAMES,
+                    "content_types": JSON_FORMAT_CONTENT_TYPES,
                 }],
             },
         ])

@@ -27,11 +27,27 @@ fn manifest_declares_fixed_json_identity() {
     assert_eq!(manifest.formats[0].id, "json");
     assert_eq!(
         manifest.formats[0].extensions,
-        [".json", ".code-workspace", ".jsonc"]
+        [
+            ".json",
+            ".code-workspace",
+            ".jsonc",
+            ".code-snippets",
+            ".jsonld",
+            ".geojson",
+            ".har",
+            ".webmanifest",
+            ".ipynb",
+            ".sarif",
+        ]
     );
     assert_eq!(
         manifest.formats[0].filenames,
-        [".prettierrc", ".watchmanconfig"]
+        [
+            ".prettierrc",
+            ".watchmanconfig",
+            "Pipfile.lock",
+            "deno.lock",
+        ]
     );
     assert_eq!(
         manifest.formats[0].content_types,

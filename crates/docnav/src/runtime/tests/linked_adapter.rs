@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 
 use cli_config_resolution::{FieldIdentity, SourceCandidate, SourceLocator};
 use docnav_protocol::Operation;
@@ -8,6 +9,19 @@ use super::super::{AdapterRuntime, DocnavRuntime, DocumentRequest};
 use super::support::*;
 use crate::cli::{DocumentCommand, OutputMode};
 use crate::config::{ConfigContext, CoreConfig};
+
+const EXPANDED_JSON_PATHNAME_HINTS: [(&str, &str); 9] = [
+    ("settings.code-snippets", "code-snippets"),
+    ("settings.jsonld", "jsonld"),
+    ("settings.geojson", "geojson"),
+    ("settings.har", "har"),
+    ("settings.webmanifest", "webmanifest"),
+    ("settings.ipynb", "ipynb"),
+    ("settings.sarif", "sarif"),
+    ("Pipfile.lock", "pipfile-lock"),
+    ("deno.lock", "deno-lock"),
+];
+const JSON_PATHNAME_ROUNDTRIP_BASENAMES: [&str; 2] = ["settings.jsonld", "Pipfile.lock"];
 
 #[test]
 fn linked_adapter_uses_absolute_document_path_from_project_subdir() {
@@ -74,7 +88,11 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_select
         "{\"first\":1,\"second\":2,}\n",
     )
     .unwrap();
+    write_expanded_json_hint_documents(&docs_dir);
+    let invalid_sarif_path = docs_dir.join("invalid.sarif");
+    fs::write(&invalid_sarif_path, "# not JSON\n").unwrap();
     fs::write(docs_dir.join("fallback.md"), "# Markdown fallback\n").unwrap();
+    let invalid_sarif_path = invalid_sarif_path.to_string_lossy().into_owned();
     let fallback_path = docs_dir.join("fallback.md").to_string_lossy().into_owned();
 
     let context = default_context(project_root);
@@ -112,6 +130,8 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_select
         "json:#/second"
     );
 
+    assert_expanded_json_pathname_hint_navigation(&context);
+
     let declared = AdapterRuntime
         .execute_document(DocumentRequest::from_config_context(
             json_read_command("docs/settings.md", "json:#/second", Some("docnav-json")),
@@ -125,6 +145,8 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_select
     assert_eq!(declared["result"]["ref"], "json:#/second");
     assert_eq!(declared["result"]["content"], "2");
     assert_eq!(declared["result"]["content_type"], "application/json");
+
+    assert_automatic_invalid_sarif_diagnostic(&context, &invalid_sarif_path);
 
     let selected_failure = AdapterRuntime
         .execute_document(DocumentRequest::from_config_context(
@@ -151,6 +173,79 @@ fn core_linked_json_supports_automatic_and_declared_selection_and_reports_select
     );
 }
 
+fn write_expanded_json_hint_documents(docs_dir: &Path) {
+    for (basename, value) in EXPANDED_JSON_PATHNAME_HINTS {
+        fs::write(docs_dir.join(basename), format!(r#"{{"hint":"{value}"}}"#)).unwrap();
+    }
+}
+
+fn assert_expanded_json_pathname_hint_navigation(context: &ConfigContext) {
+    for (basename, value) in EXPANDED_JSON_PATHNAME_HINTS {
+        let relative_path = format!("docs/{basename}");
+        let selected = AdapterRuntime
+            .execute_document(DocumentRequest::from_config_context(
+                json_outline_command(&relative_path, None, 1, 80),
+                context.clone(),
+            ))
+            .unwrap_or_else(|error| {
+                panic!("automatic JSON selection should accept {basename}: {error:?}")
+            });
+        let selected = write_protocol_json(selected);
+
+        assert_eq!(selected["ok"], true, "automatic selection for {basename}");
+        assert_eq!(selected["operation"], "outline");
+        assert_eq!(selected["result"]["entries"][0]["ref"], "json:#/hint");
+        assert_eq!(selected["result"]["entries"][0]["kind"], "string");
+
+        if JSON_PATHNAME_ROUNDTRIP_BASENAMES.contains(&basename) {
+            let ref_id = selected["result"]["entries"][0]["ref"]
+                .as_str()
+                .expect("outline should return a readable ref");
+            let read = AdapterRuntime
+                .execute_document(DocumentRequest::from_config_context(
+                    json_read_command(&relative_path, ref_id, None),
+                    context.clone(),
+                ))
+                .unwrap_or_else(|error| {
+                    panic!("automatic JSON read should accept {basename}: {error:?}")
+                });
+            let read = write_protocol_json(read);
+
+            assert_eq!(read["ok"], true, "automatic read for {basename}");
+            assert_eq!(read["operation"], "read");
+            assert_eq!(read["result"]["ref"], "json:#/hint");
+            assert_eq!(read["result"]["content"], format!("\"{value}\""));
+            assert_eq!(read["result"]["content_type"], "application/json");
+        }
+    }
+}
+
+fn assert_automatic_invalid_sarif_diagnostic(context: &ConfigContext, normalized_path: &str) {
+    let automatic_invalid = AdapterRuntime
+        .execute_document(DocumentRequest::from_config_context(
+            json_outline_command("docs/invalid.sarif", None, 1, 80),
+            context.clone(),
+        ))
+        .expect("automatic .sarif selection should return the selected JSON diagnostic");
+    let (exit_code, automatic_invalid) = write_protocol_json_with_exit(automatic_invalid);
+
+    assert_eq!(exit_code, 3);
+    assert_eq!(automatic_invalid["ok"], false);
+    assert_eq!(automatic_invalid["operation"], "outline");
+    assert_eq!(
+        automatic_invalid["error"]["code"],
+        "DOCUMENT_CONTENT_INVALID"
+    );
+    assert_eq!(automatic_invalid["error"]["owner"], "adapter");
+    assert_eq!(
+        automatic_invalid["error"]["details"],
+        serde_json::json!({
+            "path": normalized_path,
+            "reason": "JSON_SYNTAX_INVALID",
+        })
+    );
+}
+
 #[test]
 fn selected_json_uses_only_common_closed_inputs_and_excludes_markdown_native_option() {
     let workspace = temp_workspace("linked-json-closed-inputs");
@@ -158,7 +253,7 @@ fn selected_json_uses_only_common_closed_inputs_and_excludes_markdown_native_opt
     let docs_dir = project_root.join("docs");
     fs::create_dir_all(&docs_dir).unwrap();
     fs::write(
-        docs_dir.join("settings.json"),
+        docs_dir.join("settings.jsonld"),
         "{\"first\":1,\"second\":2}\n",
     )
     .unwrap();
@@ -177,10 +272,10 @@ fn selected_json_uses_only_common_closed_inputs_and_excludes_markdown_native_opt
 
     let output = AdapterRuntime
         .execute_document(DocumentRequest::from_config_context(
-            json_outline_command("docs/settings.json", Some("docnav-json"), 2, 1),
+            json_outline_command("docs/settings.jsonld", None, 2, 1),
             context,
         ))
-        .expect("selected JSON should dispatch with common inputs only");
+        .expect("automatic .jsonld selection should dispatch JSON with common inputs only");
     let output = write_protocol_json(output);
 
     assert_eq!(output["ok"], true);

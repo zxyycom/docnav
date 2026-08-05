@@ -1,8 +1,8 @@
-本 design 规定一个 manifest-only 的 JSON pathname-hint 扩展：在 Current JSONC-capable `docnav-json` descriptor 上追加九个高置信度 hints，并用 owner、tests、CLI 与 release evidence 证明它们只扩大 automatic selection，不改变 parser、navigation 或公共契约。
+本 design 记录一个 manifest-only JSON pathname-hint 扩展的决策与理由：在实施前的 JSONC-capable `docnav-json` descriptor 上追加九个高置信度 hints，并用 owner、tests、CLI 与 release evidence 证明它们只扩大 automatic selection，不改变 parser、navigation 或公共契约。实施状态由 [README.md](README.md) 和 [tasks.md](tasks.md) 记录；Current 产品契约仍由长期 JSON owner 与 main spec 定义。
 
-## Context and Current Baseline
+## Context and Pre-change Current Baseline
 
-Current implementation、tests 与主 `json-adapter` spec 已证明以下基线：
+实施开始时，implementation、tests 与主 `json-adapter` spec 已证明以下 Current 基线：
 
 - adapter id 为 `docnav-json`，唯一 format id 为 `json`；
 - `extensions[]` 为 `.json`、`.code-workspace`、`.jsonc`；
@@ -12,7 +12,7 @@ Current implementation、tests 与主 `json-adapter` spec 已证明以下基线�
 - pathname hint 只选择 adapter，不读取或验证文档；selected failure 不重新 routing 或 fallback；
 - matched pathname、content type 和 format identity 不进入 adapter strategy input。
 
-Current 实现状态由 code、tests 和 release evidence 证明；task 1.1 在建立新失败证据前把长期 JSON owner 与该 Current 基线对齐，再声明本 change 的 Target hints。
+Current 实现状态始终由 code、tests 和 release evidence 证明。实施时，task 1.1 先把长期 JSON owner 与上述 pre-change baseline 对齐，再建立本 change 的 Target contract 与失败证据。
 
 ## Goals and Non-Goals
 
@@ -35,13 +35,13 @@ Current 实现状态由 code、tests 和 release evidence 证明；task 1.1 在�
 
 本 change 的 `MODIFIED` requirement 完整继承 Current 主 `json-adapter` requirement 的正文和 scenarios，再只应用 pathname allowlist delta。Current `.jsonc`、`application/jsonc`、统一 grammar、matched-input exclusion 与 public-input boundary 都是既有基线，不是本 change 新增的能力。
 
-Task 0 已对照 code、tests、main spec 和 CLI/release evidence 重建并验证该 delta。后续同步必须继续区分长期 contract owner 与 Current 实现证据，不得把本 change artifact 或任务勾选本身当作实现证明。
+Task 0 已对照 code、tests、main spec 和 CLI/release evidence 重建并验证该 delta。同步过程中必须区分长期 contract owner 与 Current 实现证据，不得把本 change artifact 或任务勾选本身当作实现证明。
 
 ### Decision 2: One closed allowlist distinguishes suffixes from exact filenames
 
-Target descriptor 使用以下精确有序集合：
+本 decision 采用以下精确有序集合；验收后，同一集合成为长期 owner 中的 Current contract：
 
-| 字段 | Target 有序值 |
+| 字段 | 决策采用的有序值 |
 | --- | --- |
 | `extensions[]` | `.json`、`.code-workspace`、`.jsonc`、`.code-snippets`、`.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif` |
 | `filenames[]` | `.prettierrc`、`.watchmanconfig`、`Pipfile.lock`、`deno.lock` |
@@ -90,7 +90,7 @@ JSON5、NDJSON/JSONL、RFC 7464 JSON Text Sequences、模糊 rc names、弱 gene
 - **False semantic confidence：** 成功 outline 可能被误解为 profile validation。可观察文案不得使用“valid JSON-LD/GeoJSON/etc.”措辞。
 - **Allowlist drift：** 多处复制 exact set 容易分叉。Manifest 是 production facts 的单一 owner；contract、tests 与 smoke 只声明或验证 public projection。
 - **Compatibility change：** 原本得到 unsupported-format 的 pathname 可能变成 JSON-owned parse failure。这是本 change 的预期行为；回滚删除九个 hints 并同步对应证据。
-- **Owner/current drift：** 长期 owner 或验证材料可能落后于 Current evidence。Task 1.1 先恢复 Current 基线，再声明本 change 的 Target；最终同步逐层核对 owner、main spec、code、tests、CLI 和 release evidence。
+- **Owner/current drift：** 长期 owner 或验证材料可能落后于 Current evidence。实施先在 task 1.1 恢复 pre-change baseline，再建立 Target；最终同步逐层核对 owner、main spec、code、tests、CLI 和 release evidence。
 
 ## Implementation Sequence
 
@@ -104,4 +104,4 @@ JSON5、NDJSON/JSONL、RFC 7464 JSON Text Sequences、模糊 rc names、弱 gene
 
 ## Open Questions
 
-无未回答开放问题。Task 0 审计已通过，change 可从 task 1.1 继续；Target 仍需实现和验证后才能成为 Current。
+无未回答开放问题。实现、Current owner/spec 同步、开发与 release-package evidence 以及 workspace verification 已闭合；没有阻断 archive-readiness 评估的设计选择。

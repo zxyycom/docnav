@@ -66,13 +66,13 @@ export const ACCEPTED_WARNINGS = Object.freeze(
       path: "crates/adapters/json/src/adapter/tests.rs",
       codeArea: "rust-tests",
       metric: "code-lines",
-      value: 1201,
+      value: 1217,
       messageIncludes: [
         "File \"crates/adapters/json/src/adapter/tests.rs\"",
-        "1201 code lines"
+        "1217 code lines"
       ],
       reason:
-        "This is the JSON adapter contract suite: manifest hints, selected-operation parsing, every operation, diagnostic projection, and full-read hooks share the same TempDocument and operation-result helpers; splitting it would duplicate test-only fixtures without creating a separate behavior owner."
+        "This is the JSON adapter contract suite: the expanded manifest-hint expectation adds literal rows to the existing identity assertion, while selected-operation parsing, every operation, diagnostic projection, and full-read hooks continue to share the same TempDocument and operation-result helpers; splitting it would duplicate test-only fixtures without creating a separate behavior owner."
     },
     {
       ruleId: "scc-file-code-lines",
@@ -137,28 +137,13 @@ export const ACCEPTED_WARNINGS = Object.freeze(
       path: "test/smoke/core/cases/real-json.ts",
       codeArea: "fixtures-examples",
       metric: "code-lines",
-      value: 605,
+      value: 749,
       messageIncludes: [
         "File \"test/smoke/core/cases/real-json.ts\"",
-        "605 code lines"
+        "749 code lines"
       ],
       reason:
-        "This is the shared real-CLI evidence boundary for CORE-JSON-NAV-001 and CORE-JSON-FAIL-001: registry, automatic/explicit selection, outline/read/find, readable output, and selected failure assertions share one SmokeProject audit trail. Splitting it would separate a single executable roundtrip without another test owner."
-    },
-    {
-      ruleId: "lizard-function-code-density",
-      sourceTool: "lizard",
-      path: "test/smoke/core/cases/real-json.ts",
-      codeArea: "fixtures-examples",
-      metric: "function-code-density",
-      value: 63,
-      messageIncludes: [
-        "Function \"assertAdapterRegistry\"",
-        "real-json.ts:99",
-        "63 code lines"
-      ],
-      reason:
-        "This one-use CORE-JSON-NAV-001 descriptor contract inspects one adapter-list record in order: required adapter order, each core_static source, then the JSON format ID and exact ordered extensions, filenames, and content types. Extracting these facts would add one-use helpers or an opaque data loop, while another smoke matrix would duplicate the same registry evidence."
+        "This is the shared real-CLI evidence boundary for CORE-JSON-NAV-001 and CORE-JSON-FAIL-001: the expanded pathname fixtures, named descriptor projection, automatic/explicit selection, outline/read/find, readable output, and selected failure assertions share one SmokeProject audit trail that the package profile reuses. The descriptor assertion is already isolated from registry orchestration; splitting the file would separate a single executable roundtrip without another test owner."
     },
     {
       ruleId: "lizard-parameter-count",
@@ -169,7 +154,7 @@ export const ACCEPTED_WARNINGS = Object.freeze(
       value: 6,
       messageIncludes: [
         "Function \"runProtocolFailure\"",
-        "real-json.ts:611",
+        "real-json.ts:760",
         "6 parameters"
       ],
       reason:

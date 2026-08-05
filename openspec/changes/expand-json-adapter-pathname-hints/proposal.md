@@ -1,8 +1,8 @@
-本 change 扩展 `docnav-json` 的 closed pathname-hint allowlist，使九类高置信度 JSON-family 文件能够通过 automatic pathname routing 进入既有 generic JSON navigation。它不增加 profile-specific 行为，也不改变 JSONC-capable grammar、content type 或公共协议。
+本 proposal 记录 `docnav-json` closed pathname-hint allowlist 的扩展意图：让九类高置信度 JSON-family 文件通过 automatic pathname routing 进入既有 generic JSON navigation。它不增加 profile-specific 行为，也不改变 JSONC-capable grammar、content type 或公共协议；实施状态由 [README.md](README.md) 和 [tasks.md](tasks.md) 记录。
 
 ## Why
 
-Current automatic routing 只识别 `.json`、`.code-workspace`、`.jsonc`、`.prettierrc` 和 `.watchmanconfig`。因此 `.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif`、`.code-snippets`、`Pipfile.lock` 与 `deno.lock` 即使包含当前 `docnav-json` 可以解析的结构，也需要调用者显式选择 adapter。
+本 change 开始前，automatic routing 只识别 `.json`、`.code-workspace`、`.jsonc`、`.prettierrc` 和 `.watchmanconfig`。因此 `.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif`、`.code-snippets`、`Pipfile.lock` 与 `deno.lock` 即使包含当时 `docnav-json` 可以解析的结构，也需要调用者显式选择 adapter。
 
 这些 pathname 对 JSON-family 内容具有足够强的格式提示。把它们加入 manifest 可以复用现有 `outline -> ref -> read` 流程，同时保持“pathname 负责选择、selected adapter 负责验证实际内容”的边界。
 

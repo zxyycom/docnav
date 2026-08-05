@@ -2,15 +2,31 @@
 
 ## Case WB-JSON-MANIFEST-001: JSON 私有 manifest 声明固定格式身份
 
-Owner: `docs/adapters/json.md#target交付与公共边界`
+Owner: `docs/adapters/json.md#current交付与公共边界`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::manifest_declares_fixed_json_identity`
 - `smoke|core:real-json|CORE-JSON-NAV-001`
 
 Proves:
-- adapter-private manifest 通过语义校验，并固定声明 adapter id `docnav-json`、format id `json`、按既有顺序排列的 suffixes `.json` / `.code-workspace` / `.jsonc`、exact filenames `.prettierrc` / `.watchmanconfig` 和 content types `application/json` / `application/jsonc`；不声明其它 JSON-family hints 或 identity。
+- adapter-private manifest 通过语义校验，并固定声明 adapter id `docnav-json`、format id `json`、按既有顺序排列的 suffixes `.json` / `.code-workspace` / `.jsonc` / `.code-snippets` / `.jsonld` / `.geojson` / `.har` / `.webmanifest` / `.ipynb` / `.sarif`、exact filenames `.prettierrc` / `.watchmanconfig` / `Pipfile.lock` / `deno.lock` 和 content types `application/json` / `application/jsonc`；不声明其它 JSON-family hints 或 identity。
 - 真实 CLI `adapter list` 从 core static registry 原样投影同一 exact descriptor 与 `implementation_source: core_static`。
+
+## Case WB-JSON-PATHNAME-HINTS-001: JSON pathname hints 选择统一 generic navigation
+
+Owner: `docs/adapters/json.md#current交付与公共边界`
+
+Entities:
+- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::core_linked_json_supports_automatic_and_declared_selection_and_reports_selected_content_failure`
+- `cargo|docnav:lib:docnav|runtime::tests::linked_adapter::selected_json_uses_only_common_closed_inputs_and_excludes_markdown_native_option`
+- `smoke|core:real-json|CORE-JSON-NAV-001`
+- `smoke|core:real-json|CORE-JSON-FAIL-001`
+
+Proves:
+- 九个新增 complete-basename hints 逐一通过 static registry automatic selection 进入同一个 linked `docnav-json` definition，而不创建新的 adapter、format 或 grammar identity。
+- 代表性 `.jsonld` suffix 与 `Pipfile.lock` exact filename 均可完成真实 `outline -> ref -> read`，复用同一 JSONC-capable grammar、canonical ref 与 generic structural navigation；结果不声明 pathname-specific profile semantics。
+- 新增 `.sarif` hint 命中的 grammar-invalid document 返回 adapter-owned `DOCUMENT_CONTENT_INVALID / JSON_SYNTAX_INVALID`，不会 fallback 到其它 adapter。
+- Automatic `.jsonld` selection 只把 closed common page/limit input 交给 JSON strategy；matched suffix、format identity 与 Markdown-only native option 不进入 selected input，core public parameter inventory 保持独立既有 Case 的 exact set。
 
 ## Case WB-JSON-SELECTED-PARSE-001: Selected JSON strategy parses the actual document
 
@@ -24,7 +40,7 @@ Proves:
 
 ## Case WB-JSON-OUTLINE-001: JSON Adapter outline strategy 投影 common entries 与有限分页
 
-Owner: `docs/adapters/json.md#targetoutline`
+Owner: `docs/adapters/json.md#currentoutline`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::outline_projects_mixed_json_to_exact_common_entries`
@@ -37,7 +53,7 @@ Proves:
 
 ## Case WB-JSON-READ-001: JSON Adapter read strategy 保留 selected spelling、ref、cost 与 Unicode pagination
 
-Owner: `docs/adapters/json.md#targetread-与-find`
+Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::read_round_trips_outline_refs_and_formats_selected_values`
@@ -51,7 +67,7 @@ Proves:
 
 ## Case WB-JSON-DIAGNOSTICS-001: Selected JSON content failures use stable document diagnostics
 
-Owner: `docs/adapters/json.md#targetinfofull-read安全与-diagnostics`
+Owner: `docs/adapters/json.md#currentinfofull-read安全与-diagnostics`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::selected_outline_maps_current_document_failures_to_stable_diagnostics`
@@ -61,11 +77,11 @@ Proves:
 - A selected JSON outline observes the document view it actually opens; a missing file and invalid UTF-8 preserve the existing exact document diagnostics, while other path-access failures use a stable reason without exposing the operating-system attachment.
 - Unterminated comments、JSON5 extensions、missing/doubled commas and root `{,}` / `[,]` use `JSON_SYNTAX_INVALID`; trailing non-trivia、a second root and complete-root后的 `1 {,}` / `1 [,]` use `JSON_TRAILING_INPUT`; duplicate decoded member and depth overflow retain their dedicated stable reasons.
 - Every selected content failure returns `DOCUMENT_CONTENT_INVALID` details containing only the normalized path and stable reason, without parser messages/types、offsets、duplicate names or internal attachments.
-- Real CLI explicit `--adapter docnav-json` selection on non-JSON `.md` paths returns all four selected JSON `DOCUMENT_CONTENT_INVALID` reasons above and does not fall back to pathname routing or another adapter.
+- Real CLI explicit `--adapter docnav-json` selection on non-JSON `.md` paths returns all four selected JSON `DOCUMENT_CONTENT_INVALID` reasons above；automatic `.sarif` selection 的 representative syntax failure 使用同一 JSON-owned diagnostic，二者都不 fallback 到另一 adapter。
 
 ## Case WB-JSON-PARSE-001: JSON loader 限定完整 UTF-8 单值输入
 
-Owner: `docs/adapters/json.md#targetgrammar-与私有-source-model`
+Owner: `docs/adapters/json.md#currentgrammar-与私有-source-model`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_tracks_bom_stripped_source_metadata_and_original_bytes`
@@ -77,7 +93,7 @@ Proves:
 
 ## Case WB-JSONC-LOADER-001: JSONC loader 接受闭合 grammar 且保留 primary model 事实
 
-Owner: `docs/adapters/json.md#targetgrammar-与私有-source-model`
+Owner: `docs/adapters/json.md#currentgrammar-与私有-source-model`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_accepts_closed_jsonc_grammar_and_preserves_primary_model_facts`
@@ -90,7 +106,7 @@ Proves:
 
 ## Case WB-JSONC-ATTRIBUTION-001: JSONC comments 按binding或tail唯一归属
 
-Owner: `docs/adapters/json.md#targetcomment-attribution`
+Owner: `docs/adapters/json.md#currentcomment-attribution`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_accepts_comment_line_endings_and_rejects_syntax_outside_closed_grammar`
@@ -103,7 +119,7 @@ Proves:
 
 ## Case WB-JSONC-BOUNDS-001: JSONC scanner和attribution保持有界工作与深度
 
-Owner: `docs/adapters/json.md#target验证边界`
+Owner: `docs/adapters/json.md#current验证边界`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_keeps_jsonc_depth_and_comment_evidence_bounded_for_hostile_input`
@@ -117,7 +133,7 @@ Proves:
 
 ## Case WB-JSON-MODEL-001: JSON primary document model 保留结构与源码事实
 
-Owner: `docs/adapters/json.md#targetgrammar-与私有-source-model`
+Owner: `docs/adapters/json.md#currentgrammar-与私有-source-model`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_tracks_bom_stripped_source_metadata_and_original_bytes`
@@ -129,7 +145,7 @@ Proves:
 
 ## Case WB-JSON-DUPLICATE-001: JSON object 按 decoded member name 判重
 
-Owner: `docs/adapters/json.md#targetgrammar-与私有-source-model`
+Owner: `docs/adapters/json.md#currentgrammar-与私有-source-model`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_rejects_duplicate_decoded_member_names`
@@ -139,7 +155,7 @@ Proves:
 
 ## Case WB-JSON-DEPTH-001: JSON document depth 上限为 127
 
-Owner: `docs/adapters/json.md#targetgrammar-与私有-source-model`
+Owner: `docs/adapters/json.md#currentgrammar-与私有-source-model`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|document::tests::load_accepts_depth_127_and_rejects_depth_128`
@@ -149,7 +165,7 @@ Proves:
 
 ## Case WB-JSON-REF-001: JSON ref 对特殊 object token 保持 canonical roundtrip
 
-Owner: `docs/adapters/json.md#targetjson-ref-grammar-与三种-view`
+Owner: `docs/adapters/json.md#currentjson-ref-grammar-与三种-view`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|reference::tests::canonical_ref_encodes_root_and_special_tokens`
@@ -169,7 +185,7 @@ Proves:
 
 ## Case WB-JSON-REF-002: JSON ref 区分非法 spelling 与文档内无匹配
 
-Owner: `docs/adapters/json.md#targetjson-ref-grammar-与三种-view`
+Owner: `docs/adapters/json.md#currentjson-ref-grammar-与三种-view`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|reference::tests::resolve_selection_rejects_noncanonical_or_malformed_spelling`
@@ -187,7 +203,7 @@ Proves:
 
 ## Case WB-JSON-TRAVERSAL-001: JSON 私有遍历形成确定性 descendant entries
 
-Owner: `docs/adapters/json.md#targetoutline`
+Owner: `docs/adapters/json.md#currentoutline`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|traversal::tests::preorder_entries_preserve_source_order_labels_kinds_and_canonical_refs`
@@ -197,7 +213,7 @@ Proves:
 
 ## Case WB-JSON-TRAVERSAL-002: JSON 私有遍历按 root 形态决定 entry set
 
-Owner: `docs/adapters/json.md#targetoutline`
+Owner: `docs/adapters/json.md#currentoutline`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|traversal::tests::preorder_entries_omit_empty_container_roots`
@@ -208,7 +224,7 @@ Proves:
 
 ## Case WB-JSONC-OUTLINE-001: JSONC outline 投影 direct 与 tail comment navigation
 
-Owner: `docs/adapters/json.md#targetoutline`
+Owner: `docs/adapters/json.md#currentoutline`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|traversal::tests::preorder_entries_insert_direct_and_tail_comment_entries_in_expanded_tree_order`
@@ -222,7 +238,7 @@ Proves:
 
 ## Case WB-JSONC-OUTLINE-PAGING-001: JSONC outline summary 服从 entry budget
 
-Owner: `docs/adapters/json.md#targetoutline`
+Owner: `docs/adapters/json.md#currentoutline`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::outline_comment_summary_budget_shrinks_before_label_and_pages_forward`
@@ -233,7 +249,7 @@ Proves:
 
 ## Case WB-JSON-CONTENT-001: JSON 私有 structured content 保留确定性 spelling 与完整 cost
 
-Owner: `docs/adapters/json.md#targetread-与-find`
+Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|content::tests::structured_root_preserves_source_order_raw_numbers_and_full_cost`
@@ -245,7 +261,7 @@ Proves:
 
 ## Case WB-JSON-CONTENT-002: JSON full-read facts 保留去 BOM 原文与实际 cost
 
-Owner: `docs/adapters/json.md#targetinfofull-read安全与-diagnostics`
+Owner: `docs/adapters/json.md#currentinfofull-read安全与-diagnostics`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|content::tests::full_read_strips_one_bom_only_and_measures_the_actual_source`
@@ -257,7 +273,7 @@ Proves:
 
 ## Case WB-JSON-INFO-001: JSON Adapter info strategy 返回 document、adapter 与 tree metadata
 
-Owner: `docs/adapters/json.md#targetinfofull-read安全与-diagnostics`
+Owner: `docs/adapters/json.md#currentinfofull-read安全与-diagnostics`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::info_reports_exact_bom_aware_document_and_nested_metadata`
@@ -270,7 +286,7 @@ Proves:
 
 ## Case WB-JSON-PAGING-001: JSON 私有 text paging 保持 Unicode content 与完整 cost
 
-Owner: `docs/adapters/json.md#target验证边界`
+Owner: `docs/adapters/json.md#current验证边界`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|paging::tests::text_pages_reassemble_unicode_scalar_content_and_keep_full_cost`
@@ -281,7 +297,7 @@ Proves:
 
 ## Case WB-JSON-PAGING-002: JSON entry paging 保留完整 ref 并持续前进
 
-Owner: `docs/adapters/json.md#target验证边界`
+Owner: `docs/adapters/json.md#current验证边界`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|paging::tests::entry_pages_with_tiny_limit_preserve_long_refs_and_make_progress`
@@ -299,7 +315,7 @@ Proves:
 
 ## Case WB-JSON-FIND-001: JSON find 保留原文 literal occurrences
 
-Owner: `docs/adapters/json.md#targetread-与-find`
+Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|find::tests::literal_occurrences_are_bom_stripped_case_sensitive_non_overlapping_and_preserved`
@@ -312,7 +328,7 @@ Proves:
 
 ## Case WB-JSON-FIND-002: JSON source regions 把 occurrence 归属到最深 readable ref
 
-Owner: `docs/adapters/json.md#targetread-与-find`
+Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|find::tests::source_regions_map_occurrences_to_the_deepest_canonical_readable_ref`
@@ -324,7 +340,7 @@ Proves:
 
 ## Case WB-JSON-FIND-003: JSON find entry facts 保留 bounded label、source line 与重复 occurrence
 
-Owner: `docs/adapters/json.md#targetread-与-find`
+Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|find::tests::find_entries_emit_nonempty_bounded_unicode_safe_labels`
@@ -343,7 +359,7 @@ Proves:
 
 ## Case WB-JSON-FIND-004: JSON Adapter find strategy 拒绝空 query
 
-Owner: `docs/adapters/json.md#targetread-与-find`
+Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|adapter::tests::find_rejects_an_empty_query_with_the_existing_invalid_request_diagnostic`
@@ -353,7 +369,7 @@ Proves:
 
 ## Case WB-JSON-FIND-005: JSONC find 将完整 comment span 映射到可读 comment view
 
-Owner: `docs/adapters/json.md#targetread-与-find`
+Owner: `docs/adapters/json.md#currentread-与-find`
 
 Entities:
 - `cargo|docnav-json:lib:docnav_json|find::tests::comment_spans_override_only_wholly_contained_occurrences_and_use_source_ordered_lookup`

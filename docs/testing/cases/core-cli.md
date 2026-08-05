@@ -197,7 +197,7 @@ Entities:
 Proves:
 - 显式 CLI 选择的 adapter 不存在时返回 adapter selection diagnostic，不隐藏为 registry fallback。
 - 显式 adapter id 不存在时，即使同一请求携带 invalid-looking native option，也返回 adapter selection diagnostic，而不是 option validation error。
-- `.json` 与 `.jsonc` 文档的 automatic selection 通过 static registry 进入同一 linked `docnav-json` JSONC grammar；显式 `docnav-json` 选择不依赖 pathname hint，并返回对应 JSON result facts。
+- Manifest-matched JSON pathname 的 automatic selection 通过 static registry 进入同一 linked `docnav-json` JSONC grammar；显式 `docnav-json` 选择不依赖 pathname hint，并返回对应 JSON result facts。JSON-owned exact hint set 与 generic navigation 由 `WB-JSON-MANIFEST-001` 和 `WB-JSON-PATHNAME-HINTS-001` 证明。
 - 真实 CLI 对 `.json` comments/trailing comma 与 `.jsonc` 使用同一 automatic grammar，显式选择在 `.md` 路径复用该 grammar；direct/tail comment outline/find refs 原样进入 read 与 existing unique-ref auto-read。
 - 显式选择 `docnav-json` 处理 Markdown 内容时执行 selected JSON strategy，返回 adapter-owned `DOCUMENT_CONTENT_INVALID / JSON_SYNTAX_INVALID`，且不回退到 Markdown adapter。
 
@@ -234,7 +234,7 @@ Entities:
 
 Proves:
 - Core static registry 包含 release 内置 `docnav-markdown` 与 `docnav-json` definitions，并投影各自 manifest-owned pathname routing metadata。
-- Markdown 初始 suffixes 是 `.md`、`.markdown`；JSON suffixes 按 manifest 顺序是 `.json`、`.code-workspace`、`.jsonc`，exact filenames 是 `.prettierrc`、`.watchmanconfig`，content types 是 `application/json`、`application/jsonc`。
+- Markdown 初始 suffixes 是 `.md`、`.markdown`；JSON suffixes 按 manifest 顺序是 `.json`、`.code-workspace`、`.jsonc`、`.code-snippets`、`.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif`，exact filenames 是 `.prettierrc`、`.watchmanconfig`、`Pipfile.lock`、`deno.lock`，content types 是 `application/json`、`application/jsonc`。
 
 ## Case WB-CORE-ADAPTER-INSPECTION-001: Core adapter inspection 精确投影
 

@@ -199,7 +199,7 @@ Proves:
 - The selected operation field set combines fixed operation inputs with the core-authored parameter catalog projection.
 - Adapter-scoped catalog fields are included only for the selected adapter；fields scoped to another adapter are excluded.
 - Operation applicability 只从 closed bindings 派生。
-- Runtime selected `docnav-json` outline 只接收适用的 common page/limit closed inputs；project-sourced Markdown-only `max_heading_level` 被排除，page 2、limit 1 返回精确的第二个 JSON entry 和 terminal page。
+- Runtime automatic `.jsonld` selection 的 `docnav-json` outline 只接收适用的 common page/limit closed inputs；matched suffix 与 project-sourced Markdown-only `max_heading_level` 被排除，page 2、limit 1 返回精确的第二个 JSON entry 和 terminal page。
 
 ## Case WB-NAVIGATION-HARD-CUTOVER-001: Core catalog cutover preserves resolver parity
 

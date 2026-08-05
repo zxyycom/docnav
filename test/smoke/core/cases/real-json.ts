@@ -20,6 +20,7 @@ import {
   expectReadableViewBlockRestoresField,
   expectStderrEmpty,
   expectString,
+  expectStringArray,
   parseJson,
   parseReadableViewHeader
 } from "../assertions.ts";
@@ -31,6 +32,28 @@ const jsonDocumentPath = "docs/navigation.json";
 const jsoncAutomaticJsonPath = "docs/comment-navigation.json";
 const jsoncAutomaticPath = "docs/comment-navigation.jsonc";
 const jsoncExplicitPath = "docs/comment-navigation.md";
+const jsonldAutomaticPath = "docs/navigation.jsonld";
+const pipfileLockAutomaticPath = "docs/Pipfile.lock";
+const invalidSarifAutomaticPath = "docs/invalid.sarif";
+const jsonFormatExtensions = [
+  ".json",
+  ".code-workspace",
+  ".jsonc",
+  ".code-snippets",
+  ".jsonld",
+  ".geojson",
+  ".har",
+  ".webmanifest",
+  ".ipynb",
+  ".sarif"
+] as const;
+const jsonFormatFilenames = [
+  ".prettierrc",
+  ".watchmanconfig",
+  "Pipfile.lock",
+  "deno.lock"
+] as const;
+const jsonFormatContentTypes = ["application/json", "application/jsonc"] as const;
 const directCommentRef = "json:comments:#/value";
 const tailCommentRef = "json:tail-comments:#";
 const directCommentContent = "// direct-needle\n1";
@@ -64,6 +87,7 @@ async function testJsonSelectionAndNavigationRoundtrip() {
 
   await assertAdapterRegistry(project);
   await assertJsoncSelectionAndNavigation(project);
+  await assertExpandedPathnameRoundtrips(project);
   const outlineRef = await assertAutomaticOutline(project);
   const content = await assertExplicitRead(project, outlineRef);
   const findRef = await assertFindSourceLocations(project);
@@ -77,6 +101,7 @@ async function testJsonFailureClassification() {
   await assertInvalidArrayRef(project);
   await assertMissingArrayRef(project);
   await assertSelectedInvalidJsonReasons(project);
+  await assertExpandedPathnameInvalidNoFallback(project);
 }
 
 function jsonFixtureProject(name: string) {
@@ -92,6 +117,12 @@ function jsonFixtureProject(name: string) {
     jsoncExplicitPath
   ]) {
     copyDocumentFixture(project, "jsonc-navigation.jsonc", relativePath);
+  }
+  for (const relativePath of [
+    jsonldAutomaticPath,
+    pipfileLockAutomaticPath
+  ]) {
+    copyDocumentFixture(project, "json-navigation.json", relativePath);
   }
   return project;
 }
@@ -141,22 +172,52 @@ async function assertAdapterRegistry(project: SmokeProject) {
     jsonAdapter.formats,
     "JSON descriptor formats are objects"
   );
+  assertJsonFormatDescriptor(record, formats);
+}
+
+function assertJsonFormatDescriptor(
+  record: CommandRecord,
+  formats: readonly JsonRecord[]
+) {
+  expect(record, formats.length === 1, "JSON descriptor has one format");
   const format = expectJsonObject(
     record,
     formats[0],
-    "JSON descriptor has one format"
+    "JSON descriptor format is an object"
   );
+  expect(record, format.id === "json", "JSON descriptor format id is json");
+  expectExactStringArray(
+    record,
+    format.extensions,
+    jsonFormatExtensions,
+    "JSON descriptor extensions"
+  );
+  expectExactStringArray(
+    record,
+    format.filenames,
+    jsonFormatFilenames,
+    "JSON descriptor exact filenames"
+  );
+  expectExactStringArray(
+    record,
+    format.content_types,
+    jsonFormatContentTypes,
+    "JSON descriptor content types"
+  );
+}
+
+function expectExactStringArray(
+  record: CommandRecord,
+  value: unknown,
+  expected: readonly string[],
+  label: string
+) {
+  const actual = expectStringArray(record, value, `${label} are strings`);
   expect(
     record,
-    formats.length === 1 &&
-      format.id === "json" &&
-      JSON.stringify(format.extensions) ===
-        JSON.stringify([".json", ".code-workspace", ".jsonc"]) &&
-      JSON.stringify(format.filenames) ===
-        JSON.stringify([".prettierrc", ".watchmanconfig"]) &&
-      JSON.stringify(format.content_types) ===
-        JSON.stringify(["application/json", "application/jsonc"]),
-    "adapter list exposes the exact JSON and JSONC routing descriptor"
+    actual.length === expected.length &&
+      expected.every((item, index) => actual[index] === item),
+    `${label} preserve the exact manifest order`
   );
 }
 
@@ -264,6 +325,63 @@ async function assertJsoncSelectionAndNavigation(project: SmokeProject) {
     "/auto_read/read/content",
     tailCommentContent
   );
+}
+
+async function assertExpandedPathnameRoundtrips(project: SmokeProject) {
+  for (const [label, relativePath] of [
+    [".jsonld suffix", jsonldAutomaticPath],
+    ["Pipfile.lock exact filename", pipfileLockAutomaticPath]
+  ] as const) {
+    const outlined = await runProtocolSuccess(
+      `CORE-JSON-NAV-001 automatic ${label} outline`,
+      ["outline", relativePath, "--auto-read", "disabled"],
+      project,
+      "outline"
+    );
+    const outlineResult = expectJsonObject(
+      outlined.record,
+      outlined.json.result,
+      `${label} outline result is an object`
+    );
+    const entries = expectObjectArray(
+      outlined.record,
+      outlineResult.entries,
+      `${label} outline entries are objects`
+    );
+    const selectedEntry = expectJsonObject(
+      outlined.record,
+      entries.find((entry) => entry.ref === specialRef),
+      `${label} outline returns the generic JSON ref`
+    );
+    const ref = expectString(
+      outlined.record,
+      selectedEntry.ref,
+      `${label} outline ref is readable`
+    );
+
+    const read = await runProtocolSuccess(
+      `CORE-JSON-NAV-001 automatic ${label} outline-ref read`,
+      ["read", relativePath, "--ref", ref],
+      project,
+      "read"
+    );
+    const readResult = expectJsonObject(
+      read.record,
+      read.json.result,
+      `${label} read result is an object`
+    );
+    expect(read.record, readResult.ref === ref, `${label} read preserves the outline ref`);
+    expect(
+      read.record,
+      readResult.content === specialContent,
+      `${label} read uses generic structural JSON content`
+    );
+    expect(
+      read.record,
+      readResult.content_type === "application/json",
+      `${label} read keeps source-derived JSON content type`
+    );
+  }
 }
 
 function assertCommentAutoRead(
@@ -593,6 +711,37 @@ async function assertSelectedInvalidJsonReasons(project: SmokeProject) {
     expect(record, details.path === normalizedPath, `selected JSON ${name} preserves the normalized path`);
     expect(record, details.reason === reason, `selected JSON ${name} uses ${reason}`);
   }
+}
+
+async function assertExpandedPathnameInvalidNoFallback(project: SmokeProject) {
+  const absolutePath = path.join(project.root, invalidSarifAutomaticPath);
+  fs.writeFileSync(absolutePath, "# not JSON\n", "utf8");
+  const normalizedPath = absolutePath.replaceAll(path.sep, "/");
+  const { record, error } = await runProtocolFailure(
+    "CORE-JSON-FAIL-001 automatic .sarif selected JSON failure",
+    ["outline", invalidSarifAutomaticPath],
+    project,
+    "outline",
+    "DOCUMENT_CONTENT_INVALID",
+    exitCodes.documentRefFormat
+  );
+  const details = expectJsonObject(
+    record,
+    error.details,
+    "automatic .sarif failure details are an object"
+  );
+  expect(record, error.owner === "adapter", "automatic .sarif failure remains JSON-owned");
+  expect(
+    record,
+    Object.keys(details).sort().join(",") === "path,reason",
+    "automatic .sarif failure details contain only path and reason"
+  );
+  expect(record, details.path === normalizedPath, "automatic .sarif failure preserves path");
+  expect(
+    record,
+    details.reason === "JSON_SYNTAX_INVALID",
+    "automatic .sarif failure does not reroute or fallback"
+  );
 }
 
 function runProtocolSuccess(

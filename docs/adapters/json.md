@@ -7,40 +7,46 @@ result shape、opaque ref 的原样传递和输出编排分别由
 格式识别、grammar、私有 source model、ref grammar、导航、JSON-owned diagnostics
 和验证边界。
 
-## Current 基线与 Target 状态
+## Current 基线与 pathname-hint contract
 
-**Current：** 已有二进制证明 `docnav-json` 以 `json` identity 处理 strict JSON：
-`.json` 与 `.code-workspace` suffix、`.prettierrc` 与 `.watchmanconfig` filename hints、
-`application/json` source type、单一 `json:#<fragment>` ref、strict JSON parsing、
-确定性 outline/read/find/info/full-read 以及本页既有 stable diagnostics。Pathname hint
-只选择 adapter，不证明内容有效；selected failure 不会重新路由或 fallback。
+本节定义 `docnav-json` 的 Current pathname-hint contract。Current descriptor 以单一
+`json` identity 提供 JSONC-capable generic structural navigation，其精确有序集合为：
 
-**Target — `add-jsonc-comment-aware-navigation`：** 下列 `MUST` 定义该 change 完成后
-的 JSONC comment-aware 契约，不是当前实现声明。它以同一个 `docnav-json` /
-`json` identity 扩展 closed grammar、source facts 和 JSON-owned navigation；不新增
-shared operation、input、output mode、schema source 或 shared result field。实现和
-验证证据完成前，Current 基线保持上述 strict JSON 行为。
+| 字段 | Current 有序值 |
+| --- | --- |
+| `extensions[]` | `.json`、`.code-workspace`、`.jsonc`、`.code-snippets`、`.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb`、`.sarif` |
+| `filenames[]` | `.prettierrc`、`.watchmanconfig`、`Pipfile.lock`、`deno.lock` |
+| `content_types[]` | `application/json`、`application/jsonc` |
 
-## Target：交付与公共边界
+代码、tests、core CLI smoke 与 release-package smoke 是上述 Current contract 的实现证据，
+不构成第二份 pathname allowlist owner。
 
-Target descriptor 仍作为 core static registry 中的 linked adapter，由 package 内同一个
-`docnav` executable 交付，executable set 精确为该单元素集合。它的 `extensions[]`
-MUST 精确为 `.json`、`.code-workspace`、`.jsonc`，`filenames[]` MUST 精确为
-`.prettierrc`、`.watchmanconfig`，`content_types[]` MUST 精确为 `application/json`、
-`application/jsonc`；不得声明其它 JSON-family pathname hint、adapter identity 或 format
-identity。format id 始终为 `json`。
+`.json`、`.code-workspace`、`.jsonc`、`.prettierrc`、`.watchmanconfig` 与两个
+content types 是既有 JSONC 基线；其余七个 suffixes 与两个 exact filenames 是扩展后的
+Current routing hints。任一 hint 命中后都只选择既有 `docnav-json`，不把 matched hint、
+profile 或 content-type 推断加入 strategy input。Selected operation 继续使用下文的同一
+JSONC-capable grammar、generic navigation、ref、output 与 diagnostic 契约；hint 命中不
+承诺 JSON-LD、GeoJSON、HAR、Web Manifest、Notebook、SARIF 或 lockfile 的 profile
+validity，selected failure 也不会重新路由或 fallback。
 
-Target fixed strategy 继续只提供 outline、read、find 和 info（以及既有 unstructured
+## Current：交付与公共边界
+
+Current descriptor 作为 core static registry 中的 linked adapter，由 package 内同一个
+`docnav` executable 交付，executable set 精确为该单元素集合。它的 `extensions[]`、
+`filenames[]` 与 `content_types[]` MUST 精确匹配上一节的 Current 有序集合；不得声明其它
+JSON-family pathname hint、adapter identity 或 format identity。format id 始终为 `json`。
+
+Current fixed strategy 只提供 outline、read、find 和 info（以及既有 unstructured
 full-read content/cost capability），不引入 routing probe。每个 operation 只消费其 closed
 standard input；matched pathname、suffix、source content type 和 format identity 都不进入
-strategy input。JSONC 不得增加 core parameter、`StandardInputBinding`、CLI、env、config
-或 protocol input，且 adapter-private 安全上限仍由单一硬编码配置源拥有。
+strategy input。JSONC 与 pathname hints 不得增加 core parameter、`StandardInputBinding`、
+CLI、env、config 或 protocol input，且 adapter-private 安全上限仍由单一硬编码配置源拥有。
 
 所有由 pathname hint 或 explicit adapter intent 选中的 JSON documents MUST 使用同一套
 JSONC-capable grammar；pathname 和 descriptor content type 不选择 strict/JSONC dialect。
 共享 ref owner 继续把任何 non-empty ref 当 opaque string 原样传给 selected adapter。
 
-## Target：grammar 与私有 source model
+## Current：grammar 与私有 source model
 
 每次 selected operation MUST 从实际 document view 移除至多一个开头 UTF-8 BOM、解码
 UTF-8，并恰好解析一个 root value；其后只能是 grammar trivia。root depth 为 `0`，最大
@@ -64,7 +70,7 @@ raw number tokens、source order 和所需索引。ordered comment spans、direc
 bundles可补充此树；不得创建第二棵完整 logical tree，parser/CST types、attachment heuristic
 及其 messages 均保持私有。
 
-## Target：JSON ref grammar 与三种 view
+## Current：JSON ref grammar 与三种 view
 
 JSON adapter MUST 生成和解析三个非空 ASCII-safe ref view：
 
@@ -93,7 +99,7 @@ non-root fragment 无 `/`、percent/`~` escape 非法或非 canonical、array to
 bundle 不存在时 MUST 返回 `REF_NOT_FOUND`。文档变更后 ref 不承诺跨版本身份：base path
 可指向新 value，stale comment-view ref 可返回 `REF_NOT_FOUND`。
 
-## Target：comment attribution
+## Current：comment attribution
 
 Closed grammar 成功后，每个 source comment MUST 恰好归于 logical root、一个 object
 member、一个 array element 或一个 `Tail(tail_anchor)` slot。root、member、element 以 root
@@ -132,7 +138,7 @@ whitespace run collapse 成单个 ASCII space、trim、丢弃空 body，以 `; `
 空 summary 不删除 bundle 或 comment view，只省略 `Entry.summary`，且 bundle 不缓存第二份
 完整 normalized comment text。
 
-## Target：outline
+## Current：outline
 
 Outline MUST 对 expanded navigation tree 做 depth-first preorder。logical object member 与
 array element 形成 ordinary entry：完整 ref、非空 label、`object|array|string|number|boolean|null`
@@ -159,7 +165,7 @@ Unicode scalar boundary 截断（以 `...` 标识）或省略 optional summary�
 截断；无法保留正常 label 内容时为 `.`，但不得替代 empty-key 正常 label `""`。所有 ref
 都能原样传给 `read`。
 
-## Target：read 与 find
+## Current：read 与 find
 
 Read MUST 由 ref 的 selected view 返回确定性 content，并保留输入 ref、对分页前完整 content
 计算 cost、按既有 Unicode-safe text pagination 返回 content/page。base view 把 selected logical
@@ -186,7 +192,7 @@ covering container。每个 occurrence 形成一个按 source offset 排序的 `
 occurrences 不合并，entry pagination 保持 order/forward progress。label construction 的
 state/context scan work 受 label budget 约束，不随 line 或连续 whitespace 长度增长。
 
-## Target：info、full-read、安全与 diagnostics
+## Current：info、full-read、安全与 diagnostics
 
 Info MUST 返回 source-derived content type、UTF-8、含 optional BOM 的 original byte size、
 adapter id `docnav-json`、format id `json`，以及精确 `{root_kind, node_count, max_depth}`
@@ -211,7 +217,7 @@ message/type、unstable offset、duplicate name、dependency trace 和 recovery 
 failure 不 retry parser mode、routing 或 adapter；operation 以实际打开的 document view 诊断，
 不发出已移除的 `json-document-changed-after-probe`。
 
-## Target：验证边界
+## Current：验证边界
 
 Owner、adapter tests、Case ledger、coverage mapping、core CLI smoke 与 release package smoke
 MUST 分层证明 strict/no-comment behavior不回归；closed JSONC grammar、deterministic
@@ -222,6 +228,11 @@ automatic/explicit selection、opaque pass-through、no fallback 与同一 relea
 behavior。Large/deep/comment-heavy inputs 还必须证明 comment indexes、summary、attribution,
 find 与 drop 的 work/memory bounded，且不对每个 entry/occurrence 全量扫描 comment set。
 
+Pathname-hint evidence 还必须证明完整有序 manifest 集合、九个新增 complete basenames 的
+automatic selection、代表性 suffix 与 exact filename 的 `outline -> ref -> read`，以及
+grammar-invalid selected input 的 JSON-owned no-fallback diagnostic。Shared schema 与 examples
+只约束既有 manifest field shape；本能力只改变 pathname arrays 的 values。
+
 Shared protocol envelope、`Entry`、`ReadResult`、generic `readable-view`、pagination/cost shape
 仍由 shared owners 拥有；本 adapter owner 不重新定义它们。格式专用 readable renderer 仍为
-独立的 Planned change，不是本 Target 契约。
+独立的 Planned change，不是本 adapter 契约。
