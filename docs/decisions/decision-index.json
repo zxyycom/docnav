@@ -21,12 +21,16 @@
         "id": "navigation-output"
       },
       {
+        "description": "维护产品阶段、能力排序、探索与交付边界以及入口扩张时机的长期方向。",
+        "id": "product-direction"
+      },
+      {
         "description": "维护本机不可用执行环境的验收、受控云端验证与外部写入边界的长期方向。",
         "id": "validation-governance"
       }
     ]
   },
-  "sourceRevision": "sha256:9ac347c94c1d552ac5ffb4a03f7aa9d77f7f3a705c0269ed0c2abebd9212924e",
+  "sourceRevision": "sha256:3b53030c049c0cf6b4969da6e8b1e2ab1ed71f460da2f6c26bf614cac63c03a3",
   "keyDefinitions": [
     {
       "name": "domain",
@@ -42,6 +46,56 @@
     }
   ],
   "entries": [
+    {
+      "id": "adapter-evolution/prefer-adjacent-document-formats-before-code.md",
+      "keys": {
+        "domain": [
+          "adapter-evolution"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "adapter-evolution/prefer-adjacent-document-formats-before-code.md",
+        "title": "复杂代码适配器前先扩展相邻文档格式",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-05T06:47:42Z",
+        "purpose": "用复杂度递增的真实文档格式继续验证 adapter 边界并控制扩展风险。",
+        "background": "YAML、TOML 等格式更接近现有文档导航模型，代码导航则同时引入语言 parser、符号语义、依赖和更强替代工具竞争。",
+        "decision": "下一阶段格式扩展优先考虑简单文档类 adapter，代码 adapter 长期延后；每个具体格式仍需按自身场景和证据独立批准。",
+        "relations": []
+      }
+    },
+    {
+      "id": "adapter-evolution/prioritize-reusable-document-preparation.md",
+      "keys": {
+        "domain": [
+          "adapter-evolution"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "adapter-evolution/prioritize-reusable-document-preparation.md",
+        "title": "优先建立调用内可复用文档准备边界",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-05T06:47:43Z",
+        "purpose": "让 adapter 最小生命周期支持通用组合并避免同一文档在一次调用中反复完整解析。",
+        "background": "Selection、operation 和 core composition 会重复 acquisition、decode、parse 或索引，既增加成本也妨碍后续通用能力与新 adapter 接入。",
+        "decision": "近期优先建立 invocation-private 的可复用准备边界和最小 adapter API，同时保留格式语义私有并拒绝公共状态标识、跨调用缓存和通用状态注册表。",
+        "relations": []
+      }
+    },
     {
       "id": "adapter-evolution/route-by-manifest-basename-hints.md",
       "keys": {
@@ -486,6 +540,106 @@
             "target": "navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md"
           }
         ]
+      }
+    },
+    {
+      "id": "product-direction/complete-json-readable-presentation.md",
+      "keys": {
+        "domain": [
+          "product-direction"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "product-direction/complete-json-readable-presentation.md",
+        "title": "JSON 专用阅读展示属于近期完整交付",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-05T06:47:42Z",
+        "purpose": "让 JSON 在共享 raw 行为验证后获得真正适合阅读的格式专用展示。",
+        "background": "Generic readable view 能证明共享输出链路可用，但不能长期替代 JSON 对路径、标点、preview 和分页信息密度的 presentation contract。",
+        "decision": "JSON 专用 renderer 可以短暂等待底层 raw facts 稳定，但仍属于近期完整 adapter 交付，不得无限期停留在 generic presentation。",
+        "relations": []
+      }
+    },
+    {
+      "id": "product-direction/repair-token-cost-as-bounded-debt.md",
+      "keys": {
+        "domain": [
+          "product-direction"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "product-direction/repair-token-cost-as-bounded-debt.md",
+        "title": "将 token cost 作为有界性能债务修复",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-05T06:47:42Z",
+        "purpose": "修复已知 token 计算性能问题，同时让治理成本与实际极端影响相称。",
+        "background": "既有性能测试已发现当前 calculator 开销明显，主要风险集中在大型选择和极端输入，而普通路径通常影响较小。",
+        "decision": "Token cost 作为已知性能债务单独修复，目标是只对返回事实做有界估算并覆盖极端证据，但不自动成为所有产品 change 的统一前置。",
+        "relations": []
+      }
+    },
+    {
+      "id": "product-direction/stabilize-core-before-entrypoint-expansion.md",
+      "keys": {
+        "domain": [
+          "product-direction"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "product-direction/stabilize-core-before-entrypoint-expansion.md",
+        "title": "核心契约稳定后再扩张接入与交互面",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-05T06:47:42Z",
+        "purpose": "在基础文档契约收敛前避免接入层和人类交互面放大变更成本。",
+        "background": "MCP 与交互式 CLI 会映射仍在演进的 adapter、find、protocol 和 output surface，过早接入会扩大后续调整范围。",
+        "decision": "MCP bridge 与 interactive outline 保持长期方向，待基础契约稳定后重新审计和排序，不因 change 已存在或门禁可关闭而提前实施。",
+        "relations": []
+      }
+    },
+    {
+      "id": "product-direction/treat-exploration-as-non-delivery.md",
+      "keys": {
+        "domain": [
+          "product-direction"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "product-direction/treat-exploration-as-non-delivery.md",
+        "title": "探索材料不形成交付承诺",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-05T06:47:42Z",
+        "purpose": "让方向探索与正式 change、实施优先级和产品承诺保持清楚边界。",
+        "background": "Operation composition 材料用于持续挖掘候选体验，但宽泛候选和开放问题不能直接充当可实施契约。",
+        "decision": "探索 change 只保存想法和筛选输入，不形成实施授权、依赖或交付排序；具体能力成熟后必须由独立且精确的 change 承接。",
+        "relations": []
       }
     },
     {

@@ -18,6 +18,10 @@
       "description": "维护跨格式结构化读取、源码保真、raw/readable 输出分层与自定义渲染的长期方向。"
     },
     {
+      "id": "product-direction",
+      "description": "维护产品阶段、能力排序、探索与交付边界以及入口扩张时机的长期方向。"
+    },
+    {
       "id": "validation-governance",
       "description": "维护本机不可用执行环境的验收、受控云端验证与外部写入边界的长期方向。"
     }
