@@ -41,6 +41,11 @@ Active change 中影响范围、方案、边界或验收的已确认判断 MUST 
 - **THEN** 形成时方案 MUST 继续作为该 change 的审计记录，不因当前未执行而被追溯性改粗
 - **THEN** 恢复实施前 MUST 根据届时当前基线和活动决策重新审计
 
+#### Scenario: 既有 change 按触及时机收敛
+- **WHEN** 既有 change 只因本规则生效而显得比当前需要更详细
+- **THEN** 维护者 MUST NOT 仅为统一粗略程度而批量重写该 change
+- **THEN** 维护者 MUST 在以后恢复或实质修改该 change 时按届时当前基线、活动决策和细节分工重新审计
+
 ### Requirement: Capability ID uses stable ownership naming
 OpenSpec capability ID MUST 表达长期主 spec 所有权，并 MUST 与一次性 change name 分离。Capability ID MUST 使用 kebab-case 名词或名词短语，MUST NOT 包含 `implement`、`implementation`、`change`、`task`、日期或临时版本阶段。
 

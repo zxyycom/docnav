@@ -108,12 +108,13 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 1. 尚未准备实施的 future change 只保留问题、目标、边界和启动条件；有跨 change 意义的细节进入活动未对齐决策，其余实现细节等准备实施时再确定。
 2. 准备实施后，change 才细化设计、任务和验收依据；change 或决策的存在都不单独提供实施授权、优先级或当前状态证明。
 3. 已经进入实施准备并形成细节的 change 后来搁置时，保留形成时方案，不因当前未执行而追溯性改粗；恢复前按届时 Current 基线和活动决策重新审计。
-4. 只影响某个 active change 的已确认判断写入该 change 的 `design.md` `## Decisions`；跨 change 仍有效的方向和重要细节写入 `docs/decisions/`，归档 change 不自动复制其中内容。
-5. active change 要改变现有活动决策时，归档 change 前先同步 owner 文档，再按决策记录生命周期归档前序并激活后续记录。
-6. 载体之间不一致时，当前稳定规则以 owner 文档为准，当前状态以代码、测试和 release artifact 为准；随后同步 OpenSpec 和验证材料，并归档、修订或替代失配的决策记录。
-7. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态、对齐和关系由各条决策 Markdown 拥有，[决策索引](decisions/decision-index.json) 只提供可重建查询视图。
+4. 现有 change 不应仅为了统一成粗略状态而批量重写；以后恢复或实质修改时，再按届时 Current 基线、活动决策和本节分工收敛。
+5. 只影响某个 active change 的已确认判断写入该 change 的 `design.md` `## Decisions`；跨 change 仍有效的方向和重要细节写入 `docs/decisions/`，归档 change 不自动复制其中内容。
+6. active change 要改变现有活动决策时，归档 change 前先同步 owner 文档，再按决策记录生命周期归档前序并激活后续记录。
+7. 载体之间不一致时，当前稳定规则以 owner 文档为准，当前状态以代码、测试和 release artifact 为准；随后同步 OpenSpec 和验证材料，并归档、修订或替代失配的决策记录。
+8. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态、对齐和关系由各条决策 Markdown 拥有，[决策索引](decisions/decision-index.json) 只提供可重建查询视图。
 
-活动决策已经确认。`aligned` 表示完整方向已与当前 owner 文档、代码、测试或 release artifact 等事实来源核对并建立为持续基线；`unaligned` 表示已经确认但尚未成为当前事实的未来方向。当前工作不必因此提前准备或实现，但要注意别主动增加障碍；在既有授权范围内能顺手实现时可以一并完成。对齐状态不提供实施授权或优先级；已对齐基线后来与事实偏离时按一致性问题处理，不把记录改回未对齐。
+活动决策已经确认。`aligned` 表示完整方向已与当前 owner 文档、代码、测试或 release artifact 等事实来源核对并建立为持续基线；`unaligned` 表示已经确认但尚未成为当前事实的未来方向。当前工作不必因此提前准备或实现，但要注意别主动增加障碍；在既有授权范围内能顺手实现时可以一并完成。对齐状态本身不产生当前实施授权或优先级；决策正文仍可记录未来方向和先后关系。已对齐基线后来与事实偏离时按一致性问题处理，不把记录改回未对齐。
 
 ## 规则所有权
 

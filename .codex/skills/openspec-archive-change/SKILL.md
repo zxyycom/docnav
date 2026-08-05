@@ -2,7 +2,6 @@
 name: openspec-archive-change
 description: 归档已完成的 OpenSpec change。用于用户要求在实现、验收或同步评估完成后 finalize、archive 或归档某个 change。
 license: MIT
-compatibility: Requires openspec CLI.
 metadata:
   author: openspec
   version: "2"

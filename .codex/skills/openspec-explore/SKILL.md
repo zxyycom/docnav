@@ -2,7 +2,6 @@
 name: openspec-explore
 description: 进入 OpenSpec 探索模式。适用于用户想在 change 前后澄清想法、调查问题、比较方案或明确需求边界。
 license: MIT
-compatibility: Requires openspec CLI.
 metadata:
   author: openspec
   version: "2"
@@ -60,12 +59,14 @@ Explore 是一种思考姿态，不是实现工作流。你可以阅读文件、
 6. 以上命令按探索问题选择，不是每次全量执行。
 7. CLI 不可用、命令失败或输出不足以支撑探索结论时，再读取目标 artifact 原文；需要参考本 skill 原始行为时只读同目录 `reference-original.md`。
 8. 读取 OpenSpec 上下文后，把其中的目标、范围、任务、决策和当前讨论连接起来；发现偏差时说明偏差影响。
-9. 沉淀探索结果和修改已有 change 时，更新相关 OpenSpec artifacts。这属于记录思考，不属于实现应用代码。
-10. 只记录用户确认的决策、决策变更和开放问题答案；关联 change 明确时直接写入。
+9. 沉淀探索结果和修改已有 change 时，按实施准备程度控制细节：尚未准备实施的 future change 只保留问题、目标、边界和启动条件，不补 design、tasks 或验收细节。
+10. 已确认且跨 change 仍有长期意义的方向与细节转入 `$decision-records`；只约束当前 change 的判断才写入该 change。
+11. 已经形成细节但后来暂停的 change 保留形成时方案；探索或恢复时重新审计，不为显得粗略而追溯性删减。
+12. 只记录用户确认的决策、决策变更和开放问题答案；关联 change 明确时按上述 owner 分工直接写入。
 
 ## 决策记录
 
-1. 已确认决策写入关联 change 的 `## Decisions`，使用连续编号并保留旧编号。
+1. 只约束关联 change 的已确认决策写入 `## Decisions`，使用连续编号并保留旧编号；跨 change 的未来方向由长期决策承接。
 2. 决策正文只写决定和影响，避免重复解释理由。
 3. 用户回答开放问题后，先把答案落到持久 owner：新增 Decision、更新已有 Decision，或修正 artifact 正文。
 4. 已进入新增或已有 Decision 的问题，从 `## Open Questions` 删除；仅由措辞或误解引起的问题，改为 `已收敛：<位置> 已调整，无待确认项`。
@@ -89,6 +90,7 @@ Explore 是一种思考姿态，不是实现工作流。你可以阅读文件、
 3. 代码结构、OpenSpec 状态、测试结果和外部事实需要来源；无法确认时标注为推断或待查。
 4. 探索过程跟随用户问题和证据推进，不要求固定步骤、固定问题或固定输出。
 5. 长示例、历史错误和一次性提醒只作为诊断材料；写入 artifact 前提炼成可复用判断。
+6. Future change 尚未准备实施时不主动补全 apply-ready artifacts；需要进入实施准备时再转入 `$openspec-propose`。
 
 ## 完成信号
 

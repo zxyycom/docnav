@@ -1,7 +1,7 @@
 ---
 title: 用完整 adapter 行为检验边界
-status: active
-alignment: unaligned
+status: archived
+alignment: null
 createdAt: 2026-07-29T01:32:38Z
 purpose: 让 adapter 边界证据覆盖格式实现会实际经过的全部产品行为。
 background: 解析、导航、查找、读取和可读展示会分别暴露共享设计中的多余职责、缺失职责与格式特例。
