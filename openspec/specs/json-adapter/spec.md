@@ -2,9 +2,7 @@
 
 ## Purpose
 定义内置 JSON adapter 的 Current JSONC comment-aware 契约：静态注册、格式识别、closed grammar、comment attribution、canonical ref views、导航、读取、原文查找、info、full-read、安全边界与验证。Shared protocol、output shape 与 opaque ref pass-through 保持既有 owner。
-
 ## Requirements
-
 ### Requirement: JSON adapter 必须作为静态 linked adapter 提供
 
 `docnav-json` MUST 以 adapter id `docnav-json` 和一个 normalized format id `json` descriptor 暴露 registry-facing `AdapterDefinition` factory，并由 core static registry 链接进同一个 `docnav` 可执行文件。该 descriptor 的 `extensions[]` basename suffixes MUST 精确等于 `.json`、`.code-workspace`、`.jsonc`、`.code-snippets`、`.jsonld`、`.geojson`、`.har`、`.webmanifest`、`.ipynb` 和 `.sarif`；`filenames[]` exact basename hints MUST 精确等于 `.prettierrc`、`.watchmanconfig`、`Pipfile.lock` 和 `deno.lock`；`content_types[]` MUST 精确等于 `application/json` 与 `application/jsonc`。它 MUST NOT 声明其它 JSON-family pathname hint、adapter identity 或 format identity。
@@ -327,7 +325,6 @@ Invalid UTF-8 MUST use `DOCUMENT_ENCODING_UNSUPPORTED`。Malformed JSON/JSONC sy
 - **THEN** read or validation failure uses the applicable document or content diagnostic
 - **THEN** error id `json-document-changed-after-probe` is not emitted
 
-
 ### Requirement: JSONC comments 必须按syntax placement归属于direct binding或tail slot
 
 After parsing the closed grammar, `docnav-json` MUST assign every source comment exactly one attribution result：the logical root、one object member、one array element或一个`Tail(tail_anchor)` slot。Root、member与element分别以root selector、decoded key与canonical index作为direct navigation binding；array index在attribution与ref continuation中承担和object key相同的binding职责。Nested object/array tail的anchor MUST为该container logical value的canonical path，complete root后的document-tail anchor MUST为root path，包括root scalar。每个canonical tail-anchor path MUST至多对应一个tail slot；root container闭合符前与complete root后的tail comments MUST合并到root slot并保持source order。Attribution MUST使用本requirement拥有的source tokens、regions与lexical line boundaries；parser-provided previous/next attachment MUST NOT替代这些规则。A lexical line ends at LF、CRLF、lone CR或EOF；该attribution line model不改变Current LF-counted `find.location` behavior。
@@ -421,3 +418,58 @@ Adapter MUST按以下顺序处理每个 comment：
 - **WHEN** a direct target或tail slot owns only `//` or `/* */` comments whose derived bodies are empty
 - **THEN** outline uses the applicable direct-comment或tail ref but omits `summary`
 - **THEN** comment read still includes the raw comment token before the selected logical value
+
+### Requirement: JSON emitted refs round-trip through one compatible prepared view
+
+Eligible JSON work MUST be able to reuse one private prepared document after
+`docnav-json` is selected and execution reaches document access. That document
+contains the decoded JSONC source, logical tree, source regions, comment
+attribution, canonical-ref facts, and source-derived metadata. The
+implementation MAY split or combine private algorithms as needed; method count
+and callable shape are not part of this requirement.
+
+Every ref emitted by JSON outline or find MUST be complete and canonical under
+the Current base/direct-comment/tail grammar. Read with valid existing input
+MUST accept and successfully materialize that ref on the same prepared JSON
+view and on an independently prepared compatible view with identical source and
+relevant facts. Resolution MUST require no producer call order, in-memory node
+pointer, or producer-only state.
+
+The resolved selection MUST preserve Current JSON semantics: base refs produce
+strict JSON; direct-comment and tail refs produce their comment-aware JSONC
+projection. Correspondence to find evidence MAY be container-level or
+normalized and does not require the returned content to contain literal source
+punctuation, whitespace, comment boundary text, or original scalar spelling.
+
+#### Scenario: JSON outline ref round-trips
+
+- **WHEN** JSON outline emits a base, direct-comment, or tail ref
+- **THEN** read page `1` with the exact ref succeeds on the same prepared view
+- **THEN** read also succeeds after independently preparing identical JSON/JSONC source and relevant facts
+- **THEN** the selection uses the Current view-specific materialization
+
+#### Scenario: JSON find ref round-trips
+
+- **WHEN** JSON find attributes an original-source occurrence to a ref
+- **THEN** read with the exact ref succeeds on a compatible JSON view
+- **THEN** the selected base/direct/tail region corresponds to the occurrence under the Current JSON owner rules
+- **THEN** repeated occurrences MAY reuse the same ref
+
+#### Scenario: Multiple JSON refs or matches share a selection
+
+- **WHEN** more than one emitted ref or occurrence resolves to the same logical/container region
+- **THEN** each emitted ref independently satisfies canonicality and read success
+- **THEN** the contract does not require one-to-one ref/region identity
+
+#### Scenario: JSON view becomes incompatible
+
+- **WHEN** later source or relevant ref facts differ from the producer view
+- **THEN** Current JSON missing/invalid/current-view resolution behavior applies
+- **THEN** that incompatible-view outcome does not violate compatible-view consistency
+
+#### Scenario: JSON auxiliary facts reuse preparation
+
+- **WHEN** JSON info, cost, or unstructured full-read behavior participates in the same invocation
+- **THEN** it may reuse compatible prepared source/model facts
+- **THEN** its existing outward result semantics remain unchanged
+- **THEN** it does not become an alternative ref identity owner
