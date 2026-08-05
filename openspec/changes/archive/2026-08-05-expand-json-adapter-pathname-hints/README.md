@@ -12,11 +12,11 @@
 
 实施后，这九类 pathname 可以在未显式指定 adapter 时自动选择 `docnav-json`，并复用既有 `outline -> ref -> read`、find、info 和 full-read 行为。Hint 命中只表示“应交给 JSON adapter 尝试解析”，不表示文档满足 JSON-LD、GeoJSON、HAR、Notebook、SARIF 或 lockfile 等 profile 规范。
 
-## Current 基线与实施状态
+## Current 基线与归档状态
 
 Pre-change code、tests、CLI/release smoke 和主 `json-adapter` spec 已证明 `.jsonc`、`application/jsonc` 与统一 JSONC-capable grammar。Task 0 基于这些证据完成 change artifact 审计。
 
-本 change 的九个新增 hints 已由单一 manifest owner 实施，22 项 tasks 均已闭合，并同步为 Current owner/spec、semantic Cases、Rust projections、开发 CLI smoke 与 release-package smoke。Required/full workspace verification、strict OpenSpec validation 和 change Markdown 导航检查均已执行；change 已达到归档条件，但尚未 archive。
+本 change 的九个新增 hints 已由单一 manifest owner 实施，22 项 tasks 均已闭合，并同步为 Current owner/spec、semantic Cases、Rust projections、开发 CLI smoke 与 release-package smoke。Required/full workspace verification、strict OpenSpec validation 和 change Markdown 导航检查均已执行；change 已于 2026-08-05 归档，归档时主 `json-adapter` spec 已与 delta 同步。
 
 ## 边界
 
@@ -27,4 +27,4 @@ Pre-change code、tests、CLI/release smoke 和主 `json-adapter` spec 已证明
 1. 本 README 说明 change 范围、实施状态与阅读入口。
 2. [proposal.md](proposal.md) 记录问题、目标和可观察效果；[design.md](design.md) 记录 exact allowlist、owner 边界和验证决策。
 3. [specs/json-adapter/spec.md](specs/json-adapter/spec.md) 保存本 change 的完整 `MODIFIED` requirement；[tasks.md](tasks.md) 保存已完成的执行与审计证据清单。
-4. Current 产品契约以 [`docs/adapters/json.md`](../../../docs/adapters/json.md) 和 [main `json-adapter` spec](../../specs/json-adapter/spec.md) 为准；代码、tests 与 release artifacts 证明当前实现状态。
+4. Current 产品契约以 [`docs/adapters/json.md`](../../../../docs/adapters/json.md) 和 [main `json-adapter` spec](../../../specs/json-adapter/spec.md) 为准；代码、tests 与 release artifacts 证明当前实现状态。
