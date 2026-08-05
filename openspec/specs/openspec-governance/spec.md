@@ -28,6 +28,19 @@ Active change 中影响范围、方案、边界或验收的已确认判断 MUST 
 - **WHEN** 已确认判断在当前 change 之外仍作为默认方向，或会改变现有活动决策
 - **THEN** 归档该 change 前 MUST 按 `docs/navigation.md` 同步 owner 文档和长期决策记录
 
+### Requirement: Change detail follows implementation readiness
+尚未进入实施准备的 future change MUST 只保留问题、目标、边界和启动条件；跨 change 仍有意义的已确认方向与细节 MUST 进入长期决策，其余实现细节 MUST 等待实施准备。已经进入实施准备的 change MAY 细化设计、任务和验收依据；后来停止执行时 MUST 保留形成时方案，并 MUST 在恢复前根据届时当前基线和活动决策重新审计。
+
+#### Scenario: Future change 尚未准备实施
+- **WHEN** 一个 future change 尚未进入实施准备
+- **THEN** change MUST 保持粗略目标和启动边界，不提前展开只服务实施的细节
+- **THEN** 有跨 change 意义的已确认细节 MUST 由长期决策承接
+
+#### Scenario: 已细化 change 后来搁置
+- **WHEN** 一个已经进入实施准备并形成细节的 change 后来停止执行
+- **THEN** 形成时方案 MUST 继续作为该 change 的审计记录，不因当前未执行而被追溯性改粗
+- **THEN** 恢复实施前 MUST 根据届时当前基线和活动决策重新审计
+
 ### Requirement: Capability ID uses stable ownership naming
 OpenSpec capability ID MUST 表达长期主 spec 所有权，并 MUST 与一次性 change name 分离。Capability ID MUST 使用 kebab-case 名词或名词短语，MUST NOT 包含 `implement`、`implementation`、`change`、`task`、日期或临时版本阶段。
 

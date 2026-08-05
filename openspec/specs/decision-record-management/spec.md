@@ -1,7 +1,7 @@
 # decision-record-management Specification
 
 ## Purpose
-TBD - created by archiving change migrate-decision-records-v5. Update Purpose after archive.
+定义项目级长期决策的权威来源、生命周期、owner 分工、演进事务与可复现验证，并区分当前基线、已确认未来方向和实施 change 的作用。
 ## Requirements
 ### Requirement: 决策领域与记录是权威来源
 项目级决策集合 MUST 使用受控领域表和各自 Markdown 记录作为领域、内容、生命周期、对齐与关系的权威来源；派生索引 MUST 能从这些来源删除后重建，且 MUST NOT 反向拥有或补造决策状态。
@@ -32,10 +32,16 @@ TBD - created by archiving change migrate-decision-records-v5. Update Purpose af
 ### Requirement: 生命周期、对齐与演进使用显式事务
 项目级决策维护 MUST 区分未激活候选、活动已对齐、活动未对齐和已归档状态。激活、演进、标记对齐、归档和丢弃 MUST 使用对应显式维护动作；关系 MUST 只表达从新判断到直接前序的真实演进。
 
-#### Scenario: 活动目标尚未建立事实基线
-- **WHEN** 已确认决策已经生效但尚未与完整当前事实来源核对
+#### Scenario: 已确认方向尚未成为当前事实
+- **WHEN** 已确认决策表达未来方向但完整当前事实尚未实现该方向
 - **THEN** 记录保持 `active + unaligned`
-- **THEN** 后续工作仍必须遵守该决策的方向和明确约束
+- **THEN** 相关工作不必提前准备或实现，但必须注意不要主动增加障碍
+- **THEN** 在既有授权范围内能够顺手实现时可以一并完成
+
+#### Scenario: 未对齐状态不授权推进
+- **WHEN** 一条活动未对齐决策适用于当前工作，但当前请求或既定任务没有要求实施该方向
+- **THEN** agent 不得仅因该决策存在而扩大任务范围、提高优先级或提前建设实现
+- **THEN** 未缩小事实差距本身不构成一致性问题
 
 #### Scenario: 对齐基线经过事实核对
 - **WHEN** 维护者将完整活动决策与当前事实来源逐项核对且目标已满足
@@ -48,7 +54,7 @@ TBD - created by archiving change migrate-decision-records-v5. Update Purpose af
 - **THEN** 新活动记录能够脱离前序独立表达当前判断
 
 ### Requirement: 决策管理保持 owner 分工
-决策记录 MUST 只保存已确认且跨 change 仍有长期影响和回放价值的判断。稳定行为与 public contract MUST 由对应 owner 文档承接，change 内判断 MUST 留在对应 OpenSpec change，当前实现状态 MUST 由代码、测试和 release artifact 证明。
+决策记录 MUST 只保存已确认且跨 change 仍有长期影响和回放价值的方向与重要细节。已经成为当前基线的稳定行为与 public contract MUST 由对应 owner 文档承接，只服务一次实施的判断 MUST 留在对应 OpenSpec change，当前实现状态 MUST 由代码、测试和 release artifact 证明。
 
 #### Scenario: Change 内判断不自动进入全局记录
 - **WHEN** 一项已确认判断只约束当前 active change
