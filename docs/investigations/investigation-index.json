@@ -36,6 +36,36 @@
       }
     },
     {
+      "id": "product/json-yaml-compression-rendering.md",
+      "keys": {
+        "category": [
+          "product"
+        ],
+        "latest-report-at": [
+          1786008827000
+        ],
+        "status": [
+          "已结束"
+        ],
+        "text": [
+          "JSON/YAML 压缩渲染实现调查",
+          "JSON/YAML 压缩算法与 Docnav renderer 可迁移性核查",
+          "现有 token-reduction 工具在源码中怎样压缩、重排或摘要 JSON 与 YAML，它们如何处理重复结构、输出语法、信息丢失、回退和恢复，以及其中哪些机制适合作为 Docnav 未来格式专用 readable renderer 的设计输入？"
+        ]
+      },
+      "state": {
+        "latestReportAt": "2026-08-06T09:33:47+00:00",
+        "path": "product/json-yaml-compression-rendering.md",
+        "question": "现有 token-reduction 工具在源码中怎样压缩、重排或摘要 JSON 与 YAML，它们如何处理重复结构、输出语法、信息丢失、回退和恢复，以及其中哪些机制适合作为 Docnav 未来格式专用 readable renderer 的设计输入？",
+        "reportCount": 1,
+        "reportTitles": [
+          "JSON/YAML 压缩算法与 Docnav renderer 可迁移性核查"
+        ],
+        "status": "已结束",
+        "title": "JSON/YAML 压缩渲染实现调查"
+      }
+    },
+    {
       "id": "runtime/realtime-progress-reporting.md",
       "keys": {
         "category": [
@@ -87,5 +117,5 @@
   "metadata": {},
   "namespace": "investigations",
   "schemaVersion": 2,
-  "sourceRevision": "sha256:aa2b4cd221c9591dfc887932abf623bf52a56522c4071839519b647ceff12ffe"
+  "sourceRevision": "sha256:162bdb2543c886f25a5d9d74f60be571046a79eeaf8fd3b8243ca291e0b39977"
 }
