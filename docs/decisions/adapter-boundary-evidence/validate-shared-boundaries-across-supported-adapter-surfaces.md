@@ -1,14 +1,14 @@
 ---
-title: 以完整适配器表面验证共享边界
+title: 以当前支持的完整适配器表面验证共享边界
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-08-05T12:41:14Z
 purpose: 让 adapter 边界证据覆盖当前产品实际保留的选择、导航、读取与展示表面。
 background: 旧方向仍把已经删除的 probe 列为完整证据，可能让未来工作为不再存在的 surface 保留空间。
 decision: 完整证据覆盖当前选择链路、固定 operation、ref 与分页、结构化与全文读取、raw 与 readable 输出；格式需要专用展示时也要纳入验证。
 relations:
   - type: 修订
-    target: adapter-evolution/validate-boundaries-with-complete-adapter-behavior.md
+    target: adapter-boundary-evidence/validate-boundaries-with-complete-adapter-behavior.md
 ---
 
 ## 目的

@@ -9,7 +9,7 @@
 | 已核对 handoff | Decision 8 与“实施前审计记录” | 下游 change 接收单向 rebase；不要求其先实现，也不形成反向依赖 |
 | 独立后续 change | `support-jsonc-in-json-adapter` | JSONC grammar、parser dependency 与 exact JSON/JSONC semantics 不由本 change 决定 |
 
-正式调查主题 `docs/investigations/dependencies/format-routing-inference.md` 是证据 owner，不是批准 owner。活动决策 `docs/decisions/adapter-evolution/route-by-manifest-basename-hints.md` 保存跨 change 默认方向，并在本 change 应用前保持 `unaligned`；本 design 和十二份 delta specs 保存本 change 的已批准 Target。主规范、代码和测试在 apply 前仍描述 Current。
+正式调查主题 `docs/investigations/dependencies/format-routing-inference.md` 是证据 owner，不是批准 owner。活动决策 `docs/decisions/adapter-selection/route-by-manifest-basename-hints.md` 保存跨 change 默认方向，并在本 change 应用前保持 `unaligned`；本 design 和十二份 delta specs 保存本 change 的已批准 Target。主规范、代码和测试在 apply 前仍描述 Current。
 
 ## Context
 

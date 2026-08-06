@@ -17,7 +17,7 @@
 ## Authority and Reading Order
 
 1. 先读正式调查主题 [`docs/investigations/dependencies/format-routing-inference.md`](../../../docs/investigations/dependencies/format-routing-inference.md)，恢复候选比较、pathname alias 复查、限制和形成时建议。报告保存证据，不替代本 change 中已经确认的决策。
-2. 读长期活动决策 [`route-by-manifest-basename-hints`](../../../docs/decisions/adapter-evolution/route-by-manifest-basename-hints.md)，恢复跨 change 的已批准默认方向；其 `unaligned` 表示主规范和实现尚未完成迁移。前序 `route-by-manifest-pathname-hints` 已由该记录修订并归档。
+2. 读长期活动决策 [`route-by-manifest-basename-hints`](../../../docs/decisions/adapter-selection/route-by-manifest-basename-hints.md)，恢复跨 change 的已批准默认方向；其 `unaligned` 表示主规范和实现尚未完成迁移。前序 `route-by-manifest-pathname-hints` 已由该记录修订并归档。
 3. 读 [`proposal.md`](./proposal.md)，确认问题、breaking scope、capability 影响面和 non-goals。
 4. 读 [`design.md`](./design.md)，恢复获批 mechanism、exact outcomes、被拒绝方案与已完成的实施前审计。
 5. 按需读 [`specs/`](./specs/) 中的 capability delta；每份 delta 都是可独立读取、尚未应用的 Target，不覆盖主规范的 Current 状态。

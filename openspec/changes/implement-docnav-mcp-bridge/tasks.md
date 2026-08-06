@@ -1,10 +1,13 @@
-一句话核心：实现格式无关 MCP bridge，让 MCP Client 通过核心 `docnav` CLI 阅读文档。
+一句话核心：保存格式无关 MCP bridge 的未来实施清单，让 MCP Client 通过核心 `docnav` CLI 阅读文档。
 
-## 0. 审计门禁
+当前 change 处于 `product-deferred` 状态。以下任务只作为恢复上下文；产品状态与恢复条件以 [proposal](proposal.md) 为准。
 
-- [ ] 0.1 用户审计确认：用户已审计本 change 的 proposal、design、spec 和 tasks，并明确允许开始实现。
+## 0. 恢复门禁
 
-执行说明：0.1 完成前只进行审阅和文案修正；0.1 完成后按 1.x-4.x 执行实现与验证。
+- [ ] 0.1 产品恢复确认：明确批准 MCP bridge 进入当前产品实施排序；change 存在、artifact 完整或技术可行不能替代该批准。
+- [ ] 0.2 Current 与 artifact 审计：从届时 adapter lifecycle、find、protocol 和 output 的 Current 基线重新审计 tool schema、映射与分发边界，按审计结果同步 proposal、design、spec 和 tasks，并明确批准按同步后的 artifacts 实施。
+
+执行说明：0.1 与 0.2 都完成前只进行审阅、重新基线和文案修正；任何单一门禁都不能启动 1.x-4.x。
 
 ## 1. MCP 包与 Tool 声明
 
@@ -30,7 +33,7 @@
 - [ ] 2.5 固定所有 document tool 的输出模式。
   验收：每次调用核心 CLI 都传入 `--output protocol-json`，bridge 校验 stdout `ProtocolResponse` 后再映射 structuredContent。
 - [ ] 2.6 保持 MCP adapter 参数为透传参数。
-  验收：MCP 可选 `adapter` 原样映射为 `docnav --adapter <adapter-id>`；adapter id 解释、格式识别和候选继续遍历由核心 CLI 完成。
+  验收：MCP 可选 `adapter` 原样映射为 `docnav --adapter <adapter-id>`；explicit adapter lookup、manifest pathname routing、selected-document validation 和 no-fallback 行为继续由核心 CLI 完成。
 
 ## 3. MCP 输出
 

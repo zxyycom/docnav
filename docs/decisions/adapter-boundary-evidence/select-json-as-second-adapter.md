@@ -1,7 +1,7 @@
 ---
 title: 选择 JSON 作为第二个真实适配器
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-07-28T11:57:52Z
 purpose: 以范围可控且足够异构的格式建立第二个真实 adapter 边界样本。
 background: JSON 简单常用，树导航不同于 Markdown，又比代码、HTML 或 PDF 更少混入解析复杂度。

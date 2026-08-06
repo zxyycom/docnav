@@ -1,7 +1,7 @@
 ---
 title: JSON 引用采用规范化树路径
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-07-28T11:57:52Z
 purpose: 让每个可导航 JSON 节点拥有唯一、可解释且能安全经过 CLI argv 的 adapter-owned ref。
 background: JSON 天然以树路径定位节点，但 raw pointer 可包含控制字符，生成式 ID 又会丢失路径语义。

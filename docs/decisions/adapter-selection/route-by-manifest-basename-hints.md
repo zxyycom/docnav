@@ -1,14 +1,14 @@
 ---
 title: 先按完整 basename 路由再读取文档
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-08-03T03:12:20Z
 purpose: 以纯 pathname、零新增依赖的确定性匹配先选择 adapter，再进入真实文件处理。
 background: 末段 extension 提取不能自然表达复合 suffix，且文件存在性与内容不应成为快速路由的前置条件。
 decision: 先匹配 exact filename，再对完整 basename 做大小写归一化 suffix 匹配；命中事实保持私有，选中后才读取并解析。
 relations:
   - type: 修订
-    target: adapter-evolution/route-by-manifest-pathname-hints.md
+    target: adapter-selection/route-by-manifest-pathname-hints.md
 ---
 
 ## 目的

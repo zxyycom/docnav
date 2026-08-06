@@ -1,5 +1,9 @@
 **一句话核心：MCP bridge 是薄接入层，只做 tool 声明、参数映射和阅读输出包装。**
 
+## 文档状态
+
+本 design 只描述 `product-deferred` 的未来 target，不表示 Current 或实施授权。产品状态与恢复条件以 [proposal](proposal.md) 为准；必须按 [tasks](tasks.md) 先完成产品恢复和 Current 基线审计，才能使用后续设计与实现任务。
+
 ## Context
 
 `docnav-mcp` 必须使用 Node.js/JavaScript，通过 stdio 暴露 MCP transport。它依赖系统可调用的 `docnav` 核心 CLI，不直接调用 adapter，也不拥有格式识别和 adapter 管理职责。
@@ -17,7 +21,7 @@
 **Non-Goals:**
 
 - Markdown 和其它格式内容由 adapter 解析；MCP bridge 只处理 tool 输入输出包装。
-- Adapter probe、格式识别和 adapter 选择由核心 `docnav` CLI 执行。
+- Pathname routing、格式识别和 adapter 选择由核心 `docnav` CLI 执行。
 - Adapter 安装管理由 adapter 管理 change 实现。
 - MCP structuredContent 使用 tool-owned outputSchema，不把完整 protocol envelope 暴露为 tool result shape。
 
@@ -39,7 +43,7 @@
 
 4. MCP adapter 参数原样映射为 `docnav --adapter`。
    - MCP bridge 不解释 adapter id，不执行格式识别。
-   - 失败处理和候选继续遍历由核心 CLI 完成。
+   - Caller 声明 adapter id 时由核心 CLI 做 exact lookup；省略时由核心 CLI 执行 Current manifest pathname routing。Selected failure 的诊断和 no-fallback 行为仍由核心 CLI 拥有。
 
 5. 错误返回保留阅读语义。
    - MCP structuredContent 和 TextContent 映射 `ProtocolResponse::Failure.error`，至少保留 code/message/owner，并在存在时保留 guidance/details。

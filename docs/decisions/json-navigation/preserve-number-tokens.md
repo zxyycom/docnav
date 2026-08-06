@@ -1,7 +1,7 @@
 ---
 title: 保留 JSON 数字的原始 token
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-07-28T11:57:52Z
 purpose: 让合法 JSON number 在解析、导航和结构化读取之间保持同一文本身份。
 background: JSON 导航观察 number token，常见整数或浮点模型无法无损承载全部合法 token。

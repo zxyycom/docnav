@@ -1,14 +1,14 @@
 ---
 title: 分离结构化语义读取与原文读取
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-07-28T11:57:53Z
 purpose: 让结构化导航返回节点语义，同时为需要完整源码 spelling 和布局的调用方保留明确入口。
 background: 语义序列化与逐字节源码保真面向不同读取需求，并需要不同的 adapter 数据责任。
 decision: Structured read 拥有选中节点的格式语义，unstructured full-read 拥有完整原文。
 relations:
   - type: 修订
-    target: navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md
+    target: structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md
 ---
 
 ## 目的

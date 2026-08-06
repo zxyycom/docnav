@@ -1,4 +1,4 @@
-本 spec delta 定义 `interactive-outline-selection` 对 `core-cli` 的新增行为要求：`docnav outline <path> --interactive` 提供面向人类的 outline 选择与 read 编排；当前 change 只在 `openspec/changes/interactive-outline-selection/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 spec delta 只描述 `product-deferred` 的 `interactive-outline-selection` target requirements：`docnav outline <path> --interactive` 提供面向人类的 outline 选择与 read 编排。下方 `MUST` 不表示 Current，也不授权实施；恢复条件见 [proposal](../../proposal.md)，执行前必须按 [tasks](../../tasks.md) 完成产品恢复、Current 基线审计和 artifact 复核。
 
 ## ADDED Requirements
 

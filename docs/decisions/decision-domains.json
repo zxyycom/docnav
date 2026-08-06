@@ -2,8 +2,16 @@
   "schemaVersion": 1,
   "domains": [
     {
-      "id": "adapter-evolution",
-      "description": "维护格式扩展、真实 adapter 样本、完整行为证据与共享抽象门槛的长期方向。"
+      "id": "adapter-boundary-evidence",
+      "description": "维护真实 adapter 样本、完整受支持行为证据与共享抽象提炼门槛的长期方向。"
+    },
+    {
+      "id": "adapter-document-lifecycle",
+      "description": "维护 selected adapter 的调用内文档准备、状态复用、生命周期与公共边界的长期方向。"
+    },
+    {
+      "id": "adapter-selection",
+      "description": "维护 manifest pathname routing、显式 adapter 选择、选中后验证与 no-fallback 边界的长期方向。"
     },
     {
       "id": "decision-management",
@@ -14,12 +22,16 @@
       "description": "维护 JSON 导航的 ref、树遍历、原文查找、解析保真、输入约束、安全上限与结构化序列化方向。"
     },
     {
-      "id": "navigation-output",
-      "description": "维护跨格式结构化读取、源码保真、raw/readable 输出分层与自定义渲染的长期方向。"
+      "id": "product-direction",
+      "description": "维护产品阶段、能力与格式扩展排序、探索与交付边界以及入口扩张时机的长期方向。"
     },
     {
-      "id": "product-direction",
-      "description": "维护产品阶段、能力排序、探索与交付边界以及入口扩张时机的长期方向。"
+      "id": "readable-presentation",
+      "description": "维护 readable-view 的格式专用展示、renderer 责任与 raw protocol 隔离的长期方向。"
+    },
+    {
+      "id": "structured-read-semantics",
+      "description": "维护跨格式 structured selection、完整 source text、source fidelity 与 format-owned ordering 的长期方向。"
     },
     {
       "id": "validation-governance",

@@ -1,4 +1,4 @@
-Current JSON readable 行为仍是 generic `readable-view`；本临时 delta spec 只固定 Target JSON 专用 presentation 已确认的 output/raw/ref 边界。逐 operation presentation 与 selection semantics 尚未决定，因此在 design 开放问题关闭并补全 requirements 前不得实施。
+本 delta spec 只固定 `implementation-blocked` JSON presentation target 已确认的 output/raw/ref 边界。下方 `MUST` 不表示 Current，也不授权实施；Current 仍是 generic `readable-view`。恢复条件见 [proposal](../../proposal.md)，执行前必须按 [tasks](../../tasks.md) 关闭 design 开放问题并补全逐 operation presentation 与 selection requirements。
 
 ## ADDED Requirements
 

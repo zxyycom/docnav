@@ -1,4 +1,9 @@
-本 tasks 列出 `interactive-outline-selection` 的实现前审计门禁和后续工作分解：为 `docnav outline <path>` 增加面向人类的交互式选择与 read 编排；当前 change 只在 `openspec/changes/interactive-outline-selection/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 tasks 保存 `interactive-outline-selection` 的未来恢复门禁和工作分解。当前 change 处于 `product-deferred` 状态；产品状态与恢复条件以 [proposal](proposal.md) 为准。
+
+## 0. 产品恢复门禁
+
+- [ ] 0.1 产品恢复确认：明确批准 interactive outline 进入当前产品实施排序；change 存在、任务完整或 1.x 审计完成都不能替代该批准。
+- [ ] 0.2 Current 基线审计：从届时 CLI、ref、output 和 adapter lifecycle 的 Current 基线重新审计交互式入口，按审计结果同步 proposal、design、spec 和 tasks；完成前不得开始 2.x 或后续实现工作。
 
 ## 1. 阻塞级审计门禁
 

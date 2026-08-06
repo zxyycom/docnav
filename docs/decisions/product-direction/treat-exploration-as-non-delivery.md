@@ -1,7 +1,7 @@
 ---
 title: 探索材料不形成交付承诺
 status: active
-alignment: unaligned
+alignment: aligned
 createdAt: 2026-08-05T06:47:42Z
 purpose: 让方向探索与正式 change、实施优先级和产品承诺保持清楚边界。
 background: Operation composition 材料用于持续挖掘候选体验，但宽泛候选和开放问题不能直接充当可实施契约。

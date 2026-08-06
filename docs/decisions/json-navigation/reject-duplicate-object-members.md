@@ -10,7 +10,7 @@ relations: []
 ---
 
 ## 目的
-- 让一个 canonical JSON path 对成功 probe 的文档最多指向一个节点。
+- 让一个 canonical JSON path 对成功接受的文档最多指向一个 logical node。
 - 让成功 parse 表示所有输入 member 都已保留且可由 tree path 唯一访问。
 
 ## 背景
@@ -19,6 +19,6 @@ relations: []
 - 若同一 object 中存在 decoded name 相同的多个 member，JSON Pointer 无法唯一表达它们的身份。
 
 ## 决策
-- 采用: JSON adapter 必须在每一层 object 中按 decoded member name 检测重复；成功输入的 member name 唯一，重复输入标记为 unsupported。
+- 采用: JSON adapter 必须在每一层 object 中按 decoded member name 检测重复；成功输入的 member name 唯一，重复输入被拒绝。
 - 采用: Unicode escape 等不同源码 spelling 解码为相同 name 时仍视为重复。
 - 采用: 检测属于 JSON adapter 的 decode 责任，成功结果采用唯一 member 与唯一 path 语义。

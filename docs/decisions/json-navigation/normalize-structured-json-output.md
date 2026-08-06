@@ -1,14 +1,14 @@
 ---
 title: 规范化 JSON 结构化读取输出
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-07-28T11:58:10Z
 purpose: 让 raw structured JSON 以稳定 serializer spelling 和布局表达选中 value。
 background: JSON 解析后空白和 escape spelling 会自然规范化，而数字、重复 key 与顺序另有独立正确性边界。
 decision: 使用 pinned parser 和 serializer 的自然结果及两空格布局，只保留由独立决策要求的格式事实。
 relations:
   - type: 修订
-    target: navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md
+    target: structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md
 ---
 
 ## 目的

@@ -11,7 +11,7 @@ Current automatic selection 按 static registry 顺序逐个执行 adapter probe
 - **已确认**：无 pathname hint 时只返回 `FORMAT_UNKNOWN + FORMAT_NOT_RECOGNIZED`；manifest-derived index 不产生“识别出 format 但 registry 无 adapter”或 document-level ambiguity。Explicit adapter intent 跳过 automatic routing并强制 selected adapter 执行真实解析。
 - **已确认**：probe 删除后，selected JSON syntax、trailing-input、duplicate-member 与 depth failure 使用新增 `DOCUMENT_CONTENT_INVALID` 和 JSON-owned stable reason；routing 不把它们重写成 selection 或 internal failure。
 - **证据 owner**：正式调查主题 `docs/investigations/dependencies/format-routing-inference.md` 拥有候选功能、重量、生态、活跃度、pathname alias 复查和限制证据；它不取代本 proposal/design 中的批准状态。
-- **决策 owner**：活动决策 `docs/decisions/adapter-evolution/route-by-manifest-basename-hints.md` 保存跨 change 的批准方向，并在本 change 应用前保持 `unaligned`；本 proposal/design 保存本 change 的 exact Target。
+- **决策 owner**：活动决策 `docs/decisions/adapter-selection/route-by-manifest-basename-hints.md` 保存跨 change 的批准方向，并在本 change 应用前保持 `unaligned`；本 proposal/design 保存本 change 的 exact Target。
 - **实施就绪状态**：tasks 0.1–0.11 已完成，sections 1–7 可以按 tasks 的测试、同步、实现和验证顺序开始；尚未把 Target 应用到 Cargo、lockfile、production code、owner docs、schema、examples、fixtures、tests 或 release artifacts。
 
 ## What Changes

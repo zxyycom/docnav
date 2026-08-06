@@ -1,5 +1,5 @@
 ---
-title: JSON 查找使用原文语料
+title: JSON 查找使用源码文本语料
 status: active
 alignment: aligned
 createdAt: 2026-07-29T01:32:38Z

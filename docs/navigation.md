@@ -112,6 +112,12 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 5. 载体之间不一致时，当前稳定规则以 owner 文档为准，当前实现以代码、测试和 release artifact 为准，未来方向以活动决策为准，实施计划以 active change 为准；随后同步失配载体。
 6. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态、对齐和关系由各条决策 Markdown 拥有，[决策索引](decisions/decision-index.json) 只提供可重建查询视图。
 
+**一旧多新的关系降级：** 决策关系只表达真实语义演进，不作为一般 provenance。具体边界由 [仅在关系模型无法表达一旧多新拆分时允许部分关系连续性](decisions/decision-management/allow-partial-lineage-for-unrepresentable-one-to-many-splits.md)拥有。
+
+- 触发条件：一个混合旧决策需要拆成多个独立 successor，但当前 CLI 或关系类型无法完整表达一旧多新。
+- 当前做法：不等待上游更新；能够真实表达演进的 successor 记录直接关系，其余 successor 可以无关系建立，并暂时接受部分 lineage 丢失。不得为补齐 trace 伪造 `修订`、`替代` 或 `归并`。
+- 升级条件：上游提供正式 decomposition 能力后，新拆分改用正式机制；既有缺口不默认批量回填。
+
 活动决策已经确认。`aligned` 表示完整方向已与相关当前事实核对并建立为持续基线；`unaligned` 表示已经确认但尚未成为当前事实的未来方向。相关工作把未对齐方向作为未来演进输入，在满足本次任务的可行方案中优先保留通向该方向的路径，并可在当前任务范围已经覆盖时顺手推进。对齐状态说明方向与当前事实的关系；本次任务范围来自当前请求，未来先后关系来自决策正文。已对齐基线后来与事实偏离时按一致性问题处理。
 
 ## 规则所有权
@@ -121,7 +127,7 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 | 规则面 | Owner 文档 |
 | --- | --- |
 | 长期决策、OpenSpec change 与 owner 规范的分工、同步和冲突处理 | 本文档 |
-| 项目级长期决策的领域、内容、生命周期、对齐和直接演进关系 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
+| 项目级长期决策的领域、内容、生命周期、对齐和直接演进关系 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；领域划分遵循[按主要被改变契约组织决策领域](decisions/decision-management/organize-decision-domains-by-primary-changed-contract.md)，通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
 | 组件职责、输出分层、adapter document 在系统中的高层生命周期位置、调用链和运行边界 | [架构](architecture.md) |
 | adapter library interface、manifest format identity/pathname hints、fixed public operation、无 I/O factory、private state enclosure、adapter 选择、registry invariant、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、lexical routing pathname 与 post-selection document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
@@ -157,6 +163,8 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 | ref | adapter 生成和解析的非空 opaque string；共享层只原样传递。 |
 | readable output | 面向人类和 AI 的 `readable-view` 文本；CLI 使用内置 renderer，linked caller 可以通过 shared output API 注入自定义 renderer。规则见 [输出模式](output.md)。 |
 | protocol output | 面向脚本、调试和兼容校验的稳定 envelope；协议语义见 [原始协议](protocol.md)，CLI 模式见 [输出模式](output.md)。 |
+| `product-deferred` | 已确认的未来产品方向尚未进入当前实施排序；只允许维护或重新基线 artifacts。恢复时先取得明确的产品排序批准，再审计届时 Current 基线。它是文档内 planning 语义，不是 OpenSpec CLI 生命周期状态；工具显示 `in-progress` 不构成实施授权。 |
+| `implementation-blocked` | Change 已有 target 和允许推进的门禁任务，但在明确列出的 contract、设计或批准门禁关闭前不得修改 owner、测试或实现。它不表示 target 已是 Current。 |
 | current test entity（当前测试实体） | 当前源码中能被 supported runner profile 静态发现、并由 runner 报告的可寻址测试节点；存在性和身份来自当前源码与 runner，不来自 committed 清单。 |
 | Semantic Case（语义 Case） | `testing/cases/<topic>.md` 中人工维护的当前 implemented 测试目的；通过 `Owner`、`Proves` 和 `Entities` 连接行为契约与当前测试实体，完整规则见[语义测试 Case 维护](testing/case-maintenance.md)。 |
 | Topic | 由 [Case topic 表](testing/cases/topics.json)控制的有界查询分类；Topic 分组 Case，但不拥有行为契约，也不替代 Case 的 `Owner`。 |

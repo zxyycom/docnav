@@ -1,22 +1,23 @@
-本 change 的目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
+本 change 的未来目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
 
-本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 tasks，不修改或替代现有主规范、其它文档或其它 change。已完成的 1.1 只证明 2026-07-20 起草基线的结构审计；`replace-probe-traversal-with-inferred-routing` 的 handoff 尚未闭合，因此 1.2 完成前不得执行 2.x 或任何 production/dependency 修改。
+当前 change 处于 `product-deferred` 状态。以下任务只作为恢复上下文；产品状态与恢复条件以 [proposal](proposal.md) 为准。已完成的 1.1 只证明 2026-07-20 起草基线，不关闭当前恢复门禁。
 
-## 1. 阻塞级实现前审计
+## 1. 恢复与审计门禁
 
-- [x] 1.1 完成旧起草基线的阻塞审计；审计完成前不得执行任何 2.x 及后续实现任务。结论（2026-07-20）：proposal、design、两份 delta specs 和 tasks 均围绕核心句；`code-adapter` 是稳定新 owner，`release-artifacts` 复用准确；本 change 只包含自身目录下的未审核临时 artifacts，未修改其它 docs/specs/changes；`## Open Questions` 无未回答问题或歧义。该基线门禁当时解除，但不替代新增的 routing handoff task 1.2。
-- [ ] 1.2 在 `replace-probe-traversal-with-inferred-routing` 完成最终 owner contract、implementation 和 validation 后，按其 Current no-probe/exact-routing 基线重写本 change 内所有 probe、registry-order 与 format-selection 描述，并重新运行 blocking artifact audit。此任务只接收 routing handoff，不选择 inference dependency、code format mapping、ast-grep dependency 或 parser 实现。
+- [x] 1.1 历史起草审计（2026-07-20）：proposal、design、两份 delta specs 和 tasks 当时围绕同一核心目标，owner 与 capability 选择一致，且无未回答的 `## Open Questions`。该结果只保存历史审计上下文，不证明当前产品时机、Current 对齐或 implementation readiness。
+- [ ] 1.2 产品恢复确认：明确批准 code adapter 进入当前产品实施排序；change 存在、artifact 完整、routing 已可用或依赖可集成都不能替代该批准。
+- [ ] 1.3 Current 与 artifact 审计：从届时 adapter、manifest pathname routing、ref、output、testing 和 release owner 重新审计 target contract，按结果同步 proposal、design、两份 delta specs 和 tasks；确认不存在 probe、registry-order selection、matched-format input 或其它已删除 surface，并明确批准按同步后的 artifacts 实施。
 
 ## 2. 实现基线与依赖接入
 
-- [ ] 2.1 在任务 1.2 完成后，依次读取 `docs/coding-style.md`、`docs/testing.md`、architecture/adapter/ref/release 行为 owner 和 `docs/testing/case-maintenance.md`，记录本 change 的当前证明目标、最小验证命令，以及必须保留的 Current JSON workspace/registry/release-smoke 基线。
+- [ ] 2.1 在任务 1.2 和 1.3 完成后，依次读取 `docs/coding-style.md`、`docs/testing.md`、architecture/adapter/ref/release 行为 owner 和 `docs/testing/case-maintenance.md`，记录本 change 的当前证明目标、最小验证命令，以及必须保留的 Current JSON workspace/registry/release-smoke 基线。
 - [ ] 2.2 在 workspace 中精确锁定互相兼容的 `ast-grep-core`、`ast-grep-language`、`ast-grep-outline` 版本，关闭全语言默认 features，只启用 Rust、JavaScript、TypeScript/TSX 和 Python parser，并用 `cargo tree -e features` 验证 feature closure；不得把测试证据发现使用的开发期 `@ast-grep/cli`、规则或 wrapper 复用为产品依赖。
 - [ ] 2.3 新增 `crates/adapters/code` workspace crate 和最小 public definition factory，接入既有 adapter contracts、protocol、diagnostics、text-cost 与 SHA-256 helper，不增加通用 engine trait 或新的 shared crate。
 - [ ] 2.4 完成新增依赖的 license、来源、Rust 1.96.0 compatibility 和 release binary size 变化检查，并把证据放入既有质量/发布 owner。
 
 ## 3. 格式、parser 与私有模型
 
-- [ ] 3.1 实现 extension、format id、content type 与 `SupportLang` 的 closed mapping，以及 `docnav-code` manifest/probe tests；证明一个 definition 暴露五个 formats、未知 extension 被拒绝且无 caller-configurable 参数。
+- [ ] 3.1 按任务 1.3 复核后的 Current routing contract，实现 pathname hint、format id、content type 与 `SupportLang` 的 closed mapping及对应 routing tests；证明一个 definition 暴露五个 formats、automatic routing 在文档 I/O 前完成、显式选择仍验证 pathname mapping，且没有 probe 或 caller-configurable 格式参数。
 - [ ] 3.2 实现按语言过滤 `DEFAULT_OUTLINE_RULES`、构造/复用 `CombinedExtractors` 和进程内 `SupportLang::ast_grep` 的私有解析路径，并用 tests 证明初始化失败映射为稳定 adapter diagnostic。
 - [ ] 3.3 实现 owned `CodeSymbol` 转换及五个 language fixtures；覆盖 imports、functions、types/classes、direct members、Unicode 标识符和 recoverable incomplete syntax，并证明 ast-grep 类型与原始 error 不越过 adapter 边界。
 

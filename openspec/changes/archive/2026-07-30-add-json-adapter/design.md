@@ -16,14 +16,14 @@ JSON adapter 将成为第二个真实实现。它沿现有 crate、factory、reg
 
 | ID | 长期 owner | JSON 应用 | 状态 |
 | --- | --- | --- | --- |
-| A0 | [检验共享抽象](../../../docs/decisions/adapter-evolution/validate-boundaries-with-real-adapters.md)；[检验完整 adapter 行为](../../../docs/decisions/adapter-evolution/validate-boundaries-with-complete-adapter-behavior.md)；[选择 JSON](../../../docs/decisions/adapter-evolution/select-json-as-second-adapter.md) | 第二个真实 adapter 使用 JSON，并依次走通 fixed operations、full-read、generic output 与后续格式专用 readable presentation；依据类型明确为架构验证 | **CONFIRMED** |
+| A0 | [检验共享抽象](../../../docs/decisions/adapter-boundary-evidence/validate-shared-abstractions-with-heterogeneous-real-adapters.md)；[检验完整 adapter 行为](../../../docs/decisions/adapter-boundary-evidence/validate-boundaries-with-complete-adapter-behavior.md)；[选择 JSON](../../../docs/decisions/adapter-boundary-evidence/select-json-as-second-adapter.md) | 第二个真实 adapter 使用 JSON，并依次走通 fixed operations、full-read、generic output 与后续格式专用 readable presentation；依据类型明确为架构验证 | **CONFIRMED** |
 | A1 | [JSON tree-path ref](../../../docs/decisions/json-navigation/use-canonical-json-pointer-refs.md) | 公开 ref 使用 canonical、ASCII-safe 的 `json:#<RFC 6901 URI fragment>`；core 保持 opaque pass-through | **CONFIRMED** |
 | A2 | [保留 number token](../../../docs/decisions/json-navigation/preserve-number-tokens.md) | Raw token 是 number 的可观察文本身份；arithmetic equivalence 位于导航能力之外 | **CONFIRMED** |
 | A3 | [唯一 object member](../../../docs/decisions/json-navigation/reject-duplicate-object-members.md) | Probe 只接受 decoded member name 唯一的 object，使 parser 结果和 ref identity 都保持唯一 | **CONFIRMED** |
 | A4 | [Adapter-private depth](../../../docs/decisions/json-navigation/keep-depth-limit-adapter-private.md) | Root depth 为 `0`、最大 depth 为 `127`，由单一私有硬编码配置拥有；公共 input inventory 保持当前契约 | **CONFIRMED** |
-| A5a | [源码顺序成本策略](../../../docs/decisions/navigation-output/treat-source-order-as-costed-format-policy.md) | Adapter-private decode model 用唯一 member `Vec` 直接保留 object source order；outline 与 structured read 使用该顺序 | **CONFIRMED** |
-| A5b | [JSON structured output](../../../docs/decisions/json-navigation/normalize-structured-json-output.md)；[structured/full-read 分层](../../../docs/decisions/navigation-output/separate-structured-and-source-reads.md) | Raw structured read 使用 object source order、pinned serializer 的自然 spelling 和两空格布局；number token 是明确例外，full-read 返回原文 | **CONFIRMED** |
-| A5c | [自定义渲染边界](../../../docs/decisions/navigation-output/keep-custom-rendering-in-readable-view.md) | 当前 change 用 generic `readable-view` 走通每个 operation 并记录格式假设；后续 change 基于稳定 raw facts 确定 JSON 信息密度、完整 opaque ref 的路径定位信号、标点、preview、分页显示与 renderer mechanics，不解析 ref 或合成 hierarchy/depth/parent/indentation | **SEQUENCED** — 由任务 6.4 建立后续 change |
+| A5a | [源码顺序成本策略](../../../docs/decisions/structured-read-semantics/treat-source-order-as-costed-format-policy.md) | Adapter-private decode model 用唯一 member `Vec` 直接保留 object source order；outline 与 structured read 使用该顺序 | **CONFIRMED** |
+| A5b | [JSON structured output](../../../docs/decisions/json-navigation/normalize-structured-json-output.md)；[structured/full-read 分层](../../../docs/decisions/structured-read-semantics/separate-structured-and-source-reads.md) | Raw structured read 使用 object source order、pinned serializer 的自然 spelling 和两空格布局；number token 是明确例外，full-read 返回原文 | **CONFIRMED** |
+| A5c | [自定义渲染边界](../../../docs/decisions/readable-presentation/keep-custom-rendering-in-readable-view.md) | 当前 change 用 generic `readable-view` 走通每个 operation 并记录格式假设；后续 change 基于稳定 raw facts 确定 JSON 信息密度、完整 opaque ref 的路径定位信号、标点、preview、分页显示与 renderer mechanics，不解析 ref 或合成 hierarchy/depth/parent/indentation | **SEQUENCED** — 由任务 6.4 建立后续 change |
 | A7 | [原文 find](../../../docs/decisions/json-navigation/search-original-json-source.md) | JSON `find` 对 BOM-stripped 原文执行 literal search，并把源码命中确定性映射为可继续读取的 JSON ref | **CONFIRMED** |
 
 A6 是范围边界：本 change 拥有 JSON definition 的追加和兼容性证据；registry 整体治理继续由既有 owner contract 承接。
@@ -182,7 +182,7 @@ Raw protocol `read.content` 已由 A5b 决定。当前 change 先让 probe、out
 
 以下两条记录保持 `active + unaligned`，没有因 raw adapter 或 generic renderer 已可用而提前建立基线：
 
-- `adapter-evolution/validate-boundaries-with-complete-adapter-behavior.md`：probe、固定 operations、full-read 和 generic `readable-view` 已交付，但格式专用 readable presentation 及其完成后的整体验证观察尚未交付。
-- `navigation-output/keep-custom-rendering-in-readable-view.md`：shared output 已保持 raw/readable 分层，JSON raw facts 也已稳定；仍缺经批准的 JSON presentation contract、format-aware renderer/selection mechanics 以及对应 tests、CLI 和 package evidence。
+- `adapter-boundary-evidence/validate-boundaries-with-complete-adapter-behavior.md`：probe、固定 operations、full-read 和 generic `readable-view` 已交付，但格式专用 readable presentation 及其完成后的整体验证观察尚未交付。
+- `readable-presentation/keep-custom-rendering-in-readable-view.md`：shared output 已保持 raw/readable 分层，JSON raw facts 也已稳定；仍缺经批准的 JSON presentation contract、format-aware renderer/selection mechanics 以及对应 tests、CLI 和 package evidence。
 
 上述差距由任务 6.4 建立的 `add-json-readable-renderer` change 承接；在该 presentation change 完成前，两条记录继续作为已生效但未对齐的长期方向。

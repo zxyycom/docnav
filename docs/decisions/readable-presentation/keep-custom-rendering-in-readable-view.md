@@ -1,14 +1,14 @@
 ---
 title: 自定义渲染由可读视图拥有
-status: active
-alignment: unaligned
+status: archived
+alignment: null
 createdAt: 2026-07-28T11:58:11Z
 purpose: 让格式专用的人类展示独立演进，并保持 raw protocol 与可继续导航事实稳定。
 background: 信息密度、层级和 preview 是 presentation 选择，adapter operation result 是机器事实。
 decision: 自定义渲染由 readable-view 拥有，并以既有 raw facts 作为唯一输入契约。
 relations:
   - type: 修订
-    target: navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md
+    target: structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md
 ---
 
 ## 目的

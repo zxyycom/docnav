@@ -1,5 +1,5 @@
 ---
-title: 让 change 细节服务当前阶段
+title: 让 OpenSpec change 细节匹配生命周期阶段
 status: active
 alignment: aligned
 createdAt: 2026-08-05T14:30:08Z

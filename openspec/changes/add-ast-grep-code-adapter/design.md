@@ -1,6 +1,8 @@
-本 change 的目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
+本 change 的未来目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
 
-本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 design，不修改或替代现有主规范、其它文档或其它 change。
+## 文档状态
+
+本 design 只描述 `product-deferred` 的未来 target，不表示 Current 或实施授权。产品状态与恢复条件以 [proposal](proposal.md) 为准；必须按 [tasks](tasks.md) 先完成产品恢复和 Current 基线审计，才能使用后续设计与实现任务。
 
 ## Context
 
@@ -17,12 +19,11 @@ ast-grep 0.44.1 已发布可直接使用的 `ast-grep-core`、`ast-grep-language
 
 `add-json-adapter` 已归档，现有 JSON linked definition、workspace membership 和 release-smoke 证据是本 change 必须保留的 Current 基线。
 
-本 design 的 probe 与 registry-order 文字形成于
-`replace-probe-traversal-with-inferred-routing` 之前。该 routing change 是
-automatic-selection 语义的 sequencing predecessor；在它成为 Current 后，
-本 change 必须先在自己的 artifacts 中重写相关 contract，再选择 code-adapter
-依赖或修改 production。这个顺序不预选 inference library、format mapping 或
-ast-grep 内部实现。
+Current automatic selection 使用 manifest pathname routing：core 在目标文档 I/O 前先匹配
+exact filename，再匹配最长的 normalized basename suffix；matched hint 与 format identity
+保持 navigation-private，不进入 adapter input。显式 adapter id 跳过 automatic routing，
+但 selected adapter 仍须从实际 normalized path 和文档验证自己支持的格式。Code adapter
+target 复用该边界，不定义 probe、registry-order selection 或 content sniffing。
 
 ## Goals / Non-Goals
 
@@ -53,9 +54,9 @@ ast-grep 内部实现。
 
 ### Decision 2: 一个 linked adapter 承载多个代码格式
 
-新增一个 `docnav-code` definition。manifest 声明 `rust`、`typescript`、`tsx`、`javascript` 和 `python` 五个 format id；`.jsx` 由 `javascript` format 和 `SupportLang::JavaScript` 处理。probe 只依据受支持扩展名返回具体 format，未知扩展名不猜测内容。
+新增一个 `docnav-code` definition。Manifest 声明 `rust`、`typescript`、`tsx`、`javascript` 和 `python` 五个 format id 及其 pathname suffix；`.jsx` 由 `javascript` format 和 `SupportLang::JavaScript` 处理。Core automatic routing 只消费 manifest hints；selected `AdapterDocument` 从 normalized path 应用同一 adapter-owned closed mapping，选择 parser 并验证实际文档。显式 `--adapter docnav-code` 跳过 automatic routing，但不跳过该格式验证；未知 pathname mapping 不猜测内容。
 
-影响：core registry 只新增一个 adapter id，显式 `--adapter docnav-code` 与自动选择走现有路径；不需要修改 adapter contract 或增加每语言 adapter crate。
+影响：core registry 只新增一个 adapter id；matched format identity 不进入 adapter input，manifest 与 adapter-private mapping 必须由同一 package 事实生成或通过 contract tests 保持一致。不需要修改 adapter contract 或增加每语言 adapter crate。
 
 ### Decision 3: 只编译首批语言 parser
 
@@ -111,7 +112,7 @@ info 返回 format-specific content type、UTF-8、原文件 byte size、adapter
 
 ### Decision 9: additive rollout and cross-change coordination
 
-本 change 不迁移现有数据或 ref。这里关于 registry order 与具体 probe 的描述属于 routing predecessor 落地前的起草基线，不得直接作为 production 实施依据；任务 1.2 必须按最终 Current routing contract 重写它。实现必须保留现有 JSON registry、Cargo workspace 和 release smoke，不能用固定 adapter 数量覆盖 Current definitions。
+本 change 不迁移现有数据或 ref，并保持 `product-deferred`。恢复顺序是先批准产品排序，再按届时 Current owner 复核 target contract，最后才选择依赖和修改 production。实现必须保留现有 JSON registry、Cargo workspace 和 release smoke，不能用固定 adapter 数量或 registry order 覆盖 Current definitions。
 
 回滚时删除 code adapter registration、crate/dependencies、code fixtures/docs 和对应 smoke 即可；现有 Markdown、JSON、protocol 和用户配置不需要迁移。
 

@@ -1,7 +1,7 @@
 ---
 title: JSON 专用阅读展示属于近期完整交付
-status: active
-alignment: unaligned
+status: archived
+alignment: null
 createdAt: 2026-08-05T06:47:42Z
 purpose: 让 JSON 在共享 raw 行为验证后获得真正适合阅读的格式专用展示。
 background: Generic readable view 能证明共享输出链路可用，但不能长期替代 JSON 对路径、标点、preview 和分页信息密度的 presentation contract。

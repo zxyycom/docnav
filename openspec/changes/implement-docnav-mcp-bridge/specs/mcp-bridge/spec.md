@@ -1,3 +1,5 @@
+本 delta spec 只描述 `product-deferred` 的 MCP bridge target requirements。下方 `MUST` 不表示 Current，也不授权实施；恢复条件见 [proposal](../../proposal.md)，执行前必须按 [tasks](../../tasks.md) 完成产品恢复、Current 基线审计和 artifact 复核。
+
 ## ADDED Requirements
 
 ### Requirement: docnav-mcp 必须通过 stdio 暴露 MCP tools
@@ -22,7 +24,7 @@
 - **THEN** bridge 校验 stdout `ProtocolResponse` 后从 success result 映射 structuredContent
 
 ### Requirement: MCP adapter 参数必须原样映射
-MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。该值 MUST 作为 caller-declared adapter id 交给核心 `docnav` CLI；adapter 参数省略时，格式识别和候选继续遍历 MUST 由核心 `docnav` CLI 完成。
+MCP tool 的可选 `adapter` 参数 MUST 映射为 `docnav --adapter`。该值 MUST 作为 caller-declared adapter id 交给核心 `docnav` CLI；adapter 参数省略时，Current manifest pathname routing MUST 由核心 `docnav` CLI 完成。MCP bridge MUST NOT 复制 pathname matching、registry lookup、selected-document validation 或 no-fallback 语义。
 
 #### Scenario: 传递 adapter id
 - **WHEN** MCP Client 传入 `adapter: "docnav-markdown"`

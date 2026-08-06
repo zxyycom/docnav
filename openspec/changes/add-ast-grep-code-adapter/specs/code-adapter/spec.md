@@ -1,8 +1,6 @@
-本 change 的目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
+本 change 的未来目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
 
-本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 `code-adapter` delta spec，不修改或替代现有主规范、其它文档或其它 change。
-
-**Cross-change status:** 本 delta 形成于 inferred routing 之前，当前不可直接 apply。任务 1.2 必须在 routing predecessor 成为 Current 后重写 probe、registry-order 和 format-selection 条款；本说明不预选依赖、format coverage 或 parser 实现。
+本 delta spec 只描述 `product-deferred` 的 code-adapter target requirements。下方 `MUST` 不表示 Current，也不授权实施；恢复条件见 [proposal](../../proposal.md)，执行前必须按 [tasks](../../tasks.md) 完成产品恢复、Current 基线审计和 artifact 复核。Target 已使用 Current no-probe pathname routing，不定义第二套 selection contract。
 
 ## ADDED Requirements
 
@@ -16,19 +14,20 @@
 - `javascript`：`.js`、`.jsx`、`.mjs`、`.cjs`，`text/javascript`
 - `python`：`.py`、`.pyi`，`text/x-python`
 
-Probe MUST 只依据该 closed extension mapping 返回具体 format；未知 extension MUST 返回 `supported: false`。Definition MUST 实现固定 probe、outline、read、find 和 info strategy interface，且 MUST NOT 声明 caller-configurable 参数。
+Core automatic routing MUST 只消费上述 manifest pathname hints，并 MUST 在目标文档 I/O 前按共享 exact-filename/longest-suffix contract 选择 `docnav-code`。Matched hint 与 format identity MUST 保持 navigation-private，不得进入 adapter operation input。Selected `AdapterDocument` MUST 从 normalized document path 应用同一 adapter-owned closed mapping，以选择 format/parser 并验证实际文档；definition MUST NOT 实现 probe、content sniffing 或 caller-configurable 格式参数。
 
 #### Scenario: Automatic Rust selection
 
-- **WHEN** navigation 对 `.rs` 文档执行 automatic adapter discovery
-- **THEN** `docnav-code` probe 返回 `supported: true` 和 format `rust`
-- **THEN** navigation 选择 static-linked `docnav-code`
+- **WHEN** caller 未声明 adapter，并对 basename 以 `.rs` 结尾的文档执行 navigation operation
+- **THEN** core 在目标文档 I/O 前从 manifest suffix 选择 format `rust` 和 static-linked `docnav-code`
+- **THEN** selected `AdapterDocument` 从 normalized path 私下选择 Rust parser，并验证实际 source
 
 #### Scenario: Explicit adapter rejects unsupported extension
 
 - **WHEN** caller 显式选择 `docnav-code` 处理不在 mapping 中的 extension
-- **THEN** probe 返回 `supported: false`
-- **THEN** 现有 declared-selection error mapping 处理该失败
+- **THEN** core 只按 adapter id 选择 `docnav-code`，不执行 automatic pathname routing
+- **THEN** selected `AdapterDocument` 拒绝不支持的 pathname mapping，并返回稳定 adapter-owned diagnostic
+- **THEN** navigation 不 fallback 到其它 adapter
 
 #### Scenario: Adapter inspection lists one multi-format definition
 
@@ -119,7 +118,7 @@ Code read MUST 返回 ref 选中 range 的原始 UTF-8 source slice，不得格�
 - **WHEN** caller read 一个 function、class、struct 或 member 的 outline ref
 - **THEN** content 等于该 ref byte range 对应的原始 source
 - **THEN** whitespace、comments 和字符串内容保持不变
-- **THEN** content type 与 probe 选择的 format mapping 一致
+- **THEN** content type 与 adapter-private pathname-to-format mapping 一致
 
 #### Scenario: Paginated Unicode source
 
@@ -152,12 +151,12 @@ Code find MUST 拒绝空 query，并在 outline 的完整 normalized symbol sequ
 
 ### Requirement: Code document info
 
-Code info MUST 返回当前 format 的 content type、UTF-8 encoding、原文件 byte size、adapter id `docnav-code` 和 probe 选择的 format id。Metadata 中 `symbol_count` MUST 是去重后的 normalized symbol 数量且不包含 file fallback；`outline_entry_count` MUST 是分页前实际 deterministic outline sequence 的 entry 数量并包含 fallback。Info MUST NOT 暴露 ast-grep version、AST kind、rule id、parse tree 或 dependency debug output。
+Code info MUST 返回当前 format 的 content type、UTF-8 encoding、原文件 byte size、adapter id `docnav-code` 和 adapter-private pathname mapping 选择的 format id。Metadata 中 `symbol_count` MUST 是去重后的 normalized symbol 数量且不包含 file fallback；`outline_entry_count` MUST 是分页前实际 deterministic outline sequence 的 entry 数量并包含 fallback。Info MUST NOT 暴露 ast-grep version、AST kind、rule id、parse tree 或 dependency debug output。
 
 #### Scenario: Info for supported source
 
 - **WHEN** info 针对支持格式的 UTF-8 source 执行
-- **THEN** document facts、adapter id 和 format 与 probe/read 一致
+- **THEN** document facts、adapter id 和 format 与同一 selected document view 的 read 一致
 - **THEN** symbol count 与同一 source 的未分页 normalized extraction 一致
 
 #### Scenario: Info for symbol-free source

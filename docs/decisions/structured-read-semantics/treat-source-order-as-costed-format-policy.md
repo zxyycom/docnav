@@ -8,7 +8,7 @@ background: 成员顺序对部分结构化文档有用，但不同 parser 和格
 decision: 格式在私有表示可低成本自然承载时保留源码顺序，否则采用确定性语义顺序。
 relations:
   - type: 修订
-    target: navigation-output/separate-semantic-read-source-fidelity-and-custom-rendering.md
+    target: structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md
 ---
 
 ## 目的

@@ -1,7 +1,7 @@
 ---
 title: 受控验证后回归原工作分支
-status: active
-alignment: aligned
+status: archived
+alignment: null
 createdAt: 2026-08-04T09:09:28Z
 purpose: 在补足非本机验收证据时保持原分支的工作连续性，并把受控分支限制为临时云端验证载体。
 background: 本机可能缺少必要执行环境，但为触发云端验证而创建的分支不应接管后续工作或形成额外合并历史。

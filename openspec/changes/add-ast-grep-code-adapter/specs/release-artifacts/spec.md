@@ -1,8 +1,6 @@
-本 change 的目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
+本 change 的未来目标是新增一个直接链接 ast-grep Rust crates 的多语言代码 adapter，通过 `outline -> ref -> read` 提供有限、可继续的代码结构化阅读。
 
-本文是仅位于 `openspec/changes/add-ast-grep-code-adapter/` 的未审核临时 `release-artifacts` delta spec，不修改或替代现有主规范、其它文档或其它 change。
-
-**Cross-change status:** 本 delta 形成于 inferred routing 之前，当前不可直接 apply。任务 1.2 必须在 routing predecessor 成为 Current 后重写 automatic-selection 验证；本说明不预选依赖、format coverage 或 parser 实现。
+本 delta spec 只描述 `product-deferred` 的 release target requirements。下方 `MUST` 不表示 Current，也不授权实施；恢复条件见 [proposal](../../proposal.md)，执行前必须按 [tasks](../../tasks.md) 完成产品恢复、Current 基线审计和 artifact 复核。Automatic-selection evidence 使用 Current manifest pathname routing。
 
 ## ADDED Requirements
 

@@ -1,10 +1,16 @@
-本 proposal 起草 `interactive-outline-selection` 的目标：为 `docnav outline <path>` 增加面向人类的交互式选择流程，使用户无需手动复制 ref 即可选择 outline 条目并读取内容；当前 change 只在 `openspec/changes/interactive-outline-selection/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 proposal 起草 `interactive-outline-selection` 的未来目标：为 `docnav outline <path>` 增加面向人类的交互式选择流程，使用户无需手动复制 ref 即可选择 outline 条目并读取内容。
+
+## 文档状态
+
+- 状态：`product-deferred`，即 interactive outline 尚未进入当前实施排序；长期产品方向由 [核心契约稳定后再扩张接入与交互面](../../../docs/decisions/product-direction/stabilize-core-before-entrypoint-expansion.md)拥有。
+- 当前允许：维护未来 target artifacts、修正与 Current owner 的失配；change 存在、文档审计完成或门禁可关闭都不构成实施授权。
+- 恢复门禁：先明确批准 interactive outline 进入当前产品排序，再从届时 CLI、ref、output 和 adapter lifecycle 的 Current 基线重新审计；执行顺序见 [tasks](tasks.md)。
 
 ## Why
 
 当前 `outline -> ref -> read` 流程对 AI 和脚本友好，但人类用户在终端中需要手动复制 outline entry 的 ref，再调用 `read`。当用户需要比较多个章节、连续读取多个条目或从大型文档中筛选内容时，这个复制粘贴步骤会显著降低 CLI 的可用性。
 
-Docnav 已经拥有稳定的 outline/ref/read 边界，本 change 利用核心 CLI 编排这些既有能力，增加一个 human-only interactive workflow，而不改变 adapter 生成 ref 或读取内容的职责。
+该未来能力预期利用核心 CLI 编排届时稳定的 outline/ref/read 边界，增加一个 human-only interactive workflow，而不改变 adapter 生成 ref 或读取内容的职责。
 
 ## What Changes
 

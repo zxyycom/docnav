@@ -1,8 +1,14 @@
-**一句话核心：实现格式无关的 `docnav-mcp` stdio bridge，只把 MCP tool call 映射到核心 `docnav` CLI。**
+**一句话核心：未来的 `docnav-mcp` 是格式无关 stdio bridge，只把 MCP tool call 映射到核心 `docnav` CLI。**
+
+## 文档状态
+
+- 状态：`product-deferred`，即 MCP bridge 尚未进入当前实施排序；长期产品方向由 [核心契约稳定后再扩张接入与交互面](../../../docs/decisions/product-direction/stabilize-core-before-entrypoint-expansion.md)拥有。
+- 当前允许：维护探索和 target artifacts、修正与 Current owner 的失配；artifact 完整、审计通过或实现可行都不构成实施授权。
+- 恢复门禁：先明确批准 MCP bridge 进入当前产品排序，再从届时 adapter lifecycle、find、protocol 和 output 的 Current 基线重新审计；执行顺序见 [tasks](tasks.md)。
 
 ## Why
 
-v0 文档要求 MCP 是接入层，而不是解析层或路由层。核心 CLI 与 Markdown 链路稳定后，需要实现 Node.js/JavaScript `docnav-mcp`，向 MCP Client 暴露四个文档工具，并从稳定 `ProtocolResponse` facts 派生 MCP structuredContent。
+MCP 的长期边界是接入层，而不是解析层或路由层。基础文档契约稳定并重新批准产品时机后，目标是实现 Node.js/JavaScript `docnav-mcp`，向 MCP Client 暴露四个文档工具，并从稳定 `ProtocolResponse` facts 派生 MCP structuredContent。
 
 ## What Changes
 

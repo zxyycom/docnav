@@ -11,7 +11,7 @@ relations: []
 
 ## 目的
 - 为 parse、traversal 和递归处理建立明确、可测试的资源安全边界。
-- 让安全常量由一个 owner 派生到 probe、operation 和测试，同时保持公共 input inventory 稳定。
+- 让安全常量由一个 owner 派生到 parse、traversal、operation 和测试，同时保持公共 input inventory 稳定。
 
 ## 背景
 - 深度上限是格式实现的安全策略，不等同于用户导航选项。
@@ -20,6 +20,6 @@ relations: []
 
 ## 决策
 - 采用: JSON root depth 定义为 `0`，当前最大支持 depth 固定为 `127`。
-- 采用: 该值由 JSON adapter-private 单一硬编码配置源拥有，probe、operation 和测试从同一 owner 派生。
+- 采用: 该值由 JSON adapter-private 单一硬编码配置源拥有，parse、traversal、operation 和测试从同一 owner 派生。
 - 采用: Caller-visible CLI、env、config、protocol 和 shared parameter inventory 保持当前契约。
 - 采用: 新的调用方需求或资源证据通过后续决策修订数值或配置面。

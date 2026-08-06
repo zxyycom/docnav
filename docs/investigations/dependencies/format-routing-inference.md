@@ -249,7 +249,7 @@ error[E0463]: can't find crate for `core` / `std`
 - selected parse、semantic 或 operation failure 不 fallback；
 - 本次 breaking change 完整删除 probe surface，不保留 compatibility path。
 
-这些是用户批准的决策事实，不是调查建议。对应跨 change 方向已经写入活动决策 `docs/decisions/adapter-evolution/route-by-manifest-pathname-hints.md`；由于形成本报告时主规范和 production code 仍是 probe traversal，该决策状态为 `active + unaligned`。
+这些是用户批准的决策事实，不是调查建议。对应跨 change 方向已经写入活动决策 `docs/decisions/adapter-selection/route-by-manifest-pathname-hints.md`；由于形成本报告时主规范和 production code 仍是 probe traversal，该决策状态为 `active + unaligned`。
 
 形成本报告时，仓库 `HEAD` 仍为 `ebca55a8564e1ae478e96a3c90645ca3bd7cf2db`。`replace-probe-traversal-with-inferred-routing` 已回写批准后的 Target，但 blocking inventory、cross-change handoff 和 final artifact audit 尚未完成；没有 routing code、Cargo manifest、lockfile、owner 主规范、schema、test 或 release artifact 因该 change 被应用。
 
@@ -420,7 +420,7 @@ JSONC 上游只固定 comments 基线；trailing comma 是可选 dialect 能力�
 
 形成本报告时，仓库 `HEAD` 为 `ebca55a8564e1ae478e96a3c90645ca3bd7cf2db`。Current production code 尚未应用该 Target：`crates/docnav/src/runtime.rs` 在进入 navigation 前调用 `normalize_document_path`；`crates/docnav/src/project_paths.rs` 中该 helper 会读取 metadata、打开文件并执行 filesystem canonicalization。Current `docs/cli.md` 与 `openspec/specs/core-cli/spec.md` 也把 filesystem-backed document path normalization 放在 downstream navigation 之前。因此，“route 前无 document I/O”不只是 routing helper 内部限制，还需要改变 core/CLI 与 navigation 之间的执行顺序。
 
-对应长期方向已演进为活动决策 `docs/decisions/adapter-evolution/route-by-manifest-basename-hints.md`；较窄的 terminal-extension 记录 `route-by-manifest-pathname-hints.md` 已通过 `修订` 关系归档。两者的演进保存决策历史，不表示 Current 代码已经迁移。
+对应长期方向已演进为活动决策 `docs/decisions/adapter-selection/route-by-manifest-basename-hints.md`；较窄的 terminal-extension 记录 `route-by-manifest-pathname-hints.md` 已通过 `修订` 关系归档。两者的演进保存决策历史，不表示 Current 代码已经迁移。
 
 #### 调查目的
 

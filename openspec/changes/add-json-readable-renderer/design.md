@@ -1,8 +1,12 @@
-本 design 记录 JSON 专用 `readable-view` handoff 的已确认边界和实现门禁；由于具体 presentation contract 与 renderer selection mechanics 仍是开放问题，它不是可直接实施的设计。
+本 design 记录 JSON 专用 `readable-view` handoff 的已确认边界和实现门禁。
+
+## 文档状态
+
+本 design 处于 `implementation-blocked` 状态，不表示 Current 或可直接实施。Current/Target、产品方向与门禁以 [proposal](proposal.md) 为准；必须按 [tasks](tasks.md) 先关闭 presentation contract 和 renderer-selection 开放问题。
 
 ## Context
 
-`add-json-adapter` 已交付 JSON probe、outline、read、find、info、full-read、generic `readable-view` 和 `protocol-json`。当前实现事实由代码、测试和 release artifact 证明；其 OpenSpec artifacts 只记录交接背景。`docs/output.md` 也明确把 JSON 专用 renderer 标为 Planned 后续能力，并把信息密度、完整 opaque ref 的路径定位信号、标点、preview、分页显示和 renderer selection mechanics 留给本 change 决定。
+`add-json-adapter` 已交付 JSON 当前选择链路、outline、read、find、info、full-read、generic `readable-view` 和 `protocol-json`。当前实现事实由代码、测试和 release artifact 证明；其 OpenSpec artifacts 只记录交接背景。`docs/output.md` 也明确把 JSON 专用 renderer 标为 Planned 后续能力，并把信息密度、完整 opaque ref 的路径定位信号、标点、preview、分页显示和 renderer selection mechanics 留给本 change 决定。
 
 本 handoff 的 owner 关系如下：
 
@@ -20,7 +24,7 @@ Generic renderer 已满足 raw JSON adapter 的当前验收，但尚未提供 JS
 **Goals:**
 
 - 把 Current generic presentation、Target JSON 专用 presentation 和 implementation-blocked planning 状态明确分开。
-- 在 output owner 边界内决定并交付 JSON 专用 `readable-view`，且只从同一个 immutable `ProtocolResponse` 的已有 raw facts形成阅读输出。
+- 在 output owner 边界内决定并交付 JSON 专用 `readable-view`，且只从同一个 immutable `ProtocolResponse` 的已有 raw facts 形成阅读输出。
 - 在实施前把所有会改变 observable presentation 或 selection behavior 的选择写成明确 Decisions、可证伪 requirements 和 scenarios。
 - 用同源 raw/readable、真实 CLI 和 package 证据证明最终实现没有改变 machine contract。
 
@@ -30,7 +34,7 @@ Generic renderer 已满足 raw JSON adapter 的当前验收，但尚未提供 JS
 - 不修改 `ProtocolResponse`、protocol/schema/example、JSON adapter result/ref/order/pagination/cost、public output values 或 diagnostic mapping。
 - 不解析 opaque ref，不从 ref 合成 hierarchy、depth、parent 或 indentation，不重新读取文档或取得 adapter-private state。
 - 不预选信息密度、字段 shape、标点、escaping、preview、分页文案或 renderer selection mechanics。
-- 不依赖、合并或替代 `redesign-token-cost-estimation`、`redesign-find-result-model`、`reuse-adapter-document-state` 或 `audit-runtime-performance-boundaries`，也不采用这些 change 尚未落地的语义。
+- Invocation-private document state 只作为 Current 输入基线；本 change 不依赖、合并或替代 `redesign-token-cost-estimation`、`redesign-find-result-model` 或 `audit-runtime-performance-boundaries`，也不采用这些 change 尚未落地的语义。
 - 不把 presentation 所有权移入 adapter，不新增用户可配置 renderer 或第二套 readable schema；内部 selection mechanics 由 Open Question 6 决定，当前 design 不预选具体 mechanics，也不以候选方案锚定解空间。
 
 ## Decisions
@@ -45,9 +49,9 @@ JSON 专用 presentation 属于既有 `readable-view`，长期 owner 是 `docs/o
 
 `ProtocolResponse` 中的 ref 对 output 层保持 opaque。最终 contract 可以决定是否以及怎样把完整 ref 用作路径定位信号，但 renderer 不拆解 ref token，也不由 ref 推导 hierarchy、depth、parent 或 indentation。
 
-### Decision 3: 相邻 active changes 不构成本 change 的依赖
+### Decision 3: 相邻未完成 workstream 不构成本 change 的依赖
 
-本 change 以实施门禁关闭时的 Current output 与 JSON raw contract 为输入基线，不等待三个相邻 contract/runtime workstream 或 runtime performance audit 完成。相邻 change 尚未确定的 cost、find、document-state 或 performance 语义不得进入本 design。若其它 change 先落地并改变 Current 输入，只触发本 change 的 scoped contract re-audit，不建立反向依赖。
+本 change 以实施门禁关闭时的 Current output、JSON raw contract 和 invocation-private document state 为输入基线，不等待 token-cost、find-result 或 runtime-performance workstream 完成。相邻 workstream 尚未确定的 cost、find 或 performance 语义不得进入本 design；其中任一先落地并改变 Current 输入时，只触发 scoped contract re-audit，不建立反向依赖。
 
 ### Decision 4: 开放问题关闭前保持 implementation-blocked
 

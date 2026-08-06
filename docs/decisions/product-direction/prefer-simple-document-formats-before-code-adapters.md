@@ -1,5 +1,5 @@
 ---
-title: 复杂代码适配器前先扩展相邻文档格式
+title: 复杂代码适配器前先扩展简单文档格式
 status: active
 alignment: unaligned
 createdAt: 2026-08-05T06:47:42Z

@@ -1,4 +1,8 @@
-本 design 说明 `interactive-outline-selection` 的实现方向：在核心 CLI 内为 `docnav outline <path>` 增加面向人类的交互式选择流程，并比较可用 Rust 终端交互库；当前 change 只在 `openspec/changes/interactive-outline-selection/` 下形成未审核临时文档，不影响现有其它文档或主规范。
+本 design 描述 `interactive-outline-selection` 的未来 target：在核心 CLI 内为 `docnav outline <path>` 增加面向人类的交互式选择流程，并比较可用 Rust 终端交互库。
+
+## 文档状态
+
+本 design 只描述 `product-deferred` 的未来 target，不表示 Current 或实施授权。产品状态与恢复条件以 [proposal](proposal.md) 为准；必须按 [tasks](tasks.md) 先完成产品恢复和 Current 基线审计，才能使用后续设计与实现任务。
 
 ## Context
 
