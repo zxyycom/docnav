@@ -2,6 +2,7 @@
 // 这些值用于校验文档导航指向的主规范和 schema，不把脚本变成新的业务规则来源。
 export const TASK_NAMES = {
   decisions: "decisions",
+  investigations: "investigations",
   json: "json",
   schema: "schema",
   examples: "examples",
@@ -14,7 +15,7 @@ export const FILE_SYSTEM = {
   examplesJsonDir: "docs/examples/json",
   schemasDir: "docs/schemas",
   ignoredDirs: [".git", ".codegraph", "node_modules", "target", ".venv", "dist", "build"],
-  markdownLinkRoots: ["README.md", "docs"],
+  markdownLinkRoots: ["README.md", "docs", "changes"],
   jsonExtension: ".json",
   markdownExtension: ".md",
   schemaExtension: ".schema.json"

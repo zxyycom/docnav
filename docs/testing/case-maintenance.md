@@ -97,19 +97,19 @@ Proves:
 
 ## 当前与历史边界
 
-账本只保存有当前直接测试实体支持的 implemented Case。Git 历史、OpenSpec
-change、旧账本或事故记录只用于迁移审计、风险识别和代表输入选择；它们不创建
+账本只保存有当前直接测试实体支持的 implemented Case。Git 历史、已归档 Change
+Plan、legacy OpenSpec、旧账本或事故记录只用于迁移审计、风险识别和代表输入选择；它们不创建
 当前 Case、当前实体或产品测试义务，也不参与 `check` 的当前覆盖计算。
 
 历史语义对应的生产能力仍存在、但当前没有直接测试实体时，这不是 Case 映射缺口。
 是否新增产品测试按[测试策略的 owner 与可观察结果规则](../testing.md#测试所有权)
 在独立的 owner-driven change 中评估；在形成当前直接证据前，不创建空 Case、
 名义 Case 或为迁移反向补测试。生产能力已移除时，从当前账本移除对应 Case，并
-由 Git/OpenSpec 审计历史保留该 ID 的原语义，不在当前账本增加 tombstone，也不
+由 Git、已归档 Change Plan 或 legacy OpenSpec 审计历史保留该 ID 的原语义，不在当前账本增加 tombstone，也不
 换义复用。
 
-尚无当前实体的 planned test intention 留在行为 owner 或 active OpenSpec change，
-不在 Case 文档中增加 `Status` 或空映射。OpenSpec 和历史材料能说明计划或迁移
+尚无当前实体的 planned test intention 留在行为 owner 或 active Change Plan，
+不在 Case 文档中增加 `Status` 或空映射。Change Plan 和历史材料能说明计划或迁移
 理由，但不证明当前实现或当前测试存在。
 
 ## 全树闭合

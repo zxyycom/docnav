@@ -4,7 +4,7 @@
 
 ## Release baseline
 
-Beta release candidate 必须对应一个 clean commit，并以该 commit 上的当前主规范、实现、测试和发布资料作为同一 baseline。进入版本、打包或发布阶段前，该 commit 必须通过 full workspace verification、文档与 OpenSpec validation、core CLI smoke，以及 Linux `x86_64-unknown-linux-gnu` 和 Windows `x86_64-pc-windows-msvc` 的 canonical package build、verify 和 smoke。
+Beta release candidate 必须对应一个 clean commit，并以该 commit 上的当前主规范、实现、测试和发布资料作为同一 baseline。进入版本、打包或发布阶段前，该 commit 必须通过 full workspace verification、文档/决策/调查/Change Plan validation、core CLI smoke，以及 Linux `x86_64-unknown-linux-gnu` 和 Windows `x86_64-pc-windows-msvc` 的 canonical package build、verify 和 smoke。
 
 Required profile 可用于开发期快速反馈，但不替代上述完整 baseline。任一检查失败都会停止 release progression；修复必须归属失败对应的 owner contract，并限制为恢复当前承诺所需的最小改动。
 

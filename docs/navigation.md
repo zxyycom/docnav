@@ -14,10 +14,12 @@
 | 实现 JSON adapter | [适配器契约](adapter-contract.md)、[Ref](ref-contract.md)、[原始协议](protocol.md)、[JSON Adapter](adapters/json.md) | [输出模式](output.md)和对应实现面的主规范 |
 | 新增、修改或审查测试 | [测试策略](testing.md)、对应行为 owner、[语义测试 Case 维护](testing/case-maintenance.md) | [覆盖矩阵](testing/coverage.md)、项目级 [`test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md) |
 | 修改验证脚本或 workspace check | [工程工具链](tooling.md)、[测试策略的统一验证入口](testing.md#统一验证入口)、[编码规范](coding-style.md) | 变更涉及实体发现或 Case 映射时再读[语义测试 Case 维护](testing/case-maintenance.md)；涉及字段或示例时读[JSON Schema 索引](schemas/json-schema.md)和[契约示例](examples/contract-examples.md) |
-| 恢复或维护长期决策 | [项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md) 的 `list`、“长期决策与 OpenSpec 分工” | 用 `domains` 选择责任领域，以 `show` / `trace` 展开相关记录；写入前读取 skill 的领域契约 |
-| 审计历史或变更依据 | `../openspec/changes/` | 按 change 目录读取对应 proposal、design、specs、tasks |
+| 恢复或维护长期决策 | [项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md) 的 `list`、“长期决策、调查报告与 Change Plan 分工” | 用 `domains` 选择责任领域，以 `show` / `trace` 展开相关记录；写入前读取 skill 的领域契约 |
+| 创建、查询或推进 Change Plan | [项目级 `change-plan` skill](../.codex/skills/change-plan/SKILL.md)、`../changes/` | 只有用户明确要求时才新建持久 Change；维护既有计划时用 `list` / `show` 恢复 status、stage、assessment、artifacts 和门禁，再按当前任务选择目标 |
+| 沉淀或审阅调查报告 | [项目级 `investigation-report` skill](../.codex/skills/investigation-report/SKILL.md) 的 `list`、`investigations/` | 按主题读取报告原文和随附资源；需要当前口径时再与当前事实 owner 综合 |
+| 审计切换前变更历史 | [`../archive/legacy/openspec/LEGACY.md`](../archive/legacy/openspec/LEGACY.md) | 需要复核形成时依据时再进入深层 archive；不从未完成目录或 CLI 状态推断当前计划 |
 
-`decisions/` 保存已确认且会持续影响后续工作的长期判断；`decisions/decision-domains.json` 定义受控领域，各条决策 Markdown 拥有自身内容、生命周期、对齐和直接演进关系，[决策索引](decisions/decision-index.json) 只是可删除重建的查询投影。`../openspec/changes/` 用于变更设计、验收和审计历史。日常实现仍从对应任务主规范进入。
+`decisions/` 保存已确认且会持续影响后续工作的长期判断；`investigations/` 保存形成时证据和认识快照；`../changes/` 保存一次 change 的临时计划上下文。三个集合的 JSON 索引或 metadata 都不替代 Markdown owner 和当前实现证据。日常实现仍从对应任务主规范进入。
 
 ## 交付验证
 
@@ -41,45 +43,24 @@ bun run verify:docnav-workspace
 | 校验材料 | [JSON Schema 索引](schemas/json-schema.md)、[契约示例](examples/contract-examples.md) | 修改字段形状、示例链路或输出映射 |
 | 工程规范 | [编码规范](coding-style.md)、[工程工具链](tooling.md) | 修改代码、脚本或验证工具链 |
 | 长期决策 | [决策索引](decisions/decision-index.json)、`decisions/<topic>/` | 恢复跨 change 仍有效的目的、背景、采用方向和演进关系 |
-| 变更工作流 | `../openspec/changes/`、`../openspec/specs/` | 规划较大 PR，审计 change 设计、验收或归档；capability 命名见下方对照表 |
+| 调查报告 | [调查索引](investigations/investigation-index.json)、`investigations/<category>/`、可选的 `investigations/_resources/` | 沉淀形成时背景、目的、证据范围、认识边界和必要原始资源 |
+| 变更工作流 | `../changes/<change>/` | 用户明确要求持久 Change 时，维护 proposal、design、tasks、Git 基线和生命周期 |
 
 文档入口按用途命名：
 
 - `README.md` 只用于仓库首页和 crate/package 入口。
 - 其它目录文档使用能表达用途的名称，例如 contract example、conformance fixture、
   verification 或 migration record。
-- 活动 OpenSpec change 直接从 `proposal.md`、`design.md`、`specs/` 和 `tasks.md`
-  进入；需要额外记录时按其 verification、migration 或其它实际用途命名，不增加
-  无独立 owner 的 `README.md`。
-- `../openspec/changes/archive/` 保留形成时的文件布局，不仅为同步当前命名规则而
-  回写历史。
+- Active Change Plan 直接从 `.change-plan.json` 和当前 stage 要求的 `proposal.md`、
+  `design.md`、`tasks.md` 进入；需要额外记录时按 verification、migration 或其它
+  实际用途命名，不增加无独立 owner 的 `README.md`。
+- `../changes/archive/` 保留形成时文件布局，不仅为同步当前命名规则而回写历史。
 
-Schema、示例和机器规则文件是验证材料，不在这些文件重新定义产品语义。与主规范不一致时默认修正验证材料；若验证材料代表有意契约变更，必须同步更新 owner 主规范。
-
-OpenSpec capability ID 表示稳定 owner surface，不表示一次性 change name。跨层总览统一进入 `docnav-architecture`；字段、输出、诊断、ref、adapter 和验证规则进入各自 owner，避免把多个 owner 合并成总包 capability。
-
-| OpenSpec capability | 对应 owner | 使用时机 |
-| --- | --- | --- |
-| `docnav-architecture` | [架构](architecture.md) | 组件职责、调用链、运行边界和跨层不变量 |
-| `core-cli` | [CLI](cli.md) | `docnav` 命令、argv、path/config、static registry 和退出行为 |
-| `navigation-input-resolution` | [Navigation Input Resolution](navigation-input-resolution.md) | config source、lexical pathname routing sequencing、adapter selection、typed extraction、request construction、AdapterDocument lifecycle 和 dispatch |
-| `adapter-contract` | [适配器契约](adapter-contract.md) | linked adapter factory / AdapterDocument interface、manifest pathname hints、selection contract、closed standard input 和 operation result |
-| `protocol-contract` | [原始协议](protocol.md) | raw protocol envelope、operation/result pairing、page 和 protocol failure |
-| `output-contract` | [输出模式](output.md) | public output modes、统一 `ProtocolResponse` 输入、`ProtocolJson` / `Rendered(RenderStrategy)`、renderer contract 和 output channels |
-| `diagnostics-contract` | [架构](architecture.md) | DiagnosticCode、DiagnosticRecord、canonical details 和 primary projection |
-| `ref-contract` | [Ref](ref-contract.md) | opaque ref、explicit ref input、adapter-owned grammar、compatible-view round trip 和 producer/read 原样传递流程 |
-| `markdown-adapter` | [Markdown Adapter](adapters/markdown.md) | Markdown pathname hints、parser/ref/outline/read/find/info 和 typed adapter input semantics |
-| `json-adapter` | [JSON Adapter](adapters/json.md) | JSON pathname hints、private parse model、ref/outline/read/find/info/full-read 和 JSON-owned errors |
-| `typed-fields` | [架构](architecture.md) | typed field identity、constraint metadata、schema metadata projection 和 duplicate guard |
-| `contract-validation` | [JSON Schema 索引](schemas/json-schema.md)、[契约示例](examples/contract-examples.md) | schema/example validation、runtime validation parity 和 drift checks |
-| `release-artifacts` | [发布包验证](testing/release.md) | package layout、manifest/checksum 和 release artifact verification |
-| `test-evidence-management` | [语义测试 Case 维护](testing/case-maintenance.md) | supported runner profile、当前测试实体闭合、语义 Case、topic 和有界查询 |
-| `repository-quality-observability` | [工程工具链](tooling.md) | 非阻断质量快照、报告、baseline delta 和扫描边界 |
-| `openspec-governance` | 本文档 | OpenSpec、长期决策记录与 docs-first 的分工，以及 capability 命名和归档规则 |
+Schema、示例和机器规则文件是验证材料，不在这些文件重新定义产品语义。与主规范不一致时默认修正验证材料；若验证材料代表有意契约变更，必须同步更新 owner 主规范。Change Plan 的 `Affected Owners` 直接引用本节表格指向的稳定 owner；稳定语义只在对应 owner 文档中完整维护。
 
 ## 规范状态与实现状态
 
-Docnav 采用 docs-first 工作流：`docs/` owner 文档承接当前稳定规范，代码、测试和 release artifact 证明当前实现状态；活动未对齐决策承接已经确认的未来方向，OpenSpec change 承接实施计划。
+Docnav 采用 docs-first 工作流：`docs/` owner 文档承接当前稳定规范，代码、测试和 release artifact 证明当前实现状态；活动未对齐决策承接已经确认的未来方向，调查报告承接明确要求沉淀的形成时认识，Change Plan 承接被当前任务选择的一次 change 的临时协调上下文。只有满足 skill 门禁且获得当前授权的 plan/implementation 工作才能指导实施；draft、shelved 或仅因目录存在而被列出的 Change 都不是执行队列。
 
 `MUST` / `SHALL` 只有在对应内容标注为 Current 或已实现，并且存在实现证据时，才表示当前二进制能力。
 
@@ -89,36 +70,36 @@ Docnav 采用 docs-first 工作流：`docs/` owner 文档承接当前稳定规�
 - Target / Planned：目标或计划上下文；跨 change 仍有长期影响的完整方向由活动决策承接。
 - Historical：只表示形成时背景，不作为当前规则或未来方向。
 
-OpenSpec change 和长期决策记录都不作为当前实现证据；它们与 owner 文档的分工和同步顺序见“长期决策与 OpenSpec 分工”。小功能可以直接修改 docs、代码和测试。
+Change Plan、调查报告和长期决策记录都不作为当前实现证据；它们与 owner 文档的分工和同步顺序见“长期决策、调查报告与 Change Plan 分工”。已经明确要求直接完成的局部改动可以直接修改 docs、代码和测试，不为仪式性留档创建计划。
 
 Manifest pathname routing、route-before-document-I/O、probe deletion、invocation-private adapter document lifecycle 和 compatible-view ref round trip 已由代码与测试证明为 Current；release artifact 继续证明对外协议和 CLI 兼容性。对应长期规则由下方 owner 文档拥有。
 
-## 长期决策与 OpenSpec 分工
+## 长期决策、调查报告与 Change Plan 分工
 
-当前基线、未来方向和实施计划分层维护；同一判断只由一个 owner 完整解释。
+先按内容含义选择 owner，再按对应 skill 的触发条件决定是否创建或维护载体；内容归属不自动产生写入授权、任务或生命周期动作。
 
-| 载体 | 核心职责 |
-| --- | --- |
-| `docs/` owner 文档 | 已成为当前基线的稳定行为、public contract、职责边界和验证语义。 |
-| `openspec/changes/<change>/` | 服务该 change 当前阶段的探索依据、设计、`## Decisions`、任务、验收依据和审计历史。 |
-| `docs/decisions/` | 已确认且跨 change 仍有长期影响的方向、理由、约束和演进关系；对齐状态说明其与当前事实的关系。 |
+| 载体 | 完整拥有 | 不作为 |
+| --- | --- | --- |
+| `docs/` owner 文档 | 已成为当前基线的稳定行为、public contract、职责边界和验证语义。 | 当前实现已经成立的单独证据。 |
+| `docs/decisions/` | 已确认且跨 change 仍有长期影响的方向、理由、约束和演进关系。 | 任务进度、实现快照、当前任务授权或 change-local 方案。 |
+| `docs/investigations/` | 明确要求沉淀的特定时点背景、目的、证据范围、认识边界和必要原始资源。 | 当前需求、已采用决定、累积当前口径或实施计划。 |
+| `changes/<change>/` | 被当前任务选中后，该次 change 的目标、范围、change-local 设计、任务、验证、Git 基线和生命周期。 | 稳定事实 owner、跨 change 长期方向、形成时证据 owner、优先级或实施授权。 |
 
-按以下顺序记录和同步：
+### 创建门槛
 
-1. 只影响一个 active change 的判断写入该 change；跨 change 仍有长期影响的已确认判断写入 `docs/decisions/`；形成当前基线的结果写入对应 owner 文档。
-2. Future change 在探索阶段保留足以恢复意图的目标、约束、依据、开放问题和启动条件；进入实施准备后，再形成届时需要的设计、任务和验收依据。
-3. 已形成详细 artifacts 的 change 暂停后继续保留其审计上下文；恢复时根据当前基线、活动决策和实现状态更新仍需使用的内容。
-4. Change 收敛后，将形成当前基线的结果同步到 owner 文档和实现证据，将改变长期方向的判断同步为决策演进，再完成归档。
-5. 载体之间不一致时，当前稳定规则以 owner 文档为准，当前实现以代码、测试和 release artifact 为准，未来方向以活动决策为准，实施计划以 active change 为准；随后同步失配载体。
-6. `openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图；全局决策状态、对齐和关系由各条决策 Markdown 拥有，[决策索引](decisions/decision-index.json) 只提供可重建查询视图。
+1. 当前行为、public contract 或稳定职责发生变化时，更新对应 owner 文档；是否已经实现仍由代码、测试和 release artifact 证明。
+2. 判断具有跨 change 长期影响、已经完整到值得审核且当前任务授权维护决策时，交给 `decision-records`；尚未完整的判断可以暂存在当前对话或所选 Draft，但不能带入已确认 plan 继续充当隐藏决定。
+3. 只有用户明确要求记录、沉淀、维护或审阅调查时，才创建、追加或修正调查报告；普通调查结果不自动进入 `docs/investigations/`。
+4. Change Plan 的创建与写入触发以项目级 `change-plan` skill 为准，Docnav 不增加更宽的例外：跨文件、跨 owner、跨验证阶段或需要对话外交接只能触发“建议创建”的提醒；用户已经明确要求直接完成的工作不为留档另建计划。
 
-**一旧多新的关系降级：** 决策关系只表达真实语义演进，不作为一般 provenance。具体边界由 [仅在关系模型无法表达一旧多新拆分时允许部分关系连续性](decisions/decision-management/allow-partial-lineage-for-unrepresentable-one-to-many-splits.md)拥有。
+### 交接与冲突
 
-- 触发条件：一个混合旧决策需要拆成多个独立 successor，但当前 CLI 或关系类型无法完整表达一旧多新。
-- 当前做法：不等待上游更新；能够真实表达演进的 successor 记录直接关系，其余 successor 可以无关系建立，并暂时接受部分 lineage 丢失。不得为补齐 trace 伪造 `修订`、`替代` 或 `归并`。
-- 升级条件：上游提供正式 decomposition 能力后，新拆分改用正式机制；既有缺口不默认批量回填。
-
-活动决策已经确认。`aligned` 表示完整方向已与相关当前事实核对并建立为持续基线；`unaligned` 表示已经确认但尚未成为当前事实的未来方向。相关工作把未对齐方向作为未来演进输入，在满足本次任务的可行方案中优先保留通向该方向的路径，并可在当前任务范围已经覆盖时顺手推进。对齐状态说明方向与当前事实的关系；本次任务范围来自当前请求，未来先后关系来自决策正文。已对齐基线后来与事实偏离时按一致性问题处理。
+1. 确认 plan 前，已经确认且跨 change 持续有效的判断必须交给决策 owner，当前事实必须从稳定 owner 读取；调查报告只能提供证据，不能替代两者。只影响本 change 的人工批准、证据或依赖门禁可以保留在 plan 中，但必须写明 owner、关闭动作和被阻塞的后续任务。
+2. 已确认的长期决定由 Change Plan 按引用作为输入；计划不复制完整理由或重新充当第二份 spec，只负责把方向落实为本 change 的范围、change-local 设计、门禁、任务和验证。计划可以在进入 implementation 后先执行显式门禁，但门禁关闭前不得执行其阻塞的 owner、测试或代码修改。
+3. 实施中只影响当前 change 的选择留在 plan；新形成的长期方向在确认时交给决策 owner，已经成为当前事实的结果同步到 owner 文档和实现证据。
+4. Change 完成时核对 owner、实现、验证和相关决策的实际关系，再按对应 skill 处理 alignment 与归档；完成动作不用于首次补记早已阻塞实施的决定。
+5. 载体不一致时分别处理：当前规范与实现证据之间按一致性问题修正当前载体；决策按其对齐与演进语义维护；Change Plan 只对当前任务选中的 change 生效，并继续受 stage、assessment 和授权约束；调查报告保留形成时认识，除非明确维护报告，否则不为追平当前事实而改写；归档历史不参与同步。
+6. 决策、调查和 Change Plan 的结构、合法状态、生命周期与维护命令分别由对应项目 skill 拥有；本文只拥有项目级内容路由、交接时机和冲突处理，不复制 skill 契约。
 
 ## 规则所有权
 
@@ -126,8 +107,10 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 
 | 规则面 | Owner 文档 |
 | --- | --- |
-| 长期决策、OpenSpec change 与 owner 规范的分工、同步和冲突处理 | 本文档 |
-| 项目级长期决策的领域、内容、生命周期、对齐和直接演进关系 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；领域划分遵循[按主要被改变契约组织决策领域](decisions/decision-management/organize-decision-domains-by-primary-changed-contract.md)，通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
+| 长期决策、调查报告、Change Plan 与 owner 规范的分工、同步和冲突处理 | 本文档 |
+| 项目级长期决策的领域、内容、生命周期、对齐、版本快照和完整关系事务 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；领域划分遵循[按主要被改变契约组织决策领域](decisions/decision-management/organize-decision-domains-by-primary-changed-contract.md)，通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
+| Change Plan 的创建/写入触发、目录、artifact、status、stage、assessment、Git 距离和阶段命令 | [项目级 `change-plan` skill](../.codex/skills/change-plan/SKILL.md)；本文件只决定其与项目 owner 的分工，并明确 Docnav 不增加更宽的创建例外 |
+| 调查主题、报告快照、随附资源、状态、派生索引和分段暂存 | [项目级 `investigation-report` skill](../.codex/skills/investigation-report/SKILL.md)；各主题 Markdown 与资源拥有形成时内容 |
 | 组件职责、输出分层、adapter document 在系统中的高层生命周期位置、调用链和运行边界 | [架构](architecture.md) |
 | adapter library interface、manifest format identity/pathname hints、fixed public operation、无 I/O factory、private state enclosure、adapter 选择、registry invariant、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
 | `docnav` 命令、项目根解析、lexical routing pathname 与 post-selection document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
@@ -163,8 +146,8 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 | ref | adapter 生成和解析的非空 opaque string；共享层只原样传递。 |
 | readable output | 面向人类和 AI 的 `readable-view` 文本；CLI 使用内置 renderer，linked caller 可以通过 shared output API 注入自定义 renderer。规则见 [输出模式](output.md)。 |
 | protocol output | 面向脚本、调试和兼容校验的稳定 envelope；协议语义见 [原始协议](protocol.md)，CLI 模式见 [输出模式](output.md)。 |
-| `product-deferred` | 已确认的未来产品方向尚未进入当前实施排序；只允许维护或重新基线 artifacts。恢复时先取得明确的产品排序批准，再审计届时 Current 基线。它是文档内 planning 语义，不是 OpenSpec CLI 生命周期状态；工具显示 `in-progress` 不构成实施授权。 |
-| `implementation-blocked` | Change 已有 target 和允许推进的门禁任务，但在明确列出的 contract、设计或批准门禁关闭前不得修改 owner、测试或实现。它不表示 target 已是 Current。 |
+| Change Plan | `changes/<change>/` 中可持久交接的一次 change-local 临时计划；Draft 表达尚未确认的方向，Plan 表达已经确认的执行顺序并可包含先于代码的显式门禁，Implementation 表示正在按计划执行。任一 stage、assessment 和 checkbox 都不替代当前授权、内容审阅或事实证据。 |
+| investigation report | `docs/investigations/` 主题内形成于特定时点、可独立汇报的认识快照；最新报告不自动等于累积当前口径。 |
 | current test entity（当前测试实体） | 当前源码中能被 supported runner profile 静态发现、并由 runner 报告的可寻址测试节点；存在性和身份来自当前源码与 runner，不来自 committed 清单。 |
 | Semantic Case（语义 Case） | `testing/cases/<topic>.md` 中人工维护的当前 implemented 测试目的；通过 `Owner`、`Proves` 和 `Entities` 连接行为契约与当前测试实体，完整规则见[语义测试 Case 维护](testing/case-maintenance.md)。 |
 | Topic | 由 [Case topic 表](testing/cases/topics.json)控制的有界查询分类；Topic 分组 Case，但不拥有行为契约，也不替代 Case 的 `Owner`。 |

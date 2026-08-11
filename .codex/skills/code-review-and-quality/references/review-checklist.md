@@ -7,7 +7,7 @@
 ```markdown
 ## Context（上下文）
 - [ ] 我理解 intended behavior 与 touched surfaces。
-- [ ] 对 Docnav，我知道 governing role spec 或 OpenSpec change。
+- [ ] 对 Docnav，我知道 governing owner、相关长期决策和适用的 Change Plan。
 
 ## Correctness（正确性）
 - [ ] 改动符合 task/spec。
@@ -27,7 +27,7 @@
 
 ## Verification（验证）
 - [ ] 验证 touched surface 的最小 tests/build/smoke/schema/docs checks 已通过。
-- [ ] 适用时，schema、examples、specs 与 OpenSpec artifacts 已同步。
+- [ ] 适用时，schema、examples、owner docs 与 Change Plan artifacts 已同步。
 - [ ] 已按改动范围运行必要 Docnav verification command。
 
 ## Verdict（结论）
@@ -42,7 +42,7 @@
 ```text
 请审查这个 change 的 correctness、security、performance、maintainability
 以及 Docnav contract adherence。检查 `outline -> ref -> read` flow、
-mapping、schema/example/spec sync、适用时的 OpenSpec consistency，
+mapping、schema/example/owner sync、适用时的 Change Plan consistency，
 以及 required verification。
 
 请 findings first 返回结果，按 severity 排序，并带 file/line references。

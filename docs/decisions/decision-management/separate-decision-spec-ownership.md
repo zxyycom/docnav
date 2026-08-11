@@ -24,4 +24,4 @@ relations:
 - 采用: active OpenSpec change 拥有只影响该 change 的目标、设计、决策、任务和验收依据；只有明确确认且跨 change 仍有效的判断才进入 `docs/decisions`，归档 change 不自动复制其中的决策。
 - 采用: 长期决策记录保存目的、关键背景、采用方向和演进关系，作为后续工作的默认判断依据，但不覆盖 owner 文档，也不证明当前实现已经支持；失配时必须同步 owner、OpenSpec 和验证材料，并按生命周期处理决策记录。
 - 采用: `docs/decisions` 随仓库版本化，并纳入仓库自带、确定性且不依赖个人安装或网络的 required 校验；具体命令、模块和调用路径由测试与工具链文档拥有，可以在保持这些边界时演进。
-- 采用: [决策索引](../decision-index.json) 单独管理全局决策生命周期；`openspec/specs/` 只作为 capability specification 的 OpenSpec 工具视图。
+- 采用: [决策索引](../decision-index.json) 单独管理全局决策生命周期；现位于 `archive/legacy/openspec/specs/` 的材料在形成时只作为 capability specification 的 OpenSpec 工具视图。

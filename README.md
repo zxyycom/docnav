@@ -88,7 +88,7 @@ $$
 
 ### 120K：项目文档
 
-再把已有上下文拉到 `120K`，并换成更大的项目文档。项目里的 [core-cli spec](openspec/specs/core-cli/spec.md) 约 358 行、20.8 KB，目录展开后是十几个 H3 级需求。类似密度的中文 Markdown 可以粗估为 `7K` 到 `12K` token；这里取 `10K` 做中间量级。
+再把已有上下文拉到 `120K`，并换成更大的项目文档。项目里的 [Navigation Input Resolution 主规范](docs/navigation-input-resolution.md) 约 283 行、35.5 KB，目录展开后是十几个 H2/H3 级规则块。类似密度的中英混合 Markdown 可以粗估为 `7K` 到 `12K` token；这里取 `10K` 做中间量级。
 
 直觉上，文档变大后结构化阅读看起来更容易占优；但已有上下文也变长了，如果目录层级不够细，结构化路径还会读入不少正文。先看直接全文读取：
 

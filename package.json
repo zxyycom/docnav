@@ -28,8 +28,8 @@
     "test-evidence": "bun scripts/test-evidence/index.ts",
     "verify:docnav-workspace": "mise exec -- bun scripts/docnav-workspace/verify.ts",
     "verify:docnav-workspace:required": "mise exec -- bun scripts/docnav-workspace/verify.ts --profile required",
+    "validate:change-plans": "bun scripts/change-plans/validate.ts",
     "validate:docs": "bun scripts/docs/validate.ts",
-    "validate:openspec": "bun run openspec validate --all --strict",
     "quality:check": "bun scripts/quality/scan.ts --profile quick --artifact-dir artifacts/docnav-quality/quick",
     "quality:full-check": "bun scripts/quality/scan.ts --profile full --with-baseline",
     "quality:annotate": "bun scripts/quality/annotate.ts",
@@ -38,7 +38,6 @@
   "devDependencies": {
     "@ast-grep/cli": "0.45.0",
     "@eslint/js": "^10.0.1",
-    "@fission-ai/openspec": "1.3.1",
     "@types/node": "^24.13.2",
     "@typescript/native-preview": "7.0.0-dev.20260621.1",
     "ajv": "^8.17.1",

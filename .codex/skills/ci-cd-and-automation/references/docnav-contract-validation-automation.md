@@ -2,7 +2,7 @@
 
 ## 适用范围
 
-只在 Docnav 仓库内设置、修改或调试 CLI、Rust adapter、schema、examples、docs、OpenSpec 或 workspace verification 时读取本 reference。这里的 validation map 只描述 Docnav surfaces 的最小自动化验证入口，不迁移成通用 CI 规则。
+只在 Docnav 仓库内设置、修改或调试 CLI、Rust adapter、schema、examples、docs、Change Plan、决策/调查集合或 workspace verification 时读取本 reference。这里的 validation map 只描述 Docnav surfaces 的最小自动化验证入口，不迁移成通用 CI 规则。
 
 ## Validation Map
 
@@ -10,7 +10,8 @@
 - Rust adapter: adapter crate tests、fixture-based direct adapter smoke、protocol JSON verification、pagination tests 和 ref parsing tests。
 - Schema/example: schema validation、fixture/example round trip 和 generated output diff check。
 - Docs: docs validation、links/shape checks，以及反映当前 CLI behavior 的 examples。
-- OpenSpec: 只在 OpenSpec work、audit、validation 或用户明确要求时运行 `openspec list --json`，再校验相关 change。
+- Change management: 用仓库跟踪的 `change-plan`、`decision-records` 和 `investigation-report` 入口分别检查计划、长期判断与调查材料；机械通过不表示内容批准或当前实现成立。
+- Legacy OpenSpec: 只在用户明确要求复核切换前历史时读取 `archive/legacy/openspec/`，不运行其生命周期或当前验证。
 - Cross-boundary change: when CLI/core、adapter、schema/example、docs move together, run the repository workspace verifier when feasible.
 
 ## Repository Command Policy
@@ -24,7 +25,7 @@
 ## Failure Triage
 
 1. Re-run the exact failing command locally before changing code or workflow YAML.
-2. Classify failure: environment/setup、Rust compile/test、Node package、CLI/adapter smoke、schema/example/docs、OpenSpec。
+2. Classify failure: environment/setup、Rust compile/test、Node package、CLI/adapter smoke、schema/example/docs、change/decision/investigation management。
 3. Shrink to the smallest failing fixture、ref、page、request payload、generated artifact 或 test name。
 4. Fix the underlying contract first; update the check only when it no longer matches repository policy.
 5. Re-run the narrow failed check, then the wider verification that proves the declared merge risk.

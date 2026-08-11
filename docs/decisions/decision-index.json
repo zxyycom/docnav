@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "namespace": "decisions",
-  "definitionVersion": 3,
+  "definitionVersion": 5,
   "metadata": {
     "domains": [
       {
@@ -17,7 +17,7 @@
         "id": "adapter-selection"
       },
       {
-        "description": "维护长期决策的记录、生命周期、演进关系及其与 owner 规范和 OpenSpec change 的分工。",
+        "description": "维护长期决策的记录、生命周期、演进关系及其与 owner 规范和 Change Plan 的分工。",
         "id": "decision-management"
       },
       {
@@ -42,7 +42,55 @@
       }
     ]
   },
-  "sourceRevision": "sha256:930b4c58e294e6700f454596f59c0e58d00187430771e51ca42c4ecba4f43651",
+  "sourceRevision": {
+    "entries": {
+      "adapter-boundary-evidence/keep-json-as-second-heterogeneous-adapter-sample.md": "sha256:d05be3239b6f979b826b3ce3d1885c284fb925898e987c9e7b0eb774f7424b9d",
+      "adapter-boundary-evidence/select-json-as-second-adapter.md": "sha256:8f7eb2d1489f98eb68a7964ccc240dae0dbf0fc8102f5879308c2d6cddd8c23f",
+      "adapter-boundary-evidence/validate-boundaries-with-complete-adapter-behavior.md": "sha256:8527a91fa96c9d8f5a0e0759783624aefac7d0f65265342e33a44255815a8f92",
+      "adapter-boundary-evidence/validate-shared-abstractions-with-heterogeneous-real-adapters.md": "sha256:8c6450971ad4ed40c1cb926f819699b08b1ca5eca0f90b9f627e32abef48bba1",
+      "adapter-boundary-evidence/validate-shared-boundaries-across-supported-adapter-surfaces.md": "sha256:a28fc3a9baf178750a28b07528145815931cda40b2e5157933d78795980f275d",
+      "adapter-document-lifecycle/keep-document-preparation-invocation-private.md": "sha256:a91c5f67465f50533545de58831d205b97644dc131842b354c7fd0113d25fa5b",
+      "adapter-document-lifecycle/prioritize-reusable-document-preparation.md": "sha256:dce1daea4b03118c970bb6803b63e740d3a90d2ed633260eb1f7b654c6ecf74e",
+      "adapter-selection/route-by-exact-name-and-longest-basename-suffix-before-io.md": "sha256:8d2d6352589aaaa278fd496e7a75020f0d2432a8fb291d383e38ed05e94907a6",
+      "adapter-selection/route-by-manifest-basename-hints.md": "sha256:6c0e650b7b3d887b7949aed74375679978edbc58ae92be706836da5e4b38ebfb",
+      "adapter-selection/route-by-manifest-pathname-hints.md": "sha256:af942208e5b369bb3dbdc526aa89ca6483e13db8335d32681cf2b38da5d0911e",
+      "adapter-selection/route-by-pathname-before-document-io.md": "sha256:8bdfef058ca9a09473e21054975f4b848bdfac20afa73246f79309248dbe22ee",
+      "decision-management/allow-partial-lineage-for-unrepresentable-one-to-many-splits.md": "sha256:14f0fd4841620673c60f462935d9146304da683bf03e0f3b29942187e9978fe9",
+      "decision-management/match-change-detail-to-current-phase.md": "sha256:ca5258e6017deda18fea62520206f45d9a8bbde24f0de5aae69f40daa365f12f",
+      "decision-management/organize-decision-domains-by-primary-changed-contract.md": "sha256:4775686769a98d6f844da4c82eefea63b50f08abe3b2d082c0f1ab9a513116b7",
+      "decision-management/separate-current-rules-future-directions-and-change-plans.md": "sha256:639c1a78fa53e469ef6b2a7f672354b73f63c906c354b81d5b976d9d367fa55b",
+      "decision-management/separate-decision-spec-ownership.md": "sha256:061b8948c044ca2d54403cab58a6427578c74576d002d474759cff9abbeaff42",
+      "decision-management/treat-unaligned-decisions-as-future-direction-input.md": "sha256:1c6459cd39e7000e159946121291d8d075381583594a5c5a074f61bd342bb857",
+      "decision-management/use-change-plans-for-change-execution.md": "sha256:5c835db59cb77f48e34d16a181bc93f790a4f4a5c02fe53982ea4122da0fc0b2",
+      "decision-management/use-verified-decision-records.md": "sha256:b30f0b8a93cb67b7586dc9198c770d9e7e83bf601d55ce870ed380fa0c02429a",
+      "json-navigation/keep-depth-limit-adapter-private.md": "sha256:5875b217a69bf0249f60de4a8950aec48bad95569e0efcc59d185ca27d57626a",
+      "json-navigation/normalize-structured-json-output.md": "sha256:4538bf1653ed4758c122d1c001bdee45067b40474f072c1aa69db663db743cf1",
+      "json-navigation/preserve-json-number-source-tokens.md": "sha256:06ad05c14bc86aeccbe5d60bbfd3217d8794d3d293e137daf78fde7e8ad2692a",
+      "json-navigation/preserve-number-tokens.md": "sha256:b908210f427e46e657acba8a517238561a119da8f5e72445891d6585f99db098",
+      "json-navigation/reject-duplicate-object-members.md": "sha256:3ca172a1d8fcb8a1fbfa82bf9d3816764dcf4f431804d87d171c25a4624330cd",
+      "json-navigation/search-original-json-source.md": "sha256:b6612a615b96d67ec3f891cf514ac24139025619413a2040860f4b38a8bdbd43",
+      "json-navigation/use-canonical-json-path-anchors.md": "sha256:6329559214c9a503888377ab4bf39b97fcb7f785588a90e5de702ef8193d16a9",
+      "json-navigation/use-canonical-json-pointer-refs.md": "sha256:2129a14731727e585cfddccdaf40063948d8ff7d406afdff16cea1f8d07b809c",
+      "json-navigation/use-deterministic-semantic-json-value-serialization.md": "sha256:78055acaf323ab0f2c5343552278d08d2e5e741235dbb8da2d0590ffd432dddb",
+      "product-direction/advance-json-readable-presentation-after-contract-approval.md": "sha256:e5b2ae4f305f849e8503482e0d21ced28f128f47f1edebca133a6b718921e222",
+      "product-direction/complete-json-readable-presentation.md": "sha256:59fd5b2503238d0e52d6b6cc4147fa943635a2dd8cdc006c1e9cc7e5285a0401",
+      "product-direction/prefer-simple-document-formats-before-code-adapters.md": "sha256:7926dd6b16a89c2aece79109633db705fa02255a220f5c985bcf2c56d76795f5",
+      "product-direction/repair-token-cost-as-bounded-debt.md": "sha256:981864e31d1e70c71ccb2fa03a2478ff08782f9cca34be6c0d79524d5a0d1a76",
+      "product-direction/stabilize-core-before-entrypoint-expansion.md": "sha256:eb58e40381a05d96f4769cdcdde9bbdfc462e7984ee250f0e023dd11891d69e5",
+      "product-direction/treat-exploration-as-non-delivery.md": "sha256:964a8f3fafdf607e91b445d857b389be6c54a96087578246295c7c325ae60921",
+      "readable-presentation/keep-custom-rendering-in-readable-view.md": "sha256:fcc9f5f18d959386933d3409e83a0df5636adb6a16250325ad42741f9035ae58",
+      "readable-presentation/keep-format-presentation-in-readable-output.md": "sha256:14e11574c341f9887539a44c948e3b1b9e1fc0944b78f17e8f035b4461f467f1",
+      "structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md": "sha256:63964f20291816dcb25d0e4eb62baf95b4307ce0e3225002e7310f7cc10cb847",
+      "structured-read-semantics/separate-semantic-selection-and-source-text-reads.md": "sha256:10f9c28a1fef043bd49882a136ef7ca67fca42b9e33f86f9ac130eeb5b691890",
+      "structured-read-semantics/separate-structured-and-source-reads.md": "sha256:e2fb997983226446946490256b0849e5e0e33e4619f170e697088b4ce33294fb",
+      "structured-read-semantics/treat-source-order-as-costed-format-policy.md": "sha256:5e8cd94c17392fb3682d3fb4555df0b21fde75ebdd5cab70fbcbf836e93fe5e2",
+      "validation-governance/allow-necessary-controlled-cloud-validation-without-per-run-confirmation.md": "sha256:ba6c285790ce0f65982cc8efd5b9c5a0666ec457ce93e7ef5892d35567a5fbc3",
+      "validation-governance/return-cloud-validated-work-to-original-branch.md": "sha256:f266875610e4b4e9ba2683c14eea5043546d17fa5ff9265d29a67361b84d49bd",
+      "validation-governance/return-validated-commits-to-original-branch.md": "sha256:44c99bff4bd279d5712a0d51f5b2a4c8296810afc64d8ba8c71351d81418c518",
+      "validation-governance/validate-unavailable-platforms-through-controlled-branches.md": "sha256:f6ef83723d3b9700c37c620ba8e8e8cd641ab33b8e6f10a147dae626c830987c"
+    },
+    "metadata": "sha256:f34af72a0dd3bc1fdec13a7862187649668a1c24b629536e8ac0e992a660dd59"
+  },
   "keyDefinitions": [
     {
       "name": "domain",
@@ -57,9 +105,8 @@
       "mode": "exact"
     }
   ],
-  "entries": [
-    {
-      "id": "adapter-boundary-evidence/keep-json-as-second-heterogeneous-adapter-sample.md",
+  "entries": {
+    "adapter-boundary-evidence/keep-json-as-second-heterogeneous-adapter-sample.md": {
       "keys": {
         "domain": [
           "adapter-boundary-evidence"
@@ -88,8 +135,7 @@
         ]
       }
     },
-    {
-      "id": "adapter-boundary-evidence/select-json-as-second-adapter.md",
+    "adapter-boundary-evidence/select-json-as-second-adapter.md": {
       "keys": {
         "domain": [
           "adapter-boundary-evidence"
@@ -110,8 +156,7 @@
         "relations": []
       }
     },
-    {
-      "id": "adapter-boundary-evidence/validate-boundaries-with-complete-adapter-behavior.md",
+    "adapter-boundary-evidence/validate-boundaries-with-complete-adapter-behavior.md": {
       "keys": {
         "domain": [
           "adapter-boundary-evidence"
@@ -132,8 +177,7 @@
         "relations": []
       }
     },
-    {
-      "id": "adapter-boundary-evidence/validate-shared-abstractions-with-heterogeneous-real-adapters.md",
+    "adapter-boundary-evidence/validate-shared-abstractions-with-heterogeneous-real-adapters.md": {
       "keys": {
         "domain": [
           "adapter-boundary-evidence"
@@ -157,8 +201,7 @@
         "relations": []
       }
     },
-    {
-      "id": "adapter-boundary-evidence/validate-shared-boundaries-across-supported-adapter-surfaces.md",
+    "adapter-boundary-evidence/validate-shared-boundaries-across-supported-adapter-surfaces.md": {
       "keys": {
         "domain": [
           "adapter-boundary-evidence"
@@ -187,8 +230,7 @@
         ]
       }
     },
-    {
-      "id": "adapter-document-lifecycle/keep-document-preparation-invocation-private.md",
+    "adapter-document-lifecycle/keep-document-preparation-invocation-private.md": {
       "keys": {
         "domain": [
           "adapter-document-lifecycle"
@@ -217,8 +259,7 @@
         ]
       }
     },
-    {
-      "id": "adapter-document-lifecycle/prioritize-reusable-document-preparation.md",
+    "adapter-document-lifecycle/prioritize-reusable-document-preparation.md": {
       "keys": {
         "domain": [
           "adapter-document-lifecycle"
@@ -239,8 +280,7 @@
         "relations": []
       }
     },
-    {
-      "id": "adapter-selection/route-by-exact-name-and-longest-basename-suffix-before-io.md",
+    "adapter-selection/route-by-exact-name-and-longest-basename-suffix-before-io.md": {
       "keys": {
         "domain": [
           "adapter-selection"
@@ -269,8 +309,7 @@
         ]
       }
     },
-    {
-      "id": "adapter-selection/route-by-manifest-basename-hints.md",
+    "adapter-selection/route-by-manifest-basename-hints.md": {
       "keys": {
         "domain": [
           "adapter-selection"
@@ -296,8 +335,7 @@
         ]
       }
     },
-    {
-      "id": "adapter-selection/route-by-manifest-pathname-hints.md",
+    "adapter-selection/route-by-manifest-pathname-hints.md": {
       "keys": {
         "domain": [
           "adapter-selection"
@@ -318,8 +356,7 @@
         "relations": []
       }
     },
-    {
-      "id": "adapter-selection/route-by-pathname-before-document-io.md",
+    "adapter-selection/route-by-pathname-before-document-io.md": {
       "keys": {
         "domain": [
           "adapter-selection"
@@ -345,14 +382,13 @@
         ]
       }
     },
-    {
-      "id": "decision-management/allow-partial-lineage-for-unrepresentable-one-to-many-splits.md",
+    "decision-management/allow-partial-lineage-for-unrepresentable-one-to-many-splits.md": {
       "keys": {
         "domain": [
           "decision-management"
         ],
         "status": [
-          "active"
+          "archived"
         ],
         "alignment": [
           "aligned"
@@ -361,7 +397,7 @@
       "state": {
         "path": "decision-management/allow-partial-lineage-for-unrepresentable-one-to-many-splits.md",
         "title": "仅在关系模型无法表达一旧多新拆分时允许部分关系连续性",
-        "status": "active",
+        "status": "archived",
         "alignment": "aligned",
         "createdAt": "2026-08-06T03:00:58Z",
         "purpose": "在现有关系模型无法完整表达一对多拆分时，不让 lineage 缺口阻塞语义正确的独立决策。",
@@ -370,14 +406,13 @@
         "relations": []
       }
     },
-    {
-      "id": "decision-management/match-change-detail-to-current-phase.md",
+    "decision-management/match-change-detail-to-current-phase.md": {
       "keys": {
         "domain": [
           "decision-management"
         ],
         "status": [
-          "active"
+          "archived"
         ],
         "alignment": [
           "aligned"
@@ -386,7 +421,7 @@
       "state": {
         "path": "decision-management/match-change-detail-to-current-phase.md",
         "title": "让 OpenSpec change 细节匹配生命周期阶段",
-        "status": "active",
+        "status": "archived",
         "alignment": "aligned",
         "createdAt": "2026-08-05T14:30:08Z",
         "purpose": "让 change 在探索阶段保留支持方向判断的信息，并在进入实施准备后形成实施细节。",
@@ -395,8 +430,7 @@
         "relations": []
       }
     },
-    {
-      "id": "decision-management/organize-decision-domains-by-primary-changed-contract.md",
+    "decision-management/organize-decision-domains-by-primary-changed-contract.md": {
       "keys": {
         "domain": [
           "decision-management"
@@ -420,8 +454,7 @@
         "relations": []
       }
     },
-    {
-      "id": "decision-management/separate-current-rules-future-directions-and-change-plans.md",
+    "decision-management/separate-current-rules-future-directions-and-change-plans.md": {
       "keys": {
         "domain": [
           "decision-management"
@@ -447,8 +480,7 @@
         ]
       }
     },
-    {
-      "id": "decision-management/separate-decision-spec-ownership.md",
+    "decision-management/separate-decision-spec-ownership.md": {
       "keys": {
         "domain": [
           "decision-management"
@@ -474,8 +506,7 @@
         ]
       }
     },
-    {
-      "id": "decision-management/treat-unaligned-decisions-as-future-direction-input.md",
+    "decision-management/treat-unaligned-decisions-as-future-direction-input.md": {
       "keys": {
         "domain": [
           "decision-management"
@@ -504,8 +535,36 @@
         ]
       }
     },
-    {
-      "id": "decision-management/use-verified-decision-records.md",
+    "decision-management/use-change-plans-for-change-execution.md": {
+      "keys": {
+        "domain": [
+          "decision-management"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "aligned"
+        ]
+      },
+      "state": {
+        "path": "decision-management/use-change-plans-for-change-execution.md",
+        "title": "用 Change Plan 承接变更实施并退役 OpenSpec",
+        "status": "active",
+        "alignment": "aligned",
+        "createdAt": "2026-08-11T02:53:45Z",
+        "purpose": "在不重复当前规范和长期方向的前提下，为跨文件 change 保留可交接的实施计划与生命周期。",
+        "background": "Docs 与决策记录已经分别完整承接当前规范和跨 change 方向，OpenSpec capability 视图继续复制这些内容，但项目仍需要 change 级范围、设计、任务、验证和阶段管理。",
+        "decision": "Change Plan 承接用户明确要求持久维护的 change-local 计划；OpenSpec 退出当前工作流并只保留历史，其它内容继续由各自 owner 承接。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "decision-management/match-change-detail-to-current-phase.md"
+          }
+        ]
+      }
+    },
+    "decision-management/use-verified-decision-records.md": {
       "keys": {
         "domain": [
           "decision-management"
@@ -526,8 +585,7 @@
         "relations": []
       }
     },
-    {
-      "id": "json-navigation/keep-depth-limit-adapter-private.md",
+    "json-navigation/keep-depth-limit-adapter-private.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -551,8 +609,7 @@
         "relations": []
       }
     },
-    {
-      "id": "json-navigation/normalize-structured-json-output.md",
+    "json-navigation/normalize-structured-json-output.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -578,8 +635,7 @@
         ]
       }
     },
-    {
-      "id": "json-navigation/preserve-json-number-source-tokens.md",
+    "json-navigation/preserve-json-number-source-tokens.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -608,8 +664,7 @@
         ]
       }
     },
-    {
-      "id": "json-navigation/preserve-number-tokens.md",
+    "json-navigation/preserve-number-tokens.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -630,8 +685,7 @@
         "relations": []
       }
     },
-    {
-      "id": "json-navigation/reject-duplicate-object-members.md",
+    "json-navigation/reject-duplicate-object-members.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -655,8 +709,7 @@
         "relations": []
       }
     },
-    {
-      "id": "json-navigation/search-original-json-source.md",
+    "json-navigation/search-original-json-source.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -680,8 +733,7 @@
         "relations": []
       }
     },
-    {
-      "id": "json-navigation/use-canonical-json-path-anchors.md",
+    "json-navigation/use-canonical-json-path-anchors.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -710,8 +762,7 @@
         ]
       }
     },
-    {
-      "id": "json-navigation/use-canonical-json-pointer-refs.md",
+    "json-navigation/use-canonical-json-pointer-refs.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -732,8 +783,7 @@
         "relations": []
       }
     },
-    {
-      "id": "json-navigation/use-deterministic-semantic-json-value-serialization.md",
+    "json-navigation/use-deterministic-semantic-json-value-serialization.md": {
       "keys": {
         "domain": [
           "json-navigation"
@@ -762,8 +812,7 @@
         ]
       }
     },
-    {
-      "id": "product-direction/advance-json-readable-presentation-after-contract-approval.md",
+    "product-direction/advance-json-readable-presentation-after-contract-approval.md": {
       "keys": {
         "domain": [
           "product-direction"
@@ -792,8 +841,7 @@
         ]
       }
     },
-    {
-      "id": "product-direction/complete-json-readable-presentation.md",
+    "product-direction/complete-json-readable-presentation.md": {
       "keys": {
         "domain": [
           "product-direction"
@@ -814,8 +862,7 @@
         "relations": []
       }
     },
-    {
-      "id": "product-direction/prefer-simple-document-formats-before-code-adapters.md",
+    "product-direction/prefer-simple-document-formats-before-code-adapters.md": {
       "keys": {
         "domain": [
           "product-direction"
@@ -839,8 +886,7 @@
         "relations": []
       }
     },
-    {
-      "id": "product-direction/repair-token-cost-as-bounded-debt.md",
+    "product-direction/repair-token-cost-as-bounded-debt.md": {
       "keys": {
         "domain": [
           "product-direction"
@@ -864,8 +910,7 @@
         "relations": []
       }
     },
-    {
-      "id": "product-direction/stabilize-core-before-entrypoint-expansion.md",
+    "product-direction/stabilize-core-before-entrypoint-expansion.md": {
       "keys": {
         "domain": [
           "product-direction"
@@ -889,8 +934,7 @@
         "relations": []
       }
     },
-    {
-      "id": "product-direction/treat-exploration-as-non-delivery.md",
+    "product-direction/treat-exploration-as-non-delivery.md": {
       "keys": {
         "domain": [
           "product-direction"
@@ -908,14 +952,13 @@
         "status": "active",
         "alignment": "aligned",
         "createdAt": "2026-08-05T06:47:42Z",
-        "purpose": "让方向探索与正式 change、实施优先级和产品承诺保持清楚边界。",
-        "background": "Operation composition 材料用于持续挖掘候选体验，但宽泛候选和开放问题不能直接充当可实施契约。",
-        "decision": "探索 change 只保存想法和筛选输入，不形成实施授权、依赖或交付排序；具体能力成熟后必须由独立且精确的 change 承接。",
+        "purpose": "让方向探索、长期决定与正式 Change 的职责和进入条件保持清楚边界。",
+        "background": "历史 `explore-operation-composition` 材料同时保存多种候选体验和开放问题，能够支持方向判断，但没有收敛成一个可实施目标。",
+        "decision": "历史 operation-composition 只作归档输入；成熟的跨 change 判断进入决策，具体交付仅在用户明确要求后由精确 Change Plan 承接。",
         "relations": []
       }
     },
-    {
-      "id": "readable-presentation/keep-custom-rendering-in-readable-view.md",
+    "readable-presentation/keep-custom-rendering-in-readable-view.md": {
       "keys": {
         "domain": [
           "readable-presentation"
@@ -941,8 +984,7 @@
         ]
       }
     },
-    {
-      "id": "readable-presentation/keep-format-presentation-in-readable-output.md",
+    "readable-presentation/keep-format-presentation-in-readable-output.md": {
       "keys": {
         "domain": [
           "readable-presentation"
@@ -971,8 +1013,7 @@
         ]
       }
     },
-    {
-      "id": "structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md",
+    "structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md": {
       "keys": {
         "domain": [
           "structured-read-semantics"
@@ -993,8 +1034,7 @@
         "relations": []
       }
     },
-    {
-      "id": "structured-read-semantics/separate-semantic-selection-and-source-text-reads.md",
+    "structured-read-semantics/separate-semantic-selection-and-source-text-reads.md": {
       "keys": {
         "domain": [
           "structured-read-semantics"
@@ -1023,8 +1063,7 @@
         ]
       }
     },
-    {
-      "id": "structured-read-semantics/separate-structured-and-source-reads.md",
+    "structured-read-semantics/separate-structured-and-source-reads.md": {
       "keys": {
         "domain": [
           "structured-read-semantics"
@@ -1050,8 +1089,7 @@
         ]
       }
     },
-    {
-      "id": "structured-read-semantics/treat-source-order-as-costed-format-policy.md",
+    "structured-read-semantics/treat-source-order-as-costed-format-policy.md": {
       "keys": {
         "domain": [
           "structured-read-semantics"
@@ -1080,8 +1118,7 @@
         ]
       }
     },
-    {
-      "id": "validation-governance/allow-necessary-controlled-cloud-validation-without-per-run-confirmation.md",
+    "validation-governance/allow-necessary-controlled-cloud-validation-without-per-run-confirmation.md": {
       "keys": {
         "domain": [
           "validation-governance"
@@ -1110,8 +1147,7 @@
         ]
       }
     },
-    {
-      "id": "validation-governance/return-cloud-validated-work-to-original-branch.md",
+    "validation-governance/return-cloud-validated-work-to-original-branch.md": {
       "keys": {
         "domain": [
           "validation-governance"
@@ -1135,8 +1171,7 @@
         "relations": []
       }
     },
-    {
-      "id": "validation-governance/return-validated-commits-to-original-branch.md",
+    "validation-governance/return-validated-commits-to-original-branch.md": {
       "keys": {
         "domain": [
           "validation-governance"
@@ -1162,8 +1197,7 @@
         ]
       }
     },
-    {
-      "id": "validation-governance/validate-unavailable-platforms-through-controlled-branches.md",
+    "validation-governance/validate-unavailable-platforms-through-controlled-branches.md": {
       "keys": {
         "domain": [
           "validation-governance"
@@ -1184,5 +1218,5 @@
         "relations": []
       }
     }
-  ]
+  }
 }

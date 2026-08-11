@@ -93,9 +93,9 @@ bun run env:check
 
 quick profile 不运行 duplicate-code measurement；其 `metrics.json`、Markdown report 和命令摘要必须将该结果标为 `skipped-by-profile` / not measured，而不是零个重复片段。full profile 只有在 jscpd 测量成功后才可把空数组呈现为 measured zero；工具不可用和执行失败分别保留为 `unavailable` 与 `error`。`metrics.json` schema `0.5.0` 要求 measurement state；内部字段与校验规则由 [`quality-core`](../scripts/tools/quality-core/quality-core.md) 拥有。
 
-required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check。full profile 使用 full quality check 替代 quick quality check，并追加更宽验证；full profile 的 quality check 使用 verifier 输出，只在存在未带 `acceptedReason` 的 warning 时把 workspace verification 标记为 warning。profile 组成、质量观测边界和交付前取舍由 [测试策略](testing.md#统一验证入口) 维护。
+required/full profile 的完整组成、质量观测边界和交付前取舍由[测试策略](testing.md#统一验证入口)单独拥有。本节只说明脚本与验证器怎样接入这些 profile，不维护第二份检查清单；full profile 的 quality check 使用 verifier 输出，只在存在未带 `acceptedReason` 的 warning 时把 workspace verification 标记为 warning。
 
-`scripts/docs/validate.ts` 直接导入仓库跟踪的 `.codex/skills/decision-records/scripts/decision-records.mjs`，由 `validate:docs` 的 `decisions` task 执行 v5 严格检查。该检查覆盖受控领域、Markdown metadata 与正文、生命周期、对齐、直接关系和派生索引，并进入 required profile。入口不依赖个人 skill 目录，也不运行需要联网的 updater 或 release 查询。
+`scripts/docs/validate.ts` 直接导入仓库跟踪的 `decision-records` v24 与 `investigation-report` v13 模块。`validate:docs` 的 `decisions` task 检查受控领域、Markdown、候选/生命周期、对齐、完整关系事务、版本快照和派生索引；`investigations` task 检查主题、报告、随附资源、引用与派生索引。`scripts/change-plans/validate.ts` 通过 `change-plan` v8 的稳定 CLI JSON 输出校验 `changes/` 中全部 active 与 archived Change。三条入口都进入 required profile，不依赖个人 skill 目录，也不运行需要联网的 updater 或 release 查询；机械检查不替代内容审核、事实证明或授权。
 
 required profile 的 `test-evidence-ledger` check 只调用
 `scripts/test-evidence/` project wrapper。wrapper 实现 supported runner profile、
@@ -107,13 +107,7 @@ Bun report 已覆盖完整 Bun 测试面，所以 workspace verifier 不再重�
 package script 子集；这些脚本继续作为局部开发入口。required profile 另行运行
 ast-grep rule tests，两条入口都不依赖个人 skill、全局 ast-grep 或联网 updater。
 
-决策维护从仓库跟踪的 v5 CLI 进入：
-
-```bash
-node .codex/skills/decision-records/scripts/decision-records.mjs <command> --root .
-```
-
-`domains`、`list`、`show` 和 `trace` 用于只读恢复，`check` 用于严格验收；手工修改领域表或决策 Markdown 后使用 `sync-index --write` 重建派生索引。生命周期、对齐和演进变化使用 skill 定义的显式维护命令，不直接编辑索引。`update-skill.mjs` 只用于有意的 package 维护，不属于日常验证链路。
+日常验证只从 `validate:docs`、`validate:change-plans` 或 workspace profile 进入。决策、调查和 Change Plan 的查询、写入、索引及生命周期命令分别由对应项目 skill 和 CLI help 拥有；本工具链文档不维护第二份操作手册。`update-skill.mjs` 只用于有意的 package 维护，不属于日常验证链路。
 
 Workspace verifier 的运行并发预算可由 `--concurrency <n>` 或环境变量 `DOCNAV_VERIFY_CONCURRENCY` 提供，CLI 参数优先；值必须是正整数。两者都省略或环境变量为空时不设置并发上限，由 task runner 使用默认调度行为。
 

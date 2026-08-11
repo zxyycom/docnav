@@ -34,7 +34,7 @@ Docnav 当前有一个必须保留的架构边界：专用 readable renderer 消
 - [输出主规范](../../output.md)：generic readable view 当前以 pretty JSON 和定长 framing 展示；格式专用 renderer 仍需决定字段密度、标点、转义、ref、preview、分页和选择规则。renderer 必须把 ref 当作 opaque value，不能从 ref 猜测层级、父子关系或缩进。
 - [JSON adapter 主规范](../../adapters/json.md)：JSON/JSONC 的解析、ref、顺序、分页与 read 内容属于 adapter 行为；readable renderer 不得反向改变这些语义。
 - [JSON readable presentation 活动决策](../../decisions/product-direction/advance-json-readable-presentation-after-contract-approval.md)：专用展示必须复用同一不可变响应，并保持 protocol JSON 为权威机器接口。
-- [`add-json-readable-renderer` OpenSpec change](../../../openspec/changes/add-json-readable-renderer/design.md)：形成时仍有六组 contract 问题未批准，包括适用 operation/branch、稳定字段、opaque ref、preview 来源、page/continuation，以及 renderer 选择与 fallback。本报告只提供这些问题的调查输入。
+- [`add-json-readable-renderer` OpenSpec change](../../../archive/legacy/openspec/changes/add-json-readable-renderer/design.md)：形成时仍有六组 contract 问题未批准，包括适用 operation/branch、稳定字段、opaque ref、preview 来源、page/continuation，以及 renderer 选择与 fallback。本报告只提供这些问题的调查输入。
 
 **外部一手源码**
 

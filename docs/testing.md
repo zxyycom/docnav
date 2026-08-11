@@ -33,7 +33,7 @@ Case 的对象关系、存储格式、查询、当前/历史边界和闭合失�
 回归”、实现采用了哪条内部路径，或调用方无法观察的背后逻辑扩大测试意图或
 语义 Case。
 
-历史回归、历史 Case、OpenSpec migration record 或其它旧测试材料只作为风险线索、
+历史回归、历史 Case、已归档 Change Plan、legacy OpenSpec migration record 或其它旧测试材料只作为风险线索、
 迁移审计或代表性输入来源，不作为当前证明目标，也不单独建立新增产品测试的义务。
 生产能力仍存在但缺少当前直接测试实体时，应由独立的 owner-driven change 根据
 当前契约、风险和维护成本决定是否补测试；不得把恢复历史账本完整性当成理由。
@@ -180,11 +180,9 @@ bun run verify:docnav-workspace
 bun run verify:docnav-workspace:required
 ```
 
-required profile 是快速、确定性的必需验证集合，用于日常开发中缩短反馈周期，适合改文档、修脚本或调验证逻辑时先跑。它包含 quick quality check；该检查跳过 baseline comparison 和 jscpd duplicate detection，因此出现 warning 时会提示当前不是全量质检。full profile 复用 required profile 中的非质量必需检查，使用 full quality check 替代 quick quality check，并追加 CLI smoke、Rust 全量测试、cargo clippy 和 OpenSpec 严格校验。质量观测和其它 Bun 内部测试已经由 required profile 的测试账本入口统一执行，不再作为重复的 full-profile 子集任务。
+required profile 是快速、确定性的必需验证集合，用于日常开发中缩短反馈周期，适合改文档、Change Plan、调查报告、决策、脚本或验证逻辑时先跑。它包含 Cargo format、TypeScript typecheck/lint、Git diff whitespace、test-evidence rule tests、Change Plan、docs/decision/investigation validators、semantic Case ledger 和 quick quality check；该质量检查跳过 baseline comparison 和 jscpd duplicate detection，因此出现 warning 时会提示当前不是全量质检。full profile 复用 required profile 中的非质量必需检查，使用 full quality check 替代 quick quality check，并追加 CLI smoke、Rust 全量测试和 cargo clippy。质量观测和其它 Bun 内部测试已经由 required profile 的测试账本入口统一执行，不再作为重复的 full-profile 子集任务。
 
 full profile 会验证质量观测链路本身：工具封装测试、扫描执行、配置读取和输出结构必须通过。Lizard、scc 和 jscpd 的观测结果进入快照、报告和 warning records；单独质量扫描存在 warning records 时继续显示 `warning`。workspace verifier 的 full profile 使用 verifier 输出：只有未带 `acceptedReason` 的 warning records 会把 workspace verifier 状态标记为 `warning`，带 `acceptedReason` 的 warning 仍写入质量 artifact 和报告，并在对应 warning 旁展示原因。
-
-required profile 包含 `typecheck:scripts`、`lint:scripts` 和 quick quality check，分别验证 `.ts` 脚本类型 contract、静态质量规则和轻量质量观测状态。
 
 required profile 的 `test-evidence-ledger` check 只从仓库内
 `scripts/test-evidence/` project wrapper 进入。wrapper 按版本化 supported runner
@@ -196,7 +194,7 @@ Case 与实体并集的闭合。任何漏项、悬空、重复、不支持形态
 的 Bun 子集；这些 package scripts 只保留为局部开发入口。Git diff 和局部查询只能
 缩小人工语义审查范围，不能替代这次全树闭合。
 
-docs validator 也直接调用项目内 `decision-records` 模块，对 `docs/decisions` 的目录、Markdown、全生命周期索引和关系执行严格检查。该自动检查只证明确定性结构契约；记录门槛、理由质量和当前行为 owner 是否同步继续由变更审查判断。
+docs validator 直接调用项目内 `decision-records` 与 `investigation-report` 模块，分别对 `docs/decisions` 的目录、Markdown、生命周期、版本快照、关系和派生索引，以及 `docs/investigations` 的主题、报告、资源引用和派生索引执行严格检查。required profile 另行检查所有 active 与 archived Change Plan 的固定结构和 assessment。自动检查只证明确定性机械契约；决策门槛、调查证据质量、计划内容和当前行为 owner 是否同步继续由变更审查判断。
 
 workspace verifier 的终端输出用于快速判断当前验证状态：默认展示每个 report 的 completion line 和最终 summary。运行期输出按职责分离：
 
@@ -222,7 +220,7 @@ Manual CR: 修改 workspace verifier 的 check definitions、命令参数、depe
 | `bun run smoke:docnav` | 对当前开发构建运行 core CLI smoke |
 | `bun --silent run dnm <args>` | 运行当前开发版 `docnav`，只保留命令结果和失败诊断 |
 
-局部改动仍可先运行范围更小的命令或 required profile；跨 Rust、文档、OpenSpec、schema、示例或输出层边界的交付，最终应运行 `bun run verify:docnav-workspace`。具体检查项和输出过滤规则由验证脚本维护，本节只定义 profile 用途和交付要求。
+局部改动仍可先运行范围更小的命令或 required profile；跨 Rust、文档、Change Plan、schema、示例或输出层边界的交付，最终应运行 `bun run verify:docnav-workspace`。具体检查项和输出过滤规则由验证脚本维护，本节只定义 profile 用途和交付要求。
 
 ## 一致性审计
 
@@ -233,6 +231,6 @@ Manual CR: 修改 workspace verifier 的 check definitions、命令参数、depe
    runtime 与 Case 映射闭合，并审查相关 Case 的 owner、证明目标和当前实体。
 3. 测试文档只记录覆盖目标和验收边界，不重新定义稳定字段、错误码、DiagnosticCode details 规则或命令语义。
 4. schema、示例和 fixture 只校验 protocol raw shape、`readable-view` 最终文本和二者的 documented mapping，不成为新的业务语义或 code/details 规则来源；private readable helper value 不形成 public schema。
-5. OpenSpec change 只作为变更依据、验收和审计历史，不作为日常实现主入口。
+5. 测试证明目标只来自当前行为 owner，并由当前实现结果证明；决策、Change Plan、调查报告和历史材料可以提供方向或风险线索，但不替代当前行为契约与实现证据。
 6. 当测试暴露规范缺口时，先更新 owner 文档，再同步 schema、示例、实现和验证脚本。
 7. 涉及共享 helper 的改动必须覆盖可观察外部行为：core CLI strict failure placement、protocol-json stdout purity、primary readable/protocol error projection、protocol raw facts 到 readable display/cost/info projection、static registry adapter inspection、core config descriptor/path handoff、selected config file target behavior、navigation-owned raw config source loading 与 navigation input resolution 边界、Markdown pagination mechanics 和 schema/decode/semantic invalid paths。

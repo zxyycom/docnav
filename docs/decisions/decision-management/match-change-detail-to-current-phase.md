@@ -1,6 +1,6 @@
 ---
 title: 让 OpenSpec change 细节匹配生命周期阶段
-status: active
+status: archived
 alignment: aligned
 createdAt: 2026-08-05T14:30:08Z
 purpose: 让 change 在探索阶段保留支持方向判断的信息，并在进入实施准备后形成实施细节。

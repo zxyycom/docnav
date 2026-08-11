@@ -5,12 +5,14 @@ import { validateJsonSyntax, validateSchemas } from "../tools/validators/schema/
 import { validateOutputModeConsistency } from "../tools/validators/output/document-output-modes.ts";
 import { validateProtocolExampleSemantics } from "../tools/validators/protocol/protocol-examples.ts";
 import { runDecisionRecordsCli } from "../../.codex/skills/decision-records/scripts/decision-records.mjs";
+import { runInvestigationReportCheckCli } from "../../.codex/skills/investigation-report/scripts/check-investigations.mjs";
 
 const requested = new Set(process.argv.slice(2));
 const runAll = requested.size === 0;
 
 const tasks = {
   [TASK_NAMES.decisions]: validateDecisionRecordCollection,
+  [TASK_NAMES.investigations]: validateInvestigationReportCollection,
   [TASK_NAMES.json]: validateJsonSyntax,
   [TASK_NAMES.schema]: validateSchemas,
   [TASK_NAMES.examples]: validateExampleConsistency,
@@ -27,6 +29,11 @@ for (const taskName of selectedTasks) {
 async function validateDecisionRecordCollection() {
   const exitCode = await runDecisionRecordsCli(["check", "--root", process.cwd()]);
   assert(exitCode === 0, "decision records validation failed");
+}
+
+async function validateInvestigationReportCollection() {
+  const exitCode = await runInvestigationReportCheckCli(["check", "--root", process.cwd()]);
+  assert(exitCode === 0, "investigation report validation failed");
 }
 
 function validateExampleConsistency() {

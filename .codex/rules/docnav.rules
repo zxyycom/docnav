@@ -10,7 +10,7 @@ prefix_rule(pattern=["bun", "run", "typecheck:scripts"], decision="allow")
 prefix_rule(pattern=["bun", "run", "verify:docnav-workspace"], decision="allow")
 prefix_rule(pattern=["bun", "run", "verify:docnav-workspace:required"], decision="allow")
 prefix_rule(pattern=["bun", "run", "validate:docs"], decision="allow")
-prefix_rule(pattern=["bun", "run", "validate:openspec"], decision="allow")
+prefix_rule(pattern=["bun", "run", "validate:change-plans"], decision="allow")
 prefix_rule(pattern=["bun", "run", "smoke:docnav"], decision="allow")
 prefix_rule(pattern=["bun", "run", "smoke:docnav-package"], decision="allow")
 prefix_rule(pattern=["bun", "run", "verify:docnav-package"], decision="allow")
@@ -47,10 +47,6 @@ prefix_rule(pattern=["pnpm", "remove"], decision="prompt")
 prefix_rule(pattern=["pnpm", "update"], decision="prompt")
 prefix_rule(pattern=["pnpm", "exec"], decision="prompt")
 prefix_rule(pattern=["pnpm", "dlx"], decision="prompt")
-
-# OpenSpec inspection and validation.
-prefix_rule(pattern=["openspec", "list"], decision="allow")
-prefix_rule(pattern=["openspec", "validate"], decision="allow")
 
 # Rust workspace inspection, build, formatting, linting, and tests.
 prefix_rule(pattern=["cargo", "--version"], decision="allow")

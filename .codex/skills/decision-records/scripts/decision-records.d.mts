@@ -6,11 +6,18 @@
  * Skill source directory: https://github.com/zxyycom/skills/tree/main/skills/decision-records
  * Rebuild: bun run sync:decision-records-cli
  */
-export type DecisionRelationType = "修订" | "替代" | "判定无效" | "归并";
+export type DecisionRelationType =
+  | "修订"
+  | "替代"
+  | "判定无效"
+  | "归并"
+  | "拆分";
 
-export type DecisionStatus = "active" | "archived";
+export type DecisionStatus = "candidate" | "active" | "archived";
 
-export type DecisionListStatus = DecisionStatus | "all";
+export type EstablishedDecisionStatus = "active" | "archived";
+
+export type DecisionListStatus = EstablishedDecisionStatus | "all";
 
 export type DecisionAlignment = "aligned" | "unaligned";
 
@@ -20,6 +27,18 @@ export type DecisionRelation = {
   type: DecisionRelationType;
   target: string;
 };
+
+export type DecisionSuccessor = {
+  alignment: DecisionAlignment;
+  recordPath: string;
+};
+
+export type DecisionRelationOverride =
+  | { kind: "source" }
+  | {
+      kind: "replace";
+      relations: DecisionRelation[];
+    };
 
 export type DecisionDomainDefinition = {
   id: string;
@@ -47,40 +66,76 @@ export type DecisionMetadata =
   }
   | {
     status: "archived";
-    alignment: null;
+    alignment: DecisionAlignment | null;
     createdAt: string;
   };
 
 export type DecisionDocument = DecisionProjection & DecisionMetadata;
 
+export type DecisionCandidateDocument = DecisionProjection & {
+  status: "candidate";
+  alignment: null;
+  createdAt: null;
+};
+
+export type DecisionRecordSource =
+  | {
+      body: string;
+      document: DecisionCandidateDocument;
+      kind: "candidate";
+      text: string;
+    }
+  | {
+      body: string;
+      document: DecisionDocument;
+      kind: "established";
+      text: string;
+    }
+  | {
+      kind: "invalid";
+      text: string;
+    }
+  | {
+      kind: "missing";
+    };
+
 export type DecisionIndexState = DecisionDocument & {
   path: string;
 };
 
-export type DecisionIndexEntry = {
-  id: string;
+export type DecisionIndexStoredEntry = {
   keys: Record<string, Array<boolean | number | string>>;
   state: DecisionIndexState;
+};
+
+export type DecisionIndexEntry = DecisionIndexStoredEntry & {
+  id: string;
 };
 
 export type DecisionIndexMetadata = {
   domains: DecisionDomainDefinition[];
 };
 
+export type DecisionSourceRevision = {
+  metadata: string;
+  entries: Record<string, string>;
+};
+
 export type DecisionIndex = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   namespace: "decisions";
-  definitionVersion: 3;
+  definitionVersion: 5;
   metadata: DecisionIndexMetadata;
-  sourceRevision: string;
+  sourceRevision: DecisionSourceRevision;
   keyDefinitions: Array<{
     name: string;
     mode: "exact" | "range" | "text";
   }>;
-  entries: DecisionIndexEntry[];
+  entries: Record<string, DecisionIndexStoredEntry>;
 };
 
 export type DecisionRecord = {
+  /** Whether the source is a complete candidate eligible for activation. */
   activationCandidate: boolean;
   alignment: DecisionAlignment | null;
   bodyValid: boolean;
@@ -94,6 +149,7 @@ export type DecisionRecord = {
   projection: DecisionProjection;
   relativePath: string;
   relationshipErrors: string[];
+  source: DecisionRecordSource;
   status: DecisionStatus | null;
 };
 
@@ -103,9 +159,14 @@ export type DecisionScanOptions = {
 };
 
 export type DecisionScan = {
+  /** @deprecated Candidates no longer produce validation errors; always empty. */
   activationCandidateErrors: string[];
+  /** Source collection errors that prevent returning a partial candidate query. */
+  collectionErrors: string[];
   decisionsDirectoryAvailable: boolean;
   decisionsDirectory: string;
+  /** Validated domain catalog definitions from the same source scan. */
+  domainDefinitions: DecisionDomainDefinition[];
   domainErrors: string[];
   domainIds: Set<string>;
   errors: string[];
@@ -121,6 +182,7 @@ export type DecisionScan = {
 };
 
 export type DecisionValidationResult = {
+  /** Number of complete candidates eligible for activation. */
   activationCandidateCount: number;
   activeCount: number;
   alignedCount: number;

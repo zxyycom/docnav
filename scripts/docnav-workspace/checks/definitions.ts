@@ -93,6 +93,16 @@ export const checks = defineChecks([
         ]
       },
       {
+        id: "change-plans",
+        label: "change plans",
+        command: "bun",
+        args: ["run", "validate:change-plans"],
+        ignoreOutput: [
+          /^\$ bun scripts\/change-plans\/validate\.ts$/,
+          /^Change plans check passed \(\d+ active, \d+ archived; draft=\d+, plan=\d+, implementation=\d+, shelved=\d+\)\.$/
+        ]
+      },
+      {
         id: "docs-validators",
         label: "docs validators",
         command: "bun",
@@ -109,7 +119,8 @@ export const checks = defineChecks([
           /^error details ok:/,
           /^manifest example consistency ok:/,
           /^document output mode consistency ok:/,
-          /^Decision records check passed \(\d+ domains, \d+ decisions, \d+ active, \d+ aligned, \d+ unaligned, \d+ archived\)\.$/,
+          /^Decision records check passed \(\d+ domains, \d+ decisions, \d+ active, \d+ aligned, \d+ unaligned, \d+ archived, \d+ candidates\)\.$/,
+          /^Investigation report check passed \(\d+ of \d+ topics checked across \d+ categories; full index current\)\.$/,
           /^markdown links ok:/
         ]
       },
@@ -242,18 +253,6 @@ export const checks = defineChecks([
         mutex: ["cargo-build"],
         ignoreOutput: [
           ...cargoTestSuccessOutput
-        ]
-      },
-      {
-        id: "openspec",
-        label: "openspec",
-        command: "bun",
-        args: ["run", "validate:openspec"],
-        ignoreOutput: [
-          /^\$ bun run openspec validate --all --strict$/,
-          /^✓ /,
-          /^Totals: \d+ passed, 0 failed .*$/,
-          /^- Validating\.\.\.$/
         ]
       }
     ]

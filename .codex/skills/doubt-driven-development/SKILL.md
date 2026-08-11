@@ -12,7 +12,7 @@ description: >-
 
 当一个 decision 足够关键，而 confidence 不能当作 evidence 时，使用本技能。它是一个 bounded challenge：把 risky claim 写成可观察 contract，再主动寻找 artifact 违反 contract 的方式，最后处理 findings 并在明确条件下停止。
 
-本技能不替代 `api-and-interface-design`、OpenSpec skills、`test-driven-development` 或 `code-review-and-quality`。它只在这些工作中出现高风险 claim 时提供 adversarial pass。
+本技能不替代 `api-and-interface-design`、`change-plan`、`decision-records`、`test-driven-development` 或 `code-review-and-quality`。它只在这些工作中出现高风险 claim 时提供 adversarial pass。
 
 ## 触发条件
 
@@ -26,7 +26,7 @@ description: >-
 - security-sensitive input、path handling、external command execution 或 untrusted document behavior。
 - compiler/tests 只能部分证明的 claims，例如 compatibility、idempotence、ordering 或 "不会破坏现有 consumers"。
 
-Mechanical edits、formatting、直接的 documentation cleanup、明确的 OpenSpec task execution 和普通 code review 使用对应技能；只有其中的 risky decision 需要 bounded challenge 时才触发本技能。
+Mechanical edits、formatting、直接的 documentation cleanup、明确的 Change Plan task execution 和普通 code review 使用对应技能；只有其中的 risky decision 需要 bounded challenge 时才触发本技能。
 
 ## 最小流程
 

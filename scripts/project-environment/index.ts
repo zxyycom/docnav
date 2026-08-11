@@ -51,7 +51,6 @@ function checkEnvironment(): void {
   runMise(["ls", "--current", ...MISE_TOOLS]);
   runInMise("lizard", ["--version"]);
   runInMise("scc", ["--version"]);
-  runInMise("bun", ["run", "openspec", "--version"]);
   runInMise("bun", ["run", "jscpd", "--version"]);
   runInMise("codegraph", ["--version"]);
   runInMise("codegraph", ["status", "."]);

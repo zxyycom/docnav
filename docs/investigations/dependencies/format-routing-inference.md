@@ -418,7 +418,7 @@ JSONC 上游只固定 comments 基线；trailing comma 是可选 dialect 能力�
 
 前一份报告形成后，用户进一步纠正了基础格式识别 Target 的执行顺序与匹配粒度：automatic routing 应是纯文件名/pathname 路由，在确认能够选择 adapter 前不需要也不应访问目标文件；`extensions[]` 不应先被压成“最后一段 extension token”，而应以类似锚定文件名 pattern 的方式匹配完整 basename；suffix 匹配需要大小写不敏感或等价的大小写归一化；matched format 不应传给 `StandardOperationInput`，因为 pathname hint 只是快速、方便但可能错误的选择事实。用户同时指出，adapter id 的唯一性已经由既有设计拥有，adapter 内部 parser mapping 由其它 change 负责，本 change 不应为这些边界增加新设计。
 
-形成本报告时，仓库 `HEAD` 为 `ebca55a8564e1ae478e96a3c90645ca3bd7cf2db`。Current production code 尚未应用该 Target：`crates/docnav/src/runtime.rs` 在进入 navigation 前调用 `normalize_document_path`；`crates/docnav/src/project_paths.rs` 中该 helper 会读取 metadata、打开文件并执行 filesystem canonicalization。Current `docs/cli.md` 与 `openspec/specs/core-cli/spec.md` 也把 filesystem-backed document path normalization 放在 downstream navigation 之前。因此，“route 前无 document I/O”不只是 routing helper 内部限制，还需要改变 core/CLI 与 navigation 之间的执行顺序。
+形成本报告时，仓库 `HEAD` 为 `ebca55a8564e1ae478e96a3c90645ca3bd7cf2db`。Current production code 尚未应用该 Target：`crates/docnav/src/runtime.rs` 在进入 navigation 前调用 `normalize_document_path`；`crates/docnav/src/project_paths.rs` 中该 helper 会读取 metadata、打开文件并执行 filesystem canonicalization。Current `docs/cli.md` 与现位于 `archive/legacy/openspec/specs/core-cli/spec.md` 的形成时 spec 也把 filesystem-backed document path normalization 放在 downstream navigation 之前。因此，“route 前无 document I/O”不只是 routing helper 内部限制，还需要改变 core/CLI 与 navigation 之间的执行顺序。
 
 对应长期方向已演进为活动决策 `docs/decisions/adapter-selection/route-by-manifest-basename-hints.md`；较窄的 terminal-extension 记录 `route-by-manifest-pathname-hints.md` 已通过 `修订` 关系归档。两者的演进保存决策历史，不表示 Current 代码已经迁移。
 
@@ -438,7 +438,7 @@ JSONC 上游只固定 comments 基线；trailing comma 是可选 dialect 能力�
 
 - **用户确认的目标与边界**：纯文件名/pathname 先路由、route 命中后才考虑 I/O；完整 basename 级匹配；suffix 大小写不敏感或归一化；matched format 不传入 `StandardOperationInput`；不新增 adapter-id 唯一性设计；adapter 内部 parser mapping 留给其它 change。
 - **Current source sequencing**：复核 `crates/docnav/src/runtime.rs` 对 `normalize_document_path` 的调用，以及 `crates/docnav/src/project_paths.rs` 中 metadata、`File::open`、`fs::canonicalize` 的真实执行面；这证明 Current 入口与获批 Target 的顺序不同。
-- **Current/Target contract**：复核 `docs/cli.md`、`openspec/specs/core-cli/spec.md`、`docs/navigation-input-resolution.md`、routing change proposal/design/tasks 与 capability deltas，区分 Current filesystem-backed normalized document path 和 Target route 阶段尚未访问文件的 lexical pathname。
+- **Current/Target contract**：复核 `docs/cli.md`、现位于 `archive/legacy/openspec/specs/core-cli/spec.md` 的形成时 spec、`docs/navigation-input-resolution.md`、routing change proposal/design/tasks 与 capability deltas，区分 Current filesystem-backed normalized document path 和 Target route 阶段尚未访问文件的 lexical pathname。
 - **输入边界**：复核 closed `StandardOperationInput` 与 typed-field/routing deltas；没有发现 adapter 为完成真实 parse 而必须接收 matched suffix 或 matched format 的义务。
 - **前序依赖证据**：沿用本主题前两份报告对 `mime_guess`、content detectors、manifest metadata、常见配置 aliases 与 JSON-family 的功能和重量结论。本轮没有出现能推翻 manifest-native、零新增 routing dependency 选择的新证据。
 - **未覆盖**：没有实现跨 Windows/Unix separator 的 helper，也没有运行路由 benchmark 或真实 release package；这些属于 apply 阶段测试与 verification，而不是新的产品选择。

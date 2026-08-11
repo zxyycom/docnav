@@ -2,7 +2,7 @@
 
 ## 适用范围
 
-只在审查 Docnav contract、CLI、adapter、ref、pagination、raw/readable output、schema/example、docs 或 OpenSpec artifacts 时读取本 reference。普通代码审查先使用 `../SKILL.md`。
+只在审查 Docnav contract、CLI、adapter、ref、pagination、raw/readable output、schema/example、docs 或 Change Plan artifacts 时读取本 reference。普通代码审查先使用 `../SKILL.md`。
 
 ## Contract Cues
 
@@ -13,7 +13,7 @@
 - Keep adapter responsibilities inside adapters: format detection, parsing, navigation strategy, ref generation/parsing, pagination and direct adapter CLI behavior.
 - Check Windows path behavior when CLI or process boundaries move: drive letters, backslashes, spaces, quoting, stdin/stdout/stderr and readable error output.
 - When protocol, schema, examples, CLI output or adapter behavior changes, verify the governing docs and validation artifacts are updated.
-- If the work item has OpenSpec artifacts, review consistency across artifacts, implementation, tests and verification.
+- If the work item has Change Plan artifacts, review consistency across proposal、design、tasks、stable owners、implementation and verification without treating stage or checkboxes as proof.
 
 ## Verification Evidence Cues
 

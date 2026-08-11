@@ -59,7 +59,7 @@ describe("workspace verifier configuration", () => {
       {
         checkId: "docs-validators",
         output: [
-          "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived).",
+          "Decision records check passed (1 domains, 2 decisions, 1 active, 1 aligned, 0 unaligned, 1 archived, 0 candidates).",
           "schema diagnostic"
         ].join("\n"),
         expected: ["schema diagnostic"]
@@ -134,6 +134,7 @@ describe("workspace verifier configuration", () => {
     for (const id of [
       "typecheck-scripts",
       "lint-scripts",
+      "change-plans",
       "docs-validators",
       "test-evidence-ledger",
       "quality-quick-check"
@@ -146,7 +147,7 @@ describe("workspace verifier configuration", () => {
       "quality-full-check",
       "cargo-test",
       "docnav-core-development-smoke",
-      "openspec"
+      "change-plans"
     ]) {
       assert.ok(fullIds.includes(id), `full profile should include ${id}`);
     }
@@ -294,7 +295,7 @@ describe("workspace verifier configuration", () => {
     const docsChecks = requiredChecks.filter((check) => check.id.startsWith("docs-"));
 
     assert.deepEqual(docsChecks.map((check) => check.id), ["docs-validators"]);
-    assert.equal(reportCountForChecks(requiredChecks), 8);
+    assert.equal(reportCountForChecks(requiredChecks), 9);
   });
 });
 

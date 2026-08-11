@@ -1,8 +1,7 @@
 {
-  "definitionVersion": 2,
-  "entries": [
-    {
-      "id": "dependencies/format-routing-inference.md",
+  "definitionVersion": 3,
+  "entries": {
+    "dependencies/format-routing-inference.md": {
       "keys": {
         "category": [
           "dependencies"
@@ -31,12 +30,12 @@
           "Manifest 路径提示决策、常见配置别名与 JSON-family 边界复查",
           "纯 pathname 前置路由与完整 basename suffix 语义复查"
         ],
+        "resourceReferences": [],
         "status": "已结束",
         "title": "Docnav 格式路由推断依赖调查"
       }
     },
-    {
-      "id": "product/json-yaml-compression-rendering.md",
+    "product/json-yaml-compression-rendering.md": {
       "keys": {
         "category": [
           "product"
@@ -61,12 +60,12 @@
         "reportTitles": [
           "JSON/YAML 压缩算法与 Docnav renderer 可迁移性核查"
         ],
+        "resourceReferences": [],
         "status": "已结束",
         "title": "JSON/YAML 压缩渲染实现调查"
       }
     },
-    {
-      "id": "runtime/realtime-progress-reporting.md",
+    "runtime/realtime-progress-reporting.md": {
       "keys": {
         "category": [
           "runtime"
@@ -91,31 +90,41 @@
         "reportTitles": [
           "保持最终 stdout 契约的进度方案比较"
         ],
+        "resourceReferences": [],
         "status": "已结束",
         "title": "Docnav 实时进度与心跳调查"
       }
     }
-  ],
+  },
   "keyDefinitions": [
     {
-      "mode": "exact",
-      "name": "category"
+      "name": "category",
+      "mode": "exact"
     },
     {
-      "mode": "range",
-      "name": "latest-report-at"
+      "name": "latest-report-at",
+      "mode": "range"
     },
     {
-      "mode": "exact",
-      "name": "status"
+      "name": "status",
+      "mode": "exact"
     },
     {
-      "mode": "text",
-      "name": "text"
+      "name": "text",
+      "mode": "text"
     }
   ],
-  "metadata": {},
+  "metadata": {
+    "resources": []
+  },
   "namespace": "investigations",
-  "schemaVersion": 2,
-  "sourceRevision": "sha256:162bdb2543c886f25a5d9d74f60be571046a79eeaf8fd3b8243ca291e0b39977"
+  "schemaVersion": 3,
+  "sourceRevision": {
+    "entries": {
+      "dependencies/format-routing-inference.md": "sha256:ae2b73fa6baf762b98abdf96831b94c876dba5a70cb93a10be572c8d413d1ab3",
+      "product/json-yaml-compression-rendering.md": "sha256:6a286e5b1eee1b6f4cbaa025fa96f03383a259c7adb67edc7bc49b589712ad11",
+      "runtime/realtime-progress-reporting.md": "sha256:63708248e209da86e1db3eab518abe1f82cc953093f9dece695ee83f9f6f4a6d"
+    },
+    "metadata": "sha256:f2eeeea961c759a41e8ff539dcbad3ff02c179a17a9e1028d65131273facf3a9"
+  }
 }

@@ -1,6 +1,6 @@
 ---
 title: 仅在关系模型无法表达一旧多新拆分时允许部分关系连续性
-status: active
+status: archived
 alignment: aligned
 createdAt: 2026-08-06T03:00:58Z
 purpose: 在现有关系模型无法完整表达一对多拆分时，不让 lineage 缺口阻塞语义正确的独立决策。
