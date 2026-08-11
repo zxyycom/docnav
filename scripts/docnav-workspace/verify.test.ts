@@ -9,6 +9,11 @@ import {
   prepareDevBinEnv
 } from "../docnav-dev/build-bins.ts";
 import {
+  DEV_BIN_COPY_DIR,
+  DEV_BIN_ENV_FILE,
+  resolveDevBinArtifactPaths
+} from "../docnav-dev/artifacts.ts";
+import {
   PROFILE_FULL,
   PROFILE_REQUIRED,
   checks,
@@ -179,19 +184,21 @@ describe("workspace verifier configuration", () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-dev-bins-"));
     try {
       const sourceDir = path.join(tempRoot, "target-debug");
-      const copyRoot = path.join(tempRoot, "copies");
       fs.mkdirSync(sourceDir, { recursive: true });
 
       const docnavSource = path.join(sourceDir, executableName("docnav"));
       fs.writeFileSync(docnavSource, "docnav");
 
       const env = prepareDevBinEnv({
-        copyTo: copyRoot,
-        docnavExecutable: docnavSource
+        docnavExecutable: docnavSource,
+        workspaceRoot: tempRoot
       });
 
       assert.notEqual(env.DOCNAV_BIN, docnavSource);
-      assert.match(path.relative(copyRoot, env.DOCNAV_BIN), /^run-[^\\/]+[\\/]docnav(?:\.exe)?$/);
+      assert.match(
+        path.relative(path.join(tempRoot, DEV_BIN_COPY_DIR), env.DOCNAV_BIN),
+        /^run-[^\\/]+[\\/]docnav(?:\.exe)?$/
+      );
       assert.equal(fs.readFileSync(env.DOCNAV_BIN, "utf8"), "docnav");
     } finally {
       fs.rmSync(tempRoot, { force: true, recursive: true });
@@ -201,18 +208,61 @@ describe("workspace verifier configuration", () => {
   it("removes copied development binary artifacts", () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-dev-bins-cleanup-"));
     try {
-      const copyRoot = path.join(tempRoot, "copies");
-      const envFile = path.join(tempRoot, "dev-bins.json");
+      const { copyRoot, envFile } = resolveDevBinArtifactPaths(tempRoot);
       fs.mkdirSync(path.join(copyRoot, "run-example"), { recursive: true });
       fs.writeFileSync(envFile, "{}");
 
-      cleanupDevBinArtifacts({ copyTo: copyRoot, outputEnvJson: envFile });
+      cleanupDevBinArtifacts(tempRoot);
 
       assert.equal(fs.existsSync(copyRoot), false);
       assert.equal(fs.existsSync(envFile), false);
       assert.equal(fs.existsSync(tempRoot), true);
     } finally {
       fs.rmSync(tempRoot, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps development binary cleanup paths owned by the dev-bin script", () => {
+    const buildCheck = checkById("docnav-development-binaries");
+    const cleanupCheck = checkById("docnav-development-artifacts-cleanup");
+
+    assert.deepEqual(buildCheck.args, [
+      "scripts/docnav-dev/build-bins.ts",
+      "--quiet"
+    ]);
+    assert.deepEqual(cleanupCheck.args, [
+      "scripts/docnav-dev/build-bins.ts",
+      "--cleanup"
+    ]);
+
+    const managedRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-managed-paths-"));
+    try {
+      const paths = resolveDevBinArtifactPaths(managedRoot);
+      assert.equal(
+        path.relative(paths.artifactRoot, paths.copyRoot),
+        path.relative(".cache/docnav/verify", DEV_BIN_COPY_DIR)
+      );
+      assert.equal(
+        path.relative(paths.artifactRoot, paths.envFile),
+        path.relative(".cache/docnav/verify", DEV_BIN_ENV_FILE)
+      );
+    } finally {
+      fs.rmSync(managedRoot, { force: true, recursive: true });
+    }
+
+    if (process.platform !== "win32") {
+      const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-dev-bin-symlink-"));
+      const outsideRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docnav-dev-bin-outside-"));
+      try {
+        fs.symlinkSync(outsideRoot, path.join(tempRoot, ".cache"), "dir");
+        assert.throws(
+          () => resolveDevBinArtifactPaths(tempRoot),
+          /contains symbolic link path segment/
+        );
+      } finally {
+        fs.rmSync(tempRoot, { force: true, recursive: true });
+        fs.rmSync(outsideRoot, { force: true, recursive: true });
+      }
     }
   });
 

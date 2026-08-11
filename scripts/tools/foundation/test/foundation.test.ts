@@ -1,11 +1,15 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   parsePositiveInteger,
   processFailed,
   runProcess,
   runProcessSync,
-  toSlashPath
+  toSlashPath,
+  walkFiles
 } from "../src/index.ts";
 
 describe("script foundation", () => {
@@ -21,6 +25,18 @@ describe("script foundation", () => {
   test("detects failed process results", () => {
     expect(processFailed({ status: 1 })).toBe(true);
     expect(processFailed({ status: 0 })).toBe(false);
+  });
+
+  test("fails file discovery when a directory cannot be read", () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "docnav-foundation-walk-"));
+    const filePath = join(tempRoot, "not-a-directory.txt");
+    try {
+      writeFileSync(filePath, "content", "utf8");
+
+      expect(() => walkFiles(filePath)).toThrow(filePath);
+    } finally {
+      rmSync(tempRoot, { force: true, recursive: true });
+    }
   });
 
   test("runs child processes with plain text output environment", async () => {

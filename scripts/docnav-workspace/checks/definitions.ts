@@ -1,8 +1,6 @@
+import { DEV_BIN_ENV_FILE } from "../../docnav-dev/artifacts.ts";
 import { defineChecks } from "./normalization.ts";
 import { PROFILE_FULL, PROFILE_REQUIRED } from "./model.ts";
-
-const DEV_BIN_COPY_DIR = ".cache/docnav/verify/dev-bins";
-const DEV_BIN_ENV_FILE = ".cache/docnav/verify/dev-bins.json";
 
 const cargoProgressOutput = [
   /^\s*(Checking|Compiling) .*$/,
@@ -194,11 +192,7 @@ export const checks = defineChecks([
             command: "bun",
             args: [
               "scripts/docnav-dev/build-bins.ts",
-              "--quiet",
-              "--output-env-json",
-              DEV_BIN_ENV_FILE,
-              "--copy-to",
-              DEV_BIN_COPY_DIR
+              "--quiet"
             ],
             mutex: ["cargo-build"],
             ignoreOutput: [
@@ -222,11 +216,7 @@ export const checks = defineChecks([
             command: "bun",
             args: [
               "scripts/docnav-dev/build-bins.ts",
-              "--cleanup",
-              "--output-env-json",
-              DEV_BIN_ENV_FILE,
-              "--copy-to",
-              DEV_BIN_COPY_DIR
+              "--cleanup"
             ],
             dependsOn: ["docnav-core-development-smoke"],
             ignoreOutput: [

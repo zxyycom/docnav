@@ -1,18 +1,33 @@
 # release
 
-## Case AUX-RELEASE-ARGS-001: Release package 参数解析保持边界
+## Case AUX-RELEASE-ARGS-001: Release package 参数与受管布局保持边界
 
 Owner: `docs/testing/release.md#本地预验收`
 
 Entities:
 - `bun|scripts/tools/release-package/args.test.ts|package build target parses supported selectors`
 - `bun|scripts/tools/release-package/args.test.ts|package build target rejects invalid selectors`
+- `bun|scripts/tools/release-package/args.test.ts|package layout keeps every cleanup root under its version root`
 - `bun|scripts/tools/release-package/args.test.ts|package selection parses supported selectors`
 - `bun|scripts/tools/release-package/args.test.ts|package selection rejects invalid selectors`
 
 Proves:
 - release package selector 区分 host package default、target triple、manifest path 和 ambiguous selector。
-- build target parser 区分 host default、single target 和非法 extra options/path。
+- build target parser 接受 syntactically valid Rust target triple，并区分 host default、single target 和非法 extra options/path。
+- Version/target package layout 保证所有 target cleanup root 是受管 version root 的严格后代，不能由 target token 把删除范围折叠或逃逸到上级目录。
+
+## Case AUX-RELEASE-WORKSPACE-METADATA-001: Release workspace version 使用完整 Cargo member 映射
+
+Owner: `docs/testing/release.md#制品形状`
+
+Entities:
+- `bun|scripts/tools/release-package/environment.test.ts|workspace version uses the complete Cargo workspace member mapping`
+- `bun|scripts/tools/release-package/environment.test.ts|workspace version rejects malformed Cargo metadata records instead of filtering them`
+- `bun|scripts/tools/release-package/environment.test.ts|workspace version rejects incomplete or ambiguous Cargo member mappings`
+
+Proves:
+- Workspace version 来自完整 `workspace_members` 到 package id/version 的一一映射，而不是 package 数组中的偶然首项。
+- Malformed records、缺失 member package 和多个 workspace versions 都在派生 release path 前失败，不被 filter 或忽略。
 
 ## Case AUX-RELEASE-CANDIDATE-001: Release candidate 聚合证据保持同源
 

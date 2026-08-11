@@ -31,6 +31,30 @@ Entities:
 Proves:
 - Shared script helpers 把反斜杠规范化为 slash path，并在 public boundary 只接受严格正整数。
 
+## Case AUX-SCRIPT-FILE-DISCOVERY-001: Shared recursive file discovery 失败闭合
+
+Owner: `scripts/tools/foundation/foundation.md#use`
+
+Entities:
+- `bun|scripts/tools/foundation/test/foundation.test.ts|script foundation > fails file discovery when a directory cannot be read`
+
+Proves:
+- Recursive file discovery 遇到不可读目录时报告包含目标目录的错误，不把部分遍历结果伪装成完整文件集合。
+
+## Case AUX-DOCS-LINK-VALIDATION-001: Markdown 本地链接和 heading fragment 保持可达
+
+Owner: `docs/tooling.md#验证入口集成`
+
+Entities:
+- `bun|scripts/tools/validators/links.test.ts|markdown link validation > accepts local, inline-code, duplicate and encoded-path fragments`
+- `bun|scripts/tools/validators/links.test.ts|markdown link validation > rejects missing fragments and ignores heading-looking text in fenced code`
+- `bun|scripts/tools/validators/links.test.ts|markdown link validation > rejects paths outside the validation root and checks .markdown fragments`
+
+Proves:
+- Docs link validator 接受同文件、跨文件、inline-code heading、duplicate-collision fragment 和 percent-encoded local path 的代表输入。
+- 不存在的 heading fragment 会失败；fenced code 中形似 heading 的文本不生成可链接 anchor。
+- Escaping 或 symlink-resolved outside-root target 失败，不依赖宿主文件；`.markdown` target 与 `.md` 使用相同 fragment validation。
+
 ## Case AUX-SMOKE-HARNESS-001: Smoke harness 正确记录 task 和 command 输出语义
 
 Owner: `docs/testing.md#cli-smoke`
@@ -130,6 +154,7 @@ Entities:
 - `bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > filters quality timing details from terminal-visible output`
 - `bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > formats completion lines and durations for streaming output`
 - `bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > keeps actionable failure output after filtering known success noise`
+- `bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > keeps development binary cleanup paths owned by the dev-bin script`
 - `bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > maps quality warning markers to warning check status`
 - `bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > parses verification profile arguments`
 - `bun|scripts/docnav-workspace/verify.test.ts|workspace verifier configuration > prepares development binary env with isolated copied executables`
@@ -145,4 +170,4 @@ Proves:
 - Required and full verifier profiles keep distinct membership while sharing one normalized check-report pipeline.
 - Successful subprocess noise is filtered, but actionable warning and failure diagnostics remain visible with stable completion and duration summaries.
 - The required profile includes semantic test-ledger validation and quick quality checks; the full profile replaces quick quality with its broader quality gate.
-- Verifier 隔离 development binaries，并且只清理自己复制的 artifacts。
+- Verifier 隔离 development binaries；copy、environment file 和 cleanup path 由 dev-bin script 的受管 artifact root 派生，拒绝 symbolic-link path segment，并且只清理自己复制的 artifacts。

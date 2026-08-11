@@ -1,5 +1,5 @@
 import { findCargoExecutable } from "../cargo.ts";
-import { isRecord } from "../foundation/src/type-guards.ts";
+import { isNonArrayRecord } from "../foundation/src/type-guards.ts";
 import type { ReleaseProducer } from "./config.ts";
 import { runCommand } from "./io.ts";
 
@@ -17,13 +17,25 @@ export function resolveWorkspaceVersion(): string {
     },
   );
   const metadata: unknown = JSON.parse(result.stdout);
-  assertCargoMetadata(metadata);
-  const workspaceMembers = new Set(metadata.workspace_members);
-  const versions = new Set(
-    metadata.packages
-      .filter((pkg) => workspaceMembers.has(pkg.id))
-      .map((pkg) => pkg.version),
-  );
+  return parseWorkspaceVersion(metadata);
+}
+
+export function parseWorkspaceVersion(metadata: unknown): string {
+  const { packages, workspaceMembers } = parseCargoMetadata(metadata);
+  const packagesById = new Map<string, CargoPackageMetadata>();
+
+  for (const pkg of packages) {
+    packagesById.set(pkg.id, pkg);
+  }
+
+  const versions = new Set<string>();
+  for (const member of workspaceMembers) {
+    const pkg = packagesById.get(member);
+    if (!pkg) {
+      throw new Error(`cargo metadata workspace member ${member} has no matching package`);
+    }
+    versions.add(pkg.version);
+  }
 
   if (versions.size !== 1) {
     throw new Error(`expected one workspace version, found ${versions.size}`);
@@ -131,25 +143,53 @@ function requiredIntEnv(name: string): number {
   return parsed;
 }
 
-function assertCargoMetadata(value: unknown): asserts value is {
+function parseCargoMetadata(value: unknown): {
   packages: CargoPackageMetadata[];
-  workspace_members: string[];
+  workspaceMembers: string[];
 } {
-  if (!isRecord(value)) {
+  if (!isNonArrayRecord(value)) {
     throw new Error("cargo metadata root must be an object");
   }
 
-  const workspaceMembers = Array.isArray(value.workspace_members)
-    ? value.workspace_members.filter((member): member is string => typeof member === "string")
-    : [];
-  const packages = Array.isArray(value.packages)
-    ? value.packages.filter(isCargoPackageMetadata)
-    : [];
-
-  value.workspace_members = workspaceMembers;
-  value.packages = packages;
+  const workspaceMembers = parseWorkspaceMembers(value.workspace_members);
+  const packages = parseCargoPackages(value.packages);
+  return { packages, workspaceMembers };
 }
 
-function isCargoPackageMetadata(value: unknown): value is CargoPackageMetadata {
-  return isRecord(value) && typeof value.id === "string" && typeof value.version === "string";
+function parseWorkspaceMembers(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error("cargo metadata workspace_members must be an array");
+  }
+
+  return value.map((member, index) => {
+    if (typeof member !== "string" || member.length === 0) {
+      throw new Error(
+        `cargo metadata workspace_members[${index}] must be a non-empty string`,
+      );
+    }
+    return member;
+  });
+}
+
+function parseCargoPackages(value: unknown): CargoPackageMetadata[] {
+  if (!Array.isArray(value)) {
+    throw new Error("cargo metadata packages must be an array");
+  }
+
+  return value.map((pkg, index) => parseCargoPackage(pkg, index));
+}
+
+function parseCargoPackage(value: unknown, index: number): CargoPackageMetadata {
+  if (!isNonArrayRecord(value)) {
+    throw new Error(`cargo metadata packages[${index}] must be an object`);
+  }
+  if (typeof value.id !== "string" || value.id.length === 0) {
+    throw new Error(`cargo metadata packages[${index}].id must be a non-empty string`);
+  }
+  if (typeof value.version !== "string" || value.version.length === 0) {
+    throw new Error(
+      `cargo metadata packages[${index}].version must be a non-empty string`,
+    );
+  }
+  return { id: value.id, version: value.version };
 }

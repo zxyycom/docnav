@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
 
 import { parseManifestArgs, parseOptionalTarget } from "./args.ts";
+import { artifactsRoot, resolvePackageLayout } from "./config.ts";
 
 test("package selection parses supported selectors", () => {
   const cases = [
@@ -57,6 +59,10 @@ test("package build target parses supported selectors", () => {
       args: ["--target", "x86_64-unknown-linux-gnu"],
       expected: "x86_64-unknown-linux-gnu",
     },
+    {
+      args: ["--target", "thumbv8m.main-none-eabi"],
+      expected: "thumbv8m.main-none-eabi",
+    },
   ] as const;
 
   for (const { args, expected } of cases) {
@@ -83,4 +89,19 @@ test("package build target rejects invalid selectors", () => {
   for (const { args, diagnostic } of cases) {
     assert.throws(() => parseOptionalTarget(args), diagnostic);
   }
+});
+
+test("package layout keeps every cleanup root under its version root", () => {
+  const layout = resolvePackageLayout("0.1.0-beta.1", "thumbv8m.main-none-eabi");
+  const versionRoot = path.join(artifactsRoot, "v0.1.0-beta.1");
+
+  assert.equal(path.dirname(layout.releaseRoot), versionRoot);
+  assert.throws(
+    () => resolvePackageLayout("0.1.0-beta.1", "."),
+    /release target root must be a strict child of the version root/,
+  );
+  assert.throws(
+    () => resolvePackageLayout("../..", "x86_64-unknown-linux-gnu"),
+    /release version root must be a strict child of the artifacts root/,
+  );
 });

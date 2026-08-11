@@ -1,9 +1,10 @@
 import { errorMessage } from "../../foundation/src/errors.ts";
+import { parseReleaseTarget } from "../target.ts";
 
 export type ProducerKind = "github-actions" | "local";
 
 export function parseOptionalTargetValue(value: string | undefined): string | null {
-  return value === undefined ? null : parseTarget(value);
+  return value === undefined ? null : parseReleaseTarget(value);
 }
 
 export function parseOptionalBoolean(value: string | undefined, label: string): boolean | null {
@@ -31,13 +32,6 @@ export function parseOptionalProducerKind(value: string | undefined): ProducerKi
 
 export function normalizeParseArgsError(error: unknown): string {
   return normalizeParseArgsMessage(errorMessage(error));
-}
-
-function parseTarget(value: string): string {
-  if (value.includes("/") || value.includes("\\") || value.includes("..")) {
-    throw new Error("--target must be a Rust target triple, not a path");
-  }
-  return value;
 }
 
 function normalizeParseArgsMessage(message: string): string {

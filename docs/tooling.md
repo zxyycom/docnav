@@ -97,6 +97,10 @@ required/full profile 的完整组成、质量观测边界和交付前取舍由[
 
 `scripts/docs/validate.ts` 直接导入仓库跟踪的 `decision-records` v24 与 `investigation-report` v13 模块。`validate:docs` 的 `decisions` task 检查受控领域、Markdown、候选/生命周期、对齐、完整关系事务、版本快照和派生索引；`investigations` task 检查主题、报告、随附资源、引用与派生索引。`scripts/change-plans/validate.ts` 通过 `change-plan` v8 的稳定 CLI JSON 输出校验 `changes/` 中全部 active 与 archived Change。三条入口都进入 required profile，不依赖个人 skill 目录，也不运行需要联网的 updater 或 release 查询；机械检查不替代内容审核、事实证明或授权。
 
+`validate:docs` 的 `links` task 检查仓库内 inline Markdown link 的目标路径，以及 `.md` / `.mdown` / `.markdown` 目标中的 GitHub-style ATX heading fragment；fenced/inline code 中的示例不形成链接或 heading 依赖。Markdown tokenization 由 [`markdown-it`](https://markdown-it.github.io/markdown-it/) 负责，anchor normalization 与 collision 由 [`github-slugger`](https://github.com/Flet/github-slugger) 负责；仓库代码只投影 link 和 visible heading，并检查仓库边界。
+
+路径或 fragment 不存在时校验失败。Absolute path、逃出 workspace root 的 `..` path，以及经 symbolic-link segment 解析到 workspace 外的 source/target 同样失败，防止校验依赖宿主文件系统。
+
 required profile 的 `test-evidence-ledger` check 只调用
 `scripts/test-evidence/` project wrapper。wrapper 实现 supported runner profile、
 静态规则、Cargo/Bun/smoke report、实体归一和严格检查；
@@ -110,6 +114,8 @@ ast-grep rule tests，两条入口都不依赖个人 skill、全局 ast-grep 或
 日常验证只从 `validate:docs`、`validate:change-plans` 或 workspace profile 进入。决策、调查和 Change Plan 的查询、写入、索引及生命周期命令分别由对应项目 skill 和 CLI help 拥有；本工具链文档不维护第二份操作手册。`update-skill.mjs` 只用于有意的 package 维护，不属于日常验证链路。
 
 Workspace verifier 的运行并发预算可由 `--concurrency <n>` 或环境变量 `DOCNAV_VERIFY_CONCURRENCY` 提供，CLI 参数优先；值必须是正整数。两者都省略或环境变量为空时不设置并发上限，由 task runner 使用默认调度行为。
+
+Workspace verifier 使用 dev-bin script 唯一拥有的 `.cache/docnav/verify/` 受管目录隔离 development binary。Caller 不提供 copy、environment file 或 cleanup 路径；递归 cleanup 前重新确认目标位于受管目录内，且 workspace root 到目标之间没有 symbolic-link path segment。
 
 验收标准：手写脚本可以通过 Bun 执行、被 `tsgo -p tsconfig.json` 覆盖，并且不依赖 Bun 运行时不会读取的 `tsconfig` 行为。
 

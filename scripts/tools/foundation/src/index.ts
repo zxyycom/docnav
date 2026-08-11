@@ -11,6 +11,8 @@ export {
 export { errorMessage } from "./errors.ts";
 export { parseCsvRows } from "./csv.ts";
 export {
+  assertNoSymlinkPathSegments,
+  assertStrictDescendantPath,
   ensureDirForFile,
   readJsonFile,
   readTextFile,

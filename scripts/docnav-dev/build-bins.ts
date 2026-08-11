@@ -6,8 +6,12 @@ import {
   buildCargoExecutables,
   reportCargoExecutableBuildFailure
 } from "../tools/cargo.ts";
-import { booleanOption, parseScriptArgs, stringOption } from "../tools/foundation/src/args.ts";
+import { booleanOption, parseScriptArgs } from "../tools/foundation/src/args.ts";
 import { writeJsonFile } from "../tools/foundation/src/fs.ts";
+import {
+  assertManagedDevBinArtifactPaths,
+  resolveDevBinArtifactPaths
+} from "./artifacts.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -15,24 +19,19 @@ const docnavBinary = { packageName: "docnav", binName: "docnav" };
 
 type DevBinOptions = {
   cleanup: boolean;
-  copyTo: string | null;
-  outputEnvJson: string | null;
   quiet: boolean;
 };
 
 if (isMainModule()) {
   const options = parseArgs(process.argv.slice(2));
-  cleanupDevBinArtifacts(options);
+  cleanupDevBinArtifacts();
 
   if (options.cleanup) {
     console.log("dev binary artifacts cleaned");
   } else {
     const env = buildDevBins(options);
-
-    if (options.outputEnvJson) {
-      const envFile = path.resolve(root, options.outputEnvJson);
-      writeJsonFile(envFile, env);
-    }
+    const { envFile } = resolveDevBinArtifactPaths(root);
+    writeJsonFile(envFile, env);
 
     console.log(`dev binaries ok: ${Object.keys(env).join(", ")}`);
   }
@@ -44,16 +43,12 @@ function parseArgs(args: string[]): DevBinOptions {
       args,
       options: {
         cleanup: { type: "boolean" },
-        "copy-to": { type: "string" },
-        quiet: { type: "boolean" },
-        "output-env-json": { type: "string" }
+        quiet: { type: "boolean" }
       }
     });
 
     return {
       cleanup: booleanOption(parsed.values, "cleanup"),
-      copyTo: stringOption(parsed.values, "copy-to") ?? null,
-      outputEnvJson: stringOption(parsed.values, "output-env-json") ?? null,
       quiet: booleanOption(parsed.values, "quiet")
     };
   } catch (error: unknown) {
@@ -79,35 +74,29 @@ function buildDevBins(options: DevBinOptions): Record<string, string> {
   }
 
   return prepareDevBinEnv({
-    copyTo: options.copyTo ? path.resolve(root, options.copyTo) : null,
-    docnavExecutable: executable
+    docnavExecutable: executable,
+    workspaceRoot: root
   });
 }
 
 export function prepareDevBinEnv({
-  copyTo,
-  docnavExecutable
+  docnavExecutable,
+  workspaceRoot = root
 }: {
-  copyTo?: string | null;
   docnavExecutable: string;
+  workspaceRoot?: string;
 }): { DOCNAV_BIN: string } {
+  const { copyRoot } = resolveDevBinArtifactPaths(workspaceRoot);
   return {
-    DOCNAV_BIN: copyTo
-      ? copyDevBinExecutable(docnavExecutable, copyTo)
-      : docnavExecutable
+    DOCNAV_BIN: copyDevBinExecutable(docnavExecutable, copyRoot)
   };
 }
 
-export function cleanupDevBinArtifacts({
-  copyTo,
-  outputEnvJson
-}: Pick<DevBinOptions, "copyTo" | "outputEnvJson">): void {
-  if (outputEnvJson) {
-    fs.rmSync(path.resolve(root, outputEnvJson), { force: true });
-  }
-  if (copyTo) {
-    fs.rmSync(path.resolve(root, copyTo), { force: true, recursive: true });
-  }
+export function cleanupDevBinArtifacts(workspaceRoot = root): void {
+  const paths = resolveDevBinArtifactPaths(workspaceRoot);
+  assertManagedDevBinArtifactPaths(paths);
+  fs.rmSync(paths.envFile, { force: true });
+  fs.rmSync(paths.copyRoot, { force: true, recursive: true });
 }
 
 function copyDevBinExecutable(
@@ -124,7 +113,7 @@ function copyDevBinExecutable(
 
 function usage(message: string): never {
   console.error(message);
-  console.error("usage: bun scripts/docnav-dev/build-bins.ts [--cleanup] [--quiet] [--output-env-json <path>] [--copy-to <dir>]");
+  console.error("usage: bun scripts/docnav-dev/build-bins.ts [--cleanup] [--quiet]");
   process.exit(2);
 }
 

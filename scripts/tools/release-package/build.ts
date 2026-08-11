@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import {
+  assertManagedReleaseRoot,
   compareStrings,
   releaseComponents,
   resolveBinaryDestPath,
@@ -30,12 +31,12 @@ export function buildReleasePackage(target = resolveHostTarget()): ReleasePackag
   const version = resolveWorkspaceVersion();
   const layout = resolvePackageLayout(version, target);
 
-  fs.rmSync(layout.releaseRoot, { recursive: true, force: true });
+  removeReleaseRoot(layout);
   fs.mkdirSync(layout.packageDir, { recursive: true });
 
   try {
-    const files = buildPackageFiles(layout.packageDir, target);
-    const manifest = createManifest(version, target, files);
+    const files = buildPackageFiles(layout.packageDir, layout.target);
+    const manifest = createManifest(version, layout.target, files);
 
     writeJsonFile(layout.manifestPath, manifest);
     writeChecksums(layout, manifest);
@@ -47,9 +48,14 @@ export function buildReleasePackage(target = resolveHostTarget()): ReleasePackag
       fileCount: manifest.files.length,
     };
   } catch (error) {
-    fs.rmSync(layout.releaseRoot, { recursive: true, force: true });
+    removeReleaseRoot(layout);
     throw error;
   }
+}
+
+function removeReleaseRoot(layout: PackageLayout): void {
+  assertManagedReleaseRoot(layout);
+  fs.rmSync(layout.releaseRoot, { recursive: true, force: true });
 }
 
 function buildPackageFiles(packageDir: string, target: string): ReleaseManifestFile[] {

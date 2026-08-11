@@ -1,6 +1,12 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  assertNoSymlinkPathSegments,
+  assertStrictDescendantPath,
+} from "../foundation/src/fs.ts";
+import { parseReleaseTarget } from "./target.ts";
+
 export const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -67,15 +73,44 @@ export const releaseComponents = Object.freeze([
 ]) satisfies readonly ReleaseComponent[];
 
 export function resolvePackageLayout(version: string, target: string): PackageLayout {
-  const packageDir = path.join(artifactsRoot, `v${version}`, target, "package");
-  return {
+  const versionRoot = path.resolve(artifactsRoot, `v${version}`);
+  assertStrictDescendantPath(
+    artifactsRoot,
+    versionRoot,
+    "release version root",
+    "artifacts root",
+  );
+
+  const releaseRoot = path.resolve(versionRoot, target);
+  assertStrictDescendantPath(
+    versionRoot,
+    releaseRoot,
+    "release target root",
+    "version root",
+  );
+
+  const parsedTarget = parseReleaseTarget(target);
+  const packageDir = path.join(releaseRoot, "package");
+  const layout = {
     version,
-    target,
-    releaseRoot: path.dirname(packageDir),
+    target: parsedTarget,
+    releaseRoot,
     packageDir,
     manifestPath: path.join(packageDir, "manifest.json"),
     checksumsPath: path.join(packageDir, "SHA256SUMS.txt"),
   };
+  return layout;
+}
+
+export function assertManagedReleaseRoot(
+  layout: Pick<PackageLayout, "releaseRoot" | "target" | "version">,
+): void {
+  const expectedReleaseRoot = resolvePackageLayout(layout.version, layout.target).releaseRoot;
+  assertNoSymlinkPathSegments(root, expectedReleaseRoot, "release target root");
+
+  if (path.resolve(layout.releaseRoot) !== expectedReleaseRoot) {
+    throw new Error("release target root must match the version and target layout");
+  }
 }
 
 export function resolveBinaryDestPath(packageDir: string, executablePath: string): string {

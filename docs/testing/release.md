@@ -12,6 +12,10 @@ Required profile 可用于开发期快速反馈，但不替代上述完整 basel
 
 正式发布制品由 `bun run package:docnav -- --target <triple>` 生成，落在 `artifacts/docnav/v<version>/<target>/package/`。Linked adapter libraries 编译进 `docnav` 核心 CLI，不作为独立 package 文件验收。
 
+`<version>` 从完整 Cargo metadata 的 `workspace_members` 到 `packages` 映射解析；必要字段、映射完整性或 workspace version 唯一性不成立时，在派生制品路径前失败。
+
+`<target>` 必须是 syntactically valid Rust target triple，不能是路径；Cargo 决定该 triple 是否可实际构建。受管 artifacts root、version root 和 target release root 必须保持逐级严格包含。任何清理在执行前重新验证这一关系，并拒绝从 workspace root 到 cleanup target 之间的 symbolic-link path segment。
+
 该目录的精确文件集合是：
 
 - 与 target 对应的唯一 core executable：`x86_64-unknown-linux-gnu` 为 `docnav`，
@@ -39,6 +43,8 @@ bun run smoke:docnav-package
 ```
 
 发布包验证和 smoke 命令会自动定位当前 workspace 版本与 host target 对应的 package。使用 `--target <triple>` 选择当前版本的其它 target；使用 `--manifest <path>` 验证显式 package。`bun run info:docnav-package` 可打印自动定位结果。
+
+本地 `--target` 不硬编码为公开 release 的两个 target，但只接受 target triple token，不接受 `.`、`..`、绝对/相对路径或带路径分隔符的值。公开 candidate 的 exact Linux/Windows target set 仍由 promotion validation 单独限制。
 
 `package:docnav` 在生成结束时校验文件集合、manifest、普通文件边界、大小和校验和，
 但不运行 CLI smoke。`smoke:docnav-package` 使用 manifest 的唯一 core entry，
