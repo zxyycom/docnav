@@ -50,7 +50,7 @@ pub use request_context::{
 pub use request_id::{generate_request_id, GENERATED_REQUEST_ID_PREFIX};
 pub use schema::{
     validate_manifest_value, validate_protocol_request_value, validate_protocol_response_value,
-    SchemaValidationError,
+    ProtocolResponseContractError, SchemaValidationError,
 };
 pub use version::{ProtocolVersion, VersionParseError};
 

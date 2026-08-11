@@ -7,6 +7,8 @@ use docnav_protocol::protocol_error_record_draft_with_summary;
 
 use crate::{NavigationConfigSource, NavigationFailureLayer, NavigationInvocationTrace};
 
+const PROTOCOL_RESPONSE_VALIDATION_FAILED_ERROR_ID: &str = "protocol-response-validation-failed";
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NavigationError {
     diagnostic: Box<DiagnosticRecordDraft>,
@@ -82,13 +84,12 @@ impl NavigationError {
         ))
     }
 
-    pub fn protocol_response_invalid(reason: impl Into<String>) -> Self {
-        let reason = reason.into();
+    pub fn protocol_response_invalid() -> Self {
         Self::new(DiagnosticRecordDraft::new::<
             typed_codes::protocol::InternalError,
         >(
             "Navigation response validation failed.",
-            InternalDetails::new(format!("protocol-response-validation-failed: {reason}")),
+            InternalDetails::new(PROTOCOL_RESPONSE_VALIDATION_FAILED_ERROR_ID),
             DiagnosticSource::with_stage("docnav-navigation", "result-validation"),
         ))
     }

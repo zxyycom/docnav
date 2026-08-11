@@ -8,9 +8,7 @@ fn unique_outline_ref_composes_read_with_the_selected_document_context() {
         ref_id: "opaque:section".to_owned(),
         content: "selected content".to_owned(),
         content_type: "text/markdown".to_owned(),
-        cost: Cost {
-            measurements: Vec::new(),
-        },
+        cost: read_cost(),
         page: positive(2),
     };
     let adapter = RecordingAdapter::new(

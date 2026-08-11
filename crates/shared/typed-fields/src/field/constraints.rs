@@ -124,6 +124,7 @@ pub(crate) fn value_length(value: &TypedValue) -> Option<u64> {
     match value {
         TypedValue::String(value) => Some(value.chars().count() as u64),
         TypedValue::Array(value) => Some(value.len() as u64),
+        TypedValue::Object(value) => Some(value.len() as u64),
         _ => None,
     }
 }

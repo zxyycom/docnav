@@ -48,7 +48,7 @@ Entities:
 
 Proves:
 - The shared conformance helper forwards an opaque ref unchanged to page-one read on the existing adapter document and a fresh document created by the same definition.
-- Both reads must return protocol-valid success results with exact ref echo；the helper does not parse refs or standardize pagination and adapter-owned correspondence.
+- Both reads must return complete public-contract-valid success results with exact ref echo；schema-invalid content type 等 typed-but-invalid response 与 mismatched ref 都会失败，helper 不解析 refs 或 standardize pagination 和 adapter-owned correspondence。
 - Adapter documents may retain non-`Send`、non-`Sync` private state；the factory and closed read input expose no state handle or generic parser/model parameter.
 
 ## Case WB-CONTRACTS-UNSTRUCTURED-001: Adapter contracts unstructured full-read hook defaults 稳定

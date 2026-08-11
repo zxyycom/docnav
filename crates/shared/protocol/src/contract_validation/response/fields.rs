@@ -5,9 +5,10 @@ use docnav_typed_fields::{
 
 use super::super::enums::{OutlineResultKind, ProtocolErrorCode};
 use super::super::field_builders::{
-    add_operation, add_protocol_version, add_request_id, bool_field, json_path,
-    non_empty_string_field, non_empty_unique_array, non_negative_int_field, number_field,
-    object_field, positive_int_field, string_enum_field, string_field,
+    add_operation, add_protocol_version, add_request_id, bool_field, json_field, json_path,
+    non_empty_array, non_empty_object_field, non_empty_string_field, non_empty_unique_array,
+    non_negative_int_field, number_field, object_field, positive_int_field, string_enum_field,
+    string_field,
 };
 use crate::{AutoReadReason, UnstructuredOutlineReason};
 
@@ -51,7 +52,7 @@ pub(super) fn response_failure_fields() -> Result<FieldDefSet, FieldDefSetBuildE
     )
     .field_with_declaration_path(
         ["error", "message"],
-        string_field("error.message", ["error", "message"]),
+        non_empty_string_field("error.message", ["error", "message"]),
         ExpectedFieldShape::required(),
     )
     .field_with_declaration_path(
@@ -61,7 +62,7 @@ pub(super) fn response_failure_fields() -> Result<FieldDefSet, FieldDefSetBuildE
     )
     .field_with_declaration_path(
         ["error", "location"],
-        object_field("error.location", ["error", "location"]),
+        non_empty_object_field("error.location", ["error", "location"]),
         ExpectedFieldShape::optional(),
     )
     .field_with_declaration_path(
@@ -76,7 +77,7 @@ pub(super) fn response_failure_fields() -> Result<FieldDefSet, FieldDefSetBuildE
                 super::super::JSON_CONTRACT_PROCESSING,
                 json_path(["error", "guidance"]),
             )
-            .validation(FieldValidation::array()),
+            .validation(non_empty_array()),
         ExpectedFieldShape::optional(),
     )
     .build()
@@ -92,6 +93,73 @@ pub(super) fn response_unknown_shape_fields() -> Result<FieldDefSet, FieldDefSet
         .field_with_declaration_path(
             ["error"],
             object_field("error", ["error"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn response_protocol_option_issue_fields() -> Result<FieldDefSet, FieldDefSetBuildError>
+{
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["owner"],
+            non_empty_string_field("option_issue.owner", ["owner"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["namespace"],
+            non_empty_string_field("option_issue.namespace", ["namespace"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["key"],
+            non_empty_string_field("option_issue.key", ["key"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["source"],
+            non_empty_string_field("option_issue.source", ["source"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["type_variant"],
+            non_empty_string_field("option_issue.type_variant", ["type_variant"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["reason_code"],
+            non_empty_string_field("option_issue.reason_code", ["reason_code"]),
+            ExpectedFieldShape::required(),
+        )
+        .field_with_declaration_path(
+            ["received"],
+            json_field("option_issue.received", ["received"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["expected"],
+            json_field("option_issue.expected", ["expected"]),
+            ExpectedFieldShape::optional(),
+        )
+        .field_with_declaration_path(
+            ["location"],
+            non_empty_object_field("option_issue.location", ["location"]),
+            ExpectedFieldShape::optional(),
+        )
+        .build()
+}
+
+pub(super) fn response_invalid_request_option_issues_fields(
+) -> Result<FieldDefSet, FieldDefSetBuildError> {
+    FieldDefSet::builder()
+        .field_with_declaration_path(
+            ["option_issues"],
+            FieldDef::builder("invalid_request.option_issues")
+                .process(
+                    super::super::JSON_CONTRACT_PROCESSING,
+                    json_path(["option_issues"]),
+                )
+                .validation(FieldValidation::array()),
             ExpectedFieldShape::optional(),
         )
         .build()

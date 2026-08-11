@@ -1,5 +1,10 @@
 use super::*;
 
+mod response_contract;
+mod support;
+
+use support::*;
+
 const PROTOCOL_REQUEST_SCHEMA: &str =
     include_str!("../../../../../docs/schemas/protocol-request.schema.json");
 const PROTOCOL_RESPONSE_SCHEMA: &str =
@@ -23,7 +28,9 @@ fn parses_protocol_fixtures_into_shared_types() {
         validate_protocol_response_value(&response_value).expect("response fixture schema");
         let response: ProtocolResponse =
             serde_json::from_value(response_value).expect("response fixture parses");
-        response.validate().expect("response validates");
+        response
+            .validate_contract()
+            .expect("typed response contract validates");
     }
 
     let manifest_value = read_json_fixture("manifest.json");
@@ -143,86 +150,12 @@ fn manifest_routing_hints_decode_and_round_trip_through_public_contract() {
     assert_eq!(serde_json::to_value(manifest).unwrap(), value);
 }
 
-fn minimal_manifest() -> Value {
-    serde_json::json!({
-        "manifest_version": "0.1",
-        "adapter": {
-            "id": "stub",
-            "name": "Stub",
-            "version": "0.1.0"
-        },
-        "formats": [
-            {
-                "id": "stub",
-                "extensions": [".stub"],
-                "filenames": [],
-                "content_types": ["text/stub"]
-            }
-        ]
-    })
-}
-
 #[test]
 fn protocol_response_contract_rejects_schema_backed_field_failures() {
-    let cases = [
-        protocol_outline_response_with(|response| {
-            response["protocol_version"] = serde_json::json!("0.2")
-        }),
-        protocol_outline_response_with(|response| response["request_id"] = serde_json::json!("")),
-        protocol_outline_response_with(|response| {
-            response["result"]["entries"][0]["ref"] = serde_json::json!("")
-        }),
-        protocol_outline_response_with(|response| {
-            response["result"]["entries"][0]["extra"] = serde_json::json!(true)
-        }),
-        serde_json::json!({
-            "protocol_version": "0.1",
-            "request_id": "req-1",
-            "operation": "info",
-            "ok": true,
-            "result": { "undocumented": true }
-        }),
-    ];
-
-    for value in cases {
-        assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
-        assert!(validate_protocol_response_value(&value).is_err());
-    }
-
-    let exact_error_cases = [
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["reason"] = serde_json::json!("UNEXPECTED_REASON")
-        }),
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["candidates"] = serde_json::json!([{}])
-        }),
-        protocol_format_unknown_error_with(|response| {
-            response["error"]["details"]["evidence"] = serde_json::json!([])
-        }),
-        protocol_document_content_invalid_error_with(|response| {
-            response["error"]["details"]["reason"] = serde_json::json!("PARSER_INTERNAL")
-        }),
-        protocol_document_content_invalid_error_with(|response| {
-            response["error"]["details"]["parser_message"] = serde_json::json!("unstable")
-        }),
-        protocol_adapter_unavailable_error_with(|response| {
-            response["error"]["details"]["reason"] = serde_json::json!("ADAPTER_UNAVAILABLE")
-        }),
-        protocol_adapter_unavailable_error_with(|response| {
-            response["error"]["details"]["stage"] = serde_json::json!("dispatch")
-        }),
-        protocol_adapter_unavailable_error_with(|response| {
-            response["error"]["details"]
-                .as_object_mut()
-                .unwrap()
-                .remove("selection_source");
-        }),
-    ];
-
-    for value in exact_error_cases {
-        assert_public_schema_invalid(PROTOCOL_RESPONSE_SCHEMA, &value);
-        assert!(decode_protocol_response_value(value).is_err());
-    }
+    response_contract::assert_envelope_and_result_constraints();
+    response_contract::assert_typed_error_field_constraints();
+    response_contract::assert_option_issue_constraints();
+    response_contract::assert_exact_error_details();
 }
 
 #[test]
@@ -315,172 +248,4 @@ fn protocol_auto_read_contract_rejects_unstructured_read_and_info_placement() {
             .expect_err("auto-read is only valid on structured outline and find");
         assert_eq!(error.stage(), DecodePipelineStage::Schema);
     }
-}
-
-fn manifest_with(update: impl FnOnce(&mut Value)) -> Value {
-    let mut manifest = minimal_manifest();
-    update(&mut manifest);
-    manifest
-}
-
-fn protocol_outline_response_with(update: impl FnOnce(&mut Value)) -> Value {
-    let mut response = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-1",
-        "operation": "outline",
-        "ok": true,
-            "result": {
-            "entries": [
-                { "ref": "H:L1:H1", "label": "Heading" }
-            ],
-            "page": null
-        }
-    });
-    update(&mut response);
-    response
-}
-
-fn protocol_outline_auto_read_response() -> Value {
-    serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-outline-auto-read",
-        "operation": "outline",
-        "ok": true,
-        "result": {
-            "kind": "structured",
-            "entries": [
-                { "ref": "H:L1:H1", "label": "Guide" }
-            ],
-            "page": 2,
-            "auto_read": auto_read_value()
-        }
-    })
-}
-
-fn protocol_outline_auto_read_response_with(update: impl FnOnce(&mut Value)) -> Value {
-    let mut response = protocol_outline_auto_read_response();
-    update(&mut response);
-    response
-}
-
-fn protocol_find_auto_read_response() -> Value {
-    serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-find-auto-read",
-        "operation": "find",
-        "ok": true,
-        "result": {
-            "matches": [
-                { "ref": "H:L1:H1", "label": "Guide" }
-            ],
-            "page": null,
-            "auto_read": auto_read_value()
-        }
-    })
-}
-
-fn auto_read_value() -> Value {
-    serde_json::json!({
-        "reason": "unique_ref",
-        "read": {
-            "ref": "H:L1:H1",
-            "content": "# Guide",
-            "content_type": "text/markdown",
-            "cost": {
-                "measurements": [
-                    { "unit": "bytes", "value": 7 }
-                ]
-            },
-            "page": 3
-        }
-    })
-}
-
-fn protocol_format_unknown_error_with(update: impl FnOnce(&mut Value)) -> Value {
-    let mut response = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-1",
-        "operation": "outline",
-        "ok": false,
-        "error": {
-            "code": "FORMAT_UNKNOWN",
-            "message": "Document format is unknown.",
-            "owner": "docnav_navigation_routing",
-            "details": {
-                "path": "docs/file.data",
-                "reason": "FORMAT_NOT_RECOGNIZED",
-                "candidates": []
-            }
-        }
-    });
-    update(&mut response);
-    response
-}
-
-fn protocol_document_content_invalid_error_with(update: impl FnOnce(&mut Value)) -> Value {
-    let mut response = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-1",
-        "operation": "outline",
-        "ok": false,
-        "error": {
-            "code": "DOCUMENT_CONTENT_INVALID",
-            "message": "Document content is invalid.",
-            "owner": "adapter",
-            "details": {
-                "path": "docs/file.json",
-                "reason": "JSON_SYNTAX_INVALID"
-            }
-        }
-    });
-    update(&mut response);
-    response
-}
-
-fn protocol_adapter_unavailable_error_with(update: impl FnOnce(&mut Value)) -> Value {
-    let mut response = serde_json::json!({
-        "protocol_version": "0.1",
-        "request_id": "req-1",
-        "operation": "outline",
-        "ok": false,
-        "error": {
-            "code": "ADAPTER_UNAVAILABLE",
-            "message": "Adapter is unavailable.",
-            "owner": "docnav_navigation_routing",
-            "details": {
-                "adapter_id": "missing-adapter",
-                "reason": "ADAPTER_NOT_FOUND",
-                "selection_source": "explicit",
-                "stage": "resolve"
-            }
-        }
-    });
-    update(&mut response);
-    response
-}
-
-fn assert_public_schema_valid(schema_source: &str, value: &Value) {
-    let errors = public_schema_errors(schema_source, value);
-    assert!(
-        errors.is_empty(),
-        "public JSON Schema should accept value, got {errors:?}"
-    );
-}
-
-fn assert_public_schema_invalid(schema_source: &str, value: &Value) {
-    assert!(
-        !public_schema_errors(schema_source, value).is_empty(),
-        "public JSON Schema should reject value"
-    );
-}
-
-fn public_schema_errors(schema_source: &str, value: &Value) -> Vec<String> {
-    let schema = serde_json::from_str::<Value>(schema_source).expect("schema parses");
-    let validator = jsonschema::draft202012::options()
-        .build(&schema)
-        .expect("schema compiles");
-    validator
-        .iter_errors(value)
-        .map(|error| error.to_string())
-        .collect()
 }

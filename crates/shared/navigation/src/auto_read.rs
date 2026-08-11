@@ -99,7 +99,7 @@ fn read_context(input: &StandardOperationInput) -> Option<(&str, PositiveInteger
 }
 
 fn validated_read_result(response: ProtocolResponse, expected_ref: &str) -> Option<ReadResult> {
-    response.validate().ok()?;
+    response.validate_contract().ok()?;
     let ProtocolResponse::Success(success) = response else {
         return None;
     };
@@ -129,7 +129,7 @@ fn attach_validated_read(base_response: ProtocolResponse, read: ReadResult) -> P
         | OperationResult::Info(_) => return base_response,
     }
 
-    if composed.validate().is_ok() {
+    if composed.validate_contract().is_ok() {
         composed
     } else {
         base_response
@@ -139,7 +139,7 @@ fn attach_validated_read(base_response: ProtocolResponse, read: ReadResult) -> P
 #[cfg(test)]
 mod tests {
     use docnav_protocol::{
-        Cost, OperationResult, OutlineResult, ProtocolResponse, ReadResult, SuccessResponse,
+        Cost, FindResult, Measurement, OperationResult, ProtocolResponse, ReadResult,
         PROTOCOL_VERSION,
     };
 
@@ -154,13 +154,13 @@ mod tests {
 
     #[test]
     fn invalid_nested_success_is_not_accepted_as_a_read_result() {
-        let response = ProtocolResponse::Success(SuccessResponse {
-            protocol_version: PROTOCOL_VERSION.to_owned(),
-            request_id: "nested".to_owned(),
-            operation: docnav_protocol::Operation::Outline,
-            ok: true,
-            result: OperationResult::Read(read_result()),
-        });
+        let mut read = read_result();
+        read.content_type.clear();
+        let response = ProtocolResponse::success(
+            PROTOCOL_VERSION.to_owned(),
+            "nested".to_owned(),
+            OperationResult::Read(read),
+        );
 
         assert_eq!(validated_read_result(response, "opaque:a"), None);
     }
@@ -178,15 +178,15 @@ mod tests {
 
     #[test]
     fn invalid_composed_response_falls_back_to_the_original_base() {
-        let base = ProtocolResponse::Success(SuccessResponse {
-            protocol_version: PROTOCOL_VERSION.to_owned(),
-            request_id: "base".to_owned(),
-            operation: docnav_protocol::Operation::Find,
-            ok: true,
-            result: OperationResult::Outline(OutlineResult::structured(Vec::new(), None)),
-        });
+        let base = ProtocolResponse::success(
+            PROTOCOL_VERSION.to_owned(),
+            "base".to_owned(),
+            OperationResult::Find(FindResult::new(Vec::new(), None)),
+        );
+        let mut read = read_result();
+        read.content_type.clear();
 
-        assert_eq!(attach_validated_read(base.clone(), read_result()), base);
+        assert_eq!(attach_validated_read(base.clone(), read), base);
     }
 
     fn read_result() -> ReadResult {
@@ -195,7 +195,11 @@ mod tests {
             content: "content".to_owned(),
             content_type: "text/plain".to_owned(),
             cost: Cost {
-                measurements: Vec::new(),
+                measurements: vec![Measurement {
+                    unit: "bytes".to_owned(),
+                    value: 7,
+                    scope: None,
+                }],
             },
             page: None,
         }

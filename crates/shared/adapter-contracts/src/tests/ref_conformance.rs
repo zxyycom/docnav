@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use docnav_protocol::{Cost, ReadResult};
+use docnav_protocol::{Cost, Measurement, ReadResult};
 
 use crate::{assert_ref_round_trip, Adapter, AdapterDefinition, AdapterDocument, ReadInput};
 
@@ -15,6 +15,7 @@ struct RecordingFactory {
 enum ReadBehavior {
     Valid,
     MismatchedRef,
+    InvalidContentType,
 }
 
 impl Adapter for RecordingFactory {
@@ -40,12 +41,19 @@ impl AdapterDocument for RecordingDocument<'_> {
         Ok(ReadResult {
             ref_id: match self.factory.behavior {
                 ReadBehavior::MismatchedRef => "opaque:different".to_owned(),
-                ReadBehavior::Valid => input.ref_id.clone(),
+                ReadBehavior::Valid | ReadBehavior::InvalidContentType => input.ref_id.clone(),
             },
             content: "selected".to_owned(),
-            content_type: "text/plain".to_owned(),
+            content_type: match self.factory.behavior {
+                ReadBehavior::InvalidContentType => String::new(),
+                ReadBehavior::Valid | ReadBehavior::MismatchedRef => "text/plain".to_owned(),
+            },
             cost: Cost {
-                measurements: Vec::new(),
+                measurements: vec![Measurement {
+                    unit: "bytes".to_owned(),
+                    value: 8,
+                    scope: None,
+                }],
             },
             page: None,
         })
@@ -86,19 +94,24 @@ fn ref_conformance_reads_opaque_ref_on_same_and_fresh_documents_at_page_one() {
 
 #[test]
 fn ref_conformance_rejects_mismatched_read_results() {
-    let factory = RecordingFactory {
-        pages: Mutex::new(Vec::new()),
-        behavior: ReadBehavior::MismatchedRef,
-    };
-    let definition =
-        AdapterDefinition::new(no_hook_manifest(), &factory, None).expect("valid definition");
-    let mut document = definition.create_document("doc.stub".to_owned());
+    for behavior in [
+        ReadBehavior::MismatchedRef,
+        ReadBehavior::InvalidContentType,
+    ] {
+        let factory = RecordingFactory {
+            pages: Mutex::new(Vec::new()),
+            behavior,
+        };
+        let definition =
+            AdapterDefinition::new(no_hook_manifest(), &factory, None).expect("valid definition");
+        let mut document = definition.create_document("doc.stub".to_owned());
 
-    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        assert_ref_round_trip(&definition, document.as_mut(), &read_input());
-    }));
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            assert_ref_round_trip(&definition, document.as_mut(), &read_input());
+        }));
 
-    assert!(panic.is_err());
+        assert!(panic.is_err());
+    }
 }
 
 fn read_input() -> ReadInput {

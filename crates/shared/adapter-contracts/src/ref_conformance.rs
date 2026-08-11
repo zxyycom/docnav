@@ -43,6 +43,6 @@ fn assert_valid_read(expected_ref: &str, result: &ReadResult, context: &str) {
         format!("ref-conformance-{context}"),
         OperationResult::Read(result.clone()),
     )
-    .validate()
+    .validate_contract()
     .unwrap_or_else(|error| panic!("{context} read result is not protocol-valid: {error}"));
 }

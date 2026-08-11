@@ -6,14 +6,15 @@ use crate::SchemaValidationError;
 mod fields;
 mod results;
 
-use super::field_builders::string_value_fields;
+use super::field_builders::non_empty_string_value_fields;
 use super::helpers::{
     expect_bool_value, reject_unknown_fields, schema_result, validate_field_set,
-    validate_value_array_items, value_at, ValueArraySpec,
+    validate_object_array_items, validate_value_array_items, value_at, ObjectArraySpec,
+    ValueArraySpec,
 };
 use fields::{
-    response_common_fields, response_failure_fields, response_success_fields,
-    response_unknown_shape_fields,
+    response_common_fields, response_failure_fields, response_invalid_request_option_issues_fields,
+    response_protocol_option_issue_fields, response_success_fields, response_unknown_shape_fields,
 };
 use results::validate_success_result_shape;
 
@@ -95,9 +96,28 @@ fn validate_failure_response(value: &Value, errors: &mut Vec<String>) {
             &["error"],
             ValueArraySpec {
                 schema: schema_names::PROTOCOL_RESPONSE,
-                build: string_value_fields,
+                build: non_empty_string_value_fields,
             },
             errors,
         );
+        if let Some(details) = value_at(error, &["details"]) {
+            validate_field_set(
+                schema_names::PROTOCOL_RESPONSE,
+                response_invalid_request_option_issues_fields,
+                details,
+                &["error", "details"],
+                errors,
+            );
+            validate_object_array_items(
+                details,
+                &["option_issues"],
+                ObjectArraySpec {
+                    schema: schema_names::PROTOCOL_RESPONSE,
+                    build: response_protocol_option_issue_fields,
+                },
+                |_, _, _| {},
+                errors,
+            );
+        }
     }
 }

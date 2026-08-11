@@ -39,8 +39,11 @@ pub(super) fn add_operation(
     )
 }
 
-pub(super) fn string_value_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
-    value_field_set("string", FieldValidation::string())
+pub(super) fn non_empty_string_value_fields() -> Result<FieldDefSet, FieldDefSetBuildError> {
+    value_field_set(
+        "non-empty-string",
+        FieldValidation::string().length(FieldLength::min(FieldBound::closed(1))),
+    )
 }
 
 pub(super) fn value_field_set<T: 'static>(
@@ -104,6 +107,24 @@ pub(super) fn object_field(
     FieldDef::builder(identity)
         .process(JSON_CONTRACT_PROCESSING, json_path(path))
         .validation(FieldValidation::object())
+}
+
+pub(super) fn json_field(
+    identity: &str,
+    path: impl IntoIterator<Item = &'static str>,
+) -> docnav_typed_fields::FieldDefBuilder<Value> {
+    FieldDef::builder(identity)
+        .process(JSON_CONTRACT_PROCESSING, json_path(path))
+        .validation(FieldValidation::json())
+}
+
+pub(super) fn non_empty_object_field(
+    identity: &str,
+    path: impl IntoIterator<Item = &'static str>,
+) -> docnav_typed_fields::FieldDefBuilder<Map<String, Value>> {
+    FieldDef::builder(identity)
+        .process(JSON_CONTRACT_PROCESSING, json_path(path))
+        .validation(FieldValidation::object().length(FieldLength::min(FieldBound::closed(1))))
 }
 
 pub(super) fn positive_int_field(

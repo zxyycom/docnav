@@ -43,7 +43,7 @@ v0 operation 参数：
 - 最终 `limit` 和 `page` 必须是正整数；入口省略 page 时固定从 `1` 开始。
 - `limit` 是 adapter-owned 结果预算。原始协议只要求它是正整数，不定义预算单位；分页执行边界由 [适配器契约](adapter-contract.md#文档操作执行边界) 定义。
 - 预算只约束 adapter-owned 结果负载；`protocol_version`、`request_id`、`operation`、`ok`、JSON 字段名和固定包装不计入预算。
-- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象；字段声明、来源解析、校验和格式语义见 [Navigation Input Resolution](navigation-input-resolution.md#selected-adapter-参数声明) 与 [适配器契约](adapter-contract.md#文档操作执行边界)。
+- `options` 是 adapter-owned 格式原生参数对象。原始协议只承载该对象；字段声明、来源解析、校验和格式语义见 [Navigation Input Resolution](navigation-input-resolution.md#core-parameter-catalog) 与 [适配器契约](adapter-contract.md#文档操作执行边界)。
 
 ## 响应包装
 
@@ -260,6 +260,8 @@ Selected JSON syntax、trailing non-whitespace input、duplicate decoded member 
 ## Schema 所有权
 
 [protocol-request.schema.json](schemas/protocol-request.schema.json) 和 [protocol-response.schema.json](schemas/protocol-response.schema.json) 只校验原始协议。响应 schema 使用 `operation` 绑定成功 result 类型；`options` 在 protocol schema 中保持 opaque object。阅读输出和 manifest 使用各自 schema，由对应 owner 文档定义；Current protocol contract 不包含 probe schema/decoder/validator。
+
+Typed `ProtocolResponse` 在进入 public output 或跨组件 conformance 边界前，必须同时通过 runtime field contract 和 response semantic validation。该要求适用于 navigation 的 base/composed response、auto-read 接受的 nested read success，以及 shared ref conformance 接受的 read result；Rust 类型可构造不等于 public response 已合法。
 
 Schema 是本文件的验证材料，不重新定义产品语义。修改 protocol-visible envelope、operation 参数、result shape、page、error code 或 details 时，先更新本文件，再同步 schema、examples、fixtures 和消费方测试。
 

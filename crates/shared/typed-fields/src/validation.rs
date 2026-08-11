@@ -155,6 +155,11 @@ impl FieldValidation<serde_json::Map<String, Value>> {
     pub fn object() -> Self {
         Self::new(ValueKind::Object)
     }
+
+    pub fn length(mut self, length: FieldLength) -> Self {
+        self.constraints.length_range = Some(length);
+        self
+    }
 }
 
 impl FieldValidation<Value> {

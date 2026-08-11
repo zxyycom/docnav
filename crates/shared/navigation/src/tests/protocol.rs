@@ -1,8 +1,8 @@
 use docnav_protocol::{
-    positive_result, Operation, OperationArguments, OperationResult, OutlineResult,
+    positive_result, Entry, Operation, OperationArguments, OperationResult, OutlineResult,
     ProtocolDiagnosticCode, ProtocolResponse, SuccessResponse, PROTOCOL_VERSION,
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use docnav_adapter_contracts::{InfoInput, StandardOperationInput};
 
@@ -149,12 +149,25 @@ fn response_validation_failure_carries_result_validation_layer() {
     let response = ProtocolResponse::Success(SuccessResponse {
         protocol_version: PROTOCOL_VERSION.to_owned(),
         request_id: "req-invalid-result".to_owned(),
-        operation: Operation::Read,
+        operation: Operation::Outline,
         ok: true,
-        result: OperationResult::Outline(OutlineResult::structured(Vec::new(), None)),
+        result: OperationResult::Outline(OutlineResult::structured(
+            vec![Entry {
+                ref_id: String::new(),
+                label: "Heading".to_owned(),
+                kind: None,
+                location: None,
+                summary: None,
+                excerpt: None,
+                rank: None,
+                cost: None,
+                metadata: None,
+            }],
+            None,
+        )),
     });
     let mut trace = NavigationInvocationTrace {
-        operation: Operation::Read,
+        operation: Operation::Outline,
         selected_adapter_id: Some("docnav-test".to_owned()),
         request_id: Some("req-invalid-result".to_owned()),
         failure_layer: None,
@@ -168,4 +181,8 @@ fn response_validation_failure_carries_result_validation_layer() {
     );
     assert_eq!(error.selected_adapter_id(), Some("docnav-test"));
     assert_eq!(error.request_id(), Some("req-invalid-result"));
+    assert_eq!(
+        error.diagnostic().details().to_value(),
+        json!({"error_id": "protocol-response-validation-failed"})
+    );
 }

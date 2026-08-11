@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::constants::fields;
+use crate::schema::ProtocolResponseContractError;
 use crate::{
     InvalidErrorDetail, Operation, OperationResult, Options, PositiveInteger, ProtocolError,
     PROTOCOL_VERSION, UNKNOWN_REQUEST_ID,
@@ -144,6 +145,11 @@ impl ProtocolResponse {
             Some(request.operation),
             error,
         )
+    }
+
+    /// Validates the serialized field contract and the cross-field response semantics.
+    pub fn validate_contract(&self) -> Result<(), ProtocolResponseContractError> {
+        crate::schema::validate_protocol_response(self)
     }
 
     pub fn validate(&self) -> Result<(), ProtocolValidationError> {

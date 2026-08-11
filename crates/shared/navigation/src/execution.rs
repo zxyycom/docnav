@@ -231,16 +231,13 @@ pub(super) fn validate_navigation_response(
     response: ProtocolResponse,
     trace: &mut NavigationInvocationTrace,
 ) -> Result<ProtocolResponse, NavigationError> {
-    response.validate().map_err(|error| {
+    response.validate_contract().map_err(|_| {
         trace.failure_layer = Some(NavigationFailureLayer::ResultValidation);
-        NavigationError::protocol_response_invalid(error.to_string()).with_invocation_trace(trace)
+        NavigationError::protocol_response_invalid().with_invocation_trace(trace)
     })?;
     if auto_read::base_response_has_auto_read(&response) {
         trace.failure_layer = Some(NavigationFailureLayer::ResultValidation);
-        return Err(NavigationError::protocol_response_invalid(
-            "adapter base result contains navigation-owned auto_read",
-        )
-        .with_invocation_trace(trace));
+        return Err(NavigationError::protocol_response_invalid().with_invocation_trace(trace));
     }
     Ok(response)
 }

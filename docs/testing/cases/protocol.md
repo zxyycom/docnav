@@ -70,7 +70,7 @@ Entities:
 
 Proves:
 - 作为两条 output paths 统一输入的 success/failure `ProtocolResponse` fixtures 通过既有 public JSON Schema、runtime typed contract validation，并 deserialize 为共享 protocol types。
-- protocol request、protocol response 和 manifest 的 unknown fields、missing required fields、wrong types、version constants、field constraints 和 semantic boundary 被实现测试消费；schema and typed response decoding both reject non-canonical adapter-unavailable details。
+- protocol request、protocol response 和 manifest 的 unknown fields、missing required fields、wrong types、version constants、non-empty/range constraints 和 semantic boundary 被实现测试消费；production typed response contract 会拒绝 Rust type 可构造但 schema-backed field constraint 无效的 response，并递归校验 `INVALID_REQUEST.details.option_issues[]` 的 required/non-empty/closed shape；schema and typed response decoding both reject non-canonical adapter-unavailable details。
 
 ## Case WB-PROTO-MANIFEST-ROUTING-001: Manifest routing hints share one public contract
 

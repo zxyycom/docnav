@@ -34,7 +34,7 @@ Entities:
 
 Proves:
 - Only one non-empty distinct ref is eligible for nested read; empty, multiple, unstructured, or disabled results keep the validated base response.
-- Nested read reuses the selected invocation-private adapter document and effective pagination facts；a successful nested read must exactly echo the opaque candidate ref, while nested diagnostics, mismatched refs, or invalid nested success never invalidate the original base success.
+- Nested read reuses the selected invocation-private adapter document and effective pagination facts；a successful nested read must exactly echo the opaque candidate ref and pass the complete public response contract, while nested diagnostics, mismatched refs, schema-invalid nested success, or invalid composed response never invalidate the original base success.
 - An adapter-supplied base `auto_read` is rejected before navigation composes its own result.
 
 ## Case WB-NAV-ADAPTER-DOCUMENT-001: Navigation owns one bounded adapter document lifecycle
@@ -188,7 +188,7 @@ Entities:
 - `cargo|docnav-navigation:lib:docnav_navigation|tests::protocol::response_validation_failure_carries_result_validation_layer`
 
 Proves:
-- Navigation 校验 base response 时，结果构造失败保留 `ResultValidation` failure-layer，并同时保留 selected adapter 和 request correlation facts。
+- Navigation 以完整 public response contract 校验 base response；operation/result 虽匹配但 schema-backed field 无效时仍保留 `ResultValidation` failure-layer、固定 `protocol-response-validation-failed` error id、selected adapter 和 request correlation facts。
 
 ## Case WB-NAVIGATION-CONFIG-SOURCES-002: Navigation loads config sources with descriptor origin
 
