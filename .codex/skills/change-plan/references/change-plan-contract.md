@@ -49,18 +49,18 @@ Draft：
 ```json
 {
   "stage": "plan",
-  "baseCommit": "<confirmed-head-commit>"
+  "baseCommit": "<plan-baseline-commit>"
 }
 ```
 
-`baseCommit` 为非空字符串时表示最后一次通过 `plan` 确认三个 artifacts 的 Git commit；shelved Change 执行 `resume` 后该字段为 `null`，表示尚待重新确认。
+`baseCommit` 为非空字符串时表示最后一次成功运行 `plan` 时读取的 `HEAD`，只作为后续 Git 距离的起点。Artifacts 的工作树、index 和提交内容不参与设置或评估该基线。Shelved Change 执行 `resume` 后该字段为 `null`，表示尚待重新记录基线。
 
 Implementation：
 
 ```json
 {
   "stage": "implementation",
-  "baseCommit": "<confirmed-plan-commit>"
+  "baseCommit": "<plan-baseline-commit>"
 }
 ```
 
@@ -69,7 +69,7 @@ Implementation：
 ```json
 {
   "stage": "shelved",
-  "baseCommit": "<confirmed-plan-commit>",
+  "baseCommit": "<plan-baseline-commit>",
   "shelf": {
     "source": "explicit",
     "atCommit": "<head-commit>",
@@ -83,7 +83,7 @@ Implementation：
 ```json
 {
   "stage": "shelved",
-  "baseCommit": "<confirmed-plan-commit>",
+  "baseCommit": "<plan-baseline-commit>",
   "shelf": {
     "source": "git-distance-v1",
     "atCommit": "<head-commit>",
@@ -108,9 +108,19 @@ Valibot schema 是运行时 metadata 类型与校验的实现来源。Change Pla
 5. 固定标题使用英文，正文沿用用户输入语言或项目语言。
 6. Checker 统一换行后只解析一次 Markdown AST；HTML 注释不算语义内容，代码围栏和 HTML 注释中的 checklist 相似文本不算任务。
 
-### Draft
+### 阶段与受检制品
 
-Draft 只要求普通文件 `proposal.md`：
+| 检查场景 | `proposal.md` | `design.md` | `tasks.md` |
+| --- | --- | --- | --- |
+| 当前 stage 为 `draft` 时的结构检查 | 使用 Draft Proposal 结构。 | 使用 Design 结构。 | 不参与结构检查。 |
+| `plan` 命令的目标结构 | 使用 Plan Proposal 结构。 | 使用 Design 结构。 | 使用 Tasks 结构。 |
+| `plan`、`implementation` 或 `shelved` 阶段，以及 archived Change | 使用 Plan Proposal 结构。 | 使用 Design 结构。 | 使用 Tasks 结构。 |
+
+准备运行 `plan` 时，metadata 仍为 `draft` 的过渡目录可以包含 `tasks.md`。普通 Draft 结构检查不校验它，`show` 仍按查询契约返回其可读取内容，`plan` 命令则按目标结构检查它；文件的创建时机和派生关系由 `SKILL.md` 承接。
+
+### Draft Proposal
+
+`proposal.md`：
 
 ```markdown
 # Proposal
@@ -126,11 +136,38 @@ Draft 只要求普通文件 `proposal.md`：
 <完成后可以观察到的结果。>
 ```
 
-Draft 中的 `design.md` 和 `tasks.md` 可以不存在；存在时也不参与 draft 检查。进入 plan 前必须补全下面的完整三 artifacts。
+### Design
 
-### Plan、Implementation 与 Shelved
+所有受检场景的 `design.md` 使用同一固定结构：
 
-`plan`、`implementation`、`shelved` 和 archived Change 都使用完整三 artifacts。
+```markdown
+# Design
+
+<一句话说明当前设计方向以及它如何兑现 proposal。>
+
+## Context
+<已确认事实、约束和必要假设；事实引用原 owner。>
+
+## Goals / Non-Goals
+<设计目标与明确不承担的内容。>
+
+## Decisions
+<当前方案、判断状态与影响；明确区分暂定选择和已确认判断。>
+
+## Risks / Trade-offs
+<会改变后续设计、实施、权限或验证的风险与取舍。>
+
+## Open Questions
+<会改变范围、方案、权限或验收且仍需核对的问题；没有时明确写“无”。>
+```
+
+Draft 与 Plan 对 design 内容成熟度的要求、tasks 派生关系和语义审阅由 `SKILL.md` 承接；checker 只验证本节固定结构与非空内容。
+
+需要保存只属于当前 Change 的实施观察时，可以在 `design.md` 的必需序列之后追加 `## Implementation Observations`。
+
+### Plan Proposal 与 Tasks
+
+Plan 及后续检查场景使用扩展后的 `proposal.md` 和完整 `tasks.md`。
 
 `proposal.md`：
 
@@ -154,31 +191,6 @@ Draft 中的 `design.md` 和 `tasks.md` 可以不存在；存在时也不参与 
 ## Affected Owners
 <需要读取、修改或验证的稳定 owner。>
 ```
-
-`design.md`：
-
-```markdown
-# Design
-
-<一句话说明兑现 proposal 的设计方向。>
-
-## Context
-<已确认事实、约束和必要假设；事实引用原 owner。>
-
-## Goals / Non-Goals
-<设计目标与明确不承担的内容。>
-
-## Decisions
-<只影响当前 Change 的方案和影响；没有独立判断时明确写“无”。>
-
-## Risks / Trade-offs
-<会改变实施、权限或验证的风险与取舍。>
-
-## Open Questions
-<会改变范围、方案、权限或验收的未决问题；没有时明确写“无”。>
-```
-
-需要保存只属于当前 Change 的实施观察时，可以在必需序列之后追加 `## Implementation Observations`。
 
 `tasks.md`：
 
@@ -208,7 +220,7 @@ Tasks 规则：
 ## Plan assessment 与 Git 距离
 
 1. Archived Change 和 stage 不是 `plan` 的 active Change 使用 `not-applicable`。
-2. Plan 的 `baseCommit` 为 `null`、不能解析、不是当前 `HEAD` 的 first-parent 祖先，或三个 artifacts 不再与基线内容一致时，assessment 为 `plan-review-required`；`check` 同时失败。
+2. Plan 的 `baseCommit` 为 `null`、不能解析或不是当前 `HEAD` 的 first-parent 祖先时，assessment 为 `plan-review-required`；`check` 同时失败。Artifacts 的工作树、index 和提交内容不参与 assessment。
 3. 可评估的 plan 使用固定 `git-distance-v1`。从 `baseCommit` 到当前 `HEAD` 沿 first-parent 逐个提交统计：
    - Merge revision 的路径与行数变化相对其 first parent 计算。
    - 只修改当前 Change 目录的提交不参与距离。
@@ -221,7 +233,7 @@ Tasks 规则：
    - `changedLines >= 3000`
 5. 其余可评估 plan 为 `current`。`3/1000` 保持 current；项目没有新提交或只有当前 Change 目录发生变化时距离为 `0/0`。
 6. Assessment 不使用日期或文件 mtime，也没有项目级或单 Change 阈值。`shelve-candidate` 本身不使 `check` 失败；查询只报告候选，复核后可以重新运行 `plan` 更新基线。`reconcile` 以 `git-distance-v1` 证据把候选写成 shelved；`shelve --reason` 则以明确原因写入 shelved。
-7. Git 仓库发现、revision 查询或 diff 操作失败时，assessment 为 `null`，`check` 使用 `version-control-failed` 诊断并失败；这类操作故障不转换成 `plan-review-required`。可解析但不在 HEAD first-parent 上的基线仍是 `base-unavailable`，即使 artifacts 同时已经变化。
+7. Git 仓库发现、revision 查询或 diff 操作失败时，assessment 为 `null`，`check` 使用 `version-control-failed` 诊断并失败；这类操作故障不转换成 `plan-review-required`。可解析但不在 HEAD first-parent 上的基线仍是 `base-unavailable`。
 
 ## CLI
 
@@ -231,6 +243,7 @@ Tasks 规则：
 node <change-plan-cli> list [change-root] [--archived | --all | --stage <stage>] [--json]
 node <change-plan-cli> show <change-directory> [--json]
 node <change-plan-cli> check <change-directory> [--json]
+node <change-plan-cli> check-all [change-root] [--archived | --all] [--json]
 node <change-plan-cli> plan <change-directory> [--json]
 node <change-plan-cli> implement <change-directory> [--json]
 node <change-plan-cli> shelve <change-directory> --reason <text> [--json]
@@ -245,12 +258,17 @@ node <change-plan-cli> archive <change-directory> [--json]
 2. `list` 每个条目包含 status、stage、assessment、绝对目录、结构有效性和任务进度。无效成员仍列出；Change 根或目标生命周期目录不可查询时命令失败。
 3. `show` 接受显式 Change 目录，返回 status、stage、assessment、检查结果和三个 artifacts；可评估 plan 同时报告 policy、基线、HEAD、提交数与变更行数。结构无效时仍返回可读取内容和诊断，但命令失败。
 4. `check` 按当前 stage 检查目录、metadata、artifacts、任务语法和 plan assessment。文本模式输出结果或诊断；`--json` 返回完整结构结果。
+5. `check-all` 默认检查当前工作目录 `changes/` 下的全部 active Change；可以显式传入 change root。`--archived` 只检查 archived，`--all` 先检查 active 再检查 archived，两者互斥；`check-all` 不接受 `--stage`。
+6. `check-all` 使用与 `list` 相同的直接子目录发现和排序，并对每个成员运行同一个单 Change checker。Archived 只在显式选择时进入集合；普通 active 门禁不会因历史格式演进要求迁移 archive。
+7. `list` 和 `check-all` 结果的顶层 `status` 表示本次选择的集合范围，合法值为 `active`、`archived` 或 `all`，不属于状态模型中的单个 Change status；每个 `entries[].status` 仍只表示该成员的 `active` 或 `archived` 目录状态。
+8. `check-all --json` 返回 `changeRoot`、顶层 `status`、根级 `errors`、完整 `entries`、`checkedCount`、`validCount`、`invalidCount` 和集合 `valid`。每个 entry 与 `list` 条目相同，保留 stage、assessment、绝对目录、任务进度和完整 diagnostics。
+9. 集合 `valid` 仅在根级 `errors` 为空且 `invalidCount` 为零时成立。合法空集合的计数均为零并通过；Change 根不可访问、目标 archive 容器非法或任一成员无效时失败。文本成功只输出集合摘要；文本失败输出失败摘要、根级错误和每个无效成员的完整诊断。
 
 ### 阶段命令
 
 | 命令 | 源状态与门禁 | 成功结果 |
 | --- | --- | --- |
-| `plan` | draft、`plan-review-required` 或 `shelve-candidate` 的 plan；完整三 artifacts 有效，Readiness checkbox 全部勾选，Implementation 与 Verification 没有已勾选 checkbox，三个 artifacts 已提交且与 `HEAD` 一致。 | 写入 stage `plan` 和当前 `HEAD` 作为 `baseCommit`。 |
+| `plan` | `draft`，或 assessment 为 `plan-review-required`、`shelve-candidate` 的 `plan`；完整三 artifacts 有效，Readiness checkbox 全部勾选，Implementation 与 Verification 没有已勾选 checkbox；版本控制门禁只要求当前仓库存在 `HEAD`。 | 写入 stage `plan` 和命令运行时的 `HEAD` 作为 `baseCommit`。 |
 | `implement` | Assessment 为 `current` 的已确认 plan。 | 沿用 `baseCommit` 并写入 stage `implementation`。 |
 | `shelve --reason` | Assessment 为 `current` 或 `shelve-candidate` 的已确认 plan，reason 非空。 | 写入 stage `shelved`、原因和当前 `HEAD`。 |
 | `reconcile` | Assessment 为 `shelve-candidate` 的 plan。 | 写入 stage `shelved`、`git-distance-v1` 证据和当前 `HEAD`。 |
@@ -258,7 +276,7 @@ node <change-plan-cli> archive <change-directory> [--json]
 
 阶段命令接受显式 Change 目录，不进行跨根名称搜索。失败时不写入目标 metadata。成功结果固定包含 `success: true`、`action`、`fromStage` 和写入后的 `metadata`；失败结果固定包含 `success: false`、`action`、`fromStage`、`diagnostics`、稳定 `errorCode` 和可行动的 `error`。结果不嵌入更新后的 check、assessment 或 Change 路径。
 
-`resume` 成功以返回且已写入的 metadata 为 `stage: "plan"`、`baseCommit: null` 为准。后续必须重新审阅、提交 artifacts 并运行 `plan`；需要查看更新后的 assessment 时另行执行 `show` 或 `check`。
+`resume` 成功以返回且已写入的 metadata 为 `stage: "plan"`、`baseCommit: null` 为准。后续必须重新审阅并运行 `plan`；artifacts 与更新后的 metadata 可以随后进入同一个提交。需要查看更新后的 assessment 时另行执行 `show` 或 `check`。
 
 ### Archive
 
@@ -268,12 +286,12 @@ node <change-plan-cli> archive <change-directory> [--json]
 
 ### 退出码与输出
 
-1. `0`：命令成功；`list` 中存在 invalid 成员不使发现操作本身失败。
-2. `1`：查询根或目标不可用、结构或 assessment 无效、阶段门禁失败，或 metadata 与归档写入失败。
+1. `0`：命令成功；`list` 中存在 invalid 成员不使发现操作本身失败；`check-all` 的合法空集合也成功。
+2. `1`：查询根或目标不可用、结构或 assessment 无效、`check-all` 的任一成员无效、阶段门禁失败，或 metadata 与归档写入失败。
 3. `2`：CLI 参数无效。
 
 文本模式把成功结果写入 stdout，把诊断和失败写入 stderr，并在生命周期失败中显示 `errorCode`。`--json` 把成功和领域失败的结构结果写入 stdout；非法参数始终写入 stderr。
 
 ### MJS 直接导入边界
 
-`scripts/change-plan.mjs` 可以作为 ESM 直接 import，当前运行时导出 list、show、check、archive、五个阶段命令、metadata 解析与读取以及 CLI runner 对应的底层函数。该能力用于直接复用当前实现，不建立稳定 SDK：`change-plan.mjs` 不配套生成 `.d.mts`、SDK 声明树或 metadata JSON Schema，也不承诺导出集合和函数签名跨版本兼容。需要稳定交互时使用本节定义的 CLI 与 JSON 输出；直接 import 的调用方需随当前实现同步调整。
+`scripts/change-plan.mjs` 可以作为 ESM 直接 import，当前运行时导出 list、show、单项 check、集合 check、archive、五个阶段命令、metadata 解析与读取以及 CLI runner 对应的底层函数。该能力用于直接复用当前实现，不建立稳定 SDK：`change-plan.mjs` 不配套生成 `.d.mts`、SDK 声明树或 metadata JSON Schema，也不承诺导出集合和函数签名跨版本兼容。需要稳定交互时使用本节定义的 CLI 与 JSON 输出；直接 import 的调用方需随当前实现同步调整。
