@@ -1,6 +1,6 @@
 # 文档导航
 
-改动前用本文定位任务主规范、规则 owner 和交付验证入口；规则细节进入对应 owner 文档。
+改动前用本文定位任务主规范、规则 owner 和交付验证入口。本文同时拥有规范状态与实现证据的关系，以及长期决策、调查报告与 Change Plan 的项目级内容路由、交接时机和冲突处理；领域规则细节进入对应 owner 文档。
 
 ## 如何阅读这些文档
 
@@ -72,8 +72,6 @@ Docnav 采用 docs-first 工作流：`docs/` owner 文档承接当前稳定规�
 
 Change Plan、调查报告和长期决策记录都不作为当前实现证据；它们与 owner 文档的分工和同步顺序见“长期决策、调查报告与 Change Plan 分工”。已经明确要求直接完成的局部改动可以直接修改 docs、代码和测试，不为仪式性留档创建计划。
 
-Manifest pathname routing、route-before-document-I/O、probe deletion、invocation-private adapter document lifecycle 和 compatible-view ref round trip 已由代码与测试证明为 Current；release artifact 继续证明对外协议和 CLI 兼容性。对应长期规则由下方 owner 文档拥有。
-
 ## 长期决策、调查报告与 Change Plan 分工
 
 先按内容含义选择 owner，再按对应 skill 的触发条件决定是否创建或维护载体；内容归属不自动产生写入授权、任务或生命周期动作。
@@ -103,51 +101,37 @@ Manifest pathname routing、route-before-document-I/O、probe deletion、invocat
 
 ## 规则所有权
 
-关键规则只由一个主文档拥有，其它文档只摘要或引用，保持规则来源单一。
+关键规则只由一个 owner 完整解释。按下表选择下一份文档；表中的规则面只描述稳定责任边界，不列 owner 内部的功能清单。
 
 | 规则面 | Owner 文档 |
 | --- | --- |
-| 长期决策、调查报告、Change Plan 与 owner 规范的分工、同步和冲突处理 | 本文档 |
-| 项目级长期决策的领域、内容、生命周期、对齐、版本快照和完整关系事务 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；领域划分遵循[按主要被改变契约组织决策领域](decisions/decision-management/organize-decision-domains-by-primary-changed-contract.md)，通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
-| Change Plan 的创建/写入触发、目录、artifact、status、stage、assessment、Git 距离和阶段命令 | [项目级 `change-plan` skill](../.codex/skills/change-plan/SKILL.md)；本文件只决定其与项目 owner 的分工，并明确 Docnav 不增加更宽的创建例外 |
-| 调查主题、报告快照、随附资源、状态、派生索引和分段暂存 | [项目级 `investigation-report` skill](../.codex/skills/investigation-report/SKILL.md)；各主题 Markdown 与资源拥有形成时内容 |
-| 组件职责、输出分层、adapter document 在系统中的高层生命周期位置、调用链和运行边界 | [架构](architecture.md) |
-| adapter library interface、manifest format identity/pathname hints、fixed public operation、无 I/O factory、private state enclosure、adapter 选择、registry invariant、格式默认值交接边界和 adapter contract 边界 | [适配器契约](adapter-contract.md) |
-| `docnav` 命令、项目根解析、lexical routing pathname 与 post-selection document path 规范化、`config` 命令入口、内置 adapter inspection、strict argv parser/help 和退出码 | [CLI](cli.md) |
-| navigation command 的 raw command、config source descriptors/paths、core parameter catalog 和 registry 交接、routing 必需输入解析、route-before-document-I/O sequencing、full config validation、adapter selection、selected-operation catalog filtering、explicit/conditional env/project/user/built_in 来源解析、typed-field 校验提取、strict caller input blocking、adapter document 的创建时机与跨 stage 组合复用、protocol/closed adapter/core output projections 和 no-fallback adapter dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
-| public output modes、两条 document output paths 共同消费 `ProtocolResponse` 的编排规则、renderer selection、readable-view framing、阅读文案配置和输出通道 | [输出模式](output.md) |
-| protocol envelope、operation、紧凑结果、page、protocol failure envelope、protocol error fields、code/details 规则和 primary diagnostic projection | [原始协议](protocol.md) |
-| diagnostic/error model helper crate 边界、typed diagnostic code、record draft/record、details validation 和 projection helper materials | [架构](architecture.md) |
-| ref producer/consumer、兼容文档视图、共享调用流程与成功保证、explicit ref input 非空校验、opaque string、原样传递、round-trip consistency、defect 分类和 adapter 所有权 | [Ref](ref-contract.md) |
-| Markdown ref grammar、兼容视图 correspondence、结构快照语义、错误分类和显示职责 | [Markdown Adapter](adapters/markdown.md) |
-| JSON pathname hints、selected-operation parse、private model、base/direct/tail ref grammar 与兼容视图 correspondence、导航顺序、source-region find、structured/full-read 和 JSON-owned error 边界 | [JSON Adapter](adapters/json.md) |
-| 自动化测试层级、strict failure 覆盖目标、primary DiagnosticRecord 投影、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
-| 测试变更时的 Case 粒度、存储/查询、supported runner profile、静态/runtime/Case 映射闭合和项目验证流程 | [语义测试 Case 维护](testing/case-maintenance.md)拥有稳定规则；`../scripts/test-evidence/` 实现项目检查；通用评审方法由[项目级 `test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md)提供 |
-| 当前测试实体的存在性与 runner 身份 | 当前源码和 runner 报告；project wrapper 只发现、归一并比较当前集合，不提交派生实体清单 |
-| 当前 implemented 测试目的、Owner/Proves 与实体映射 | `testing/cases/<topic>.md` 中的语义 Case；完整维护规则见[语义测试 Case 维护](testing/case-maintenance.md) |
-| Case 的受控查询分类、说明和顺序 | [Case topic 表](testing/cases/topics.json)；Topic 不拥有行为契约 |
-| 工具版本、项目环境配置与检测、包管理、TypeScript 脚本运行方式和脚本类型检查验证入口 | [工程工具链](tooling.md) |
-| typed field definition core 的共享 crate owner、字段事实源、校验归属和 schema metadata view 边界 | [架构](architecture.md) |
-| JSON 字段形状和示例语义校验 | [JSON Schema 索引](schemas/json-schema.md)、[契约示例](examples/contract-examples.md) |
+| 规范状态与实现证据的关系，以及长期决策、调查报告、Change Plan 与历史材料之间的项目级内容路由、交接和冲突处理 | 本文档 |
+| 项目级长期决策的领域划分、内容、对齐、演进和维护 | [决策领域表](decisions/decision-domains.json)与各条决策 Markdown；领域划分遵循[按主要被改变契约组织决策领域](decisions/decision-management/organize-decision-domains-by-primary-changed-contract.md)，通用结构和维护动作由[项目级 `decision-records` skill](../.codex/skills/decision-records/SKILL.md)拥有 |
+| Change Plan 的创建门槛、artifact、状态、阶段、Git 基线和生命周期 | [项目级 `change-plan` skill](../.codex/skills/change-plan/SKILL.md)；本文只拥有 Change Plan 与项目稳定 owner 的分工 |
+| 调查报告的创建门槛、形成时快照、随附资源、索引、状态和维护 | [项目级 `investigation-report` skill](../.codex/skills/investigation-report/SKILL.md)；各主题 Markdown 与资源拥有形成时内容 |
+| 组件与共享 crate 职责、输出分层、调用链和运行边界 | [架构](architecture.md) |
+| 跨格式 adapter library contract、registry-facing definition、manifest、共享 operation result 和 adapter-owned private state 边界 | [适配器契约](adapter-contract.md) |
+| CLI surface 以及 core-owned command、argv/help、项目根与路径、配置、inspection、logging 和退出行为 | [CLI](cli.md) |
+| Navigation command 的输入来源解析、adapter selection、request construction、adapter document 编排、组合和 dispatch | [Navigation Input Resolution](navigation-input-resolution.md) |
+| Public output mode、renderer 编排、readable-view 表示和输出通道 | [输出模式](output.md) |
+| Protocol request/response envelope、operation result、pagination、failure envelope 和 protocol error projection | [原始协议](protocol.md) |
+| 跨格式 ref producer/consumer、兼容文档视图、opaque 传递、成功保证和责任分层 | [Ref](ref-contract.md) |
+| Markdown 格式的解析、导航、ref、错误和显示边界 | [Markdown Adapter](adapters/markdown.md) |
+| JSON 格式的解析、导航、ref、错误和显示边界 | [JSON Adapter](adapters/json.md) |
+| 自动化测试层级、覆盖目标、一致性审计和 release 验证边界 | [测试策略](testing.md)、[覆盖矩阵](testing/coverage.md)、[发布包验证](testing/release.md) |
+| Semantic Case 与当前测试实体的关系、Case 语义和账本维护规则 | [语义测试 Case 维护](testing/case-maintenance.md)拥有稳定规则，`testing/cases/<topic>.md` 拥有当前 Case 语义与实体映射；`../scripts/test-evidence/` 实现项目检查，项目级 [`test-evidence-review` skill](../.codex/skills/test-evidence-review/SKILL.md)提供通用评审方法 |
+| 当前测试实体的存在性和 runner 身份 | 当前源码和 runner 报告；project wrapper 只发现、归一并比较当前集合 |
+| Topic 的受控分类、说明和顺序 | [Case topic 表](testing/cases/topics.json)；Topic 不拥有行为契约 |
+| 工具版本、项目环境、包管理、本地工具运行和脚本验证入口 | [工程工具链](tooling.md) |
+| JSON 字段形状和契约示例验证 | [JSON Schema 索引](schemas/json-schema.md)、[契约示例](examples/contract-examples.md)；产品语义仍由上方对应 owner 拥有 |
 
 ## 术语
 
-本节保留影响任务路由和规则 owner 判断的跨文档词；完整规则进入上方 owner 文档。
+本节只保留影响文档权威性和内容路由判断的跨载体术语；产品与实现术语进入上方对应 owner 文档。
 
 | 术语 | 定义 |
 | --- | --- |
 | owner 文档 | 某类规则的完整解释和维护位置；其它文档只保留摘要或引用。 |
-| docnav | 核心 CLI，负责格式识别、adapter 路由、配置、管理和输出分发。 |
-| adapter | 独立格式处理组件；通过 factory 创建 invocation-private `AdapterDocument`，并拥有格式解析、导航算法、ref 和分页语义。 |
-| `AdapterDocument` | Selected adapter 为一个 normalized document path 创建的 invocation-private lifecycle owner；它懒准备并复用 private view，不把 state 暴露给 caller。 |
-| document | Docnav 操作的输入文件；caller path 先词法派生 routing pathname 供 adapter 选择，选择后才形成 operation 使用的 normalized document path。 |
-| routing pathname | Invocation-private lexical pathname，由 caller path 与 command cwd 派生，只用于 target-document I/O 前的 manifest basename lookup；不进入 adapter input 或 public output。 |
-| `outline -> ref -> read` | 标准导航流程：先取结构条目，再把 adapter 生成的 ref 原样传回读取。 |
-| ref | adapter 生成和解析的非空 opaque string；共享层只原样传递。 |
-| readable output | 面向人类和 AI 的 `readable-view` 文本；CLI 使用内置 renderer，linked caller 可以通过 shared output API 注入自定义 renderer。规则见 [输出模式](output.md)。 |
-| protocol output | 面向脚本、调试和兼容校验的稳定 envelope；协议语义见 [原始协议](protocol.md)，CLI 模式见 [输出模式](output.md)。 |
-| Change Plan | `changes/<change>/` 中可持久交接的一次 change-local 临时计划；Draft 表达尚未确认的方向，Plan 表达已经确认的执行顺序并可包含先于代码的显式门禁，Implementation 表示正在按计划执行。任一 stage、assessment 和 checkbox 都不替代当前授权、内容审阅或事实证据。 |
+| 长期决策 | `docs/decisions/` 中已经确认且跨 change 持续有效的方向、理由、约束和演进关系；不表示当前实现或任务授权。 |
 | investigation report | `docs/investigations/` 主题内形成于特定时点、可独立汇报的认识快照；最新报告不自动等于累积当前口径。 |
-| current test entity（当前测试实体） | 当前源码中能被 supported runner profile 静态发现、并由 runner 报告的可寻址测试节点；存在性和身份来自当前源码与 runner，不来自 committed 清单。 |
-| Semantic Case（语义 Case） | `testing/cases/<topic>.md` 中人工维护的当前 implemented 测试目的；通过 `Owner`、`Proves` 和 `Entities` 连接行为契约与当前测试实体，完整规则见[语义测试 Case 维护](testing/case-maintenance.md)。 |
-| Topic | 由 [Case topic 表](testing/cases/topics.json)控制的有界查询分类；Topic 分组 Case，但不拥有行为契约，也不替代 Case 的 `Owner`。 |
+| Change Plan | `changes/<change>/` 中被当前任务选中的 change-local 临时计划；stage、assessment 和 checkbox 都不替代当前授权、内容审阅或事实证据。 |
