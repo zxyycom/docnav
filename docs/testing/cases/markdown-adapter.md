@@ -113,7 +113,7 @@ Owner: `docs/adapters/markdown.md#currentprepared-markdown-document-与-ref-一�
 
 Entities:
 - `cargo|docnav-markdown:test:adapter|meta::cost_full_read_and_structured_outline_share_prepared_view`
-- `cargo|docnav-markdown:test:adapter|options_error_display::document_factory_and_empty_find_defer_document_access`
+- `cargo|docnav-markdown:test:adapter|options_error_display::semantic_rejection_precedes_missing_document_error`
 - `cargo|docnav-markdown:test:adapter|outline_ref::outline_falls_back_to_full_document_for_no_visible_heading`
 - `cargo|docnav-markdown:test:adapter|outline_ref::outline_refs_across_terminal_pages_round_trip_on_same_and_fresh_documents`
 - `cargo|docnav-markdown:test:adapter|outline_ref::prepared_document_caches_initial_encoding_failure_after_path_repair`
@@ -124,7 +124,7 @@ Entities:
 Proves:
 - outline/find 逐页运行到 terminal page 后，每个完整 heading、document-head 或 full ref 都能在 same-state 和 independently prepared fresh-compatible view 上被 page-1 read 原样消费，并返回 owner-defined region。
 - visibility filtering、重复 find ref 和截断 item facts 不会截断或改写 ref，也不要求 fresh read 恢复 producer-only option 或调用顺序。
-- document factory 与 empty-query semantic rejection 不访问目标文档；首次 Current-compatible document access 才准备 view。
+- Empty-query 和 invalid `max_heading_level` 即使与缺失文档同时出现，也先返回调用方可行动的输入错误，而不是文档访问错误。
 - cost 首次准备的 Markdown view 被后续 full-read content 与 structured outline 复用；fresh document 才观察之后的 source mutation。
 - 首次成功或失败的 prepared view 在同一 document 内不随 path replacement、in-place mutation、encoding change、deletion 或 repair 刷新；fresh document 则观察当前 source 并保留既有 stale-ref/diagnostic 语义。
 

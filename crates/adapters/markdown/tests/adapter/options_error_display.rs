@@ -40,7 +40,7 @@ fn outline_does_not_default_a_missing_max_heading_level() {
 }
 
 #[test]
-fn document_factory_and_empty_find_defer_document_access() {
+fn semantic_rejection_precedes_missing_document_error() {
     let path = write_doc("deferred-access.md", "temporary\n");
     fs::remove_file(&path).expect("remove temporary document");
     let definition = markdown_adapter_definition();
@@ -53,14 +53,19 @@ fn document_factory_and_empty_find_defer_document_access() {
         .protocol_error();
     assert_eq!(error.code(), ProtocolDiagnosticCode::InvalidRequest);
 
-    fs::write(&path, "# Ready\nbody\n").expect("create document after semantic rejection");
-    let outline_input = outline_input(&path, 6000, 1, Some(3));
-    let outline = document
-        .outline(&outline_input)
-        .expect("first document access must observe the created file")
-        .into_structured()
-        .expect("structured outline result");
-    assert_eq!(entry_refs(&outline.entries), vec!["H:L1:H1"]);
+    let invalid_outline = outline_input(&path, 6000, 1, Some(7));
+    let error = document
+        .outline(&invalid_outline)
+        .expect_err("invalid outline option must be rejected before document access")
+        .protocol_error();
+    assert_eq!(error.code(), ProtocolDiagnosticCode::InvalidRequest);
+
+    let invalid_find = find_input(&path, "needle", 6000, 1, Some(7));
+    let error = document
+        .find(&invalid_find)
+        .expect_err("invalid find option must be rejected before document access")
+        .protocol_error();
+    assert_eq!(error.code(), ProtocolDiagnosticCode::InvalidRequest);
 }
 
 #[test]

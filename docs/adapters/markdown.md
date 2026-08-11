@@ -57,7 +57,11 @@ Outline result 不新增顶层 `frontmatter`、`metadata` 或 `document_head` �
 
 ### 可见性与 `max_heading_level`
 
-Core parameter catalog 唯一声明 `max_heading_level`：exact adapter tag 是 `docnav-markdown`，适用于 outline/find，内置默认值为 `3`，CLI locator 是 `--max-heading-level`，config locator 是 `options.docnav-markdown.max_heading_level`，标准范围为 `1..6`。Adapter selection 后，`docnav-navigation` 从 selected-operation catalog view 解析并 materialize 该值，再分别写入 protocol `Options` 和 closed `OutlineInput` / `FindInput`。Markdown `AdapterDocument` 直接消费 typed input，不读取 raw CLI argv、raw config JSON 或 generic parameter bag；为保持算法边界稳健，它仍可防御性地拒绝不满足 `1..6` 语义的值。可见性过滤决定 outline 返回哪些 heading entries。可见 heading 的 line/level 结构坐标保持稳定，保证同一解析结果中的同一 heading 在 outline 和 find 中使用相同 ref。
+Core parameter catalog 唯一声明 `max_heading_level`：exact adapter tag 是 `docnav-markdown`，适用于 outline/find，内置默认值为 `3`，CLI locator 是 `--max-heading-level`，config locator 是 `options.docnav-markdown.max_heading_level`，标准范围为 `1..6`。
+
+Adapter selection 后，`docnav-navigation` 从 selected-operation catalog view 解析并 materialize 该值，再分别写入 protocol `Options` 和 closed `OutlineInput` / `FindInput`。Markdown `AdapterDocument` 只消费 typed input，不读取 raw CLI argv、raw config JSON 或 generic parameter bag；它仍拒绝不满足 `1..6` 语义的值。Empty find query 和无效 `max_heading_level` 在读取目标文档前返回对应输入错误。
+
+可见性过滤决定 outline 返回哪些 heading entries。可见 heading 的 line/level 结构坐标保持稳定，保证同一解析结果中的同一 heading 在 outline 和 find 中使用相同 ref。
 
 ### 无可见 heading 时的全文 ref
 

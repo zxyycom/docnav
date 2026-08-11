@@ -45,8 +45,8 @@ impl MarkdownAdapterDocument {
 
 impl AdapterDocument for MarkdownAdapterDocument {
     fn outline(&mut self, input: &OutlineInput) -> AdapterResult<OutlineResult> {
-        let document = self.prepared()?;
         let max_heading_level = max_heading_level(input.max_heading_level)?;
+        let document = self.prepared()?;
         let entries = document.outline_entries(max_heading_level);
         let (entries, page) = paginate_entries(&entries, input.page, input.limit);
         Ok(OutlineResult::structured(entries, page))
@@ -79,8 +79,8 @@ impl AdapterDocument for MarkdownAdapterDocument {
             ));
         }
 
-        let document = self.prepared()?;
         let max_heading_level = max_heading_level(input.max_heading_level)?;
+        let document = self.prepared()?;
         let matches = document.find_entries(&input.query, max_heading_level);
         let (matches, page) = paginate_entries(&matches, input.page, input.limit);
 
