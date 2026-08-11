@@ -1,3 +1,9 @@
 {
-  "stage": "draft"
+  "baseCommit": "544110c38bff794df0eecfeee50a1ed912c38204",
+  "shelf": {
+    "atCommit": "544110c38bff794df0eecfeee50a1ed912c38204",
+    "reason": "产品顺序要求先稳定 adapter lifecycle、find、protocol 与 output，保留完整计划等待明确恢复",
+    "source": "explicit"
+  },
+  "stage": "shelved"
 }
