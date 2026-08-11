@@ -11,6 +11,7 @@ import { minimatch } from "minimatch";
 
 import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 import {
+  errorMessage,
   gitCommitDate,
   gitHeadSha,
   parseGitStatusPaths,
@@ -18,7 +19,8 @@ import {
   runGit,
   runProcessSync,
   splitGitFileList,
-  toSlashPath
+  toSlashPath,
+  type ProcessResult
 } from "../../../foundation/src/index.ts";
 
 type BaselineCommitResult =
@@ -29,10 +31,16 @@ type MaterializeBaselineResult =
   | { ok: true; workDir: string }
   | { error: string; ok: false; reason: string };
 
-type ChangeScope = {
-  changed: boolean;
-  changedFiles: string[];
-};
+export type ChangeScope =
+  | {
+      status: "available";
+      changed: boolean;
+      changedFiles: string[];
+    }
+  | {
+      status: "unavailable";
+      reason: string;
+    };
 
 /**
  * 定位 previous-code baseline commit。
@@ -60,11 +68,16 @@ export function locateBaselineCommit({
 
   const patternArgs = gitGlobPathspecArgs(scanInputPaths, { omitWhenEmpty: true });
 
-  const headModifiedScanInputs = commitModifiesScanInputs({
-    cwd,
-    headSha,
-    scanInputPaths
-  });
+  let headModifiedScanInputs: boolean;
+  try {
+    headModifiedScanInputs = commitModifiesScanInputs({
+      cwd,
+      headSha,
+      scanInputPaths
+    });
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
 
   if (headModifiedScanInputs) {
     return baselineForChangedHead(cwd, headSha, patternArgs);
@@ -133,20 +146,32 @@ export function detectScanInputChange({
   cwd: string;
   scanInputPaths: string[];
 }): ChangeScope {
-  if (!baselineSha) {
-    return { changed: true, changedFiles: [] };
+  try {
+    const changedFiles = [
+      ...(baselineSha
+        ? getRevisionChangedFiles(cwd, baselineSha, "HEAD", scanInputPaths)
+        : []),
+      ...getWorkingTreeChangedFiles(cwd, scanInputPaths)
+    ].map(toSlashPath);
+    const uniqueChangedFiles = uniqueSortedPaths(changedFiles);
+    const scanInputChanged = baselineSha
+      ? changedFiles.some((file) =>
+          scanInputPaths.length === 0
+          || scanInputPaths.some((pattern) => fileMatchesPattern(file, pattern))
+        )
+      : true;
+
+    return {
+      status: "available",
+      changed: scanInputChanged,
+      changedFiles: uniqueChangedFiles
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      reason: errorMessage(error)
+    };
   }
-
-  const changedFiles = [
-    ...getRevisionChangedFiles(cwd, baselineSha, "HEAD", scanInputPaths),
-    ...getWorkingTreeChangedFiles(cwd, scanInputPaths)
-  ].map(toSlashPath);
-  const uniqueChangedFiles = uniqueSortedPaths(changedFiles);
-  const scanInputChanged = changedFiles.some((f) =>
-    scanInputPaths.some((p) => fileMatchesPattern(f, p))
-  );
-
-  return { changed: scanInputChanged, changedFiles: uniqueChangedFiles };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -156,9 +181,10 @@ export function getWorkingTreeChangedFiles(cwd: string, scanInputPaths: string[]
     cwd,
     maxBuffer: 1024 * 1024 * 64
   });
-  return processFailed(result)
-    ? []
-    : filterScanInputFiles(parseGitStatusPaths(result.stdout), scanInputPaths);
+  if (processFailed(result)) {
+    throw gitCommandError("git status --porcelain --untracked-files=all", cwd, result);
+  }
+  return filterScanInputFiles(parseGitStatusPaths(result.stdout), scanInputPaths);
 }
 
 export function getRevisionChangedFiles(
@@ -171,10 +197,44 @@ export function getRevisionChangedFiles(
     cwd,
     maxBuffer: 1024 * 1024 * 64
   });
-  const files = processFailed(result)
-    ? filesAtRevision(cwd, toRevision)
-    : splitGitFileList(result.stdout);
-  return filterScanInputFiles(files, scanInputPaths);
+  if (processFailed(result)) {
+    throw gitCommandError(
+      `git diff --name-only ${fromRevision}..${toRevision}`,
+      cwd,
+      result
+    );
+  }
+  return filterScanInputFiles(splitGitFileList(result.stdout), scanInputPaths);
+}
+
+/**
+ * Collect a useful file set for a one-commit repository where HEAD~1 does not
+ * exist. Unlike change detection, this conservative UI input does not claim
+ * that a revision diff was successfully observed.
+ */
+export function getRevisionChangedFilesOrRevisionSnapshot(
+  cwd: string,
+  fromRevision: string,
+  toRevision: string,
+  scanInputPaths: string[] | readonly string[]
+): string[] {
+  try {
+    return getRevisionChangedFiles(cwd, fromRevision, toRevision, scanInputPaths);
+  } catch (diffError) {
+    const fromRevisionExists = runGit(
+      ["rev-parse", "--verify", "--quiet", `${fromRevision}^{commit}`],
+      { cwd }
+    ).status === 0;
+    if (fromRevisionExists) throw diffError;
+
+    try {
+      return filterScanInputFiles(filesAtRevision(cwd, toRevision), scanInputPaths);
+    } catch (fallbackError) {
+      throw new Error(`${errorMessage(diffError)}; fallback failed: ${errorMessage(fallbackError)}`, {
+        cause: fallbackError
+      });
+    }
+  }
 }
 
 function filesAtRevision(cwd: string, revision: string): string[] {
@@ -182,7 +242,21 @@ function filesAtRevision(cwd: string, revision: string): string[] {
     cwd,
     maxBuffer: 1024 * 1024 * 64
   });
-  return processFailed(result) ? [] : splitGitFileList(result.stdout);
+  if (processFailed(result)) {
+    throw gitCommandError(`git ls-tree -r --name-only ${revision}`, cwd, result);
+  }
+  return splitGitFileList(result.stdout);
+}
+
+function gitCommandError(
+  command: string,
+  cwd: string,
+  result: Pick<ProcessResult, "error" | "status" | "stderr">
+): Error {
+  const detail = result.error?.message || result.stderr.trim() || `exit ${result.status}`;
+  return new Error(`${command} failed in ${cwd}: ${detail}`, {
+    cause: result.error ?? undefined
+  });
 }
 
 function filterScanInputFiles(

@@ -19,10 +19,14 @@ Owner: `scripts/tools/quality-core/quality-core.md#use`
 
 Entities:
 - `bun|scripts/tools/quality-core/src/input/files.test.ts|quality changed file input > fails fast when an explicit changed-files list cannot be read`
+- `bun|scripts/tools/quality-core/src/input/files.test.ts|quality changed file input > reports unavailable revision input instead of an unchanged file set`
 - `bun|scripts/tools/quality-core/src/input/files.test.ts|quality changed file input > keeps current, changed, and baseline repository files aligned`
 
 Proves:
 - quality changed-file input 将 unreadable explicit `--changed-files` path 映射为 thrown diagnostic，错误文本保留 flag 名称和请求的文件路径。
+- Git diff/status 不能提供 revision input 时返回带原因的 explicit `unavailable` scope，不把失败静默解释为 unchanged 或空 change set。
+- One-commit changed-file collection 可以把 current revision snapshot 作为保守文件列表，但该 fallback 不进入 strict diff detection，也不把未知 diff 声称为 unchanged。
+- 只有 automatic scope unavailable 时，caller-owned explicit changed-files list 才恢复 effective available scope；已经成功检测到的 comparison truth 不被空或不完整 annotation list 覆盖。
 - 一个普通本地仓库代表证明 current scan 收集 tracked 与 untracked files，committed 与 working-tree changes 返回同一组根相对路径，并且 materialized baseline 使用 selected repository revision 的文件内容。
 
 ## Case AUX-QUALITY-CODE-AREAS-001: Quality code area 分类稳定
@@ -103,10 +107,12 @@ Entities:
 - `bun|scripts/tools/quality-core/test/quality-core.test.ts|script quality core > classifies files using caller-provided code areas`
 - `bun|scripts/tools/quality-core/test/quality-core.test.ts|script quality core > generates warning channels from caller-provided thresholds`
 - `bun|scripts/tools/quality-core/test/quality-core.test.ts|script quality core > rejects a metrics envelope without metadata`
+- `bun|scripts/tools/quality-core/test/quality-core.test.ts|script quality core > rejects arrays in object fields and truthy non-string metadata`
 
 Proves:
 - The quality-core facade classifies files and generates warning channels from caller-provided code areas and thresholds.
 - Malformed metrics envelopes without required metadata are rejected at the facade boundary.
+- Runtime validation rejects arrays where metrics require object records and rejects truthy non-string values for required metadata strings。
 
 ## Case AUX-QUALITY-REPORT-001: Quality report 排名和 changed-file 摘要稳定
 

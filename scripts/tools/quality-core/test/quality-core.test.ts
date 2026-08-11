@@ -22,6 +22,36 @@ describe("script quality core", () => {
     expect(validation.errors.includes("metrics.metadata is required")).toBe(true);
   });
 
+  test("rejects arrays in object fields and truthy non-string metadata", () => {
+    const metrics = createEmptyMetrics({
+      configVersion: config.version,
+      commitSha: "abc123",
+      repository: "/repo",
+      scope: { excludeDirs: [], generatedFiles: [], include: [] },
+      tools: []
+    });
+    const malformed = {
+      ...metrics,
+      aggregates: [],
+      currentFingerprints: [],
+      duplicateCodeMeasurement: Object.assign([], { status: "measured" }),
+      metadata: {
+        ...metrics.metadata,
+        commitSha: [],
+        configVersion: true,
+        repository: {},
+        scope: [],
+        timestamp: 1
+      },
+      warnings: Object.assign([], { all: [], changed: [], regressions: [] })
+    };
+
+    const validation = validateMetrics(malformed);
+    expect(validation.valid).toBe(false);
+    expect(validation.errors.includes("metadata.timestamp must be a non-empty string")).toBe(true);
+    expect(validation.errors.includes("currentFingerprints must be an object")).toBe(true);
+  });
+
   test("requires and validates duplicate-code measurement state", () => {
     const metrics = createEmptyMetrics({
       configVersion: config.version,
@@ -86,7 +116,6 @@ describe("script quality core", () => {
       functions: [],
       duplicates: [],
       config: callerConfig,
-      scope: { changed: true, changedFiles: ["scripts/a.ts"] },
       baseline: null,
       comparisonStatus: "baseline-unavailable",
       validateAcceptedWarnings: false

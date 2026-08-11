@@ -1,4 +1,7 @@
-import { isRecord, isUnknownArray } from "../../../../foundation/src/index.ts";
+import {
+  isNonArrayRecord,
+  isUnknownArray
+} from "../../../../foundation/src/index.ts";
 import {
   BASELINE_STATUSES,
   COMPARISON_STATUSES,
@@ -15,7 +18,7 @@ import { validateWarningChannels } from "./warning-validation.ts";
 export function validateMetrics(metrics: unknown): MetricsValidationResult {
   const errors: string[] = [];
 
-  if (!isRecord(metrics)) {
+  if (!isNonArrayRecord(metrics)) {
     return { valid: false, errors: ["metrics must be a non-null object"] };
   }
 
@@ -40,7 +43,7 @@ function validateDuplicateCodeMeasurement(measurement: unknown, errors: string[]
     errors.push("duplicateCodeMeasurement is required");
     return;
   }
-  if (!isRecord(measurement)) {
+  if (!isNonArrayRecord(measurement)) {
     errors.push("duplicateCodeMeasurement must be an object");
     return;
   }
@@ -53,7 +56,7 @@ function validateDuplicateCodeMeasurement(measurement: unknown, errors: string[]
 }
 
 function validateMetadata(metadata: unknown, errors: string[]): void {
-  if (!isRecord(metadata)) {
+  if (!isNonArrayRecord(metadata)) {
     errors.push("metrics.metadata is required");
     return;
   }
@@ -64,16 +67,16 @@ function validateMetadata(metadata: unknown, errors: string[]): void {
     "metadata.schemaVersion",
     errors
   );
-  requireTruthyField(metadata.timestamp, "metadata.timestamp", errors);
-  requireTruthyField(metadata.repository, "metadata.repository", errors);
-  requireTruthyField(metadata.commitSha, "metadata.commitSha", errors);
+  requireNonEmptyStringField(metadata.timestamp, "metadata.timestamp", errors);
+  requireNonEmptyStringField(metadata.repository, "metadata.repository", errors);
+  requireNonEmptyStringField(metadata.commitSha, "metadata.commitSha", errors);
   requireArrayField(metadata.tools, "metadata.tools", errors);
   requireRecordField(metadata.scope, "metadata.scope", errors);
-  requireTruthyField(metadata.configVersion, "metadata.configVersion", errors);
+  requireNonEmptyStringField(metadata.configVersion, "metadata.configVersion", errors);
 }
 
 function validateBaseline(baseline: unknown, errors: string[]): void {
-  if (!isRecord(baseline)) {
+  if (!isNonArrayRecord(baseline)) {
     errors.push("metrics.baseline is required");
     return;
   }
@@ -100,7 +103,9 @@ function validateStatusField(
   errors: string[]
 ): void {
   if (typeof value === "string" && allowedValues.includes(value)) return;
-  errors.push(`${fieldName}: must be one of ${allowedValues.join(", ")}, got "${value}"`);
+  errors.push(
+    `${fieldName}: must be one of ${allowedValues.join(", ")}, got "${String(value)}"`
+  );
 }
 
 function validateExactValue(
@@ -110,11 +115,17 @@ function validateExactValue(
   errors: string[]
 ): void {
   if (value === expected) return;
-  errors.push(`${fieldName}: expected "${expected}", got "${value}"`);
+  errors.push(`${fieldName}: expected "${expected}", got "${String(value)}"`);
 }
 
-function requireTruthyField(value: unknown, fieldName: string, errors: string[]): void {
-  if (!value) errors.push(`${fieldName} is required`);
+function requireNonEmptyStringField(
+  value: unknown,
+  fieldName: string,
+  errors: string[]
+): void {
+  if (typeof value !== "string" || value.length === 0) {
+    errors.push(`${fieldName} must be a non-empty string`);
+  }
 }
 
 function requireArrayField(value: unknown, fieldName: string, errors: string[]): void {
@@ -122,7 +133,7 @@ function requireArrayField(value: unknown, fieldName: string, errors: string[]):
 }
 
 function requireRecordField(value: unknown, fieldName: string, errors: string[]): void {
-  if (!isRecord(value)) errors.push(`${fieldName} is required`);
+  if (!isNonArrayRecord(value)) errors.push(`${fieldName} must be an object`);
 }
 
 function requireUnknownArrayField(value: unknown, fieldName: string, errors: string[]): void {

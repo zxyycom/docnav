@@ -8,7 +8,10 @@ import { createHash } from "node:crypto";
 import { minimatch } from "minimatch";
 
 import { buildFingerprint, isExcluded } from "../model/code-areas.ts";
-import { getRevisionChangedFiles, getWorkingTreeChangedFiles } from "./revisions.ts";
+import {
+  getRevisionChangedFilesOrRevisionSnapshot,
+  getWorkingTreeChangedFiles
+} from "./revisions.ts";
 import { gitGlobPathspecArgs } from "./git-pathspec.ts";
 import { processFailed, runGit, splitGitFileList, toSlashPath, walkFiles } from "../../../foundation/src/index.ts";
 import type { CodeAreaFileMap, CodeAreaFingerprint, QualityConfig } from "../model/schema.ts";
@@ -61,7 +64,7 @@ export function getChangedFileList(opts: ChangedFilesOptions, rootDir: string): 
   }
 
   const scanInputPaths = opts.scanInputPaths ?? [];
-  const committedChangedFiles = getRevisionChangedFiles(
+  const committedChangedFiles = getRevisionChangedFilesOrRevisionSnapshot(
     rootDir,
     "HEAD~1",
     "HEAD",

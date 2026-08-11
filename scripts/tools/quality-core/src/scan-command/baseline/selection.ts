@@ -3,13 +3,8 @@ import {
   gitCommitDate as readGitCommitDate,
   gitCommitTitle as readGitCommitTitle
 } from "../../../../foundation/src/index.ts";
-import type { QualityScanOptions } from "../command-model.ts";
+import type { ChangeScope, QualityScanOptions } from "../command-model.ts";
 import type { QualityConfig, QualityMetrics, ToolInfo } from "../../model/schema.ts";
-
-type ChangeScope = {
-  changed: boolean;
-  changedFiles: string[];
-};
 
 export function configureBaseline({
   metrics,
@@ -50,6 +45,12 @@ export function configureBaseline({
 }
 
 export function setComparisonStatus(metrics: QualityMetrics, scope: ChangeScope): void {
+  if (scope.status === "unavailable") {
+    metrics.comparisonStatus = "baseline-unavailable";
+    console.log(`  Comparison: baseline-unavailable (${scope.reason})`);
+    return;
+  }
+
   if (metrics.baseline.status === "generated" && metrics.baseline.commitSha) {
     if (!scope.changed) {
       metrics.comparisonStatus = "input-unchanged";

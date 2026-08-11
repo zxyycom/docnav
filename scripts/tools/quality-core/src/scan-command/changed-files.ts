@@ -10,7 +10,14 @@ export type ResolveChangedFilesForScanOptions = {
   scope: ChangeScope;
 };
 
-export function resolveChangedFilesForScan(options: ResolveChangedFilesForScanOptions): string[] {
+export type ResolvedChangedInput = {
+  changedFiles: string[];
+  inputScope: ChangeScope;
+};
+
+export function resolveChangedInputForScan(
+  options: ResolveChangedFilesForScanOptions
+): ResolvedChangedInput {
   const {
     opts,
     config,
@@ -20,12 +27,24 @@ export function resolveChangedFilesForScan(options: ResolveChangedFilesForScanOp
   } = options;
   const changedFileOptions = { ...opts, scanInputPaths: config?.include ?? [] };
   if (opts.changedFiles) {
-    return collectChangedFiles(changedFileOptions, root);
+    const changedFiles = collectChangedFiles(changedFileOptions, root);
+    return {
+      changedFiles,
+      inputScope: scope.status === "unavailable"
+        ? { status: "available", changed: changedFiles.length > 0, changedFiles }
+        : scope
+    };
   }
 
-  if (scope.changedFiles.length > 0 || !scope.changed) {
-    return scope.changedFiles;
+  if (scope.status === "unavailable") {
+    return { changedFiles: [], inputScope: scope };
   }
 
-  return collectChangedFiles(changedFileOptions, root);
+  const changedFiles = scope.changedFiles.length > 0 || !scope.changed
+    ? scope.changedFiles
+    : collectChangedFiles(changedFileOptions, root);
+  return {
+    changedFiles,
+    inputScope: scope
+  };
 }

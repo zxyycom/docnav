@@ -5,7 +5,6 @@ import type {
 } from "../model/schema.ts";
 import { generateWarningChannels } from "../output/warnings/generator.ts";
 import type {
-  ChangeScope,
   QualityScanOptions,
   Timings
 } from "../scan-command/index.ts";
@@ -15,12 +14,11 @@ type GenerateScanWarningsOptions = {
   config: QualityConfig;
   metrics: QualityMetrics;
   scanProfile: QualityScanOptions["scanProfile"];
-  scope: ChangeScope;
   timings: Timings;
 };
 
 export function generateScanWarnings(options: GenerateScanWarningsOptions): void {
-  const { baselineSnapshot, config, metrics, scanProfile, scope, timings } = options;
+  const { baselineSnapshot, config, metrics, scanProfile, timings } = options;
 
   console.log("Generating warnings...");
   metrics.warnings = timings.measure("generate warnings", () => generateWarningChannels({
@@ -28,7 +26,6 @@ export function generateScanWarnings(options: GenerateScanWarningsOptions): void
     functions: metrics.functionMetrics,
     duplicates: metrics.duplicateCode,
     config,
-    scope,
     baseline: baselineSnapshot
       ? {
           files: baselineSnapshot.fileMetrics,

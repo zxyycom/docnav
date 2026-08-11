@@ -30,7 +30,7 @@ import {
   printSummary,
   printWarningStatus,
   qualityCheckStatus,
-  resolveChangedFilesForScan,
+  resolveChangedInputForScan,
   setComparisonStatus,
   validateOutput,
   writeArtifacts,
@@ -104,7 +104,6 @@ export async function runQualityScan({
     config,
     metrics: runtime.metrics,
     scanProfile: opts.scanProfile,
-    scope: changedInput.inputScope,
     timings
   });
   return finishScan({ artifactDir, runtime, timings });
@@ -188,15 +187,17 @@ function detectChangedInputScope({
   root: string;
   timings: Timings;
 }): ChangedInputScope {
-  const inputScope = timings.measure("detect changed scan inputs", () => detectScanInputChange({
+  const detectedScope = timings.measure("detect changed scan inputs", () => detectScanInputChange({
     baselineSha: metrics.baseline.commitSha,
     cwd: root,
     scanInputPaths: config.include
   }));
-  const changedFiles = timings.measure("resolve changed files", () =>
-    resolveChangedFilesForScan({ config, opts, root, scope: inputScope })
+  const { changedFiles, inputScope } = timings.measure("resolve changed files", () =>
+    resolveChangedInputForScan({ config, opts, root, scope: detectedScope })
   );
-  console.log(`  Changed files in scan scope: ${changedFiles.length}`);
+  console.log(inputScope.status === "unavailable"
+    ? `  Changed files in scan scope: unavailable (${inputScope.reason})`
+    : `  Changed files in scan scope: ${changedFiles.length}`);
   return { changedFiles, inputScope };
 }
 

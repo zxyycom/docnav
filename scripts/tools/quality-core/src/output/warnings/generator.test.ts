@@ -14,7 +14,6 @@ describe("quality warning generation", () => {
       duplicates: [acceptedProtocolOperationDuplicate({ startLineOffset: 20 })],
       files: [],
       functions: [],
-      scope: { changed: false, changedFiles: [] }
     });
 
     assert.equal(warnings.all.length, 1);
@@ -39,7 +38,6 @@ describe("quality warning generation", () => {
       duplicates: [acceptedProtocolOperationDuplicate()],
       files: [],
       functions: [],
-      scope: { changed: false, changedFiles: [] },
       validateAcceptedWarnings: true
     });
 

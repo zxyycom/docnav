@@ -73,7 +73,7 @@ export {
   printWarningStatus,
   qualityCheckStatus,
   qualityVerificationStatus,
-  resolveChangedFilesForScan,
+  resolveChangedInputForScan,
   setComparisonStatus,
   validateOutput,
   writeArtifacts,

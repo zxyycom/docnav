@@ -11,7 +11,13 @@ import {
   getChangedFileList,
   type ScanInputConfig
 } from "./files.ts";
-import { detectScanInputChange, materializeBaselineRevision } from "./revisions.ts";
+import {
+  detectScanInputChange,
+  getWorkingTreeChangedFiles,
+  materializeBaselineRevision,
+  type ChangeScope
+} from "./revisions.ts";
+import { resolveChangedInputForScan } from "../scan-command/changed-files.ts";
 
 describe("quality changed file input", () => {
   it("fails fast when an explicit changed-files list cannot be read", () => {
@@ -19,6 +25,79 @@ describe("quality changed file input", () => {
       () => getChangedFileList({ changedFiles: "missing-changed-files.txt" }, process.cwd()),
       /failed to read --changed-files missing-changed-files\.txt/
     );
+  });
+
+  it("reports unavailable revision input instead of an unchanged file set", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "docnav-quality-missing-repository-"));
+    const missingRepository = join(tempDir, "missing");
+
+    try {
+      assert.throws(
+        () => getWorkingTreeChangedFiles(missingRepository, []),
+        /git status .* failed/
+      );
+
+      const scope = detectScanInputChange({
+        baselineSha: "missing-baseline",
+        cwd: missingRepository,
+        scanInputPaths: ["src/**/*.ts"]
+      });
+      assert.equal(scope.status, "unavailable");
+      if (scope.status === "unavailable") {
+        assert.match(scope.reason, /git diff .* failed/);
+      }
+
+      const repository = join(tempDir, "repository");
+      initializeRepository(repository);
+      writeFixtureFile(repository, "src/only.ts", "export const only = true;\n");
+      commitAll(repository, "only commit");
+
+      const invalidBaselineScope = detectScanInputChange({
+        baselineSha: "missing-baseline",
+        cwd: repository,
+        scanInputPaths: ["absent/**/*.ts"]
+      });
+      assert.equal(invalidBaselineScope.status, "unavailable");
+      if (invalidBaselineScope.status === "unavailable") {
+        assert.match(invalidBaselineScope.reason, /git diff .* failed/);
+      }
+      assert.deepEqual(
+        getChangedFileList({ scanInputPaths: ["src/**/*.ts"] }, repository),
+        ["src/only.ts"]
+      );
+
+      const explicit = resolveChangedInputForScan({
+        opts: { changedFiles: "caller-owned.txt" },
+        root: repository,
+        scope: invalidBaselineScope,
+        collectChangedFiles: () => ["src/only.ts"]
+      });
+      assert.deepEqual(explicit, {
+        changedFiles: ["src/only.ts"],
+        inputScope: {
+          status: "available",
+          changed: true,
+          changedFiles: ["src/only.ts"]
+        }
+      });
+
+      const detectedChange = {
+        status: "available",
+        changed: true,
+        changedFiles: ["src/only.ts"]
+      } satisfies ChangeScope;
+      assert.deepEqual(resolveChangedInputForScan({
+        opts: { changedFiles: "caller-owned-empty.txt" },
+        root: repository,
+        scope: detectedChange,
+        collectChangedFiles: () => []
+      }), {
+        changedFiles: [],
+        inputScope: detectedChange
+      });
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   it("keeps current, changed, and baseline repository files aligned", () => {
@@ -53,6 +132,7 @@ describe("quality changed file input", () => {
         cwd: repository,
         scanInputPaths: config.include
       });
+      if (scope.status !== "available") assert.fail(scope.reason);
       assert.equal(scope.changed, true);
       assert.deepEqual(scope.changedFiles.sort(), [committedPath, untrackedPath, workingPath]);
       assert.deepEqual(

@@ -19,7 +19,6 @@ export type GenerateWarningsParams = {
   duplicates: DuplicateCodeFragment[];
   files: FileMetric[];
   functions: FunctionMetric[];
-  scope: { changed: boolean; changedFiles: string[] };
   validateAcceptedWarnings?: boolean;
 };
 

@@ -12,7 +12,4 @@ export type QualityScanOptions = {
   verificationOutput: boolean;
 };
 
-export type ChangeScope = {
-  changed: boolean;
-  changedFiles: string[];
-};
+export type { ChangeScope } from "../input/revisions.ts";

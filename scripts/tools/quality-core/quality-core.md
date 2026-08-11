@@ -14,6 +14,17 @@ This internal module provides quality schema/types, code-area classification, sc
 mean that the configured scan found no duplicate fragments. Validation rejects a
 missing measurement object, a non-object value, or an unknown status.
 
+Runtime metrics validation accepts only non-array records for object fields and
+non-empty strings for required metadata strings; truthy values of another runtime
+type are invalid. Revision-input discovery reports an explicit `unavailable` scope with its
+Git failure reason when diff or working-tree state cannot be obtained. It never uses
+a revision snapshot to claim that an unknown diff is unchanged. The separate
+one-commit changed-file collector may conservatively use the current revision file
+set when `HEAD~1` does not exist, without changing the detection result. Automatic
+comparison and changed-file channels remain unavailable unless the caller supplies
+an explicit changed-files list; an explicit list becomes the effective available
+scope rather than retaining an unrelated Git-discovery failure.
+
 ## Focused checks
 
 Run these commands from this directory:
