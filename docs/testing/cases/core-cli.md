@@ -8,8 +8,17 @@ Entities:
 - `smoke|core:tool-commands|CORE-ADAPTER-MGMT-001`
 
 Proves:
-- `doctor` 报告 static registry 和 adapter layer checks。
 - `adapter list` 输出 core release static registry 内置 Markdown adapter metadata。
+
+## Case BB-CORE-DOCTOR-001: Core doctor 命令覆盖
+
+Owner: `docs/cli.md#doctor-健康检查`
+
+Entities:
+- `smoke|core:tool-commands|CORE-ADAPTER-MGMT-001`
+
+Proves:
+- `doctor` 报告 static registry routing 和 registered adapter definition checks，但不声称执行了 linked handler roundtrip。
 
 ## Case BB-CORE-ARGS-001: Core 拒绝缺失的 operation 参数
 
@@ -241,13 +250,23 @@ Proves:
 Owner: `docs/cli.md#内置-adapter-检查`
 
 Entities:
-- `cargo|docnav:lib:docnav|registry::tests::adapter_layer_check_reports_definition_metadata_and_core_source`
 - `cargo|docnav:lib:docnav|registry::tests::adapter_list_preserves_static_registry_projection`
 - `smoke|core:real-json|CORE-JSON-NAV-001`
 
 Proves:
-- `doctor` 消费的 registry/layer checks 报告两个 adapter，并按相同顺序为 Markdown 与 JSON 输出 passing format/version facts 和 core-owned `implementation_source: "core_static"`。
 - `adapter list` 报告 `registry: "core_static"`，并按 registry 顺序完整投影 Markdown 与 JSON 的 id、name、version、implementation source、suffixes、exact filenames 和 content types；真实 CLI smoke 同时核对 JSON descriptor 的 exact facts，inspection 不执行 document operation。
+
+## Case WB-CORE-DOCTOR-ADAPTER-001: Doctor 精确检查 registry 与 definition manifest
+
+Owner: `docs/cli.md#doctor-健康检查`
+
+Entities:
+- `cargo|docnav:lib:docnav|registry::tests::adapter_layer_check_reports_definition_metadata_and_core_source`
+- `cargo|docnav:lib:docnav|registry::tests::adapter_layer_check_rejects_invalid_definition_manifest`
+
+Proves:
+- Doctor 消费的 registry/layer checks 报告两个 adapter，并按相同顺序为 Markdown 与 JSON 输出 passing format/version facts 和 core-owned `implementation_source: "core_static"`。
+- Registered adapter definition 的 manifest semantics 无效时，doctor adapter-layer check 报告失败并使用 adapter/protocol failure exit，而不声称 handler roundtrip 已通过。
 
 ## Case WB-CORE-REGISTRY-CONFLICT-001: Registry validation rejects ambiguous routing facts
 
@@ -323,14 +342,26 @@ Entities:
 - `cargo|docnav:lib:docnav|config::commands::tests::config_inspect_reports_selected_sources_and_parameter_facts_without_writing`
 - `cargo|docnav:lib:docnav|config::commands::tests::config_inspect_reports_validation_diagnostics_without_failing`
 - `cargo|docnav:lib:docnav|config::commands::tests::config_inspect_serializes_complete_invalid_json_load_status`
-- `cargo|docnav:lib:docnav|config::commands::tests::init_creates_and_preserves_selected_project_config_file`
-- `cargo|docnav:lib:docnav|config::commands::tests::init_rejects_selected_project_config_directory`
 
 Proves:
 - Complete serialized-output goldens cover one valid selected project/user pair and one invalid-JSON project source. They lock source status、summaries、registry-backed config-source projection、resolved parameter facts、source-attributed diagnostics and top-level output shape while normalizing only runtime paths.
 - The valid golden proves adapter-id native option projection and project/user/built-in provenance without modifying either selected file. The invalid-load golden proves invalid JSON remains a successful inspection result with matching source and parameter diagnostics.
 - 显式缺失、顶层非对象和非文件这三类 source state 保留代表性等价类检查；不可读 source 的加载仍由下层 config loading / parameter-resolution 测试负责。
-- `init --project-config` creates or preserves the selected project config file and rejects an existing directory at that selected file path.
+
+## Case WB-CORE-INIT-001: Core init 原子创建且不覆盖 selected config
+
+Owner: `docs/cli.md#项目初始化`
+
+Entities:
+- `cargo|docnav:lib:docnav|config::commands::tests::init_concurrent_calls_create_once_without_overwriting`
+- `cargo|docnav:lib:docnav|config::commands::tests::init_creates_and_preserves_selected_project_config_file`
+- `cargo|docnav:lib:docnav|config::commands::tests::init_rejects_selected_project_config_directory`
+- `cargo|docnav:lib:docnav|config::store::tests::failed_config_write_leaves_no_target_or_temporary_file`
+
+Proves:
+- `init --project-config` creates a missing selected project config, preserves an existing file byte-for-byte, and rejects an existing directory at that path.
+- Concurrent init calls use atomic no-overwrite creation: exactly one caller reports creation and the resulting config is not truncated or overwritten.
+- A representative interrupted write leaves neither a partial selected target nor a temporary sibling；随后正常创建仍成功。
 
 ## Case WB-CORE-CONFIG-SOURCE-001: Core config source validation preserves navigation-owned fields
 
@@ -353,7 +384,7 @@ Proves:
 
 ## Case WB-CORE-DOCTOR-001: Doctor 报告显式选择的配置文件失败
 
-Owner: `docs/cli.md#内置-adapter-检查`
+Owner: `docs/cli.md#doctor-健康检查`
 
 Entities:
 - `cargo|docnav:lib:docnav|config::doctor::tests::doctor_reports_explicit_missing_config_as_failure`
@@ -367,14 +398,17 @@ Owner: `docs/cli.md#parser-与-help`
 
 Entities:
 - `cargo|docnav:lib:docnav|cli::parser::tests::help::help_command_has_no_output_mode`
+- `cargo|docnav:lib:docnav|cli::parser::tests::help::help_flag_after_terminator_is_parsed_as_document_path`
 - `cargo|docnav:lib:docnav|cli::parser::tests::help::help_returns_typed_help_command`
 - `cargo|docnav:lib:docnav|cli::parser::tests::help::help_text_scopes_catalog_parameters_to_supported_operations`
 - `cargo|docnav:lib:docnav|cli::parser::tests::help::help_text_shows_only_public_output_modes`
+- `cargo|docnav:lib:docnav|cli::parser::tests::help::unknown_command_with_help_remains_input_error`
 
 Proves:
 - `--help` 和 operation help 返回 typed help command，并且 document output 只展示 `readable-view` 与 `protocol-json`。
 - Operation help 按 core catalog binding 展示当前 operation 可用的参数；例如 outline 展示 `--max-heading-level`，read 不展示。
-- 根级 `--help` 保持自己的 static surface，不进入 document output mode。
+- 根级 `--help` 保持自己的 static surface，不进入 document output mode；未知 command 不因随后出现 `--help` 而绕过 input error。
+- `--` 终止 option parsing 后的 literal `--help` 保持 document path，不触发 help side effect。
 
 ## Case WB-CORE-INVOCATION-LOG-001: Core runtime invocation log 保持审计边界
 
@@ -397,6 +431,7 @@ Entities:
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::content::invocation_unwritable_log_path_does_not_change_operation_result`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::failure::invocation_failure_logs_bounded_layer_code_and_summary`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::failure::invocation_linked_handler_structured_diagnostic_logs_adapter_dispatch_failure`
+- `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::failure::invocation_preselection_failure_uses_cwd_resolved_document_summary`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::invocation_logging_enabled_success_writes_jsonl_with_request_id`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::concurrent_processes_append_complete_parseable_jsonl_events`
 - `cargo|docnav:lib:docnav|runtime::tests::invocation_logging::output::invocation_output_write_failure_logs_output_projection_without_completion`
@@ -405,6 +440,7 @@ Proves:
 - Core config source validation 拒绝空的 invocation log path。
 - Invocation logging 默认关闭，且配置关闭时不创建日志副作用。
 - CLI/config 显式启用后，core document operation 写入 JSONL operation event，并保留 request id、adapter id、operation status、bounded failure layer/code/summary 和 stdout purity。
+- Failure `code` 使用 canonical diagnostic code accessor，不序列化 Rust Debug enum spelling；preselection document summary 与真实 document access 一样从 invocation cwd 解析路径。
 - Config load failure 可由显式 CLI log 在 runtime config 初始化前记录为 config-layer failure。
 - Metadata-only read event 只记录 SHA-256 content hash、content type 和 size metadata；未单独开启 content capture 时不写正文文件。
 - 单独开启 content capture 后正文文件只写入独立 root 下的日期/`sha256-<content_hash>.content` 相对路径，文件 bytes hash 与主日志 hash 一致。
@@ -493,13 +529,19 @@ Entities:
 - `cargo|docnav:lib:docnav|cli::preflight::tests::detects_equals_protocol_json_output`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::detects_space_separated_protocol_json_output`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::document_without_output_defaults_to_readable_view`
+- `cargo|docnav:lib:docnav|cli::preflight::tests::non_document_output_token_does_not_select_document_output`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::non_document_output_context_keeps_plain_command_semantics`
+- `cargo|docnav:lib:docnav|cli::preflight::tests::output_token_after_terminator_is_not_an_output_hint`
+- `cargo|docnav:lib:docnav|cli::preflight::tests::post_terminator_output_text_does_not_frame_parse_failure_as_protocol_json`
 - `cargo|docnav:lib:docnav|cli::preflight::tests::projected_output_locator_frames_document_structural_failure`
+- `smoke|core:config-context|CORE-CONFIG-PATH-002`
 
 Proves:
 - Core preflight 从 current document command 的 canonical projection 获取 output locator/cardinality，并在解析失败前识别空格分隔和等号形式的 protocol-json intent。
 - Structural document failure 使用 projected output intent 选择 protocol failure framing。
-- 根级 `--help` 不触发 document projection；preflight 只服务错误输出模式选择，不替代正式 parser。
+- 根级 `--help` 与其它 non-document command 不因任意 `--output protocol-json` token 进入 document projection；removed config subcommand 因此保持 readable failure framing。
+- `--` 之后形似 `--output` 的 document path/text 不形成 output hint，也不把 parse failure 包成 protocol JSON。
+- Preflight 只服务错误输出模式选择，不替代正式 parser。
 
 ## Case WB-CORE-PROJECT-CONTEXT-001: Project context resolves explicit and platform config paths
 

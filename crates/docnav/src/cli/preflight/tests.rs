@@ -37,6 +37,28 @@ fn non_document_output_context_keeps_plain_command_semantics() {
 }
 
 #[test]
+fn non_document_output_token_does_not_select_document_output() {
+    let context = output_context(&strings(&["version", "--output", "protocol-json"]));
+
+    assert_eq!(context.output_mode, OutputMode::ReadableView);
+    assert_eq!(context.operation, None);
+}
+
+#[test]
+fn output_token_after_terminator_is_not_an_output_hint() {
+    let context = output_context(&strings(&[
+        "outline",
+        "docs/navigation.md",
+        "--output",
+        "--",
+        "--output=protocol-json",
+    ]));
+
+    assert_eq!(context.output_mode, OutputMode::ReadableView);
+    assert_eq!(context.operation, Some(Operation::Outline));
+}
+
+#[test]
 fn projected_output_locator_frames_document_structural_failure() {
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -58,4 +80,27 @@ fn projected_output_locator_frames_document_structural_failure() {
     let output: serde_json::Value = serde_json::from_slice(&stdout).expect("protocol failure");
     assert_eq!(output["operation"], "outline");
     assert_eq!(output["error"]["details"]["reason"], "unknown_argument");
+}
+
+#[test]
+fn post_terminator_output_text_does_not_frame_parse_failure_as_protocol_json() {
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit = crate::run(
+        [
+            "outline",
+            "docs/navigation.md",
+            "--",
+            "--output=protocol-json",
+        ],
+        std::io::empty(),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit, crate::error::DocnavExitCode::InputError.code());
+    assert!(stderr.is_empty());
+    let output = String::from_utf8(stdout).expect("readable failure is UTF-8");
+    assert!(output.contains("INVALID_REQUEST"), "got:\n{output}");
+    assert!(!output.contains("protocol_version"), "got:\n{output}");
 }

@@ -76,6 +76,10 @@ fn adapter_layer_check_reports_definition_metadata_and_core_source() {
 
     assert_eq!(registry_check.value()["status"], "pass");
     assert_eq!(registry_check.value()["adapter_count"], 2);
+    assert_eq!(
+        registry_check.value()["message"],
+        "core release static adapter registry and routing metadata are valid"
+    );
     assert_eq!(checks.len(), 2);
     assert_eq!(
         checks
@@ -96,11 +100,27 @@ fn adapter_layer_check_reports_definition_metadata_and_core_source() {
         assert_eq!(check["status"], "pass");
         assert_eq!(
             check["message"],
-            "built-in adapter layer metadata is available"
+            "built-in adapter definition and manifest metadata are valid"
         );
         assert_eq!(check["implementation_source"], "core_static");
         assert_eq!(check["version"], env!("CARGO_PKG_VERSION"));
     }
+}
+
+#[test]
+fn adapter_layer_check_rejects_invalid_definition_manifest() {
+    let checks = adapter_layer_checks(&AdapterRegistry::new(INVALID_HINT_ADAPTERS));
+
+    assert_eq!(checks.len(), 1);
+    assert_eq!(checks[0].value()["status"], "fail");
+    assert_eq!(
+        checks[0].value()["message"],
+        "built-in adapter definition has invalid manifest metadata"
+    );
+    assert_eq!(
+        checks[0].failure_exit_code(),
+        Some(DocnavExitCode::AdapterOrProtocolError)
+    );
 }
 
 #[test]

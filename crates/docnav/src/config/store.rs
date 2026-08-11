@@ -14,7 +14,12 @@ use crate::project_paths::path_to_slash;
 
 use super::model::{ConfigContext, CoreConfig};
 
+mod atomic_create;
 mod diagnostics;
+
+#[cfg(test)]
+use atomic_create::create_config_content_if_absent_with;
+pub(super) use atomic_create::{create_config_if_absent, ConfigCreateOutcome};
 use diagnostics::config_source_error;
 
 /// Observes each resolved config in project-to-user precedence order.
@@ -209,25 +214,6 @@ fn navigation_config_path_origin(
             docnav_navigation::NavigationConfigSourceOrigin::ExplicitCli
         }
     }
-}
-
-pub(super) fn write_config(path: &Path, config: &CoreConfig) -> AppResult<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|error| {
-            AppError::invalid_request(
-                "config",
-                format!("failed to create {}: {error}", path_string(parent)),
-            )
-        })?;
-    }
-    let content = serde_json::to_string_pretty(config)
-        .map_err(|_| AppError::internal("serialize-config-failed"))?;
-    fs::write(path, format!("{content}\n")).map_err(|error| {
-        AppError::invalid_request(
-            "config",
-            format!("failed to write {}: {error}", path_string(path)),
-        )
-    })
 }
 
 pub(super) fn path_string(path: &Path) -> String {

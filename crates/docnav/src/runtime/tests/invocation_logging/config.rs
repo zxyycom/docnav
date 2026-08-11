@@ -167,6 +167,7 @@ fn invocation_cli_log_records_config_load_failure_before_runtime_config() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0]["event"], "operation_failed");
     assert_eq!(events[0]["failure"]["layer"], "config");
+    assert_eq!(events[0]["failure"]["code"], "INVALID_REQUEST");
     assert!(
         events
             .iter()

@@ -13,9 +13,10 @@ import {
   expectJsonObject,
   expectObjectArray,
   expectNoJsonPayloadInStderr,
-  expectProtocolFailure,
+  expectReadableFailure,
   expectStderrEmpty,
   parseJson,
+  parseReadableViewHeader,
 } from "../assertions.ts";
 import type { JsonRecord } from "../assertions.ts";
 import { exitCodes } from "../config.ts";
@@ -143,9 +144,11 @@ export async function testLegacyConfigSetRejectsSelectedConfigFiles() {
   );
   expectExit(legacy, exitCodes.input);
   expectNoJsonPayloadInStderr(legacy);
-  const legacyJson = parseJson(legacy);
-  validateSchema(legacy, "protocolResponse", legacyJson);
-  const error = expectProtocolFailure(legacy, legacyJson, null, "INVALID_REQUEST");
+  const error = expectReadableFailure(
+    legacy,
+    parseReadableViewHeader(legacy),
+    "INVALID_REQUEST",
+  );
   expect(legacy, error.owner === "core_cli", "legacy config command is rejected at core CLI boundary");
   const details = expectJsonObject(legacy, error.details, "legacy config command error details are an object");
   expect(legacy, details.field === "config", "legacy config command reports config field");

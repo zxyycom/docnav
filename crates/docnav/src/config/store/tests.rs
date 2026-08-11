@@ -1,11 +1,15 @@
 use std::fs;
+use std::io::{self, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
 
-use super::{read_selected_config, ConfigFileSource};
+use super::{
+    create_config_content_if_absent_with, create_config_if_absent, read_selected_config,
+    ConfigCreateOutcome, ConfigFileSource, CoreConfig,
+};
 use crate::project_context::{ConfigPathOrigin, SelectedConfigPath};
 
 #[test]
@@ -195,6 +199,43 @@ fn explicit_missing_config_path_reports_blocking_issue() {
         details["config_issues"][0]["reason_code"],
         "missing_explicit_cli"
     );
+}
+
+#[test]
+fn failed_config_write_leaves_no_target_or_temporary_file() {
+    let root = temp_root("atomic-create-write-failure");
+    let path = root.join(".docnav").join("docnav.json");
+    fs::create_dir_all(path.parent().expect("config parent")).unwrap();
+
+    let error = create_config_content_if_absent_with(&path, b"{}\n", |file, _| {
+        file.write_all(b"{")?;
+        Err(io::Error::other("injected config write failure"))
+    })
+    .expect_err("injected write failure must abort config creation");
+
+    assert!(error.diagnostic().details().to_value()["reason"]
+        .as_str()
+        .is_some_and(|reason| reason.contains("injected config write failure")));
+    assert!(!path.exists(), "partial target must never be published");
+    assert_eq!(
+        fs::read_dir(path.parent().unwrap()).unwrap().count(),
+        0,
+        "failed creation must remove its temporary file"
+    );
+
+    assert_eq!(
+        create_config_if_absent(&path, &CoreConfig::default()).unwrap(),
+        ConfigCreateOutcome::Created
+    );
+    assert_eq!(fs::read_to_string(&path).unwrap(), "{}\n");
+    assert_eq!(
+        create_config_content_if_absent_with(&path, b"replacement", |_, _| {
+            panic!("an existing target must bypass temporary-file creation and writing")
+        })
+        .unwrap(),
+        ConfigCreateOutcome::AlreadyExists
+    );
+    assert_eq!(fs::read_to_string(path).unwrap(), "{}\n");
 }
 
 fn write_project_config(root: &Path, value: Value) -> PathBuf {

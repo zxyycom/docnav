@@ -1,5 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Barrier};
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
@@ -210,6 +212,40 @@ fn init_creates_and_preserves_selected_project_config_file() {
         fs::read_to_string(&project_config).unwrap(),
         "{\"defaults\":{\"output\":\"readable-view\"}}\n"
     );
+
+    let _ = fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn init_concurrent_calls_create_once_without_overwriting() {
+    let workspace = temp_workspace("init-concurrent-create-once");
+    let project_config = workspace.join("nested").join("selected-project.json");
+    let config_paths = ConfigPathArgs {
+        project_config: Some(project_config.display().to_string()),
+        user_config: None,
+    };
+    let barrier = Arc::new(Barrier::new(2));
+
+    let handles = (0..2)
+        .map(|_| {
+            let barrier = Arc::clone(&barrier);
+            let config_paths = config_paths.clone();
+            thread::spawn(move || {
+                barrier.wait();
+                outcome_json(init_project(config_paths).expect("concurrent init succeeds"))
+                    ["created"]
+                    .as_bool()
+                    .expect("created boolean")
+            })
+        })
+        .collect::<Vec<_>>();
+    let created = handles
+        .into_iter()
+        .map(|handle| handle.join().expect("init thread joins"))
+        .collect::<Vec<_>>();
+
+    assert_eq!(created.iter().filter(|created| **created).count(), 1);
+    assert_eq!(fs::read_to_string(&project_config).unwrap(), "{}\n");
 
     let _ = fs::remove_dir_all(workspace);
 }

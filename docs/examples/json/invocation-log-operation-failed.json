@@ -21,7 +21,7 @@
   },
   "failure": {
     "layer": "request_construction",
-    "code": "ref.invalid",
+    "code": "INVALID_REQUEST",
     "summary": "Ref failed non-empty structured validation before adapter dispatch."
   }
 }

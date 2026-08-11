@@ -1,5 +1,3 @@
-use std::fs;
-
 use docnav_navigation::inspect_navigation_config_sources;
 use serde_json::json;
 
@@ -10,7 +8,7 @@ use crate::parameter_catalog::document_parameter_catalog;
 use crate::project_context::ProjectContext;
 
 use super::model::CoreConfig;
-use super::store::{path_string, write_config};
+use super::store::{create_config_if_absent, path_string, ConfigCreateOutcome};
 
 pub fn execute(command: ConfigCommand) -> AppResult<CommandOutcome> {
     match command {
@@ -22,22 +20,20 @@ pub fn init_project(config_paths: ConfigPathArgs) -> AppResult<CommandOutcome> {
     let target =
         ProjectContext::discover_project_config_target(config_paths.project_config.as_deref())?;
     let config_path = target.config_path.path;
-    let config_dir = config_path.parent().ok_or_else(|| {
+    config_path.parent().ok_or_else(|| {
         AppError::invalid_request("project_config", "project config path has no parent")
     })?;
-    fs::create_dir_all(config_dir)
-        .map_err(|error| AppError::invalid_request("project_config", error.to_string()))?;
-    let created = if config_path.exists() {
-        if !config_path.is_file() {
-            return Err(AppError::invalid_request(
-                "project_config",
-                format!("{} is not a file", path_string(&config_path)),
-            ));
+    let created = match create_config_if_absent(&config_path, &CoreConfig::default())? {
+        ConfigCreateOutcome::Created => true,
+        ConfigCreateOutcome::AlreadyExists => {
+            if !config_path.is_file() {
+                return Err(AppError::invalid_request(
+                    "project_config",
+                    format!("{} is not a file", path_string(&config_path)),
+                ));
+            }
+            false
         }
-        false
-    } else {
-        write_config(&config_path, &CoreConfig::default())?;
-        true
     };
 
     Ok(CommandOutcome::json(json!({

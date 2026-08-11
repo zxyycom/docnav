@@ -1,7 +1,6 @@
 use docnav_protocol::Operation;
 
 use super::command_model::{OutputMode, DOCUMENT_OUTPUT_FIELD_ID};
-use super::flags;
 use super::parser::{command_names, document_clap_command};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -12,10 +11,7 @@ pub struct CliOutputContext {
 
 pub fn output_context(args: &[String]) -> CliOutputContext {
     let operation = args.first().and_then(|command| operation(command));
-    let output_argument = match operation {
-        Some(operation) => projected_output_argument(operation),
-        None => Some(core_output_argument()),
-    };
+    let output_argument = operation.and_then(projected_output_argument);
     CliOutputContext {
         output_mode: output_argument
             .and_then(|argument| output_mode(args, &argument))
@@ -45,20 +41,16 @@ fn projected_output_argument(operation: Operation) -> Option<OutputArgument> {
     })
 }
 
-fn core_output_argument() -> OutputArgument {
-    OutputArgument {
-        flag: flags::OUTPUT.to_owned(),
-        takes_value: true,
-    }
-}
-
 fn output_mode(args: &[String], argument: &OutputArgument) -> Option<OutputMode> {
     if !argument.takes_value {
         return None;
     }
     let mut output = None;
-    let mut index = 0;
+    let mut index = 1;
     while index < args.len() {
+        if args[index] == "--" {
+            break;
+        }
         let (flag, inline_value) = args[index]
             .split_once('=')
             .map_or((args[index].as_str(), None), |(flag, value)| {
@@ -75,6 +67,9 @@ fn output_mode(args: &[String], argument: &OutputArgument) -> Option<OutputMode>
             index += 1;
         } else {
             if let Some(value) = args.get(index + 1) {
+                if value == "--" {
+                    break;
+                }
                 if let Ok(mode) = value.parse::<OutputMode>() {
                     output = Some(mode);
                 }

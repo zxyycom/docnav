@@ -80,7 +80,7 @@ pub fn registry_check(registry: &AdapterRegistry) -> DoctorCheck {
         Ok(_) => DoctorCheck::pass(json!({
             "name": "core_static_adapter_registry",
             "status": "pass",
-            "message": "core release static adapter registry is available",
+            "message": "core release static adapter registry and routing metadata are valid",
             "adapter_count": registry.len(),
         })),
         Err(error) => DoctorCheck::failure(
@@ -102,7 +102,7 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {
             json!({
                 "name": "adapter_layer",
                 "status": "fail",
-                "message": "core release static adapter registry has no adapters",
+                "message": "core release static adapter registry has no adapter definitions",
             }),
             DocnavExitCode::AdapterOrProtocolError,
         )];
@@ -115,7 +115,7 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {
             let adapter = definition();
             let manifest = adapter.manifest();
             let id = adapter.id();
-            let status = if manifest.adapter.id == id && manifest.validate_semantics().is_ok() {
+            let status = if manifest.validate_semantics().is_ok() {
                 "pass"
             } else {
                 "fail"
@@ -128,9 +128,9 @@ pub fn adapter_layer_checks(registry: &AdapterRegistry) -> Vec<DoctorCheck> {
                 "version": manifest.adapter.version,
                 "formats": manifest.formats,
                 "message": if status == "pass" {
-                    "built-in adapter layer metadata is available"
+                    "built-in adapter definition and manifest metadata are valid"
                 } else {
-                    "built-in adapter layer metadata is invalid"
+                    "built-in adapter definition has invalid manifest metadata"
                 },
             });
             if status == "pass" {

@@ -71,7 +71,9 @@ CLI 显式 path 优先于配置文件 path；配置文件来源仍遵循 project
 Invocation log path 和 content capture root 都按普通文件系统 path 规范化；相对路径以当前 invocation 的 project context 为基准。Log path 指向 JSONL file；content capture root 指向目录。Content capture 文件必须位于 root 下的日期目录中，相对路径格式固定为 `<YYYY-MM-DD>/sha256-<content_hash>.content`，其中 `content_hash` 是小写 64 位十六进制 SHA-256。
 
 Invocation log 默认记录 metadata-only event：schema version、timestamp、event name、request/correlation id、operation、selected adapter id when available、duration、operation/output status、响应大小摘要、bounded diagnostic summary、path display 和 bounded query/ref summary。
-Path display 默认记录 project-relative path；项目根外文档记录规范化绝对 path 的 bounded display 和 hash metadata。
+
+- `failure.code` 使用对应 `DiagnosticCode` 的 canonical stable code；protocol diagnostic 复用现有 protocol code（例如 `INVALID_REQUEST`），不序列化 Rust Debug/Display 表示，也不另建日志错误码。
+- Path display 优先使用 project-relative path；项目根外文档使用规范化绝对 path 的 bounded display 和 hash metadata。Preselection failure 尚无 target filesystem identity 时，只对 `cwd + caller path` 做 lexical normalization 和分类，因此 `path_kind` 不证明 symbolic-link 解析后的物理 containment。Adapter selection 后已有 canonical target path 时，改用该 filesystem-backed identity。
 Query/ref 不作为跨层稳定身份记录，默认只记录 presence、length、hash 或 bounded preview，不记录无界原始值。
 
 同一个 invocation log sink 可以由多个 `docnav` 进程并发追加。每个 event 必须在跨进程互斥区内作为一条完整、以换行终止的 JSONL record 写入；参与该 sink 的 `docnav` writer 不得交错 record bytes 或丢失已经成功追加的 event。
@@ -92,13 +94,15 @@ Document named option 的 static/generated 分界：
 - **Generated surface：** `adapter` 的 routing field 由 navigation 提供；`page`、`limit`、`pagination`、`output`、`auto_read` 与 adapter-scoped public flags 来自 core-authored parameter catalog 的 operation projection。Core 直接从这些 canonical processing facts 构造 `clap` arguments/help，并把 explicit matches 提取为保留 identity、locator、raw/reason 和 source attribution 的 normalized typed/invalid candidates。
 - **Lexical/preflight：** strict argv boundary 的 document flag/cardinality facts 和 output preflight locator 都从当前 operation 的 static/generated command shape 读取；help、missing value、duplicate single-value、unknown flag 和 operation-inapplicable input 不维护第二份 document option 定义。
 
-Generated `output` 的 enum 和 help 只展示 `readable-view` 与 `protocol-json`。每个 generated flag 在 argv parsing 前唯一映射到 canonical field identity；generated-to-static 或 generated-to-generated conflict 在 dispatch 前确定性失败并保留 owner/field attribution。Core args/help/preflight tests 证明该 Current 边界。完整调用关系见 [架构](architecture.md#document-named-option-派生状态)，candidate applicability 见 [Navigation Input Resolution](navigation-input-resolution.md#参数汇总-projection)。
+Generated `output` 的 enum 和 help 只展示 `readable-view` 与 `protocol-json`。每个 generated flag 在 argv parsing 前唯一映射到 canonical field identity；generated-to-static 或 generated-to-generated conflict 在 dispatch 前确定性失败并保留 owner/field attribution。Core args/help/preflight tests 证明该 Current 边界。完整调用关系见 [架构](architecture.md#document-named-option-派生状态)，candidate applicability 见 [Navigation Input Resolution](navigation-input-resolution.md#selected-operation-catalog-view)。
 
 Root help 和子命令 help 只输出 help 文本，不执行项目解析、配置读取、adapter 选择或 document operation。
 
+当前 command shape 按 `clap` 处理 `--` option terminator：其后的 token 不再触发 help，也不形成 document output preflight hint，而是继续按当前命令的 positional/cardinality 规则处理。
+
 Help 文本必须只在 documented 支持的 command surface 展示 `--project-config <path>` / `--user-config <path>`：document operation、`config` 和 `doctor` 展示两者，`init` 只展示 `--project-config <path>`。
 
-非 document command 使用自己的 command shape 解析 argv。无关 argv 按该命令的输入错误处理，不构造 document operation request。
+非 document command 使用自己的 command shape 解析 argv。无关 argv 按该命令的输入错误处理，不构造 document operation request。因为这类命令没有 document operation，任何形似 `--output` 的 token 都不选择 document output；parse failure 使用既有 readable diagnostic JSON object 写入 stdout，不套 `ProtocolResponse` envelope。
 
 未知 config path flag、config path flag 缺少 value，或在未文档化支持该 flag 的命令上使用 config path flag，都是 strict input failure。该失败发生在读取 config source、运行 `config`/`init`/`doctor` 目标逻辑或分派 document operation 之前；非法 argv 不得被忽略，也不得被解释为 config JSON 字段。
 
@@ -157,9 +161,17 @@ Runtime invocation logging 可读取同一 project/user config 文件中的 `inv
 
 默认 adapter 命令面只包含 `docnav adapter list`。
 
-`docnav init --project-config <path>` 创建或保留 selected project config file；未传时创建或保留当前 project context 的 `.docnav/docnav.json`。
+## 项目初始化
 
-`docnav doctor` 检查 selected project/user config files、static registry 和 core release 内置 adapter layer 可用性。Doctor 验证 normalized format identity、same-kind exact filename / ASCII-normalized suffix hint 的唯一性，以及静态 descriptor 与 linked handler 一致性。修复建议必须落在当前配置、static registry 或 linked adapter layer 边界内。
+`docnav init --project-config <path>` 创建或保留 selected project config file；未传时创建或保留当前 project context 的 `.docnav/docnav.json`。创建使用 atomic no-overwrite 语义：并发 init 最多一个调用报告创建成功，其余调用观察既有文件，任何调用都不得截断或覆盖已经存在的配置。
+
+创建失败不能留下空或部分 target config，也不能改变已经存在的配置。实现可以使用同目录临时文件和 no-overwrite publish 保证该结果；临时文件清理失败时，diagnostic 同时保留原始失败与 cleanup failure，不虚构已经删除。
+
+## Doctor 健康检查
+
+`docnav doctor` 检查 selected project/user config files、static registry routing metadata，以及各 registered adapter definition 的 manifest semantics。Doctor 验证 normalized format identity、same-kind exact filename / ASCII-normalized suffix hint 的唯一性和 definition manifest 有效性。
+
+Doctor 不创建 adapter document、不执行 operation handler，也不证明 linked handler roundtrip；该 roundtrip 由 release/package smoke 验证。Doctor 的修复建议只指向当前配置、static registry routing 或 registered definition/manifest 边界。
 
 ## adapter 执行入口
 

@@ -5,6 +5,7 @@ mod document;
 mod spec;
 mod utility_command;
 
+use clap::error::ErrorKind;
 use docnav_protocol::Operation;
 
 use crate::error::{AppError, AppResult};
@@ -23,19 +24,25 @@ where
     S: Into<String>,
 {
     let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    if let Some(help) = help_text(&args)? {
-        return Ok(ParsedCli::new(CliCommand::Help(help)));
-    }
-
     let Some((command, rest)) = args.split_first() else {
         return Err(AppError::invalid_request("command", "missing command"));
     };
+
+    if is_help_flag(command) {
+        return Ok(ParsedCli::new(CliCommand::Help(
+            cli_command().render_long_help().to_string(),
+        )));
+    }
 
     if !is_known_root_command(command) {
         return Err(AppError::invalid_request(
             "command",
             format!("unknown command {command:?}"),
         ));
+    }
+
+    if let Some(help) = help_text(command, rest)? {
+        return Ok(ParsedCli::new(CliCommand::Help(help)));
     }
 
     match command.as_str() {
@@ -64,31 +71,19 @@ where
     }
 }
 
-fn help_text(args: &[String]) -> AppResult<Option<String>> {
-    if !args.iter().any(|arg| is_help_flag(arg)) {
-        return Ok(None);
-    }
-    let mut root = cli_command();
-    let Some(first) = args.first().map(String::as_str) else {
-        return Ok(Some(root.render_long_help().to_string()));
+fn help_text(command: &str, args: &[String]) -> AppResult<Option<String>> {
+    let command_shape = if let Some(operation) = document_operation(command) {
+        document_clap_command(operation)?.command
+    } else {
+        cli_command()
+            .find_subcommand(command)
+            .cloned()
+            .expect("known root command has a clap command shape")
     };
-    if is_help_flag(first) {
-        return Ok(Some(root.render_long_help().to_string()));
+    match command_shape.try_get_matches_from(argument_helpers::clap_argv(command, args.to_vec())) {
+        Err(error) if error.kind() == ErrorKind::DisplayHelp => Ok(Some(error.to_string())),
+        Ok(_) | Err(_) => Ok(None),
     }
-    if let Some(operation) = document_operation(first) {
-        let mut spec = document_clap_command(operation)?;
-        return Ok(Some(spec.command.render_long_help().to_string()));
-    }
-    let Some(command) = root.find_subcommand_mut(first) else {
-        return Ok(Some(root.render_long_help().to_string()));
-    };
-    if let Some(second) = nested_help_subcommand(first, args) {
-        if let Some(subcommand) = command.find_subcommand_mut(second) {
-            return Ok(Some(subcommand.render_long_help().to_string()));
-        }
-        return Ok(None);
-    }
-    Ok(Some(command.render_long_help().to_string()))
 }
 
 fn document_operation(command: &str) -> Option<Operation> {
@@ -99,14 +94,6 @@ fn document_operation(command: &str) -> Option<Operation> {
         command_names::INFO => Some(Operation::Info),
         _ => None,
     }
-}
-
-fn nested_help_subcommand<'a>(first: &str, args: &'a [String]) -> Option<&'a str> {
-    if !matches!(first, command_names::CONFIG | command_names::ADAPTER) {
-        return None;
-    }
-    let second = args.get(1).map(String::as_str)?;
-    (!is_help_flag(second)).then_some(second)
 }
 
 fn is_help_flag(arg: &str) -> bool {

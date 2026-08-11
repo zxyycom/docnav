@@ -115,3 +115,27 @@ fn help_command_has_no_output_mode() {
         command => panic!("expected help command, got {command:?}"),
     }
 }
+
+#[test]
+fn help_flag_after_terminator_is_parsed_as_document_path() {
+    let parsed = parse(["outline", "--", "--help"]).expect("parse terminated help token");
+
+    match parsed.command {
+        CliCommand::Document(command) => assert_eq!(command.path, "--help"),
+        command => panic!("expected document command, got {command:?}"),
+    }
+}
+
+#[test]
+fn unknown_command_with_help_remains_input_error() {
+    let error = parse(["bogus", "--help"]).expect_err("unknown command remains invalid");
+    let details = error.diagnostic().details().to_value();
+
+    assert_eq!(details["field"], "command");
+    assert!(
+        details["reason"]
+            .as_str()
+            .is_some_and(|reason| reason.contains("unknown command")),
+        "expected unknown-command reason, got {details}"
+    );
+}

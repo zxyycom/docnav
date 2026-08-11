@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::error::{AppError, AppResult};
 use crate::project_context::ProjectContext;
@@ -63,11 +63,38 @@ fn normalize_path_for_error(path: &Path) -> String {
     path_to_slash(path)
 }
 
-fn resolve_document_path(project: &ProjectContext, input: &str) -> PathBuf {
+pub(crate) fn resolve_document_path(project: &ProjectContext, input: &str) -> PathBuf {
     let raw_path = PathBuf::from(input);
-    if raw_path.is_absolute() {
+    let resolved = if raw_path.is_absolute() {
         raw_path
     } else {
         project.cwd.join(raw_path)
+    };
+    normalize_lexically(&resolved)
+}
+
+fn normalize_lexically(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Prefix(_) | Component::RootDir | Component::Normal(_) => {
+                normalized.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => match normalized.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    normalized.pop();
+                }
+                Some(Component::ParentDir) | None if !path.has_root() => {
+                    normalized.push(component.as_os_str());
+                }
+                Some(Component::Prefix(_))
+                | Some(Component::RootDir)
+                | Some(Component::ParentDir)
+                | Some(Component::CurDir)
+                | None => {}
+            },
+        }
     }
+    normalized
 }

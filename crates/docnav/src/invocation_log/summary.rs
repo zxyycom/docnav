@@ -8,10 +8,9 @@ use serde_json::{json, Value};
 use crate::cli::DocumentCommand;
 use crate::error::AppError;
 use crate::project_context::ProjectContext;
-use crate::project_paths::path_to_slash;
+use crate::project_paths::{path_to_slash, resolve_document_path};
 
 use super::hash::{sha256_hex, HASH_ALGORITHM};
-use super::paths::resolve_project_path;
 
 const MAX_SUMMARY_CHARS: usize = 512;
 
@@ -22,7 +21,7 @@ pub(super) fn document_summary(
 ) -> Value {
     let path = absolute_path
         .map(Path::to_path_buf)
-        .unwrap_or_else(|| resolve_project_path(project, raw_path));
+        .unwrap_or_else(|| resolve_document_path(project, raw_path));
     let (display, kind) = match path.strip_prefix(&project.project_root) {
         Ok(relative) if !relative.as_os_str().is_empty() => {
             (path_to_slash(relative), "project_relative")
@@ -64,7 +63,7 @@ pub(super) fn app_error_summary(
 ) -> Value {
     failure_summary(
         layer.as_str(),
-        Some(format!("{:?}", diagnostic.code())),
+        Some(diagnostic.code().as_str().to_owned()),
         diagnostic.summary(),
     )
 }
@@ -73,7 +72,7 @@ pub(super) fn core_error_summary(layer: &str, error: &AppError) -> Value {
     let diagnostic = error.diagnostic();
     failure_summary(
         layer,
-        Some(format!("{:?}", diagnostic.code())),
+        Some(diagnostic.code().as_str().to_owned()),
         diagnostic.summary(),
     )
 }
@@ -94,10 +93,7 @@ pub(super) fn failure_summary(
 }
 
 pub(super) fn protocol_code_text(code: ProtocolDiagnosticCode) -> String {
-    serde_json::to_value(code)
-        .ok()
-        .and_then(|value| value.as_str().map(str::to_owned))
-        .unwrap_or_else(|| format!("{code:?}"))
+    code.protocol_code().to_owned()
 }
 
 fn bounded_input_summary(value: &str) -> Value {
