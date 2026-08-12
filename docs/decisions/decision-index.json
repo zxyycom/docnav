@@ -21,6 +21,10 @@
         "id": "decision-management"
       },
       {
+        "description": "维护实现代码规范、项目 agent 指令、Skill 准入与工程能力路由的长期方向。",
+        "id": "engineering-guidance"
+      },
+      {
         "description": "维护 JSON 导航的 ref、树遍历、原文查找、解析保真、输入约束、安全上限与结构化序列化方向。",
         "id": "json-navigation"
       },
@@ -63,6 +67,8 @@
       "decision-management/treat-unaligned-decisions-as-future-direction-input.md": "sha256:1c6459cd39e7000e159946121291d8d075381583594a5c5a074f61bd342bb857",
       "decision-management/use-change-plans-for-change-execution.md": "sha256:5c835db59cb77f48e34d16a181bc93f790a4f4a5c02fe53982ea4122da0fc0b2",
       "decision-management/use-verified-decision-records.md": "sha256:b30f0b8a93cb67b7586dc9198c770d9e7e83bf601d55ce870ed380fa0c02429a",
+      "engineering-guidance/admit-project-skills-only-for-distinct-capabilities.md": "sha256:8a51f4aed22442742fa53e0d0399da7eb039b1d09047f46cae956e848abe150c",
+      "engineering-guidance/keep-general-code-quality-in-coding-style.md": "sha256:7a18da1cae0c2a6670e7c1098d76ba69783b7abf77f794aeeb3f3e9c0d329bc8",
       "json-navigation/keep-depth-limit-adapter-private.md": "sha256:5875b217a69bf0249f60de4a8950aec48bad95569e0efcc59d185ca27d57626a",
       "json-navigation/normalize-structured-json-output.md": "sha256:4538bf1653ed4758c122d1c001bdee45067b40474f072c1aa69db663db743cf1",
       "json-navigation/preserve-json-number-source-tokens.md": "sha256:06ad05c14bc86aeccbe5d60bbfd3217d8794d3d293e137daf78fde7e8ad2692a",
@@ -89,7 +95,7 @@
       "validation-governance/return-validated-commits-to-original-branch.md": "sha256:44c99bff4bd279d5712a0d51f5b2a4c8296810afc64d8ba8c71351d81418c518",
       "validation-governance/validate-unavailable-platforms-through-controlled-branches.md": "sha256:f6ef83723d3b9700c37c620ba8e8e8cd641ab33b8e6f10a147dae626c830987c"
     },
-    "metadata": "sha256:f34af72a0dd3bc1fdec13a7862187649668a1c24b629536e8ac0e992a660dd59"
+    "metadata": "sha256:b050cf0d57a07e637e29f9db63064e03e41c259293d1c3ddb6c67ee099e5a1dc"
   },
   "keyDefinitions": [
     {
@@ -582,6 +588,54 @@
         "purpose": "让长期决策在仓库内保持可恢复、可审计且结构一致。",
         "background": "项目已引入 decision-records skill，但个人安装和人工维护不能保证 CI 可复现或索引同步。",
         "decision": "版本化管理 docs/decisions，并由 required docs validator 直接调用项目内模块执行严格检查。",
+        "relations": []
+      }
+    },
+    "engineering-guidance/admit-project-skills-only-for-distinct-capabilities.md": {
+      "keys": {
+        "domain": [
+          "engineering-guidance"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "aligned"
+        ]
+      },
+      "state": {
+        "path": "engineering-guidance/admit-project-skills-only-for-distinct-capabilities.md",
+        "title": "项目 Skill 只承接可区分的专门能力",
+        "status": "active",
+        "alignment": "aligned",
+        "createdAt": "2026-08-12T03:42:03Z",
+        "purpose": "让项目 Skill 只保留能在具体任务中证明独立增量的工具、持久流程或专门方法。",
+        "background": "宽触发的通用编码 Skill 会重复 agent 能力和项目规范，并在常见任务中叠加上下文与同步责任。",
+        "decision": "项目 Skill 仅在具体任务证明其提供独有工具、持久载体或专门判断流程时准入；普通工程能力和 Current 语义由 agent 与 owner 文档承接。",
+        "relations": []
+      }
+    },
+    "engineering-guidance/keep-general-code-quality-in-coding-style.md": {
+      "keys": {
+        "domain": [
+          "engineering-guidance"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "aligned"
+        ]
+      },
+      "state": {
+        "path": "engineering-guidance/keep-general-code-quality-in-coding-style.md",
+        "title": "通用代码质量规则由编码规范统一拥有",
+        "status": "active",
+        "alignment": "aligned",
+        "createdAt": "2026-08-12T03:42:03Z",
+        "purpose": "让实现与审查从固定 owner 路径恢复通用代码质量要求，避免项目 Skill 重复编码规则。",
+        "background": "编码规范已覆盖通用实现质量，按工程动作拆分的 Skill 会重复 owner、扩大触发范围并增加同步责任。",
+        "decision": "行为 owner 先定义必须做什么，docs/coding-style.md 再统一约束如何实现；AGENTS.md、文档导航和 Skill 只负责路由。",
         "relations": []
       }
     },

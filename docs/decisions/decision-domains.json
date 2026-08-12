@@ -18,6 +18,10 @@
       "description": "维护长期决策的记录、生命周期、演进关系及其与 owner 规范和 Change Plan 的分工。"
     },
     {
+      "id": "engineering-guidance",
+      "description": "维护实现代码规范、项目 agent 指令、Skill 准入与工程能力路由的长期方向。"
+    },
+    {
       "id": "json-navigation",
       "description": "维护 JSON 导航的 ref、树遍历、原文查找、解析保真、输入约束、安全上限与结构化序列化方向。"
     },
