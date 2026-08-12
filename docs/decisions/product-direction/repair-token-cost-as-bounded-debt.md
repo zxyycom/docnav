@@ -1,6 +1,6 @@
 ---
 title: 将 token cost 作为有界性能债务修复
-status: active
+status: archived
 alignment: unaligned
 createdAt: 2026-08-05T06:47:42Z
 purpose: 修复已知 token 计算性能问题，同时让治理成本与实际极端影响相称。
