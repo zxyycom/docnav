@@ -1,44 +1,46 @@
 # Tasks
 
-按“Current 重新基线与唯一相邻能力门 → public contract 和 production 原子迁移 → 行为与分发验证 → Current owner 同步”推进。`introduce-budgeted-output-window` 提供的三单位 OutputWindow 和正确 token prefix path 是 public cutover 的硬门禁；fast-read probing 是非阻塞后续。相邻 Change 的目录或 stage 不证明能力存在，也不授权本 Change 修改其 artifacts。
+按“Current shared capability 与 public baseline 重审 → bounded prefix → protocol/input/adapter producer 原子迁移 → navigation/report/presentation 集成 → end-to-end evidence → stable owner 同步”推进；任何 public 中间状态都不得同时承诺 pagination 和 output constraint。
+
+当前任务表停在第一处代码改动前：规划、架构选择、owner handoff、测试起点和启动审计均已完成，下一步直接从 `1.1` 开始实现 bounded-prefix contract，不再等待产品决策或额外的 Change 生命周期动作。Implementation 与 Verification 仍未勾选，因为对应代码和验证尚未执行。
 
 ## Readiness
 
-- [x] 0.1 Proposal、design 和 tasks 共享一个目标：用 `lines | bytes | tokens` 的单单位内容上限及显式 `Unbounded` 一次性替换 `outline`、`read`、`find` 的 public pagination contract。
-- [x] 0.2 Product、architecture、preset 与 runtime/host 分层已经固定；`tokens:6000` 是可调整默认值，不是架构不变量。
-- [x] 0.3 CLI、config、navigation、protocol、adapter、output、schema/example、testing、release 与稳定 owner 的影响边界已经列明，Current 与 change-local Target 没有混写。
-- [x] 0.4 Limited/unbounded input、common output sidecar、内容字段预算、complete、极小 limit、nested ordering、scope 和 `0.2` hard cutover 均有唯一语义，没有剩余产品开放问题。
-- [x] 0.5 OutputWindow 与正确 token path 的 owner、关闭动作和被阻塞任务已经声明；fast-read probing 已分类为非阻塞后续，既有 token backend 保留为基线。
-- [x] 0.6 已按测试策略证明完整测试实体与 Semantic Case 映射闭合，并识别 pagination、navigation、protocol、adapter、output 与 text-cost 的受影响 Case。
+- [x] 0.1 Proposal、design 和 tasks 已删除旧 post-result `OutputWindow`/field-traversal 中心，并统一采用 producer → `OutputSession` → typed result/report → navigation/protocol → presentation 的目标调用链。
+- [x] 0.2 已恢复并分类三条直接决策：output-limit 与 OutputSession 是本 Change 实施的 active future directions；保留 current tokenizer 是必须遵守的 aligned baseline，不再存在 tokenizer replacement gate。
+- [x] 0.3 已核对 Current shared implementation 与归档证据：`CostUnit`、requested-unit `TextMeter`、Limited/Unbounded Gate、InputCost/Projection、Collector、producer stop 和 OutputReport 已存在并通过 focused tests；真实 adapter integration 与 bounded prefix 尚未实现。
+- [x] 0.4 Public input/output、`tokens:6000` preset、`0.2` hard cutover、fixed metadata、任意正数 limit、Unbounded bypass、无 continuation 和 scope exclusions 均有唯一 change-local 语义。
+- [x] 0.5 Entry sequence、read/unstructured text 和 nested auto-read 已分别固定 input atom、measurement、Collector、completion 与 report-composition 义务；shared core 不再推断业务字段或遍历 formed result。
+- [x] 0.6 已按测试 owner 和 Case-maintenance 规则运行完整起点检查：577 个 Current entities 全部由 161 个 Cases 映射；design 登记了保留、改写、删除和新增证据的语义目的。
+- [x] 0.7 CLI/config/navigation/protocol/adapter/output/Markdown/JSON/schema/example/testing/release/stable owner 的 handoff 已列明；fast-read、streaming、serializer-size budgeting、tokenizer replacement 和 decision lifecycle 写入保持范围外，Open Questions 为无。
+- [x] 0.8 用户已确认整体方案以及三项会改变实现方向的选择：Entry 按完整 canonical compact JSON 原子计量；text 返回 deterministic exact bounded prefix、但不承诺 public maximal-fill；base incomplete 仍可从 admitted current result 触发 nested auto-read，但最终 complete 保持 false。
+- [x] 0.9 已完成 AI-ready 启动交接审计：后续 agent 可仅凭本 Change 恢复 Current/Target、术语与 owner、首个代码任务 `1.1`、依赖顺序、验证出口和范围边界；全部 Implementation 与 Verification 任务保持未勾选。
 
 ## Implementation
 
-`1.2` 是 public cutover 的硬门禁；它未完成时，`2.1` 及之后任务全部保持阻塞。推进相邻 Change 需要独立授权，本 Change 的实施授权不扩张到相邻 artifacts 或 production。
+`1.1`–`1.9` 共同形成一个不可分发中间协议的 breaking migration。可以按依赖顺序局部编译和测试，但 release artifact 只能在全部实现与 Verification 门禁通过后更新为 current candidate。
 
-- [x] 1.1 已从稳定 owner、schema/examples、Rust types、CLI help、fixtures、Semantic Cases、开发 CLI 和 release package 核对 `0.1` pagination、numeric limit、cost、auto-read 与 raw/readable 基线；design 的 Implementation Observations 记录 Current 能力和 package baseline failure。
-- [ ] 1.2 取得并验证 `introduce-budgeted-output-window` owner 要求的 production 证据：共享 `lines | bytes | tokens` calculator、只为 `Limited` 建立的 OutputWindow、内容字段 traversal/atomic item policy、budget report，以及 `Unbounded` 直接 bypass。Token path 必须保持唯一 `o200k_base` ordinary-text 语义，返回 UTF-8 合法、重新计数一致且不超过 budget 的 prefix，并通过真实 workload 资源验证。Field classification 必须与本 design 一致。
-- [x] 1.3 已重读测试策略、行为 owner、Case maintenance 与 `test-evidence-review` skill，完整 test-evidence check 通过；design 逐项登记现有 Case 的保留、改写或删除，以及新 shared budget Case。
-- [x] 1.4 Design 已作为唯一 change-local Target 登记 `AGENTS.md`、`docs/navigation.md`、architecture、CLI、navigation input resolution、protocol、adapter contract、output、Markdown/JSON adapter、schema/example、testing 和 release owner 的 Current handoff；稳定 owner 保持未修改。
-
-`2.1`–`2.7` 共同完成同一 breaking release 的原子迁移。不得发布同时接受 page/pagination 与新 output constraint 的中间 public contract。
-
-- [ ] 2.1 在 shared cost/protocol/navigation 类型与 semantic validation 中建立 closed `CostUnit`、`Limit`、`OutputConstraint::{Limited, Unbounded}`、protocol `0.2` request 和 affected-success `output` union；删除 page/continuation、read/unstructured full-selection common cost 与 `0.1` runtime shape，并证明非法组合在 adapter dispatch 前失败。
-- [ ] 2.2 迁移 core parameter catalog、CLI parser/help、project/user config schema与加载、source precedence、request construction 和 invocation metadata：支持 `--limit <unit>:<positive-integer>` XOR `--ignore-limit`、machine object union、`defaults.output_limit` discriminated union 与 built-in `tokens:6000`；旧 `--page`、`--pagination`、numeric-only limit 和 `defaults.pagination.*` 只返回迁移诊断，不兼容接受或自动转换。
-- [ ] 2.3 迁移 adapter contract 与 built-in Markdown/JSON adapters，使 adapter 形成完整 operation-owned typed selection 并移除 adapter-private page/continuation 与 calculator 解释；保持 opaque ref、format selection 和 navigation strategy 的既有 owner，不把 output constraint 变成 adapter selection 参数。
-- [ ] 2.4 在 typed result 后、raw/readable rendering 前接入 Limited OutputWindow：只预算新返回的 text、sequence item 与 optional nested content，固定 envelope/root identity metadata 位于预算外；base content 先于 nested content，sequence item 原子接纳，text 可为空 prefix，nested payload 可整体省略，任何正数 limit 都返回合法 success 且不定义 `OUTPUT_LIMIT_TOO_SMALL`。
-- [ ] 2.5 实现 `Unbounded` 直接 bypass，不创建隐藏 limit、emergency ceiling 或 unit-specific measurement；资源、allocation、render 和 write 故障继续走既有 failure mapping。确保 `info` success、failure envelope 与 invocation log 不获得普通 output sidecar。
-- [ ] 2.6 让 protocol-json 与 readable-view 消费同一个 budgeted typed result 和 common output facts；Limited cost 只描述所选 unit 下已接纳的内容字段，Unbounded 不要求 cost，presentation framing 不形成第二个预算或 complete owner。
-- [ ] 2.7 同步 protocol/config JSON Schema、contract examples、fixtures、CLI/package help、迁移诊断与 release materials，并按 `1.3` 登记的独立证明目的修改 Rust/Bun/smoke tests 和 Semantic Cases；所有 artifact 都使用 `0.2` 新 shape，不保留旧 pagination fixture 作为当前兼容承诺。
+- [ ] 1.1 扩展 `docnav-text-cost` bounded-prefix contract：对 lines/bytes/tokens 返回 deterministic UTF-8 prefix end、exact recounted cost 与 complete；保持唯一 `o200k_base` ordinary-text token semantics，覆盖 empty/Unicode/newline/merge-sensitive/adversarial whitespace，并用代表 workload 证明非退化输出与可接受资源行为。
+- [ ] 1.2 在 shared protocol/navigation 类型与 semantic validation 中建立 `Limit`、`OutputConstraint::{Limited, Unbounded}`、protocol `0.2` request union、success `output` union 和 invocation-level report mapping；删除 operation arguments/result 中的 page/continuation 与 read/unstructured full-selection common cost，并在 adapter dispatch 前拒绝非法/旧 shape。
+- [ ] 1.3 迁移 core parameter catalog、strict CLI parser/help、project/user config extraction/schema、source resolution、protocol request construction 和 invocation metadata：实现 `--limit <unit>:<positive-integer>` XOR `--ignore-limit`、machine union、`defaults.output_limit` union 与 built-in `tokens:6000`，并让旧 CLI/config/numeric limit 只产生稳定迁移诊断。
+- [ ] 1.4 重构 object-safe adapter contract：从 `OutlineInput`、`ReadInput`、`FindInput` 和 standard bindings 移除 page/numeric limit；把 normalized `OutputConstraint` 作为独立 execution control；让 content operations 返回 concrete typed result + `OutputReport`，Info 保持原路径；提供共享 canonical compact-Entry InputCost 与 report/error plumbing。
+- [ ] 1.5 把 Markdown outline/find/read 与 unstructured full-read 改为 operation-owned producer/Projection/Collector：Entry 原子接纳、text 使用 bounded prefix、Limited stop 后不访问 tail、Unbounded 不构造 InputCost；删除 Unicode page slicing、entry soft truncation、next-page 和分页测试 helpers。
+- [ ] 1.6 把 JSON outline/find/read 与 unstructured full-read 改为同一 Session contract：保持 JSON selection/ref/source-order owner、复用 canonical Entry InputCost、让 lazy find/outline producer 在 stop 后不生成 tail、text 使用 bounded prefix；删除 paging module、lookahead continuation 与 selection-scoped common cost。
+- [ ] 1.7 重构 navigation execution 与 auto-read composition：先校验 base typed result/report，再从 admitted current result 计算 unique-ref eligibility，以同 unit 的剩余 budget 或 Unbounded 执行 nested read，checked 聚合 cost/complete，并在最终 `ProtocolResponse` 前验证 phase/report invariants；zero remainder 时合法省略 nested。
+- [ ] 1.8 迁移 `docnav-output`、protocol-json、readable-view、failure mapping 与 invocation logging：两种 presentation 只消费同一个 `0.2` response/common output facts；fixed metadata、Info、failure、framing 和 log content 保持预算外；measurement/Collector/validation/serialization/I/O failure 不伪装为 incomplete success。
+- [ ] 1.9 删除剩余 pagination production surface，原子同步 protocol/config JSON Schema、contract examples、fixtures、CLI/package help、migration guidance、release-package materials、Rust/Bun/smoke tests 与 Semantic Cases；纯 paging Case 随实体删除，新 integration Case 只在直接证据存在后建立，不保留 `0.1` fixture 作为 current compatibility promise。
 
 ## Verification
 
-`3.1`–`3.6` 先证明 design Target 已由实现和分发行为成立；全部通过后才能执行 `3.7` 的稳定 owner 同步。
+`2.1`–`2.8` 证明 implementation 与 change-local Target 一致；只有这些证据通过后才执行 `2.9` stable owner 同步，随后用 `2.10` 重新验证最终 Current 状态。
 
-- [ ] 3.1 运行 shared calculator、constraint/source validation、protocol semantic validation、OutputWindow traversal、adapter contract、Markdown/JSON operation 与 output renderer 的范围匹配 Rust format、Clippy 和 focused tests；覆盖三种 unit 的边界、`o200k_base` token 语义、UTF-8/recount 一致的 prefix、极端 whitespace 无 panic、原子 sequence item、empty text、nested omission、base-first 和 budget cost/complete invariant。
-- [ ] 3.2 运行真实开发 CLI、`bun run smoke:docnav` 与 canonical release-package smoke，覆盖 `outline`、`read`、`find`、unstructured full-read 和 nested auto-read 的 limited complete/incomplete 及 unbounded success；对 CLI、config、machine 三种 source 验证 precedence、互斥、默认值和稳定错误。
-- [ ] 3.3 证明 raw/readable 使用同一 output facts，`info`、failure、invocation log 与 host/I/O failure 保持范围外；证明旧 page/pagination/numeric limit/`0.1` shape 被拒绝，且任何正数 limit 不触发专用 too-small failure。
-- [ ] 3.4 运行 protocol/config schema、example、fixture、docs link 与 Change Plan validators，确认 protocol `0.2`、三单位枚举、closed unions、固定 metadata 预算外语义和 release guidance 一致。
-- [ ] 3.5 按修改后的真实测试目的审阅受影响 Semantic Cases，运行最窄目标 runner 后执行 `bun run test-evidence -- check --root .`，证明完整当前树的静态实体、runner 实体与 Case 映射重新闭合。
-- [ ] 3.6 运行 `bun run verify:docnav-workspace`，并保存足以证明 schema、实现、真实 CLI、package、tests 与 change-local Target 一致的结果；任一失败都返回对应 Implementation task，不把部分通过解释为 hard cutover 已完成。
-- [ ] 3.7 只有 `3.1`–`3.6` 全部通过，才把 `1.4` 登记且已由证据证明的 delta 同步到稳定 owner 为 Current，并更新 `AGENTS.md` / navigation 中“有限、可继续”的不变量；长期 decision alignment 只在用户明确授权维护决策时按 `decision-records` skill 写入。
-- [ ] 3.8 对同步后的稳定 owner、schema/examples、实现、tests、release artifacts 和本 Change 做最终一致性、局部 diff 与 whitespace 审计；重新运行受影响 docs/Change validators 和 `bun run verify:docnav-workspace`，再记录 implementation observations 与剩余非目标。
+- [ ] 2.1 对 `docnav-text-cost`、`docnav-output-session`、protocol 与 adapter-contracts 运行 Rust format、Clippy 和 focused tests；证明三 unit dispatch、prefix UTF-8/recount/complete、Entry atomic admission、checked budget state、failure non-mutation、Unbounded measurement bypass 与 Collector exactly-once。
+- [ ] 2.2 运行 Markdown/JSON focused adapter tests，覆盖 structured Entry、read text、unstructured outline、empty incomplete、first-item rejection、exact exhaustion、producer early stop、full Unbounded output、opaque ref round-trip 和既有 format-owned selection semantics。
+- [ ] 2.3 运行 core parameter、config、navigation、protocol decode/validation 与 nested composition tests；覆盖 CLI/project/user/built-in precedence、互斥/非法/legacy input、original-limit report、base-first remainder、zero-remainder omission、nested truncation、success-only nested failure 和 checked cost aggregation。
+- [ ] 2.4 运行 output/rendering/invocation tests，证明 protocol-json 与 readable-view 的 mode/limit/cost/complete 一致，Info/failure/log/framing 不获得普通 sidecar，host/I/O failure 保持 failure，任何正数 limit 都不产生专用 too-small error。
+- [ ] 2.5 运行 protocol/config schema、example、fixture、help、docs link/Markdown、Change Plan 和 release-material validators；确认所有 current artifact 使用 `0.2` closed unions，同步移除 page/continuation/pagination 与旧 numeric limit promise。
+- [ ] 2.6 运行 `bun run smoke:docnav` 和 canonical `bun run smoke:docnav-package`，以真实进程覆盖 outline/read/find、unstructured full-read、nested auto-read 的 limited complete/incomplete 与 unbounded success，以及三种 input source 和 legacy rejection；关闭 rebaseline 的 `CORE-CONFIG-PATH-002` package failure。
+- [ ] 2.7 按真实 owner 与可观察结果审阅变更测试和 Case，先运行最窄 runner，再执行 `bun run test-evidence -- check --root .`，证明完整 Current static/runtime entities、Cases、Topics 和 mappings 重新闭合。
+- [ ] 2.8 运行 `bun run verify:docnav-workspace`；任一 schema、Rust、CLI、package、docs、quality 或 evidence failure 都返回对应 Implementation task，不把部分通过解释为 hard cutover 完成。
+- [ ] 2.9 在 `2.1`–`2.8` 全部通过后，把 proposal 所列 stable owner 从 Current pagination 同步为 Current OutputSession-backed unit limits，并更新 `AGENTS.md` / navigation 的“有限、可继续”不变量；decision lifecycle/alignment 只报告，不在未获授权时写入。
+- [ ] 2.10 对同步后的 owner、schemas/examples、代码、tests、Cases、release artifact 和本 Change 执行最终 AI semantic recovery、局部 diff、whitespace、docs/Change validators、完整 test-evidence 与 `bun run verify:docnav-workspace`，记录最终 evidence 和明确非目标后再请求归档授权。
