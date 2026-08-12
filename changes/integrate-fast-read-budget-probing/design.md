@@ -9,7 +9,7 @@
 - Authority boundary — `.change-plan.json` 拥有本 Change 的 lifecycle；本 design 只拥有 fast-read admission Target。Current threshold、adapter hook 和 outline-mode behavior 仍由稳定 owner 与 source 定义。
 - Long-term direction — [在标记的语义字段上集中执行输出预算](../../docs/decisions/product-direction/centralize-output-budgeting-over-marked-semantic-fields.md)要求 fast-read 与最终输出复用同一个 CostCalculator。
 - Token direction — [保留当前 reference tokenizer，直到可靠替代已具备](../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)固定现有单一 token 语义，同时允许 fast-read 为自身 workload 设置独立的 latency 与 early-stop 准入门。
-- Runtime dependency — 本 Change 只消费 [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md)的 probe abstraction 和共同 CostCalculator contract。
+- Runtime dependency — 本 Change 只消费 [introduce-budgeted-output-window](../archive/introduce-budgeted-output-window/design.md)的 probe abstraction 和共同 CostCalculator contract。
 - Separate contract — [replace-pagination-with-unit-output-limits](../replace-pagination-with-unit-output-limits/design.md)拥有最终 output limit；fast-read threshold 是 navigation admission budget，不是 output budget。
 
 ## Goals / Non-Goals

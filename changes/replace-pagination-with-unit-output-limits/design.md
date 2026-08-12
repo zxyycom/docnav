@@ -46,7 +46,7 @@
 
 ### Dependency boundaries and rollout
 
-- [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md)拥有 `BudgetedOutput` traversal、limited `OutputWindow`、`CostCalculator` dispatch、正确的 token prefix path 与 internal report。它必须接受本 Change 固定的 limited/unbounded 分支和 field classification：只预算 operation 新返回的内容 payload，固定 envelope / root identity metadata 不进入普通 window；`Unbounded` 不通过伪造无限 value 复用 limited path。Runtime implementation 必须使用该分类，即使相邻 design 同时探索更宽的内部字段分类。
+- [introduce-budgeted-output-window](../archive/introduce-budgeted-output-window/design.md)拥有 `BudgetedOutput` traversal、limited `OutputWindow`、`CostCalculator` dispatch、正确的 token prefix path 与 internal report。它必须接受本 Change 固定的 limited/unbounded 分支和 field classification：只预算 operation 新返回的内容 payload，固定 envelope / root identity metadata 不进入普通 window；`Unbounded` 不通过伪造无限 value 复用 limited path。Runtime implementation 必须使用该分类，即使相邻 design 同时探索更宽的内部字段分类。
 - [integrate-fast-read-budget-probing](../integrate-fast-read-budget-probing/design.md)拥有 fast-read admission threshold migration。它可以在 public cutover 后消费同一个 calculator contract，不阻塞本 Change，除非实现发现它必须改变已固定的 calculator API。
 - Rollout 顺序固定为：先取得包含三种 unit 和正确 token prefix path 的 Budgeted Output Window；随后在一个 release 中原子切换 protocol/CLI/config/adapters/schema/docs；最后按需迁移 fast-read probing。
 
@@ -183,7 +183,7 @@ Unbounded success 没有裁剪，`complete` 固定为 true。若 operation 在�
 
 | 能力或后续 Change | 审计证据 | 状态与后果 |
 | --- | --- | --- |
-| [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md) | Current source 没有 `OutputWindow` / `CostUnit`；current token backend 只有完整计数，没有 UTF-8 prefix wrapper 或 requested-unit session；adapter 仍直接分页。 | **唯一相邻硬门，未满足。** 必须证明三种 unit dispatch、正确 token prefix、field traversal、budget report 与 `Unbounded` bypass 后才能开始 `2.x` public cutover。 |
+| [introduce-budgeted-output-window](../archive/introduce-budgeted-output-window/design.md) | Current source 没有 `OutputWindow` / `CostUnit`；current token backend 只有完整计数，没有 UTF-8 prefix wrapper 或 requested-unit session；adapter 仍直接分页。 | **唯一相邻硬门，未满足。** 必须证明三种 unit dispatch、正确 token prefix、field traversal、budget report 与 `Unbounded` bypass 后才能开始 `2.x` public cutover。 |
 | [integrate-fast-read-budget-probing](../integrate-fast-read-budget-probing/design.md) | Current threshold path 仍使用 adapter measurement hook；本 public contract 不依赖 probe migration。 | 默认不阻塞；只有 calculator API 必须变化时返回 design 审阅。 |
 
 ### Current owner handoff

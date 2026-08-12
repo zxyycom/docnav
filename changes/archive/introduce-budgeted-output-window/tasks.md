@@ -6,7 +6,7 @@
 
 - [x] 0.1 Proposal、Design 与 Tasks 共享一个正向目标：建立可组合的逐项输出构造链路；带单位 limit 是 Limited Gate 的能力，不是整条架构的中心。
 - [x] 0.2 已核对 Plan 确认时的 adapter/navigation/output/text-cost 基线：operation contract 返回完整 result，多条 adapter path eager collect/serialize，renderer 消费完整 `ProtocolResponse`，text-cost 只接受完整 `&str`；实施后由 architecture owner 重新区分 Current shared capability 与 Target integration。
-- [x] 0.3 已建立 active、unaligned 的[Gate、InputCost 与 Collector 长期决策](../../docs/decisions/product-direction/compose-incremental-output-through-gates-policies-and-collectors.md)；本 Plan 只实施其 shared capability 部分。
+- [x] 0.3 已建立 active、unaligned 的[Gate、InputCost 与 Collector 长期决策](../../../docs/decisions/product-direction/compose-incremental-output-through-gates-policies-and-collectors.md)；本 Plan 只实施其 shared capability 部分。
 - [x] 0.4 已确认组合 contract：caller 拥有 producer/input granularity，Gate 拥有 admission/flow，InputCost 组合 Projection 与 Meter，Collector 拥有保存与 typed output，navigation/presentation 只消费 finish 后的完整结果。
 - [x] 0.5 已确认 push/finish contract：Limited 原子接纳或拒绝，outcome 返回 input/flow/budget/stop；Unbounded 复用调用形状且跳过 measurement；source completion 由 producer owner 确认。
 - [x] 0.6 已确认 text projection contract：Projection 是显式、可替换、可逐段提供借用文本的调用策略；同一输入类型可按 operation 使用不同 policy，代码生成只可作为该契约的便利实现。

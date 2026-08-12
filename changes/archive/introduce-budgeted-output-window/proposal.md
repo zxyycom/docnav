@@ -8,7 +8,7 @@ Read 文本、outline/find 条目和 operation-owned item 最终形成不同结�
 
 本 Plan 获准时，Markdown 与 JSON adapter 会先构造完整 text 或 entry collection，再执行各自的分页处理；`docnav-text-cost` 也只计算完整 `&str`。该基线缺少一个能在 producer boundary 组合调用方输入语义、requested-unit measurement 和 operation-specific result construction 的 shared capability。
 
-[用 Gate、计量策略与 Collector 组合增量输出](../../docs/decisions/product-direction/compose-incremental-output-through-gates-policies-and-collectors.md)已经确认长期方向：`OutputSession` 组合 Gate、`InputCost` 和 Collector。Gate 决定接纳与流控制，Limited Gate 才注入计量策略，Collector 逐项保存或构造 operation output；Navigation 仍在 finish 后包装完整 `ProtocolResponse`，raw/readable presentation 仍消费同一响应。
+[用 Gate、计量策略与 Collector 组合增量输出](../../../docs/decisions/product-direction/compose-incremental-output-through-gates-policies-and-collectors.md)已经确认长期方向：`OutputSession` 组合 Gate、`InputCost` 和 Collector。Gate 决定接纳与流控制，Limited Gate 才注入计量策略，Collector 逐项保存或构造 operation output；Navigation 仍在 finish 后包装完整 `ProtocolResponse`，raw/readable presentation 仍消费同一响应。
 
 ## Outcome
 
@@ -30,7 +30,7 @@ Limited Gate 使用 `InputCost<I>` 执行原子 admission。文本场景通过�
 
 本 Change 不纳入：
 
-- CLI/config/machine input、protocol `0.2` wire shape、默认 limit、public output sidecar、pagination removal 或 compatibility behavior；这些由 [replace-pagination-with-unit-output-limits](../replace-pagination-with-unit-output-limits/design.md)拥有。
+- CLI/config/machine input、protocol `0.2` wire shape、默认 limit、public output sidecar、pagination removal 或 compatibility behavior；这些由 [replace-pagination-with-unit-output-limits](../../replace-pagination-with-unit-output-limits/design.md)拥有。
 - Current `AdapterDocument` operation signature 的切换、Markdown/JSON producer refactor、navigation 接入或 live CLI early-stop；这些是 downstream public integration 的工作。
 - stdout 或 protocol transport streaming；本 Change 的增量性只发生在 producer、Session 和 Collector 之间。
 - 最终 raw/readable serialization size、billing-grade cost、最大填充、至少接纳一项或数字 latency/RSS SLA。
@@ -50,9 +50,9 @@ Limited Gate 使用 `InputCost<I>` 执行原子 admission。文本场景通过�
 
 ## Affected Owners
 
-- [架构](../../docs/architecture.md)：登记 future producer → Session(Gate + InputCost + Collector) → typed result → `ProtocolResponse` → presentation 边界及 shared crate 依赖方向。
-- [`docnav-protocol`](../../crates/shared/protocol/src/cost_unit.rs)：shared `CostUnit` Rust enum；本 Change 不改变 `0.1` wire shape。
-- [`docnav-text-cost`](../../crates/shared/text-cost/src/lib.rs)：从完整文本 helper 扩展 requested-unit bounded `TextMeter`，并拥有跨片段逻辑文本的 lines/bytes/tokens 语义。
+- [架构](../../../docs/architecture.md)：登记 future producer → Session(Gate + InputCost + Collector) → typed result → `ProtocolResponse` → presentation 边界及 shared crate 依赖方向。
+- [`docnav-protocol`](../../../crates/shared/protocol/src/cost_unit.rs)：shared `CostUnit` Rust enum；本 Change 不改变 `0.1` wire shape。
+- [`docnav-text-cost`](../../../crates/shared/text-cost/src/lib.rs)：从完整文本 helper 扩展 requested-unit bounded `TextMeter`，并拥有跨片段逻辑文本的 lines/bytes/tokens 语义。
 - 新 `docnav-output-session` shared crate：Session、Gate、InputCost/Projection contract、Collector、outcome、report 及最小组合实现。
-- [测试策略](../../docs/testing.md)及 Current test evidence：组合边界、atomic admission、跨片段 measurement、Collector commit、reference producer stop 和 Limited/Unbounded reuse。
-- [replace-pagination-with-unit-output-limits](../replace-pagination-with-unit-output-limits/design.md)：后续将真实 adapter producer 接到 Session，并按活动决策修订其 post-result budgeting 描述；本 Change 不推进其 lifecycle。
+- [测试策略](../../../docs/testing.md)及 Current test evidence：组合边界、atomic admission、跨片段 measurement、Collector commit、reference producer stop 和 Limited/Unbounded reuse。
+- [replace-pagination-with-unit-output-limits](../../replace-pagination-with-unit-output-limits/design.md)：后续将真实 adapter producer 接到 Session，并按活动决策修订其 post-result budgeting 描述；本 Change 不推进其 lifecycle。

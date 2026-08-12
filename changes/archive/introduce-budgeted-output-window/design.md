@@ -6,9 +6,9 @@
 
 ### Authority and evidence
 
-- [用 Gate、计量策略与 Collector 组合增量输出](../../docs/decisions/product-direction/compose-incremental-output-through-gates-policies-and-collectors.md)是 active、unaligned 的长期方向：逐项输出由 Gate、InputCost policy 和 Collector 组合；Limited 只是 Gate 的一种模式；finish 后仍形成完整 typed result 和 `ProtocolResponse`。
-- [用带单位的输出上限替代分页](../../docs/decisions/product-direction/replace-pagination-with-unit-output-limits.md)固定 public limit/ignore-limit、移除 page/continuation 和 public complete；本 Change 不重复拥有这些产品选择。
-- [保留当前 reference tokenizer](../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)继续固定 `tiktoken-rs / o200k_base / ordinary-text` production backend；backend identity 不进入 public contract。
+- [用 Gate、计量策略与 Collector 组合增量输出](../../../docs/decisions/product-direction/compose-incremental-output-through-gates-policies-and-collectors.md)是 active、unaligned 的长期方向：逐项输出由 Gate、InputCost policy 和 Collector 组合；Limited 只是 Gate 的一种模式；finish 后仍形成完整 typed result 和 `ProtocolResponse`。
+- [用带单位的输出上限替代分页](../../../docs/decisions/product-direction/replace-pagination-with-unit-output-limits.md)固定 public limit/ignore-limit、移除 page/continuation 和 public complete；本 Change 不重复拥有这些产品选择。
+- [保留当前 reference tokenizer](../../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)继续固定 `tiktoken-rs / o200k_base / ordinary-text` production backend；backend identity 不进入 public contract。
 - Current `AdapterDocument::outline/read/find` 返回完整结果。多条 Markdown/JSON path eager collect 或 serialize，Current navigation 只在 operation 完成后获得 `OperationResult`。
 - Plan baseline 中，`docnav-text-cost` 只提供完整 `&str` 的 lines、bytes 和 tokens measurement，也没有 closed `CostUnit`、bounded text session、OutputSession、Gate、InputCost/Projection 或 Collector contract。本 Change 已新增这些 shared capabilities，但没有改变上一条 Current adapter/navigation 调用链。
 - Current `docnav-output` 的 protocol-json 与 readable branches 都消费同一个完整 `ProtocolResponse`；readable renderer 先形成完整 UTF-8 `String`，再写 stdout。
