@@ -12,7 +12,7 @@
 - [输出模式](../../docs/output.md#输出层边界)要求 raw 与 readable projection 消费同一个 `ProtocolResponse`。这使语义结果形成之后、两种 rendering 之前成为 bounded output budget 的共同责任边界。
 - Current `protocol_version` 是固定 schema identifier `0.1`，不执行多版本 runtime routing。既然本 Change 明确不兼容，新的 shape 使用 `0.2` 并 hard cutover，而不是让 `0.1` 同时表示两套契约。
 - Authority boundary：`.change-plan.json` 只拥有 lifecycle；本 design 是 change-local Target。稳定 owner、schema、examples、代码、测试与 release artifact 继续定义 Current，直到实现和验证完成后同步。
-- [用带单位的输出上限替代分页](../../docs/decisions/product-direction/replace-pagination-with-unit-output-limits.md)与[在标记的语义字段上集中执行输出预算](../../docs/decisions/product-direction/centralize-output-budgeting-over-marked-semantic-fields.md)是 active、尚未对齐的长期方向，不是当前二进制能力。
+- [用带单位的输出上限替代分页](../../docs/decisions/product-direction/replace-pagination-with-unit-output-limits.md)与[在标记的语义字段上集中执行输出预算](../../docs/decisions/product-direction/centralize-output-budgeting-over-marked-semantic-fields.md)是 active、尚未对齐的目标方向，不是当前二进制能力。[保留当前 reference tokenizer，直到可靠替代已具备](../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)是 active、已对齐的 calculator 基线；本 Change 复用既有 backend。
 
 ### Product and architecture layers
 
@@ -46,10 +46,9 @@
 
 ### Dependency boundaries and rollout
 
-- [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md)拥有 `BudgetedOutput` traversal、limited `OutputWindow`、`CostCalculator` dispatch 与 internal report。它必须接受本 Change 固定的 limited/unbounded 分支和 field classification：只预算 operation 新返回的内容 payload，固定 envelope / root identity metadata 不进入普通 window；`Unbounded` 不通过伪造无限 value 复用 limited path。Runtime implementation 必须使用该分类，即使相邻 design 同时探索更宽的内部字段分类。
-- [adopt-low-constant-reference-tokenizer](../adopt-low-constant-reference-tokenizer/design.md)拥有 `tokens` calculator backend、版本和资源证据。因为 `tokens` 是第一版合法 unit，它与 `lines` / `bytes` calculator capability 必须在 public cutover 前可验证。
+- [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md)拥有 `BudgetedOutput` traversal、limited `OutputWindow`、`CostCalculator` dispatch、正确的 token prefix path 与 internal report。它必须接受本 Change 固定的 limited/unbounded 分支和 field classification：只预算 operation 新返回的内容 payload，固定 envelope / root identity metadata 不进入普通 window；`Unbounded` 不通过伪造无限 value 复用 limited path。Runtime implementation 必须使用该分类，即使相邻 design 同时探索更宽的内部字段分类。
 - [integrate-fast-read-budget-probing](../integrate-fast-read-budget-probing/design.md)拥有 fast-read admission threshold migration。它可以在 public cutover 后消费同一个 calculator contract，不阻塞本 Change，除非实现发现它必须改变已固定的 calculator API。
-- Rollout 顺序固定为：先取得 calculator 与 Budgeted Output Window 的内部能力；随后在一个 release 中原子切换 protocol/CLI/config/adapters/schema/docs；最后按需迁移 fast-read probing。相邻 Change 的目录或 stage 本身不证明能力可用。
+- Rollout 顺序固定为：先取得包含三种 unit 和正确 token prefix path 的 Budgeted Output Window；随后在一个 release 中原子切换 protocol/CLI/config/adapters/schema/docs；最后按需迁移 fast-read probing。
 
 ## Goals / Non-Goals
 
@@ -176,16 +175,15 @@ Unbounded success 没有裁剪，`complete` 固定为 true。若 operation 在�
 - Protocol、schema、examples 和 Rust types 仍使用固定 `protocol_version: "0.1"`、numeric `limit`、`page` 与 result page；CLI help 仍展示 `--page`、`--limit <positive integer>` 和 `--pagination`。
 - Config 仍使用 `defaults.pagination.enabled` / `defaults.pagination.limit`；pagination disabled 时 navigation 仍把 effective limit 规范化为 `MAX_PAGINATION_LIMIT`。
 - Markdown 与 JSON adapter 仍拥有 Unicode-character paging、continuation 和 selection-scoped cost；shared output 仍只消费形成后的 `ProtocolResponse`，代码中没有 `OutputWindow` 或 closed `CostUnit`。
-- `docnav-text-cost` 已有 `lines`、`bytes`、`tokens` 三个完整 measurement helper，其中 tokens 使用 `tiktoken_rs::o200k_base_singleton()`；它没有 bounded prefix API、requested-unit session 或低常数 backend adoption 证据。
+- `docnav-text-cost` 已有 `lines`、`bytes`、`tokens` 三个完整 measurement helper，其中 tokens 使用 `tiktoken_rs::o200k_base_singleton()`；它没有 bounded prefix API 或 requested-unit session。本 Change 不要求更换该 backend。
 - `bun run test-evidence -- check --root .` 通过：559 个当前测试实体由 12 个 topic 下的 159 个 Semantic Case 全部映射。`bun run smoke:docnav` 的 68 个开发 CLI 命令通过。
 - `bun run smoke:docnav-package` 在既有 `CORE-CONFIG-PATH-002` 上可重复失败：current package artifact 把 `config set ... --output protocol-json` failure 输出为 protocol envelope，而 smoke contract 按 non-document command 要求 readable diagnostic。该 baseline failure 不由本次文档改动引入；release 验证必须在 hard cutover 前重新生成 package 并关闭它。
 
-### Dependency capability gate
+### Capability gate and non-blocking follow-ups
 
-| 依赖 | 审计证据 | 状态与后果 |
+| 能力或后续 Change | 审计证据 | 状态与后果 |
 | --- | --- | --- |
-| [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md) | Current source 没有 `OutputWindow` / `CostUnit`，adapter 仍直接分页；相邻 design 的 field classification 与生成机制仍有开放问题。 | 未满足；阻塞全部 `2.x` public cutover tasks。 |
-| [adopt-low-constant-reference-tokenizer](../adopt-low-constant-reference-tokenizer/design.md) | Current tokens helper 固定使用 `o200k_base` 完整计数；相邻 design 尚未完成候选选择、bounded prefix、资源证据与 production adoption。 | 未满足；与 OutputWindow capability 一起阻塞全部 `2.x` tasks。 |
+| [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md) | Current source 没有 `OutputWindow` / `CostUnit`；current token backend 只有完整计数，没有 UTF-8 prefix wrapper 或 requested-unit session；adapter 仍直接分页。 | **唯一相邻硬门，未满足。** 必须证明三种 unit dispatch、正确 token prefix、field traversal、budget report 与 `Unbounded` bypass 后才能开始 `2.x` public cutover。 |
 | [integrate-fast-read-budget-probing](../integrate-fast-read-budget-probing/design.md) | Current threshold path 仍使用 adapter measurement hook；本 public contract 不依赖 probe migration。 | 默认不阻塞；只有 calculator API 必须变化时返回 design 审阅。 |
 
 ### Current owner handoff
@@ -220,7 +218,7 @@ Unbounded success 没有裁剪，`complete` 固定为 true。若 operation 在�
 | `WB-MD-PAGE-002` | 删除 | Outline/find continuation 退出 contract；sequence admission/complete 由 shared budget Case 证明。 |
 | `WB-NAV-AUTO-READ-001` | 保留并改写 | Unique-ref eligibility、same-document composition 和 fallback 保留，并增加 base-first nested budgeting。 |
 | `WB-NAV-INPUT-RESOLUTION-001` | 保留并改写 | CLI/project/user/built-in sources 解析为 closed limited/unbounded union；删除 maximum-pagination-limit normalization。 |
-| `WB-TEXT-COST-001` | 保留并改写 | 三种 CostUnit calculator、requested-unit laziness 与合法 prefix boundary；backend-specific evidence 由 tokenizer owner 承担。 |
+| `WB-TEXT-COST-001` | 保留并改写 | 三种 CostUnit calculator、requested-unit laziness、唯一 `o200k_base` 语义与 UTF-8/recount 一致的 prefix boundary。 |
 | `WB-PROTO-BASIC-001` | 保留并改写 | Protocol `0.2` base types、affected-success output union 和 info/failure scope。 |
 | `WB-PROTO-DECODE-001` | 保留并改写 | `0.2` request union decode、非法组合和旧 `0.1` shape rejection。 |
 | `WB-PROTO-SCHEMA-001` | 保留并改写 | Schema/fixtures、typed contract 与 common output invariant 一致。 |

@@ -35,6 +35,36 @@
         "title": "Docnav 格式路由推断依赖调查"
       }
     },
+    "dependencies/tokenizer-backend-alternatives.md": {
+      "keys": {
+        "category": [
+          "dependencies"
+        ],
+        "latest-report-at": [
+          1786521680000
+        ],
+        "status": [
+          "已结束"
+        ],
+        "text": [
+          "Docnav Tokenizer Backend 替代品调查",
+          "在产品始终只使用一个 production token calculator 的前提下，是否存在语义、分发、平台和性能证据都足以替换当前 tiktoken-rs backend 的可靠实现？",
+          "形成时结论：没有可无条件替换的候选；保留 baseline 并解除公共能力耦合"
+        ]
+      },
+      "state": {
+        "latestReportAt": "2026-08-12T08:01:20+00:00",
+        "path": "dependencies/tokenizer-backend-alternatives.md",
+        "question": "在产品始终只使用一个 production token calculator 的前提下，是否存在语义、分发、平台和性能证据都足以替换当前 tiktoken-rs backend 的可靠实现？",
+        "reportCount": 1,
+        "reportTitles": [
+          "形成时结论：没有可无条件替换的候选；保留 baseline 并解除公共能力耦合"
+        ],
+        "resourceReferences": [],
+        "status": "已结束",
+        "title": "Docnav Tokenizer Backend 替代品调查"
+      }
+    },
     "product/json-yaml-compression-rendering.md": {
       "keys": {
         "category": [
@@ -122,6 +152,7 @@
   "sourceRevision": {
     "entries": {
       "dependencies/format-routing-inference.md": "sha256:ae2b73fa6baf762b98abdf96831b94c876dba5a70cb93a10be572c8d413d1ab3",
+      "dependencies/tokenizer-backend-alternatives.md": "sha256:a8e3f03a3e6b3ab3402248b04871857338dc6430d5263e07f9cb7eb2143449f7",
       "product/json-yaml-compression-rendering.md": "sha256:6a286e5b1eee1b6f4cbaa025fa96f03383a259c7adb67edc7bc49b589712ad11",
       "runtime/realtime-progress-reporting.md": "sha256:63708248e209da86e1db3eab518abe1f82cc953093f9dece695ee83f9f6f4a6d"
     },

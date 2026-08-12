@@ -1,6 +1,6 @@
 ---
 title: 输出 token 成本使用低常数参考分词器
-status: active
+status: archived
 alignment: unaligned
 createdAt: 2026-08-12T03:18:35Z
 purpose: 以真实但低开销的统一参考分词结果支持输出预算，而不追求与每个调用模型完全一致。

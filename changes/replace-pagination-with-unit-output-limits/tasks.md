@@ -1,6 +1,6 @@
 # Tasks
 
-按“Current 重新基线与依赖能力门 → public contract 和 production 原子迁移 → 行为与分发验证 → Current owner 同步”推进。`introduce-budgeted-output-window` 与 `adopt-low-constant-reference-tokenizer` 的实现能力是 public cutover 的硬门禁；相邻 Change 的目录或 stage 不证明能力存在，也不授权本 Change 修改其 artifacts。
+按“Current 重新基线与唯一相邻能力门 → public contract 和 production 原子迁移 → 行为与分发验证 → Current owner 同步”推进。`introduce-budgeted-output-window` 提供的三单位 OutputWindow 和正确 token prefix path 是 public cutover 的硬门禁；fast-read probing 是非阻塞后续。相邻 Change 的目录或 stage 不证明能力存在，也不授权本 Change 修改其 artifacts。
 
 ## Readiness
 
@@ -8,7 +8,7 @@
 - [x] 0.2 Product、architecture、preset 与 runtime/host 分层已经固定；`tokens:6000` 是可调整默认值，不是架构不变量。
 - [x] 0.3 CLI、config、navigation、protocol、adapter、output、schema/example、testing、release 与稳定 owner 的影响边界已经列明，Current 与 change-local Target 没有混写。
 - [x] 0.4 Limited/unbounded input、common output sidecar、内容字段预算、complete、极小 limit、nested ordering、scope 和 `0.2` hard cutover 均有唯一语义，没有剩余产品开放问题。
-- [x] 0.5 相邻 OutputWindow/token calculator 的 owner、关闭动作和被阻塞任务已经声明；fast-read probing 已分类为默认不阻塞的后续消费者。
+- [x] 0.5 OutputWindow 与正确 token path 的 owner、关闭动作和被阻塞任务已经声明；fast-read probing 已分类为非阻塞后续，既有 token backend 保留为基线。
 - [x] 0.6 已按测试策略证明完整测试实体与 Semantic Case 映射闭合，并识别 pagination、navigation、protocol、adapter、output 与 text-cost 的受影响 Case。
 
 ## Implementation
@@ -16,7 +16,7 @@
 `1.2` 是 public cutover 的硬门禁；它未完成时，`2.1` 及之后任务全部保持阻塞。推进相邻 Change 需要独立授权，本 Change 的实施授权不扩张到相邻 artifacts 或 production。
 
 - [x] 1.1 已从稳定 owner、schema/examples、Rust types、CLI help、fixtures、Semantic Cases、开发 CLI 和 release package 核对 `0.1` pagination、numeric limit、cost、auto-read 与 raw/readable 基线；design 的 Implementation Observations 记录 Current 能力和 package baseline failure。
-- [ ] 1.2 取得并验证 `introduce-budgeted-output-window` 与 `adopt-low-constant-reference-tokenizer` 各自 owner 要求的 production 证据：共享 `lines | bytes | tokens` calculator、只为 `Limited` 建立的 OutputWindow、内容字段 traversal/atomic item policy、budget report，以及 `Unbounded` 直接 bypass；field classification 必须与本 design 一致。
+- [ ] 1.2 取得并验证 `introduce-budgeted-output-window` owner 要求的 production 证据：共享 `lines | bytes | tokens` calculator、只为 `Limited` 建立的 OutputWindow、内容字段 traversal/atomic item policy、budget report，以及 `Unbounded` 直接 bypass。Token path 必须保持唯一 `o200k_base` ordinary-text 语义，返回 UTF-8 合法、重新计数一致且不超过 budget 的 prefix，并通过真实 workload 资源验证。Field classification 必须与本 design 一致。
 - [x] 1.3 已重读测试策略、行为 owner、Case maintenance 与 `test-evidence-review` skill，完整 test-evidence check 通过；design 逐项登记现有 Case 的保留、改写或删除，以及新 shared budget Case。
 - [x] 1.4 Design 已作为唯一 change-local Target 登记 `AGENTS.md`、`docs/navigation.md`、architecture、CLI、navigation input resolution、protocol、adapter contract、output、Markdown/JSON adapter、schema/example、testing 和 release owner 的 Current handoff；稳定 owner 保持未修改。
 
@@ -34,7 +34,7 @@
 
 `3.1`–`3.6` 先证明 design Target 已由实现和分发行为成立；全部通过后才能执行 `3.7` 的稳定 owner 同步。
 
-- [ ] 3.1 运行 shared calculator、constraint/source validation、protocol semantic validation、OutputWindow traversal、adapter contract、Markdown/JSON operation 与 output renderer 的范围匹配 Rust format、Clippy 和 focused tests；覆盖三种 unit 的边界、原子 sequence item、empty text、nested omission、base-first 和 budget cost/complete invariant。
+- [ ] 3.1 运行 shared calculator、constraint/source validation、protocol semantic validation、OutputWindow traversal、adapter contract、Markdown/JSON operation 与 output renderer 的范围匹配 Rust format、Clippy 和 focused tests；覆盖三种 unit 的边界、`o200k_base` token 语义、UTF-8/recount 一致的 prefix、极端 whitespace 无 panic、原子 sequence item、empty text、nested omission、base-first 和 budget cost/complete invariant。
 - [ ] 3.2 运行真实开发 CLI、`bun run smoke:docnav` 与 canonical release-package smoke，覆盖 `outline`、`read`、`find`、unstructured full-read 和 nested auto-read 的 limited complete/incomplete 及 unbounded success；对 CLI、config、machine 三种 source 验证 precedence、互斥、默认值和稳定错误。
 - [ ] 3.3 证明 raw/readable 使用同一 output facts，`info`、failure、invocation log 与 host/I/O failure 保持范围外；证明旧 page/pagination/numeric limit/`0.1` shape 被拒绝，且任何正数 limit 不触发专用 too-small failure。
 - [ ] 3.4 运行 protocol/config schema、example、fixture、docs link 与 Change Plan validators，确认 protocol `0.2`、三单位枚举、closed unions、固定 metadata 预算外语义和 release guidance 一致。

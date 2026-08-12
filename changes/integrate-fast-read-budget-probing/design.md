@@ -8,7 +8,8 @@
 - Current Markdown hook 先计算 lines、bytes 和 tokens 的完整 cost，再过滤 requested units；full-read result 随后再次形成完整 cost。
 - Authority boundary — `.change-plan.json` 拥有本 Change 的 lifecycle；本 design 只拥有 fast-read admission Target。Current threshold、adapter hook 和 outline-mode behavior 仍由稳定 owner 与 source 定义。
 - Long-term direction — [在标记的语义字段上集中执行输出预算](../../docs/decisions/product-direction/centralize-output-budgeting-over-marked-semantic-fields.md)要求 fast-read 与最终输出复用同一个 CostCalculator。
-- Runtime dependencies — 本 Change 消费 [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md)的 probe abstraction 和 [adopt-low-constant-reference-tokenizer](../adopt-low-constant-reference-tokenizer/design.md)的 bounded calculator contract。
+- Token direction — [保留当前 reference tokenizer，直到可靠替代已具备](../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)固定现有单一 token 语义，同时允许 fast-read 为自身 workload 设置独立的 latency 与 early-stop 准入门。
+- Runtime dependency — 本 Change 只消费 [introduce-budgeted-output-window](../introduce-budgeted-output-window/design.md)的 probe abstraction 和共同 CostCalculator contract。
 - Separate contract — [replace-pagination-with-unit-output-limits](../replace-pagination-with-unit-output-limits/design.md)拥有最终 output limit；fast-read threshold 是 navigation admission budget，不是 output budget。
 
 ## Goals / Non-Goals
@@ -25,6 +26,7 @@ Non-Goals:
 - 不让 `ignore-limit` 自动强制 fast read。
 - 不把 fast-read threshold 当成最终 output limit。
 - 不在 navigation 中解析 format-private document content。
+- 不选择 token backend，也不把 fast-read 的局部性能门提升为 public output-limit 的门禁。
 
 ## Decisions
 
@@ -47,8 +49,9 @@ Adapter 继续拥有 prepared document view 和 full-read content selection；sh
 ## Risks / Trade-offs
 
 - 为 probe 暴露 full-read candidate 不能把 document parsing、format selection 或 cross-invocation cache 移入 navigation。
-- 成功 probe 与最终 output limit 可能使用不同 unit 或 value；测量复用必须以 tokenizer/version、文本身份和 scope 一致为前提。
-- 多 unit thresholds 可能需要多个 backend 或不同提前停止点，容易重新产生先算全部再过滤。
+- 成功 probe 与最终 output limit 可能使用不同 unit 或 value；测量复用必须以 token 语义、文本身份、unit 和 scope 一致为前提，不能依赖 backend identity 偶然相同。
+- 多 unit thresholds 可能需要多个 unit calculator session 或不同提前停止点，容易重新产生先算全部再过滤。
+- Current backend 或 correctness-first wrapper 可能满足结果正确性却不满足 fast-read 的提前停止目标；这是本 Change 的局部 admission 阻塞，不影响 public output-limit rollout。
 - 默认 UTF-8 full-read fallback 与 adapter content hook 的 ownership 不同，需要保持当前错误和 lifecycle 边界。
 
 ## Open Questions

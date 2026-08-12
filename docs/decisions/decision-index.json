@@ -84,9 +84,10 @@
       "product-direction/prefer-simple-document-formats-before-code-adapters.md": "sha256:7926dd6b16a89c2aece79109633db705fa02255a220f5c985bcf2c56d76795f5",
       "product-direction/repair-token-cost-as-bounded-debt.md": "sha256:110d5c2e78f01681f301df1e30e69bc88aa68707a36b07d5a4c61bf464e864ec",
       "product-direction/replace-pagination-with-unit-output-limits.md": "sha256:b21855daee832d700e5eb22dc0724d3da3335725a5e0eefc2be67415dc4eec1f",
+      "product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md": "sha256:9abe764500d0290cee3b15124aaaa6ecd36538fb4a259db723eba13cbaee5c15",
       "product-direction/stabilize-core-before-entrypoint-expansion.md": "sha256:eb58e40381a05d96f4769cdcdde9bbdfc462e7984ee250f0e023dd11891d69e5",
       "product-direction/treat-exploration-as-non-delivery.md": "sha256:964a8f3fafdf607e91b445d857b389be6c54a96087578246295c7c325ae60921",
-      "product-direction/use-low-constant-reference-tokenizer-for-output-cost.md": "sha256:882969b4c61041d4bcc34cb14d8d88661a70820921252689d35a58b8e61f5745",
+      "product-direction/use-low-constant-reference-tokenizer-for-output-cost.md": "sha256:55eb95241f98d75614bfbaaab32180d6a8a5e529b4086e7d664bf97e25a0e39d",
       "readable-presentation/keep-custom-rendering-in-readable-view.md": "sha256:fcc9f5f18d959386933d3409e83a0df5636adb6a16250325ad42741f9035ae58",
       "readable-presentation/keep-format-presentation-in-readable-output.md": "sha256:14e11574c341f9887539a44c948e3b1b9e1fc0944b78f17e8f035b4461f467f1",
       "structured-read-semantics/separate-semantic-read-source-fidelity-and-custom-rendering.md": "sha256:63964f20291816dcb25d0e4eb62baf95b4307ce0e3225002e7310f7cc10cb847",
@@ -1020,6 +1021,35 @@
         "relations": []
       }
     },
+    "product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md": {
+      "keys": {
+        "domain": [
+          "product-direction"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "aligned"
+        ]
+      },
+      "state": {
+        "path": "product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md",
+        "title": "保留当前 reference tokenizer，直到可靠替代已具备",
+        "status": "active",
+        "alignment": "aligned",
+        "createdAt": "2026-08-12T08:50:55Z",
+        "purpose": "以既有统一 token calculator 支持当前产品演进，只在可靠候选已经出现且替换仍有收益时重新立项。",
+        "background": "当前 backend 已提供统一语义，调查没有发现可靠替代品，候选成熟周期可能超过项目的实际演进窗口。",
+        "decision": "保留当前 o200k_base backend；具体候选先通过初步准入且项目仍能获益时，才重新调查和立项。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "product-direction/use-low-constant-reference-tokenizer-for-output-cost.md"
+          }
+        ]
+      }
+    },
     "product-direction/stabilize-core-before-entrypoint-expansion.md": {
       "keys": {
         "domain": [
@@ -1074,7 +1104,7 @@
           "product-direction"
         ],
         "status": [
-          "active"
+          "archived"
         ],
         "alignment": [
           "unaligned"
@@ -1083,7 +1113,7 @@
       "state": {
         "path": "product-direction/use-low-constant-reference-tokenizer-for-output-cost.md",
         "title": "输出 token 成本使用低常数参考分词器",
-        "status": "active",
+        "status": "archived",
         "alignment": "unaligned",
         "createdAt": "2026-08-12T03:18:35Z",
         "purpose": "以真实但低开销的统一参考分词结果支持输出预算，而不追求与每个调用模型完全一致。",

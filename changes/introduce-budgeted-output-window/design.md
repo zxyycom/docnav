@@ -8,8 +8,9 @@
 - Current Markdown 和 JSON adapter 在 operation 内分别分页并形成 cost，shared output 随后分别投影 raw/readable 结果。
 - Authority boundary — `.change-plan.json` 拥有本 Change 的 lifecycle；本 design 只拥有 change-local runtime Target。稳定 protocol、output 和 adapter owners 继续定义 Current。
 - Long-term direction — [在标记的语义字段上集中执行输出预算](../../docs/decisions/product-direction/centralize-output-budgeting-over-marked-semantic-fields.md)保存统一预算数据流的未来方向。
+- Token direction — [保留当前 reference tokenizer，直到可靠替代已具备](../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)确认项目已经拥有统一 token calculator；本 Change 基于 current `o200k_base` 语义补足 bounded path。
 - This Change owns — `BudgetedOutput` traversal、OutputWindow mutation、CostCalculator dispatch 和 internal OutputReport；[replace-pagination-with-unit-output-limits](../replace-pagination-with-unit-output-limits/design.md)拥有 public budget/result contract。
-- Calculator dependency — [adopt-low-constant-reference-tokenizer](../adopt-low-constant-reference-tokenizer/design.md)提供 token backend；本 Change 只依赖共同 calculator contract。
+- Calculator boundary — 本 Change 拥有满足公共预算不变量的 calculator path，包括 current backend 上的 correctness-first token prefix wrapper。
 - Separate integration — [integrate-fast-read-budget-probing](../integrate-fast-read-budget-probing/design.md)消费 probe capability，不由本 Change 修改 fast-read navigation behavior。
 - Primary proving surface — read text 是首个性能与裁剪证明面；outline、find、unstructured result 和 nested auto-read 必须在本 Change 完成前映射到同一机制。
 
@@ -58,6 +59,8 @@ Adapter 先返回 typed semantic result，OutputWindow 随后原地约束被标�
 
 OutputWindow 持有一个 calculator session 和剩余预算。Unit backend 可以是 bytes、lines 或 tokens，但只调用当前 limit 和显式报告需要的 measurement，不先计算所有单位再过滤。
 
+Token calculator path 必须返回 UTF-8 合法、重新计数一致且不超过 budget 的 prefix。第一版可以完整扫描或重新计数 current `o200k_base` backend，只要真实 workload 的资源验证通过；CostCalculator contract 不承诺 backend identity、算法复杂度或 native early-stop。
+
 ### 6. Report 与 payload 分离
 
 内部返回 `Budgeted<T> { value, output }`；OutputReport 至少保存实际 cost 和 complete 状态。Public protocol 如何投影由 budget-contract Change 决定，不要求每个 operation 自己存放 controller state。
@@ -67,6 +70,7 @@ OutputWindow 持有一个 calculator session 和剩余预算。Unit backend 可�
 - Post-result budgeting 限制 output 和 measurement work，但不会避免 adapter 先构造完整 entries；只有 profiling 证明该部分成为瓶颈时才扩大到 producer-time API。
 - Text 可以安全裁剪，entry、ref 和嵌套 auto-read 存在原子性选择；策略过多会把宏变成第二套业务规则 owner。
 - 只计标记字段意味着 cost 不是最终序列化大小；需要确认固定结构和逐 item 包装不会让输出安全目标失真。
+- Correctness-first token prefix 可能完整扫描或重复计数；它可以关闭公共能力门，但必须用真实 workload 证明不会让 Limited token 请求超出本 Change 的资源预算。
 - Proc macro 可能增加 crate 和编译复杂度；必须先证明它比少量手写实现更容易维护。
 
 ## Open Questions

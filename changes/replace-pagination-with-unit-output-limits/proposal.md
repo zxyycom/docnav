@@ -24,11 +24,12 @@ Current 请求同时携带 adapter-owned 正整数 `limit` 和数字 `page`；Ma
 - 对应稳定 owner、JSON Schema、contract examples、fixtures、Semantic Case 和实现测试的同步。
 - 对旧 `0.1` request/result shape、`--page`、`--pagination`、numeric-only `--limit` 与 `defaults.pagination.*` 的明确拒绝和迁移 guidance；不提供 runtime 兼容读取或双重执行语义。
 
-普通 output limit 不覆盖 `info` success、failure envelope、protocol 固定包装、readable framing 或 invocation log。Tokenizer implementation、Budgeted Output Window 的 runtime traversal / calculator mechanics、fast-read threshold probing、serializer 后精确字节 budgeting，以及 streaming / lazy producer 优化继续由相邻 owner 负责。
+普通 output limit 不覆盖 `info` success、failure envelope、protocol 固定包装、readable framing 或 invocation log。Budgeted Output Window 的 runtime traversal / calculator mechanics、fast-read threshold probing、serializer 后精确字节 budgeting，以及 streaming / lazy producer 优化继续由相邻 owner 负责。Public cutover 使用现有统一 token backend，并验证其 bounded calculator path 正确且资源可接受。
 
 ## Success Criteria
 
 - `CostUnit` 在 limit、calculator 和 bounded output cost 中使用同一个 closed enum：`lines | bytes | tokens`；一次 `Limited` 调用只执行所选 unit 的 calculator。
+- Token unit 保持唯一的 `o200k_base` ordinary-text 语义；text prefix 必须 UTF-8 合法、重新计数一致且不超过 budget。满足真实 workload 预算的 current-backend path 可以通过该能力门。
 - CLI、config 和 machine request 都能确定性映射为 `Limited { unit, value }` 或 `Unbounded`；两者并存、非法 unit/value 和旧 pagination input 在 adapter dispatch 前失败。
 - `outline`、`read`、`find`、unstructured full-read 与 nested auto-read 的 bounded success 不超过所选 unit 的内容字段预算，并通过 common output metadata 可靠区分 complete 与 incomplete；固定 envelope / root identity metadata 不计入该预算。
 - 任意正数 limit 都能产生合法 success：放不下首个 sequence item 时返回 empty incomplete，text 可以返回 empty prefix incomplete，optional nested payload 可以整体省略；不引入只为极小 limit 服务的专用 failure。

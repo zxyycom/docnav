@@ -8,4 +8,4 @@ Read、structured outline、unstructured outline、find 和 nested auto-read 的
 
 ## Outcome
 
-不同 operation result 通过类型安全的字段投影暴露预算内容；一个 OutputWindow 在 rendering 前使用统一 CostCalculator 处理 text、sequence 和 nested fields，生成裁剪后的合法语义结果以及独立 OutputReport。Raw 与 readable 渲染同一份受限结果。
+不同 operation result 通过类型安全的字段投影暴露预算内容；一个 OutputWindow 在 rendering 前使用统一 CostCalculator 处理 text、sequence 和 nested fields，生成裁剪后的合法语义结果以及独立 OutputReport。Raw 与 readable 渲染同一份受限结果。Token path 复用既有统一 calculator，bounded wrapper 由本 Change 实现和验证。

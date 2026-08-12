@@ -8,4 +8,4 @@ Fast-read 必须在输出模式确定前判断全文是否足够小，因此不�
 
 ## Outcome
 
-Navigation 用 selected full-read candidate 的标记语义字段运行 bounded probe：输入先结束时选择 unstructured full read，阈值先耗尽时立即回退 structured outline。Probe 和最终输出使用同一个 calculator contract，失败探测不进入 public output cost，成功探测的测量可安全复用。
+Navigation 用 selected full-read candidate 的标记语义字段运行 bounded probe：输入先结束时选择 unstructured full read，阈值先耗尽时立即回退 structured outline。Probe 和最终输出使用同一个 calculator contract，失败探测不进入 public output cost，成功探测的测量可安全复用。本 Change 独立证明 fast-read 所需的提前停止和资源边界，不阻塞 public output-limit。
