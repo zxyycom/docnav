@@ -1,85 +1,191 @@
 # Design
 
-设计以 `BudgetedOutput` 字段投影连接任意语义结果和统一 OutputWindow，不要求所有 operation 改成相同结构，也不把 calculator mechanics 放进生成宏。
+本设计拥有 producer-time `OutputSession` shared capability。Change 目录名保留最初的预算窗口身份；目标类型和 crate 使用架构细化后更准确的 Session 命名。Public limit cutover、真实 adapter integration 和 fast-read reuse 分别由相邻 Change 拥有。
 
 ## Context
 
-- Current `OperationResult` 包含不同的 outline、read、find 和 info 结构；structured outline/find 还可以嵌套 auto-read。
-- Current Markdown 和 JSON adapter 在 operation 内分别分页并形成 cost，shared output 随后分别投影 raw/readable 结果。
-- Authority boundary — `.change-plan.json` 拥有本 Change 的 lifecycle；本 design 只拥有 change-local runtime Target。稳定 protocol、output 和 adapter owners 继续定义 Current。
-- Long-term direction — [在标记的语义字段上集中执行输出预算](../../docs/decisions/product-direction/centralize-output-budgeting-over-marked-semantic-fields.md)保存统一预算数据流的未来方向。
-- Token direction — [保留当前 reference tokenizer，直到可靠替代已具备](../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)确认项目已经拥有统一 token calculator；本 Change 基于 current `o200k_base` 语义补足 bounded path。
-- This Change owns — `BudgetedOutput` traversal、OutputWindow mutation、CostCalculator dispatch 和 internal OutputReport；[replace-pagination-with-unit-output-limits](../replace-pagination-with-unit-output-limits/design.md)拥有 public budget/result contract。
-- Calculator boundary — 本 Change 拥有满足公共预算不变量的 calculator path，包括 current backend 上的 correctness-first token prefix wrapper。
-- Separate integration — [integrate-fast-read-budget-probing](../integrate-fast-read-budget-probing/design.md)消费 probe capability，不由本 Change 修改 fast-read navigation behavior。
-- Primary proving surface — read text 是首个性能与裁剪证明面；outline、find、unstructured result 和 nested auto-read 必须在本 Change 完成前映射到同一机制。
+### Authority and evidence
+
+- [用 Gate、计量策略与 Collector 组合增量输出](../../docs/decisions/product-direction/compose-incremental-output-through-gates-policies-and-collectors.md)是 active、unaligned 的长期方向：逐项输出由 Gate、InputCost policy 和 Collector 组合；Limited 只是 Gate 的一种模式；finish 后仍形成完整 typed result 和 `ProtocolResponse`。
+- [用带单位的输出上限替代分页](../../docs/decisions/product-direction/replace-pagination-with-unit-output-limits.md)固定 public limit/ignore-limit、移除 page/continuation 和 public complete；本 Change 不重复拥有这些产品选择。
+- [保留当前 reference tokenizer](../../docs/decisions/product-direction/retain-current-reference-tokenizer-until-qualified-replacement.md)继续固定 `tiktoken-rs / o200k_base / ordinary-text` production backend；backend identity 不进入 public contract。
+- Current `AdapterDocument::outline/read/find` 返回完整结果。多条 Markdown/JSON path eager collect 或 serialize，Current navigation 只在 operation 完成后获得 `OperationResult`。
+- Plan baseline 中，`docnav-text-cost` 只提供完整 `&str` 的 lines、bytes 和 tokens measurement，也没有 closed `CostUnit`、bounded text session、OutputSession、Gate、InputCost/Projection 或 Collector contract。本 Change 已新增这些 shared capabilities，但没有改变上一条 Current adapter/navigation 调用链。
+- Current `docnav-output` 的 protocol-json 与 readable branches 都消费同一个完整 `ProtocolResponse`；readable renderer 先形成完整 UTF-8 `String`，再写 stdout。
+
+### Target data flow
+
+```text
+producer --生成一个 I--> OutputSession<I, G, C>.push(I) --PushOutcome--> producer
+                              |        |
+                              |        +-- C: Collector 接收 accepted I
+                              +----------- G: Limited<P> | Unbounded Gate
+                                             |
+                                             +-- P: Limited 才使用的 InputCost
+                              |
+                              | finish(source_completion)
+                              v
+                   typed output + OutputReport
+                              |
+                              v
+                 navigation validate / ProtocolResponse
+                              |
+                              v
+                   protocol-json / readable output
+```
+
+Producer 只有在前一次 outcome 允许继续时才生成下一项。Session 不拉取 producer；renderer 不观察 Session 的中间状态。
+
+### Dependency order
+
+1. 本 Change 提供 shared Session、Gate、InputCost/Projection、bounded TextMeter、Collector 和 direct evidence。
+2. `replace-pagination-with-unit-output-limits` 修改 adapter/navigation boundary，让真实 producer 使用 Session 并接入 public request/report。
+3. `integrate-fast-read-budget-probing` 按自己的 candidate identity/admission contract 复用 bounded measurement mechanics。
+
+Stage、active decision 和 capability tests 都不证明 Current CLI 已经早停，也不自行授权相邻 Change 实施。
 
 ## Goals / Non-Goals
 
 Goals:
 
-- 让任意受支持 result struct 或 enum 静态声明参与预算的字段。
-- 在一个 window 中完成 unit-specific measurement、admission、裁剪、完整性状态和实际 output cost。
-- 保持裁剪后的 typed result 对 raw protocol 和 readable renderer 都合法且一致。
+- 为任意 caller-defined input `I` 提供同一个逐项 push/finish 协议，并允许 Limited/Unbounded 复用调用形状。
+- 让 Gate、InputCost/Projection、Collector、producer 和 presentation 各自拥有一个稳定责任。
+- 让 accepted input 只移动一次到 operation-selected Collector，由 Collector 增量形成 typed output。
+- 让文本 Projection 逐段提供借用内容，TextMeter 在 bounded threshold 下按一个逻辑文本流执行 requested-unit measurement。
+- 让 tests 直接证明组合边界、原子状态与 canonical producer loop。
 
 Non-Goals:
 
-- 不用最终 serialization length 定义产品 limit。
-- 不在宏中选择 tokenizer、默认 limit 或 public response shape。
-- 第一阶段不要求 adapters 改成 lazy iterator 或 streaming producer。
-- 不在本 Change 迁移 fast-read selector；相邻 Change 只复用这里提供的 probe 能力。
+- 不在本 Change 改写 public request/response、默认值、pagination 或 release behavior。
+- 不让 Session 解释 operation 语义、主动拉取 producer、裁剪输入内部内容或执行 presentation transformation。
+- 不要求 adapter 使用统一的结果类型或固定 `Vec<I>` 中间表示。
+- 不改变完整 `ProtocolResponse` 与 stdout 的最终提交边界。
+- 不建立数字 latency/RSS SLA。
 
 ## Decisions
 
-### 1. 四个责任名称保持稳定
+### D1. [Inherited] 输出会话以可组合的逐项构造为中心
 
-- `BudgetedOutput`：结果类型暴露预算字段的 typed traversal contract。
-- `OutputWindow`：持有本次 budget state，并执行 admission、裁剪和完整性判断。
-- `CostCalculator`：只负责指定 unit 的 measurement 与合法 prefix boundary。
-- `OutputReport`：独立于 operation payload，保存实际接纳成本和 complete 状态。
+实现使用 `OutputSession<I, G, C>` 连接调用方选择的单一输入 `I`、Gate 和 Collector；Limited Gate 以 `LimitedGate<P>` 持有 InputCost policy，Unbounded Gate 不持有 policy。输入类型及粒度由 producer owner 选择；Collector output 由 operation 选择。
 
-### 2. Trait 是契约，宏只是生成方式
+Session 统一执行一次 push 的协调顺序和 finish 生命周期，但不成为输入语义、cost 算法、结果类型或 presentation 的 owner。
 
-核心接口是可测试的 `BudgetedOutput` traversal 与 OutputWindow。字段 attribute 或 declarative macro 只生成静态访问代码；如果 crate dependency 或实现规模不支持 proc macro，可以先使用手写 trait implementation，而不改变 runtime contract。
+### D2. [Inherited] Gate 拥有接纳与流控制
 
-### 3. 预算发生在 semantic result 与 presentation 之间
+Gate 使用统一的控制事实：当前输入 `Accepted | Rejected`，下一步 `Continue | Stop(reason)`。Limited Gate 额外拥有带单位的预算状态；Unbounded Gate 对每项直接返回 accepted/continue，并在 source 自然结束后 finish。
 
-Adapter 先返回 typed semantic result，OutputWindow 随后原地约束被标记字段并返回 sidecar report，raw/readable renderer 最后消费同一结果。不得先转成 generic JSON 再截断。
+Limited 与 Unbounded 复用 Session、producer 和 Collector；Unbounded 不使用伪造的最大 limit，也不创建或调用 InputCost。为使 caller 不依赖模式分支，outcome/report 使用显式 mode variant：
 
-### 4. 保持少量字段策略并强制分类增长字段
+```text
+PushOutcome
+  input: Accepted | Rejected
+  flow: Continue | Stop(StopReason)
+  gate:
+    Limited(BudgetSnapshot)
+    Unbounded
+```
 
-- `text` 使用 calculator 返回的合法 prefix boundary 裁剪。
-- `sequence` 按元素顺序接纳并在 item boundary 停止。
-- `nested` 递归使用当前 window。
-- 必须完整保留的 scalar 或 identifier 使用 atomic accounting，不做字符串截断。
+### D3. [Change-local] Limited Gate 对当前输入执行原子 admission
 
-所有可能随 document、query、adapter metadata 或其它输入规模增长的输出字段都必须显式参与预算；只有另有独立上限的字段才能显式跳过。新增长度不受约束的字段时，缺少分类必须成为 compile-time failure 或等价的结构检查失败。
+Limited Gate 先借用 `&I` 调用 InputCost，只有完整输入可容纳时才把 `I` 移交 Collector：
 
-### 5. CostCalculator 只按请求单位工作
+| 条件 | 当前输入 | Gate 变化 | Collector | 下一步 |
+| --- | --- | --- | --- | --- |
+| `cost < remaining` | Accepted | `used += cost` | `accept(I)` 一次 | Continue |
+| `cost == remaining` | Accepted | `used = limit` | `accept(I)` 一次 | Stop(`LimitExhausted`) |
+| `cost > remaining` | Rejected | 不变 | 不调用 | Stop(`InputDoesNotFit`) |
 
-OutputWindow 持有一个 calculator session 和剩余预算。Unit backend 可以是 bytes、lines 或 tokens，但只调用当前 limit 和显式报告需要的 measurement，不先计算所有单位再过滤。
+Session 不返回 partial input，也不为至少一项突破 limit。需要更细早停时，producer 选择更小但仍合法的 `I`。
 
-Token calculator path 必须返回 UTF-8 合法、重新计数一致且不超过 budget 的 prefix。第一版可以完整扫描或重新计数 current `o200k_base` backend，只要真实 workload 的资源验证通过；CostCalculator contract 不承诺 backend identity、算法复杂度或 native early-stop。
+### D4. [Change-local] Accepted commit 同时覆盖 Gate 与 Collector
 
-### 6. Report 与 payload 分离
+首版 `Collector::accept(I)` 是 infallible。Session 在 InputCost 成功且输入可容纳后调用 accept，并提交预算状态；由于 accept 不返回业务失败，外部观察不到“预算已扣除但内容未保存”或相反的半提交状态。
 
-内部返回 `Budgeted<T> { value, output }`；OutputReport 至少保存实际 cost 和 complete 状态。Public protocol 如何投影由 budget-contract Change 决定，不要求每个 operation 自己存放 controller state。
+Measurement failure、违反 `InputCost` bounded contract 的 measurement 和 stopped-session misuse 使用 error channel，并发生在 Collector commit 前。Gate 已证明 `cost <= remaining` 后，`used + cost <= limit` 是局部程序不变量，不建立不可达的 overflow error variant。`Collector::finish` 可以失败；此时尚未形成 `ProtocolResponse`，整个 operation 按既有 failure boundary 结束且不写 partial stdout。未来若需要 fallible accept，必须先设计显式 transaction/rollback contract，不能直接扩张首版 trait。
+
+### D5. [Change-local] Limited outcome 暴露稳定预算事实
+
+`BudgetSnapshot` 包含 `unit`、`limit`、`used` 和 `remaining`。所有 snapshot 满足：
+
+- `used + remaining = limit`；
+- `used <= limit`；
+- snapshot unit 是 Limited Gate 构造时传入并在每次 measurement 中传给 InputCost 的同一单位；
+- rejected/error 不改变 Gate 或 Collector；
+- stop 后不能重新 open。
+
+Outcome 不暴露 tokenizer token、incremental buffer、projection cursor 或 trial checkpoint。`LimitExhausted` 表示当前输入已接纳且预算恰好耗尽；`InputDoesNotFit` 表示当前输入未接纳。
+
+### D6. [Inherited] InputCost 组合 Projection 与 TextMeter
+
+`InputCost<I>` 接收 Gate 已归一化的 unit 和 remaining threshold，只为一个借用输入返回 Limited Gate 所需的 bounded measurement。文本场景使用两个独立 owner：
+
+```text
+TextProjection<I>
+  project(&I, &mut TextSink)
+
+TextMeter
+  requested unit
+  remaining threshold
+  consume(&str) -> Continue | ProvenExceedsThreshold
+  finish() -> Fits(cost) | ExceedsThreshold
+```
+
+Projection 决定哪些语义文本、以什么顺序和哪些显式连接片段进入 cost；它可以零分配地提供多个借用 `&str`。TextMeter 决定 lines、bytes、tokens 的 measurement，并且只有在当前 unit 的算法已经能够证明完整输入必然放不下时，才让 Projection 停止提供后续片段。
+
+String/text chunk 使用 identity projection。结构化业务类型的 projection 位于理解该 operation 语义的调用方 policy 模块，而不进入 shared Session crate；本 Change 使用 caller-owned structured test projection 证明该组合边界。同一 `I` 可以在不同 operation 使用不同 Projection。
+
+### D7. [Change-local] 多片段按一个逻辑文本流计量
+
+一次 Projection 提供的有序片段及其显式连接文本共同构成该输入的逻辑计量文本。TextMeter 的最终结果必须等于把这些片段按相同顺序连接后调用现有 `line_cost`、`byte_cost` 或 `token_cost` 的结果；不能简单相加每段的独立 line/token cost，因为行首尾和 tokenizer merge 会跨片段产生状态。
+
+首版可以为 token unit 在 Meter 内部暂存当前输入的 projected text，再调用唯一 `o200k_base` calculator；这仍避免构造完整 operation output，并让 Session 在当前 input boundary 后停止 producer tail。接口允许后续在保持等价语义时替换为能够提供安全 bounded proof 的 incremental backend。Bytes 和 lines 可以直接维护跨片段状态。任何优化都由等价性与 bounded-stop tests 约束，不改变 Projection 或 Session contract。
+
+### D8. [Inherited] Collector 拥有保存方式和 typed output
+
+Collector contract 使用关联 output，而不是 Session 固定持有 `Vec<I>`：
+
+```text
+Collector<I>
+  type Output
+  accept(I)                  // 首版 infallible
+  finish() -> Result<Output>
+```
+
+String builder 可以直接连接 text chunk，entry collector 可以形成 `Vec<Entry>`，operation-specific builder 可以直接形成自己的 result。Session 只保证 accepted item 的顺序和 exactly-once transfer，不要求 Collector 暴露中间内容。
+
+### D9. [Inherited] Finish 后进入完整响应管线
+
+`finish(source_completion)` 消费 Session 和 Collector，返回 typed output 与 `OutputReport`。`InputDoesNotFit` 能证明 incomplete；`LimitExhausted` 只说明 Gate 已满，如果 caller 同时证明当前输入就是 producer 最后一项，结果仍可 complete。Unbounded 在 source 自然结束时 complete。
+
+Navigation 随后校验 typed output 并包装完整、不可变的 `ProtocolResponse`；protocol-json 与 readable renderer 消费同一响应。Producer-time push 是内部增量构造，不把 renderer、channel 或 stdout 变成 partial-state consumer。
+
+### D10. [Change-local] Shared crate 与依赖方向
+
+新增 `crates/shared/output-session` / `docnav-output-session`，拥有 Session、Gate、InputCost/Projection contract、Collector、outcome/report 和最小组合实现。它依赖 `docnav-protocol` 的 `CostUnit` 与 `docnav-text-cost` 的 TextMeter，不依赖 navigation、output 或具体 adapter。
+
+`docnav-protocol` 只新增 internal shared Rust `CostUnit::{Lines, Bytes, Tokens}`；本 Change 不改变 Current wire。Future adapter/operation 作为 producer 和 policy owner，navigation 选择 Limited/Unbounded 并在 finish 后形成 `ProtocolResponse`，`docnav-output` 保持 presentation owner。
+
+### D11. [Change-local] Downstream integration handoff
+
+Downstream `AdapterDocument`、Markdown、JSON 与 navigation integration 必须共同满足以下义务，才能把 shared capability 描述为真实 document-operation early stop：
+
+1. Operation producer 选择一种可独立接纳的输入 `I`，只在前一次 outcome 为 Continue 时生成下一项；收到 Stop 后不再访问 producer tail。
+2. 理解 operation 语义的调用点选择 `TextProjection<I>` 和显式 fragment/连接顺序；shared Session、renderer 和 serializer 不推断业务字段。
+3. Navigation 从规范化后的 constraint 选择 Limited 或 Unbounded Gate；Unbounded 不构造 InputCost，Limited 的 unit/limit 与最终 public report 使用同一事实。
+4. Operation 选择能够直接形成目标 typed result 的 Collector；accepted input exactly once 移交，rejected input 不进入 result。Collector finish 先于 result validation 和 `ProtocolResponse` 构造。
+5. Producer owner 向 finish 提供 source completion；navigation 校验完整 typed result 后才交给 protocol-json/readable presentation，任何层都不把 partial Session state 写到 stdout。
+
+`replace-pagination-with-unit-output-limits` 当前的 typed-result 后 traversal/prefix cropping 描述，以及 `integrate-fast-read-budget-probing` 当前对旧字段标记方向的引用，都需要在各自下一实施步骤前按活动长期决策重新审阅。本 Change 只交付并证明上述 shared capability，不修改相邻 artifacts、推进其 lifecycle 或代替真实 integration evidence。
 
 ## Risks / Trade-offs
 
-- Post-result budgeting 限制 output 和 measurement work，但不会避免 adapter 先构造完整 entries；只有 profiling 证明该部分成为瓶颈时才扩大到 producer-time API。
-- Text 可以安全裁剪，entry、ref 和嵌套 auto-read 存在原子性选择；策略过多会把宏变成第二套业务规则 owner。
-- 只计标记字段意味着 cost 不是最终序列化大小；需要确认固定结构和逐 item 包装不会让输出安全目标失真。
-- Correctness-first token prefix 可能完整扫描或重复计数；它可以关闭公共能力门，但必须用真实 workload 证明不会让 Limited token 请求超出本 Change 的资源预算。
-- Proc macro 可能增加 crate 和编译复杂度；必须先证明它比少量手写实现更容易维护。
+- 本 Change 只交付 capability；Current adapters 在 downstream 接入前仍然 eager，不能声称 CLI 已减少生成工作。
+- Session 只能在 input boundary 停止。异常大的单项仍可能产生显著临时生成和计量工作；真实 integration 需要按 operation 选择合理粒度。
+- Atomic rejection 可能留下 unused remaining；契约优化可预测的逐项构造，而不追求最大填充。
+- Token unit 首版可能暂存一个输入的 projected text；这提供组合 API 和 operation-level early stop，但不是已证明的跨片段 constant-memory tokenizer streaming。
+- Projection 明确选择成本文本，因此 window cost 可能受 input granularity 和连接策略影响；它是可调整的输出控制 accounting，不是最终 response serialization size。
+- `replace-pagination-with-unit-output-limits` 与 `integrate-fast-read-budget-probing` 仍引用旧 post-result/field-traversal 方向；它们在下一次实施前必须按活动决策重审，但本 Change 不自行修改或推进其 lifecycle。
 
 ## Open Questions
 
-以下问题仍属于本 draft 的 runtime design 缺口；关闭后才能选择生成机制并派生 Plan tasks：
-
-1. 当前结果类型数量是否足以证明 proc-macro derive 优于 declarative mapping 或手写 trait？
-2. Entry 的 ref、label、summary、excerpt、cost 和 metadata 哪些作为 atomic item 参与预算？
-3. Sequence item 超过剩余预算时是否允许裁剪 item 内的 optional text，还是整项拒绝？
-4. Info 与 error payload 是否进入普通产品预算，还是只受 transport ceiling？
-5. 如何为新增未标记的可增长字段提供 compile-time failure 或结构审计？
-6. 是否需要为同一已测文本保存 sidecar measurement，以便 fast-read 与最终 output 复用而不重复 tokenize？
+无。用户已确认单输入 push、结构化 outcome、Gate/InputCost/Collector 分层、显式 TextProjection、requested-unit TextMeter、Limited/Unbounded 复用以及 finish 后完整响应边界。当前 Rust 落点是 `OutputSession<I, G, C>`、`LimitedGate<P>` 和借用式 `TextProjection<I>`；tests 约束其行为契约。

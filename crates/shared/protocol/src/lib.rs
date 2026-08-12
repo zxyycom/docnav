@@ -6,6 +6,7 @@ pub use docnav_diagnostics::{DocumentContentInvalidReason, ProtocolDiagnosticCod
 
 mod constants;
 mod contract_validation;
+mod cost_unit;
 mod decode;
 mod envelope;
 mod error;
@@ -20,6 +21,7 @@ mod schema;
 mod version;
 
 pub use constants::{MANIFEST_VERSION, PROTOCOL_VERSION, UNKNOWN_REQUEST_ID};
+pub use cost_unit::{CostUnit, CostUnitParseError};
 pub use decode::{
     decode_manifest_value, decode_protocol_request_value, decode_protocol_response_value,
     decode_value, DecodePipelineError, DecodePipelineStage, ProtocolRequestDecodeError,

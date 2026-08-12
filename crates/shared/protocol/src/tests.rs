@@ -25,6 +25,32 @@ fn read_json_fixture(name: &str) -> Value {
     serde_json::from_str(&read_fixture(name)).expect("fixture is JSON")
 }
 
+#[test]
+fn cost_unit_has_stable_text_and_serde_mapping() {
+    for (unit, value) in [
+        (CostUnit::Lines, "lines"),
+        (CostUnit::Bytes, "bytes"),
+        (CostUnit::Tokens, "tokens"),
+    ] {
+        assert_eq!(unit.as_str(), value);
+        assert_eq!(unit.to_string(), value);
+        assert_eq!(value.parse::<CostUnit>(), Ok(unit));
+        assert_eq!(
+            serde_json::to_string(&unit).unwrap(),
+            format!(r#""{value}""#)
+        );
+        assert_eq!(
+            serde_json::from_str::<CostUnit>(&format!(r#""{value}""#)).unwrap(),
+            unit
+        );
+    }
+
+    assert_eq!(
+        "characters".parse::<CostUnit>().unwrap_err().to_string(),
+        "invalid cost unit: characters"
+    );
+}
+
 mod basic;
 mod decode;
 mod options;

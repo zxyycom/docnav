@@ -1,6 +1,6 @@
 ---
 title: 在标记的语义字段上集中执行输出预算
-status: active
+status: archived
 alignment: unaligned
 createdAt: 2026-08-12T03:18:35Z
 purpose: 在不统一各 operation 结果结构的前提下，让输出裁剪、成本计算和完整性状态共享同一条预算数据流。

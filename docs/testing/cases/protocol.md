@@ -1,5 +1,15 @@
 # protocol
 
+## Case WB-PROTOCOL-COST-UNIT-001: Shared CostUnit 保持稳定内部映射
+
+Owner: `docs/architecture.md#共享库`
+
+Entities:
+- `cargo|docnav-protocol:lib:docnav_protocol|tests::cost_unit_has_stable_text_and_serde_mapping`
+
+Proves:
+- Shared Rust `CostUnit` 只接受 `lines`、`bytes` 和 `tokens`，并在 `as_str`、Display、FromStr 与 serde 之间保持相同映射。
+
 ## Case WB-PROTO-BASIC-001: Protocol 基础类型和 envelope 规则稳定
 
 Owner: `docs/protocol.md#协议字段与生命周期`

@@ -79,8 +79,9 @@
       "json-navigation/use-canonical-json-pointer-refs.md": "sha256:2129a14731727e585cfddccdaf40063948d8ff7d406afdff16cea1f8d07b809c",
       "json-navigation/use-deterministic-semantic-json-value-serialization.md": "sha256:78055acaf323ab0f2c5343552278d08d2e5e741235dbb8da2d0590ffd432dddb",
       "product-direction/advance-json-readable-presentation-after-contract-approval.md": "sha256:e5b2ae4f305f849e8503482e0d21ced28f128f47f1edebca133a6b718921e222",
-      "product-direction/centralize-output-budgeting-over-marked-semantic-fields.md": "sha256:05b5fe1306a88dd0a5b7298187430ac3c3dbf2cce28f0ba78a9ae9235422514a",
+      "product-direction/centralize-output-budgeting-over-marked-semantic-fields.md": "sha256:b8a6f3e02ddaf7c0c9d3deb1c3c1b30b3ec7a9aad8dcdfcba8f9ee3255a476d6",
       "product-direction/complete-json-readable-presentation.md": "sha256:59fd5b2503238d0e52d6b6cc4147fa943635a2dd8cdc006c1e9cc7e5285a0401",
+      "product-direction/compose-incremental-output-through-gates-policies-and-collectors.md": "sha256:4e3c6ac9be9117fd0a8ca83f5a8b8a4c4366e1add0f996cb370d615fe1e99da4",
       "product-direction/prefer-simple-document-formats-before-code-adapters.md": "sha256:7926dd6b16a89c2aece79109633db705fa02255a220f5c985bcf2c56d76795f5",
       "product-direction/repair-token-cost-as-bounded-debt.md": "sha256:110d5c2e78f01681f301df1e30e69bc88aa68707a36b07d5a4c61bf464e864ec",
       "product-direction/replace-pagination-with-unit-output-limits.md": "sha256:b21855daee832d700e5eb22dc0724d3da3335725a5e0eefc2be67415dc4eec1f",
@@ -905,7 +906,7 @@
           "product-direction"
         ],
         "status": [
-          "active"
+          "archived"
         ],
         "alignment": [
           "unaligned"
@@ -914,7 +915,7 @@
       "state": {
         "path": "product-direction/centralize-output-budgeting-over-marked-semantic-fields.md",
         "title": "在标记的语义字段上集中执行输出预算",
-        "status": "active",
+        "status": "archived",
         "alignment": "unaligned",
         "createdAt": "2026-08-12T03:18:35Z",
         "purpose": "在不统一各 operation 结果结构的前提下，让输出裁剪、成本计算和完整性状态共享同一条预算数据流。",
@@ -947,6 +948,35 @@
         "background": "Generic readable view 能证明共享输出链路可用，但不能长期替代 JSON 对路径、标点、preview 和分页信息密度的 presentation contract。",
         "decision": "JSON 专用 renderer 可以短暂等待底层 raw facts 稳定，但仍属于近期完整 adapter 交付，不得无限期停留在 generic presentation。",
         "relations": []
+      }
+    },
+    "product-direction/compose-incremental-output-through-gates-policies-and-collectors.md": {
+      "keys": {
+        "domain": [
+          "product-direction"
+        ],
+        "status": [
+          "active"
+        ],
+        "alignment": [
+          "unaligned"
+        ]
+      },
+      "state": {
+        "path": "product-direction/compose-incremental-output-through-gates-policies-and-collectors.md",
+        "title": "用 Gate、计量策略与 Collector 组合增量输出",
+        "status": "active",
+        "alignment": "unaligned",
+        "createdAt": "2026-08-12T10:56:19Z",
+        "purpose": "让 operation 通过统一的逐项输出会话组合流控制、输入计量和结果构造，并将完整结果交给既有响应与展示层。",
+        "background": "不同 operation 需要边生产边形成不同结果类型；预算判断、文本投影、内容保存与最终消费具有稳定而彼此独立的变化方向。",
+        "decision": "OutputSession 组合 Gate、InputCost 与 Collector；接纳输入只移交一次，finish 形成 typed result 和报告，再进入完整响应管线。",
+        "relations": [
+          {
+            "type": "修订",
+            "target": "product-direction/centralize-output-budgeting-over-marked-semantic-fields.md"
+          }
+        ]
       }
     },
     "product-direction/prefer-simple-document-formats-before-code-adapters.md": {

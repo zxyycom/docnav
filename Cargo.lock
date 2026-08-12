@@ -306,6 +306,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "docnav-output-session"
+version = "0.1.0-beta.1"
+dependencies = [
+ "docnav-protocol",
+ "docnav-text-cost",
+]
+
+[[package]]
 name = "docnav-protocol"
 version = "0.1.0-beta.1"
 dependencies = [

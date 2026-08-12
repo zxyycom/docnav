@@ -111,13 +111,43 @@ Proves:
 Owner: `docs/architecture.md#共享库`
 
 Entities:
+- `cargo|docnav-text-cost:lib:docnav_text_cost|tests::bounded_meter_matches_logically_joined_fragments`
+- `cargo|docnav-text-cost:lib:docnav_text_cost|tests::bounded_meter_stops_only_after_proven_exceed`
 - `cargo|docnav-text-cost:lib:docnav_text_cost|tests::byte_cost_counts_utf8_bytes`
 - `cargo|docnav-text-cost:lib:docnav_text_cost|tests::line_cost_counts_empty_unicode_and_trailing_newline`
+- `cargo|docnav-text-cost:lib:docnav_text_cost|tests::requested_text_cost_dispatches_one_unit`
 - `cargo|docnav-text-cost:lib:docnav_text_cost|tests::token_cost_uses_o200k_base_ordinary_text`
 
 Proves:
 - shared text cost helper functions 只接收纯文本并返回 unscoped protocol-compatible `Measurement`。
 - `line_cost`、`byte_cost` 和 `token_cost` 分别固定 `lines`、`bytes`、`tokens` unit，并覆盖空文本、Unicode bytes、换行和 plain-text `o200k_base` token counting。
+- Requested-unit `TextMeter` 把有序 fragments 作为一个逻辑文本流计量，结果与连接后的完整文本 helper 一致，并且只有在能够证明 threshold 已超出时才提前停止。
+
+## Case WB-OUTPUT-SESSION-001: Shared output session 组合逐项输出职责
+
+Owner: `docs/architecture.md#共享库`
+
+Entities:
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::composition::canonical_loop_does_not_request_tail_after_stop`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::composition::caller_owned_projection_composes_with_vec_collector`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::composition::collector_finish_failure_ends_session_without_output`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::empty_limited_session_finishes_complete`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::exact_limit_is_incomplete_when_source_has_more_input`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::exact_limit_accepts_input_and_stops`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::gate_policy::input_cost_failure_does_not_commit_input`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::gate_policy::invalid_fitting_cost_does_not_commit_input_or_budget`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::gate_policy::limited_gate_supplies_selected_unit_and_remaining_threshold`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::limited_session_commits_only_accepted_inputs`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::composition::projection_stops_after_meter_proves_exceed`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::stopped_session_returns_error_without_committing`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::composition::unbounded_report_uses_caller_owned_source_completion`
+- `cargo|docnav-output-session:lib:docnav_output_session|tests::composition::unbounded_reuses_session_and_custom_collector_without_input_cost`
+
+Proves:
+- Limited Gate 拥有构造时传入的 unit/limit，把所选 unit 与当前 remaining threshold 传给 InputCost，并以结构化 outcome 表达原子 accepted/rejected 与 continue/stop；只有 accepted input exactly once 到达 Collector，measurement error、rejected input 和 stopped-session push 不提交内容。
+- Limited 与 Unbounded 复用同一个 Session/Collector 形状；Unbounded 不需要 InputCost，Collector 可以形成 String、Vec 或 operation-specific typed output。
+- Caller-owned structured TextProjection 可以选择计量字段并与泛型 Vec Collector 组合；Projection 能在 Meter 证明 exceed 后停止提供后续 fragments。Canonical producer loop 收到 stop 后不再请求 tail；Limited exact exhaustion 和 Unbounded 都由 caller-owned source completion 决定最终 complete。
+- Empty source 可以形成 complete empty output；Collector finish failure 在 Session 形成 output 前原样返回。
 
 ## Case WB-TYPED-FIELDS-001: Typed field definition core 保持字段级不变量
 

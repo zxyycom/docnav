@@ -11,6 +11,7 @@ members = [
   "crates/shared/json-io",
   "crates/shared/navigation",
   "crates/shared/output",
+  "crates/shared/output-session",
   "crates/shared/protocol",
   "crates/shared/readable",
   "crates/shared/text-cost",
@@ -48,6 +49,7 @@ docnav-json = { path = "crates/adapters/json" }
 docnav-markdown = { path = "crates/adapters/markdown" }
 docnav-navigation = { path = "crates/shared/navigation" }
 docnav-output = { path = "crates/shared/output" }
+docnav-output-session = { path = "crates/shared/output-session" }
 docnav-readable = { path = "crates/shared/readable" }
 docnav-text-cost = { path = "crates/shared/text-cost" }
 docnav-typed-fields = { path = "crates/shared/typed-fields" }
